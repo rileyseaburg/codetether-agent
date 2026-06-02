@@ -105,10 +105,7 @@ impl AnthropicProvider {
                                 }));
                             }
                             ContentPart::Thinking { text, .. } => {
-                                system_blocks.push(json!({
-                                    "type": "thinking",
-                                    "thinking": text,
-                                }));
+                                system_blocks.push(json!({"type": "thinking", "thinking": text}));
                             }
                             _ => {}
                         }
@@ -125,10 +122,7 @@ impl AnthropicProvider {
                                 }));
                             }
                             ContentPart::Thinking { text, .. } => {
-                                content_parts.push(json!({
-                                    "type": "thinking",
-                                    "thinking": text,
-                                }));
+                                content_parts.push(json!({"type": "thinking", "thinking": text}));
                             }
                             _ => {}
                         }
@@ -152,11 +146,10 @@ impl AnthropicProvider {
                                     "text": text
                                 }));
                             }
-                            ContentPart::Thinking { text, .. } => {
-                                content_parts.push(json!({
-                                    "type": "thinking",
-                                    "thinking": text
-                                }));
+                            ContentPart::Thinking { text, signature } => {
+                                let mut block = json!({"type": "thinking", "thinking": text});
+                                if let Some(sig) = signature { block["signature"] = json!(sig); }
+                                content_parts.push(block);
                             }
                             ContentPart::ToolCall {
                                 id,
@@ -287,6 +280,8 @@ enum AnthropicContent {
         thinking: Option<String>,
         #[serde(default)]
         text: Option<String>,
+        #[serde(default)]
+        signature: Option<String>,
     },
     #[serde(rename = "tool_use")]
     ToolUse {
@@ -556,7 +551,7 @@ impl Provider for AnthropicProvider {
                         content.push(ContentPart::Text { text: text.clone() });
                     }
                 }
-                AnthropicContent::Thinking { thinking, text } => {
+                AnthropicContent::Thinking { thinking, text, signature } => {
                     let reasoning = thinking
                         .as_deref()
                         .or(text.as_deref())
@@ -564,7 +559,7 @@ impl Provider for AnthropicProvider {
                         .trim()
                         .to_string();
                     if !reasoning.is_empty() {
-                        content.push(ContentPart::Thinking { text: reasoning });
+                        content.push(ContentPart::Thinking { text: reasoning, signature: signature.clone() });
                     }
                 }
                 AnthropicContent::ToolUse { id, name, input } => {

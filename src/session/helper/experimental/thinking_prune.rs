@@ -44,9 +44,7 @@ pub const KEEP_LAST_MESSAGES: usize = 4;
 ///     prune_thinking, KEEP_LAST_MESSAGES,
 /// };
 ///
-/// let thinking = ContentPart::Thinking {
-///     text: "Let me consider every option...".repeat(100),
-/// };
+/// let thinking = ContentPart::Thinking { text: "Let me consider every option...".repeat(100), signature: None };
 /// let reply = ContentPart::Text { text: "Here is my answer.".into() };
 ///
 /// let mut msgs = vec![
@@ -123,9 +121,7 @@ mod tests {
     fn recent_thinking_preserved() {
         let mut msgs = vec![Message {
             role: Role::Assistant,
-            content: vec![ContentPart::Thinking {
-                text: "x".repeat(5000),
-            }],
+            content: vec![ContentPart::Thinking { text: "x".repeat(5000), signature: None }],
         }];
         let stats = prune_thinking(&mut msgs);
         assert_eq!(stats.total_bytes_saved, 0);
@@ -135,9 +131,7 @@ mod tests {
     fn empty_assistant_dropped() {
         let mut msgs = vec![Message {
             role: Role::Assistant,
-            content: vec![ContentPart::Thinking {
-                text: "x".repeat(1000),
-            }],
+            content: vec![ContentPart::Thinking { text: "x".repeat(1000), signature: None }],
         }];
         for i in 0..KEEP_LAST_MESSAGES + 1 {
             msgs.push(Message {
@@ -157,9 +151,7 @@ mod tests {
         // Users can't really emit thinking, but defense-in-depth.
         let mut msgs = vec![Message {
             role: Role::User,
-            content: vec![ContentPart::Thinking {
-                text: "user-thought".repeat(100),
-            }],
+            content: vec![ContentPart::Thinking { text: "user-thought".repeat(100), signature: None }],
         }];
         for i in 0..KEEP_LAST_MESSAGES + 1 {
             msgs.push(Message {

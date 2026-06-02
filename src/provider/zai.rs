@@ -845,9 +845,7 @@ impl Provider for ZaiProvider {
         if let Some(ref reasoning) = choice.message.reasoning_content
             && !reasoning.is_empty()
         {
-            content.push(ContentPart::Thinking {
-                text: reasoning.clone(),
-            });
+            content.push(ContentPart::Thinking { text: reasoning.clone(), signature: None });
         }
 
         if let Some(text) = &choice.message.content

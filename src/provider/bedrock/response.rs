@@ -130,9 +130,7 @@ pub fn parse_converse_response(text: &str) -> Result<CompletionResponse> {
         match part {
             ConverseContent::ReasoningContent { reasoning_content } => {
                 if !reasoning_content.reasoning_text.text.is_empty() {
-                    content.push(ContentPart::Thinking {
-                        text: reasoning_content.reasoning_text.text.clone(),
-                    });
+                    content.push(ContentPart::Thinking { text: reasoning_content.reasoning_text.text.clone(), signature: None });
                 }
             }
             ConverseContent::Text { text } => {

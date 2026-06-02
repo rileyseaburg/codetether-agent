@@ -93,7 +93,7 @@ pub enum ContentPart {
         content: String,
     },
     /// Extended thinking / reasoning output.
-    Thinking { text: String },
+    Thinking { text: String, signature: Option<String> },
 }
 
 /// Schema-driven tool definition passed to the model.

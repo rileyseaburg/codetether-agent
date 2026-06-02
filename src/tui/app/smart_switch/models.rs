@@ -3,7 +3,7 @@
 /// Returns the ordered list of preferred fallback models for a given provider.
 pub fn smart_switch_preferred_models(provider_name: &str) -> &'static [&'static str] {
     match provider_name {
-        "minimax" => &["MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2"],
+        "minimax" => &["MiniMax-M3", "MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2"],
         "minimax-credits" => &["MiniMax-M2.5-highspeed", "MiniMax-M2.1-highspeed"],
         "zai" | "zai-api" => &["glm-5", "glm-4.7", "glm-4.7-flash"],
         "openai-codex" => &["gpt-5.5", "gpt-5-mini", "gpt-5"],

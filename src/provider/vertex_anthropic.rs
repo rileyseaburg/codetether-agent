@@ -640,7 +640,7 @@ impl Provider for VertexAnthropicProvider {
                             .trim()
                             .to_string();
                         if !reasoning.is_empty() {
-                            content.push(ContentPart::Thinking { text: reasoning });
+                            content.push(ContentPart::Thinking { text: reasoning, signature: None });
                         }
                     }
                     AnthropicContent::ToolUse { id, name, input } => {

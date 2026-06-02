@@ -10,8 +10,6 @@ pub fn apply_ds_repair(msg: &mut Message, repaired: &Value) {
     msg.content
         .retain(|p| !matches!(p, ContentPart::Thinking { .. }));
     if !new_reasoning.is_empty() {
-        msg.content.push(ContentPart::Thinking {
-            text: new_reasoning.to_string(),
-        });
+        msg.content.push(ContentPart::Thinking { text: new_reasoning.to_string(), signature: None });
     }
 }
