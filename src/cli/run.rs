@@ -379,7 +379,7 @@ async fn plan_okr_draft_with_registry(
         .iter()
         .filter_map(|part| match part {
             crate::provider::ContentPart::Text { text }
-            | crate::provider::ContentPart::Thinking { text } => Some(text.as_str()),
+            | crate::provider::ContentPart::Thinking { text, .. } => Some(text.as_str()),
             _ => None,
         })
         .collect::<Vec<_>>()
@@ -452,7 +452,7 @@ async fn plan_relay_profiles_with_registry(
         .iter()
         .filter_map(|part| match part {
             crate::provider::ContentPart::Text { text }
-            | crate::provider::ContentPart::Thinking { text } => Some(text.as_str()),
+            | crate::provider::ContentPart::Thinking { text, .. } => Some(text.as_str()),
             _ => None,
         })
         .collect::<Vec<_>>()
@@ -529,7 +529,7 @@ async fn decide_dynamic_spawn_with_registry(
         .iter()
         .filter_map(|part| match part {
             crate::provider::ContentPart::Text { text }
-            | crate::provider::ContentPart::Thinking { text } => Some(text.as_str()),
+            | crate::provider::ContentPart::Thinking { text, .. } => Some(text.as_str()),
             _ => None,
         })
         .collect::<Vec<_>>()

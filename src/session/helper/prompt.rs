@@ -444,7 +444,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                     step_text.push_str(text);
                     step_text.push('\n');
                 }
-                ContentPart::Thinking { text } if !text.is_empty() => {
+                ContentPart::Thinking { text, .. } if !text.is_empty() => {
                     if let Some(ref bus) = session.bus {
                         let handle = bus.handle(&session.agent);
                         let thinking = super::live_bus::compact_thinking(text);

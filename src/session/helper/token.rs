@@ -39,7 +39,7 @@ pub fn estimate_tokens_for_part(part: &ContentPart) -> usize {
             }
             RlmChunker::estimate_tokens(&s)
         }
-        ContentPart::Thinking { text } => RlmChunker::estimate_tokens(text),
+        ContentPart::Thinking { text, .. } => RlmChunker::estimate_tokens(text),
         ContentPart::Image { .. } => 2000,
         ContentPart::File { path, mime_type } => {
             let mut s = String::new();

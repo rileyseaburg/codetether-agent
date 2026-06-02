@@ -13,7 +13,7 @@ pub fn messages_to_rlm_context(messages: &[Message]) -> String {
                     out.push_str(text);
                     out.push('\n');
                 }
-                ContentPart::Thinking { text } => {
+                ContentPart::Thinking { text, .. } => {
                     if !text.trim().is_empty() {
                         out.push_str("[Thinking]\n");
                         out.push_str(text);

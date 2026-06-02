@@ -478,7 +478,7 @@ pub(crate) async fn run_prompt_with_events(
         let mut step_text = String::new();
         for part in &response.message.content {
             match part {
-                ContentPart::Thinking { text } => {
+                ContentPart::Thinking { text, .. } => {
                     if !text.is_empty() {
                         thinking_text.push_str(text);
                         thinking_text.push('\n');

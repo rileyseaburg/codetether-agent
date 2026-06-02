@@ -443,7 +443,7 @@ impl LocalCudaProvider {
             .map(|part| match part {
                 ContentPart::Text { text } => text.clone(),
                 ContentPart::ToolResult { content, .. } => content.clone(),
-                ContentPart::Thinking { text } => text.clone(),
+                ContentPart::Thinking { text, .. } => text.clone(),
                 _ => String::new(),
             })
             .collect::<Vec<_>>()

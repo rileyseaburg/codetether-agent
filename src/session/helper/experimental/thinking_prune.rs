@@ -110,7 +110,7 @@ pub fn prune_thinking(messages: &mut Vec<Message>) -> ExperimentalStats {
 
 fn thinking_bytes(p: &ContentPart) -> usize {
     match p {
-        ContentPart::Thinking { text } => text.len(),
+        ContentPart::Thinking { text, .. } => text.len(),
         _ => 0,
     }
 }

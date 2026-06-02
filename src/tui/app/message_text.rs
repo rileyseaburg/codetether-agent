@@ -10,7 +10,7 @@ pub fn extract_message_text(content: &[ContentPart]) -> String {
     let mut out = String::new();
     for part in content {
         match part {
-            ContentPart::Text { text } | ContentPart::Thinking { text } => {
+            ContentPart::Text { text } | ContentPart::Thinking { text, .. } => {
                 push_line(&mut out, text)
             }
             ContentPart::ToolCall {
@@ -82,7 +82,7 @@ fn chat_messages_from_provider_message(
     for part in &message.content {
         match part {
             ContentPart::Text { text } => push_line(&mut text_buffer, text),
-            ContentPart::Thinking { text } => {
+            ContentPart::Thinking { text, .. } => {
                 flush_text_buffer(message.role, &mut text_buffer, &mut chat_messages);
                 chat_messages.push(ChatMessage::new(
                     MessageType::Thinking(text.clone()),

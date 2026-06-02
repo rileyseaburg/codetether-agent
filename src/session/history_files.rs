@@ -40,7 +40,7 @@ pub(crate) fn render_turn(msg: &Message) -> String {
             } => buf.push_str(&format!("[tool_call {name}]\n{arguments}")),
             ContentPart::Image { url, .. } => buf.push_str(&format!("[image {url}]")),
             ContentPart::File { path, .. } => buf.push_str(&format!("[file {path}]")),
-            ContentPart::Thinking { text } => buf.push_str(&format!("[thinking]\n{text}")),
+            ContentPart::Thinking { text, .. } => buf.push_str(&format!("[thinking]\n{text}")),
         }
     }
     buf

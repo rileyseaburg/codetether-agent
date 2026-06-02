@@ -229,7 +229,7 @@ impl VertexAnthropicProvider {
                                     "text": text,
                                 }));
                             }
-                            ContentPart::Thinking { text } => {
+                            ContentPart::Thinking { text, .. } => {
                                 system_blocks.push(json!({
                                     "type": "thinking",
                                     "thinking": text,
@@ -249,7 +249,7 @@ impl VertexAnthropicProvider {
                                     "text": text,
                                 }));
                             }
-                            ContentPart::Thinking { text } => {
+                            ContentPart::Thinking { text, .. } => {
                                 content_parts.push(json!({
                                     "type": "thinking",
                                     "thinking": text,
@@ -277,7 +277,7 @@ impl VertexAnthropicProvider {
                                     "text": text
                                 }));
                             }
-                            ContentPart::Thinking { text } => {
+                            ContentPart::Thinking { text, .. } => {
                                 content_parts.push(json!({
                                     "type": "thinking",
                                     "thinking": text

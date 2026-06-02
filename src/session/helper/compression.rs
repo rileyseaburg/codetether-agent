@@ -724,7 +724,7 @@ fn shrink_content_part(part: &mut ContentPart, cap_bytes: usize) -> bool {
         ContentPart::ToolCall { arguments, .. } => {
             shrink_string_payload(arguments, cap_bytes, "tool_call_arguments")
         }
-        ContentPart::Thinking { text } => shrink_string_payload(text, cap_bytes, "thinking"),
+        ContentPart::Thinking { text, .. } => shrink_string_payload(text, cap_bytes, "thinking"),
         ContentPart::Image { .. } | ContentPart::File { .. } => false,
     }
 }

@@ -36,7 +36,7 @@ fn collect_reasoning(msg: &Message) -> Value {
         .content
         .iter()
         .filter_map(|p| match p {
-            ContentPart::Thinking { text } => Some(text.as_str()),
+            ContentPart::Thinking { text, .. } => Some(text.as_str()),
             _ => None,
         })
         .collect::<Vec<_>>()

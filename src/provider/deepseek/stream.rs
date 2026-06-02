@@ -23,7 +23,7 @@ pub(crate) async fn exec(
             ContentPart::Text { text } => {
                 chunks.push(StreamChunk::Text(text.clone()));
             }
-            ContentPart::Thinking { text } => {
+            ContentPart::Thinking { text, .. } => {
                 chunks.push(StreamChunk::Thinking(text.clone()));
             }
             ContentPart::ToolCall {

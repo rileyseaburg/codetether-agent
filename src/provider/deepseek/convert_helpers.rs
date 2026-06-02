@@ -19,7 +19,7 @@ pub(super) fn collect_thinking(m: &Message) -> String {
     m.content
         .iter()
         .filter_map(|p| match p {
-            ContentPart::Thinking { text } => Some(text.clone()),
+            ContentPart::Thinking { text, .. } => Some(text.clone()),
             _ => None,
         })
         .collect()

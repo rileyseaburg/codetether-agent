@@ -16,7 +16,7 @@ pub fn summarize_response(response: CompletionResponse) -> String {
 
 fn text_part(part: &ContentPart) -> Option<&str> {
     match part {
-        ContentPart::Text { text } | ContentPart::Thinking { text } => Some(text.as_str()),
+        ContentPart::Text { text } | ContentPart::Thinking { text, .. } => Some(text.as_str()),
         ContentPart::ToolCall { .. }
         | ContentPart::ToolResult { .. }
         | ContentPart::Image { .. }

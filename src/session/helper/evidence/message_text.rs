@@ -7,7 +7,7 @@ pub(crate) fn joined(messages: &[Message]) -> String {
         .filter_map(|part| match part {
             ContentPart::Text { text } => Some(text.as_str()),
             ContentPart::ToolResult { content, .. } => Some(content.as_str()),
-            ContentPart::Thinking { text } => Some(text.as_str()),
+            ContentPart::Thinking { text, .. } => Some(text.as_str()),
             _ => None,
         })
         .collect::<Vec<_>>()
