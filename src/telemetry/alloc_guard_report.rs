@@ -9,12 +9,7 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use chrono::Utc;
-use serde_json::json;
-
 use super::alloc_guard::SPOOL_DIR;
-use super::alloc_guard_command::command_line;
-use super::memory::MemorySnapshot;
 
 /// Handle an over-ceiling allocation: diagnose, spool, and abort. Marked
 /// cold and never-inline so it stays entirely off the allocator hot path.
@@ -43,23 +38,7 @@ pub(crate) fn trip(size: usize, ceiling: usize) -> ! {
 fn write_report(dir: &Path, size: usize, ceiling: usize, backtrace: &str) -> std::io::Result<()> {
     std::fs::create_dir_all(dir)?;
     let report_id = uuid::Uuid::new_v4().to_string();
-    let report = json!({
-        "report_version": 1,
-        "report_id": report_id,
-        "occurred_at": Utc::now().to_rfc3339(),
-        "app_version": env!("CARGO_PKG_VERSION"),
-        "command_line": command_line(),
-        "os": std::env::consts::OS,
-        "arch": std::env::consts::ARCH,
-        "process_id": std::process::id(),
-        "thread_name": std::thread::current().name().unwrap_or("unnamed"),
-        "panic_message": format!(
-            "alloc_guard: single allocation of {size} bytes exceeds ceiling {ceiling} bytes"
-        ),
-        "panic_location": null,
-        "backtrace": backtrace,
-        "memory": MemorySnapshot::capture(),
-    });
+    let report = super::alloc_guard_payload::build(&report_id, size, ceiling, backtrace);
     let bytes = serde_json::to_vec_pretty(&report).map_err(std::io::Error::other)?;
     std::fs::write(dir.join(format!("alloc-guard-{report_id}.json")), bytes)
 }
