@@ -18,7 +18,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-VERIFY_CMD="${CODETETHER_RELEASE_VERIFY_CMD:-cargo test --quiet --lib --tests}"
+CARGO_CMD="${CODETETHER_CARGO_CMD:-$SCRIPT_DIR/scripts/cargo-sccache.sh}"
+VERIFY_CMD="${CODETETHER_RELEASE_VERIFY_CMD:-$CARGO_CMD test --quiet --lib --tests}"
 
 # Read current version from Cargo.toml
 CURRENT_VERSION="$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')"
@@ -139,7 +140,7 @@ DIFFSTAT="$(git diff --stat "$LAST_TAG" HEAD 2>/dev/null || git diff --stat HEAD
 sed -i "s|^version = \".*\"|version = \"${new_version}\"|" Cargo.toml
 
 # Regenerate Cargo.lock
-cargo generate-lockfile --quiet
+"$CARGO_CMD" generate-lockfile --quiet
 
 # Step 4: Verify the release candidate
 echo "==> Running release verification: $VERIFY_CMD"
@@ -207,14 +208,14 @@ publish_crate() {
     local crate="$1"
     local wait_for_index="${2:-false}"
 
-    if ! cargo publish --dry-run -p "$crate" 2>&1; then
+    if ! "$CARGO_CMD" publish --dry-run -p "$crate" 2>&1; then
         echo "Error: cargo publish --dry-run failed for $crate. Aborting publish."
         echo "Fix the errors above and re-run, or set CARGO_REGISTRY_TOKEN."
         return 1
     fi
 
-    if ! cargo publish -p "$crate" 2>&1; then
-        if cargo search "$crate" --limit 1 | grep -q "^$crate ="; then
+    if ! "$CARGO_CMD" publish -p "$crate" 2>&1; then
+        if "$CARGO_CMD" search "$crate" --limit 1 | grep -q "^$crate ="; then
             echo "==> $crate already exists on crates.io; continuing."
             return 0
         fi
@@ -237,7 +238,7 @@ wait_for_crate_index() {
 
     echo "==> Waiting for $crate to appear in crates.io index..."
     for _ in {1..30}; do
-        if cargo search "$crate" --limit 1 | grep -q "^$crate ="; then
+        if "$CARGO_CMD" search "$crate" --limit 1 | grep -q "^$crate ="; then
             echo "==> $crate is visible in crates.io index"
             return 0
         fi

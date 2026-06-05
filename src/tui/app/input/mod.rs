@@ -9,9 +9,9 @@ mod bus;
 mod char_input;
 mod chat_helpers;
 mod chat_spawn;
-mod chat_spawn_task;
 mod chat_submit;
 pub(crate) mod chat_submit_dispatch;
+mod chat_submit_slash;
 
 // Re-exports so the event loop's auto-drain hook can submit a queued
 // user message as a fresh turn without duplicating the dispatch logic.
@@ -40,13 +40,13 @@ mod tests_image_paste;
 mod tests_paste;
 mod tests_pr;
 mod tests_submit;
-mod worktree;
-mod worktree_result;
+pub(crate) mod worktree;
+pub(crate) mod worktree_result;
 
 pub use backspace::handle_backspace;
 pub use bus::{handle_bus_c, handle_bus_g, handle_bus_slash};
 pub use char_input::handle_char;
-pub use enter::dispatch_enter as handle_enter;
+pub(crate) use enter::dispatch_enter as handle_enter;
 pub(crate) use image::attach_image_file;
 pub(crate) use image_data_paste::try_attach_data_url;
 pub use paste::handle_paste;

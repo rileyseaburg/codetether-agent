@@ -11,11 +11,11 @@ mod convert;
 mod convert_helpers;
 mod convert_tools;
 mod error;
+mod model_catalog;
 mod models;
 mod parse_response;
 mod provider_impl;
 mod response;
-mod stream;
 
 use anyhow::Result;
 use reqwest::Client;

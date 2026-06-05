@@ -1,11 +1,11 @@
 //! Smart-switch retry scheduling for error events.
 
-use crate::session::Session;
+use crate::tui::app::session_runtime::SessionSlot;
 use crate::tui::app::smart_switch::{maybe_schedule_smart_switch_retry, smart_switch_max_retries};
 use crate::tui::app::state::App;
 
-pub(super) fn schedule(app: &mut App, session: &Session, err: &str) {
-    let current_model = session.metadata.model.as_deref();
+pub(super) fn schedule(app: &mut App, slot: &SessionSlot, err: &str) {
+    let current_model = slot.view().model.as_deref();
     let current_provider = current_model.and_then(|m| m.split('/').next());
     let prompt = app.state.main_inflight_prompt.clone().unwrap_or_default();
     let pending = maybe_schedule_smart_switch_retry(

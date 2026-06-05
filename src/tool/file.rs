@@ -94,14 +94,12 @@ impl Tool for ReadTool {
             .map(|l| (start_line + l).min(lines.len()))
             .unwrap_or(lines.len());
 
-        let selected: String = lines[start_line..end_line]
+        let mut selected: String = lines[start_line..end_line]
             .iter()
             .enumerate()
             .map(|(i, line)| format!("{:4} | {}", start_line + i + 1, line))
             .collect::<Vec<_>>()
             .join("\n");
-
-        let duration = start.elapsed();
 
         // Record telemetry
         let file_change = FileChange::read(path, Some((start_line as u32 + 1, end_line as u32)));
@@ -117,7 +115,7 @@ impl Tool for ReadTool {
         exec.add_file_change(file_change);
         let exec = exec.complete_success(
             format!("Read {} lines from {}", end_line - start_line, path),
-            duration,
+            start.elapsed(),
         );
         TOOL_EXECUTIONS.record(exec.success);
         let _ = record_persistent(
@@ -125,6 +123,9 @@ impl Tool for ReadTool {
             &serde_json::to_value(&exec).unwrap_or_default(),
         );
 
+        if limit.is_none() {
+            selected = selected.chars().take(262_144).collect();
+        }
         Ok(ToolResult::success(selected)
             .with_metadata("total_lines", json!(lines.len()))
             .with_metadata("read_lines", json!(end_line - start_line)))

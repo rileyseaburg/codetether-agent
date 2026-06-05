@@ -1,13 +1,13 @@
 use super::super::*;
-use crate::session::{Session, SessionEvent};
+use crate::session::SessionEvent;
 
 #[tokio::test]
 async fn usage_report_updates_latency_snapshot() {
     let mut app = App::default();
-    let mut session = Session::new().await.expect("session should create");
+    let mut slot = super::test_slot().await;
     handle_session_event(
         &mut app,
-        &mut session,
+        &mut slot,
         &None,
         SessionEvent::UsageReport {
             model: "openai/gpt-5.4".to_string(),

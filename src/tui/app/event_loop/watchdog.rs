@@ -12,18 +12,12 @@
 //! ).await;
 //! ```
 
-use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::mpsc;
-
-use crate::provider::ProviderRegistry;
-use crate::session::{Session, SessionEvent};
+use crate::tui::app::session_runtime::TuiSessionHandle;
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::constants::MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS;
-
-use super::watchdog_spawn::spawn_watchdog_retry;
 
 /// Check the watchdog and restart if stalled.
 ///
@@ -34,10 +28,7 @@ use super::watchdog_spawn::spawn_watchdog_retry;
 /// ```
 pub(super) async fn maybe_watchdog_restart(
     app: &mut App,
-    session: &mut Session,
-    registry: &Option<Arc<ProviderRegistry>>,
-    event_tx: &mpsc::Sender<SessionEvent>,
-    result_tx: &mpsc::Sender<anyhow::Result<Session>>,
+    runtime: &TuiSessionHandle,
     watchdog_interval: Duration,
 ) {
     let notif = match crate::tui::app::watchdog::check_watchdog_stall(&app.state, watchdog_interval)
@@ -51,10 +42,12 @@ pub(super) async fn maybe_watchdog_restart(
         .main_watchdog_root_prompt
         .clone()
         .or_else(|| app.state.main_inflight_prompt.clone());
-    let Some(prompt) = prompt else { return };
+    if prompt.is_none() {
+        return;
+    }
 
     apply_watchdog_state(app, notif);
-    spawn_watchdog_retry(app, session, registry, event_tx, result_tx, &prompt);
+    runtime.cancel_current().await;
 }
 
 /// Reset app state for the watchdog restart.

@@ -15,18 +15,18 @@ export AWS_SECRET_ACCESS_KEY ?= hZz3CXz2EqTTA503mvgsaFWQLGfCucGS
 .PHONY: build-cuda build-release build-cached build-windows build-windows-docker sccache-stats deploy-spike2-cuda install-spike2-cuda status-spike2-cuda
 
 build-cuda:
-	cargo build --release --features candle-cuda
+	./scripts/cargo-sccache.sh build --release --features candle-cuda
 
 build-release:
-	cargo build --release
+	./scripts/cargo-sccache.sh build --release
 
 # Build with sccache pushing to MinIO (local dev writes the cache that Jenkins reads)
 build-cached:
-	RUSTC_WRAPPER=sccache cargo build --release
+	./scripts/cargo-sccache.sh build --release
 
 # Cross-compile for Windows (requires mingw-w64 toolchain: sudo apt-get install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64)
 build-windows:
-	cargo build --release --target x86_64-pc-windows-gnu
+	./scripts/cargo-sccache.sh build --release --target x86_64-pc-windows-gnu
 
 build-windows-docker:
 	set -euo pipefail; \
@@ -50,7 +50,7 @@ sccache-stats:
 
 deploy-spike2-cuda:
 	rsync -az --delete --exclude target --exclude .git ./ $(SPIKE2_HOST):$(SPIKE2_BUILD_DIR)/
-	ssh $(SPIKE2_HOST) 'set -euo pipefail; source $$HOME/.cargo/env; cd $(SPIKE2_BUILD_DIR); cargo build --release --features candle-cuda'
+	ssh $(SPIKE2_HOST) 'set -euo pipefail; source $$HOME/.cargo/env; cd $(SPIKE2_BUILD_DIR); ./scripts/cargo-sccache.sh build --release --features candle-cuda'
 	ssh $(SPIKE2_HOST) 'set -euo pipefail; install -m 0755 $(SPIKE2_BUILD_DIR)/target/release/codetether /usr/local/bin/codetether; \
 		sed -i "s/^CODETETHER_COGNITION_THINKER_CANDLE_DEVICE=.*/CODETETHER_COGNITION_THINKER_CANDLE_DEVICE=cuda/" /etc/default/codetether-agent; \
 		sed -i "s/^CODETETHER_COGNITION_THINKER_CANDLE_CUDA_ORDINAL=.*/CODETETHER_COGNITION_THINKER_CANDLE_CUDA_ORDINAL=0/" /etc/default/codetether-agent; \

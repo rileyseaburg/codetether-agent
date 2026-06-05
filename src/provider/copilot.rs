@@ -518,6 +518,10 @@ impl Provider for CopilotProvider {
         &self.provider_name
     }
 
+    fn supports_structured_streaming(&self) -> bool {
+        false
+    }
+
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         let mut models = self.discover_models_from_api().await;
 
@@ -689,24 +693,12 @@ impl Provider for CopilotProvider {
 
     async fn complete_stream(
         &self,
-        request: CompletionRequest,
+        _request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
-        // For now, keep behavior aligned with other non-streaming providers.
-        let response = self.complete(request).await?;
-        let text = response
-            .message
-            .content
-            .iter()
-            .filter_map(|p| match p {
-                ContentPart::Text { text } => Some(text.clone()),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("");
-
-        Ok(Box::pin(futures::stream::once(async move {
-            StreamChunk::Text(text)
-        })))
+        anyhow::bail!(
+            "Provider '{}' does not support structured streaming",
+            self.name()
+        )
     }
 }
 

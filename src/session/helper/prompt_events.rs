@@ -44,7 +44,6 @@ use super::loop_constants::{
     FORCE_FINAL_ANSWER_NUDGE, MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES, MAX_CONSECUTIVE_SAME_TOOL,
     MAX_STEPS_WITHOUT_PROGRESS, MAX_TOTAL_TOOL_CALLS, NATIVE_TOOL_PROMISE_NUDGE,
     NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES, NO_PROGRESS_NUDGE, POST_EDIT_VALIDATION_MAX_RETRIES,
-
 };
 use super::markup::normalize_textual_tool_calls;
 use super::provider::{
@@ -574,13 +573,11 @@ pub(crate) async fn run_prompt_with_events(
                         duration_ms: 0,
                     })
                     .await;
-                session.add_message(Message {
-                    role: Role::Tool,
-                    content: vec![ContentPart::ToolResult {
-                        tool_call_id: tool_id.clone(),
-                        content: error_content,
-                    }],
-                });
+                session.add_message(super::tool_output::tool_result(
+                    tool_id.clone(),
+                    tool_name,
+                    error_content,
+                ));
             }
             if tool_calls.is_empty() {
                 continue;
@@ -638,17 +635,25 @@ pub(crate) async fn run_prompt_with_events(
                 "Hard tool-call budget exceeded; terminating agent loop"
             );
             let mut nudge_msg = response.message.clone();
-            nudge_msg.content.retain(|p| !matches!(p, ContentPart::ToolCall { .. }));
-            if !nudge_msg.content.is_empty() { session.add_message(nudge_msg); }
+            nudge_msg
+                .content
+                .retain(|p| !matches!(p, ContentPart::ToolCall { .. }));
+            if !nudge_msg.content.is_empty() {
+                session.add_message(nudge_msg);
+            }
             return Err(anyhow::anyhow!(
                 "Agent loop terminated: exceeded maximum tool call budget ({} calls across {} steps).                  The model appears stuck. Review the tool history to understand what went wrong.",
-                total_tool_calls, step
+                total_tool_calls,
+                step
             ));
         }
 
         // ── Progress detection (no file writes in N steps) ──────
         let any_write_tool = tool_calls.iter().any(|(_, name, _)| {
-            matches!(name.as_str(), "write" | "edit" | "create_file" | "replace_string_in_file" | "edit_file" | "bash")
+            matches!(
+                name.as_str(),
+                "write" | "edit" | "create_file" | "replace_string_in_file" | "edit_file" | "bash"
+            )
         });
         if any_write_tool {
             steps_since_last_write = 0;
@@ -717,13 +722,9 @@ pub(crate) async fn run_prompt_with_events(
                         duration_ms: 0,
                     })
                     .await;
-                session.add_message(Message {
-                    role: Role::Tool,
-                    content: vec![ContentPart::ToolResult {
-                        tool_call_id: tool_id,
-                        content,
-                    }],
-                });
+                session.add_message(super::tool_output::tool_result(
+                    tool_id, &tool_name, content,
+                ));
                 continue;
             }
 
@@ -753,13 +754,9 @@ pub(crate) async fn run_prompt_with_events(
                         duration_ms: 0,
                     })
                     .await;
-                session.add_message(Message {
-                    role: Role::Tool,
-                    content: vec![ContentPart::ToolResult {
-                        tool_call_id: tool_id,
-                        content,
-                    }],
-                });
+                session.add_message(super::tool_output::tool_result(
+                    tool_id, &tool_name, content,
+                ));
                 continue;
             }
 
@@ -777,13 +774,9 @@ pub(crate) async fn run_prompt_with_events(
                         duration_ms: 0,
                     })
                     .await;
-                session.add_message(Message {
-                    role: Role::Tool,
-                    content: vec![ContentPart::ToolResult {
-                        tool_call_id: tool_id,
-                        content,
-                    }],
-                });
+                session.add_message(super::tool_output::tool_result(
+                    tool_id, &tool_name, content,
+                ));
                 continue;
             }
 
@@ -920,13 +913,9 @@ pub(crate) async fn run_prompt_with_events(
                 Some(rlm_notify(event_tx.clone())),
             );
 
-            session.add_message(Message {
-                role: Role::Tool,
-                content: vec![ContentPart::ToolResult {
-                    tool_call_id: tool_id,
-                    content,
-                }],
-            });
+            session.add_message(super::tool_output::tool_result(
+                tool_id, &tool_name, content,
+            ));
 
             if is_build_agent(&session.agent) {
                 if codesearch_no_match {

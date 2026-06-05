@@ -1,14 +1,14 @@
 use super::super::*;
-use crate::session::{Session, SessionEvent};
+use crate::session::SessionEvent;
 use crate::tui::chat::message::MessageType;
 
 #[tokio::test]
 async fn tool_completion_records_duration_for_chat_and_latency_view() {
     let mut app = App::default();
-    let mut session = Session::new().await.expect("session should create");
+    let mut slot = super::test_slot().await;
     handle_session_event(
         &mut app,
-        &mut session,
+        &mut slot,
         &None,
         SessionEvent::ToolCallComplete {
             name: "read".to_string(),

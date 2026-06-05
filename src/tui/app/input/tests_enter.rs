@@ -2,12 +2,21 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::session::Session;
     use crate::tui::app::input::handle_enter;
+    use crate::tui::app::session_runtime::{self, SessionSlot, TuiSessionHandle};
     use crate::tui::app::state::App;
     use crate::tui::chat::message::MessageType;
     use crate::tui::models::ViewMode;
-    use tokio::sync::mpsc;
+
+    async fn test_slot() -> SessionSlot {
+        SessionSlot::new(crate::session::Session::new().await.expect("session"))
+    }
+
+    fn test_runtime() -> TuiSessionHandle {
+        let (event_tx, _) = tokio::sync::mpsc::channel(8);
+        let (notice_tx, _) = tokio::sync::mpsc::channel(8);
+        session_runtime::spawn(event_tx, notice_tx)
+    }
 
     #[tokio::test]
     async fn enter_echoes_user_message_before_provider_failure() {
@@ -17,20 +26,10 @@ mod tests {
         app.state.input_cursor = app.state.input.chars().count();
 
         let cwd = std::path::Path::new(".");
-        let mut session = Session::new().await.expect("session");
-        let (event_tx, _) = mpsc::channel(8);
-        let (result_tx, _) = mpsc::channel(8);
+        let mut slot = test_slot().await;
+        let runtime = test_runtime();
 
-        handle_enter(
-            &mut app,
-            cwd,
-            &mut session,
-            &None,
-            &None,
-            &event_tx,
-            &result_tx,
-        )
-        .await;
+        handle_enter(&mut app, cwd, &mut slot, &None, &None, &runtime).await;
 
         assert!(matches!(
             app.state.messages.first().map(|m| &m.message_type),

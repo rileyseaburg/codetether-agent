@@ -121,7 +121,10 @@ mod tests {
     fn recent_thinking_preserved() {
         let mut msgs = vec![Message {
             role: Role::Assistant,
-            content: vec![ContentPart::Thinking { text: "x".repeat(5000), signature: None }],
+            content: vec![ContentPart::Thinking {
+                text: "x".repeat(5000),
+                signature: None,
+            }],
         }];
         let stats = prune_thinking(&mut msgs);
         assert_eq!(stats.total_bytes_saved, 0);
@@ -131,7 +134,10 @@ mod tests {
     fn empty_assistant_dropped() {
         let mut msgs = vec![Message {
             role: Role::Assistant,
-            content: vec![ContentPart::Thinking { text: "x".repeat(1000), signature: None }],
+            content: vec![ContentPart::Thinking {
+                text: "x".repeat(1000),
+                signature: None,
+            }],
         }];
         for i in 0..KEEP_LAST_MESSAGES + 1 {
             msgs.push(Message {
@@ -151,7 +157,10 @@ mod tests {
         // Users can't really emit thinking, but defense-in-depth.
         let mut msgs = vec![Message {
             role: Role::User,
-            content: vec![ContentPart::Thinking { text: "user-thought".repeat(100), signature: None }],
+            content: vec![ContentPart::Thinking {
+                text: "user-thought".repeat(100),
+                signature: None,
+            }],
         }];
         for i in 0..KEEP_LAST_MESSAGES + 1 {
             msgs.push(Message {

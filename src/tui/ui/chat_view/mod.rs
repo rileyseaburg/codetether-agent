@@ -8,6 +8,7 @@ pub mod auto_apply;
 pub mod badges;
 mod build_uncached;
 pub mod cursor;
+mod drawn_lines;
 pub mod elapsed_badge;
 pub mod empty;
 pub mod entries;

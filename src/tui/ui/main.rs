@@ -7,7 +7,7 @@
 
 use ratatui::Frame;
 
-use crate::tui::app::state::App;
+use crate::tui::app::{session_runtime::SessionView, state::App};
 use crate::tui::audit_view::render_audit_view;
 use crate::tui::bus_log::{ProtocolSummary, render_bus_log_with_summary};
 use crate::tui::latency::render_latency;
@@ -30,16 +30,17 @@ use super::sessions::render_sessions_view;
 ///
 /// ```rust,no_run
 /// # use codetether_agent::tui::ui::main::ui;
-/// # fn demo(f: &mut ratatui::Frame, app: &mut codetether_agent::tui::app::state::App, sess: &codetether_agent::session::Session) {
-/// ui(f, app, sess);
+/// # fn demo(f: &mut ratatui::Frame, app: &mut codetether_agent::tui::app::state::App) {
+/// let view = codetether_agent::tui::app::session_runtime::SessionView::default();
+/// ui(f, app, &view);
 /// # }
 /// ```
-pub fn ui(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
+pub fn ui(f: &mut Frame, app: &mut App, session: &SessionView) {
     dispatch_view(f, app, session);
     render_overlays(f, app);
 }
 
-fn dispatch_view(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
+fn dispatch_view(f: &mut Frame, app: &mut App, session: &SessionView) {
     match app.state.view_mode {
         ViewMode::Chat => render_chat_or_webview(f, app, session),
         ViewMode::Sessions => render_sessions_view(f, app),
@@ -70,7 +71,7 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &crate::session::Session
     }
 }
 
-fn render_chat_or_webview(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
+fn render_chat_or_webview(f: &mut Frame, app: &mut App, session: &SessionView) {
     if super::webview::layout::is_webview(app.state.chat_layout_mode) {
         super::webview::render(f, app);
     } else {

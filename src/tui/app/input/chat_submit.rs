@@ -12,11 +12,9 @@
 //! or non-conflicting with the main turn (e.g. `/ask`).
 
 use std::{path::Path, sync::Arc};
-use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
-use crate::session::{Session, SessionEvent};
-use crate::tui::app::commands::handle_slash_command;
+use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
@@ -34,11 +32,10 @@ use super::pasted_text::expand_paste_placeholders;
 pub(super) async fn handle_enter_chat(
     app: &mut App,
     cwd: &Path,
-    session: &mut Session,
+    slot: &mut SessionSlot,
     registry: &Option<Arc<ProviderRegistry>>,
     worker_bridge: &Option<TuiWorkerBridge>,
-    event_tx: &mpsc::Sender<SessionEvent>,
-    result_tx: &mpsc::Sender<anyhow::Result<Session>>,
+    runtime: &TuiSessionHandle,
 ) {
     let prompt = app.state.input.trim().to_string();
     if !prompt.is_empty() {
@@ -50,9 +47,7 @@ pub(super) async fn handle_enter_chat(
     } else {
         prompt
     };
-    if prompt.starts_with('/') {
-        handle_slash_command(app, cwd, session, registry.as_ref(), &prompt).await;
-        app.state.clear_input();
+    if super::chat_submit_slash::run(app, cwd, slot, registry, &prompt).await {
         return;
     }
     if app.state.processing {
@@ -80,13 +75,12 @@ pub(super) async fn handle_enter_chat(
     dispatch_prompt(
         app,
         cwd,
-        session,
+        slot,
         registry,
         worker_bridge,
         &agent_prompt,
         pending_images,
-        event_tx,
-        result_tx,
+        runtime,
     )
     .await;
 }

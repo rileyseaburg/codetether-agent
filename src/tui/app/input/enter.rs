@@ -12,10 +12,9 @@
 //! ```
 
 use std::{path::Path, sync::Arc};
-use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
-use crate::session::{Session, SessionEvent};
+use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::{settings::toggle_selected_setting, state::App};
 use crate::tui::{models::ViewMode, worker_bridge::TuiWorkerBridge};
 
@@ -27,17 +26,20 @@ use crate::tui::{models::ViewMode, worker_bridge::TuiWorkerBridge};
 /// dispatch_enter(&mut app, cwd, &mut session, &reg,
 ///     &bridge, &tx, &rtx).await;
 /// ```
-pub async fn dispatch_enter(
+pub(crate) async fn dispatch_enter(
     app: &mut App,
     cwd: &Path,
-    session: &mut Session,
+    slot: &mut SessionSlot,
     registry: &Option<Arc<ProviderRegistry>>,
     worker_bridge: &Option<TuiWorkerBridge>,
-    event_tx: &mpsc::Sender<SessionEvent>,
-    result_tx: &mpsc::Sender<anyhow::Result<Session>>,
+    runtime: &TuiSessionHandle,
 ) {
     match app.state.view_mode {
-        ViewMode::Sessions => super::sessions::handle_enter_sessions(app, cwd, session).await,
+        ViewMode::Sessions => {
+            if let Some(session) = slot.borrow_mut() {
+                super::sessions::handle_enter_sessions(app, cwd, session).await;
+            }
+        }
         ViewMode::FilePicker => crate::tui::app::file_picker::file_picker_enter(app, cwd),
         ViewMode::Swarm => app.state.swarm.enter_detail(),
         ViewMode::Ralph => app.state.ralph.enter_detail(),
@@ -46,19 +48,19 @@ pub async fn dispatch_enter(
         }
         ViewMode::Bus => app.state.bus_log.enter_detail(),
         ViewMode::Chat => {
-            super::chat_submit::handle_enter_chat(
-                app,
-                cwd,
-                session,
-                registry,
-                worker_bridge,
-                event_tx,
-                result_tx,
-            )
-            .await
+            super::chat_submit::handle_enter_chat(app, cwd, slot, registry, worker_bridge, runtime)
+                .await
         }
-        ViewMode::Model => crate::tui::app::model_picker::apply_selected_model(app, session),
-        ViewMode::Settings => toggle_selected_setting(app, session).await,
+        ViewMode::Model => {
+            if let Some(session) = slot.borrow_mut() {
+                crate::tui::app::model_picker::apply_selected_model(app, session);
+            }
+        }
+        ViewMode::Settings => {
+            if let Some(session) = slot.borrow_mut() {
+                toggle_selected_setting(app, session).await;
+            }
+        }
         ViewMode::Lsp
         | ViewMode::Rlm
         | ViewMode::Latency

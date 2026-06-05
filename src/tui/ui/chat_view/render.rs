@@ -12,7 +12,7 @@ use super::lines::build_chat_lines;
 use super::messages::render_messages_ref;
 use super::status_line::render_status_line;
 use super::suggestions::render_suggestions;
-use crate::session::Session;
+use crate::tui::app::session_runtime::SessionView;
 use crate::tui::app::state::App;
 use crate::tui::color_palette::ColorPalette;
 use crate::tui::message_formatter::MessageFormatter;
@@ -23,9 +23,11 @@ use crate::tui::message_formatter::MessageFormatter;
 ///
 /// ```rust,no_run
 /// # use codetether_agent::tui::ui::chat_view::render_chat_view;
-/// # fn d(f:&mut ratatui::Frame,a:&mut codetether_agent::tui::app::state::App,s:&codetether_agent::session::Session){ render_chat_view(f,a,s); }
+/// # fn d(f:&mut ratatui::Frame,a:&mut codetether_agent::tui::app::state::App){
+/// # let s = codetether_agent::tui::app::session_runtime::SessionView::default();
+/// # render_chat_view(f,a,&s); }
 /// ```
-pub fn render_chat_view(f: &mut Frame, app: &mut App, session: &Session) {
+pub fn render_chat_view(f: &mut Frame, app: &mut App, session: &SessionView) {
     let chunks = compute_chat_chunks(f.area(), app);
     let palette = ColorPalette::marketing();
     let formatter = MessageFormatter::new(chunks.messages.width.saturating_sub(4) as usize);

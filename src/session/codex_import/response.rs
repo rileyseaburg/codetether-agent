@@ -28,6 +28,9 @@ fn parse_reasoning_item(payload: Value) -> Result<Option<Message>> {
     let payload: CodexReasoningPayload = serde_json::from_value(payload)?;
     Ok(extract_reasoning_text(&payload).map(|text| Message {
         role: Role::Assistant,
-        content: vec![ContentPart::Thinking { text, signature: None }],
+        content: vec![ContentPart::Thinking {
+            text,
+            signature: None,
+        }],
     }))
 }

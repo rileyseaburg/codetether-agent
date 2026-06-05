@@ -114,14 +114,17 @@ pub async fn build_proactive_lsp_context_message(
 
 pub fn known_good_router_candidates(provider: &str, failed_model: &str) -> Vec<String> {
     let failed = failed_model.trim();
-    let mut candidates: Vec<String> = match provider {
+    let mut candidates: Vec<String> = preferred_failover_model_refs();
+
+    candidates.extend(match provider {
         "openrouter" => vec![
             "openrouter/qwen/qwen3-coder:free".to_string(),
             "openrouter/openai/gpt-oss-120b:free".to_string(),
             "openrouter/google/gemma-3-27b-it:free".to_string(),
             "openrouter/meta-llama/llama-3.3-70b-instruct:free".to_string(),
         ],
-        "zai" => vec!["zai/glm-5".to_string()],
+        "minimax" => vec!["minimax/MiniMax-M3".to_string()],
+        "zai" => vec!["zai/glm-5.1".to_string(), "zai/glm-5".to_string()],
         "glm5" => vec!["glm5/glm-5".to_string()],
         "github-copilot" | "github-copilot-enterprise" => {
             vec![format!("{provider}/gpt-5-mini")]
@@ -137,10 +140,19 @@ pub fn known_good_router_candidates(provider: &str, failed_model: &str) -> Vec<S
         "google" => vec!["google/gemini-2.5-flash".to_string()],
         "anthropic" => vec!["anthropic/claude-3-5-haiku-latest".to_string()],
         _ => Vec::new(),
-    };
+    });
 
+    candidates.extend([
+        "minimax/MiniMax-M3".to_string(),
+        "zai/glm-5.1".to_string(),
+        "zai/glm-5".to_string(),
+    ]);
+
+    let mut seen = std::collections::HashSet::new();
     candidates.retain(|candidate| {
-        !candidate.eq_ignore_ascii_case(failed)
+        let unique = seen.insert(candidate.to_ascii_lowercase());
+        unique
+            && !candidate.eq_ignore_ascii_case(failed)
             && candidate
                 .split('/')
                 .next_back()
@@ -148,6 +160,22 @@ pub fn known_good_router_candidates(provider: &str, failed_model: &str) -> Vec<S
                 .unwrap_or(true)
     });
     candidates
+}
+
+fn preferred_failover_model_refs() -> Vec<String> {
+    std::env::var("CODETETHER_PREFERRED_MODELS")
+        .or_else(|_| std::env::var("CODETETHER_FAILOVER_MODELS"))
+        .ok()
+        .map(|raw| parse_model_ref_list(&raw))
+        .unwrap_or_default()
+}
+
+fn parse_model_ref_list(raw: &str) -> Vec<String> {
+    raw.split([',', ';', '\n'])
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty() && entry.contains('/'))
+        .map(ToString::to_string)
+        .collect()
 }
 
 pub fn choose_router_target(

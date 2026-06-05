@@ -87,6 +87,11 @@ pub trait Provider: Send + Sync {
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>>;
 
+    /// Whether streaming preserves structured output such as tool calls.
+    fn supports_structured_streaming(&self) -> bool {
+        true
+    }
+
     /// Generate embeddings (optional; default returns an error).
     async fn embed(&self, _request: EmbeddingRequest) -> Result<EmbeddingResponse> {
         anyhow::bail!("Provider '{}' does not support embeddings", self.name())

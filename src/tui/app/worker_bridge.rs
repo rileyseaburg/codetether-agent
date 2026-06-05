@@ -6,7 +6,7 @@ pub async fn send_worker_bridge_cmd(
     cmd: WorkerBridgeCmd,
 ) -> bool {
     match worker_bridge {
-        Some(bridge) => bridge.cmd_tx.send(cmd).await.is_ok(),
+        Some(bridge) => bridge.cmd_tx.try_send(cmd).is_ok(),
         None => false,
     }
 }

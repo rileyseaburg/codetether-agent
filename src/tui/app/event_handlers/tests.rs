@@ -16,9 +16,19 @@ mod tests {
     };
 
     use crate::tui::app::event_handlers::{handle_event, handle_mouse_event};
+    use crate::tui::app::session_runtime::{self, SessionSlot, TuiSessionHandle};
     use crate::tui::app::state::App;
     use crate::tui::chat::message::MessageType;
     use crate::tui::models::ViewMode;
+
+    async fn test_slot() -> SessionSlot {
+        SessionSlot::new(crate::session::Session::new().await.expect("session"))
+    }
+
+    fn test_runtime() -> TuiSessionHandle {
+        let (event_tx, _) = tokio::sync::mpsc::channel(8);
+        session_runtime::spawn(event_tx, tokio::sync::mpsc::channel(8).0)
+    }
 
     #[test]
     fn mouse_wheel_scrolls_chat_from_follow_latest() {
@@ -47,9 +57,8 @@ mod tests {
         app.state.input_cursor = app.state.input.chars().count();
 
         let cwd = std::path::Path::new(".");
-        let mut session = crate::session::Session::new().await.expect("session");
-        let (event_tx, _) = tokio::sync::mpsc::channel(8);
-        let (result_tx, _) = tokio::sync::mpsc::channel(8);
+        let mut slot = test_slot().await;
+        let runtime = test_runtime();
 
         let key = KeyEvent {
             code: KeyCode::Enter,
@@ -58,18 +67,9 @@ mod tests {
             state: crossterm::event::KeyEventState::NONE,
         };
 
-        let quit = handle_event(
-            &mut app,
-            cwd,
-            &mut session,
-            &None,
-            &None,
-            &event_tx,
-            &result_tx,
-            key,
-        )
-        .await
-        .expect("handle_event");
+        let quit = handle_event(&mut app, cwd, &mut slot, &None, &None, &runtime, key)
+            .await
+            .expect("handle_event");
 
         assert!(!quit, "Enter should not quit");
         assert!(
@@ -93,9 +93,8 @@ mod tests {
         app.state.view_mode = ViewMode::Chat;
 
         let cwd = std::path::Path::new(".");
-        let mut session = crate::session::Session::new().await.expect("session");
-        let (event_tx, _) = tokio::sync::mpsc::channel(8);
-        let (result_tx, _) = tokio::sync::mpsc::channel(8);
+        let mut slot = test_slot().await;
+        let runtime = test_runtime();
 
         let key = KeyEvent {
             code: KeyCode::Char('?'),
@@ -104,18 +103,9 @@ mod tests {
             state: crossterm::event::KeyEventState::NONE,
         };
 
-        let quit = handle_event(
-            &mut app,
-            cwd,
-            &mut session,
-            &None,
-            &None,
-            &event_tx,
-            &result_tx,
-            key,
-        )
-        .await
-        .expect("handle_event");
+        let quit = handle_event(&mut app, cwd, &mut slot, &None, &None, &runtime, key)
+            .await
+            .expect("handle_event");
 
         assert!(!quit);
         assert_eq!(
@@ -134,9 +124,8 @@ mod tests {
         app.state.view_mode = ViewMode::Chat;
 
         let cwd = std::path::Path::new(".");
-        let mut session = crate::session::Session::new().await.expect("session");
-        let (event_tx, _) = tokio::sync::mpsc::channel(8);
-        let (result_tx, _) = tokio::sync::mpsc::channel(8);
+        let mut slot = test_slot().await;
+        let runtime = test_runtime();
 
         let key = KeyEvent {
             code: KeyCode::Char('w'),
@@ -145,18 +134,9 @@ mod tests {
             state: crossterm::event::KeyEventState::NONE,
         };
 
-        let quit = handle_event(
-            &mut app,
-            cwd,
-            &mut session,
-            &None,
-            &None,
-            &event_tx,
-            &result_tx,
-            key,
-        )
-        .await
-        .expect("handle_event");
+        let quit = handle_event(&mut app, cwd, &mut slot, &None, &None, &runtime, key)
+            .await
+            .expect("handle_event");
 
         assert!(!quit);
         assert_eq!(app.state.input, "/ask ");
@@ -168,9 +148,8 @@ mod tests {
         app.state.view_mode = ViewMode::Chat;
 
         let cwd = std::path::Path::new(".");
-        let mut session = crate::session::Session::new().await.expect("session");
-        let (event_tx, _) = tokio::sync::mpsc::channel(8);
-        let (result_tx, _) = tokio::sync::mpsc::channel(8);
+        let mut slot = test_slot().await;
+        let runtime = test_runtime();
 
         let key = KeyEvent {
             code: KeyCode::Char('m'),
@@ -179,18 +158,9 @@ mod tests {
             state: crossterm::event::KeyEventState::NONE,
         };
 
-        let quit = handle_event(
-            &mut app,
-            cwd,
-            &mut session,
-            &None,
-            &None,
-            &event_tx,
-            &result_tx,
-            key,
-        )
-        .await
-        .expect("handle_event");
+        let quit = handle_event(&mut app, cwd, &mut slot, &None, &None, &runtime, key)
+            .await
+            .expect("handle_event");
 
         assert!(!quit);
         assert_eq!(app.state.view_mode, ViewMode::Model);
@@ -198,8 +168,8 @@ mod tests {
         assert_eq!(app.state.status, "No models available");
     }
 
-    #[test]
-    fn ctrl_r_dispatches_voice_shortcut() {
+    #[tokio::test]
+    async fn ctrl_r_dispatches_voice_shortcut() {
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
         let key = KeyEvent {
@@ -209,10 +179,15 @@ mod tests {
             state: crossterm::event::KeyEventState::NONE,
         };
 
-        let handled =
-            super::super::keyboard::handle_ctrl_key(&mut app, std::path::Path::new("."), key)
-                .expect("voice shortcut should be handled")
-                .expect("voice shortcut should not error");
+        let runtime = test_runtime();
+        let handled = super::super::keyboard::handle_ctrl_key(
+            &mut app,
+            std::path::Path::new("."),
+            &runtime,
+            key,
+        )
+        .expect("voice shortcut should be handled")
+        .expect("voice shortcut should not error");
 
         assert!(!handled);
         assert_eq!(app.state.status, "Voice shortcut");
@@ -229,9 +204,8 @@ mod tests {
         app.state.view_mode = ViewMode::Chat;
 
         let cwd = std::path::Path::new(".");
-        let mut session = crate::session::Session::new().await.expect("session");
-        let (event_tx, _) = tokio::sync::mpsc::channel(8);
-        let (result_tx, _) = tokio::sync::mpsc::channel(8);
+        let mut slot = test_slot().await;
+        let runtime = test_runtime();
 
         // Feed 'a' 'b' — the second key stamps last_key_at just before
         // the Enter arrives, so Enter.elapsed() will be ~microseconds.
@@ -239,11 +213,10 @@ mod tests {
             handle_event(
                 &mut app,
                 cwd,
-                &mut session,
+                &mut slot,
                 &None,
                 &None,
-                &event_tx,
-                &result_tx,
+                &runtime,
                 KeyEvent {
                     code: KeyCode::Char(c),
                     modifiers: KeyModifiers::NONE,
@@ -258,11 +231,10 @@ mod tests {
         handle_event(
             &mut app,
             cwd,
-            &mut session,
+            &mut slot,
             &None,
             &None,
-            &event_tx,
-            &result_tx,
+            &runtime,
             KeyEvent {
                 code: KeyCode::Enter,
                 modifiers: KeyModifiers::NONE,
@@ -290,18 +262,16 @@ mod tests {
         app.state.view_mode = ViewMode::Chat;
 
         let cwd = std::path::Path::new(".");
-        let mut session = crate::session::Session::new().await.expect("session");
-        let (event_tx, _) = tokio::sync::mpsc::channel(8);
-        let (result_tx, _) = tokio::sync::mpsc::channel(8);
+        let mut slot = test_slot().await;
+        let runtime = test_runtime();
 
         handle_event(
             &mut app,
             cwd,
-            &mut session,
+            &mut slot,
             &None,
             &None,
-            &event_tx,
-            &result_tx,
+            &runtime,
             KeyEvent {
                 code: KeyCode::Char('x'),
                 modifiers: KeyModifiers::NONE,
@@ -317,11 +287,10 @@ mod tests {
         handle_event(
             &mut app,
             cwd,
-            &mut session,
+            &mut slot,
             &None,
             &None,
-            &event_tx,
-            &result_tx,
+            &runtime,
             KeyEvent {
                 code: KeyCode::Enter,
                 modifiers: KeyModifiers::NONE,

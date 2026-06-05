@@ -1,22 +1,19 @@
 use std::{path::Path, sync::Arc};
 
-use tokio::sync::mpsc;
-
 use crate::provider::ProviderRegistry;
-use crate::session::{Session, SessionEvent};
 use crate::tui::app::input::chat_submit_dispatch::dispatch_prompt;
+use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::worker_bridge::{IncomingTask, TuiWorkerBridge};
 
-pub async fn trigger_next(
+pub(crate) async fn trigger_next(
     app: &mut App,
     cwd: &Path,
-    session: &mut Session,
+    slot: &mut SessionSlot,
     registry: &Option<Arc<ProviderRegistry>>,
     worker_bridge: &Option<TuiWorkerBridge>,
-    event_tx: &mpsc::Sender<SessionEvent>,
-    result_tx: &mpsc::Sender<anyhow::Result<Session>>,
+    runtime: &TuiSessionHandle,
 ) {
     if app.state.processing {
         return;
@@ -29,13 +26,12 @@ pub async fn trigger_next(
     dispatch_prompt(
         app,
         cwd,
-        session,
+        slot,
         registry,
         worker_bridge,
         &task.message,
         Vec::new(),
-        event_tx,
-        result_tx,
+        runtime,
     )
     .await;
 }

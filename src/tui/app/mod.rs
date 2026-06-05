@@ -7,7 +7,6 @@ pub mod commands;
 pub mod context_status;
 #[cfg(test)]
 mod context_status_tests;
-#[path = "event_handlers/mod.rs"]
 pub mod event_handlers;
 #[path = "event_loop/mod.rs"]
 pub mod event_loop;
@@ -36,7 +35,7 @@ pub mod session_events;
 pub mod session_fork;
 pub mod session_load_status;
 pub mod session_loader;
-pub mod session_result;
+pub mod session_runtime;
 pub mod session_sync;
 pub mod settings;
 pub mod signal_shutdown;

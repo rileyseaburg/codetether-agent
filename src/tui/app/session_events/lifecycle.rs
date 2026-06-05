@@ -1,20 +1,21 @@
 //! Lifecycle session events.
 
 use crate::session::{Session, SessionEvent};
+use crate::tui::app::session_runtime::SessionSlot;
 use crate::tui::app::state::App;
 use crate::tui::app::worker_bridge::{handle_processing_started, handle_processing_stopped};
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 pub(super) async fn handle_event(
     app: &mut App,
-    session: &mut Session,
+    slot: &mut SessionSlot,
     worker_bridge: &Option<TuiWorkerBridge>,
     evt: SessionEvent,
 ) -> Option<SessionEvent> {
     match evt {
         SessionEvent::Thinking => thinking(app, worker_bridge).await,
         SessionEvent::Done => done(app, worker_bridge).await,
-        SessionEvent::SessionSync(updated) => sync(app, session, updated),
+        SessionEvent::SessionSync(updated) => sync(app, slot, updated),
         other => return Some(other),
     }
     None
@@ -39,8 +40,10 @@ async fn done(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
     app.state.status = "Ready".to_string();
 }
 
-fn sync(app: &mut App, session: &mut Session, updated: Box<Session>) {
-    *session = *updated;
-    session.attach_global_bus_if_missing();
-    app.state.session_id = Some(session.id.clone());
+fn sync(app: &mut App, slot: &mut SessionSlot, updated: Box<Session>) {
+    slot.restore(*updated);
+    if let Some(session) = slot.borrow_mut() {
+        session.attach_global_bus_if_missing();
+        app.state.session_id = Some(session.id.clone());
+    }
 }

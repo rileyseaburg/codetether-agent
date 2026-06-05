@@ -17,7 +17,7 @@ use super::worktree::WorktreeState;
 
 /// Run the prompt against the provider and restore the
 /// original directory on completion.
-pub(super) async fn run_prompt(
+pub(crate) async fn run_prompt(
     session: &mut Session,
     prompt: &str,
     images: Vec<ImageAttachment>,
@@ -36,15 +36,15 @@ pub(super) async fn run_prompt(
 ///
 /// Creates a PR only when the prompt explicitly asks for one;
 /// otherwise merges the successful worktree locally and cleans up.
-pub(super) async fn handle_worktree_result(
-    result: &anyhow::Result<Session>,
+pub(crate) async fn handle_worktree_result(
+    success: bool,
     worktree: Option<WorktreeState>,
     prompt: Option<&str>,
 ) {
     let Some((mgr, wt, base_branch)) = worktree else {
         return;
     };
-    if result.is_ok() {
+    if success {
         match prompt.filter(|p| wants_pr(p)) {
             Some(p) => push_or_merge(&mgr, &wt, base_branch.as_deref(), Some(p)).await,
             None => merge_locally(&mgr, &wt).await,

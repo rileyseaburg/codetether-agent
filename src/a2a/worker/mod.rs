@@ -25,7 +25,8 @@ mod git_branch;
 #[cfg(test)]
 mod git_branch_tests;
 #[rustfmt::skip]
-mod git_commit_push;mod git_commit_push_ops;mod git_commit_push_provenance;
+mod git_commit_push;mod git_commit_push_ops;
+mod git_commit_push_provenance;
 mod git_refspec;
 mod heartbeat_cognition;
 mod heartbeat_cognition_merge;

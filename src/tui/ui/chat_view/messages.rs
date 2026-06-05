@@ -10,7 +10,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 
-use crate::session::Session;
+use crate::tui::app::session_runtime::SessionView;
 use crate::tui::app::state::App;
 use crate::tui::color_palette::ColorPalette;
 
@@ -26,17 +26,18 @@ use super::title::build_title;
 ///
 /// ```rust,no_run
 /// use codetether_agent::tui::ui::chat_view::messages::render_messages;
-/// # fn demo(f: &mut ratatui::Frame, app: &mut codetether_agent::tui::app::state::App, sess: &codetether_agent::session::Session) {
+/// # fn demo(f: &mut ratatui::Frame, app: &mut codetether_agent::tui::app::state::App) {
 /// let pal = codetether_agent::tui::color_palette::ColorPalette::marketing();
 /// let chunks = codetether_agent::tui::ui::chat_view::layout_compute::compute_chat_chunks(f.area(), app);
-/// render_messages(f, app, sess, &chunks, &pal, vec![]);
+/// let view = codetether_agent::tui::app::session_runtime::SessionView::default();
+/// render_messages(f, app, &view, &chunks, &pal, vec![]);
 /// # }
 /// ```
 #[allow(dead_code)]
 pub fn render_messages(
     f: &mut Frame,
     app: &mut App,
-    session: &Session,
+    session: &SessionView,
     chunks: &ChatChunks,
     palette: &ColorPalette,
     lines: Vec<Line<'static>>,
@@ -57,7 +58,7 @@ pub fn render_messages(
 pub fn render_messages_ref(
     f: &mut Frame,
     app: &mut App,
-    session: &Session,
+    session: &SessionView,
     chunks: &ChatChunks,
     palette: &ColorPalette,
     lines: &[Line<'static>],
@@ -67,6 +68,8 @@ pub fn render_messages_ref(
         .border_style(Style::default().fg(palette.border))
         .title(build_title(app, session));
     let scroll = clamp_scroll(app, chunks.messages, lines);
-    let chat = Paragraph::new(lines.to_vec()).block(block).scroll((scroll, 0));
+    let chat = Paragraph::new(lines.to_vec())
+        .block(block)
+        .scroll((scroll, 0));
     f.render_widget(chat, chunks.messages);
 }

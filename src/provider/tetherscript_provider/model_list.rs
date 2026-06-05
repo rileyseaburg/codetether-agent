@@ -3,7 +3,16 @@
 use anyhow::Result;
 use serde_json::Value;
 
-use super::super::ModelInfo;
+use crate::provider::ModelInfo;
+
+use super::runner::TetherScriptProvider;
+
+impl TetherScriptProvider {
+    pub(crate) async fn available_models(&self) -> Result<Vec<ModelInfo>> {
+        let this = self.clone();
+        tokio::task::spawn_blocking(move || this.call_list_models()).await?
+    }
+}
 
 pub(crate) fn parse_models(mut value: Value, provider: &str) -> Result<Vec<ModelInfo>> {
     add_missing_provider(&mut value, provider);

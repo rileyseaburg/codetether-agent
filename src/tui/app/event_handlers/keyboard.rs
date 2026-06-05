@@ -17,6 +17,7 @@ use std::path::Path;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
+use crate::tui::app::session_runtime::TuiSessionHandle;
 use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 
@@ -42,6 +43,7 @@ use super::ctrl_c::handle_ctrl_c;
 pub(super) fn handle_ctrl_key(
     app: &mut App,
     cwd: &Path,
+    runtime: &TuiSessionHandle,
     key: KeyEvent,
 ) -> Option<anyhow::Result<bool>> {
     if let Some(r) = handle_alt_scroll(app, key) {
@@ -51,7 +53,7 @@ pub(super) fn handle_ctrl_key(
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
 
     match key.code {
-        KeyCode::Char('c') if ctrl => return Some(Ok(handle_ctrl_c(app))),
+        KeyCode::Char('c') if ctrl => return Some(Ok(handle_ctrl_c(app, runtime))),
         KeyCode::Char('q') if ctrl => return Some(Ok(true)),
         KeyCode::Char('t') if ctrl => {
             app.state.symbol_search.open();
@@ -82,23 +84,17 @@ pub(super) fn handle_ctrl_key(
             app.state.status = format!("Layout: {label}");
         }
         KeyCode::Char('l') if ctrl && app.state.view_mode == ViewMode::Chat => {
-            if app.state.view_mode == ViewMode::Chat {
-                app.state.save_scroll_state();
-            }
+            app.state.save_scroll_state();
             app.state.view_mode = ViewMode::Bus;
             app.state.status = "Bus log".to_string();
         }
         KeyCode::Char('s') if ctrl && app.state.view_mode == ViewMode::Chat => {
-            if app.state.view_mode == ViewMode::Chat {
-                app.state.save_scroll_state();
-            }
+            app.state.save_scroll_state();
             app.state.view_mode = ViewMode::Swarm;
             app.state.status = "Swarm".to_string();
         }
         KeyCode::Char('p') if ctrl && app.state.view_mode == ViewMode::Chat => {
-            if app.state.view_mode == ViewMode::Chat {
-                app.state.save_scroll_state();
-            }
+            app.state.save_scroll_state();
             app.state.view_mode = ViewMode::Protocol;
             app.state.status = "Protocol registry".to_string();
         }

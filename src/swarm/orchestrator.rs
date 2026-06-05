@@ -474,13 +474,13 @@ Decompose the task now:"#,
 
 pub(crate) fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
     let preferred = [
+        "minimax",
         "openai-codex",
         "openai",
         "anthropic",
         "github-copilot",
         "github-copilot-enterprise",
         "zai",
-        "minimax",
         "moonshotai",
         "openrouter",
         "novita",
@@ -508,7 +508,7 @@ pub(crate) fn default_model_for_provider(provider: &str) -> String {
         "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
         "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
         "openai-codex" => "gpt-5.5".to_string(),
-        _ => "gpt-4o".to_string(),
+        _ => "MiniMax-M3".to_string(),
     }
 }
 

@@ -57,6 +57,10 @@ impl Provider for MetricsProvider {
         self.inner.name()
     }
 
+    fn supports_structured_streaming(&self) -> bool {
+        self.inner.supports_structured_streaming()
+    }
+
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         self.inner.list_models().await
     }
@@ -94,8 +98,14 @@ impl Provider for MetricsProvider {
                 let ttft_ms = start.elapsed().as_millis() as u64;
 
                 // Wrap the stream to capture final usage from Done chunk
-                let stream =
-                    StreamMetricsWrapper::new(stream, provider_name, model, start, ttft_ms);
+                let stream = StreamMetricsWrapper {
+                    inner: stream,
+                    provider: provider_name,
+                    model,
+                    start,
+                    ttft_ms,
+                    recorded: false,
+                };
 
                 Ok(Box::pin(stream))
             }
@@ -132,25 +142,6 @@ struct StreamMetricsWrapper {
     start: std::time::Instant,
     ttft_ms: u64,
     recorded: bool,
-}
-
-impl StreamMetricsWrapper {
-    fn new(
-        inner: futures::stream::BoxStream<'static, StreamChunk>,
-        provider: String,
-        model: String,
-        start: std::time::Instant,
-        ttft_ms: u64,
-    ) -> Self {
-        Self {
-            inner,
-            provider,
-            model,
-            start,
-            ttft_ms,
-            recorded: false,
-        }
-    }
 }
 
 impl futures::Stream for StreamMetricsWrapper {

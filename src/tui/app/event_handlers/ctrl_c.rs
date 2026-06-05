@@ -5,6 +5,7 @@
 //! (the cancel branch in `run_spawned_task` preserves the partial
 //! transcript), and when the app is idle `Ctrl+C` quits.
 
+use crate::tui::app::session_runtime::TuiSessionHandle;
 use crate::tui::app::state::App;
 
 /// Process a `Ctrl+C` keypress.
@@ -12,11 +13,9 @@ use crate::tui::app::state::App;
 /// Returns `true` when the caller should exit the event loop (i.e. the
 /// user wants to quit). Returns `false` when the keypress was consumed
 /// to interrupt an in-flight turn and the loop should keep running.
-pub(super) fn handle_ctrl_c(app: &mut App) -> bool {
+pub(super) fn handle_ctrl_c(app: &mut App, runtime: &TuiSessionHandle) -> bool {
     if app.state.processing {
-        if let Some(cancel) = app.state.current_turn_cancel.as_ref() {
-            cancel.notify_one();
-        }
+        runtime.request_cancel_current();
         app.state.status =
             "Interrupted — partial turn saved. Press Ctrl+C again to quit.".to_string();
         return false;

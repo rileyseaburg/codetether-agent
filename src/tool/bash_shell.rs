@@ -17,8 +17,6 @@
 //! The result is a `(program, argv_prefix)` pair: the caller appends the
 //! command string and spawns normally through `tokio::process::Command`.
 
-use std::path::PathBuf;
-
 /// Resolved shell invocation: `(program, leading args before the command)`.
 ///
 /// Example on Unix: `("bash".into(), vec!["-c".into()])`.
@@ -30,8 +28,13 @@ pub(super) struct Shell {
 
 #[cfg(not(target_os = "windows"))]
 pub(super) fn resolve() -> Shell {
+    let program = if std::path::Path::new("/bin/bash").is_file() {
+        "/bin/bash"
+    } else {
+        "bash"
+    };
     Shell {
-        program: "bash".into(),
+        program: program.into(),
         prefix_args: vec!["-c".into()],
     }
 }
@@ -68,27 +71,7 @@ pub(super) fn resolve() -> Shell {
 }
 
 #[cfg(target_os = "windows")]
-fn git_bash_candidates() -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    for env_var in ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"] {
-        if let Ok(base) = std::env::var(env_var) {
-            out.push(PathBuf::from(base).join("Git").join("bin").join("bash.exe"));
-        }
-    }
-    if let Ok(base) = std::env::var("LOCALAPPDATA") {
-        out.push(
-            PathBuf::from(base)
-                .join("Programs")
-                .join("Git")
-                .join("bin")
-                .join("bash.exe"),
-        );
-    }
-    out
-}
-
-#[cfg(not(target_os = "windows"))]
-#[allow(dead_code)]
-fn git_bash_candidates() -> Vec<PathBuf> {
-    Vec::new()
-}
+#[path = "bash_shell_windows.rs"]
+mod windows;
+#[cfg(target_os = "windows")]
+use windows::git_bash_candidates;

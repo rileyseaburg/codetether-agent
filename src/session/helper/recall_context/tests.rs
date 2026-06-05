@@ -23,7 +23,10 @@ fn skips_thinking_blocks() {
     let messages = vec![Message {
         role: Role::Assistant,
         content: vec![
-            ContentPart::Thinking { text: "long internal reasoning".into(), signature: None },
+            ContentPart::Thinking {
+                text: "long internal reasoning".into(),
+                signature: None,
+            },
             ContentPart::Text {
                 text: "visible answer".into(),
             },

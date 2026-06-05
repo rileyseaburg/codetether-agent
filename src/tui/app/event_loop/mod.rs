@@ -23,15 +23,14 @@ mod select_loop;
 mod setup;
 mod shutdown;
 mod smart_retry;
+mod smart_retry_submit;
 mod terminal;
 mod tick;
 mod timers;
 mod watchdog;
-mod watchdog_spawn;
+mod watchdog_retry;
 
-pub(crate) use io::LoopIo;
-pub(crate) use select_args::SelectArgs;
-pub(crate) use timers::LoopTimers;
+pub(crate) use {io::LoopIo, select_args::SelectArgs, timers::LoopTimers};
 
 use std::{path::Path, sync::Arc};
 
@@ -40,7 +39,8 @@ use tokio::sync::mpsc;
 
 use crate::bus::BusHandle;
 use crate::provider::ProviderRegistry;
-use crate::session::{Session, SessionEvent};
+use crate::session::SessionEvent;
+use crate::tui::app::session_runtime::{SessionNotice, SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
@@ -58,37 +58,35 @@ use crate::tui::worker_bridge::TuiWorkerBridge;
 ///     &mut session, &mut bus, bridge, tx, rx, rtx, rrx,
 /// ).await?;
 /// ```
-pub async fn run_event_loop(
+pub(crate) async fn run_event_loop(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     app: &mut App,
     cwd: &Path,
     registry: Option<Arc<ProviderRegistry>>,
-    session: &mut Session,
+    slot: &mut SessionSlot,
     bus_handle: &mut BusHandle,
     mut worker_bridge: Option<TuiWorkerBridge>,
-    event_tx: mpsc::Sender<SessionEvent>,
     mut event_rx: mpsc::Receiver<SessionEvent>,
-    result_tx: mpsc::Sender<anyhow::Result<Session>>,
-    mut result_rx: mpsc::Receiver<anyhow::Result<Session>>,
+    runtime: TuiSessionHandle,
+    mut notice_rx: mpsc::Receiver<SessionNotice>,
 ) -> anyhow::Result<()> {
     let mut setup = setup::create();
 
     loop {
         tick::before_draw(app, &worker_bridge);
         if app.state.needs_redraw {
-            crate::tui::app::safe_draw::draw_ui(terminal, app, session)?;
+            crate::tui::app::safe_draw::draw_ui(terminal, app, slot.view())?;
             app.state.needs_redraw = false;
         }
-        let mut io = LoopIo::new(&mut event_rx, &mut result_rx, &mut setup.shutdown_rx);
+        let mut io = LoopIo::new(&mut event_rx, &mut notice_rx, &mut setup.shutdown_rx);
         let mut args = SelectArgs {
             reader: &mut setup.reader,
             app,
             cwd,
-            session,
+            slot,
             registry: &registry,
             worker_bridge: &mut worker_bridge,
-            event_tx: &event_tx,
-            result_tx: &result_tx,
+            runtime: &runtime,
             io: &mut io,
             timers: &mut setup.timers,
             bus_handle,
@@ -99,5 +97,6 @@ pub async fn run_event_loop(
     }
 
     shutdown::deregister_bridge(&worker_bridge);
+    runtime.shutdown().await;
     Ok(())
 }

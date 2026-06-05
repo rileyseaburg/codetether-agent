@@ -14,7 +14,10 @@ pub(super) fn parse(ds: DsResponse) -> anyhow::Result<CompletionResponse> {
 
     if let Some(ref r) = choice.message.reasoning_content {
         if !r.is_empty() {
-            content.push(ContentPart::Thinking { text: r.clone(), signature: None });
+            content.push(ContentPart::Thinking {
+                text: r.clone(),
+                signature: None,
+            });
         }
     }
     if let Some(ref t) = choice.message.content {

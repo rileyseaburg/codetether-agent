@@ -1,13 +1,13 @@
 use super::super::*;
-use crate::session::{Session, SessionEvent};
+use crate::session::SessionEvent;
 
 #[tokio::test]
 async fn tool_events_surface_preview_in_status() {
     let mut app = App::default();
-    let mut session = Session::new().await.expect("session should create");
+    let mut slot = super::test_slot().await;
     handle_session_event(
         &mut app,
-        &mut session,
+        &mut slot,
         &None,
         SessionEvent::ToolCallStart {
             name: "read".into(),

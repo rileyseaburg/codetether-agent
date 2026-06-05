@@ -17,15 +17,13 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
-use crate::session::{Session, SessionEvent};
+use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::{input, navigation as nav, state::App, symbols};
-use crate::tui::models::ViewMode;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
-use super::mode_keys::handle_char_or_mode_key;
+use super::{mode_keys::handle_char_or_mode_key, paste_burst::enter_is_likely_paste_newline};
 
 /// Dispatch a key press that has no Ctrl/Alt modifier.
 ///
@@ -44,11 +42,10 @@ use super::mode_keys::handle_char_or_mode_key;
 pub(super) async fn handle_unmodified_key(
     app: &mut App,
     cwd: &Path,
-    session: &mut Session,
+    slot: &mut SessionSlot,
     registry: &Option<Arc<ProviderRegistry>>,
     worker_bridge: &Option<TuiWorkerBridge>,
-    event_tx: &mpsc::Sender<SessionEvent>,
-    result_tx: &mpsc::Sender<anyhow::Result<Session>>,
+    runtime: &TuiSessionHandle,
     key: KeyEvent,
 ) -> anyhow::Result<bool> {
     match key.code {
@@ -58,7 +55,10 @@ pub(super) async fn handle_unmodified_key(
             nav::toggle_help(app)
         }
         KeyCode::Char('m') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            crate::tui::app::model_picker::open_model_picker(app, session, registry.as_ref()).await;
+            if let Some(session) = slot.borrow() {
+                crate::tui::app::model_picker::open_model_picker(app, session, registry.as_ref())
+                    .await;
+            }
         }
         KeyCode::Up => nav::handle_up(app, key.modifiers),
         KeyCode::Down => nav::handle_down(app, key.modifiers),
@@ -83,36 +83,13 @@ pub(super) async fn handle_unmodified_key(
             app.state.insert_char('\n');
         }
         KeyCode::Enter => {
-            // Paste-burst heuristic: if another key arrived in the
-            // last ~80 ms (faster than any human can physically type),
-            // the Enter is almost certainly part of a pasted block on
-            // a terminal that swallowed the bracketed-paste markers.
-            // 80 ms accommodates Windows Terminal / PowerShell which
-            // inject pasted characters more slowly than Linux terminals.
-            // Convert it to an in-buffer newline so the whole paste
-            // becomes a single chat message instead of N messages.
-            if app.state.view_mode == ViewMode::Chat
-                && app
-                    .state
-                    .last_key_at
-                    .map(|t| t.elapsed() < std::time::Duration::from_millis(80))
-                    .unwrap_or(false)
-            {
+            if enter_is_likely_paste_newline(app) {
                 app.state.insert_char('\n');
             } else {
-                input::handle_enter(
-                    app,
-                    cwd,
-                    session,
-                    registry,
-                    worker_bridge,
-                    event_tx,
-                    result_tx,
-                )
-                .await;
+                input::handle_enter(app, cwd, slot, registry, worker_bridge, runtime).await;
             }
         }
-        _ => handle_char_or_mode_key(app, session, key).await,
+        _ => handle_char_or_mode_key(app, slot, key).await,
     }
     Ok(false)
 }

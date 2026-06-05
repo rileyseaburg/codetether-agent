@@ -45,6 +45,7 @@ pub mod stream_caps;
 pub mod text;
 pub mod token;
 pub mod tool_audit_detail;
+mod tool_output;
 mod tool_parallel;
 pub mod validation;
 mod workspace_tools;

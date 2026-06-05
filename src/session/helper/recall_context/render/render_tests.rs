@@ -5,7 +5,10 @@ use super::*;
 #[test]
 fn skips_thinking() {
     use crate::provider::ContentPart;
-    let part = ContentPart::Thinking { text: "reasoning".into(), signature: None };
+    let part = ContentPart::Thinking {
+        text: "reasoning".into(),
+        signature: None,
+    };
     assert!(render_part(&part).is_empty());
 }
 

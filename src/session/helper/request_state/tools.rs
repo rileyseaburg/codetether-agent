@@ -3,11 +3,16 @@ use crate::session::helper::bootstrap::list_tools_bootstrap_definition;
 use crate::session::helper::runtime::is_interactive_tool;
 use crate::tool::ToolRegistry;
 
+fn is_dead_confirmation_tool(name: &str) -> bool {
+    matches!(name, "confirm_edit" | "confirm_multiedit")
+}
+
 pub(super) fn active_tool_definitions(registry: &ToolRegistry) -> Vec<ToolDefinition> {
     registry
         .definitions()
         .into_iter()
         .filter(|tool| !is_interactive_tool(&tool.name))
+        .filter(|tool| !is_dead_confirmation_tool(&tool.name))
         .collect()
 }
 

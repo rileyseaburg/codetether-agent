@@ -34,6 +34,7 @@ pipeline {
         CARGO_HOME            = "${env.HOME}/.cargo"
         RUSTUP_HOME           = "${env.HOME}/.rustup"
         PATH                  = "/usr/local/bin:${env.HOME}/.cargo/bin:${env.PATH}"
+        RUSTC_WRAPPER         = 'sccache'
         REPO                  = 'rileyseaburg/codetether-agent'
         BINARY_NAME           = 'codetether'
 
@@ -163,12 +164,15 @@ if ! command -v protoc >/dev/null 2>&1; then
 fi
 export PROTOC="$(command -v protoc)"
 rustup target add aarch64-apple-darwin x86_64-apple-darwin
+if command -v sccache >/dev/null 2>&1; then
+  export RUSTC_WRAPPER=sccache
+fi
 
 echo "===> Building arm64 (native)..."
-cargo build --release --target aarch64-apple-darwin
+./scripts/cargo-sccache.sh build --release --target aarch64-apple-darwin
 
 echo "===> Building x86_64 (cross)..."
-cargo build --release --target x86_64-apple-darwin
+./scripts/cargo-sccache.sh build --release --target x86_64-apple-darwin
 REMOTE
 
                         # Fetch artifacts back
@@ -288,7 +292,7 @@ REMOTE
                     ]) {
                         sh '''
                             echo "Publishing ${VERSION} to crates.io ..."
-                            if ! cargo publish --allow-dirty 2>&1 | tee /tmp/cargo-publish.log; then
+                            if ! ./scripts/cargo-sccache.sh publish --allow-dirty 2>&1 | tee /tmp/cargo-publish.log; then
                                 if grep -q 'already exists on crates.io index' /tmp/cargo-publish.log; then
                                     echo "Crate ${VERSION} already exists on crates.io; continuing."
                                 else

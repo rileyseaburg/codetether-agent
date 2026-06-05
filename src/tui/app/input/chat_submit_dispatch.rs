@@ -4,10 +4,10 @@
 //! delegation to [`super::chat_spawn::spawn_provider_task`].
 
 use std::{path::Path, sync::Arc};
-use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
-use crate::session::{ImageAttachment, Session, SessionEvent};
+use crate::session::ImageAttachment;
+use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
@@ -21,13 +21,12 @@ use super::chat_spawn::spawn_provider_task;
 pub(crate) async fn dispatch_prompt(
     app: &mut App,
     cwd: &Path,
-    session: &mut Session,
+    slot: &mut SessionSlot,
     registry: &Option<Arc<ProviderRegistry>>,
     worker_bridge: &Option<TuiWorkerBridge>,
     prompt: &str,
     pending_images: Vec<ImageAttachment>,
-    event_tx: &mpsc::Sender<SessionEvent>,
-    result_tx: &mpsc::Sender<anyhow::Result<Session>>,
+    runtime: &TuiSessionHandle,
 ) {
     app.state.clear_input();
     crate::tui::app::worker_bridge::handle_processing_started(app, worker_bridge).await;
@@ -37,17 +36,7 @@ pub(crate) async fn dispatch_prompt(
     app.state.scroll_to_bottom();
 
     if let Some(reg) = registry {
-        spawn_provider_task(
-            app,
-            cwd,
-            session,
-            reg,
-            prompt,
-            pending_images,
-            event_tx,
-            result_tx,
-        )
-        .await;
+        spawn_provider_task(app, cwd, slot, reg, prompt, pending_images, runtime).await;
     } else {
         no_provider_error(app, worker_bridge).await;
     }

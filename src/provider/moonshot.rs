@@ -207,6 +207,10 @@ impl Provider for MoonshotProvider {
         "moonshotai"
     }
 
+    fn supports_structured_streaming(&self) -> bool {
+        false
+    }
+
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         Ok(vec![
             ModelInfo {
@@ -407,24 +411,11 @@ impl Provider for MoonshotProvider {
             provider = "moonshotai",
             model = %request.model,
             message_count = request.messages.len(),
-            "Starting streaming completion request (falling back to non-streaming)"
+            "Structured streaming is not implemented"
         );
-
-        // Fall back to non-streaming for now
-        let response = self.complete(request).await?;
-        let text = response
-            .message
-            .content
-            .iter()
-            .filter_map(|p| match p {
-                ContentPart::Text { text } => Some(text.clone()),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("");
-
-        Ok(Box::pin(futures::stream::once(async move {
-            StreamChunk::Text(text)
-        })))
+        anyhow::bail!(
+            "Provider '{}' does not support structured streaming",
+            self.name()
+        )
     }
 }

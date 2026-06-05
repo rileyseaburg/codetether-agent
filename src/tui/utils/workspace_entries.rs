@@ -1,10 +1,35 @@
 //! FS directory scanning + sorting for workspace snapshots.
+//!
+//! This module contains the filesystem-facing portion of workspace snapshot
+//! creation. It reads the immediate entries under a workspace root, filters out
+//! names that should not appear in the sidebar, classifies each visible entry as
+//! a file or directory, and sorts the resulting list for predictable display.
 
 use std::path::Path;
 
 use super::workspace_helpers::should_skip_entry;
 use super::workspace_types::{WorkspaceEntry, WorkspaceEntryKind};
 
+/// Collects visible workspace entries from a directory.
+///
+/// The scan is shallow: only direct children of `root` are returned. Entries
+/// whose names are filtered by [`should_skip_entry`] are omitted. Directory
+/// entries are classified with `std::fs::DirEntry::file_type`; entries whose
+/// type cannot be read are treated as files so they can still appear in the
+/// sidebar.
+///
+/// # Parameters
+///
+/// * `root` - Directory whose immediate children should be listed.
+///
+/// # Returns
+///
+/// Returns a vector of collected entries. If `root` cannot be read, an empty
+/// vector is returned.
+///
+/// # Side Effects
+///
+/// Reads the filesystem metadata for entries under `root`.
 pub fn collect_entries(root: &Path) -> Vec<WorkspaceEntry> {
     let Ok(rd) = std::fs::read_dir(root) else {
         return Vec::new();
@@ -30,6 +55,19 @@ pub fn collect_entries(root: &Path) -> Vec<WorkspaceEntry> {
         .collect()
 }
 
+/// Sorts workspace entries for stable sidebar display.
+///
+/// Directories are ordered before files. Entries within the same kind are sorted
+/// by ASCII case-insensitive filename comparison without allocating temporary
+/// lowercase strings.
+///
+/// # Parameters
+///
+/// * `entries` - Mutable slice of workspace entries to sort in place.
+///
+/// # Side Effects
+///
+/// Reorders `entries`.
 pub fn sort_entries(entries: &mut [WorkspaceEntry]) {
     // Case-insensitive compare WITHOUT allocating a lowercased String
     // per comparison. On a workspace with many entries the old code

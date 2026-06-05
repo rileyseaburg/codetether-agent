@@ -1,13 +1,13 @@
 use super::super::*;
-use crate::session::{Session, SessionEvent};
+use crate::session::SessionEvent;
 
 #[tokio::test]
 async fn text_chunk_replaces_streaming_preview_with_latest_cumulative_text() {
     let mut app = App::default();
-    let mut session = Session::new().await.expect("session should create");
+    let mut slot = super::test_slot().await;
     handle_session_event(
         &mut app,
-        &mut session,
+        &mut slot,
         &None,
         SessionEvent::TextChunk("hel".to_string()),
     )
@@ -16,7 +16,7 @@ async fn text_chunk_replaces_streaming_preview_with_latest_cumulative_text() {
     assert!(app.state.needs_redraw);
     handle_session_event(
         &mut app,
-        &mut session,
+        &mut slot,
         &None,
         SessionEvent::TextChunk("hello".to_string()),
     )
@@ -27,12 +27,12 @@ async fn text_chunk_replaces_streaming_preview_with_latest_cumulative_text() {
 #[tokio::test]
 async fn text_events_record_request_ttft_and_last_token() {
     let mut app = App::default();
-    let mut session = Session::new().await.expect("session should create");
+    let mut slot = super::test_slot().await;
     app.state.processing_started_at =
         Some(std::time::Instant::now() - std::time::Duration::from_millis(15));
     handle_session_event(
         &mut app,
-        &mut session,
+        &mut slot,
         &None,
         SessionEvent::TextChunk("hello".to_string()),
     )
@@ -43,7 +43,7 @@ async fn text_events_record_request_ttft_and_last_token() {
         Some(std::time::Instant::now() - std::time::Duration::from_millis(30));
     handle_session_event(
         &mut app,
-        &mut session,
+        &mut slot,
         &None,
         SessionEvent::TextComplete("hello".to_string()),
     )

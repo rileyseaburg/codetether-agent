@@ -283,6 +283,10 @@ impl Provider for GoogleProvider {
         "google"
     }
 
+    fn supports_structured_streaming(&self) -> bool {
+        false
+    }
+
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         self.validate_api_key()?;
 
@@ -520,23 +524,11 @@ impl Provider for GoogleProvider {
 
     async fn complete_stream(
         &self,
-        request: CompletionRequest,
+        _request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
-        // Fall back to non-streaming for now
-        let response = self.complete(request).await?;
-        let text = response
-            .message
-            .content
-            .iter()
-            .filter_map(|p| match p {
-                ContentPart::Text { text } => Some(text.clone()),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("");
-
-        Ok(Box::pin(futures::stream::once(async move {
-            StreamChunk::Text(text)
-        })))
+        anyhow::bail!(
+            "Provider '{}' does not support structured streaming",
+            self.name()
+        )
     }
 }

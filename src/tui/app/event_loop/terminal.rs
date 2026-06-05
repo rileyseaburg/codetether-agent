@@ -15,11 +15,10 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crossterm::event::Event;
-use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
-use crate::session::{Session, SessionEvent};
 use crate::tui::app::event_handlers::{handle_event, handle_mouse_event, handle_paste_event};
+use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
@@ -39,26 +38,15 @@ use crate::tui::worker_bridge::TuiWorkerBridge;
 pub(super) async fn handle_terminal_event(
     app: &mut App,
     cwd: &Path,
-    session: &mut Session,
+    slot: &mut SessionSlot,
     registry: &Option<Arc<ProviderRegistry>>,
     worker_bridge: &Option<TuiWorkerBridge>,
-    event_tx: &mpsc::Sender<SessionEvent>,
-    result_tx: &mpsc::Sender<anyhow::Result<Session>>,
+    runtime: &TuiSessionHandle,
     maybe: Option<Result<Event, std::io::Error>>,
 ) -> anyhow::Result<bool> {
     match maybe {
         Some(Ok(Event::Key(key))) => {
-            handle_event(
-                app,
-                cwd,
-                session,
-                registry,
-                worker_bridge,
-                event_tx,
-                result_tx,
-                key,
-            )
-            .await
+            handle_event(app, cwd, slot, registry, worker_bridge, runtime, key).await
         }
         Some(Ok(Event::Paste(text))) => {
             handle_paste_event(app, &text).await;

@@ -1,22 +1,23 @@
 use tokio::sync::mpsc;
 
-use crate::session::{Session, SessionEvent};
+use crate::session::SessionEvent;
+use crate::tui::app::session_runtime::SessionNotice;
 
 pub(crate) struct LoopIo<'a> {
     pub event_rx: &'a mut mpsc::Receiver<SessionEvent>,
-    pub result_rx: &'a mut mpsc::Receiver<anyhow::Result<Session>>,
+    pub notice_rx: &'a mut mpsc::Receiver<SessionNotice>,
     pub shutdown_rx: &'a mut mpsc::Receiver<()>,
 }
 
 impl<'a> LoopIo<'a> {
     pub fn new(
         event_rx: &'a mut mpsc::Receiver<SessionEvent>,
-        result_rx: &'a mut mpsc::Receiver<anyhow::Result<Session>>,
+        notice_rx: &'a mut mpsc::Receiver<SessionNotice>,
         shutdown_rx: &'a mut mpsc::Receiver<()>,
     ) -> Self {
         Self {
             event_rx,
-            result_rx,
+            notice_rx,
             shutdown_rx,
         }
     }

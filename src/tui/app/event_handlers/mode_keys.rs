@@ -12,12 +12,12 @@
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::session::Session;
 use crate::tui::app::commands::toggle_auto_apply_edits;
 use crate::tui::app::input::{
     handle_backspace, handle_bus_c, handle_bus_g, handle_bus_slash, handle_char,
     handle_sessions_char,
 };
+use crate::tui::app::session_runtime::SessionSlot;
 use crate::tui::app::settings::{toggle_network_access, toggle_slash_autocomplete};
 use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
@@ -33,10 +33,12 @@ use crate::tui::models::ViewMode;
 /// ```ignore
 /// handle_char_or_mode_key(&mut app, &mut session, key).await;
 /// ```
-pub(super) async fn handle_char_or_mode_key(app: &mut App, session: &mut Session, key: KeyEvent) {
+pub(super) async fn handle_char_or_mode_key(app: &mut App, slot: &mut SessionSlot, key: KeyEvent) {
     match key.code {
         KeyCode::Char('a') if app.state.view_mode == ViewMode::Settings => {
-            toggle_auto_apply_edits(app, session).await;
+            if let Some(session) = slot.borrow_mut() {
+                toggle_auto_apply_edits(app, session).await;
+            }
         }
         KeyCode::Char('a')
             if key.modifiers.contains(KeyModifiers::ALT)
@@ -45,10 +47,14 @@ pub(super) async fn handle_char_or_mode_key(app: &mut App, session: &mut Session
             crate::tui::app::file_picker::file_picker_attach(app);
         }
         KeyCode::Char('n') if app.state.view_mode == ViewMode::Settings => {
-            toggle_network_access(app, session).await;
+            if let Some(session) = slot.borrow_mut() {
+                toggle_network_access(app, session).await;
+            }
         }
         KeyCode::Tab if app.state.view_mode == ViewMode::Settings => {
-            toggle_slash_autocomplete(app, session).await;
+            if let Some(session) = slot.borrow_mut() {
+                toggle_slash_autocomplete(app, session).await;
+            }
         }
         KeyCode::Backspace if app.state.view_mode == ViewMode::Sessions => {
             app.state.session_filter_backspace();

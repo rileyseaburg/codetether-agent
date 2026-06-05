@@ -7,7 +7,6 @@ use futures::stream::BoxStream;
 use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
 
 use super::DeepSeekProvider;
-use super::models;
 
 #[async_trait]
 impl Provider for DeepSeekProvider {
@@ -15,18 +14,25 @@ impl Provider for DeepSeekProvider {
         "deepseek"
     }
 
+    fn supports_structured_streaming(&self) -> bool {
+        false
+    }
+
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        Ok(models::list())
+        Ok(self.available_models())
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
-        super::complete::exec(self, request).await
+        self.complete_non_streaming(request).await
     }
 
     async fn complete_stream(
         &self,
-        request: CompletionRequest,
+        _request: CompletionRequest,
     ) -> Result<BoxStream<'static, StreamChunk>> {
-        super::stream::exec(self, request).await
+        anyhow::bail!(
+            "Provider '{}' does not support structured streaming",
+            self.name()
+        )
     }
 }

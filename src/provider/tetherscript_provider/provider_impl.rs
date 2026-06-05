@@ -13,19 +13,25 @@ impl Provider for TetherScriptProvider {
         self.name_str()
     }
 
+    fn supports_structured_streaming(&self) -> bool {
+        false
+    }
+
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        let this = self.clone();
-        tokio::task::spawn_blocking(move || this.call_list_models()).await?
+        self.available_models().await
     }
 
     async fn complete(&self, req: CompletionRequest) -> Result<CompletionResponse> {
-        super::complete::complete(self, req).await
+        self.complete_non_streaming(req).await
     }
 
     async fn complete_stream(
         &self,
-        req: CompletionRequest,
+        _req: CompletionRequest,
     ) -> Result<BoxStream<'static, StreamChunk>> {
-        super::stream::complete_stream(self, req).await
+        anyhow::bail!(
+            "Provider '{}' does not support structured streaming",
+            self.name()
+        )
     }
 }

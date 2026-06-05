@@ -6,10 +6,10 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 
-use crate::session::Session;
+use crate::tui::app::session_runtime::SessionView;
 use crate::tui::app::state::App;
 
-pub fn render_model_picker(f: &mut Frame, area: Rect, app: &mut App, session: &Session) {
+pub fn render_model_picker(f: &mut Frame, area: Rect, app: &mut App, session: &SessionView) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -71,7 +71,7 @@ pub fn render_model_picker(f: &mut Frame, area: Rect, app: &mut App, session: &S
     let current = app
         .state
         .selected_model()
-        .or(session.metadata.model.as_deref())
+        .or(session.model.as_deref())
         .unwrap_or("auto");
     let current_widget = Paragraph::new(Line::from(vec![
         Span::raw("Current selection: "),
