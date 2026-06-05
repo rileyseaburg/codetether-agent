@@ -6,6 +6,9 @@ mod ids;
 mod parameters;
 mod pricing;
 mod types;
+mod types_architecture;
+mod types_pricing;
+mod types_top_provider;
 
 use axum::{Json, http::StatusCode};
 
@@ -16,7 +19,8 @@ pub(crate) async fn list_models() -> ModelsResult<Json<types::ModelsResponse>> {
         .await
         .map_err(load_error)?;
 
-    let data = collect::collect_models(&registry).await;
+    let created = chrono::Utc::now().timestamp();
+    let data = collect::collect_models(&registry, created).await;
     Ok(Json(types::ModelsResponse { data }))
 }
 

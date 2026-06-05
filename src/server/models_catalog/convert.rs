@@ -4,13 +4,13 @@ use super::{ids, types};
 
 type ModelInfo = crate::provider::ModelInfo;
 
-pub(crate) fn convert_model(provider: &str, model: ModelInfo) -> types::Model {
+pub(crate) fn convert_model(provider: &str, model: ModelInfo, created: i64) -> types::Model {
     let id = ids::model_id(provider, &model.id);
     types::Model {
         id: id.clone(),
         canonical_slug: id,
         name: ids::display_name(provider, &model.name),
-        created: 0,
+        created,
         description: format!(
             "{} model served by CodeTether provider {provider}",
             model.name

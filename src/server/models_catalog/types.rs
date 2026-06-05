@@ -1,5 +1,9 @@
 //! Response structs for `/models` and `/v1/models`.
 
+pub(crate) use super::types_architecture::Architecture;
+pub(crate) use super::types_pricing::Pricing;
+pub(crate) use super::types_top_provider::TopProvider;
+
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -18,28 +22,7 @@ pub(crate) struct Model {
     pub(crate) architecture: Architecture,
     pub(crate) pricing: Pricing,
     pub(crate) top_provider: TopProvider,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) per_request_limits: Option<serde_json::Value>,
     pub(crate) supported_parameters: Vec<String>,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct Architecture {
-    pub(crate) modality: String,
-    pub(crate) input_modalities: Vec<String>,
-    pub(crate) output_modalities: Vec<String>,
-    pub(crate) tokenizer: String,
-    pub(crate) instruct_type: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct Pricing {
-    pub(crate) prompt: String,
-    pub(crate) completion: String,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct TopProvider {
-    pub(crate) context_length: usize,
-    pub(crate) max_completion_tokens: Option<usize>,
-    pub(crate) is_moderated: bool,
 }

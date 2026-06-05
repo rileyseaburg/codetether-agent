@@ -8,12 +8,14 @@ pub(crate) fn canonical_provider(provider: &str) -> &str {
 }
 
 pub(crate) fn model_id(provider: &str, model_id: &str) -> String {
-    let provider = canonical_provider(provider);
+    let canonical = canonical_provider(provider);
     let trimmed = model_id.trim_start_matches('/');
-    if trimmed.starts_with(&format!("{provider}/")) {
+    if trimmed.starts_with(&format!("{canonical}/")) {
         trimmed.to_string()
+    } else if provider != canonical && trimmed.starts_with(&format!("{provider}/")) {
+        format!("{canonical}/{}", &trimmed[provider.len() + 1..])
     } else {
-        format!("{provider}/{trimmed}")
+        format!("{canonical}/{trimmed}")
     }
 }
 
