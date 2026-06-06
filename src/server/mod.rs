@@ -3,6 +3,7 @@
 //! Main API server for the CodeTether Agent
 
 pub mod auth;
+mod models_catalog;
 pub mod policy;
 mod policy_user;
 mod tool_contract;
@@ -38,7 +39,7 @@ use axum::{
     response::{IntoResponse, Json, Response},
     routing::{get, post},
 };
-use futures::{StreamExt, future::join_all, stream};
+use futures::{StreamExt, stream};
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -295,6 +296,11 @@ const POLICY_RULES: &[PolicyRule] = &[
         permission: "",
     },
     // OpenAI-compatible model discovery and chat completions
+    PolicyRule {
+        pattern: "/models",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
     PolicyRule {
         pattern: "/v1/models",
         methods: Some(&["GET"]),
@@ -747,7 +753,8 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/api/provider", get(list_providers))
         .route("/api/agent", get(list_agents))
         // OpenAI-compatible APIs
-        .route("/v1/models", get(list_openai_models))
+        .route("/models", get(models_catalog::list_models))
+        .route("/v1/models", get(models_catalog::list_models))
         .route("/v1/chat/completions", post(openai_chat_completions))
         // Perpetual cognition APIs
         .route("/v1/cognition/start", post(start_cognition))
@@ -1301,20 +1308,6 @@ struct OpenAiRequestToolDefinition {
 }
 
 #[derive(Debug, Serialize)]
-struct OpenAiModelsResponse {
-    object: String,
-    data: Vec<OpenAiModel>,
-}
-
-#[derive(Debug, Serialize)]
-struct OpenAiModel {
-    id: String,
-    object: String,
-    created: i64,
-    owned_by: String,
-}
-
-#[derive(Debug, Serialize)]
 struct OpenAiChatCompletionResponse {
     id: String,
     object: String,
@@ -1702,59 +1695,6 @@ fn openai_stream_chunk(
 
 fn openai_stream_event(payload: &serde_json::Value) -> Event {
     Event::default().data(payload.to_string())
-}
-
-async fn list_openai_models() -> OpenAiApiResult<Json<OpenAiModelsResponse>> {
-    let registry = crate::provider::ProviderRegistry::from_vault()
-        .await
-        .map_err(|error| {
-            tracing::error!(error = %error, "Failed to load providers from Vault");
-            openai_internal_error(format!("failed to load providers: {error}"))
-        })?;
-
-    let model_futures = registry.list().into_iter().map(|provider_id| {
-        let provider_id = provider_id.to_string();
-        let provider = registry.get(&provider_id);
-
-        async move {
-            let Some(provider) = provider else {
-                return Vec::new();
-            };
-
-            let now = chrono::Utc::now().timestamp();
-            match provider.list_models().await {
-                Ok(models) => models
-                    .into_iter()
-                    .map(|model| OpenAiModel {
-                        id: make_openai_model_id(&provider_id, &model.id),
-                        object: "model".to_string(),
-                        created: now,
-                        owned_by: canonicalize_provider_name(&provider_id).to_string(),
-                    })
-                    .collect(),
-                Err(error) => {
-                    tracing::warn!(
-                        provider = %provider_id,
-                        error = %error,
-                        "Failed to list models for provider"
-                    );
-                    Vec::new()
-                }
-            }
-        }
-    });
-
-    let mut data: Vec<OpenAiModel> = join_all(model_futures)
-        .await
-        .into_iter()
-        .flatten()
-        .collect();
-    data.sort_by(|a, b| a.owned_by.cmp(&b.owned_by).then(a.id.cmp(&b.id)));
-
-    Ok(Json(OpenAiModelsResponse {
-        object: "list".to_string(),
-        data,
-    }))
 }
 
 async fn openai_chat_completions(
@@ -3216,6 +3156,12 @@ mod tests {
     fn policy_proposal_approval_requires_execute_permission() {
         let permission = match_policy_rule("/v1/cognition/proposals/p1/approve", "POST");
         assert_eq!(permission, Some("agent:execute"));
+    }
+
+    #[test]
+    fn policy_root_models_requires_read_permission() {
+        let permission = match_policy_rule("/models", "GET");
+        assert_eq!(permission, Some("agent:read"));
     }
 
     #[test]
