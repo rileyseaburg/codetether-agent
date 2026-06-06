@@ -25,7 +25,7 @@ pub(super) async fn run_worker_loop(context: WorkerContext) -> Result<()> {
             context.cognition_heartbeat.clone(),
             context.task_progress.clone(),
         );
-        match connect_stream(&context.task_runtime, &context.name, &codebases, None).await {
+        match connect_stream(&context.task_runtime, &context.name, &codebases, None, None).await {
             Ok(StreamDisconnectReason::Ended) => tracing::warn!("Stream ended, reconnecting..."),
             Ok(StreamDisconnectReason::ReadError(error)) => {
                 tracing::warn!(error = %error, "Stream read failed, reconnecting...")

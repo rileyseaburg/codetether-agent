@@ -39,6 +39,16 @@ async fn pending_tasks(runtime: &WorkerTaskRuntime) -> Result<Vec<serde_json::Va
     }
     let response = request.send().await?;
     if !response.status().is_success() {
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .unwrap_or_else(|error| format!("<failed to read response body: {error}>"));
+        tracing::warn!(
+            %status,
+            body = %summarize_response_body(&body),
+            "Failed to fetch pending tasks"
+        );
         return Ok(Vec::new());
     }
     let data: serde_json::Value = response.json().await?;
@@ -47,4 +57,14 @@ async fn pending_tasks(runtime: &WorkerTaskRuntime) -> Result<Vec<serde_json::Va
         .cloned()
         .or_else(|| data["tasks"].as_array().cloned())
         .unwrap_or_default())
+}
+
+fn summarize_response_body(body: &str) -> String {
+    const MAX_BODY_CHARS: usize = 512;
+    let mut summary = body.split_whitespace().collect::<Vec<_>>().join(" ");
+    if summary.chars().count() > MAX_BODY_CHARS {
+        summary = summary.chars().take(MAX_BODY_CHARS).collect::<String>();
+        summary.push_str("...");
+    }
+    summary
 }

@@ -8,7 +8,9 @@ use super::{
 };
 
 pub(super) async fn bootstrap_worker(context: &WorkerContext) -> Result<()> {
-    register_current_worker(context).await?;
+    if let Err(error) = register_current_worker(context).await {
+        tracing::warn!(error = %error, "Initial worker registration failed");
+    }
     if let Err(error) = sync_workspaces_from_server(
         &context.task_runtime.client,
         &context.server,
@@ -19,7 +21,9 @@ pub(super) async fn bootstrap_worker(context: &WorkerContext) -> Result<()> {
     {
         tracing::warn!(error = %error, "Initial workspace sync failed");
     }
-    fetch_pending_tasks(&context.task_runtime).await?;
+    if let Err(error) = fetch_pending_tasks(&context.task_runtime).await {
+        tracing::warn!(error = %error, "Initial task fetch failed");
+    }
     let _workspace_sync_handle = start_workspace_sync(
         context.task_runtime.client.clone(),
         context.server.clone(),

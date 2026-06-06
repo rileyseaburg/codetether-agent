@@ -180,7 +180,7 @@ Returns metadata: {all_passed, ready_to_merge, feature_branch, passed, total}
                 let all_passed = passed_count == total_count;
 
                 // Clean up orphaned worktrees/branches
-                let mgr = WorktreeManager::new(&cwd);
+                let mgr = WorktreeManager::for_repo(&cwd);
                 let cleanup_count = mgr.cleanup_all().await.unwrap_or(0);
 
                 // Return to starting branch if different

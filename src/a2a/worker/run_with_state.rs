@@ -10,6 +10,6 @@ pub async fn run_with_state(args: A2aArgs, server_state: WorkerServerState) -> R
     let context = init_worker(args).await?;
     attach_server_state(&context, &server_state).await;
     bootstrap_worker(&context).await?;
-    server_state.set_connected(true).await;
+    server_state.set_connected(false).await;
     run_worker_server_loop(context, server_state).await
 }

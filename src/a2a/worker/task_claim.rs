@@ -30,11 +30,19 @@ pub(super) async fn claim_task(
         .await?;
     if !response.status().is_success() {
         let status = response.status();
-        let body = response.text().await?;
+        let body = response
+            .text()
+            .await
+            .unwrap_or_else(|error| format!("<failed to read response body: {error}>"));
+        let body = summarize_response_body(&body);
+        timeline.checkpoint_with_detail(
+            task_timeline::TaskCheckpoint::ClaimRejected,
+            Some(format!("status={status} body={body}")),
+        );
         if status == reqwest::StatusCode::CONFLICT {
-            tracing::debug!(task_id, "Task already claimed by another worker, skipping");
+            tracing::info!(task_id, %status, body = %body, "Task claim rejected");
         } else {
-            tracing::warn!(task_id, %status, "Failed to claim task: {}", body);
+            tracing::warn!(task_id, %status, body = %body, "Failed to claim task");
         }
         return Ok(None);
     }
@@ -56,4 +64,14 @@ pub(super) async fn claim_task(
         claim_provenance,
         provider_keys,
     }))
+}
+
+fn summarize_response_body(body: &str) -> String {
+    const MAX_BODY_CHARS: usize = 512;
+    let mut summary = body.split_whitespace().collect::<Vec<_>>().join(" ");
+    if summary.chars().count() > MAX_BODY_CHARS {
+        summary = summary.chars().take(MAX_BODY_CHARS).collect::<String>();
+        summary.push_str("...");
+    }
+    summary
 }

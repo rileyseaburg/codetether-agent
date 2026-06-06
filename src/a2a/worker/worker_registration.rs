@@ -35,7 +35,26 @@ pub async fn register_worker(
     if response.status().is_success() {
         tracing::info!("Worker registered successfully");
     } else {
-        tracing::warn!(status = %response.status(), "Failed to register worker");
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .unwrap_or_else(|error| format!("<failed to read response body: {error}>"));
+        tracing::warn!(
+            %status,
+            body = %summarize_response_body(&body),
+            "Failed to register worker"
+        );
     }
     Ok(())
+}
+
+fn summarize_response_body(body: &str) -> String {
+    const MAX_BODY_CHARS: usize = 512;
+    let mut summary = body.split_whitespace().collect::<Vec<_>>().join(" ");
+    if summary.chars().count() > MAX_BODY_CHARS {
+        summary = summary.chars().take(MAX_BODY_CHARS).collect::<String>();
+        summary.push_str("...");
+    }
+    summary
 }

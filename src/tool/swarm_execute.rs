@@ -14,6 +14,7 @@ use serde_json::{Value, json};
 use std::sync::Arc;
 
 mod support;
+mod worktrees;
 
 pub struct SwarmExecuteTool;
 
@@ -34,7 +35,6 @@ struct TaskInput {
     id: Option<String>,
     name: String,
     instruction: String,
-    #[allow(dead_code)]
     specialty: Option<String>,
 }
 
@@ -285,7 +285,7 @@ impl Tool for SwarmExecuteTool {
 
         // Provision one isolated worktree per mutating task so sub-agents
         // never edit the shared checkout (read-only tasks share the dir).
-        let worktree_dirs = support::create_worktrees(
+        let worktrees = worktrees::SwarmWorktrees::create(
             &tasks
                 .iter()
                 .map(|t| (t.name.clone(), t.instruction.clone()))
@@ -309,7 +309,7 @@ Share any intermediate results using the swarm_share tool so other agents can be
             let semaphore = semaphore.clone();
             let provider = provider.clone();
             let tools = tools.clone();
-            let working_dir = worktree_dirs.get(idx).cloned().flatten();
+            let working_dir = worktrees.dir(idx);
             let system_prompt = system_prompt.to_string();
             let task_id = task_input
                 .id
@@ -369,52 +369,19 @@ Share any intermediate results using the swarm_share tool so other agents can be
                 })
             });
 
-            join_handles.push(handle);
+            join_handles.push((idx, handle));
         }
 
         // Wait for all tasks to complete
         let mut results: Vec<TaskResult> = Vec::new();
         let mut failures = 0;
 
-        for handle in join_handles {
+        for (idx, handle) in join_handles {
             match handle.await {
-                Ok(Ok(result)) => {
+                Ok(Ok(mut result)) => {
+                    worktrees.finish(idx, &mut result).await;
                     if !result.success {
                         failures += 1;
-
-                        // Handle aggregation strategies
-                        match aggregation_strategy.as_str() {
-                            "all" => {
-                                // Return immediately on first failure
-                                return Ok(ToolResult::success(
-                                    json!({
-                                        "status": "failed",
-                                        "failed_task": result.task_name,
-                                        "error": result.error,
-                                        "results": [result],
-                                        "summary": {
-                                            "total": 1,
-                                            "success": 0,
-                                            "failures": 1
-                                        }
-                                    })
-                                    .to_string(),
-                                ));
-                            }
-                            "first_error" => {
-                                return Ok(ToolResult::success(
-                                    json!({
-                                        "status": "error",
-                                        "error": result.error,
-                                        "failed_task": result.task_name,
-                                        "completed_tasks": results.len(),
-                                        "results": results,
-                                    })
-                                    .to_string(),
-                                ));
-                            }
-                            _ => {} // "best_effort" - continue collecting
-                        }
                     }
                     results.push(result);
                 }

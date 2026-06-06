@@ -1350,7 +1350,7 @@ async fn main() -> anyhow::Result<()> {
             use worktree::WorktreeManager;
 
             let cwd = std::env::current_dir()?;
-            let mgr = WorktreeManager::new(&cwd);
+            let mgr = WorktreeManager::for_repo(&cwd);
 
             // List what exists
             let worktrees = mgr.list().await;

@@ -73,10 +73,29 @@ impl WorkerServerState {
     }
 
     /// Notify worker of a new task (called from /task endpoint)
-    pub async fn notify_new_task(&self, task_id: &str) {
-        if let Some(ref tx) = *self.task_notification_tx.lock().await {
-            let _ = tx.send(task_id.to_string()).await;
-            tracing::debug!("Notified worker of new task: {}", task_id);
+    pub async fn notify_new_task(&self, task_id: &str) -> bool {
+        let tx = self.task_notification_tx.lock().await.clone();
+        if let Some(tx) = tx {
+            match tx.send(task_id.to_string()).await {
+                Ok(()) => {
+                    tracing::debug!("Notified worker of new task: {}", task_id);
+                    true
+                }
+                Err(error) => {
+                    tracing::warn!(
+                        task_id,
+                        error = %error,
+                        "Worker task notification channel is closed"
+                    );
+                    false
+                }
+            }
+        } else {
+            tracing::warn!(
+                task_id,
+                "Worker task notification channel is not initialized"
+            );
+            false
         }
     }
 
@@ -121,9 +140,13 @@ impl WorkerServerState {
     }
 
     pub async fn is_ready(&self) -> bool {
-        // Ready if we have a connection to the A2A server
-        // Optional: could also check heartbeat_state for active task count
-        *self.connected.lock().await
+        // Knative readiness should reflect whether this HTTP server can accept
+        // task pushes. The SSE control-plane stream can reconnect independently.
+        self.task_notification_tx
+            .lock()
+            .await
+            .as_ref()
+            .is_some_and(|tx| !tx.is_closed())
     }
 }
 
@@ -158,12 +181,15 @@ async fn health() -> &'static str {
     "ok"
 }
 
-/// Readiness check - returns OK only when connected to A2A server
+/// Readiness check - returns OK when the worker can accept task notifications
 async fn ready(State(state): State<WorkerServerState>) -> (StatusCode, String) {
     if state.is_ready().await {
         (StatusCode::OK, "ready".to_string())
     } else {
-        (StatusCode::SERVICE_UNAVAILABLE, "not connected".to_string())
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "task notification channel not ready".to_string(),
+        )
     }
 }
 
@@ -225,11 +251,10 @@ async fn receive_task(
         event.event_type
     );
 
-    // Notify the worker loop to pick up this task
-    state.notify_new_task(task_id).await;
+    if !state.notify_new_task(task_id).await {
+        return StatusCode::SERVICE_UNAVAILABLE;
+    }
 
-    // CloudEvent subscribers should return an empty 2xx response body.
-    // Non-empty non-CloudEvent payloads trigger retries in Knative Broker Filter.
     StatusCode::ACCEPTED
 }
 

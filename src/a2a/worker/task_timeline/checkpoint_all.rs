@@ -8,6 +8,7 @@ impl TaskCheckpoint {
         Self::TaskReceived,
         Self::SlotReserved,
         Self::ClaimRequested,
+        Self::ClaimRejected,
         Self::Claimed,
         Self::MetadataParsed,
         Self::WorkspaceReady,

@@ -421,7 +421,7 @@ impl RalphLoop {
 
         // Clean up orphaned worktrees and branches
         if self.config.worktree_enabled {
-            let mgr = WorktreeManager::new(&self.state.working_dir);
+            let mgr = WorktreeManager::for_repo(&self.state.working_dir);
             match mgr.cleanup_all().await {
                 Ok(count) if count > 0 => {
                     info!(cleaned = count, "Cleaned up orphaned worktrees/branches");
@@ -674,7 +674,7 @@ impl RalphLoop {
 
         // Create worktree manager if enabled
         let worktree_mgr = if self.config.worktree_enabled {
-            let mgr = WorktreeManager::new(&self.state.working_dir);
+            let mgr = WorktreeManager::for_repo(&self.state.working_dir);
             info!("Worktree isolation enabled for parallel stories");
             Some(Arc::new(mgr))
         } else {

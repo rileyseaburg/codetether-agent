@@ -868,7 +868,7 @@ impl SwarmExecutor {
                     .unwrap_or_else(|_| ".".to_string())
             });
 
-            let mgr = WorktreeManager::new(&working_dir);
+            let mgr = WorktreeManager::for_repo(&working_dir);
             tracing::info!(
                 working_dir = %working_dir,
                 "Worktree isolation enabled for parallel sub-agents"
