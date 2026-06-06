@@ -1,12 +1,13 @@
 //! Guarded TUI drawing.
 
-use ratatui::{Terminal, backend::CrosstermBackend, layout::Size};
+use ratatui::{Terminal, backend::CrosstermBackend};
+
+#[path = "safe_draw_size.rs"]
+mod safe_draw_size;
 
 use crate::session::Session;
 use crate::tui::{app::state::App, ui::main::ui};
-
-const MAX_RENDER_CELLS: u32 = 500_000;
-const MAX_RENDER_DIMENSION: u16 = 1_000;
+use safe_draw_size::{rect_for, safe_size};
 
 /// Draw one TUI frame when the reported terminal size is sane.
 pub fn draw_ui(
@@ -14,38 +15,32 @@ pub fn draw_ui(
     app: &mut App,
     session: &Session,
 ) -> anyhow::Result<()> {
+    record_context(app, session);
     let size = terminal.size()?;
     if !safe_size(size) {
-        tracing::warn!(
-            width = size.width,
-            height = size.height,
-            cells = size.width as u32 * size.height as u32,
-            "skipping TUI draw because terminal reported an invalid size"
-        );
+        log_skipped_size(size);
         return Ok(());
     }
+    terminal.resize(rect_for(size))?;
     terminal.draw(|f| ui(f, app, session))?;
     Ok(())
 }
 
-fn safe_size(size: Size) -> bool {
-    let cells = size.width as u32 * size.height as u32;
-    size.width > 0
-        && size.height > 0
-        && size.width <= MAX_RENDER_DIMENSION
-        && size.height <= MAX_RENDER_DIMENSION
-        && cells <= MAX_RENDER_CELLS
+fn record_context(app: &App, session: &Session) {
+    crate::telemetry::crash_context::record_tui(
+        &session.id,
+        session.messages.len(),
+        session.metadata.model.as_deref(),
+        session.metadata.directory.as_deref(),
+        &app.state.status,
+    );
 }
 
-#[cfg(test)]
-mod tests {
-    use super::safe_size;
-    use ratatui::layout::Size;
-
-    #[test]
-    fn rejects_absurd_terminal_sizes() {
-        assert!(safe_size(Size::new(120, 40)));
-        assert!(!safe_size(Size::new(0, 40)));
-        assert!(!safe_size(Size::new(u16::MAX, u16::MAX)));
-    }
+fn log_skipped_size(size: ratatui::layout::Size) {
+    tracing::warn!(
+        width = size.width,
+        height = size.height,
+        cells = size.width as u32 * size.height as u32,
+        "skipping TUI draw because terminal reported an invalid size"
+    );
 }

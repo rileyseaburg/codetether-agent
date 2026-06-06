@@ -65,11 +65,15 @@ pub mod a2a;
 pub mod alloc_guard;
 pub(crate) mod alloc_guard_command;
 pub mod alloc_guard_config;
+pub(crate) mod alloc_guard_payload;
 pub mod alloc_guard_report;
 #[cfg(test)]
 mod alloc_guard_tests;
 pub mod context;
 pub mod cost;
+pub mod crash_context;
+#[cfg(test)]
+mod crash_context_tests;
 pub mod globals;
 pub mod memory;
 pub mod metrics;
