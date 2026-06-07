@@ -301,7 +301,7 @@ async fn handle_message_send(
         crate::a2a::session_config::configure(&mut session).await;
         let started_at = Instant::now();
 
-        match session.prompt(&prompt).await {
+        match crate::a2a::prompt_runtime::run(&mut session, &prompt).await {
             Ok(result) => {
                 let result_text = result.text;
                 crate::a2a::session_config::persist(&session).await;
@@ -437,7 +437,7 @@ async fn handle_message_send(
                 };
             crate::a2a::session_config::configure(&mut session).await;
 
-            match session.prompt(&prompt).await {
+            match crate::a2a::prompt_runtime::run(&mut session, &prompt).await {
                 Ok(result) => {
                     let result_text = result.text;
                     crate::a2a::session_config::persist(&session).await;
@@ -692,8 +692,8 @@ async fn handle_message_stream(
         });
 
         // Use prompt_with_events for streaming
-        let registry = match crate::provider::ProviderRegistry::from_vault().await {
-            Ok(r) => Arc::new(r),
+        let registry = match crate::provider::ProviderRegistry::shared_from_vault().await {
+            Ok(r) => r,
             Err(e) => {
                 tracing::error!("Failed to load provider registry: {}", e);
                 if let Some(mut t) = tasks.get_mut(&task_id) {

@@ -18,6 +18,7 @@ pub mod lan;
 pub mod mdns;
 pub mod mdns_liveness;
 pub mod peer_liveness;
+pub mod prompt_runtime;
 pub mod server;
 pub mod session_config;
 pub mod session_resolve;
