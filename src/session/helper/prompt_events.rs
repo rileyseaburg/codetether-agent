@@ -9,8 +9,7 @@
 // TODO: Keep this loop in sync with `prompt.rs` until both prompt loops are
 // consolidated into one shared implementation.
 
-use std::collections::HashSet;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use anyhow::Result;
 use chrono::Utc;
@@ -573,9 +572,10 @@ pub(crate) async fn run_prompt_with_events(
                         duration_ms: 0,
                     })
                     .await;
-                session.add_message(super::tool_output::tool_result(
+                session.add_message(super::tool_output::tool_result_with_status(
                     tool_id.clone(),
                     tool_name,
+                    false,
                     error_content,
                 ));
             }
@@ -722,8 +722,8 @@ pub(crate) async fn run_prompt_with_events(
                         duration_ms: 0,
                     })
                     .await;
-                session.add_message(super::tool_output::tool_result(
-                    tool_id, &tool_name, content,
+                session.add_message(super::tool_output::tool_result_with_status(
+                    tool_id, &tool_name, true, content,
                 ));
                 continue;
             }
@@ -754,8 +754,8 @@ pub(crate) async fn run_prompt_with_events(
                         duration_ms: 0,
                     })
                     .await;
-                session.add_message(super::tool_output::tool_result(
-                    tool_id, &tool_name, content,
+                session.add_message(super::tool_output::tool_result_with_status(
+                    tool_id, &tool_name, false, content,
                 ));
                 continue;
             }
@@ -774,8 +774,8 @@ pub(crate) async fn run_prompt_with_events(
                         duration_ms: 0,
                     })
                     .await;
-                session.add_message(super::tool_output::tool_result(
-                    tool_id, &tool_name, content,
+                session.add_message(super::tool_output::tool_result_with_status(
+                    tool_id, &tool_name, false, content,
                 ));
                 continue;
             }
@@ -913,8 +913,8 @@ pub(crate) async fn run_prompt_with_events(
                 Some(rlm_notify(event_tx.clone())),
             );
 
-            session.add_message(super::tool_output::tool_result(
-                tool_id, &tool_name, content,
+            session.add_message(super::tool_output::tool_result_with_status(
+                tool_id, &tool_name, success, content,
             ));
 
             if is_build_agent(&session.agent) {

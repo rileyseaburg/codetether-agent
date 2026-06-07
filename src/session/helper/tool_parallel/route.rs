@@ -23,5 +23,6 @@ pub(super) fn route(
         &session.metadata.rlm,
         None,
     );
-    super::super::evidence::digest::compact_output(&out.tool_name, &routed)
+    let output = super::super::evidence::digest::compact_output(&out.tool_name, &routed);
+    crate::tool::feedback::render(&out.tool_name, out.success, &output)
 }

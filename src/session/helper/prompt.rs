@@ -510,9 +510,10 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                      Please retry with a shorter approach: use the `write` tool to write \
                      content in smaller pieces, or reduce the size of your arguments."
                 );
-                session.add_message(super::tool_output::tool_result(
+                session.add_message(super::tool_output::tool_result_with_status(
                     tool_id.clone(),
                     tool_name,
+                    false,
                     error_content,
                 ));
             }
@@ -629,8 +630,8 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 
             if tool_name == "list_tools" {
                 let content = list_tools_bootstrap_output(&tool_definitions, &tool_input);
-                session.add_message(super::tool_output::tool_result(
-                    tool_id, &tool_name, content,
+                session.add_message(super::tool_output::tool_result_with_status(
+                    tool_id, &tool_name, true, content,
                 ));
                 continue;
             }
@@ -652,28 +653,22 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 
             if is_interactive_tool(&tool_name) {
                 tracing::warn!(tool = %tool_name, "Blocking interactive tool in session loop");
-                session.add_message(Message {
-                    role: Role::Tool,
-                    content: vec![ContentPart::ToolResult {
-                        tool_call_id: tool_id,
-                        content: "Error: Interactive tool 'question' is disabled in this interface. Ask the user directly in assistant text.".to_string(),
-                    }],
-                });
+                let content = "Error: Interactive tool 'question' is disabled in this interface. Ask the user directly in assistant text.".to_string();
+                session.add_message(super::tool_output::tool_result_with_status(
+                    tool_id, &tool_name, false, content,
+                ));
                 continue;
             }
 
             if let Some(reason) = detect_stub_in_tool_input(&tool_name, &tool_input) {
                 tracing::warn!(tool = %tool_name, reason = %reason, "Blocking suspected stubbed edit");
-                session.add_message(Message {
-                    role: Role::Tool,
-                    content: vec![ContentPart::ToolResult {
-                        tool_call_id: tool_id,
-                        content: format!(
-                            "Error: Refactor guard rejected this edit: {reason}. \
-                             Provide concrete, behavior-preserving implementation (no placeholders/stubs)."
-                        ),
-                    }],
-                });
+                let content = format!(
+                    "Error: Refactor guard rejected this edit: {reason}. \
+                     Provide concrete, behavior-preserving implementation (no placeholders/stubs)."
+                );
+                session.add_message(super::tool_output::tool_result_with_status(
+                    tool_id, &tool_name, false, content,
+                ));
                 continue;
             }
 
@@ -801,8 +796,8 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                 &session.metadata.rlm,
             );
 
-            session.add_message(super::tool_output::tool_result(
-                tool_id, &tool_name, content,
+            session.add_message(super::tool_output::tool_result_with_status(
+                tool_id, &tool_name, success, content,
             ));
 
             if is_build_agent(&session.agent) {

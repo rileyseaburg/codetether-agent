@@ -27,6 +27,7 @@ pub mod context_pin;
 pub mod context_reset;
 pub mod context_summarize;
 pub mod edit;
+pub(crate) mod feedback;
 pub mod file;
 pub mod file_extras;
 pub mod go;
@@ -77,8 +78,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::provider::Provider;
 pub use budget::{DEFAULT_TOOL_OUTPUT_MAX_BYTES, tool_output_budget};
