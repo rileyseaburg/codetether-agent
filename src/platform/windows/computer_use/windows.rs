@@ -26,30 +26,32 @@ unsafe fn enum_inner() -> anyhow::Result<Vec<Value>> {
 }
 
 unsafe extern "system" fn enum_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
-    let results = &mut *(lparam.0 as *mut Vec<Value>);
-
+    let results = unsafe { &mut *(lparam.0 as *mut Vec<Value>) };
     let mut title_buf = [0u16; 512];
-    let title_len = GetWindowTextW(hwnd, &mut title_buf);
-    if title_len == 0 {
-        return BOOL(1); // continue
+    let title_len = unsafe { GetWindowTextW(hwnd, &mut title_buf) };
+    if title_len <= 0 || title_len as usize > title_buf.len() {
+        return BOOL(1);
     }
     let title = String::from_utf16_lossy(&title_buf[..title_len as usize]);
+    let visible = unsafe { IsWindowVisible(hwnd).as_bool() };
+    let minimized = unsafe { IsIconic(hwnd).as_bool() };
 
-    let mut rect = std::mem::zeroed();
-    let _ = GetWindowRect(hwnd, &mut rect);
-
+    let mut rect = Default::default();
+    let _ = unsafe { GetWindowRect(hwnd, &mut rect) };
     let mut pid: u32 = 0;
-    let _ = GetWindowThreadProcessId(hwnd, Some(&mut pid));
+    let _ = unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
 
     results.push(serde_json::json!({
         "hwnd": hwnd.0 as i64,
         "pid": pid,
         "title": title,
+        "visible": visible,
+        "minimized": minimized,
         "left": rect.left,
         "top": rect.top,
         "right": rect.right,
         "bottom": rect.bottom,
     }));
 
-    BOOL(1) // continue enumeration
+    BOOL(1)
 }
