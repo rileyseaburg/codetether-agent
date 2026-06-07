@@ -1,8 +1,8 @@
 //! OPA Policy Engine Client
 //!
 //! Calls the OPA sidecar over HTTP to evaluate authorization decisions.
-//! When `OPA_URL` is not set, runs in local mode using a compiled-in
-//! copy of the role → permission mappings from `policies/data.json`.
+//! Set `OPA_LOCAL_MODE=true` or `OPA_ENABLED=false` to run in local mode
+//! using the compiled-in role → permission mappings from `policies/data.json`.
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -22,16 +22,20 @@ fn opa_path() -> String {
 
 /// Whether to fail open (allow) when OPA is unreachable.
 fn fail_open() -> bool {
-    std::env::var("OPA_FAIL_OPEN")
-        .unwrap_or_default()
-        .eq_ignore_ascii_case("true")
+    std::env::var("OPA_FAIL_OPEN").is_ok_and(|value| value.eq_ignore_ascii_case("true"))
+}
+
+fn sidecar_disabled(local_mode: bool, opa_enabled: Option<&str>) -> bool {
+    local_mode || opa_enabled.is_some_and(|value| value.eq_ignore_ascii_case("false"))
 }
 
 /// Whether to evaluate policies locally without an OPA sidecar.
 fn local_mode() -> bool {
-    std::env::var("OPA_LOCAL_MODE")
-        .unwrap_or_default()
-        .eq_ignore_ascii_case("true")
+    let opa_enabled = std::env::var("OPA_ENABLED").ok();
+    sidecar_disabled(
+        std::env::var("OPA_LOCAL_MODE").is_ok_and(|value| value.eq_ignore_ascii_case("true")),
+        opa_enabled.as_deref(),
+    )
 }
 
 // ─── Shared HTTP client ──────────────────────────────────────────
@@ -242,34 +246,33 @@ pub async fn enforce_policy(
 mod tests {
     use super::*;
 
-    fn test_admin() -> PolicyUser {
+    fn test_user(roles: &[&str], scopes: &[&str], auth_source: &str) -> PolicyUser {
         PolicyUser {
-            user_id: "admin-1".to_string(),
-            roles: vec!["admin".to_string()],
+            user_id: "test-user".to_string(),
+            roles: roles.iter().copied().map(str::to_owned).collect(),
             tenant_id: Some("t1".to_string()),
-            scopes: vec![],
-            auth_source: "keycloak".to_string(),
+            scopes: scopes.iter().copied().map(str::to_owned).collect(),
+            auth_source: auth_source.to_string(),
         }
+    }
+
+    fn test_admin() -> PolicyUser {
+        test_user(&["admin"], &[], "keycloak")
     }
 
     fn test_viewer() -> PolicyUser {
-        PolicyUser {
-            user_id: "viewer-1".to_string(),
-            roles: vec!["viewer".to_string()],
-            tenant_id: Some("t1".to_string()),
-            scopes: vec![],
-            auth_source: "keycloak".to_string(),
-        }
+        test_user(&["viewer"], &[], "keycloak")
     }
 
     fn test_api_key_user() -> PolicyUser {
-        PolicyUser {
-            user_id: "key-user".to_string(),
-            roles: vec!["editor".to_string()],
-            tenant_id: Some("t1".to_string()),
-            scopes: vec!["tasks:read".to_string(), "tasks:write".to_string()],
-            auth_source: "api_key".to_string(),
-        }
+        test_user(&["editor"], &["tasks:read", "tasks:write"], "api_key")
+    }
+
+    #[test]
+    fn opa_enabled_false_disables_sidecar() {
+        assert!(sidecar_disabled(false, Some("false")));
+        assert!(sidecar_disabled(false, Some("FALSE")));
+        assert!(!sidecar_disabled(false, None));
     }
 
     #[test]
@@ -321,13 +324,7 @@ mod tests {
 
     #[test]
     fn a2a_admin_inherits_admin() {
-        let user = PolicyUser {
-            user_id: "a2a-admin-1".to_string(),
-            roles: vec!["a2a-admin".to_string()],
-            tenant_id: Some("t1".to_string()),
-            scopes: vec![],
-            auth_source: "keycloak".to_string(),
-        };
+        let user = test_user(&["a2a-admin"], &[], "keycloak");
         assert!(evaluate_local(&user, "admin:access"));
     }
 }
