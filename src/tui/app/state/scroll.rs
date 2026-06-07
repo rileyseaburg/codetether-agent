@@ -83,10 +83,8 @@ impl super::AppState {
 
     pub fn set_tool_preview_max_scroll(&mut self, max_scroll: usize) {
         self.tool_preview_last_max_scroll = max_scroll;
-        self.tool_preview_scroll = if self.tool_preview_scroll >= TOOL_PREVIEW_FOLLOW {
-            max_scroll
-        } else {
-            self.tool_preview_scroll.min(max_scroll)
-        };
+        if self.tool_preview_scroll < TOOL_PREVIEW_FOLLOW {
+            self.tool_preview_scroll = self.tool_preview_scroll.min(max_scroll);
+        }
     }
 }

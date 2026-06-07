@@ -8,6 +8,7 @@ use super::super::status_bar::format_timestamp;
 use super::ToolPanelRender;
 use super::item::render_tool_activity_item;
 use super::panel_chrome::{empty_body_lines, panel_footer, panel_header};
+use super::panel_window::{pad_blank_rows, panel_window};
 use super::pending_spinner::append_pending_tool;
 use crate::tui::chat::message::ChatMessage;
 
@@ -34,30 +35,26 @@ pub fn build_tool_activity_panel(
         body_lines = empty_body_lines();
     }
 
-    let visible_lines = super::TOOL_PANEL_VISIBLE_LINES.min(body_lines.len()).max(1);
-    let max_scroll = body_lines.len().saturating_sub(visible_lines);
-    // Sentinel ≥ 1_000_000 means "auto-follow latest"; else clamp to max_scroll.
-    let start = if scroll_offset >= 1_000_000 {
-        max_scroll
-    } else {
-        scroll_offset.min(max_scroll)
-    };
-    let end = (start + visible_lines).min(body_lines.len());
+    let window = panel_window(body_lines.len(), scroll_offset);
     let timestamp = messages
         .first()
         .map(|message| format_timestamp(message.timestamp))
         .unwrap_or_else(|| "--:--:--".to_string());
-    let total = body_lines.len();
     let mut lines: Vec<Line<'static>> = vec![panel_header(
         &timestamp,
         messages.len(),
-        start,
-        end,
-        total,
-        max_scroll,
+        window.start,
+        window.end,
+        window.total,
+        window.max_scroll,
         header_width,
     )];
-    lines.extend(body_lines[start..end].iter().cloned());
-    lines.push(panel_footer(start, max_scroll, header_width));
-    ToolPanelRender { lines, max_scroll }
+    lines.extend(body_lines[window.start..window.end].iter().cloned());
+    let shown = window.end.saturating_sub(window.start);
+    pad_blank_rows(&mut lines, window.visible_lines.saturating_sub(shown));
+    lines.push(panel_footer(window.start, window.max_scroll, header_width));
+    ToolPanelRender {
+        lines,
+        max_scroll: window.max_scroll,
+    }
 }

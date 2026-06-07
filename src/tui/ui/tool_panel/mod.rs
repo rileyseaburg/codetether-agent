@@ -14,6 +14,9 @@ mod item_result;
 mod item_thinking;
 mod panel;
 mod panel_chrome;
+#[cfg(test)]
+mod panel_tests;
+mod panel_window;
 mod pending_spinner;
 mod preview;
 mod preview_excerpt;
