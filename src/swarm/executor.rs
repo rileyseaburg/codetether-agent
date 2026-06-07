@@ -20,7 +20,6 @@ use crate::bus::{AgentBus, BusMessage};
 use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};
 use crate::session::delegation::DelegationState;
 use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo, SwarmEvent};
-use std::sync::Mutex as StdMutex;
 
 // Re-export swarm types for convenience
 pub use super::SwarmMessage;
@@ -32,13 +31,13 @@ use crate::{
     session::helper::runtime::enrich_tool_input_with_runtime_context,
     swarm::{SwarmArtifact, SwarmStats},
     telemetry::SwarmTelemetryCollector,
-    tool::ToolRegistry,
+    tool::{ToolRegistry, feedback::render_with_dir},
     worktree::{WorktreeInfo, WorktreeManager},
 };
 use anyhow::Result;
 use futures::stream::{self, FuturesUnordered, StreamExt};
 use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Instant;
 use tokio::sync::{RwLock, mpsc};
 use tokio::task::AbortHandle;
@@ -2673,6 +2672,7 @@ pub async fn run_agent_loop(
                 truncate_single_result(&result, SIMPLE_TRUNCATE_CHARS)
             };
 
+            let result = render_with_dir(&tool_name, tool_success, working_dir.as_deref(), &result);
             tool_results.push((call_id, tool_name, result));
         }
 
