@@ -9,56 +9,46 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
+mod target_config;
+
 const STUB_HEADER: &str = "[workspace]\n";
 
 /// Idempotently prepend `[workspace]` to the worktree's Cargo.toml.
 ///
-/// Repos without a Cargo.toml (or that already declare `[workspace]`)
-/// are left untouched. After modifying the file we mark it
-/// `--skip-worktree` in the worktree's index so the change cannot be
-/// staged or merged back into the parent branch.
-pub fn inject(worktree_path: &Path) -> Result<()> {
+/// Repos without a Cargo.toml are left untouched. Rust worktrees also get a
+/// local Cargo `target-dir` config under the manager's artifact directory.
+/// Local edits are marked `--skip-worktree` so they cannot be committed.
+pub fn inject(worktree_path: &Path, artifact_base: &Path) -> Result<()> {
     let cargo_toml = worktree_path.join("Cargo.toml");
     if !cargo_toml.exists() {
         return Ok(());
     }
     let original = std::fs::read_to_string(&cargo_toml)
         .with_context(|| format!("Failed to read {}", cargo_toml.display()))?;
-    if original.contains("[workspace]") {
-        return Ok(());
+    if !original.contains("[workspace]") {
+        let updated = format!("{STUB_HEADER}{original}");
+        std::fs::write(&cargo_toml, updated)
+            .with_context(|| format!("Failed to write {}", cargo_toml.display()))?;
+        mark_skip_worktree(worktree_path, "Cargo.toml");
+        tracing::info!(
+            worktree = %worktree_path.display(),
+            "Injected [workspace] stub into worktree Cargo.toml"
+        );
     }
-    let updated = format!("{STUB_HEADER}{original}");
-    std::fs::write(&cargo_toml, updated)
-        .with_context(|| format!("Failed to write {}", cargo_toml.display()))?;
-    let _ = std::process::Command::new("git")
-        .args(["update-index", "--skip-worktree", "Cargo.toml"])
-        .current_dir(worktree_path)
-        .output();
-    tracing::info!(
-        worktree = %worktree_path.display(),
-        "Injected [workspace] stub into worktree Cargo.toml"
-    );
+    target_config::inject(worktree_path, artifact_base)?;
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::inject;
-
-    #[test]
-    fn skips_when_no_cargo_toml() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        inject(dir.path()).expect("non-Rust worktree should be a silent no-op");
-    }
-
-    #[test]
-    fn idempotent_when_workspace_already_present() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        let cargo_toml = dir.path().join("Cargo.toml");
-        std::fs::write(&cargo_toml, "[workspace]\n[package]\nname = \"x\"\n").expect("write");
-        inject(dir.path()).expect("idempotent");
-        let contents = std::fs::read_to_string(&cargo_toml).expect("read");
-        let occurrences = contents.matches("[workspace]").count();
-        assert_eq!(occurrences, 1, "stub must not be duplicated");
-    }
+fn mark_skip_worktree(worktree_path: &Path, file: &str) {
+    let _ = std::process::Command::new("git")
+        .args(["add", "-N", file])
+        .current_dir(worktree_path)
+        .output();
+    let _ = std::process::Command::new("git")
+        .args(["update-index", "--skip-worktree", file])
+        .current_dir(worktree_path)
+        .output();
 }
+
+#[cfg(test)]
+mod tests;

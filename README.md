@@ -123,7 +123,9 @@ codetether pr create --title "feat: add X"  # Create/update pull requests
 codetether models                        # List available models from all providers
 codetether stats                         # Telemetry & execution statistics
 codetether benchmark                     # Run model benchmark suite
-codetether cleanup                       # Clean orphaned worktrees
+codetether cleanup --dry-run             # Preview orphaned worktree cleanup
+codetether cleanup --worktrees-only      # Remove worktrees, preserve branches
+codetether cleanup --artifacts           # Remove worktree Cargo artifacts only
 codetether config --show                 # Show config
 codetether context reset                 # Emit a [CONTEXT RESET] marker in the session
 codetether context browse list           # List virtual session history paths
@@ -711,6 +713,16 @@ stylelint = { enabled = true }
 | `CODETETHER_DATA_DIR` | `.codetether-agent` | Runtime data directory |
 | `CODETETHER_GRPC_PORT` | `50051` | gRPC server port |
 | `CODETETHER_A2A_PEERS` | — | Comma-separated peer seed URLs |
+
+### Runtime Folders
+
+| Path | Purpose | Cleanup |
+|------|---------|---------|
+| `.codetether-agent` | Sessions, crash reports, indexes, browser profile, telemetry | Keep unless intentionally resetting local agent state |
+| `.codetether` | Legacy project memory, ledgers, refactor guard data | Keep until migrated into `.codetether-agent` |
+| `.codetether-worktrees` | Isolated Git worktrees for TUI, Ralph, and swarm execution | Use `codetether cleanup --dry-run` first |
+| `.codetether-worktrees/*/target` | Legacy Cargo build artifacts inside worktrees | Use `codetether cleanup --artifacts` |
+| `.codetether-worktrees/.targets/*` | Current Cargo build artifacts for managed worktrees | Use `codetether cleanup --artifacts` |
 
 ## Performance
 

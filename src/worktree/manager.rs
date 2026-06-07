@@ -36,7 +36,7 @@ impl WorktreeManager {
 
     /// Inject a Cargo workspace stub for Cargo workspace isolation.
     pub fn inject_workspace_stub(&self, worktree_path: &Path) -> anyhow::Result<()> {
-        crate::worktree_stub::inject(worktree_path)
+        crate::worktree_stub::inject(worktree_path, &self.base_dir)
     }
 }
 

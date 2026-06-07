@@ -3,9 +3,12 @@
 //! The module keeps worktree creation, discovery, cleanup, and merge handling
 //! split into small files so each file owns one part of the lifecycle.
 
+mod artifact_collect;
+mod artifacts;
 mod branch;
 mod cleanup;
 mod cleanup_remove;
+mod cleanup_worktrees;
 mod complete;
 mod conflicts;
 mod create;

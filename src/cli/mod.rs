@@ -2,6 +2,7 @@
 
 pub mod auth;
 pub mod browserctl;
+pub mod cleanup_args;
 pub mod clipboard;
 pub mod config;
 pub mod context;
@@ -14,6 +15,7 @@ pub mod search;
 pub mod search_render;
 
 use clap::{Parser, Subcommand};
+pub use cleanup_args::CleanupArgs;
 use std::path::PathBuf;
 
 /// CodeTether Agent - A2A-native AI coding agent
@@ -875,21 +877,6 @@ pub struct StatsArgs {
     /// Show all/summary (default shows summary)
     #[arg(long)]
     pub all: bool,
-}
-
-#[derive(Parser, Debug)]
-pub struct CleanupArgs {
-    /// Dry run - show what would be cleaned up without deleting
-    #[arg(short, long)]
-    pub dry_run: bool,
-
-    /// Clean up worktrees only (not branches)
-    #[arg(long)]
-    pub worktrees_only: bool,
-
-    /// Output as JSON
-    #[arg(long)]
-    pub json: bool,
 }
 
 #[derive(Parser, Debug)]
