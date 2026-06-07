@@ -13,6 +13,7 @@ mod agents_md;
 mod definitions;
 mod prompts;
 mod system_prompt;
+mod vscode_lm_tools;
 
 #[cfg(test)]
 mod tests;

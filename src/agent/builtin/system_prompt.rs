@@ -14,6 +14,7 @@ use std::path::Path;
 
 use super::agents_md::load_all_agents_md;
 use super::prompts::{BUILD_MODE_GUARDRAIL, BUILD_SYSTEM_PROMPT, PLAN_SYSTEM_PROMPT};
+use super::vscode_lm_tools::render_section as render_vscode_lm_tools_section;
 
 /// Builds the build-agent prompt for a working directory.
 ///
@@ -25,7 +26,10 @@ use super::prompts::{BUILD_MODE_GUARDRAIL, BUILD_SYSTEM_PROMPT, PLAN_SYSTEM_PROM
 pub fn build_system_prompt(cwd: &Path) -> String {
     let base_prompt = BUILD_SYSTEM_PROMPT.replace("{cwd}", &cwd.display().to_string());
     let agents_section = render_agents_section(cwd);
-    format!("{base_prompt}{agents_section}{BUILD_GITHUB_AUTH_GUIDANCE}{BUILD_MODE_GUARDRAIL}")
+    let lm_tools_section = render_vscode_lm_tools_section(cwd);
+    format!(
+        "{base_prompt}{agents_section}{lm_tools_section}{BUILD_GITHUB_AUTH_GUIDANCE}{BUILD_MODE_GUARDRAIL}"
+    )
 }
 
 /// Builds the plan-agent prompt for a working directory.
@@ -38,7 +42,11 @@ pub fn build_system_prompt(cwd: &Path) -> String {
 #[allow(dead_code)]
 pub fn build_plan_system_prompt(cwd: &Path) -> String {
     let base_prompt = PLAN_SYSTEM_PROMPT.replace("{cwd}", &cwd.display().to_string());
-    format!("{base_prompt}{}", render_agents_section(cwd))
+    format!(
+        "{base_prompt}{}{}",
+        render_agents_section(cwd),
+        render_vscode_lm_tools_section(cwd)
+    )
 }
 
 fn render_agents_section(cwd: &Path) -> String {
