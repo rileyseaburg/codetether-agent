@@ -10,6 +10,10 @@ mod payloads;
 mod persist;
 mod records;
 mod response;
+mod summary;
+mod summary_count;
+mod summary_scan;
+mod summary_text;
 mod title;
 mod usage;
 

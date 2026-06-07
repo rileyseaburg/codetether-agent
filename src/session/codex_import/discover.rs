@@ -1,8 +1,8 @@
 use super::index::load_session_index;
 use super::info::CodexSessionInfo;
 use super::meta::read_session_meta;
-use super::parse::parse_codex_session_from_path;
 use super::paths::{canonicalize_loose, codex_home_dir, is_jsonl};
+use super::summary::summarize_codex_session_from_path;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -46,8 +46,8 @@ pub(crate) fn discover_codex_sessions_in(
         if canonicalize_loose(Path::new(&meta.cwd)) != canonical_dir {
             continue;
         }
-        match parse_codex_session_from_path(path, titles.get(&meta.id).map(String::as_str)) {
-            Ok(session) => sessions.push(to_info(path.to_path_buf(), session)),
+        match summarize_codex_session_from_path(path, titles.get(&meta.id).map(String::as_str)) {
+            Ok(session) => sessions.push(session),
             Err(error) => {
                 tracing::warn!(path = %path.display(), error = %error, "Skipping invalid Codex session")
             }
@@ -81,17 +81,4 @@ pub(crate) fn find_codex_session_path_by_id(
         }
     }
     Ok(None)
-}
-
-fn to_info(path: PathBuf, session: super::super::Session) -> CodexSessionInfo {
-    CodexSessionInfo {
-        id: session.id,
-        path,
-        title: session.title,
-        created_at: session.created_at,
-        updated_at: session.updated_at,
-        message_count: session.messages.len(),
-        agent: session.agent,
-        directory: session.metadata.directory,
-    }
 }
