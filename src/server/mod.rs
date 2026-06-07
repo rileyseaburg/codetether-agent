@@ -753,8 +753,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/api/provider", get(list_providers))
         .route("/api/agent", get(list_agents))
         // OpenAI-compatible APIs
-        .route("/models", get(models_catalog::list_models))
-        .route("/v1/models", get(models_catalog::list_models))
+        .merge(models_catalog::router())
         .route("/v1/chat/completions", post(openai_chat_completions))
         // Perpetual cognition APIs
         .route("/v1/cognition/start", post(start_cognition))
