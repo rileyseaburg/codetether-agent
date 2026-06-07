@@ -26,7 +26,7 @@ pub(super) fn record_results(
             role: Role::Tool,
             content: vec![ContentPart::ToolResult {
                 tool_call_id: id,
-                content: result.output,
+                content: crate::tool::feedback::render(&name, result.success, &result.output),
             }],
         });
     }
