@@ -29,6 +29,7 @@ mod mouse_result;
 mod report;
 mod right_click;
 mod scroll;
+mod targeted;
 mod text;
 mod validate;
 mod wait;
@@ -42,6 +43,7 @@ pub use key::handle_press_key;
 pub use mouse::{handle_mouse_down, handle_mouse_move, handle_mouse_up};
 pub use right_click::handle_right_click;
 pub use scroll::handle_scroll;
+pub use targeted::{handle_click_client, handle_set_text};
 pub use text::handle_type_text;
 pub use wait::handle_wait_ms;
 

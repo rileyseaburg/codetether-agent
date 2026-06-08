@@ -16,6 +16,8 @@ pub enum ComputerUseAction {
     MouseMove,
     MouseUp,
     TypeText,
+    SetText,
+    ClickClient,
     PressKey,
     Scroll,
     FocusViewport,
