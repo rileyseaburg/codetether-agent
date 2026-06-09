@@ -4,7 +4,7 @@
 //! `SendInput` typed characters reliably. `WM_SETTEXT` writes directly
 //! into the target's text buffer and is broadcast to the control.
 
-use windows::Win32::Foundation::{HWND, LPARAM};
+use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetForegroundWindow, SendMessageW, WM_SETTEXT,
 };
@@ -16,12 +16,12 @@ use windows::Win32::UI::WindowsAndMessaging::{
 pub fn set_foreground_window_text(text: &str) -> anyhow::Result<bool> {
     unsafe {
         let hwnd: HWND = GetForegroundWindow();
-        if hwnd.0.is_null() {
+        if hwnd.0 == 0 {
             return Ok(false);
         }
         let payload: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
         let lp = LPARAM(payload.as_ptr() as isize);
-        let _ = SendMessageW(hwnd, WM_SETTEXT, None, lp);
+        let _ = SendMessageW(hwnd, WM_SETTEXT, WPARAM(0), lp);
         Ok(true)
     }
 }
