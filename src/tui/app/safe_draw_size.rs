@@ -1,4 +1,4 @@
-use ratatui::layout::{Rect, Size};
+use ratatui::layout::Size;
 
 const MAX_RENDER_CELLS: u32 = 500_000;
 const MAX_RENDER_DIMENSION: u16 = 1_000;
@@ -10,10 +10,6 @@ pub fn safe_size(size: Size) -> bool {
         && size.width <= MAX_RENDER_DIMENSION
         && size.height <= MAX_RENDER_DIMENSION
         && cells <= MAX_RENDER_CELLS
-}
-
-pub const fn rect_for(size: Size) -> Rect {
-    Rect::new(0, 0, size.width, size.height)
 }
 
 #[cfg(test)]

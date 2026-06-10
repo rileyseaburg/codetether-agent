@@ -16,7 +16,7 @@ use ratatui::{Terminal, backend::CrosstermBackend};
 mod safe_draw_size;
 
 use crate::tui::{app::session_runtime::SessionView, app::state::App, ui::main::ui};
-use safe_draw_size::{rect_for, safe_size};
+use safe_draw_size::safe_size;
 
 /// Draw one TUI frame when the reported terminal size is sane.
 ///
@@ -56,7 +56,6 @@ pub fn draw_ui(
         log_skipped_size(size);
         return Ok(());
     }
-    terminal.resize(rect_for(size))?;
     terminal.draw(|f| ui(f, app, session))?;
     Ok(())
 }
