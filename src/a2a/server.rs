@@ -2,7 +2,6 @@
 
 use super::types::*;
 use crate::session::SessionEvent;
-use crate::telemetry::record_persistent;
 use anyhow::Result;
 use axum::{
     Router,
@@ -13,14 +12,19 @@ use axum::{
 };
 use dashmap::DashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::bus::BusMessage;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
+#[path = "server_intro.rs"]
+mod server_intro;
 #[path = "server_session_event.rs"]
 mod server_session_event;
+#[path = "server_telemetry.rs"]
+mod server_telemetry;
+use server_telemetry::record_a2a_message_telemetry;
 
 /// A2A Server state
 #[derive(Clone)]
@@ -50,12 +54,18 @@ impl A2AServer {
         }
     }
 
-    /// Create the router for A2A endpoints
+    /// Create the router for A2A endpoints.
+    ///
+    /// RPC calls require a Bearer token when `CODETETHER_AUTH_TOKEN` is
+    /// set; agent-card discovery paths stay public.
     pub fn router(self) -> Router {
         Router::new()
             .route("/.well-known/agent.json", get(get_agent_card))
             .route("/.well-known/agent-card.json", get(get_agent_card))
             .route("/", post(handle_rpc))
+            .layer(axum::middleware::from_fn(
+                crate::a2a::server_auth::require_a2a_auth,
+            ))
             .with_state(self)
     }
 
@@ -176,33 +186,6 @@ fn emit_a2a_message(server: &A2AServer, task_id: &str, from: &str, to: &str, mes
     );
 }
 
-fn record_a2a_message_telemetry(
-    tool_name: &str,
-    task_id: &str,
-    blocking: bool,
-    prompt: &str,
-    duration: Duration,
-    success: bool,
-    output: Option<String>,
-    error: Option<String>,
-) {
-    let record = crate::telemetry::A2AMessageRecord {
-        tool_name: tool_name.to_string(),
-        task_id: task_id.to_string(),
-        blocking,
-        prompt: prompt.to_string(),
-        duration_ms: duration.as_millis() as u64,
-        success,
-        output,
-        error,
-        timestamp: chrono::Utc::now(),
-    };
-    let _ = record_persistent(
-        "a2a_message",
-        &serde_json::to_value(&record).unwrap_or_default(),
-    );
-}
-
 /// Handle JSON-RPC requests
 async fn handle_rpc(
     State(server): State<A2AServer>,
@@ -262,6 +245,11 @@ async fn handle_message_send(
         history: vec![params.message.clone()],
         metadata: std::collections::HashMap::new(),
     };
+
+    // Mesh introductions get a canned ack: no session, no LLM call.
+    if crate::a2a::intro::is_intro(&params.message) {
+        return server_intro::handle_intro(server, &task_id, &params.message, task);
+    }
 
     server.tasks.insert(task_id.clone(), task.clone());
     emit_a2a_inbound(server, &task_id, &params.message);
@@ -546,6 +534,11 @@ async fn handle_message_stream(
         history: vec![params.message.clone()],
         metadata: std::collections::HashMap::new(),
     };
+
+    // Mesh introductions get a canned ack: no session, no LLM call.
+    if crate::a2a::intro::is_intro(&params.message) {
+        return server_intro::handle_intro(server, &task_id, &params.message, task);
+    }
 
     server.tasks.insert(task_id.clone(), task.clone());
     emit_a2a_inbound(server, &task_id, &params.message);

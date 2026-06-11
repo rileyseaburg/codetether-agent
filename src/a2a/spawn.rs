@@ -45,10 +45,10 @@
 //! source map).
 
 use crate::a2a::client::A2AClient;
+use crate::a2a::intro::send_intro;
 use crate::a2a::lan;
 use crate::a2a::mdns::{self, DiscoveredPeer};
 use crate::a2a::server::A2AServer;
-use crate::a2a::types::{Message, MessageRole, MessageSendConfiguration, MessageSendParams, Part};
 use crate::bus::AgentBus;
 use crate::cli::SpawnArgs;
 use anyhow::{Context, Result};
@@ -676,7 +676,11 @@ async fn discovery_loop(
                 continue;
             };
 
-            let peer_id = format!("{}::{}", endpoint, card.name);
+            // Dedup by endpoint only: card names embed the peer PID and
+            // churn on every restart, which caused intro storms. The
+            // persistent ledger in `intro::send` handles cross-restart
+            // dedup on our side.
+            let peer_id = endpoint.trim_end_matches('/').to_string();
             let is_new = {
                 let mut known = discovered.lock().await;
                 known.insert(peer_id)
@@ -724,38 +728,6 @@ async fn try_fetch_agent_card(endpoint: &str) -> Result<crate::a2a::types::Agent
     }
     let card = client.get_agent_card().await?;
     Ok(card)
-}
-
-async fn send_intro(endpoint: &str, agent_name: &str, self_url: &str) -> Result<()> {
-    let mut client = A2AClient::new(endpoint);
-    if let Ok(token) = std::env::var("CODETETHER_AUTH_TOKEN") {
-        client = client.with_token(token);
-    }
-    let payload = MessageSendParams {
-        message: Message {
-            message_id: uuid::Uuid::new_v4().to_string(),
-            role: MessageRole::User,
-            parts: vec![Part::Text {
-                text: format!(
-                    "Hello from {agent_name} ({self_url}). I am online and available for A2A collaboration."
-                ),
-            }],
-            context_id: None,
-            task_id: None,
-            metadata: std::collections::HashMap::new(),
-            extensions: vec![],
-        },
-        configuration: Some(MessageSendConfiguration {
-            accepted_output_modes: vec!["text/plain".to_string()],
-            blocking: Some(false),
-            history_length: Some(0),
-            push_notification_config: None,
-        }),
-    };
-
-    let _ = client.send_message(payload).await?;
-    tracing::info!(peer = %endpoint, "Auto-intro message sent");
-    Ok(())
 }
 
 #[cfg(test)]

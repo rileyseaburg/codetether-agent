@@ -14,12 +14,14 @@ pub mod client;
 #[path = "git_credentials/mod.rs"]
 pub mod git_credentials;
 pub mod grpc;
+pub mod intro;
 pub mod lan;
 pub mod mdns;
 pub mod mdns_liveness;
 pub mod peer_liveness;
 pub mod prompt_runtime;
 pub mod server;
+pub mod server_auth;
 pub mod session_config;
 pub mod session_resolve;
 pub mod spawn;
