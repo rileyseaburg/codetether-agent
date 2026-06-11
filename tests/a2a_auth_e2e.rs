@@ -1,7 +1,9 @@
 //! End-to-end test for A2A RPC bearer auth.
 //!
-//! Lives in its own test binary: it sets `CODETETHER_AUTH_TOKEN`, which
-//! is process-global and would poison parallel tests sharing the env.
+//! Lives in its own test binary because it sets `CODETETHER_AUTH_TOKEN`,
+//! which is process-global and would poison parallel tests sharing
+//! the env. The `OnceLock` cache in `server_auth.rs` makes the token
+//! stable for the rest of the binary's lifetime.
 
 use codetether_agent::a2a::server::A2AServer;
 use serde_json::json;
@@ -47,11 +49,20 @@ async fn rpc_requires_bearer_when_token_set() {
         .unwrap();
     assert_eq!(r.status(), 200, "valid bearer must pass auth");
 
-    // 4. Agent card stays public without a token.
+    // 4. Agent card stays public even with auth enabled.
     let r = client
         .get(format!("{url}/.well-known/agent.json"))
         .send()
         .await
         .unwrap();
     assert_eq!(r.status(), 200, "discovery must remain public");
+}
+
+#[test]
+fn constant_time_eq_does_not_leak_length() {
+    use codetether_agent::a2a::server_auth::constant_time_eq as ct;
+    assert!(ct(b"hello", b"hello"));
+    assert!(!ct(b"hello", b"world"));
+    assert!(!ct(b"short", b"longer-token"));
+    assert!(!ct(b"a", b""));
 }

@@ -1,4 +1,4 @@
-//! End-to-end tests for A2A intro short-circuit and RPC bearer auth.
+//! End-to-end tests for the A2A intro short-circuit path.
 //!
 //! Boots the real `A2AServer::router()` on a loopback port. No LLM
 //! provider is configured in this test environment, so a successful
