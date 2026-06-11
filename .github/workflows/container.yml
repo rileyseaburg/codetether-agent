@@ -51,6 +51,8 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push
+        id: build_push
+        continue-on-error: true
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -59,6 +61,24 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            RUSTC_WRAPPER=${{ env.RUSTC_WRAPPER }}
+            SCCACHE_GHA_ENABLED=true
+
+      # Long (>1h) builds can outlive the buildx session, making the final
+      # registry push fail with "DeadlineExceeded: no active session".
+      # Retrying immediately reuses the already-built layers (gha cache +
+      # local layer store), so this second attempt is effectively push-only
+      # with a fresh session.
+      - name: Retry push on session expiry
+        if: steps.build_push.outcome == 'failure'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
           build-args: |
             RUSTC_WRAPPER=${{ env.RUSTC_WRAPPER }}
             SCCACHE_GHA_ENABLED=true
