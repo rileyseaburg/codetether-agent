@@ -4,9 +4,6 @@
 //! loop is never blocked by a ledger write — but it never overwrites
 //! a ledger it cannot read.
 
-use std::collections::HashSet;
-use std::path::Path;
-
 use super::ledger_load::load;
 use super::ledger_path::ledger_path;
 
