@@ -15,4 +15,8 @@ pub use detect::is_intro;
 pub use send::send_intro;
 
 #[cfg(test)]
+#[path = "tests_fixtures.rs"]
+pub mod tests_fixtures;
+
+#[cfg(test)]
 mod tests;
