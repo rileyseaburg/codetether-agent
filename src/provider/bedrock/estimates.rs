@@ -53,11 +53,12 @@ pub fn estimate_context_window(model_id: &str) -> usize {
 /// ```rust
 /// use codetether_agent::provider::bedrock::estimate_max_output;
 /// assert_eq!(estimate_max_output("us.anthropic.claude-sonnet-4-6-v1:0"), 128_000);
+/// assert_eq!(estimate_max_output("global.anthropic.claude-fable-5"), 128_000);
 /// assert_eq!(estimate_max_output("amazon.nova-pro-v1:0"), 5_000);
 /// ```
 pub fn estimate_max_output(model_id: &str) -> usize {
     let id = model_id.to_lowercase();
-    if id.contains("claude-opus-4-7") {
+    if id.contains("claude-opus-4-7") || id.contains("claude-fable-5") {
         128_000
     } else if id.contains("claude-opus-4-6")
         || id.contains("claude-opus-4-5")

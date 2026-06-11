@@ -1,0 +1,55 @@
+use serde_json::{Map, Value, json};
+
+pub(super) fn additional_model_request_fields(model_id: &str) -> Option<Value> {
+    let mut fields = Map::new();
+    if let Some(service_tier) = configured_service_tier() {
+        tracing::debug!(
+            provider = "bedrock",
+            service_tier = %service_tier,
+            "Applying Bedrock service tier override"
+        );
+        fields.insert("service_tier".into(), json!(service_tier));
+    }
+    if uses_adaptive_thinking(model_id) {
+        fields.insert("thinking".into(), json!({"type": "adaptive"}));
+        fields.insert(
+            "output_config".into(),
+            json!({"effort": configured_effort()}),
+        );
+    }
+    (!fields.is_empty()).then(|| Value::Object(fields))
+}
+
+fn configured_service_tier() -> Option<String> {
+    std::env::var("CODETETHER_BEDROCK_SERVICE_TIER")
+        .ok()
+        .map(|v| v.trim().to_ascii_lowercase())
+        .filter(|v| !v.is_empty())
+}
+
+fn configured_effort() -> &'static str {
+    let raw = std::env::var("CODETETHER_BEDROCK_THINKING_EFFORT").unwrap_or_default();
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "medium" => "medium",
+        "high" => "high",
+        _ => "low",
+    }
+}
+
+fn uses_adaptive_thinking(model_id: &str) -> bool {
+    let id = model_id.to_ascii_lowercase();
+    id.contains("claude-fable-5")
+        || id.contains("claude-mythos-5")
+        || id.contains("claude-opus-4-7")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::additional_model_request_fields;
+
+    #[test]
+    fn fable_fields_include_adaptive_thinking() {
+        let fields = additional_model_request_fields("global.anthropic.claude-fable-5").unwrap();
+        assert_eq!(fields["thinking"]["type"], "adaptive");
+    }
+}

@@ -36,26 +36,26 @@ pub mod auth;
 pub mod body;
 pub mod convert;
 pub mod discovery;
+pub mod empty_guard;
 pub mod estimates;
 pub mod eventstream;
+pub mod output_budget;
+pub mod reasoning;
+pub mod reasoning_audit;
 pub mod response;
 pub mod retry;
 pub mod sigv4;
 pub mod stream;
 
-pub use aliases::resolve_model_id;
 pub use auth::{AwsCredentials, BedrockAuth};
-pub use body::build_converse_body;
 pub use convert::{convert_messages, convert_tools};
 pub use estimates::{estimate_context_window, estimate_max_output};
 pub use response::{BedrockError, parse_converse_response};
+pub use {aliases::resolve_model_id, body::build_converse_body};
 
 use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
-use crate::util;
-use anyhow::{Context, Result};
-use async_trait::async_trait;
-use reqwest::Client;
-use std::fmt;
+use {crate::util, anyhow::Context, anyhow::Result, async_trait::async_trait};
+use {reqwest::Client, std::fmt};
 
 /// Default AWS region when none is configured via env or config file.
 pub const DEFAULT_REGION: &str = "us-east-1";

@@ -18,10 +18,9 @@
 //! assert_eq!(resp.usage.total_tokens, 4);
 //! ```
 
+use super::reasoning::ReasoningContentBlock;
 use crate::provider::{CompletionResponse, ContentPart, FinishReason, Message, Role, Usage};
-use anyhow::{Context, Result};
-use serde::Deserialize;
-use serde_json::Value;
+use {anyhow::Context, anyhow::Result, serde::Deserialize, serde_json::Value};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,17 +58,6 @@ enum ConverseContent {
         #[serde(rename = "toolUse")]
         tool_use: ConverseToolUse,
     },
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ReasoningContentBlock {
-    reasoning_text: ReasoningText,
-}
-
-#[derive(Debug, Deserialize)]
-struct ReasoningText {
-    text: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -129,11 +117,8 @@ pub fn parse_converse_response(text: &str) -> Result<CompletionResponse> {
     for part in &response.output.message.content {
         match part {
             ConverseContent::ReasoningContent { reasoning_content } => {
-                if !reasoning_content.reasoning_text.text.is_empty() {
-                    content.push(ContentPart::Thinking {
-                        text: reasoning_content.reasoning_text.text.clone(),
-                        signature: None,
-                    });
+                if let Some(part) = reasoning_content.to_content_part() {
+                    content.push(part);
                 }
             }
             ConverseContent::Text { text } => {
@@ -156,6 +141,7 @@ pub fn parse_converse_response(text: &str) -> Result<CompletionResponse> {
     let finish_reason = if has_tool_calls {
         FinishReason::ToolCalls
     } else {
+        super::empty_guard::check_visible_output(&content, response.stop_reason.as_deref())?;
         match response.stop_reason.as_deref() {
             Some("end_turn") | Some("stop") | Some("stop_sequence") => FinishReason::Stop,
             Some("max_tokens") => FinishReason::Length,

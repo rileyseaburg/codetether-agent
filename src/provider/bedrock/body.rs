@@ -24,8 +24,11 @@
 //! ```
 
 use super::convert::{convert_messages, convert_tools};
-use crate::provider::CompletionRequest;
-use serde_json::{Value, json};
+use super::output_budget::effective_max_tokens;
+use fields::additional_model_request_fields;
+use {crate::provider::CompletionRequest, serde_json::Value, serde_json::json};
+
+mod fields;
 
 /// Build the JSON body for a Bedrock Converse API request.
 ///
@@ -100,7 +103,7 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
     }
 
     let mut inference_config = json!({});
-    inference_config["maxTokens"] = json!(request.max_tokens.unwrap_or(8192));
+    inference_config["maxTokens"] = json!(effective_max_tokens(request.max_tokens, model_id));
 
     let skip_temperature = model_id.to_ascii_lowercase().contains("claude-opus-4-7")
         || model_id.to_ascii_lowercase().contains("claude-fable-5");
@@ -120,13 +123,8 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
     }
     body["inferenceConfig"] = inference_config;
 
-    if let Some(service_tier) = configured_service_tier() {
-        tracing::debug!(
-            provider = "bedrock",
-            service_tier = %service_tier,
-            "Applying Bedrock service tier override"
-        );
-        body["additionalModelRequestFields"] = json!({"service_tier": service_tier});
+    if let Some(fields) = additional_model_request_fields(model_id) {
+        body["additionalModelRequestFields"] = fields;
     }
 
     if !tools.is_empty() {
@@ -134,15 +132,6 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
     }
 
     body
-}
-
-/// Read the `CODETETHER_BEDROCK_SERVICE_TIER` env var and return it normalized
-/// (lowercased, trimmed). Returns `None` when unset or empty.
-fn configured_service_tier() -> Option<String> {
-    std::env::var("CODETETHER_BEDROCK_SERVICE_TIER")
-        .ok()
-        .map(|v| v.trim().to_ascii_lowercase())
-        .filter(|v| !v.is_empty())
 }
 
 /// Prompt caching is on by default; set `CODETETHER_BEDROCK_PROMPT_CACHE=0`

@@ -15,25 +15,32 @@
 //! the streamed previews are truncated.
 
 use super::super::SessionEvent;
-use crate::provider::{ContentPart, FinishReason, Message, Role, StreamChunk, Usage};
+use crate::provider::{StreamChunk, Usage};
 use anyhow::Result;
 use futures::StreamExt;
 use futures::stream::BoxStream;
 use std::collections::HashMap;
 
-#[derive(Default)]
-struct ToolAccumulator {
-    id: String,
-    name: String,
-    arguments: String,
-}
+mod empty;
+mod finalize;
+mod text_acc;
+#[cfg(test)]
+mod thinking_tests;
+mod tool_acc;
+
+use finalize::ToolAccumulator;
 
 /// Collect a streaming completion into a [`CompletionResponse`](crate::provider::CompletionResponse),
 /// optionally forwarding incremental events.
 ///
-/// Reads [`StreamChunk`]s from `stream`, accumulates assistant text and
-/// tool-call argument deltas keyed by tool-call id, and tracks the final
-/// [`FinishReason`] and [`Usage`]. When `event_tx` is `Some`, each text delta
+/// Reads [`StreamChunk`]s from `stream`, accumulates assistant text,
+/// thinking/reasoning deltas, and tool-call argument deltas keyed by
+/// tool-call id, and tracks the final
+/// [`FinishReason`](crate::provider::FinishReason) and [`Usage`]. Thinking
+/// deltas are preserved as a leading
+/// [`ContentPart::Thinking`](crate::provider::ContentPart) so a
+/// thinking-only completion never yields an empty assistant message.
+/// When `event_tx` is `Some`, each text delta
 /// triggers a [`SessionEvent::TextChunk`] carrying the full accumulated text
 /// up to that point — truncated to [`stream_caps::MAX_STREAM_SNAPSHOT_BYTES`](super::stream_caps::MAX_STREAM_SNAPSHOT_BYTES) with a
 /// `" …[truncated]"` suffix when exceeded.
@@ -51,8 +58,8 @@ struct ToolAccumulator {
 ///
 /// # Errors
 ///
-/// Returns [`anyhow::Error`] if the stream yields a terminal error chunk or if
-/// response assembly fails.
+/// Returns [`anyhow::Error`] if the stream yields a terminal error chunk,
+/// response assembly fails, or the stream ends without assistant content.
 ///
 /// # Examples
 ///
@@ -62,7 +69,9 @@ struct ToolAccumulator {
 /// use futures::stream;
 ///
 /// // In practice the stream comes from a Provider::stream() call.
-/// let s = Box::pin(stream::empty());
+/// let s = Box::pin(stream::iter([codetether_agent::provider::StreamChunk::Text(
+///     "ok".into(),
+/// )]));
 /// let response = collect_stream_completion_with_events(s, None).await.unwrap();
 /// // `response` is a CompletionResponse; inspect it as needed.
 /// let _ = response;
@@ -73,6 +82,7 @@ pub async fn collect_stream_completion_with_events(
     event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
 ) -> Result<crate::provider::CompletionResponse> {
     let mut text = String::new();
+    let mut thinking = String::new();
     let mut tools = Vec::<ToolAccumulator>::new();
     let mut tool_index_by_id = HashMap::<String, usize>::new();
     let mut usage = Usage::default();
@@ -80,52 +90,19 @@ pub async fn collect_stream_completion_with_events(
     while let Some(chunk) = stream.next().await {
         match chunk {
             StreamChunk::Text(delta) => {
-                if delta.is_empty() {
-                    continue;
-                }
-                super::stream_caps::ensure_text_room(text.len(), delta.len())?;
-                text.push_str(&delta);
-                if let Some(tx) = event_tx {
-                    let to_send = super::stream_caps::snapshot_for_send(&text);
-                    let _ = tx.send(SessionEvent::TextChunk(to_send)).await;
-                }
+                text_acc::on_text(&mut text, &delta, event_tx).await?;
             }
             StreamChunk::ToolCallStart { id, name } => {
-                let next_idx = tools.len();
-                let idx = *tool_index_by_id.entry(id.clone()).or_insert(next_idx);
-                if idx == next_idx {
-                    tools.push(ToolAccumulator {
-                        id,
-                        name,
-                        arguments: String::new(),
-                    });
-                } else if tools[idx].name == "tool" {
-                    tools[idx].name = name;
-                }
+                tool_acc::on_tool_start(&mut tools, &mut tool_index_by_id, id, name);
             }
             StreamChunk::ToolCallDelta {
                 id,
                 arguments_delta,
             } => {
-                if let Some(idx) = tool_index_by_id.get(&id).copied() {
-                    super::stream_caps::ensure_tool_args_room(
-                        tools[idx].arguments.len(),
-                        arguments_delta.len(),
-                        &tools[idx].id,
-                    )?;
-                    tools[idx].arguments.push_str(&arguments_delta);
-                } else {
-                    super::stream_caps::ensure_tool_args_room(0, arguments_delta.len(), &id)?;
-                    let idx = tools.len();
-                    tool_index_by_id.insert(id.clone(), idx);
-                    tools.push(ToolAccumulator {
-                        id,
-                        name: "tool".to_string(),
-                        arguments: arguments_delta,
-                    });
-                }
+                tool_acc::on_tool_delta(&mut tools, &mut tool_index_by_id, id, arguments_delta)?;
             }
-            StreamChunk::ToolCallEnd { .. } | StreamChunk::Thinking(_) => {}
+            StreamChunk::ToolCallEnd { .. } => {}
+            StreamChunk::Thinking(delta) => text_acc::on_thinking(&mut thinking, &delta, event_tx)?,
             StreamChunk::Done { usage: done_usage } => {
                 if let Some(done_usage) = done_usage {
                     usage = done_usage;
@@ -135,34 +112,5 @@ pub async fn collect_stream_completion_with_events(
         }
     }
 
-    let mut content = Vec::new();
-    if !text.is_empty() {
-        content.push(ContentPart::Text { text });
-    }
-    for tool in tools {
-        content.push(ContentPart::ToolCall {
-            id: tool.id,
-            name: tool.name,
-            arguments: tool.arguments,
-            thought_signature: None,
-        });
-    }
-
-    let finish_reason = if content
-        .iter()
-        .any(|part| matches!(part, ContentPart::ToolCall { .. }))
-    {
-        FinishReason::ToolCalls
-    } else {
-        FinishReason::Stop
-    };
-
-    Ok(crate::provider::CompletionResponse {
-        message: Message {
-            role: Role::Assistant,
-            content,
-        },
-        usage,
-        finish_reason,
-    })
+    empty::reject(finalize::build_response(thinking, text, tools, usage))
 }
