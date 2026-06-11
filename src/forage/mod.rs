@@ -8,6 +8,7 @@ use crate::okr::{
 };
 use crate::provider::ProviderRegistry;
 use crate::swarm::{DecompositionStrategy, ExecutionMode, SwarmConfig, SwarmExecutor};
+mod quality_shell;
 mod tetherscript_score;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -806,26 +807,20 @@ async fn run_quality_gates(changed_files: &[String]) -> Result<(String, bool)> {
     let mut results = Vec::new();
     let mut all_passed = true;
 
-    // Run cargo check (fast type checking)
-    let check_output = Command::new("cargo")
-        .args(["check", "--message-format=short"])
-        .output();
-
-    match check_output {
+    match quality_shell::run("cargo check --message-format=short").await {
         Ok(output) => {
-            let status = if output.status.success() {
+            let status = if output.success {
                 "PASS"
             } else {
                 all_passed = false;
                 "FAIL"
             };
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let summary = if stderr.chars().count() > 200 {
-                truncate_chars_with_suffix(stderr.as_ref(), 200, " [...truncated]")
-            } else if stderr.is_empty() {
+            let summary = if output.combined.chars().count() > 200 {
+                truncate_chars_with_suffix(&output.combined, 200, " [...truncated]")
+            } else if output.combined.is_empty() {
                 "no errors".to_string()
             } else {
-                stderr.to_string()
+                output.combined
             };
             results.push(format!("cargo check: {} - {}", status, summary));
         }
@@ -835,26 +830,20 @@ async fn run_quality_gates(changed_files: &[String]) -> Result<(String, bool)> {
         }
     }
 
-    // Run cargo test (if check passed or for important changes)
-    let test_output = Command::new("cargo")
-        .args(["test", "--quiet", "--", "--nocapture"])
-        .output();
-
-    match test_output {
+    match quality_shell::run("cargo test --quiet -- --nocapture").await {
         Ok(output) => {
-            let status = if output.status.success() {
+            let status = if output.success {
                 "PASS"
             } else {
                 all_passed = false;
                 "FAIL"
             };
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let summary = if stdout.chars().count() > 300 {
-                truncate_chars_with_suffix(stdout.as_ref(), 300, " [...truncated]")
-            } else if stdout.is_empty() {
+            let summary = if output.combined.chars().count() > 300 {
+                truncate_chars_with_suffix(&output.combined, 300, " [...truncated]")
+            } else if output.combined.is_empty() {
                 "no test output".to_string()
             } else {
-                stdout.to_string()
+                output.combined
             };
             results.push(format!("cargo test: {} - {}", status, summary));
         }
@@ -877,6 +866,7 @@ async fn execute_opportunity_with_run(
         session: None,
         model: args.model.clone(),
         agent: Some("build".to_string()),
+        access_mode: None,
         format: "default".to_string(),
         file: Vec::new(),
         codex_session: None,

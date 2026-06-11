@@ -3,6 +3,7 @@
 use super::state_store::{RalphRunState, RalphStateStore, StoryResultEntry};
 use super::types::*;
 use super::verification::run_story_verification;
+use super::{git_policy, quality_shell};
 use crate::bus::AgentBus;
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
 use crate::provenance::{
@@ -967,19 +968,14 @@ impl RalphLoop {
                                         ("build", &checks.build),
                                     ] {
                                         if let Some(command) = cmd {
-                                            let cmd_output = std::process::Command::new("/bin/sh")
-                                                .arg("-c")
-                                                .arg(command)
-                                                .current_dir(&cargo_root)
-                                                .output();
+                                            let cmd_output =
+                                                quality_shell::run(&cargo_root, command).await;
                                             match cmd_output {
-                                                Ok(o) if o.status.success() => {}
+                                                Ok(o) if o.success => {}
                                                 Ok(o) => {
-                                                    let stderr = String::from_utf8_lossy(&o.stderr);
-                                                    let stdout = String::from_utf8_lossy(&o.stdout);
-                                                    let combined = format!("{stdout}\n{stderr}");
                                                     // Extract error lines for agent feedback
-                                                    let errors: String = combined
+                                                    let errors: String = o
+                                                        .combined
                                                         .lines()
                                                         .filter(|l| {
                                                             l.starts_with("error")
@@ -2060,15 +2056,12 @@ Working directory: {}
 
     /// Commit changes in a specific directory
     fn commit_in_dir(&self, dir: &PathBuf, story: &UserStory) -> anyhow::Result<()> {
-        // Stage all changes
-        let _ = Command::new("git")
-            .args(["add", "-A"])
-            .current_dir(dir)
-            .output();
+        git_policy::guard(dir, "git add -A")?;
 
         // Commit with story reference
         let msg = format!("feat({}): {}", story.id.to_lowercase(), story.title);
         let provenance = self.commit_provenance();
+        git_policy::guard(dir, &format!("git commit -m {msg}"))?;
         let _ = git_commit_with_provenance_blocking(dir, &msg, Some(&provenance));
 
         Ok(())
@@ -2156,16 +2149,13 @@ Working directory: {}
         ] {
             if let Some(command) = cmd {
                 debug!("Running {} check in {:?}: {}", name, cargo_root, command);
-                let output = Command::new("/bin/sh")
-                    .arg("-c")
-                    .arg(command)
-                    .current_dir(&cargo_root)
-                    .output()
+                let output = quality_shell::run(&cargo_root, command)
+                    .await
                     .map_err(|e| {
                         anyhow::anyhow!("Failed to run quality check '{}': {}", name, e)
                     })?;
 
-                let passed = output.status.success();
+                let passed = output.success;
                 self.try_send_event(RalphEvent::StoryQualityCheck {
                     story_id: story_id.to_string(),
                     check_name: name.to_string(),
@@ -2173,10 +2163,8 @@ Working directory: {}
                 });
 
                 if !passed {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    let combined = format!("{}\n{}", stdout, stderr);
-                    let error_summary: String = combined
+                    let error_summary: String = output
+                        .combined
                         .lines()
                         .filter(|line| {
                             line.starts_with("error")
@@ -2338,15 +2326,12 @@ Respond with the implementation and any shell commands needed.
     fn commit_story(&self, story: &UserStory) -> anyhow::Result<()> {
         info!("Committing changes for story: {}", story.id);
 
-        // Stage all changes
-        let _ = Command::new("git")
-            .args(["add", "-A"])
-            .current_dir(&self.state.working_dir)
-            .output();
+        git_policy::guard(&self.state.working_dir, "git add -A")?;
 
         // Commit with story reference
         let msg = format!("feat({}): {}", story.id.to_lowercase(), story.title);
         let provenance = self.commit_provenance();
+        git_policy::guard(&self.state.working_dir, &format!("git commit -m {msg}"))?;
         match git_commit_with_provenance_blocking(&self.state.working_dir, &msg, Some(&provenance))
         {
             Ok(output) if output.status.success() => {
@@ -2375,12 +2360,13 @@ Respond with the implementation and any shell commands needed.
     /// Git checkout
     fn git_checkout(&self, branch: &str) -> anyhow::Result<()> {
         // Try to checkout, create if doesn't exist
-        let output = Command::new("git")
-            .args(["checkout", branch])
-            .current_dir(&self.state.working_dir)
-            .output()?;
+        let output = git_policy::checkout(&self.state.working_dir, branch)?;
 
         if !output.status.success() {
+            git_policy::guard(
+                &self.state.working_dir,
+                &format!("git checkout -b {branch}"),
+            )?;
             Command::new("git")
                 .args(["checkout", "-b", branch])
                 .current_dir(&self.state.working_dir)

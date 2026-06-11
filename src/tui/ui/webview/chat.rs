@@ -34,7 +34,7 @@ pub fn render_webview_input(f: &mut Frame, app: &App, area: Rect) {
     } else {
         ""
     };
-    let title = format!(" Input{mode_label} ");
+    let title = format!(" Message (Enter to send, / for commands){mode_label} ");
     let block = Block::default()
         .borders(Borders::ALL)
         .title(title)

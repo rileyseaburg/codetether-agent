@@ -5,8 +5,9 @@
 //!
 //! # Examples
 //!
-//! ```ignore
-//! let prompt = codetether::agent::builtin::build_system_prompt(std::path::Path::new("."));
+//! ```rust,no_run
+//! let prompt = codetether_agent::agent::builtin::build_system_prompt(std::path::Path::new("."));
+//! assert!(!prompt.is_empty());
 //! ```
 
 mod agents_md;
@@ -18,6 +19,8 @@ mod vscode_lm_tools;
 #[cfg(test)]
 mod tests;
 
+#[allow(unused_imports)]
+pub use agents_md::load_all_agents_md_with_byte_cap;
 #[allow(unused_imports)]
 pub use agents_md::{load_agents_md, load_all_agents_md};
 pub use definitions::{build_agent, explore_agent, plan_agent};

@@ -1,5 +1,8 @@
 //! Non-interactive run command
 
+mod events;
+mod jsonl;
+
 use super::RunArgs;
 use crate::autochat::model_rotation::{RelayModelRotation, build_round_robin_model_rotation};
 use crate::autochat::shared_context::{
@@ -8,12 +11,10 @@ use crate::autochat::shared_context::{
 };
 use crate::autochat::transport::{attach_handoff_receiver, consume_handoff_by_correlation};
 use crate::bus::{AgentBus, relay::ProtocolRelayRuntime, relay::RelayAgentProfile};
-use crate::config::Config;
 use crate::okr::{ApprovalDecision, KeyResult, Okr, OkrRepository, OkrRun};
 use crate::provider::{ContentPart, Message, Role};
 use crate::rlm::{FinalPayload, RlmExecutor};
-use crate::session::Session;
-use crate::session::import_codex_session_by_id;
+use crate::session::{Session, import_codex_session_by_id};
 use anyhow::Result;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::collections::HashMap;
@@ -552,7 +553,20 @@ async fn decide_dynamic_spawn_with_registry(
 }
 
 pub async fn execute(args: RunArgs) -> Result<()> {
+    let jsonl_output = jsonl::enabled(&args.format);
+    if jsonl_output {
+        jsonl::write_started()?;
+    }
+    let result = execute_inner(args).await;
+    if jsonl_output && let Err(error) = &result {
+        jsonl::write_failed(error.to_string())?;
+    }
+    result
+}
+
+async fn execute_inner(args: RunArgs) -> Result<()> {
     let message = args.message.trim();
+    let jsonl_output = jsonl::enabled(&args.format);
     super::run_checkpoint::validate_auto_continue(args.auto_continue_until)?;
 
     if message.is_empty() {
@@ -576,15 +590,17 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 "Speculative branch assigned"
             );
         }
-        println!(
-            "[speculative] {} parallel branches queued (collapse controller will race + prune)",
-            runner.branch_count
-        );
+        if !jsonl_output {
+            println!(
+                "[speculative] {} parallel branches queued (collapse controller will race + prune)",
+                runner.branch_count
+            );
+        }
         // TODO: wire through SwarmExecutor when parallel dispatch is ready
     }
 
     // Load configuration
-    let config = Config::load().await.unwrap_or_default();
+    let config = super::run_config::load(&args).await;
     let workspace_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     let knowledge_snapshot =
         match crate::indexer::refresh_workspace_knowledge_snapshot(&workspace_dir).await {
@@ -631,6 +647,11 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             normalize_go_task_input(&parsed_task)
         };
         let require_prd = easy_go_requested || !parsed.bypass_prd;
+        if require_prd && jsonl_output {
+            anyhow::bail!(
+                "--format jsonl does not support interactive /go approval; use /autochat --no-prd"
+            );
+        }
 
         if !(2..=AUTOCHAT_MAX_AGENTS).contains(&agent_count) {
             anyhow::bail!(
@@ -767,6 +788,10 @@ pub async fn execute(args: RunArgs) -> Result<()> {
 
             // Display results
             match args.format.as_str() {
+                "jsonl" => {
+                    let response = super::go_ralph::format_go_ralph_result(&ralph_result, &task);
+                    jsonl::write_completed(None, &response, None)?;
+                }
                 "json" => println!(
                     "{}",
                     serde_json::to_string_pretty(&serde_json::json!({
@@ -797,6 +822,13 @@ pub async fn execute(args: RunArgs) -> Result<()> {
         // Explicit tactical /autochat path (requires --no-prd)
         let relay_result = run_protocol_first_relay(agent_count, &task, &model, None, None).await?;
         match args.format.as_str() {
+            "jsonl" => {
+                if let Some(failure) = &relay_result.failure {
+                    jsonl::write_failed_response(failure, Some(&relay_result.summary))?;
+                } else {
+                    jsonl::write_completed(None, &relay_result.summary, None)?;
+                }
+            }
             "json" => println!("{}", serde_json::to_string_pretty(&relay_result)?),
             _ => {
                 println!("{}", relay_result.summary);
@@ -878,17 +910,36 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
     session.bus = Some(bus);
 
-    let result = super::run_loop::execute_prompt_with_resume(
+    let live_events = events::LiveEvents::start(&session.id, message, jsonl_output).await?;
+
+    let result = match super::run_loop::execute_prompt_with_resume_events(
         &mut session,
         message,
         args.max_steps,
         args.auto_continue_until,
         &workspace_dir,
+        live_events.sender(),
     )
-    .await?;
+    .await
+    {
+        Ok(result) => {
+            live_events.finish_success(&result.text).await?;
+            result
+        }
+        Err(error) => {
+            let message = error.to_string();
+            live_events.finish_failure(&message).await?;
+            return Err(error);
+        }
+    };
 
     // Output based on format
     match args.format.as_str() {
+        "jsonl" => jsonl::write_completed(
+            Some(result.session_id.as_str()),
+            &result.text,
+            jsonl::usage(&session.usage),
+        )?,
         "json" => {
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
@@ -1542,120 +1593,4 @@ async fn run_protocol_first_relay(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::PlannedRelayProfile;
-    use super::{
-        AUTOCHAT_QUICK_DEMO_TASK, PlannedRelayResponse, build_runtime_profile_from_plan,
-        command_with_optional_args, extract_json_payload, is_easy_go_command,
-        normalize_cli_go_command, normalize_go_task_input, resolve_autochat_model,
-        validate_easy_go_task,
-    };
-
-    #[test]
-    fn normalize_go_maps_to_autochat_with_count_and_task() {
-        assert_eq!(
-            normalize_cli_go_command("/go 4 build protocol relay"),
-            "/autochat 4 build protocol relay"
-        );
-    }
-
-    #[test]
-    fn normalize_go_count_only_uses_demo_task() {
-        assert_eq!(
-            normalize_cli_go_command("/go 4"),
-            format!("/autochat 4 {AUTOCHAT_QUICK_DEMO_TASK}")
-        );
-    }
-
-    #[test]
-    fn parse_autochat_args_supports_default_count() {
-        let parsed =
-            crate::autochat::parse_autochat_request("build a relay", 3, AUTOCHAT_QUICK_DEMO_TASK)
-                .expect("valid args");
-        assert_eq!(
-            (parsed.agent_count, parsed.task.as_str()),
-            (3, "build a relay"),
-        );
-    }
-
-    #[test]
-    fn parse_autochat_args_supports_explicit_count() {
-        let parsed =
-            crate::autochat::parse_autochat_request("4 build a relay", 3, AUTOCHAT_QUICK_DEMO_TASK)
-                .expect("valid args");
-        assert_eq!(
-            (parsed.agent_count, parsed.task.as_str()),
-            (4, "build a relay"),
-        );
-    }
-
-    #[test]
-    fn normalize_go_task_collapses_whitespace() {
-        assert_eq!(
-            normalize_go_task_input(" implement   api\ncompat routes\twith tests "),
-            "implement api compat routes with tests"
-        );
-    }
-
-    #[test]
-    fn validate_go_task_rejects_pasted_run_output() {
-        let pasted =
-            "Task: foo Progress: 0/7 stories Iterations: 7/10 Incomplete stories: ... Next steps:";
-        assert!(validate_easy_go_task(pasted).is_err());
-    }
-
-    #[test]
-    fn command_with_optional_args_avoids_prefix_collision() {
-        assert_eq!(command_with_optional_args("/autochatty", "/autochat"), None);
-    }
-
-    #[test]
-    fn easy_go_detection_handles_aliases() {
-        assert!(is_easy_go_command("/go 4 task"));
-        assert!(is_easy_go_command("/team 4 task"));
-        assert!(!is_easy_go_command("/autochat 4 task"));
-    }
-
-    #[test]
-    fn easy_go_defaults_to_minimax_when_model_not_set() {
-        assert_eq!(
-            resolve_autochat_model(None, None, Some("zai/glm-5"), true),
-            "minimax/MiniMax-M3"
-        );
-    }
-
-    #[test]
-    fn explicit_model_wins_over_easy_go_default() {
-        assert_eq!(
-            resolve_autochat_model(Some("zai/glm-5"), None, None, true),
-            "zai/glm-5"
-        );
-    }
-
-    #[test]
-    fn extract_json_payload_parses_markdown_wrapped_json() {
-        let wrapped = "Here is the plan:\n```json\n{\"profiles\":[{\"name\":\"auto-db\",\"specialty\":\"database\",\"mission\":\"Own schema and queries\",\"capabilities\":[\"sql\",\"indexing\"]}]}\n```";
-        let parsed: PlannedRelayResponse =
-            extract_json_payload(wrapped).expect("should parse wrapped JSON");
-        assert_eq!(parsed.profiles.len(), 1);
-        assert_eq!(parsed.profiles[0].name, "auto-db");
-    }
-
-    #[test]
-    fn build_runtime_profile_normalizes_and_deduplicates_name() {
-        let planned = PlannedRelayProfile {
-            name: "Data Specialist".to_string(),
-            specialty: "data engineering".to_string(),
-            mission: "Prepare datasets for downstream coding".to_string(),
-            capabilities: vec!["ETL".to_string(), "sql".to_string()],
-        };
-
-        let profile =
-            build_runtime_profile_from_plan(planned, &["auto-data-specialist".to_string()])
-                .expect("profile should be built");
-
-        assert_eq!(profile.name, "auto-data-specialist-2");
-        assert!(profile.capabilities.iter().any(|cap| cap == "relay"));
-        assert!(profile.capabilities.iter().any(|cap| cap == "autochat"));
-    }
-}
+mod tests;

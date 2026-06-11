@@ -84,6 +84,8 @@ pub mod oracle_replay;
 pub mod pages;
 pub mod relevance;
 pub mod tasks;
+pub mod thread_events;
+pub mod thread_store;
 
 pub use self::bus::{DurableSink, NoopSink, SessionBus};
 pub use self::checkpoint::{CheckpointReason, RunCheckpoint};
@@ -95,9 +97,7 @@ pub use self::context::{DerivedContext, derive_context, derive_with_policy, effe
 pub use self::delegation::{BetaPosterior, DelegationConfig, DelegationState};
 pub use self::derive_policy::DerivePolicy;
 pub use self::eval::{PolicyRunResult, pareto_frontier, reuse_rate};
-pub use self::event_compaction::{
-    CompactionFailure, CompactionOutcome, CompactionStart, ContextTruncation, FallbackStrategy,
-};
+pub use self::event_compaction::*;
 pub use self::event_rlm::{RlmCompletion, RlmOutcome, RlmProgressEvent, RlmSubcallFallback};
 pub use self::event_token::{TokenDelta, TokenEstimate, TokenSource};
 pub use self::events::{SessionEvent, SessionResult};

@@ -18,6 +18,11 @@ use tokio::sync::{RwLock, oneshot};
 use tokio::time::timeout;
 use tracing::{debug, error, info, warn};
 
+#[path = "client_call_tool.rs"]
+mod call_tool;
+#[path = "client_subprocess.rs"]
+mod subprocess;
+
 /// MCP Client for connecting to external servers
 pub struct McpClient {
     transport: Arc<dyn Transport>,
@@ -35,19 +40,7 @@ pub struct McpClient {
 impl McpClient {
     /// Connect to an MCP server via subprocess
     pub async fn connect_subprocess(command: &str, args: &[&str]) -> Result<Arc<Self>> {
-        let transport = Arc::new(ProcessTransport::spawn(command, args).await?);
-        let client = Arc::new(Self::new(transport));
-
-        // Start message receiver
-        let client_clone = Arc::clone(&client);
-        tokio::spawn(async move {
-            client_clone.receive_loop().await;
-        });
-
-        // Initialize the connection
-        client.initialize().await?;
-
-        Ok(client)
+        Self::connect_subprocess_with_approval(command, args, None).await
     }
 
     /// Create a new MCP client with custom transport
@@ -194,17 +187,7 @@ impl McpClient {
 
     /// Call a tool
     pub async fn call_tool(&self, name: &str, arguments: Value) -> Result<CallToolResult> {
-        let params = CallToolParams {
-            name: name.to_string(),
-            arguments,
-        };
-
-        let response = self
-            .request("tools/call", Some(serde_json::to_value(&params)?))
-            .await?;
-        let result: CallToolResult = serde_json::from_value(response)?;
-
-        Ok(result)
+        self.call_tool_checked(name, arguments).await
     }
 
     /// List available resources
@@ -392,6 +375,7 @@ impl McpRegistry {
         command: &str,
         args: &[&str],
     ) -> Result<Arc<McpClient>> {
+        super::subprocess_policy::guard(command, args, None).await?;
         let transport = Arc::new(ProcessTransport::spawn(command, args).await?);
         let client = Arc::new(McpClient::with_registry(
             transport,

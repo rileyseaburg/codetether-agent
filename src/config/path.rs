@@ -22,6 +22,16 @@ impl Config {
                 .map(|dirs| dirs.data_dir().to_path_buf())
         })
     }
+
+    pub(crate) fn data_dir_for_workspace(workspace: &Path) -> Option<PathBuf> {
+        if let Ok(explicit) = std::env::var("CODETETHER_DATA_DIR") {
+            let explicit = explicit.trim();
+            if !explicit.is_empty() {
+                return Some(PathBuf::from(explicit));
+            }
+        }
+        Some(workspace_data_dir_from(workspace))
+    }
 }
 
 fn workspace_data_dir() -> Option<PathBuf> {

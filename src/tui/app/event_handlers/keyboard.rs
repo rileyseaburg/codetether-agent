@@ -1,7 +1,7 @@
 //! Ctrl-key and special-key bindings for the TUI.
 //!
 //! Handles Ctrl-C/Q (quit), Ctrl-T (symbol search), Ctrl-B
-//! (layout toggle), Ctrl-O (file picker), Ctrl-R (voice input),
+//! (layout toggle), Ctrl-O (copy latest reply), Ctrl-R (voice input),
 //! Ctrl-V (clipboard paste), Ctrl-X (watchdog cancel), Ctrl-G/G (scroll
 //! top/bottom), and Alt-j/k/d/u (scroll by 1 or 5).
 //!
@@ -22,10 +22,12 @@ use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 
 use super::alt_scroll::handle_alt_scroll;
+use super::approval_key;
 use super::clipboard::handle_clipboard_paste;
 use super::copy_reply::handle_copy_reply;
 use super::copy_transcript::handle_copy_transcript;
 use super::ctrl_c::handle_ctrl_c;
+use super::side_question::compose_side_question;
 
 /// Try to handle a Ctrl/Alt modified key press.
 ///
@@ -42,7 +44,7 @@ use super::ctrl_c::handle_ctrl_c;
 /// ```
 pub(super) fn handle_ctrl_key(
     app: &mut App,
-    cwd: &Path,
+    _cwd: &Path,
     runtime: &TuiSessionHandle,
     key: KeyEvent,
 ) -> Option<anyhow::Result<bool>> {
@@ -53,6 +55,8 @@ pub(super) fn handle_ctrl_key(
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
 
     match key.code {
+        KeyCode::Char('a') if ctrl && approval_key::approve(app) => {}
+        KeyCode::Char('d') if ctrl && approval_key::deny(app) => {}
         KeyCode::Char('c') if ctrl => return Some(Ok(handle_ctrl_c(app, runtime))),
         KeyCode::Char('q') if ctrl => return Some(Ok(true)),
         KeyCode::Char('t') if ctrl => {
@@ -60,17 +64,7 @@ pub(super) fn handle_ctrl_key(
             app.state.status = "Symbol search".to_string();
         }
         KeyCode::Char('w') if ctrl && app.state.view_mode == ViewMode::Chat => {
-            // Ctrl+W now prefills /ask (ephemeral side question) so users
-            // can ask while the agent is streaming without polluting
-            // conversation history.
-            if app.state.input.trim().is_empty() {
-                app.state.input = "/ask ".to_string();
-            } else if !app.state.input.starts_with("/ask") {
-                app.state.input = format!("/ask {}", app.state.input.trim());
-            }
-            app.state.input_cursor = app.state.input.chars().count();
-            app.state.status = "Compose a side question (/ask)".to_string();
-            app.state.refresh_slash_suggestions();
+            compose_side_question(app);
         }
         KeyCode::Char('b') if ctrl && app.state.view_mode == ViewMode::Chat => {
             app.state.chat_layout_mode = app.state.chat_layout_mode.toggle();
@@ -84,9 +78,9 @@ pub(super) fn handle_ctrl_key(
             app.state.status = format!("Layout: {label}");
         }
         KeyCode::Char('l') if ctrl && app.state.view_mode == ViewMode::Chat => {
-            app.state.save_scroll_state();
-            app.state.view_mode = ViewMode::Bus;
-            app.state.status = "Bus log".to_string();
+            app.state.messages.clear();
+            app.state.streaming_text.clear();
+            app.state.status = "Screen cleared".to_string();
         }
         KeyCode::Char('s') if ctrl && app.state.view_mode == ViewMode::Chat => {
             app.state.save_scroll_state();
@@ -99,7 +93,7 @@ pub(super) fn handle_ctrl_key(
             app.state.status = "Protocol registry".to_string();
         }
         KeyCode::Char('o') if ctrl && app.state.view_mode == ViewMode::Chat => {
-            crate::tui::app::file_picker::open_file_picker(app, cwd);
+            handle_copy_reply(app);
         }
         KeyCode::Char('r') if ctrl && app.state.view_mode == ViewMode::Chat => {
             handle_voice_key(app);

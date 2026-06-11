@@ -19,6 +19,7 @@
 //! - `message_cache` - render-line cache for performance
 
 pub mod agent_profile;
+pub mod approval_queue;
 #[path = "latency/chat.rs"]
 pub mod chat_latency;
 pub mod context_health;
@@ -32,6 +33,7 @@ pub mod model_picker;
 pub mod model_picker_nav;
 pub mod pending_tool;
 pub mod profile_defs;
+pub mod prompt_queue;
 pub mod scroll;
 pub mod session_nav;
 pub mod settings_nav;

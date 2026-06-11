@@ -1,11 +1,13 @@
 use crate::lsp::LspActionResult;
 use crate::tool::lsp::LspTool;
 use anyhow::Result;
-use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
+
+#[path = "validation_eslint.rs"]
+mod validation_eslint;
 
 const MAX_DIAGNOSTICS_PER_FILE: usize = 25;
 
@@ -136,7 +138,7 @@ pub async fn build_validation_report(
 
         let linter_diagnostics = manager.linter_diagnostics(&path).await;
         rendered.extend(render_diagnostics(workspace_dir, &linter_diagnostics));
-        rendered.extend(collect_external_linter_diagnostics(workspace_dir, &path).await);
+        rendered.extend(validation_eslint::collect(workspace_dir, &path).await);
 
         rendered.sort();
         rendered.dedup();
@@ -213,65 +215,6 @@ fn render_diagnostics(
         .collect()
 }
 
-async fn collect_external_linter_diagnostics(workspace_dir: &Path, path: &Path) -> Vec<String> {
-    let ext = path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .unwrap_or_default();
-    if !matches!(ext, "js" | "jsx" | "ts" | "tsx" | "mjs" | "cjs") {
-        return Vec::new();
-    }
-
-    let relative_path = path
-        .strip_prefix(workspace_dir)
-        .unwrap_or(path)
-        .display()
-        .to_string();
-    let output = Command::new("npx")
-        .args(["--no-install", "eslint", "--format", "json", &relative_path])
-        .current_dir(workspace_dir)
-        .output()
-        .await;
-    let Ok(output) = output else {
-        return Vec::new();
-    };
-    if output.stdout.is_empty() {
-        return Vec::new();
-    }
-
-    let reports: Result<Vec<EslintFileReport>, _> = serde_json::from_slice(&output.stdout);
-    let Ok(reports) = reports else {
-        return Vec::new();
-    };
-
-    reports
-        .into_iter()
-        .flat_map(|report| {
-            let file_path = report.file_path;
-            report.messages.into_iter().map(move |message| {
-                let severity = match message.severity {
-                    2 => "error",
-                    1 => "warning",
-                    _ => "info",
-                };
-                let code = message
-                    .rule_id
-                    .as_deref()
-                    .map(|rule_id| format!(" ({rule_id})"))
-                    .unwrap_or_default();
-                format!(
-                    "[{severity}] {}:{}:{} [eslint-cli]{} {}",
-                    relative_display_path(workspace_dir, Path::new(&file_path)),
-                    message.line,
-                    message.column,
-                    code,
-                    message.message.replace('\n', " ")
-                )
-            })
-        })
-        .collect()
-}
-
 fn is_mutating_tool(tool_name: &str) -> bool {
     matches!(
         tool_name,
@@ -330,21 +273,4 @@ fn relative_display_path(workspace_dir: &Path, path: &Path) -> String {
         .unwrap_or(path)
         .display()
         .to_string()
-}
-
-#[derive(Debug, Deserialize)]
-struct EslintFileReport {
-    #[serde(rename = "filePath")]
-    file_path: String,
-    messages: Vec<EslintMessage>,
-}
-
-#[derive(Debug, Deserialize)]
-struct EslintMessage {
-    #[serde(rename = "ruleId")]
-    rule_id: Option<String>,
-    severity: u8,
-    message: String,
-    line: u32,
-    column: u32,
 }

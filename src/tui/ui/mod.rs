@@ -4,4 +4,5 @@ pub mod main;
 pub mod sessions;
 pub mod status_bar;
 pub mod tool_panel;
+pub mod trust_status;
 pub mod webview;

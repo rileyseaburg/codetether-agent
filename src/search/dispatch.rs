@@ -43,11 +43,17 @@ fn enrich_args(choice: &BackendChoice, query: &str) -> Value {
         Backend::Websearch if obj.get("query").is_none() => {
             obj.insert("query".into(), json!(query));
         }
-        Backend::Memory if obj.get("query").is_none() => {
+        Backend::Memory => {
             obj.insert("action".into(), json!("search"));
-            obj.insert("query".into(), json!(query));
+            if obj.get("query").is_none() {
+                obj.insert("query".into(), json!(query));
+            }
         }
         _ => {}
     }
     args
 }
+
+#[cfg(test)]
+#[path = "dispatch_tests.rs"]
+mod tests;

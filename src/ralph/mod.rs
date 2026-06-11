@@ -7,6 +7,8 @@
 //! and uses RLM to compress progress when context gets too large.
 
 mod delegation;
+pub(crate) mod git_policy;
+mod quality_shell;
 mod ralph_loop;
 pub mod state_store;
 pub mod store_http;

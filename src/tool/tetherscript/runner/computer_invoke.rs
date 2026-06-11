@@ -9,11 +9,12 @@ pub fn invoke(auth: &ComputerAuthority, method: &str, args: &[Value]) -> Result<
     let (payload, scope) = super::computer_payload::prepare(method, args)?;
     require_scope(auth, method, scope)?;
     super::computer_origin::require(auth, method, &payload)?;
+    if let Some(blocked) = super::computer_policy::blocked(&payload)? {
+        return tool_result(blocked, method);
+    }
     let input = input_from_payload(method, &payload)?;
     let result = run_dispatch(&input)?;
-    let json = serde_json::to_value(result)
-        .map_err(|e| format!("computer.{method}: encode result failed: {e}"))?;
-    Ok(json_to_tetherscript(json))
+    tool_result(result, method)
 }
 
 fn require_scope(auth: &ComputerAuthority, method: &str, scope: &str) -> Result<(), String> {
@@ -42,4 +43,10 @@ fn runtime_dispatch(input: &ComputerUseInput) -> anyhow::Result<crate::tool::Too
         .enable_all()
         .build()?
         .block_on(platform::dispatch(input))
+}
+
+fn tool_result(result: crate::tool::ToolResult, method: &str) -> Result<Value, String> {
+    let json = serde_json::to_value(result)
+        .map_err(|e| format!("computer.{method}: encode result failed: {e}"))?;
+    Ok(json_to_tetherscript(json))
 }

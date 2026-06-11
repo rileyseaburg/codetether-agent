@@ -26,7 +26,9 @@ pub(super) fn enter() -> anyhow::Result<Runtime> {
         PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
     );
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
-    terminal.clear()?;
+    if let Err(error) = terminal.clear() {
+        tracing::debug!(%error, "TUI startup clear skipped");
+    }
     Ok(Runtime {
         terminal,
         _terminal_guard: terminal_guard,

@@ -55,9 +55,9 @@ fn render_agents_section(cwd: &Path) -> String {
         return String::new();
     }
     let mut section = String::from(
-        "\n\n## Project Instructions (AGENTS.md)\n\nThe following instructions were loaded from AGENTS.md files in the project.\nFollow these project-specific guidelines when working on this codebase.\n\n",
+        "\n\n## Project Instructions (AGENTS.md)\n\nThe following instructions were loaded from AGENTS.md or AGENTS.override.md files in the project.\nFollow these project-specific guidelines when working on this codebase.\n\n",
     );
-    for (content, path) in agents_files.iter().rev() {
+    for (content, path) in &agents_files {
         section.push_str(&format!("### From {}\n\n{}\n\n", path.display(), content));
     }
     section

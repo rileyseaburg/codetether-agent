@@ -3,6 +3,7 @@
 //! Decomposed into single-responsibility modules. Start with
 //! [`render_chat_view`] for the full pipeline.
 
+mod approval_overlay;
 pub mod attachment;
 pub mod auto_apply;
 pub mod badges;

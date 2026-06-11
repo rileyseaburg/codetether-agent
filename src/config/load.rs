@@ -13,12 +13,18 @@ impl Config {
         if let Some((path, Some(content))) = global_result {
             config = config.merge(parse_config(&path, &content)?);
         }
+        config = super::project_policy::apply_trust_store(config);
         for (path, maybe) in project_results {
             if let Some(content) = maybe {
-                config = config.merge(parse_config(&path, &content)?);
+                let overlay = parse_config(&path, &content)?;
+                let overlay = super::project_policy::sanitize_project_overlay(&config, overlay);
+                config = config.merge(overlay);
             }
         }
         config.apply_env();
+        if let Some(mode) = super::access_mode_runtime::process_access_mode_override() {
+            config.apply_access_mode_override(Some(mode));
+        }
         config.normalize_legacy_defaults();
         Ok(config)
     }

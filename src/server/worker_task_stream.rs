@@ -1,6 +1,6 @@
 //! GET /v1/worker/tasks/stream — SSE endpoint for workers.
 
-use super::{AppState, KnativeTask};
+use crate::server::{AppState, KnativeTask};
 use axum::body::Body;
 use axum::extract::Request;
 use axum::extract::{Query, State};

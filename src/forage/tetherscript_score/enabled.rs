@@ -18,10 +18,14 @@ pub(super) fn score_with_tetherscript(input: &ScoreInput<'_>) -> Option<f64> {
 }
 
 async fn run_script(input: &ScoreInput<'_>) -> Option<f64> {
-    let result = TetherScriptPluginTool::new()
-        .execute(json!({ "path": SCRIPT, "hook": "score", "args": [event(input)] }))
+    let args = json!({ "path": SCRIPT, "hook": "score", "args": [event(input)] });
+    if crate::runtime_policy::evaluate_tool_invocation("tetherscript_plugin", &args)
         .await
-        .ok()?;
+        .is_some()
+    {
+        return None;
+    }
+    let result = TetherScriptPluginTool::new().execute(args).await.ok()?;
     result.metadata.get("value").and_then(score_value)
 }
 

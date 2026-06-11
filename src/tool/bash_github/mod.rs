@@ -18,6 +18,8 @@ mod credentials;
 mod loader;
 mod remote;
 mod repo_context;
+mod url;
 
 pub use auth::GitHubCommandAuth;
 pub use loader::load_github_command_auth;
+pub use url::load_github_url_auth;

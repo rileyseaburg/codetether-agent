@@ -22,12 +22,23 @@
 /// ```
 pub fn usage_hint(cmd: &str) -> Option<&'static str> {
     match cmd {
+        "/status" => Some("/status  - show session, policy, model, and context state"),
+        "/permissions" => Some("/permissions [ask|approve|full]  - show or set tool policy"),
+        "/access-mode" => Some("/access-mode <ask|approve|full>  - switch live tool policy"),
+        "/sandbox-mode" => Some("/sandbox-mode <read-only|workspace-write|danger-full-access>"),
+        "/diff" => Some("/diff  - show git status and diff stats"),
+        "/copy" => Some("/copy  - copy the latest assistant reply"),
+        "/review" => Some("/review  - prepare a code-review prompt for current changes"),
+        "/clear" => Some("/clear  - start a fresh chat session"),
+        "/resume" => Some("/resume  - open the session picker"),
         "/spawn" => Some("/spawn <name> [instructions]  — create a sub-agent"),
         "/kill" => Some("/kill <name>  — terminate a sub-agent"),
         "/agent" => Some("/agent <name> [msg]  — focus or message a sub-agent"),
         "/talk" => Some("/talk <name> <msg>  — send to a sub-agent"),
         "/add" => Some("/add <name>  — alias for /spawn"),
         "/ask" => Some("/ask <question>  — ephemeral side question"),
+        "/approve" => Some("/approve <id> [reason]  — approve a blocked tool request"),
+        "/deny" => Some("/deny <id> [reason]  — deny a blocked tool request"),
         "/file" => Some("/file <path>  — attach a file"),
         "/image" => Some("/image <path>  — attach an image"),
         "/autochat" => Some("/autochat [count] <task>  — multi-agent relay"),

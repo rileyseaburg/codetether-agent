@@ -989,7 +989,7 @@ pub async fn handle_slash_command(
         }
         "/keys" => {
             app.state.status =
-                "Protocol-first commands: /protocol /bus /context /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /fork /spawn /kill /agents /agent /audit /git\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
+                "Protocol-first commands: /protocol /bus /context /access-mode /sandbox-mode /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /fork /spawn /kill /agents /agent /audit /git\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
                     .to_string();
         }
         _ => {}

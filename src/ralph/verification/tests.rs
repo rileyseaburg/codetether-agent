@@ -30,20 +30,3 @@ async fn failing_step_blocks_completion_gate() {
             .is_err()
     );
 }
-
-#[tokio::test]
-async fn shell_step_checks_output_and_artifacts() {
-    let dir = tempdir().expect("tempdir");
-    let step = VerificationStep::Shell {
-        name: None,
-        command: "mkdir -p out && echo ready > out/result.txt && echo ok".into(),
-        cwd: None,
-        expect_output_contains: vec!["ok".into()],
-        expect_files_glob: vec!["out/*.txt".into()],
-    };
-    assert!(
-        run_story_verification(dir.path(), &story(step))
-            .await
-            .is_ok()
-    );
-}

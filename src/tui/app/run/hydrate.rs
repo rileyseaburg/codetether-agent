@@ -41,5 +41,13 @@ pub(super) fn complete(
     super::worker_attach::attach(app, worker_bridge);
     app.state.refresh_slash_suggestions();
     app.state.move_cursor_end();
-    app.state.status = outcome.status(&session.id);
+    let loaded = outcome.status(&session.id);
+    let policy = crate::tui::ui::trust_status::startup_summary();
+    if let Some(policy) = policy.as_deref() {
+        super::policy_notice::push(app, policy);
+    }
+    app.state.status = match policy {
+        Some(policy) => format!("{loaded} | {policy}"),
+        None => loaded,
+    };
 }

@@ -72,9 +72,9 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &SessionView) {
 }
 
 fn render_chat_or_webview(f: &mut Frame, app: &mut App, session: &SessionView) {
-    if super::webview::layout::is_webview(app.state.chat_layout_mode) {
-        super::webview::render(f, app);
-    } else {
+    if !super::webview::layout::is_webview(app.state.chat_layout_mode)
+        || !super::webview::render(f, app)
+    {
         render_chat_view(f, app, session);
     }
 }

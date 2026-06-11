@@ -3,21 +3,19 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::HashMap;
-use std::process::Command;
+use std::{collections::HashMap, process::Command};
+
+#[path = "undo_policy.rs"]
+mod undo_policy;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UndoInput {
     /// Number of commits to undo (default: 1)
-    #[serde(default = "default_steps")]
+    #[serde(default = "undo_policy::default_steps")]
     pub steps: usize,
     /// Show what would be undone without actually doing it
     #[serde(default)]
     pub preview: bool,
-}
-
-fn default_steps() -> usize {
-    1
 }
 
 pub struct UndoTool;
@@ -57,7 +55,7 @@ impl Tool for UndoTool {
     }
 
     async fn execute(&self, input: Value) -> Result<ToolResult> {
-        let params: UndoInput = serde_json::from_value(input)?;
+        let params: UndoInput = serde_json::from_value(input.clone())?;
 
         // Get current directory
         let cwd = std::env::current_dir()?;
@@ -131,11 +129,10 @@ impl Tool for UndoTool {
             });
         }
 
-        // Actually perform the undo
-        let revert_output = Command::new("git")
-            .args(["reset", "--hard", &format!("HEAD~{}", params.steps)])
-            .current_dir(&cwd)
-            .output()?;
+        if let Some(blocked) = undo_policy::blocked(&input).await {
+            return Ok(blocked);
+        }
+        let revert_output = undo_policy::reset(&cwd, params.steps)?;
 
         if revert_output.status.success() {
             let mut result = format!("Successfully undid {} commit(s):\n\n", commit_count);

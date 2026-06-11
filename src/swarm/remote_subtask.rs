@@ -186,11 +186,7 @@ fn emit_probe(subtask_id: &str) {
 }
 
 fn run_cargo_check() -> Result<bool> {
-    let output = Command::new("cargo")
-        .args(["check", "--quiet"])
-        .output()
-        .context("Failed to execute cargo check in remote subtask")?;
-    Ok(output.status.success())
+    super::quality_shell::cargo_check_quiet(None)
 }
 
 fn collect_changed_files() -> Result<std::collections::HashSet<String>> {

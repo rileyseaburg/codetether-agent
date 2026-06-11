@@ -3,14 +3,15 @@ SHELL := /bin/bash
 SPIKE2_HOST ?= spike2
 SPIKE2_BUILD_DIR ?= /tmp/codetether-agent-build
 
-# sccache with MinIO S3 backend
+# sccache with MinIO S3 backend. Export these from your local shell/CI secret
+# store; the Makefile must not carry concrete service endpoints or credentials.
 export SCCACHE_BUCKET      ?= sccache
 export SCCACHE_REGION      ?= us-east-1
-export SCCACHE_ENDPOINT    ?= http://192.168.50.223:9000
+export SCCACHE_ENDPOINT    ?= $(CODETETHER_SCCACHE_ENDPOINT)
 export SCCACHE_S3_USE_SSL  ?= off
 export SCCACHE_S3_KEY_PREFIX ?= rust/
-export AWS_ACCESS_KEY_ID   ?= sccacheadmin
-export AWS_SECRET_ACCESS_KEY ?= hZz3CXz2EqTTA503mvgsaFWQLGfCucGS
+export AWS_ACCESS_KEY_ID   ?= $(CODETETHER_SCCACHE_ACCESS_KEY_ID)
+export AWS_SECRET_ACCESS_KEY ?= $(CODETETHER_SCCACHE_SECRET_ACCESS_KEY)
 
 .PHONY: build-cuda build-release build-cached build-windows build-windows-docker sccache-stats deploy-spike2-cuda install-spike2-cuda status-spike2-cuda
 

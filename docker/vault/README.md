@@ -8,6 +8,7 @@ it with Bedrock credentials from your local AWS profile.
 ```bash
 # 1. Start Vault in dev mode
 cd docker/vault
+export VAULT_DEV_ROOT_TOKEN="<local-dev-root-token>"
 docker compose up -d
 
 # 2. Seed with your default AWS profile (reads ~/.aws/credentials + ~/.aws/config)
@@ -22,7 +23,7 @@ AWS_PROFILE=prod ./seed-bedrock.sh
 
 ```bash
 export VAULT_ADDR=http://127.0.0.1:8200
-export VAULT_TOKEN=codetether-dev-root
+export VAULT_TOKEN="$VAULT_DEV_ROOT_TOKEN"
 export VAULT_MOUNT=secret
 export VAULT_SECRETS_PATH=codetether/providers
 
@@ -50,7 +51,7 @@ fields (matching the `from_vault()` schema in `src/provider/mod.rs`):
 | Env var              | Default                        |
 | -------------------- | ------------------------------ |
 | `VAULT_ADDR`         | `http://127.0.0.1:8200`        |
-| `VAULT_TOKEN`        | `codetether-dev-root`          |
+| `VAULT_TOKEN`        | from `VAULT_DEV_ROOT_TOKEN`    |
 | `VAULT_MOUNT`        | `secret`                       |
 | `VAULT_SECRETS_PATH` | `codetether/providers`         |
 | `AWS_PROFILE`        | `default`                      |
@@ -62,8 +63,7 @@ fields (matching the `from_vault()` schema in `src/provider/mod.rs`):
 
 - This compose file runs Vault in **dev mode** (in-memory storage, unsealed,
   root token printed). Do **not** use it for anything beyond local dev.
-- The token `codetether-dev-root` is hard-coded for convenience. Override
-  via `VAULT_DEV_ROOT_TOKEN` before `docker compose up` if you share the
-  host.
+- Set `VAULT_DEV_ROOT_TOKEN` before `docker compose up`; do not commit or share
+  the token value.
 - Seeded secrets are lost when the container is recreated (dev mode =
   in-memory). Re-run `./seed-bedrock.sh` after each restart.

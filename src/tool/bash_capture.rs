@@ -2,31 +2,19 @@
 
 #[path = "bash_capture/reader.rs"]
 mod reader;
+#[path = "bash_capture/run.rs"]
+mod run_impl;
 #[path = "bash_capture/types.rs"]
 mod types;
 
 use std::io;
-use tokio::process::Command;
 use tokio::task::JoinHandle;
-use tokio::time::{Duration, timeout};
 use types::{CapturedOutput, CapturedStream};
 
+pub(super) use run_impl::run;
 pub(super) use types::CaptureOutcome;
 
 type ReaderTask = JoinHandle<io::Result<CapturedStream>>;
-
-pub(super) async fn run(
-    mut cmd: Command,
-    timeout_secs: u64,
-    max_bytes: usize,
-) -> io::Result<CaptureOutcome> {
-    let child = cmd.spawn()?;
-    let capture = capture_child(child, max_bytes);
-    match timeout(Duration::from_secs(timeout_secs), capture).await {
-        Ok(result) => result.map(CaptureOutcome::Finished),
-        Err(_) => Ok(CaptureOutcome::TimedOut),
-    }
-}
 
 async fn capture_child(
     mut child: tokio::process::Child,

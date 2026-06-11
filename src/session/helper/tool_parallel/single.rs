@@ -3,6 +3,7 @@
 use tokio::sync::mpsc;
 
 use crate::session::SessionEvent;
+use crate::session::helper::{event_payload, prompt_events, tool_metadata_event};
 use crate::tool::ToolRegistry;
 
 use super::{job::Job, result::Output};
@@ -14,7 +15,7 @@ pub(super) async fn run_one(
     event_tx: &mpsc::Sender<SessionEvent>,
 ) -> Output {
     let exec_start = std::time::Instant::now();
-    let (content, success, metadata) = super::super::prompt_events::execute_tool(
+    let (content, success, metadata) = prompt_events::execute_tool(
         registry,
         &job.tool_name,
         &job.exec_input,
@@ -23,15 +24,16 @@ pub(super) async fn run_one(
     )
     .await;
     let duration_ms = exec_start.elapsed().as_millis() as u64;
+    tool_metadata_event::send(event_tx, &job.tool_id, &job.tool_name, metadata.as_ref()).await;
     let _ = event_tx
         .send(SessionEvent::ToolCallComplete {
+            tool_call_id: job.tool_id.clone(),
             name: job.tool_name.clone(),
-            output: super::super::event_payload::bounded_tool_output(&content),
+            output: event_payload::bounded_tool_output(&content),
             success,
             duration_ms,
         })
         .await;
-    let _ = metadata;
     Output {
         tool_id: job.tool_id,
         tool_name: job.tool_name,

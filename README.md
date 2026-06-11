@@ -701,6 +701,13 @@ biome = { enabled = false }
 stylelint = { enabled = true }
 ```
 
+Project-local `codetether.toml` policy fields are sanitized until the current
+workspace is trusted. Use `codetether config project status` to inspect the
+current workspace, `codetether config project trust` to allow project-local
+sandbox/approval/permission policy, and `codetether config project untrust` to
+remove that trust. Trust records are stored outside the repository and keyed by
+the canonical workspace path hash.
+
 ### Environment Variables
 
 | Variable | Default | Description |

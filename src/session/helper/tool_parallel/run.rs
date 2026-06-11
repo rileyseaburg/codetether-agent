@@ -4,6 +4,7 @@ use futures::future::join_all;
 use tokio::sync::mpsc;
 
 use crate::session::SessionEvent;
+use crate::session::helper::event_payload;
 use crate::tool::ToolRegistry;
 
 use super::job::Job;
@@ -19,8 +20,9 @@ pub(super) async fn execute(
         let args = serde_json::to_string(&job.tool_input).unwrap_or_default();
         let _ = event_tx
             .send(SessionEvent::ToolCallStart {
+                tool_call_id: job.tool_id.clone(),
                 name: job.tool_name.clone(),
-                arguments: super::super::event_payload::bounded_tool_arguments(&args),
+                arguments: event_payload::bounded_tool_arguments(&args),
             })
             .await;
     }

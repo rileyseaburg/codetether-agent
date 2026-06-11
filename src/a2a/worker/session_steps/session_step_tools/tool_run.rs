@@ -11,6 +11,10 @@ pub(super) async fn run_tool(
     let Some(tool) = registry.get(tool_name) else {
         return format!("Error: Unknown tool '{}'", tool_name);
     };
+    if let Some(blocked) = crate::runtime_policy::evaluate_tool_invocation(tool_name, &input).await
+    {
+        return blocked.output;
+    }
     let timeout =
         super::super::super::env_u64("CODETETHER_WORKER_TOOL_TIMEOUT_SECS", 120).clamp(1, 3600);
     match tokio::time::timeout(Duration::from_secs(timeout), tool.execute(input)).await {

@@ -5,35 +5,50 @@
 pub mod guardrails;
 
 mod a2a;
+mod access_mode;
+mod access_mode_effective;
+mod access_mode_override;
+mod access_mode_parse;
+mod access_mode_runtime;
 mod agent;
+mod approval;
 mod bool_parse;
 mod core;
 mod default;
 mod env;
 mod legacy;
 mod load;
+mod load_workspace;
 mod lsp;
 mod merge;
+mod merge_policy;
 mod merge_sections;
 mod path;
 mod permission;
+mod policy_accessors;
+mod policy_raw;
+mod policy_requirement_accessors;
+mod policy_trust_accessors;
+mod profile;
+mod profile_policy;
+mod project_policy;
 mod provider;
+mod reexports;
+mod requirements;
+mod requirements_pick;
+mod sandbox;
 mod session;
 mod set;
+mod set_global;
+mod set_parse;
+mod set_value;
 mod telemetry;
+mod trust;
+mod trust_status;
+pub mod trust_store;
 mod ui;
 
-pub use a2a::{A2aConfig, AutoApprovePolicy};
-pub use agent::AgentConfig;
-pub use core::Config;
-pub use lsp::{LspLinterEntry, LspServerEntry, LspSettings};
-pub use permission::{PermissionAction, PermissionConfig};
-pub use provider::ProviderConfig;
-pub use session::SessionConfig;
-pub use telemetry::TelemetryConfig;
-pub use ui::UiConfig;
+pub use reexports::*;
 
 #[cfg(test)]
-mod path_tests;
-#[cfg(test)]
-mod tests;
+mod test_modules;

@@ -11,6 +11,7 @@ async fn tool_completion_records_duration_for_chat_and_latency_view() {
         &mut slot,
         &None,
         SessionEvent::ToolCallComplete {
+            tool_call_id: "call-1".into(),
             name: "read".to_string(),
             output: "src/main.rs".to_string(),
             success: true,

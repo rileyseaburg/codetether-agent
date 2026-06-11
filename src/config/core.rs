@@ -1,7 +1,8 @@
 use crate::config::guardrails::CostGuardrails;
 use crate::config::{
-    A2aConfig, AgentConfig, LspSettings, PermissionConfig, ProviderConfig, SessionConfig,
-    TelemetryConfig, UiConfig,
+    A2aConfig, AccessMode, AgentConfig, ApprovalPolicy, LspSettings, PermissionConfig,
+    PermissionProfileConfig, PolicyRequirements, ProjectTrustLevel, ProviderConfig, SandboxMode,
+    SessionConfig, TelemetryConfig, UiConfig,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -13,6 +14,18 @@ pub struct Config {
     pub default_provider: Option<String>,
     #[serde(default)]
     pub default_model: Option<String>,
+    #[serde(default)]
+    pub access_mode: Option<AccessMode>,
+    #[serde(default)]
+    pub sandbox_mode: Option<SandboxMode>,
+    #[serde(default)]
+    pub approval_policy: Option<ApprovalPolicy>,
+    #[serde(default)]
+    pub trust_level: Option<ProjectTrustLevel>,
+    #[serde(default)]
+    pub permission_profile: Option<PermissionProfileConfig>,
+    #[serde(default)]
+    pub requirements: PolicyRequirements,
     #[serde(default)]
     pub providers: HashMap<String, ProviderConfig>,
     #[serde(default)]

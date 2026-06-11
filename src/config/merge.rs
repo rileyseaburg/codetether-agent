@@ -3,6 +3,7 @@ use crate::config::Config;
 impl Config {
     pub(super) fn merge(mut self, other: Self) -> Self {
         self.merge_defaults(&other);
+        self.merge_codex_policy(&other);
         if other.a2a.server_url.is_some() {
             self.a2a = other.a2a.clone();
         }

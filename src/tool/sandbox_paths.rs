@@ -2,6 +2,9 @@ use crate::tool::sandbox::SandboxPolicy;
 use anyhow::{Context, Result, anyhow};
 use std::path::{Path, PathBuf};
 
+#[path = "sandbox_paths_metadata.rs"]
+mod metadata;
+
 pub async fn validate_working_dir(policy: &SandboxPolicy, work_dir: &Path) -> Result<()> {
     if policy.allowed_paths.is_empty() {
         return Ok(());
@@ -20,6 +23,10 @@ pub async fn validate_working_dir(policy: &SandboxPolicy, work_dir: &Path) -> Re
         "Sandbox denied working directory outside allowed paths: {}",
         actual.display()
     ))
+}
+
+pub fn validate_command_args(args: &[String]) -> Result<()> {
+    metadata::deny_protected_writes(args)
 }
 
 async fn canonical_allowed_paths(paths: &[PathBuf]) -> Result<Vec<PathBuf>> {

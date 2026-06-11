@@ -85,26 +85,6 @@ mod tests {
         assert!(app.state.pending_images.is_empty());
     }
 
-    #[tokio::test]
-    async fn enter_while_processing_shows_hint_and_keeps_input() {
-        // While a turn is streaming, Enter no longer queues the input.
-        // It keeps the typed text and shows a hint pointing at /ask.
-        let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
-        app.state.processing = true;
-        app.state.input = "hello tui".to_string();
-        app.state.input_cursor = app.state.input.chars().count();
-
-        let cwd = std::path::Path::new(".");
-        let mut slot = test_slot().await;
-        let runtime = test_runtime();
-
-        handle_enter(&mut app, cwd, &mut slot, &None, &None, &runtime).await;
-
-        assert_eq!(app.state.input, "hello tui");
-        assert!(app.state.status.contains("Ctrl+C") || app.state.status.contains("/ask"));
-    }
-
     #[test]
     fn pr_args_pin_the_base_branch() {
         let wt = WorktreeInfo {

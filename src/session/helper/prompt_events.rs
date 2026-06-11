@@ -56,6 +56,7 @@ use super::runtime::{
 use super::text::extract_text_content;
 use super::token::session_completion_max_tokens;
 use super::tool_audit_detail::{tool_failure_detail, tool_success_detail};
+use super::tool_event_emit as events;
 use super::validation::{build_validation_report, capture_git_dirty_files, track_touched_files};
 use crate::session::{
     bucket_for_messages, delegation_skills, derive_with_policy, effective_policy,
@@ -558,20 +559,16 @@ pub(crate) async fn run_prompt_with_events(
                 session.add_message(response.message.clone());
             }
             for (tool_id, tool_name) in &truncated_tool_ids {
-                let error_content = format!(
-                    "Error: Your tool call to `{tool_name}` was truncated — the arguments \
-                     JSON was cut off mid-string (likely hit the max_tokens limit). \
-                     Please retry with a shorter approach: use the `write` tool to write \
-                     content in smaller pieces, or reduce the size of your arguments."
-                );
-                let _ = event_tx
-                    .send(SessionEvent::ToolCallComplete {
-                        name: tool_name.clone(),
-                        output: error_content.clone(),
-                        success: false,
-                        duration_ms: 0,
-                    })
-                    .await;
+                let error_content = super::tool_truncation::error_content(tool_name);
+                events::complete(
+                    &event_tx,
+                    tool_id,
+                    tool_name,
+                    error_content.clone(),
+                    false,
+                    0,
+                )
+                .await;
                 session.add_message(super::tool_output::tool_result_with_status(
                     tool_id.clone(),
                     tool_name,
@@ -580,6 +577,8 @@ pub(crate) async fn run_prompt_with_events(
                 ));
             }
             if tool_calls.is_empty() {
+                session.add_message(super::tool_truncation::retry_prompt(&truncated_tool_ids));
+                final_output.clear();
                 continue;
             }
         }
@@ -703,25 +702,19 @@ pub(crate) async fn run_prompt_with_events(
             let (tool_name, tool_input) =
                 normalize_tool_call_for_execution(&tool_name, &tool_input);
             let args_str = serde_json::to_string(&tool_input).unwrap_or_default();
-            let _ = event_tx
-                .send(SessionEvent::ToolCallStart {
-                    name: tool_name.clone(),
-                    arguments: super::event_payload::bounded_tool_arguments(&args_str),
-                })
-                .await;
+            events::start(
+                &event_tx,
+                &tool_id,
+                &tool_name,
+                super::event_payload::bounded_tool_arguments(&args_str),
+            )
+            .await;
 
             tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
 
             if tool_name == "list_tools" {
                 let content = list_tools_bootstrap_output(&tool_definitions, &tool_input);
-                let _ = event_tx
-                    .send(SessionEvent::ToolCallComplete {
-                        name: tool_name.clone(),
-                        output: content.clone(),
-                        success: true,
-                        duration_ms: 0,
-                    })
-                    .await;
+                events::complete(&event_tx, &tool_id, &tool_name, content.clone(), true, 0).await;
                 session.add_message(super::tool_output::tool_result_with_status(
                     tool_id, &tool_name, true, content,
                 ));
@@ -746,14 +739,7 @@ pub(crate) async fn run_prompt_with_events(
             if is_interactive_tool(&tool_name) {
                 tracing::warn!(tool = %tool_name, "Blocking interactive tool in session loop");
                 let content = "Error: Interactive tool 'question' is disabled in this interface. Ask the user directly in assistant text.".to_string();
-                let _ = event_tx
-                    .send(SessionEvent::ToolCallComplete {
-                        name: tool_name.clone(),
-                        output: content.clone(),
-                        success: false,
-                        duration_ms: 0,
-                    })
-                    .await;
+                events::complete(&event_tx, &tool_id, &tool_name, content.clone(), false, 0).await;
                 session.add_message(super::tool_output::tool_result_with_status(
                     tool_id, &tool_name, false, content,
                 ));
@@ -766,14 +752,7 @@ pub(crate) async fn run_prompt_with_events(
                     "Error: Refactor guard rejected this edit: {reason}. \
                      Provide concrete, behavior-preserving implementation (no placeholders/stubs)."
                 );
-                let _ = event_tx
-                    .send(SessionEvent::ToolCallComplete {
-                        name: tool_name.clone(),
-                        output: content.clone(),
-                        success: false,
-                        duration_ms: 0,
-                    })
-                    .await;
+                events::complete(&event_tx, &tool_id, &tool_name, content.clone(), false, 0).await;
                 session.add_message(super::tool_output::tool_result_with_status(
                     tool_id, &tool_name, false, content,
                 ));
@@ -788,15 +767,24 @@ pub(crate) async fn run_prompt_with_events(
                 &session.agent,
                 session.metadata.provenance.as_ref(),
             );
+            let (exec_input, blocked_result) =
+                super::tool_approval::gate(&event_tx, &tool_id, &tool_name, exec_input)
+                    .await
+                    .into_parts();
             let exec_start = super::persist::before_tool(session).await;
-            let (content, success, tool_metadata) = execute_tool(
-                &tool_registry,
-                &tool_name,
-                &exec_input,
-                &session.id,
-                exec_start,
-            )
-            .await;
+            let (content, success, tool_metadata) = match blocked_result {
+                Some(blocked) => blocked,
+                None => {
+                    execute_tool(
+                        &tool_registry,
+                        &tool_name,
+                        &exec_input,
+                        &session.id,
+                        exec_start,
+                    )
+                    .await
+                }
+            };
 
             let requires_confirmation = tool_result_requires_confirmation(tool_metadata.as_ref());
             let (content, success, tool_metadata, requires_confirmation) = if requires_confirmation
@@ -891,14 +879,22 @@ pub(crate) async fn run_prompt_with_events(
                 );
             }
 
-            let _ = event_tx
-                .send(SessionEvent::ToolCallComplete {
-                    name: tool_name.clone(),
-                    output: super::event_payload::bounded_tool_output(&rendered_content),
-                    success,
-                    duration_ms,
-                })
-                .await;
+            super::tool_metadata_event::send(
+                &event_tx,
+                &tool_id,
+                &tool_name,
+                tool_metadata.as_ref(),
+            )
+            .await;
+            events::complete(
+                &event_tx,
+                &tool_id,
+                &tool_name,
+                super::event_payload::bounded_tool_output(&rendered_content),
+                success,
+                duration_ms,
+            )
+            .await;
 
             let content = maybe_route_through_rlm(
                 &rendered_content,
@@ -979,19 +975,17 @@ fn parse_session_model_selector(session: &Session, providers: &[&str]) -> (Optio
     }
 }
 
-/// Execute a tool call and emit the corresponding audit entry.
 pub(super) async fn execute_tool(
     tool_registry: &ToolRegistry,
     tool_name: &str,
     exec_input: &serde_json::Value,
     session_id: &str,
     exec_start: std::time::Instant,
-) -> (
-    String,
-    bool,
-    Option<std::collections::HashMap<String, serde_json::Value>>,
-) {
+) -> super::tool_policy::ToolTuple {
     if let Some(tool) = tool_registry.get(tool_name) {
+        if let Some(blocked) = super::tool_policy::blocked(tool_name, exec_input).await {
+            return blocked;
+        }
         match tool.execute(exec_input.clone()).await {
             Ok(result) => {
                 let duration_ms = exec_start.elapsed().as_millis() as u64;

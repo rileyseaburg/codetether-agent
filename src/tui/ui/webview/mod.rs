@@ -1,9 +1,14 @@
 pub mod chat;
 pub mod header;
+pub mod inspector;
+pub mod inspector_lines;
 pub mod layout;
 pub mod layout_mode;
+pub mod sessions_panel;
 pub mod sidebar;
 pub mod status;
+pub mod status_prefix;
+pub mod workspace_panel;
 
 use ratatui::Frame;
 
@@ -16,12 +21,15 @@ pub fn render(f: &mut Frame, app: &mut App) -> bool {
         status::render_too_small(f, area);
         return false;
     }
-    let show_inspector = false;
+    let show_inspector = layout::show_inspector(area);
     let main = layout::webview_main_chunks(area);
     header::render_webview_header(f, app, main[0]);
     let body = layout::webview_body_chunks(main[1], show_inspector);
     sidebar::render_webview_sidebar(f, app, body[0]);
     let center_area = body.get(1).copied().unwrap_or(main[1]);
+    if show_inspector && let Some(area) = body.get(2).copied() {
+        inspector::render_webview_inspector(f, app, area);
+    }
     let max_w = center_area.width.saturating_sub(4) as usize;
     let lines = app
         .state

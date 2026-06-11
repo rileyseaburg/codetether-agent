@@ -186,10 +186,7 @@ Returns metadata: {all_passed, ready_to_merge, feature_branch, passed, total}
                 // Return to starting branch if different
                 let returned_to_original = if let Some(ref start) = starting_branch {
                     if !feature_branch.is_empty() && start != &feature_branch {
-                        let _ = Command::new("git")
-                            .args(["checkout", start])
-                            .current_dir(&cwd)
-                            .output();
+                        let _ = crate::ralph::git_policy::checkout(&cwd, start);
                         true
                     } else {
                         false

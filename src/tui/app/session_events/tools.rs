@@ -1,5 +1,7 @@
 //! Tool-call session events.
 
+#[path = "approval.rs"]
+mod approval;
 #[path = "complete.rs"]
 mod complete;
 #[path = "start.rs"]
@@ -18,7 +20,9 @@ pub(super) async fn handle_event(
     evt: SessionEvent,
 ) -> Option<SessionEvent> {
     match evt {
-        SessionEvent::ToolCallStart { name, arguments } => {
+        SessionEvent::ToolCallStart {
+            name, arguments, ..
+        } => {
             start(app, worker_bridge, name, arguments).await;
         }
         SessionEvent::ToolCallComplete {
@@ -26,9 +30,11 @@ pub(super) async fn handle_event(
             output,
             success,
             duration_ms,
+            ..
         } => {
             complete(app, name, output, success, duration_ms);
         }
+        SessionEvent::ApprovalRequest(request) => approval::request(app, request),
         other => return Some(other),
     }
     None

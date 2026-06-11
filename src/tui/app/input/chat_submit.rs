@@ -4,12 +4,8 @@
 //! user messages, and delegates to
 //! [`super::chat_submit_dispatch::dispatch_prompt`].
 //!
-//! Mid-stream behavior (Anthropic-style): while a turn is in flight,
-//! plain-text Enter is a no-op that shows a hint directing the user to
-//! `Ctrl+C` (interrupt) or `/ask` (side question). The typed text stays
-//! in the input buffer so it is not lost. Slash commands are always
-//! dispatched immediately because they are either local (e.g. `/help`)
-//! or non-conflicting with the main turn (e.g. `/ask`).
+//! Mid-stream behavior: while a turn is in flight, plain-text Enter stores
+//! one follow-up prompt and the event loop submits it after completion.
 
 use std::{path::Path, sync::Arc};
 
@@ -22,13 +18,15 @@ use super::chat_helpers::push_user_messages;
 use super::chat_submit_dispatch::dispatch_prompt;
 use super::pasted_text::expand_paste_placeholders;
 
+#[cfg(test)]
+#[path = "chat_submit_queue_tests.rs"]
+mod queue_tests;
+
 /// Submit the chat input to the provider.
 ///
 /// Handles slash commands, pushes user/image messages, then delegates
 /// prompt preparation and dispatch. While a previous request is still
-/// in flight, plain-text input is **not** auto-queued: users should
-/// press `Ctrl+C` to interrupt the current turn (the partial transcript
-/// is preserved in history) or `/ask <question>` for a side question.
+/// in flight, plain-text input is queued as the next prompt.
 pub(super) async fn handle_enter_chat(
     app: &mut App,
     cwd: &Path,
@@ -51,11 +49,7 @@ pub(super) async fn handle_enter_chat(
         return;
     }
     if app.state.processing {
-        // Don't discard the user's typed text; just guide them.
-        app.state.status =
-            "Agent is still responding — press Ctrl+C to interrupt, or use /ask <question> \
-             for a side question. Your text stays in the input."
-                .to_string();
+        crate::tui::app::state::prompt_queue::store(app, prompt);
         return;
     }
 

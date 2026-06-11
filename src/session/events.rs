@@ -10,3 +10,6 @@ mod types;
 
 pub use result::SessionResult;
 pub use types::SessionEvent;
+
+#[cfg(test)]
+mod durable_tests;

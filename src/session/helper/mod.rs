@@ -44,9 +44,8 @@ pub mod stream;
 pub mod stream_caps;
 pub mod text;
 pub mod token;
-mod tool_audit_detail;
-mod tool_output;
-mod tool_parallel;
+mod tool_modules;
+pub(in crate::session::helper) use tool_modules::*;
 pub mod validation;
 mod workspace_tools;
 
@@ -54,5 +53,7 @@ mod workspace_tools;
 mod prompt_events_test_provider;
 #[cfg(test)]
 mod prompt_events_tests;
+#[cfg(test)]
+mod retry_error_tests;
 #[cfg(test)]
 mod validation_tests;

@@ -1,4 +1,5 @@
 use crate::provider::{ContentPart, Message, Role};
+use crate::session::helper::evidence::digest;
 
 pub(crate) fn tool_result_with_status(
     tool_call_id: String,
@@ -6,7 +7,7 @@ pub(crate) fn tool_result_with_status(
     success: bool,
     output: String,
 ) -> Message {
-    let output = super::evidence::digest::compact_output(tool, &output);
+    let output = digest::compact_output(tool, &output);
     Message {
         role: Role::Tool,
         content: vec![ContentPart::ToolResult {

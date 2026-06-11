@@ -42,6 +42,8 @@ use std::time::Instant;
 use tokio::sync::{RwLock, mpsc};
 use tokio::task::AbortHandle;
 use tokio::time::{Duration, MissedTickBehavior, timeout};
+#[path = "executor_trace.rs"]
+mod executor_trace;
 #[path = "path_guard/mod.rs"]
 mod path_guard;
 
@@ -2527,17 +2529,7 @@ pub async fn run_agent_loop(
                 });
             }
 
-            tracing::info!(
-                step = steps,
-                tool_call_id = %call_id,
-                tool = %tool_name,
-                "Executing tool"
-            );
-            tracing::debug!(
-                tool = %tool_name,
-                arguments = %arguments,
-                "Tool call arguments"
-            );
+            executor_trace::tool_call(steps, &call_id, &tool_name, &arguments);
 
             let tool_start = Instant::now();
             let mut tool_success = true;
@@ -2557,6 +2549,10 @@ pub async fn run_agent_loop(
                     tool_success = false;
                     tracing::warn!(tool = %tool_name, error = %e, "Tool path policy denied");
                     format!("Tool path policy denied: {e}")
+                } else if let Some(denial) = tool_policy::runtime_denial(&tool_name, &args).await {
+                    tool_success = false;
+                    tracing::warn!(tool = %tool_name, "Tool runtime policy denied");
+                    denial
                 } else {
                     let agent_name = format!("agent-{subtask_id}");
                     let provenance =

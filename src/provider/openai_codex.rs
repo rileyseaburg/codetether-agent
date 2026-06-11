@@ -3,8 +3,6 @@
 //! This provider uses the OAuth PKCE flow that the official OpenAI Codex CLI uses,
 //! allowing users to authenticate with their ChatGPT subscription instead of API credits.
 //!
-//! Reference: https://github.com/numman-ali/opencode-openai-codex-auth
-
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
@@ -34,15 +32,20 @@ use tokio_tungstenite::{
 };
 
 const OPENAI_API_URL: &str = "https://api.openai.com/v1";
+// `chatgpt.com/backend-api/codex` is not the public OpenAI API. Keep it behind
+// an explicit opt-in and prefer `OPENAI_API_KEY`/`api.openai.com` when present.
 const CHATGPT_CODEX_API_URL: &str = "https://chatgpt.com/backend-api/codex";
 const OPENAI_RESPONSES_WS_URL: &str = "wss://api.openai.com/v1/responses";
 const CHATGPT_CODEX_RESPONSES_WS_URL: &str = "wss://chatgpt.com/backend-api/codex/responses";
 const AUTH_ISSUER: &str = "https://auth.openai.com";
 const AUTHORIZE_URL: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
+// Public clients cannot treat this OAuth client ID as a secret. Backend use is
+// still gated by `CODETETHER_OPENAI_CODEX_ALLOW_CHATGPT_BACKEND`.
 const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
 const SCOPE: &str = "openid profile email offline_access";
+const CHATGPT_BACKEND_OPT_IN_ENV: &str = "CODETETHER_OPENAI_CODEX_ALLOW_CHATGPT_BACKEND";
 const THINKING_LEVEL_ENV: &str = "CODETETHER_OPENAI_CODEX_THINKING_LEVEL";
 const REASONING_EFFORT_ENV: &str = "CODETETHER_OPENAI_CODEX_REASONING_EFFORT";
 const DEFAULT_RESPONSES_INSTRUCTIONS: &str = "You are CodeTether Agent running on OpenAI Codex. \
@@ -102,11 +105,8 @@ impl CodexServiceTier {
 }
 
 /// Cached OAuth tokens with expiration tracking
-#[allow(dead_code)]
 struct CachedTokens {
     access_token: String,
-    #[allow(dead_code)]
-    refresh_token: String,
     expires_at: std::time::Instant,
 }
 
@@ -321,7 +321,6 @@ impl OpenAiCodexProvider {
     }
 
     /// Create a new unauthenticated instance (requires OAuth flow)
-    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             client: crate::provider::shared_http::shared_client().clone(),
@@ -381,7 +380,6 @@ impl OpenAiCodexProvider {
     }
 
     /// Get the OAuth authorization URL for the user to visit
-    #[allow(dead_code)]
     pub fn get_authorization_url() -> (String, String, String) {
         let pkce = Self::generate_pkce();
         let state = Self::generate_state();
@@ -407,12 +405,8 @@ impl OpenAiCodexProvider {
         CLIENT_ID
     }
 
-    fn responses_ws_url_with_base(base_url: &str) -> String {
-        base_url.to_string()
-    }
-
     pub fn responses_ws_url() -> String {
-        Self::responses_ws_url_with_base(OPENAI_RESPONSES_WS_URL)
+        OPENAI_RESPONSES_WS_URL.to_string()
     }
 
     fn build_responses_ws_request_with_base_url_and_account_id(
@@ -424,7 +418,7 @@ impl OpenAiCodexProvider {
             anyhow::bail!("Responses WebSocket token cannot be empty");
         }
 
-        let url = Self::responses_ws_url_with_base(base_url);
+        let url = base_url.to_string();
         let mut request = url
             .into_client_request()
             .context("Failed to build Responses WebSocket request")?;
@@ -510,7 +504,6 @@ impl OpenAiCodexProvider {
     }
 
     /// Exchange authorization code for tokens
-    #[allow(dead_code)]
     pub async fn exchange_code(code: &str, verifier: &str) -> Result<OAuthCredentials> {
         Self::exchange_code_with_redirect_uri(code, verifier, REDIRECT_URI).await
     }
@@ -673,6 +666,11 @@ impl OpenAiCodexProvider {
         if let Some(ref api_key) = self.static_api_key {
             return Ok(api_key.clone());
         }
+        if !Self::chatgpt_backend_opted_in() {
+            anyhow::bail!(
+                "OpenAI Codex ChatGPT backend is disabled. Configure OPENAI_API_KEY for the official OpenAI API, or set {CHATGPT_BACKEND_OPT_IN_ENV}=1 to opt in."
+            );
+        }
 
         {
             let cache = self.cached_tokens.read().await;
@@ -712,7 +710,6 @@ impl OpenAiCodexProvider {
 
         let cached = CachedTokens {
             access_token: creds.access_token.clone(),
-            refresh_token: creds.refresh_token.clone(),
             expires_at: std::time::Instant::now() + std::time::Duration::from_secs(expires_in),
         };
 
@@ -964,6 +961,11 @@ impl OpenAiCodexProvider {
 
     fn using_chatgpt_backend(&self) -> bool {
         self.static_api_key.is_none()
+    }
+
+    fn chatgpt_backend_opted_in() -> bool {
+        let value = std::env::var(CHATGPT_BACKEND_OPT_IN_ENV);
+        value.is_ok_and(|value| matches!(value.trim(), "1" | "true" | "yes" | "on"))
     }
 
     fn extract_chatgpt_account_id_from_jwt(jwt: &str) -> Option<String> {

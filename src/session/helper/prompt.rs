@@ -504,12 +504,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                 session.add_message(response.message.clone());
             }
             for (tool_id, tool_name) in &truncated_tool_ids {
-                let error_content = format!(
-                    "Error: Your tool call to `{tool_name}` was truncated — the arguments \
-                     JSON was cut off mid-string (likely hit the max_tokens limit). \
-                     Please retry with a shorter approach: use the `write` tool to write \
-                     content in smaller pieces, or reduce the size of your arguments."
-                );
+                let error_content = super::tool_truncation::error_content(tool_name);
                 session.add_message(super::tool_output::tool_result_with_status(
                     tool_id.clone(),
                     tool_name,
@@ -518,6 +513,8 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                 ));
             }
             if tool_calls.is_empty() {
+                session.add_message(super::tool_truncation::retry_prompt(&truncated_tool_ids));
+                final_output.clear();
                 continue;
             }
         }
@@ -860,19 +857,17 @@ fn parse_session_model_selector(session: &Session, providers: &[&str]) -> (Optio
     }
 }
 
-/// Execute a tool call and emit the corresponding audit entry.
 async fn execute_tool(
     tool_registry: &ToolRegistry,
     tool_name: &str,
     exec_input: &serde_json::Value,
     session_id: &str,
     exec_start: std::time::Instant,
-) -> (
-    String,
-    bool,
-    Option<std::collections::HashMap<String, serde_json::Value>>,
-) {
+) -> super::tool_policy::ToolTuple {
     if let Some(tool) = tool_registry.get(tool_name) {
+        if let Some(blocked) = super::tool_policy::blocked(tool_name, exec_input).await {
+            return blocked;
+        }
         match tool.execute(exec_input.clone()).await {
             Ok(result) => {
                 let duration_ms = exec_start.elapsed().as_millis() as u64;

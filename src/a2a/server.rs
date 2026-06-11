@@ -19,6 +19,9 @@ use crate::bus::BusMessage;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
+#[path = "server_session_event.rs"]
+mod server_session_event;
+
 /// A2A Server state
 #[derive(Clone)]
 pub struct A2AServer {
@@ -614,30 +617,9 @@ async fn handle_message_stream(
         tokio::spawn(async move {
             while let Some(event) = event_rx.recv().await {
                 let event_data = match &event {
-                    SessionEvent::Thinking => {
-                        serde_json::json!({ "type": "thinking" })
-                    }
-                    SessionEvent::ToolCallStart { name, arguments } => {
-                        serde_json::json!({
-                            "type": "tool_call_start",
-                            "name": name,
-                            "arguments": arguments
-                        })
-                    }
-                    SessionEvent::ToolCallComplete {
-                        name,
-                        output,
-                        success,
-                        duration_ms,
-                    } => {
-                        serde_json::json!({
-                            "type": "tool_call_complete",
-                            "name": name,
-                            "output": output.chars().take(500).collect::<String>(),
-                            "success": success,
-                            "duration_ms": duration_ms
-                        })
-                    }
+                    SessionEvent::Thinking
+                    | SessionEvent::ToolCallStart { .. }
+                    | SessionEvent::ToolCallComplete { .. } => server_session_event::data(&event),
                     SessionEvent::TextChunk(text) => {
                         serde_json::json!({ "type": "text_chunk", "text": text })
                     }

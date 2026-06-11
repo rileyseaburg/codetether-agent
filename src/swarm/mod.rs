@@ -18,6 +18,7 @@ pub mod k8s_result;
 pub mod kubernetes_executor;
 mod live_bus;
 pub mod orchestrator;
+mod quality_shell;
 pub mod rate_limiter;
 pub mod remote_subtask;
 pub mod result_store;
@@ -39,8 +40,7 @@ pub use rate_limiter::{AdaptiveRateLimiter, RateLimitInfo, RateLimitStats};
 pub use result_store::{ResultStore, ResultStoreContext, SharedResult, SubTaskStoreHandle};
 pub use subtask::{SubAgent, SubTask, SubTaskContext, SubTaskResult, SubTaskStatus};
 
-use anyhow::Result;
-use async_trait::async_trait;
+use {anyhow::Result, async_trait::async_trait};
 
 /// Actor trait for swarm participants
 ///

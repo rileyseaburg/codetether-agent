@@ -10,6 +10,7 @@ mod driver;
 mod hydrate;
 mod loop_run;
 mod peer;
+mod policy_notice;
 mod project;
 mod provider;
 mod secrets;

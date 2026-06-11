@@ -2,15 +2,15 @@
 //!
 //! Main API server for the CodeTether Agent
 
+mod approval_routes;
 pub mod auth;
+mod config_status;
 mod models_catalog;
 pub mod policy;
 mod policy_user;
 mod tool_contract;
-mod worker_stream;
-mod worker_task_claim;
-mod worker_task_release;
-mod worker_task_stream;
+mod version_info;
+mod worker_modules;
 
 use crate::a2a;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
@@ -25,11 +25,10 @@ use crate::cognition::{
 };
 use crate::config::Config;
 use crate::k8s::K8sManager;
-use crate::tool::{PluginManifest, PluginRegistry as AgentPluginRegistry, hash_bytes, hash_file};
+use crate::tool::{PluginManifest, PluginRegistry as AgentPluginRegistry, hash_bytes};
 use anyhow::Result;
 use auth::AuthState;
 use axum::{
-    Router,
     body::Body,
     extract::Path,
     extract::{Query, State},
@@ -287,13 +286,18 @@ const POLICY_RULES: &[PolicyRule] = &[
     },
     PolicyRule {
         pattern: "/task",
-        methods: None,
-        permission: "",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
+    PolicyRule {
+        pattern: "/v1/knative/tasks/",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
     },
     PolicyRule {
         pattern: "/v1/knative/",
-        methods: None,
-        permission: "",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
     },
     // OpenAI-compatible model discovery and chat completions
     PolicyRule {
@@ -458,8 +462,13 @@ const POLICY_RULES: &[PolicyRule] = &[
     // Worker connectivity
     PolicyRule {
         pattern: "/v1/worker/",
-        methods: None,
+        methods: Some(&["GET"]),
         permission: "agent:read",
+    },
+    PolicyRule {
+        pattern: "/v1/worker/tasks/",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
     },
     PolicyRule {
         pattern: "/v1/agent/workers",
@@ -728,7 +737,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         }
     });
 
-    let app = Router::new()
+    let app = approval_routes::router()
         // Health check (public — auth exempt)
         .route("/health", get(health))
         // CloudEvent receiver for Knative Eventing (public — auth exempt)
@@ -745,11 +754,15 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
             post(complete_knative_task),
         )
         // API routes
-        .route("/api/version", get(get_version))
+        .route("/api/version", get(version_info::get_version))
         .route("/api/session", get(list_sessions).post(create_session))
         .route("/api/session/{id}", get(get_session))
         .route("/api/session/{id}/prompt", post(prompt_session))
-        .route("/api/config", get(get_config))
+        .route("/api/config", get(config_status::get_config))
+        .route(
+            "/api/config/trust-status",
+            get(config_status::get_trust_status),
+        )
         .route("/api/provider", get(list_providers))
         .route("/api/agent", get(list_agents))
         // OpenAI-compatible APIs
@@ -823,15 +836,15 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Worker task lifecycle (what the Rust worker calls)
         .route(
             "/v1/worker/tasks/stream",
-            get(worker_task_stream::worker_task_stream),
+            get(worker_modules::worker_task_stream),
         )
         .route(
             "/v1/worker/tasks/claim",
-            post(worker_task_claim::worker_task_claim),
+            post(worker_modules::worker_task_claim),
         )
         .route(
             "/v1/worker/tasks/release",
-            post(worker_task_release::worker_task_release),
+            post(worker_modules::worker_task_release),
         )
         // Task dispatch (Knative-backed)
         .route("/v1/tasks/dispatch", post(dispatch_task))
@@ -1100,25 +1113,6 @@ struct CloudEventResponse {
     event_id: String,
 }
 
-/// Version info
-#[derive(Serialize)]
-struct VersionInfo {
-    version: &'static str,
-    name: &'static str,
-    binary_hash: Option<String>,
-}
-
-async fn get_version() -> Json<VersionInfo> {
-    let binary_hash = std::env::current_exe()
-        .ok()
-        .and_then(|p| hash_file(&p).ok());
-    Json(VersionInfo {
-        version: env!("CARGO_PKG_VERSION"),
-        name: env!("CARGO_PKG_NAME"),
-        binary_hash,
-    })
-}
-
 /// List sessions
 #[derive(Deserialize)]
 struct ListSessionsQuery {
@@ -1218,11 +1212,6 @@ async fn prompt_session(
     })?;
 
     Ok(Json(result))
-}
-
-/// Get configuration
-async fn get_config(State(state): State<AppState>) -> Json<Config> {
-    Json((*state.config).clone())
 }
 
 /// List providers
@@ -2672,7 +2661,7 @@ async fn register_tool(
         endpoint: req.endpoint,
         capabilities: req.capabilities,
         parameters: req.parameters,
-        execution_mode: tool_contract::DISCOVERY_ONLY_MODE.to_string(),
+        execution_mode: tool_contract::registration_execution_mode(),
         registered_at: now,
         last_heartbeat: now,
         expires_at: now + Duration::from_secs(90),
@@ -3139,6 +3128,8 @@ mod tests {
     use axum::http::StatusCode;
     use serde_json::json;
 
+    mod policy_route_tests;
+
     #[test]
     fn policy_prompt_session_requires_execute_permission() {
         let permission = match_policy_rule("/api/session/abc123/prompt", "POST");
@@ -3149,6 +3140,12 @@ mod tests {
     fn policy_create_session_keeps_sessions_write_permission() {
         let permission = match_policy_rule("/api/session", "POST");
         assert_eq!(permission, Some("sessions:write"));
+    }
+
+    #[test]
+    fn policy_config_trust_status_requires_read_permission() {
+        let permission = match_policy_rule("/api/config/trust-status", "GET");
+        assert_eq!(permission, Some("agent:read"));
     }
 
     #[test]

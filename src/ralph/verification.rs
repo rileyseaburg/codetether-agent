@@ -3,6 +3,8 @@ mod shell;
 mod step;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_shell;
 mod url;
 
 use super::types::UserStory;

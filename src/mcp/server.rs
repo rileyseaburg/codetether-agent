@@ -552,6 +552,7 @@ impl McpServer {
                 None => continue,
             };
 
+            let tool_name = tool.id().to_string();
             let tool_clone = Arc::clone(&tool);
 
             self.register_tool(
@@ -559,26 +560,11 @@ impl McpServer {
                 tool.description(),
                 tool.parameters(),
                 Arc::new(move |args: Value| {
-                    let tool = Arc::clone(&tool_clone);
-                    let result = tokio::task::block_in_place(|| {
-                        tokio::runtime::Handle::current()
-                            .block_on(async { tool.execute(args).await })
-                    });
-
-                    match result {
-                        Ok(tool_result) => Ok(CallToolResult {
-                            content: vec![ToolContent::Text {
-                                text: tool_result.output,
-                            }],
-                            is_error: !tool_result.success,
-                        }),
-                        Err(e) => Ok(CallToolResult {
-                            content: vec![ToolContent::Text {
-                                text: e.to_string(),
-                            }],
-                            is_error: true,
-                        }),
-                    }
+                    super::tool_policy::call_registered(
+                        tool_name.clone(),
+                        Arc::clone(&tool_clone),
+                        args,
+                    )
                 }),
             )
             .await;
@@ -605,45 +591,15 @@ impl McpServer {
                     "timeout_ms": {
                         "type": "integer",
                         "description": "Timeout in milliseconds (default: 30000)"
+                    },
+                    "approval_id": {
+                        "type": "string",
+                        "description": "Approval receipt id for mutating command execution"
                     }
                 },
                 "required": ["command"]
             }),
-            Arc::new(|args| {
-                let command = args
-                    .get("command")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing command"))?;
-
-                let cwd = args.get("cwd").and_then(|v| v.as_str());
-
-                let mut cmd = std::process::Command::new("/bin/sh");
-                cmd.arg("-c").arg(command);
-
-                if let Some(dir) = cwd {
-                    cmd.current_dir(dir);
-                }
-
-                let output = cmd.output()?;
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
-
-                let result = if output.status.success() {
-                    format!("{}{}", stdout, stderr)
-                } else {
-                    format!(
-                        "Exit code: {}\n{}{}",
-                        output.status.code().unwrap_or(-1),
-                        stdout,
-                        stderr
-                    )
-                };
-
-                Ok(CallToolResult {
-                    content: vec![ToolContent::Text { text: result }],
-                    is_error: !output.status.success(),
-                })
-            }),
+            Arc::new(super::fallback_run_command::call),
         )
         .await;
 
@@ -716,11 +672,18 @@ impl McpServer {
                     "create_dirs": {
                         "type": "boolean",
                         "description": "Create parent directories if they don't exist"
+                    },
+                    "approval_id": {
+                        "type": "string",
+                        "description": "Approval receipt id for file writes"
                     }
                 },
                 "required": ["path", "content"]
             }),
             Arc::new(|args| {
+                if let Some(blocked) = super::tool_policy::blocked("write_file", &args) {
+                    return Ok(blocked);
+                }
                 let path = args
                     .get("path")
                     .and_then(|v| v.as_str())
@@ -823,28 +786,7 @@ impl McpServer {
                 },
                 "required": ["pattern"]
             }),
-            Arc::new(|args| {
-                let pattern = args
-                    .get("pattern")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing pattern"))?;
-
-                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or(".");
-
-                // Simple glob using find command
-                let output = std::process::Command::new("find")
-                    .args([path, "-name", pattern, "-type", "f"])
-                    .output()?;
-
-                let result = String::from_utf8_lossy(&output.stdout);
-
-                Ok(CallToolResult {
-                    content: vec![ToolContent::Text {
-                        text: result.to_string(),
-                    }],
-                    is_error: !output.status.success(),
-                })
-            }),
+            Arc::new(super::fallback_search::search_files),
         )
         .await;
 
@@ -874,49 +816,7 @@ impl McpServer {
                 },
                 "required": ["query"]
             }),
-            Arc::new(|args| {
-                let query = args
-                    .get("query")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Missing query"))?;
-
-                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or(".");
-
-                let is_regex = args
-                    .get("is_regex")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
-
-                let case_sensitive = args
-                    .get("case_sensitive")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
-
-                let mut cmd = std::process::Command::new("grep");
-                cmd.arg("-r").arg("-n");
-
-                if !case_sensitive {
-                    cmd.arg("-i");
-                }
-
-                if is_regex {
-                    cmd.arg("-E");
-                } else {
-                    cmd.arg("-F");
-                }
-
-                cmd.arg(query).arg(path);
-
-                let output = cmd.output()?;
-                let result = String::from_utf8_lossy(&output.stdout);
-
-                Ok(CallToolResult {
-                    content: vec![ToolContent::Text {
-                        text: result.to_string(),
-                    }],
-                    is_error: false,
-                })
-            }),
+            Arc::new(super::fallback_search::grep_search),
         )
         .await;
 
@@ -940,7 +840,7 @@ impl McpServer {
             "resources/read" => self.handle_read_resource(request.params).await,
             "prompts/list" => self.handle_list_prompts(request.params).await,
             "prompts/get" => self.handle_get_prompt(request.params).await,
-            _ => Err(JsonRpcError::method_not_found(&request.method)),
+            method => super::approval::handle(method, request.params).await,
         };
 
         match result {
@@ -985,7 +885,7 @@ impl McpServer {
                 }),
                 prompts: Some(PromptsCapability { list_changed: true }),
                 logging: Some(LoggingCapability {}),
-                experimental: None,
+                experimental: super::approval::capability(),
             },
             server_info: self.server_info.clone(),
             instructions: Some(

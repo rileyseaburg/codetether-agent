@@ -11,13 +11,16 @@ pub async fn run(root: &Path, step: &VerificationStep, client: &reqwest::Client)
             expect_output_contains,
             expect_files_glob,
             ..
-        } => shell::run(
-            root,
-            command,
-            cwd,
-            expect_output_contains,
-            expect_files_glob,
-        ),
+        } => {
+            shell::run(
+                root,
+                command,
+                cwd,
+                expect_output_contains,
+                expect_files_glob,
+            )
+            .await
+        }
         VerificationStep::FileExists { path, glob, .. } => file::exists(root, path, *glob),
         VerificationStep::Url {
             url: target,

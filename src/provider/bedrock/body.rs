@@ -102,7 +102,8 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
     let mut inference_config = json!({});
     inference_config["maxTokens"] = json!(request.max_tokens.unwrap_or(8192));
 
-    let skip_temperature = model_id.to_ascii_lowercase().contains("claude-opus-4-7");
+    let skip_temperature = model_id.to_ascii_lowercase().contains("claude-opus-4-7")
+        || model_id.to_ascii_lowercase().contains("claude-fable-5");
     if let Some(temp) = request.temperature {
         if !skip_temperature {
             inference_config["temperature"] = json!(temp);
@@ -159,6 +160,5 @@ fn prompt_cache_enabled() -> bool {
 /// Returns true for model families that honor the `cachePoint` content block.
 /// Currently: Anthropic Claude (3.5+, 4.x).
 fn supports_prompt_caching(model_id: &str) -> bool {
-    let id = model_id.to_ascii_lowercase();
-    id.contains("anthropic") || id.contains("claude")
+    model_id.to_ascii_lowercase().contains("claude")
 }

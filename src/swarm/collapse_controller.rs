@@ -9,8 +9,8 @@
 use anyhow::{Context, Result, anyhow};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
+use std::process::Command;
+use std::time::Instant;
 
 /// Multi-dimensional coherence score for a branch.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -393,46 +393,8 @@ impl CollapseController {
 }
 
 fn run_cargo_check(worktree_path: &PathBuf) -> Result<bool> {
-    let mut child = Command::new("cargo")
-        .args(["check", "--quiet"])
-        .current_dir(worktree_path)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .with_context(|| {
-            format!(
-                "Failed to execute cargo check in {}",
-                worktree_path.display()
-            )
-        })?;
-
-    let deadline = Instant::now() + Duration::from_secs(COLLAPSE_CHECK_TIMEOUT_SECS);
-    loop {
-        if let Some(status) = child.try_wait().with_context(|| {
-            format!(
-                "Failed waiting on cargo check in {}",
-                worktree_path.display()
-            )
-        })? {
-            return Ok(status.success());
-        }
-
-        if Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            tracing::warn!(
-                worktree_path = %worktree_path.display(),
-                timeout_secs = COLLAPSE_CHECK_TIMEOUT_SECS,
-                "Collapse sampling cargo check timed out"
-            );
-            return Ok(false);
-        }
-
-        std::thread::sleep(Duration::from_millis(100));
-    }
+    super::quality_shell::cargo_check_quiet(Some(worktree_path))
 }
-
-const COLLAPSE_CHECK_TIMEOUT_SECS: u64 = 45;
 
 fn collect_changed_files(worktree_path: &PathBuf) -> Result<HashSet<String>> {
     let output = Command::new("git")

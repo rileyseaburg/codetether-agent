@@ -1,6 +1,9 @@
 //! Keyboard, mouse and paste event dispatch for the TUI.
 
 mod alt_scroll;
+mod approval_key;
+#[cfg(test)]
+mod approval_key_tests;
 mod clipboard;
 mod copy_reply;
 mod copy_transcript;
@@ -19,6 +22,7 @@ mod paste_burst;
 mod paste_burst_tests;
 mod scroll_down;
 mod scroll_up;
+mod side_question;
 mod tests;
 pub(crate) mod voice;
 

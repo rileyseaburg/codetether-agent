@@ -4,6 +4,8 @@ use futures::StreamExt;
 
 #[path = "dirty.rs"]
 mod dirty;
+#[path = "queued_prompt.rs"]
+mod queued_prompt;
 
 pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Result<bool> {
     let before = dirty::Snapshot::capture(args.app);
@@ -40,6 +42,7 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
         args.io.notice_rx,
     )
     .await;
+    queued_prompt::drain(app, args.cwd, slot, args.registry, bridge, args.runtime).await;
     super::bus_inbox::trigger_next(app, args.cwd, slot, args.registry, bridge, args.runtime).await;
     app.state.needs_redraw |= before.changed_since(app);
     Ok(false)

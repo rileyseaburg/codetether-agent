@@ -3,6 +3,11 @@
 //! Each handler inspects the active [`ViewMode`] and delegates
 //! to the appropriate subsystem.
 
+pub(crate) mod approval_command;
+#[cfg(test)]
+mod approval_command_deny_tests;
+#[cfg(test)]
+mod approval_command_tests;
 mod backspace;
 mod base_branch;
 mod bus;
@@ -12,6 +17,7 @@ mod chat_spawn;
 mod chat_submit;
 pub(crate) mod chat_submit_dispatch;
 mod chat_submit_slash;
+mod codex_parity_command;
 
 // Re-exports so the event loop's auto-drain hook can submit a queued
 // user message as a fresh turn without duplicating the dispatch logic.

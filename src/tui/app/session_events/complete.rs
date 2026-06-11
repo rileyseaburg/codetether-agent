@@ -28,6 +28,9 @@ pub(crate) fn complete(
 }
 
 fn status_text(name: &str, success: bool, duration_ms: u64, output: &str) -> String {
+    if !success && let Some(status) = super::super::approval_hint::status_text(name, output) {
+        return status;
+    }
     let mark = if success { "✓" } else { "✗" };
     let preview = truncate_preview(&output.replace('\n', " "), 80);
     format!("{mark} {name} finished in {duration_ms}ms — {preview}")

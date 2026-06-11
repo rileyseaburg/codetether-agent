@@ -552,12 +552,12 @@ async fn main() -> anyhow::Result<()> {
 
     let mcp_control_plane_url = cli.server.clone();
     let mcp_control_plane_token = cli.token.clone();
-    let mcp_project_root = cli.project.clone();
-    let mcp_project_was_explicit = cli.project.is_some();
+    let (mcp_project_root, mcp_project_was_explicit) = (cli.project.clone(), cli.project.is_some());
 
     match cli.command {
         Some(Command::Tui(args)) => {
             let allow_network = args.allow_network;
+            let access_mode = args.access_mode;
             // A2A peer is on by default. `--no-a2a` opts out entirely.
             // When on, every field auto-picks a sensible default unless the
             // user supplied an explicit override (--a2a-port / --a2a-name /
@@ -586,11 +586,12 @@ async fn main() -> anyhow::Result<()> {
             if start_new {
                 unsafe { std::env::set_var("CODETETHER_TUI_NEW_SESSION", "1") }
             };
-            tui::run(project, allow_network, a2a_options).await
+            tui::run(project, allow_network, a2a_options, access_mode).await
         }
         Some(Command::Serve(args)) => server::serve(args).await,
         Some(Command::Run(args)) => cli::run::execute(args).await,
         Some(Command::Pr(args)) => github_pr::run(args).await,
+        Some(Command::Approval(args)) => cli::approval::execute(args),
         Some(Command::Clipboard(args)) => cli::clipboard::execute(args),
         Some(Command::Models(args)) => {
             let registry = provider::ProviderRegistry::from_vault().await?;
@@ -1832,6 +1833,7 @@ async fn main() -> anyhow::Result<()> {
                 project,
                 false,
                 Some(crate::a2a::spawn::SpawnOptions::auto()),
+                None,
             )
             .await
         }

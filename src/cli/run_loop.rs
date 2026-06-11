@@ -9,6 +9,11 @@ use crate::session::Session;
 use anyhow::Result;
 use std::path::Path;
 
+#[path = "run_loop_events.rs"]
+mod events;
+
+pub use events::execute_prompt_with_resume_events;
+
 pub async fn execute_prompt_with_resume(
     session: &mut Session,
     message: &str,

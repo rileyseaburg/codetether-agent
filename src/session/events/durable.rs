@@ -24,6 +24,15 @@ impl SessionEvent {
         matches!(
             self,
             Self::TokenUsage(_)
+                | Self::ToolCallStart { .. }
+                | Self::ToolCallComplete { .. }
+                | Self::ToolCallMetadata { .. }
+                | Self::ApprovalRequest(_)
+                | Self::TextComplete(_)
+                | Self::ThinkingComplete(_)
+                | Self::UsageReport { .. }
+                | Self::Done
+                | Self::Error(_)
                 | Self::RlmComplete(_)
                 | Self::CompactionStarted(_)
                 | Self::CompactionCompleted(_)

@@ -18,9 +18,14 @@ CREDS_FILE="${AWS_SHARED_CREDENTIALS_FILE:-$HOME/.aws/credentials}"
 CONFIG_FILE="${AWS_CONFIG_FILE:-$HOME/.aws/config}"
 
 export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
-export VAULT_TOKEN="${VAULT_TOKEN:-${VAULT_DEV_ROOT_TOKEN:-codetether-dev-root}}"
+export VAULT_TOKEN="${VAULT_TOKEN:-${VAULT_DEV_ROOT_TOKEN:-}}"
 MOUNT="${VAULT_MOUNT:-secret}"
 PATH_PREFIX="${VAULT_SECRETS_PATH:-codetether/providers}"
+
+if [[ -z "$VAULT_TOKEN" ]]; then
+  echo "ERROR: set VAULT_TOKEN or VAULT_DEV_ROOT_TOKEN before seeding Vault" >&2
+  exit 1
+fi
 
 if [[ ! -f "$CREDS_FILE" ]]; then
   echo "ERROR: AWS credentials file not found: $CREDS_FILE" >&2

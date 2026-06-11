@@ -8,6 +8,13 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
+#[path = "mcp_bridge_args.rs"]
+mod bridge_args;
+#[path = "mcp_bridge_connect.rs"]
+mod connect;
+#[path = "mcp_bridge_policy.rs"]
+mod policy;
+
 /// MCP Bridge Tool - Connect to external MCP servers and call their tools
 pub struct McpBridgeTool;
 
@@ -84,13 +91,15 @@ impl Tool for McpBridgeTool {
             return Ok(ToolResult::error("Empty command"));
         }
 
-        let cmd = parts[0];
-        let cmd_args: Vec<&str> = parts[1..].to_vec();
+        let (cmd, cmd_args) = (parts[0], parts[1..].to_vec());
+        let approval_id = args["approval_id"].as_str();
+        if let Some(blocked) = policy::blocked(cmd, &cmd_args, approval_id).await {
+            return Ok(blocked);
+        }
 
         match action {
             "list_tools" => {
-                let manager =
-                    super::mcp_tools::McpToolManager::connect_subprocess(cmd, &cmd_args).await?;
+                let manager = connect::manager(cmd, &cmd_args, approval_id).await?;
                 let wrappers = manager.wrappers().await;
                 let result: Vec<Value> = wrappers
                     .iter()
@@ -109,15 +118,9 @@ impl Tool for McpBridgeTool {
                 let tool_name = args["tool_name"]
                     .as_str()
                     .ok_or_else(|| anyhow::anyhow!("Missing 'tool_name' for call_tool"))?;
-                let arguments = args["arguments"].clone();
-                let arguments = if arguments.is_null() {
-                    json!({})
-                } else {
-                    arguments
-                };
+                let arguments = bridge_args::with_approval(args["arguments"].clone(), approval_id);
 
-                let manager =
-                    super::mcp_tools::McpToolManager::connect_subprocess(cmd, &cmd_args).await?;
+                let manager = connect::manager(cmd, &cmd_args, approval_id).await?;
                 let client = manager.client();
                 let result = client.call_tool(tool_name, arguments).await?;
                 client.close().await?;
@@ -144,8 +147,7 @@ impl Tool for McpBridgeTool {
                 }
             }
             "list_resources" => {
-                let manager =
-                    super::mcp_tools::McpToolManager::connect_subprocess(cmd, &cmd_args).await?;
+                let manager = connect::manager(cmd, &cmd_args, approval_id).await?;
                 let client = manager.client();
                 let resources = client.list_resources().await?;
                 let result: Vec<Value> = resources
@@ -167,8 +169,7 @@ impl Tool for McpBridgeTool {
                     .as_str()
                     .ok_or_else(|| anyhow::anyhow!("Missing 'resource_uri' for read_resource"))?;
 
-                let manager =
-                    super::mcp_tools::McpToolManager::connect_subprocess(cmd, &cmd_args).await?;
+                let manager = connect::manager(cmd, &cmd_args, approval_id).await?;
                 let client = manager.client();
                 let result = client.read_resource(uri).await?;
                 client.close().await?;

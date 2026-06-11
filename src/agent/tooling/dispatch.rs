@@ -10,9 +10,8 @@
 //! ```
 
 use crate::agent::Agent;
-use crate::tool::{Tool, ToolResult};
+use crate::tool::ToolResult;
 use serde_json::Value;
-use std::sync::Arc;
 
 impl Agent {
     /// Executes a tool from its serialized JSON argument string.
@@ -39,8 +38,11 @@ impl Agent {
     pub(crate) async fn execute_tool_value(&self, name: &str, arguments: Value) -> ToolResult {
         self.log_tool_permission(name);
         match self.tools.get(name) {
-            Some(tool) => execute_registered_tool(tool, arguments).await,
-            None => execute_invalid_tool(self, name, arguments).await,
+            Some(tool) => match super::policy_gate::blocked(name, &arguments).await {
+                Some(blocked) => blocked,
+                None => super::registered::execute(tool, arguments).await,
+            },
+            None => super::invalid::execute(self, name, arguments).await,
         }
     }
 
@@ -48,27 +50,5 @@ impl Agent {
         if let Some(permission) = self.permissions.get(name) {
             tracing::debug!(agent = %self.info.name, tool = %name, permission = ?permission, "Checking tool permission");
         }
-    }
-}
-
-async fn execute_registered_tool(tool: Arc<dyn Tool>, arguments: Value) -> ToolResult {
-    let result = match tool.execute(arguments).await {
-        Ok(result) => result,
-        Err(error) => ToolResult::error(format!("Tool execution failed: {error}")),
-    };
-    // Cap gigantic outputs (bash stdout, recursive greps, etc.) at the
-    // configured byte budget before they flow into the session history and
-    // provider context. Truncation is tagged in result.metadata.truncated.
-    result.truncate_to(crate::tool::tool_output_budget())
-}
-
-async fn execute_invalid_tool(agent: &Agent, name: &str, arguments: Value) -> ToolResult {
-    let available_tools = agent.tools.list().iter().map(ToString::to_string).collect();
-    let invalid_tool =
-        crate::tool::invalid::InvalidTool::with_context(name.to_string(), available_tools);
-    let args = serde_json::json!({ "requested_tool": name, "args": arguments });
-    match invalid_tool.execute(args).await {
-        Ok(result) => result,
-        Err(error) => ToolResult::error(format!("Unknown tool: {name}. Error: {error}")),
     }
 }

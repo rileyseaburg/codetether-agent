@@ -53,6 +53,7 @@ fn handle_event(event: SessionEvent, state: &mut EventLoopState) {
             output,
             success,
             duration_ms: _,
+            ..
         } => state.tools.push(json!({
             "tool": name,
             "success": success,

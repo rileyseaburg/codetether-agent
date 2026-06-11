@@ -6,18 +6,15 @@ use async_trait::async_trait;
 use serde_json::Value;
 use std::sync::Arc;
 
+#[path = "mcp_tools_connect.rs"]
+mod connect;
+
 /// Manages a connection to an MCP server and produces local tool wrappers.
 pub struct McpToolManager {
     client: Arc<crate::mcp::McpClient>,
 }
 
 impl McpToolManager {
-    /// Connect to an MCP server subprocess and create a manager.
-    pub async fn connect_subprocess(command: &str, args: &[&str]) -> Result<Self> {
-        let client = crate::mcp::McpClient::connect_subprocess(command, args).await?;
-        Ok(Self { client })
-    }
-
     /// Build local wrappers for every tool currently advertised by the MCP server.
     pub async fn wrappers(&self) -> Vec<McpToolWrapper> {
         self.client

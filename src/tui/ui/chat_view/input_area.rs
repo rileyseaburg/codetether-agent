@@ -30,7 +30,7 @@ pub fn render_input(f: &mut Frame, app: &App, area: Rect, palette: &ColorPalette
         format!(" Command (/ for commands, Tab to autocomplete){suffix}")
     } else {
         format!(
-            " Message (Enter=send · Ctrl+V=paste · Ctrl+Y=copy reply · Ctrl+⇧Y=copy all · Ctrl+R=voice){suffix}"
+            " Message (Enter=send · Ctrl+V=paste · Ctrl+O=copy reply · Ctrl+⇧Y=copy all · Ctrl+R=voice){suffix}"
         )
     };
     let border_color = if app.state.processing {

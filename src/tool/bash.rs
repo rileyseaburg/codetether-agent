@@ -2,7 +2,7 @@
 
 use super::bash_github::load_github_command_auth;
 use super::bash_identity::git_identity_env_from_tool_args;
-use super::sandbox::{SandboxPolicy, execute_sandboxed};
+use super::sandbox::execute_sandboxed;
 use super::{Tool, ToolResult};
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use anyhow::Result;
@@ -19,6 +19,18 @@ use crate::telemetry::{TOOL_EXECUTIONS, ToolExecution, record_persistent};
 mod bash_capture;
 #[path = "bash_output.rs"]
 mod bash_output;
+#[path = "bash_sandbox_config.rs"]
+mod bash_sandbox_config;
+#[path = "bash_sandbox_error_metadata.rs"]
+mod bash_sandbox_error_metadata;
+#[path = "bash_sandbox_metadata.rs"]
+mod bash_sandbox_metadata;
+#[path = "bash_sandbox_mode.rs"]
+mod bash_sandbox_mode;
+#[path = "bash_sandbox_policy.rs"]
+mod bash_sandbox_policy;
+#[path = "bash_unsandboxed_metadata.rs"]
+mod bash_unsandboxed_metadata;
 
 /// Execute shell commands
 pub struct BashTool {
@@ -30,12 +42,9 @@ pub struct BashTool {
 
 impl BashTool {
     pub fn new() -> Self {
-        let sandboxed = std::env::var("CODETETHER_SANDBOX_BASH")
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
         Self {
             timeout_secs: 120,
-            sandboxed,
+            sandboxed: bash_sandbox_mode::default_enabled(),
             default_cwd: None,
         }
     }
@@ -48,17 +57,14 @@ impl BashTool {
     }
 
     /// Create a new BashTool with a custom timeout
-    #[allow(dead_code)]
     pub fn with_timeout(timeout_secs: u64) -> Self {
         Self {
             timeout_secs,
-            sandboxed: false,
-            default_cwd: None,
+            ..Self::new()
         }
     }
 
     /// Create a sandboxed BashTool
-    #[allow(dead_code)]
     pub fn sandboxed() -> Self {
         Self {
             timeout_secs: 120,
@@ -179,6 +185,15 @@ impl Tool for BashTool {
                 "timeout": {
                     "type": "integer",
                     "description": "Timeout in seconds (default: 120)"
+                },
+                "justification": {
+                    "type": "string",
+                    "description": "Why this command is needed when approval is required"
+                },
+                "prefix_rule": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Reusable command prefix proposed for session approval"
                 }
             },
             "required": ["command"],
@@ -215,20 +230,16 @@ impl Tool for BashTool {
         }
 
         // Sandboxed execution path: restricted env, resource limits, audit logged
-        if self.sandboxed {
-            let policy = SandboxPolicy {
-                allowed_paths: effective_cwd.clone().map(|d| vec![d]).unwrap_or_default(),
-                allow_network: false,
-                allow_exec: true,
-                timeout_secs,
-                ..SandboxPolicy::default()
-            };
-            let work_dir = effective_cwd.as_deref();
+        let sandboxed = bash_sandbox_config::enabled_for_args(self.sandboxed, command, &args).await;
+        if sandboxed {
+            let sandbox_root = bash_sandbox_mode::root(effective_cwd.clone());
+            let policy = bash_sandbox_policy::policy(sandbox_root.clone(), timeout_secs).await;
+            let work_dir = sandbox_root.as_path();
             let shell = super::bash_shell::resolve();
             let mut sandbox_args: Vec<String> = shell.prefix_args.clone();
             sandbox_args.push(wrapped_command.clone());
             let sandbox_result =
-                execute_sandboxed(&shell.program, &sandbox_args, &policy, work_dir).await;
+                execute_sandboxed(&shell.program, &sandbox_args, &policy, Some(work_dir)).await;
 
             // Audit log the sandboxed execution
             if let Some(audit) = try_audit_log() {
@@ -284,21 +295,7 @@ impl Tool for BashTool {
                     });
                     let _ = record_persistent("tool_execution", &data);
 
-                    Ok(ToolResult {
-                        output: r.output,
-                        success: r.success,
-                        metadata: [
-                            ("exit_code".to_string(), json!(r.exit_code)),
-                            ("sandboxed".to_string(), json!(true)),
-                            (
-                                "sandbox_violations".to_string(),
-                                json!(r.sandbox_violations),
-                            ),
-                            ("unsafe_fallbacks".to_string(), json!(r.unsafe_fallbacks)),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    })
+                    Ok(bash_sandbox_metadata::sandbox_result(&policy, work_dir, r))
                 }
                 Err(e) => {
                     let duration = exec_start.elapsed();
@@ -315,11 +312,18 @@ impl Tool for BashTool {
                         "error": e.to_string(),
                     });
                     let _ = record_persistent("tool_execution", &data);
-                    Ok(ToolResult::error(format!("Sandbox error: {}", e)))
+                    Ok(bash_sandbox_error_metadata::sandbox_error(
+                        ToolResult::error(format!("Sandbox error: {}", e)),
+                        &policy,
+                        work_dir,
+                        e.to_string(),
+                    ))
                 }
             };
         }
 
+        let unsafe_reason =
+            bash_sandbox_config::unsafe_reason_for_args(self.sandboxed, command, &args).await;
         let shell = super::bash_shell::resolve();
         let mut cmd = Command::new(&shell.program);
         cmd.args(&shell.prefix_args).arg(&wrapped_command);
@@ -439,22 +443,24 @@ impl Tool for BashTool {
                     &serde_json::to_value(&exec).unwrap_or_default(),
                 );
 
-                Ok(ToolResult {
-                    output: output_str,
-                    success,
-                    metadata: [
-                        ("exit_code".to_string(), json!(exit_code)),
-                        ("truncated".to_string(), json!(truncated)),
-                        ("sandboxed".to_string(), json!(false)),
-                        ("unsafe_execution".to_string(), json!(true)),
-                        (
-                            "interactive_auth_prompt".to_string(),
-                            json!(auth_prompt_blocked),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect(),
-                })
+                Ok(bash_unsandboxed_metadata::mark(
+                    ToolResult {
+                        output: output_str,
+                        success,
+                        metadata: [
+                            ("exit_code".to_string(), json!(exit_code)),
+                            ("truncated".to_string(), json!(truncated)),
+                            (
+                                "interactive_auth_prompt".to_string(),
+                                json!(auth_prompt_blocked),
+                            ),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    },
+                    effective_cwd.as_deref(),
+                    unsafe_reason,
+                ))
             }
             Err(e) => {
                 let duration = exec_start.elapsed();
@@ -472,13 +478,17 @@ impl Tool for BashTool {
                     &serde_json::to_value(&exec).unwrap_or_default(),
                 );
 
-                Ok(mark_unsafe_unsandboxed(ToolResult::structured_error(
-                    "EXECUTION_FAILED",
-                    "bash",
-                    &format!("Failed to execute command: {}", e),
-                    None,
-                    Some(json!({"command": command})),
-                )))
+                Ok(bash_unsandboxed_metadata::mark(
+                    ToolResult::structured_error(
+                        "EXECUTION_FAILED",
+                        "bash",
+                        &format!("Failed to execute command: {}", e),
+                        None,
+                        Some(json!({"command": command})),
+                    ),
+                    effective_cwd.as_deref(),
+                    unsafe_reason,
+                ))
             }
             Ok(bash_capture::CaptureOutcome::TimedOut) => {
                 let duration = exec_start.elapsed();
@@ -496,25 +506,23 @@ impl Tool for BashTool {
                     &serde_json::to_value(&exec).unwrap_or_default(),
                 );
 
-                Ok(mark_unsafe_unsandboxed(ToolResult::structured_error(
-                    "TIMEOUT",
-                    "bash",
-                    &format!("Command timed out after {} seconds", timeout_secs),
-                    None,
-                    Some(json!({
-                        "command": command,
-                        "hint": "Consider increasing timeout or breaking into smaller commands"
-                    })),
-                )))
+                Ok(bash_unsandboxed_metadata::mark(
+                    ToolResult::structured_error(
+                        "TIMEOUT",
+                        "bash",
+                        &format!("Command timed out after {} seconds", timeout_secs),
+                        None,
+                        Some(json!({
+                            "command": command,
+                            "hint": "Consider increasing timeout or breaking into smaller commands"
+                        })),
+                    ),
+                    effective_cwd.as_deref(),
+                    unsafe_reason,
+                ))
             }
         }
     }
-}
-
-fn mark_unsafe_unsandboxed(result: ToolResult) -> ToolResult {
-    result
-        .with_metadata("sandboxed", json!(false))
-        .with_metadata("unsafe_execution", json!(true))
 }
 
 impl Default for BashTool {
@@ -524,105 +532,5 @@ impl Default for BashTool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn sandboxed_bash_basic() {
-        let tool = BashTool {
-            timeout_secs: 10,
-            sandboxed: true,
-            default_cwd: None,
-        };
-        let result = tool
-            .execute(json!({ "command": "echo hello sandbox" }))
-            .await
-            .unwrap();
-        assert!(result.success);
-        assert!(result.output.contains("hello sandbox"));
-        assert_eq!(result.metadata.get("sandboxed"), Some(&json!(true)));
-    }
-
-    #[tokio::test]
-    async fn sandboxed_bash_timeout() {
-        let tool = BashTool {
-            timeout_secs: 1,
-            sandboxed: true,
-            default_cwd: None,
-        };
-        let result = tool
-            .execute(json!({ "command": "sleep 30" }))
-            .await
-            .unwrap();
-        assert!(!result.success);
-    }
-
-    #[tokio::test]
-    async fn unsandboxed_bash_reports_unsafe_metadata() {
-        let tool = BashTool {
-            timeout_secs: 10,
-            sandboxed: false,
-            default_cwd: None,
-        };
-        let result = tool
-            .execute(json!({ "command": "echo unsafe path" }))
-            .await
-            .unwrap();
-        assert!(result.success);
-        assert_eq!(result.metadata.get("sandboxed"), Some(&json!(false)));
-        assert_eq!(result.metadata.get("unsafe_execution"), Some(&json!(true)));
-    }
-
-    #[tokio::test]
-    async fn bash_with_default_cwd_runs_there() {
-        let dir = tempfile::tempdir().unwrap();
-        let tool = BashTool::with_cwd(dir.path().to_path_buf());
-        let result = tool.execute(json!({ "command": "pwd -P" })).await.unwrap();
-        let expected = std::fs::canonicalize(dir.path()).unwrap();
-        assert_eq!(
-            std::path::Path::new(result.output.trim()),
-            expected.as_path()
-        );
-    }
-
-    #[tokio::test]
-    async fn unsandboxed_bash_timeout_reports_unsafe_metadata() {
-        let tool = BashTool {
-            timeout_secs: 1,
-            sandboxed: false,
-            default_cwd: None,
-        };
-        let result = tool
-            .execute(json!({ "command": "sleep 30" }))
-            .await
-            .unwrap();
-        assert!(!result.success);
-        assert_eq!(result.metadata.get("sandboxed"), Some(&json!(false)));
-        assert_eq!(result.metadata.get("unsafe_execution"), Some(&json!(true)));
-    }
-
-    #[test]
-    fn detects_interactive_auth_risk() {
-        assert!(interactive_auth_risk_reason("sudo apt update").is_some());
-        assert!(interactive_auth_risk_reason("ssh user@host").is_some());
-        assert!(interactive_auth_risk_reason("sudo -n apt update").is_none());
-        assert!(interactive_auth_risk_reason("ssh -o BatchMode=yes user@host").is_none());
-    }
-
-    #[test]
-    fn detects_auth_prompt_output() {
-        assert!(looks_like_auth_prompt("[sudo] password for riley:"));
-        assert!(looks_like_auth_prompt(
-            "sudo: a terminal is required to read the password"
-        ));
-        assert!(!looks_like_auth_prompt("command completed successfully"));
-    }
-
-    #[test]
-    fn wraps_commands_with_codetether_function() {
-        let wrapped = codetether_wrapped_command("codetether run 'hi'");
-        assert!(wrapped.contains("codetether()"));
-        assert!(wrapped.contains("CODETETHER_BIN"));
-        assert!(wrapped.ends_with("codetether run 'hi'"));
-    }
-}
+#[path = "bash_tests.rs"]
+mod tests;

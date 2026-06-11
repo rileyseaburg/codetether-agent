@@ -13,6 +13,7 @@ static GLOBAL_ALLOC: telemetry::alloc_guard::GuardAlloc = telemetry::alloc_guard
 
 pub mod a2a;
 pub mod agent;
+pub mod approval;
 pub mod audit;
 pub mod autochat;
 pub mod benchmark;
@@ -44,6 +45,7 @@ pub mod provenance;
 pub mod provider;
 pub mod ralph;
 pub mod rlm;
+pub mod runtime_policy;
 pub mod search;
 pub mod secrets;
 pub mod server;

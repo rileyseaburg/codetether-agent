@@ -270,7 +270,7 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(key_row("Esc", "Back / close overlay / exit detail"));
     lines.push(key_row("Ctrl+T", "Symbol search (workspace)"));
     lines.push(key_row("Ctrl+W", "Start a /ask side question in chat"));
-    lines.push(key_row("Ctrl+Y", "Copy latest assistant reply"));
+    lines.push(key_row("Ctrl+O/Ctrl+Y", "Copy latest assistant reply"));
     lines.push(key_row(
         "Ctrl+Shift+Y",
         "Copy entire conversation transcript (clean plain text)",

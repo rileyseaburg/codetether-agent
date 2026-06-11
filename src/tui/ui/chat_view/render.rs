@@ -41,5 +41,6 @@ pub fn render_chat_view(f: &mut Frame, app: &mut App, session: &SessionView) {
         render_suggestions(f, app, rect);
     }
     render_status_line(f, app, chunks.status);
+    super::approval_overlay::render(f, f.area());
     crate::tui::help::render_help_overlay_if_needed(f, &mut app.state);
 }

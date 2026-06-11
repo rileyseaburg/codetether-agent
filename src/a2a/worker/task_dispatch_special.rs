@@ -10,7 +10,13 @@ pub(super) async fn dispatch_special_task(
     title: &str,
     context: &TaskContext,
 ) -> Option<Result<(&'static str, Option<String>, Option<String>, Option<String>)>> {
+    let policy_args = super::task_policy_args::from_metadata(&context.metadata);
     if context.raw_agent.eq_ignore_ascii_case("clone_repo") {
+        if let Some(blocked) =
+            crate::runtime_policy::evaluate_tool_invocation("bash", &policy_args).await
+        {
+            return Some(Ok(("failed", None, Some(blocked.output), None)));
+        }
         return Some(
             handle_clone_repo_task(
                 &runtime.client,
@@ -26,6 +32,11 @@ pub(super) async fn dispatch_special_task(
         );
     }
     if super::is_forage_agent(&context.raw_agent) {
+        if let Some(blocked) =
+            crate::runtime_policy::evaluate_tool_invocation("forage", &policy_args).await
+        {
+            return Some(Ok(("failed", None, Some(blocked.output), None)));
+        }
         return Some(
             handle_forage_task(
                 title,

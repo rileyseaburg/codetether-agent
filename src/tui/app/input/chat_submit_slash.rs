@@ -18,10 +18,16 @@ pub(super) async fn run(
     if !prompt.starts_with('/') {
         return false;
     }
+    if super::approval_command::run(app, prompt) {
+        return true;
+    }
     let Some(session) = slot.borrow_mut() else {
         app.state.status = "Session is busy; slash command was not run".to_string();
         return true;
     };
+    if super::codex_parity_command::run(app, cwd, session, registry.as_ref(), prompt).await {
+        return true;
+    }
     handle_slash_command(app, cwd, session, registry.as_ref(), prompt).await;
     app.state.clear_input();
     true

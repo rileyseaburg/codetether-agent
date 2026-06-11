@@ -21,13 +21,10 @@ pub fn render_webview_status(f: &mut Frame, app: &App, area: Rect) {
         .as_deref()
         .map(|m| format!(" {m} "))
         .unwrap_or_else(|| " auto ".to_string());
-    status_line.spans.insert(
-        0,
-        Span::styled(model_status, Style::default().fg(Color::Cyan)),
-    );
-    status_line
-        .spans
-        .insert(0, Span::styled("│ ", Style::default().fg(Color::DarkGray)));
+    let mut prefix = super::status_prefix::build(app);
+    prefix.push(Span::styled(model_status, Style::default().fg(Color::Cyan)));
+    prefix.push(Span::styled("│ ", Style::default().fg(Color::DarkGray)));
+    status_line.spans.splice(0..0, prefix);
     let para = Paragraph::new(status_line);
     f.render_widget(para, area);
 }

@@ -23,14 +23,27 @@ pub enum SessionEvent {
     /// The agent is thinking or waiting on the model.
     Thinking,
     /// A tool call has started.
-    ToolCallStart { name: String, arguments: String },
+    ToolCallStart {
+        tool_call_id: String,
+        name: String,
+        arguments: String,
+    },
     /// A tool call has completed.
     ToolCallComplete {
+        tool_call_id: String,
         name: String,
         output: String,
         success: bool,
         duration_ms: u64,
     },
+    /// Structured metadata produced by an in-flight tool call.
+    ToolCallMetadata {
+        tool_call_id: String,
+        name: String,
+        metadata: serde_json::Value,
+    },
+    /// A tool call is paused until the UI approves or denies it.
+    ApprovalRequest(crate::approval::LiveApprovalRequest),
     /// Partial assistant text output.
     TextChunk(String),
     /// Final per-step assistant text output.

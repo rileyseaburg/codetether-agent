@@ -1,53 +1,35 @@
 use ratatui::{
     Frame,
-    layout::Rect,
-    style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem},
+    layout::{Constraint, Direction, Layout, Rect},
 };
 
 use crate::tui::app::state::App;
 
 pub fn render_webview_sidebar(f: &mut Frame, app: &App, area: Rect) {
-    let block = Block::default()
-        .borders(Borders::RIGHT)
-        .title(" Sessions ")
-        .border_style(Style::default().fg(Color::DarkGray));
-    let mut items: Vec<ListItem> = Vec::new();
-    for (i, summary) in app.state.sessions.iter().enumerate() {
-        let title = summary.title.as_deref().unwrap_or("Untitled");
-        let label = if i == app.state.selected_session {
-            format!("▶ {}", truncate_str(title, 20))
-        } else {
-            format!("  {}", truncate_str(title, 20))
-        };
-        let style = if i == app.state.selected_session {
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::Gray)
-        };
-        items.push(ListItem::new(Line::from(Span::styled(label, style))));
-    }
-    if items.is_empty() {
-        items.push(ListItem::new(Line::from(Span::styled(
-            "  No sessions",
-            Style::default().fg(Color::DarkGray),
-        ))));
-    }
-    let list = List::new(items).block(block);
-    f.render_widget(list, area);
+    let recent_height = recent_sessions_height(area.height);
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(8), Constraint::Length(recent_height)])
+        .split(area);
+    super::workspace_panel::render(f, app, chunks[0]);
+    super::sessions_panel::render(f, app, chunks[1]);
 }
 
-fn truncate_str(s: &str, max: usize) -> String {
-    if s.len() <= max {
-        return s.to_string();
+fn recent_sessions_height(height: u16) -> u16 {
+    if height >= 30 {
+        12
+    } else {
+        height.saturating_div(3).max(8)
     }
-    let target = max.saturating_sub(1);
-    let boundary = (0..=target)
-        .rev()
-        .find(|&i| s.is_char_boundary(i))
-        .unwrap_or(0);
-    format!("{}…", &s[..boundary])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::recent_sessions_height;
+
+    #[test]
+    fn recent_sessions_panel_has_stable_height() {
+        assert_eq!(recent_sessions_height(36), 12);
+        assert_eq!(recent_sessions_height(18), 8);
+    }
 }

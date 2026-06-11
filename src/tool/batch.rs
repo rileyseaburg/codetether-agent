@@ -1,5 +1,10 @@
 //! Batch Tool - Execute multiple tool calls in parallel.
 
+#[path = "batch_policy.rs"]
+mod batch_policy;
+#[path = "batch_summary.rs"]
+mod batch_summary;
+
 use super::{Tool, ToolRegistry, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -55,7 +60,7 @@ impl Tool for BatchTool {
         "Batch Execute"
     }
     fn description(&self) -> &str {
-        "Execute multiple tool calls in parallel. Each call specifies a tool name and arguments."
+        "Execute at most three short independent tool calls in parallel. Do not use for large file writes, long shell scripts, or broad search batches; call tools individually instead."
     }
     fn parameters(&self) -> Value {
         json!({
@@ -63,7 +68,7 @@ impl Tool for BatchTool {
             "properties": {
                 "calls": {
                     "type": "array",
-                    "description": "Array of tool calls to execute. Preferred keys are `tool` + `args`; aliases `name` + `arguments` are also accepted for compatibility.",
+                    "description": "Small array of tool calls to execute. Keep arguments short and use at most three calls. Preferred keys are `tool` + `args`; aliases `name` + `arguments` are also accepted for compatibility.",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -112,79 +117,13 @@ impl Tool for BatchTool {
                 let args = call.args.clone();
                 let registry = Arc::clone(&registry);
 
-                async move {
-                    // Prevent recursive batch calls
-                    if tool_id == "batch" {
-                        return (
-                            i,
-                            tool_id,
-                            ToolResult::error("Cannot call batch from within batch"),
-                        );
-                    }
-
-                    match registry.get(&tool_id) {
-                        Some(tool) => match tool.execute(args).await {
-                            Ok(result) => (i, tool_id, result),
-                            Err(e) => (i, tool_id, ToolResult::error(format!("Error: {}", e))),
-                        },
-                        None => {
-                            // Use the invalid tool handler for better error messages
-                            let available_tools =
-                                registry.list().iter().map(|s| s.to_string()).collect();
-                            let invalid_tool = super::invalid::InvalidTool::with_context(
-                                tool_id.clone(),
-                                available_tools,
-                            );
-                            let invalid_args = serde_json::json!({
-                                "requested_tool": tool_id,
-                                "args": args
-                            });
-                            match invalid_tool.execute(invalid_args).await {
-                                Ok(result) => (i, tool_id.clone(), result),
-                                Err(e) => (
-                                    i,
-                                    tool_id.clone(),
-                                    ToolResult::error(format!(
-                                        "Unknown tool: {}. Error: {}",
-                                        tool_id, e
-                                    )),
-                                ),
-                            }
-                        }
-                    }
-                }
+                async move { batch_policy::execute(i, tool_id, args, registry).await }
             })
             .collect();
 
         let results = futures::future::join_all(futures).await;
 
-        let mut output_parts = Vec::new();
-        let mut success_count = 0;
-        let mut error_count = 0;
-
-        for (idx, tool_id, result) in results {
-            if result.success {
-                success_count += 1;
-                output_parts.push(format!("[{}] ✓ {}:\n{}", idx + 1, tool_id, result.output));
-            } else {
-                error_count += 1;
-                output_parts.push(format!("[{}] ✗ {}:\n{}", idx + 1, tool_id, result.output));
-            }
-        }
-
-        let summary = format!(
-            "Batch complete: {} succeeded, {} failed\n\n{}",
-            success_count,
-            error_count,
-            output_parts.join("\n\n")
-        );
-
-        let overall_success = error_count == 0;
-        if overall_success {
-            Ok(ToolResult::success(summary).with_metadata("success_count", json!(success_count)))
-        } else {
-            Ok(ToolResult::error(summary).with_metadata("error_count", json!(error_count)))
-        }
+        Ok(batch_summary::build(results))
     }
 }
 

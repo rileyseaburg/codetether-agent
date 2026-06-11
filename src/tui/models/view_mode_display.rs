@@ -35,7 +35,7 @@ pub fn view_mode_shortcut_hint(mode: ViewMode) -> &'static str {
         ViewMode::Rlm => "/rlm",
         ViewMode::Latency => "/latency",
         ViewMode::Protocol => "Ctrl+P",
-        ViewMode::FilePicker => "Ctrl+O",
+        ViewMode::FilePicker => "/file",
         ViewMode::Inspector => "/inspector",
         ViewMode::Audit => "/audit",
         ViewMode::Git => "/git",

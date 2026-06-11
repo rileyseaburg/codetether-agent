@@ -8,7 +8,6 @@
 //! Built-in tools are trusted. Third-party plugins must be registered with
 //! verified content before callers should execute them.
 
-use super::{sandbox_limits, sandbox_network, sandbox_paths};
 use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -16,6 +15,44 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use tokio::sync::RwLock;
+
+#[path = "sandbox_availability.rs"]
+mod sandbox_availability;
+#[path = "sandbox_bwrap_args.rs"]
+mod sandbox_bwrap_args;
+#[path = "sandbox_bwrap_paths.rs"]
+mod sandbox_bwrap_paths;
+#[path = "sandbox_bwrap_probe.rs"]
+mod sandbox_bwrap_probe;
+#[path = "sandbox_bwrap_push.rs"]
+mod sandbox_bwrap_push;
+#[path = "sandbox_command.rs"]
+mod sandbox_command;
+#[path = "sandbox_env.rs"]
+mod sandbox_env;
+#[path = "sandbox_execute.rs"]
+mod sandbox_execute;
+#[path = "sandbox_landlock.rs"]
+mod sandbox_landlock;
+#[path = "sandbox_plan_state.rs"]
+mod sandbox_plan_state;
+#[path = "sandbox_process.rs"]
+mod sandbox_process;
+#[path = "sandbox_result_builder.rs"]
+mod sandbox_result_builder;
+#[path = "sandbox_runner.rs"]
+mod sandbox_runner;
+#[path = "sandbox_runner_bwrap.rs"]
+mod sandbox_runner_bwrap;
+#[path = "sandbox_runner_direct.rs"]
+mod sandbox_runner_direct;
+#[path = "sandbox_runner_select.rs"]
+mod sandbox_runner_select;
+#[path = "sandbox_seccomp.rs"]
+mod sandbox_seccomp;
+
+pub use sandbox_availability::{direct_fallback_env_allowed, unavailable_reason};
+pub use sandbox_execute::execute_sandboxed;
 
 /// Manifest describing a plugin tool.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -305,113 +342,6 @@ fn allow_unverified_content_registration() -> bool {
     std::env::var("CODETETHER_ALLOW_UNVERIFIED_PLUGIN_CONTENT")
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
         .unwrap_or(false)
-}
-
-/// Execute a tool in a sandboxed subprocess.
-pub async fn execute_sandboxed(
-    command: &str,
-    args: &[String],
-    policy: &SandboxPolicy,
-    working_dir: Option<&Path>,
-) -> Result<SandboxResult> {
-    use std::time::Instant;
-    use tokio::process::Command;
-
-    let started = Instant::now();
-    let mut violations = Vec::new();
-    let mut unsafe_fallbacks = Vec::new();
-
-    if !policy.allow_exec {
-        return Err(anyhow!("Sandbox policy denies process execution"));
-    }
-
-    // Build restricted environment — strip everything except essentials.
-    let mut env: HashMap<String, String> = HashMap::new();
-    env.insert("PATH".to_string(), "/usr/bin:/bin".to_string());
-    env.insert("HOME".to_string(), "/tmp".to_string());
-    env.insert("LANG".to_string(), "C.UTF-8".to_string());
-    inject_codetether_runtime_env(&mut env);
-
-    unsafe_fallbacks.extend(sandbox_network::validate(policy, command, args)?);
-    if !policy.allow_network {
-        // Keep the advisory marker visible for cooperative child processes.
-        // Non-cooperative known network commands are rejected before spawn.
-        env.insert("CODETETHER_SANDBOX_NO_NETWORK".to_string(), "1".to_string());
-    }
-
-    let work_dir = working_dir
-        .map(|p| p.to_path_buf())
-        .unwrap_or_else(std::env::temp_dir);
-    sandbox_paths::validate_working_dir(policy, &work_dir).await?;
-
-    let mut cmd = Command::new(command);
-    cmd.args(args).current_dir(&work_dir).env_clear().envs(&env);
-    super::bash_noninteractive::configure(&mut cmd);
-    unsafe_fallbacks.extend(sandbox_limits::apply_memory_limit(
-        &mut cmd,
-        policy.max_memory_bytes,
-    ));
-
-    let timeout = std::time::Duration::from_secs(policy.timeout_secs);
-
-    let child = cmd.spawn().context("Failed to spawn sandboxed process")?;
-
-    let output = tokio::time::timeout(timeout, child.wait_with_output())
-        .await
-        .map_err(|_| {
-            violations.push("timeout_exceeded".to_string());
-            anyhow!("Sandboxed process timed out after {}s", policy.timeout_secs)
-        })?
-        .context("Failed to wait for sandboxed process")?;
-
-    let duration_ms = started.elapsed().as_millis() as u64;
-    let exit_code = output.status.code();
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-
-    let combined_output = if stderr.is_empty() {
-        stdout.to_string()
-    } else {
-        format!("{}\n--- stderr ---\n{}", stdout, stderr)
-    };
-
-    let output_hash = hash_bytes(combined_output.as_bytes());
-
-    Ok(SandboxResult {
-        tool_id: command.to_string(),
-        success: output.status.success(),
-        output: combined_output,
-        output_hash,
-        exit_code,
-        duration_ms,
-        sandbox_violations: violations,
-        unsafe_fallbacks,
-    })
-}
-
-fn inject_codetether_runtime_env(env: &mut HashMap<String, String>) {
-    let Ok(current_exe) = std::env::current_exe() else {
-        return;
-    };
-    env.insert(
-        "CODETETHER_BIN".to_string(),
-        current_exe.to_string_lossy().into_owned(),
-    );
-
-    let mut path_entries = current_exe
-        .parent()
-        .map(|parent| vec![parent.to_path_buf()])
-        .unwrap_or_default();
-    if let Some(existing_path) = env
-        .get("PATH")
-        .map(std::ffi::OsString::from)
-        .or_else(|| std::env::var_os("PATH"))
-    {
-        path_entries.extend(std::env::split_paths(&existing_path));
-    }
-    if let Ok(path) = std::env::join_paths(path_entries) {
-        env.insert("PATH".to_string(), path.to_string_lossy().into_owned());
-    }
 }
 
 /// Constant-time byte comparison.

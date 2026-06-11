@@ -1,22 +1,32 @@
 //! CLI command definitions and handlers
 
+#[cfg(test)]
+mod access_mode_args_tests;
+pub mod approval;
 pub mod auth;
 pub mod browserctl;
 pub mod cleanup_args;
 pub mod clipboard;
 pub mod config;
+mod config_args;
 pub mod context;
 pub mod go_ralph;
 pub mod oracle;
 pub mod run;
+mod run_args;
 pub mod run_checkpoint;
+mod run_config;
 pub mod run_loop;
 pub mod search;
 pub mod search_render;
+mod tui_args;
 
 use clap::{Parser, Subcommand};
 pub use cleanup_args::CleanupArgs;
+pub use config_args::{ConfigArgs, ConfigCommand, ProjectArgs, ProjectCommand};
+pub use run_args::RunArgs;
 use std::path::PathBuf;
+pub use tui_args::TuiArgs;
 
 /// CodeTether Agent - A2A-native AI coding agent
 ///
@@ -71,6 +81,9 @@ pub enum Command {
 
     /// Authenticate provider credentials and store in Vault
     Auth(AuthArgs),
+
+    /// Review and decide pending approval requests
+    Approval(approval::ApprovalArgs),
 
     /// Manage configuration
     Config(ConfigArgs),
@@ -234,65 +247,6 @@ pub struct CookieAuthArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct TuiArgs {
-    /// Project directory
-    pub project: Option<PathBuf>,
-
-    /// Allow network access in sandboxed commands
-    #[arg(long)]
-    pub allow_network: bool,
-
-    /// Disable the built-in A2A peer endpoint. By default the TUI binds an
-    /// A2A peer with auto-port, auto-name, and mDNS-based peer discovery —
-    /// other CodeTether processes on the same host or LAN find each other
-    /// without flags. Pass `--no-a2a` for purely interactive mode.
-    #[arg(long = "no-a2a", action = clap::ArgAction::SetFalse, default_value_t = true)]
-    pub a2a: bool,
-
-    /// Override the auto-picked A2A port. By default the OS assigns one
-    /// (port 0). Specify a port for stable curl-able URLs.
-    #[arg(long)]
-    pub a2a_port: Option<u16>,
-
-    /// A2A bind hostname. The default (`0.0.0.0`) provides the intended
-    /// zero-config path: auto-port, auto-name, and mDNS discovery without
-    /// extra flags. Use `127.0.0.1` to make the peer loopback-only.
-    #[arg(long, default_value = "0.0.0.0")]
-    pub a2a_hostname: String,
-
-    /// Public URL published in the agent card.
-    #[arg(long)]
-    pub a2a_public_url: Option<String>,
-
-    /// Override the auto-picked agent name (default: <host>-<repo>-<pid>).
-    #[arg(long)]
-    pub a2a_name: Option<String>,
-
-    /// Optional description for the A2A card.
-    #[arg(long)]
-    pub a2a_description: Option<String>,
-
-    /// Explicit peer seed URLs (in addition to mDNS-discovered peers).
-    /// Useful for cross-host setups where mDNS isn't routable.
-    #[arg(long, value_delimiter = ',', env = "CODETETHER_A2A_PEERS")]
-    pub a2a_peer: Vec<String>,
-
-    /// Discovery interval for explicit --a2a-peer seeds, in seconds.
-    /// Clamped to ≥ 5. (mDNS is event-driven, not polled.)
-    #[arg(long, default_value = "15")]
-    pub a2a_discovery_interval_secs: u64,
-
-    /// Disable auto-intro to newly discovered peers.
-    #[arg(long = "a2a-no-auto-introduce", action = clap::ArgAction::SetFalse, default_value_t = true)]
-    pub a2a_auto_introduce: bool,
-
-    /// Disable mDNS-based peer discovery. Without mDNS, only explicit
-    /// --a2a-peer seeds are discovered. mDNS is on by default for true P2P.
-    #[arg(long = "a2a-no-mdns", action = clap::ArgAction::SetFalse, default_value_t = true)]
-    pub a2a_mdns: bool,
-}
-
-#[derive(Parser, Debug)]
 pub struct ServeArgs {
     /// Port to listen on
     #[arg(short, long, default_value = "4096")]
@@ -305,58 +259,6 @@ pub struct ServeArgs {
     /// Enable mDNS discovery
     #[arg(long)]
     pub mdns: bool,
-}
-
-#[derive(Parser, Debug)]
-pub struct RunArgs {
-    /// Message to send (can be multiple words, quoted or unquoted)
-    pub message: String,
-
-    /// Continue the last session
-    #[arg(short, long)]
-    pub continue_session: bool,
-
-    /// Session ID to continue
-    #[arg(short, long)]
-    pub session: Option<String>,
-
-    /// Model to use (provider/model format)
-    #[arg(short, long)]
-    pub model: Option<String>,
-
-    /// Agent to use
-    #[arg(long)]
-    pub agent: Option<String>,
-
-    /// Output format
-    #[arg(long, default_value = "default", value_parser = ["default", "json"])]
-    pub format: String,
-
-    /// Files to attach
-    #[arg(short, long)]
-    pub file: Vec<PathBuf>,
-
-    /// Import and continue a Codex CLI session by ID
-    #[arg(long)]
-    pub codex_session: Option<String>,
-
-    /// Maximum agentic loop steps (default: 250, minimum: 1)
-    #[arg(long)]
-    pub max_steps: Option<usize>,
-
-    /// Auto-continue checkpoint/resume cycles until this many attempts (minimum: 1)
-    #[arg(long)]
-    pub auto_continue_until: Option<usize>,
-
-    /// Number of parallel speculative branches to race (1-8, default: 1).
-    /// When > 1, enables many-worlds speculative dev via the collapse controller.
-    #[arg(long, default_value = "1")]
-    pub branches: usize,
-
-    /// Optional comma-separated strategy prompts for speculative branches
-    /// (e.g. "planner,testfirst,minimal,refactor"). Defaults to built-in rotation.
-    #[arg(long, value_delimiter = ',')]
-    pub strategies: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -541,21 +443,6 @@ pub struct SpawnArgs {
     /// --peer seeds are discovered. mDNS is on by default for true P2P.
     #[arg(long = "no-mdns", action = clap::ArgAction::SetFalse, default_value_t = true)]
     pub mdns: bool,
-}
-
-#[derive(Parser, Debug)]
-pub struct ConfigArgs {
-    /// Show current configuration
-    #[arg(long)]
-    pub show: bool,
-
-    /// Initialize default configuration
-    #[arg(long)]
-    pub init: bool,
-
-    /// Set a configuration value
-    #[arg(long)]
-    pub set: Option<String>,
 }
 
 #[derive(Parser, Debug)]

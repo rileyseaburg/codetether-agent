@@ -9,6 +9,8 @@ mod alpha8_browser_render;
 #[cfg(feature = "tetherscript")]
 mod alpha8_js_eval;
 #[cfg(feature = "tetherscript")]
+mod bash_guard;
+#[cfg(feature = "tetherscript")]
 mod browser_grant;
 #[cfg(feature = "tetherscript")]
 mod computer_grant;

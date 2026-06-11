@@ -7,6 +7,7 @@
 //! project, session, configuration, and event handling responsibilities to
 //! focused submodules.
 
+use crate::config::AccessMode;
 use crate::session::Session;
 use crate::tui::app::safe_draw::draw_ui;
 use crate::tui::app::session_runtime::SessionView;
@@ -55,6 +56,7 @@ pub async fn run(
     project: Option<std::path::PathBuf>,
     allow_network: bool,
     a2a_options: Option<crate::a2a::spawn::SpawnOptions>,
+    access_mode: Option<AccessMode>,
 ) -> anyhow::Result<()> {
     super::project::enter(project, allow_network)?;
     let mut terminal_runtime = super::terminal::enter()?;
@@ -65,15 +67,12 @@ pub async fn run(
     let mut app = App::default();
 
     super::hydrate::initial(&mut app, &cwd, allow_network, peer.ready, &session);
-    draw_ui(
-        &mut terminal_runtime.terminal,
-        &mut app,
-        &SessionView::from_session(&session),
-    )?;
+    let view = SessionView::from_session(&session);
+    draw_ui(&mut terminal_runtime.terminal, &mut app, &view)?;
 
-    let startup = super::startup::load(&cwd, bus.clone()).await;
+    let mut startup = super::startup::load(&cwd, bus.clone()).await;
+    super::config::apply_startup(&mut session, &mut startup, access_mode);
     let outcome = super::session_outcome::apply_load(&mut session, &bus, startup.session_load);
-    super::config::apply(&mut session, startup.config, startup.registry.as_deref());
     super::hydrate::complete(
         &mut app,
         allow_network,

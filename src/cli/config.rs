@@ -1,13 +1,24 @@
 //! Configuration management commands
 
-use super::ConfigArgs;
+mod set;
+mod status;
+mod trust;
+
+use super::{ConfigArgs, ConfigCommand};
 use crate::config::Config;
 use anyhow::Result;
 
 pub async fn execute(args: ConfigArgs) -> Result<()> {
+    if let Some(command) = args.command {
+        return match command {
+            ConfigCommand::Project(args) => trust::execute(args.command),
+        };
+    }
+
     if args.show {
         let config = Config::load().await?;
         println!("{}", toml::to_string_pretty(&config)?);
+        status::print_effective(&config)?;
         return Ok(());
     }
 
@@ -18,31 +29,10 @@ pub async fn execute(args: ConfigArgs) -> Result<()> {
     }
 
     if let Some(kv) = args.set {
-        let parts: Vec<&str> = kv.splitn(2, '=').collect();
-        if parts.len() != 2 {
-            anyhow::bail!("Invalid format. Use: --set key=value");
-        }
-        Config::set(parts[0], parts[1]).await?;
-        println!("Set {} = {}", parts[0], parts[1]);
-        if parts[0] == "telemetry.crash_reporting" {
-            if matches!(
-                parts[1].trim().to_ascii_lowercase().as_str(),
-                "1" | "true" | "yes" | "on"
-            ) {
-                println!(
-                    "Crash reporting enabled (opt-in). Panic reports include stack traces and runtime metadata. Disable with: codetether config --set telemetry.crash_reporting=false"
-                );
-            } else if matches!(
-                parts[1].trim().to_ascii_lowercase().as_str(),
-                "0" | "false" | "no" | "off"
-            ) {
-                println!("Crash reporting disabled.");
-            }
-        }
-        return Ok(());
+        return set::execute(&kv).await;
     }
 
     // Default: show help
-    println!("Use --show, --init, or --set key=value");
+    println!("Use --show, --init, --set key=value, or config project status");
     Ok(())
 }

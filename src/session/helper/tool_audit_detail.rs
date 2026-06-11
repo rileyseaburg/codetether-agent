@@ -19,7 +19,10 @@ const PREVIEW_BYTES: usize = 512;
 /// `duration_ms` and `output_len`; `fault_code` is included when the
 /// tool stamped one (typed-fault tools like `session_recall` and the
 /// `context_*` family always do).
-pub(super) fn tool_success_detail(duration_ms: u64, result: &ToolResult) -> Value {
+pub(in crate::session::helper) fn tool_success_detail(
+    duration_ms: u64,
+    result: &ToolResult,
+) -> Value {
     let mut metadata_keys = result.metadata.keys().cloned().collect::<Vec<_>>();
     metadata_keys.sort();
     json!({
@@ -34,7 +37,7 @@ pub(super) fn tool_success_detail(duration_ms: u64, result: &ToolResult) -> Valu
 }
 
 /// Detail JSON for a tool invocation that returned an error.
-pub(super) fn tool_failure_detail(duration_ms: u64, error: &str) -> Value {
+pub(in crate::session::helper) fn tool_failure_detail(duration_ms: u64, error: &str) -> Value {
     json!({
         "duration_ms": duration_ms,
         "error_len": error.len(),

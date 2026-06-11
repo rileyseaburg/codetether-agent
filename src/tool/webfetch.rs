@@ -5,7 +5,6 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use serde::Deserialize;
 use serde_json::{Value, json};
 use std::time::Duration;
 
@@ -14,6 +13,11 @@ const MAX_CONTENT_LENGTH: usize = 10 * 1024 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 const DEFAULT_MAX_CHARS: usize = 200_000;
+
+#[path = "webfetch_github.rs"]
+mod github;
+#[path = "webfetch_params.rs"]
+mod params;
 
 #[allow(dead_code)]
 static RE_STRIP_SCRIPT_STYLE: Lazy<Regex> = Lazy::new(|| {
@@ -125,22 +129,6 @@ impl WebFetchTool {
     }
 }
 
-#[derive(Deserialize)]
-struct Params {
-    url: String,
-    #[serde(default = "default_fmt")]
-    format: String,
-    #[serde(default = "default_max_chars")]
-    max_chars: usize,
-}
-fn default_fmt() -> String {
-    "markdown".into()
-}
-
-fn default_max_chars() -> usize {
-    DEFAULT_MAX_CHARS
-}
-
 #[async_trait]
 impl Tool for WebFetchTool {
     fn id(&self) -> &str {
@@ -170,7 +158,7 @@ impl Tool for WebFetchTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: Params = serde_json::from_value(params).context("Invalid params")?;
+        let p: params::Params = serde_json::from_value(params).context("Invalid params")?;
         let url = p.url.parse::<reqwest::Url>().context("Invalid URL")?;
         if url.scheme() != "http" && url.scheme() != "https" {
             return Ok(ToolResult::error("Only HTTP/HTTPS supported"));
@@ -178,9 +166,8 @@ impl Tool for WebFetchTool {
 
         crate::tls::ensure_rustls_crypto_provider();
 
-        let resp = self
-            .client
-            .get(url)
+        let github_auth = github::auth_for(&url, p.parent_workspace.as_deref()).await;
+        let resp = github::apply(self.client.get(url), github_auth.as_ref())
             .send()
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -201,7 +188,10 @@ impl Tool for WebFetchTool {
                 MAX_CONTENT_LENGTH
             )));
         }
-        let body = String::from_utf8_lossy(&bytes).to_string();
+        let body = github::redact(
+            String::from_utf8_lossy(&bytes).to_string(),
+            github_auth.as_ref(),
+        );
         let content = match p.format.as_str() {
             "html" => body,
             "text" => {
@@ -252,6 +242,7 @@ impl Tool for WebFetchTool {
         Ok(ToolResult::success(out)
             .with_metadata("url", json!(p.url))
             .with_metadata("format", json!(p.format))
+            .with_metadata("github_auth", json!(github_auth.is_some()))
             .with_metadata("truncated", json!(truncated))
             .with_metadata("max_chars", json!(p.max_chars)))
     }

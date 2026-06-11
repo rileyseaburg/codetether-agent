@@ -37,3 +37,19 @@ pub fn webview_body_chunks(area: Rect, show_inspector: bool) -> Vec<Rect> {
 pub fn is_webview(mode: ChatLayoutMode) -> bool {
     mode == ChatLayoutMode::Webview
 }
+
+pub fn show_inspector(area: Rect) -> bool {
+    area.width >= 118
+}
+
+#[cfg(test)]
+mod tests {
+    use super::show_inspector;
+    use ratatui::layout::Rect;
+
+    #[test]
+    fn inspector_requires_wide_terminal() {
+        assert!(show_inspector(Rect::new(0, 0, 120, 24)));
+        assert!(!show_inspector(Rect::new(0, 0, 100, 24)));
+    }
+}
