@@ -17,6 +17,13 @@ use tokio::process::{Child, Command};
 use tokio::sync::{RwLock, mpsc, oneshot};
 use tracing::{debug, error, trace, warn};
 
+/// Maximum allowed value for the LSP `Content-Length` header.
+///
+/// LSP messages are typically well under 1 MiB. A corrupted or buggy server
+/// could emit an absurd value, causing `vec![0u8; len]` to request more memory
+/// than the process has — tripping the alloc guard.
+const MAX_CONTENT_LENGTH: usize = 16 * 1024 * 1024; // 16 MiB
+
 /// LSP Transport for communicating with language servers
 pub struct LspTransport {
     /// The child process (kept alive for the transport lifetime)
@@ -172,6 +179,18 @@ impl LspTransport {
                     warn!("LSP message missing Content-Length header");
                     continue;
                 };
+
+                if len > MAX_CONTENT_LENGTH {
+                    error!(
+                        len,
+                        cap = MAX_CONTENT_LENGTH,
+                        "LSP Content-Length exceeds cap; dropping frame to prevent OOM"
+                    );
+                    // Drain the oversized body so the stream stays in sync.
+                    let mut discard = vec![0u8; MAX_CONTENT_LENGTH.min(len)];
+                    let _ = reader.read_exact(&mut discard).await;
+                    continue;
+                }
 
                 let mut body_buf = vec![0u8; len];
                 match reader.read_exact(&mut body_buf).await {
