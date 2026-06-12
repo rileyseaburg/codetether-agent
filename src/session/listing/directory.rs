@@ -1,8 +1,11 @@
+//! Public listing entry points. The actual index-first lookup lives in
+//! [`super::directory_query`]; this file is just the facade.
+
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
-use super::scan::scan;
+use super::directory_query;
 use super::summary::SessionSummary;
 use super::workspace::canonical;
 
@@ -12,7 +15,7 @@ use super::workspace::canonical;
 ///
 /// Returns an error if the data directory cannot be read.
 pub async fn list_sessions() -> Result<Vec<SessionSummary>> {
-    scan(sessions_dir()?, None).await
+    directory_query::list_indexed(sessions_dir()?, None).await
 }
 
 /// List sessions scoped to a workspace directory.
@@ -21,7 +24,8 @@ pub async fn list_sessions() -> Result<Vec<SessionSummary>> {
 ///
 /// Returns an error if the data directory cannot be read.
 pub async fn list_sessions_for_directory(dir: &Path) -> Result<Vec<SessionSummary>> {
-    scan(sessions_dir()?, Some(canonical(dir))).await
+    // `matches_workspace` expects an already-canonicalized workspace path.
+    directory_query::list_indexed(sessions_dir()?, Some(canonical(dir))).await
 }
 
 /// List workspace sessions with pagination.
@@ -38,7 +42,7 @@ pub async fn list_sessions_paged(
     Ok(sessions.into_iter().skip(offset).take(limit).collect())
 }
 
-fn sessions_dir() -> Result<PathBuf> {
+pub(super) fn sessions_dir() -> Result<PathBuf> {
     crate::config::Config::data_dir()
         .map(|dir| dir.join("sessions"))
         .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))

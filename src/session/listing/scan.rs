@@ -1,14 +1,13 @@
-use std::fs::File;
-use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use tokio::fs;
 
-use super::record::SessionListingRecord;
+use super::parse_summary::parse_summary;
 use super::summary::SessionSummary;
-use super::workspace::matches_workspace;
 
+/// Full-directory listing scan. Used as the rebuild/repair path when
+/// `index.jsonl` is missing or stale.
 pub(super) async fn scan(
     sessions_dir: PathBuf,
     workspace: Option<PathBuf>,
@@ -32,22 +31,4 @@ pub(super) async fn scan(
 
 fn is_json(path: &Path) -> bool {
     path.extension().is_some_and(|ext| ext == "json")
-}
-
-fn parse_summary(path: &Path, workspace: Option<&Path>) -> Option<SessionSummary> {
-    let file = File::open(path).map_err(log_read(path)).ok()?;
-    let reader = BufReader::with_capacity(64 * 1024, file);
-    let record: SessionListingRecord = serde_json::from_reader(reader)
-        .map_err(log_malformed(path))
-        .ok()?;
-    let summary = record.into_summary();
-    matches_workspace(summary.directory.as_deref(), workspace).then_some(summary)
-}
-
-fn log_read(path: &Path) -> impl FnOnce(std::io::Error) {
-    |error| tracing::warn!(path = %path.display(), error = %error, "skipping unreadable session file")
-}
-
-fn log_malformed(path: &Path) -> impl FnOnce(serde_json::Error) {
-    |error| tracing::warn!(path = %path.display(), error = %error, "skipping malformed session file")
 }
