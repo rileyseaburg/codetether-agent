@@ -8,8 +8,11 @@ use anyhow::{Context, Result};
 
 use super::summary::SessionSummary;
 
-/// Synchronous tmp-file + atomic rename writer.
+/// Synchronous tmp-file + atomic rename writer. Holds the index writer
+/// lock so a concurrent save's append cannot land on the unlinked
+/// pre-rename inode.
 pub(super) fn write_compact_sync(final_path: &Path, summaries: &[SessionSummary]) -> Result<()> {
+    let _guard = super::index_file_io::write_lock();
     if let Some(parent) = final_path.parent() {
         std::fs::create_dir_all(parent).ok();
     }
@@ -24,10 +27,16 @@ pub(super) fn write_compact_sync(final_path: &Path, summaries: &[SessionSummary]
     file.flush()?;
     match std::fs::rename(&tmp, final_path) {
         Ok(()) => Ok(()),
-        Err(_) => {
+        Err(primary) => {
             let _ = std::fs::remove_file(final_path);
-            std::fs::rename(&tmp, final_path)
-                .with_context(|| format!("rename tmp into {}", final_path.display()))
+            if let Err(retry) = std::fs::rename(&tmp, final_path) {
+                let _ = std::fs::remove_file(&tmp);
+                anyhow::bail!(
+                    "rename tmp into {}: {primary} (retry: {retry})",
+                    final_path.display()
+                );
+            }
+            Ok(())
         }
     }
 }

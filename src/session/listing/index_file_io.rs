@@ -6,14 +6,29 @@
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
+use std::sync::{Mutex, MutexGuard};
 
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 
 use super::summary::SessionSummary;
 
+/// Serialises in-process index writers: a save's append must not race a
+/// listing's compact-rewrite, or the append can land on the unlinked
+/// pre-compaction inode (Unix) or fail the rename (Windows). Writers
+/// from *other* processes are not covered — a lost cross-process append
+/// is self-healing, because the next listing's disk walk re-discovers
+/// the session file and re-appends it.
+static WRITE_LOCK: Mutex<()> = Mutex::new(());
+
+/// Take the index writer lock. Only call from the blocking pool.
+pub(super) fn write_lock() -> MutexGuard<'static, ()> {
+    WRITE_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 /// Append a single summary line to the index. O_APPEND.
 pub(super) fn append_sync(path: &Path, summary: &SessionSummary) -> Result<()> {
+    let _guard = write_lock();
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
