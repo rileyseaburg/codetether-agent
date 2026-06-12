@@ -1,5 +1,5 @@
 use super::run_story_verification;
-use crate::approval::test_env::ENV_LOCK;
+use crate::approval::test_env::lock_env;
 use crate::ralph::types::{UserStory, VerificationStep};
 use tempfile::tempdir;
 
@@ -8,7 +8,7 @@ mod shell_env;
 
 #[tokio::test]
 async fn shell_step_checks_output_and_artifacts() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let dir = tempdir().expect("tempdir");
     let _env = shell_env::TrustedShellProject::new(dir.path());
     let step = VerificationStep::Shell {

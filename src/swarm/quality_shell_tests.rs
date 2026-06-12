@@ -1,5 +1,5 @@
 use super::cargo_check_quiet;
-use crate::approval::test_env::ENV_LOCK;
+use crate::approval::test_env::lock_env;
 
 struct EnvGuard;
 
@@ -18,7 +18,7 @@ impl Drop for EnvGuard {
 
 #[test]
 fn cargo_check_requires_runtime_policy_approval() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     let _env = EnvGuard::data_dir(data.path());
     assert!(!cargo_check_quiet(None).expect("policy result"));

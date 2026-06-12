@@ -1,8 +1,8 @@
-use super::{ApprovalStore, ENV_LOCK, EnvGuard, guard, policy_args};
+use super::{ApprovalStore, EnvGuard, guard, lock_env, policy_args};
 
 #[tokio::test]
 async fn approved_mcp_bridge_alias_allows_subprocess_spawn_gate() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     let _env = EnvGuard::data_dir(data.path());
     let store = ApprovalStore::open(data.path().join("approvals")).expect("store");

@@ -1,4 +1,4 @@
-use crate::approval::{ApprovalStore, session_command_grants, test_env::ENV_LOCK};
+use crate::approval::{ApprovalStore, session_command_grants, test_env::lock_env};
 use axum::http::{Request, StatusCode};
 use serde_json::json;
 use tower::ServiceExt;
@@ -8,7 +8,7 @@ mod env;
 
 #[tokio::test]
 async fn server_session_decision_grants_prefix() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     let _env = env::EnvGuard::data_dir(data.path());
     session_command_grants::reset();

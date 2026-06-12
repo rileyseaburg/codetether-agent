@@ -1,4 +1,4 @@
-use crate::approval::{ApprovalStore, session_command_grants, test_env::ENV_LOCK};
+use crate::approval::{ApprovalStore, session_command_grants, test_env::lock_env};
 use serde_json::json;
 
 struct EnvGuard;
@@ -12,7 +12,7 @@ impl Drop for EnvGuard {
 
 #[tokio::test]
 async fn mcp_execpolicy_decision_grants_session_prefix() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     unsafe { std::env::set_var("CODETETHER_DATA_DIR", data.path()) };
     session_command_grants::reset();

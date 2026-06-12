@@ -33,6 +33,14 @@ pub use store::ApprovalStore;
 #[cfg(test)]
 pub(crate) mod test_env {
     pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Acquire the shared env lock, recovering from poison so one panicking
+    /// test does not cascade `PoisonError` failures into unrelated tests.
+    pub(crate) fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+        ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
 }
 
 #[cfg(test)]

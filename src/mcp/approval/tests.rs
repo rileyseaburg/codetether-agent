@@ -1,5 +1,5 @@
 use crate::approval::{
-    ApprovalStore, LiveApprovalDecision, LiveApprovalRequest, test_env::ENV_LOCK,
+    ApprovalStore, LiveApprovalDecision, LiveApprovalRequest, test_env::lock_env,
 };
 use serde_json::json;
 
@@ -20,7 +20,7 @@ impl Drop for EnvGuard {
 
 #[tokio::test]
 async fn mcp_decision_resumes_live_approval_request() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     let _env = EnvGuard::data_dir(data.path());
     let store = ApprovalStore::open(data.path().join("approvals")).expect("store");

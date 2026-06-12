@@ -1,5 +1,5 @@
 use super::evaluate_tool_invocation_with_config;
-use crate::approval::{ApprovalStore, session_grants, test_env::ENV_LOCK};
+use crate::approval::{ApprovalStore, session_grants, test_env::lock_env};
 use crate::config::Config;
 use serde_json::json;
 
@@ -15,7 +15,7 @@ impl Drop for EnvGuard {
 
 #[test]
 fn session_grant_allows_future_matching_invocation() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     unsafe { std::env::set_var("CODETETHER_DATA_DIR", data.path()) };
     let _env = EnvGuard;

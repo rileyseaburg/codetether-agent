@@ -1,5 +1,5 @@
 use super::evaluate_tool_invocation;
-use crate::approval::test_env::ENV_LOCK;
+use crate::approval::test_env::lock_env;
 use crate::config::ProjectTrustStore;
 use serde_json::json;
 
@@ -20,7 +20,7 @@ impl Drop for EnvGuard {
 
 #[tokio::test]
 async fn policy_loads_config_for_tool_cwd_workspace() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("data");
     let _env = EnvGuard::data_dir(data.path());
     let workspace = tempfile::tempdir().expect("workspace");

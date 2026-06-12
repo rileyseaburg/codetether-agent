@@ -1,10 +1,10 @@
 use super::test_support as support;
-use crate::approval::{ApprovalStatus, test_env::ENV_LOCK};
+use crate::approval::{ApprovalStatus, test_env::lock_env};
 use crate::tui::app::state::{App, approval_queue};
 
 #[test]
 fn approve_session_uses_active_queued_request() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let (_data, _env, store, id) = support::setup();
     let mut app = App::default();
 
@@ -19,7 +19,7 @@ fn approve_session_uses_active_queued_request() {
 
 #[test]
 fn abort_denies_active_queued_request() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let (_data, _env, store, id) = support::setup();
     let mut app = App::default();
 
@@ -31,7 +31,7 @@ fn abort_denies_active_queued_request() {
 
 #[test]
 fn approve_session_grants_remembered_command_prefix() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let (_data, _env, _store, id) = support::setup();
     crate::approval::session_command_grants::remember_request(&id, vec!["cargo test".into()]);
     let mut app = App::default();

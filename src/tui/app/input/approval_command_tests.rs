@@ -1,5 +1,5 @@
 use super::approval_command;
-use crate::approval::{ApprovalStatus, ApprovalStore, test_env::ENV_LOCK};
+use crate::approval::{ApprovalStatus, ApprovalStore, test_env::lock_env};
 use crate::tui::app::state::App;
 
 struct EnvGuard;
@@ -19,7 +19,7 @@ impl Drop for EnvGuard {
 
 #[test]
 fn approve_records_decision_without_retry_prompt() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     let _env = EnvGuard::data_dir(data.path());
     let store = ApprovalStore::open_default().expect("store");
