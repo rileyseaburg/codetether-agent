@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::approval::{ApprovalStatus, ApprovalStore, LiveApprovalRequest, test_env::ENV_LOCK};
+use crate::approval::{ApprovalStatus, ApprovalStore, LiveApprovalRequest, test_env::lock_env};
 use crate::tui::app::event_handlers::keyboard::handle_ctrl_key;
 use crate::tui::app::session_runtime;
 use crate::tui::app::state::{App, approval_queue};
@@ -35,7 +35,7 @@ fn setup() -> (tempfile::TempDir, EnvGuard, ApprovalStore, String) {
 
 #[tokio::test(flavor = "current_thread")]
 async fn ctrl_a_approves_active_request() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let (_dir, _env, store, id) = setup();
     let mut app = App::default();
     let (tx, _) = tokio::sync::mpsc::channel(1);

@@ -1,4 +1,4 @@
-use crate::approval::{ApprovalEvent, ApprovalStore, test_env::ENV_LOCK};
+use crate::approval::{ApprovalEvent, ApprovalStore, test_env::lock_env};
 use axum::http::{Request, StatusCode};
 use serde_json::json;
 use tower::ServiceExt;
@@ -8,7 +8,7 @@ mod env;
 
 #[tokio::test]
 async fn approval_request_and_decision_routes_round_trip() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     let _env = env::EnvGuard::data_dir(data.path());
     let app = super::router::<()>();

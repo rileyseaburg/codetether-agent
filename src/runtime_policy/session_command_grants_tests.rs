@@ -1,4 +1,4 @@
-use crate::approval::{ApprovalStore, session_command_grants, test_env::ENV_LOCK};
+use crate::approval::{ApprovalStore, session_command_grants, test_env::lock_env};
 use crate::config::{Config, PermissionAction};
 use crate::runtime_policy::evaluate_tool_invocation_with_config;
 use serde_json::json;
@@ -21,7 +21,7 @@ fn setup() -> (tempfile::TempDir, EnvGuard) {
 
 #[test]
 fn proposed_prefix_session_approval_allows_future_matching_command() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let (data, _env) = setup();
     let store = ApprovalStore::open_default().expect("store");
     let args = json!({
@@ -42,7 +42,7 @@ fn proposed_prefix_session_approval_allows_future_matching_command() {
 
 #[test]
 fn configured_deny_overrides_session_prefix() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let (_data, _env) = setup();
     session_command_grants::remember_request("approval-1", vec!["cargo test".into()]);
     session_command_grants::grant_for_request("approval-1");

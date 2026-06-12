@@ -1,5 +1,5 @@
 use super::{RuntimeToolPolicy, ToolPolicyOutcome};
-use crate::approval::test_env::ENV_LOCK;
+use crate::approval::test_env::lock_env;
 use crate::config::Config;
 
 struct EnvGuard;
@@ -19,7 +19,7 @@ impl Drop for EnvGuard {
 
 #[test]
 fn approval_required_result_includes_request_id() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     let _env = EnvGuard::data_dir(data.path());
     let policy = RuntimeToolPolicy::from_config(&Config::default());

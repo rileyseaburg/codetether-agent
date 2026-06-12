@@ -1,5 +1,5 @@
 use super::evaluate_tool_invocation_with_config;
-use crate::approval::{ApprovalStore, test_env::ENV_LOCK};
+use crate::approval::{ApprovalStore, test_env::lock_env};
 use crate::config::{Config, PermissionProfile, PermissionProfileConfig};
 use serde_json::json;
 
@@ -20,7 +20,7 @@ impl Drop for EnvGuard {
 
 #[test]
 fn approved_invocation_id_allows_required_tool() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     let _env = EnvGuard::data_dir(data.path());
     let store = ApprovalStore::open(data.path().join("approvals")).expect("store");

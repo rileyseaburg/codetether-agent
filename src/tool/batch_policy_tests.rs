@@ -1,13 +1,13 @@
 use super::execute;
-use crate::approval::test_env::ENV_LOCK;
+use crate::approval::test_env::lock_env;
 use crate::tool::ToolRegistry;
 use serde_json::json;
 
 #[tokio::test(flavor = "current_thread")]
 async fn nested_mutating_tool_requires_policy_approval() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = lock_env();
     let data = tempfile::tempdir().expect("data dir");
-    // SAFETY: this focused test serializes process env access with ENV_LOCK.
+    // SAFETY: this focused test serializes process env access with the shared env lock.
     unsafe { std::env::set_var("CODETETHER_DATA_DIR", data.path()) };
     let registry = ToolRegistry::with_defaults_arc();
     let (_, tool_id, result) = execute(

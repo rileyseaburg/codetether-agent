@@ -1,5 +1,5 @@
 use super::{blocked, policy_args};
-use crate::approval::{ApprovalStore, test_env::ENV_LOCK};
+use crate::approval::{ApprovalStore, test_env::lock_env};
 
 struct EnvGuard;
 
@@ -11,7 +11,7 @@ impl Drop for EnvGuard {
 
 #[tokio::test]
 async fn bridge_policy_block_includes_approval_id() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     unsafe { std::env::set_var("CODETETHER_DATA_DIR", data.path()) };
     let _env = EnvGuard;
@@ -23,7 +23,7 @@ async fn bridge_policy_block_includes_approval_id() {
 
 #[tokio::test]
 async fn bridge_policy_accepts_approved_id() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     unsafe { std::env::set_var("CODETETHER_DATA_DIR", data.path()) };
     let _env = EnvGuard;
@@ -38,7 +38,7 @@ async fn bridge_policy_accepts_approved_id() {
 
 #[tokio::test]
 async fn bridge_policy_accepts_alias_approved_id() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
     unsafe { std::env::set_var("CODETETHER_DATA_DIR", data.path()) };
     let _env = EnvGuard;

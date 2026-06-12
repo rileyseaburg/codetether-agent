@@ -1,12 +1,12 @@
 //! Tests for store-backed patch approval verification.
 
 use super::test_support::{EnvGuard, ORIGINAL, execute, sample_patch, seed};
-use crate::approval::{ApprovalStore, test_env::ENV_LOCK};
+use crate::approval::{ApprovalStore, test_env::lock_env};
 use serde_json::json;
 
 #[tokio::test]
 async fn approved_patch_id_allows_write() {
-    let _lock = ENV_LOCK.lock().expect("env lock");
+    let _lock = lock_env();
     let _env = EnvGuard::set("CODETETHER_PATCH_APPROVAL_REQUIRED", "1");
     let data = tempfile::tempdir().expect("tempdir");
     let _data_env = EnvGuard::set("CODETETHER_DATA_DIR", data.path().to_str().unwrap());
