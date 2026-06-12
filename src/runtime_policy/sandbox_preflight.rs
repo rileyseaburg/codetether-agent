@@ -1,7 +1,7 @@
 //! Approval preflight for unavailable OS sandbox runners.
 
 use super::{DecisionReason, RuntimeToolPolicy, ToolKind, ToolPolicyDecision, ToolPolicyOutcome};
-use crate::config::SandboxMode;
+use crate::config::{ApprovalPolicy, SandboxMode};
 use serde_json::Value;
 
 pub(super) fn decision(
@@ -10,6 +10,9 @@ pub(super) fn decision(
     args: &Value,
 ) -> Option<ToolPolicyDecision> {
     let command = args.get("command").and_then(Value::as_str)?;
+    if matches!(policy.approval_policy(), ApprovalPolicy::Never) {
+        return None;
+    }
     decision_for_state(
         tool_name,
         command,
@@ -42,3 +45,6 @@ fn decision_for_state(
 #[cfg(test)]
 #[path = "sandbox_preflight_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "sandbox_preflight_policy_tests.rs"]
+mod policy_tests;
