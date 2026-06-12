@@ -225,7 +225,9 @@ tonic-prost-build = "0.14.3"
 [profile.release]
 lto = "thin"
 codegen-units = 1
-strip = true
+# Keep symbol names so alloc-guard / panic-hook crash backtraces resolve.
+# `strip = true` yields all-`<unknown>` frames, defeating pre-OOM reports.
+strip = "debuginfo"
 
 # CI profile: sccache-friendly (no LTO, parallel codegen)
 [profile.ci]
