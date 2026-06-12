@@ -135,6 +135,10 @@ impl Session {
                 "save journal append failed (non-fatal)"
             );
         }
+        // Keep the listing index fresh so session lists render without
+        // re-parsing every session file. Best effort — never fails the
+        // save.
+        super::save_index::record_summary_index_after_save(self).await;
         // Update the workspace index so the next resume is O(1). Best
         // effort — a failed index write must not fail the session save.
         if let Some(dir) = &self.metadata.directory {
