@@ -27,14 +27,21 @@ pub(super) async fn list_indexed(
     }
 
     let index_p = index_path().ok();
-    let (mut from_index, index_lines): (HashMap<String, SessionSummary>, usize) =
-        match index_p.as_ref().and_then(|p| read_sync(p).ok()) {
-            Some((map, lines)) if !map.is_empty() => (map, lines),
-            _ => {
-                return super::rebuild::rebuild_from_scan(sessions_dir, index_p, workspace_dir)
-                    .await;
-            }
-        };
+    // Read the index on the blocking pool — file I/O and per-line JSON
+    // parsing must not stall the async executor.
+    let loaded = match index_p.clone() {
+        Some(p) => tokio::task::spawn_blocking(move || read_sync(&p).ok())
+            .await
+            .ok()
+            .flatten(),
+        None => None,
+    };
+    let (mut from_index, index_lines): (HashMap<String, SessionSummary>, usize) = match loaded {
+        Some((map, lines)) if !map.is_empty() => (map, lines),
+        _ => {
+            return super::rebuild::rebuild_from_scan(sessions_dir, index_p, workspace_dir).await;
+        }
+    };
 
     super::merge_disk::merge_disk_into(&mut from_index, &sessions_dir, &index_p, index_lines)
         .await;

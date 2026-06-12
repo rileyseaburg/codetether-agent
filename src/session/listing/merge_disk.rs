@@ -20,7 +20,7 @@ pub(super) async fn merge_disk_into(
     index_p: &Option<std::path::PathBuf>,
     index_lines: usize,
 ) {
-    let disk = disk_walk::collect_disk_summaries(sessions_dir, from_index).await;
+    let (disk, present) = disk_walk::collect_disk_summaries(sessions_dir, from_index).await;
     let mut appended = 0usize;
     for s in disk {
         if !from_index.contains_key(&s.id) {
@@ -29,7 +29,7 @@ pub(super) async fn merge_disk_into(
             appended += 1;
         }
     }
-    index_prune::retain_existing(from_index, sessions_dir);
+    index_prune::retain_existing(from_index, &present);
 
     if let Some(p) = index_p.as_ref() {
         let unique = from_index.len();

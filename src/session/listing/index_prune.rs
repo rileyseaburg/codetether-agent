@@ -1,17 +1,15 @@
 //! Drop index entries whose backing session file is gone.
 
-use std::collections::HashMap;
-use std::path::Path;
+use std::collections::{HashMap, HashSet};
 
 use super::summary::SessionSummary;
 
+/// Retain only entries whose id was seen on disk by the directory walk
+/// ([`super::disk_walk::collect_disk_summaries`]). Pure in-memory set
+/// lookups — no per-entry stat calls.
 pub(super) fn retain_existing(
     index: &mut HashMap<String, SessionSummary>,
-    sessions_dir: &Path,
+    existing_ids: &HashSet<String>,
 ) {
-    index.retain(|id, _| file_exists(sessions_dir, id));
-}
-
-fn file_exists(sessions_dir: &Path, id: &str) -> bool {
-    sessions_dir.join(format!("{id}.json")).exists()
+    index.retain(|id, _| existing_ids.contains(id));
 }

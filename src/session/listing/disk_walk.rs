@@ -1,10 +1,8 @@
 //! Read the sessions directory and parse `.json` files not yet in the
 //! index. See [`super::index_prune`] for the dead-entry reaper.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
-
-use tokio::fs;
 
 use super::parse_summary::parse_summary_unfiltered;
 use super::summary::SessionSummary;
@@ -12,32 +10,52 @@ use super::summary::SessionSummary;
 /// Walk `sessions_dir` and parse any `.json` whose id (filename stem) is
 /// not already known to the index. Non-session json files (e.g.,
 /// `.workspace_index.json`) are excluded by the id-shape check.
+///
+/// Returns the newly parsed summaries plus the full set of session ids
+/// present on disk, so the caller can prune dead index entries without
+/// any further disk I/O. The walk and parsing run on the blocking pool —
+/// readdir, file reads, and JSON parsing must not stall the async
+/// executor.
 pub(super) async fn collect_disk_summaries(
     sessions_dir: &Path,
     known: &HashMap<String, SessionSummary>,
-) -> Vec<SessionSummary> {
-    let mut entries = match fs::read_dir(sessions_dir).await {
-        Ok(e) => e,
-        Err(_) => return Vec::new(),
-    };
+) -> (Vec<SessionSummary>, HashSet<String>) {
+    let dir = sessions_dir.to_path_buf();
+    let known_ids: HashSet<String> = known.keys().cloned().collect();
+    tokio::task::spawn_blocking(move || collect_sync(&dir, &known_ids))
+        .await
+        .unwrap_or_default()
+}
+
+fn collect_sync(
+    sessions_dir: &Path,
+    known: &HashSet<String>,
+) -> (Vec<SessionSummary>, HashSet<String>) {
     let mut out = Vec::new();
-    while let Ok(Some(entry)) = entries.next_entry().await {
+    let mut present: HashSet<String> = HashSet::new();
+    let Ok(entries) = std::fs::read_dir(sessions_dir) else {
+        return (out, present);
+    };
+    for entry in entries.flatten() {
         let path = entry.path();
         if !is_session_json(&path) {
             continue;
         }
-        let stem = match path.file_stem().and_then(|s| s.to_str()) {
-            Some(s) => s.to_string(),
-            None => continue,
+        let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
         };
-        if !is_valid_id_shape(&stem) || known.contains_key(&stem) {
+        if !is_valid_id_shape(stem) {
+            continue;
+        }
+        present.insert(stem.to_string());
+        if known.contains(stem) {
             continue;
         }
         if let Some(summary) = parse_summary_unfiltered(&path) {
             out.push(summary);
         }
     }
-    out
+    (out, present)
 }
 
 fn is_session_json(path: &Path) -> bool {
