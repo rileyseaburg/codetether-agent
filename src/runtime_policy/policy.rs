@@ -44,6 +44,10 @@ impl RuntimeToolPolicy {
         super::command_rule::outcome(&self.permissions, command)
     }
 
+    pub(crate) fn approval_policy(&self) -> ApprovalPolicy {
+        self.approval_policy
+    }
+
     pub(crate) fn sandbox_mode(&self) -> SandboxMode {
         self.sandbox_mode
     }
