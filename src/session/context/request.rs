@@ -19,7 +19,7 @@ pub async fn build_request_with_context(
     tools: &[ToolDefinition],
     opts: RequestOptions,
 ) -> Result<CompletionRequest> {
-    let policy = effective_policy(session);
+    let policy = effective_policy(session, model);
     let derived = derive_with_policy(
         session,
         provider,

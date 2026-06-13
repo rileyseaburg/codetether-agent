@@ -9,7 +9,9 @@ const RESET_MARKER_PREFIX: &str = "[CONTEXT RESET]";
 ///
 /// Kept separate from the derivation body so the exact marker text can
 /// be asserted in unit tests without a provider round-trip.
-pub(super) fn build_reset_summary_message(summary: &str) -> Message {
+///
+/// `toc` is a pre-rendered dropped-range index (may be empty).
+pub(super) fn build_reset_summary_message(summary: &str, toc: &str) -> Message {
     Message {
         role: Role::Assistant,
         content: vec![ContentPart::Text {
@@ -17,7 +19,7 @@ pub(super) fn build_reset_summary_message(summary: &str) -> Message {
                 "{RESET_MARKER_PREFIX}\nEverything older than the preserved active-task tail \
                  was compressed into the summary below. Recent task-defining turns stay \
                  verbatim — call `session_recall` if you need \
-                 a specific dropped detail.\n\n{summary}"
+                 a specific dropped detail.\n\n{summary}{toc}"
             ),
         }],
     }

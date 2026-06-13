@@ -17,6 +17,9 @@ use super::reset_summary::summarise_prefix_for_reset;
 
 /// Summarise `prefix` via RLM, prepend the summary message, append
 /// `tail`, repair orphans, and return the resulting [`DerivedContext`].
+///
+/// `base_index` is the transcript index of `prefix[0]`, used to render
+/// the dropped-range TOC with turn numbers that match `context_browse`.
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn rebuild_with_summary(
     session: &Session,
@@ -25,6 +28,7 @@ pub(super) async fn rebuild_with_summary(
     provider: Arc<dyn crate::provider::Provider>,
     model: &str,
     origin_len: usize,
+    base_index: usize,
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
     let rlm_config = session.metadata.rlm.clone();
@@ -40,8 +44,9 @@ pub(super) async fn rebuild_with_summary(
     )
     .await?;
 
+    let toc = crate::session::helper::compression::dropped_toc::render_toc(prefix, base_index);
     let mut reset_messages = Vec::with_capacity(1 + tail.len());
-    reset_messages.push(build_reset_summary_message(&summary));
+    reset_messages.push(build_reset_summary_message(&summary, &toc));
     reset_messages.extend_from_slice(tail);
 
     experimental::pairing::repair_orphans(&mut reset_messages);

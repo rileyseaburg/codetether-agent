@@ -99,17 +99,15 @@ pub(super) async fn derive_incremental(
         .map(|m| message_tokens(m))
         .collect::<Vec<usize>>();
 
-    // Always-include set: the recent-window entries.
+    // Always-include set: recent-window entries + pinned constraints.
     let mut keep = vec![false; clone.len()];
-    for (i, slot) in keep
-        .iter_mut()
-        .enumerate()
-        .take(clone.len())
-        .skip(recent_start)
-    {
-        *slot = true;
-        budget_for_messages = budget_for_messages.saturating_sub(per_msg[i]);
-    }
+    super::state_header_pins::force_keep_base(
+        session,
+        &mut keep,
+        &per_msg,
+        recent_start,
+        &mut budget_for_messages,
+    );
 
     // Greedy pack the older entries by descending score.
     let mut order: Vec<usize> = (0..recent_start).collect();

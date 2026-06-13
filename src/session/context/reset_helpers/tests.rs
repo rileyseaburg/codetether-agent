@@ -15,11 +15,12 @@ fn text(role: Role, s: &str) -> Message {
 
 #[test]
 fn reset_summary_message_carries_expected_markers() {
-    let msg = build_reset_summary_message("the summary body");
+    let msg = build_reset_summary_message("the summary body", "\n\n[DROPPED-RANGE INDEX] toc");
     assert!(matches!(msg.role, Role::Assistant));
     if let ContentPart::Text { text } = &msg.content[0] {
         assert!(text.starts_with("[CONTEXT RESET]"));
         assert!(text.contains("the summary body"));
+        assert!(text.contains("[DROPPED-RANGE INDEX]"));
         assert!(text.contains("session_recall"));
     } else {
         panic!("expected text content");
@@ -30,7 +31,7 @@ fn reset_summary_message_carries_expected_markers() {
 fn latest_reset_marker_index_finds_text_markers() {
     let msgs = vec![
         text(Role::User, "before"),
-        build_reset_summary_message("summary"),
+        build_reset_summary_message("summary", ""),
         text(Role::Assistant, "after"),
     ];
     assert_eq!(latest_reset_marker_index(&msgs), Some(1));
