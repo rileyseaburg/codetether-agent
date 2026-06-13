@@ -185,7 +185,7 @@ pub(crate) async fn run_prompt_with_events(
         // Experimental strategies, RLM-powered context-window
         // enforcement, and the orphan-pair safety net all run against
         // the clone; the canonical transcript stays append-only.
-        let policy = effective_policy(session);
+        let policy = effective_policy(session, &model);
         let mut derived = derive_with_policy(
             session,
             Arc::clone(&provider),

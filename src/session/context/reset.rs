@@ -110,7 +110,7 @@ pub(super) async fn derive_reset(
 
     let prefix_len = prefix.len();
     let mut derived = rebuild_with_summary(
-        session, &prefix, &tail, provider, model, origin_len, event_tx,
+        session, &prefix, &tail, provider, model, origin_len, base_index, event_tx,
     )
     .await?;
     dropped_ranges.push((base_index, base_index + prefix_len));

@@ -31,6 +31,17 @@ mod reset_fallback;
 mod reset_helpers;
 mod reset_rebuild;
 mod reset_summary;
+mod reset_threshold;
+#[cfg(test)]
+mod reset_threshold_tests;
+mod state_header;
+mod state_header_pins;
+#[cfg(test)]
+mod state_header_pins_base_tests;
+#[cfg(test)]
+mod state_header_pins_tests;
+#[cfg(test)]
+mod state_header_tests;
 
 #[cfg(test)]
 mod active_tail_tests;

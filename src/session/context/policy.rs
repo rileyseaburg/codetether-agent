@@ -15,8 +15,6 @@ use super::derive::derive_context;
 use super::helpers::DerivedContext;
 use super::reset_helpers::latest_reset_marker_index;
 
-const DEFAULT_RESET_THRESHOLD_TOKENS: usize = 32_000;
-
 /// Resolve the effective derivation policy for `session`.
 ///
 /// The persisted session policy is the baseline. Operators can override it
@@ -25,19 +23,24 @@ const DEFAULT_RESET_THRESHOLD_TOKENS: usize = 32_000;
 /// - `CODETETHER_CONTEXT_POLICY=legacy`
 /// - `CODETETHER_CONTEXT_POLICY=reset`
 /// - `CODETETHER_CONTEXT_RESET_THRESHOLD_TOKENS=<usize>`
+/// - `CODETETHER_CONTEXT_RESET_THRESHOLD_FRACTION=<f64>` (of the model's
+///   context window; see [`super::reset_threshold`])
 ///
 /// When there is no explicit override and the persisted policy is still
 /// legacy, a recorded `[CONTEXT RESET]` marker auto-promotes the effective
 /// policy to [`DerivePolicy::Reset`] so `context_reset` markers become live
 /// immediately on the next turn.
-pub fn effective_policy(session: &Session) -> DerivePolicy {
+///
+/// `model` scales the Reset threshold to the model's context window so a
+/// 1M-context model is not compressed at 3% utilisation.
+pub fn effective_policy(session: &Session, model: &str) -> DerivePolicy {
     let persisted = session.metadata.context_policy;
     let Ok(raw) = env::var("CODETETHER_CONTEXT_POLICY") else {
         if matches!(persisted, DerivePolicy::Legacy)
             && latest_reset_marker_index(&session.messages).is_some()
         {
             return DerivePolicy::Reset {
-                threshold_tokens: resolve_reset_threshold(persisted),
+                threshold_tokens: resolve_reset_threshold(persisted, model),
             };
         }
         return persisted;
@@ -47,7 +50,7 @@ pub fn effective_policy(session: &Session) -> DerivePolicy {
         "" => persisted,
         "legacy" => DerivePolicy::Legacy,
         "reset" => DerivePolicy::Reset {
-            threshold_tokens: resolve_reset_threshold(persisted),
+            threshold_tokens: resolve_reset_threshold(persisted, model),
         },
         "incremental" => DerivePolicy::Incremental {
             budget_tokens: resolve_incremental_budget(persisted),
@@ -59,17 +62,14 @@ pub fn effective_policy(session: &Session) -> DerivePolicy {
     }
 }
 
-fn resolve_reset_threshold(persisted: DerivePolicy) -> usize {
-    let default_threshold = match persisted {
-        DerivePolicy::Reset { threshold_tokens } => threshold_tokens,
+fn resolve_reset_threshold(persisted: DerivePolicy, model: &str) -> usize {
+    let persisted_tokens = match persisted {
+        DerivePolicy::Reset { threshold_tokens } => Some(threshold_tokens),
         DerivePolicy::Legacy
         | DerivePolicy::Incremental { .. }
-        | DerivePolicy::OracleReplay { .. } => DEFAULT_RESET_THRESHOLD_TOKENS,
+        | DerivePolicy::OracleReplay { .. } => None,
     };
-    env::var("CODETETHER_CONTEXT_RESET_THRESHOLD_TOKENS")
-        .ok()
-        .and_then(|value| value.trim().parse::<usize>().ok())
-        .unwrap_or(default_threshold)
+    super::reset_threshold::resolve_for_model(model, persisted_tokens)
 }
 
 fn resolve_incremental_budget(persisted: DerivePolicy) -> usize {
@@ -112,8 +112,8 @@ pub async fn derive_with_policy(
     policy: DerivePolicy,
     force_keep_last: Option<usize>,
 ) -> Result<DerivedContext> {
-    if force_keep_last.is_some() {
-        return derive_context(
+    let mut derived = if force_keep_last.is_some() {
+        derive_context(
             session,
             provider,
             model,
@@ -122,57 +122,60 @@ pub async fn derive_with_policy(
             event_tx,
             force_keep_last,
         )
-        .await;
-    }
-    match policy {
-        DerivePolicy::Legacy => {
-            derive_context(
-                session,
-                provider,
-                model,
-                system_prompt,
-                tools,
-                event_tx,
-                force_keep_last,
-            )
-            .await
-        }
-        DerivePolicy::Reset { threshold_tokens } => {
-            super::policy_dispatch::dispatch_reset(
-                session,
-                provider,
-                model,
-                system_prompt,
-                tools,
-                threshold_tokens,
-                event_tx,
-            )
-            .await
-        }
-        DerivePolicy::Incremental { budget_tokens } => {
-            super::policy_dispatch::dispatch_incremental(
-                session,
-                provider,
-                model,
-                system_prompt,
-                tools,
-                budget_tokens,
-                event_tx,
-            )
-            .await
-        }
-        // OracleReplay is evaluation-only; at runtime fall back to Legacy.
-        DerivePolicy::OracleReplay { .. } => {
-            derive_context(
-                session,
-                provider,
-                model,
-                system_prompt,
-                tools,
-                event_tx,
-                force_keep_last,
-            )
-            .await
-        }
-    }
+        .await?
+    } else {
+        match policy {
+            DerivePolicy::Legacy => {
+                derive_context(
+                    session,
+                    provider,
+                    model,
+                    system_prompt,
+                    tools,
+                    event_tx,
+                    force_keep_last,
+                )
+                .await
+            }
+            DerivePolicy::Reset { threshold_tokens } => {
+                super::policy_dispatch::dispatch_reset(
+                    session,
+                    provider,
+                    model,
+                    system_prompt,
+                    tools,
+                    threshold_tokens,
+                    event_tx,
+                )
+                .await
+            }
+            DerivePolicy::Incremental { budget_tokens } => {
+                super::policy_dispatch::dispatch_incremental(
+                    session,
+                    provider,
+                    model,
+                    system_prompt,
+                    tools,
+                    budget_tokens,
+                    event_tx,
+                )
+                .await
+            }
+            // OracleReplay is evaluation-only; at runtime fall back to Legacy.
+            DerivePolicy::OracleReplay { .. } => {
+                derive_context(
+                    session,
+                    provider,
+                    model,
+                    system_prompt,
+                    tools,
+                    event_tx,
+                    force_keep_last,
+                )
+                .await
+            }
+        }?
+    };
+    super::state_header::prepend_state_header(session, &mut derived.messages);
+    Ok(derived)
 }
