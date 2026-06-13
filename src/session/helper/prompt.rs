@@ -42,9 +42,9 @@ use super::edit::{detect_stub_in_tool_input, normalize_tool_call_for_execution};
 use super::error::is_retryable_upstream_error;
 use super::loop_constants::{
     BUILD_MODE_TOOL_FIRST_MAX_RETRIES, BUILD_MODE_TOOL_FIRST_NUDGE, CODESEARCH_THRASH_NUDGE,
-    FORCE_FINAL_ANSWER_NUDGE, MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES, MAX_CONSECUTIVE_SAME_TOOL,
-    MAX_STEPS_WITHOUT_PROGRESS, MAX_TOTAL_TOOL_CALLS, NATIVE_TOOL_PROMISE_NUDGE,
+    FORCE_FINAL_ANSWER_NUDGE, MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES, NATIVE_TOOL_PROMISE_NUDGE,
     NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES, NO_PROGRESS_NUDGE, POST_EDIT_VALIDATION_MAX_RETRIES,
+    max_consecutive_same_tool, max_steps_without_progress, max_total_tool_calls,
 };
 use super::markup::normalize_textual_tool_calls;
 use super::provider::{
@@ -142,6 +142,10 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
     let turn_id = Uuid::new_v4().to_string();
     let mut total_tool_calls: u32 = 0;
     let mut steps_since_last_write: u32 = 0;
+    // Loop guardrails, resolved once per turn (env-overridable).
+    let same_tool_limit = max_consecutive_same_tool();
+    let tool_call_budget = max_total_tool_calls();
+    let no_progress_limit = max_steps_without_progress();
 
     let tool_router: Option<ToolCallRouter> = {
         let cfg = ToolRouterConfig::from_env();
@@ -534,7 +538,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                 last_tool_sig = Some(sig);
             }
 
-            let force_answer = consecutive_same_tool > MAX_CONSECUTIVE_SAME_TOOL
+            let force_answer = consecutive_same_tool > same_tool_limit
                 || (!model_supports_tools && step >= 3);
 
             if force_answer {
@@ -562,11 +566,11 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 
         // ── Total tool call budget ──────────────────────────────
         total_tool_calls += tool_calls.len() as u32;
-        if total_tool_calls > MAX_TOTAL_TOOL_CALLS {
+        if total_tool_calls > tool_call_budget {
             tracing::warn!(
                 step = step,
                 total_tool_calls,
-                budget = MAX_TOTAL_TOOL_CALLS,
+                budget = tool_call_budget,
                 "Hard tool-call budget exceeded; terminating agent loop"
             );
             let mut nudge_msg = response.message.clone();
@@ -577,7 +581,9 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                 session.add_message(nudge_msg);
             }
             return Err(anyhow::anyhow!(
-                "Agent loop terminated: exceeded maximum tool call budget ({} calls across {} steps).                  The model appears stuck. Review the tool history to understand what went wrong.",
+                "Agent loop terminated: exceeded maximum tool call budget ({} calls across {} steps). \
+                 If the model was stuck, review the tool history; if the task is simply large, raise \
+                 CODETETHER_MAX_TOOL_CALLS and resume with --continue-session.",
                 total_tool_calls,
                 step
             ));
@@ -595,7 +601,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
         } else {
             steps_since_last_write += 1;
         }
-        if steps_since_last_write >= MAX_STEPS_WITHOUT_PROGRESS {
+        if steps_since_last_write >= no_progress_limit {
             tracing::warn!(
                 step = step,
                 steps_since_last_write,

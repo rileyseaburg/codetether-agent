@@ -56,6 +56,7 @@ pub(crate) mod history_files;
 mod lifecycle;
 mod persistence;
 mod prompt_api;
+mod save_index;
 pub mod step_limit;
 mod tail_load;
 mod tail_seed;
