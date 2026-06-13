@@ -262,14 +262,14 @@ fn canonical_querystring(url: &Url) -> String {
 }
 
 /// HMAC-SHA256 helper returning raw bytes.
-fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
+pub(crate) fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
     let mut mac = Hmac::<Sha256>::new_from_slice(key).expect("HMAC can take key of any size");
     mac.update(data);
     mac.finalize().into_bytes().to_vec()
 }
 
 /// SHA-256 helper returning lowercase hex.
-fn sha256_hex(data: &[u8]) -> String {
+pub(crate) fn sha256_hex(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(data);
     hex::encode(hasher.finalize())

@@ -46,6 +46,7 @@ pub mod response;
 pub mod retry;
 pub mod sigv4;
 pub mod stream;
+pub mod token_gen;
 
 pub use auth::{AwsCredentials, BedrockAuth};
 pub use convert::{convert_messages, convert_tools};
@@ -54,8 +55,7 @@ pub use response::{BedrockError, parse_converse_response};
 pub use {aliases::resolve_model_id, body::build_converse_body};
 
 use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
-use {crate::util, anyhow::Context, anyhow::Result, async_trait::async_trait};
-use {reqwest::Client, std::fmt};
+use {crate::util, anyhow::Context, anyhow::Result, async_trait::async_trait, reqwest::Client};
 
 /// Default AWS region when none is configured via env or config file.
 pub const DEFAULT_REGION: &str = "us-east-1";
@@ -80,8 +80,8 @@ pub struct BedrockProvider {
     pub(crate) region: String,
 }
 
-impl fmt::Debug for BedrockProvider {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Debug for BedrockProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BedrockProvider")
             .field(
                 "auth",

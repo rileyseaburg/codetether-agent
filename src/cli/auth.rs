@@ -9,8 +9,7 @@ use crate::provider::openai_codex::{OAuthCredentials, OpenAiCodexProvider};
 use crate::secrets::{self, ProviderSecrets};
 use anyhow::{Context, Result};
 use reqwest::Client;
-use serde::Deserialize;
-use serde::de::{self, Deserializer};
+use serde::{Deserialize, de, de::Deserializer};
 use serde_json::json;
 use std::collections::HashMap;
 use std::io::{self, Write};
@@ -77,6 +76,7 @@ struct CodexDeviceErrorResponse {
 pub async fn execute(args: AuthArgs) -> Result<()> {
     match args.command {
         AuthCommand::Copilot(copilot_args) => authenticate_copilot(copilot_args).await,
+        AuthCommand::Bedrock(bedrock_args) => crate::cli::auth_bedrock::execute(bedrock_args).await,
         AuthCommand::Codex(codex_args) => authenticate_codex(codex_args).await,
         AuthCommand::Cookies(cookie_args) => authenticate_cookie_import(cookie_args).await,
         AuthCommand::Register(register_args) => authenticate_register(register_args).await,

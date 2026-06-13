@@ -4,6 +4,7 @@
 mod access_mode_args_tests;
 pub mod approval;
 pub mod auth;
+pub mod auth_bedrock;
 pub mod browserctl;
 pub mod cleanup_args;
 pub mod clipboard;
@@ -22,11 +23,9 @@ pub mod search_render;
 mod tui_args;
 
 use clap::{Parser, Subcommand};
-pub use cleanup_args::CleanupArgs;
 pub use config_args::{ConfigArgs, ConfigCommand, ProjectArgs, ProjectCommand};
-pub use run_args::RunArgs;
 use std::path::PathBuf;
-pub use tui_args::TuiArgs;
+pub use {cleanup_args::CleanupArgs, run_args::RunArgs, tui_args::TuiArgs};
 
 /// CodeTether Agent - A2A-native AI coding agent
 ///
@@ -165,6 +164,9 @@ pub struct AuthArgs {
 pub enum AuthCommand {
     /// Authenticate with GitHub Copilot using device flow
     Copilot(CopilotAuthArgs),
+
+    /// Mint a short-term Amazon Bedrock API key from AWS credentials (supports SSO/IdP profiles)
+    Bedrock(auth_bedrock::BedrockAuthArgs),
 
     /// Authenticate OpenAI Codex with a ChatGPT subscription via OAuth (Plus/Pro/Team/Enterprise)
     Codex(CodexAuthArgs),
