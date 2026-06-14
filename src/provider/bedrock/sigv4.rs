@@ -13,9 +13,9 @@
 //! use codetether_agent::provider::bedrock::{AwsCredentials, BedrockProvider};
 //!
 //! let creds = AwsCredentials::from_environment().unwrap();
-//! let p = BedrockProvider::with_credentials(creds, "us-west-2".into()).unwrap();
+//! let p = BedrockProvider::with_credentials(creds, "us-east-1".into()).unwrap();
 //! let body = br#"{"messages":[]}"#;
-//! let url = "https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.nova-micro-v1:0/converse";
+//! let url = "https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-micro-v1:0/converse";
 //! let _resp = p.send_converse_request(url, body).await.unwrap();
 //! # });
 //! ```
@@ -34,8 +34,8 @@ impl BedrockProvider {
     ///
     /// ```rust,no_run
     /// # use codetether_agent::provider::bedrock::BedrockProvider;
-    /// let p = BedrockProvider::with_region("token".into(), "us-west-2".into()).unwrap();
-    /// // internal: p.base_url() -> "https://bedrock-runtime.us-west-2.amazonaws.com"
+    /// let p = BedrockProvider::with_region("token".into(), "us-east-1".into()).unwrap();
+    /// // internal: p.base_url() -> "https://bedrock-runtime.us-east-1.amazonaws.com"
     /// ```
     pub(super) fn base_url(&self) -> String {
         format!("https://bedrock-runtime.{}.amazonaws.com", self.region)
@@ -65,8 +65,8 @@ impl BedrockProvider {
     /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
     /// use codetether_agent::provider::bedrock::{AwsCredentials, BedrockProvider};
     /// let creds = AwsCredentials::from_environment().unwrap();
-    /// let p = BedrockProvider::with_credentials(creds, "us-west-2".into()).unwrap();
-    /// let url = "https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.nova-micro-v1:0/converse";
+    /// let p = BedrockProvider::with_credentials(creds, "us-east-1".into()).unwrap();
+    /// let url = "https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-micro-v1:0/converse";
     /// let resp = p.send_converse_request(url, b"{}" ).await.unwrap();
     /// assert!(resp.status().is_client_error() || resp.status().is_success());
     /// # });

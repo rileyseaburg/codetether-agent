@@ -157,8 +157,9 @@ mod types;
 // ── Public re-exports (preserve the original API surface) ───────────
 
 pub use parse::parse_model_string;
-pub use registry::ProviderRegistry; pub use traits::{ModelInfo, Provider};
+pub use registry::ProviderRegistry;
 pub use tenant_keys::{PerTaskProviderKeys, TenantProviderKeyPayload};
+pub use traits::{ModelInfo, Provider};
 pub use types::{
     CompletionRequest, CompletionResponse, ContentPart, EmbeddingRequest, EmbeddingResponse,
     FinishReason, Message, Role, StreamChunk, ToolDefinition, Usage,

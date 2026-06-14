@@ -23,7 +23,11 @@ pub enum SessionEvent {
     /// The agent is thinking or waiting on the model.
     Thinking,
     /// A tool call has started.
-    ToolCallStart { tool_call_id: String, name: String, arguments: String },
+    ToolCallStart {
+        tool_call_id: String,
+        name: String,
+        arguments: String,
+    },
     /// A tool call has completed.
     ToolCallComplete {
         tool_call_id: String,
@@ -32,7 +36,17 @@ pub enum SessionEvent {
         success: bool,
         duration_ms: u64,
     },
-    ToolHeartbeat { tool_call_id: String, name: String, elapsed_secs: u64 },
+    ToolHeartbeat {
+        tool_call_id: String,
+        name: String,
+        elapsed_secs: u64,
+    },
+    ToolOutputChunk {
+        tool_call_id: String,
+        name: String,
+        stream: String,
+        chunk: String,
+    },
     /// Structured metadata produced by an in-flight tool call.
     ToolCallMetadata {
         tool_call_id: String,

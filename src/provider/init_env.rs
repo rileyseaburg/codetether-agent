@@ -12,8 +12,11 @@ use std::sync::Arc;
 type Ctor = fn(String) -> Result<Arc<dyn Provider>>;
 
 fn bedrock_bearer(token: String) -> Result<Arc<dyn Provider>> {
-    let region = super::bedrock::AwsCredentials::detect_region().unwrap_or_else(|| super::bedrock::DEFAULT_REGION.into());
-    Ok(Arc::new(super::bedrock::BedrockProvider::with_region(token, region)?))
+    let region = super::bedrock::AwsCredentials::detect_region()
+        .unwrap_or_else(|| super::bedrock::DEFAULT_REGION.into());
+    Ok(Arc::new(super::bedrock::BedrockProvider::with_region(
+        token, region,
+    )?))
 }
 
 /// Register providers from environment variables if not already present.

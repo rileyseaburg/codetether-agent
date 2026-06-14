@@ -16,8 +16,10 @@ pub fn run(
     args: Vec<Value>,
     browser: BrowserGrant,
     computer: ComputerGrant,
+    progress_id: Option<String>,
 ) -> Result<TetherScriptOutcome> {
-    let mut plugin = host(browser, computer).load_source(&source_name, &source)?;
+    let source = super::process_prelude::inject(source);
+    let mut plugin = host(browser, computer, progress_id).load_source(&source_name, &source)?;
     let ts_args: Vec<_> = args.into_iter().map(json_to_tetherscript).collect();
     let call = plugin.call(&hook, &ts_args)?;
     let tether_val = call.value.clone();
@@ -28,9 +30,13 @@ pub fn run(
     })
 }
 
-fn host(browser: BrowserGrant, computer: ComputerGrant) -> PluginHost {
+fn host(browser: BrowserGrant, computer: ComputerGrant, progress_id: Option<String>) -> PluginHost {
     let mut host = PluginHost::new();
     host.grant("tetherscript", TetherScriptAuthority::new());
+    host.grant(
+        "codetether_process",
+        super::process_authority::ProcessAuthority::new(progress_id),
+    );
     super::host_grants::grant_browser(&mut host, browser);
     super::host_grants::grant_computer(&mut host, computer);
     host

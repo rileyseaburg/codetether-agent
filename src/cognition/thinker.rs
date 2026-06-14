@@ -146,7 +146,7 @@ impl Default for ThinkerConfig {
             candle_repeat_penalty: 1.1,
             candle_repeat_last_n: 64,
             candle_seed: 42,
-            bedrock_region: "us-west-2".to_string(),
+            bedrock_region: "us-east-1".to_string(),
             bedrock_service_tier: None,
         }
     }

@@ -13,7 +13,7 @@
 //! use codetether_agent::provider::bedrock::{AwsCredentials, BedrockProvider};
 //!
 //! let creds = AwsCredentials::from_environment().expect("creds");
-//! let region = AwsCredentials::detect_region().unwrap_or_else(|| "us-west-2".into());
+//! let region = AwsCredentials::detect_region().unwrap_or_else(|| "us-east-1".into());
 //! let provider = BedrockProvider::with_credentials(creds, region).unwrap();
 //! let models = provider.list_models().await.unwrap();
 //! assert!(!models.is_empty());
@@ -70,8 +70,8 @@ pub const DEFAULT_REGION: &str = "us-east-1";
 /// use codetether_agent::provider::bedrock::{AwsCredentials, BedrockProvider};
 ///
 /// let creds = AwsCredentials::from_environment().unwrap();
-/// let p = BedrockProvider::with_credentials(creds, "us-west-2".into()).unwrap();
-/// assert_eq!(p.region(), "us-west-2");
+/// let p = BedrockProvider::with_credentials(creds, "us-east-1".into()).unwrap();
+/// assert_eq!(p.region(), "us-east-1");
 /// ```
 #[derive(Clone)]
 pub struct BedrockProvider {
@@ -145,8 +145,8 @@ impl BedrockProvider {
     /// ```rust,no_run
     /// use codetether_agent::provider::bedrock::{AwsCredentials, BedrockProvider};
     /// let creds = AwsCredentials::from_environment().unwrap();
-    /// let p = BedrockProvider::with_credentials(creds, "us-west-2".into()).unwrap();
-    /// assert_eq!(p.region(), "us-west-2");
+    /// let p = BedrockProvider::with_credentials(creds, "us-east-1".into()).unwrap();
+    /// assert_eq!(p.region(), "us-east-1");
     /// ```
     pub fn with_credentials(credentials: AwsCredentials, region: String) -> Result<Self> {
         tracing::debug!(

@@ -14,8 +14,14 @@ pub fn run(
     source: String,
     hook: String,
     args: Vec<Value>,
+    progress_id: Option<String>,
 ) -> Result<TetherScriptOutcome> {
-    let interp = super::parse::interpreter(&source_name, &source)?;
+    let source = super::process_prelude::inject(source);
+    let mut interp = super::parse::interpreter(&source_name, &source)?;
+    interp.grant(
+        "codetether_process",
+        super::process_authority::ProcessAuthority::new(progress_id),
+    );
     let callee = interp
         .globals
         .borrow()

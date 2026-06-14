@@ -60,7 +60,8 @@ pub(crate) async fn run_event_loop(
         let mut args = SelectArgs {
             reader: &mut setup.reader,
             app,
-            cwd, slot,
+            cwd,
+            slot,
             registry: &registry,
             worker_bridge: &mut worker_bridge,
             runtime: &runtime,

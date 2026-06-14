@@ -17,6 +17,7 @@ pub struct TetherScriptRun {
     pub grant_computer: bool,
     pub computer_origin: Vec<String>,
     pub computer_scope: Vec<String>,
+    pub progress_id: Option<String>,
 }
 
 impl TetherScriptRun {
@@ -37,6 +38,7 @@ impl TetherScriptRun {
             grant_computer: input.grant_computer,
             computer_origin: input.computer_origin,
             computer_scope: input.computer_scope,
+            progress_id: input.tool_call_id,
         }
     }
 }

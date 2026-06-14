@@ -30,7 +30,12 @@ pub fn context_window_for_model(model: &str) -> usize {
     let m = model.to_ascii_lowercase();
 
     // ── Most specific patterns first ───────────────────────────────
-    if m.contains("claude-opus-4-7") || m.contains("claude-opus-4.7") || m.contains("4.7-opus") || m.contains("glm-5.2") || m.contains("glm5.2") {
+    if m.contains("claude-opus-4-7")
+        || m.contains("claude-opus-4.7")
+        || m.contains("4.7-opus")
+        || m.contains("glm-5.2")
+        || m.contains("glm5.2")
+    {
         1_000_000
     } else if m.contains("glm-5") || m.contains("glm5") {
         200_000
@@ -108,7 +113,10 @@ mod tests {
     }
     #[test]
     fn case_insensitive() {
-        assert_eq!(context_window_for_model("Claude-Opus-4-7"), context_window_for_model("claude-opus-4-7"));
+        assert_eq!(
+            context_window_for_model("Claude-Opus-4-7"),
+            context_window_for_model("claude-opus-4-7")
+        );
     }
 
     #[test]

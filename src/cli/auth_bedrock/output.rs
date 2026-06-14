@@ -16,9 +16,7 @@ pub(super) async fn emit(
     } else if args.raw {
         println!("{}", token.expose());
     } else {
-        println!(
-            "Short-term Bedrock API key (region {region}, <= {expires_secs}s):"
-        );
+        println!("Short-term Bedrock API key (region {region}, <= {expires_secs}s):");
         println!();
         println!("  export AWS_BEARER_TOKEN_BEDROCK={}", token.expose());
         println!();

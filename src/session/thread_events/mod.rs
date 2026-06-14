@@ -19,6 +19,7 @@ mod tool_close;
 mod tool_events;
 mod tool_item;
 mod tool_metadata;
+mod tool_output;
 
 pub use context::ThreadEventContext;
 pub use ids::{thread_id_for_session, turn_id_for_session};

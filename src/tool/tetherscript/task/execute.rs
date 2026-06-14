@@ -67,6 +67,7 @@ pub async fn run(request: TetherScriptRun) -> Result<TetherScriptRunResult> {
                 origins: request.computer_origin,
                 scopes: request.computer_scope,
             },
+            request.progress_id,
         )
     });
     match tokio::time::timeout(timeout, task).await {

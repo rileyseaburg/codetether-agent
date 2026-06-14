@@ -40,6 +40,18 @@ pub(super) fn data(event: &SessionEvent) -> Value {
             "name": name,
             "elapsed_secs": elapsed_secs
         }),
+        SessionEvent::ToolOutputChunk {
+            tool_call_id,
+            name,
+            stream,
+            chunk,
+        } => json!({
+            "type": "tool_output_chunk",
+            "tool_call_id": tool_call_id,
+            "name": name,
+            "stream": stream,
+            "chunk": chunk
+        }),
         _ => json!({ "type": "ignored" }),
     }
 }

@@ -28,6 +28,12 @@ impl ThreadEventMapper {
                 name,
                 metadata,
             } => self.tool_metadata_events(tool_call_id, name, metadata.clone()),
+            SessionEvent::ToolOutputChunk {
+                tool_call_id,
+                name,
+                stream,
+                chunk,
+            } => vec![self.tool_output_chunk(tool_call_id, name, stream, chunk)],
             SessionEvent::ApprovalRequest(request) => vec![self.approval_requested(request)],
             SessionEvent::Done => vec![self.event("turn.done", serde_json::json!({}))],
             SessionEvent::Error(error) => vec![self.turn_failed(error)],

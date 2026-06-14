@@ -45,7 +45,7 @@ pub mod patch;
 pub mod plan;
 pub mod podcast;
 pub mod prd;
-pub mod profile;
+pub mod profile; pub mod progress;
 pub mod question;
 pub mod ralph;
 pub mod readonly;

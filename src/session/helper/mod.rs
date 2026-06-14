@@ -46,7 +46,8 @@ pub mod text;
 pub mod token;
 mod tool_modules;
 pub(in crate::session::helper) use tool_modules::*;
-mod tool_heartbeat; pub mod validation;
+mod tool_heartbeat;
+pub mod validation;
 mod workspace_tools;
 
 #[cfg(test)]

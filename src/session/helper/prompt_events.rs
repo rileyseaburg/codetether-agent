@@ -776,9 +776,7 @@ pub(crate) async fn run_prompt_with_events(
                 Some(blocked) => blocked,
                 None => {
                     let hb = super::tool_heartbeat::spawn(&event_tx, &tool_id, &tool_name, exec_start);
-                    let result = execute_tool(
-                        &tool_registry, &tool_name, &exec_input, &session.id, exec_start,
-                    ).await;
+                    let result = execute_tool(&tool_registry, &tool_name, &exec_input, &session.id, exec_start, Some((&event_tx, &tool_id))).await;
                     hb.abort();
                     result
                 }
@@ -978,13 +976,14 @@ pub(super) async fn execute_tool(
     tool_name: &str,
     exec_input: &serde_json::Value,
     session_id: &str,
-    exec_start: std::time::Instant,
+    exec_start: std::time::Instant, progress: Option<(&mpsc::Sender<SessionEvent>, &str)>,
 ) -> super::tool_policy::ToolTuple {
     if let Some(tool) = tool_registry.get(tool_name) {
         if let Some(blocked) = super::tool_policy::blocked(tool_name, exec_input).await {
             return blocked;
         }
-        match tool.execute(exec_input.clone()).await {
+        let _guard = progress.map(|(tx, id)| crate::tool::progress::register(id, tool_name, tx)); let exec_input = progress_input(exec_input, progress.map(|(_, id)| id));
+        match tool.execute(exec_input).await {
             Ok(result) => {
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
                 tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
@@ -1050,6 +1049,8 @@ pub(super) async fn execute_tool(
         (format!("Error: Unknown tool '{}'", tool_name), false, None)
     }
 }
+
+fn progress_input(input: &serde_json::Value, id: Option<&str>) -> serde_json::Value { let Some(id) = id else { return input.clone() }; let mut input = input.clone(); if let serde_json::Value::Object(map) = &mut input { map.insert("_tool_call_id".into(), serde_json::Value::String(id.to_string())); } input }
 
 /// Write a [`ChatEvent::tool_result`] JSONL record to disk (fire-and-forget).
 fn write_tool_event_file(

@@ -50,6 +50,6 @@ pub async fn execute(args: BedrockAuthArgs) -> Result<()> {
     let aws = creds::resolve(profile, login_mode).await?;
     let expires = args.expires_secs.min(token_gen::DEFAULT_EXPIRES_SECS);
     let token = token_gen::generate_bearer_token(&aws, &region, expires);
-    let token = validate::output_token(&region, token, args.no_validate).await?;
+    let token = validate::output_token(token, args.no_validate).await?;
     output::emit(&args, &region, &token, profile, expires).await
 }

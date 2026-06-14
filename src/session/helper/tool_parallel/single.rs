@@ -21,6 +21,7 @@ pub(super) async fn run_one(
         &job.exec_input,
         session_id,
         exec_start,
+        Some((event_tx, &job.tool_id)),
     )
     .await;
     let duration_ms = exec_start.elapsed().as_millis() as u64;

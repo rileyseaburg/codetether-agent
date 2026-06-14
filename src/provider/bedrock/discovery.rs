@@ -31,7 +31,7 @@ impl BedrockProvider {
     /// use codetether_agent::provider::Provider;
     ///
     /// let creds = AwsCredentials::from_environment().unwrap();
-    /// let p = BedrockProvider::with_credentials(creds, "us-west-2".into()).unwrap();
+    /// let p = BedrockProvider::with_credentials(creds, "us-east-1".into()).unwrap();
     /// let models = p.list_models().await.unwrap();
     /// assert!(!models.is_empty());
     /// # });

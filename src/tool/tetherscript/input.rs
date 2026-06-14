@@ -31,6 +31,8 @@ pub struct TetherScriptPluginInput {
     /// Allowed scopes for computer capability. Omit for default scopes.
     #[serde(default)]
     pub computer_scope: Vec<String>,
+    #[serde(default, rename = "_tool_call_id")]
+    pub tool_call_id: Option<String>,
 }
 
 impl TetherScriptPluginInput {

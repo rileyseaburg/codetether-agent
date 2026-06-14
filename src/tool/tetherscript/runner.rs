@@ -1,22 +1,12 @@
 //! Core TetherScript execution dispatch.
 
-mod browser;
-mod computer;
-mod computer_invoke;
-mod computer_lists;
-mod computer_narrow;
-mod computer_origin;
-mod computer_payload;
-mod computer_policy;
-mod computer_scopes;
-mod computer_value;
-mod finish;
-mod host;
-mod host_grants;
-mod interp;
-mod outcome;
-mod parse;
-mod unwind;
+mod browser; mod computer; mod computer_invoke; mod computer_lists;
+mod computer_narrow; mod computer_origin; mod computer_payload; mod computer_policy;
+mod computer_scopes; mod computer_value; mod finish; mod host;
+mod host_grants; mod interp; mod outcome; mod parse;
+mod process_args; mod process_authority; mod process_io; mod process_output; mod process_prelude;
+mod process_result; mod process_run; mod process_spawn; mod process_types;
+mod process_wait; mod unwind;
 
 use anyhow::Result;
 use serde_json::Value;
@@ -33,10 +23,10 @@ pub fn run(
     args: Vec<Value>,
     browser: BrowserGrant,
     computer: ComputerGrant,
+    progress_id: Option<String>,
 ) -> Result<TetherScriptOutcome> {
     if browser.endpoint.is_some() || computer.enabled {
-        host::run(source_name, source, hook, args, browser, computer)
-    } else {
-        interp::run(source_name, source, hook, args)
+        return host::run(source_name, source, hook, args, browser, computer, progress_id);
     }
+    interp::run(source_name, source, hook, args, progress_id)
 }
