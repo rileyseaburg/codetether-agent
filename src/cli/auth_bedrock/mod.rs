@@ -11,6 +11,7 @@ mod creds;
 mod execute;
 mod exported;
 mod login;
+mod mask;
 mod mode;
 mod output;
 mod select;

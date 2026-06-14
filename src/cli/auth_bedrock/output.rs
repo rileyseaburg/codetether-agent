@@ -1,6 +1,11 @@
 //! Output/persistence for `codetether auth bedrock` tokens.
+//!
+//! The full bearer token is **never** printed to stdout unless `--raw` is
+//! passed. The default path prints a masked preview so the user can confirm
+//! generation without the full credential landing in scrollback, shell
+//! history, or crash reports.
 
-use super::{BedrockAuthArgs, token::OutputToken, vault_save};
+use super::{BedrockAuthArgs, mask::mask_token, token::OutputToken, vault_save};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 
@@ -19,9 +24,8 @@ pub(super) async fn emit(
         println!("{}", token.expose());
     } else {
         println!("Short-term Bedrock API key (region {region}, <= {expires_secs}s):");
-        println!();
-        println!("  export AWS_BEARER_TOKEN_BEDROCK={}", token.expose());
-        println!();
+        println!("  {}", mask_token(token.expose()));
+        println!("  (use --raw for the full export command, or --save to store in Vault)");
         println!(
             "Note: tokens signed with SSO/STS session credentials expire when the session does."
         );

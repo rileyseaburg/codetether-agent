@@ -17,8 +17,14 @@
 //! | `swarm.{id}` | Swarm-level coordination |
 //! | `broadcast` | Global announcements |
 //! | `tools.{name}` | Tool-specific channels |
+pub mod bus_durable_impl;
+pub mod durability_class;
+pub mod durable_log;
+pub mod durable_log_file;
 pub mod global;
 pub mod payload;
+pub mod ralph_progress_publish;
+pub mod ralph_publish;
 pub mod registry;
 pub mod relay;
 pub mod s3_sink;
@@ -194,6 +200,9 @@ pub struct AgentBus {
     tx: broadcast::Sender<BusEnvelope>,
     /// Registry of connected agents
     pub registry: Arc<registry::AgentRegistry>,
+    /// Optional durable log: when set, [`AgentBus::publish`] persists
+    /// coordination messages for replay. `None` keeps legacy lossy behavior.
+    durable: Option<Arc<dyn durable_log::DurableLog>>,
 }
 
 impl std::fmt::Debug for AgentBus {
@@ -216,6 +225,7 @@ impl AgentBus {
         Self {
             tx,
             registry: Arc::new(registry::AgentRegistry::new()),
+            durable: None,
         }
     }
 
@@ -248,8 +258,11 @@ impl AgentBus {
             _ => {}
         }
 
-        // Returns the number of receivers that got the message.
-        // If there are no receivers the message is silently dropped.
+        // PRIMARY: persist coordination messages durably (fire-and-forget) so
+        // `publish` stays sync; the log is replay's source of truth.
+        durable_log::spawn_append_if_durable(self.durable.as_ref(), &envelope);
+
+        // SECONDARY: live broadcast. Lossy by design; no receivers => dropped.
         self.tx.send(envelope).unwrap_or(0)
     }
 
@@ -382,70 +395,7 @@ impl BusHandle {
     }
 
     // ── Ralph helpers ────────────────────────────────────────────────
-
-    /// Publish learnings from a Ralph iteration so other agents / future
-    /// iterations can build on them.
-    pub fn publish_ralph_learning(
-        &self,
-        prd_id: &str,
-        story_id: &str,
-        iteration: usize,
-        learnings: Vec<String>,
-        context: serde_json::Value,
-    ) -> usize {
-        self.send(
-            format!("ralph.{prd_id}"),
-            BusMessage::RalphLearning {
-                prd_id: prd_id.to_string(),
-                story_id: story_id.to_string(),
-                iteration,
-                learnings,
-                context,
-            },
-        )
-    }
-
-    /// Publish a context handoff between sequential Ralph stories.
-    pub fn publish_ralph_handoff(
-        &self,
-        prd_id: &str,
-        from_story: &str,
-        to_story: &str,
-        context: serde_json::Value,
-        progress_summary: &str,
-    ) -> usize {
-        self.send(
-            format!("ralph.{prd_id}"),
-            BusMessage::RalphHandoff {
-                prd_id: prd_id.to_string(),
-                from_story: from_story.to_string(),
-                to_story: to_story.to_string(),
-                context,
-                progress_summary: progress_summary.to_string(),
-            },
-        )
-    }
-
-    /// Publish PRD-level progress.
-    pub fn publish_ralph_progress(
-        &self,
-        prd_id: &str,
-        passed: usize,
-        total: usize,
-        iteration: usize,
-        status: &str,
-    ) -> usize {
-        self.send(
-            format!("ralph.{prd_id}"),
-            BusMessage::RalphProgress {
-                prd_id: prd_id.to_string(),
-                passed,
-                total,
-                iteration,
-                status: status.to_string(),
-            },
-        )
-    }
+    // `publish_ralph_*` live in `ralph_publish.rs` (SRP / line budget).
 
     /// Drain all accumulated Ralph learnings for a PRD (non-blocking).
     pub fn drain_ralph_learnings(&mut self, prd_id: &str) -> Vec<BusEnvelope> {

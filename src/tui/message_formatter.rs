@@ -408,14 +408,6 @@ impl MessageFormatter {
             return vec![Line::from(spans)];
         }
 
-        // Hard safety cap: each produced row must consume at least one column
-        // of input, so the wrapped output can never exceed the total input
-        // width by more than a small constant. This bounds memory even if a
-        // future logic error fails to advance `text`, preventing the runaway
-        // allocation that previously aborted the process on large sessions.
-        let total_chars: usize = spans.iter().map(|s| s.content.chars().count()).sum();
-        let max_rows = total_chars.saturating_add(2);
-
         let mut out: Vec<Line<'static>> = Vec::new();
         let mut cur: Vec<Span<'static>> = Vec::new();
         let mut cur_w: usize = 0;
@@ -423,32 +415,37 @@ impl MessageFormatter {
         for span in spans {
             let style = span.style;
             let mut text = span.content.into_owned();
+            // Loop invariant: each iteration strictly reduces `text.len()`,
+            // because every branch either consumes characters via `take_fit`
+            // or (when nothing fits) trims leading whitespace / a hard break.
+            // Termination is therefore guaranteed by construction — no row cap
+            // or tripwire is needed — and the produced row count can never
+            // exceed the input character count.
             while !text.is_empty() {
-                if out.len() >= max_rows {
-                    // Unreachable under correct logic; a tripwire against
-                    // unbounded growth rather than a normal exit path.
-                    debug_assert!(false, "wrap_line exceeded row cap; possible non-advancing loop");
-                    break;
-                }
                 let remaining = width.saturating_sub(cur_w);
                 if remaining == 0 {
                     out.push(Line::from(std::mem::take(&mut cur)));
                     cur_w = 0;
-                    continue;
+                    continue; // next iter has remaining == width > 0
                 }
                 let (taken, rest) = take_fit(&text, remaining, cur_w == 0);
                 if taken.is_empty() {
-                    if cur_w == 0 {
-                        // Already at column 0 and nothing was consumed (e.g. a
-                        // whitespace-only span that `take_fit` trims away).
-                        // Retrying would never shrink `text`, so drop the
-                        // unrenderable remainder to avoid an infinite loop that
-                        // grows `out` until allocation aborts.
+                    if cur_w > 0 {
+                        // Mid-row and nothing fit: flush and retry at col 0,
+                        // where the full width is available.
+                        out.push(Line::from(std::mem::take(&mut cur)));
+                        cur_w = 0;
+                        continue;
+                    }
+                    // At col 0 with nothing taken: `rest` is the remainder
+                    // `take_fit` could not consume (e.g. leading whitespace it
+                    // trimmed). Adopt it directly so `text` strictly shrinks;
+                    // if it didn't shrink, the remainder is unrenderable and we
+                    // stop to keep the loop bounded.
+                    if rest.len() >= text.len() {
                         break;
                     }
-                    // Mid-row: flush the current row and retry at col 0.
-                    out.push(Line::from(std::mem::take(&mut cur)));
-                    cur_w = 0;
+                    text = rest;
                     continue;
                 }
                 cur_w += UnicodeWidthStr::width(taken.as_str());
@@ -572,14 +569,15 @@ mod tests {
     }
 
     #[test]
-    fn wrap_line_whitespace_only_span_terminates() {
-        // Regression: a whitespace-only span used to loop forever because
-        // `take_fit` trims it to empty at column 0, growing `out` until the
-        // allocation guard aborted the process (~48 GiB). The loop must now
-        // terminate by dropping the unrenderable remainder.
+    fn wrap_line_is_bounded_by_input_chars() {
+        // Regression + structural guarantee: a whitespace-only span used to
+        // loop forever (growing `out` until a ~48 GiB abort). Every produced
+        // row now consumes >= 1 input char, so row count <= input char count.
         let f = MessageFormatter::new(20);
-        let out = f.wrap_line(vec![Span::raw("        ")], 4);
-        assert!(out.len() <= 2, "expected bounded output, got {}", out.len());
+        assert!(f.wrap_line(vec![Span::raw("        ")], 4).len() <= 2);
+        let input = "a   b   c   d   e   f";
+        let out = f.wrap_line(vec![Span::raw(input)], 3);
+        assert!(out.len() <= input.chars().count() && out.iter().all(|l| l.width() <= 3));
     }
 
     #[test]

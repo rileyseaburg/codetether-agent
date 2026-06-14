@@ -51,13 +51,12 @@ pub mod token_gen;
 pub use auth::{AwsCredentials, BedrockAuth};
 pub use convert::{convert_messages, convert_tools};
 pub use estimates::{estimate_context_window, estimate_max_output};
-pub use response::{BedrockError, parse_converse_response};
-pub use {aliases::resolve_model_id, body::build_converse_body};
+pub use {aliases::resolve_model_id, body::build_converse_body, response::{BedrockError, parse_converse_response}};
 
 use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
 use {crate::util, anyhow::Context, anyhow::Result, async_trait::async_trait, reqwest::Client};
 
-/// Default AWS region when none is configured via env or config file.
+/// Default AWS region when none is configured.
 pub const DEFAULT_REGION: &str = "us-east-1";
 
 /// Amazon Bedrock provider implementation.
