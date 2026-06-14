@@ -1,0 +1,16 @@
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    libasound2t64 \
+    git \
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /home/codetether
+
+COPY codetether-bin /usr/local/bin/codetether
+RUN chmod +x /usr/local/bin/codetether
+
+ENTRYPOINT ["/usr/local/bin/codetether"]

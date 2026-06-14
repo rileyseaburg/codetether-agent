@@ -586,5 +586,33 @@
     "status": "pending",
     "priority": "low",
     "created_at": "2026-06-11T19:21:22.573666840+00:00"
+  },
+  {
+    "id": "todo_1781400404126",
+    "content": "Make draw errors non-fatal: wrap draw_ui in catch_unwind and log-and-continue instead of ?-propagating errors",
+    "status": "done",
+    "priority": "critical",
+    "created_at": "2026-06-14T01:26:44.126369912+00:00"
+  },
+  {
+    "id": "todo_1781401635856",
+    "content": "Fix scroll sentinel corruption in retention.rs trim - saturating_sub breaks the 1M auto-follow sentinel",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-06-14T01:47:15.856207539+00:00"
+  },
+  {
+    "id": "todo_1781401645565",
+    "content": "Make terminal event handler errors non-fatal in the select loop",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-06-14T01:47:25.565801898+00:00"
+  },
+  {
+    "id": "todo_1781403126697",
+    "content": "Rewrite watchdog: lower timeout to 60s, check on tick not watchdog interval, add max retries, immediate retry after cancel",
+    "status": "done",
+    "priority": "critical",
+    "created_at": "2026-06-14T02:12:06.697399046+00:00"
   }
 ]
