@@ -551,5 +551,40 @@
     "status": "pending",
     "priority": "medium",
     "created_at": "2026-05-24T00:58:19.884548856+00:00"
+  },
+  {
+    "id": "todo_1781201588858",
+    "content": "Reintroduce and verify A2A peer ubuntu-dev-proxmox-kubernetes-3b45 at http://192.168.50.101:45757",
+    "status": "inprogress",
+    "priority": "medium",
+    "created_at": "2026-06-11T18:13:08.858302229+00:00"
+  },
+  {
+    "id": "todo_1781202048588",
+    "content": "Fix root cause: command_rule Allow bypasses sandbox preflight",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-06-11T18:20:48.588722951+00:00"
+  },
+  {
+    "id": "todo_1781205135376",
+    "content": "Review A2A handshake from ubuntu-dev-riley-cef8 (192.168.50.101:38591) and confirm collaboration readiness",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-06-11T19:12:15.376915398+00:00"
+  },
+  {
+    "id": "todo_1781205678677",
+    "content": "Confirm collaboration mode: A2A worker registration vs server mode vs standalone run",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-06-11T19:21:18.677498677+00:00"
+  },
+  {
+    "id": "todo_1781205682573",
+    "content": "Review uncommitted approval/runtime_policy changes — commit, amend, or hold?",
+    "status": "pending",
+    "priority": "low",
+    "created_at": "2026-06-11T19:21:22.573666840+00:00"
   }
 ]
