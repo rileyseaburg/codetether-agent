@@ -13,18 +13,15 @@ use std::{collections::HashSet, sync::Arc};
 
 use anyhow::Result;
 use chrono::Utc;
-use serde_json::json;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
-use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 use crate::event_stream::ChatEvent;
 use crate::provider::{
     CompletionRequest, ContentPart, Message, ProviderRegistry, Role, parse_model_string,
 };
 use crate::rlm::RlmConfig;
-use crate::tool::ToolRegistry;
 
 use super::super::{DEFAULT_MAX_STEPS, ImageAttachment, Session, SessionEvent, SessionResult};
 use super::bootstrap::list_tools_bootstrap_output;
@@ -775,8 +772,17 @@ pub(crate) async fn run_prompt_with_events(
             let (content, success, tool_metadata) = match blocked_result {
                 Some(blocked) => blocked,
                 None => {
-                    let hb = super::tool_heartbeat::spawn(&event_tx, &tool_id, &tool_name, exec_start);
-                    let result = execute_tool(&tool_registry, &tool_name, &exec_input, &session.id, exec_start, Some((&event_tx, &tool_id))).await;
+                    let hb =
+                        super::tool_heartbeat::spawn(&event_tx, &tool_id, &tool_name, exec_start);
+                    let result = execute_tool(
+                        &tool_registry,
+                        &tool_name,
+                        &exec_input,
+                        &session.id,
+                        exec_start,
+                        Some((&event_tx, &tool_id)),
+                    )
+                    .await;
                     hb.abort();
                     result
                 }
@@ -971,86 +977,7 @@ fn parse_session_model_selector(session: &Session, providers: &[&str]) -> (Optio
     }
 }
 
-pub(super) async fn execute_tool(
-    tool_registry: &ToolRegistry,
-    tool_name: &str,
-    exec_input: &serde_json::Value,
-    session_id: &str,
-    exec_start: std::time::Instant, progress: Option<(&mpsc::Sender<SessionEvent>, &str)>,
-) -> super::tool_policy::ToolTuple {
-    if let Some(tool) = tool_registry.get(tool_name) {
-        if let Some(blocked) = super::tool_policy::blocked(tool_name, exec_input).await {
-            return blocked;
-        }
-        let _guard = progress.map(|(tx, id)| crate::tool::progress::register(id, tool_name, tx)); let exec_input = progress_input(exec_input, progress.map(|(_, id)| id));
-        match tool.execute(exec_input).await {
-            Ok(result) => {
-                let duration_ms = exec_start.elapsed().as_millis() as u64;
-                tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
-                if let Some(audit) = try_audit_log() {
-                    audit
-                        .log_with_correlation(
-                            AuditCategory::ToolExecution,
-                            format!("tool:{}", tool_name),
-                            if result.success {
-                                AuditOutcome::Success
-                            } else {
-                                AuditOutcome::Failure
-                            },
-                            None,
-                            Some(tool_success_detail(duration_ms, &result)),
-                            None,
-                            None,
-                            None,
-                            Some(session_id.to_string()),
-                        )
-                        .await;
-                }
-                (result.output, result.success, Some(result.metadata))
-            }
-            Err(e) => {
-                let duration_ms = exec_start.elapsed().as_millis() as u64;
-                tracing::warn!(tool = %tool_name, error = %e, "Tool execution failed");
-                if let Some(audit) = try_audit_log() {
-                    audit
-                        .log_with_correlation(
-                            AuditCategory::ToolExecution,
-                            format!("tool:{}", tool_name),
-                            AuditOutcome::Failure,
-                            None,
-                            Some(tool_failure_detail(duration_ms, &e.to_string())),
-                            None,
-                            None,
-                            None,
-                            Some(session_id.to_string()),
-                        )
-                        .await;
-                }
-                (format!("Error: {}", e), false, None)
-            }
-        }
-    } else {
-        tracing::warn!(tool = %tool_name, "Tool not found");
-        if let Some(audit) = try_audit_log() {
-            audit
-                .log_with_correlation(
-                    AuditCategory::ToolExecution,
-                    format!("tool:{}", tool_name),
-                    AuditOutcome::Failure,
-                    None,
-                    Some(json!({ "error": "unknown_tool" })),
-                    None,
-                    None,
-                    None,
-                    Some(session_id.to_string()),
-                )
-                .await;
-        }
-        (format!("Error: Unknown tool '{}'", tool_name), false, None)
-    }
-}
-
-fn progress_input(input: &serde_json::Value, id: Option<&str>) -> serde_json::Value { let Some(id) = id else { return input.clone() }; let mut input = input.clone(); if let serde_json::Value::Object(map) = &mut input { map.insert("_tool_call_id".into(), serde_json::Value::String(id.to_string())); } input }
+pub(super) use super::tool_exec::execute_tool;
 
 /// Write a [`ChatEvent::tool_result`] JSONL record to disk (fire-and-forget).
 fn write_tool_event_file(

@@ -6,6 +6,8 @@ pub(in crate::session::helper) mod tool_approval;
 pub(in crate::session::helper) mod tool_audit_detail;
 #[path = "tool_event_emit.rs"]
 pub(in crate::session::helper) mod tool_event_emit;
+#[path = "tool_exec.rs"]
+pub(in crate::session::helper) mod tool_exec;
 #[path = "tool_metadata_event.rs"]
 pub(in crate::session::helper) mod tool_metadata_event;
 #[path = "tool_output.rs"]

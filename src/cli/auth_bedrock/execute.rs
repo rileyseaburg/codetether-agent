@@ -27,5 +27,13 @@ pub async fn execute(args: BedrockAuthArgs) -> Result<()> {
     let expires = args.expires_secs.min(token_gen::DEFAULT_EXPIRES_SECS);
     let token = token_gen::generate_bearer_token(&exported.creds, &region, expires);
     let token = validate::output_token(token, &region, args.no_validate).await?;
-    output::emit(&args, &region, &token, profile, expires, exported.expiration).await
+    output::emit(
+        &args,
+        &region,
+        &token,
+        profile,
+        expires,
+        exported.expiration,
+    )
+    .await
 }

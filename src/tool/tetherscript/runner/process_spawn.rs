@@ -26,13 +26,21 @@ pub fn spawn(
 fn child(command: String, args: Vec<String>, has_stdin: bool) -> Result<Child, String> {
     Command::new(&command)
         .args(args)
-        .stdin(if has_stdin { Stdio::piped() } else { Stdio::null() })
+        .stdin(if has_stdin {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("process_run: spawn {command} failed: {e}"))
 }
 
-fn reader<R: Read + Send + 'static>(r: R, id: String, stream: &'static str) -> impl FnOnce() -> std::io::Result<PipeOutput> {
+fn reader<R: Read + Send + 'static>(
+    r: R,
+    id: String,
+    stream: &'static str,
+) -> impl FnOnce() -> std::io::Result<PipeOutput> {
     move || process_output::read(r, id, stream)
 }

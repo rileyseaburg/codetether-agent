@@ -4,6 +4,10 @@ use ratatui::{
 };
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+#[path = "message_formatter_math.rs"]
+mod message_formatter_math;
+use message_formatter_math::prettify_math;
+
 /// Enhanced message formatter with syntax highlighting and improved styling
 pub struct MessageFormatter {
     max_width: usize,
@@ -404,6 +408,14 @@ impl MessageFormatter {
             return vec![Line::from(spans)];
         }
 
+        // Hard safety cap: each produced row must consume at least one column
+        // of input, so the wrapped output can never exceed the total input
+        // width by more than a small constant. This bounds memory even if a
+        // future logic error fails to advance `text`, preventing the runaway
+        // allocation that previously aborted the process on large sessions.
+        let total_chars: usize = spans.iter().map(|s| s.content.chars().count()).sum();
+        let max_rows = total_chars.saturating_add(2);
+
         let mut out: Vec<Line<'static>> = Vec::new();
         let mut cur: Vec<Span<'static>> = Vec::new();
         let mut cur_w: usize = 0;
@@ -412,6 +424,12 @@ impl MessageFormatter {
             let style = span.style;
             let mut text = span.content.into_owned();
             while !text.is_empty() {
+                if out.len() >= max_rows {
+                    // Unreachable under correct logic; a tripwire against
+                    // unbounded growth rather than a normal exit path.
+                    debug_assert!(false, "wrap_line exceeded row cap; possible non-advancing loop");
+                    break;
+                }
                 let remaining = width.saturating_sub(cur_w);
                 if remaining == 0 {
                     out.push(Line::from(std::mem::take(&mut cur)));
@@ -420,7 +438,15 @@ impl MessageFormatter {
                 }
                 let (taken, rest) = take_fit(&text, remaining, cur_w == 0);
                 if taken.is_empty() {
-                    // nothing fits on this row; flush and retry at col 0.
+                    if cur_w == 0 {
+                        // Already at column 0 and nothing was consumed (e.g. a
+                        // whitespace-only span that `take_fit` trims away).
+                        // Retrying would never shrink `text`, so drop the
+                        // unrenderable remainder to avoid an infinite loop that
+                        // grows `out` until allocation aborts.
+                        break;
+                    }
+                    // Mid-row: flush the current row and retry at col 0.
                     out.push(Line::from(std::mem::take(&mut cur)));
                     cur_w = 0;
                     continue;
@@ -442,134 +468,6 @@ impl MessageFormatter {
         }
         out
     }
-}
-
-/// Replace common LaTeX commands with Unicode glyphs for terminal display.
-///
-/// This is best-effort: we substitute well-known math symbols and Greek
-/// letters so that math blocks read closer to typeset notation. Anything
-/// we don't recognize is passed through unchanged, so the original source
-/// remains visible.
-fn prettify_math(input: &str) -> String {
-    // Pairs are applied longest-first to avoid e.g. `\delta` matching `\d`.
-    const REPLACEMENTS: &[(&str, &str)] = &[
-        // Multi-char commands first
-        ("\\Rightarrow", "⇒"),
-        ("\\Leftarrow", "⇐"),
-        ("\\rightarrow", "→"),
-        ("\\leftarrow", "←"),
-        ("\\leftrightarrow", "↔"),
-        ("\\mapsto", "↦"),
-        ("\\mathbb{C}", "ℂ"),
-        ("\\mathbb{R}", "ℝ"),
-        ("\\mathbb{Z}", "ℤ"),
-        ("\\mathbb{N}", "ℕ"),
-        ("\\mathbb{Q}", "ℚ"),
-        ("\\mathbb C", "ℂ"),
-        ("\\mathbb R", "ℝ"),
-        ("\\mathbb Z", "ℤ"),
-        ("\\mathbb N", "ℕ"),
-        ("\\mathbb Q", "ℚ"),
-        ("\\otimes", "⊗"),
-        ("\\oplus", "⊕"),
-        ("\\times", "×"),
-        ("\\cdot", "·"),
-        ("\\cdots", "⋯"),
-        ("\\ldots", "…"),
-        ("\\dots", "…"),
-        ("\\vdots", "⋮"),
-        ("\\ddots", "⋱"),
-        ("\\sum", "Σ"),
-        ("\\prod", "∏"),
-        ("\\int", "∫"),
-        ("\\infty", "∞"),
-        ("\\partial", "∂"),
-        ("\\nabla", "∇"),
-        ("\\forall", "∀"),
-        ("\\exists", "∃"),
-        ("\\nexists", "∄"),
-        ("\\emptyset", "∅"),
-        ("\\subset", "⊂"),
-        ("\\subseteq", "⊆"),
-        ("\\supset", "⊃"),
-        ("\\supseteq", "⊇"),
-        ("\\cup", "∪"),
-        ("\\cap", "∩"),
-        ("\\wedge", "∧"),
-        ("\\vee", "∨"),
-        ("\\neg", "¬"),
-        ("\\lnot", "¬"),
-        ("\\equiv", "≡"),
-        ("\\approx", "≈"),
-        ("\\sim", "∼"),
-        ("\\simeq", "≃"),
-        ("\\cong", "≅"),
-        ("\\propto", "∝"),
-        ("\\leq", "≤"),
-        ("\\geq", "≥"),
-        ("\\neq", "≠"),
-        ("\\ne", "≠"),
-        ("\\pm", "±"),
-        ("\\mp", "∓"),
-        ("\\sqrt", "√"),
-        ("\\dim", "dim"),
-        ("\\det", "det"),
-        ("\\ker", "ker"),
-        ("\\to", "→"),
-        ("\\in", "∈"),
-        ("\\notin", "∉"),
-        ("\\ni", "∋"),
-        // Greek lowercase
-        ("\\alpha", "α"),
-        ("\\beta", "β"),
-        ("\\gamma", "γ"),
-        ("\\delta", "δ"),
-        ("\\epsilon", "ε"),
-        ("\\varepsilon", "ε"),
-        ("\\zeta", "ζ"),
-        ("\\eta", "η"),
-        ("\\theta", "θ"),
-        ("\\vartheta", "ϑ"),
-        ("\\iota", "ι"),
-        ("\\kappa", "κ"),
-        ("\\lambda", "λ"),
-        ("\\mu", "μ"),
-        ("\\nu", "ν"),
-        ("\\xi", "ξ"),
-        ("\\pi", "π"),
-        ("\\varpi", "ϖ"),
-        ("\\rho", "ρ"),
-        ("\\varrho", "ϱ"),
-        ("\\sigma", "σ"),
-        ("\\varsigma", "ς"),
-        ("\\tau", "τ"),
-        ("\\upsilon", "υ"),
-        ("\\phi", "φ"),
-        ("\\varphi", "ϕ"),
-        ("\\chi", "χ"),
-        ("\\psi", "ψ"),
-        ("\\omega", "ω"),
-        // Greek uppercase
-        ("\\Gamma", "Γ"),
-        ("\\Delta", "Δ"),
-        ("\\Theta", "Θ"),
-        ("\\Lambda", "Λ"),
-        ("\\Xi", "Ξ"),
-        ("\\Pi", "Π"),
-        ("\\Sigma", "Σ"),
-        ("\\Upsilon", "Υ"),
-        ("\\Phi", "Φ"),
-        ("\\Psi", "Ψ"),
-        ("\\Omega", "Ω"),
-    ];
-
-    let mut out = input.to_string();
-    for (from, to) in REPLACEMENTS {
-        if out.contains(from) {
-            out = out.replace(from, to);
-        }
-    }
-    out
 }
 
 /// Take the longest prefix of `text` whose display width fits in `width`.
@@ -671,6 +569,17 @@ mod tests {
         let f = MessageFormatter::new(20);
         let out = f.wrap_line(vec![], 16);
         assert_eq!(out.len(), 1);
+    }
+
+    #[test]
+    fn wrap_line_whitespace_only_span_terminates() {
+        // Regression: a whitespace-only span used to loop forever because
+        // `take_fit` trims it to empty at column 0, growing `out` until the
+        // allocation guard aborted the process (~48 GiB). The loop must now
+        // terminate by dropping the unrenderable remainder.
+        let f = MessageFormatter::new(20);
+        let out = f.wrap_line(vec![Span::raw("        ")], 4);
+        assert!(out.len() <= 2, "expected bounded output, got {}", out.len());
     }
 
     #[test]
