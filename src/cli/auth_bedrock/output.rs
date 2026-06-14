@@ -2,6 +2,7 @@
 
 use super::{BedrockAuthArgs, token::OutputToken, vault_save};
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 
 /// Print the gated token and optionally persist it to Vault.
 pub(super) async fn emit(
@@ -10,6 +11,7 @@ pub(super) async fn emit(
     token: &OutputToken,
     profile: Option<&str>,
     expires_secs: u64,
+    cred_expiration: Option<DateTime<Utc>>,
 ) -> Result<()> {
     if args.save_only {
         // Secret intentionally not printed for scriptable Vault saves.
@@ -25,7 +27,7 @@ pub(super) async fn emit(
         );
     }
     if args.save {
-        vault_save::save(args, region, token.expose(), profile).await?;
+        vault_save::save(args, region, token.expose(), profile, cred_expiration).await?;
     }
     Ok(())
 }

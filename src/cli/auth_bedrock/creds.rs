@@ -6,12 +6,13 @@
 //! modes force a fresh login before exporting credentials.
 
 use super::aws_cli;
+use super::exported::Exported;
 use super::login::LoginMode;
 use crate::provider::bedrock::AwsCredentials;
 use anyhow::Result;
 
 /// Resolve AWS credentials, logging in when requested or required.
-pub(super) async fn resolve(profile: Option<&str>, mode: LoginMode) -> Result<AwsCredentials> {
+pub(super) async fn resolve(profile: Option<&str>, mode: LoginMode) -> Result<Exported> {
     if profile.is_none() && matches!(mode, LoginMode::Browser | LoginMode::DeviceCode) {
         anyhow::bail!(
             "Forced SSO login requires an SSO profile. Use --sso <start-url> or --profile <name>."
@@ -21,7 +22,10 @@ pub(super) async fn resolve(profile: Option<&str>, mode: LoginMode) -> Result<Aw
         && let Some(creds) = AwsCredentials::from_environment()
     {
         eprintln!("Using AWS credentials from environment/shared credentials.");
-        return Ok(creds);
+        return Ok(Exported {
+            creds,
+            expiration: None,
+        });
     }
     if let Some(p) = profile
         && matches!(mode, LoginMode::Browser | LoginMode::DeviceCode)
@@ -29,7 +33,7 @@ pub(super) async fn resolve(profile: Option<&str>, mode: LoginMode) -> Result<Aw
         super::login::run(p, mode).await?;
     }
     match aws_cli::export_credentials(profile).await {
-        Ok(creds) => Ok(creds),
+        Ok(exported) => Ok(exported),
         Err(e) => retry_after_login(profile, mode, e).await,
     }
 }
@@ -39,7 +43,7 @@ async fn retry_after_login(
     profile: Option<&str>,
     mode: LoginMode,
     e: anyhow::Error,
-) -> Result<AwsCredentials> {
+) -> Result<Exported> {
     match profile {
         Some(p) if mode != LoginMode::Off => {
             tracing::info!(profile = p, "SSO export failed; attempting login: {e}");

@@ -1,18 +1,24 @@
 //! Vault extra-field builder for Bedrock auth records.
 
-use super::{BedrockAuthArgs, sso_cache, sso_profile_meta, sso_vault_extra};
+use super::{BedrockAuthArgs, sso_cache, sso_profile_meta, sso_vault_extra, vault_expiry};
 use crate::provider::bedrock::token_gen;
+use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 
 /// Build provider-specific metadata for the Bedrock Vault secret.
+///
+/// The stored `api_key_expires_at` is clamped to the earlier of the token's
+/// own TTL and the underlying credential expiry, because an SSO/STS session
+/// dying invalidates the key before its nominal TTL.
 pub(super) fn fields(
     args: &BedrockAuthArgs,
     region: &str,
     profile: Option<&str>,
+    cred_expiration: Option<DateTime<Utc>>,
 ) -> HashMap<String, Value> {
     let lifetime = args.expires_secs.min(token_gen::DEFAULT_EXPIRES_SECS);
-    let expires_at = chrono::Utc::now() + chrono::Duration::seconds(lifetime as i64);
+    let expires_at = vault_expiry::effective(lifetime, cred_expiration);
     let mut extra = HashMap::from([
         ("region".to_string(), Value::String(region.to_string())),
         (
@@ -24,6 +30,12 @@ pub(super) fn fields(
             json!(expires_at.to_rfc3339()),
         ),
     ]);
+    if let Some(cred) = cred_expiration {
+        extra.insert(
+            "credential_expires_at_rfc3339".to_string(),
+            json!(cred.to_rfc3339()),
+        );
+    }
     attach_sso(profile, &mut extra);
     extra
 }

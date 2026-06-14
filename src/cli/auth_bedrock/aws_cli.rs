@@ -1,11 +1,10 @@
 //! AWS CLI invocation helpers for Bedrock auth.
 
 use super::exported;
-use crate::provider::bedrock::AwsCredentials;
 use anyhow::{Context, Result, bail};
 
 /// Shell out to `aws configure export-credentials`.
-pub(super) async fn export_credentials(profile: Option<&str>) -> Result<AwsCredentials> {
+pub(super) async fn export_credentials(profile: Option<&str>) -> Result<exported::Exported> {
     let mut cmd = tokio::process::Command::new("aws");
     cmd.args(["configure", "export-credentials", "--format", "process"]);
     if let Some(p) = profile {

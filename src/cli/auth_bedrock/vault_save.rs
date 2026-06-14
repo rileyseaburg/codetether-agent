@@ -3,6 +3,7 @@
 use super::{BedrockAuthArgs, vault_extra};
 use crate::secrets::{self, ProviderSecrets};
 use anyhow::{Context, Result};
+use chrono::{DateTime, Utc};
 
 /// Store the token as the `bedrock` provider api_key in Vault.
 pub(super) async fn save(
@@ -10,6 +11,7 @@ pub(super) async fn save(
     region: &str,
     token: &str,
     profile: Option<&str>,
+    cred_expiration: Option<DateTime<Utc>>,
 ) -> Result<()> {
     if secrets::secrets_manager().is_none() {
         anyhow::bail!(
@@ -17,7 +19,7 @@ pub(super) async fn save(
              or omit --save and use the printed token directly."
         );
     }
-    let extra = vault_extra::fields(args, region, profile);
+    let extra = vault_extra::fields(args, region, profile, cred_expiration);
     let saved_sso_refresh = extra.contains_key("sso_refresh_token");
     let provider_secrets = ProviderSecrets {
         api_key: Some(token.to_string()),
