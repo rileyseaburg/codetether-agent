@@ -1,0 +1,80 @@
+// Live Bedrock model helper.
+// Requires BEDROCK_ENDPOINT_REGION; does not use AWS CLI default region.
+
+fn result(ok, region, model, text, error_text, called, saved) {
+    let m = map()
+    m["ok"] = ok
+    m["provider"] = "bedrock"
+    m["region"] = region
+    m["model"] = model
+    m["text"] = text
+    m["model_called"] = called
+    m["vault_saved"] = saved
+    m["error"] = error_text
+    return Ok(json_encode(m))
+}
+
+fn require_model(model) {
+    if model == "" { return Err("Bedrock model ID is required") }
+    return Ok(model)
+}
+
+fn endpoint_region() {
+    let res = process_run("bash", ["-lc", "printf %s \"$BEDROCK_ENDPOINT_REGION\""], nil, 10000)?
+    let region = res["stdout"].trim()
+    if region == "" { return Err("BEDROCK_ENDPOINT_REGION is required") }
+    return Ok(region)
+}
+
+fn messages_json() {
+    let part = map()
+    part["text"] = "Reply with exactly: bedrock-ok"
+    let msg = map()
+    msg["role"] = "user"
+    msg["content"] = [part]
+    return json_encode([msg])
+}
+
+fn save_bedrock_key() {
+    let region = endpoint_region()?
+    let args = ["auth", "bedrock", "--device-code", "--save", "--save-only", "--region", region]
+    let saved = process_run("codetether", args, nil, 300000)?
+    if !saved["success"] { return result(false, region, "", "", saved["stderr"], false, false) }
+    return result(true, region, "", "", "", false, true)
+}
+
+fn aws_converse(region, model, timeout_ms) {
+    let args = ["bedrock-runtime", "converse", "--region", region, "--model-id", model, "--messages", messages_json(), "--query", "output.message.content[0].text", "--output", "text"]
+    return process_run("aws", args, nil, timeout_ms)?
+}
+
+fn call_bedrock_model(model) {
+    let id = require_model(model)?
+    let region = endpoint_region()?
+    let called = aws_converse(region, id, 300000)
+    if !called["success"] { return result(false, region, id, "", called["stderr"], false, false) }
+    let text = called["stdout"].trim()
+    if text != "bedrock-ok" { return result(false, region, id, text, "unexpected model output", true, false) }
+    return result(true, region, id, text, "", true, false)
+}
+
+fn save_then_call_bedrock_model(model) {
+    let id = require_model(model)?
+    let region = endpoint_region()?
+    let args = ["auth", "bedrock", "--device-code", "--save", "--save-only", "--region", region]
+    let saved = process_run("codetether", args, nil, 300000)?
+    if !saved["success"] { return result(false, region, id, "", saved["stderr"], false, false) }
+    let called = aws_converse(region, id, 300000)
+    if !called["success"] { return result(false, region, id, "", called["stderr"], false, true) }
+    let text = called["stdout"].trim()
+    if text != "bedrock-ok" { return result(false, region, id, text, "unexpected model output", true, true) }
+    return result(true, region, id, text, "", true, true)
+}
+
+fn profile_active(model) {
+    let id = require_model(model)?
+    let region = endpoint_region()?
+    let query = "inferenceProfileSummaries[?inferenceProfileId=='" + id + "'].inferenceProfileId"
+    let args = ["bedrock", "list-inference-profiles", "--region", region, "--query", query, "--output", "text"]
+    return process_run("aws", args, nil, 300000)?
+}
