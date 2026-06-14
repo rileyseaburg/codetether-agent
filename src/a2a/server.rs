@@ -610,9 +610,9 @@ async fn handle_message_stream(
         tokio::spawn(async move {
             while let Some(event) = event_rx.recv().await {
                 let event_data = match &event {
-                    SessionEvent::Thinking
-                    | SessionEvent::ToolCallStart { .. }
-                    | SessionEvent::ToolCallComplete { .. } => server_session_event::data(&event),
+                    SessionEvent::Thinking | SessionEvent::ToolCallStart { .. }
+                    | SessionEvent::ToolCallComplete { .. }
+                    | SessionEvent::ToolHeartbeat { .. } => server_session_event::data(&event),
                     SessionEvent::TextChunk(text) => {
                         serde_json::json!({ "type": "text_chunk", "text": text })
                     }

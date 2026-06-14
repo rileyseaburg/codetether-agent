@@ -775,14 +775,12 @@ pub(crate) async fn run_prompt_with_events(
             let (content, success, tool_metadata) = match blocked_result {
                 Some(blocked) => blocked,
                 None => {
-                    execute_tool(
-                        &tool_registry,
-                        &tool_name,
-                        &exec_input,
-                        &session.id,
-                        exec_start,
-                    )
-                    .await
+                    let hb = super::tool_heartbeat::spawn(&event_tx, &tool_id, &tool_name, exec_start);
+                    let result = execute_tool(
+                        &tool_registry, &tool_name, &exec_input, &session.id, exec_start,
+                    ).await;
+                    hb.abort();
+                    result
                 }
             };
 

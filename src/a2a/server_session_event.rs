@@ -30,6 +30,16 @@ pub(super) fn data(event: &SessionEvent) -> Value {
             "success": success,
             "duration_ms": duration_ms
         }),
+        SessionEvent::ToolHeartbeat {
+            tool_call_id,
+            name,
+            elapsed_secs,
+        } => json!({
+            "type": "tool_heartbeat",
+            "tool_call_id": tool_call_id,
+            "name": name,
+            "elapsed_secs": elapsed_secs
+        }),
         _ => json!({ "type": "ignored" }),
     }
 }
