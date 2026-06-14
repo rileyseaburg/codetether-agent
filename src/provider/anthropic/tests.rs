@@ -1,9 +1,5 @@
 //! Unit tests for Anthropic provider helpers.
 
-use crate::provider::Provider;
-
-use super::AnthropicProvider;
-
 #[test]
 fn adds_cache_control_to_last_tool_system_and_message_block() {
     let messages = vec![
