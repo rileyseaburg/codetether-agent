@@ -1,7 +1,40 @@
 // Live Bedrock model helper.
 // Requires BEDROCK_ENDPOINT_REGION; does not use AWS CLI default region.
 
-fn result(ok, region, model, text, error_text, called, saved) {
+fn result_with_auth(ok, region, model, text, error_text, called, saved, auth) {
+    region = region.trim()
+    model = model.trim()
+    auth = auth.trim()
+    error_text = error_text.trim()
+    text = text.trim()
+    if (called || saved) && require_region(region).is_err() {
+        ok = false
+        if error_text == "" { error_text = "BEDROCK_ENDPOINT_REGION must be an AWS region" }
+    }
+    if (called || auth == "aws-cli") && model == "" {
+        ok = false
+        error_text = "Bedrock model ID is required"
+    }
+    if (called || auth == "aws-cli") && reject_whitespace(model, "Bedrock model ID").is_err() {
+        ok = false
+        error_text = "Bedrock model ID must not contain whitespace"
+    }
+    if error_text != "" { ok = false }
+    if called && text != "bedrock-ok" {
+        ok = false
+        if error_text == "" { error_text = "unexpected model output" }
+    }
+    if auth == "" { auth = "none" }
+    if auth != "none" && auth != "aws-cli" { auth = "unknown" }
+    if called { auth = "aws-cli" }
+    if !called && auth == "unknown" { auth = "none" }
+    if !called && error_text == "" { auth = "none" }
+    if !saved && !called {
+        ok = false
+        if error_text == "" { error_text = "no Bedrock auth action completed" }
+    }
+    if auth == "unknown" { ok = false }
+    if !ok && error_text == "" { error_text = "Bedrock auth action failed" }
     let m = map()
     m["ok"] = ok
     m["provider"] = "bedrock"
@@ -9,21 +42,57 @@ fn result(ok, region, model, text, error_text, called, saved) {
     m["model"] = model
     m["text"] = text
     m["model_called"] = called
+    m["model_call_attempted"] = auth != "none"
+    m["model_call_auth"] = auth
     m["vault_saved"] = saved
+    m["vault_token_verified"] = false
     m["error"] = error_text
     return Ok(json_encode(m))
 }
 
+fn result(ok, region, model, text, error_text, called, saved) {
+    if called { return result_with_auth(ok, region, model, text, error_text, called, saved, "aws-cli") }
+    return result_with_auth(ok, region, model, text, error_text, called, saved, "none")
+}
+
+fn aws_result(ok, region, model, text, error_text, called, saved) {
+    return result_with_auth(ok, region, model, text, error_text, called, saved, "aws-cli")
+}
+
+fn reject_whitespace(value, label) {
+    if value.contains(" ") { return Err(label + " must not contain whitespace") }
+    return reject_control_whitespace(value, label)
+}
+
+fn reject_control_whitespace(value, label) {
+    if value.contains("\n") { return Err(label + " must not contain whitespace") }
+    if value.contains("\r") { return Err(label + " must not contain whitespace") }
+    if value.contains("\t") { return Err(label + " must not contain whitespace") }
+    return Ok(value)
+}
+
 fn require_model(model) {
+    model = model.trim()
     if model == "" { return Err("Bedrock model ID is required") }
-    return Ok(model)
+    return reject_whitespace(model, "Bedrock model ID")
 }
 
 fn endpoint_region() {
     let res = process_run("bash", ["-lc", "printf %s \"$BEDROCK_ENDPOINT_REGION\""], nil, 10000)?
-    let region = res["stdout"].trim()
-    if region == "" { return Err("BEDROCK_ENDPOINT_REGION is required") }
-    return Ok(region)
+    return require_region(res["stdout"])
+}
+
+fn codetether_bin() {
+    let local = process_run("bash", ["-lc", "test -x ./target/debug/codetether"], nil, 10000)?
+    if local["success"] { return Ok("./target/debug/codetether") }
+    return Ok("codetether")
+}
+
+fn require_save_only(bin) {
+    let help = process_run(bin, ["auth", "bedrock", "--help"], nil, 10000)?
+    if !help["success"] { return Err(help["stderr"]) }
+    if !help["stdout"].contains("--save-only") { return Err("codetether binary lacks --save-only") }
+    return Ok(bin)
 }
 
 fn messages_json() {
@@ -35,10 +104,129 @@ fn messages_json() {
     return json_encode([msg])
 }
 
+fn reject_uppercase(value, label) {
+    if value.contains("A") { return Err(label + " must be lowercase") }
+    if value.contains("B") { return Err(label + " must be lowercase") }
+    if value.contains("C") { return Err(label + " must be lowercase") }
+    if value.contains("D") { return Err(label + " must be lowercase") }
+    if value.contains("E") { return Err(label + " must be lowercase") }
+    if value.contains("F") { return Err(label + " must be lowercase") }
+    if value.contains("G") { return Err(label + " must be lowercase") }
+    if value.contains("H") { return Err(label + " must be lowercase") }
+    if value.contains("I") { return Err(label + " must be lowercase") }
+    if value.contains("J") { return Err(label + " must be lowercase") }
+    if value.contains("K") { return Err(label + " must be lowercase") }
+    if value.contains("L") { return Err(label + " must be lowercase") }
+    if value.contains("M") { return Err(label + " must be lowercase") }
+    if value.contains("N") { return Err(label + " must be lowercase") }
+    if value.contains("O") { return Err(label + " must be lowercase") }
+    if value.contains("P") { return Err(label + " must be lowercase") }
+    if value.contains("Q") { return Err(label + " must be lowercase") }
+    if value.contains("R") { return Err(label + " must be lowercase") }
+    if value.contains("S") { return Err(label + " must be lowercase") }
+    if value.contains("T") { return Err(label + " must be lowercase") }
+    if value.contains("U") { return Err(label + " must be lowercase") }
+    if value.contains("V") { return Err(label + " must be lowercase") }
+    if value.contains("W") { return Err(label + " must be lowercase") }
+    if value.contains("X") { return Err(label + " must be lowercase") }
+    if value.contains("Y") { return Err(label + " must be lowercase") }
+    if value.contains("Z") { return Err(label + " must be lowercase") }
+    return Ok(value)
+}
+
+fn reject_region_symbols(region) {
+    let mut safe = region.replace("-", "")
+    safe = safe.replace("0", "")
+    safe = safe.replace("1", "")
+    safe = safe.replace("2", "")
+    safe = safe.replace("3", "")
+    safe = safe.replace("4", "")
+    safe = safe.replace("5", "")
+    safe = safe.replace("6", "")
+    safe = safe.replace("7", "")
+    safe = safe.replace("8", "")
+    safe = safe.replace("9", "")
+    safe = safe.replace("a", "")
+    safe = safe.replace("b", "")
+    safe = safe.replace("c", "")
+    safe = safe.replace("d", "")
+    safe = safe.replace("e", "")
+    safe = safe.replace("f", "")
+    safe = safe.replace("g", "")
+    safe = safe.replace("h", "")
+    safe = safe.replace("i", "")
+    safe = safe.replace("j", "")
+    safe = safe.replace("k", "")
+    safe = safe.replace("l", "")
+    safe = safe.replace("m", "")
+    safe = safe.replace("n", "")
+    safe = safe.replace("o", "")
+    safe = safe.replace("p", "")
+    safe = safe.replace("q", "")
+    safe = safe.replace("r", "")
+    safe = safe.replace("s", "")
+    safe = safe.replace("t", "")
+    safe = safe.replace("u", "")
+    safe = safe.replace("v", "")
+    safe = safe.replace("w", "")
+    safe = safe.replace("x", "")
+    safe = safe.replace("y", "")
+    safe = safe.replace("z", "")
+    if safe != "" { return Err("BEDROCK_ENDPOINT_REGION must be an AWS region") }
+    return Ok(region)
+}
+
+fn reject_digits(value, label) {
+    if value.contains("0") { return Err(label + " non-zone segments must be letters") }
+    if value.contains("1") { return Err(label + " non-zone segments must be letters") }
+    if value.contains("2") { return Err(label + " non-zone segments must be letters") }
+    if value.contains("3") { return Err(label + " non-zone segments must be letters") }
+    if value.contains("4") { return Err(label + " non-zone segments must be letters") }
+    if value.contains("5") { return Err(label + " non-zone segments must be letters") }
+    if value.contains("6") { return Err(label + " non-zone segments must be letters") }
+    if value.contains("7") { return Err(label + " non-zone segments must be letters") }
+    if value.contains("8") { return Err(label + " non-zone segments must be letters") }
+    if value.contains("9") { return Err(label + " non-zone segments must be letters") }
+    return Ok(value)
+}
+
+fn require_region(region) {
+    region = region.trim()
+    region = region.replace(" ", "-")
+    if region == "" { return Err("BEDROCK_ENDPOINT_REGION is required") }
+    region = reject_control_whitespace(region, "BEDROCK_ENDPOINT_REGION")?
+    region = reject_uppercase(region, "BEDROCK_ENDPOINT_REGION")?
+    region = reject_region_symbols(region)?
+    if region.contains("_") { return Err("BEDROCK_ENDPOINT_REGION must be an AWS region") }
+    if region.contains("--") { return Err("BEDROCK_ENDPOINT_REGION must be an AWS region") }
+    let parts = region.split("-")
+    if len(parts) < 3 { return Err("BEDROCK_ENDPOINT_REGION must be an AWS region") }
+    let mut idx = 0
+    while idx < len(parts) - 1 {
+        let segment = str(parts[idx])
+        if segment == "" { return Err("BEDROCK_ENDPOINT_REGION must be an AWS region") }
+        reject_digits(segment, "BEDROCK_ENDPOINT_REGION")?
+        idx = idx + 1
+    }
+    let zone = str(parts[len(parts) - 1])
+    if zone.len() != 1 { return Err("BEDROCK_ENDPOINT_REGION must end with a numeric zone") }
+    if !"123456789".contains(zone) { return Err("BEDROCK_ENDPOINT_REGION must end with a numeric zone") }
+    return Ok(region)
+}
+
+fn save_args(region) {
+    region = require_region(region)?
+    return ["auth", "bedrock", "--device-code", "--save", "--save-only", "--region", region]
+}
+
 fn save_bedrock_key() {
-    let region = endpoint_region()?
-    let args = ["auth", "bedrock", "--device-code", "--save", "--save-only", "--region", region]
-    let saved = process_run("codetether", args, nil, 300000)?
+    return save_bedrock_key_in_region(endpoint_region()?)
+}
+
+fn save_bedrock_key_in_region(region) {
+    region = require_region(region)?
+    let bin = require_save_only(codetether_bin()?)?
+    let saved = process_run(bin, save_args(region), nil, 300000)?
     if !saved["success"] { return result(false, region, "", "", saved["stderr"], false, false) }
     return result(true, region, "", "", "", false, true)
 }
@@ -49,26 +237,34 @@ fn aws_converse(region, model, timeout_ms) {
 }
 
 fn call_bedrock_model(model) {
+    return call_bedrock_model_in_region(model, endpoint_region()?)
+}
+
+fn call_bedrock_model_in_region(model, region) {
+    let id = require_model(model)?
+    region = require_region(region)?
+    let called = aws_converse(region, id, 300000)
+    if !called["success"] { return aws_result(false, region, id, "", called["stderr"], false, false) }
+    let text = called["stdout"].trim()
+    if text != "bedrock-ok" { return aws_result(false, region, id, text, "unexpected model output", true, false) }
+    return aws_result(true, region, id, text, "", true, false)
+}
+
+fn save_then_aws_cli_call_bedrock_model(model) {
     let id = require_model(model)?
     let region = endpoint_region()?
+    let bin = require_save_only(codetether_bin()?)?
+    let saved = process_run(bin, save_args(region), nil, 300000)?
+    if !saved["success"] { return result(false, region, id, "", saved["stderr"], false, false) }
     let called = aws_converse(region, id, 300000)
-    if !called["success"] { return result(false, region, id, "", called["stderr"], false, false) }
+    if !called["success"] { return aws_result(false, region, id, "", called["stderr"], false, true) }
     let text = called["stdout"].trim()
-    if text != "bedrock-ok" { return result(false, region, id, text, "unexpected model output", true, false) }
-    return result(true, region, id, text, "", true, false)
+    if text != "bedrock-ok" { return aws_result(false, region, id, text, "unexpected model output", true, true) }
+    return aws_result(true, region, id, text, "", true, true)
 }
 
 fn save_then_call_bedrock_model(model) {
-    let id = require_model(model)?
-    let region = endpoint_region()?
-    let args = ["auth", "bedrock", "--device-code", "--save", "--save-only", "--region", region]
-    let saved = process_run("codetether", args, nil, 300000)?
-    if !saved["success"] { return result(false, region, id, "", saved["stderr"], false, false) }
-    let called = aws_converse(region, id, 300000)
-    if !called["success"] { return result(false, region, id, "", called["stderr"], false, true) }
-    let text = called["stdout"].trim()
-    if text != "bedrock-ok" { return result(false, region, id, text, "unexpected model output", true, true) }
-    return result(true, region, id, text, "", true, true)
+    return save_then_aws_cli_call_bedrock_model(model)
 }
 
 fn profile_active(model) {
