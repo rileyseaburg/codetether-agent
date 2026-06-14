@@ -49,5 +49,8 @@ pub fn check_watchdog_stall(state: &AppState, timeout: Duration) -> Option<Watch
     } else {
         format!("⚠ No response after {secs}s. Provider may be unreachable.")
     };
-    Some(WatchdogNotification::new(label, state.main_watchdog_restart_count))
+    Some(WatchdogNotification::new(
+        label,
+        state.main_watchdog_restart_count,
+    ))
 }

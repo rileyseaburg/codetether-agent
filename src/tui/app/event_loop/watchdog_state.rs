@@ -10,7 +10,10 @@ use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::constants::MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS;
 
 /// Apply watchdog cancel state: increment counter, clear stream, push error.
-pub(in crate::tui::app::event_loop) fn apply_watchdog_state(app: &mut App, notif: WatchdogNotification) {
+pub(in crate::tui::app::event_loop) fn apply_watchdog_state(
+    app: &mut App,
+    notif: WatchdogNotification,
+) {
     app.state.main_watchdog_restart_count += 1;
     let count = app.state.main_watchdog_restart_count;
     app.state.watchdog_notification = Some(notif);

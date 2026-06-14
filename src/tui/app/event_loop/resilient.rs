@@ -8,9 +8,7 @@
 //! This is the difference between a TUI that survives a long-running session
 //! and one that exits on the first hiccup.
 
-pub(super) async fn run_resilient(
-    args: &mut super::select_args::SelectArgs<'_>,
-) -> bool {
+pub(super) async fn run_resilient(args: &mut super::select_args::SelectArgs<'_>) -> bool {
     match super::select_loop::select_once(args).await {
         Ok(quit) => quit,
         Err(err) => {

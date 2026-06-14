@@ -13,9 +13,7 @@ pub(in crate::tui::app::event_loop) async fn check(
     runtime: &TuiSessionHandle,
     interval: std::time::Duration,
 ) {
-    let Some(notif) =
-        crate::tui::app::watchdog::check_watchdog_stall(&app.state, interval)
-    else {
+    let Some(notif) = crate::tui::app::watchdog::check_watchdog_stall(&app.state, interval) else {
         return;
     };
     super::super::watchdog::apply_watchdog_state(app, notif);

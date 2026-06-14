@@ -36,12 +36,9 @@ pub(super) async fn handle_event(
         }
         SessionEvent::ApprovalRequest(request) => approval::request(app, request),
         SessionEvent::ToolHeartbeat {
-            name,
-            elapsed_secs,
-            ..
+            name, elapsed_secs, ..
         } => {
-            app.state.status =
-                format!("Running {name}… {elapsed_secs}s");
+            app.state.status = format!("Running {name}… {elapsed_secs}s");
         }
         other => return Some(other),
     }

@@ -34,6 +34,9 @@ pub struct BedrockAuthArgs {
     /// Print only the raw token (for command substitution / scripts)
     #[arg(long, default_value_t = false)]
     pub raw: bool,
+    /// Save without printing the token; requires --save
+    #[arg(long, default_value_t = false)]
+    pub save_only: bool,
     /// Skip live validation against the Bedrock management API
     #[arg(long, default_value_t = false)]
     pub no_validate: bool,

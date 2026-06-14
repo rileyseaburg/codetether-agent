@@ -22,17 +22,24 @@ mod sso_profile_meta;
 #[cfg(test)]
 mod sso_tests;
 mod sso_vault_extra;
+mod token;
 mod validate;
 mod vault_extra;
 mod vault_save;
 
 use crate::provider::bedrock::token_gen;
-use anyhow::Result;
+use anyhow::{Result, bail};
 pub use args::BedrockAuthArgs;
 pub use login::LoginMode;
 
 /// Resolve credentials, mint, validate, and emit/save the bearer token.
 pub async fn execute(args: BedrockAuthArgs) -> Result<()> {
+    if args.save_only && !args.save {
+        bail!("--save-only requires --save");
+    }
+    if args.save_only && args.raw {
+        bail!("--save-only cannot be combined with --raw");
+    }
     let login_mode = mode::select(&args)?;
     let selected = select::profile(&args, login_mode)?;
     let profile = selected
@@ -43,9 +50,6 @@ pub async fn execute(args: BedrockAuthArgs) -> Result<()> {
     let aws = creds::resolve(profile, login_mode).await?;
     let expires = args.expires_secs.min(token_gen::DEFAULT_EXPIRES_SECS);
     let token = token_gen::generate_bearer_token(&aws, &region, expires);
-    if !args.no_validate {
-        validate::token(&region, &token).await?;
-        eprintln!("Validated Bedrock API key against AWS in region {region}.");
-    }
-    output::emit(&args, &region, &token, profile).await
+    let token = validate::output_token(&region, token, args.no_validate).await?;
+    output::emit(&args, &region, &token, profile, expires).await
 }

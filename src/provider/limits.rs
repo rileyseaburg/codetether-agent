@@ -108,8 +108,7 @@ mod tests {
     }
     #[test]
     fn case_insensitive() {
-        assert_eq!(context_window_for_model("Claude-Opus-4-7"),
-            context_window_for_model("claude-opus-4-7"));
+        assert_eq!(context_window_for_model("Claude-Opus-4-7"), context_window_for_model("claude-opus-4-7"));
     }
 
     #[test]
