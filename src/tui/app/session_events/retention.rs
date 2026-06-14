@@ -13,5 +13,11 @@ pub(super) fn trim(app: &mut App) {
     app.state.cached_message_lines.clear();
     app.state.cached_messages_len = 0;
     app.state.cached_frozen_len = 0;
-    app.state.chat_scroll = app.state.chat_scroll.saturating_sub(overflow);
+    // Preserve the auto-follow sentinel (SCROLL_BOTTOM = 1_000_000). If the user
+    // is at the sentinel, keep them there — the render clamp adjusts to the new
+    // max_scroll. For a manual scroll position, subtract the number of removed
+    // leading messages so the view stays on the same logical content.
+    if app.state.chat_scroll < crate::tui::constants::SCROLL_BOTTOM {
+        app.state.chat_scroll = app.state.chat_scroll.saturating_sub(overflow);
+    }
 }

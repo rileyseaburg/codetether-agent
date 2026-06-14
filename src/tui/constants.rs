@@ -16,7 +16,9 @@ pub const FILE_PICKER_PREVIEW_MAX_BYTES: usize = 8 * 1024;
 pub const FILE_PICKER_PREVIEW_MAX_LINES: usize = 14;
 pub const FILE_PICKER_PREVIEW_DIR_ITEMS: usize = 10;
 pub const FILE_PICKER_PAGE_STEP: usize = 12;
-pub const MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS: u64 = 300;
+pub const MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS: u64 = 60;
+/// Maximum automatic restart attempts before the watchdog gives up.
+pub const WATCHDOG_MAX_RESTARTS: u32 = 3;
 pub const SMART_SWITCH_MAX_RETRIES: u8 = 3;
 pub const SMART_SWITCH_PROVIDER_PRIORITY: [&str; 11] = [
     "minimax",

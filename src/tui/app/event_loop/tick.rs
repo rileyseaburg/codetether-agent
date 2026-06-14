@@ -3,6 +3,10 @@ use crate::tui::worker_bridge::TuiWorkerBridge;
 
 #[path = "dirty.rs"]
 mod dirty;
+#[path = "tick_watchdog.rs"]
+mod tick_watchdog;
+
+pub(super) use tick_watchdog::check;
 
 pub async fn run(app: &mut App) {
     let before = dirty::Snapshot::capture(app);

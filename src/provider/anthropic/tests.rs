@@ -1,5 +1,7 @@
 //! Unit tests for Anthropic provider helpers.
 
+use crate::provider::Provider;
+
 #[test]
 fn adds_cache_control_to_last_tool_system_and_message_block() {
     let messages = vec![
@@ -25,7 +27,7 @@ fn adds_cache_control_to_last_tool_system_and_message_block() {
 
 #[test]
 fn minimax_provider_name_enables_prompt_caching_by_default() {
-    let provider = AnthropicProvider::with_base_url(
+    let provider = super::AnthropicProvider::with_base_url(
         "test-key".to_string(),
         "https://api.minimax.io/anthropic".to_string(),
         "minimax",

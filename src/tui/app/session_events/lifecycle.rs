@@ -37,6 +37,7 @@ async fn done(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
     app.state.streaming_text.clear();
     app.state.complete_turn_timing();
     app.state.streaming_start = None;
+    app.state.main_watchdog_restart_count = 0;
     app.state.status = "Ready".to_string();
 }
 

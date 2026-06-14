@@ -29,7 +29,10 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
         }
         Some(()) = args.io.shutdown_rx.recv() => return Ok(true),
         _ = args.timers.watchdog.tick() => super::watchdog::maybe_watchdog_restart(app, args.runtime, args.timers.watchdog_interval).await,
-        _ = args.timers.tick.tick() => super::tick::run(app).await,
+        _ = args.timers.tick.tick() => {
+            super::tick::run(app).await;
+            super::tick::check(app, args.runtime, args.timers.watchdog_interval).await;
+        }
     }
     // Drain background updates before marking dirty (they may produce new state).
     crate::tui::app::background::drain_background_updates(

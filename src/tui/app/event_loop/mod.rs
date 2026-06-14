@@ -2,22 +2,13 @@
 //!
 //! Drives the terminal draw → event → dispatch cycle using
 //! `tokio::select!` across terminal, session, result, watchdog
-//! and tick channels.  Each iteration redraws the UI, then
-//! waits for whichever source fires first.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! run_event_loop(
-//!     &mut terminal, &mut app, cwd, registry,
-//!     &mut session, &mut bus, bridge, tx, rx, rtx, rrx,
-//! ).await?;
-//! ```
+//! and tick channels.
 
 mod autochat;
 mod bus_inbox;
 mod coalesce;
 mod io;
+mod resilient;
 mod select_args;
 mod select_loop;
 mod setup;
@@ -45,19 +36,6 @@ use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 /// Drive the TUI draw-event-dispatch loop until quit.
-///
-/// Continuously redraws the UI, then uses `tokio::select!`
-/// to multiplex terminal events, session events, results,
-/// a watchdog stall timer, and a 50 ms background tick.
-///
-/// # Examples
-///
-/// ```ignore
-/// run_event_loop(
-///     &mut terminal, &mut app, cwd, registry,
-///     &mut session, &mut bus, bridge, tx, rx, rtx, rrx,
-/// ).await?;
-/// ```
 pub(crate) async fn run_event_loop(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     app: &mut App,
@@ -82,8 +60,7 @@ pub(crate) async fn run_event_loop(
         let mut args = SelectArgs {
             reader: &mut setup.reader,
             app,
-            cwd,
-            slot,
+            cwd, slot,
             registry: &registry,
             worker_bridge: &mut worker_bridge,
             runtime: &runtime,
@@ -91,7 +68,7 @@ pub(crate) async fn run_event_loop(
             timers: &mut setup.timers,
             bus_handle,
         };
-        if select_loop::select_once(&mut args).await? {
+        if resilient::run_resilient(&mut args).await {
             break;
         }
     }

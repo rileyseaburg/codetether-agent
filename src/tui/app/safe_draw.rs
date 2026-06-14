@@ -1,62 +1,62 @@
 //! Guarded TUI drawing.
 //!
-//! This module provides a small safety wrapper around ratatui rendering. Some
-//! terminal backends can briefly report invalid or extremely large dimensions,
-//! especially during resize events or when running under unusual terminal
-//! emulators. Rendering with those dimensions can allocate excessive buffers or
-//! otherwise make the UI unresponsive.
+//! This module provides a multi-layer safety wrapper around ratatui rendering:
 //!
-//! The public entry point, [`draw_ui`], checks the current terminal size before
-//! delegating to the main UI renderer. Invalid sizes are logged and skipped
-//! rather than treated as fatal application errors.
+//! 1. **Size guard** — rejects zero-sized or pathologically large dimensions
+//!    reported during resize events or under unusual terminal emulators.
+//! 2. **Panic guard** — catches any panic inside the render closure so a
+//!    single bad frame never kills the process (critical for long-running
+//!    sessions that accumulate diverse message content).
+//! 3. **Error tolerance** — terminal I/O errors (broken pipe, transient state)
+//!    are logged and swallowed rather than propagated, because a failed frame
+//!    is purely visual — the next redraw will almost certainly succeed.
+//!
+//! The public entry point, [`draw_ui`], always returns `Ok(())` unless the
+//! terminal backend is fundamentally broken, in which case the caller can
+//! still continue the loop.
 
 use ratatui::{Terminal, backend::CrosstermBackend};
 
+#[path = "safe_draw_recover.rs"]
+mod safe_draw_recover;
 #[path = "safe_draw_size.rs"]
 mod safe_draw_size;
 
-use crate::tui::{app::session_runtime::SessionView, app::state::App, ui::main::ui};
+use crate::tui::{app::session_runtime::SessionView, app::state::App};
+use safe_draw_recover::draw_or_recover;
 use safe_draw_size::safe_size;
 
-/// Draw one TUI frame when the reported terminal size is sane.
+/// Draw one TUI frame, recovering from transient failures.
 ///
-/// The function reads the terminal's current size, rejects zero-sized or
-/// pathologically large dimensions, and then delegates to the main [`ui`]
-/// renderer. When the size is unsafe, it logs a warning and returns `Ok(())` so
-/// the event loop can continue and try again on the next tick.
-///
-/// # Arguments
-///
-/// * `terminal` - The ratatui terminal backed by Crossterm stdout.
-/// * `app` - Mutable application state used by the UI renderer.
-/// * `session` - Read-only session view rendered in the conversation panel.
-///
-/// # Returns
-///
-/// Returns `Ok(())` when drawing succeeds or when drawing is intentionally
-/// skipped because the terminal size is unsafe.
-///
-/// # Errors
-///
-/// Returns an error if querying the terminal size fails or if ratatui fails to
-/// render the frame.
+/// The function reads the terminal size, rejects unsafe dimensions, and
+/// delegates to the panic-guarded renderer. Size-query errors, draw errors,
+/// and render-closure panics are all logged and swallowed so the event loop
+/// continues — a failed frame is purely visual.
 ///
 /// # Side Effects
 ///
-/// Writes a frame to the terminal when rendering proceeds. Emits a tracing
-/// warning when rendering is skipped due to invalid dimensions.
+/// Writes a frame to stdout on success. Emits `tracing` warnings/errors on
+/// any recoverable failure.
 pub fn draw_ui(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     app: &mut App,
     session: &SessionView,
 ) -> anyhow::Result<()> {
     record_context(app, session);
-    let size = terminal.size()?;
+    let size = match terminal.size() {
+        Ok(s) => s,
+        Err(err) => {
+            tracing::warn!(%err, "terminal size query failed — skipping frame");
+            return Ok(());
+        }
+    };
     if !safe_size(size) {
         log_skipped_size(size);
         return Ok(());
     }
-    terminal.draw(|f| ui(f, app, session))?;
+    if let Err(err) = draw_or_recover(terminal, app, session) {
+        tracing::warn!(%err, "terminal draw failed — skipping frame");
+    }
     Ok(())
 }
 
