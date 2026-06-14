@@ -95,9 +95,7 @@ impl super::AppState {
             return;
         };
 
-        self.set_available_models(models);
-        self.model_refresh_in_flight = false;
-        self.model_refresh_rx = None;
+        self.finish_model_refresh(models);
 
         if let Some(target) = self.model_picker_target_model.as_deref()
             && let Some(index) = self

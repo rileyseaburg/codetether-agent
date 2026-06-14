@@ -1,4 +1,4 @@
-//! Slash-command dispatch for chat submit.
+//! Slash-command and `!shell` prefix dispatch for chat submit.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -8,6 +8,9 @@ use crate::tui::app::commands::handle_slash_command;
 use crate::tui::app::session_runtime::SessionSlot;
 use crate::tui::app::state::App;
 
+#[path = "shell/mod.rs"]
+mod shell;
+
 pub(super) async fn run(
     app: &mut App,
     cwd: &Path,
@@ -15,6 +18,9 @@ pub(super) async fn run(
     registry: &Option<Arc<ProviderRegistry>>,
     prompt: &str,
 ) -> bool {
+    if shell::run(app, cwd, prompt).await {
+        return true;
+    }
     if !prompt.starts_with('/') {
         return false;
     }

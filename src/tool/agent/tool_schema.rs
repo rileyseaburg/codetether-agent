@@ -13,7 +13,7 @@ pub(super) fn agent_tool_parameters() -> Value {
             "name": { "type": "string", "description": "Agent name" },
             "instructions": { "type": "string", "description": "System instructions (spawn)" },
             "message": { "type": "string", "description": "Message to send" },
-            "model": { "type": "string", "description": "Model (spawn). Must be free/subscription-eligible." },
+            "model": { "type": "string", "description": "Model (spawn). Should be free/subscription-eligible; otherwise a cost warning is returned." },
             "ephemeral": { "type": "boolean", "description": "Spawn without durable session persistence; returns an explicit warning." }
         },
         "required": ["action"]

@@ -42,6 +42,7 @@ pub mod git_view;
 pub mod message_formatter;
 pub mod ralph_view;
 pub mod retained_payload;
+pub mod swarm_run;
 pub mod swarm_view;
 pub mod symbol_search;
 pub mod theme_utils;

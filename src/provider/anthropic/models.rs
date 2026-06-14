@@ -7,7 +7,10 @@
 
 use crate::provider::ModelInfo;
 
-use super::{AnthropicProvider, anthropic_models, minimax_credits_models, minimax_models};
+use super::{
+    AnthropicProvider, anthropic_models, minimax_credits_models, minimax_highspeed_models,
+    minimax_models,
+};
 
 /// Compact metadata used to build public model information.
 ///
@@ -66,6 +69,9 @@ impl AnthropicProvider {
 fn for_provider(provider: &str) -> Vec<ModelInfo> {
     if provider.eq_ignore_ascii_case("minimax-credits") {
         return models(provider, minimax_credits_models::MODELS);
+    }
+    if provider.eq_ignore_ascii_case("minimax-highspeed") {
+        return models(provider, minimax_highspeed_models::MODELS);
     }
     if provider.eq_ignore_ascii_case("minimax") {
         return models(provider, minimax_models::MODELS);

@@ -48,6 +48,27 @@ use crate::provider::CompletionRequest;
 /// expected by the conversion layer. API-key validation and HTTP-specific
 /// header construction are handled by the caller.
 pub(crate) fn build(req: &CompletionRequest, enable_cache: bool) -> Value {
+    let mut body = build_base(req, enable_cache);
+    if is_minimax_m3(&req.model) {
+        body["thinking"] = json!({"type": "adaptive"});
+    }
+    body
+}
+
+/// Build the JSON body for a streaming completion request.
+///
+/// Identical to [`build`] except `"stream": true` is included.
+pub(crate) fn build_streaming(req: &CompletionRequest, enable_cache: bool) -> Value {
+    let mut body = build_base(req, enable_cache);
+    body["stream"] = json!(true);
+    if is_minimax_m3(&req.model) {
+        body["thinking"] = json!({"type": "adaptive"});
+    }
+    body
+}
+
+/// Assemble the common JSON body shared by streaming and non-streaming paths.
+fn build_base(req: &CompletionRequest, enable_cache: bool) -> Value {
     let (system_prompt, messages) = super::convert::messages(&req.messages, enable_cache);
     let tools = super::convert_tools::tools(&req.tools, enable_cache);
     let mut body = json!({
@@ -68,4 +89,9 @@ pub(crate) fn build(req: &CompletionRequest, enable_cache: bool) -> Value {
         body["top_p"] = json!(top_p);
     }
     body
+}
+
+/// Check whether the model is MiniMax M3 (supports thinking control).
+fn is_minimax_m3(model: &str) -> bool {
+    model.eq_ignore_ascii_case("MiniMax-M3")
 }

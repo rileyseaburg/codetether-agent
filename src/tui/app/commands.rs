@@ -32,17 +32,13 @@ pub async fn set_auto_apply_edits(app: &mut App, session: &mut Session, next: bo
     app.state.auto_apply_edits = next;
     session.metadata.auto_apply_edits = next;
 
-    match session.save().await {
-        Ok(()) => {
-            app.state.status = auto_apply_status_message(next);
-        }
-        Err(error) => {
-            app.state.status = format!(
-                "{} (not persisted: {error})",
-                auto_apply_status_message(next)
-            );
-        }
-    }
+    app.state.status = match session.save().await {
+        Ok(()) => auto_apply_status_message(next),
+        Err(error) => format!(
+            "{} (not persisted: {error})",
+            auto_apply_status_message(next)
+        ),
+    };
 }
 
 pub async fn toggle_auto_apply_edits(app: &mut App, session: &mut Session) {
@@ -825,11 +821,18 @@ pub async fn handle_slash_command(
         return;
     }
 
-    if let Some(rest) = command_with_optional_args(&normalized, "/ralph") {
-        if handle_ralph_subcommand(app, cwd, session, registry, rest).await {
-            return;
-        }
-        // Fall through to the bare `/ralph` view-open handler below.
+    if let Some(rest) = command_with_optional_args(&normalized, "/ralph")
+        && handle_ralph_subcommand(app, cwd, session, registry, rest).await
+    {
+        return;
+    }
+    // Fall through to the bare `/ralph` view-open handler below.
+
+    // `/swarm <task>` launches a real swarm; bare `/swarm` falls through to the view.
+    if let Some(rest) = command_with_optional_args(&normalized, "/swarm")
+        && crate::tui::swarm_run::handle_swarm_command(app, session, rest)
+    {
+        return;
     }
 
     if let Some(rest) = command_with_optional_args(&normalized, "/goal") {

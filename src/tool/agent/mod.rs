@@ -29,9 +29,12 @@ mod policy_registry;
 mod registry;
 mod session_factory;
 mod spawn;
+mod spawn_messages;
 mod spawn_request;
 mod spawn_store;
 mod spawn_validation;
+#[cfg(test)]
+mod spawn_validation_tests;
 mod store;
 mod text;
 mod tool_impl;

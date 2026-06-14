@@ -30,7 +30,7 @@ pub fn context_window_for_model(model: &str) -> usize {
     let m = model.to_ascii_lowercase();
 
     // ── Most specific patterns first ───────────────────────────────
-    if m.contains("claude-opus-4-7") || m.contains("claude-opus-4.7") || m.contains("4.7-opus") {
+    if m.contains("claude-opus-4-7") || m.contains("claude-opus-4.7") || m.contains("4.7-opus") || m.contains("glm-5.2") || m.contains("glm5.2") {
         1_000_000
     } else if m.contains("glm-5") || m.contains("glm5") {
         200_000
@@ -83,10 +83,10 @@ pub fn context_window_for_model(model: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn known_models() {
         assert_eq!(context_window_for_model("zai/glm-5"), 200_000);
+        assert_eq!(context_window_for_model("glm-5.2"), 1_000_000);
         assert_eq!(context_window_for_model("glm-5-pro"), 200_000);
         assert_eq!(context_window_for_model("kimi-k2.5"), 256_000);
         assert_eq!(
@@ -106,13 +106,10 @@ mod tests {
         assert_eq!(context_window_for_model("deepseek-reasoner"), 128_000);
         assert_eq!(context_window_for_model("deepseek-r1"), 128_000);
     }
-
     #[test]
     fn case_insensitive() {
-        assert_eq!(
-            context_window_for_model("Claude-Opus-4-7"),
-            context_window_for_model("claude-opus-4-7")
-        );
+        assert_eq!(context_window_for_model("Claude-Opus-4-7"),
+            context_window_for_model("claude-opus-4-7"));
     }
 
     #[test]

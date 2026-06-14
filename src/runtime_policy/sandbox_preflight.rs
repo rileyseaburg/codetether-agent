@@ -43,8 +43,8 @@ fn decision_for_state(
 }
 
 #[cfg(test)]
-#[path = "sandbox_preflight_tests.rs"]
-mod tests;
-#[cfg(test)]
 #[path = "sandbox_preflight_policy_tests.rs"]
 mod policy_tests;
+#[cfg(test)]
+#[path = "sandbox_preflight_tests.rs"]
+mod tests;

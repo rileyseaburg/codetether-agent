@@ -24,9 +24,8 @@ pub async fn open_model_picker(
     {
         app.state.selected_model_index = index;
     }
-
     if let Some(registry) = registry {
-        let cached_count = app.state.available_models.len();
+        let cached_count = app.state.hydrate_models_from_store();
         app.state.status = if cached_count == 0 {
             "Loading models...".to_string()
         } else {

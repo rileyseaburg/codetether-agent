@@ -59,7 +59,7 @@ impl Tool for AgentTool {
     }
 
     fn description(&self) -> &str {
-        "Spawn and communicate with specialized sub-agents. Actions: spawn, message, list, kill. Spawned agents must use a free/subscription-eligible model."
+        "Spawn and communicate with specialized sub-agents. Actions: spawn, message, list, kill. Spawned agents should use a free/subscription-eligible model; non-eligible models produce a cost warning."
     }
 
     fn parameters(&self) -> Value {

@@ -19,10 +19,10 @@ pub(super) fn decide(
             ToolKind::ReadOnly,
         );
     }
-    if let Some(decision) = super::sandbox_preflight::decision(policy, tool_name, args) {
+    if let Some(decision) = command_rule(policy, tool_name, args) {
         return decision;
     }
-    if let Some(decision) = command_rule(policy, tool_name, args) {
+    if let Some(decision) = super::sandbox_preflight::decision(policy, tool_name, args) {
         return decision;
     }
     policy.decide_tool(tool_name)

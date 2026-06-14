@@ -8,7 +8,7 @@ use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 
 use crate::tui::app::state::approval_queue;
 
-pub(super) fn render(f: &mut Frame, area: Rect) {
+pub(crate) fn render(f: &mut Frame, area: Rect) {
     let Some(item) = approval_queue::active() else {
         return;
     };

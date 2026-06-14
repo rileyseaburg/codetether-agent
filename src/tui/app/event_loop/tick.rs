@@ -12,7 +12,8 @@ pub async fn run(app: &mut App) {
         crate::tui::audit_view::refresh_audit_snapshot(&mut app.state.audit).await;
     }
     let ralph_changed = app.state.ralph.drain_events();
-    app.state.needs_redraw |= ralph_changed || before.changed_since(app);
+    let swarm_changed = app.state.swarm.drain_events();
+    app.state.needs_redraw |= ralph_changed || swarm_changed || before.changed_since(app);
 }
 
 pub fn before_draw(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {

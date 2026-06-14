@@ -2,6 +2,7 @@
 
 mod events;
 mod jsonl;
+mod knowledge;
 
 use super::RunArgs;
 use crate::autochat::model_rotation::{RelayModelRotation, build_round_robin_model_rotation};
@@ -602,25 +603,7 @@ async fn execute_inner(args: RunArgs) -> Result<()> {
     // Load configuration
     let config = super::run_config::load(&args).await;
     let workspace_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let knowledge_snapshot =
-        match crate::indexer::refresh_workspace_knowledge_snapshot(&workspace_dir).await {
-            Ok(path) => {
-                tracing::info!(
-                    workspace = %workspace_dir.display(),
-                    output = %path.display(),
-                    "Refreshed workspace knowledge snapshot for run"
-                );
-                Some(path)
-            }
-            Err(e) => {
-                tracing::warn!(
-                    workspace = %workspace_dir.display(),
-                    error = %e,
-                    "Failed to refresh workspace knowledge snapshot"
-                );
-                None
-            }
-        };
+    let knowledge_snapshot = knowledge::refresh(&workspace_dir).await;
 
     // Protocol-first relay aliases in CLI:
     // - /go [count] <task>

@@ -58,7 +58,7 @@ pub fn estimate_context_window(model_id: &str) -> usize {
 /// ```
 pub fn estimate_max_output(model_id: &str) -> usize {
     let id = model_id.to_lowercase();
-    if id.contains("claude-opus-4-7") || id.contains("claude-fable-5") {
+    if super::output_budget::has_encrypted_reasoning(model_id) {
         128_000
     } else if id.contains("claude-opus-4-6")
         || id.contains("claude-opus-4-5")

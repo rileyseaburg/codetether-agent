@@ -3,8 +3,9 @@
 //! Translates a single delta event into [`StreamChunk`]s:
 //! - `delta.text`             → [`StreamChunk::Text`]
 //! - `delta.toolUse.input`    → [`StreamChunk::ToolCallDelta`]
-//! - `delta.reasoningContent` → [`StreamChunk::Thinking`] for plaintext or
-//!   an empty thinking heartbeat for encrypted signature-only deltas.
+//! - `delta.reasoningContent` → [`StreamChunk::Thinking`] for plaintext;
+//!   encrypted (signature-only) deltas are logged at debug level so the
+//!   invisible token spend of models like Claude Fable 5 is observable.
 
 use super::StreamState;
 use crate::provider::StreamChunk;
@@ -46,7 +47,6 @@ pub(super) fn handle_block_delta(state: &StreamState, body: &Value) -> Vec<Strea
                 idx,
                 sig,
             );
-            return vec![StreamChunk::Thinking(String::new())];
         }
     }
 

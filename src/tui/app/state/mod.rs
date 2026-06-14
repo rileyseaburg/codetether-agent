@@ -13,6 +13,7 @@
 //! - `history` - command history up/down navigation
 //! - `model_picker` - async model refresh from providers
 //! - `model_picker_nav` - synchronous model picker navigation
+//! - `model_store` - local filesystem cache of the model list
 //! - `timing` - request latency tracking
 //! - `steering` - queued steering messages
 //! - `settings_nav` - settings selection and view-mode switching
@@ -31,6 +32,8 @@ pub mod input_edit;
 pub mod message_cache;
 pub mod model_picker;
 pub mod model_picker_nav;
+pub mod model_store;
+pub mod model_store_sync;
 pub mod pending_tool;
 pub mod profile_defs;
 pub mod prompt_queue;

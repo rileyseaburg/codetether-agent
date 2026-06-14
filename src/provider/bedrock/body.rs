@@ -37,7 +37,7 @@ mod fields;
 /// * `request` — The generic completion request from the session layer.
 /// * `model_id` — The already-resolved Bedrock model ID (as returned by
 ///   [`super::resolve_model_id`]). Used to decide model-specific quirks
-///   such as omitting `temperature` for Claude Opus 4.7.
+///   such as omitting `temperature` for newer Claude reasoning models.
 ///
 /// # Returns
 ///
@@ -105,8 +105,7 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
     let mut inference_config = json!({});
     inference_config["maxTokens"] = json!(effective_max_tokens(request.max_tokens, model_id));
 
-    let skip_temperature = model_id.to_ascii_lowercase().contains("claude-opus-4-7")
-        || model_id.to_ascii_lowercase().contains("claude-fable-5");
+    let skip_temperature = super::output_budget::has_encrypted_reasoning(model_id);
     if let Some(temp) = request.temperature {
         if !skip_temperature {
             inference_config["temperature"] = json!(temp);

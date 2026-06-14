@@ -1,12 +1,15 @@
 //! Output/persistence for `codetether auth bedrock` tokens.
 
-use super::BedrockAuthArgs;
-use crate::secrets::{self, ProviderSecrets};
-use anyhow::{Context, Result};
-use std::collections::HashMap;
+use super::{BedrockAuthArgs, vault_save};
+use anyhow::Result;
 
 /// Print the minted token and optionally persist it to Vault.
-pub(super) async fn emit(args: &BedrockAuthArgs, region: &str, token: &str) -> Result<()> {
+pub(super) async fn emit(
+    args: &BedrockAuthArgs,
+    region: &str,
+    token: &str,
+    profile: Option<&str>,
+) -> Result<()> {
     if args.raw {
         println!("{token}");
     } else {
@@ -22,34 +25,7 @@ pub(super) async fn emit(args: &BedrockAuthArgs, region: &str, token: &str) -> R
         );
     }
     if args.save {
-        save_to_vault(region, token).await?;
+        vault_save::save(args, region, token, profile).await?;
     }
-    Ok(())
-}
-
-/// Store the token as the `bedrock` provider api_key in Vault.
-async fn save_to_vault(region: &str, token: &str) -> Result<()> {
-    if secrets::secrets_manager().is_none() {
-        anyhow::bail!(
-            "HashiCorp Vault is not configured. Set VAULT_ADDR and VAULT_TOKEN, \
-             or omit --save and use the printed token directly."
-        );
-    }
-    let mut extra = HashMap::new();
-    extra.insert(
-        "region".to_string(),
-        serde_json::Value::String(region.to_string()),
-    );
-    let provider_secrets = ProviderSecrets {
-        api_key: Some(token.to_string()),
-        base_url: None,
-        organization: None,
-        headers: None,
-        extra,
-    };
-    secrets::set_provider_secrets("bedrock", &provider_secrets)
-        .await
-        .context("Failed to store Bedrock token in Vault")?;
-    println!("Saved short-term Bedrock API key to Vault provider 'bedrock'.");
     Ok(())
 }

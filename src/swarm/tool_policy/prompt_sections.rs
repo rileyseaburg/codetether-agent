@@ -3,7 +3,7 @@ pub fn coordination_prompt(read_only: bool, model: &str) -> String {
         return String::new();
     }
     format!(
-        "SMART SPAWN POLICY (mandatory):\n- Any spawned agent MUST use a different model than your current model ('{model}')\n- Spawned model MUST be free/subscription-eligible (e.g. '*:free', openai-codex/*, github-copilot/*, gemini-web/*, local_cuda/*)\n- Include `model` when calling agent.spawn\n\nSHARING RESULTS:\nUse swarm_share to collaborate with other sub-agents:\n- swarm_share({{action: 'publish', key: 'my-finding', value: '...', tags: ['research']}}) to share a result\n- swarm_share({{action: 'get', key: 'some-key'}}) to retrieve a result from another agent\n- swarm_share({{action: 'list'}}) to see all shared results\n- swarm_share({{action: 'query_tags', tags: ['research']}}) to find results by tag"
+        "SMART SPAWN POLICY:\n- Any spawned agent MUST use a different model than your current model ('{model}')\n- Spawned model SHOULD be free/subscription-eligible (e.g. '*:free', openai-codex/*, github-copilot/*, gemini-web/*, local_cuda/*); non-eligible models are allowed but produce a cost warning\n- Include `model` when calling agent.spawn\n\nSHARING RESULTS:\nUse swarm_share to collaborate with other sub-agents:\n- swarm_share({{action: 'publish', key: 'my-finding', value: '...', tags: ['research']}}) to share a result\n- swarm_share({{action: 'get', key: 'some-key'}}) to retrieve a result from another agent\n- swarm_share({{action: 'list'}}) to see all shared results\n- swarm_share({{action: 'query_tags', tags: ['research']}}) to find results by tag"
     )
 }
 

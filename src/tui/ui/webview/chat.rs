@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use crate::tui::app::state::App;
+use crate::tui::ui::chat_view::cursor::place_cursor;
 
 /// Minimum terminal size for webview layout.
 const MIN_WIDTH: u16 = 90;
@@ -23,8 +24,7 @@ pub fn render_webview_chat_center(f: &mut Frame, app: &App, area: Rect, lines: &
         .style(Style::default().fg(Color::default()));
     let para = Paragraph::new(lines.to_vec())
         .block(block)
-        .wrap(Wrap { trim: false })
-        .scroll((scroll as u16, 0));
+        .scroll((scroll.min(u16::MAX as usize) as u16, 0));
     f.render_widget(para, area);
 }
 
@@ -34,7 +34,7 @@ pub fn render_webview_input(f: &mut Frame, app: &App, area: Rect) {
     } else {
         ""
     };
-    let title = format!(" Message (Enter to send, / for commands){mode_label} ");
+    let title = format!(" Message (Enter to send, / for commands, ! for shell){mode_label} ");
     let block = Block::default()
         .borders(Borders::ALL)
         .title(title)
@@ -43,6 +43,7 @@ pub fn render_webview_input(f: &mut Frame, app: &App, area: Rect) {
         .block(block)
         .wrap(Wrap { trim: false });
     f.render_widget(para, area);
+    place_cursor(f, app, area);
 }
 
 pub fn terminal_too_small(area: Rect) -> bool {

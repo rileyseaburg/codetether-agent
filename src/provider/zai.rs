@@ -20,7 +20,7 @@ use std::collections::HashMap;
 
 pub const DEFAULT_BASE_URL: &str = "https://api.z.ai/api/paas/v4";
 const CODING_BASE_URL: &str = "https://api.z.ai/api/coding/paas/v4";
-const PONY_ALPHA_2_MODEL: &str = "pony-alpha-2";
+pub const PONY_ALPHA_2_MODEL: &str = "pony-alpha-2";
 
 pub struct ZaiProvider {
     client: Client,
@@ -183,8 +183,15 @@ impl ZaiProvider {
                     .unwrap_or(&id)
                     .to_string();
                 Some(ModelInfo {
-                    context_window: if id.contains("glm-5.2") { 1_000_000 } else if id.contains("glm-5") { 200_000 } else { 128_000 },
-                    id, name,
+                    context_window: if id.contains("glm-5.2") {
+                        1_000_000
+                    } else if id.contains("glm-5") {
+                        200_000
+                    } else {
+                        128_000
+                    },
+                    id,
+                    name,
                     provider: "zai".to_string(),
                     max_output_tokens: Some(128_000),
                     supports_vision: false,
@@ -619,45 +626,26 @@ impl Provider for ZaiProvider {
         // catalog including newly-released models without a code change.
         let discovered = self.discover_models_from_api().await;
         if !discovered.is_empty() {
-            // Merge in special models that exist outside the /models API
-            // (coding endpoint models, etc.)
             let mut models = discovered;
-            if !models.iter().any(|m| m.id == PONY_ALPHA_2_MODEL) {
-                models.push(ModelInfo {
-                    id: PONY_ALPHA_2_MODEL.to_string(),
-                    name: "Pony Alpha 2".to_string(),
-                    provider: "zai".to_string(),
-                    context_window: 128_000,
-                    max_output_tokens: Some(16_384),
-                    supports_vision: false,
-                    supports_tools: true,
-                    supports_streaming: true,
-                    input_cost_per_million: None,
-                    output_cost_per_million: None,
-                });
-            }
-            if !models.iter().any(|m| m.id == "glm-4.7-flash") {
-                models.push(ModelInfo {
-                    id: "glm-4.7-flash".to_string(),
-                    name: "GLM-4.7 Flash".to_string(),
-                    provider: "zai".to_string(),
-                    context_window: 128_000,
-                    max_output_tokens: Some(128_000),
-                    supports_vision: false,
-                    supports_tools: true,
-                    supports_streaming: true,
-                    input_cost_per_million: None,
-                    output_cost_per_million: None,
-                });
-            }
+            super::zai_merge::merge_special(&mut models);
             return Ok(models);
         }
 
         // Static catalog used when the /models endpoint is unavailable
         // (e.g. network partition, auth failure, or non-standard deployments).
         Ok(vec![
-            ModelInfo { id: "glm-5.2".to_string(), name: "GLM-5.2".to_string(), provider: "zai".to_string(), context_window: 1_000_000,
-                max_output_tokens: Some(128_000), supports_vision: false, supports_tools: true, supports_streaming: true, input_cost_per_million: None, output_cost_per_million: None },
+            ModelInfo {
+                id: "glm-5.2".to_string(),
+                name: "GLM-5.2".to_string(),
+                provider: "zai".to_string(),
+                context_window: 1_000_000,
+                max_output_tokens: Some(128_000),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: None,
+                output_cost_per_million: None,
+            },
             ModelInfo {
                 id: "glm-5.1".to_string(),
                 name: "GLM-5.1".to_string(),
@@ -1104,7 +1092,8 @@ mod tests {
     #[test]
     fn model_supports_tool_stream_matches_glm_5_family() {
         assert!(ZaiProvider::model_supports_tool_stream("glm-5.2"));
-        assert!(ZaiProvider::model_supports_tool_stream("glm-5.1")); assert!(ZaiProvider::model_supports_tool_stream("glm-5-turbo"));
+        assert!(ZaiProvider::model_supports_tool_stream("glm-5.1"));
+        assert!(ZaiProvider::model_supports_tool_stream("glm-5-turbo"));
         assert!(!ZaiProvider::model_supports_tool_stream("glm-4.5"));
     }
 

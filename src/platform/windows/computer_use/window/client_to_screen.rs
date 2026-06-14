@@ -1,9 +1,7 @@
 //! Convert client-area coordinates of a window into screen coordinates.
 
 use windows::Win32::Foundation::{HWND, POINT};
-use windows::Win32::UI::WindowsAndMessaging::{
-    ClientToScreen, GetForegroundWindow,
-};
+use windows::Win32::UI::WindowsAndMessaging::{ClientToScreen, GetForegroundWindow};
 
 /// Convert a (client_x, client_y) point in the foreground window's client
 /// area to absolute screen pixel coordinates. Returns `None` if the

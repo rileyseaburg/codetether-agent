@@ -1,6 +1,6 @@
 //! Chat prompt submission for the TUI.
 //!
-//! Validates the input, dispatches slash commands, pushes
+//! Validates the input, dispatches `!shell` and slash commands, pushes
 //! user messages, and delegates to
 //! [`super::chat_submit_dispatch::dispatch_prompt`].
 //!
@@ -24,9 +24,10 @@ mod queue_tests;
 
 /// Submit the chat input to the provider.
 ///
-/// Handles slash commands, pushes user/image messages, then delegates
-/// prompt preparation and dispatch. While a previous request is still
-/// in flight, plain-text input is queued as the next prompt.
+/// Handles `!shell` and slash commands, pushes user/image messages,
+/// then delegates prompt preparation and dispatch. While a previous
+/// request is still in flight, plain-text input is queued as the next
+/// prompt.
 pub(super) async fn handle_enter_chat(
     app: &mut App,
     cwd: &Path,

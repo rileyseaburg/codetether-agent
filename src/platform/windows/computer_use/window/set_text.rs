@@ -5,9 +5,7 @@
 //! into the target's text buffer and is broadcast to the control.
 
 use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
-use windows::Win32::UI::WindowsAndMessaging::{
-    GetForegroundWindow, SendMessageW, WM_SETTEXT,
-};
+use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, SendMessageW, WM_SETTEXT};
 
 /// Set the text of the currently focused window by posting `WM_SETTEXT`.
 ///

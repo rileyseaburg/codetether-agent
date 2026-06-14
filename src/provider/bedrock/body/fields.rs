@@ -37,10 +37,8 @@ fn configured_effort() -> &'static str {
 }
 
 fn uses_adaptive_thinking(model_id: &str) -> bool {
-    let id = model_id.to_ascii_lowercase();
-    id.contains("claude-fable-5")
-        || id.contains("claude-mythos-5")
-        || id.contains("claude-opus-4-7")
+    super::super::output_budget::has_encrypted_reasoning(model_id)
+        || model_id.to_ascii_lowercase().contains("claude-mythos-5")
 }
 
 #[cfg(test)]

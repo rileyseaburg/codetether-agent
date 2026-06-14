@@ -23,5 +23,7 @@ pub use input::{
 };
 pub use process::list_processes;
 pub use snapshot::capture_screenshot;
-pub use window::{bring_to_front, capture_window_png, client_point_to_screen, set_foreground_window_text};
+pub use window::{
+    bring_to_front, capture_window_png, client_point_to_screen, set_foreground_window_text,
+};
 pub use windows::list_windows;

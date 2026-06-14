@@ -15,7 +15,11 @@ pub const THINKING_OUTPUT_FLOOR: usize = 32_000;
 /// sees (signature-only `reasoningContent` blocks).
 pub fn has_encrypted_reasoning(model_id: &str) -> bool {
     let id = model_id.to_ascii_lowercase();
-    id.contains("claude-fable-5") || id.contains("claude-opus-4-7")
+    id.contains("claude-fable-5")
+        || id.contains("claude-opus-4-7")
+        || id.contains("claude-opus-4.7")
+        || id.contains("claude-opus-4-8")
+        || id.contains("claude-opus-4.8")
 }
 
 /// Resolve the `inferenceConfig.maxTokens` value for a request.
@@ -47,6 +51,10 @@ mod tests {
         assert_eq!(
             effective_max_tokens(Some(64_000), "global.anthropic.claude-fable-5"),
             64_000
+        );
+        assert_eq!(
+            effective_max_tokens(Some(8_192), "us.anthropic.claude-opus-4-8"),
+            32_000
         );
     }
 

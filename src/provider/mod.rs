@@ -142,7 +142,7 @@ pub mod tetherscript_provider;
 pub mod vertex_anthropic;
 pub mod vertex_glm;
 pub mod zai;
-
+mod zai_merge;
 // ── Internal split modules ──────────────────────────────────────────
 
 mod init_dispatch;
@@ -157,9 +157,8 @@ mod types;
 // ── Public re-exports (preserve the original API surface) ───────────
 
 pub use parse::parse_model_string;
-pub use registry::ProviderRegistry;
+pub use registry::ProviderRegistry; pub use traits::{ModelInfo, Provider};
 pub use tenant_keys::{PerTaskProviderKeys, TenantProviderKeyPayload};
-pub use traits::{ModelInfo, Provider};
 pub use types::{
     CompletionRequest, CompletionResponse, ContentPart, EmbeddingRequest, EmbeddingResponse,
     FinishReason, Message, Role, StreamChunk, ToolDefinition, Usage,
