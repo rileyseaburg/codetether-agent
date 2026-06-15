@@ -10,6 +10,7 @@ pub mod cleanup_args;
 pub mod clipboard;
 pub mod config;
 mod config_args;
+mod models_args;
 pub mod context;
 pub mod go_ralph;
 pub mod oracle;
@@ -20,12 +21,20 @@ mod run_config;
 pub mod run_loop;
 pub mod search;
 pub mod search_render;
+mod swarm_subagent_args;
 mod tui_args;
+mod worktree_args;
 
 use clap::{Parser, Subcommand};
 pub use config_args::{ConfigArgs, ConfigCommand, ProjectArgs, ProjectCommand};
 use std::path::PathBuf;
-pub use {cleanup_args::CleanupArgs, run_args::RunArgs, tui_args::TuiArgs};
+pub use worktree_args::{
+    WorktreeArgs, WorktreeCommand, WorktreeListArgs, WorktreeOpenArgs, WorktreeWorkspaceArgs,
+};
+pub use {
+    cleanup_args::CleanupArgs, models_args::ModelsArgs, run_args::RunArgs,
+    swarm_subagent_args::SwarmSubagentArgs, tui_args::TuiArgs,
+};
 
 /// CodeTether Agent - A2A-native AI coding agent
 ///
@@ -127,6 +136,9 @@ pub enum Command {
 
     /// Clean up orphaned worktrees and branches from failed Ralph runs
     Cleanup(CleanupArgs),
+
+    /// Manage git worktrees and VS Code integration
+    Worktree(WorktreeArgs),
 
     /// List available models from all configured providers
     Models(ModelsArgs),
@@ -531,17 +543,6 @@ pub struct SwarmArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct SwarmSubagentArgs {
-    /// Base64 payload for the remote subtask (JSON encoded)
-    #[arg(long)]
-    pub payload_base64: Option<String>,
-
-    /// Read payload from an environment variable
-    #[arg(long, default_value = "CODETETHER_SWARM_SUBTASK_PAYLOAD")]
-    pub payload_env: String,
-}
-
-#[derive(Parser, Debug)]
 pub struct RlmArgs {
     /// Query to answer about the content
     pub query: String,
@@ -766,17 +767,6 @@ pub struct StatsArgs {
     /// Show all/summary (default shows summary)
     #[arg(long)]
     pub all: bool,
-}
-
-#[derive(Parser, Debug)]
-pub struct ModelsArgs {
-    /// Filter by provider name
-    #[arg(short, long)]
-    pub provider: Option<String>,
-
-    /// Output as JSON
-    #[arg(long)]
-    pub json: bool,
 }
 
 #[derive(Parser, Debug)]

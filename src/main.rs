@@ -23,6 +23,7 @@ use telemetry::{TOKEN_USAGE, get_persistent_stats};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod cleanup_cli;
+mod worktree_cli;
 
 fn normalize_provider_alias(name: &str) -> &str {
     match name {
@@ -1349,6 +1350,7 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Cleanup(args)) => cleanup_cli::run(args).await,
+        Some(Command::Worktree(args)) => worktree_cli::run(args).await,
         Some(Command::Moltbook(args)) => {
             use cli::MoltbookCommand;
 

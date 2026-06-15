@@ -34,6 +34,13 @@ mod repair;
 mod stash;
 mod sync_git;
 mod validate;
+mod vscode_open;
+#[cfg(test)]
+mod vscode_open_tests;
+mod vscode_open_workspace;
+mod vscode_workspace;
+#[cfg(test)]
+mod vscode_workspace_tests;
 
 pub use info::{MergeResult, WorktreeInfo};
 pub use manager::WorktreeManager;
