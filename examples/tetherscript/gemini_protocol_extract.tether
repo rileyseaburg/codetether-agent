@@ -1,0 +1,47 @@
+fn between(text, start, end) {
+    let parts = text.split(start)
+    if parts.len() < 2 {
+        return Ok("")
+    }
+    let tail = parts[1]
+    let end_parts = tail.split(end)
+    if end_parts.len() < 1 {
+        return Ok("")
+    }
+    return Ok(end_parts[0])
+}
+
+fn trim_suffix(text, suffix) {
+    if !text.ends_with(suffix) {
+        return Ok(text)
+    }
+    let parts = text.split(suffix)
+    if parts.len() < 1 {
+        return Ok(text)
+    }
+    return Ok(parts[0])
+}
+
+fn last_nonempty_wrb_line(lines) {
+    let mut found = ""
+    for line in lines {
+        if line.contains("wrb.fr") && line.contains("rc_") {
+            found = line
+        }
+    }
+    return Ok(found)
+}
+
+fn extract(raw_payload) {
+    let cleaned = str(raw_payload).replace(")]}'\n", "")
+    let lines = cleaned.split("\n")
+    let body = last_nonempty_wrb_line(lines)?
+    let inner = between(body, "[[\"wrb.fr\",null,\"", "\"]]")?
+    let raw_token = between(inner, "\\\",[\\\"", "\\\"")?
+    let text_token = trim_suffix(raw_token, "\\")?
+    let m = map()
+    m["has_wrb"] = body.contains("wrb.fr")
+    m["selected_line"] = body
+    m["text_token"] = text_token
+    return Ok(json_encode(m))
+}

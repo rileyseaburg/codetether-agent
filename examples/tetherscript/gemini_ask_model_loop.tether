@@ -1,0 +1,26 @@
+fn model_record(alias, model_id, question) {
+    let m = map()
+    m["alias"] = alias
+    m["model_id"] = model_id
+    m["rpcid"] = "pending-network-capture"
+    m["expected_inbound_envelope"] = "wrb.fr"
+    m["question"] = question
+    m["validated_live_answer"] = false
+    m["answer"] = "not-run: transport request not provided to TetherScript"
+    return m
+}
+
+fn ask_each_model(question) {
+    let mut results = []
+    results.push(model_record("gemini-web-fast", "fbb127bbb056c959", str(question)))
+    results.push(model_record("gemini-web-thinking", "5bf011840784117a", str(question)))
+    results.push(model_record("gemini-web-pro", "9d8ca3786ebdfbea", str(question)))
+    results.push(model_record("gemini-web-deep-think", "e6fa609c3fa255c0", str(question)))
+
+    let out = map()
+    out["ok"] = true
+    out["mode"] = "tetherscript-model-loop"
+    out["transport_status"] = "blocked: missing accepted outbound request capture"
+    out["models"] = results
+    return Ok(json_encode(out))
+}

@@ -1,0 +1,26 @@
+fn between(text, start, end) {
+    let parts = text.split(start)
+    if parts.len() < 2 {
+        return Ok("")
+    }
+    let tail = parts[1]
+    let end_parts = tail.split(end)
+    if end_parts.len() < 1 {
+        return Ok("")
+    }
+    return Ok(end_parts[0])
+}
+
+fn extract(text) {
+    let src = str(text)
+    let tool_name = between(src, "\"name\":\"", "\"")?
+    let args_json = between(src, "\"arguments\":", "}")?
+    let wrapped_args = args_json + "}"
+    let cleaned = src.replace("<tool_call>", "").replace("</tool_call>", "")
+    let m = map()
+    m["has_tool_call"] = src.contains("<tool_call>")
+    m["tool_name"] = tool_name
+    m["arguments_json"] = wrapped_args
+    m["cleaned_text"] = cleaned
+    return Ok(json_encode(m))
+}

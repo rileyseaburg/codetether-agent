@@ -1,0 +1,17 @@
+fn try_http_post(url, body) {
+    let result = http_post(str(url), str(body))
+    return Ok(str(result))
+}
+
+fn try_http_request(method, url, body) {
+    let result = http_request(str(method), str(url), str(body))
+    return Ok(str(result))
+}
+
+fn try_http_request_headers(method, url, body) {
+    let headers = map()
+    headers["X-Test"] = "codetether"
+    headers["Content-Type"] = "text/plain"
+    let result = http_request(str(method), str(url), str(body), headers)
+    return Ok(str(result))
+}

@@ -1,0 +1,46 @@
+//! MiniMax-M3 direct call via the Anthropic-compatible endpoint, forcing a tool.
+//!
+//! Usage: hook "call" with args [api_key, prompt].
+//! Defines one tool (get_weather) and inspects whether the model emits a
+//! native tool_use block.
+
+fn call(api_key, prompt) {
+    let url = "https://api.minimax.io/anthropic/v1/messages"
+
+    let tool = map()
+    tool["name"] = "get_weather"
+    tool["description"] = "Get the current weather for a city"
+    let schema = map()
+    schema["type"] = "object"
+    let props = map()
+    let city = map()
+    city["type"] = "string"
+    city["description"] = "City name"
+    props["city"] = city
+    schema["properties"] = props
+    schema["required"] = ["city"]
+    tool["input_schema"] = schema
+
+    let msg = map()
+    msg["role"] = "user"
+    msg["content"] = prompt
+
+    let body_map = map()
+    body_map["model"] = "MiniMax-M3"
+    body_map["max_tokens"] = 1024
+    body_map["messages"] = [msg]
+    body_map["tools"] = [tool]
+    let body = json_encode(body_map)
+
+    let headers = map()
+    headers["Authorization"] = "Bearer " + api_key
+    headers["Content-Type"] = "application/json"
+    headers["anthropic-version"] = "2023-06-01"
+
+    let result = http_request("POST", url, body, headers)
+    let resp = result?
+    let out = map()
+    out["status"] = resp["status"]
+    out["body"] = resp["body"]
+    return Ok(out)
+}

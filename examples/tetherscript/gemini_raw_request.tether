@@ -1,0 +1,34 @@
+fn response_summary(body) {
+    let m = map()
+    let text = str(body)
+    m["has_wrb"] = text.contains("wrb.fr")
+    m["has_xssi"] = text.contains(")]}'")
+    m["has_fast_id"] = text.contains("fbb127bbb056c959")
+    m["has_thinking_id"] = text.contains("5bf011840784117a")
+    m["has_pro_id"] = text.contains("9d8ca3786ebdfbea")
+    m["has_deep_think_id"] = text.contains("e6fa609c3fa255c0")
+    m["bytes"] = text.len()
+    return m
+}
+
+fn replay_get(url) {
+    let body = http_get(str(url))
+    let out = map()
+    out["ok"] = true
+    out["method"] = "GET"
+    out["url"] = str(url)
+    out["summary"] = response_summary(body)
+    out["body"] = str(body)
+    return Ok(json_encode(out))
+}
+
+fn raw_request(url, method, headers_json, body) {
+    let out = map()
+    out["ok"] = false
+    out["url"] = str(url)
+    out["method"] = str(method)
+    out["headers_json"] = str(headers_json)
+    out["body"] = str(body)
+    out["error"] = "TetherScript runtime currently exposes http_get only here; use replay_get(url) for live GET or pass captured response to gemini_protocol_extract.extract"
+    return Ok(json_encode(out))
+}

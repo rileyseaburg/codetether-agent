@@ -1,0 +1,40 @@
+fn model_record(model_id, label, observed) {
+    let m = map()
+    m["model_id"] = model_id
+    m["label"] = label
+    m["observed"] = observed
+    return m
+}
+
+fn detect_label(payload, model_id) {
+    if model_id == "fbb127bbb056c959" && str(payload).contains("3.5 Flash") {
+        return Ok("3.5 Flash")
+    }
+    return Ok("")
+}
+
+fn loop_models(payload) {
+    let text = str(payload)
+    let mut results = []
+
+    let id_fast = "fbb127bbb056c959"
+    let label_fast = detect_label(text, id_fast)?
+    results.push(model_record(id_fast, label_fast, text.contains(id_fast)))
+
+    let id_thinking = "5bf011840784117a"
+    let label_thinking = detect_label(text, id_thinking)?
+    results.push(model_record(id_thinking, label_thinking, text.contains(id_thinking)))
+
+    let id_pro = "9d8ca3786ebdfbea"
+    let label_pro = detect_label(text, id_pro)?
+    results.push(model_record(id_pro, label_pro, text.contains(id_pro)))
+
+    let id_deep = "e6fa609c3fa255c0"
+    let label_deep = detect_label(text, id_deep)?
+    results.push(model_record(id_deep, label_deep, text.contains(id_deep)))
+
+    let out = map()
+    out["validated_from_payload"] = true
+    out["models"] = results
+    return Ok(json_encode(out))
+}
