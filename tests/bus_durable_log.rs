@@ -50,7 +50,9 @@ async fn durable_append_and_replay_roundtrip() {
 async fn presence_messages_are_not_persisted() {
     let dir = tempfile::tempdir().unwrap();
     let log: Arc<dyn DurableLog> = Arc::new(FileDurableLog::new(dir.path()));
-    let bus = AgentBus::new().with_durable_log(Arc::clone(&log)).into_arc();
+    let bus = AgentBus::new()
+        .with_durable_log(Arc::clone(&log))
+        .into_arc();
 
     // Heartbeat is presence-only -> must NOT be appended.
     bus.publish(envelope(
@@ -74,7 +76,10 @@ async fn presence_messages_are_not_persisted() {
     // Give the fire-and-forget append task time to flush.
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
-    assert!(bus.replay("_global", 0).await.is_empty(), "no presence in global");
+    assert!(
+        bus.replay("_global", 0).await.is_empty(),
+        "no presence in global"
+    );
     let task = bus.replay("t9", 0).await;
     assert_eq!(task.len(), 1, "exactly one durable coordination message");
 }
