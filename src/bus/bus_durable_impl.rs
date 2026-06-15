@@ -3,7 +3,7 @@
 //! Provides replay so a late-joining or restarted agent can deterministically
 //! catch up on a task/PRD partition from the durable coordination log.
 
-use super::{durable_log, AgentBus, BusEnvelope};
+use super::{AgentBus, BusEnvelope, durable_log};
 use std::sync::Arc;
 
 impl AgentBus {

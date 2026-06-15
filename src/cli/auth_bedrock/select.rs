@@ -22,5 +22,7 @@ pub(super) fn profile(args: &BedrockAuthArgs, mode: LoginMode) -> Result<Option<
 /// profile region (e.g. `us-west-2`), because that produces a token rejected
 /// by the primary `us-east-1` endpoint the provider targets.
 pub(super) fn region(args: &BedrockAuthArgs, _selected: Option<&sso::SsoProfile>) -> String {
-    args.region.clone().unwrap_or_else(|| DEFAULT_REGION.to_string())
+    args.region
+        .clone()
+        .unwrap_or_else(|| DEFAULT_REGION.to_string())
 }

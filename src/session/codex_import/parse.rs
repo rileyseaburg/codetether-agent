@@ -27,7 +27,7 @@ pub(crate) fn parse_codex_session_from_path(
         .with_context(|| format!("Failed to open Codex session {}", path.display()))?;
     let mut session_meta: Option<CodexSessionMetaPayload> = None;
     let mut updated_at: Option<DateTime<Utc>> = None;
-    let mut messages = Vec::new();
+    let mut messages = super::budget::BoundedMessages::new();
     let mut usage = Usage::default();
     let mut model = None;
     let mut first_user_text = None;
@@ -86,7 +86,7 @@ pub(crate) fn parse_codex_session_from_path(
         title,
         created_at: meta.timestamp,
         updated_at: updated_at.unwrap_or(meta.timestamp),
-        messages,
+        messages: messages.finish(path),
         pages: Vec::new(),
         summary_index: crate::session::index::SummaryIndex::new(),
         tool_uses: Vec::new(),

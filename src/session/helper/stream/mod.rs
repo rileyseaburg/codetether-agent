@@ -19,13 +19,21 @@ use crate::provider::StreamChunk;
 use anyhow::Result;
 use futures::stream::BoxStream;
 
-mod empty;
+mod accept;
+mod fault;
 mod finalize;
+mod idle_drain;
 mod idle_timeout;
+mod outcome;
+mod restart;
+#[cfg(test)]
+mod srp_tests;
 mod text_acc;
 #[cfg(test)]
 mod thinking_tests;
 mod tool_acc;
+
+pub(crate) use restart::{RestartPolicy, run as run_with_restart};
 
 /// Collect a streaming completion into a [`CompletionResponse`](crate::provider::CompletionResponse),
 /// optionally forwarding incremental events.
@@ -78,5 +86,6 @@ pub async fn collect_stream_completion_with_events(
     stream: BoxStream<'static, StreamChunk>,
     event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
 ) -> Result<crate::provider::CompletionResponse> {
-    idle_timeout::drain(stream, event_tx).await
+    let outcome = idle_timeout::drain(stream, event_tx).await;
+    accept::accept(outcome, 0)
 }

@@ -352,7 +352,7 @@ pub(crate) async fn run_prompt_with_events(
         } else {
             response
         };
-        let response = normalize_textual_tool_calls(response, &tool_definitions);
+        let mut response = normalize_textual_tool_calls(response, &tool_definitions);
 
         crate::telemetry::TOKEN_USAGE.record_model_usage_with_cache(
             &model,
@@ -371,38 +371,8 @@ pub(crate) async fn run_prompt_with_events(
             })
             .await;
 
-        let mut truncated_tool_ids: Vec<(String, String)> = Vec::new();
-        let tool_calls: Vec<(String, String, serde_json::Value)> = response
-            .message
-            .content
-            .iter()
-            .filter_map(|part| {
-                if let ContentPart::ToolCall {
-                    id,
-                    name,
-                    arguments,
-                    ..
-                } = part
-                {
-                    match serde_json::from_str::<serde_json::Value>(arguments) {
-                        Ok(args) => Some((id.clone(), name.clone(), args)),
-                        Err(e) => {
-                            tracing::warn!(
-                                tool = %name,
-                                tool_call_id = %id,
-                                args_len = arguments.len(),
-                                error = %e,
-                                "Tool call arguments failed to parse (likely truncated by max_tokens)"
-                            );
-                            truncated_tool_ids.push((id.clone(), name.clone()));
-                            None
-                        }
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let (mut tool_calls, truncated_tool_ids) =
+            super::tool_call_parse::parse_tool_calls(&response.message.content);
 
         let assistant_text = extract_text_content(&&response.message.content);
         if should_force_build_tool_first_retry(
@@ -430,6 +400,15 @@ pub(crate) async fn run_prompt_with_events(
             });
             continue;
         }
+        super::tool_extraction::salvage_prose_tool_call(
+            &selected_provider,
+            &model,
+            &assistant_text,
+            &tool_definitions,
+            &truncated_tool_ids,
+            &mut response,
+            &mut tool_calls,
+        );
         if should_retry_missing_native_tool_call(
             selected_provider.as_str(),
             &model,

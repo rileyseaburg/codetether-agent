@@ -1,7 +1,8 @@
 //! Convert client-area coordinates of a window into screen coordinates.
 
 use windows::Win32::Foundation::{HWND, POINT};
-use windows::Win32::UI::WindowsAndMessaging::{ClientToScreen, GetForegroundWindow};
+use windows::Win32::Graphics::Gdi::ClientToScreen;
+use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
 
 /// Convert a (client_x, client_y) point in the foreground window's client
 /// area to absolute screen pixel coordinates. Returns `None` if the
@@ -16,10 +17,7 @@ pub fn client_point_to_screen(client_x: i32, client_y: i32) -> Option<(i32, i32)
             x: client_x,
             y: client_y,
         };
-        if ClientToScreen(hwnd, &mut pt).as_bool() {
-            Some((pt.x, pt.y))
-        } else {
-            None
-        }
+        ClientToScreen(hwnd, &mut pt).ok()?;
+        Some((pt.x, pt.y))
     }
 }

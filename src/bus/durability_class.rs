@@ -34,8 +34,9 @@ impl BusMessage {
     /// not partitioned (replayed under the global partition).
     pub fn partition_key(&self) -> Option<&str> {
         match self {
-            BusMessage::TaskUpdate { task_id, .. }
-            | BusMessage::ArtifactUpdate { task_id, .. } => Some(task_id),
+            BusMessage::TaskUpdate { task_id, .. } | BusMessage::ArtifactUpdate { task_id, .. } => {
+                Some(task_id)
+            }
             BusMessage::RalphHandoff { prd_id, .. }
             | BusMessage::RalphProgress { prd_id, .. }
             | BusMessage::RalphLearning { prd_id, .. } => Some(prd_id),

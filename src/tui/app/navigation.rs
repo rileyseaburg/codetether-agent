@@ -9,9 +9,13 @@ use crate::tui::models::{InputMode, ViewMode};
 #[path = "navigation/jump.rs"]
 mod jump;
 
+#[path = "navigation/agent_focus.rs"]
+mod agent_focus;
+
 #[cfg(test)]
 mod tests;
 
+pub use agent_focus::handle_tab;
 pub use jump::{handle_end, handle_home};
 
 pub fn handle_escape(app: &mut App) {
@@ -46,12 +50,6 @@ pub fn handle_escape(app: &mut App) {
             ViewMode::Chat => app.state.input_mode = InputMode::Normal,
             _ => return_to_chat(app),
         }
-    }
-}
-
-pub fn handle_tab(app: &mut App) {
-    if app.state.apply_selected_slash_suggestion() {
-        app.state.status = "Command autocompleted".to_string();
     }
 }
 

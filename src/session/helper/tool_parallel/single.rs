@@ -15,6 +15,15 @@ pub(super) async fn run_one(
     event_tx: &mpsc::Sender<SessionEvent>,
 ) -> Output {
     let exec_start = std::time::Instant::now();
+    // Keep the watchdog alive for slow parallel tools, mirroring the serial
+    // path in `prompt_events`. Without this, a long read-only tool emits no
+    // activity events and can trip a false stall detection.
+    let hb = super::super::super::tool_heartbeat::spawn(
+        event_tx,
+        &job.tool_id,
+        &job.tool_name,
+        exec_start,
+    );
     let (content, success, metadata) = prompt_events::execute_tool(
         registry,
         &job.tool_name,
@@ -24,6 +33,7 @@ pub(super) async fn run_one(
         Some((event_tx, &job.tool_id)),
     )
     .await;
+    hb.abort();
     let duration_ms = exec_start.elapsed().as_millis() as u64;
     tool_metadata_event::send(event_tx, &job.tool_id, &job.tool_name, metadata.as_ref()).await;
     let _ = event_tx

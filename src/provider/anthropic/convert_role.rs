@@ -114,10 +114,15 @@ pub(crate) fn assistant_parts(msg: &Message) -> Vec<Value> {
 /// Mutates `api_messages` by appending a `"role": "user"` message containing
 /// converted tool-result blocks. If `msg` has no tool-result parts, the vector
 /// is left unchanged.
-pub(crate) fn push_tool_results(api_messages: &mut Vec<Value>, msg: &Message) {
+pub(crate) fn push_tool_results(
+    api_messages: &mut Vec<Value>,
+    msg: &Message,
+    known_tool_calls: &std::collections::HashSet<String>,
+) {
     let results: Vec<Value> = msg
         .content
         .iter()
+        .filter(|part| super::sanitize::result_has_call(part, known_tool_calls))
         .filter_map(super::convert_parts::tool_result)
         .collect();
     if !results.is_empty() {

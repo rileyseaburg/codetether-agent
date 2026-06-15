@@ -48,6 +48,7 @@ pub(crate) fn messages(
 ) -> (Option<Vec<Value>>, Vec<Value>) {
     let mut system_blocks = Vec::new();
     let mut api_messages = Vec::new();
+    let known_tool_calls = super::sanitize::declared_tool_call_ids(messages);
     for msg in messages {
         match msg.role {
             Role::System => super::convert_role::push_system(&mut system_blocks, msg),
@@ -61,7 +62,9 @@ pub(crate) fn messages(
                 "assistant",
                 super::convert_role::assistant_parts(msg),
             ),
-            Role::Tool => super::convert_role::push_tool_results(&mut api_messages, msg),
+            Role::Tool => {
+                super::convert_role::push_tool_results(&mut api_messages, msg, &known_tool_calls)
+            }
         }
     }
     if enable_cache {

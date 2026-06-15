@@ -8,8 +8,11 @@ use crate::okr::{
 };
 use crate::provider::ProviderRegistry;
 use crate::swarm::{DecompositionStrategy, ExecutionMode, SwarmConfig, SwarmExecutor};
+pub mod console;
+mod console_entry;
 mod quality_shell;
 mod tetherscript_score;
+use crate::forage_println;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -261,43 +264,7 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
             };
             println!("{}", serde_json::to_string_pretty(&payload)?);
         } else {
-            println!("\n=== Forage Cycle {} ===", cycle);
-            if selected.is_empty() {
-                println!(
-                    "No OKR opportunities found (active/draft/on_hold with remaining KR work)."
-                );
-            } else {
-                for (idx, item) in selected.iter().enumerate() {
-                    println!(
-                        "\n{}. [{}] {}",
-                        idx + 1,
-                        item.okr_status_label(),
-                        item.okr_title
-                    );
-                    println!(
-                        "   KR: {} ({:.1}% remaining, score {:.3})",
-                        item.key_result_title,
-                        item.remaining * 100.0,
-                        item.score
-                    );
-                    println!(
-                        "   Progress: {:.1}% complete",
-                        item.progress.clamp(0.0, 1.0) * 100.0
-                    );
-                    if !moonshot_rubric.goals.is_empty() {
-                        let hits = if item.moonshot_hits.is_empty() {
-                            "none".to_string()
-                        } else {
-                            item.moonshot_hits.join(" | ")
-                        };
-                        println!(
-                            "   Moonshot alignment: {:.1}% (hits: {})",
-                            item.moonshot_alignment * 100.0,
-                            hits
-                        );
-                    }
-                }
-            }
+            console::print_cycle(cycle, &selected, !moonshot_rubric.goals.is_empty());
         }
         summary.cycles_completed = cycle;
         summary.total_selected = summary.total_selected.saturating_add(selected.len());
@@ -1105,9 +1072,11 @@ fn flush_bus_observer(observer: &mut BusHandle, cycle: usize, json_mode: bool) {
             BusMessage::AgentMessage { .. } => "agent_message",
             _ => "other",
         };
-        println!(
+        forage_println!(
             "   [bus cycle {cycle}] {} :: topic={} sender={}",
-            label, env.topic, env.sender_id
+            label,
+            env.topic,
+            env.sender_id
         );
         shown = shown.saturating_add(1);
     }

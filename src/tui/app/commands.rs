@@ -849,10 +849,7 @@ pub async fn handle_slash_command(
         "/import-codex" => {
             codex_sessions::import_workspace_sessions(app, cwd).await;
         }
-        "/swarm" => {
-            app.state.swarm.mark_active("TUI swarm monitor");
-            app.state.set_view_mode(ViewMode::Swarm);
-        }
+        "/swarm" => crate::tui::swarm_run::open_swarm_monitor(app),
         "/ralph" => {
             app.state
                 .ralph

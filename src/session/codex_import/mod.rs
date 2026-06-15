@@ -1,4 +1,5 @@
 mod api;
+mod budget;
 mod discover;
 mod index;
 mod info;

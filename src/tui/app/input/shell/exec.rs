@@ -12,16 +12,22 @@ pub(super) struct ShellOutcome {
     pub duration_ms: u64,
 }
 
-/// Run `command` through `sh -c` in `cwd`, capturing stdout and stderr.
+/// Run `command` through the user's shell (`$SHELL`, falling back to
+/// `/bin/sh`) in `cwd`, capturing stdout and stderr.
+///
+/// Using `$SHELL` means bash-only syntax (`[[ ]]`, arrays, `source`,
+/// `==`) behaves the same as in the user's interactive shell instead of
+/// failing under a minimal `/bin/sh` such as dash.
 ///
 /// Output is truncated to 64 KiB and the command is killed after 120s.
 pub(super) async fn run_shell(command: &str, cwd: &Path) -> ShellOutcome {
     const TIMEOUT: Duration = Duration::from_secs(120);
     const MAX_OUTPUT: usize = 64 * 1024;
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
     let started = Instant::now();
     let result = tokio::time::timeout(
         TIMEOUT,
-        tokio::process::Command::new("sh")
+        tokio::process::Command::new(&shell)
             .arg("-c")
             .arg(command)
             .current_dir(cwd)

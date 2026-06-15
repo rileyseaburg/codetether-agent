@@ -7,6 +7,9 @@ use super::state::ForageUpdate;
 /// Spawn a background task that runs forage to completion and streams
 /// the final summary (or error) back through `tx`.
 pub fn spawn_forage_run(args: ForageArgs, tx: tokio::sync::mpsc::Sender<ForageUpdate>) {
+    // Suppress forage's direct stdout writes; the TUI renders updates via `tx`
+    // and raw `println!` would corrupt the ratatui screen.
+    crate::forage::console::set_quiet(true);
     tokio::spawn(async move {
         let _ = tx
             .send(ForageUpdate::Status(

@@ -9,6 +9,11 @@ use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 use crate::tui::swarm_view::SwarmEvent;
 
+#[path = "swarm_run/monitor.rs"]
+mod monitor;
+
+pub use monitor::open_swarm_monitor;
+
 /// Handle `/swarm [task]`.
 ///
 /// Returns `true` when a task was launched; `false` for the bare command so

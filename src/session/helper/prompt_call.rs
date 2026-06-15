@@ -12,7 +12,15 @@ use tokio::sync::mpsc;
 use crate::provider::{CompletionRequest, CompletionResponse, Provider};
 use crate::session::SessionEvent;
 
-use super::stream::collect_stream_completion_with_events;
+use super::stream::{RestartPolicy, run_with_restart};
+
+/// Hard wall-clock deadline for a single provider completion.
+///
+/// A stalled stream (no error, no completion) must never hang the agent loop
+/// indefinitely. When this deadline elapses the step errors out loudly so the
+/// caller's retry/error path can take over. Overridable via the
+/// `CODETETHER_STEP_TIMEOUT_SECS` env var.
+const DEFAULT_STEP_TIMEOUT_SECS: u64 = 300;
 
 /// Execute one provider completion without bypassing retryable errors.
 ///
@@ -47,9 +55,30 @@ pub(super) async fn complete_step(
     supports_tools: bool,
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<CompletionResponse> {
-    if !supports_tools || !provider.supports_structured_streaming() {
-        return provider.complete(request).await;
+    let timeout = step_timeout();
+    let fut = async {
+        if !supports_tools || !provider.supports_structured_streaming() {
+            provider.complete(request).await
+        } else {
+            run_with_restart(provider, request, event_tx, &RestartPolicy::default()).await
+        }
+    };
+    match tokio::time::timeout(timeout, fut).await {
+        Ok(result) => result,
+        Err(_) => Err(anyhow::anyhow!(
+            "Provider completion exceeded the step timeout of {}s and was aborted. \
+             The model stream appears to have stalled.",
+            timeout.as_secs()
+        )),
     }
-    let stream = provider.complete_stream(request).await?;
-    collect_stream_completion_with_events(stream, event_tx).await
+}
+
+/// Resolve the per-step completion deadline, honoring `CODETETHER_STEP_TIMEOUT_SECS`.
+fn step_timeout() -> std::time::Duration {
+    let secs = std::env::var("CODETETHER_STEP_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(DEFAULT_STEP_TIMEOUT_SECS);
+    std::time::Duration::from_secs(secs)
 }

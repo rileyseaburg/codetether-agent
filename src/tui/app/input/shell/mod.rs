@@ -7,6 +7,9 @@ mod command;
 mod exec;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+#[path = "tests_shell_kind.rs"]
+mod tests_shell_kind;
 mod truncate;
 
 pub(super) use command::run;

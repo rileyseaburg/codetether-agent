@@ -43,16 +43,35 @@ pub fn build_chat_lines(
     if let Some(mut prefix) = app.state.clone_frozen_prefix(max_width) {
         let frozen_len = prefix.len();
         push_streaming_preview(&mut prefix, &app.state, separator_width, formatter);
-        app.state
-            .store_message_lines_with_frozen(prefix.clone(), max_width, frozen_len);
-        return DrawnLines::from_rebuild(prefix);
+        return store_and_take(app, prefix, max_width, frozen_len);
     }
 
     // Cold path: full rebuild.
     let mut built = build_uncached(app, separator_width, panel_width, formatter, palette);
     let frozen_len = built.len();
     push_streaming_preview(&mut built, &app.state, separator_width, formatter);
+    store_and_take(app, built, max_width, frozen_len)
+}
+
+/// Store freshly built lines in the cache, then take them back out for this
+/// frame via the zero-clone take/restore path.
+///
+/// This avoids cloning the entire line buffer every streaming frame: the
+/// vector is moved into the cache, then moved straight back out for rendering
+/// and restored after the draw. For long conversations this removes thousands
+/// of per-frame [`Line`] clones that previously caused visible input lag.
+fn store_and_take(
+    app: &mut App,
+    lines: Vec<ratatui::text::Line<'static>>,
+    max_width: usize,
+    frozen_len: usize,
+) -> DrawnLines {
     app.state
-        .store_message_lines_with_frozen(built.clone(), max_width, frozen_len);
-    DrawnLines::from_rebuild(built)
+        .store_message_lines_with_frozen(lines, max_width, frozen_len);
+    match app.state.take_cached_if_valid(max_width) {
+        Some(taken) => DrawnLines::from_cache(taken),
+        // Cache predicate rejected reuse (e.g. pending tool timer); fall back
+        // to a clone so this frame still renders.
+        None => DrawnLines::from_rebuild(app.state.cached_message_lines.clone()),
+    }
 }

@@ -4,6 +4,7 @@
 //! already registered via Vault. Skipped entirely when
 //! `CODETETHER_DISABLE_ENV_FALLBACK=1`.
 
+use super::bedrock::{AwsCredentials, BedrockProvider, DEFAULT_REGION};
 use super::registry::ProviderRegistry;
 use crate::provider::traits::Provider;
 use anyhow::Result;
@@ -12,9 +13,8 @@ use std::sync::Arc;
 type Ctor = fn(String) -> Result<Arc<dyn Provider>>;
 
 fn bedrock_bearer(token: String) -> Result<Arc<dyn Provider>> {
-    let region = super::bedrock::AwsCredentials::detect_region()
-        .unwrap_or_else(|| super::bedrock::DEFAULT_REGION.into());
-    Ok(Arc::new(super::bedrock::BedrockProvider::with_region(token, region)?))
+    let region = AwsCredentials::detect_region().unwrap_or_else(|| DEFAULT_REGION.into());
+    Ok(Arc::new(BedrockProvider::with_region(token, region)?))
 }
 
 /// Register providers from environment variables if not already present.

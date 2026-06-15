@@ -5,8 +5,8 @@
 //! zero-dependency default backend, reusing the JSONL record shape already
 //! produced by [`crate::bus::s3_sink`].
 
-use super::durable_log::{DurableLog, partition_of};
 use super::BusEnvelope;
+use super::durable_log::{DurableLog, partition_of};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use std::path::PathBuf;

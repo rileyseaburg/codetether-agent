@@ -30,6 +30,7 @@ mod parse_response;
 mod parse_usage;
 mod provider_impl;
 mod response;
+mod sanitize;
 mod sse_block_parser;
 mod sse_line;
 mod sse_message_delta;
@@ -37,6 +38,9 @@ mod sse_stream;
 mod sse_stream_poll;
 mod test_support;
 mod tests;
+#[cfg(test)]
+#[path = "tests_sanitize.rs"]
+mod tests_sanitize;
 mod validation;
 
 use reqwest::Client;

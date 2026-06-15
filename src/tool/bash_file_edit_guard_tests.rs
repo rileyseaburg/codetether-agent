@@ -1,6 +1,6 @@
 //! Tests for the bash file-edit guard.
 
-use super::bash_file_edit_guard::file_edit_guard_reason;
+use super::file_edit_guard_reason;
 
 #[test]
 fn blocks_cat_heredoc() {
