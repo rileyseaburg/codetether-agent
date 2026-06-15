@@ -1,8 +1,8 @@
-//! Ralph learning publish helper for [`AgentBus`] (split for line budget).
+//! Ralph learning publish helper for [`BusHandle`] (split for line budget).
 
-use super::{AgentBus, BusMessage};
+use super::{BusHandle, BusMessage};
 
-impl AgentBus {
+impl BusHandle {
     /// Publish learnings from a Ralph iteration so other agents / future
     /// iterations can build on them.
     pub fn publish_ralph_learning(

@@ -15,20 +15,17 @@
 //! the streamed previews are truncated.
 
 use super::super::SessionEvent;
-use crate::provider::{StreamChunk, Usage};
+use crate::provider::StreamChunk;
 use anyhow::Result;
-use futures::StreamExt;
 use futures::stream::BoxStream;
-use std::collections::HashMap;
 
 mod empty;
 mod finalize;
+mod idle_timeout;
 mod text_acc;
 #[cfg(test)]
 mod thinking_tests;
 mod tool_acc;
-
-use finalize::ToolAccumulator;
 
 /// Collect a streaming completion into a [`CompletionResponse`](crate::provider::CompletionResponse),
 /// optionally forwarding incremental events.
@@ -78,39 +75,8 @@ use finalize::ToolAccumulator;
 /// # });
 /// ```
 pub async fn collect_stream_completion_with_events(
-    mut stream: BoxStream<'static, StreamChunk>,
+    stream: BoxStream<'static, StreamChunk>,
     event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
 ) -> Result<crate::provider::CompletionResponse> {
-    let mut text = String::new();
-    let mut thinking = String::new();
-    let mut tools = Vec::<ToolAccumulator>::new();
-    let mut tool_index_by_id = HashMap::<String, usize>::new();
-    let mut usage = Usage::default();
-
-    while let Some(chunk) = stream.next().await {
-        match chunk {
-            StreamChunk::Text(delta) => {
-                text_acc::on_text(&mut text, &delta, event_tx).await?;
-            }
-            StreamChunk::ToolCallStart { id, name } => {
-                tool_acc::on_tool_start(&mut tools, &mut tool_index_by_id, id, name);
-            }
-            StreamChunk::ToolCallDelta {
-                id,
-                arguments_delta,
-            } => {
-                tool_acc::on_tool_delta(&mut tools, &mut tool_index_by_id, id, arguments_delta)?;
-            }
-            StreamChunk::ToolCallEnd { .. } => {}
-            StreamChunk::Thinking(delta) => text_acc::on_thinking(&mut thinking, &delta, event_tx)?,
-            StreamChunk::Done { usage: done_usage } => {
-                if let Some(done_usage) = done_usage {
-                    usage = done_usage;
-                }
-            }
-            StreamChunk::Error(message) => anyhow::bail!(message),
-        }
-    }
-
-    empty::reject(finalize::build_response(thinking, text, tools, usage))
+    idle_timeout::drain(stream, event_tx).await
 }

@@ -1,8 +1,8 @@
-//! Ralph handoff/progress publish helpers for [`AgentBus`] (split for budget).
+//! Ralph handoff/progress publish helpers for [`BusHandle`] (split for budget).
 
-use super::{AgentBus, BusMessage};
+use super::{BusHandle, BusMessage};
 
-impl AgentBus {
+impl BusHandle {
     /// Publish a context handoff between sequential Ralph stories.
     pub fn publish_ralph_handoff(
         &self,
