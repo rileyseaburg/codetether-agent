@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+cd "$(dirname "$0")/.." || exit 1
+
 if [ -f "$HOME/.bashrc" ]; then
   # shellcheck disable=SC1090
   set +u
