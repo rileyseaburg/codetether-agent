@@ -43,6 +43,7 @@ pub fn usage_hint(cmd: &str) -> Option<&'static str> {
         "/image" => Some("/image <path>  — attach an image"),
         "/autochat" => Some("/autochat [count] <task>  — multi-agent relay"),
         "/ralph" => Some("/ralph <subcommand>  — run/submit/status"),
+        "/forage" => Some("/forage [execute] [N]  — scan OKRs, optionally run top N"),
         "/model" => Some("/model <name>  — switch LLM model"),
         "/focus" => Some("/focus <agent>  — switch to agent's chat"),
         "/ls" | "/list" => Some("/ls  — list spawned agents"),

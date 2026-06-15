@@ -5,9 +5,6 @@ use serde_json::Value;
 
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
-use crate::tui::app::codex_sessions;
-use crate::tui::app::file_share::attach_file_to_input;
-use crate::tui::app::model_picker::open_model_picker;
 use crate::tui::app::session_sync::{refresh_sessions, return_to_chat};
 use crate::tui::app::settings::{
     autocomplete_status_message, network_access_status_message, set_network_access,
@@ -17,33 +14,15 @@ use crate::tui::app::state::{App, SpawnedAgent, agent_profile};
 use crate::tui::app::text::{
     command_with_optional_args, normalize_easy_command, normalize_slash_command,
 };
+use crate::tui::app::{
+    codex_sessions, file_share::attach_file_to_input, model_picker::open_model_picker,
+};
 use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::models::ViewMode;
 
-fn auto_apply_flag_label(enabled: bool) -> &'static str {
-    if enabled { "ON" } else { "OFF" }
-}
-
-pub fn auto_apply_status_message(enabled: bool) -> String {
-    format!("TUI edit auto-apply: {}", auto_apply_flag_label(enabled))
-}
-
-pub async fn set_auto_apply_edits(app: &mut App, session: &mut Session, next: bool) {
-    app.state.auto_apply_edits = next;
-    session.metadata.auto_apply_edits = next;
-
-    app.state.status = match session.save().await {
-        Ok(()) => auto_apply_status_message(next),
-        Err(error) => format!(
-            "{} (not persisted: {error})",
-            auto_apply_status_message(next)
-        ),
-    };
-}
-
-pub async fn toggle_auto_apply_edits(app: &mut App, session: &mut Session) {
-    set_auto_apply_edits(app, session, !app.state.auto_apply_edits).await;
-}
+pub use crate::tui::app::auto_apply::{
+    auto_apply_status_message, set_auto_apply_edits, toggle_auto_apply_edits,
+};
 
 fn push_system_message(app: &mut App, content: impl Into<String>) {
     app.state
@@ -832,6 +811,11 @@ pub async fn handle_slash_command(
     if let Some(rest) = command_with_optional_args(&normalized, "/swarm")
         && crate::tui::swarm_run::handle_swarm_command(app, session, rest)
     {
+        return;
+    }
+    // `/forage [execute] [N]` launches an OKR-driven forage scan/execution.
+    if let Some(rest) = command_with_optional_args(&normalized, "/forage") {
+        crate::tui::forage_run::handle_forage_command(app, session, rest);
         return;
     }
 

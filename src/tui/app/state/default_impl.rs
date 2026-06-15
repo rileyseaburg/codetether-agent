@@ -3,11 +3,10 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
-use crate::tui::help::HelpScrollState;
 use crate::tui::models::{InputMode, ViewMode};
-use crate::tui::ralph_view::RalphViewState;
-use crate::tui::swarm_view::SwarmViewState;
-use crate::tui::symbol_search::SymbolSearchState;
+use crate::tui::{
+    ralph_view::RalphViewState, swarm_view::SwarmViewState, symbol_search::SymbolSearchState,
+};
 
 impl Default for super::AppState {
     fn default() -> Self {
@@ -51,7 +50,7 @@ impl Default for super::AppState {
             worker_bridge_processing_state: None,
             worker_task_queue: VecDeque::new(),
             active_remote_task: None,
-            help_scroll: HelpScrollState::default(),
+            help_scroll: crate::tui::help::HelpScrollState::default(),
             show_help: false,
             available_models: Vec::new(),
             selected_model_index: 0,
@@ -126,6 +125,7 @@ impl Default for super::AppState {
             saved_tool_preview_scroll: 0,
             streaming_start: None,
             streaming_chars: 0,
+            forage: crate::tui::forage_run::ForageState::new(),
             needs_redraw: true,
         }
     }

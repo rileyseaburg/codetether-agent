@@ -7,7 +7,6 @@ pub mod clipboard_winapi;
 pub mod constants;
 pub mod help;
 pub mod input;
-#[path = "latency.rs"]
 pub mod latency;
 pub mod latency_chat_turn;
 pub mod lsp;
@@ -32,6 +31,7 @@ pub mod bus_log;
 pub mod bus_log_entry_payload;
 pub mod bus_log_payload;
 pub mod color_palette;
+pub mod forage_run;
 pub mod git_branch;
 pub mod git_capture;
 pub mod git_diff;

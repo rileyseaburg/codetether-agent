@@ -17,7 +17,9 @@ pub async fn run(app: &mut App) {
     }
     let ralph_changed = app.state.ralph.drain_events();
     let swarm_changed = app.state.swarm.drain_events();
-    app.state.needs_redraw |= ralph_changed || swarm_changed || before.changed_since(app);
+    let forage_changed = crate::tui::forage_run::drain_forage_updates(app);
+    app.state.needs_redraw |=
+        ralph_changed || swarm_changed || forage_changed || before.changed_since(app);
 }
 
 pub fn before_draw(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {

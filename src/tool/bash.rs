@@ -96,9 +96,7 @@ fn interactive_auth_risk_reason(command: &str) -> Option<&'static str> {
         || lower.contains(";sftp ")
         || lower.contains(" rsync ");
     if has_ssh_family && !lower.contains("batchmode=yes") {
-        return Some(
-            "SSH-family command may prompt for password/passphrase (missing -o BatchMode=yes).",
-        );
+        return Some("SSH-family command may prompt for a password (add -o BatchMode=yes).");
     }
 
     if lower.starts_with("su ")
@@ -121,13 +119,11 @@ fn looks_like_auth_prompt(output: &str) -> bool {
         "passphrase",
         "no tty present and no askpass program specified",
         "a terminal is required to read the password",
-        "could not read password",
         "permission denied (publickey,password",
     ]
     .iter()
     .any(|needle| lower.contains(needle))
 }
-
 fn redact_output(mut output: String, secrets: &[String]) -> String {
     for secret in secrets {
         if !secret.is_empty() {
@@ -223,6 +219,10 @@ impl Tool for BashTool {
         let effective_cwd = cwd.clone().or_else(|| self.default_cwd.clone());
         let timeout_secs = args["timeout"].as_u64().unwrap_or(self.timeout_secs);
         let wrapped_command = codetether_wrapped_command(command);
+
+        if let Some(blocked) = super::bash_file_edit_guard::file_edit_guard_result(command) {
+            return Ok(blocked);
+        }
 
         if let Some(reason) = interactive_auth_risk_reason(command) {
             // Log warning but don't block anymore per user request

@@ -8,7 +8,7 @@ pub mod alias;
 pub mod auto_apply;
 pub mod avatar;
 pub mod bash;
-#[path = "bash_github/mod.rs"]
+pub mod bash_file_edit_guard;
 mod bash_github;
 mod bash_identity;
 mod bash_noninteractive;

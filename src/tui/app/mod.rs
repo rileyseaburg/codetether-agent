@@ -1,4 +1,5 @@
 pub mod ask;
+pub mod auto_apply;
 pub mod autochat;
 pub mod background;
 pub mod bus;
@@ -8,7 +9,6 @@ pub mod context_status;
 #[cfg(test)]
 mod context_status_tests;
 pub mod event_handlers;
-#[path = "event_loop/mod.rs"]
 pub mod event_loop;
 pub mod file_picker;
 pub mod file_preview;

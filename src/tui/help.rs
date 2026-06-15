@@ -9,9 +9,8 @@ use ratatui::{
 };
 
 use crate::tui::app::state::AppState;
-use crate::tui::theme::Theme;
 use crate::tui::theme_utils::{detect_color_support, validate_theme};
-use crate::tui::token_display::TokenDisplay;
+use crate::tui::{theme::Theme, token_display::TokenDisplay};
 
 /// Mutable scroll state for the help view, stored externally.
 pub struct HelpScrollState {
@@ -386,6 +385,7 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(cmd_row("/protocol", "/p", "Protocol bus (alias)"));
     lines.push(cmd_row("/swarm", "/w", "Swarm agent view"));
     lines.push(cmd_row("/ralph", "/r", "Ralph PRD loop view"));
+    lines.push(cmd_row("/forage", "", "Scan OKRs ('execute' runs top one)"));
     lines.push(cmd_row("/latency", "", "Provider + tool latency inspector"));
     lines.push(cmd_row(
         "/inspector",
