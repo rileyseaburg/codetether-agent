@@ -37,11 +37,14 @@ async fn done(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
     app.state.streaming_text.clear();
     app.state.complete_turn_timing();
     app.state.streaming_start = None;
-    app.state.main_watchdog_restart_count = 0;
+    // NOTE: do NOT reset main_watchdog_restart_count here. The count must
+    // survive a completed turn so a pathological "completes-then-immediately-
+    // stalls" storm still climbs to WATCHDOG_MAX_RESTARTS instead of being
+    // zeroed on every completion. The count is reset only when a genuine new
+    // user prompt is dispatched (see dispatch_prompt).
     // Clear any watchdog notice now that a turn has completed; otherwise the
     // retry guard (notification.is_some() && !processing) keeps resubmitting the
-    // same prompt forever, since Done resets the restart count below the
-    // give-up cap each time.
+    // same prompt forever.
     app.state.watchdog_notification = None;
     app.state.main_inflight_prompt = None;
     app.state.status = "Ready".to_string();

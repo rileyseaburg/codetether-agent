@@ -34,5 +34,7 @@ async fn done_clears_watchdog_notification_to_stop_resubmit_loop() {
 
     assert!(app.state.watchdog_notification.is_none());
     assert!(app.state.main_inflight_prompt.is_none());
-    assert_eq!(app.state.main_watchdog_restart_count, 0);
+    // Count intentionally survives a completed turn so a completes-then-stalls
+    // storm still climbs to the give-up cap; it is reset on new user prompts.
+    assert_eq!(app.state.main_watchdog_restart_count, 1);
 }

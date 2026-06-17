@@ -31,6 +31,9 @@ pub(crate) async fn dispatch_prompt(
     app.state.clear_input();
     crate::tui::app::worker_bridge::handle_processing_started(app, worker_bridge).await;
     app.state.begin_request_timing();
+    // A genuine new user prompt restores the full watchdog auto-restart budget.
+    // (The count intentionally survives completed turns; see session_events done.)
+    app.state.main_watchdog_restart_count = 0;
     app.state.main_inflight_prompt = Some(prompt.to_string());
     app.state.status = "Submitting prompt…".to_string();
     app.state.scroll_to_bottom();
