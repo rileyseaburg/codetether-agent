@@ -38,6 +38,12 @@ async fn done(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
     app.state.complete_turn_timing();
     app.state.streaming_start = None;
     app.state.main_watchdog_restart_count = 0;
+    // Clear any watchdog notice now that a turn has completed; otherwise the
+    // retry guard (notification.is_some() && !processing) keeps resubmitting the
+    // same prompt forever, since Done resets the restart count below the
+    // give-up cap each time.
+    app.state.watchdog_notification = None;
+    app.state.main_inflight_prompt = None;
     app.state.status = "Ready".to_string();
 }
 
