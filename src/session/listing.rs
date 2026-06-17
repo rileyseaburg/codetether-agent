@@ -2,6 +2,7 @@
 
 mod count_seq;
 mod directory;
+mod parse;
 mod record;
 mod scan;
 mod summary;
