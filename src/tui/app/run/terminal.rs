@@ -17,6 +17,7 @@ pub(super) struct Runtime {
 pub(super) fn enter() -> anyhow::Result<Runtime> {
     restore_terminal_state();
     enable_raw_mode()?;
+    crate::worktree::set_tui_active(true);
     let terminal_guard = TerminalGuard;
     let panic_guard = install_panic_cleanup_hook();
     let mut stdout = std::io::stdout();

@@ -26,6 +26,7 @@ use crossterm::{
 /// Disables raw mode, shows the cursor, leaves the alternate screen, disables
 /// mouse capture, and disables bracketed paste for stdout.
 pub(super) fn restore_terminal_state() {
+    crate::worktree::set_tui_active(false);
     let _ = disable_raw_mode();
     let mut stdout = io::stdout();
     let _ = execute!(
