@@ -6,7 +6,7 @@ use std::sync::Arc;
 impl SwarmWorktrees {
     pub(in crate::tool::swarm_execute) async fn create(tasks: &[(String, String)]) -> Self {
         let repo = std::env::current_dir().unwrap_or_else(|_| ".".into());
-        let mgr = Arc::new(WorktreeManager::for_repo(repo));
+        let mgr = Arc::new(WorktreeManager::for_repo(repo).without_vscode_auto_open());
         let mut infos = Vec::with_capacity(tasks.len());
         for (name, instruction) in tasks {
             infos.push(create_one(&mgr, name, instruction).await);

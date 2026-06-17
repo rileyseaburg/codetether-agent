@@ -16,6 +16,7 @@ use super::{
     subtask::{SubTask, SubTaskResult, SubTaskStatus},
     tool_policy,
 };
+use super::control::SwarmControl;
 use crate::bus::{AgentBus, BusMessage};
 use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};
 use crate::session::delegation::DelegationState;
@@ -42,6 +43,11 @@ use std::time::Instant;
 use tokio::sync::{RwLock, mpsc};
 use tokio::task::AbortHandle;
 use tokio::time::{Duration, MissedTickBehavior, timeout};
+#[path = "bus_publish.rs"]
+mod bus_publish;
+#[path = "executor_tokens.rs"]
+mod executor_tokens;
+use executor_tokens::{estimate_tokens, estimate_total_tokens};
 #[path = "executor_trace.rs"]
 mod executor_trace;
 #[path = "path_guard/mod.rs"]
@@ -55,44 +61,6 @@ const RESPONSE_RESERVE_TOKENS: usize = 8_192;
 
 /// Safety margin before we start truncating (90% of limit)
 const TRUNCATION_THRESHOLD: f64 = 0.85;
-
-/// Estimate token count from text (rough heuristic: ~4 chars per token)
-fn estimate_tokens(text: &str) -> usize {
-    // This is a rough estimate - actual tokenization varies by model
-    // Most tokenizers average 3-5 chars per token for English text
-    // We use 3.5 to be conservative
-    (text.len() as f64 / 3.5).ceil() as usize
-}
-
-/// Estimate total tokens in a message
-fn estimate_message_tokens(message: &Message) -> usize {
-    let mut tokens = 4; // Role overhead
-
-    for part in &message.content {
-        tokens += match part {
-            ContentPart::Text { text } => estimate_tokens(text),
-            ContentPart::ToolCall {
-                id,
-                name,
-                arguments,
-                ..
-            } => estimate_tokens(id) + estimate_tokens(name) + estimate_tokens(arguments) + 10,
-            ContentPart::ToolResult {
-                tool_call_id,
-                content,
-            } => estimate_tokens(tool_call_id) + estimate_tokens(content) + 6,
-            ContentPart::Image { .. } | ContentPart::File { .. } => 2000, // Binary content is expensive
-            ContentPart::Thinking { text, .. } => estimate_tokens(text),
-        };
-    }
-
-    tokens
-}
-
-/// Estimate total tokens in all messages
-fn estimate_total_tokens(messages: &[Message]) -> usize {
-    messages.iter().map(estimate_message_tokens).sum()
-}
 
 /// Truncate messages to fit within context limit
 ///
@@ -442,6 +410,8 @@ pub struct SwarmExecutor {
     /// step 28) can flow back into the same posterior the next dispatch
     /// reads from, even when the caller only owns `&self`.
     delegation: Option<Arc<StdMutex<DelegationState>>>,
+    /// Optional runtime control for cancel + pause/resume.
+    control: Option<SwarmControl>,
 }
 
 impl SwarmExecutor {
@@ -456,6 +426,7 @@ impl SwarmExecutor {
             result_store: ResultStore::new_arc(),
             bus: None,
             delegation: None,
+            control: None,
         }
     }
 
@@ -471,6 +442,7 @@ impl SwarmExecutor {
             result_store: ResultStore::new_arc(),
             bus: None,
             delegation: None,
+            control: None,
         })
     }
 
@@ -484,6 +456,17 @@ impl SwarmExecutor {
     pub fn with_bus(mut self, bus: Arc<AgentBus>) -> Self {
         self.bus = Some(bus);
         self
+    }
+
+    /// Attach a runtime control handle for cancel + pause/resume.
+    pub fn with_control(mut self, control: SwarmControl) -> Self {
+        self.control = Some(control);
+        self
+    }
+
+    /// Get the runtime control handle if set.
+    pub fn control(&self) -> Option<&SwarmControl> {
+        self.control.as_ref()
     }
 
     /// Set CADMAS-CTX delegation state for LCB provider selection.
@@ -570,29 +553,10 @@ impl SwarmExecutor {
 
     /// Send an event to the TUI if channel is connected (non-blocking)
     fn try_send_event(&self, event: SwarmEvent) {
-        // Also emit on the agent bus if connected
+        // Also emit on the agent bus if connected so the running swarm is
+        // observable by other agents/tools (see `bus_publish`).
         if let Some(ref bus) = self.bus {
-            let handle = bus.handle("swarm-executor");
-            match &event {
-                SwarmEvent::Started { task, .. } => {
-                    handle.send(
-                        "broadcast",
-                        BusMessage::AgentReady {
-                            agent_id: "swarm-executor".to_string(),
-                            capabilities: vec![format!("executing:{task}")],
-                        },
-                    );
-                }
-                SwarmEvent::Complete { success, .. } => {
-                    let state = if *success {
-                        crate::a2a::types::TaskState::Completed
-                    } else {
-                        crate::a2a::types::TaskState::Failed
-                    };
-                    handle.send_task_update("swarm", state, None);
-                }
-                _ => {} // Other events are TUI-specific
-            }
+            bus_publish::publish(bus, &event);
         }
 
         if let Some(ref tx) = self.event_tx {
@@ -674,6 +638,19 @@ impl SwarmExecutor {
             Arc::new(RwLock::new(HashMap::new()));
 
         for stage in 0..=max_stage {
+            // Honor pause/resume: hold here until resumed or cancelled.
+            if let Some(ctl) = self.control.as_ref() {
+                while ctl.is_paused() && !ctl.is_cancelled() {
+                    tokio::time::sleep(Duration::from_millis(200)).await;
+                }
+                // Honor cancellation: stop launching new stages.
+                if ctl.is_cancelled() {
+                    self.try_send_event(SwarmEvent::Error(
+                        "Swarm cancelled by user".to_string(),
+                    ));
+                    break;
+                }
+            }
             let stage_start = Instant::now();
 
             let stage_subtasks: Vec<SubTask> = orchestrator
@@ -869,7 +846,7 @@ impl SwarmExecutor {
                     .unwrap_or_else(|_| ".".to_string())
             });
 
-            let mgr = WorktreeManager::for_repo(&working_dir);
+            let mgr = WorktreeManager::for_repo(&working_dir).without_vscode_auto_open();
             tracing::info!(
                 working_dir = %working_dir,
                 "Worktree isolation enabled for parallel sub-agents"
