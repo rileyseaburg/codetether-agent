@@ -4,6 +4,7 @@
 //! that persist across sessions for future reference.
 
 mod git_scope;
+pub mod query_match;
 mod scope;
 
 use super::{Tool, ToolResult};
@@ -146,7 +147,7 @@ impl MemoryStore {
         scope: Option<&str>,
         limit: usize,
     ) -> Vec<MemoryEntry> {
-        let mut results: Vec<MemoryEntry> = self
+        let mut scored: Vec<(usize, MemoryEntry)> = self
             .entries
             .values_mut()
             .filter(|entry| {
@@ -162,35 +163,30 @@ impl MemoryStore {
                 {
                     return false;
                 }
-
-                // Filter by query if provided
-                if let Some(q) = query {
-                    let q_lower = q.to_lowercase();
-                    let matches_content = entry.content.to_lowercase().contains(&q_lower);
-                    let matches_tags = entry
-                        .tags
-                        .iter()
-                        .any(|t| t.to_lowercase().contains(&q_lower));
-                    if !matches_content && !matches_tags {
-                        return false;
-                    }
-                }
-
                 true
             })
-            .map(|e| {
-                e.touch();
-                e.clone()
+            .filter_map(|entry| {
+                // Token-based query match: any query word in content or tags.
+                let score = match query {
+                    Some(q) => query_match::query_score(entry, q),
+                    None => 1,
+                };
+                if score == 0 {
+                    return None;
+                }
+                entry.touch();
+                Some((score, entry.clone()))
             })
             .collect();
 
-        // Sort by importance (descending) then access_count (descending)
-        results.sort_by(|a, b| {
-            b.importance
-                .cmp(&a.importance)
-                .then_with(|| b.access_count.cmp(&a.access_count))
+        // Sort by query relevance (descending), then importance, then access_count.
+        scored.sort_by(|a, b| {
+            b.0.cmp(&a.0)
+                .then_with(|| b.1.importance.cmp(&a.1.importance))
+                .then_with(|| b.1.access_count.cmp(&a.1.access_count))
         });
 
+        let mut results: Vec<MemoryEntry> = scored.into_iter().map(|(_, e)| e).collect();
         results.truncate(limit);
         results
     }
