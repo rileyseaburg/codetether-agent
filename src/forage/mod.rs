@@ -1,6 +1,5 @@
 use crate::a2a::types::{Part, TaskState};
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
-use crate::bus::s3_sink::{BusS3Sink, BusS3SinkConfig};
 use crate::bus::{AgentBus, BusHandle, BusMessage};
 use crate::cli::{ForageArgs, RunArgs};
 use crate::okr::{
@@ -8,9 +7,11 @@ use crate::okr::{
 };
 use crate::provider::ProviderRegistry;
 use crate::swarm::{DecompositionStrategy, ExecutionMode, SwarmConfig, SwarmExecutor};
+mod clarify;
 pub mod console;
 mod console_entry;
 mod quality_shell;
+mod s3_optional;
 mod tetherscript_score;
 use crate::forage_println;
 use anyhow::{Context, Result};
@@ -143,14 +144,21 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
         seed_initial_okr_if_empty(&repo, &moonshot_rubric).await?;
     }
     let bus = AgentBus::new().into_arc();
-    // S3 archival is optional when --no-s3 is specified
-    let require_s3 = !args.no_s3;
-    let mut s3_sync_handle = if require_s3 {
-        Some(start_required_bus_s3_sink(bus.clone()).await?)
-    } else {
+    // Make forage observable to other in-process agents/tools: install this
+    // bus as the process-global one when none has been set yet (first writer
+    // wins, so this is a no-op if an entrypoint already installed a bus).
+    crate::bus::set_global(bus.clone());
+    // S3 archival is best-effort: forage always runs, even without MinIO/S3.
+    // `--no-s3` skips the attempt entirely; otherwise we try and degrade to
+    // local-only mode (with a warning) when no configuration is present.
+    let mut s3_sync_handle = if args.no_s3 {
         tracing::info!("S3 archival disabled (--no-s3); running forage in local-only mode");
         None
+    } else {
+        s3_optional::try_start_bus_s3_sink(bus.clone()).await
     };
+    // Only police S3 liveness if a sink actually started.
+    let require_s3 = s3_sync_handle.is_some();
     let forage_id = "forage-runtime";
     let bus_handle = bus.handle(forage_id);
     let mut observer = bus.handle("forage-observer");
@@ -213,9 +221,12 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
             Some("scanning OKR opportunities".to_string()),
         );
         let mut opportunities = build_opportunities(&repo, &moonshot_rubric).await?;
-        if args.execute && opportunities.is_empty() {
-            if let Some(seed_okr_id) =
-                seed_moonshot_okr_if_no_opportunities(&repo, &moonshot_rubric).await?
+        if opportunities.is_empty() {
+            // First try the moonshot seed (execute mode only), then fall back to
+            // interactive goal clarification so forage never silently dead-ends.
+            if args.execute
+                && let Some(seed_okr_id) =
+                    seed_moonshot_okr_if_no_opportunities(&repo, &moonshot_rubric).await?
             {
                 tracing::info!(
                     okr_id = %seed_okr_id,
@@ -223,6 +234,12 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
                     "Seeded moonshot-derived OKR because forage found no opportunities"
                 );
                 opportunities = build_opportunities(&repo, &moonshot_rubric).await?;
+            }
+            if opportunities.is_empty() {
+                let okr_count = repo.list_okrs().await?.len();
+                if clarify::clarify_and_persist(&repo, okr_count).await? {
+                    opportunities = build_opportunities(&repo, &moonshot_rubric).await?;
+                }
             }
         }
         let selected: Vec<ForageOpportunity> = opportunities.into_iter().take(top).collect();
@@ -543,18 +560,6 @@ fn truncate_chars_with_suffix(value: &str, max_chars: usize, suffix: &str) -> St
     let mut out = value.chars().take(max_chars).collect::<String>();
     out.push_str(suffix);
     out
-}
-
-async fn start_required_bus_s3_sink(
-    bus: std::sync::Arc<AgentBus>,
-) -> Result<tokio::task::JoinHandle<Result<()>>> {
-    let config = BusS3SinkConfig::from_env_or_vault().await.context(
-        "Forage requires S3 bus archival. Configure MINIO_*/CODETETHER_CHAT_SYNC_MINIO_* or Vault provider 'chat-sync-minio'.",
-    )?;
-    let sink = BusS3Sink::from_config(bus, config)
-        .await
-        .context("Failed to initialize required S3 bus sink for forage")?;
-    Ok(tokio::spawn(async move { sink.run().await }))
 }
 
 async fn ensure_s3_sync_alive(

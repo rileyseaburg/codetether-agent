@@ -26,6 +26,7 @@ pub mod utils;
 pub mod agent_detail_retain;
 pub mod agent_detail_update;
 pub mod agent_identity;
+pub mod audit_loop_view;
 pub mod audit_view;
 pub mod bus_log;
 pub mod bus_log_entry_payload;

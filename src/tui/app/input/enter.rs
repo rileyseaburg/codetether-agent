@@ -18,14 +18,10 @@ use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::{settings::toggle_selected_setting, state::App};
 use crate::tui::{models::ViewMode, worker_bridge::TuiWorkerBridge};
 
+#[path = "enter_swarm.rs"]
+mod enter_swarm;
+
 /// Dispatch Enter to the handler matching the active view.
-///
-/// # Examples
-///
-/// ```ignore
-/// dispatch_enter(&mut app, cwd, &mut session, &reg,
-///     &bridge, &tx, &rtx).await;
-/// ```
 pub(crate) async fn dispatch_enter(
     app: &mut App,
     cwd: &Path,
@@ -41,7 +37,10 @@ pub(crate) async fn dispatch_enter(
             }
         }
         ViewMode::FilePicker => crate::tui::app::file_picker::file_picker_enter(app, cwd),
-        ViewMode::Swarm => app.state.swarm.enter_detail(),
+        ViewMode::Swarm => {
+            enter_swarm::dispatch_swarm_enter(app, cwd, slot, registry, worker_bridge, runtime)
+                .await
+        }
         ViewMode::Ralph => app.state.ralph.enter_detail(),
         ViewMode::Bus if app.state.bus_log.filter_input_mode => {
             super::bus::handle_enter_bus_filter(app)
@@ -67,6 +66,7 @@ pub(crate) async fn dispatch_enter(
         | ViewMode::Protocol
         | ViewMode::Inspector
         | ViewMode::Audit
-        | ViewMode::Git => {}
+        | ViewMode::Git
+        | ViewMode::AuditLoop => {}
     }
 }

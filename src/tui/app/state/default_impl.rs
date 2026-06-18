@@ -36,6 +36,7 @@ impl Default for super::AppState {
             audit: crate::tui::audit_view::AuditViewState::default(),
             git: super::git_state::GitViewState::default(),
             ralph: RalphViewState::new(),
+            audit_loop: crate::tui::audit_loop_view::audit_loop_state::AuditLoopState::new(),
             symbol_search: SymbolSearchState::new(),
             slash_suggestions: vec![],
             selected_slash_suggestion: 0,

@@ -90,12 +90,7 @@ async fn handle_mcp_command(app: &mut App, raw: &str) {
     }
 
     if let Some(value) = rest.strip_prefix("tools") {
-        let server = value.trim();
-        let server = if server.is_empty() {
-            None
-        } else {
-            Some(server)
-        };
+        let server = Some(value.trim()).filter(|s| !s.is_empty());
         match app.state.mcp_registry.list_tools(server).await {
             Ok(tools) => {
                 if tools.is_empty() {
@@ -829,6 +824,10 @@ pub async fn handle_slash_command(
         return;
     }
 
+    if let Some(rest) = command_with_optional_args(&normalized, "/detach") {
+        crate::tui::app::detach::handle_detach_command(app, session, rest).await;
+        return;
+    }
     if let Some(rest) = command_with_optional_args(&normalized, "/fork") {
         handle_fork_command(app, cwd, session, rest).await;
         return;
@@ -882,6 +881,10 @@ pub async fn handle_slash_command(
             app.state.git = crate::tui::git_capture::capture_git_state(&cwd);
             app.state.set_view_mode(ViewMode::Git);
             app.state.status = "Git status".to_string();
+        }
+        "/auditloop" => {
+            app.state.set_view_mode(ViewMode::AuditLoop);
+            app.state.status = "Audit loop — implement → audit → retry".to_string();
         }
         "/chat" | "/home" | "/main" => return_to_chat(app),
         "/webview" => {
@@ -1020,6 +1023,7 @@ pub async fn handle_slash_command(
             | "/latency"
             | "/audit"
             | "/git"
+            | "/auditloop"
             | "/chat"
             | "/home"
             | "/main"

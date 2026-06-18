@@ -68,6 +68,12 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &SessionView) {
         ViewMode::Git => {
             crate::tui::git_view::render_git_view(f, f.area(), &app.state.git, &app.state.status)
         }
+        ViewMode::AuditLoop => crate::tui::audit_loop_view::render_audit_loop_view(
+            f,
+            &app.state.audit_loop,
+            f.area(),
+            &app.state.status,
+        ),
     }
 }
 
