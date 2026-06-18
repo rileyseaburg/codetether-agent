@@ -75,6 +75,10 @@ pub fn build_status_spans(app: &App, session_label: &str) -> Vec<Span<'static>> 
 
 fn metric_spans(app: &App) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
+    if let Some(badge) = super::processing_badge::processing_badge(app) {
+        spans.push(badge);
+        spans.push(Span::raw(" | "));
+    }
     push_token_spans(&mut spans);
     push_context_budget_span(&mut spans, app);
     push_throughput_span(&mut spans, app);

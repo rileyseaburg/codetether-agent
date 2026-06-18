@@ -21,6 +21,7 @@ pub mod layout_chunks;
 pub mod layout_compute;
 pub mod lines;
 pub mod messages;
+pub mod processing_badge;
 pub mod render;
 pub mod scroll;
 pub mod separator;
