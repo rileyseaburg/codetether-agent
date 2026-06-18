@@ -39,6 +39,13 @@ pub(super) async fn execute(
         return;
     };
     app.state.main_inflight_prompt = Some(prompt.clone());
+    // Clear the pending notification as we resubmit. Otherwise the detector's
+    // `watchdog_notification.is_some()` guard suppresses all future stall
+    // checks, so a retry that also stalls would never be caught — leaving the
+    // UI stuck in `processing=true` forever and silently queueing every prompt
+    // the user types. Clearing here lets the watchdog re-arm, climb the retry
+    // budget, and ultimately `give_up` (freeing the user) instead of deadlocking.
+    app.state.watchdog_notification = None;
     app.state.processing = true;
     app.state.begin_request_timing();
     app.state.main_last_event_at = Some(std::time::Instant::now());
