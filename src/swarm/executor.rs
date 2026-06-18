@@ -2383,6 +2383,11 @@ pub async fn run_agent_loop(
 
         let step_start = Instant::now();
         let response = timeout(Duration::from_secs(120), provider.complete(request)).await??;
+        // Flaky providers sometimes narrate tool calls as <tool_call> JSON markup
+        // in text instead of emitting native tool calls. Convert that markup into
+        // structured ToolCall parts (and flip finish_reason) so swarm sub-agents
+        // actually execute tools instead of treating the call as final prose.
+        let response = crate::session::helper::markup::normalize_textual_tool_calls(response, &tools);
         let step_duration = step_start.elapsed();
 
         tracing::info!(
