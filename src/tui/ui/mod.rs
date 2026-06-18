@@ -1,6 +1,9 @@
+pub mod border_style;
 pub mod chat_view;
+pub mod goal_prompt_overlay;
 pub mod inspector;
 pub mod main;
+pub mod mode_accent;
 pub mod sessions;
 pub mod status_bar;
 pub mod tool_panel;

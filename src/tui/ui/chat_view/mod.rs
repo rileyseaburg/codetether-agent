@@ -3,12 +3,16 @@
 //! Decomposed into single-responsibility modules. Start with
 //! [`render_chat_view`] for the full pipeline.
 
+pub mod agent_rail;
 pub(crate) mod approval_overlay;
 pub mod attachment;
 pub mod auto_apply;
 pub mod badges;
 mod build_uncached;
+pub mod compact_hints;
+pub mod context_gauge;
 pub mod cursor;
+pub mod diff_lines;
 mod drawn_lines;
 pub mod elapsed_badge;
 pub mod empty;
@@ -24,6 +28,7 @@ pub mod messages;
 pub mod processing_badge;
 pub mod render;
 pub mod scroll;
+pub mod scroll_indicator;
 pub mod separator;
 pub mod spinner;
 pub mod status;
@@ -32,6 +37,7 @@ pub mod status_line;
 pub mod status_text;
 pub mod streaming;
 pub mod suggestions;
+pub mod throughput_sparkline;
 pub mod title;
 pub mod token_spans;
 pub mod turn_badge;
