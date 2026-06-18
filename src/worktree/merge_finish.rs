@@ -9,6 +9,22 @@ impl WorktreeManager {
         branch: &str,
         stashed: bool,
     ) -> Result<MergeResult> {
+        // A --no-commit merge of a branch with no new commits (e.g. a sub-agent
+        // that made zero file changes) stages nothing, so the follow-up commit
+        // would fail with "nothing to commit". Treat that as a successful no-op
+        // instead of surfacing a spurious "Git merge commit failed" error.
+        if !self.has_staged_changes().await {
+            tracing::info!(worktree = %name, branch = %branch, "Merge is a no-op (nothing to commit)");
+            self.pop_stash_if(stashed);
+            return Ok(MergeResult {
+                success: true,
+                aborted: false,
+                conflicts: vec![],
+                conflict_diffs: vec![],
+                files_changed: 0,
+                summary: format!("Branch '{branch}' had no changes to merge"),
+            });
+        }
         let commit_msg = format!("Merge branch '{}' into current branch", branch);
         let provenance = ExecutionProvenance::for_operation("worktree", ExecutionOrigin::LocalCli);
         let output =
