@@ -9,6 +9,14 @@ use ratatui::{
 mod helpers;
 use helpers::{blockquote, header, header_spans, is_rule, list_item};
 
+#[path = "message_formatter_block_tasks.rs"]
+mod tasks;
+use tasks::{list_block, task_block, task_item};
+
+#[cfg(test)]
+#[path = "message_formatter_block_tasks_tests.rs"]
+mod tasks_tests;
+
 /// Outcome of block-level detection for one line.
 pub(in crate::tui) enum Block {
     Plain,
@@ -41,14 +49,11 @@ pub(in crate::tui) fn classify(line: &str) -> Block {
             rest,
         };
     }
+    if let Some((checked, rest)) = task_item(trimmed) {
+        return task_block(indent, checked, rest);
+    }
     if let Some((marker, rest)) = list_item(trimmed) {
-        return Block::Prefixed {
-            prefix: vec![Span::styled(
-                format!("{indent}{marker} "),
-                Style::default().fg(Color::Yellow),
-            )],
-            rest,
-        };
+        return list_block(indent, marker, rest);
     }
     Block::Plain
 }
