@@ -3,16 +3,13 @@
 //! Composes the block title (via [`build_title`]), scroll clamping (via
 //! [`clamp_scroll`]), and the wrapped [`Paragraph`] widget.
 
-use ratatui::{
-    Frame,
-    style::Style,
-    text::Line,
-    widgets::{Block, Borders, Paragraph},
-};
+use ratatui::{Frame, text::Line, widgets::Paragraph};
 
 use crate::tui::app::session_runtime::SessionView;
 use crate::tui::app::state::App;
 use crate::tui::color_palette::ColorPalette;
+use crate::tui::ui::border_style::pane_border;
+use crate::tui::ui::mode_accent::mode_accent;
 
 use super::layout_chunks::ChatChunks;
 use super::scroll::clamp_scroll;
@@ -39,12 +36,12 @@ pub fn render_messages(
     app: &mut App,
     session: &SessionView,
     chunks: &ChatChunks,
-    palette: &ColorPalette,
+    _palette: &ColorPalette,
     lines: Vec<Line<'static>>,
 ) {
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(palette.border))
+    let accent = mode_accent(&app.state.view_mode);
+    let block = pane_border(true)
+        .border_style(ratatui::style::Style::default().fg(accent))
         .title(build_title(app, session));
     let scroll = clamp_scroll(app, chunks.messages, &lines);
     let chat = Paragraph::new(lines).block(block).scroll((scroll, 0));
@@ -60,12 +57,12 @@ pub fn render_messages_ref(
     app: &mut App,
     session: &SessionView,
     chunks: &ChatChunks,
-    palette: &ColorPalette,
+    _palette: &ColorPalette,
     lines: &[Line<'static>],
 ) {
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(palette.border))
+    let accent = mode_accent(&app.state.view_mode);
+    let block = pane_border(true)
+        .border_style(ratatui::style::Style::default().fg(accent))
         .title(build_title(app, session));
     let scroll = clamp_scroll(app, chunks.messages, lines);
     let chat = Paragraph::new(lines.to_vec())

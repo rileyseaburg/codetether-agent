@@ -26,6 +26,11 @@ pub fn badge_spans(app: &App, session_label: &str) -> Vec<Span<'static>> {
         spans.extend(latency);
     }
     push_optional_badge(&mut spans, turn_latency_badge(app));
+    let rail = super::agent_rail::agent_rail_spans(app);
+    if !rail.is_empty() {
+        spans.push(Span::raw(" | "));
+        spans.extend(rail);
+    }
     spans
 }
 

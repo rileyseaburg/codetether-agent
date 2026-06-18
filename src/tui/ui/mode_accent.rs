@@ -16,9 +16,9 @@ use crate::tui::models::ViewMode;
 /// use codetether_agent::tui::ui::mode_accent::mode_accent;
 /// use codetether_agent::tui::models::ViewMode;
 /// use ratatui::style::Color;
-/// assert_eq!(mode_accent(ViewMode::Chat), Color::Cyan);
+/// assert_eq!(mode_accent(&ViewMode::Chat), Color::Cyan);
 /// ```
-pub fn mode_accent(mode: ViewMode) -> Color {
+pub fn mode_accent(mode: &ViewMode) -> Color {
     match mode {
         ViewMode::Chat => Color::Cyan,
         ViewMode::Sessions => Color::Green,

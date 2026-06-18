@@ -11,7 +11,7 @@ use ratatui::text::{Line, Span};
 use super::badges::badge_spans;
 use super::status_hints::keybinding_spans;
 use super::status_text::status_text_span;
-use super::token_spans::{push_context_budget_span, push_throughput_span, push_token_spans};
+use super::token_spans::{push_throughput_span, push_token_spans};
 use crate::tui::app::state::App;
 
 /// Width below which the status bar stacks across multiple rows.
@@ -35,18 +35,18 @@ pub const STACK_WIDTH_THRESHOLD: u16 = 180;
 /// # }
 /// ```
 pub fn build_status_lines(app: &App, session_label: &str, width: u16) -> Vec<Line<'static>> {
-    let hints = keybinding_spans();
     let badges = badge_spans(app, session_label);
     let metrics = metric_spans(app);
 
     if width >= STACK_WIDTH_THRESHOLD {
-        let mut combined = hints;
+        let mut combined = keybinding_spans();
         combined.push(Span::raw(" | "));
         combined.extend(badges);
         combined.push(Span::raw(" | "));
         combined.extend(metrics);
         vec![Line::from(combined)]
     } else {
+        let hints = super::compact_hints::compact_keybinding_spans();
         vec![Line::from(hints), Line::from(badges), Line::from(metrics)]
     }
 }
@@ -80,8 +80,15 @@ fn metric_spans(app: &App) -> Vec<Span<'static>> {
         spans.push(Span::raw(" | "));
     }
     push_token_spans(&mut spans);
-    push_context_budget_span(&mut spans, app);
+    if let Some(gauge) = super::context_gauge::context_gauge_span(app) {
+        spans.push(Span::raw(" | "));
+        spans.push(gauge);
+    }
     push_throughput_span(&mut spans, app);
+    if let Some(spark) = super::throughput_sparkline::sparkline_span(app) {
+        spans.push(Span::raw(" "));
+        spans.push(spark);
+    }
     spans.push(Span::raw(" | "));
     spans.push(status_text_span(app));
     spans
