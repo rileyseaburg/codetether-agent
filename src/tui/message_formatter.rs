@@ -8,6 +8,11 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 mod message_formatter_math;
 use message_formatter_math::prettify_math;
 
+#[path = "message_formatter_block.rs"]
+mod message_formatter_block;
+
+#[path = "message_formatter_table.rs"]
+mod message_formatter_table;
 /// Enhanced message formatter with syntax highlighting and improved styling
 pub struct MessageFormatter {
     max_width: usize,
@@ -34,6 +39,8 @@ impl MessageFormatter {
         let mut in_math_block = false;
         let mut math_delim: &str = "";
         let mut math_block_lines: Vec<String> = Vec::new();
+
+        let mut table_buf: Vec<String> = Vec::new();
 
         for line in content.lines() {
             let trimmed = line.trim();
@@ -129,14 +136,23 @@ impl MessageFormatter {
 
             // Handle regular text with enhanced formatting
             if line.trim().is_empty() {
+                message_formatter_table::flush(self, &mut table_buf, &mut lines, role);
                 lines.push(Line::from(""));
                 continue;
             }
 
-            // Handle markdown-like formatting
-            let formatted_line = self.format_inline_text(line, role);
+            // Buffer consecutive table-like rows; render as a box on flush.
+            if message_formatter_table::is_table_row(line) {
+                table_buf.push(line.to_string());
+                continue;
+            }
+            message_formatter_table::flush(self, &mut table_buf, &mut lines, role);
+
+            let formatted_line = message_formatter_block::format_line(self, line, role);
             lines.extend(self.wrap_line(formatted_line, self.max_width.saturating_sub(4)));
         }
+
+        message_formatter_table::flush(self, &mut table_buf, &mut lines, role);
 
         // Handle unclosed code blocks
         if !code_block_lines.is_empty() {
@@ -158,13 +174,8 @@ impl MessageFormatter {
     /// Format an image as a simple placeholder line
     pub fn format_image(&self, url: &str, _mime_type: Option<&str>) -> Line<'static> {
         // Extract filename from URL for display
-        let filename = url
-            .split('/')
-            .next_back()
-            .unwrap_or("image")
-            .split('?')
-            .next()
-            .unwrap_or("image");
+        let path = url.split('?').next().unwrap_or(url);
+        let filename = path.rsplit('/').next().unwrap_or("image");
 
         Line::from(vec![
             Span::styled("  🖼️  ", Style::default().fg(Color::Cyan)),
@@ -400,7 +411,7 @@ impl MessageFormatter {
     ///
     /// Invoked via [`MessageFormatter::format_content`]; tested indirectly
     /// by the unit tests in this module.
-    fn wrap_line(&self, spans: Vec<Span<'static>>, width: usize) -> Vec<Line<'static>> {
+    pub(super) fn wrap_line(&self, spans: Vec<Span<'static>>, width: usize) -> Vec<Line<'static>> {
         if spans.is_empty() {
             return vec![Line::from("")];
         }
