@@ -617,6 +617,8 @@ impl SwarmExecutor {
                     messages: Vec::new(),
                     output: None,
                     error: None,
+                    started_at: None,
+                    elapsed_secs: None,
                 })
                 .collect(),
         });

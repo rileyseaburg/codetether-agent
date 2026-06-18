@@ -10,26 +10,19 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Gauge, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{Block, Borders, Gauge, List, ListState, Paragraph, Wrap},
 };
 use tokio::sync::mpsc;
 
-/// A recorded tool call for a sub-agent
-#[derive(Debug, Clone)]
-pub struct AgentToolCallDetail {
-    pub tool_name: String,
-    pub input_preview: String,
-    pub output_preview: String,
-    pub success: bool,
-}
-
-/// A conversation message entry for a sub-agent
-#[derive(Debug, Clone)]
-pub struct AgentMessageEntry {
-    pub role: String,
-    pub content: String,
-    pub is_tool_call: bool,
-}
+#[path = "swarm_view_detail.rs"]
+mod swarm_view_detail;
+#[path = "swarm_view_fmt.rs"]
+mod swarm_view_fmt;
+#[path = "swarm_view_list.rs"]
+mod swarm_view_list;
+#[path = "swarm_view_row.rs"]
+mod swarm_view_row;
+pub use swarm_view_detail::{AgentMessageEntry, AgentToolCallDetail};
 
 /// Events emitted by swarm execution for TUI updates
 #[derive(Debug, Clone)]
@@ -108,6 +101,11 @@ pub struct SubTaskInfo {
     pub output: Option<String>,
     /// Error message if failed
     pub error: Option<String>,
+    /// When this agent started running (set on AgentStarted), for live elapsed.
+    #[doc(hidden)]
+    pub started_at: Option<std::time::Instant>,
+    /// Total wall-clock seconds the agent ran (set on completion).
+    pub elapsed_secs: Option<u64>,
 }
 
 /// State for the swarm view
@@ -139,6 +137,8 @@ pub struct SwarmViewState {
     pub list_state: ListState,
     /// Optional event receiver for live swarm updates
     event_rx: Option<mpsc::Receiver<SwarmEvent>>,
+    /// Runtime control handle for the active swarm (cancel/pause/resume).
+    pub control: Option<crate::swarm::SwarmControl>,
 }
 
 impl SwarmViewState {
@@ -234,6 +234,7 @@ impl SwarmViewState {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
                     task.status = SubTaskStatus::Running;
                     task.agent_name = Some(agent_name);
+                    task.started_at = Some(std::time::Instant::now());
                 }
             }
             SwarmEvent::AgentToolCall {
@@ -270,6 +271,9 @@ impl SwarmViewState {
                     };
                     task.steps = steps;
                     task.current_tool = None;
+                    if let Some(start) = task.started_at {
+                        task.elapsed_secs = Some(start.elapsed().as_secs());
+                    }
                 }
             }
             SwarmEvent::AgentOutput { subtask_id, output } => {
@@ -482,58 +486,7 @@ fn render_subtask_list(f: &mut Frame, state: &mut SwarmViewState, area: Rect) {
     // Sync ListState selection from selected_index
     state.list_state.select(Some(state.selected_index));
 
-    let items: Vec<ListItem> = state
-        .subtasks
-        .iter()
-        .map(|task| {
-            let (icon, color) = match task.status {
-                SubTaskStatus::Pending => ("○", Color::DarkGray),
-                SubTaskStatus::Blocked => ("⊘", Color::Yellow),
-                SubTaskStatus::Running => ("●", Color::Cyan),
-                SubTaskStatus::Completed => ("✓", Color::Green),
-                SubTaskStatus::Failed => ("✗", Color::Red),
-                SubTaskStatus::Cancelled => ("⊗", Color::DarkGray),
-                SubTaskStatus::TimedOut => ("⏱", Color::Red),
-            };
-
-            let mut spans = vec![
-                Span::styled(format!("{} ", icon), Style::default().fg(color)),
-                Span::styled(
-                    format!("[S{}] ", task.stage),
-                    Style::default().fg(Color::DarkGray),
-                ),
-                Span::styled(&task.name, Style::default().fg(Color::White)),
-            ];
-
-            // Show agent/tool info for running tasks
-            if task.status == SubTaskStatus::Running {
-                if let Some(ref agent) = task.agent_name {
-                    spans.push(Span::styled(
-                        format!(" → {}", agent),
-                        Style::default().fg(Color::Cyan),
-                    ));
-                }
-                if let Some(ref tool) = task.current_tool {
-                    spans.push(Span::styled(
-                        format!(" [{}]", tool),
-                        Style::default()
-                            .fg(Color::Yellow)
-                            .add_modifier(Modifier::DIM),
-                    ));
-                }
-            }
-
-            // Show step count
-            if task.steps > 0 {
-                spans.push(Span::styled(
-                    format!(" ({}/{})", task.steps, task.max_steps),
-                    Style::default().fg(Color::DarkGray),
-                ));
-            }
-
-            ListItem::new(Line::from(spans))
-        })
-        .collect();
+    let items = swarm_view_list::subtask_items(state);
 
     let title = if state.subtasks.is_empty() {
         " SubTasks (none yet) "
@@ -543,11 +496,7 @@ fn render_subtask_list(f: &mut Frame, state: &mut SwarmViewState, area: Rect) {
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(title))
-        .highlight_style(
-            Style::default()
-                .add_modifier(Modifier::BOLD)
-                .bg(Color::DarkGray),
-        )
+        .highlight_style(swarm_view_list::highlight_style())
         .highlight_symbol("▶ ");
 
     f.render_stateful_widget(list, area, &mut state.list_state);
