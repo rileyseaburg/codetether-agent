@@ -13,6 +13,9 @@ mod message_formatter_block;
 
 #[path = "message_formatter_table.rs"]
 mod message_formatter_table;
+
+#[path = "message_formatter_code_render.rs"]
+pub mod message_formatter_code_render;
 /// Enhanced message formatter with syntax highlighting and improved styling
 pub struct MessageFormatter {
     max_width: usize,
@@ -209,21 +212,10 @@ impl MessageFormatter {
                 .add_modifier(Modifier::BOLD),
         )));
 
-        // Pass through code lines as-is
-        let highlighted_lines = self.highlight_code_block_syntect(lines, language);
-
-        for line in highlighted_lines {
-            let formatted_line = if line.trim().is_empty() {
-                "│".to_string()
-            } else {
-                format!("│ {}", line)
-            };
-
-            result.push(Line::from(Span::styled(
-                formatted_line,
-                Style::default().fg(Color::DarkGray),
-            )));
-        }
+        // Render body lines (diff-aware for diff/patch languages).
+        result.extend(message_formatter_code_render::render_code_body(
+            lines, language,
+        ));
 
         result.push(Line::from(Span::styled(
             "└".to_string() + &"─".repeat(block_width.saturating_sub(1)),

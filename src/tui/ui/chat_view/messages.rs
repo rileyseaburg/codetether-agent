@@ -69,4 +69,5 @@ pub fn render_messages_ref(
         .block(block)
         .scroll((scroll, 0));
     f.render_widget(chat, chunks.messages);
+    super::scrollbar_render::render_scrollbar(f, chunks.messages, lines.len(), scroll as usize);
 }

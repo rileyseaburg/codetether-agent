@@ -29,6 +29,7 @@ pub mod processing_badge;
 pub mod render;
 pub mod scroll;
 pub mod scroll_indicator;
+pub mod scrollbar_render;
 pub mod separator;
 pub mod spinner;
 pub mod status;
