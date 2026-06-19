@@ -22,6 +22,9 @@ pub(crate) async fn handle_event(
     if key.kind != KeyEventKind::Press {
         return Ok(false);
     }
+    if super::goal_prompt_key::handle_goal_prompt_key(app, key) {
+        return Ok(false);
+    }
     if let Some(result) = handle_ctrl_key(app, cwd, runtime, key) {
         return result;
     }

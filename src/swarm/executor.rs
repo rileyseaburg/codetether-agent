@@ -3,6 +3,7 @@
 //! Executes subtasks in parallel across multiple sub-agents,
 //! respecting dependencies and optimizing for critical path.
 
+use super::control::SwarmControl;
 use super::{
     BranchObservation, BranchRuntimeState, CacheConfig, CacheStats, CollapseController,
     CollapsePolicy, DecompositionStrategy, ExecutionMode, StageStats, SwarmCache, SwarmConfig,
@@ -16,7 +17,6 @@ use super::{
     subtask::{SubTask, SubTaskResult, SubTaskStatus},
     tool_policy,
 };
-use super::control::SwarmControl;
 use crate::bus::{AgentBus, BusMessage};
 use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};
 use crate::session::delegation::DelegationState;
@@ -647,9 +647,7 @@ impl SwarmExecutor {
                 }
                 // Honor cancellation: stop launching new stages.
                 if ctl.is_cancelled() {
-                    self.try_send_event(SwarmEvent::Error(
-                        "Swarm cancelled by user".to_string(),
-                    ));
+                    self.try_send_event(SwarmEvent::Error("Swarm cancelled by user".to_string()));
                     break;
                 }
             }
@@ -2387,7 +2385,8 @@ pub async fn run_agent_loop(
         // in text instead of emitting native tool calls. Convert that markup into
         // structured ToolCall parts (and flip finish_reason) so swarm sub-agents
         // actually execute tools instead of treating the call as final prose.
-        let response = crate::session::helper::markup::normalize_textual_tool_calls(response, &tools);
+        let response =
+            crate::session::helper::markup::normalize_textual_tool_calls(response, &tools);
         let step_duration = step_start.elapsed();
 
         tracing::info!(

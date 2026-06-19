@@ -9,6 +9,10 @@ pub struct WorktreeManager {
     pub(crate) repo_path: PathBuf,
     pub(crate) worktrees: Mutex<Vec<WorktreeInfo>>,
     pub(crate) integrity_checked: Mutex<bool>,
+    /// Whether to attempt opening freshly created worktrees in VS Code.
+    /// TUI callers disable this because the blocking prompt corrupts the
+    /// raw-mode terminal and cannot open an editor over SSH.
+    pub(crate) auto_open_vscode: bool,
 }
 
 impl WorktreeManager {
@@ -25,6 +29,7 @@ impl WorktreeManager {
             repo_path: repo_path.into(),
             worktrees: Mutex::new(Vec::new()),
             integrity_checked: Mutex::new(false),
+            auto_open_vscode: true,
         }
     }
 
@@ -32,6 +37,16 @@ impl WorktreeManager {
     pub fn for_repo(repo_path: impl Into<PathBuf>) -> Self {
         let repo_path = repo_path.into();
         Self::with_repo(repo_path.join(".codetether-worktrees"), repo_path)
+    }
+
+    /// Disable VS Code auto-open for worktrees created by this manager.
+    ///
+    /// The TUI runs with the terminal in raw mode and the alternate screen
+    /// active, so the interactive VS Code prompt would corrupt the display and
+    /// can never open an editor over an SSH terminal.
+    pub fn without_vscode_auto_open(mut self) -> Self {
+        self.auto_open_vscode = false;
+        self
     }
 
     /// Inject a Cargo workspace stub for Cargo workspace isolation.

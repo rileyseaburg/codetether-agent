@@ -18,8 +18,8 @@ pub(super) fn push_edit_diff(out: &mut Vec<Line<'static>>, arguments: &str, _w: 
     let Ok(v) = serde_json::from_str::<serde_json::Value>(arguments) else {
         return;
     };
-    let old = v.get("oldString").and_then(|x| x.as_str()).unwrap_or("");
-    let new = v.get("newString").and_then(|x| x.as_str()).unwrap_or("");
+    let old = str_field(&v, "old_string", "oldString").unwrap_or("");
+    let new = str_field(&v, "new_string", "newString").unwrap_or("");
     out.push(header(&file_field(&v), Color::Yellow));
     push_block(out, old, '-', Color::Red);
     if !old.is_empty() && !new.is_empty() {
@@ -62,11 +62,17 @@ fn push_block(out: &mut Vec<Line<'static>>, text: &str, prefix: char, color: Col
 }
 
 fn file_field(v: &serde_json::Value) -> String {
-    v.get("filePath")
-        .or_else(|| v.get("path"))
-        .and_then(|x| x.as_str())
+    str_field(v, "path", "filePath")
+        .or_else(|| v.get("file").and_then(|x| x.as_str()))
         .unwrap_or("unknown")
         .to_string()
+}
+
+/// Read a string field accepting either a snake_case or camelCase key.
+fn str_field<'a>(v: &'a serde_json::Value, snake: &str, camel: &str) -> Option<&'a str> {
+    v.get(snake)
+        .or_else(|| v.get(camel))
+        .and_then(|x| x.as_str())
 }
 
 fn gutter() -> Span<'static> {

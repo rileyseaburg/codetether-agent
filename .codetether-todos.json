@@ -1,1 +1,37 @@
-[]
+[
+  {
+    "id": "todo_1781810608753",
+    "content": "Swarm: table alignment + diff-color + inline-code + soft-wrap + zebra (table modules)",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-06-18T19:23:28.753112075+00:00"
+  },
+  {
+    "id": "todo_1781810608756",
+    "content": "Swarm: task-list checkboxes + nested list hierarchy (block modules)",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-06-18T19:23:28.756078206+00:00"
+  },
+  {
+    "id": "todo_1781810608758",
+    "content": "Swarm: links/footnotes + definition lists (inline modules)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-06-18T19:23:28.758437197+00:00"
+  },
+  {
+    "id": "todo_1781810608760",
+    "content": "Swarm: accessibility — NO_COLOR/monochrome + contrast audit (palette modules)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-06-18T19:23:28.760724455+00:00"
+  },
+  {
+    "id": "todo_1781810608763",
+    "content": "Integrate shared dispatch points + full test/limit pass",
+    "status": "pending",
+    "priority": "critical",
+    "created_at": "2026-06-18T19:23:28.763208394+00:00"
+  }
+]

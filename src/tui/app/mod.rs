@@ -8,11 +8,13 @@ pub mod commands;
 pub mod context_status;
 #[cfg(test)]
 mod context_status_tests;
+pub mod detach;
 pub mod event_handlers;
 pub mod event_loop;
 pub mod file_picker;
 pub mod file_preview;
 pub mod file_share;
+pub mod goal_prompt;
 pub mod impl_app;
 pub mod inbox;
 #[path = "input/mod.rs"]

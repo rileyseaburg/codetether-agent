@@ -16,8 +16,10 @@ use crate::tui::ui::chat_view::spinner::current_spinner_frame;
 /// Build the processing badge span when a turn is in flight.
 ///
 /// Returns `None` when idle so the status bar stays static and no redraw
-/// is triggered. While processing it shows the animated spinner and, when
-/// present, the number of registered worker agents.
+/// is triggered. While processing it shows the animated spinner. A count is
+/// appended only when there is genuine concurrent in-flight work (queued
+/// plus active remote A2A tasks) — never the static set of bus-registered
+/// agents, which is constant and misleading.
 ///
 /// # Examples
 ///
@@ -31,9 +33,11 @@ pub fn processing_badge(app: &App) -> Option<Span<'static>> {
     if !app.state.processing {
         return None;
     }
-    let agents = app.state.worker_bridge_registered_agents.len();
-    let label = if agents > 0 {
-        format!(" {} working ({agents} agents) ", current_spinner_frame())
+    let tasks = app.state.worker_task_queue.len()
+        + usize::from(app.state.active_remote_task.is_some())
+        + app.state.active_tasks.count();
+    let label = if tasks > 0 {
+        format!(" {} working ({tasks} tasks) ", current_spinner_frame())
     } else {
         format!(" {} working ", current_spinner_frame())
     };

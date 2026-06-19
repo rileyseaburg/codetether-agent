@@ -12,6 +12,7 @@ mod item;
 mod item_call;
 mod item_result;
 mod item_thinking;
+mod multiedit_diff;
 mod panel;
 mod panel_chrome;
 #[cfg(test)]

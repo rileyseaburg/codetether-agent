@@ -23,11 +23,15 @@ pub mod durable_log;
 pub mod durable_log_file;
 pub mod global;
 pub mod payload;
+pub mod publish_effects;
 pub mod ralph_progress_publish;
 pub mod ralph_publish;
+pub mod recorder;
 pub mod registry;
 pub mod relay;
 pub mod s3_sink;
+pub mod speech;
+pub mod voice_handle;
 
 pub use global::{global, set_global};
 
@@ -107,6 +111,25 @@ pub enum BusMessage {
     },
     /// Heartbeat (keep-alive / health signal)
     Heartbeat { agent_id: String, status: String },
+
+    /// A directed speech act between agents — the unit of the agent
+    /// communication language (see [`speech`](crate::bus::speech)).
+    ///
+    /// Unlike [`AgentMessage`](Self::AgentMessage) (free-form A2A parts),
+    /// this carries a typed performative so the recipient knows the intent
+    /// (request / inform / propose / claim / blocked / done …) and can react.
+    AgentSpeech {
+        /// Performative verb (see [`SpeechAct`](crate::bus::speech::SpeechAct)).
+        act: String,
+        /// Sending agent id.
+        from: String,
+        /// Recipient: a specific agent id, or `"all"` for broadcast.
+        to: String,
+        /// Conversation thread id linking a back-and-forth exchange.
+        conversation_id: String,
+        /// Free-text content the LLM authored / interprets.
+        content: String,
+    },
 
     // ── Ralph loop messages ──────────────────────────────────────────
     /// An agent shares learnings from a Ralph iteration (insights,
@@ -203,6 +226,8 @@ pub struct AgentBus {
     /// Optional durable log: when set, [`AgentBus::publish`] persists
     /// coordination messages for replay. `None` keeps legacy lossy behavior.
     durable: Option<Arc<dyn durable_log::DurableLog>>,
+    /// In-memory ring buffer of recent envelopes for on-demand inspection.
+    pub recorder: Arc<recorder::BusRecorder>,
 }
 
 impl std::fmt::Debug for AgentBus {
@@ -226,6 +251,7 @@ impl AgentBus {
             tx,
             registry: Arc::new(registry::AgentRegistry::new()),
             durable: None,
+            recorder: Arc::new(recorder::BusRecorder::new(capacity.max(256))),
         }
     }
 
@@ -243,25 +269,13 @@ impl AgentBus {
         }
     }
 
-    /// Publish an envelope directly (low-level).
     pub fn publish(&self, envelope: BusEnvelope) -> usize {
-        match &envelope.message {
-            BusMessage::AgentReady {
-                agent_id,
-                capabilities,
-            } => {
-                self.registry.register_ready(agent_id, capabilities);
-            }
-            BusMessage::AgentShutdown { agent_id } => {
-                self.registry.deregister(agent_id);
-            }
-            _ => {}
-        }
-
+        publish_effects::apply(&self.registry, &envelope);
         // PRIMARY: persist coordination messages durably (fire-and-forget) so
         // `publish` stays sync; the log is replay's source of truth.
         durable_log::spawn_append_if_durable(self.durable.as_ref(), &envelope);
-
+        // Record into the in-memory ring buffer for on-demand inspection.
+        self.recorder.record(&envelope);
         // SECONDARY: live broadcast. Lossy by design; no receivers => dropped.
         self.tx.send(envelope).unwrap_or(0)
     }
@@ -414,60 +428,8 @@ impl BusHandle {
         out
     }
 
-    // ── Voice helpers ────────────────────────────────────────────────
-
-    /// Announce that a voice session has started.
-    pub fn send_voice_session_started(&self, room_name: &str, voice_id: &str) -> usize {
-        self.send(
-            format!("voice.{room_name}"),
-            BusMessage::VoiceSessionStarted {
-                room_name: room_name.to_string(),
-                agent_id: self.agent_id.clone(),
-                voice_id: voice_id.to_string(),
-            },
-        )
-    }
-
-    /// Publish a transcript fragment from a voice session.
-    pub fn send_voice_transcript(
-        &self,
-        room_name: &str,
-        text: &str,
-        role: &str,
-        is_final: bool,
-    ) -> usize {
-        self.send(
-            format!("voice.{room_name}"),
-            BusMessage::VoiceTranscript {
-                room_name: room_name.to_string(),
-                text: text.to_string(),
-                role: role.to_string(),
-                is_final,
-            },
-        )
-    }
-
-    /// Announce a voice agent state change.
-    pub fn send_voice_agent_state(&self, room_name: &str, state: &str) -> usize {
-        self.send(
-            format!("voice.{room_name}"),
-            BusMessage::VoiceAgentStateChanged {
-                room_name: room_name.to_string(),
-                state: state.to_string(),
-            },
-        )
-    }
-
-    /// Announce that a voice session has ended.
-    pub fn send_voice_session_ended(&self, room_name: &str, reason: &str) -> usize {
-        self.send(
-            format!("voice.{room_name}"),
-            BusMessage::VoiceSessionEnded {
-                room_name: room_name.to_string(),
-                reason: reason.to_string(),
-            },
-        )
-    }
+    // ── Voice helpers live in `voice_handle.rs` (SRP / line budget). ──
+    // ── Agent-speech helpers live in `speech.rs`. ────────────────────
 
     /// Receive the next envelope (blocks until available).
     pub async fn recv(&mut self) -> Option<BusEnvelope> {

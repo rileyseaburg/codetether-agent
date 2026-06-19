@@ -294,13 +294,18 @@ pub fn announce_and_browse(
                     // the same agent is reachable on a LAN IP, a VPN IP,
                     // and a docker bridge IP, where the "right" one varies
                     // by caller's network position.
-                    let urls: Vec<String> = info
+                    let mut ranked: Vec<(std::net::Ipv4Addr, String)> = info
                         .get_addresses()
                         .iter()
-                        .filter(|a| a.is_ipv4())
-                        .filter(|a| !(port == self_port && a.is_loopback()))
-                        .map(|a| format!("http://{a}:{port}"))
+                        .filter_map(|a| match a {
+                            IpAddr::V4(v4) => Some(*v4),
+                            IpAddr::V6(_) => None,
+                        })
+                        .filter(|v4| !(port == self_port && v4.is_loopback()))
+                        .map(|v4| (v4, format!("http://{v4}:{port}")))
                         .collect();
+                    crate::a2a::mdns_addr::order_by_reachability(&mut ranked);
+                    let urls: Vec<String> = ranked.into_iter().map(|(_, url)| url).collect();
                     if urls.is_empty() {
                         continue;
                     }

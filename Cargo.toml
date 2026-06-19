@@ -124,6 +124,7 @@ prost = "0.14.3"
 prost-types = "0.14.3"
 async-stream = "0.3"
 tokio-stream = { version = "0.1", features = ["sync"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 
 # TUI
 ratatui = { version = "0.30.0", default-features = false, features = ["crossterm", "underline-color", "macros"] }

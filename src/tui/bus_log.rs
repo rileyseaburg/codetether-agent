@@ -278,6 +278,13 @@ impl BusLogEntry {
                 format!("Room: {room_name}\nReason: {reason}"),
                 Color::DarkGray,
             ),
+            BusMessage::AgentSpeech {
+                act,
+                from,
+                to,
+                conversation_id,
+                content,
+            } => crate::tui::bus_log_entry_payload::speech(act, from, to, conversation_id, content),
         };
 
         Self {

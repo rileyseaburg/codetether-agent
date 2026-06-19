@@ -8,6 +8,7 @@ use ratatui::{
 use super::arg_preview::smart_arg_preview;
 use super::diff_render::{push_create_preview, push_edit_diff};
 use super::icons::tool_icon_and_color;
+use super::multiedit_diff::push_multiedit_diff;
 
 pub(super) fn render_tool_call(
     body_lines: &mut Vec<Line<'static>>,
@@ -38,10 +39,13 @@ pub(super) fn render_tool_call(
     ]));
 
     match name {
-        "replace_string_in_file" | "edit_file" => {
+        "replace_string_in_file" | "edit_file" | "edit" => {
             push_edit_diff(body_lines, arguments, preview_width)
         }
-        "create_file" | "write_file" => push_create_preview(body_lines, arguments, preview_width),
+        "create_file" | "write_file" | "write" => {
+            push_create_preview(body_lines, arguments, preview_width)
+        }
+        "multiedit" => push_multiedit_diff(body_lines, arguments, preview_width),
         _ => {}
     }
 }

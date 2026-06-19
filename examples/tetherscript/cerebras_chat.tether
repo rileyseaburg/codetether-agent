@@ -15,8 +15,8 @@ fn list_models() {
     return [a, b, c, d, e]
 }
 
-fn complete(messages, opts) {
-    return provider.chat_json(messages, opts)
+fn complete(arg) {
+    return provider.chat_json(arg["messages"], arg["opts"])
 }
 
 fn model_info(id, name, ctx, tools) {

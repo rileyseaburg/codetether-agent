@@ -703,6 +703,13 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Spawn(args)) => a2a::spawn::run(args).await,
         Some(Command::Config(args)) => cli::config::execute(args).await,
         Some(Command::Swarm(args)) => {
+            // Attach an agent bus so sub-agents are observable and can
+            // collaborate live (thinking/tool output/shared results) — not just
+            // run isolated in parallel. Install it as the process-global bus so
+            // tools like `bus_inspect` can read swarm activity.
+            let bus = bus::AgentBus::new().into_arc();
+            bus::set_global(bus.clone());
+
             let executor = SwarmExecutor::new(swarm::SwarmConfig {
                 max_subagents: args.max_subagents,
                 max_steps_per_subagent: args.max_steps,
@@ -712,7 +719,8 @@ async fn main() -> anyhow::Result<()> {
                 k8s_pod_budget: args.k8s_pod_budget,
                 k8s_subagent_image: args.k8s_image.clone(),
                 ..Default::default()
-            });
+            })
+            .with_bus(bus);
 
             let strategy = match args.strategy.as_str() {
                 "auto" => DecompositionStrategy::Automatic,

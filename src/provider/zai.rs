@@ -8,6 +8,14 @@ use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
 };
+#[path = "zai_stream_assembly.rs"]
+mod zai_stream_assembly;
+#[path = "zai_stream_index.rs"]
+mod zai_stream_index;
+#[path = "zai_stream_state.rs"]
+mod zai_stream_state;
+#[path = "zai_stream_types.rs"]
+mod zai_stream_types;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -17,6 +25,9 @@ use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::collections::HashMap;
+use zai_stream_assembly::{append_stream_tool_call_chunks, finish_stream_tool_call_chunks};
+use zai_stream_state::ZaiStreamToolState;
+use zai_stream_types::{ZaiStreamFunction, ZaiStreamResponse, ZaiStreamToolCall};
 
 pub const DEFAULT_BASE_URL: &str = "https://api.z.ai/api/paas/v4";
 const CODING_BASE_URL: &str = "https://api.z.ai/api/coding/paas/v4";
@@ -68,14 +79,6 @@ fn thinking_config_for_request(request: &CompletionRequest) -> Value {
             "clear_thinking": true
         })
     }
-}
-
-#[derive(Debug, Default)]
-struct ZaiStreamToolState {
-    stream_id: String,
-    name: Option<String>,
-    started: bool,
-    finished: bool,
 }
 
 impl std::fmt::Debug for ZaiProvider {
@@ -402,110 +405,6 @@ impl ZaiProvider {
             text
         }
     }
-
-    fn stream_tool_arguments_fragment(arguments: &Value) -> String {
-        match arguments {
-            Value::Null => String::new(),
-            Value::String(s) => s.clone(),
-            other => serde_json::to_string(other).unwrap_or_default(),
-        }
-    }
-
-    fn append_stream_tool_call_chunks(
-        chunks: &mut Vec<StreamChunk>,
-        tool_calls: &[ZaiStreamToolCall],
-        tool_states: &mut HashMap<usize, ZaiStreamToolState>,
-        next_fallback_index: &mut usize,
-        last_seen_index: &mut Option<usize>,
-    ) {
-        for tc in tool_calls {
-            let index = tc
-                .index
-                .or_else(|| {
-                    tc.id.as_ref().and_then(|id| {
-                        tool_states
-                            .iter()
-                            .find_map(|(idx, state)| (state.stream_id == *id).then_some(*idx))
-                    })
-                })
-                .or(*last_seen_index)
-                .unwrap_or_else(|| {
-                    let idx = *next_fallback_index;
-                    *next_fallback_index += 1;
-                    idx
-                });
-            *last_seen_index = Some(index);
-
-            let state = tool_states
-                .entry(index)
-                .or_insert_with(|| ZaiStreamToolState {
-                    stream_id: tc.id.clone().unwrap_or_else(|| format!("zai-tool-{index}")),
-                    ..Default::default()
-                });
-
-            if let Some(id) = &tc.id
-                && !state.started
-                && state.stream_id.starts_with("zai-tool-")
-            {
-                state.stream_id = id.clone();
-            }
-
-            if let Some(func) = &tc.function {
-                if let Some(name) = &func.name
-                    && !name.is_empty()
-                {
-                    state.name = Some(name.clone());
-                }
-
-                if !state.started
-                    && let Some(name) = &state.name
-                {
-                    chunks.push(StreamChunk::ToolCallStart {
-                        id: state.stream_id.clone(),
-                        name: name.clone(),
-                    });
-                    state.started = true;
-                }
-
-                if let Some(arguments) = &func.arguments {
-                    let delta = Self::stream_tool_arguments_fragment(arguments);
-                    if !delta.is_empty() {
-                        if !state.started {
-                            chunks.push(StreamChunk::ToolCallStart {
-                                id: state.stream_id.clone(),
-                                name: state.name.clone().unwrap_or_else(|| "tool".to_string()),
-                            });
-                            state.started = true;
-                        }
-                        chunks.push(StreamChunk::ToolCallDelta {
-                            id: state.stream_id.clone(),
-                            arguments_delta: delta,
-                        });
-                    }
-                }
-            }
-        }
-    }
-
-    fn finish_stream_tool_call_chunks(
-        chunks: &mut Vec<StreamChunk>,
-        tool_states: &mut HashMap<usize, ZaiStreamToolState>,
-    ) {
-        let mut ordered_indexes: Vec<_> = tool_states.keys().copied().collect();
-        ordered_indexes.sort_unstable();
-
-        for index in ordered_indexes {
-            if let Some(state) = tool_states.get_mut(&index)
-                && state.started
-                && !state.finished
-            {
-                chunks.push(StreamChunk::ToolCallEnd {
-                    id: state.stream_id.clone(),
-                });
-                state.finished = true;
-            }
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -545,21 +444,21 @@ struct ZaiFunction {
 }
 
 #[derive(Debug, Deserialize)]
-struct ZaiUsage {
+pub(crate) struct ZaiUsage {
     #[serde(default)]
-    prompt_tokens: usize,
+    pub(crate) prompt_tokens: usize,
     #[serde(default)]
-    completion_tokens: usize,
+    pub(crate) completion_tokens: usize,
     #[serde(default)]
-    total_tokens: usize,
+    pub(crate) total_tokens: usize,
     #[serde(default)]
-    prompt_tokens_details: Option<ZaiPromptTokensDetails>,
+    pub(crate) prompt_tokens_details: Option<ZaiPromptTokensDetails>,
 }
 
 #[derive(Debug, Deserialize)]
-struct ZaiPromptTokensDetails {
+pub(crate) struct ZaiPromptTokensDetails {
     #[serde(default)]
-    cached_tokens: usize,
+    pub(crate) cached_tokens: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -572,46 +471,6 @@ struct ZaiErrorDetail {
     message: String,
     #[serde(default, rename = "type")]
     error_type: Option<String>,
-}
-
-// SSE stream types
-#[derive(Debug, Deserialize)]
-struct ZaiStreamResponse {
-    choices: Vec<ZaiStreamChoice>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ZaiStreamChoice {
-    delta: ZaiStreamDelta,
-    #[serde(default)]
-    finish_reason: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ZaiStreamDelta {
-    #[serde(default)]
-    content: Option<String>,
-    #[serde(default)]
-    reasoning_content: Option<String>,
-    #[serde(default)]
-    tool_calls: Option<Vec<ZaiStreamToolCall>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ZaiStreamToolCall {
-    #[serde(default)]
-    index: Option<usize>,
-    #[serde(default)]
-    id: Option<String>,
-    function: Option<ZaiStreamFunction>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ZaiStreamFunction {
-    #[serde(default)]
-    name: Option<String>,
-    #[serde(default)]
-    arguments: Option<Value>,
 }
 
 #[async_trait]
@@ -958,11 +817,40 @@ impl Provider for ZaiProvider {
         })
         .await?;
 
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            tracing::warn!(status = %status, body = %Self::preview_text(&text, 500), "Z.AI streaming error response");
+            let msg = serde_json::from_str::<ZaiError>(&text)
+                .map(|e| {
+                    format!(
+                        "Z.AI API error: {} ({:?})",
+                        e.error.message, e.error.error_type
+                    )
+                })
+                .unwrap_or_else(|_| {
+                    format!(
+                        "Z.AI API error: {status} {}",
+                        Self::preview_text(&text, 200)
+                    )
+                });
+            return Ok(futures::stream::iter(vec![
+                StreamChunk::Error(msg),
+                StreamChunk::Done { usage: None },
+            ])
+            .boxed());
+        }
+
         let stream = response.bytes_stream();
         let mut buffer = String::new();
         let mut tool_states = HashMap::<usize, ZaiStreamToolState>::new();
         let mut next_fallback_tool_index = 0usize;
         let mut last_seen_tool_index = None;
+        // Track whether the stream produced usable content so a clean [DONE]
+        // with no deltas surfaces as an explicit error instead of an empty
+        // "completed" turn. `final_usage` captures the SSE usage block.
+        let mut produced_output = false;
+        let mut final_usage: Option<Usage> = None;
 
         Ok(stream
             .flat_map(move |chunk_result| {
@@ -979,22 +867,49 @@ impl Provider for ZaiProvider {
 
                             if line == "data: [DONE]" {
                                 if !text_buf.is_empty() {
+                                    produced_output = true;
                                     chunks.push(StreamChunk::Text(std::mem::take(&mut text_buf)));
                                 }
-                                chunks.push(StreamChunk::Done { usage: None });
+                                // A clean [DONE] that produced no text and no
+                                // tool calls is a failed/empty provider stream,
+                                // not a successful turn. Surface it explicitly.
+                                if !produced_output {
+                                    chunks.push(StreamChunk::Error(
+                                        "Z.AI stream ended without producing any content (empty response)".to_string(),
+                                    ));
+                                }
+                                chunks.push(StreamChunk::Done {
+                                    usage: final_usage.take(),
+                                });
                                 continue;
                             }
                             if let Some(data) = line.strip_prefix("data: ")
                                 && let Ok(parsed) = serde_json::from_str::<ZaiStreamResponse>(data)
-                                && let Some(choice) = parsed.choices.first()
                             {
+                                if let Some(ref u) = parsed.usage {
+                                    final_usage = Some(Usage {
+                                        prompt_tokens: u.prompt_tokens,
+                                        completion_tokens: u.completion_tokens,
+                                        total_tokens: u.total_tokens,
+                                        cache_read_tokens: u
+                                            .prompt_tokens_details
+                                            .as_ref()
+                                            .map(|d| d.cached_tokens),
+                                        cache_write_tokens: None,
+                                    });
+                                }
+                                if let Some(choice) = parsed.choices.first() {
                                 // Reasoning content streamed as text (prefixed for TUI rendering)
                                 if let Some(ref reasoning) = choice.delta.reasoning_content
                                     && !reasoning.is_empty()
                                 {
+                                    produced_output = true;
                                     text_buf.push_str(reasoning);
                                 }
-                                if let Some(ref content) = choice.delta.content {
+                                if let Some(ref content) = choice.delta.content
+                                    && !content.is_empty()
+                                {
+                                    produced_output = true;
                                     text_buf.push_str(content);
                                 }
                                 // Streaming tool calls
@@ -1003,7 +918,7 @@ impl Provider for ZaiProvider {
                                         chunks
                                             .push(StreamChunk::Text(std::mem::take(&mut text_buf)));
                                     }
-                                    Self::append_stream_tool_call_chunks(
+                                    append_stream_tool_call_chunks(
                                         &mut chunks,
                                         tool_calls,
                                         &mut tool_states,
@@ -1018,15 +933,17 @@ impl Provider for ZaiProvider {
                                             .push(StreamChunk::Text(std::mem::take(&mut text_buf)));
                                     }
                                     if reason == "tool_calls" {
-                                        Self::finish_stream_tool_call_chunks(
+                                        finish_stream_tool_call_chunks(
                                             &mut chunks,
                                             &mut tool_states,
                                         );
                                     }
                                 }
+                                }
                             }
                         }
                         if !text_buf.is_empty() {
+                            produced_output = true;
                             chunks.push(StreamChunk::Text(text_buf));
                         }
                     }
@@ -1297,7 +1214,7 @@ mod tests {
         let mut next_fallback_tool_index = 0usize;
         let mut last_seen_tool_index = None;
 
-        ZaiProvider::append_stream_tool_call_chunks(
+        append_stream_tool_call_chunks(
             &mut chunks,
             &[ZaiStreamToolCall {
                 index: Some(0),
@@ -1312,7 +1229,7 @@ mod tests {
             &mut last_seen_tool_index,
         );
 
-        ZaiProvider::append_stream_tool_call_chunks(
+        append_stream_tool_call_chunks(
             &mut chunks,
             &[ZaiStreamToolCall {
                 index: Some(0),
@@ -1327,7 +1244,7 @@ mod tests {
             &mut last_seen_tool_index,
         );
 
-        ZaiProvider::finish_stream_tool_call_chunks(&mut chunks, &mut tool_states);
+        finish_stream_tool_call_chunks(&mut chunks, &mut tool_states);
 
         assert_eq!(chunks.len(), 4);
         assert!(matches!(
@@ -1355,5 +1272,30 @@ mod tests {
     fn preview_text_truncates_on_char_boundary() {
         let text = "a😀b";
         assert_eq!(ZaiProvider::preview_text(text, 2), "a😀");
+    }
+
+    #[test]
+    fn stream_response_parses_usage_block() {
+        let data = r#"{"choices":[],"usage":{"prompt_tokens":120,"completion_tokens":45,"total_tokens":165,"prompt_tokens_details":{"cached_tokens":64}}}"#;
+        let parsed: ZaiStreamResponse =
+            serde_json::from_str(data).expect("usage chunk should parse");
+        let usage = parsed.usage.expect("usage present");
+        assert_eq!(usage.prompt_tokens, 120);
+        assert_eq!(usage.completion_tokens, 45);
+        assert_eq!(usage.total_tokens, 165);
+        assert_eq!(
+            usage.prompt_tokens_details.map(|d| d.cached_tokens),
+            Some(64)
+        );
+    }
+
+    #[test]
+    fn stream_response_without_usage_or_choices_is_ok() {
+        // A bare [DONE]-adjacent frame with neither choices nor usage must
+        // still deserialize so the empty-stream guard can run.
+        let parsed: ZaiStreamResponse =
+            serde_json::from_str(r#"{}"#).expect("empty frame should parse");
+        assert!(parsed.choices.is_empty());
+        assert!(parsed.usage.is_none());
     }
 }

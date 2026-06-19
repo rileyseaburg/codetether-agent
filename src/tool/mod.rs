@@ -16,6 +16,7 @@ mod bash_shell;
 pub mod batch;
 pub mod browserctl;
 pub mod budget;
+pub mod bus_inspect;
 pub mod codesearch;
 pub mod computer_use;
 pub mod confirm_edit;
@@ -30,6 +31,7 @@ pub mod edit;
 pub(crate) mod feedback;
 pub mod file;
 pub mod file_extras;
+pub mod git;
 pub mod go;
 pub mod image;
 pub mod invalid;
@@ -50,6 +52,7 @@ pub mod progress;
 pub mod question;
 pub mod ralph;
 pub mod readonly;
+mod register_media;
 pub mod relay_autochat;
 pub mod rlm;
 pub mod sandbox;
@@ -281,6 +284,7 @@ impl ToolRegistry {
         registry.register(Arc::new(file_extras::FileInfoTool::new()));
         registry.register(Arc::new(file_extras::HeadTailTool::new()));
         registry.register(Arc::new(file_extras::DiffTool::new()));
+        registry.register(Arc::new(git::GitTool::new()));
         registry.register(Arc::new(search::GrepTool::new()));
         registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
         registry.register(Arc::new(edit::EditTool::new()));
@@ -318,12 +322,7 @@ impl ToolRegistry {
         registry.register(Arc::new(voice::VoiceTool::new()));
         registry.register(Arc::new(voice_input::VoiceInputTool::new()));
         registry.register(Arc::new(voice_stream::VoiceStreamTool::new()));
-        registry.register(Arc::new(podcast::PodcastTool::new()));
-        registry.register(Arc::new(youtube::YouTubeTool::new()));
-        registry.register(Arc::new(avatar::AvatarTool::new()));
-        registry.register(Arc::new(image::ImageTool::new()));
-        registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
-        registry.register(Arc::new(okr::OkrTool::new()));
+        register_media::register(&mut registry);
         // Edit tools with confirmation (diff display before applying)
         registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
         registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
@@ -361,6 +360,7 @@ impl ToolRegistry {
         registry.register(Arc::new(file_extras::FileInfoTool::new()));
         registry.register(Arc::new(file_extras::HeadTailTool::new()));
         registry.register(Arc::new(file_extras::DiffTool::new()));
+        registry.register(Arc::new(git::GitTool::new()));
         registry.register(Arc::new(search::GrepTool::new()));
         registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
         registry.register(Arc::new(edit::EditTool::new()));
@@ -410,12 +410,7 @@ impl ToolRegistry {
         registry.register(Arc::new(voice::VoiceTool::new()));
         registry.register(Arc::new(voice_input::VoiceInputTool::new()));
         registry.register(Arc::new(voice_stream::VoiceStreamTool::new()));
-        registry.register(Arc::new(podcast::PodcastTool::new()));
-        registry.register(Arc::new(youtube::YouTubeTool::new()));
-        registry.register(Arc::new(avatar::AvatarTool::new()));
-        registry.register(Arc::new(image::ImageTool::new()));
-        registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
-        registry.register(Arc::new(okr::OkrTool::new()));
+        register_media::register(&mut registry);
         // Edit tools with confirmation (diff display before applying)
         registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
         registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));

@@ -33,7 +33,9 @@ pub(crate) fn task_line(task: &SubTaskInfo, show_divider: bool) -> Line<'static>
     if let Some(tool) = &task.current_tool {
         spans.push(Span::styled(
             format!(" [{tool}]"),
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::DIM),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::DIM),
         ));
     }
     if let Some(elapsed) = elapsed_label(task) {

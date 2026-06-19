@@ -17,6 +17,7 @@ pub mod grpc;
 pub mod intro;
 pub mod lan;
 pub mod mdns;
+pub mod mdns_addr;
 pub mod mdns_liveness;
 pub mod peer_liveness;
 pub mod prompt_runtime;

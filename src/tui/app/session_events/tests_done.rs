@@ -25,8 +25,7 @@ async fn done_clears_watchdog_notification_to_stop_resubmit_loop() {
     // Simulate a watchdog cancel that left a pending notification + inflight
     // prompt. Before the fix, Done reset the restart count but left the
     // notification set, so the retry guard resubmitted the same prompt forever.
-    app.state.watchdog_notification =
-        Some(WatchdogNotification::new("stalled".to_string(), 1));
+    app.state.watchdog_notification = Some(WatchdogNotification::new("stalled".to_string(), 1));
     app.state.main_inflight_prompt = Some("hello".to_string());
     app.state.main_watchdog_restart_count = 1;
 

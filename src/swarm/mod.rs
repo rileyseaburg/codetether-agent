@@ -9,8 +9,10 @@
 //! - **SubTask**: A unit of work that can be executed in parallel
 //! - **Critical Path**: Latency-oriented metric for parallel execution
 
+pub mod actor_status;
 pub mod cache;
 pub mod collapse_controller;
+pub mod control;
 pub mod delegation;
 pub mod delegation_outcome;
 pub mod executor;
@@ -34,6 +36,7 @@ pub use collapse_controller::{
     BranchEvaluation, BranchObservation, BranchRuntimeState, CoherenceScore, CollapseController,
     CollapsePolicy, CollapseTick, KillDecision,
 };
+pub use control::SwarmControl;
 pub use executor::{SwarmExecutor, run_agent_loop};
 pub use orchestrator::Orchestrator;
 pub use rate_limiter::{AdaptiveRateLimiter, RateLimitInfo, RateLimitStats};
@@ -75,34 +78,7 @@ pub trait Handler<M>: Actor {
 }
 
 /// Status of an actor in the swarm
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ActorStatus {
-    /// Actor is initializing
-    Initializing,
-    /// Actor is ready to process messages
-    Ready,
-    /// Actor is currently processing
-    Busy,
-    /// Actor is paused
-    Paused,
-    /// Actor is shutting down
-    ShuttingDown,
-    /// Actor has stopped
-    Stopped,
-}
-
-impl std::fmt::Display for ActorStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ActorStatus::Initializing => write!(f, "initializing"),
-            ActorStatus::Ready => write!(f, "ready"),
-            ActorStatus::Busy => write!(f, "busy"),
-            ActorStatus::Paused => write!(f, "paused"),
-            ActorStatus::ShuttingDown => write!(f, "shutting_down"),
-            ActorStatus::Stopped => write!(f, "stopped"),
-        }
-    }
-}
+pub use actor_status::ActorStatus;
 
 /// Message types for swarm coordination
 #[derive(Debug, Clone)]

@@ -1,9 +1,13 @@
 //! Title generation and context-change hooks.
 
+mod ai;
+mod ai_model;
+mod ai_request;
+mod extract;
+
 use anyhow::Result;
 use chrono::Utc;
 
-use super::helper::text::truncate_with_ellipsis;
 use super::types::Session;
 
 impl Session {
@@ -25,23 +29,9 @@ impl Session {
     }
 
     fn set_title_from_first_user_message(&mut self) {
-        let Some(msg) = self
-            .messages
-            .iter()
-            .find(|m| m.role == crate::provider::Role::User)
-        else {
-            return;
-        };
-        let text: String = msg
-            .content
-            .iter()
-            .filter_map(|p| match p {
-                crate::provider::ContentPart::Text { text } => Some(text.clone()),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.title = Some(truncate_with_ellipsis(&text, 47));
+        if let Some(title) = extract::title_from_first_user_message(self) {
+            self.title = Some(title);
+        }
     }
 
     /// Set a custom title for the session.

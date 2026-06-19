@@ -13,11 +13,17 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
     let slot = &mut *args.slot;
     let bridge = &mut *args.worker_bridge;
     tokio::select! {
+        // Biased: always poll terminal input FIRST so navigation/scroll keys
+        // stay responsive while a session is actively streaming. Without this,
+        // tokio picks a ready branch at random and the high-volume session
+        // event stream starves keypresses, making the TUI feel frozen.
+        biased;
         maybe = args.reader.next() => {
             let quit = super::terminal::handle_terminal_event(app, args.cwd, slot, args.registry, bridge, args.runtime, maybe).await?;
             app.state.needs_redraw = true;
             if quit { return Ok(true); }
         }
+        Some(()) = args.io.shutdown_rx.recv() => return Ok(true),
         Some(evt) = args.io.event_rx.recv() => {
             crate::tui::app::session_events::handle_session_event(app, slot, bridge, evt).await;
             super::coalesce::drain(app, slot, bridge, args.io.event_rx).await;
@@ -27,7 +33,6 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
             super::smart_retry::execute_smart_switch_retry(app, slot, args.registry, args.runtime).await;
             super::watchdog_retry::execute(app, slot, args.registry, args.runtime).await;
         }
-        Some(()) = args.io.shutdown_rx.recv() => return Ok(true),
         _ = args.timers.watchdog.tick() => super::watchdog::maybe_watchdog_restart(app, args.runtime, args.timers.watchdog_interval).await,
         _ = args.timers.tick.tick() => {
             super::tick::run(app).await;

@@ -6,10 +6,11 @@
 mod args;
 mod command;
 mod drain;
-mod spawn;
+mod drain_map;
+pub mod spawn;
 pub mod state;
 
 pub use args::build_tui_forage_args;
 pub use command::handle_forage_command;
 pub use drain::drain_forage_updates;
-pub use state::{ForageState, ForageUpdate};
+pub use state::{ForageOffer, ForageState, ForageUpdate};

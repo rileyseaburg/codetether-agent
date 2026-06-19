@@ -57,10 +57,7 @@ pub(super) async fn handle_unmodified_key(
             nav::toggle_help(app)
         }
         KeyCode::Char('m') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            if let Some(session) = slot.borrow() {
-                crate::tui::app::model_picker::open_model_picker(app, session, registry.as_ref())
-                    .await;
-            }
+            super::model_picker_key::open_model_picker_if_session(app, slot, registry).await
         }
         KeyCode::Up => nav::handle_up(app, key.modifiers),
         KeyCode::Down => nav::handle_down(app, key.modifiers),

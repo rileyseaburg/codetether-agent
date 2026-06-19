@@ -21,8 +21,29 @@ pub enum ForageUpdate {
     Status(String),
     /// Final summary text (forage finished successfully).
     Complete(String),
+    /// Scan finished and found work; offer to start it. Carries the summary
+    /// text, how many were found, and the params needed to re-launch.
+    Offer {
+        /// Human-readable summary of the scan.
+        text: String,
+        /// Number of opportunities found.
+        selected: usize,
+        /// `--top` value to reuse when starting.
+        top: usize,
+        /// Model to reuse when starting.
+        model: Option<String>,
+    },
     /// Forage run failed with an error message.
     Error(String),
+}
+
+/// A pending "want me to start?" offer awaiting a Y/N answer.
+#[derive(Debug, Clone)]
+pub struct ForageOffer {
+    /// `--top` value to reuse when the user accepts.
+    pub top: usize,
+    /// Model to reuse when the user accepts.
+    pub model: Option<String>,
 }
 
 /// Receiver-side state for a running forage task.
@@ -41,6 +62,8 @@ pub struct ForageState {
     pub active: bool,
     /// Pending updates from the background run.
     pub rx: Option<mpsc::Receiver<ForageUpdate>>,
+    /// A scan offer awaiting the user's Y/N answer, if any.
+    pub pending_offer: Option<ForageOffer>,
 }
 
 impl ForageState {

@@ -4,14 +4,15 @@
 //! and executes sub-agents in parallel, streaming [`SwarmEvent`]s to the view.
 
 use crate::session::Session;
-use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
-use crate::tui::swarm_view::SwarmEvent;
 
+#[path = "swarm_run/control.rs"]
+mod control;
 #[path = "swarm_run/monitor.rs"]
 mod monitor;
 
+use control::{ControlAction, apply_control};
 pub use monitor::open_swarm_monitor;
 
 /// Handle `/swarm [task]`.
@@ -22,6 +23,14 @@ pub fn handle_swarm_command(app: &mut App, session: &Session, rest: &str) -> boo
     let task = rest.trim();
     if task.is_empty() {
         return false;
+    }
+
+    // Control sub-commands act on the currently running swarm.
+    match task {
+        "cancel" | "stop" | "kill" => return apply_control(app, ControlAction::Cancel),
+        "pause" => return apply_control(app, ControlAction::Pause),
+        "resume" | "continue" => return apply_control(app, ControlAction::Resume),
+        _ => {}
     }
 
     let model = session.metadata.model.clone();
@@ -37,29 +46,11 @@ pub fn handle_swarm_command(app: &mut App, session: &Session, rest: &str) -> boo
         ));
     app.state.scroll_to_bottom();
 
-    spawn_swarm_run(task.to_string(), model, tx);
+    let control = spawn_swarm_run(task.to_string(), model, tx);
+    app.state.swarm.control = Some(control);
     true
 }
 
-fn spawn_swarm_run(
-    task: String,
-    model: Option<String>,
-    event_tx: tokio::sync::mpsc::Sender<SwarmEvent>,
-) {
-    tokio::spawn(async move {
-        let executor = SwarmExecutor::new(SwarmConfig {
-            model,
-            ..Default::default()
-        })
-        .with_event_tx(event_tx.clone());
-
-        if let Err(err) = executor
-            .execute(&task, DecompositionStrategy::Automatic)
-            .await
-        {
-            let _ = event_tx
-                .send(SwarmEvent::Error(format!("Swarm execution failed: {err}")))
-                .await;
-        }
-    });
-}
+#[path = "swarm_run/spawn.rs"]
+mod spawn;
+use spawn::spawn_swarm_run;

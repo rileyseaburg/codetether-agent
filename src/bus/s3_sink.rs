@@ -33,6 +33,10 @@
 use super::{AgentBus, BusEnvelope, BusMessage};
 use crate::a2a::types::Part;
 use crate::secrets;
+#[path = "s3_record_format.rs"]
+mod s3_record_format;
+#[path = "s3_speech_record.rs"]
+mod s3_speech_record;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use minio::s3::builders::ObjectContent;
@@ -40,6 +44,7 @@ use minio::s3::client::{MinioClient, MinioClientBuilder};
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
 use minio::s3::types::S3Api;
+use s3_record_format::{build_s3_key, bus_message_kind, parts_to_text};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -326,7 +331,8 @@ fn envelope_step(message: &BusMessage) -> Option<usize> {
         | BusMessage::VoiceSessionStarted { .. }
         | BusMessage::VoiceTranscript { .. }
         | BusMessage::VoiceAgentStateChanged { .. }
-        | BusMessage::VoiceSessionEnded { .. } => None,
+        | BusMessage::VoiceSessionEnded { .. }
+        | BusMessage::AgentSpeech { .. } => None,
     }
 }
 
@@ -627,6 +633,13 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
             name: None,
             metadata: meta,
         },
+        BusMessage::AgentSpeech {
+            act,
+            from,
+            to,
+            conversation_id,
+            content,
+        } => s3_speech_record::build(act, from, to, conversation_id, content, meta),
     }
 }
 
@@ -732,41 +745,6 @@ fn serialize_training_records(records: &[TrainingRecord]) -> Vec<String> {
         .iter()
         .filter_map(|record| serde_json::to_string(record).ok())
         .collect()
-}
-
-fn build_s3_key(prefix: &str, now: chrono::DateTime<Utc>) -> String {
-    let prefix = if prefix.is_empty() {
-        String::new()
-    } else if prefix.ends_with('/') {
-        prefix.to_string()
-    } else {
-        format!("{prefix}/")
-    };
-    let date_path = now.format("%Y/%m/%d/%H").to_string();
-    let timestamp = now.format("%Y%m%dT%H%M%S").to_string();
-    let uuid = uuid::Uuid::new_v4();
-    format!("{prefix}v2/{date_path}/batch_{timestamp}_{uuid}.jsonl")
-}
-
-/// Extract the serde tag name from a `BusMessage` variant.
-fn bus_message_kind(msg: &BusMessage) -> String {
-    serde_json::to_value(msg)
-        .ok()
-        .and_then(|v| v.get("kind").and_then(|k| k.as_str()).map(String::from))
-        .unwrap_or_else(|| "unknown".into())
-}
-
-/// Concatenate `Part` items into a single text string.
-fn parts_to_text(parts: &[Part]) -> String {
-    parts
-        .iter()
-        .map(|p| match p {
-            Part::Text { text } => text.as_str(),
-            Part::Data { .. } => "<<data>>",
-            Part::File { .. } => "<<file>>",
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 // ─── S3 Sink ─────────────────────────────────────────────────────────────

@@ -31,7 +31,7 @@ for arg in "$@"; do
 done
 
 MAX_HEAL_ITERS="${MAX_HEAL_ITERS:-8}"
-MODEL="${CODETETHER_BUILD_MODEL:-zai/glm-5.1}"
+MODEL="${CODETETHER_BUILD_MODEL:-minimax/m3}"
 
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT

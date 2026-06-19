@@ -97,7 +97,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
     });
 
     if session.title.is_none() {
-        session.generate_title().await?;
+        session.generate_ai_title(&registry).await?;
     }
 
     let mut model = if !model_id.is_empty() {

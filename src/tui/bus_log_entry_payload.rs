@@ -37,3 +37,19 @@ pub fn transcript(room: &str, role: &str, final_flag: bool, text: &str) -> Strin
     let header = format!("Room: {room}\nRole: {role}\nFinal: {final_flag}");
     crate::tui::bus_log_payload::tool_detail(&header, text, "voice transcript")
 }
+
+/// Build (kind, summary, detail, color) for an `AgentSpeech` bus entry.
+pub fn speech(
+    act: &str,
+    from: &str,
+    to: &str,
+    conversation_id: &str,
+    content: &str,
+) -> (String, String, String, ratatui::style::Color) {
+    (
+        format!("SAY•{act}"),
+        format!("{from} → {to}: {content}"),
+        format!("Act: {act}\nFrom: {from}\nTo: {to}\nConversation: {conversation_id}\n\n{content}"),
+        ratatui::style::Color::Magenta,
+    )
+}

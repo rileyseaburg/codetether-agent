@@ -6,7 +6,12 @@ use crate::forage_println;
 impl ForageOpportunity {
     /// Print a single ranked opportunity entry (quiet-gated).
     pub(super) fn print_cycle_entry(&self, rank: usize, show_moonshot: bool) {
-        forage_println!("\n{}. [{}] {}", rank, self.okr_status_label(), self.okr_title);
+        forage_println!(
+            "\n{}. [{}] {}",
+            rank,
+            self.okr_status_label(),
+            self.okr_title
+        );
         forage_println!(
             "   KR: {} ({:.1}% remaining, score {:.3})",
             self.key_result_title,

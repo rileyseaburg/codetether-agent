@@ -3,6 +3,7 @@
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
+use super::drain_map::map_update;
 use super::state::ForageUpdate;
 
 /// Drain pending forage updates into chat messages on the background tick.
@@ -33,17 +34,7 @@ pub fn drain_forage_updates(app: &mut App) -> bool {
 }
 
 fn apply_forage_update(app: &mut App, update: ForageUpdate) {
-    let (text, status) = match update {
-        ForageUpdate::Status(s) => (s.clone(), format!("Forage: {s}")),
-        ForageUpdate::Complete(s) => {
-            app.state.forage.active = false;
-            (s, "Forage complete".to_string())
-        }
-        ForageUpdate::Error(e) => {
-            app.state.forage.active = false;
-            (format!("Forage error: {e}"), "Forage failed".to_string())
-        }
-    };
+    let (text, status) = map_update(app, update);
     app.state
         .messages
         .push(ChatMessage::new(MessageType::System, text));

@@ -116,6 +116,7 @@ fn render_overlays(f: &mut Frame, app: &mut App) {
         render_symbol_search(f, &mut app.state.symbol_search, f.area());
     }
 
+    crate::tui::ui::goal_prompt_overlay::render_if_active(f, f.area(), &app.state.goal_prompt);
     if app.state.watchdog_notification.is_some() {
         crate::tui::app::watchdog::render_watchdog_notification(f, f.area(), &app.state);
     }

@@ -37,7 +37,7 @@ pub(super) async fn execute_session_with_policy(
         }],
     });
     if session.title.is_none() {
-        session.generate_title().await?;
+        session.generate_ai_title(&registry).await?;
     }
     let workspace_dir = session
         .metadata

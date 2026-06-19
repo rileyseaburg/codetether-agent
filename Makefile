@@ -13,7 +13,7 @@ export SCCACHE_S3_KEY_PREFIX ?= rust/
 export AWS_ACCESS_KEY_ID   ?= $(CODETETHER_SCCACHE_ACCESS_KEY_ID)
 export AWS_SECRET_ACCESS_KEY ?= $(CODETETHER_SCCACHE_SECRET_ACCESS_KEY)
 
-.PHONY: build-cuda build-release build-cached build-windows build-windows-docker sccache-stats deploy-spike2-cuda install-spike2-cuda status-spike2-cuda
+.PHONY: build-cuda build-release build-cached build-windows build-windows-docker sccache-stats deploy-spike2-cuda install-spike2-cuda status-spike2-cuda install-dev
 
 build-cuda:
 	./scripts/cargo-sccache.sh build --release --features candle-cuda
@@ -71,3 +71,5 @@ status-spike2-cuda:
 		grep -E "^CODETETHER_COGNITION_THINKER_CANDLE_(DEVICE|CUDA_ORDINAL)=" /etc/default/codetether-agent; \
 		echo "---"; \
 		nvidia-smi --query-gpu=name,memory.used,memory.free,utilization.gpu --format=csv,noheader'
+install-dev:
+	./script/install-dev.sh && ./script/build-windows-dev.sh

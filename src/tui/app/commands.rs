@@ -697,8 +697,7 @@ pub async fn handle_slash_command(
     if let Some(rest) = command_with_optional_args(&normalized, "/file") {
         let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
         if cleaned.is_empty() {
-            app.state.status =
-                "Usage: /file <path> (relative to workspace or absolute).".to_string();
+            crate::tui::app::file_picker::open_file_picker(app, cwd);
         } else {
             attach_file_to_input(app, cwd, Path::new(cleaned));
         }

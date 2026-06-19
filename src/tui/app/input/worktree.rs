@@ -32,7 +32,7 @@ pub(crate) type WorktreeState = (WorktreeManager, WorktreeInfo, Option<String>);
 pub(crate) async fn create_worktree(cwd: &Path, session: &mut Session) -> Option<WorktreeState> {
     let repo_dir = cwd.to_path_buf();
     let name = format!("tui_{}", uuid::Uuid::new_v4().simple());
-    let mgr = WorktreeManager::for_repo(&repo_dir);
+    let mgr = WorktreeManager::for_repo(&repo_dir).without_vscode_auto_open();
     let base_branch = current_branch(cwd);
     match mgr.create(&name).await {
         Ok(wt) => {

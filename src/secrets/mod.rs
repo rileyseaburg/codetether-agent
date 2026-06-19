@@ -13,9 +13,7 @@ use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
 use vaultrs::error::ClientError;
 use vaultrs::kv2;
 
-/// Path in Vault where provider secrets are stored
-#[allow(dead_code)]
-const DEFAULT_SECRETS_PATH: &str = "secret/data/codetether/providers";
+mod retry;
 
 /// Vault-based secrets manager
 #[derive(Clone)]
@@ -286,11 +284,11 @@ impl SecretsManager {
         let secret_path = format!("{}/{}", self.path, provider_id);
 
         let mut result =
-            kv2::read::<ProviderSecrets>(client.as_ref(), &self.mount, &secret_path).await;
+            retry::read_secret_with_retry(client.as_ref(), &self.mount, &secret_path).await;
         if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err)) {
             if let Some(client) = self.refresh_kubernetes_auth().await? {
                 result =
-                    kv2::read::<ProviderSecrets>(client.as_ref(), &self.mount, &secret_path).await;
+                    retry::read_secret_with_retry(client.as_ref(), &self.mount, &secret_path).await;
             }
         }
 
@@ -321,11 +319,11 @@ impl SecretsManager {
         let secret_path = format!("{}/{}", self.path, provider_id);
 
         let mut result =
-            kv2::read::<ProviderSecrets>(client.as_ref(), &self.mount, &secret_path).await;
+            retry::read_secret_with_retry(client.as_ref(), &self.mount, &secret_path).await;
         if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err)) {
             if let Some(client) = self.refresh_kubernetes_auth().await? {
                 result =
-                    kv2::read::<ProviderSecrets>(client.as_ref(), &self.mount, &secret_path).await;
+                    retry::read_secret_with_retry(client.as_ref(), &self.mount, &secret_path).await;
             }
         }
 

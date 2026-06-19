@@ -10,6 +10,11 @@ use crate::tui::app::state::App;
 
 #[path = "shell/mod.rs"]
 mod shell;
+#[path = "slash_no_session.rs"]
+mod slash_no_session;
+#[cfg(test)]
+#[path = "slash_no_session_tests.rs"]
+mod slash_no_session_tests;
 
 pub(super) async fn run(
     app: &mut App,
@@ -28,7 +33,14 @@ pub(super) async fn run(
         return true;
     }
     let Some(session) = slot.borrow_mut() else {
-        app.state.status = "Session is busy; slash command was not run".to_string();
+        // The session is checked out by an in-flight prompt. UI-only
+        // commands (/settings, /model, /file) still work because they
+        // touch app.state, not the session.
+        if slash_no_session::run(app, cwd, registry, prompt) {
+            app.state.clear_input();
+        } else {
+            app.state.status = "Session is busy; slash command was not run".to_string();
+        }
         return true;
     };
     if super::codex_parity_command::run(app, cwd, session, registry.as_ref(), prompt).await {

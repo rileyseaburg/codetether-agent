@@ -10,6 +10,9 @@
 //!
 //! All K8s operations are audit-logged.
 
+mod list_pods;
+mod list_pods_selector;
+
 use anyhow::{Context, Result, anyhow};
 use chrono::Utc;
 use k8s_openapi::api::apps::v1::Deployment;
@@ -361,71 +364,6 @@ impl K8sManager {
     }
 
     /// List pods belonging to our deployment.
-    pub async fn list_pods(&self) -> Result<Vec<PodInfo>> {
-        self.list_pods_with_selector(None).await
-    }
-
-    /// List pods using an optional label selector override.
-    pub async fn list_pods_with_selector(
-        &self,
-        label_selector: Option<&str>,
-    ) -> Result<Vec<PodInfo>> {
-        let client = self
-            .client
-            .as_ref()
-            .ok_or_else(|| anyhow!("K8s client not available"))?;
-
-        let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
-
-        let label_selector = label_selector
-            .filter(|value| !value.trim().is_empty())
-            .map(ToString::to_string)
-            .or_else(|| self.deployment_name.as_ref().map(|n| format!("app={}", n)))
-            .unwrap_or_else(|| "app=codetether".to_string());
-
-        let list = pods
-            .list(&ListParams::default().labels(&label_selector))
-            .await
-            .context("Failed to list pods")?;
-
-        let infos: Vec<PodInfo> = list
-            .items
-            .iter()
-            .map(|pod| {
-                let name = pod.metadata.name.clone().unwrap_or_default();
-                let phase = pod
-                    .status
-                    .as_ref()
-                    .and_then(|s| s.phase.clone())
-                    .unwrap_or_else(|| "Unknown".to_string());
-                let ready = pod
-                    .status
-                    .as_ref()
-                    .and_then(|s| s.conditions.as_ref())
-                    .map(|conditions| {
-                        conditions
-                            .iter()
-                            .any(|c| c.type_ == "Ready" && c.status == "True")
-                    })
-                    .unwrap_or(false);
-                let start_time = pod
-                    .status
-                    .as_ref()
-                    .and_then(|s| s.start_time.as_ref())
-                    .map(|t| t.0.to_string());
-
-                PodInfo {
-                    name,
-                    phase,
-                    ready,
-                    start_time,
-                }
-            })
-            .collect();
-
-        Ok(infos)
-    }
-
     #[allow(dead_code)]
     /// Spawn a new pod for a swarm sub-agent.
     pub async fn spawn_subagent_pod(
