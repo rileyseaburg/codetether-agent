@@ -36,6 +36,7 @@ pub(super) fn handle_kill(name: &str) -> ToolResult {
     match store::remove(name) {
         Some(_) => {
             tracing::info!(agent = %name, "Sub-agent killed");
+            super::bus_publish::announce_done(name, true, "killed");
             ToolResult::success(format!("Removed @{name}"))
         }
         None => ToolResult::error(format!("Agent @{name} not found")),

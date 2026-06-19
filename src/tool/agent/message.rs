@@ -3,7 +3,7 @@
 use super::event_loop;
 use super::execution_state;
 use super::helpers;
-use super::message_result;
+use super::message_finalize;
 use super::store;
 use crate::session::SessionEvent;
 use crate::tool::ToolResult;
@@ -37,6 +37,7 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
         .map(|e| e.session)
         .context(format!("Agent @{name} not found"))?;
     let registry = helpers::get_registry().await?;
+    super::bus_publish::announce_working(&name, "processing message");
     let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
     let mut session_for_task = session.clone();
     // `bus` is `#[serde(skip)]`, so reloaded sessions start with `None`.
@@ -55,14 +56,5 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
     let (response, thinking, tools, error, updated_session) =
         event_loop::run(&mut rx, handle).await;
 
-    if let Some(updated) = updated_session {
-        store::update_session(&name, updated.clone());
-        if let Err(e) = updated.save().await {
-            tracing::warn!(agent = %name, error = %e, "Failed to save agent session after message");
-        }
-    }
-
-    Ok(message_result::build_message_result(
-        name, response, thinking, tools, error,
-    ))
+    Ok(message_finalize::finalize(name, response, thinking, tools, error, updated_session).await)
 }

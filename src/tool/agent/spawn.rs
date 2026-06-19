@@ -43,6 +43,7 @@ pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
         return Ok(ToolResult::error(failure_message(&request, &error)));
     }
     tracing::info!(agent = %request.name, model = %request.model, "Sub-agent spawned");
+    super::bus_publish::announce_working(request.name, format!("spawned ({})", request.model));
     Ok(ToolResult::success(with_warning(
         success_message(&request),
         warning.as_deref(),
