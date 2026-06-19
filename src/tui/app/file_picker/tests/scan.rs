@@ -22,8 +22,10 @@ fn scan_sorts_parent_dirs_then_files() {
 fn filter_preserves_parent_entry() {
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::write(dir.path().join("beta.txt"), "b").expect("file");
+    let all_entries = scan_directory(dir.path());
     let mut state = FilePickerState {
         dir: dir.path().to_path_buf(),
+        all_entries,
         filter: "missing".to_string(),
         ..Default::default()
     };

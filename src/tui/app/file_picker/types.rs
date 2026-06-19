@@ -27,6 +27,8 @@ pub struct FilePickerState {
     pub workspace_dir: PathBuf,
     pub dir: PathBuf,
     pub entries: Vec<FilePickerEntry>,
+    /// Unfiltered listing for `dir`, cached so filtering does not re-read disk.
+    pub all_entries: Vec<FilePickerEntry>,
     pub selected: usize,
     pub filter: String,
     pub mode: FilePickerMode,
@@ -41,6 +43,7 @@ impl Default for FilePickerState {
             workspace_dir: PathBuf::new(),
             dir: PathBuf::new(),
             entries: Vec::new(),
+            all_entries: Vec::new(),
             selected: 0,
             filter: String::new(),
             mode: FilePickerMode::Browse,

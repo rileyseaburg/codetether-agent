@@ -9,11 +9,13 @@ use super::types::{FilePickerMode, FilePickerState};
 
 pub fn open_file_picker(app: &mut App, cwd: &Path) {
     let dir = cwd.to_path_buf();
+    let entries = scan_directory(&dir);
     let mut file_picker = FilePickerState {
         active: true,
         workspace_dir: dir.clone(),
         dir: dir.clone(),
-        entries: scan_directory(&dir),
+        all_entries: entries.clone(),
+        entries,
         selected: 0,
         filter: String::new(),
         mode: FilePickerMode::Browse,

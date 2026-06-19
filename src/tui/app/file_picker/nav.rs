@@ -17,7 +17,9 @@ pub fn file_picker_enter(app: &mut App, _cwd: &std::path::Path) {
     };
     if entry.is_dir {
         app.state.file_picker.dir = entry.path;
-        app.state.file_picker.entries = scan_directory(&app.state.file_picker.dir);
+        let entries = scan_directory(&app.state.file_picker.dir);
+        app.state.file_picker.all_entries = entries.clone();
+        app.state.file_picker.entries = entries;
         app.state.file_picker.selected = 0;
         app.state.file_picker.filter.clear();
         refresh_preview(&mut app.state.file_picker);
