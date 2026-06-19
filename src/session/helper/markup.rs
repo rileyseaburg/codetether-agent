@@ -32,21 +32,7 @@ pub fn extract_markup_tool_calls(text: &str) -> (String, Vec<(String, String)>) 
             .or_else(|| payload.get("input"))
             .cloned()
             .map(|v| serde_json::to_string(&v).unwrap_or_else(|_| "{}".to_string()))
-            .unwrap_or_else(|| {
-                // When no explicit arguments/args/input key exists,
-                // treat all remaining top-level keys (except "name") as the arguments object.
-                if let Some(obj) = payload.as_object() {
-                    let params: serde_json::Map<String, Value> = obj
-                        .iter()
-                        .filter(|(k, _)| *k != "name")
-                        .map(|(k, v)| (k.clone(), v.clone()))
-                        .collect();
-                    serde_json::to_string(&Value::Object(params))
-                        .unwrap_or_else(|_| "{}".to_string())
-                } else {
-                    "{}".to_string()
-                }
-            });
+            .unwrap_or_else(|| crate::session::helper::bare_json::remaining_keys_as_args(&payload));
         calls.push((name.to_string(), arguments));
     }
 
@@ -80,6 +66,14 @@ pub fn normalize_textual_tool_calls(
         match part {
             ContentPart::Text { text } => {
                 let (cleaned, calls) = extract_markup_tool_calls(&text);
+                let mut text_was_a_call = false;
+                if calls.is_empty()
+                    && let Some((name, arguments)) =
+                        super::bare_json::extract_bare_json_tool_call(&cleaned, &allowed_tools)
+                {
+                    parsed_calls.push((name, arguments));
+                    text_was_a_call = true;
+                }
                 for (name, arguments) in calls {
                     if allowed_tools.contains(name.as_str()) {
                         parsed_calls.push((name, arguments));
@@ -88,7 +82,7 @@ pub fn normalize_textual_tool_calls(
                     }
                 }
 
-                if !cleaned.trim().is_empty() {
+                if !text_was_a_call && !cleaned.trim().is_empty() {
                     rewritten.push(ContentPart::Text {
                         text: cleaned.trim().to_string(),
                     });

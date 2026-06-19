@@ -7,6 +7,7 @@
 //! etc. live next to each other.
 
 pub mod archive;
+pub mod bare_json;
 pub mod bootstrap;
 pub mod build;
 pub mod compression;
@@ -52,8 +53,7 @@ mod workspace_tools;
 
 #[cfg(test)]
 mod prompt_events_test_provider;
-#[cfg(test)]
-mod prompt_events_tests;
+#[cfg(test)] mod prompt_events_tests;
 #[cfg(test)]
 mod retry_error_tests;
 #[cfg(test)]
