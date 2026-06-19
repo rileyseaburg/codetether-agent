@@ -9,6 +9,7 @@
 //! let result = run(&mut rx, handle).await;
 //! ```
 
+mod approve;
 mod collect;
 mod finalize;
 mod state;

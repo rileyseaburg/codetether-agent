@@ -63,6 +63,7 @@ fn handle_event(event: SessionEvent, state: &mut EventLoopState) {
             state.response.push_str(&format!("\n[Error: {e}]"));
             state.error = Some(e);
         }
+        SessionEvent::ApprovalRequest(req) => super::approve::auto_approve(&req),
         SessionEvent::Done => state.done = true,
         _ => {}
     }
