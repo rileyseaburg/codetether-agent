@@ -21,6 +21,20 @@ async fn settings_opens_while_session_checked_out() {
 }
 
 #[tokio::test]
+async fn image_usage_reported_while_checked_out() {
+    let mut app = App::default();
+    app.state.view_mode = ViewMode::Chat;
+    let cwd = std::path::Path::new(".");
+    let mut slot = SessionSlot::new(Session::new().await.expect("session"));
+    let _checked_out = slot.take_for_prompt().expect("session checked out");
+
+    let handled = super::run(&mut app, cwd, &mut slot, &None, "/image").await;
+
+    assert!(handled, "/image should be handled without a session");
+    assert!(app.state.status.contains("Usage: /image"));
+}
+
+#[tokio::test]
 async fn unknown_command_reports_busy_while_checked_out() {
     let mut app = App::default();
     app.state.view_mode = ViewMode::Chat;

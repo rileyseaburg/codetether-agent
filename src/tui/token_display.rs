@@ -5,6 +5,9 @@ use ratatui::{
     text::{Line, Span},
 };
 
+#[path = "token_display_context.rs"]
+mod context;
+
 /// Enhanced token usage display with costs and warnings
 pub struct TokenDisplay;
 
@@ -134,12 +137,10 @@ impl TokenDisplay {
             ));
         }
 
-        // Context warning if active model is near limit
-        if let Some(warning) = self.get_context_warning(&model_snapshots) {
-            spans.push(Span::styled(
-                format!(" {} ", warning),
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-            ));
+        // Context usage — always visible so the user can see how full the
+        // window is at a glance, with color escalating as it fills up.
+        if let Some((label, style)) = self.get_context_indicator(&model_snapshots) {
+            spans.push(Span::styled(format!(" {label} "), style));
         }
 
         Line::from(spans)
@@ -164,43 +165,14 @@ impl TokenDisplay {
         total
     }
 
-    /// Get context warning for the active model based on the **current
-    /// turn's** prompt size (what the next request will send), not
-    /// cumulative lifetime tokens.
-    ///
-    /// This matters because the agent loop re-sends the growing
-    /// conversation on every step and the RLM layer compresses history
-    /// behind the scenes — users need to see the real edge of the
-    /// context window, not a bogus 6000% figure summed over all turns.
-    /// This matters because the agent loop re-sends the growing
-    /// conversation on every step and the RLM layer compresses history
-    /// behind the scenes — users need to see the real edge of the
-    /// context window, not a bogus 6000% figure summed over all turns.
-    fn get_context_warning(&self, model_snapshots: &[TokenUsageSnapshot]) -> Option<String> {
-        if model_snapshots.is_empty() {
-            return None;
-        }
-
-        let active_model = model_snapshots.iter().max_by_key(|s| s.totals.total())?;
-        let limit = self.get_context_limit(&active_model.name)?;
-
-        // Prefer the last turn's actual prompt size; fall back to cumulative
-        // only if no turn has been recorded yet (first-render race).
-        let used = crate::telemetry::TOKEN_USAGE
-            .last_prompt_tokens_for(&active_model.name)
-            .unwrap_or_else(|| active_model.totals.total().min(limit));
-
-        let context = ContextLimit::new(used, limit);
-
-        if context.percentage >= 90.0 {
-            Some(format!("🛑 Context: {:.0}%", context.percentage))
-        } else if context.percentage >= 75.0 {
-            Some(format!("⚠️ Context: {:.0}%", context.percentage))
-        } else if context.percentage >= 50.0 {
-            Some(format!("Context: {:.0}%", context.percentage))
-        } else {
-            None
-        }
+    /// Always-on context-window indicator `(label, style)` for the active
+    /// model, based on the current turn's prompt size. Delegates to
+    /// [`context::context_indicator`].
+    fn get_context_indicator(
+        &self,
+        model_snapshots: &[TokenUsageSnapshot],
+    ) -> Option<(String, Style)> {
+        super::token_display_context::context_indicator(self, model_snapshots)
     }
 
     /// Aggregate prompt-cache hit rate across all recorded models.

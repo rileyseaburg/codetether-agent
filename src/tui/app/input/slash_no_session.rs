@@ -14,9 +14,12 @@ use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 
 use self::helpers::{attach_file_command, open_model_view};
+use self::image::attach_image_command;
 
 #[path = "slash_no_session_helpers.rs"]
 mod helpers;
+#[path = "slash_no_session_image.rs"]
+mod image;
 
 /// Run a UI-only slash command when no session is available.
 ///
@@ -31,6 +34,14 @@ pub(super) fn run(
     let normalized = crate::tui::app::text::normalize_slash_command(prompt);
     if let Some(rest) = crate::tui::app::text::command_with_optional_args(&normalized, "/file") {
         attach_file_command(
+            app,
+            cwd,
+            rest.trim().trim_matches(|c| c == '"' || c == '\''),
+        );
+        return true;
+    }
+    if let Some(rest) = crate::tui::app::text::command_with_optional_args(&normalized, "/image") {
+        attach_image_command(
             app,
             cwd,
             rest.trim().trim_matches(|c| c == '"' || c == '\''),
