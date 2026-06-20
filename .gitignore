@@ -1,5 +1,6 @@
 # Generated files
 /target/
+script/target/
 Cargo.lock
 
 # IDE
