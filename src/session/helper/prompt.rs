@@ -28,6 +28,10 @@ use crate::provider::{
 use crate::rlm::RlmConfig;
 use crate::tool::ToolRegistry;
 
+#[path = "prompt_codesearch_guard.rs"]
+mod codesearch_guard;
+#[path = "prompt_subagent_watch.rs"]
+mod subagent_watch;
 use super::super::{DEFAULT_MAX_STEPS, Session, SessionResult};
 use super::bootstrap::list_tools_bootstrap_output;
 use super::build::{
@@ -41,8 +45,8 @@ use super::defaults::default_model_for_provider;
 use super::edit::{detect_stub_in_tool_input, normalize_tool_call_for_execution};
 use super::error::is_retryable_upstream_error;
 use super::loop_constants::{
-    BUILD_MODE_TOOL_FIRST_MAX_RETRIES, BUILD_MODE_TOOL_FIRST_NUDGE, CODESEARCH_THRASH_NUDGE,
-    FORCE_FINAL_ANSWER_NUDGE, MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES, MAX_CONSECUTIVE_SAME_TOOL,
+    BUILD_MODE_TOOL_FIRST_MAX_RETRIES, BUILD_MODE_TOOL_FIRST_NUDGE,
+    FORCE_FINAL_ANSWER_NUDGE, MAX_CONSECUTIVE_SAME_TOOL,
     MAX_STEPS_WITHOUT_PROGRESS, MAX_TOTAL_TOOL_CALLS, NATIVE_TOOL_PROMISE_NUDGE,
     NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES, NO_PROGRESS_NUDGE, POST_EDIT_VALIDATION_MAX_RETRIES,
 };
@@ -154,6 +158,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
         }
     };
 
+    let mut sub_watch = subagent_watch::SubAgentWatch::default();
     for step in 1..=max_steps {
         tracing::info!(step = step, "Agent step starting");
 
@@ -797,30 +802,19 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                 tool_id, &tool_name, success, content,
             ));
 
-            if is_build_agent(&session.agent) {
-                if codesearch_no_match {
-                    consecutive_codesearch_no_matches += 1;
-                } else {
-                    consecutive_codesearch_no_matches = 0;
-                }
-
-                if consecutive_codesearch_no_matches >= MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES {
-                    tracing::warn!(
-                        step = step,
-                        consecutive_codesearch_no_matches = consecutive_codesearch_no_matches,
-                        "Detected codesearch no-match thrash; nudging model to stop variant retries",
-                    );
-                    session.add_message(Message {
-                        role: Role::User,
-                        content: vec![ContentPart::Text {
-                            text: CODESEARCH_THRASH_NUDGE.to_string(),
-                        }],
-                    });
-                    codesearch_thrash_guard_triggered = true;
-                    break;
-                }
+            if codesearch_guard::guard(
+                session,
+                is_build_agent(&session.agent),
+                codesearch_no_match,
+                &mut consecutive_codesearch_no_matches,
+                step,
+            ) {
+                codesearch_thrash_guard_triggered = true;
+                break;
             }
         }
+
+        sub_watch.inject(session);
 
         if codesearch_thrash_guard_triggered {
             continue;

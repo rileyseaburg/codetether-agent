@@ -78,6 +78,11 @@ candle-accelerate = ["candle-core/accelerate", "candle-transformers/accelerate"]
 candle-mkl = ["candle-core/mkl", "candle-transformers/mkl"]
 tetherscript = ["dep:tetherscript", "codetether-browser/tetherscript"]
 functiongemma = []
+# Embeds Helix (helix-core) as an editing backend for the TUI editor view.
+# Off by default: enabling it raises the MSRV to Helix's (rustc 1.90) and
+# pulls MPL-2.0 crates. The editor view falls back to a built-in backend
+# when this feature is disabled.
+helix = ["dep:helix-core"]
 
 [dependencies]
 # Workspace crates
@@ -196,6 +201,11 @@ tokenizers = "0.22.2"
 # Tree-sitter for AST-based oracle verification
 tree-sitter = "0.24"
 tree-sitter-rust = "0.23"
+# Helix editor core (rope + syntax + transactions), embedded behind the
+# `helix` feature. MPL-2.0; raises MSRV to rustc 1.90 when enabled.
+# Not published on crates.io (only a 2021 placeholder), so we pin the
+# upstream git tag directly.
+helix-core = { git = "https://github.com/helix-editor/helix", tag = "25.07.1", optional = true }
 streaming-iterator = "0.1.9"
 mdns-sd = "0.13"
 gethostname = "1"

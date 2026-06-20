@@ -33,5 +33,12 @@
     "status": "pending",
     "priority": "critical",
     "created_at": "2026-06-18T19:23:28.763208394+00:00"
+  },
+  {
+    "id": "todo_1781975363230",
+    "content": "Collapse Group C tuples onto ContentPart::ToolCall: agent/execution (PendingToolCall)",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-06-20T17:09:23.230257878+00:00"
   }
 ]
