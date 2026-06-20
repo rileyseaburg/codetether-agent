@@ -9,7 +9,7 @@ pub(super) fn agent_tool_parameters() -> Value {
     json!({
         "type": "object",
         "properties": {
-            "action": { "type": "string", "enum": ["spawn", "message", "list", "kill"] },
+            "action": { "type": "string", "enum": ["spawn", "message", "list", "status", "kill"] },
             "name": { "type": "string", "description": "Agent name" },
             "instructions": { "type": "string", "description": "System instructions (spawn)" },
             "message": { "type": "string", "description": "Message to send" },

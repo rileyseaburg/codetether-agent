@@ -27,7 +27,7 @@ pub use super::SwarmMessage;
 use crate::{
     agent::Agent,
     provenance::{ExecutionOrigin, ExecutionProvenance},
-    provider::{CompletionRequest, ContentPart, FinishReason, Message, Provider, Role},
+    provider::{CompletionRequest, ContentPart, Message, Provider, Role},
     rlm::RlmExecutor,
     session::helper::runtime::enrich_tool_input_with_runtime_context,
     swarm::{SwarmArtifact, SwarmStats},
@@ -45,6 +45,8 @@ use tokio::task::AbortHandle;
 use tokio::time::{Duration, MissedTickBehavior, timeout};
 #[path = "bus_publish.rs"]
 mod bus_publish;
+#[path = "loop_step.rs"]
+pub mod loop_step;
 #[path = "executor_tokens.rs"]
 mod executor_tokens;
 use executor_tokens::{estimate_tokens, estimate_total_tokens};
@@ -2475,27 +2477,22 @@ pub async fn run_agent_loop(
             }
         }
 
-        // Log tool calls
-        if !tool_calls.is_empty() {
-            tracing::info!(
-                step = steps,
-                num_tool_calls = tool_calls.len(),
-                tools = ?tool_calls.iter().map(|(_, name, _)| name.as_str()).collect::<Vec<_>>(),
-                "Sub-agent requesting tool calls"
-            );
-        }
+        loop_step::log_tool_calls(steps, &tool_calls);
 
         // Add assistant message to history
         messages.push(response.message.clone());
 
-        // If no tool calls or stop, we're done
-        if response.finish_reason != FinishReason::ToolCalls || tool_calls.is_empty() {
-            tracing::info!(
-                steps = steps,
-                total_tool_calls = total_tool_calls,
-                "Sub-agent finished"
-            );
-            break AgentLoopExit::Completed;
+        // Decide the next action (see `loop_step` for the provider rationale).
+        match loop_step::after_turn(response.finish_reason, !tool_calls.is_empty()) {
+            loop_step::AfterTurn::Execute => {}
+            loop_step::AfterTurn::Continue => {
+                tracing::warn!(step = steps, "Sub-agent truncated; continuing");
+                continue;
+            }
+            loop_step::AfterTurn::Finish => {
+                tracing::info!(steps, total_tool_calls, "Sub-agent finished");
+                break AgentLoopExit::Completed;
+            }
         }
 
         // Execute tool calls

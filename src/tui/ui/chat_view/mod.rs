@@ -35,6 +35,8 @@ pub mod spinner;
 pub mod status;
 pub mod status_hints;
 pub mod status_line;
+pub mod status_metrics;
+pub mod status_pack;
 pub mod status_text;
 pub mod streaming;
 pub mod suggestions;

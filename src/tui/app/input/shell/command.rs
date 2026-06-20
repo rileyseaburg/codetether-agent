@@ -2,15 +2,15 @@
 //!
 //! Lines starting with `!` are executed as shell commands in the
 //! workspace directory instead of being sent to the model. The command
-//! and its output are appended to the chat history as a tool-style
-//! message so the transcript stays readable.
+//! runs on a background task (see [`crate::tui::app::input::shell_bg`]) so
+//! the TUI stays responsive during long-running commands; its result is
+//! drained into the transcript by the event loop.
 
 use std::path::Path;
 
+use crate::tui::app::input::shell_bg::spawn_shell_command;
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
-
-use super::exec::run_shell;
 
 /// Handle a `!command` shell invocation. Returns `true` when the
 /// prompt was consumed as a shell command.
@@ -24,26 +24,17 @@ pub(in crate::tui::app::input) async fn run(app: &mut App, cwd: &Path, prompt: &
         app.state.clear_input();
         return true;
     }
+    if app.state.shell_running {
+        app.state.status = "A shell command is already running.".to_string();
+        app.state.clear_input();
+        return true;
+    }
     app.state
         .messages
         .push(ChatMessage::new(MessageType::User, format!("! {command}")));
-    app.state.status = format!("Running shell: {command}");
+    app.state.status = format!("Running shell (background): {command}");
     app.state.clear_input();
-    let outcome = run_shell(command, cwd).await;
-    app.state.messages.push(ChatMessage::new(
-        MessageType::ToolResult {
-            name: "shell".to_string(),
-            output: outcome.output.clone(),
-            success: outcome.success,
-            duration_ms: Some(outcome.duration_ms),
-        },
-        outcome.output,
-    ));
-    app.state.status = if outcome.success {
-        format!("Shell command finished ({} ms)", outcome.duration_ms)
-    } else {
-        format!("Shell command failed ({} ms)", outcome.duration_ms)
-    };
     app.state.scroll_to_bottom();
+    spawn_shell_command(app, cwd, command.to_string());
     true
 }

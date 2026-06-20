@@ -1,4 +1,4 @@
-//! Output truncation helpers for shell command results.
+//! Output truncation for background `!command` shell results.
 
 /// Largest UTF-8 char boundary at or below `idx`.
 fn char_floor(s: &str, mut idx: usize) -> usize {
@@ -9,7 +9,7 @@ fn char_floor(s: &str, mut idx: usize) -> usize {
 }
 
 /// Cap `text` at `max_bytes`, appending a truncation marker.
-pub(super) fn truncate_output(text: &mut String, max_bytes: usize) {
+pub(crate) fn truncate_output(text: &mut String, max_bytes: usize) {
     if text.len() > max_bytes {
         text.truncate(char_floor(text, max_bytes));
         text.push_str("\n... [output truncated]");

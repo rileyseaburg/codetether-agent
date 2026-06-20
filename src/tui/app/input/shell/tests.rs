@@ -1,5 +1,6 @@
 //! Tests for the `!command` shell prefix in chat submit.
 
+use super::tests_support::run_and_drain;
 use crate::tui::app::state::App;
 use crate::tui::chat::message::MessageType;
 
@@ -8,7 +9,7 @@ async fn bang_prefix_runs_shell_and_records_output() {
     let mut app = App::default();
     let cwd = std::path::Path::new(".");
 
-    let consumed = super::run(&mut app, cwd, "!echo hello-shell").await;
+    let consumed = run_and_drain(&mut app, cwd, "!echo hello-shell").await;
 
     assert!(consumed);
     assert!(app.state.input.is_empty());
@@ -33,7 +34,7 @@ async fn bang_prefix_reports_failure_status() {
     let mut app = App::default();
     let cwd = std::path::Path::new(".");
 
-    assert!(super::run(&mut app, cwd, "!false").await);
+    assert!(run_and_drain(&mut app, cwd, "!false").await);
     match &app.state.messages.last().expect("message").message_type {
         MessageType::ToolResult { success, .. } => assert!(!*success),
         other => panic!("expected ToolResult, got {other:?}"),

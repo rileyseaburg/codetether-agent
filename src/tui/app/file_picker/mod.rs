@@ -31,6 +31,6 @@ pub use nav_jump::{file_picker_select_first, file_picker_select_last};
 pub use nav_select::{
     file_picker_page_down, file_picker_page_up, file_picker_select_next, file_picker_select_prev,
 };
-pub use open::open_file_picker;
+pub use open::{open_file_in_viewer, open_file_picker};
 pub use render::render_file_picker;
 pub use types::{FilePickerEntry, FilePickerMode, FilePickerState};

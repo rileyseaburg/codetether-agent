@@ -18,6 +18,7 @@ use super::{agent_profile::SpawnedAgent, chat_latency, context_health, git_state
 
 type ModelRefreshRx = Option<UnboundedReceiver<model_picker::ModelRefreshEvent>>;
 type ChatSyncRx = Option<UnboundedReceiver<crate::tui::chat::sync::ChatSyncUiEvent>>;
+type ShellRx = Option<UnboundedReceiver<crate::tui::app::input::shell_bg::ShellEvent>>;
 type PendingPaste = crate::tui::app::input::pasted_text::PendingTextPaste;
 type WatchdogNotice = Option<crate::tui::app::watchdog::WatchdogNotification>;
 type PendingOkr = Option<crate::tui::app::okr_gate::PendingOkrApproval>;
@@ -67,5 +68,5 @@ pub struct AppState {
     pub watchdog_notification: WatchdogNotice, pub main_watchdog_root_prompt: Option<String>, pub main_last_event_at: Option<Instant>, pub main_watchdog_restart_count: u32, pub main_inflight_prompt: Option<String>, pub okr_repository: Option<Arc<crate::okr::OkrRepository>>, pub pending_okr_approval: PendingOkr, pub pending_smart_switch_retry: SmartRetry, pub smart_switch_retry_count: u32, pub smart_switch_attempted_models: Vec<String>,
     pub chat_sync_rx: ChatSyncRx, pub chat_sync_status: Option<String>, pub chat_sync_last_success: Option<String>, pub chat_sync_last_error: Option<String>, pub chat_sync_uploaded_bytes: u64, pub chat_sync_uploaded_batches: u64,
     pub autochat: crate::tui::app::autochat::state::AutochatState, pub file_picker: crate::tui::app::file_picker::FilePickerState, pub workspace: crate::tui::models::WorkspaceSnapshot, pub goal_prompt: Option<crate::tui::app::goal_prompt::GoalPromptState>, pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
-    pub recording_stop_flag: VoiceStopFlag, pub pending_voice_text: VoiceTextSlot, pub saved_chat_scroll: usize, pub saved_chat_auto_follow: bool, pub saved_tool_preview_scroll: usize, pub streaming_start: Option<Instant>, pub streaming_chars: usize, pub forage: crate::tui::forage_run::ForageState, pub needs_redraw: bool,
+    pub recording_stop_flag: VoiceStopFlag, pub pending_voice_text: VoiceTextSlot, pub saved_chat_scroll: usize, pub saved_chat_auto_follow: bool, pub saved_tool_preview_scroll: usize, pub streaming_start: Option<Instant>, pub streaming_chars: usize, pub forage: crate::tui::forage_run::ForageState, pub needs_redraw: bool, pub shell_rx: ShellRx, pub shell_running: bool,
 }

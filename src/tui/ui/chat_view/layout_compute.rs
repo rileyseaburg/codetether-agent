@@ -23,7 +23,7 @@ pub fn compute_chat_chunks(area: Rect, app: &App) -> ChatChunks {
     let suggestions_visible = app.state.slash_suggestions_visible();
     let input_lines_count = app.state.input.lines().count().max(1);
     let input_height = (input_lines_count as u16 + 2).clamp(3, 6);
-    let status_height = status_bar_height(area.width);
+    let status_height = status_bar_height(area.width, app);
     let constraints: &[Constraint] = if suggestions_visible {
         &[
             Constraint::Min(8),
@@ -52,12 +52,10 @@ pub fn compute_chat_chunks(area: Rect, app: &App) -> ChatChunks {
 
 /// Height reserved for the bottom status bar, in rows.
 ///
-/// Stacks to 3 rows when the terminal is narrower than the
-/// [`super::status::STACK_WIDTH_THRESHOLD`]; otherwise a single row.
-fn status_bar_height(width: u16) -> u16 {
-    if width >= super::status::STACK_WIDTH_THRESHOLD {
-        1
-    } else {
-        3
-    }
+/// Computes the actual number of packed status lines so every badge
+/// stays visible; on wide terminals this collapses to a single row.
+fn status_bar_height(width: u16, app: &App) -> u16 {
+    let label = app.state.session_id.as_deref().unwrap_or("new").to_string();
+    let lines = super::status::build_status_lines(app, &label, width);
+    (lines.len() as u16).max(1)
 }

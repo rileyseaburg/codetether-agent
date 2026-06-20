@@ -35,6 +35,6 @@ pub(super) fn execute_kill(params: &Params) -> Result<ToolResult> {
 /// ```
 pub(super) fn unknown_action_result(action: &str) -> ToolResult {
     ToolResult::error(format!(
-        "Unknown action: {action}. Valid: spawn, message, list, kill"
+        "Unknown action: {action}. Valid: spawn, message, list, status, kill"
     ))
 }

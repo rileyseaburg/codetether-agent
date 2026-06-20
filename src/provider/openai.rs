@@ -20,7 +20,13 @@ use async_openai::{
 use async_trait::async_trait;
 use futures::StreamExt;
 use reqwest::Client as HttpClient;
-use serde_json::Value;
+
+pub mod alias;
+mod catalog;
+mod discovery;
+mod model_caps;
+mod model_entry;
+mod parse_models;
 
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
@@ -93,187 +99,6 @@ impl OpenAIProvider {
             http: HttpClient::builder()
                 .timeout(std::time::Duration::from_secs(45))
                 .build()?,
-        })
-    }
-
-    /// Return known models for specific OpenAI-compatible providers
-    fn provider_default_models(&self) -> Vec<ModelInfo> {
-        let models: Vec<(&str, &str)> = match self.provider_name.as_str() {
-            "cerebras" => vec![
-                ("llama3.1-8b", "Llama 3.1 8B"),
-                ("llama-3.3-70b", "Llama 3.3 70B"),
-                ("qwen-3.5-32b", "Qwen 3.5 32B"),
-                ("gpt-oss-120b", "GPT-OSS 120B"),
-            ],
-
-            "minimax" => vec![
-                ("MiniMax-M2.5", "MiniMax M2.5"),
-                ("MiniMax-M2.5-highspeed", "MiniMax M2.5 Highspeed"),
-                ("MiniMax-M2.1", "MiniMax M2.1"),
-                ("MiniMax-M2.1-highspeed", "MiniMax M2.1 Highspeed"),
-                ("MiniMax-M2", "MiniMax M2"),
-            ],
-            "zhipuai" => vec![],
-            "novita" => vec![
-                ("Qwen/Qwen3.5-35B-A3B", "Qwen 3.5 35B A3B"),
-                ("deepseek/deepseek-v3-0324", "DeepSeek V3"),
-                ("meta-llama/llama-3.1-70b-instruct", "Llama 3.1 70B"),
-                ("meta-llama/llama-3.1-8b-instruct", "Llama 3.1 8B"),
-            ],
-            _ => vec![],
-        };
-
-        models
-            .into_iter()
-            .map(|(id, name)| ModelInfo {
-                id: id.to_string(),
-                name: name.to_string(),
-                provider: self.provider_name.clone(),
-                context_window: 128_000,
-                max_output_tokens: Some(16_384),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: None,
-                output_cost_per_million: None,
-            })
-            .collect()
-    }
-
-    async fn discover_models_from_api(&self) -> Vec<ModelInfo> {
-        let url = format!("{}/models", self.api_base);
-        let mut request = self.http.get(&url);
-        if let Some(api_key) = &self.api_key {
-            request = request.bearer_auth(api_key);
-        }
-
-        let response = match request.send().await {
-            Ok(response) => response,
-            Err(error) => {
-                tracing::debug!(
-                    provider = %self.provider_name,
-                    url = %url,
-                    error = %error,
-                    "Failed to fetch OpenAI-compatible /models endpoint"
-                );
-                return Vec::new();
-            }
-        };
-
-        let status = response.status();
-        if !status.is_success() {
-            tracing::debug!(
-                provider = %self.provider_name,
-                url = %url,
-                status = %status,
-                "OpenAI-compatible /models endpoint returned non-success"
-            );
-            return Vec::new();
-        }
-
-        let payload: Value = match crate::provider::body_cap::json_capped(
-            response,
-            crate::provider::body_cap::PROVIDER_METADATA_BODY_CAP,
-        )
-        .await
-        {
-            Ok(payload) => payload,
-            Err(error) => {
-                tracing::debug!(
-                    provider = %self.provider_name,
-                    url = %url,
-                    error = %error,
-                    "Failed to parse OpenAI-compatible /models response (or exceeded body cap)"
-                );
-                return Vec::new();
-            }
-        };
-
-        let models = Self::parse_models_payload(&payload, &self.provider_name);
-        if models.is_empty() {
-            tracing::debug!(
-                provider = %self.provider_name,
-                url = %url,
-                "OpenAI-compatible /models payload did not contain any model ids"
-            );
-        }
-        models
-    }
-
-    fn parse_models_payload(payload: &Value, provider_name: &str) -> Vec<ModelInfo> {
-        payload
-            .get("data")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(|entry| Self::model_info_from_api_entry(entry, provider_name))
-            .collect()
-    }
-
-    fn model_info_from_api_entry(entry: &Value, provider_name: &str) -> Option<ModelInfo> {
-        let id = match entry {
-            Value::String(id) => id.trim(),
-            Value::Object(_) => entry.get("id").and_then(Value::as_str)?.trim(),
-            _ => return None,
-        };
-        if id.is_empty() {
-            return None;
-        }
-
-        let name = entry
-            .get("name")
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .filter(|name| !name.is_empty())
-            .unwrap_or(id);
-
-        let supports_vision = entry
-            .get("supports_vision")
-            .and_then(Value::as_bool)
-            .or_else(|| {
-                entry
-                    .get("input_modalities")
-                    .and_then(Value::as_array)
-                    .map(|modalities| {
-                        modalities.iter().any(|modality| {
-                            modality
-                                .as_str()
-                                .is_some_and(|modality| modality.eq_ignore_ascii_case("image"))
-                        })
-                    })
-            })
-            .unwrap_or(false);
-
-        Some(ModelInfo {
-            id: id.to_string(),
-            name: name.to_string(),
-            provider: provider_name.to_string(),
-            context_window: value_to_usize(
-                entry
-                    .pointer("/limits/max_context_window_tokens")
-                    .or_else(|| entry.get("context_window")),
-            )
-            .unwrap_or(128_000),
-            max_output_tokens: value_to_usize(
-                entry
-                    .pointer("/limits/max_output_tokens")
-                    .or_else(|| entry.get("max_output_tokens")),
-            ),
-            supports_vision,
-            supports_tools: entry
-                .get("supports_tools")
-                .and_then(Value::as_bool)
-                .unwrap_or(true),
-            supports_streaming: entry
-                .get("supports_streaming")
-                .and_then(Value::as_bool)
-                .unwrap_or(true),
-            input_cost_per_million: entry
-                .pointer("/pricing/input_cost_per_million")
-                .and_then(Value::as_f64),
-            output_cost_per_million: entry
-                .pointer("/pricing/output_cost_per_million")
-                .and_then(Value::as_f64),
         })
     }
 
@@ -450,7 +275,9 @@ impl Provider for OpenAIProvider {
         let tools = Self::convert_tools(&request.tools)?;
 
         let mut req_builder = CreateChatCompletionRequestArgs::default();
-        req_builder.model(&request.model).messages(messages.clone());
+        let model_id =
+            alias::normalize_model_id(&self.provider_name, &request.model);
+        req_builder.model(model_id.as_ref()).messages(messages.clone());
 
         // Pass tools to the API if provided
         if !tools.is_empty() {
@@ -570,8 +397,10 @@ impl Provider for OpenAIProvider {
         let tools = Self::convert_tools(&request.tools)?;
 
         let mut req_builder = CreateChatCompletionRequestArgs::default();
+        let model_id =
+            alias::normalize_model_id(&self.provider_name, &request.model);
         req_builder
-            .model(&request.model)
+            .model(model_id.as_ref())
             .messages(messages)
             .stream(true);
 
@@ -706,12 +535,6 @@ impl Provider for OpenAIProvider {
             },
         })
     }
-}
-
-fn value_to_usize(value: Option<&Value>) -> Option<usize> {
-    value
-        .and_then(Value::as_u64)
-        .and_then(|value| usize::try_from(value).ok())
 }
 
 fn safe_char_prefix(input: &str, max_chars: usize) -> String {

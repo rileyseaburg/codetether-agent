@@ -24,6 +24,7 @@ mod paste_burst;
 mod paste_burst_tests;
 mod scroll_down;
 mod scroll_up;
+mod shared_file_open;
 mod side_question;
 mod tests;
 pub(crate) mod voice;

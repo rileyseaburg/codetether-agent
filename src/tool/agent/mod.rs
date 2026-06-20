@@ -33,8 +33,15 @@ mod session_factory;
 mod spawn;
 mod spawn_messages;
 mod spawn_request;
+#[cfg(test)]
+mod spawn_request_tests;
 mod spawn_store;
 mod spawn_validation;
+mod status;
+mod status_liveness;
+#[cfg(test)]
+mod status_liveness_tests;
+mod status_source;
 #[cfg(test)]
 mod spawn_validation_tests;
 mod store;

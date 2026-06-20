@@ -1401,7 +1401,7 @@ impl OpenAiCodexProvider {
                     .to_string();
                 chunks.push(StreamChunk::Error(message));
             }
-            _ => {}
+            other => super::codex_reasoning::push_if_reasoning(other, &event, chunks),
         }
     }
 

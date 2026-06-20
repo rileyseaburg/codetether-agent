@@ -4,6 +4,7 @@
 //! such as `[[ ... ]]`. Honoring `$SHELL` makes `!` commands behave like
 //! the user's interactive shell.
 
+use crate::tui::app::input::shell_bg::drain_shell_events;
 use crate::tui::app::state::App;
 use crate::tui::chat::message::MessageType;
 
@@ -15,6 +16,12 @@ async fn bang_prefix_supports_bash_only_syntax() {
     let cwd = std::path::Path::new(".");
 
     assert!(super::run(&mut app, cwd, "![[ 1 == 1 ]] && echo bashok").await);
+    for _ in 0..600 {
+        if drain_shell_events(&mut app) {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
     match &app.state.messages.last().expect("message").message_type {
         MessageType::ToolResult {
             output, success, ..

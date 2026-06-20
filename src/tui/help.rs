@@ -265,6 +265,14 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
         "Ctrl+C",
         "Interrupt turn (while streaming) or quit (when idle)",
     ));
+    lines.push(key_row(
+        "Ctrl+E",
+        "Diff most recent file referenced by an agent",
+    ));
+    lines.push(key_row(
+        "Ctrl+F",
+        "Open most recent agent file in the file viewer",
+    ));
     lines.push(key_row("Ctrl+Q", "Quit"));
     lines.push(key_row("Esc", "Back / close overlay / exit detail"));
     lines.push(key_row("Ctrl+T", "Symbol search (workspace)"));

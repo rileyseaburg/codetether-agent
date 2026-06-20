@@ -25,5 +25,5 @@ pub(in crate::session::helper) mod tool_output;
 pub(in crate::session::helper) mod tool_parallel;
 #[path = "tool_policy.rs"]
 pub(in crate::session::helper) mod tool_policy;
-#[path = "tool_truncation.rs"]
+#[path = "tool_truncation/mod.rs"]
 pub(in crate::session::helper) mod tool_truncation;

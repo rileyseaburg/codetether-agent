@@ -124,7 +124,7 @@ pub(super) fn handle_ctrl_key(
         KeyCode::Char('x') if ctrl && app.state.watchdog_notification.is_some() => {
             crate::tui::app::watchdog::handle_watchdog_cancel(&mut app.state);
         }
-        _ => return None,
+        _ => return super::shared_file_open::ctrl_key(app, _cwd, key, ctrl),
     }
     Some(Ok(false))
 }

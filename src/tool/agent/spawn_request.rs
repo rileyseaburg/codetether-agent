@@ -21,17 +21,23 @@ pub(super) struct SpawnRequest<'a> {
 
 impl<'a> SpawnRequest<'a> {
     /// Extracts the required spawn fields from the parsed params object.
+    ///
+    /// `model` falls back to the parent's current model (injected by the
+    /// runtime as `__ct_current_model`) when the caller omits it, so spawning
+    /// works without the LLM having to know a model id.
     pub(super) fn from_params(params: &'a Params) -> Result<Self> {
+        let model = params
+            .model
+            .as_deref()
+            .or(params._current_model.as_deref())
+            .context("model required for spawn (and no parent model available)")?;
         Ok(Self {
             name: params.name.as_deref().context("name required for spawn")?,
             instructions: params
                 .instructions
                 .as_deref()
                 .context("instructions required for spawn")?,
-            model: params
-                .model
-                .as_deref()
-                .context("model required for spawn")?,
+            model,
             ephemeral: params.ephemeral,
             parent_workspace: params.parent_workspace.clone(),
         })

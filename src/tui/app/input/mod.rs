@@ -42,6 +42,7 @@ mod pr_helpers;
 mod pr_request;
 mod pr_title;
 mod sessions;
+pub(crate) mod shell_bg;
 mod tests_enter;
 mod tests_image_paste;
 mod tests_paste;

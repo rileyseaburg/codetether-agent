@@ -1,19 +1,31 @@
+//! Recovery messaging for tool calls truncated by the provider's output cap.
+//!
+//! When a model's response hits the output-token limit mid tool-call, the
+//! arguments JSON cannot be parsed. These helpers build concrete, tool-aware
+//! corrective messages so the model retries with a smaller call instead of
+//! re-truncating the same oversized one.
+
+mod rules;
+#[cfg(test)]
+mod tests;
+
 use crate::provider::{ContentPart, Message, Role};
 
+use rules::retry_rule;
+
+/// Build the tool-result error text shown to the model for a truncated call.
 pub(in crate::session::helper) fn error_content(tool: &str) -> String {
-    let retry_rule = if tool == "batch" {
-        "Do not call `batch` on the retry; issue at most three individual tool calls with short arguments."
-    } else {
-        "Retry with one smaller tool call; split writes, shell scripts, or long arguments into separate turns."
-    };
     format!(
         "Error: Your tool call to `{tool}` was truncated because the provider cut off the \
-         arguments JSON before it could be parsed. Recovery required: {retry_rule} Do not \
+         arguments JSON before it could be parsed (the response hit the output-token limit). \
+         Recovery required: {} Do not \
          provide a final answer until the smaller tool call succeeds or you have tried a \
-         different small diagnostic step."
+         different small diagnostic step.",
+        retry_rule(tool)
     )
 }
 
+/// Build the follow-up user directive listing the truncated tools.
 pub(in crate::session::helper) fn retry_prompt(tools: &[(String, String)]) -> Message {
     let names = tools
         .iter()
@@ -34,19 +46,5 @@ pub(in crate::session::helper) fn retry_prompt(tools: &[(String, String)]) -> Me
                  Do not summarize or stop before attempting the smaller call."
             ),
         }],
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{error_content, retry_prompt};
-
-    #[test]
-    fn batch_recovery_forbids_batch_retry() {
-        let content = error_content("batch");
-        let text = format!("{:?}", retry_prompt(&[("call-1".into(), "batch".into())]));
-        assert!(content.contains("Do not call `batch`"));
-        assert!(content.contains("at most three individual tool calls"));
-        assert!(text.contains("Do not use `batch`"));
     }
 }

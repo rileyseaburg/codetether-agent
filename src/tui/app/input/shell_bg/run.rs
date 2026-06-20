@@ -1,41 +1,41 @@
-//! Async shell execution for the TUI `!command` prefix.
+//! Execute a `!command` through `$SHELL` with a timeout, building a [`ShellEvent`].
 
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+use super::event::ShellEvent;
 use super::truncate::truncate_output;
 
-/// Outcome of a `!command` shell invocation.
-pub(super) struct ShellOutcome {
-    pub output: String,
-    pub success: bool,
-    pub duration_ms: u64,
-}
+const TIMEOUT: Duration = Duration::from_secs(120);
+const MAX_OUTPUT: usize = 64 * 1024;
 
-/// Run `command` through the user's shell (`$SHELL`, falling back to
-/// `/bin/sh`) in `cwd`, capturing stdout and stderr.
-///
-/// Using `$SHELL` means bash-only syntax (`[[ ]]`, arrays, `source`,
-/// `==`) behaves the same as in the user's interactive shell instead of
-/// failing under a minimal `/bin/sh` such as dash.
-///
-/// Output is truncated to 64 KiB and the command is killed after 120s.
-pub(super) async fn run_shell(command: &str, cwd: &Path) -> ShellOutcome {
-    const TIMEOUT: Duration = Duration::from_secs(120);
-    const MAX_OUTPUT: usize = 64 * 1024;
+/// Run `command` in `cwd`, capturing stdout/stderr, killing after 120s.
+pub(super) async fn run(command: String, cwd: &Path) -> ShellEvent {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
     let started = Instant::now();
     let result = tokio::time::timeout(
         TIMEOUT,
         tokio::process::Command::new(&shell)
             .arg("-c")
-            .arg(command)
+            .arg(&command)
             .current_dir(cwd)
             .output(),
     )
     .await;
     let duration_ms = started.elapsed().as_millis() as u64;
-    let (output, success) = match result {
+    let (output, success) = interpret(result);
+    ShellEvent {
+        command,
+        output,
+        success,
+        duration_ms,
+    }
+}
+
+type SpawnResult = Result<std::io::Result<std::process::Output>, tokio::time::error::Elapsed>;
+
+fn interpret(result: SpawnResult) -> (String, bool) {
+    match result {
         Ok(Ok(out)) => {
             let mut text = String::from_utf8_lossy(&out.stdout).into_owned();
             let stderr = String::from_utf8_lossy(&out.stderr);
@@ -50,10 +50,5 @@ pub(super) async fn run_shell(command: &str, cwd: &Path) -> ShellOutcome {
         }
         Ok(Err(error)) => (format!("Failed to spawn shell: {error}"), false),
         Err(_) => ("Command timed out after 120s".to_string(), false),
-    };
-    ShellOutcome {
-        output,
-        success,
-        duration_ms,
     }
 }

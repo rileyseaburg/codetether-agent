@@ -4,14 +4,13 @@
 //! auto-apply badge, bus status, latency, token usage, and status
 //! text into one or more [`Line`]s for the status bar. When the
 //! terminal is too narrow to show everything on one row, the
-//! content is stacked across three lines.
+//! content is packed across as many lines as needed so no badge clips.
 
 use ratatui::text::{Line, Span};
 
 use super::badges::badge_spans;
 use super::status_hints::keybinding_spans;
-use super::status_text::status_text_span;
-use super::token_spans::{push_throughput_span, push_token_spans};
+use super::status_metrics::metric_spans;
 use crate::tui::app::state::App;
 
 /// Width below which the status bar stacks across multiple rows.
@@ -20,10 +19,8 @@ pub const STACK_WIDTH_THRESHOLD: u16 = 180;
 /// Assemble the status bar as one or more lines.
 ///
 /// Returns a single line when `width >= STACK_WIDTH_THRESHOLD`,
-/// otherwise stacks the content across three lines:
-/// 1. keybinding hints
-/// 2. session / auto-apply / bus / images / latency badges
-/// 3. token usage / status text
+/// otherwise width-packs hints, badges, and metrics across multiple
+/// rows so every badge stays visible without manual zoom-out.
 ///
 /// # Examples
 ///
@@ -46,50 +43,11 @@ pub fn build_status_lines(app: &App, session_label: &str, width: u16) -> Vec<Lin
         combined.extend(metrics);
         vec![Line::from(combined)]
     } else {
-        let hints = super::compact_hints::compact_keybinding_spans();
-        vec![Line::from(hints), Line::from(badges), Line::from(metrics)]
+        super::status_pack::pack_stacked(
+            super::compact_hints::compact_keybinding_spans(),
+            badges,
+            metrics,
+            width,
+        )
     }
-}
-
-/// Assemble all status-bar spans in display order as a single flat row.
-///
-/// Retained for backward compatibility; prefer [`build_status_lines`].
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use codetether_agent::tui::ui::chat_view::status::build_status_spans;
-/// # fn demo(app: &codetether_agent::tui::app::state::App) {
-/// let spans = build_status_spans(app, "test-session");
-/// assert!(!spans.is_empty());
-/// # }
-/// ```
-pub fn build_status_spans(app: &App, session_label: &str) -> Vec<Span<'static>> {
-    let mut spans = keybinding_spans();
-    spans.push(Span::raw(" | "));
-    spans.extend(badge_spans(app, session_label));
-    spans.push(Span::raw(" | "));
-    spans.extend(metric_spans(app));
-    spans
-}
-
-fn metric_spans(app: &App) -> Vec<Span<'static>> {
-    let mut spans = Vec::new();
-    if let Some(badge) = super::processing_badge::processing_badge(app) {
-        spans.push(badge);
-        spans.push(Span::raw(" | "));
-    }
-    push_token_spans(&mut spans);
-    if let Some(gauge) = super::context_gauge::context_gauge_span(app) {
-        spans.push(Span::raw(" | "));
-        spans.push(gauge);
-    }
-    push_throughput_span(&mut spans, app);
-    if let Some(spark) = super::throughput_sparkline::sparkline_span(app) {
-        spans.push(Span::raw(" "));
-        spans.push(spark);
-    }
-    spans.push(Span::raw(" | "));
-    spans.push(status_text_span(app));
-    spans
 }

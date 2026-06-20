@@ -59,7 +59,7 @@ impl Tool for AgentTool {
     }
 
     fn description(&self) -> &str {
-        "Spawn and communicate with specialized sub-agents. Actions: spawn, message, list, kill. Spawned agents should use a free/subscription-eligible model; non-eligible models produce a cost warning."
+        "Spawn and communicate with specialized sub-agents. Actions: spawn, message, list, status, kill. Use 'status' to check whether spawned sub-agents are active, stalled, or settled. Spawned agents should use a free/subscription-eligible model; non-eligible models produce a cost warning."
     }
 
     fn parameters(&self) -> Value {
@@ -73,6 +73,7 @@ impl Tool for AgentTool {
             "spawn" => spawn::handle_spawn(&parsed).await,
             "message" => message::handle_message(&parsed).await,
             "list" => Ok(handlers::handle_list()),
+            "status" => Ok(super::status::handle_status()),
             "kill" => execute_kill(&parsed),
             _ => Ok(super::actions::unknown_action_result(&parsed.action)),
         }

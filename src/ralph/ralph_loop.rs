@@ -323,7 +323,10 @@ impl RalphLoop {
     /// Run the Ralph loop until completion or max iterations
     pub async fn run(&mut self) -> anyhow::Result<RalphState> {
         self.state.status = RalphStatus::Running;
-
+        super::verifiability::warn_unverifiable_stories(
+            &self.state.prd,
+            self.config.quality_checks_enabled,
+        );
         // Create run record in store
         if let Some(ref store) = self.store {
             let initial_state = RalphRunState {
@@ -352,10 +355,9 @@ impl RalphLoop {
             stories: Self::build_story_infos(&self.state.prd),
             max_iterations: self.state.max_iterations,
         });
-
         // Switch to feature branch
         if !self.state.prd.branch_name.is_empty() {
-            info!("Switching to branch: {}", self.state.prd.branch_name);
+            info!(branch = %self.state.prd.branch_name, "Switching to branch");
             self.git_checkout(&self.state.prd.branch_name)?;
         }
 
@@ -365,7 +367,6 @@ impl RalphLoop {
         } else {
             self.run_sequential().await?;
         }
-
         // Set final status based on what happened.
         // Parallel mode can exhaust stages before hitting max_iterations, so avoid leaving
         // a terminal run in "Running".

@@ -130,6 +130,8 @@ impl Default for super::AppState {
             streaming_chars: 0,
             forage: crate::tui::forage_run::ForageState::new(),
             needs_redraw: true,
+            shell_rx: None,
+            shell_running: false,
         }
     }
 }

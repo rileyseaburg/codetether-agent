@@ -22,6 +22,7 @@
 pub mod anthropic;
 pub mod bedrock;
 pub mod body_cap;
+pub mod codex_reasoning;
 pub mod copilot;
 pub mod deepseek;
 mod fallback_policy;
