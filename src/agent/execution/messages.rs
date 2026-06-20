@@ -12,15 +12,6 @@
 use crate::provider::{ContentPart, Message};
 use crate::session::Session;
 
-/// Internal representation of a pending provider tool call.
-///
-/// # Examples
-///
-/// ```ignore
-/// let call: PendingToolCall = ("id".into(), "bash".into(), "{}".into());
-/// ```
-pub(super) type PendingToolCall = (String, String, String);
-
 /// Compose the system prompt by appending the session's goal-governance
 /// block (if any) to the agent's base persona prompt.
 ///
@@ -40,18 +31,22 @@ pub(super) fn compose_system_prompt(base: &str, session: &Session) -> String {
     }
 }
 
-/// Extracts all tool calls from a provider message.
+/// Extracts the canonical tool-call content parts from a provider message.
+///
+/// Returns owned [`ContentPart::ToolCall`] values (preserving
+/// `thought_signature`) rather than flattening into positional tuples.
 ///
 /// # Examples
 ///
 /// ```ignore
 /// let calls = collect_tool_calls(&message);
 /// ```
-pub(super) fn collect_tool_calls(message: &Message) -> Vec<PendingToolCall> {
+pub(super) fn collect_tool_calls(message: &Message) -> Vec<ContentPart> {
     message
         .content
         .iter()
-        .filter_map(extract_tool_call)
+        .filter(|p| p.as_tool_call().is_some())
+        .cloned()
         .collect()
 }
 
@@ -69,18 +64,6 @@ pub(super) fn response_text(message: &Message) -> String {
         .filter_map(extract_text)
         .collect::<Vec<_>>()
         .join("\n")
-}
-
-fn extract_tool_call(part: &ContentPart) -> Option<PendingToolCall> {
-    match part {
-        ContentPart::ToolCall {
-            id,
-            name,
-            arguments,
-            ..
-        } => Some((id.clone(), name.clone(), arguments.clone())),
-        _ => None,
-    }
 }
 
 fn extract_text(part: &ContentPart) -> Option<String> {
