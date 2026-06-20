@@ -9,6 +9,10 @@ use tokio::process::Command;
 #[path = "validation_eslint.rs"]
 mod validation_eslint;
 
+#[path = "validation_scope.rs"]
+mod validation_scope_mod;
+use validation_scope_mod::validation_scope;
+
 const MAX_DIAGNOSTICS_PER_FILE: usize = 25;
 
 #[derive(Debug, Clone)]
@@ -98,13 +102,7 @@ pub async fn build_validation_report(
     touched_files: &HashSet<PathBuf>,
     baseline_git_dirty_files: &HashSet<PathBuf>,
 ) -> Result<Option<ValidationReport>> {
-    let mut candidate_files = touched_files.clone();
-    let current_git_dirty = capture_git_dirty_files(workspace_dir).await;
-    candidate_files.extend(
-        current_git_dirty
-            .difference(baseline_git_dirty_files)
-            .cloned(),
-    );
+    let candidate_files = validation_scope(touched_files, baseline_git_dirty_files);
 
     let mut existing_files: Vec<PathBuf> = candidate_files
         .into_iter()
