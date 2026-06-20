@@ -30,7 +30,10 @@ impl BuiltinBackend {
     /// Builds a backend from the given source text, splitting on `'\n'`.
     pub fn from_str(text: &str) -> Self {
         let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
-        Self { lines, cursor: (0, 0) }
+        Self {
+            lines,
+            cursor: (0, 0),
+        }
     }
 }
 

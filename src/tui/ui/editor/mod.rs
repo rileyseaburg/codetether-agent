@@ -17,9 +17,9 @@
 //! dependency fully optional while the ratatui renderer and view plumbing
 //! stay on the default build.
 
-/// Dependency-free editor backend used when `helix` is not enabled.
-pub mod builtin;
 /// The backend abstraction consumed by the renderer.
 pub mod backend;
+/// Dependency-free editor backend used when `helix` is not enabled.
+pub mod builtin;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};

@@ -57,6 +57,18 @@ pub fn check_watchdog_stall(state: &AppState, timeout: Duration) -> Option<Watch
         return None;
     }
     let secs = timeout.as_secs();
+    // Prefer a precise per-agent tool-call alert when the bus shows an open
+    // (un-answered) tool call that has exceeded the timeout.
+    if let Some(call) = state.tool_calls.stalled(timeout) {
+        let label = format!(
+            "⚠ {} tool '{}' (step {}) open {secs}s with no response.",
+            call.agent_id, call.tool_name, call.step
+        );
+        return Some(WatchdogNotification::new(
+            label,
+            state.main_watchdog_restart_count,
+        ));
+    }
     let label = if no_first_token {
         format!("⚠ No response after {secs}s. Provider may be unreachable.")
     } else {
