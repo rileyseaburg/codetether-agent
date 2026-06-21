@@ -27,8 +27,8 @@ use super::backend::{EditorBackend, EditorCell, EditorLine};
 /// ```
 #[derive(Debug, Clone)]
 pub struct HelixBackend {
-    rope: Rope,
-    cursor: (usize, usize),
+    pub(super) rope: Rope,
+    pub(super) cursor: (usize, usize),
 }
 
 impl HelixBackend {

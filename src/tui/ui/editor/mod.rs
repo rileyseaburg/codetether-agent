@@ -7,18 +7,25 @@
 //! Two backends are available:
 //!
 //! * [`builtin::BuiltinBackend`] — a dependency-free rope-less line buffer.
-//! * `helix` backend — embeds [`helix-core`](https://github.com/helix-editor/helix)
-//!   (rope + tree-sitter syntax + transactions).
+//! * [`helix_backend::HelixBackend`] — a [`ropey`] rope buffer (the same rope
+//!   type Helix uses) with editing via the [`edit::EditorEdit`] trait.
 //!
-//! The [`EditorBackend`] trait is the seam between the two: the ratatui
-//! renderer consumes the trait and never references `helix-core` types
-//! directly.
+//! [`EditorBackend`] is the render seam (read); [`EditorEdit`] is the mutation
+//! seam (write). Keeping them separate lets a backend be a pure viewer or a
+//! full editor.
 
 /// The backend abstraction consumed by the renderer.
 pub mod backend;
+/// Mutating operations layered on the render backend.
+pub mod edit;
 /// Dependency-free editor backend.
 pub mod builtin;
 /// Helix-core (rope) powered editor backend.
 pub mod helix_backend;
+/// Cursor/char-index helpers for the rope backend.
+mod helix_cursor;
+/// `EditorEdit` implementation for the rope backend.
+mod helix_edit;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};
+pub use edit::{EditorEdit, Move};
