@@ -36,6 +36,8 @@ pub mod apply;
 pub mod render;
 /// Draws the editor view to a frame.
 pub mod draw;
+/// Cursor-follow scroll offset computation.
+pub mod scroll;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};
 pub use edit::{EditorEdit, Move};
