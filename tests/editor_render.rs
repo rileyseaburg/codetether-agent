@@ -9,11 +9,11 @@ fn renders_gutter_and_text() {
     let lines = editor_lines(&b, 0, 3, 0);
     assert_eq!(lines.len(), 3);
 
-    // First visual line: gutter "1 " then "alpha".
+    // First visual line: gutter "1 " then one span per character of "alpha".
     let spans = &lines[0].spans;
-    assert_eq!(spans.len(), 2);
     assert_eq!(spans[0].content.as_ref(), "1 ");
-    assert_eq!(spans[1].content.as_ref(), "alpha");
+    let text: String = spans[1..].iter().map(|s| s.content.as_ref()).collect();
+    assert_eq!(text, "alpha");
 }
 
 #[test]

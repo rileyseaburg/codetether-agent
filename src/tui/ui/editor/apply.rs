@@ -15,9 +15,18 @@ use super::input::EditorInput;
 /// Returns an error only when [`EditorInput::Save`] fails to write the file.
 pub fn apply(buf: &mut FileBuffer, action: EditorInput) -> std::io::Result<bool> {
     match action {
-        EditorInput::Insert(c) => buf.backend_mut().insert_char(c),
-        EditorInput::Newline => buf.backend_mut().insert_char('\n'),
-        EditorInput::Backspace => buf.backend_mut().delete_back(),
+        EditorInput::Insert(c) => {
+            buf.backend_mut().insert_char(c);
+            buf.refresh_highlight();
+        }
+        EditorInput::Newline => {
+            buf.backend_mut().insert_char('\n');
+            buf.refresh_highlight();
+        }
+        EditorInput::Backspace => {
+            buf.backend_mut().delete_back();
+            buf.refresh_highlight();
+        }
         EditorInput::Move(dir) => buf.backend_mut().move_cursor(dir),
         EditorInput::Save => buf.save()?,
         EditorInput::Quit => return Ok(false),

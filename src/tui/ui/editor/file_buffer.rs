@@ -68,4 +68,9 @@ impl FileBuffer {
         self.dirty = true;
         &mut self.backend
     }
+
+    /// Recomputes syntax highlights after a content change.
+    pub fn refresh_highlight(&mut self) {
+        self.backend.rebuild_highlight();
+    }
 }

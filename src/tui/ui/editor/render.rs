@@ -28,8 +28,21 @@ pub fn editor_lines<B: EditorBackend>(
                 format!("{num:>width$} "),
                 Style::default().fg(Color::DarkGray),
             );
-            let text: String = line.cells.iter().skip(hscroll).map(|c| c.ch).collect();
-            Line::from(vec![gutter, Span::raw(text)])
+            let cells: Vec<Span<'static>> = line
+                .cells
+                .iter()
+                .skip(hscroll)
+                .map(|c| {
+                    let style = match c.fg {
+                        Some((r, g, b)) => Style::default().fg(Color::Rgb(r, g, b)),
+                        None => Style::default(),
+                    };
+                    Span::styled(c.ch.to_string(), style)
+                })
+                .collect();
+            let mut spans = vec![gutter];
+            spans.extend(cells);
+            Line::from(spans)
         })
         .collect()
 }

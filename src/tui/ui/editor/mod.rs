@@ -24,6 +24,8 @@ pub mod builtin;
 pub mod helix_backend;
 /// Cursor/char-index helpers for the rope backend.
 mod helix_cursor;
+/// Rope-line to colored-cell conversion.
+mod helix_render;
 /// `EditorEdit` implementation for the rope backend.
 mod helix_edit;
 /// File-backed editor document (open/save/dirty).
@@ -40,6 +42,8 @@ pub mod draw;
 pub mod scroll;
 /// Terminal cursor position computation.
 pub mod cursor_pos;
+/// Rust syntax highlighting.
+pub mod highlight;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};
 pub use edit::{EditorEdit, Move};
