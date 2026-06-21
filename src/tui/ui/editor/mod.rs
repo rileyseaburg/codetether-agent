@@ -28,7 +28,12 @@ mod helix_cursor;
 mod helix_edit;
 /// File-backed editor document (open/save/dirty).
 pub mod file_buffer;
+/// Key-event to editor-action mapping.
+pub mod input;
+/// Applies editor actions to a file buffer.
+pub mod apply;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};
 pub use edit::{EditorEdit, Move};
 pub use file_buffer::FileBuffer;
+pub use input::{map_key, EditorInput};
