@@ -29,6 +29,6 @@ pub fn editor_lines<B: EditorBackend>(backend: &B, top: usize, height: usize) ->
 }
 
 /// Number of digits needed to show the largest line number.
-fn gutter_width(line_count: usize) -> usize {
+pub(super) fn gutter_width(line_count: usize) -> usize {
     line_count.max(1).to_string().len()
 }

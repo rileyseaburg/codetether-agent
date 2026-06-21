@@ -38,6 +38,8 @@ pub mod render;
 pub mod draw;
 /// Cursor-follow scroll offset computation.
 pub mod scroll;
+/// Terminal cursor position computation.
+pub mod cursor_pos;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};
 pub use edit::{EditorEdit, Move};

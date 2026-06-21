@@ -8,6 +8,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::widgets::{Block, Borders, Paragraph};
 
+use super::cursor_pos::cursor_xy;
 use super::file_buffer::FileBuffer;
 use super::render::editor_lines;
 use super::scroll::follow_cursor;
@@ -20,6 +21,9 @@ pub fn draw(f: &mut Frame, area: Rect, buf: &FileBuffer, scroll: usize) {
     let title = format!(" {}{} ", buf.path().display(), dirty);
     let block = Block::default().borders(Borders::ALL).title(title);
     f.render_widget(Paragraph::new(lines).block(block), area);
+    if let Some((x, y)) = cursor_xy(buf.backend(), area, scroll) {
+        f.set_cursor_position((x, y));
+    }
 }
 
 /// Draws the editor from app state if a buffer is active; no-op otherwise.
