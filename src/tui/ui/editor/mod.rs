@@ -34,6 +34,8 @@ pub mod input;
 pub mod apply;
 /// Renders editor content to ratatui lines.
 pub mod render;
+/// Draws the editor view to a frame.
+pub mod draw;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};
 pub use edit::{EditorEdit, Move};

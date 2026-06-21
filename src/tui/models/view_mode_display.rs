@@ -20,6 +20,7 @@ pub fn view_mode_display_name(mode: ViewMode) -> &'static str {
         ViewMode::Audit => "Audit",
         ViewMode::Git => "Git",
         ViewMode::AuditLoop => "Audit Loop",
+        ViewMode::Editor => "Editor",
     }
 }
 
@@ -41,5 +42,6 @@ pub fn view_mode_shortcut_hint(mode: ViewMode) -> &'static str {
         ViewMode::Audit => "/audit",
         ViewMode::Git => "/git",
         ViewMode::AuditLoop => "/auditloop",
+        ViewMode::Editor => "/edit",
     }
 }

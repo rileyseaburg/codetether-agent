@@ -8,6 +8,7 @@ mod clipboard;
 mod copy_reply;
 mod copy_transcript;
 mod ctrl_c;
+mod editor_key;
 mod event_dispatch;
 mod goal_prompt_key;
 mod keybinds;

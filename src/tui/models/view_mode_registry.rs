@@ -19,4 +19,5 @@ pub const ALL_VIEW_MODES: &[ViewMode] = &[
     ViewMode::Audit,
     ViewMode::Git,
     ViewMode::AuditLoop,
+    ViewMode::Editor,
 ];

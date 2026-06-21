@@ -9,6 +9,7 @@ use crate::tui::{
 };
 
 impl Default for super::AppState {
+    #[rustfmt::skip]
     fn default() -> Self {
         Self {
             view_mode: ViewMode::Chat,
@@ -48,9 +49,8 @@ impl Default for super::AppState {
             peer_endpoint_ready: false,
             recent_tasks: Vec::new(),
             worker_bridge_registered_agents: HashSet::new(),
-            active_tasks: Default::default(),
-            worker_bridge_processing_state: None,
-            worker_task_queue: VecDeque::new(),
+            active_tasks: Default::default(), tool_calls: Default::default(), bus_cursor: 0,
+            worker_bridge_processing_state: None, worker_task_queue: VecDeque::new(),
             active_remote_task: None,
             help_scroll: crate::tui::help::HelpScrollState::default(),
             show_help: false,
@@ -131,7 +131,7 @@ impl Default for super::AppState {
             forage: crate::tui::forage_run::ForageState::new(),
             needs_redraw: true,
             shell_rx: None,
-            shell_running: false,
+            shell_running: false, editor: None, editor_scroll: 0,
         }
     }
 }

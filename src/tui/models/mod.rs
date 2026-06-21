@@ -67,6 +67,8 @@ pub enum ViewMode {
     Git,
     /// Audit-loop view: implement → audit → retry cycle visualization.
     AuditLoop,
+    /// In-TUI text editor view for editing workspace files.
+    Editor,
 }
 
 /// Keyboard input mode currently used by the TUI.

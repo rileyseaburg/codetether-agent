@@ -59,9 +59,7 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &SessionView) {
             app.state.selected_session,
         ),
         ViewMode::Latency => render_latency(f, f.area(), app),
-        ViewMode::Protocol => {
-            crate::tui::protocol_registry_view::render_protocol_registry(f, app, f.area())
-        }
+        ViewMode::Protocol => crate::tui::protocol_registry_view::render_protocol_registry(f, app, f.area()),
         ViewMode::FilePicker => crate::tui::app::file_picker::render_file_picker(f, f.area(), app),
         ViewMode::Inspector => super::inspector::render_inspector_view(f, app),
         ViewMode::Audit => render_audit_view(f, &mut app.state.audit, f.area()),
@@ -74,6 +72,7 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &SessionView) {
             f.area(),
             &app.state.status,
         ),
+        ViewMode::Editor => crate::tui::ui::editor::draw::draw_active(f, app),
     }
 }
 

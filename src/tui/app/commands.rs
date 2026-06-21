@@ -1,6 +1,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
+#[path = "commands/open_editor.rs"]
+mod open_editor;
+use open_editor::open_editor;
 use serde_json::Value;
 
 use crate::provider::ProviderRegistry;
@@ -704,6 +707,10 @@ pub async fn handle_slash_command(
         return;
     }
 
+    if let Some(rest) = command_with_optional_args(&normalized, "/edit") {
+        open_editor(app, cwd, rest.trim().trim_matches(|c| c == '"' || c == '\''));
+        return;
+    }
     if let Some(rest) = command_with_optional_args(&normalized, "/autoapply") {
         let action = rest.trim().to_ascii_lowercase();
         let current = app.state.auto_apply_edits;
@@ -862,14 +869,8 @@ pub async fn handle_slash_command(
         "/settings" => app.state.set_view_mode(ViewMode::Settings),
         "/lsp" => app.state.set_view_mode(ViewMode::Lsp),
         "/rlm" => app.state.set_view_mode(ViewMode::Rlm),
-        "/latency" => {
-            app.state.set_view_mode(ViewMode::Latency);
-            app.state.status = "Latency inspector".to_string();
-        }
-        "/inspector" => {
-            app.state.set_view_mode(ViewMode::Inspector);
-            app.state.status = "Inspector".to_string();
-        }
+        "/latency" => { app.state.set_view_mode(ViewMode::Latency); app.state.status = "Latency inspector".to_string(); }
+        "/inspector" => { app.state.set_view_mode(ViewMode::Inspector); app.state.status = "Inspector".to_string(); }
         "/audit" => {
             crate::tui::audit_view::refresh_audit_snapshot(&mut app.state.audit).await;
             app.state.set_view_mode(ViewMode::Audit);
@@ -881,10 +882,7 @@ pub async fn handle_slash_command(
             app.state.set_view_mode(ViewMode::Git);
             app.state.status = "Git status".to_string();
         }
-        "/auditloop" => {
-            app.state.set_view_mode(ViewMode::AuditLoop);
-            app.state.status = "Audit loop — implement → audit → retry".to_string();
-        }
+        "/auditloop" => { app.state.set_view_mode(ViewMode::AuditLoop); app.state.status = "Audit loop".to_string(); }
         "/chat" | "/home" | "/main" => return_to_chat(app),
         "/webview" => {
             app.state.chat_layout_mode =

@@ -36,5 +36,6 @@ pub fn mode_accent(mode: &ViewMode) -> Color {
         ViewMode::Audit => Color::Yellow,
         ViewMode::Git => Color::LightRed,
         ViewMode::AuditLoop => Color::Yellow,
+        ViewMode::Editor => Color::LightBlue,
     }
 }

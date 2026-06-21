@@ -25,6 +25,9 @@ pub(crate) async fn handle_event(
     if super::goal_prompt_key::handle_goal_prompt_key(app, key) {
         return Ok(false);
     }
+    if super::editor_key::handle_editor_key(app, key) {
+        return Ok(false);
+    }
     if let Some(result) = handle_ctrl_key(app, cwd, runtime, key) {
         return result;
     }
