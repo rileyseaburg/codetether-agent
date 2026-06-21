@@ -26,6 +26,9 @@ pub mod helix_backend;
 mod helix_cursor;
 /// `EditorEdit` implementation for the rope backend.
 mod helix_edit;
+/// File-backed editor document (open/save/dirty).
+pub mod file_buffer;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};
 pub use edit::{EditorEdit, Move};
+pub use file_buffer::FileBuffer;
