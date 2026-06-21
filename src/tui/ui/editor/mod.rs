@@ -6,20 +6,17 @@
 //!
 //! Two backends are available:
 //!
-//! * [`builtin::BuiltinBackend`] — a dependency-free rope-less buffer used by
-//!   default. Always compiled.
+//! * [`builtin::BuiltinBackend`] — a dependency-free rope-less line buffer.
 //! * `helix` backend — embeds [`helix-core`](https://github.com/helix-editor/helix)
-//!   (rope + tree-sitter syntax + transactions). Compiled only when the
-//!   `helix` cargo feature is enabled, because it raises the crate MSRV to
-//!   rustc 1.90 and pulls MPL-2.0 dependencies.
+//!   (rope + tree-sitter syntax + transactions).
 //!
-//! The split keeps the heavy, license- and toolchain-sensitive Helix
-//! dependency fully optional while the ratatui renderer and view plumbing
-//! stay on the default build.
+//! The [`EditorBackend`] trait is the seam between the two: the ratatui
+//! renderer consumes the trait and never references `helix-core` types
+//! directly.
 
 /// The backend abstraction consumed by the renderer.
 pub mod backend;
-/// Dependency-free editor backend used when `helix` is not enabled.
+/// Dependency-free editor backend.
 pub mod builtin;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};
