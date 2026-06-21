@@ -32,8 +32,11 @@ pub mod file_buffer;
 pub mod input;
 /// Applies editor actions to a file buffer.
 pub mod apply;
+/// Renders editor content to ratatui lines.
+pub mod render;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};
 pub use edit::{EditorEdit, Move};
 pub use file_buffer::FileBuffer;
 pub use input::{map_key, EditorInput};
+pub use render::editor_lines;
