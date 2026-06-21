@@ -18,5 +18,7 @@
 pub mod backend;
 /// Dependency-free editor backend.
 pub mod builtin;
+/// Helix-core (rope) powered editor backend.
+pub mod helix_backend;
 
 pub use backend::{EditorBackend, EditorCell, EditorLine};

@@ -198,11 +198,11 @@ impl MessageFormatter {
 
         // Header with language indicator
         let header = if language.is_empty() {
-            "┌─ Code ─".to_string() + &"─".repeat(block_width.saturating_sub(9))
+            "┌─ Code ─".to_string() + "─".repeat(block_width.saturating_sub(9)).as_str()
         } else {
             let lang_header = format!("┌─ {} Code ─", language);
             let header_len = lang_header.len();
-            lang_header + &"─".repeat(block_width.saturating_sub(header_len))
+            lang_header + "─".repeat(block_width.saturating_sub(header_len)).as_str()
         };
 
         result.push(Line::from(Span::styled(
@@ -218,7 +218,7 @@ impl MessageFormatter {
         ));
 
         result.push(Line::from(Span::styled(
-            "└".to_string() + &"─".repeat(block_width.saturating_sub(1)),
+            "└".to_string() + "─".repeat(block_width.saturating_sub(1)).as_str(),
             Style::default().fg(Color::DarkGray),
         )));
 
@@ -239,7 +239,7 @@ impl MessageFormatter {
         let mut result = Vec::new();
         let block_width = self.max_width.saturating_sub(4);
 
-        let header = "┌─ Math ─".to_string() + &"─".repeat(block_width.saturating_sub(9));
+        let header = "┌─ Math ─".to_string() + "─".repeat(block_width.saturating_sub(9)).as_str();
         result.push(Line::from(Span::styled(
             header,
             Style::default()
@@ -261,7 +261,7 @@ impl MessageFormatter {
         }
 
         result.push(Line::from(Span::styled(
-            "└".to_string() + &"─".repeat(block_width.saturating_sub(1)),
+            "└".to_string() + "─".repeat(block_width.saturating_sub(1)).as_str(),
             Style::default().fg(Color::Magenta),
         )));
 

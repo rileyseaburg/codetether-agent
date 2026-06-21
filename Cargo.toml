@@ -196,10 +196,11 @@ tokenizers = "0.22.2"
 # Tree-sitter for AST-based oracle verification
 tree-sitter = "0.24"
 tree-sitter-rust = "0.23"
-# Helix editor core (rope + syntax + transactions) for the TUI editor view.
-# MPL-2.0; raises the crate MSRV to rustc 1.90. Not published on crates.io
-# (only a 2021 placeholder), so we pin the upstream git tag directly.
-helix-core = { git = "https://github.com/helix-editor/helix", tag = "25.07.1" }
+# Ropey rope buffer powers the TUI editor backend. This is the same rope type
+# Helix re-exports as `helix_core::Rope`, but depending on it directly avoids
+# pulling helix-core's vendored tree-sitter (`tree-house-bindings`), which
+# collides at link time with our standalone `tree-sitter` C symbols.
+ropey = "1.6"
 streaming-iterator = "0.1.9"
 mdns-sd = "0.13"
 gethostname = "1"
