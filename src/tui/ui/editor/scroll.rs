@@ -24,3 +24,19 @@ pub fn follow_cursor<B: EditorBackend>(backend: &B, scroll: usize, height: usize
         scroll
     }
 }
+
+/// Returns the horizontal offset that keeps the cursor column visible in
+/// `width` cells. Mirrors [`follow_cursor`] on the column axis.
+pub fn follow_col<B: EditorBackend>(backend: &B, hscroll: usize, width: usize) -> usize {
+    if width == 0 {
+        return hscroll;
+    }
+    let (_, col) = backend.cursor();
+    if col < hscroll {
+        col
+    } else if col >= hscroll + width {
+        col + 1 - width
+    } else {
+        hscroll
+    }
+}

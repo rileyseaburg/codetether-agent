@@ -70,5 +70,5 @@ pub struct AppState {
     pub autochat: crate::tui::app::autochat::state::AutochatState, pub file_picker: crate::tui::app::file_picker::FilePickerState, pub workspace: crate::tui::models::WorkspaceSnapshot, pub goal_prompt: Option<crate::tui::app::goal_prompt::GoalPromptState>, pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
     pub recording_stop_flag: VoiceStopFlag, pub pending_voice_text: VoiceTextSlot, pub saved_chat_scroll: usize, pub saved_chat_auto_follow: bool, pub saved_tool_preview_scroll: usize, pub streaming_start: Option<Instant>, pub streaming_chars: usize, pub forage: crate::tui::forage_run::ForageState, pub needs_redraw: bool, pub shell_rx: ShellRx, pub shell_running: bool,
     /// Active in-TUI editor buffer, present only while in `ViewMode::Editor`.
-    pub editor: Option<crate::tui::ui::editor::FileBuffer>, pub editor_scroll: usize,
+    pub editor: Option<crate::tui::ui::editor::FileBuffer>, pub editor_scroll: usize, pub editor_hscroll: usize,
 }

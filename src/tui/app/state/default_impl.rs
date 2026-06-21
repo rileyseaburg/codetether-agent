@@ -131,7 +131,7 @@ impl Default for super::AppState {
             forage: crate::tui::forage_run::ForageState::new(),
             needs_redraw: true,
             shell_rx: None,
-            shell_running: false, editor: None, editor_scroll: 0,
+            shell_running: false, editor: None, editor_scroll: 0, editor_hscroll: 0,
         }
     }
 }

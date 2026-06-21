@@ -21,6 +21,7 @@ pub(super) fn open_editor(app: &mut App, cwd: &Path, arg: &str) {
         Ok(buf) => {
             app.state.editor = Some(buf);
             app.state.editor_scroll = 0;
+            app.state.editor_hscroll = 0;
             app.state.set_view_mode(ViewMode::Editor);
             app.state.status = format!("Editing {arg} — Ctrl+S save, Esc close");
         }

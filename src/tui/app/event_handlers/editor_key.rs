@@ -29,6 +29,7 @@ pub(crate) fn handle_editor_key(app: &mut App, key: KeyEvent) -> bool {
         Ok(false) => {
             app.state.editor = None;
             app.state.editor_scroll = 0;
+            app.state.editor_hscroll = 0;
             app.state.view_mode = ViewMode::Chat;
         }
         Err(e) => app.state.status = format!("editor save failed: {e}"),
