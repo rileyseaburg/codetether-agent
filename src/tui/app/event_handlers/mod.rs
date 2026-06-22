@@ -16,6 +16,7 @@ mod editor_lsp;
 mod editor_lsp_hover;
 mod editor_lsp_key;
 mod editor_lsp_nav;
+mod editor_lsp_retry;
 mod event_dispatch;
 mod fuzzy_find_key;
 mod goal_prompt_key;

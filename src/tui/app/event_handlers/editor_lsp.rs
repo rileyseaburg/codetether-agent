@@ -7,7 +7,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::lsp::{LspActionResult, LspManager};
+use crate::lsp::LspManager;
 use crate::tui::app::state::App;
 
 /// Ensures the app has a shared [`LspManager`], creating one rooted at `cwd`.
@@ -29,6 +29,9 @@ pub(super) fn cursor_target(app: &App) -> Option<(std::path::PathBuf, u32, u32)>
 }
 
 /// Runs go-to-definition at the editor cursor and navigates to the result.
+///
+/// Language servers often return empty results until indexing finishes, so the
+/// actual polling lives in [`editor_lsp_retry`](super::editor_lsp_retry).
 pub(crate) async fn goto_definition(app: &mut App, cwd: &Path) {
     let Some((path, line, col)) = cursor_target(app) else {
         return;
@@ -38,15 +41,10 @@ pub(crate) async fn goto_definition(app: &mut App, cwd: &Path) {
         Ok(c) => c,
         Err(e) => {
             app.state.status = format!("LSP unavailable: {e}");
+            app.state.needs_redraw = true;
             return;
         }
     };
-    match client.go_to_definition(&path, line, col).await {
-        Ok(LspActionResult::Definition { locations }) if !locations.is_empty() => {
-            super::editor_lsp_nav::navigate(app, &locations[0]);
-        }
-        Ok(_) => app.state.status = "No definition found".to_string(),
-        Err(e) => app.state.status = format!("Definition failed: {e}"),
-    }
-    app.state.needs_redraw = true;
+    app.state.status = "Looking up definition…".to_string();
+    super::editor_lsp_retry::resolve_definition(app, client.as_ref(), &path, line, col).await;
 }
