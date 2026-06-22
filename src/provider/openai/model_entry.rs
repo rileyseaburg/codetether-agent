@@ -4,9 +4,9 @@ use serde_json::Value;
 
 use crate::provider::ModelInfo;
 
+use super::OpenAIProvider;
 use super::model_caps::{detect_vision, flag, price};
 use super::parse_models::value_to_usize;
-use super::OpenAIProvider;
 
 impl OpenAIProvider {
     pub(super) fn model_info_from_api_entry(

@@ -14,12 +14,12 @@ use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, SendMessageW,
 pub fn set_foreground_window_text(text: &str) -> anyhow::Result<bool> {
     unsafe {
         let hwnd: HWND = GetForegroundWindow();
-        if hwnd.0 == 0 {
+        if hwnd.0.is_null() {
             return Ok(false);
         }
         let payload: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
         let lp = LPARAM(payload.as_ptr() as isize);
-        let _ = SendMessageW(hwnd, WM_SETTEXT, WPARAM(0), lp);
+        let _ = SendMessageW(hwnd, WM_SETTEXT, Some(WPARAM(0)), Some(lp));
         Ok(true)
     }
 }

@@ -23,12 +23,25 @@ pub fn apply(buf: &mut FileBuffer, action: EditorInput) -> std::io::Result<bool>
             buf.backend_mut().insert_char('\n');
             buf.refresh_highlight();
         }
+        EditorInput::Indent => {
+            for _ in 0..4 {
+                buf.backend_mut().insert_char(' ');
+            }
+            buf.refresh_highlight();
+        }
         EditorInput::Backspace => {
             buf.backend_mut().delete_back();
             buf.refresh_highlight();
         }
+        EditorInput::DeleteForward => {
+            buf.backend_mut().delete_forward();
+            buf.refresh_highlight();
+        }
         EditorInput::Move(dir) => buf.backend_mut().move_cursor(dir),
         EditorInput::Save => buf.save()?,
+        // Handled by the event layer (opens the finder); a no-op here keeps
+        // the editor open if it ever reaches `apply`.
+        EditorInput::OpenFinder => {}
         EditorInput::Quit => return Ok(false),
     }
     Ok(true)

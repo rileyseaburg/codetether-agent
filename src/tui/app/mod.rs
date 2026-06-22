@@ -14,6 +14,7 @@ pub mod event_loop;
 pub mod file_picker;
 pub mod file_preview;
 pub mod file_share;
+pub mod fuzzy_find;
 pub mod goal_prompt;
 pub mod impl_app;
 pub mod inbox;

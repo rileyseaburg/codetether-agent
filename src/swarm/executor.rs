@@ -45,10 +45,10 @@ use tokio::task::AbortHandle;
 use tokio::time::{Duration, MissedTickBehavior, timeout};
 #[path = "bus_publish.rs"]
 mod bus_publish;
-#[path = "loop_step.rs"]
-pub mod loop_step;
 #[path = "executor_tokens.rs"]
 mod executor_tokens;
+#[path = "loop_step.rs"]
+pub mod loop_step;
 use executor_tokens::{estimate_tokens, estimate_total_tokens};
 #[path = "executor_trace.rs"]
 mod executor_trace;

@@ -47,4 +47,14 @@ impl HelixBackend {
         let len = self.rope.line(target).len_chars();
         start + col.min(len)
     }
+
+    /// Char index of the end of the current line, before any trailing newline.
+    pub(super) fn line_end_idx(&self) -> usize {
+        let line = self.cursor.0.min(self.rope.len_lines().saturating_sub(1));
+        let start = self.rope.line_to_char(line);
+        let slice = self.rope.line(line);
+        let len = slice.len_chars();
+        let trailing_newline = len > 0 && slice.char(len - 1) == '\n';
+        start + if trailing_newline { len - 1 } else { len }
+    }
 }

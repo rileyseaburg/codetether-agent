@@ -275,9 +275,10 @@ impl Provider for OpenAIProvider {
         let tools = Self::convert_tools(&request.tools)?;
 
         let mut req_builder = CreateChatCompletionRequestArgs::default();
-        let model_id =
-            alias::normalize_model_id(&self.provider_name, &request.model);
-        req_builder.model(model_id.as_ref()).messages(messages.clone());
+        let model_id = alias::normalize_model_id(&self.provider_name, &request.model);
+        req_builder
+            .model(model_id.as_ref())
+            .messages(messages.clone());
 
         // Pass tools to the API if provided
         if !tools.is_empty() {
@@ -397,8 +398,7 @@ impl Provider for OpenAIProvider {
         let tools = Self::convert_tools(&request.tools)?;
 
         let mut req_builder = CreateChatCompletionRequestArgs::default();
-        let model_id =
-            alias::normalize_model_id(&self.provider_name, &request.model);
+        let model_id = alias::normalize_model_id(&self.provider_name, &request.model);
         req_builder
             .model(model_id.as_ref())
             .messages(messages)

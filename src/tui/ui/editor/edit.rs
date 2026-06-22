@@ -16,6 +16,10 @@ pub enum Move {
     Up,
     /// One line down, keeping column where possible.
     Down,
+    /// Start of the current line (Home).
+    LineStart,
+    /// End of the current line (End).
+    LineEnd,
 }
 
 /// Mutating operations layered on top of a render backend.
@@ -25,6 +29,9 @@ pub trait EditorEdit {
 
     /// Deletes the character before the cursor (Backspace).
     fn delete_back(&mut self);
+
+    /// Deletes the character at the cursor (Delete).
+    fn delete_forward(&mut self);
 
     /// Moves the cursor in the given direction, clamped to the document.
     fn move_cursor(&mut self, dir: Move);

@@ -5,3 +5,7 @@ pub mod inbox;
 mod inbox_tests;
 pub mod ingest;
 pub mod reply;
+pub mod tool_calls;
+pub mod tool_calls_query;
+#[cfg(test)]
+mod tool_calls_tests;

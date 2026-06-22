@@ -7,6 +7,7 @@
 
 use super::transport::LspTransport;
 use super::types::*;
+use super::uri::path_to_uri;
 use anyhow::Result;
 use lsp_types::{
     ClientCapabilities, CompletionContext, CompletionParams, CompletionTriggerKind,
@@ -462,11 +463,6 @@ impl LspClient {
 }
 
 /// Convert a file path to a file:// URI
-fn path_to_uri(path: &Path) -> String {
-    let absolute = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-    format!("file://{}", absolute.display())
-}
-
 /// Parse a string URI into an lsp_types::Uri
 fn parse_uri(uri_str: &str) -> Result<lsp_types::Uri> {
     uri_str

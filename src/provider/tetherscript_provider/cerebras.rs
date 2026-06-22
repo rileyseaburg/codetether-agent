@@ -18,7 +18,11 @@ const NAME: &str = "cerebras";
 
 /// Build a Cerebras provider (OpenAI-compatible) from an API key.
 pub fn new(api_key: &str, base_url: Option<&str>) -> Result<OpenAIProvider> {
-    OpenAIProvider::with_base_url(api_key.to_string(), base_url.unwrap_or(BASE_URL).into(), NAME)
+    OpenAIProvider::with_base_url(
+        api_key.to_string(),
+        base_url.unwrap_or(BASE_URL).into(),
+        NAME,
+    )
 }
 
 /// Build a Cerebras provider as a boxed `Arc<dyn Provider>`.

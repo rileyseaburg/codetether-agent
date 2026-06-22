@@ -13,6 +13,8 @@
 pub mod client;
 pub mod transport;
 pub mod types;
+pub mod uri;
 
 pub use client::LspManager;
 pub use types::*;
+pub use uri::{path_to_uri, uri_to_path};

@@ -32,12 +32,12 @@ pub mod google;
 pub mod limits;
 #[cfg(feature = "candle-cuda")]
 pub mod local_cuda;
-pub mod pricing;
-pub mod util;
 #[cfg(not(feature = "candle-cuda"))]
 #[allow(dead_code)]
 #[path = "local_cuda_nocuda.rs"]
 pub mod local_cuda;
+pub mod pricing;
+pub mod util;
 
 pub mod metrics;
 pub mod models;

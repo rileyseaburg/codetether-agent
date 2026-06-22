@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 
 use crate::a2a::types::TaskState;
-use crate::bus::{global, BusMessage};
+use crate::bus::{BusMessage, global};
 
 /// Latest known status for one sub-agent.
 #[derive(Clone)]

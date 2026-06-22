@@ -37,13 +37,13 @@ mod spawn_request;
 mod spawn_request_tests;
 mod spawn_store;
 mod spawn_validation;
+#[cfg(test)]
+mod spawn_validation_tests;
 mod status;
 mod status_liveness;
 #[cfg(test)]
 mod status_liveness_tests;
 mod status_source;
-#[cfg(test)]
-mod spawn_validation_tests;
 mod store;
 mod text;
 mod tool_impl;

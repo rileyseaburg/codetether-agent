@@ -1,6 +1,7 @@
 pub mod border_style;
 pub mod chat_view;
 pub mod editor;
+pub mod fuzzy_find_overlay;
 pub mod goal_prompt_overlay;
 pub mod inspector;
 pub mod main;

@@ -47,7 +47,10 @@ pub(super) fn log_tool_calls(step: usize, tool_calls: &[(String, String, String)
     if tool_calls.is_empty() {
         return;
     }
-    let names: Vec<&str> = tool_calls.iter().map(|(_, name, _)| name.as_str()).collect();
+    let names: Vec<&str> = tool_calls
+        .iter()
+        .map(|(_, name, _)| name.as_str())
+        .collect();
     tracing::info!(step, num_tool_calls = tool_calls.len(), tools = ?names,
         "Sub-agent requesting tool calls");
 }

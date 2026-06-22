@@ -10,14 +10,14 @@ use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
 pub fn client_point_to_screen(client_x: i32, client_y: i32) -> Option<(i32, i32)> {
     unsafe {
         let hwnd: HWND = GetForegroundWindow();
-        if hwnd.0 == 0 {
+        if hwnd.0.is_null() {
             return None;
         }
         let mut pt = POINT {
             x: client_x,
             y: client_y,
         };
-        ClientToScreen(hwnd, &mut pt).ok()?;
+        ClientToScreen(hwnd, &mut pt).ok().ok()?;
         Some((pt.x, pt.y))
     }
 }

@@ -7,14 +7,20 @@
 
 use std::collections::VecDeque;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use super::BusEnvelope;
+
+#[path = "recorder_drain.rs"]
+mod recorder_drain;
 
 /// Bounded, thread-safe history of recent bus envelopes.
 #[derive(Debug)]
 pub struct BusRecorder {
     cap: usize,
-    buf: Mutex<VecDeque<BusEnvelope>>,
+    pub(super) buf: Mutex<VecDeque<BusEnvelope>>,
+    /// Total envelopes ever recorded (monotonic; used for lossless cursors).
+    pub(super) pushed: AtomicU64,
 }
 
 impl BusRecorder {
@@ -23,6 +29,7 @@ impl BusRecorder {
         Self {
             cap: cap.max(1),
             buf: Mutex::new(VecDeque::with_capacity(cap.max(1))),
+            pushed: AtomicU64::new(0),
         }
     }
 
@@ -36,6 +43,8 @@ impl BusRecorder {
             buf.pop_front();
         }
         buf.push_back(envelope.clone());
+        // Increment under the buf lock so `pushed` stays consistent with len.
+        self.pushed.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Return up to `limit` most-recent envelopes (newest last), optionally

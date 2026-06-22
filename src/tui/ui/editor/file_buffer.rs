@@ -69,6 +69,13 @@ impl FileBuffer {
         &mut self.backend
     }
 
+    /// Mutable backend access that does **not** mark the buffer dirty.
+    ///
+    /// Used for cursor movement, which is navigation rather than an edit.
+    pub(super) fn backend_for_cursor(&mut self) -> &mut HelixBackend {
+        &mut self.backend
+    }
+
     /// Recomputes syntax highlights after a content change.
     pub fn refresh_highlight(&mut self) {
         self.backend.rebuild_highlight();

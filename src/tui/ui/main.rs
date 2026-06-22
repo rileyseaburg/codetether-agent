@@ -59,7 +59,9 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &SessionView) {
             app.state.selected_session,
         ),
         ViewMode::Latency => render_latency(f, f.area(), app),
-        ViewMode::Protocol => crate::tui::protocol_registry_view::render_protocol_registry(f, app, f.area()),
+        ViewMode::Protocol => {
+            crate::tui::protocol_registry_view::render_protocol_registry(f, app, f.area())
+        }
         ViewMode::FilePicker => crate::tui::app::file_picker::render_file_picker(f, f.area(), app),
         ViewMode::Inspector => super::inspector::render_inspector_view(f, app),
         ViewMode::Audit => render_audit_view(f, &mut app.state.audit, f.area()),
@@ -116,6 +118,7 @@ fn render_overlays(f: &mut Frame, app: &mut App) {
     }
 
     crate::tui::ui::goal_prompt_overlay::render_if_active(f, f.area(), &app.state.goal_prompt);
+    crate::tui::ui::fuzzy_find_overlay::render_if_active(f, f.area(), &app.state.fuzzy_find);
     if app.state.watchdog_notification.is_some() {
         crate::tui::app::watchdog::render_watchdog_notification(f, f.area(), &app.state);
     }

@@ -2,7 +2,8 @@
 //!
 //! Resolves the requested path against the workspace cwd, loads it into a
 //! [`FileBuffer`](crate::tui::ui::editor::FileBuffer), and switches the app to
-//! [`ViewMode::Editor`](crate::tui::models::ViewMode::Editor).
+//! [`ViewMode::Editor`](crate::tui::models::ViewMode::Editor). An empty
+//! argument opens the workspace fuzzy file finder instead.
 
 use std::path::Path;
 
@@ -10,10 +11,10 @@ use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 use crate::tui::ui::editor::FileBuffer;
 
-/// Opens `arg` (relative to `cwd`) in the editor, or reports an error.
+/// Opens `arg` (relative to `cwd`) in the editor; empty arg opens the finder.
 pub(super) fn open_editor(app: &mut App, cwd: &Path, arg: &str) {
     if arg.is_empty() {
-        app.state.status = "Usage: /edit <path>".to_string();
+        crate::tui::app::fuzzy_find::open_fuzzy_find(app, cwd);
         return;
     }
     let path = cwd.join(arg);

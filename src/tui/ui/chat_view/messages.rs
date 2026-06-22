@@ -65,6 +65,7 @@ pub fn render_messages_ref(
         .border_style(ratatui::style::Style::default().fg(accent))
         .title(build_title(app, session));
     let scroll = clamp_scroll(app, chunks.messages, lines);
+    app.state.chat_hit.record(chunks.messages, scroll, lines);
     let chat = Paragraph::new(lines.to_vec())
         .block(block)
         .scroll((scroll, 0));

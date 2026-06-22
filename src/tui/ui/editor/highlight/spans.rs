@@ -15,7 +15,10 @@ pub type Span = (usize, usize, (u8, u8, u8));
 /// Returns highlight spans for Rust `source`, or empty on parse failure.
 pub fn highlight_spans(source: &str) -> Vec<Span> {
     let mut parser = tree_sitter::Parser::new();
-    if parser.set_language(&tree_sitter_rust::LANGUAGE.into()).is_err() {
+    if parser
+        .set_language(&tree_sitter_rust::LANGUAGE.into())
+        .is_err()
+    {
         return Vec::new();
     }
     let Some(tree) = parser.parse(source, None) else {

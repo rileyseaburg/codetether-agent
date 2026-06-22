@@ -5,10 +5,10 @@
 //! whether each sub-agent is active, stalled, or settled — the visibility the
 //! synchronous tool-return channel never provided.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::status_liveness::liveness;
-use super::status_source::{latest_states, AgentStatus};
+use super::status_source::{AgentStatus, latest_states};
 use super::store;
 use crate::tool::ToolResult;
 

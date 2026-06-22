@@ -28,3 +28,26 @@ pub fn cursor_xy<B: EditorBackend>(
     let y = area.y + 1 + (line - scroll) as u16;
     Some((x, y))
 }
+
+/// Inverse of [`cursor_xy`]: maps a screen cell to a logical `(line, col)`.
+///
+/// Returns `None` when the click lands on the border or gutter, outside any
+/// text cell.
+pub fn cell_to_cursor<B: EditorBackend>(
+    backend: &B,
+    area: Rect,
+    scroll: usize,
+    hscroll: usize,
+    col: u16,
+    row: u16,
+) -> Option<(usize, usize)> {
+    let gutter = gutter_width(backend.line_count()) + 1;
+    let text_x0 = area.x + 1 + gutter as u16;
+    let text_y0 = area.y + 1;
+    if col < text_x0 || row < text_y0 || row + 1 >= area.y + area.height {
+        return None;
+    }
+    let line = (row - text_y0) as usize + scroll;
+    let column = (col - text_x0) as usize + hscroll;
+    Some((line, column))
+}

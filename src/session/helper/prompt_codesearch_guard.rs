@@ -3,11 +3,11 @@
 //! When a build agent runs codesearch repeatedly with no matches, it is
 //! usually retrying query variants fruitlessly. This nudges it to stop.
 
+use crate::provider::{ContentPart, Message, Role};
+use crate::session::Session;
 use crate::session::helper::loop_constants::{
     CODESEARCH_THRASH_NUDGE, MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES,
 };
-use crate::provider::{ContentPart, Message, Role};
-use crate::session::Session;
 
 /// Update the no-match counter and, when the thrash threshold is hit, append a
 /// nudge to the session and return `true` (caller should break the tool loop).

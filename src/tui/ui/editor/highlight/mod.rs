@@ -8,7 +8,7 @@ mod capture_color;
 mod spans;
 
 pub use capture_color::capture_color;
-pub use spans::{highlight_spans, Span};
+pub use spans::{Span, highlight_spans};
 
 /// Per-byte color lookup for a Rust document.
 #[derive(Debug, Clone, Default)]

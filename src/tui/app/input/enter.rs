@@ -67,6 +67,7 @@ pub(crate) async fn dispatch_enter(
         | ViewMode::Inspector
         | ViewMode::Audit
         | ViewMode::Git
-        | ViewMode::AuditLoop | ViewMode::Editor => {}
+        | ViewMode::AuditLoop
+        | ViewMode::Editor => {}
     }
 }

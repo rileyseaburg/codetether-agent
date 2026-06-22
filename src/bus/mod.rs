@@ -491,6 +491,11 @@ impl BusHandle {
         &self.bus.registry
     }
 
+    /// Access the bus recorder for lossless cursor-based draining.
+    pub fn recorder(&self) -> &Arc<recorder::BusRecorder> {
+        &self.bus.recorder
+    }
+
     /// Get mutable access to the underlying receiver.
     /// This allows consuming the receiver in stream operations.
     pub fn into_receiver(self) -> broadcast::Receiver<BusEnvelope> {

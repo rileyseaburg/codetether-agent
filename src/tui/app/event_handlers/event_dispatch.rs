@@ -25,7 +25,13 @@ pub(crate) async fn handle_event(
     if super::goal_prompt_key::handle_goal_prompt_key(app, key) {
         return Ok(false);
     }
-    if super::editor_key::handle_editor_key(app, key) {
+    if super::fuzzy_find_key::handle_fuzzy_find_key(app, cwd, key) {
+        return Ok(false);
+    }
+    if super::editor_lsp_key::handle_editor_lsp_key(app, cwd, key).await {
+        return Ok(false);
+    }
+    if super::editor_key::handle_editor_key(app, cwd, key) {
         return Ok(false);
     }
     if let Some(result) = handle_ctrl_key(app, cwd, runtime, key) {

@@ -117,8 +117,8 @@ impl Default for super::AppState {
             chat_sync_uploaded_batches: 0,
             autochat: super::super::autochat::state::AutochatState::default(),
             file_picker: Default::default(),
-            workspace: crate::tui::models::WorkspaceSnapshot::default(),
-            goal_prompt: None,
+            fuzzy_find: None,
+            workspace: crate::tui::models::WorkspaceSnapshot::default(), goal_prompt: None,
             chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode::default(),
             last_key_at: None,
             recording_stop_flag: None,
@@ -131,7 +131,7 @@ impl Default for super::AppState {
             forage: crate::tui::forage_run::ForageState::new(),
             needs_redraw: true,
             shell_rx: None,
-            shell_running: false, editor: None, editor_scroll: 0, editor_hscroll: 0,
+            shell_running: false, editor: None, editor_scroll: 0, editor_hscroll: 0, chat_hit: Default::default(), editor_lsp: Default::default(),
         }
     }
 }

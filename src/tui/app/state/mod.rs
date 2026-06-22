@@ -38,7 +38,12 @@ pub mod pending_tool;
 pub mod profile_defs;
 pub mod prompt_queue;
 pub mod scroll;
+pub mod session_fuzzy;
+#[cfg(test)]
+mod session_fuzzy_tests;
 pub mod session_nav;
+#[cfg(test)]
+mod session_test_fixtures;
 pub mod settings_nav;
 pub mod slash_commands;
 pub mod slash_hints;

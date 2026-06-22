@@ -41,12 +41,21 @@ impl EditorEdit for HelixBackend {
         self.rope_mut().remove(idx - 1..idx);
     }
 
+    fn delete_forward(&mut self) {
+        let idx = self.cursor_char_idx();
+        if idx < self.rope().len_chars() {
+            self.rope_mut().remove(idx..idx + 1);
+        }
+    }
+
     fn move_cursor(&mut self, dir: Move) {
         let idx = self.cursor_char_idx();
         let next = match dir {
             Move::Left => idx.saturating_sub(1),
             Move::Right => (idx + 1).min(self.rope().len_chars()),
             Move::Up | Move::Down => self.vertical_idx(dir),
+            Move::LineStart => self.rope().line_to_char(self.cursor.0),
+            Move::LineEnd => self.line_end_idx(),
         };
         self.set_cursor_from_idx(next);
     }

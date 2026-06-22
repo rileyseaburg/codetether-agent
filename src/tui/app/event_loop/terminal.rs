@@ -53,7 +53,7 @@ pub(super) async fn handle_terminal_event(
             Ok(false)
         }
         Some(Ok(Event::Mouse(mouse))) => {
-            handle_mouse_event(app, mouse);
+            handle_mouse_event(app, cwd, mouse).await;
             Ok(false)
         }
         _ => Ok(false),

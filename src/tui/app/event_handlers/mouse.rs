@@ -10,10 +10,13 @@
 //! scroll_mouse_down(&mut app);
 //! ```
 
-use crossterm::event::{MouseEvent, MouseEventKind};
+use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+
+use std::path::Path;
 
 use crate::tui::app::state::App;
 
+use super::click_open::click_open_path;
 use super::overlay_scroll::{scroll_overlay_down, scroll_overlay_up};
 use super::scroll_down::scroll_down_by_mode;
 use super::scroll_up::scroll_up_by_mode;
@@ -63,20 +66,26 @@ pub(super) fn scroll_mouse_down(app: &mut App) {
     scroll_down_by_mode(app, AMOUNT);
 }
 
-/// Dispatch a mouse event (currently only scroll wheel).
+/// Dispatch a mouse event (scroll wheel and left-click to open files).
 ///
-/// Routes `ScrollUp` and `ScrollDown` to the appropriate
-/// view-mode-aware scroll handler.
+/// Routes `ScrollUp`/`ScrollDown` to view-mode-aware scroll handlers, and a
+/// left button press in the Chat view to [`click_open_path`].
 ///
 /// # Examples
 ///
 /// ```ignore
-/// handle_mouse_event(&mut app, mouse);
+/// handle_mouse_event(&mut app, cwd, mouse);
 /// ```
-pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
+pub async fn handle_mouse_event(app: &mut App, cwd: &Path, mouse: MouseEvent) {
     match mouse.kind {
         MouseEventKind::ScrollUp => scroll_mouse_up(app),
         MouseEventKind::ScrollDown => scroll_mouse_down(app),
+        MouseEventKind::Down(MouseButton::Left) => {
+            if super::editor_click::editor_click(app, cwd, mouse.column, mouse.row).await {
+                return;
+            }
+            click_open_path(app, cwd, mouse.column, mouse.row);
+        }
         _ => {}
     }
 }
