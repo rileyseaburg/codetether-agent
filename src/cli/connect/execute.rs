@@ -32,7 +32,13 @@ pub async fn execute(args: ConnectArgs) -> Result<()> {
 
     let status = child.wait().await.context("ssh process failed")?;
     if !status.success() {
-        bail!("remote `codetether auth {}` failed", args.provider);
+        bail!(
+            "remote `codetether auth {}` failed. If the output shows a shell error \
+             like `line 1: -: command not found`, the `{}` binary on the VM is not a \
+             valid executable (broken/partial install) — reinstall it there and retry.",
+            args.provider,
+            args.remote_bin
+        );
     }
     Ok(())
 }

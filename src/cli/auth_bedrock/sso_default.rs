@@ -1,13 +1,14 @@
 //! Default SSO profile discovery when no profile/URL was supplied.
 
+use super::aws_paths;
 use super::sso::SsoProfile;
 use super::sso_parse::parse_sections;
 use anyhow::{Context, Result, bail};
-use std::path::PathBuf;
 
 /// Pick the only configured AWS SSO profile, or ask for a disambiguator.
 pub(super) fn resolve() -> Result<SsoProfile> {
-    let text = std::fs::read_to_string(config_path()?).context("Failed to read ~/.aws/config")?;
+    let text =
+        std::fs::read_to_string(aws_paths::config_path()?).context("Failed to read ~/.aws/config")?;
     let matches: Vec<SsoProfile> = parse_sections(&text)
         .into_iter()
         .filter_map(|(name, values)| {
@@ -27,9 +28,4 @@ pub(super) fn resolve() -> Result<SsoProfile> {
             many.len()
         ),
     }
-}
-
-fn config_path() -> Result<PathBuf> {
-    let home = std::env::var("HOME").context("HOME is not set")?;
-    Ok(PathBuf::from(home).join(".aws/config"))
 }

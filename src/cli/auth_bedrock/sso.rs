@@ -3,9 +3,9 @@
 //! Finds an existing AWS CLI SSO profile whose start URL matches the given
 //! portal URL, including profiles that reference an `[sso-session ...]` block.
 
+use super::aws_paths;
 use super::sso_parse::{Sections, parse_sections};
 use anyhow::{Context, Result};
-use std::path::PathBuf;
 
 /// Resolved AWS profile and optional default Bedrock region.
 #[derive(Clone)]
@@ -17,7 +17,8 @@ pub(super) struct SsoProfile {
 /// Resolve a user-provided SSO URL to an existing AWS CLI profile.
 pub(super) fn resolve(url: &str) -> Result<SsoProfile> {
     let target = normalize(url);
-    let text = std::fs::read_to_string(config_path()?).context("Failed to read ~/.aws/config")?;
+    let text =
+        std::fs::read_to_string(aws_paths::config_path()?).context("Failed to read ~/.aws/config")?;
     let sections = parse_sections(&text);
     find_match(&sections, &target).ok_or_else(|| {
         anyhow::anyhow!(
@@ -36,11 +37,6 @@ pub(super) fn normalize(url: &str) -> String {
         .next()
         .unwrap_or(url);
     clean.trim_end_matches('/').to_string()
-}
-
-fn config_path() -> Result<PathBuf> {
-    let home = std::env::var("HOME").context("HOME is not set")?;
-    Ok(PathBuf::from(home).join(".aws/config"))
 }
 
 fn find_match(sections: &Sections, target: &str) -> Option<SsoProfile> {

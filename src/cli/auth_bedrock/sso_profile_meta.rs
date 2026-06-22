@@ -1,8 +1,8 @@
 //! AWS config metadata needed to reuse an SSO refresh token.
 
+use super::aws_paths;
 use super::sso_parse::parse_sections;
 use anyhow::{Context, Result};
-use std::path::PathBuf;
 
 /// SSO profile fields required for future role-credential refreshes.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,7 +16,8 @@ pub(super) struct SsoProfileMeta {
 
 /// Resolve SSO metadata for an AWS profile, if it is SSO-backed.
 pub(super) fn resolve(profile: &str) -> Result<Option<SsoProfileMeta>> {
-    let text = std::fs::read_to_string(config_path()?).context("Failed to read ~/.aws/config")?;
+    let text =
+        std::fs::read_to_string(aws_paths::config_path()?).context("Failed to read ~/.aws/config")?;
     Ok(from_config_text(profile, &text))
 }
 
@@ -48,9 +49,4 @@ fn profile_section(profile: &str) -> String {
         "default" => "default".to_string(),
         name => format!("profile {name}"),
     }
-}
-
-fn config_path() -> Result<PathBuf> {
-    let home = std::env::var("HOME").context("HOME is not set")?;
-    Ok(PathBuf::from(home).join(".aws/config"))
 }

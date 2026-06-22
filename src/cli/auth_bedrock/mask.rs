@@ -19,10 +19,19 @@ pub fn mask_token(token: &str) -> String {
         return format!("{token}…");
     }
     let payload = &token[prefix_len..];
-    let head = &payload[..payload.floor_char_boundary(8)];
-    let tail_start = payload.len().saturating_sub(4);
+    let head_end = floor_char_boundary(payload, 8);
+    let head = &payload[..head_end];
+    let tail_start = floor_char_boundary(payload, payload.len().saturating_sub(4));
     let tail = &payload[tail_start..];
     format!("bedrock-api-key-{head}…{tail}")
+}
+
+fn floor_char_boundary(s: &str, mut idx: usize) -> usize {
+    idx = idx.min(s.len());
+    while idx > 0 && !s.is_char_boundary(idx) {
+        idx -= 1;
+    }
+    idx
 }
 
 #[cfg(test)]

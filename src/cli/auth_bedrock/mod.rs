@@ -7,6 +7,7 @@
 
 mod args;
 mod aws_cli;
+mod aws_paths;
 mod creds;
 mod execute;
 mod exported;
