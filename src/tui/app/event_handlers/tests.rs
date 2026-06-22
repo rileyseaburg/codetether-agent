@@ -30,21 +30,23 @@ mod tests {
         session_runtime::spawn(event_tx, tokio::sync::mpsc::channel(8).0)
     }
 
-    #[test]
-    fn mouse_wheel_scrolls_chat_from_follow_latest() {
+    #[tokio::test]
+    async fn mouse_wheel_scrolls_chat_from_follow_latest() {
         let mut app = App::default();
         app.state.set_chat_max_scroll(25);
         app.state.scroll_to_bottom();
 
         handle_mouse_event(
             &mut app,
+            std::path::Path::new("."),
             MouseEvent {
                 kind: MouseEventKind::ScrollUp,
                 column: 0,
                 row: 0,
                 modifiers: KeyModifiers::NONE,
             },
-        );
+        )
+        .await;
 
         assert_eq!(app.state.chat_scroll, 22);
     }

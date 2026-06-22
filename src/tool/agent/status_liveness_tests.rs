@@ -1,6 +1,6 @@
 //! Tests for sub-agent liveness classification.
 
-use super::status_liveness::{liveness, STALL_SECS};
+use super::status_liveness::{STALL_SECS, liveness};
 use crate::a2a::types::TaskState;
 use chrono::{Duration, Utc};
 
