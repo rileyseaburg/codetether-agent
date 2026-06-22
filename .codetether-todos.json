@@ -40,5 +40,54 @@
     "status": "done",
     "priority": "high",
     "created_at": "2026-06-20T17:09:23.230257878+00:00"
+  },
+  {
+    "id": "todo_1782016187762",
+    "content": "Create fuzzy finder state module (query, candidates, results, selected)",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-06-21T04:29:47.762964529+00:00"
+  },
+  {
+    "id": "todo_1782016194288",
+    "content": "Workspace file walker (ignore crate) + fuzzy scoring/ranking",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-06-21T04:29:54.288226193+00:00"
+  },
+  {
+    "id": "todo_1782016194288",
+    "content": "Key handler: open on /edit no-arg, type/backspace/arrows/enter/esc",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-06-21T04:29:54.288486665+00:00"
+  },
+  {
+    "id": "todo_1782016194288",
+    "content": "Overlay renderer for fuzzy finder",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-06-21T04:29:54.288761568+00:00"
+  },
+  {
+    "id": "todo_1782016194289",
+    "content": "Wire into commands.rs (/edit no path opens finder), dispatch, state, main.rs",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-06-21T04:29:54.289113655+00:00"
+  },
+  {
+    "id": "todo_1782016194289",
+    "content": "Tests + file-limit checks + lib build",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-06-21T04:29:54.289337075+00:00"
+  },
+  {
+    "id": "todo_1782059381622",
+    "content": "Add lsp_manager + editor_hover to app state",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-06-21T16:29:41.622513934+00:00"
   }
 ]

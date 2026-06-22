@@ -15,6 +15,7 @@
 mod args;
 mod browser;
 mod execute;
+mod preflight;
 mod ssh;
 #[cfg(test)]
 mod ssh_tests;

@@ -13,6 +13,7 @@ fn sample_args() -> ConnectArgs {
         provider: "bedrock".into(),
         remote_args: vec![],
         no_browser: false,
+        skip_preflight: false,
     }
 }
 

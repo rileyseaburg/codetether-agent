@@ -33,4 +33,7 @@ pub struct ConnectArgs {
     /// Print the verification URL instead of opening a browser
     #[arg(long, default_value_t = false)]
     pub no_browser: bool,
+    /// Skip the remote binary preflight check
+    #[arg(long, default_value_t = false)]
+    pub skip_preflight: bool,
 }

@@ -2,7 +2,7 @@
 
 use codetether_agent::tui::ui::editor::apply::apply;
 use codetether_agent::tui::ui::editor::input::EditorInput;
-use codetether_agent::tui::ui::editor::{map_key, EditorBackend, FileBuffer, Move};
+use codetether_agent::tui::ui::editor::{EditorBackend, FileBuffer, Move, map_key};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 fn key(code: KeyCode) -> KeyEvent {
@@ -11,10 +11,19 @@ fn key(code: KeyCode) -> KeyEvent {
 
 #[test]
 fn maps_common_keys() {
-    assert_eq!(map_key(key(KeyCode::Char('z'))), Some(EditorInput::Insert('z')));
+    assert_eq!(
+        map_key(key(KeyCode::Char('z'))),
+        Some(EditorInput::Insert('z'))
+    );
     assert_eq!(map_key(key(KeyCode::Enter)), Some(EditorInput::Newline));
-    assert_eq!(map_key(key(KeyCode::Backspace)), Some(EditorInput::Backspace));
-    assert_eq!(map_key(key(KeyCode::Left)), Some(EditorInput::Move(Move::Left)));
+    assert_eq!(
+        map_key(key(KeyCode::Backspace)),
+        Some(EditorInput::Backspace)
+    );
+    assert_eq!(
+        map_key(key(KeyCode::Left)),
+        Some(EditorInput::Move(Move::Left))
+    );
     assert_eq!(map_key(key(KeyCode::Esc)), Some(EditorInput::Quit));
     assert_eq!(
         map_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL)),

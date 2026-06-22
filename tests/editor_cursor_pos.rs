@@ -28,7 +28,10 @@ fn cursor_tracks_column_and_row() {
 
 #[test]
 fn off_screen_cursor_returns_none() {
-    let text = (0..100).map(|i| i.to_string()).collect::<Vec<_>>().join("\n");
+    let text = (0..100)
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
     let b = HelixBackend::from_str(&text); // cursor at line 0
     // Window scrolled far past line 0 -> not visible.
     assert_eq!(cursor_xy(&b, area(), 50, 0), None);

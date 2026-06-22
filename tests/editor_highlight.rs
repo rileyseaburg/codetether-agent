@@ -1,8 +1,8 @@
 //! Tests for Rust syntax highlighting in the editor.
 
-use codetether_agent::tui::ui::editor::helix_backend::HelixBackend;
-use codetether_agent::tui::ui::editor::highlight::{capture_color, HighlightMap};
 use codetether_agent::tui::ui::editor::EditorBackend;
+use codetether_agent::tui::ui::editor::helix_backend::HelixBackend;
+use codetether_agent::tui::ui::editor::highlight::{HighlightMap, capture_color};
 
 #[test]
 fn keyword_is_colored() {

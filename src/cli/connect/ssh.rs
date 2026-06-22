@@ -33,6 +33,18 @@ pub(super) fn forward_spec(port: u16) -> String {
     format!("{port}:127.0.0.1:{port}")
 }
 
+/// Build a lightweight ssh command (no port forwarding, no TTY) that runs an
+/// arbitrary `remote` command and captures stdout for preflight diagnostics.
+pub(super) fn probe_command(args: &ConnectArgs, remote: &str) -> Command {
+    let mut cmd = Command::new("ssh");
+    cmd.args(["-p", &args.port.to_string()]);
+    cmd.arg(target(args));
+    cmd.arg(remote);
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
+    cmd
+}
+
 /// Compose the remote shell command string run on the VM.
 pub(super) fn remote_command(args: &ConnectArgs) -> String {
     let mut parts = vec![

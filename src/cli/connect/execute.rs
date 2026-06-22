@@ -7,10 +7,13 @@
 use anyhow::{Context, Result, bail};
 use tokio::io::{AsyncBufReadExt, BufReader};
 
-use super::{args::ConnectArgs, browser, ssh, url_scan};
+use super::{args::ConnectArgs, browser, preflight, ssh, url_scan};
 
 /// Run the full connect → remote device-code → local browser pipeline.
 pub async fn execute(args: ConnectArgs) -> Result<()> {
+    if !args.skip_preflight {
+        preflight::check(&args).await?;
+    }
     eprintln!(
         "Connecting to {} (port {}), forwarding {} for auth callback...",
         args.host, args.port, args.forward_port
