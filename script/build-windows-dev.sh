@@ -31,7 +31,7 @@ for arg in "$@"; do
 done
 
 MAX_HEAL_ITERS="${MAX_HEAL_ITERS:-8}"
-MODEL="${CODETETHER_BUILD_MODEL:-minimax/m3}"
+MODEL="minimax/m3"
 
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
@@ -66,9 +66,8 @@ while true; do
 
   echo "---"
   echo "Windows build failed (attempt $iter/$MAX_HEAL_ITERS). Running codetether to fix..."
-  codetether run --model "$MODEL" --access-mode full "fix these Windows build errors from 'make build-windows-docker':
-
-${errors}"
+  cd ../../ && codetether run "fix these Windows build errors from 'make build-windows-docker': 
+  ${errors}" --model openai-codex/gpt-5.5-fast --access-mode full 
 
   echo "---"
   echo "Retrying Windows build..."
