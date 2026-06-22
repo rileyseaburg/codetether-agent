@@ -640,8 +640,7 @@ async fn main() -> anyhow::Result<()> {
                     "\n\x1b[2m{} models from {} providers\x1b[0m",
                     all_models.len(),
                     {
-                        let mut providers: Vec<&str> =
-                            all_models.iter().map(|m| m.provider.as_str()).collect();
+                        let mut providers: Vec<&str> = all_models.iter().map(|m| m.provider.as_str()).collect();
                         providers.dedup();
                         providers.len()
                     }
@@ -651,6 +650,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Command::Index(args)) => indexer::run(args).await,
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
+        Some(Command::Connect(args)) => cli::connect::execute(args).await,
         Some(Command::Forage(args)) => forage::execute(args).await,
         Some(Command::Search(args)) => cli::search::execute(args).await,
         Some(Command::Browserctl(args)) => cli::browserctl::execute(args).await,
