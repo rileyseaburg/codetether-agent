@@ -17,8 +17,8 @@ pub(super) struct SsoProfile {
 /// Resolve a user-provided SSO URL to an existing AWS CLI profile.
 pub(super) fn resolve(url: &str) -> Result<SsoProfile> {
     let target = normalize(url);
-    let text =
-        std::fs::read_to_string(aws_paths::config_path()?).context("Failed to read ~/.aws/config")?;
+    let text = std::fs::read_to_string(aws_paths::config_path()?)
+        .context("Failed to read ~/.aws/config")?;
     let sections = parse_sections(&text);
     find_match(&sections, &target).ok_or_else(|| {
         anyhow::anyhow!(

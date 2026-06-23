@@ -7,8 +7,17 @@ use anyhow::{Context, Result, bail};
 
 /// Pick the only configured AWS SSO profile, or ask for a disambiguator.
 pub(super) fn resolve() -> Result<SsoProfile> {
-    let text =
-        std::fs::read_to_string(aws_paths::config_path()?).context("Failed to read ~/.aws/config")?;
+    let config = aws_paths::config_path()?;
+    if !config.exists() {
+        bail!(
+            "No AWS config found at {}. This command runs `aws sso login`, which needs a \
+             named SSO profile. Create one with `aws configure sso` (device-code login \
+             still happens here via --device-code), then pass --profile <name> or --sso <start-url>.",
+            config.display()
+        );
+    }
+    let text = std::fs::read_to_string(&config)
+        .with_context(|| format!("Failed to read {}", config.display()))?;
     let matches: Vec<SsoProfile> = parse_sections(&text)
         .into_iter()
         .filter_map(|(name, values)| {

@@ -14,6 +14,8 @@ mod exported;
 mod login;
 mod mask;
 mod mode;
+mod native_resolve;
+mod native_sso;
 mod output;
 mod select;
 mod sso;

@@ -16,8 +16,8 @@ pub(super) struct SsoProfileMeta {
 
 /// Resolve SSO metadata for an AWS profile, if it is SSO-backed.
 pub(super) fn resolve(profile: &str) -> Result<Option<SsoProfileMeta>> {
-    let text =
-        std::fs::read_to_string(aws_paths::config_path()?).context("Failed to read ~/.aws/config")?;
+    let text = std::fs::read_to_string(aws_paths::config_path()?)
+        .context("Failed to read ~/.aws/config")?;
     Ok(from_config_text(profile, &text))
 }
 

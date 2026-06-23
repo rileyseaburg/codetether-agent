@@ -10,6 +10,12 @@ pub struct BedrockAuthArgs {
     /// AWS SSO portal URL; auto-selects a matching AWS CLI profile
     #[arg(long)]
     pub sso: Option<String>,
+    /// SSO account id for profile-free native device-code login
+    #[arg(long)]
+    pub account_id: Option<String>,
+    /// SSO role name for profile-free native device-code login
+    #[arg(long)]
+    pub role_name: Option<String>,
     /// AWS profile to use (SSO profile recommended)
     #[arg(long, env = "AWS_PROFILE")]
     pub profile: Option<String>,
