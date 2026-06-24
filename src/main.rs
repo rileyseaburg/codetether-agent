@@ -640,7 +640,8 @@ async fn main() -> anyhow::Result<()> {
                     "\n\x1b[2m{} models from {} providers\x1b[0m",
                     all_models.len(),
                     {
-                        let mut providers: Vec<&str> = all_models.iter().map(|m| m.provider.as_str()).collect();
+                        let mut providers: Vec<&str> =
+                            all_models.iter().map(|m| m.provider.as_str()).collect();
                         providers.dedup();
                         providers.len()
                     }

@@ -22,7 +22,10 @@ pub async fn check(args: &ConnectArgs) -> Result<()> {
     let report = String::from_utf8_lossy(&out.stdout);
     eprintln!("Preflight: {}", report.trim().replace('\n', " | "));
     if report.contains("MISSING") {
-        bail!("`{bin}` not found on {}. Install it on the VM first.", args.host);
+        bail!(
+            "`{bin}` not found on {}. Install it on the VM first.",
+            args.host
+        );
     }
     if !report.contains("ELF") && report.contains("text") {
         bail!(

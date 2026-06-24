@@ -19,10 +19,7 @@ pub async fn execute(args: ConnectArgs) -> Result<()> {
         args.host, args.port, args.forward_port
     );
     let mut child = ssh::build(&args).spawn().context("failed to spawn ssh")?;
-    let stdout = child
-        .stdout
-        .take()
-        .context("ssh stdout was not captured")?;
+    let stdout = child.stdout.take().context("ssh stdout was not captured")?;
     let mut lines = BufReader::new(stdout).lines();
     let mut opened = false;
 

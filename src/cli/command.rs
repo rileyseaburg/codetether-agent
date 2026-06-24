@@ -3,10 +3,11 @@
 //! Split out of [`super`] so the module table stays within the file budget.
 
 use super::{
-    A2aArgs, AuthArgs, BenchmarkArgs, CleanupArgs, ContextArgs, ForageArgs, GitCredentialHelperArgs,
-    IndexArgs, McpArgs, ModelsArgs, MoltbookArgs, OkrArgs, OracleArgs, PrArgs, RalphArgs, RlmArgs,
-    RunArgs, SearchArgs, ServeArgs, SpawnArgs, StatsArgs, SwarmArgs, SwarmSubagentArgs, TuiArgs,
-    WorktreeArgs, approval, browserctl, clipboard, config_args::ConfigArgs, connect,
+    A2aArgs, AuthArgs, BenchmarkArgs, CleanupArgs, ContextArgs, ForageArgs,
+    GitCredentialHelperArgs, IndexArgs, McpArgs, ModelsArgs, MoltbookArgs, OkrArgs, OracleArgs,
+    PrArgs, RalphArgs, RlmArgs, RunArgs, SearchArgs, ServeArgs, SpawnArgs, StatsArgs, SwarmArgs,
+    SwarmSubagentArgs, TuiArgs, WorktreeArgs, approval, browserctl, clipboard,
+    config_args::ConfigArgs, connect,
 };
 use clap::Subcommand;
 
