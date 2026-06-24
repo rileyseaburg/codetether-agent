@@ -2,8 +2,8 @@
 
 mod agent_routing;
 mod capabilities;
-mod cognition;
 pub mod codetether_agent;
+mod cognition;
 mod cognition_env;
 mod heartbeat;
 mod heartbeat_ops;

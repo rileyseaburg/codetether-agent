@@ -1,6 +1,11 @@
-use super::{classifier::classify_child_session_value, record::SubAgentRunRecord, state::SubAgentRunState};
+use super::{
+    classifier::classify_child_session_value, record::SubAgentRunRecord, state::SubAgentRunState,
+};
 use serde_json::Value;
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 /// Reads a CodeTether child session JSON file and classifies it.
 ///
@@ -15,9 +20,12 @@ use std::{fs, path::{Path, PathBuf}};
 /// ```
 pub fn classify_child_session_file(path: impl AsRef<Path>) -> Result<SubAgentRunRecord, String> {
     let path = path.as_ref();
-    let text = fs::read_to_string(path).map_err(|error| format!("failed to read {}: {error}", path.display()))?;
-    let value: Value = serde_json::from_str(&text).map_err(|error| format!("failed to parse {}: {error}", path.display()))?;
-    classify_child_session_value(&value).ok_or_else(|| format!("{} is not a CodeTether child session", path.display()))
+    let text = fs::read_to_string(path)
+        .map_err(|error| format!("failed to read {}: {error}", path.display()))?;
+    let value: Value = serde_json::from_str(&text)
+        .map_err(|error| format!("failed to parse {}: {error}", path.display()))?;
+    classify_child_session_value(&value)
+        .ok_or_else(|| format!("{} is not a CodeTether child session", path.display()))
 }
 
 /// Scans a CodeTether sessions directory for orphaned child sessions.
@@ -31,11 +39,16 @@ pub fn classify_child_session_file(path: impl AsRef<Path>) -> Result<SubAgentRun
 /// println!("{}", orphans.len());
 /// # Ok::<(), String>(())
 /// ```
-pub fn scan_orphaned_child_sessions(sessions_dir: impl AsRef<Path>) -> Result<Vec<SubAgentRunRecord>, String> {
+pub fn scan_orphaned_child_sessions(
+    sessions_dir: impl AsRef<Path>,
+) -> Result<Vec<SubAgentRunRecord>, String> {
     let mut records = Vec::new();
-    let entries = fs::read_dir(sessions_dir.as_ref()).map_err(|error| format!("failed to read sessions dir: {error}"))?;
+    let entries = fs::read_dir(sessions_dir.as_ref())
+        .map_err(|error| format!("failed to read sessions dir: {error}"))?;
     for entry in entries {
-        let path = entry.map_err(|error| format!("failed to read sessions entry: {error}"))?.path();
+        let path = entry
+            .map_err(|error| format!("failed to read sessions entry: {error}"))?
+            .path();
         push_orphan(path, &mut records);
     }
     records.sort_by(|left, right| left.agent_name.cmp(&right.agent_name));
@@ -43,8 +56,12 @@ pub fn scan_orphaned_child_sessions(sessions_dir: impl AsRef<Path>) -> Result<Ve
 }
 
 fn push_orphan(path: PathBuf, records: &mut Vec<SubAgentRunRecord>) {
-    if path.extension().and_then(|ext| ext.to_str()) != Some("json") { return; }
+    if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+        return;
+    }
     if let Ok(record) = classify_child_session_file(&path) {
-        if record.state == SubAgentRunState::Orphaned { records.push(record); }
+        if record.state == SubAgentRunState::Orphaned {
+            records.push(record);
+        }
     }
 }

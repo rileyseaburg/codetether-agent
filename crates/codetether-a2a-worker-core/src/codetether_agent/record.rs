@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use super::state::SubAgentRunState;
+use serde::{Deserialize, Serialize};
 
 /// Durable diagnostic record for a spawned sub-agent.
 ///
@@ -43,7 +43,19 @@ impl SubAgentRunRecord {
     /// let record = SubAgentRunRecord::orphaned("sql", "session", "no heartbeat");
     /// assert_eq!(record.reason, "no heartbeat");
     /// ```
-    pub fn orphaned(agent_name: impl Into<String>, child_session_id: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self { agent_name: agent_name.into(), child_session_id: child_session_id.into(), state: SubAgentRunState::Orphaned, message_count: 1, tool_use_count: 0, last_heartbeat_at: None, reason: reason.into() }
+    pub fn orphaned(
+        agent_name: impl Into<String>,
+        child_session_id: impl Into<String>,
+        reason: impl Into<String>,
+    ) -> Self {
+        Self {
+            agent_name: agent_name.into(),
+            child_session_id: child_session_id.into(),
+            state: SubAgentRunState::Orphaned,
+            message_count: 1,
+            tool_use_count: 0,
+            last_heartbeat_at: None,
+            reason: reason.into(),
+        }
     }
 }
