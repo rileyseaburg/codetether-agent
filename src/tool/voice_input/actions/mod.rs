@@ -1,7 +1,6 @@
 //! Action dispatch for the VoiceInput tool.
 
 pub mod record_then_transcribe;
-
 pub mod transcribe_api;
 
 use super::params::Params;
@@ -13,7 +12,8 @@ use serde_json::json;
 pub(crate) async fn dispatch(client: &reqwest::Client, params: &Params) -> Result<ToolResult> {
     match params.action.as_str() {
         "record_then_transcribe" => {
-            record_then_transcribe::run(client, params.max_duration_secs).await
+            record_then_transcribe::run(client, params.max_duration_secs, params.device.as_deref())
+                .await
         }
         other => Ok(ToolResult::structured_error(
             "INVALID_ACTION",

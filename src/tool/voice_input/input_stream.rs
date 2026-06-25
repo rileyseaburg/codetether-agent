@@ -1,49 +1,35 @@
-use super::input_config;
+use super::input_builder;
+use super::{input_config, resampler::Resampler};
 use anyhow::{Result, anyhow};
-use cpal::traits::DeviceTrait;
-use cpal::{Sample, SampleFormat, SizedSample};
+use cpal::SampleFormat;
 use std::sync::{Arc, Mutex};
 
-pub fn build(device: &cpal::Device, samples: Arc<Mutex<Vec<i16>>>) -> Result<cpal::Stream> {
+pub type SampleBuffer = Arc<Mutex<Resampler>>;
+
+pub fn build(device: &cpal::Device) -> Result<(cpal::Stream, SampleBuffer)> {
     let config = input_config::select(device)?;
-    match config.format {
-        SampleFormat::I8 => typed::<i8>(device, &config.stream, samples),
-        SampleFormat::I16 => typed::<i16>(device, &config.stream, samples),
-        SampleFormat::I32 => typed::<i32>(device, &config.stream, samples),
-        SampleFormat::I64 => typed::<i64>(device, &config.stream, samples),
-        SampleFormat::U8 => typed::<u8>(device, &config.stream, samples),
-        SampleFormat::U16 => typed::<u16>(device, &config.stream, samples),
-        SampleFormat::U32 => typed::<u32>(device, &config.stream, samples),
-        SampleFormat::U64 => typed::<u64>(device, &config.stream, samples),
-        SampleFormat::F32 => typed::<f32>(device, &config.stream, samples),
-        SampleFormat::F64 => typed::<f64>(device, &config.stream, samples),
-        other => Err(anyhow!("Unsupported input sample format: {other:?}")),
-    }
+    let samples = Arc::new(Mutex::new(Resampler::new(&config.stream)));
+    let stream = build_stream(device, &config.stream, config.format, samples.clone())?;
+    Ok((stream, samples))
 }
 
-fn typed<T>(
+fn build_stream(
     device: &cpal::Device,
-    config: &cpal::StreamConfig,
-    samples: Arc<Mutex<Vec<i16>>>,
-) -> Result<cpal::Stream>
-where
-    T: Sample + SizedSample + Send + 'static,
-    i16: cpal::FromSample<T>,
-{
-    Ok(device.build_input_stream(
-        config,
-        move |data: &[T], _: &cpal::InputCallbackInfo| push(data, &samples),
-        |err| tracing::error!("Audio capture error: {err}"),
-        None,
-    )?)
-}
-
-fn push<T>(data: &[T], samples: &Arc<Mutex<Vec<i16>>>)
-where
-    T: Sample,
-    i16: cpal::FromSample<T>,
-{
-    if let Ok(mut buf) = samples.lock() {
-        buf.extend(data.iter().map(|sample| sample.to_sample::<i16>()));
+    stream: &cpal::StreamConfig,
+    format: SampleFormat,
+    samples: SampleBuffer,
+) -> Result<cpal::Stream> {
+    match format {
+        SampleFormat::I8 => input_builder::typed::<i8>(device, stream, samples),
+        SampleFormat::I16 => input_builder::typed::<i16>(device, stream, samples),
+        SampleFormat::I32 => input_builder::typed::<i32>(device, stream, samples),
+        SampleFormat::I64 => input_builder::typed::<i64>(device, stream, samples),
+        SampleFormat::U8 => input_builder::typed::<u8>(device, stream, samples),
+        SampleFormat::U16 => input_builder::typed::<u16>(device, stream, samples),
+        SampleFormat::U32 => input_builder::typed::<u32>(device, stream, samples),
+        SampleFormat::U64 => input_builder::typed::<u64>(device, stream, samples),
+        SampleFormat::F32 => input_builder::typed::<f32>(device, stream, samples),
+        SampleFormat::F64 => input_builder::typed::<f64>(device, stream, samples),
+        other => Err(anyhow!("Unsupported input sample format: {other:?}")),
     }
 }

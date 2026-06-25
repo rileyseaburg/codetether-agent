@@ -17,6 +17,10 @@ pub(crate) fn json_schema() -> Value {
                 "description": "Max recording duration in seconds (default 60, max 300)",
                 "minimum": 1,
                 "maximum": 300
+            },
+            "device": {
+                "type": "string",
+                "description": "Optional input device name substring"
             }
         },
         "required": ["action"]
