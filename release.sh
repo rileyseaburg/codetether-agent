@@ -18,7 +18,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-CARGO_CMD="${CODETETHER_CARGO_CMD:-$SCRIPT_DIR/scripts/cargo-sccache.sh}"
+CARGO_CMD="${CODETETHER_CARGO_CMD:-$SCRIPT_DIR/script/cargo-sccache.sh}"
 VERIFY_CMD="${CODETETHER_RELEASE_VERIFY_CMD:-$CARGO_CMD test --quiet --lib --tests}"
 
 # Read current version from Cargo.toml
