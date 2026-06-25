@@ -6,9 +6,14 @@ use anyhow::Result;
 
 use crate::{provider::Provider, session::Session};
 
+mod session_failure;
+#[cfg(test)]
+mod session_failure_tests;
 mod session_output;
+mod session_response;
 mod session_step_tools;
-use session_step_tools::{append_text_output, collect_tool_calls, execute_tool_call};
+use session_failure::{record_loop_halt, step_or_record};
+use session_response::{ResponseContext, process_response};
 
 pub(super) async fn run_session_steps(
     provider: Arc<dyn Provider>,
@@ -21,12 +26,20 @@ pub(super) async fn run_session_steps(
     workspace_dir: &std::path::Path,
     output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> Result<String> {
-    let temperature = if super::prefers_temperature_one(model) {
-        Some(1.0)
+    let temperature = Some(if super::prefers_temperature_one(model) {
+        1.0
     } else {
-        Some(0.7)
+        0.7
+    });
+    let rctx = ResponseContext {
+        model,
+        tool_registry,
+        auto_approve,
+        workspace_dir,
+        output_callback,
     };
     let mut final_output = String::new();
+    let mut completed = false;
     for step in 1..=50 {
         tracing::info!(step, "Agent step starting");
         let response = super::complete_worker_step_with_context_fallback(
@@ -37,34 +50,15 @@ pub(super) async fn run_session_steps(
             tool_definitions,
             temperature,
         )
-        .await?;
-        crate::telemetry::TOKEN_USAGE.record_model_usage(
-            model,
-            response.usage.prompt_tokens as u64,
-            response.usage.completion_tokens as u64,
-        );
-        let tool_calls = collect_tool_calls(&response.message.content);
-        append_text_output(
-            &response.message.content,
-            &mut final_output,
-            &output_callback,
-        );
-        session.add_message(response.message.clone());
-        if tool_calls.is_empty() {
+        .await;
+        let response = step_or_record(session, step, response).await?;
+        if process_response(&rctx, session, &mut final_output, response).await {
+            completed = true;
             break;
         }
-        for tool_call in tool_calls {
-            execute_tool_call(
-                session,
-                tool_registry,
-                auto_approve,
-                workspace_dir,
-                model,
-                &output_callback,
-                tool_call,
-            )
-            .await;
-        }
+    }
+    if !completed {
+        record_loop_halt(session, "step budget (50) exhausted before completion").await;
     }
     session.save().await?;
     Ok(final_output.trim().to_string())

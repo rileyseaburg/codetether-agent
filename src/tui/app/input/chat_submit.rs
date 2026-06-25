@@ -45,6 +45,10 @@ pub(super) async fn handle_enter_chat(
     if super::forage_offer::intercept(app, slot, &prompt) {
         return;
     }
+    if super::continue_command::run(app, cwd, slot, registry, worker_bridge, runtime, &prompt).await
+    {
+        return;
+    }
     if super::chat_submit_slash::run(app, cwd, slot, registry, &prompt).await {
         return;
     }

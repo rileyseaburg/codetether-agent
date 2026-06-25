@@ -18,6 +18,7 @@ mod chat_submit;
 pub(crate) mod chat_submit_dispatch;
 mod chat_submit_slash;
 mod codex_parity_command;
+mod continue_command;
 mod forage_offer;
 
 // Re-exports so the event loop's auto-drain hook can submit a queued

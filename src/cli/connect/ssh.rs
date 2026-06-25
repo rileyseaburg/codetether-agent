@@ -4,6 +4,7 @@
 //! the remote `codetether auth` device-code flow with stdout streamed back.
 
 use super::args::ConnectArgs;
+use super::login_env::login_path_prefix;
 use tokio::process::Command;
 
 /// Build the `ssh` [`Command`] that forwards the dedicated port and runs the
@@ -54,5 +55,5 @@ pub(super) fn remote_command(args: &ConnectArgs) -> String {
         "--device-code".into(),
     ];
     parts.extend(args.remote_args.iter().cloned());
-    parts.join(" ")
+    format!("{}{}", login_path_prefix(), parts.join(" "))
 }

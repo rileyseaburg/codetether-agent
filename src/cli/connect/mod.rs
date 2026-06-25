@@ -15,7 +15,11 @@
 mod args;
 mod browser;
 mod execute;
+mod login_env;
 mod preflight;
+mod preflight_report;
+#[cfg(test)]
+mod preflight_report_tests;
 mod ssh;
 #[cfg(test)]
 mod ssh_tests;
@@ -23,4 +27,6 @@ mod url_scan;
 
 pub use args::ConnectArgs;
 pub use execute::execute;
+pub use login_env::login_path_prefix;
+pub use preflight_report::validate;
 pub use url_scan::scan_url;

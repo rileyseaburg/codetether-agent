@@ -18,9 +18,12 @@ use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
-use super::continue_prompt;
+mod continue_idle;
+mod continue_prompt;
+mod continue_stalled;
 
-/// Handle `/continue`. Returns `true` when the command was recognized.
+/// Handle `/continue`. Returns `true` when `prompt` was the `/continue`
+/// command (and was handled); `false` otherwise so the caller keeps dispatching.
 pub(super) async fn run(
     app: &mut App,
     cwd: &Path,
@@ -28,14 +31,17 @@ pub(super) async fn run(
     registry: &Option<Arc<ProviderRegistry>>,
     worker_bridge: &Option<TuiWorkerBridge>,
     runtime: &TuiSessionHandle,
+    prompt: &str,
 ) -> bool {
+    if prompt.trim() != "/continue" {
+        return false;
+    }
     let prompt = continue_prompt::resolve(app, slot.borrow());
     app.state.clear_input();
     if app.state.processing || slot.borrow().is_none() {
-        super::continue_stalled::resume(app, prompt, runtime).await;
+        continue_stalled::resume(app, prompt, runtime).await;
     } else {
-        super::continue_idle::resume(app, cwd, slot, registry, worker_bridge, prompt, runtime)
-            .await;
+        continue_idle::resume(app, cwd, slot, registry, worker_bridge, prompt, runtime).await;
     }
     true
 }

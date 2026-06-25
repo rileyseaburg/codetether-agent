@@ -31,6 +31,7 @@ pub fn usage_hint(cmd: &str) -> Option<&'static str> {
         "/review" => Some("/review  - prepare a code-review prompt for current changes"),
         "/clear" => Some("/clear  - start a fresh chat session"),
         "/resume" => Some("/resume  - open the session picker"),
+        "/continue" => Some("/continue  - resume a stalled or idle turn"),
         "/spawn" => Some("/spawn <name> [instructions]  — create a sub-agent"),
         "/kill" => Some("/kill <name>  — terminate a sub-agent"),
         "/detach" => Some("/detach  — continue this thread in a new terminal subprocess"),
