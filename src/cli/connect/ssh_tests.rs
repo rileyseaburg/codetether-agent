@@ -36,18 +36,15 @@ fn forward_spec_binds_loopback_both_sides() {
 
 #[test]
 fn remote_command_runs_device_code_auth() {
-    assert_eq!(
-        ssh::remote_command(&sample_args()),
-        "codetether auth bedrock --device-code"
-    );
+    let cmd = ssh::remote_command(&sample_args());
+    assert!(cmd.contains(".cargo/bin"));
+    assert!(cmd.ends_with("codetether auth bedrock --device-code"));
 }
 
 #[test]
 fn remote_command_appends_extra_args() {
     let mut args = sample_args();
     args.remote_args = vec!["--save".into(), "--region".into(), "us-east-1".into()];
-    assert_eq!(
-        ssh::remote_command(&args),
-        "codetether auth bedrock --device-code --save --region us-east-1"
-    );
+    let cmd = ssh::remote_command(&args);
+    assert!(cmd.ends_with("codetether auth bedrock --device-code --save --region us-east-1"));
 }
