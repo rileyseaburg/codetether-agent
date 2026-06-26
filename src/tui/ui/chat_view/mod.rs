@@ -3,6 +3,7 @@
 //! Decomposed into single-responsibility modules. Start with
 //! [`render_chat_view`] for the full pipeline.
 
+pub mod agent_bar;
 pub mod agent_rail;
 pub(crate) mod approval_overlay;
 pub mod attachment;

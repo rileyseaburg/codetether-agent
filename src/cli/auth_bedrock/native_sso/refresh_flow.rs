@@ -13,7 +13,7 @@ use super::oidc_refresh::{RefreshInputs, refresh_access_token};
 use super::role_creds::get_role_credentials;
 
 /// All material needed to silently refresh role credentials.
-pub(super) struct RefreshArgs<'a> {
+pub(crate) struct RefreshArgs<'a> {
     pub region: &'a str,
     pub client_id: &'a str,
     pub client_secret: &'a str,
@@ -23,7 +23,7 @@ pub(super) struct RefreshArgs<'a> {
 }
 
 /// Run a non-interactive refresh and return fresh STS role credentials.
-pub(super) async fn refresh(args: RefreshArgs<'_>) -> Result<Exported> {
+pub(crate) async fn refresh(args: RefreshArgs<'_>) -> Result<Exported> {
     let http = Client::builder()
         .user_agent("codetether-bedrock-auth")
         .build()?;

@@ -1,17 +1,18 @@
 //! Layout computation for the chat view.
 //!
-//! Splits the available area into messages, input, optional suggestions,
-//! and status rectangles.
+//! Splits the available area into an optional agent bar, messages, input,
+//! optional suggestions, and status rectangles.
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 use super::layout_chunks::ChatChunks;
 use crate::tui::app::state::App;
 
-/// Split `area` into message/input/suggestions/status rectangles.
+/// Split `area` into agent-bar/message/input/suggestions/status rectangles.
 ///
-/// Input height adapts to lines typed (3–6 rows). Suggestions row appears
-/// only when autocomplete is visible.
+/// The agent bar occupies one row when sub-agents are spawned, otherwise
+/// zero rows. Input height adapts to lines typed (3–6 rows). Suggestions
+/// row appears only when autocomplete is visible.
 ///
 /// # Examples
 ///
@@ -23,39 +24,43 @@ pub fn compute_chat_chunks(area: Rect, app: &App) -> ChatChunks {
     let suggestions_visible = app.state.slash_suggestions_visible();
     let input_lines_count = app.state.input.lines().count().max(1);
     let input_height = (input_lines_count as u16 + 2).clamp(3, 6);
-    let status_height = status_bar_height(area.width, app);
-    let constraints: &[Constraint] = if suggestions_visible {
-        &[
-            Constraint::Min(8),
-            Constraint::Length(input_height),
-            Constraint::Length(5),
-            Constraint::Length(status_height),
-        ]
+    let status_height = status_bar_height(area.width);
+    let agent_bar_height: u16 = if app.state.spawned_agents.is_empty() {
+        0
     } else {
-        &[
-            Constraint::Min(8),
-            Constraint::Length(input_height),
-            Constraint::Length(status_height),
-        ]
+        1
     };
+    let mut constraints = vec![
+        Constraint::Length(agent_bar_height),
+        Constraint::Min(8),
+        Constraint::Length(input_height),
+    ];
+    if suggestions_visible {
+        constraints.push(Constraint::Length(5));
+    }
+    constraints.push(Constraint::Length(status_height));
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(constraints)
         .split(area);
+    let status_idx = if suggestions_visible { 4 } else { 3 };
     ChatChunks {
-        messages: chunks[0],
-        input: chunks[1],
-        suggestions: suggestions_visible.then(|| chunks[2]),
-        status: chunks[if suggestions_visible { 3 } else { 2 }],
+        agent_bar: chunks[0],
+        messages: chunks[1],
+        input: chunks[2],
+        suggestions: suggestions_visible.then(|| chunks[3]),
+        status: chunks[status_idx],
     }
 }
 
 /// Height reserved for the bottom status bar, in rows.
 ///
-/// Computes the actual number of packed status lines so every badge
-/// stays visible; on wide terminals this collapses to a single row.
-fn status_bar_height(width: u16, app: &App) -> u16 {
-    let label = app.state.session_id.as_deref().unwrap_or("new").to_string();
-    let lines = super::status::build_status_lines(app, &label, width);
-    (lines.len() as u16).max(1)
+/// Stacks to 3 rows when the terminal is narrower than the
+/// [`super::status::STACK_WIDTH_THRESHOLD`]; otherwise a single row.
+fn status_bar_height(width: u16) -> u16 {
+    if width >= super::status::STACK_WIDTH_THRESHOLD {
+        1
+    } else {
+        3
+    }
 }

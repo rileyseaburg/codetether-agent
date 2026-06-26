@@ -5,6 +5,7 @@
 
 use ratatui::Frame;
 
+use super::agent_bar::render_agent_bar;
 use super::attachment::attachment_suffix;
 use super::input_area::render_input;
 use super::layout_compute::compute_chat_chunks;
@@ -33,6 +34,7 @@ pub fn render_chat_view(f: &mut Frame, app: &mut App, session: &SessionView) {
     let formatter = MessageFormatter::new(chunks.messages.width.saturating_sub(4) as usize);
     let max_width = chunks.messages.width as usize;
     let drawn = build_chat_lines(app, max_width, max_width, &formatter, &palette);
+    render_agent_bar(f, app, chunks.agent_bar);
     render_messages_ref(f, app, session, &chunks, &palette, drawn.as_slice());
     drawn.restore(app, max_width);
     let suffix = attachment_suffix(app);

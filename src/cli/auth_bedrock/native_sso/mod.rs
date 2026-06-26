@@ -16,7 +16,7 @@ mod role_creds;
 mod role_creds_tests;
 mod role_creds_types;
 
-pub(super) use refresh_flow::{RefreshArgs, refresh};
+pub(crate) use refresh_flow::{RefreshArgs, refresh};
 
 use anyhow::Result;
 use reqwest::Client;

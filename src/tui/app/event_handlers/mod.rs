@@ -36,6 +36,7 @@ mod scroll_down;
 mod scroll_up;
 mod shared_file_open;
 mod side_question;
+mod tab_keys;
 mod tests;
 pub(crate) mod voice;
 

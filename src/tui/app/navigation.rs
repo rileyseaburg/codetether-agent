@@ -15,7 +15,7 @@ mod agent_focus;
 #[cfg(test)]
 mod tests;
 
-pub use agent_focus::handle_tab;
+pub use agent_focus::{cycle_agent_focus_back, handle_tab};
 pub use jump::{handle_end, handle_home};
 
 pub fn handle_escape(app: &mut App) {
