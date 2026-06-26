@@ -16,7 +16,18 @@ pub const FILE_PICKER_PREVIEW_MAX_BYTES: usize = 8 * 1024;
 pub const FILE_PICKER_PREVIEW_MAX_LINES: usize = 14;
 pub const FILE_PICKER_PREVIEW_DIR_ITEMS: usize = 10;
 pub const FILE_PICKER_PAGE_STEP: usize = 12;
-pub const MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS: u64 = 60;
+/// Inactivity budget before the TUI watchdog cancels and auto-restarts a
+/// stalled main-session request.
+///
+/// This is the **outer** safety net. The session layer's own keepalive
+/// (`idle_keepalive`) emits `SessionEvent::Thinking` every 10 s during provider
+/// inference, so a healthy slow model (Bedrock Opus, GLM thinking 60-90 s before
+/// the first token) keeps the TUI activity clock fresh and is never killed
+/// mid-thought. This timeout only trips when the session emits *nothing at all*
+/// — i.e. the runtime itself is wedged — and sits above the session cold-stall
+/// budget (`idle_timeout::IDLE_TIMEOUT`, 180 s) so the two watchdogs cooperate
+/// instead of racing.
+pub const MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS: u64 = 240;
 /// Maximum automatic restart attempts before the watchdog gives up.
 pub const WATCHDOG_MAX_RESTARTS: u32 = 3;
 pub const SMART_SWITCH_MAX_RETRIES: u8 = 3;

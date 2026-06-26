@@ -4,23 +4,14 @@
 //! deltas, thinking deltas, and tool-call argument deltas as they arrive,
 //! rather than waiting for the full response.
 //!
-//! Bedrock event types handled:
-//! - `messageStart`         → ignored (role is always assistant)
-//! - `contentBlockStart`    → `StreamChunk::ToolCallStart` (only for tool blocks)
-//! - `contentBlockDelta`    → `StreamChunk::Text`, `StreamChunk::ToolCallDelta`,
-//!   or `StreamChunk::Thinking` (see [`delta`])
-//! - `contentBlockStop`     → `StreamChunk::ToolCallEnd` (only for open tool blocks)
-//! - `messageStop`          → ignored (finish reason is carried by `Done`)
-//! - `metadata`             → captured into usage, emitted at `Done`
-//! - `exception` / `error`  → `StreamChunk::Error`
-//!
-//! Module layout: [`request`] performs the signed HTTP call, [`pump`] turns
-//! response bytes into frames, and the handlers in [`delta`] and [`events`]
-//! map frames to chunks.
+//! Module layout: [`request`] performs the signed HTTP call (mapping auth
+//! failures via [`auth_error`]), [`pump`] turns response bytes into frames,
+//! and the handlers in [`delta`] and [`events`] map frames to chunks.
 
 mod delta;
 #[cfg(test)]
 mod delta_tests;
+mod auth_error;
 mod events;
 mod pump;
 mod request;

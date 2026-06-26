@@ -23,6 +23,7 @@ mod accept;
 mod fault;
 mod finalize;
 mod idle_drain;
+mod idle_keepalive;
 mod idle_timeout;
 mod outcome;
 mod restart;

@@ -45,6 +45,8 @@ pub mod signal_shutdown;
 pub mod slash_hint_match;
 pub mod slash_hints;
 pub mod smart_switch;
+pub mod spawn_agent;
+pub mod spawn_form;
 pub mod state;
 pub mod symbols;
 pub mod terminal_state;

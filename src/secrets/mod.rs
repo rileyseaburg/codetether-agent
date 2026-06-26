@@ -434,7 +434,7 @@ impl Default for VaultConfig {
 }
 
 /// Provider secrets stored in Vault
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ProviderSecrets {
     /// API key for the provider
     #[serde(default)]

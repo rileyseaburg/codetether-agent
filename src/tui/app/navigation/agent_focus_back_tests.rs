@@ -8,6 +8,8 @@ fn mk(name: &str) -> SpawnedAgent {
     SpawnedAgent {
         name: name.to_string(),
         instructions: String::new(),
+        parent: None,
+        depth: 0,
         session: futures::executor::block_on(crate::session::Session::new()).unwrap(),
         is_processing: false,
     }

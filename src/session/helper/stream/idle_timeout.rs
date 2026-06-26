@@ -7,11 +7,11 @@
 
 use crate::provider::StreamChunk;
 use crate::session::SessionEvent;
-use futures::StreamExt;
 use futures::stream::BoxStream;
 use std::time::Duration;
 
 use super::idle_drain::{DrainState, apply};
+use super::idle_keepalive::{Next, next_with_keepalive};
 use super::outcome::{DrainOutcome, StreamStop};
 use super::{fault, finalize};
 
@@ -35,20 +35,20 @@ pub(super) async fn drain(
     let mut state = DrainState::new();
     let mut got_chunk = false;
     let stop = loop {
-        match tokio::time::timeout(IDLE_TIMEOUT, stream.next()).await {
-            Ok(Some(StreamChunk::Error(msg))) => break fault_from(&msg),
-            Ok(Some(c)) => {
+        match next_with_keepalive(&mut stream, event_tx, IDLE_TIMEOUT).await {
+            Next::Chunk(Some(StreamChunk::Error(msg))) => break fault_from(&msg),
+            Next::Chunk(Some(c)) => {
                 got_chunk = true;
                 if let Err(e) = apply(&mut state, c, event_tx).await {
                     break fault_from(&e.to_string());
                 }
             }
-            Ok(None) => break StreamStop::Clean,
-            Err(_) if !got_chunk => {
+            Next::Chunk(None) => break StreamStop::Clean,
+            Next::IdleTimeout if !got_chunk => {
                 tracing::warn!("Cold idle timeout; retryable");
                 break StreamStop::ColdStall;
             }
-            Err(_) => {
+            Next::IdleTimeout => {
                 tracing::warn!("Idle timeout; returning partial");
                 break StreamStop::MidStreamStall;
             }

@@ -132,6 +132,7 @@ impl Default for super::AppState {
             needs_redraw: true,
             shell_rx: None,
             shell_running: false, editor: None, editor_scroll: 0, editor_hscroll: 0, chat_hit: Default::default(), editor_lsp: Default::default(),
+            spawn_form: None,
         }
     }
 }

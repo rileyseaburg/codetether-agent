@@ -14,6 +14,12 @@ pub struct SpawnedAgent {
     pub name: String,
     /// System instructions for this agent
     pub instructions: String,
+    /// Name of the agent that spawned this one; `None` means the main chat
+    /// (a top-level sibling). Forms the agent tree used by the header rail.
+    pub parent: Option<String>,
+    /// Nesting depth: 0 for children of main, up to
+    /// [`crate::tui::app::state::agent_tree::MAX_AGENT_DEPTH`].
+    pub depth: u8,
     /// Independent conversation session
     pub session: Session,
     /// Whether this agent is currently processing a message

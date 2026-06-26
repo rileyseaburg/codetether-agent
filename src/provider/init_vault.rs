@@ -31,6 +31,11 @@ impl ProviderRegistry {
         let disable_env = fallback_policy::env_fallback_disabled();
 
         if let Some(mgr) = crate::secrets::secrets_manager() {
+            // Proactively assess the stored Bedrock key: if it is expired or
+            // near expiry and SSO refresh metadata exists, silently re-mint
+            // and re-save it before any provider is built. No-op otherwise.
+            let _ = bedrock::sso_refresh::ensure_fresh().await;
+
             let providers = mgr.list_configured_providers().await?;
             tracing::info!("Found {} providers configured in Vault", providers.len());
 

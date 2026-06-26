@@ -21,11 +21,12 @@ pub fn handle_tab(app: &mut App) {
     }
 }
 
-/// Sorted spawned-agent names (stable ordering for the focus ring).
+/// Depth-first spawned-agent names (parents before children) for the ring.
 pub(super) fn agent_names(app: &App) -> Vec<String> {
-    let mut names: Vec<String> = app.state.spawned_agents.keys().cloned().collect();
-    names.sort();
-    names
+    crate::tui::app::state::agent_tree::dfs_order(&app.state.spawned_agents)
+        .into_iter()
+        .map(|n| n.name)
+        .collect()
 }
 
 /// Apply a focus selection and update the status line.

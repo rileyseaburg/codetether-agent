@@ -73,4 +73,5 @@ pub struct AppState {
     pub editor: Option<crate::tui::ui::editor::FileBuffer>, pub editor_scroll: usize, pub editor_hscroll: usize, pub chat_hit: crate::tui::ui::chat_view::hit::ChatHit,
     /// Editor LSP state: shared manager and transient hover/JSDoc popup.
     pub editor_lsp: crate::tui::ui::editor::lsp_state::EditorLspState,
+    pub spawn_form: Option<crate::tui::app::spawn_form::SpawnFormState>,
 }

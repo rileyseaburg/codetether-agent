@@ -46,6 +46,7 @@ pub mod reasoning_audit;
 pub mod response;
 pub mod retry;
 pub mod sigv4;
+pub mod sso_refresh;
 pub mod stream;
 pub mod token_gen;
 

@@ -32,10 +32,8 @@ impl BedrockProvider {
         let status = response.status();
         if !status.is_success() {
             let text = response.text().await.context("failed to read error body")?;
-            anyhow::bail!(
-                "Bedrock stream error ({status}): {}",
-                crate::util::truncate_bytes_safe(&text, 500)
-            );
+            let body = crate::util::truncate_bytes_safe(&text, 500);
+            anyhow::bail!(super::auth_error::message(status, body));
         }
 
         Ok(event_chunk_stream(response))

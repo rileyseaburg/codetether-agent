@@ -40,6 +40,8 @@ pub async fn handle_detach_command(app: &mut App, session: &mut Session, rest: &
         SpawnedAgent {
             name: name.clone(),
             instructions: String::new(),
+            parent: None,
+            depth: 0,
             session: child,
             is_processing: false,
         },

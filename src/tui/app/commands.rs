@@ -13,7 +13,8 @@ use crate::tui::app::settings::{
     autocomplete_status_message, network_access_status_message, set_network_access,
     set_slash_autocomplete,
 };
-use crate::tui::app::state::{App, SpawnedAgent, agent_profile};
+use crate::tui::app::state::App;
+use crate::tui::app::spawn_agent::handle_spawn_command;
 use crate::tui::app::text::{
     command_with_optional_args, normalize_easy_command, normalize_slash_command,
 };
@@ -995,7 +996,12 @@ pub async fn handle_slash_command(
     // --- commands with rest arguments handled below the simple match ---
 
     if let Some(rest) = command_with_optional_args(&normalized, "/spawn") {
-        handle_spawn_command(app, rest).await;
+        if rest.is_empty() {
+            // No args → open interactive form
+            crate::tui::app::spawn_form::open_spawn_form(app);
+        } else {
+            handle_spawn_command(app, rest).await;
+        }
         return;
     }
 
@@ -1059,92 +1065,6 @@ pub async fn handle_slash_command(
             | "/recall"
     ) {
         app.state.status = format!("Unknown command: {normalized}");
-    }
-}
-
-async fn handle_spawn_command(app: &mut App, rest: &str) {
-    let rest = rest.trim();
-    if rest.is_empty() {
-        app.state.status = "Usage: /spawn <name> [instructions]".to_string();
-        return;
-    }
-
-    let mut parts = rest.splitn(2, char::is_whitespace);
-    let Some(name) = parts.next().filter(|s| !s.is_empty()) else {
-        app.state.status = "Usage: /spawn <name> [instructions]".to_string();
-        return;
-    };
-
-    if app.state.spawned_agents.contains_key(name) {
-        app.state.status = format!("Agent '{name}' already exists. Use /kill {name} first.");
-        push_system_message(app, format!("Agent '{name}' already exists."));
-        return;
-    }
-
-    let instructions = parts.next().unwrap_or("").trim().to_string();
-    let profile = agent_profile(name);
-
-    let system_prompt = if instructions.is_empty() {
-        format!(
-            "You are an AI assistant codenamed '{}' ({}) working as a sub-agent.
-             Personality: {}
-             Collaboration style: {}
-             Signature move: {}",
-            profile.codename,
-            profile.profile,
-            profile.personality,
-            profile.collaboration_style,
-            profile.signature_move,
-        )
-    } else {
-        instructions.clone()
-    };
-
-    match Session::new().await {
-        Ok(mut agent_session) => {
-            agent_session.agent = format!("spawned:{}", name);
-            agent_session.add_message(crate::provider::Message {
-                role: crate::provider::Role::System,
-                content: vec![crate::provider::ContentPart::Text {
-                    text: system_prompt,
-                }],
-            });
-
-            // Persist the agent session to disk so it can be recovered if
-            // the TUI crashes before the agent sends its first prompt.
-            if let Err(e) = agent_session.save().await {
-                tracing::warn!(error = %e, "Failed to save spawned agent session");
-            }
-
-            let display_name = if instructions.is_empty() {
-                format!("{} [{}]", name, profile.codename)
-            } else {
-                name.to_string()
-            };
-
-            app.state.spawned_agents.insert(
-                name.to_string(),
-                SpawnedAgent {
-                    name: display_name.clone(),
-                    instructions,
-                    session: agent_session,
-                    is_processing: false,
-                },
-            );
-
-            app.state.status = format!("Spawned agent: {display_name}");
-            push_system_message(
-                app,
-                format!(
-                    "Spawned agent '{}' [{}] — ready for messages.",
-                    name, profile.codename
-                ),
-            );
-        }
-        Err(error) => {
-            app.state.status = format!("Failed to create agent session: {error}");
-            push_system_message(app, format!("Failed to spawn agent '{name}': {error}"));
-        }
     }
 }
 
