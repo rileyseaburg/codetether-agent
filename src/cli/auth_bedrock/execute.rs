@@ -16,6 +16,9 @@ pub async fn execute(args: BedrockAuthArgs) -> Result<()> {
     if args.save_only && args.raw {
         bail!("--save-only cannot be combined with --raw");
     }
+    if args.refresh {
+        return super::refresh::run(&args).await;
+    }
     if let Some(exported) = native_resolve::try_resolve(&args).await? {
         let region = select::region(&args, None);
         return finish(&args, exported, &region, None).await;

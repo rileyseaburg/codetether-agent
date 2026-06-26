@@ -46,6 +46,9 @@ pub struct BedrockAuthArgs {
     /// Skip live validation against the Bedrock management API
     #[arg(long, default_value_t = false)]
     pub no_validate: bool,
+    /// Silently re-mint the saved Bedrock key using stored SSO refresh metadata
+    #[arg(long, default_value_t = false)]
+    pub refresh: bool,
     /// Deprecated compatibility knob; use --device-code, --browser, or --no-login
     #[arg(long, value_enum, default_value_t = LoginMode::Auto, hide = true)]
     pub login: LoginMode,
