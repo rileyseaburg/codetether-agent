@@ -67,5 +67,8 @@ async fn refresh_secret(secret: &ProviderSecrets, save_to_vault: bool) -> Result
         let expires_at = vault_expiry::effective(expires, exported.expiration);
         save::save(secret, &token, expires_at, exported.expiration).await?;
     }
-    Ok(Refreshed { token })
+    Ok(Refreshed {
+        token,
+        region: sso.region,
+    })
 }

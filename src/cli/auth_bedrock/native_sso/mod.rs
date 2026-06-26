@@ -7,16 +7,12 @@
 
 mod oidc_device_auth;
 mod oidc_poll;
-mod oidc_refresh;
 mod oidc_register;
 mod oidc_types;
-mod refresh_flow;
 mod role_creds;
 #[cfg(test)]
 mod role_creds_tests;
 mod role_creds_types;
-
-pub(crate) use refresh_flow::{RefreshArgs, refresh};
 
 use anyhow::Result;
 use reqwest::Client;

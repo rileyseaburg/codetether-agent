@@ -11,7 +11,7 @@ use anyhow::Result;
 use reqwest::Client;
 
 /// All material needed to silently refresh role credentials.
-pub(crate) struct RefreshArgs<'a> {
+pub(super) struct RefreshArgs<'a> {
     pub region: &'a str,
     pub client_id: &'a str,
     pub client_secret: &'a str,
@@ -21,7 +21,7 @@ pub(crate) struct RefreshArgs<'a> {
 }
 
 /// Run a non-interactive refresh and return fresh STS role credentials.
-pub(crate) async fn refresh(args: RefreshArgs<'_>) -> Result<Exported> {
+pub(super) async fn refresh(args: RefreshArgs<'_>) -> Result<Exported> {
     let http = Client::builder()
         .user_agent("codetether-bedrock-auth")
         .build()?;
