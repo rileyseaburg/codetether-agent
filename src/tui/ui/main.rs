@@ -59,6 +59,7 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &SessionView) {
             app.state.selected_session,
         ),
         ViewMode::Latency => render_latency(f, f.area(), app),
+        ViewMode::Transport => crate::tui::transport_view::render_transport(f, f.area()),
         ViewMode::Protocol => {
             crate::tui::protocol_registry_view::render_protocol_registry(f, app, f.area())
         }

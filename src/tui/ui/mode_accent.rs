@@ -30,6 +30,7 @@ pub fn mode_accent(mode: &ViewMode) -> Color {
         ViewMode::Lsp => Color::LightGreen,
         ViewMode::Rlm => Color::LightMagenta,
         ViewMode::Latency => Color::LightRed,
+        ViewMode::Transport => Color::LightBlue,
         ViewMode::Protocol => Color::LightYellow,
         ViewMode::FilePicker => Color::Green,
         ViewMode::Inspector => Color::LightCyan,

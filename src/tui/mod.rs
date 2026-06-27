@@ -12,7 +12,6 @@ pub mod latency_chat_turn;
 pub mod lsp;
 pub mod model_picker;
 pub mod models;
-#[path = "protocol_registry_view.rs"]
 pub mod protocol_registry_view;
 pub mod rlm;
 pub mod sessions;
@@ -20,6 +19,7 @@ pub mod settings;
 pub mod status;
 pub mod terminal;
 pub mod theme;
+pub mod transport_view;
 pub mod ui;
 pub mod utils;
 

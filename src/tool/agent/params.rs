@@ -37,6 +37,11 @@ pub(super) struct Params {
     pub model: Option<String>,
     #[serde(default)]
     pub ephemeral: bool,
+    /// When true, `message` dispatches in the background and returns immediately
+    /// instead of blocking the caller until the sub-agent's turn finishes.
+    /// Progress is observable via the `status` action (issue #296).
+    #[serde(default)]
+    pub detach: bool,
     #[serde(default, rename = "__ct_current_model")]
     pub _current_model: Option<String>,
     #[serde(default, rename = "__ct_parent_workspace")]

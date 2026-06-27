@@ -53,6 +53,12 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
             .map(|_| session_for_task)
     });
 
+    if params.detach {
+        return Ok(super::message_detach::dispatch(
+            name, _run_guard, rx, handle,
+        ));
+    }
+
     let (response, thinking, tools, error, updated_session) =
         event_loop::run(&mut rx, handle).await;
 

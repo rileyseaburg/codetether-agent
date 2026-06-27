@@ -14,7 +14,8 @@ pub(super) fn agent_tool_parameters() -> Value {
             "instructions": { "type": "string", "description": "System instructions (spawn)" },
             "message": { "type": "string", "description": "Message to send" },
             "model": { "type": "string", "description": "Model (spawn). Should be free/subscription-eligible; otherwise a cost warning is returned." },
-            "ephemeral": { "type": "boolean", "description": "Spawn without durable session persistence; returns an explicit warning." }
+            "ephemeral": { "type": "boolean", "description": "Spawn without durable session persistence; returns an explicit warning." },
+            "detach": { "type": "boolean", "description": "For message: dispatch in the background and return immediately instead of blocking until the sub-agent's turn finishes. Watch progress with action \"status\"." }
         },
         "required": ["action"]
     })

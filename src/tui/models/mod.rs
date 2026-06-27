@@ -55,6 +55,8 @@ pub enum ViewMode {
     Rlm,
     /// Request, tool, and streaming latency metrics view.
     Latency,
+    /// Transport-health view: TCP_INFO probe (RTT, cwnd, retransmits).
+    Transport,
     /// Protocol-level message inspection view.
     Protocol,
     /// Workspace file picker view.

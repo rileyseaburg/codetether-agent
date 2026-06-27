@@ -13,6 +13,7 @@ pub const ALL_VIEW_MODES: &[ViewMode] = &[
     ViewMode::Lsp,
     ViewMode::Rlm,
     ViewMode::Latency,
+    ViewMode::Transport,
     ViewMode::Protocol,
     ViewMode::FilePicker,
     ViewMode::Inspector,

@@ -20,9 +20,13 @@ mod execution_state_tests;
 mod handlers;
 mod helpers;
 mod message;
+mod message_detach;
 mod message_finalize;
 mod message_result;
 mod params;
+#[cfg(test)]
+#[path = "params_tests.rs"]
+mod params_tests;
 mod policy;
 mod policy_constants;
 mod policy_free;

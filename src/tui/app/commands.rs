@@ -13,8 +13,8 @@ use crate::tui::app::settings::{
     autocomplete_status_message, network_access_status_message, set_network_access,
     set_slash_autocomplete,
 };
-use crate::tui::app::state::App;
 use crate::tui::app::spawn_agent::handle_spawn_command;
+use crate::tui::app::state::App;
 use crate::tui::app::text::{
     command_with_optional_args, normalize_easy_command, normalize_slash_command,
 };
@@ -878,6 +878,10 @@ pub async fn handle_slash_command(
             app.state.set_view_mode(ViewMode::Latency);
             app.state.status = "Latency inspector".to_string();
         }
+        "/transport" => {
+            app.state.set_view_mode(ViewMode::Transport);
+            app.state.status = "Transport health (TCP_INFO)".to_string();
+        }
         "/inspector" => {
             app.state.set_view_mode(ViewMode::Inspector);
             app.state.status = "Inspector".to_string();
@@ -1037,6 +1041,7 @@ pub async fn handle_slash_command(
             | "/lsp"
             | "/rlm"
             | "/latency"
+            | "/transport"
             | "/audit"
             | "/git"
             | "/auditloop"
