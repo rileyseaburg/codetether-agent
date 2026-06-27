@@ -25,6 +25,11 @@ pub(crate) async fn handle_event(
     if super::goal_prompt_key::handle_goal_prompt_key(app, key) {
         return Ok(false);
     }
+    if app.state.spawn_form.is_some()
+        && crate::tui::app::spawn_form::handle_spawn_form_key(app, key).await
+    {
+        return Ok(false);
+    }
     if super::fuzzy_find_key::handle_fuzzy_find_key(app, cwd, key) {
         return Ok(false);
     }

@@ -1,12 +1,15 @@
 //! Interactive spawn form: a modal overlay for creating sub-agents.
 //!
-//! Opened via `/spawn` (no arguments) or `Ctrl+S`. Submitting the form
+//! Opened via `/spawn` (no arguments). Submitting the form
 //! reuses the existing [`crate::tui::app::spawn_agent::handle_spawn_command`]
 //! path so spawn logic is never duplicated.
 
 pub mod keys;
 pub mod render;
 pub mod state;
+#[cfg(test)]
+#[path = "state_tests.rs"]
+mod state_tests;
 pub mod submit;
 
 pub use keys::handle_spawn_form_key;
