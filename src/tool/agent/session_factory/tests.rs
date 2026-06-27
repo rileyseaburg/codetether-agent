@@ -44,3 +44,13 @@ async fn child_session_uses_parent_workspace_not_process_cwd() {
     };
     assert!(text.contains(&parent_workspace.display().to_string()));
 }
+
+#[tokio::test]
+async fn child_session_enables_auto_apply_edits() {
+    // Issue #294: autonomous sub-agents cannot interactively confirm edits, so
+    // their session must auto-apply pending edit previews.
+    let session = create_agent_session("child", "edit files", "example/model", None)
+        .await
+        .unwrap();
+    assert!(session.metadata.auto_apply_edits);
+}

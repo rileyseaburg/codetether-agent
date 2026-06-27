@@ -84,6 +84,10 @@ pub(super) async fn create_agent_session(
     session.set_agent_name(name.to_string());
     session.metadata.model = Some(model.to_string());
     session.metadata.directory = workspace.clone();
+    // Spawned sub-agents are autonomous and cannot interactively confirm edits,
+    // so edit previews must be auto-applied or they spin re-issuing the same
+    // pending edit forever (see issue #294).
+    session.metadata.auto_apply_edits = true;
     session.bus = crate::bus::global();
     session.add_message(Message {
         role: Role::System,
