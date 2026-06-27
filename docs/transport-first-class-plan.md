@@ -19,7 +19,12 @@ re-explained.
   reqwest 0.13 builder. Commit `f7ca2981`. NOTE: `TCP_INFO` sampling (Phase 4)
   still needs the raw socket handle -- reqwest's builder does not expose it, so
   Phase 4 may require a custom hyper connector.
-- **Phases 4-6:** not started.
+- **Phase 5 (lifecycle state machine):** DONE. `backoff` (decorrelated jitter,
+  500ms..60s), `breaker` (opens after 5 consecutive failures), `lifecycle`
+  (Connecting/Live/Backoff/Dead). Wired into `worker_server_loop` replacing the
+  fixed 5s sleep. Commit `14548e02`.
+- **Phase 4 (TCP_INFO observability) and Phase 6 (QUIC/WebTransport):** not
+  started. Phase 4 needs the raw socket handle (custom hyper connector).
 
 ## 0. Problem Statement
 
