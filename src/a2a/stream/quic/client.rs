@@ -36,7 +36,12 @@ impl QuicStreamClient {
         Ok(Self { endpoint })
     }
 
-    /// Connect to `addr`, validating the server certificate against `server_name`.
+    /// Borrow the underlying endpoint (used by connection-migration support).
+    pub(super) fn endpoint(&self) -> &Endpoint {
+        &self.endpoint
+    }
+
+    /// Connect to `addr`, validating the server cert against `server_name`.
     ///
     /// # Errors
     /// Returns an error if the handshake fails or is rejected.

@@ -15,6 +15,7 @@
 //! delivering; force a path change, confirm migration keeps the session alive.
 
 pub mod client;
+pub mod migration;
 pub mod server;
 
 pub use client::QuicStreamClient;
