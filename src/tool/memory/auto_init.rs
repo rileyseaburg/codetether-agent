@@ -25,6 +25,7 @@ impl MemoryStore {
             for (entry, vector) in self.entries.values_mut().zip(vectors) {
                 entry.embedding = Some(vector);
             }
+            let _ = self.save().await;
         }
         self.with_embedder(embedder)
     }

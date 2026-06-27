@@ -9,6 +9,7 @@ pub mod bert_embedder;
 pub mod bert_forward;
 pub mod catalog;
 pub mod hf_download;
+pub mod local_pick;
 pub mod provider_pick;
 pub mod resources;
 
@@ -18,6 +19,7 @@ mod tests;
 use crate::provider::ProviderRegistry;
 use crate::vectordb::TextEmbedder;
 use bert_embedder::BertEmbedder;
+use local_pick::try_local;
 use resources::SystemCapability;
 use std::sync::Arc;
 
@@ -27,21 +29,20 @@ use std::sync::Arc;
 /// signalling the caller to keep the built-in hashing engine.
 pub async fn auto_embedder(registry: &ProviderRegistry) -> Option<Arc<dyn TextEmbedder>> {
     let caps = SystemCapability::detect();
-    if caps.supports_local_embedding()
-        && let Some(local) = try_local(&caps).await
-    {
-        return Some(local);
+    if caps.supports_local_embedding() {
+        match try_local(&caps).await {
+            Some(local) => return Some(local),
+            None => tracing::warn!("memory embedder: local model unavailable, trying cloud"),
+        }
     }
-    provider_pick::cloud_embedder(registry)
-}
-
-/// Attempt to download and load a local HuggingFace model.
-async fn try_local(caps: &SystemCapability) -> Option<Arc<dyn TextEmbedder>> {
-    let spec = catalog::best_fitting(caps.total_memory_bytes);
-    let files = hf_download::download(&spec).await.ok()?;
-    let embedder = tokio::task::spawn_blocking(move || BertEmbedder::load(&files))
-        .await
-        .ok()?
-        .ok()?;
-    Some(Arc::new(embedder))
+    match provider_pick::cloud_embedder(registry) {
+        Some(cloud) => {
+            tracing::info!("memory embedder: using cloud provider");
+            Some(cloud)
+        }
+        None => {
+            tracing::info!("memory embedder: using local hashing engine");
+            None
+        }
+    }
 }
