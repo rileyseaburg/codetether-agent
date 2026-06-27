@@ -21,6 +21,9 @@ pub(super) struct AgentStatus {
 
 /// Return the newest `TaskUpdate` per agent name from recent bus history.
 ///
+/// Agents seen only via tool activity (no `TaskUpdate` yet) are backfilled
+/// with a `Working` state so they are not misreported as idle (issue #295).
+///
 /// Returns an empty map when no global bus is installed.
 pub(super) fn latest_states() -> HashMap<String, AgentStatus> {
     let mut out: HashMap<String, AgentStatus> = HashMap::new();
@@ -47,5 +50,6 @@ pub(super) fn latest_states() -> HashMap<String, AgentStatus> {
             }
         }
     }
+    super::status_tool_activity::backfill(&mut out);
     out
 }
