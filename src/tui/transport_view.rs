@@ -27,7 +27,10 @@ pub fn render_transport(f: &mut Frame, area: Rect) {
                 s.rtt_us as f64 / 1000.0,
                 s.rttvar_us as f64 / 1000.0
             )));
-            lines.push(Line::from(format!("Congestion window: {} segments", s.snd_cwnd)));
+            lines.push(Line::from(format!(
+                "Congestion window: {} segments",
+                s.snd_cwnd
+            )));
             lines.push(Line::from(format!(
                 "Retransmits: {} in-flight / {} total",
                 s.retrans, s.total_retrans
@@ -38,11 +41,11 @@ pub fn render_transport(f: &mut Frame, area: Rect) {
                 ));
             }
         }
-        None => lines.push(Line::from("No probe sample yet (Linux-only; 15s interval).")),
+        None => lines.push(Line::from(
+            "No probe sample yet (Linux-only; 15s interval).",
+        )),
     }
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title("Transport");
+    let block = Block::default().borders(Borders::ALL).title("Transport");
     let paragraph = Paragraph::new(lines).block(block).wrap(Wrap { trim: true });
     f.render_widget(paragraph, area);
 }
