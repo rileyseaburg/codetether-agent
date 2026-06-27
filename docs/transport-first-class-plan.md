@@ -31,7 +31,14 @@ re-explained.
   (`telemetry/transport.rs`). Same path, zero blast radius. Commits `13dec849`,
   `77c04260`. TUI surface: `ViewMode::Transport` (`/transport`) renders
   RTT/cwnd/retransmits from TRANSPORT_METRICS (`tui/transport_view.rs`). DONE.
-- **Phase 6 (QUIC/WebTransport):** not started.
+- **Phase 6 (QUIC/WebTransport):** DONE. Multiplexed QUIC stream path over
+  quinn 0.11 (`a2a/stream/quic/{mod,server,client,migration}.rs`,
+  ALPN `a2a-stream/1`). Both acceptance experiments pass as focused local
+  tests: `tests/quic_multiplex_hol.rs` (open two bi streams, stall one, the
+  other still completes -- no head-of-line blocking) and
+  `tests/quic_migration.rs` (rebind the client's local UDP port mid-session via
+  `Endpoint::rebind`, the same connection carries a fresh stream to completion
+  -- connection migration, no cold resync). Commits `34a559c0`, `43568876`.
 
 ## 0. Problem Statement
 
