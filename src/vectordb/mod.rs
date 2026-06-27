@@ -5,6 +5,9 @@
 //! Components:
 //! - [`EmbeddingVector`] — L2-normalized vector newtype.
 //! - [`LocalEmbeddingEngine`] — hashing-trick embeddings, no network.
+//! - [`TextEmbedder`] — backend seam; swap the local engine for a real model.
+//! - [`ProviderEmbedder`] — [`TextEmbedder`] backed by a learned model via a
+//!   [`Provider`](crate::provider::Provider) (e.g. `text-embedding-3-small`).
 //! - [`VectorStore`] — generic-payload store with cosine [`search`](VectorStore::search)
 //!   and JSON persistence.
 //! - [`Embeddable`] — implement on a type to derive its embedding text.
@@ -27,7 +30,9 @@
 pub mod embed;
 pub mod embed_hash;
 pub mod embeddable;
+pub mod embedder;
 pub mod persist;
+pub mod provider;
 pub mod record;
 pub mod similarity;
 pub mod store;
@@ -37,10 +42,15 @@ pub mod tokenize;
 pub mod vector;
 
 #[cfg(test)]
+#[path = "provider_tests.rs"]
+mod provider_tests;
+#[cfg(test)]
 mod tests;
 
 pub use embed::{DEFAULT_DIMENSIONS, LocalEmbeddingEngine};
 pub use embeddable::Embeddable;
+pub use embedder::TextEmbedder;
+pub use provider::ProviderEmbedder;
 pub use record::Record;
 pub use similarity::cosine;
 pub use store::VectorStore;
