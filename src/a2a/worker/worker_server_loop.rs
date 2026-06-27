@@ -7,9 +7,10 @@ use crate::a2a::stream::breaker::CircuitBreaker;
 use crate::worker_server::WorkerServerState;
 
 use super::{
-    WorkerContext, connect_stream, fetch_pending_tasks,
+    WorkerContext, connect_stream, connection_setup::start_connection_heartbeat,
+    fetch_pending_tasks,
     reconnect_lifecycle::{apply_lifecycle, log_outcome, make_backoff},
-    register_current_worker, start_heartbeat,
+    register_current_worker, transport_probe::spawn_transport_probe,
 };
 
 pub(super) async fn run_worker_server_loop(
@@ -18,6 +19,7 @@ pub(super) async fn run_worker_server_loop(
 ) -> Result<()> {
     let mut backoff = make_backoff();
     let mut breaker = CircuitBreaker::new(5);
+    let _probe = spawn_transport_probe(&context.server);
     loop {
         let codebases = context.shared_codebases.lock().await.clone();
         let (notify_tx, notify_rx) = mpsc::channel::<String>(32);
@@ -29,15 +31,7 @@ pub(super) async fn run_worker_server_loop(
         if let Err(error) = fetch_pending_tasks(&context.task_runtime).await {
             tracing::warn!(error = %error, "Reconnect task fetch failed");
         }
-        let heartbeat = start_heartbeat(
-            context.task_runtime.client.clone(),
-            context.server.clone(),
-            context.args.token.clone(),
-            context.heartbeat_state.clone(),
-            context.processing.clone(),
-            context.cognition_heartbeat.clone(),
-            context.task_progress.clone(),
-        );
+        let heartbeat = start_connection_heartbeat(&context);
         let outcome = connect_stream(
             &context.task_runtime,
             &context.name,

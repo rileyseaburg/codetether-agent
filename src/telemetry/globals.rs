@@ -29,6 +29,7 @@ use std::sync::Arc;
 use super::provider::ProviderMetrics;
 use super::tokens::AtomicTokenCounter;
 use super::tools::AtomicToolCounter;
+use super::transport::TransportMetrics;
 
 /// Process-wide cumulative token usage across every provider request.
 pub static TOKEN_USAGE: Lazy<Arc<AtomicTokenCounter>> =
@@ -43,3 +44,7 @@ pub static TOOL_EXECUTIONS: Lazy<Arc<AtomicToolCounter>> =
 /// Used to derive averages, p50, and p95 latency / throughput per provider.
 pub static PROVIDER_METRICS: Lazy<Arc<ProviderMetrics>> =
     Lazy::new(|| Arc::new(ProviderMetrics::new()));
+
+/// Process-wide latest transport (TCP_INFO) snapshot from the server probe.
+pub static TRANSPORT_METRICS: Lazy<Arc<TransportMetrics>> =
+    Lazy::new(|| Arc::new(TransportMetrics::new()));

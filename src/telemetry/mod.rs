@@ -83,11 +83,12 @@ pub mod rss_watchdog;
 pub mod swarm;
 pub mod tokens;
 pub mod tools;
+pub mod transport;
 
 pub use a2a::A2AMessageRecord;
 pub use context::ContextLimit;
 pub use cost::CostEstimate;
-pub use globals::{PROVIDER_METRICS, TOKEN_USAGE, TOOL_EXECUTIONS};
+pub use globals::{PROVIDER_METRICS, TOKEN_USAGE, TOOL_EXECUTIONS, TRANSPORT_METRICS};
 pub use metrics::{Telemetry, TelemetryMetrics};
 pub use persistent::{
     PersistentStats, PersistentStatsInner, get_persistent_stats, record_persistent,

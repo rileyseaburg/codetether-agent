@@ -27,6 +27,7 @@ mod git_branch_tests;
 #[rustfmt::skip]
 mod git_commit_push;mod git_commit_push_ops;
 mod git_commit_push_provenance;
+mod connection_setup;
 mod frame_handler;
 mod reconnect_lifecycle;
 mod git_refspec;
@@ -85,6 +86,7 @@ mod task_session;
 mod task_session_resolve;
 mod task_slot;
 mod task_stream;
+mod transport_probe;
 mod task_stream_buffer;
 mod task_stream_error;
 mod task_stream_request;
