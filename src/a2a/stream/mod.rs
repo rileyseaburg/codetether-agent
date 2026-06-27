@@ -13,3 +13,4 @@ pub mod event_id;
 pub mod frame;
 pub mod resume_request;
 pub mod resync;
+pub mod staging;

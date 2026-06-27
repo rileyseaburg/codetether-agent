@@ -1,49 +1,45 @@
-//! Buffer framing, body summary, and cursor-path helpers for the task stream.
+//! Bounded frame ingestion and cursor-path helpers for the task stream.
 
 use crate::a2a::stream::cursor::Cursor;
 use crate::a2a::stream::frame::parse_frame;
+use crate::a2a::stream::staging::{StagingBuffer, StagingError};
 
 use super::{WorkerTaskRuntime, frame_handler::handle_frame};
 
-/// Build the connect error for a non-success stream response.
-pub(super) async fn connect_error(response: reqwest::Response) -> anyhow::Error {
-    let status = response.status();
-    let body = response
-        .text()
-        .await
-        .unwrap_or_else(|error| format!("<failed to read response body: {error}>"));
-    anyhow::anyhow!(
-        "Failed to connect task stream: status={} body={}",
-        status,
-        summarize_response_body(&body)
-    )
+/// Why a worker task stream connection ended.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum StreamDisconnectReason {
+    Ended,
+    ReadError(String),
 }
+
+/// Cap on the partial-frame staging buffer (1 MiB): a single SSE frame larger
+/// than this is treated as a protocol violation rather than grown unbounded.
+pub(super) const STAGING_CAP_BYTES: usize = 1024 * 1024;
 
 /// Resume-cursor file path for a given worker id.
 pub(super) fn cursor_path(worker_id: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("codetether-stream-cursor-{worker_id}"))
 }
 
-/// Collapse whitespace and truncate an error response body for logging.
-pub(super) fn summarize_response_body(body: &str) -> String {
-    const MAX_BODY_CHARS: usize = 512;
-    let mut summary = body.split_whitespace().collect::<Vec<_>>().join(" ");
-    if summary.chars().count() > MAX_BODY_CHARS {
-        summary = summary.chars().take(MAX_BODY_CHARS).collect::<String>();
-        summary.push_str("...");
-    }
-    summary
-}
-
-/// Drain complete `\n\n`-delimited SSE frames from `buffer` and handle each.
-pub(super) async fn process_buffer(
-    buffer: &mut Vec<u8>,
+/// Append a chunk to the bounded staging buffer, then drain complete
+/// `\n\n`-delimited SSE frames and handle each.
+///
+/// # Errors
+///
+/// Returns [`StagingError::Overflow`] when an un-delimited frame exceeds the
+/// staging cap; the caller disconnects and reconnects on this signal.
+pub(super) async fn ingest_chunk(
+    buffer: &mut StagingBuffer,
+    chunk: &[u8],
     runtime: &WorkerTaskRuntime,
     cursor: &mut Cursor,
-) {
-    while let Some(pos) = buffer.windows(2).position(|w| w == b"\n\n") {
-        let event_bytes = buffer[..pos].to_vec();
-        buffer.drain(..pos + 2);
+) -> Result<(), StagingError> {
+    buffer.extend(chunk)?;
+    let bytes = buffer.bytes_mut();
+    while let Some(pos) = bytes.windows(2).position(|w| w == b"\n\n") {
+        let event_bytes = bytes[..pos].to_vec();
+        bytes.drain(..pos + 2);
         let Ok(event_str) = std::str::from_utf8(&event_bytes) else {
             continue;
         };
@@ -51,4 +47,5 @@ pub(super) async fn process_buffer(
             handle_frame(&frame, runtime, cursor).await;
         }
     }
+    Ok(())
 }

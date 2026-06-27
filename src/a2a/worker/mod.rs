@@ -85,6 +85,7 @@ mod task_session_resolve;
 mod task_slot;
 mod task_stream;
 mod task_stream_buffer;
+mod task_stream_error;
 mod task_stream_request;
 pub(crate) mod task_timeline;
 mod task_timeout;
