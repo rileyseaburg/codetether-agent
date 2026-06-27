@@ -26,6 +26,7 @@ pub mod server_auth;
 pub mod session_config;
 pub mod session_resolve;
 pub mod spawn;
+pub mod stream;
 pub mod task_scope;
 pub mod types;
 pub mod voice_grpc;

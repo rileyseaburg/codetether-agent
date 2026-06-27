@@ -27,6 +27,7 @@ mod git_branch_tests;
 #[rustfmt::skip]
 mod git_commit_push;mod git_commit_push_ops;
 mod git_commit_push_provenance;
+mod frame_handler;
 mod git_refspec;
 mod heartbeat_cognition;
 mod heartbeat_cognition_merge;
@@ -83,6 +84,7 @@ mod task_session;
 mod task_session_resolve;
 mod task_slot;
 mod task_stream;
+mod task_stream_buffer;
 mod task_stream_request;
 pub(crate) mod task_timeline;
 mod task_timeout;

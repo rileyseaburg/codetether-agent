@@ -1,11 +1,15 @@
 //! SSE task stream HTTP request builder.
 
+use crate::a2a::stream::event_id::EventId;
+use crate::a2a::stream::resume_request::apply_resume;
+
 use super::WorkerTaskRuntime;
 
 pub(super) fn build_stream_request(
     runtime: &WorkerTaskRuntime,
     name: &str,
     codebases: &[String],
+    last: Option<&EventId>,
 ) -> reqwest::RequestBuilder {
     let mut request = runtime
         .client
@@ -25,5 +29,5 @@ pub(super) fn build_stream_request(
     if let Some(token) = &runtime.token {
         request = request.bearer_auth(token);
     }
-    request
+    apply_resume(request, last)
 }
