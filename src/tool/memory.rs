@@ -4,6 +4,7 @@
 //! that persist across sessions for future reference.
 
 mod embeddable;
+mod embedder_handle;
 mod fuse;
 pub mod fusion;
 mod git_scope;
@@ -12,6 +13,7 @@ mod scope;
 pub mod search;
 mod search_rank;
 pub mod semantic;
+mod store_embed;
 
 use super::{Tool, ToolResult};
 use anyhow::Result;
@@ -93,6 +95,9 @@ impl MemoryEntry {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryStore {
     entries: HashMap<String, MemoryEntry>,
+    /// Optional learned-model embedding backend (runtime-only, never persisted).
+    #[serde(skip)]
+    embedder: embedder_handle::EmbedderHandle,
 }
 
 impl MemoryStore {
@@ -362,7 +367,7 @@ impl MemoryTool {
 
         let id = {
             let mut store = self.store.lock().await;
-            store.add(entry)
+            store.add_embedded(entry).await
         };
 
         // Persist to disk
@@ -388,7 +393,9 @@ impl MemoryTool {
 
         let results = {
             let mut store = self.store.lock().await;
-            store.search(query, tags_ref, scope.as_deref(), limit)
+            store
+                .search_embedded(query, tags_ref, scope.as_deref(), limit)
+                .await
         };
 
         if results.is_empty() {
