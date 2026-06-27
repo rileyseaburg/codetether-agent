@@ -7,6 +7,8 @@
 
 pub mod classify;
 pub mod cursor;
+#[cfg(test)]
+mod cursor_tests;
 pub mod event_id;
 pub mod frame;
 pub mod resume_request;

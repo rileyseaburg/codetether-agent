@@ -54,22 +54,20 @@ impl Cursor {
         self.last = Some(id.clone());
         Ok(())
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::Cursor;
-    use super::EventId;
-
-    #[test]
-    fn commit_persists_and_reloads() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("c");
-        let mut cursor = Cursor::load(path.clone());
-        assert!(cursor.last().is_none());
-        cursor
-            .commit(&EventId { epoch: "ep".into(), seq: 3 })
-            .unwrap();
-        assert_eq!(Cursor::load(path).last().unwrap().seq, 3);
+    /// Drop the cursor (in memory and on disk) for a cold resync.
+    ///
+    /// A missing file is treated as already-reset and is not an error.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the cursor file exists but cannot be removed.
+    pub fn reset(&mut self) -> std::io::Result<()> {
+        self.last = None;
+        match fs::remove_file(&self.path) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 }
