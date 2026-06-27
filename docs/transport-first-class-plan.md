@@ -29,8 +29,8 @@ re-explained.
   `RawFd`, a background task probes the server `host:port` on a dedicated socket
   (`stream/probe.rs`) every 15s and records to `TRANSPORT_METRICS`
   (`telemetry/transport.rs`). Same path, zero blast radius. Commits `13dec849`,
-  `77c04260`. REMAINING: a TUI transport-health widget reading TRANSPORT_METRICS
-  (telemetry plumbing is done; only the render surface is left).
+  `77c04260`. TUI surface: `ViewMode::Transport` (`/transport`) renders
+  RTT/cwnd/retransmits from TRANSPORT_METRICS (`tui/transport_view.rs`). DONE.
 - **Phase 6 (QUIC/WebTransport):** not started.
 
 ## 0. Problem Statement
