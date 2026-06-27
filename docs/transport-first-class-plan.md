@@ -23,12 +23,14 @@ re-explained.
   500ms..60s), `breaker` (opens after 5 consecutive failures), `lifecycle`
   (Connecting/Live/Backoff/Dead). Wired into `worker_server_loop` replacing the
   fixed 5s sleep. Commit `14548e02`.
-- **Phase 4 (TCP_INFO observability):** CORE DONE, integration pending.
-  `tcp_info::sample(fd)` reads RTT/cwnd/retrans/total_retrans via
-  `getsockopt(SOL_TCP, TCP_INFO)` on Linux, proven by a live-loopback test
-  (`snd_cwnd >= 1` on a real connection). Commit `13dec849`. REMAINING: reqwest
-  hides the `RawFd`, so periodic sampling + a telemetry/TUI surface need a custom
-  hyper connector that exposes the configured `TcpStream`.
+- **Phase 4 (TCP_INFO observability):** DONE (probe approach). `tcp_info::sample`
+  reads RTT/cwnd/retrans via `getsockopt(TCP_INFO)` (live-loopback proven).
+  Integration: since reqwest's `connector_layer` never exposes the stream
+  `RawFd`, a background task probes the server `host:port` on a dedicated socket
+  (`stream/probe.rs`) every 15s and records to `TRANSPORT_METRICS`
+  (`telemetry/transport.rs`). Same path, zero blast radius. Commits `13dec849`,
+  `77c04260`. REMAINING: a TUI transport-health widget reading TRANSPORT_METRICS
+  (telemetry plumbing is done; only the render surface is left).
 - **Phase 6 (QUIC/WebTransport):** not started.
 
 ## 0. Problem Statement
