@@ -3,6 +3,7 @@
 //! Allows agents to store important insights, learnings, and decisions
 //! that persist across sessions for future reference.
 
+mod auto_init;
 mod embeddable;
 mod embedder_handle;
 mod fuse;
@@ -239,7 +240,7 @@ impl MemoryTool {
 
         let mut store = self.store.lock().await;
         if let Ok(loaded) = MemoryStore::load().await {
-            *store = loaded;
+            *store = loaded.install_auto_embedder().await;
         }
         self.initialized.store(true, Ordering::SeqCst);
         Ok(())

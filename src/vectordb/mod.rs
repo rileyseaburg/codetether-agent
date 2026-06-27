@@ -8,6 +8,8 @@
 //! - [`TextEmbedder`] — backend seam; swap the local engine for a real model.
 //! - [`ProviderEmbedder`] — [`TextEmbedder`] backed by a learned model via a
 //!   [`Provider`](crate::provider::Provider) (e.g. `text-embedding-3-small`).
+//! - [`auto`] — automatic backend selection: probes host resources and uses a
+//!   local HuggingFace model when capable, else a cloud embedding provider.
 //! - [`VectorStore`] — generic-payload store with cosine [`search`](VectorStore::search)
 //!   and JSON persistence.
 //! - [`Embeddable`] — implement on a type to derive its embedding text.
@@ -27,6 +29,7 @@
 //! assert_eq!(hits[0].record.id, "a");
 //! ```
 
+pub mod auto;
 pub mod embed;
 pub mod embed_hash;
 pub mod embeddable;
