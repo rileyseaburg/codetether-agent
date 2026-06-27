@@ -4,6 +4,23 @@
 SACK, Nagle, delayed-ACK, zero-window, `TCP_INFO`, QUIC streams. No primitives
 re-explained.
 
+## Progress Ledger
+
+- **Phase 1 (resumable stream protocol):** DONE. Client primitives
+  (`src/a2a/stream/`) + worker wiring; Python server (`replay_ring`,
+  `stream_epoch`, `stream_emit`, `sequencer_store`, `stream_resume_handshake`)
+  with per-worker persistent sequencer. Proven by a live uvicorn-socket
+  acceptance test (gap replay over real TCP). Commits up to `d48ff9d`.
+- **Phase 2 (bounded backpressure):** DONE. Client `StagingBuffer` (1 MiB cap,
+  overflow->reconnect); server bounded `asyncio.Queue` (maxsize 1024,
+  drop-on-full, recoverable via replay ring). Commits `87699554`, `dcab2cf`.
+- **Phase 3 (socket control):** DONE (option a). `socket_opts.rs` sets
+  `tcp_nodelay`, keepalive (idle/interval/retries), `tcp_user_timeout` via
+  reqwest 0.13 builder. Commit `f7ca2981`. NOTE: `TCP_INFO` sampling (Phase 4)
+  still needs the raw socket handle -- reqwest's builder does not expose it, so
+  Phase 4 may require a custom hyper connector.
+- **Phases 4-6:** not started.
+
 ## 0. Problem Statement
 
 The A2A worker transport is `reqwest::Client` → `response.bytes_stream()` →
