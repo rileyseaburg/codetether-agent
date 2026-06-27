@@ -15,11 +15,16 @@
 //! delivering; force a path change, confirm migration keeps the session alive.
 
 pub mod client;
+pub mod codec;
 pub mod migration;
+pub mod reader;
 pub mod server;
+pub mod writer;
 
 pub use client::QuicStreamClient;
+pub use reader::QuicFrameReader;
 pub use server::QuicStreamServer;
+pub use writer::QuicFrameWriter;
 
 /// ALPN protocol identifier negotiated for the A2A QUIC stream path.
 ///
