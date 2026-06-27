@@ -44,6 +44,7 @@ mod status_liveness;
 #[cfg(test)]
 mod status_liveness_tests;
 mod status_source;
+mod status_tool_activity;
 mod store;
 mod text;
 mod tool_impl;
