@@ -28,6 +28,7 @@ mod git_branch_tests;
 mod git_commit_push;mod git_commit_push_ops;
 mod git_commit_push_provenance;
 mod frame_handler;
+mod reconnect_lifecycle;
 mod git_refspec;
 mod heartbeat_cognition;
 mod heartbeat_cognition_merge;
