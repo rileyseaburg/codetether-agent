@@ -8,6 +8,9 @@ use crate::provider::StreamChunk;
 use crate::provider::bedrock::BedrockProvider;
 use anyhow::{Context, Result};
 
+#[path = "refresh_retry.rs"]
+mod refresh_retry;
+
 impl BedrockProvider {
     /// POST to `/model/{id}/converse-stream` and yield `StreamChunk`s as
     /// eventstream frames arrive.
@@ -25,9 +28,19 @@ impl BedrockProvider {
         let url = format!("{}/model/{}/converse-stream", self.base_url(), model_id);
         tracing::debug!("Bedrock stream URL: {}", url);
 
-        let response = self
+        let mut response = self
             .send_request("POST", &url, Some(&body), "bedrock")
             .await?;
+
+        // On a mid-session auth failure, attempt a silent token refresh and
+        // retry once so an active TUI recovers without restarting.
+        if refresh_retry::is_auth_failure(response.status())
+            && refresh_retry::try_refresh(self).await
+        {
+            response = self
+                .send_request("POST", &url, Some(&body), "bedrock")
+                .await?;
+        }
 
         let status = response.status();
         if !status.is_success() {

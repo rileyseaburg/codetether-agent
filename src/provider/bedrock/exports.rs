@@ -1,5 +1,8 @@
 //! Public re-exports for the Bedrock provider module.
 
+#[path = "auth_bearer.rs"]
+mod auth_bearer;
+
 pub use super::aliases::resolve_model_id;
 pub use super::auth::{AwsCredentials, BedrockAuth};
 pub use super::body::build_converse_body;

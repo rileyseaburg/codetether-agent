@@ -237,25 +237,3 @@ pub enum BedrockAuth {
     /// rebuilding the provider — enabling mid-session SSO key refresh.
     BearerToken(std::sync::Arc<parking_lot::RwLock<String>>),
 }
-
-impl BedrockAuth {
-    /// Construct a bearer-token auth from a plain token string.
-    pub fn bearer(token: String) -> Self {
-        Self::BearerToken(std::sync::Arc::new(parking_lot::RwLock::new(token)))
-    }
-
-    /// Snapshot the current bearer token, if this is bearer auth.
-    pub fn current_bearer(&self) -> Option<String> {
-        match self {
-            Self::BearerToken(cell) => Some(cell.read().clone()),
-            Self::SigV4(_) => None,
-        }
-    }
-
-    /// Atomically replace the bearer token in place. No-op for SigV4 auth.
-    pub fn set_bearer(&self, new_token: String) {
-        if let Self::BearerToken(cell) = self {
-            *cell.write() = new_token;
-        }
-    }
-}

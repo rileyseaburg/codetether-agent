@@ -89,11 +89,10 @@ impl BedrockProvider {
                     .await
             }
             BedrockAuth::BearerToken(cell) => {
-                let token = cell.read().clone();
                 let mut req = self
                     .client
                     .request(method.parse().unwrap_or(reqwest::Method::GET), url)
-                    .bearer_auth(token)
+                    .bearer_auth(cell.read().clone())
                     .header("content-type", "application/json")
                     .header("accept", "application/json");
                 if let Some(b) = body {
