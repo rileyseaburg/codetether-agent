@@ -17,8 +17,7 @@ pub use submit::submit_spawn_form;
 /// Open the spawn form modal, resetting all fields.
 pub fn open_spawn_form(app: &mut crate::tui::app::state::App) {
     app.state.spawn_form = Some(SpawnFormState::default());
-    app.state.status = "Spawn agent form — Tab: next field, Enter: submit, Esc: cancel"
-        .to_string();
+    app.state.status = "Spawn agent form — Tab: next field, Enter: submit, Esc: cancel".to_string();
 }
 
 /// Close the spawn form modal without creating an agent.

@@ -30,7 +30,10 @@ pub struct CircuitBreaker {
 impl CircuitBreaker {
     /// Create a breaker that opens after `threshold` consecutive failures.
     pub fn new(threshold: u32) -> Self {
-        Self { threshold, consecutive_failures: 0 }
+        Self {
+            threshold,
+            consecutive_failures: 0,
+        }
     }
 
     /// Record a connection failure, incrementing the consecutive count.

@@ -8,10 +8,10 @@
 //! failures via [`auth_error`]), [`pump`] turns response bytes into frames,
 //! and the handlers in [`delta`] and [`events`] map frames to chunks.
 
+mod auth_error;
 mod delta;
 #[cfg(test)]
 mod delta_tests;
-mod auth_error;
 mod events;
 mod pump;
 mod request;

@@ -3,9 +3,7 @@
 use super::{WorkerContext, start_heartbeat};
 
 /// Start the periodic heartbeat task for the current connection attempt.
-pub(super) fn start_connection_heartbeat(
-    context: &WorkerContext,
-) -> tokio::task::JoinHandle<()> {
+pub(super) fn start_connection_heartbeat(context: &WorkerContext) -> tokio::task::JoinHandle<()> {
     start_heartbeat(
         context.task_runtime.client.clone(),
         context.server.clone(),

@@ -60,7 +60,8 @@ pub(crate) async fn dispatch_enter(
                 toggle_selected_setting(app, session).await;
             }
         }
-        ViewMode::Lsp | ViewMode::Rlm
+        ViewMode::Lsp
+        | ViewMode::Rlm
         | ViewMode::Latency
         | ViewMode::Transport
         | ViewMode::Protocol

@@ -10,7 +10,10 @@ fn commit_persists_and_reloads() {
     let mut cursor = Cursor::load(path.clone());
     assert!(cursor.last().is_none());
     cursor
-        .commit(&EventId { epoch: "ep".into(), seq: 3 })
+        .commit(&EventId {
+            epoch: "ep".into(),
+            seq: 3,
+        })
         .unwrap();
     assert_eq!(Cursor::load(path).last().unwrap().seq, 3);
 }
@@ -21,7 +24,10 @@ fn reset_clears_memory_and_disk() {
     let path = dir.path().join("c");
     let mut cursor = Cursor::load(path.clone());
     cursor
-        .commit(&EventId { epoch: "ep".into(), seq: 9 })
+        .commit(&EventId {
+            epoch: "ep".into(),
+            seq: 9,
+        })
         .unwrap();
     cursor.reset().unwrap();
     assert!(cursor.last().is_none());

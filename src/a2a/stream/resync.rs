@@ -53,8 +53,7 @@ mod tests {
 
     #[test]
     fn parses_epoch_mismatch() {
-        let r = parse_resync(r#"{"reason":"epoch_mismatch","head_seq":0,"epoch":"x"}"#)
-            .unwrap();
+        let r = parse_resync(r#"{"reason":"epoch_mismatch","head_seq":0,"epoch":"x"}"#).unwrap();
         assert_eq!(r.reason, ResyncReason::EpochMismatch);
         assert_eq!(r.epoch, "x");
     }

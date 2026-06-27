@@ -25,11 +25,10 @@ mod git_branch;
 #[cfg(test)]
 mod git_branch_tests;
 #[rustfmt::skip]
-mod git_commit_push;mod git_commit_push_ops;
-mod git_commit_push_provenance;
-mod connection_setup;
+mod git_commit_push;mod connection_setup;
 mod frame_handler;
-mod reconnect_lifecycle;
+mod git_commit_push_ops;
+mod git_commit_push_provenance;
 mod git_refspec;
 mod heartbeat_cognition;
 mod heartbeat_cognition_merge;
@@ -46,6 +45,7 @@ mod persistent_heartbeat;
 mod post_clone_task;
 mod provider_models;
 mod public_api;
+mod reconnect_lifecycle;
 mod reexports;
 mod reexports_a;
 mod reexports_b;
@@ -86,7 +86,6 @@ mod task_session;
 mod task_session_resolve;
 mod task_slot;
 mod task_stream;
-mod transport_probe;
 mod task_stream_buffer;
 mod task_stream_error;
 mod task_stream_request;
@@ -109,6 +108,7 @@ mod test_tool_schema;
 #[cfg(test)]
 mod test_tool_schema_retry;
 mod tool_schema;
+mod transport_probe;
 mod worker_bootstrap;
 mod worker_context;
 mod worker_env;

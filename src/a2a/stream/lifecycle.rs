@@ -35,11 +35,7 @@ pub enum LifecycleState {
 ///
 /// `connected` is whether the most recent connect attempt succeeded;
 /// `breaker_open` is whether the circuit breaker has tripped.
-pub fn next_state(
-    _current: LifecycleState,
-    connected: bool,
-    breaker_open: bool,
-) -> LifecycleState {
+pub fn next_state(_current: LifecycleState, connected: bool, breaker_open: bool) -> LifecycleState {
     if connected {
         LifecycleState::Live
     } else if breaker_open {

@@ -15,6 +15,7 @@ pub mod event_id;
 pub mod frame;
 pub mod lifecycle;
 pub mod probe;
+pub mod quic;
 pub mod resume_request;
 pub mod resync;
 pub mod socket_opts;

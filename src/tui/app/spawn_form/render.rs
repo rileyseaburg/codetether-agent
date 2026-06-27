@@ -1,13 +1,13 @@
 //! Rendering for the spawn form modal overlay.
 
+use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
-use ratatui::Frame;
 
-use crate::tui::app::state::AppState;
 use crate::tui::app::spawn_form::state::{SpawnField, SpawnFormState};
+use crate::tui::app::state::AppState;
 use crate::tui::help::centered_rect;
 
 /// Render the spawn form if it is active.
@@ -35,11 +35,7 @@ fn build_widget(form: &SpawnFormState) -> Paragraph<'static> {
             Style::default().fg(Color::DarkGray),
         )),
         field_row("Name", &form.name, form.active == SpawnField::Name),
-        field_row(
-            "Parent",
-            &form.parent,
-            form.active == SpawnField::Parent,
-        ),
+        field_row("Parent", &form.parent, form.active == SpawnField::Parent),
         field_row(
             "Instructions",
             &form.instructions,
@@ -68,10 +64,7 @@ fn field_row(label: &str, value: &str, active: bool) -> Line<'static> {
     };
     let cursor = if active { "█" } else { "" };
     Line::from(vec![
-        Span::styled(
-            format!("  {label:<14}: "),
-            Style::default().fg(Color::Cyan),
-        ),
+        Span::styled(format!("  {label:<14}: "), Style::default().fg(Color::Cyan)),
         Span::styled(format!("{value}{cursor}"), style),
     ])
 }

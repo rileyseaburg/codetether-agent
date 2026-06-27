@@ -46,7 +46,9 @@ pub(super) async fn handle_frame(
 /// Drop the resume cursor and cold-reconcile pending tasks on `resync-required`.
 async fn handle_resync(frame: &ParsedFrame, runtime: &WorkerTaskRuntime, cursor: &mut Cursor) {
     match parse_resync(&frame.data) {
-        Ok(resync) => tracing::warn!(reason = ?resync.reason, epoch = %resync.epoch, "Stream resync required"),
+        Ok(resync) => {
+            tracing::warn!(reason = ?resync.reason, epoch = %resync.epoch, "Stream resync required")
+        }
         Err(error) => tracing::warn!(error = %error, "Malformed resync-required payload"),
     }
     if let Err(error) = cursor.reset() {

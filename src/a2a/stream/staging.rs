@@ -32,7 +32,10 @@ pub struct StagingBuffer {
 impl StagingBuffer {
     /// Create a buffer that rejects growth beyond `max_bytes`.
     pub fn new(max_bytes: usize) -> Self {
-        Self { bytes: Vec::new(), max_bytes }
+        Self {
+            bytes: Vec::new(),
+            max_bytes,
+        }
     }
 
     /// Append `chunk`, erroring if the total would exceed the cap.
@@ -42,7 +45,9 @@ impl StagingBuffer {
     /// Returns [`StagingError::Overflow`] when `len() + chunk.len() > max_bytes`.
     pub fn extend(&mut self, chunk: &[u8]) -> Result<(), StagingError> {
         if self.bytes.len() + chunk.len() > self.max_bytes {
-            return Err(StagingError::Overflow { max_bytes: self.max_bytes });
+            return Err(StagingError::Overflow {
+                max_bytes: self.max_bytes,
+            });
         }
         self.bytes.extend_from_slice(chunk);
         Ok(())

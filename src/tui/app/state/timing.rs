@@ -7,9 +7,15 @@ use std::time::Instant;
 
 impl super::AppState {
     pub fn begin_request_timing(&mut self) {
-        self.processing_started_at = Some(Instant::now());
+        let now = Instant::now();
+        self.processing_started_at = Some(now);
         self.current_request_first_token_ms = None;
         self.current_request_last_token_ms = None;
+        // Re-baseline the watchdog activity clock. Without this, a fresh
+        // request inherits the previous turn's stale `main_last_event_at`,
+        // making the inactivity clause fire immediately (false "no events
+        // for Ns" stall) even though this request just started.
+        self.main_last_event_at = Some(now);
     }
 
     pub fn current_request_elapsed_ms(&self) -> Option<u64> {
@@ -50,24 +56,5 @@ impl super::AppState {
             self.chat_latency.record(e2e, ttft_ms);
         }
         self.complete_request_timing();
-    }
-
-    pub fn begin_streaming(&mut self) {
-        self.streaming_start = Some(Instant::now());
-        self.streaming_chars = 0;
-    }
-
-    pub fn record_streaming_chars(&mut self, len: usize) {
-        self.streaming_chars = self.streaming_chars.saturating_add(len);
-    }
-
-    pub fn streaming_tok_per_sec(&self) -> Option<f64> {
-        let start = self.streaming_start?;
-        let elapsed = start.elapsed().as_secs_f64();
-        if elapsed < 0.1 {
-            return None;
-        }
-        let tokens = self.streaming_chars as f64 / 4.0;
-        Some(tokens / elapsed)
     }
 }

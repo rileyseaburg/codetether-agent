@@ -1,8 +1,8 @@
 //! Submit logic: delegates to the existing spawn command handler.
 
-use crate::tui::app::state::App;
-use crate::tui::app::spawn_form::SpawnFormState;
 use crate::tui::app::spawn_agent::handle_spawn_command;
+use crate::tui::app::spawn_form::SpawnFormState;
+use crate::tui::app::state::App;
 
 /// Submit the form asynchronously, then close it.
 ///

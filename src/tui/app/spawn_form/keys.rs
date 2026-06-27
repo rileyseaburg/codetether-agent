@@ -10,10 +10,7 @@ use crate::tui::app::state::App;
 /// Returns `true` if the key was consumed (caller should stop
 /// processing). Tab moves fields, Enter submits, Esc cancels,
 /// Backspace deletes, and all other chars are inserted.
-pub async fn handle_spawn_form_key(
-    app: &mut App,
-    key: KeyEvent,
-) -> bool {
+pub async fn handle_spawn_form_key(app: &mut App, key: KeyEvent) -> bool {
     let Some(form) = app.state.spawn_form.as_mut() else {
         return false;
     };

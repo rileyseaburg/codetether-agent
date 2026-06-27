@@ -7,10 +7,12 @@ use crate::a2a::stream::breaker::CircuitBreaker;
 use crate::worker_server::WorkerServerState;
 
 use super::{
-    WorkerContext, connect_stream, connection_setup::start_connection_heartbeat,
+    WorkerContext, connect_stream,
+    connection_setup::start_connection_heartbeat,
     fetch_pending_tasks,
     reconnect_lifecycle::{apply_lifecycle, log_outcome, make_backoff},
-    register_current_worker, transport_probe::spawn_transport_probe,
+    register_current_worker,
+    transport_probe::spawn_transport_probe,
 };
 
 pub(super) async fn run_worker_server_loop(

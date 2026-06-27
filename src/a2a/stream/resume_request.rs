@@ -32,8 +32,8 @@ pub fn apply_resume(request: RequestBuilder, last: Option<&EventId>) -> RequestB
 
 #[cfg(test)]
 mod tests {
-    use super::apply_resume;
     use super::EventId;
+    use super::apply_resume;
 
     #[test]
     fn none_returns_buildable_request() {
@@ -45,12 +45,12 @@ mod tests {
     #[test]
     fn some_sets_header() {
         let client = reqwest::Client::new();
-        let id = EventId { epoch: "ep".into(), seq: 5 };
+        let id = EventId {
+            epoch: "ep".into(),
+            seq: 5,
+        };
         let req = apply_resume(client.get("http://localhost/x"), Some(&id));
         let built = req.build().unwrap();
-        assert_eq!(
-            built.headers().get("Last-Event-ID").unwrap(),
-            "ep.5"
-        );
+        assert_eq!(built.headers().get("Last-Event-ID").unwrap(), "ep.5");
     }
 }

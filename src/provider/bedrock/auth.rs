@@ -218,21 +218,44 @@ impl AwsCredentials {
 ///     secret_access_key: "secret".into(),
 ///     session_token: None,
 /// });
-/// let bearer = BedrockAuth::BearerToken("token-abc".into());
+/// let bearer = BedrockAuth::bearer("token-abc".into());
 ///
 /// match sigv4 {
 ///     BedrockAuth::SigV4(_) => (),
 ///     BedrockAuth::BearerToken(_) => panic!("unexpected"),
 /// }
-/// match bearer {
-///     BedrockAuth::BearerToken(t) => assert_eq!(t, "token-abc"),
-///     BedrockAuth::SigV4(_) => panic!("unexpected"),
-/// }
+/// assert_eq!(bearer.current_bearer().as_deref(), Some("token-abc"));
 /// ```
 #[derive(Debug, Clone)]
 pub enum BedrockAuth {
     /// Standard AWS SigV4 signing with IAM credentials.
     SigV4(AwsCredentials),
     /// Bearer token (API Gateway or custom auth layer).
-    BearerToken(String),
+    ///
+    /// Held behind an [`Arc<RwLock<String>>`] so a live provider can swap a
+    /// refreshed token in place (see [`BedrockAuth::set_bearer`]) without
+    /// rebuilding the provider — enabling mid-session SSO key refresh.
+    BearerToken(std::sync::Arc<parking_lot::RwLock<String>>),
+}
+
+impl BedrockAuth {
+    /// Construct a bearer-token auth from a plain token string.
+    pub fn bearer(token: String) -> Self {
+        Self::BearerToken(std::sync::Arc::new(parking_lot::RwLock::new(token)))
+    }
+
+    /// Snapshot the current bearer token, if this is bearer auth.
+    pub fn current_bearer(&self) -> Option<String> {
+        match self {
+            Self::BearerToken(cell) => Some(cell.read().clone()),
+            Self::SigV4(_) => None,
+        }
+    }
+
+    /// Atomically replace the bearer token in place. No-op for SigV4 auth.
+    pub fn set_bearer(&self, new_token: String) {
+        if let Self::BearerToken(cell) = self {
+            *cell.write() = new_token;
+        }
+    }
 }

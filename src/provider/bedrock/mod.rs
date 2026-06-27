@@ -131,7 +131,7 @@ impl BedrockProvider {
         );
         Ok(Self {
             client: crate::provider::shared_http::shared_client().clone(),
-            auth: BedrockAuth::BearerToken(api_key),
+            auth: BedrockAuth::bearer(api_key),
             region,
         })
     }
@@ -189,8 +189,8 @@ impl BedrockProvider {
     /// are incomplete.
     pub(crate) fn validate_auth(&self) -> Result<()> {
         match &self.auth {
-            BedrockAuth::BearerToken(key) => {
-                if key.is_empty() {
+            BedrockAuth::BearerToken(cell) => {
+                if cell.read().is_empty() {
                     anyhow::bail!("Bedrock API key is empty");
                 }
             }

@@ -88,7 +88,8 @@ impl BedrockProvider {
                 self.send_signed_request(method, url, body.unwrap_or(b""), service)
                     .await
             }
-            BedrockAuth::BearerToken(token) => {
+            BedrockAuth::BearerToken(cell) => {
+                let token = cell.read().clone();
                 let mut req = self
                     .client
                     .request(method.parse().unwrap_or(reqwest::Method::GET), url)

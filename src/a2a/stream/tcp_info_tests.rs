@@ -17,7 +17,10 @@ fn samples_a_live_loopback_connection() {
     let _ = server.write(b"pong");
 
     let snap = sample(client.as_raw_fd());
-    assert!(snap.is_some(), "TCP_INFO should be readable on an open conn");
+    assert!(
+        snap.is_some(),
+        "TCP_INFO should be readable on an open conn"
+    );
     // cwnd is always >= 1 segment on an established connection.
     assert!(snap.unwrap().snd_cwnd >= 1);
 }

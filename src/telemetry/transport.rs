@@ -35,7 +35,9 @@ impl Default for TransportMetrics {
 impl TransportMetrics {
     /// Create an empty metrics holder.
     pub fn new() -> Self {
-        Self { latest: RwLock::new(None) }
+        Self {
+            latest: RwLock::new(None),
+        }
     }
 
     /// Record the latest transport snapshot, replacing any prior reading.

@@ -50,6 +50,7 @@ pub mod settings_nav;
 pub mod slash_commands;
 pub mod slash_hints;
 pub mod slash_suggest;
+pub mod streaming;
 pub mod timing;
 pub mod types;
 pub mod view_save;
