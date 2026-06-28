@@ -3,9 +3,18 @@
 //! Allows agents to store important insights, learnings, and decisions
 //! that persist across sessions for future reference.
 
+mod auto_init;
+mod embeddable;
+mod embedder_handle;
+mod fuse;
+pub mod fusion;
 mod git_scope;
 pub mod query_match;
 mod scope;
+pub mod search;
+mod search_rank;
+pub mod semantic;
+mod store_embed;
 
 use super::{Tool, ToolResult};
 use anyhow::Result;
@@ -38,6 +47,9 @@ pub struct MemoryEntry {
     pub source: Option<String>,
     /// Importance level (1-5)
     pub importance: u8,
+    /// Cached semantic embedding (computed once on save, persisted to disk).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub embedding: Option<crate::vectordb::EmbeddingVector>,
 }
 
 impl MemoryEntry {
@@ -53,6 +65,7 @@ impl MemoryEntry {
             scope: None,
             source: None,
             importance: 3, // default medium importance
+            embedding: None,
         }
     }
 
@@ -83,6 +96,9 @@ impl MemoryEntry {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryStore {
     entries: HashMap<String, MemoryEntry>,
+    /// Optional learned-model embedding backend (runtime-only, never persisted).
+    #[serde(skip)]
+    embedder: embedder_handle::EmbedderHandle,
 }
 
 impl MemoryStore {
@@ -100,7 +116,10 @@ impl MemoryStore {
             return Ok(Self::default());
         }
         let content = fs::read_to_string(&path).await?;
-        let store: MemoryStore = serde_json::from_str(&content)?;
+        let mut store: MemoryStore = serde_json::from_str(&content)?;
+        for entry in store.entries.values_mut() {
+            entry.ensure_embedding();
+        }
         Ok(store)
     }
 
@@ -115,8 +134,9 @@ impl MemoryStore {
         Ok(())
     }
 
-    /// Add a new memory
-    pub fn add(&mut self, entry: MemoryEntry) -> String {
+    /// Add a new memory, computing and caching its embedding on insert.
+    pub fn add(&mut self, mut entry: MemoryEntry) -> String {
+        entry.ensure_embedding();
         let id = entry.id.clone();
         self.entries.insert(id.clone(), entry);
         id
@@ -147,48 +167,7 @@ impl MemoryStore {
         scope: Option<&str>,
         limit: usize,
     ) -> Vec<MemoryEntry> {
-        let mut scored: Vec<(usize, MemoryEntry)> = self
-            .entries
-            .values_mut()
-            .filter(|entry| {
-                // Filter by tags if provided
-                if let Some(search_tags) = tags
-                    && !search_tags.is_empty()
-                    && !search_tags.iter().any(|t| entry.tags.contains(t))
-                {
-                    return false;
-                }
-                if let Some(scope) = scope
-                    && entry.scope.as_deref() != Some(scope)
-                {
-                    return false;
-                }
-                true
-            })
-            .filter_map(|entry| {
-                // Token-based query match: any query word in content or tags.
-                let score = match query {
-                    Some(q) => query_match::query_score(entry, q),
-                    None => 1,
-                };
-                if score == 0 {
-                    return None;
-                }
-                entry.touch();
-                Some((score, entry.clone()))
-            })
-            .collect();
-
-        // Sort by query relevance (descending), then importance, then access_count.
-        scored.sort_by(|a, b| {
-            b.0.cmp(&a.0)
-                .then_with(|| b.1.importance.cmp(&a.1.importance))
-                .then_with(|| b.1.access_count.cmp(&a.1.access_count))
-        });
-
-        let mut results: Vec<MemoryEntry> = scored.into_iter().map(|(_, e)| e).collect();
-        results.truncate(limit);
-        results
+        search::run(&mut self.entries, query, tags, scope, limit)
     }
 
     /// Get all tags with counts
@@ -261,7 +240,7 @@ impl MemoryTool {
 
         let mut store = self.store.lock().await;
         if let Ok(loaded) = MemoryStore::load().await {
-            *store = loaded;
+            *store = loaded.install_auto_embedder().await;
         }
         self.initialized.store(true, Ordering::SeqCst);
         Ok(())
@@ -333,15 +312,9 @@ impl Tool for MemoryTool {
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         // Initialize store from disk if not already loaded
-        // Use a flag to avoid reloading on every call
-        let needs_init = {
-            let store = self.store.lock().await;
-            store.entries.is_empty()
-        };
-
-        if needs_init {
-            self.init().await.ok();
-        }
+        // Initialize once per tool instance (loads from disk + installs the
+        // embedding backend). The `initialized` flag inside init() guards it.
+        self.init().await.ok();
 
         let action = args["action"]
             .as_str()
@@ -389,7 +362,7 @@ impl MemoryTool {
 
         let id = {
             let mut store = self.store.lock().await;
-            store.add(entry)
+            store.add_embedded(entry).await
         };
 
         // Persist to disk
@@ -415,7 +388,9 @@ impl MemoryTool {
 
         let results = {
             let mut store = self.store.lock().await;
-            store.search(query, tags_ref, scope.as_deref(), limit)
+            store
+                .search_embedded(query, tags_ref, scope.as_deref(), limit)
+                .await
         };
 
         if results.is_empty() {
