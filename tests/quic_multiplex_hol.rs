@@ -16,18 +16,26 @@ async fn quic_multiplex_has_no_head_of_line_blocking() {
     // Self-signed loopback cert.
     let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
     let cert_der = rustls::pki_types::CertificateDer::from(cert.cert.der().to_vec());
-    let key_der = rustls::pki_types::PrivatePkcs8KeyDer::from(
-        cert.key_pair.serialize_der(),
-    )
-    .into();
+    let key_der = rustls::pki_types::PrivatePkcs8KeyDer::from(cert.key_pair.serialize_der()).into();
 
-    let server = QuicStreamServer::bind("127.0.0.1:0".parse().unwrap(), vec![cert_der.clone()], key_der)
-        .unwrap();
+    let server = QuicStreamServer::bind(
+        "127.0.0.1:0".parse().unwrap(),
+        vec![cert_der.clone()],
+        key_der,
+    )
+    .unwrap();
     let addr = server.local_addr().unwrap();
 
     // Server: accept one connection, accept two bi streams, echo on each.
     let server_task = tokio::spawn(async move {
-        let conn = server.accept().await.unwrap().accept().unwrap().await.unwrap();
+        let conn = server
+            .accept()
+            .await
+            .unwrap()
+            .accept()
+            .unwrap()
+            .await
+            .unwrap();
         for _ in 0..2 {
             let (mut send, mut recv) = conn.accept_bi().await.unwrap();
             tokio::spawn(async move {

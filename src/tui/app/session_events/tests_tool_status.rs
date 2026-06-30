@@ -39,6 +39,6 @@ async fn approval_required_tool_result_surfaces_approve_command() {
     )
     .await;
     assert!(app.state.status.contains("/approve approval-1"));
-    assert!(app.state.status.contains("/access-mode approve"));
+    assert!(app.state.status.contains("Access mode"));
     assert!(!app.state.status.contains("retry"));
 }

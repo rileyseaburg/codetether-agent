@@ -27,6 +27,7 @@ fn tab_cycles_agent_focus_through_main_and_back() {
         parent: None,
         depth: 0,
         session: futures::executor::block_on(crate::session::Session::new()).unwrap(),
+        model_id: Some("test/model".to_string()),
         is_processing: false,
     };
     app.state.spawned_agents.insert("alpha".into(), mk("alpha"));

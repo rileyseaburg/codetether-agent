@@ -10,5 +10,6 @@
 pub mod child;
 pub mod command;
 mod name;
+mod register;
 
 pub use command::handle_detach_command;

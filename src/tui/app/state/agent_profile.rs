@@ -22,6 +22,8 @@ pub struct SpawnedAgent {
     pub depth: u8,
     /// Independent conversation session
     pub session: Session,
+    /// Model selected or last used when this agent was created.
+    pub model_id: Option<String>,
     /// Whether this agent is currently processing a message
     pub is_processing: bool,
 }

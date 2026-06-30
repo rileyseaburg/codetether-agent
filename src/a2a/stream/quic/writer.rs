@@ -4,8 +4,8 @@
 //! a `u32` length prefix followed by its serialized body, and `seq` is recorded
 //! so the server can drive the resume floor on the next stream open.
 
-use super::codec::encode_frame;
 use super::super::frame::ParsedFrame;
+use super::codec::encode_frame;
 use anyhow::{Context, Result};
 use quinn::SendStream;
 

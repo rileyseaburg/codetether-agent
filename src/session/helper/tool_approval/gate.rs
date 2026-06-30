@@ -23,8 +23,9 @@ pub(in crate::session::helper) async fn gate(
         LiveApprovalDecision::Approved => {
             ApprovalGate::Ready(super::args::with_approval(args, &id))
         }
-        LiveApprovalDecision::Denied => {
-            ApprovalGate::Blocked(args, super::result::denied(tool_name, &id))
-        }
+        LiveApprovalDecision::Denied { reason } => ApprovalGate::Blocked(
+            args,
+            super::result::denied(tool_name, &id, reason.as_deref()),
+        ),
     }
 }

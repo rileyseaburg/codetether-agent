@@ -47,5 +47,5 @@ fn behavior(policy: ApprovalPolicy) -> &'static str {
 }
 
 fn change_hint() -> &'static str {
-    "Use `/access-mode approve` for fewer prompts or `/access-mode full` for none"
+    "Open the Settings panel and use ↑↓ + Enter on the Access mode row (approve = fewer prompts, full = none); Network access has its own row"
 }

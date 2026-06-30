@@ -39,12 +39,24 @@ pub const USER_TIMEOUT: Duration = Duration::from_secs(60);
 /// assert!(builder.build().is_ok());
 /// ```
 pub fn apply_socket_opts(builder: ClientBuilder) -> ClientBuilder {
+    apply_tcp_user_timeout(
+        builder
+            .tcp_nodelay(TCP_NODELAY)
+            .tcp_keepalive(KEEPALIVE_IDLE)
+            .tcp_keepalive_interval(KEEPALIVE_INTERVAL)
+            .tcp_keepalive_retries(KEEPALIVE_RETRIES),
+    )
+}
+
+#[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+fn apply_tcp_user_timeout(builder: ClientBuilder) -> ClientBuilder {
+    builder.tcp_user_timeout(USER_TIMEOUT)
+}
+
+#[cfg(not(any(target_os = "android", target_os = "fuchsia", target_os = "linux")))]
+fn apply_tcp_user_timeout(builder: ClientBuilder) -> ClientBuilder {
+    let _ = USER_TIMEOUT;
     builder
-        .tcp_nodelay(TCP_NODELAY)
-        .tcp_keepalive(KEEPALIVE_IDLE)
-        .tcp_keepalive_interval(KEEPALIVE_INTERVAL)
-        .tcp_keepalive_retries(KEEPALIVE_RETRIES)
-        .tcp_user_timeout(USER_TIMEOUT)
 }
 
 #[cfg(test)]

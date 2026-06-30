@@ -13,8 +13,8 @@ pub(crate) fn render(f: &mut Frame, area: Rect) {
         return;
     };
     let count = approval_queue::len();
-    let heading = format!("{} wants to {} {}", item.tool, item.action, item.resource);
-    let reason = item.reason;
+    let heading = format!("{} wants to {}", item.tool, item.action);
+    let reason = format!("→ {}", item.reason);
     let id = item.id;
     let popup = popup_area(area);
     let text = vec![

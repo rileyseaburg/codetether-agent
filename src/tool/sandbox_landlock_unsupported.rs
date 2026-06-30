@@ -18,3 +18,7 @@ pub(crate) fn prepare(_policy: &SandboxPolicy, _work_dir: &Path) -> Prepared {
 }
 
 pub(crate) fn apply(_cmd: &mut tokio::process::Command, _rules: Option<Rules>) {}
+
+pub(crate) fn abi_version() -> i64 {
+    0
+}

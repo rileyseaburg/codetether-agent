@@ -11,6 +11,10 @@ use crate::tui::app::state::agent_spawn_guard::validate_spawn;
 
 #[path = "spawn_agent_create.rs"]
 mod create;
+#[path = "spawn_agent_model.rs"]
+pub mod model;
+#[path = "spawn_agent_prompt.rs"]
+mod prompt;
 use create::create_agent;
 
 /// Parsed `/spawn` arguments: name, optional parent, instructions.

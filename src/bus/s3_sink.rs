@@ -35,8 +35,12 @@ use crate::a2a::types::Part;
 use crate::secrets;
 #[path = "s3_record_format.rs"]
 mod s3_record_format;
+#[path = "s3_spawn.rs"]
+mod s3_spawn;
 #[path = "s3_speech_record.rs"]
 mod s3_speech_record;
+#[path = "s3_spool.rs"]
+mod s3_spool;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use minio::s3::builders::ObjectContent;
@@ -51,6 +55,8 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 use tokio::task;
 use tracing::{debug, error, info, warn};
+
+pub use s3_spawn::spawn_bus_s3_sink;
 
 /// Configuration for the bus S3 sink
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -751,7 +757,6 @@ fn serialize_training_records(records: &[TrainingRecord]) -> Vec<String> {
 
 /// S3 sink that archives all bus messages as JSONL training records
 pub struct BusS3Sink {
-    #[allow(dead_code)]
     bus: Arc<AgentBus>,
     client: MinioClient,
     config: BusS3SinkConfig,
@@ -759,7 +764,6 @@ pub struct BusS3Sink {
 }
 
 impl BusS3Sink {
-    #[allow(dead_code)]
     /// Create a new bus S3 sink
     pub async fn new(
         bus: Arc<AgentBus>,
@@ -953,6 +957,7 @@ impl BusS3Sink {
         let now = Utc::now();
         let s3_key = build_s3_key(&self.config.prefix, now);
 
+        let spool = s3_spool::SpoolFile::write(&s3_key, &jsonl).await?;
         let content = ObjectContent::from(jsonl.into_bytes());
 
         match self
@@ -969,13 +974,15 @@ impl BusS3Sink {
                     records = count,
                     "Uploaded training records to S3"
                 );
+                spool.remove().await?;
             }
             Err(e) => {
                 error!(
                     bucket = %self.config.bucket,
                     key = %s3_key,
                     error = %e,
-                    "Failed to upload training records to S3"
+                    path = %spool.path().display(),
+                    "Failed to upload training records to S3; retained local spool file"
                 );
                 return Err(anyhow::anyhow!("S3 upload failed: {e}"));
             }
@@ -1008,36 +1015,6 @@ fn normalize_endpoint(endpoint: &str, secure: bool) -> String {
     } else {
         format!("http://{endpoint}")
     }
-}
-
-/// Spawn the bus S3 sink in a background task.
-///
-/// The S3 sink runs non-blocking in its own task, processing batches
-/// of training records. It yields periodically to ensure LLM requests
-/// have priority for CPU/network resources.
-///
-/// Errors are logged but do not crash the application.
-pub fn spawn_bus_s3_sink(bus: Arc<AgentBus>) -> tokio::task::JoinHandle<()> {
-    tokio::spawn(async move {
-        match BusS3SinkConfig::from_env_or_vault().await {
-            Ok(config) => match BusS3Sink::from_config(bus, config).await {
-                Ok(sink) => {
-                    if let Err(e) = sink.run().await {
-                        error!(error = %e, "Bus S3 sink failed");
-                    }
-                }
-                Err(e) => {
-                    error!(error = %e, "Bus S3 sink failed to initialize");
-                }
-            },
-            Err(e) => {
-                warn!(
-                    error = %e,
-                    "Bus S3 sink not configured - set MINIO_*/CODETETHER_CHAT_SYNC_MINIO_* env vars or configure chat-sync-minio in Vault"
-                );
-            }
-        }
-    })
 }
 
 #[cfg(test)]

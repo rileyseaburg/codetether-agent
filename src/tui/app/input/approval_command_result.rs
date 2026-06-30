@@ -5,9 +5,10 @@ pub(super) fn decided(
     app: &mut App,
     id: &str,
     intent: super::intent::ApprovalIntent,
+    reason: &str,
     text: String,
 ) {
-    let live = crate::approval::live::decide(id, intent.live_decision());
+    let live = crate::approval::live::decide(id, intent.live_decision_with_reason(reason));
     approval_queue::resolve(id);
     app.state.clear_input();
     push(app, text);

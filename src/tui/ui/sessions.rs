@@ -51,24 +51,8 @@ pub fn render_sessions_view(f: &mut Frame, app: &mut App) {
         filtered
             .iter()
             .map(|(_, session)| {
-                let title = session
-                    .title
-                    .clone()
-                    .unwrap_or_else(|| "Untitled session".to_string());
-                let active_marker = if app.state.session_id.as_deref() == Some(session.id.as_str())
-                {
-                    " ●"
-                } else {
-                    ""
-                };
-                let summary = format!(
-                    "{}{}  •  {} msgs  •  {}",
-                    title,
-                    active_marker,
-                    session.message_count,
-                    session.updated_at.format("%Y-%m-%d %H:%M")
-                );
-                ListItem::new(summary)
+                let is_active = app.state.session_id.as_deref() == Some(session.id.as_str());
+                ListItem::new(super::sessions_row::session_row_summary(session, is_active))
             })
             .collect()
     };
@@ -99,7 +83,7 @@ pub fn render_sessions_view(f: &mut Frame, app: &mut App) {
         Span::styled("Enter", Style::default().fg(Color::Yellow)),
         Span::raw(": Load "),
         Span::styled("Type", Style::default().fg(Color::Yellow)),
-        Span::raw(": Filter "),
+        Span::raw(": Filter by id/title "),
         Span::styled("Backspace", Style::default().fg(Color::Yellow)),
         Span::raw(": Edit "),
         Span::styled("Esc", Style::default().fg(Color::Yellow)),

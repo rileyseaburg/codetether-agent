@@ -1,77 +1,41 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style, Stylize},
-    text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
 use crate::tui::app::state::AppState;
 use crate::tui::status::render_status;
 
-fn setting_value_span(enabled: bool) -> Span<'static> {
-    if enabled {
-        "ON".green().into()
-    } else {
-        "OFF".yellow().into()
-    }
-}
+#[path = "settings_rows.rs"]
+mod rows;
 
-fn setting_line(label: &'static str, enabled: bool, selected: bool) -> Line<'static> {
-    let prefix = if selected { "> " } else { "  " };
-    let label_style = if selected {
-        Style::default().fg(Color::Cyan).bold()
-    } else {
-        Style::default()
-    };
+use ratatui::text::Line;
+use rows::{access_mode_line, setting_line};
 
-    Line::from(vec![
-        Span::styled(prefix, label_style),
-        Span::styled(format!("{label}: "), label_style),
-        setting_value_span(enabled),
-    ])
-}
-
-fn settings_lines(app_state: &AppState) -> Vec<Line<'static>> {
+fn settings_lines(s: &AppState) -> Vec<Line<'static>> {
+    let idx = s.selected_settings_index;
     vec![
         Line::from("Settings"),
         Line::from(""),
-        setting_line(
-            "Edit auto-apply",
-            app_state.auto_apply_edits,
-            app_state.selected_settings_index == 0,
-        ),
+        setting_line("Edit auto-apply", s.auto_apply_edits, idx == 0),
         Line::from("  Automatically confirms pending edit/multiedit previews in the TUI."),
         Line::from(""),
-        setting_line(
-            "Network access",
-            app_state.allow_network,
-            app_state.selected_settings_index == 1,
-        ),
+        setting_line("Network access", s.allow_network, idx == 1),
         Line::from("  Allows sandboxed bash commands in this TUI session to use network access."),
         Line::from(""),
-        setting_line(
-            "Slash autocomplete",
-            app_state.slash_autocomplete,
-            app_state.selected_settings_index == 2,
-        ),
+        setting_line("Slash autocomplete", s.slash_autocomplete, idx == 2),
         Line::from("  Enables Tab completion for slash commands in the composer."),
         Line::from(""),
-        setting_line(
-            "Worktree isolation",
-            app_state.use_worktree,
-            app_state.selected_settings_index == 3,
-        ),
+        setting_line("Worktree isolation", s.use_worktree, idx == 3),
         Line::from("  Runs agent work in a git worktree branch, auto-merged on success."),
+        Line::from(""),
+        access_mode_line(idx == 4),
+        Line::from("  Cycles tool access: ask -> approve -> full (Enter to change)."),
         Line::from(""),
         Line::from("Controls:"),
         Line::from("  - Up / Down selects a setting"),
-        Line::from("  - Enter toggles the selected setting"),
-        Line::from("  - A toggles edit auto-apply"),
-        Line::from("  - N toggles network access"),
-        Line::from("  - Tab toggles slash autocomplete"),
-        Line::from("  - /autoapply on|off|toggle|status works from chat"),
-        Line::from("  - /settings opens this panel"),
+        Line::from("  - Enter toggles or cycles the selected setting"),
         Line::from("  - Esc returns to chat"),
     ]
 }
@@ -108,9 +72,7 @@ mod tests {
             .join("\n");
 
         assert!(text.contains("Edit auto-apply"));
-        assert!(text.contains("Network access"));
-        assert!(text.contains("Slash autocomplete"));
+        assert!(text.contains("Access mode"));
         assert!(text.contains("Up / Down selects a setting"));
-        assert!(text.contains("/autoapply on|off|toggle|status"));
     }
 }

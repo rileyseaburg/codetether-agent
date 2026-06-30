@@ -3,6 +3,13 @@
 pub fn unavailable_reason() -> Option<&'static str> {
     match super::sandbox_runner_select::selected_runner() {
         super::sandbox_runner_select::Runner::Bubblewrap(_) => None,
+        // bwrap is unavailable, but Landlock can still confine a direct
+        // process (no user namespace needed), so the sandbox is usable.
+        super::sandbox_runner_select::Runner::Direct(_)
+            if super::sandbox_landlock::kernel_available() =>
+        {
+            None
+        }
         super::sandbox_runner_select::Runner::Direct(reason) => Some(reason),
     }
 }

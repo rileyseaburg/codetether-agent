@@ -11,6 +11,7 @@ fn mk(name: &str) -> SpawnedAgent {
         parent: None,
         depth: 0,
         session: futures::executor::block_on(crate::session::Session::new()).unwrap(),
+        model_id: Some("test/model".to_string()),
         is_processing: false,
     }
 }

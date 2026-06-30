@@ -16,14 +16,18 @@
 
 pub mod client;
 pub mod codec;
+pub mod listener;
 pub mod migration;
 pub mod reader;
 pub mod server;
+pub mod session;
 pub mod writer;
 
 pub use client::QuicStreamClient;
+pub use listener::QuicListener;
 pub use reader::QuicFrameReader;
 pub use server::QuicStreamServer;
+pub use session::{QuicStreamSession, dial_session};
 pub use writer::QuicFrameWriter;
 
 /// ALPN protocol identifier negotiated for the A2A QUIC stream path.

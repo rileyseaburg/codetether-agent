@@ -1,15 +1,27 @@
 use std::path::Path;
+use std::sync::Arc;
 
-use crate::config::{AccessMode, Config};
+use crate::config::Config;
+use crate::provider::ProviderRegistry;
+use crate::session::Session;
 use crate::tui::app::state::App;
-use crate::tui::chat::message::{ChatMessage, MessageType};
 
 #[path = "access_mode_parse.rs"]
 mod parse;
 #[path = "access_mode_policy.rs"]
 mod policy;
+#[path = "access_mode_result.rs"]
+mod result;
+#[path = "access_mode_session.rs"]
+mod session_config;
 
-pub(super) async fn run(app: &mut App, cwd: &Path, prompt: &str) -> bool {
+pub(super) async fn run(
+    app: &mut App,
+    cwd: &Path,
+    session: &mut Session,
+    registry: Option<&Arc<ProviderRegistry>>,
+    prompt: &str,
+) -> bool {
     let Some((command, rest)) = parse::prompt(prompt) else {
         return false;
     };
@@ -22,29 +34,7 @@ pub(super) async fn run(app: &mut App, cwd: &Path, prompt: &str) -> bool {
         return true;
     };
     Config::apply_process_access_mode_override(Some(mode));
-    let released = mode == AccessMode::Full && policy::release_active(app);
-    let text = format!(
-        "Access mode set to `{}`.\n{}",
-        parse::label(mode),
-        policy::summary(cwd).await
-    );
-    push(app, with_release_note(text, released));
-    app.state.status = format!("Access mode: {}", parse::label(mode));
-    app.state.clear_input();
+    session_config::apply(cwd, session, registry).await;
+    result::push(app, cwd, mode).await;
     true
-}
-
-fn with_release_note(text: String, released: bool) -> String {
-    if released {
-        format!("{text}\nApproved the active paused tool request.")
-    } else {
-        text
-    }
-}
-
-fn push(app: &mut App, text: String) {
-    app.state
-        .messages
-        .push(ChatMessage::new(MessageType::System, text));
-    app.state.scroll_to_bottom();
 }

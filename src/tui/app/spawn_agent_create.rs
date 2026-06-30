@@ -1,8 +1,9 @@
 //! Session creation and registration for `/spawn` (see [`super`]).
 
 use super::SpawnArgs;
+use super::prompt::system_prompt;
 use crate::session::Session;
-use crate::tui::app::state::{App, SpawnedAgent, agent_profile};
+use crate::tui::app::state::{App, SpawnedAgent};
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
 /// Push a system note into the chat transcript.
@@ -11,19 +12,6 @@ pub(super) fn note(app: &mut App, content: impl Into<String>) {
         .messages
         .push(ChatMessage::new(MessageType::System, content.into()));
     app.state.scroll_to_bottom();
-}
-
-/// System prompt: explicit instructions, else the codename profile blurb.
-fn system_prompt(name: &str, instructions: &str) -> String {
-    if !instructions.is_empty() {
-        return instructions.to_string();
-    }
-    let p = agent_profile(name);
-    format!(
-        "You are an AI assistant codenamed '{}' ({}) working as a sub-agent.\n\
-         Personality: {}\nCollaboration style: {}\nSignature move: {}",
-        p.codename, p.profile, p.personality, p.collaboration_style, p.signature_move,
-    )
 }
 
 /// Build the agent session, persist it, and register it in the tree.
@@ -58,6 +46,7 @@ pub(super) async fn create_agent(app: &mut App, args: SpawnArgs, depth: u8) {
             parent: args.parent,
             depth,
             session,
+            model_id: super::model::current_model_id(app),
             is_processing: false,
         },
     );

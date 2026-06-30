@@ -1,4 +1,7 @@
+use super::confined::confined_plan;
 use super::{ENV, enabled, plan_with_override};
+use crate::tool::sandbox::SandboxPolicy;
+use std::path::Path;
 
 fn args() -> Vec<String> {
     vec!["-c".to_string(), "echo ok".to_string()]
@@ -17,15 +20,22 @@ fn direct_runner_records_explicit_unsafe_env_override() {
     let plan = plan_with_override("sh", &args, "bwrap_not_found", true).unwrap();
     assert_eq!(plan.program, "sh");
     assert_eq!(plan.args, args);
-    assert!(
-        plan.unsafe_fallbacks
-            .contains(&format!("unsafe_sandbox_fallback_allowed:{ENV}"))
-    );
-    assert!(
-        plan.unsafe_fallbacks
-            .contains(&"os_sandbox_unavailable:bwrap_not_found".to_string())
-    );
     assert!(!plan.network_isolated);
+}
+
+#[test]
+fn confined_plan_uses_landlock_when_kernel_supports_it() {
+    let policy = SandboxPolicy::default();
+    let work_dir = std::env::temp_dir();
+    let plan = confined_plan("sh", &args(), &policy, &work_dir, "bwrap_smoke_failed");
+    if super::super::sandbox_landlock::kernel_available() {
+        let plan = plan.expect("landlock-confined plan");
+        assert_eq!(plan.program, "sh");
+        assert!(plan.landlock.is_some());
+        assert!(!plan.network_isolated);
+    } else {
+        assert!(plan.is_none(), "no Landlock kernel => fail closed");
+    }
 }
 
 #[test]

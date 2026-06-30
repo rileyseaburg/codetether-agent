@@ -18,11 +18,11 @@ pub async fn request(
         .is_err()
     {
         state::remove(&id);
-        return LiveApprovalDecision::Denied;
+        return LiveApprovalDecision::denied();
     }
     match rx.await {
         Ok(decision) => decision,
-        Err(_) => LiveApprovalDecision::Denied,
+        Err(_) => LiveApprovalDecision::denied(),
     }
 }
 

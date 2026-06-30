@@ -1,18 +1,8 @@
 //! Header tab bar showing the spawned-agent tree (main + sibling agents).
-//!
-//! Renders a single row of agent "tabs" in depth-first order so the user can
-//! manage many agentic threads — including agents that spawned agents — from
-//! one terminal. Nesting depth is shown via leading dots; the active tab is
-//! highlighted and a busy agent shows a `⋯` marker. Tab / Shift+Tab cycle the
-//! selection (see `agent_focus`).
 
-use ratatui::{
-    Frame,
-    style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::Paragraph,
-};
+use ratatui::{Frame, text::Line, widgets::Paragraph};
 
+use super::agent_tab::{AgentTabMeta, agent_tab};
 use crate::tui::app::state::App;
 use crate::tui::app::state::agent_tree::dfs_order;
 
@@ -22,36 +12,26 @@ pub fn render_agent_bar(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         return;
     }
     let active = app.state.active_spawned_agent.as_deref();
-    let mut spans: Vec<Span<'static>> = vec![agent_tab("main", 0, active.is_none(), false)];
+    let mut spans = vec![agent_tab(AgentTabMeta {
+        name: "main",
+        model_id: app.state.last_completion_model.as_deref(),
+        session_id: app.state.session_id.as_deref(),
+        indent: 0,
+        selected: active.is_none(),
+        processing: app.state.processing,
+    })];
     for node in dfs_order(&app.state.spawned_agents) {
-        let agent = app.state.spawned_agents.get(&node.name);
-        let processing = agent.map(|a| a.is_processing).unwrap_or(false);
-        spans.push(Span::raw(" "));
-        spans.push(agent_tab(
-            &node.name,
-            node.depth + 1,
-            active == Some(node.name.as_str()),
-            processing,
-        ));
+        if let Some(agent) = app.state.spawned_agents.get(&node.name) {
+            spans.push(ratatui::text::Span::raw(" "));
+            spans.push(agent_tab(AgentTabMeta {
+                name: &node.name,
+                model_id: agent.model_id.as_deref(),
+                session_id: Some(&agent.session.id),
+                indent: node.depth + 1,
+                selected: active == Some(node.name.as_str()),
+                processing: agent.is_processing,
+            }));
+        }
     }
     f.render_widget(Paragraph::new(Line::from(spans)), area);
-}
-
-/// Build a single tab span: `·· name ⋯`, indented by `indent` dot pairs and
-/// highlighted when selected.
-fn agent_tab(name: &str, indent: u8, selected: bool, processing: bool) -> Span<'static> {
-    let dots = "·".repeat(indent as usize);
-    let marker = if processing { " ⋯" } else { "" };
-    let label = format!(" {dots}{name}{marker} ");
-    if selected {
-        Span::styled(
-            label,
-            Style::default()
-                .fg(Color::Black)
-                .bg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        )
-    } else {
-        Span::styled(label, Style::default().fg(Color::Gray))
-    }
 }

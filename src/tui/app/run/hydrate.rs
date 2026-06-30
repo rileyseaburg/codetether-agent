@@ -37,6 +37,7 @@ pub(super) fn complete(
     app.state.use_worktree = session.metadata.use_worktree;
     app.state.session_id = Some(session.id.clone());
     session.metadata.allow_network = app.state.allow_network;
+    super::network_env::apply(app.state.allow_network);
     sync_messages_from_session(app, session);
     super::worker_attach::attach(app, worker_bridge);
     app.state.refresh_slash_suggestions();

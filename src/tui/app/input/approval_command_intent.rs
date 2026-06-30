@@ -23,7 +23,15 @@ impl ApprovalIntent {
         if self.approves() {
             LiveApprovalDecision::Approved
         } else {
-            LiveApprovalDecision::Denied
+            LiveApprovalDecision::denied()
+        }
+    }
+
+    pub(super) fn live_decision_with_reason(self, reason: &str) -> LiveApprovalDecision {
+        if self.approves() {
+            LiveApprovalDecision::Approved
+        } else {
+            LiveApprovalDecision::denied_with(reason)
         }
     }
 

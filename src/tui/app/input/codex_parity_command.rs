@@ -26,7 +26,7 @@ pub(super) async fn run(
     registry: Option<&Arc<ProviderRegistry>>,
     prompt: &str,
 ) -> bool {
-    if access_mode_command::run(app, cwd, prompt).await {
+    if access_mode_command::run(app, cwd, session, registry, prompt).await {
         return true;
     }
     match prompt.split_whitespace().next().unwrap_or("") {

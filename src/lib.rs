@@ -56,6 +56,7 @@ pub mod tls;
 pub mod tool;
 pub mod tui;
 pub mod util;
+pub mod vectordb;
 pub mod voice;
 pub mod worker_server;
 pub mod workspace_scan;

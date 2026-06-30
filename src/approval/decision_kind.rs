@@ -27,7 +27,7 @@ impl ApprovalDecisionKind {
         if self.approves() {
             LiveApprovalDecision::Approved
         } else {
-            LiveApprovalDecision::Denied
+            LiveApprovalDecision::denied()
         }
     }
 

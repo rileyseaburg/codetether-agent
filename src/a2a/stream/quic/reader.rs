@@ -4,8 +4,8 @@
 //! the same epoch) are skipped, preserving the Phase 1 at-least-once delivery
 //! contract when a stream is re-opened after migration or reconnect.
 
-use super::codec::decode_body;
 use super::super::frame::ParsedFrame;
+use super::codec::decode_body;
 use anyhow::{Context, Result};
 use quinn::RecvStream;
 

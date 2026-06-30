@@ -8,7 +8,8 @@
 use crate::session::Session;
 use crate::tui::app::detach::child::build_child;
 use crate::tui::app::detach::name::pick_name;
-use crate::tui::app::state::{App, SpawnedAgent};
+use crate::tui::app::detach::register::register_detached;
+use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
 /// Handle `/detach [name]`: snapshot the current thread into a backgrounded
@@ -35,17 +36,7 @@ pub async fn handle_detach_command(app: &mut App, session: &mut Session, rest: &
         }
     };
     let child_id = child.id.clone();
-    app.state.spawned_agents.insert(
-        name.clone(),
-        SpawnedAgent {
-            name: name.clone(),
-            instructions: String::new(),
-            parent: None,
-            depth: 0,
-            session: child,
-            is_processing: false,
-        },
-    );
+    register_detached(app, &name, child);
     app.state.status = format!("Detached thread → background agent '{name}'");
     push(
         app,

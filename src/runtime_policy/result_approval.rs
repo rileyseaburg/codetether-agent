@@ -2,6 +2,9 @@ use super::super::{ToolPolicyDecision, ToolPolicyOutcome, approval, approval_pre
 use crate::tool::ToolResult;
 use serde_json::Value;
 
+#[path = "invocation_preview.rs"]
+mod invocation_preview;
+
 pub fn blocking_result_with_approval_request(
     tool_name: &str,
     decision: ToolPolicyDecision,
@@ -29,11 +32,10 @@ pub(in crate::runtime_policy) fn blocking_result_with_approval_request_for_args(
         return Some(result);
     }
     let amendment = approval_prefix::from_args(args);
-    Some(approval::attach_request(
-        result,
-        tool_name,
-        action,
-        resource,
-        amendment.as_ref(),
-    ))
+    let mut result =
+        approval::attach_request(result, tool_name, action, resource, amendment.as_ref());
+    if let Some(preview) = invocation_preview::summarize(tool_name, args) {
+        result = result.with_metadata("policy_reason", serde_json::json!(preview));
+    }
+    Some(result)
 }

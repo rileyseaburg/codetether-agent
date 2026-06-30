@@ -9,8 +9,8 @@ pub(super) fn request(app: &mut App, request: LiveApprovalRequest) {
     let count = approval_queue::len();
     let guidance = crate::tui::ui::trust_status::approval_guidance();
     let text = format!(
-        "Approval pending ({count}): `{}` wants to {} `{}`. Ctrl+A approves, Ctrl+D denies. Slash: `/approve {}` or `/deny {}`. {guidance}",
-        pending.tool, pending.action, pending.resource, pending.id, pending.id
+        "Approval pending ({count}): `{}` wants to {} — {}. (key `{}`) Ctrl+A approves, Ctrl+D denies. Slash: `/approve {}` or `/deny {}`. {guidance}",
+        pending.tool, pending.action, pending.reason, pending.resource, pending.id, pending.id
     );
     app.state.status = text.clone();
     app.state

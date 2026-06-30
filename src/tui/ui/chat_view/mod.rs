@@ -5,6 +5,7 @@
 
 pub mod agent_bar;
 pub mod agent_rail;
+pub mod agent_tab;
 pub(crate) mod approval_overlay;
 pub mod attachment;
 pub mod auto_apply;

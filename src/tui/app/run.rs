@@ -9,6 +9,7 @@ mod config;
 mod driver;
 mod hydrate;
 mod loop_run;
+mod network_env;
 mod peer;
 mod policy_notice;
 mod project;

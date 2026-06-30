@@ -21,9 +21,13 @@ fn run_with_store(app: &mut App, store: &ApprovalStore, action: super::parse::Ac
         return true;
     };
     match super::store::record(store, &id, &action) {
-        Ok(stored) => {
-            super::result::decided(app, &stored.id, action.intent, message(&action, &stored))
-        }
+        Ok(stored) => super::result::decided(
+            app,
+            &stored.id,
+            action.intent,
+            &action.reason,
+            message(&action, &stored),
+        ),
         Err(error) => app.state.status = format!("Approval decision failed: {error}"),
     }
     true
