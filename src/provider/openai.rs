@@ -26,7 +26,21 @@ mod catalog;
 mod discovery;
 mod model_caps;
 mod model_entry;
+mod openai_models;
 mod parse_models;
+mod sse_body;
+mod sse_drive;
+mod sse_frame;
+mod sse_lines;
+mod sse_msg;
+mod sse_msg_assist;
+mod sse_stream;
+#[cfg(test)]
+mod sse_tests;
+mod sse_tool;
+#[cfg(test)]
+mod sse_tool_tests;
+mod sse_types;
 
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
@@ -230,44 +244,7 @@ impl Provider for OpenAIProvider {
         }
 
         // OpenAI default models
-        Ok(vec![
-            ModelInfo {
-                id: "gpt-4o".to_string(),
-                name: "GPT-4o".to_string(),
-                provider: "openai".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(16_384),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(2.5),
-                output_cost_per_million: Some(10.0),
-            },
-            ModelInfo {
-                id: "gpt-4o-mini".to_string(),
-                name: "GPT-4o Mini".to_string(),
-                provider: "openai".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(16_384),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.15),
-                output_cost_per_million: Some(0.6),
-            },
-            ModelInfo {
-                id: "o1".to_string(),
-                name: "o1".to_string(),
-                provider: "openai".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(100_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(15.0),
-                output_cost_per_million: Some(60.0),
-            },
-        ])
+        Ok(openai_models::openai_default_models())
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
@@ -393,6 +370,11 @@ impl Provider for OpenAIProvider {
             message_count = request.messages.len(),
             "Starting streaming completion request"
         );
+
+        if self.uses_reasoning_stream() {
+            let body = self.reasoning_body(&request);
+            return self.reasoning_stream(request, body).await;
+        }
 
         let messages = Self::convert_messages(&request.messages)?;
         let tools = Self::convert_tools(&request.tools)?;
