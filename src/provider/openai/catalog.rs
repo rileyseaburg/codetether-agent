@@ -29,6 +29,7 @@ fn default_pairs(provider_name: &str) -> Vec<(&'static str, &'static str)> {
     match provider_name {
         "cerebras" => vec![
             ("gpt-oss-120b", "GPT-OSS 120B"),
+            ("gemma-4-31b", "Gemma 4 31B (Preview)"),
             ("zai-glm-4.7", "GLM-4.7 (Z.ai on Cerebras)"),
         ],
         "minimax" => vec![
