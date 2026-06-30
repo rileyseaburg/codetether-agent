@@ -10,14 +10,16 @@ use crate::provider::{CompletionRequest, ToolDefinition};
 use super::OpenAIProvider;
 use super::alias;
 use super::sse_msg::messages_json;
+use super::sse_repair::repair_tool_results;
 
 impl OpenAIProvider {
     /// Build the streaming chat-completion request body.
     pub(super) fn reasoning_body(&self, request: &CompletionRequest) -> Value {
         let model = alias::normalize_model_id(&self.provider_name, &request.model);
+        let messages = repair_tool_results(messages_json(&request.messages));
         let mut body = json!({
             "model": model.as_ref(),
-            "messages": messages_json(&request.messages),
+            "messages": messages,
             "stream": true,
             "stream_options": { "include_usage": true },
         });

@@ -24,6 +24,7 @@ use reqwest::Client as HttpClient;
 pub mod alias;
 mod catalog;
 mod discovery;
+mod minimax_error;
 mod model_caps;
 mod model_entry;
 mod openai_models;
@@ -34,6 +35,9 @@ mod sse_frame;
 mod sse_lines;
 mod sse_msg;
 mod sse_msg_assist;
+mod sse_repair;
+#[cfg(test)]
+mod sse_repair_tests;
 mod sse_stream;
 #[cfg(test)]
 mod sse_tests;
@@ -215,14 +219,6 @@ impl OpenAIProvider {
         }
         Ok(result)
     }
-
-    fn is_minimax_chat_setting_error(error: &str) -> bool {
-        let normalized = error.to_ascii_lowercase();
-        normalized.contains("invalid chat setting")
-            || normalized.contains("(2013)")
-            || normalized.contains("code: 2013")
-            || normalized.contains("\"2013\"")
-    }
 }
 
 #[async_trait]
@@ -280,7 +276,7 @@ impl Provider for OpenAIProvider {
             Ok(response) => response,
             Err(err)
                 if self.provider_name == "minimax"
-                    && Self::is_minimax_chat_setting_error(&err.to_string()) =>
+                    && minimax_error::is_minimax_chat_setting_error(&err.to_string()) =>
             {
                 tracing::warn!(
                     provider = "minimax",
@@ -557,13 +553,13 @@ mod tests {
 
     #[test]
     fn detects_minimax_chat_setting_error_variants() {
-        assert!(OpenAIProvider::is_minimax_chat_setting_error(
+        assert!(super::minimax_error::is_minimax_chat_setting_error(
             "bad_request_error: invalid params, invalid chat setting (2013)"
         ));
-        assert!(OpenAIProvider::is_minimax_chat_setting_error(
+        assert!(super::minimax_error::is_minimax_chat_setting_error(
             "code: 2013 invalid params"
         ));
-        assert!(!OpenAIProvider::is_minimax_chat_setting_error(
+        assert!(!super::minimax_error::is_minimax_chat_setting_error(
             "rate limit exceeded"
         ));
     }
