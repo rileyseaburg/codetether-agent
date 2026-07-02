@@ -39,6 +39,10 @@ mod spawn_messages;
 mod spawn_request;
 #[cfg(test)]
 mod spawn_request_tests;
+#[cfg(test)]
+#[path = "spawn_detach_tests.rs"]
+mod spawn_detach_tests;
+mod spawn_run;
 mod spawn_store;
 mod spawn_validation;
 #[cfg(test)]

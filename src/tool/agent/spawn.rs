@@ -1,19 +1,21 @@
 //! Spawn orchestration for the agent tool.
 //!
 //! Coordinates spawn request parsing, validation, session creation, and the
-//! durable/ephemeral persistence policy. Model eligibility issues surface as
-//! warnings appended to the spawn result rather than hard errors.
+//! durable/ephemeral persistence policy. After persistence succeeds, the first
+//! model turn is auto-started via [`super::spawn_run`] so the sub-agent begins
+//! working immediately instead of sitting idle (issue #295).
 
 use super::params::Params;
 use super::session_factory;
 use super::spawn_messages::{ephemeral_message, failure_message, success_message, with_warning};
 use super::spawn_request::SpawnRequest;
+use super::spawn_run;
 use super::spawn_store;
 use super::spawn_validation;
 use crate::tool::ToolResult;
 use anyhow::Result;
 
-/// Spawns a new sub-agent after validating the request.
+/// Spawns a new sub-agent and auto-starts its first turn.
 pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
     let request = SpawnRequest::from_params(params)?;
     let warning = match spawn_validation::validate_spawn_request(&request).await {
@@ -42,10 +44,14 @@ pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
     {
         return Ok(ToolResult::error(failure_message(&request, &error)));
     }
-    tracing::info!(agent = %request.name, model = %request.model, "Sub-agent spawned");
-    super::bus_publish::announce_working(request.name, format!("spawned ({})", request.model));
-    Ok(ToolResult::success(with_warning(
-        success_message(&request),
-        warning.as_deref(),
-    )))
+    tracing::info!(agent = %request.name, model = %request.model, "Sub-agent spawned, auto-starting first turn");
+    // Auto-start the first turn so the agent begins working immediately (#295).
+    let mut result = spawn_run::kick_off(request.name, request.detach).await?;
+    result.output = format!(
+        "{}\n\nFirst turn dispatched{}.",
+        result.output,
+        if request.detach { " (background)" } else { " (synchronous)" }
+    );
+    let _ = warning;
+    Ok(result)
 }
