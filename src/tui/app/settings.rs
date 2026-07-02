@@ -1,9 +1,18 @@
+//! Settings-panel actions: toggles, cycles, and persistence.
+
 use crate::session::Session;
 use crate::tui::app::commands::set_auto_apply_edits;
 use crate::tui::app::state::App;
 
 #[path = "settings_access_mode.rs"]
 pub mod access_mode;
+#[path = "settings_bedrock.rs"]
+pub mod bedrock;
+#[path = "settings_network.rs"]
+pub mod network;
+
+pub use bedrock::{bedrock_service_tier_label, cycle_bedrock_service_tier};
+pub use network::{network_access_status_message, set_network_access, toggle_network_access};
 
 fn on_off_label(enabled: bool) -> &'static str {
     if enabled { "ON" } else { "OFF" }
@@ -14,25 +23,6 @@ async fn persist(app: &mut App, session: &mut Session, message: String) {
         Ok(()) => app.state.status = message,
         Err(error) => app.state.status = format!("{message} (not persisted: {error})"),
     }
-}
-
-pub fn network_access_status_message(enabled: bool) -> String {
-    format!("TUI network access: {}", on_off_label(enabled))
-}
-
-pub async fn set_network_access(app: &mut App, session: &mut Session, next: bool) {
-    app.state.allow_network = next;
-    session.metadata.allow_network = next;
-    if next {
-        unsafe { std::env::set_var("CODETETHER_SANDBOX_BASH_ALLOW_NETWORK", "1") }
-    } else {
-        unsafe { std::env::remove_var("CODETETHER_SANDBOX_BASH_ALLOW_NETWORK") }
-    }
-    persist(app, session, network_access_status_message(next)).await;
-}
-
-pub async fn toggle_network_access(app: &mut App, session: &mut Session) {
-    set_network_access(app, session, !app.state.allow_network).await;
 }
 
 pub fn autocomplete_status_message(enabled: bool) -> String {
@@ -57,38 +47,6 @@ pub async fn set_use_worktree(app: &mut App, session: &mut Session, next: bool) 
     app.state.use_worktree = next;
     session.metadata.use_worktree = next;
     persist(app, session, worktree_status_message(next)).await;
-}
-
-pub fn bedrock_service_tier_label() -> &'static str {
-    match std::env::var("CODETETHER_BEDROCK_SERVICE_TIER")
-        .unwrap_or_default()
-        .trim()
-        .to_ascii_lowercase()
-        .as_str()
-    {
-        "standard" => "standard",
-        "priority" => "priority",
-        _ => "default",
-    }
-}
-
-pub async fn cycle_bedrock_service_tier(app: &mut App, session: &mut Session) {
-    let next = match bedrock_service_tier_label() {
-        "default" => Some("standard"),
-        "standard" => Some("priority"),
-        _ => None,
-    };
-    if let Some(value) = next {
-        unsafe { std::env::set_var("CODETETHER_BEDROCK_SERVICE_TIER", value) }
-    } else {
-        unsafe { std::env::remove_var("CODETETHER_BEDROCK_SERVICE_TIER") }
-    }
-    persist(
-        app,
-        session,
-        format!("Bedrock service tier: {}", bedrock_service_tier_label()),
-    )
-    .await;
 }
 
 pub async fn toggle_selected_setting(app: &mut App, session: &mut Session) {
