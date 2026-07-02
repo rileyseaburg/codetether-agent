@@ -49,6 +49,7 @@ mod tests {
 
         assert!(text.contains("Edit auto-apply"));
         assert!(text.contains("Access mode"));
+        assert!(text.contains("thinking effort"));
         assert!(text.contains("Up / Down selects a setting"));
     }
 }
