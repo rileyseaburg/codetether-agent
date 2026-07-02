@@ -38,6 +38,12 @@
 ///
 /// assert_eq!(resolve_model_id("claude-opus-4-7"), "us.anthropic.claude-opus-4-7");
 /// assert_eq!(resolve_model_id("nova-lite"), "amazon.nova-lite-v1:0");
+/// // fable must use the invokable `us.` profile, not the 500-returning `global.`
+/// assert_eq!(resolve_model_id("fable"), "us.anthropic.claude-fable-5");
+/// assert_eq!(
+///     resolve_model_id("us.anthropic.claude-fable-5"),
+///     "us.anthropic.claude-fable-5"
+/// );
 /// let full = "us.anthropic.claude-opus-4-6-v1";
 /// assert_eq!(resolve_model_id(full), full);
 /// ```
@@ -51,7 +57,7 @@ pub fn resolve_model_id(model: &str) -> &str {
         "claude-opus-4.5" | "claude-4.5-opus" => "us.anthropic.claude-opus-4-5-20251101-v1:0",
         "claude-opus-4.1" | "claude-4.1-opus" => "us.anthropic.claude-opus-4-1-20250805-v1:0",
         "claude-opus-4" | "claude-4-opus" => "us.anthropic.claude-opus-4-20250514-v1:0",
-        m if m == "fable" || m.ends_with("claude-fable-5") => "global.anthropic.claude-fable-5",
+        m if m == "fable" || m.ends_with("claude-fable-5") => "us.anthropic.claude-fable-5",
 
         "claude-sonnet-4.6" | "claude-4.6-sonnet" | "claude-sonnet-4-6" => {
             "us.anthropic.claude-sonnet-4-6-v1:0"

@@ -1,6 +1,8 @@
 use serde_json::{Map, Value, json};
 
-pub(super) fn additional_model_request_fields(model_id: &str) -> Option<Value> {
+pub(in crate::provider::bedrock) fn additional_model_request_fields(
+    model_id: &str,
+) -> Option<Value> {
     let mut fields = Map::new();
     if let Some(service_tier) = configured_service_tier() {
         tracing::debug!(

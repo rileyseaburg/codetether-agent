@@ -40,7 +40,9 @@ pub mod empty_guard;
 pub mod estimates;
 pub mod eventstream;
 mod exports;
+mod invoke;
 pub mod output_budget;
+mod provider_impl;
 pub mod reasoning;
 pub mod reasoning_audit;
 pub mod response;
@@ -52,8 +54,8 @@ pub mod token_gen;
 
 pub use exports::*;
 
-use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
-use {crate::util, anyhow::Context, anyhow::Result, async_trait::async_trait, reqwest::Client};
+use crate::provider::CompletionRequest;
+use {anyhow::Result, reqwest::Client};
 
 /// Default AWS region when none is configured.
 pub const DEFAULT_REGION: &str = "us-east-1";
@@ -201,98 +203,6 @@ impl BedrockProvider {
             }
         }
         Ok(())
-    }
-}
-
-#[async_trait]
-impl Provider for BedrockProvider {
-    fn name(&self) -> &str {
-        "bedrock"
-    }
-
-    async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        self.validate_auth()?;
-        self.discover_models().await
-    }
-
-    async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
-        let model_id = Self::resolve_model_id(&request.model);
-
-        tracing::debug!(
-            provider = "bedrock",
-            model = %model_id,
-            original_model = %request.model,
-            message_count = request.messages.len(),
-            tool_count = request.tools.len(),
-            "Starting Bedrock Converse request"
-        );
-
-        self.validate_auth()?;
-
-        let body = self.build_converse_body(&request, model_id);
-
-        // Keep the runtime URL readable; the SigV4 signer canonicalizes path
-        // segments so model suffixes like `:0` are encoded exactly once when
-        // constructing the signature.
-        let url = format!("{}/model/{}/converse", self.base_url(), model_id);
-        tracing::debug!("Bedrock request URL: {}", url);
-
-        let body_bytes = serde_json::to_vec(&body)?;
-        let policy = retry::RetryPolicy::default();
-
-        for attempt in 1..=policy.max_attempts {
-            let response = self
-                .send_request("POST", &url, Some(&body_bytes), "bedrock")
-                .await?;
-
-            let status = response.status();
-            let text = response
-                .text()
-                .await
-                .context("Failed to read Bedrock response")?;
-
-            if status.is_success() {
-                return parse_converse_response(&text);
-            }
-
-            let retryable =
-                retry::should_retry_status(status.as_u16()) && attempt < policy.max_attempts;
-            if retryable {
-                let sleep = policy.delay_for(attempt);
-                tracing::warn!(
-                    provider = "bedrock",
-                    status = %status,
-                    attempt,
-                    sleep_ms = sleep.as_millis() as u64,
-                    "Retrying Bedrock request after transient error"
-                );
-                tokio::time::sleep(sleep).await;
-                continue;
-            }
-
-            if let Ok(err) = serde_json::from_str::<BedrockError>(&text) {
-                anyhow::bail!("Bedrock API error ({}): {}", status, err.message);
-            }
-            anyhow::bail!(
-                "Bedrock API error: {} {}",
-                status,
-                util::truncate_bytes_safe(&text, 500)
-            );
-        }
-
-        unreachable!("retry loop exits via return or bail!");
-    }
-
-    async fn complete_stream(
-        &self,
-        request: CompletionRequest,
-    ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
-        let model_id = Self::resolve_model_id(&request.model);
-        self.validate_auth()?;
-
-        let body = self.build_converse_body(&request, model_id);
-        let body_bytes = serde_json::to_vec(&body)?;
-        self.converse_stream(model_id, body_bytes).await
     }
 }
 

@@ -11,7 +11,7 @@ use crate::tui::status::render_status;
 mod rows;
 
 use ratatui::text::Line;
-use rows::{access_mode_line, setting_line};
+use rows::{access_mode_line, setting_line, value_line};
 
 fn settings_lines(s: &AppState) -> Vec<Line<'static>> {
     let idx = s.selected_settings_index;
@@ -32,6 +32,13 @@ fn settings_lines(s: &AppState) -> Vec<Line<'static>> {
         Line::from(""),
         access_mode_line(idx == 4),
         Line::from("  Cycles tool access: ask -> approve -> full (Enter to change)."),
+        Line::from(""),
+        value_line(
+            "Bedrock service tier",
+            crate::tui::app::settings::bedrock_service_tier_label().to_string(),
+            idx == 5,
+        ),
+        Line::from("  Cycles Claude on Bedrock service_tier: default -> standard -> priority."),
         Line::from(""),
         Line::from("Controls:"),
         Line::from("  - Up / Down selects a setting"),

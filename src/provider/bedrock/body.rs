@@ -28,7 +28,7 @@ use super::output_budget::effective_max_tokens;
 use fields::additional_model_request_fields;
 use {crate::provider::CompletionRequest, serde_json::Value, serde_json::json};
 
-mod fields;
+pub(super) mod fields;
 
 /// Build the JSON body for a Bedrock Converse API request.
 ///

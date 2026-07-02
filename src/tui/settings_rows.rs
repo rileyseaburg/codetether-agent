@@ -33,15 +33,20 @@ pub(super) fn setting_line(label: &'static str, enabled: bool, selected: bool) -
     ])
 }
 
-pub(super) fn access_mode_line(selected: bool) -> Line<'static> {
+pub(super) fn value_line(label: &'static str, value: String, selected: bool) -> Line<'static> {
     let prefix = if selected { "> " } else { "  " };
     let style = row_style(selected);
     Line::from(vec![
         Span::styled(prefix, style),
-        Span::styled("Access mode: ", style),
-        Span::styled(
-            label(current_access_mode()),
-            Style::default().fg(Color::Cyan).bold(),
-        ),
+        Span::styled(format!("{label}: "), style),
+        Span::styled(value, Style::default().fg(Color::Cyan).bold()),
     ])
+}
+
+pub(super) fn access_mode_line(selected: bool) -> Line<'static> {
+    value_line(
+        "Access mode",
+        label(current_access_mode()).to_string(),
+        selected,
+    )
 }

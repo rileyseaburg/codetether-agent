@@ -59,6 +59,38 @@ pub async fn set_use_worktree(app: &mut App, session: &mut Session, next: bool) 
     persist(app, session, worktree_status_message(next)).await;
 }
 
+pub fn bedrock_service_tier_label() -> &'static str {
+    match std::env::var("CODETETHER_BEDROCK_SERVICE_TIER")
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "standard" => "standard",
+        "priority" => "priority",
+        _ => "default",
+    }
+}
+
+pub async fn cycle_bedrock_service_tier(app: &mut App, session: &mut Session) {
+    let next = match bedrock_service_tier_label() {
+        "default" => Some("standard"),
+        "standard" => Some("priority"),
+        _ => None,
+    };
+    if let Some(value) = next {
+        unsafe { std::env::set_var("CODETETHER_BEDROCK_SERVICE_TIER", value) }
+    } else {
+        unsafe { std::env::remove_var("CODETETHER_BEDROCK_SERVICE_TIER") }
+    }
+    persist(
+        app,
+        session,
+        format!("Bedrock service tier: {}", bedrock_service_tier_label()),
+    )
+    .await;
+}
+
 pub async fn toggle_selected_setting(app: &mut App, session: &mut Session) {
     match app.state.selected_settings_index {
         0 => set_auto_apply_edits(app, session, !app.state.auto_apply_edits).await,
@@ -66,6 +98,7 @@ pub async fn toggle_selected_setting(app: &mut App, session: &mut Session) {
         2 => set_slash_autocomplete(app, session, !app.state.slash_autocomplete).await,
         3 => set_use_worktree(app, session, !app.state.use_worktree).await,
         4 => access_mode::cycle_access_mode(app, session).await,
+        5 => cycle_bedrock_service_tier(app, session).await,
         _ => {}
     }
 }
