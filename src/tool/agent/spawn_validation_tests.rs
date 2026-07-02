@@ -12,6 +12,7 @@ fn request(model: &'static str) -> SpawnRequest<'static> {
         instructions: "test",
         model,
         ephemeral: true,
+        detach: false,
         parent_workspace: None,
     }
 }

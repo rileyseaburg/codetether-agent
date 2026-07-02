@@ -32,9 +32,9 @@ fn configured_service_tier() -> Option<String> {
 fn configured_effort() -> &'static str {
     let raw = std::env::var("CODETETHER_BEDROCK_THINKING_EFFORT").unwrap_or_default();
     match raw.trim().to_ascii_lowercase().as_str() {
-        "medium" => "medium",
+        "low" => "low",
         "high" => "high",
-        _ => "low",
+        _ => "medium",
     }
 }
 
@@ -51,5 +51,6 @@ mod tests {
     fn fable_fields_include_adaptive_thinking() {
         let fields = additional_model_request_fields("global.anthropic.claude-fable-5").unwrap();
         assert_eq!(fields["thinking"]["type"], "adaptive");
+        assert_eq!(fields["output_config"]["effort"], "medium");
     }
 }
