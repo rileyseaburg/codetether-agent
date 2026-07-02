@@ -35,6 +35,7 @@ pub(crate) mod prompt_too_long;
 pub mod provider;
 pub mod recall_context;
 mod refactor_guard;
+mod repeat_guard;
 pub mod request_state;
 mod retry_error;
 pub(crate) mod rlm_background;
@@ -51,11 +52,8 @@ mod tool_heartbeat;
 pub mod validation;
 mod workspace_tools;
 
-#[cfg(test)]
-mod prompt_events_test_provider;
-#[cfg(test)]
-mod prompt_events_tests;
-#[cfg(test)]
-mod retry_error_tests;
-#[cfg(test)]
-mod validation_tests;
+#[cfg(test)] mod prompt_events_test_provider;
+#[cfg(test)] mod prompt_events_tests;
+#[cfg(test)] #[path = "repeat_guard_tests.rs"] mod repeat_guard_tests;
+#[cfg(test)] mod retry_error_tests;
+#[cfg(test)] mod validation_tests;

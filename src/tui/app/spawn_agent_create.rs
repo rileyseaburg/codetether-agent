@@ -24,6 +24,9 @@ pub(super) async fn create_agent(app: &mut App, args: SpawnArgs, depth: u8) {
         }
     };
     session.agent = format!("spawned:{}", args.name);
+    // Autonomous sub-agents cannot interactively confirm edits; without this
+    // they loop re-issuing the same pending edit forever (issue #294).
+    session.metadata.auto_apply_edits = true;
     session.add_message(crate::provider::Message {
         role: crate::provider::Role::System,
         content: vec![crate::provider::ContentPart::Text {
