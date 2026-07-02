@@ -6,8 +6,9 @@
 //! model can re-issue an identical edit indefinitely.
 //!
 //! This guard tracks individual edit-family tool calls by their content
-//! signature (`name` + canonical `args`) and blocks the call once it has
-//! been seen `THRESHOLD` times within a single turn, injecting a clear
+//! signature (`name` + canonical `args`). It allows up to `THRESHOLD`
+//! identical attempts within a single turn and blocks every attempt after
+//! that (i.e. the `THRESHOLD + 1`-th call and beyond), injecting a clear
 //! message that tells the model to stop retrying.
 
 use serde_json::Value;
@@ -17,7 +18,7 @@ use std::collections::HashMap;
 const EDIT_TOOLS: &[&str] =
     &["edit", "write", "multiedit", "patch", "apply_patch", "confirm_edit"];
 
-/// Repetitions allowed before the guard fires.
+/// Identical attempts allowed before the guard fires on the next one.
 const THRESHOLD: u8 = 3;
 
 /// Tracks per-signature call counts for the duration of one agentic turn.

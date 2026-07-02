@@ -1,13 +1,18 @@
+use super::remove_outcome::RemoveOutcome;
 use super::{WorktreeInfo, WorktreeManager};
 
 impl WorktreeManager {
-    pub(crate) async fn remove_worktree(&self, info: &WorktreeInfo) {
+    /// Remove a worktree unless it has uncommitted changes.
+    ///
+    /// Returns [`RemoveOutcome::RefusedDirty`] without touching the worktree
+    /// when it is dirty, so callers skip branch deletion / untracking.
+    pub(crate) async fn remove_worktree(&self, info: &WorktreeInfo) -> RemoveOutcome {
         if self.is_worktree_dirty(info).await {
             tracing::error!(
                 worktree = %info.name, path = %info.path.display(),
                 "Refusing to force-remove dirty worktree — commit or stash first."
             );
-            return;
+            return RemoveOutcome::RefusedDirty;
         }
         match tokio::process::Command::new("git")
             .args(["worktree", "remove", "--force"])
@@ -31,6 +36,7 @@ impl WorktreeManager {
                 self.remove_worktree_dir(info).await;
             }
         }
+        RemoveOutcome::Removed
     }
 
     async fn remove_worktree_dir(&self, info: &WorktreeInfo) {
