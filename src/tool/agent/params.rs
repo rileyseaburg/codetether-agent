@@ -37,13 +37,23 @@ pub(super) struct Params {
     pub model: Option<String>,
     #[serde(default)]
     pub ephemeral: bool,
-    /// When true, `message` dispatches in the background and returns immediately
-    /// instead of blocking the caller until the sub-agent's turn finishes.
-    /// Progress is observable via the `status` action (issue #296).
+    /// Controls whether `message`/`spawn` blocks the caller.
+    ///
+    /// `None` (default) → non-blocking (detach = true): the sub-agent runs in
+    /// the background and the caller is free to continue (issue #296).
+    /// `Some(false)` → blocking: waits for the full sub-agent turn.
     #[serde(default)]
-    pub detach: bool,
+    pub detach: Option<bool>,
     #[serde(default, rename = "__ct_current_model")]
     pub _current_model: Option<String>,
     #[serde(default, rename = "__ct_parent_workspace")]
     pub parent_workspace: Option<PathBuf>,
+}
+
+impl Params {
+    /// Returns the effective detach flag, defaulting to `true` (non-blocking)
+    /// when not explicitly set (issue #296).
+    pub(super) fn detach_or_default(&self) -> bool {
+        self.detach.unwrap_or(true)
+    }
 }

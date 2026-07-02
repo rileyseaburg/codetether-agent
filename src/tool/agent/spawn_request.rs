@@ -40,7 +40,7 @@ impl<'a> SpawnRequest<'a> {
                 .context("instructions required for spawn")?,
             model,
             ephemeral: params.ephemeral,
-            detach: params.detach,
+            detach: params.detach_or_default(),
             parent_workspace: params.parent_workspace.clone(),
         })
     }
