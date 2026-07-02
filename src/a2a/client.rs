@@ -16,7 +16,7 @@ impl A2AClient {
     /// Create a new A2A client
     pub fn new(base_url: impl Into<String>) -> Self {
         Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             base_url: base_url.into().trim_end_matches('/').to_string(),
             auth: None,
         }
