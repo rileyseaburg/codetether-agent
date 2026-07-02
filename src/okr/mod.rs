@@ -221,16 +221,29 @@ impl KeyResult {
     }
 
     /// Calculate progress as a ratio (0.0 to 1.0)
+    ///
+    /// For KRs with a target of zero (e.g. "No critical errors" with target 0),
+    /// progress is 1.0 when the current value also meets that target (zero
+    /// errors) and 0.0 otherwise. This keeps `progress()` consistent with
+    /// [`is_complete`](Self::is_complete).
     pub fn progress(&self) -> f64 {
         if self.target_value == 0.0 {
-            return 0.0;
+            return if self.current_value <= 0.0 { 1.0 } else { 0.0 };
         }
         (self.current_value / self.target_value).clamp(0.0, 1.0)
     }
 
     /// Check if the key result is complete
+    ///
+    /// For zero-target KRs (e.g. "No critical errors"), completion means the
+    /// current value is at or below the target (zero errors), not above it.
     pub fn is_complete(&self) -> bool {
-        self.status == KeyResultStatus::Completed || self.current_value >= self.target_value
+        self.status == KeyResultStatus::Completed
+            || if self.target_value == 0.0 {
+                self.current_value <= 0.0
+            } else {
+                self.current_value >= self.target_value
+            }
     }
 
     /// Add an outcome to this key result
@@ -700,67 +713,6 @@ fn default_unit() -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_okr_creation() {
-        let okr = Okr::new("Test Objective", "Description");
-        assert_eq!(okr.title, "Test Objective");
-        assert_eq!(okr.status, OkrStatus::Draft);
-        assert!(okr.validate().is_err()); // No key results
-    }
-
-    #[test]
-    fn test_okr_with_key_results() {
-        let mut okr = Okr::new("Test Objective", "Description");
-        let kr = KeyResult::new(okr.id, "KR1", 100.0, "%");
-        okr.add_key_result(kr);
-        assert!(okr.validate().is_ok());
-    }
-
-    #[test]
-    fn test_key_result_progress() {
-        let kr = KeyResult::new(Uuid::new_v4(), "Test KR", 100.0, "%");
-        assert_eq!(kr.progress(), 0.0);
-
-        let mut kr = kr;
-        kr.update_progress(50.0);
-        assert!((kr.progress() - 0.5).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_okr_run_workflow() {
-        let okr_id = Uuid::new_v4();
-        let mut run = OkrRun::new(okr_id, "Q1 2024 Run");
-
-        // Submit for approval
-        run.submit_for_approval().unwrap();
-        assert_eq!(run.status, OkrRunStatus::PendingApproval);
-
-        // Record approval
-        run.record_decision(ApprovalDecision::approve(run.id, "Looks good"));
-        assert_eq!(run.status, OkrRunStatus::Approved);
-
-        // Start execution
-        run.start().unwrap();
-        assert_eq!(run.status, OkrRunStatus::Running);
-
-        // Update progress
-        run.update_kr_progress("kr-1", 0.5);
-
-        // Complete
-        run.complete();
-        assert_eq!(run.status, OkrRunStatus::Completed);
-    }
-
-    #[test]
-    fn test_outcome_creation() {
-        let outcome = KrOutcome::new(Uuid::new_v4(), "Fixed bug in auth")
-            .with_value(1.0)
-            .add_evidence("commit:abc123");
-
-        assert_eq!(outcome.value, Some(1.0));
-        assert!(outcome.evidence.contains(&"commit:abc123".to_string()));
-    }
-}
+mod tests;
+#[cfg(test)]
+mod tests_model;
