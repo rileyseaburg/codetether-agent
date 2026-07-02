@@ -6,7 +6,6 @@ use crate::cli::auth::{
 };
 use crate::cli::onboard::{DEFAULT_SERVER, prompt_line};
 use anyhow::Result;
-use reqwest::Client;
 
 pub async fn login_interactive() -> Result<Option<SavedCredentials>> {
     let email = prompt_line("Email: ")?;
@@ -19,7 +18,7 @@ pub async fn login_interactive() -> Result<Option<SavedCredentials>> {
     }
 
     println!("Logging in...");
-    let client = Client::new();
+    let client = crate::provider::shared_http::shared_client().clone();
     let login = login_with_password(&client, DEFAULT_SERVER, &email, &password).await?;
     write_saved_credentials(DEFAULT_SERVER, &email, &login)?;
     println!("Logged in as {email}.\n");
