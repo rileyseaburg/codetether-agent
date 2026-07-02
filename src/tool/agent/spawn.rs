@@ -47,11 +47,12 @@ pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
     tracing::info!(agent = %request.name, model = %request.model, "Sub-agent spawned, auto-starting first turn");
     // Auto-start the first turn so the agent begins working immediately (#295).
     let mut result = spawn_run::kick_off(request.name, request.detach).await?;
-    result.output = format!(
-        "{}\n\nFirst turn dispatched{}.",
+    let dispatch = if request.detach { " (background)" } else { " (synchronous)" };
+    let body = format!(
+        "{}\n\n{}\n\nFirst turn dispatched{dispatch}.",
+        success_message(&request),
         result.output,
-        if request.detach { " (background)" } else { " (synchronous)" }
     );
-    let _ = warning;
+    result.output = with_warning(body, warning.as_deref());
     Ok(result)
 }

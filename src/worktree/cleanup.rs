@@ -10,34 +10,43 @@ impl WorktreeManager {
     }
 
     /// Clean up a specific worktree and its local branch.
+    ///
+    /// A dirty worktree is left intact (branch kept, still tracked) so
+    /// uncommitted work is preserved.
     pub async fn cleanup(&self, name: &str) -> Result<()> {
         let Some(info) = self.get(name).await else {
             return Ok(());
         };
-        self.remove_worktree(&info).await;
-        Self::delete_branch(&self.repo_path, &info.branch).await;
-        self.untrack(name).await;
+        if self.remove_worktree(&info).await.removed() {
+            Self::delete_branch(&self.repo_path, &info.branch).await;
+            self.untrack(name).await;
+        }
         Ok(())
     }
 
     /// Clean up all tracked or Git-discovered CodeTether worktrees.
+    ///
+    /// Dirty worktrees (and their branches) are preserved.
     pub async fn cleanup_all(&self) -> Result<usize> {
         let infos = self.list().await;
-        for info in &infos {
-            self.remove_worktree(info).await;
-        }
-        let known: HashSet<String> = infos.iter().map(|info| info.branch.clone()).collect();
-        let branches = self.codetether_branches().await.unwrap_or_default();
-        let branch_only = branches
-            .iter()
-            .filter(|branch| !known.contains(*branch))
-            .count();
-        for branch in &branches {
-            Self::delete_branch(&self.repo_path, branch).await;
-        }
-        self.worktrees.lock().await.clear();
-        let count = infos.len() + branch_only;
+        let refused = self.remove_all(&infos).await;
+        let count = self.delete_orphan_branches(&infos, &refused).await;
+        self.worktrees
+            .lock()
+            .await
+            .retain(|i| refused.contains(&i.name));
         tracing::info!(count, "Cleaned up CodeTether worktrees/branches");
         Ok(count)
+    }
+
+    /// Remove every worktree, returning the names that were refused (dirty).
+    async fn remove_all(&self, infos: &[WorktreeInfo]) -> HashSet<String> {
+        let mut refused = HashSet::new();
+        for info in infos {
+            if !self.remove_worktree(info).await.removed() {
+                refused.insert(info.name.clone());
+            }
+        }
+        refused
     }
 }

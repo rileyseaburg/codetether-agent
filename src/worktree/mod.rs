@@ -7,8 +7,10 @@ mod artifact_collect;
 mod artifacts;
 mod branch;
 mod cleanup;
+mod cleanup_branches;
 mod cleanup_remove;
 mod dirty_check;
+mod remove_outcome;
 mod cleanup_worktrees;
 mod complete;
 mod conflicts;
@@ -16,8 +18,7 @@ mod create;
 mod create_git;
 mod discover;
 mod discover_parse;
-#[cfg(test)]
-mod discover_parse_tests;
+#[cfg(test)] mod discover_parse_tests;
 mod info;
 mod integrity;
 mod integrity_error;
@@ -29,11 +30,9 @@ mod merge_finish;
 mod merge_git;
 mod merge_lookup;
 mod merge_staged;
-#[cfg(test)]
-mod merge_staged_tests;
+#[cfg(test)] mod merge_staged_tests;
 mod output;
-#[cfg(test)]
-mod output_tests;
+#[cfg(test)] mod output_tests;
 mod repair;
 mod stash;
 mod sync_git;
