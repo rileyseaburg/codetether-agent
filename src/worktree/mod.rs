@@ -8,6 +8,7 @@ mod artifacts;
 mod branch;
 mod cleanup;
 mod cleanup_remove;
+mod dirty_check;
 mod cleanup_worktrees;
 mod complete;
 mod conflicts;
