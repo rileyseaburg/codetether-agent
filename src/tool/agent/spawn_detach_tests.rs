@@ -10,7 +10,7 @@ fn params(value: serde_json::Value) -> Params {
 }
 
 #[test]
-fn detach_defaults_to_false() {
+fn detach_defaults_to_true() {
     let p = params(json!({
         "action": "spawn",
         "name": "reviewer",
@@ -18,18 +18,18 @@ fn detach_defaults_to_false() {
         "__ct_current_model": "zai/glm-5.1",
     }));
     let request = SpawnRequest::from_params(&p).expect("spawn request");
-    assert!(!request.detach, "detach should default to false");
+    assert!(request.detach, "detach should default to true (#296)");
 }
 
 #[test]
-fn detach_true_is_propagated() {
+fn detach_false_is_propagated() {
     let p = params(json!({
         "action": "spawn",
-        "name": "bg-agent",
+        "name": "sync-agent",
         "instructions": "work on issue #213",
         "model": "zai/glm-5.1",
-        "detach": true,
+        "detach": false,
     }));
     let request = SpawnRequest::from_params(&p).expect("spawn request");
-    assert!(request.detach, "detach should be true when explicitly set");
+    assert!(!request.detach, "detach should be false when explicitly set");
 }

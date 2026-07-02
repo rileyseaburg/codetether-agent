@@ -53,7 +53,7 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
             .map(|_| session_for_task)
     });
 
-    if params.detach {
+    if params.detach_or_default() {
         return Ok(super::message_detach::dispatch(
             name, _run_guard, rx, handle,
         ));
