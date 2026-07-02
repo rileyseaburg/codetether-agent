@@ -7,8 +7,7 @@ pub mod bus;
 pub mod codex_sessions;
 pub mod commands;
 pub mod context_status;
-#[cfg(test)]
-mod context_status_tests;
+#[cfg(test)] mod context_status_tests;
 pub mod detach;
 pub mod event_handlers;
 pub mod event_loop;
