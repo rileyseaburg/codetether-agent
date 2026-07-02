@@ -1,4 +1,5 @@
 pub mod ask;
+pub mod agents_cmd;
 pub mod auto_apply;
 pub mod autochat;
 pub mod background;

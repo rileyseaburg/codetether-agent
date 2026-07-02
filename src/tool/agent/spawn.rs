@@ -40,7 +40,7 @@ pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
         )));
     }
     if let Err(error) =
-        spawn_store::persist_spawned_agent(request.name, request.instructions, session).await
+        spawn_store::persist_spawned_agent(request.name, request.instructions, session, request.model).await
     {
         return Ok(ToolResult::error(failure_message(&request, &error)));
     }

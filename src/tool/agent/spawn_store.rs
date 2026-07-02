@@ -12,6 +12,7 @@ pub(super) async fn persist_spawned_agent(
     name: &str,
     instructions: &str,
     session: Session,
+    model: &str,
 ) -> Result<()> {
     save_session(name, &session).await?;
     store::insert(
@@ -19,6 +20,9 @@ pub(super) async fn persist_spawned_agent(
         AgentEntry {
             instructions: instructions.to_string(),
             session,
+            parent: None,
+            depth: 0,
+            model_id: Some(model.to_string()),
         },
     );
     Ok(())
