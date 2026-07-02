@@ -12,6 +12,7 @@
 //! ```
 
 mod actions;
+pub mod bridge;
 mod bus_publish;
 mod event_loop;
 mod execution_state;
