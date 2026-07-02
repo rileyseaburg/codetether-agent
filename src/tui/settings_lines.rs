@@ -33,6 +33,13 @@ pub(super) fn settings_lines(s: &AppState) -> Vec<Line<'static>> {
         ),
         Line::from("  Cycles Claude on Bedrock service_tier: default -> standard -> priority."),
         Line::from(""),
+        value_line(
+            "Bedrock thinking effort",
+            crate::tui::app::settings::bedrock_thinking_effort_label().to_string(),
+            idx == 6,
+        ),
+        Line::from("  Cycles adaptive thinking effort: medium -> low -> high."),
+        Line::from(""),
         Line::from("Controls:"),
         Line::from("  - Up / Down selects a setting"),
         Line::from("  - Enter toggles or cycles the selected setting"),

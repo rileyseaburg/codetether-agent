@@ -8,10 +8,17 @@ use crate::tui::app::state::App;
 pub mod access_mode;
 #[path = "settings_bedrock.rs"]
 pub mod bedrock;
+#[path = "settings_bedrock_effort.rs"]
+pub mod bedrock_effort;
+#[path = "settings_dispatch.rs"]
+pub mod dispatch;
 #[path = "settings_network.rs"]
 pub mod network;
 
-pub use bedrock::{bedrock_service_tier_label, cycle_bedrock_service_tier};
+pub use bedrock::bedrock_service_tier_label;
+pub use bedrock::cycle_bedrock_service_tier;
+pub use bedrock_effort::{bedrock_thinking_effort_label, cycle_bedrock_thinking_effort};
+pub use dispatch::toggle_selected_setting;
 pub use network::{network_access_status_message, set_network_access, toggle_network_access};
 
 fn on_off_label(enabled: bool) -> &'static str {
@@ -47,16 +54,4 @@ pub async fn set_use_worktree(app: &mut App, session: &mut Session, next: bool) 
     app.state.use_worktree = next;
     session.metadata.use_worktree = next;
     persist(app, session, worktree_status_message(next)).await;
-}
-
-pub async fn toggle_selected_setting(app: &mut App, session: &mut Session) {
-    match app.state.selected_settings_index {
-        0 => set_auto_apply_edits(app, session, !app.state.auto_apply_edits).await,
-        1 => set_network_access(app, session, !app.state.allow_network).await,
-        2 => set_slash_autocomplete(app, session, !app.state.slash_autocomplete).await,
-        3 => set_use_worktree(app, session, !app.state.use_worktree).await,
-        4 => access_mode::cycle_access_mode(app, session).await,
-        5 => cycle_bedrock_service_tier(app, session).await,
-        _ => {}
-    }
 }
