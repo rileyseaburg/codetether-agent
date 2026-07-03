@@ -156,8 +156,9 @@ git commit -m "chore: bump version to $new_version"
 git push origin "$CURRENT_BRANCH"
 
 # Step 6: Generate AI release notes
-echo "==> Generating release notes with codetether..."
-RAW_NOTES="$(RUST_LOG=error codetether run "You are a release notes generator for a Rust CLI tool called CodeTether Agent.
+RELEASE_MODEL="${CODETETHER_RELEASE_MODEL:-zai/glm-5.2}"
+echo "==> Generating release notes with codetether (model: $RELEASE_MODEL)..."
+RAW_NOTES="$(RUST_LOG=error codetether run --model "$RELEASE_MODEL" "You are a release notes generator for a Rust CLI tool called CodeTether Agent.
 Generate concise, professional release notes in markdown format for version v${new_version}.
 Include sections: ## What's New, ## Bug Fixes (if any), ## Changes.
 Base the notes on these commits and stats. Do NOT include a title heading — start directly with the sections.
