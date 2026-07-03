@@ -14,7 +14,10 @@ use super::persist;
 
 /// Current effort label as shown in the Settings panel.
 pub fn bedrock_thinking_effort_label() -> &'static str {
-    match runtime_config::thinking_effort().unwrap_or_default().as_str() {
+    match runtime_config::thinking_effort()
+        .unwrap_or_default()
+        .as_str()
+    {
         "low" => "low",
         "high" => "high",
         _ => "medium",

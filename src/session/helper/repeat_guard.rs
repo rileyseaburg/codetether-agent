@@ -15,8 +15,14 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// Edit-family tools whose repetitions we guard against.
-const EDIT_TOOLS: &[&str] =
-    &["edit", "write", "multiedit", "patch", "apply_patch", "confirm_edit"];
+const EDIT_TOOLS: &[&str] = &[
+    "edit",
+    "write",
+    "multiedit",
+    "patch",
+    "apply_patch",
+    "confirm_edit",
+];
 
 /// Identical attempts allowed before the guard fires on the next one.
 const THRESHOLD: u8 = 3;

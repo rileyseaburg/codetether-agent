@@ -1,9 +1,9 @@
 //! TUI `/spawn` agents → agent-bar tab spans (issue #297 Part A).
 
-use ratatui::text::Span;
 use super::agent_tab::{AgentTabMeta, agent_tab};
-use crate::tui::app::state::agent_tree::dfs_order;
 use crate::tui::app::state::App;
+use crate::tui::app::state::agent_tree::dfs_order;
+use ratatui::text::Span;
 
 /// Push tab spans for agents from the TUI `spawned_agents` map.
 pub fn push_tui_agents(spans: &mut Vec<Span<'static>>, app: &App, active: Option<&str>) {

@@ -3,11 +3,15 @@
 //! Merges both registries: TUI `/spawn` agents and agent-tool-spawned agents
 //! (issue #295 / #297 Part A).
 
-use ratatui::{Frame, text::{Line, Span}, widgets::Paragraph};
+use ratatui::{
+    Frame,
+    text::{Line, Span},
+    widgets::Paragraph,
+};
 
-use super::agent_tab::{AgentTabMeta, agent_tab};
-use super::agent_bar_tui::push_tui_agents;
 use super::agent_bar_tool::push_tool_agents;
+use super::agent_bar_tui::push_tui_agents;
+use super::agent_tab::{AgentTabMeta, agent_tab};
 use crate::tui::app::state::App;
 
 /// Render the agent tab bar into `area` (no-op when empty and zero height).

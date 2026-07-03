@@ -71,10 +71,19 @@ pub(super) fn update_session(name: &str, session: Session) {
 
 /// Lists agents with full metadata for the TUI bridge (#297 Part A).
 pub(super) fn list_with_metadata()
-    -> Vec<(String, String, usize, Option<String>, Option<String>, u8)> {
-    AGENT_STORE.read().iter()
-        .map(|(n, e)| (n.clone(), e.instructions.clone(),
-            e.session.messages.len(), e.model_id.clone(),
-            e.parent.clone(), e.depth))
+-> Vec<(String, String, usize, Option<String>, Option<String>, u8)> {
+    AGENT_STORE
+        .read()
+        .iter()
+        .map(|(n, e)| {
+            (
+                n.clone(),
+                e.instructions.clone(),
+                e.session.messages.len(),
+                e.model_id.clone(),
+                e.parent.clone(),
+                e.depth,
+            )
+        })
         .collect()
 }

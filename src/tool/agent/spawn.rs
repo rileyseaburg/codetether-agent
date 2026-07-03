@@ -39,15 +39,24 @@ pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
             warning.as_deref(),
         )));
     }
-    if let Err(error) =
-        spawn_store::persist_spawned_agent(request.name, request.instructions, session, request.model).await
+    if let Err(error) = spawn_store::persist_spawned_agent(
+        request.name,
+        request.instructions,
+        session,
+        request.model,
+    )
+    .await
     {
         return Ok(ToolResult::error(failure_message(&request, &error)));
     }
     tracing::info!(agent = %request.name, model = %request.model, "Sub-agent spawned, auto-starting first turn");
     // Auto-start the first turn so the agent begins working immediately (#295).
     let mut result = spawn_run::kick_off(request.name, request.detach).await?;
-    let dispatch = if request.detach { " (background)" } else { " (synchronous)" };
+    let dispatch = if request.detach {
+        " (background)"
+    } else {
+        " (synchronous)"
+    };
     let body = format!(
         "{}\n\n{}\n\nFirst turn dispatched{dispatch}.",
         success_message(&request),

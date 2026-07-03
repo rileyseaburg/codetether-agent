@@ -44,5 +44,8 @@ fn collect_agent_tool_agents(out: &mut Vec<String>) {
 }
 
 fn name_from_line(line: &str) -> Option<String> {
-    line.trim_start().split_whitespace().next().map(str::to_string)
+    line.trim_start()
+        .split_whitespace()
+        .next()
+        .map(str::to_string)
 }

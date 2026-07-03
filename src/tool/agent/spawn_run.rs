@@ -47,13 +47,14 @@ pub(super) async fn kick_off(name: &str, detach: bool) -> Result<ToolResult> {
     });
     if detach {
         return Ok(message_detach::dispatch(
-            name.to_string(), _guard, rx, handle,
+            name.to_string(),
+            _guard,
+            rx,
+            handle,
         ));
     }
     let r = event_loop::run(&mut rx, handle).await;
-    Ok(message_finalize::finalize(
-        name.to_string(), r.0, r.1, r.2, r.3, r.4,
-    ).await)
+    Ok(message_finalize::finalize(name.to_string(), r.0, r.1, r.2, r.3, r.4).await)
 }
 
 const KICKOFF_MSG: &str = "Begin working on your assigned task now.";

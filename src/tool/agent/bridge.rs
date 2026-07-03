@@ -23,13 +23,15 @@ pub struct AgentSnapshot {
 pub fn list_agent_tool_agents() -> Vec<AgentSnapshot> {
     let rows = store::list_with_metadata();
     rows.into_iter()
-        .map(|(name, instructions, msg_count, model_id, parent, depth)| AgentSnapshot {
-            name,
-            instructions,
-            message_count: msg_count,
-            model_id,
-            parent,
-            depth,
-        })
+        .map(
+            |(name, instructions, msg_count, model_id, parent, depth)| AgentSnapshot {
+                name,
+                instructions,
+                message_count: msg_count,
+                model_id,
+                parent,
+                depth,
+            },
+        )
         .collect()
 }
