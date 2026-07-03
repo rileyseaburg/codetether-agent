@@ -1093,42 +1093,15 @@ fn handle_kill_command(app: &mut App, rest: &str) {
 }
 
 fn handle_agents_command(app: &mut App) {
-    if app.state.spawned_agents.is_empty() {
+    let lines = super::agents_cmd::build_agent_list(app);
+    if lines.is_empty() {
         app.state.status = "No spawned agents.".to_string();
-        push_system_message(app, "No spawned agents. Use /spawn <name> to create one.");
+        push_system_message(app, "No spawned agents. Use /spawn or the agent tool.");
     } else {
-        let count = app.state.spawned_agents.len();
-        let lines: Vec<String> = app
-            .state
-            .spawned_agents
-            .iter()
-            .map(|(key, agent)| {
-                let msg_count = agent.session.history().len();
-                let model = agent.session.metadata.model.as_deref().unwrap_or("default");
-                let active = if app.state.active_spawned_agent.as_deref() == Some(key) {
-                    " [active]"
-                } else {
-                    ""
-                };
-                format!(
-                    "  {}{} — {} messages — model: {}",
-                    agent.name, active, msg_count, model
-                )
-            })
-            .collect();
-
-        let body = lines.join(
-            "
-",
-        );
+        let count = lines.len();
+        let body = lines.join("\n");
         app.state.status = format!("{count} spawned agent(s)");
-        push_system_message(
-            app,
-            format!(
-                "Spawned agents ({count}):
-{body}"
-            ),
-        );
+        push_system_message(app, format!("Spawned agents ({count}):\n{body}"));
     }
 }
 async fn handle_go_command(

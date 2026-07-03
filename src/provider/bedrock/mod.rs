@@ -47,6 +47,7 @@ pub mod reasoning;
 pub mod reasoning_audit;
 pub mod response;
 pub mod retry;
+pub mod runtime_config;
 pub mod sigv4;
 pub mod sso_refresh;
 pub mod stream;
@@ -206,5 +207,4 @@ impl BedrockProvider {
     }
 }
 
-#[cfg(test)]
-mod tests;
+#[cfg(test)] mod tests;

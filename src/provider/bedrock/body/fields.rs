@@ -23,18 +23,15 @@ pub(in crate::provider::bedrock) fn additional_model_request_fields(
 }
 
 fn configured_service_tier() -> Option<String> {
-    std::env::var("CODETETHER_BEDROCK_SERVICE_TIER")
-        .ok()
-        .map(|v| v.trim().to_ascii_lowercase())
-        .filter(|v| !v.is_empty())
+    super::super::runtime_config::service_tier()
 }
 
 fn configured_effort() -> &'static str {
-    let raw = std::env::var("CODETETHER_BEDROCK_THINKING_EFFORT").unwrap_or_default();
-    match raw.trim().to_ascii_lowercase().as_str() {
-        "medium" => "medium",
+    let raw = super::super::runtime_config::thinking_effort().unwrap_or_default();
+    match raw.as_str() {
+        "low" => "low",
         "high" => "high",
-        _ => "low",
+        _ => "medium",
     }
 }
 
@@ -51,5 +48,6 @@ mod tests {
     fn fable_fields_include_adaptive_thinking() {
         let fields = additional_model_request_fields("global.anthropic.claude-fable-5").unwrap();
         assert_eq!(fields["thinking"]["type"], "adaptive");
+        assert_eq!(fields["output_config"]["effort"], "medium");
     }
 }

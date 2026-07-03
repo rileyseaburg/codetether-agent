@@ -1,3 +1,5 @@
+//! Settings panel rendering: composes rows and draws the widget.
+
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -7,45 +9,12 @@ use ratatui::{
 use crate::tui::app::state::AppState;
 use crate::tui::status::render_status;
 
+#[path = "settings_lines.rs"]
+mod lines;
 #[path = "settings_rows.rs"]
 mod rows;
 
-use ratatui::text::Line;
-use rows::{access_mode_line, setting_line, value_line};
-
-fn settings_lines(s: &AppState) -> Vec<Line<'static>> {
-    let idx = s.selected_settings_index;
-    vec![
-        Line::from("Settings"),
-        Line::from(""),
-        setting_line("Edit auto-apply", s.auto_apply_edits, idx == 0),
-        Line::from("  Automatically confirms pending edit/multiedit previews in the TUI."),
-        Line::from(""),
-        setting_line("Network access", s.allow_network, idx == 1),
-        Line::from("  Allows sandboxed bash commands in this TUI session to use network access."),
-        Line::from(""),
-        setting_line("Slash autocomplete", s.slash_autocomplete, idx == 2),
-        Line::from("  Enables Tab completion for slash commands in the composer."),
-        Line::from(""),
-        setting_line("Worktree isolation", s.use_worktree, idx == 3),
-        Line::from("  Runs agent work in a git worktree branch, auto-merged on success."),
-        Line::from(""),
-        access_mode_line(idx == 4),
-        Line::from("  Cycles tool access: ask -> approve -> full (Enter to change)."),
-        Line::from(""),
-        value_line(
-            "Bedrock service tier",
-            crate::tui::app::settings::bedrock_service_tier_label().to_string(),
-            idx == 5,
-        ),
-        Line::from("  Cycles Claude on Bedrock service_tier: default -> standard -> priority."),
-        Line::from(""),
-        Line::from("Controls:"),
-        Line::from("  - Up / Down selects a setting"),
-        Line::from("  - Enter toggles or cycles the selected setting"),
-        Line::from("  - Esc returns to chat"),
-    ]
-}
+use lines::settings_lines;
 
 pub fn render_settings(f: &mut Frame, area: Rect, app_state: &AppState) {
     let chunks = Layout::default()
@@ -62,7 +31,7 @@ pub fn render_settings(f: &mut Frame, area: Rect, app_state: &AppState) {
 
 #[cfg(test)]
 mod tests {
-    use super::settings_lines;
+    use super::lines::settings_lines;
     use crate::tui::app::state::AppState;
 
     #[test]
@@ -80,6 +49,7 @@ mod tests {
 
         assert!(text.contains("Edit auto-apply"));
         assert!(text.contains("Access mode"));
+        assert!(text.contains("thinking effort"));
         assert!(text.contains("Up / Down selects a setting"));
     }
 }

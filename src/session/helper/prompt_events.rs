@@ -153,6 +153,7 @@ pub(crate) async fn run_prompt_with_events(
 
     let mut last_tool_sig: Option<String> = None;
     let mut consecutive_same_tool: u32 = 0;
+    let mut repeat_guard = super::repeat_guard::RepeatGuard::default();
     let mut consecutive_codesearch_no_matches: u32 = 0;
     let mut build_mode_tool_retry_count: u8 = 0;
     let mut native_tool_promise_retry_count: u8 = 0;
@@ -722,12 +723,11 @@ pub(crate) async fn run_prompt_with_events(
                 continue;
             }
 
-            if let Some(reason) = detect_stub_in_tool_input(&tool_name, &tool_input) {
-                tracing::warn!(tool = %tool_name, reason = %reason, "Blocking suspected stubbed edit");
-                let content = format!(
-                    "Error: Refactor guard rejected this edit: {reason}. \
-                     Provide concrete, behavior-preserving implementation (no placeholders/stubs)."
-                );
+            if let Some(reason) = detect_stub_in_tool_input(&tool_name, &tool_input)
+                .or_else(|| repeat_guard.check(&tool_name, &tool_input))
+            {
+                tracing::warn!(tool = %tool_name, reason = %reason, "Pre-exec guard blocked tool call");
+                let content = format!("Error: {reason}");
                 events::complete(&event_tx, &tool_id, &tool_name, content.clone(), false, 0).await;
                 session.add_message(super::tool_output::tool_result_with_status(
                     tool_id, &tool_name, false, content,

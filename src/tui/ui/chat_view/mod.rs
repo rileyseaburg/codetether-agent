@@ -4,6 +4,8 @@
 //! [`render_chat_view`] for the full pipeline.
 
 pub mod agent_bar;
+pub mod agent_bar_tool;
+pub mod agent_bar_tui;
 pub mod agent_rail;
 pub mod agent_tab;
 pub(crate) mod approval_overlay;
