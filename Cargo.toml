@@ -85,8 +85,8 @@ quic-transport = []
 [dependencies]
 # Workspace crates
 codetether-a2a-worker-core = { path = "crates/codetether-a2a-worker-core", version = "0.1.0" }
-codetether-browser = { path = "crates/codetether-browser", version = "0.1.0" }
-codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.0" }
+codetether-browser = { path = "crates/codetether-browser", version = "0.1.1" }
+codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.1" }
 
 # Async runtime
 unicode-width = "0.2"
