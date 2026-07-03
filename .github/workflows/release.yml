@@ -262,9 +262,9 @@ jobs:
             exit 1
           fi
           if git ls-files --error-unmatch Cargo.lock >/dev/null 2>&1; then
-            cargo publish --locked
+            cargo publish -p codetether-agent --locked
           else
-            cargo publish
+            cargo publish -p codetether-agent
           fi
 
       - name: Create GitHub release and upload assets

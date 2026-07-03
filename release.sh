@@ -205,15 +205,46 @@ echo "==> Release notes written to RELEASE_NOTES.md"
 echo ""
 echo "===> Publishing to crates.io..."
 
+crate_version() {
+    local crate="$1"
+    cargo metadata --no-deps --format-version=1 \
+        | jq -r --arg crate "$crate" '.packages[] | select(.name == $crate).version'
+}
+
+crate_version_exists() {
+    local crate="$1"
+    local version="$2"
+    "$CARGO_CMD" search "$crate" --limit 1 \
+        | grep -Eq "^$crate = \"$version\""
+}
+
 publish_crate() {
     local crate="$1"
     local wait_for_index="${2:-false}"
+    local version
+    local dry_run_output
 
-    if ! "$CARGO_CMD" publish --dry-run -p "$crate" 2>&1; then
+    version="$(crate_version "$crate")"
+
+    if crate_version_exists "$crate" "$version"; then
+        echo "==> $crate v$version already exists on crates.io; skipping publish."
+        return 0
+    fi
+
+    dry_run_output="$(mktemp)"
+    if ! "$CARGO_CMD" publish --dry-run -p "$crate" 2>&1 | tee "$dry_run_output"; then
+        if grep -Eq "crate $crate@$version already exists" "$dry_run_output"; then
+            echo "==> $crate v$version already exists on crates.io; skipping publish."
+            rm -f "$dry_run_output"
+            return 0
+        fi
+
+        rm -f "$dry_run_output"
         echo "Error: cargo publish --dry-run failed for $crate. Aborting publish."
         echo "Fix the errors above and re-run, or set CARGO_REGISTRY_TOKEN."
         return 1
     fi
+    rm -f "$dry_run_output"
 
     if ! "$CARGO_CMD" publish -p "$crate" 2>&1; then
         if "$CARGO_CMD" search "$crate" --limit 1 | grep -q "^$crate ="; then
