@@ -1,9 +1,12 @@
 //! Session listing facade.
 
+mod cache;
+mod cache_io;
 mod count_seq;
 mod directory;
 mod parse;
 mod record;
+mod resolve;
 mod scan;
 mod summary;
 mod workspace;

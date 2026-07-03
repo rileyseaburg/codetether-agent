@@ -1,41 +1,22 @@
 use std::fs::File;
 use std::io::BufReader;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::record::SessionListingRecord;
 use super::summary::SessionSummary;
-use super::workspace::matches_workspace;
 
-/// Max session files parsed concurrently on the blocking pool.
-const PARSE_CONCURRENCY: usize = 16;
-
-/// Parse session files in parallel on the blocking pool so large/many
-/// histories never stall the async runtime (serde walks every byte to count
-/// messages, which can be tens of MB per file).
-pub(super) async fn parse_all(
-    paths: Vec<PathBuf>,
-    workspace: Option<PathBuf>,
-) -> Vec<SessionSummary> {
-    use futures::stream::{self, StreamExt};
-    stream::iter(paths)
-        .map(|path| {
-            let workspace = workspace.clone();
-            tokio::task::spawn_blocking(move || parse_summary(&path, workspace.as_deref()))
-        })
-        .buffer_unordered(PARSE_CONCURRENCY)
-        .filter_map(|joined| async move { joined.ok().flatten() })
-        .collect()
-        .await
-}
-
-fn parse_summary(path: &Path, workspace: Option<&Path>) -> Option<SessionSummary> {
+/// Parse a single session file into a full [`SessionSummary`].
+///
+/// Runs on the blocking pool: serde walks every byte of the `messages` array
+/// to count messages, which can be tens of MB per file. Returns `None` for
+/// unreadable or malformed files (logged and skipped).
+pub(super) fn parse_summary(path: &Path) -> Option<SessionSummary> {
     let file = File::open(path).map_err(log_read(path)).ok()?;
     let reader = BufReader::with_capacity(64 * 1024, file);
     let record: SessionListingRecord = serde_json::from_reader(reader)
         .map_err(log_malformed(path))
         .ok()?;
-    let summary = record.into_summary();
-    matches_workspace(summary.directory.as_deref(), workspace).then_some(summary)
+    Some(record.into_summary())
 }
 
 fn log_read(path: &Path) -> impl FnOnce(std::io::Error) {
