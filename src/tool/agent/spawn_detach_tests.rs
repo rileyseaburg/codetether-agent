@@ -31,5 +31,8 @@ fn detach_false_is_propagated() {
         "detach": false,
     }));
     let request = SpawnRequest::from_params(&p).expect("spawn request");
-    assert!(!request.detach, "detach should be false when explicitly set");
+    assert!(
+        !request.detach,
+        "detach should be false when explicitly set"
+    );
 }

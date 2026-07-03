@@ -10,7 +10,10 @@ fn parse(value: serde_json::Value) -> Params {
 #[test]
 fn detach_defaults_to_true() {
     let p = parse(json!({ "action": "message", "name": "w", "message": "hi" }));
-    assert!(p.detach_or_default(), "detach should default to true (#296)");
+    assert!(
+        p.detach_or_default(),
+        "detach should default to true (#296)"
+    );
 }
 
 #[test]
