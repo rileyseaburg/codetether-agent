@@ -39,3 +39,7 @@ fn pr_text_args(
         build_body(prompt, commit_bullets),
     ]
 }
+
+#[cfg(test)]
+#[path = "pr_command_tests.rs"]
+mod tests;

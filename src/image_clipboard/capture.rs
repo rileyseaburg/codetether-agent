@@ -31,16 +31,18 @@ pub fn capture_image() -> Result<ImageAttachment> {
         .context("clipboard image could not be encoded as PNG")
 }
 
-/// Read the current system clipboard image (Windows — not yet implemented).
+/// Read the current system clipboard image (Windows via raw-dylib).
 ///
-/// Image clipboard on Windows requires BITMAPV5HEADER parsing which
-/// is not yet wired through the `windows` crate raw-dylib path.
+/// Fetches `CF_DIB` from the clipboard, wraps it in a BMP file header, and
+/// re-encodes it as a PNG data URL for pasting over SSH.
+///
+/// # Errors
+///
+/// Returns an error when the clipboard is unavailable or contains no image.
 #[cfg(windows)]
 pub fn capture_image() -> Result<ImageAttachment> {
-    anyhow::bail!(
-        "image clipboard capture is not yet supported on Windows \
-         via the raw-dylib path; use /image <path> to attach a file"
-    )
+    crate::tui::clipboard_winapi::get_clipboard_image()
+        .context("clipboard does not contain an image")
 }
 
 /// Replace the system clipboard with text.

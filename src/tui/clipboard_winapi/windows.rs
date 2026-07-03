@@ -14,9 +14,9 @@ use windows::Win32::System::Memory::{
 
 const CF_UNICODETEXT: u32 = 13;
 
-struct ClipboardGuard;
+pub(super) struct ClipboardGuard;
 impl ClipboardGuard {
-    fn open() -> Option<Self> {
+    pub(super) fn open() -> Option<Self> {
         (0..5).find_map(|_| unsafe { OpenClipboard(None) }.ok().map(|_| Self))
     }
 }

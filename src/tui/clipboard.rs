@@ -21,16 +21,14 @@ pub fn get_clipboard_image() -> Option<ImageAttachment> {
 }
 
 #[cfg(windows)]
-/// Extract an image from the system clipboard (Windows).
+/// Extract an image from the system clipboard (Windows via raw-dylib).
 ///
-/// Image clipboard requires BITMAPV5HEADER parsing which is not yet
-/// implemented for the Windows raw-dylib path. Returns `None` so the
-/// TUI falls through to the "clipboard unavailable" status message.
+/// Reads `CF_DIB` and re-encodes it as a PNG data URL.
 pub fn get_clipboard_image() -> Option<ImageAttachment> {
     if is_ssh_or_headless() {
         return None;
     }
-    None
+    super::clipboard_winapi::get_clipboard_image()
 }
 
 #[cfg(not(windows))]

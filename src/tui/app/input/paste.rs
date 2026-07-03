@@ -13,6 +13,10 @@ use crate::tui::app::state::App;
 use crate::tui::app::symbols::{refresh_symbol_search, symbol_search_active};
 use crate::tui::models::{InputMode, ViewMode};
 
+#[path = "paste_summarise.rs"]
+mod summarise;
+use summarise::attach_summarised_paste;
+
 /// Handle pasted text from the terminal.
 ///
 /// Normalises line endings, then dispatches to symbol search,
@@ -61,6 +65,17 @@ fn paste_into_chat(app: &mut App, normalized: &str) {
     if super::try_attach_data_url(app, normalized) {
         return;
     }
+    // A data URL pasted alongside caption text (or by a terminal that mixes
+    // it into the buffer) is extracted here so it is not diverted into the
+    // large-paste text sidecar and lost as an image.
+    if let Some(found) = super::image_data_paste::extract_image_data_url(normalized) {
+        if super::try_attach_data_url(app, &found.data_url) {
+            if !found.remainder.is_empty() {
+                paste_into_chat(app, &found.remainder);
+            }
+            return;
+        }
+    }
     if super::pasted_text::should_summarize(normalized) {
         attach_summarised_paste(app, normalized);
         return;
@@ -79,28 +94,4 @@ fn paste_into_chat(app: &mut App, normalized: &str) {
     } else {
         "Pasted into input".to_string()
     };
-}
-
-/// Attach a large paste to the sidecar and insert a placeholder at
-/// the cursor instead of the full text.
-fn attach_summarised_paste(app: &mut App, normalized: &str) {
-    let line_count = normalized.lines().count();
-    let byte_count = normalized.len();
-    let size = super::pasted_text::format_size(byte_count);
-    let placeholder = super::pasted_text::attach_paste(&mut app.state, normalized.to_string());
-    let id = app
-        .state
-        .pending_text_pastes
-        .last()
-        .map(|p| p.id)
-        .unwrap_or(0);
-    if app.state.input.starts_with('/') {
-        app.state.input_mode = InputMode::Command;
-    } else {
-        app.state.input_mode = InputMode::Editing;
-    }
-    app.state.insert_text(&placeholder);
-    app.state.status = format!(
-        "Pasted {line_count} lines ({size}) summarised as #{id}; full text will be sent to the agent."
-    );
 }

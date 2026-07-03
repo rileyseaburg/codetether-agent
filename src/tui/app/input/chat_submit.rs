@@ -14,10 +14,6 @@ use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
-use super::chat_helpers::push_user_messages;
-use super::chat_submit_dispatch::dispatch_prompt;
-use super::pasted_text::expand_paste_placeholders;
-
 #[cfg(test)]
 #[path = "chat_submit_queue_tests.rs"]
 mod queue_tests;
@@ -36,6 +32,7 @@ pub(super) async fn handle_enter_chat(
     worker_bridge: &Option<TuiWorkerBridge>,
     runtime: &TuiSessionHandle,
 ) {
+    super::image_data_paste::drain_embedded_images(app);
     let prompt = app.state.input.trim().to_string();
     if !prompt.is_empty() {
         app.state.push_history(prompt.clone());
@@ -56,29 +53,14 @@ pub(super) async fn handle_enter_chat(
         crate::tui::app::state::prompt_queue::store(app, prompt);
         return;
     }
-
-    let pending_images = std::mem::take(&mut app.state.pending_images);
-    let pending_text_pastes = std::mem::take(&mut app.state.pending_text_pastes);
-    if prompt.is_empty() && pending_images.is_empty() {
-        return;
-    }
-
-    // The user-facing chat history shows the compact placeholder so a
-    // 1-line summary stands in for what would otherwise be an
-    // 1000-line wall of text. The agent receives the expanded form
-    // with the full pasted content wrapped in delimiters.
-    let agent_prompt = expand_paste_placeholders(&prompt, &pending_text_pastes);
-
-    push_user_messages(app, &prompt, &pending_images);
-    dispatch_prompt(
+    super::chat_submit_finish::finish_submit(
         app,
         cwd,
         slot,
         registry,
         worker_bridge,
-        &agent_prompt,
-        pending_images,
         runtime,
+        &prompt,
     )
     .await;
 }
