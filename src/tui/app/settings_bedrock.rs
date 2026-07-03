@@ -1,17 +1,13 @@
 //! Bedrock service-tier cycling for the Settings panel.
 
+use crate::provider::bedrock::runtime_config;
 use crate::session::Session;
 use crate::tui::app::state::App;
 
 use super::persist;
 
 pub fn bedrock_service_tier_label() -> &'static str {
-    match std::env::var("CODETETHER_BEDROCK_SERVICE_TIER")
-        .unwrap_or_default()
-        .trim()
-        .to_ascii_lowercase()
-        .as_str()
-    {
+    match runtime_config::service_tier().unwrap_or_default().as_str() {
         "standard" => "standard",
         "priority" => "priority",
         _ => "default",
@@ -20,15 +16,11 @@ pub fn bedrock_service_tier_label() -> &'static str {
 
 pub async fn cycle_bedrock_service_tier(app: &mut App, session: &mut Session) {
     let next = match bedrock_service_tier_label() {
-        "default" => Some("standard"),
-        "standard" => Some("priority"),
+        "default" => Some("standard".to_string()),
+        "standard" => Some("priority".to_string()),
         _ => None,
     };
-    if let Some(value) = next {
-        unsafe { std::env::set_var("CODETETHER_BEDROCK_SERVICE_TIER", value) }
-    } else {
-        unsafe { std::env::remove_var("CODETETHER_BEDROCK_SERVICE_TIER") }
-    }
+    runtime_config::set_service_tier(next);
     persist(
         app,
         session,
