@@ -19,6 +19,8 @@ exclude = [
     "dist/",
     "target/",
     "vendor/",
+    "doc/",
+    "codetether-bin",
     "docs/tui-screenshot.png",
     "prd*.json",
     "ui-prd.json",
@@ -249,6 +251,3 @@ strip = "debuginfo"
 inherits = "release"
 lto = false
 codegen-units = 16
-
-[patch.crates-io]
-candle-kernels = { path = "vendor/candle-kernels" }
