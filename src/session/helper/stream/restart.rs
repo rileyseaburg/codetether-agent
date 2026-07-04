@@ -2,9 +2,12 @@
 //!
 //! Re-opens a *fresh* provider stream when a drain pass stops for a
 //! restart-eligible reason ([`StreamStop::restart_eligible`]). LLM streams are
-//! not resumable mid-flight, so SRP only restarts when nothing usable was
-//! committed (cold stall or transient fault) — a clean re-request, never a
-//! token-stitched "continue". Restarts are bounded by [`RestartPolicy`].
+//! not resumable mid-flight, so SRP never token-stitches a "continue": it
+//! re-requests from scratch. Restarts fire when nothing usable was committed
+//! (cold stall or transient fault) and also when the byte stream ended before
+//! a `Done` chunk ([`StreamStop::PrematureEnd`]) — in that case any partial is
+//! discarded so a complete answer replaces the truncated one. Bounded by
+//! [`RestartPolicy`].
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -57,8 +60,10 @@ pub(crate) async fn run(
     loop {
         let stream = provider.complete_stream(request.clone()).await?;
         let outcome = drain(stream, event_tx).await;
-        if !outcome.stop.restart_eligible() || outcome.committed() || attempt >= policy.max_restarts
-        {
+        let restart = outcome.stop.restart_eligible()
+            && (!outcome.committed() || outcome.stop.restart_over_committed())
+            && attempt < policy.max_restarts;
+        if !restart {
             return super::accept::accept(outcome, attempt);
         }
         let wait = policy.backoff(attempt);

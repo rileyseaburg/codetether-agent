@@ -24,6 +24,10 @@ pub(super) fn accept(outcome: DrainOutcome, attempts: u32) -> Result<CompletionR
             IDLE_TIMEOUT.as_secs(),
             attempts + 1
         ),
+        StreamStop::PrematureEnd => anyhow::bail!(
+            "provider stream ended before completion over {} attempt(s); connection dropped mid-turn",
+            attempts + 1
+        ),
         StreamStop::Fault { transient } => anyhow::bail!(
             "stream faulted (transient={transient}) with no content over {} attempt(s)",
             attempts + 1

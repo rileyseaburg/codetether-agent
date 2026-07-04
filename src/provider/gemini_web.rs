@@ -93,7 +93,7 @@ impl std::fmt::Debug for GeminiWebProvider {
 impl GeminiWebProvider {
     /// Create a new provider from Netscape cookies.txt content.
     pub fn new(cookies: String) -> Result<Self> {
-        let client = Client::builder()
+        let client = crate::a2a::stream::socket_opts::apply_socket_opts(Client::builder())
             .user_agent(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
                  AppleWebKit/537.36 (KHTML, like Gecko) \

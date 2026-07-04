@@ -22,7 +22,7 @@ pub struct OpenRouterProvider {
 
 impl OpenRouterProvider {
     pub fn new(api_key: String) -> Result<Self> {
-        let client = Client::builder()
+        let client = crate::a2a::stream::socket_opts::apply_socket_opts(Client::builder())
             .connect_timeout(std::time::Duration::from_secs(15))
             .timeout(std::time::Duration::from_secs(300))
             .build()

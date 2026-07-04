@@ -12,6 +12,23 @@ fn cold_stall_and_transient_fault_are_restart_eligible() {
 }
 
 #[test]
+fn premature_end_is_restart_eligible_and_overrides_committed() {
+    // A byte stream that closes before `Done` is retryable even when partial
+    // content was committed: re-requesting yields one complete answer.
+    assert!(StreamStop::PrematureEnd.restart_eligible());
+    assert!(StreamStop::PrematureEnd.restart_over_committed());
+}
+
+#[test]
+fn only_premature_end_overrides_committed() {
+    // Idle mid-stream stalls keep their committed partial instead of restarting.
+    assert!(!StreamStop::MidStreamStall.restart_over_committed());
+    assert!(!StreamStop::ColdStall.restart_over_committed());
+    assert!(!StreamStop::Clean.restart_over_committed());
+    assert!(!StreamStop::Fault { transient: true }.restart_over_committed());
+}
+
+#[test]
 fn clean_partial_and_permanent_fault_are_not_eligible() {
     assert!(!StreamStop::Clean.restart_eligible());
     assert!(!StreamStop::MidStreamStall.restart_eligible());

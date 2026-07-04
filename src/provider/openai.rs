@@ -78,7 +78,7 @@ impl OpenAIProvider {
             provider_name: "openai".to_string(),
             api_key: Some(api_key),
             api_base,
-            http: HttpClient::builder()
+            http: crate::a2a::stream::socket_opts::apply_socket_opts(HttpClient::builder())
                 .timeout(std::time::Duration::from_secs(45))
                 .build()?,
         })
@@ -114,7 +114,7 @@ impl OpenAIProvider {
             provider_name: provider_name.to_string(),
             api_key,
             api_base,
-            http: HttpClient::builder()
+            http: crate::a2a::stream::socket_opts::apply_socket_opts(HttpClient::builder())
                 .timeout(std::time::Duration::from_secs(45))
                 .build()?,
         })

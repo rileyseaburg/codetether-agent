@@ -53,6 +53,8 @@ async fn empty_thinking_emits_activity_without_content() {
     let err = collect_stream_completion_with_events(s, Some(&tx))
         .await
         .unwrap_err();
-    assert!(err.to_string().contains("without assistant content"));
+    // Stream ended before a `Done` chunk with no committed content: the drain
+    // classifies this as a premature termination, not a clean empty finish.
+    assert!(err.to_string().contains("ended before completion"));
     assert!(matches!(rx.try_recv(), Ok(SessionEvent::Thinking)));
 }

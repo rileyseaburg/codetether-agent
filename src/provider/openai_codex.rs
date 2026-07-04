@@ -1617,6 +1617,35 @@ impl OpenAiCodexProvider {
         chunks
     }
 
+    /// Drive an HTTP Responses byte stream into ordered [`StreamChunk`]s.
+    ///
+    /// A dropped connection surfaces either as a transport `Err` (converted to
+    /// a terminal [`StreamChunk::Error`]) or as a silent byte-stream end with
+    /// no `Done` chunk. The latter is caught universally by the session drain
+    /// loop ([`crate::session::helper::stream`]), which classifies a missing
+    /// `Done` as a premature termination and re-requests — so this driver does
+    /// not need its own premature-EOF synthesis.
+    fn drive_responses_http_stream(
+        response: reqwest::Response,
+    ) -> BoxStream<'static, StreamChunk> {
+        Box::pin(async_stream::stream! {
+            let mut parser = ResponsesSseParser::default();
+            let mut byte_stream = response.bytes_stream();
+            while let Some(result) = byte_stream.next().await {
+                let chunks = match result {
+                    Ok(bytes) => Self::parse_responses_sse_bytes(&mut parser, &bytes),
+                    Err(error) => vec![StreamChunk::Error(error.to_string())],
+                };
+                for chunk in chunks {
+                    yield chunk;
+                }
+            }
+            for chunk in Self::finish_responses_sse_parser(&mut parser) {
+                yield chunk;
+            }
+        })
+    }
+
     async fn complete_with_chatgpt_responses(
         &self,
         request: CompletionRequest,
@@ -1848,27 +1877,7 @@ impl OpenAiCodexProvider {
             anyhow::bail!(Self::format_openai_api_error(status, &body, &request.model));
         }
 
-        let stream = async_stream::stream! {
-            let mut parser = ResponsesSseParser::default();
-            let mut byte_stream = response.bytes_stream();
-
-            while let Some(result) = byte_stream.next().await {
-                match result {
-                    Ok(bytes) => {
-                        for chunk in Self::parse_responses_sse_bytes(&mut parser, &bytes) {
-                            yield chunk;
-                        }
-                    }
-                    Err(error) => yield StreamChunk::Error(error.to_string()),
-                }
-            }
-
-            for chunk in Self::finish_responses_sse_parser(&mut parser) {
-                yield chunk;
-            }
-        };
-
-        Ok(Box::pin(stream))
+        Ok(Self::drive_responses_http_stream(response))
     }
 
     async fn complete_stream_with_openai_http_responses(
@@ -1932,27 +1941,7 @@ impl OpenAiCodexProvider {
             anyhow::bail!(Self::format_openai_api_error(status, &body, &request.model));
         }
 
-        let stream = async_stream::stream! {
-            let mut parser = ResponsesSseParser::default();
-            let mut byte_stream = response.bytes_stream();
-
-            while let Some(result) = byte_stream.next().await {
-                match result {
-                    Ok(bytes) => {
-                        for chunk in Self::parse_responses_sse_bytes(&mut parser, &bytes) {
-                            yield chunk;
-                        }
-                    }
-                    Err(error) => yield StreamChunk::Error(error.to_string()),
-                }
-            }
-
-            for chunk in Self::finish_responses_sse_parser(&mut parser) {
-                yield chunk;
-            }
-        };
-
-        Ok(Box::pin(stream))
+        Ok(Self::drive_responses_http_stream(response))
     }
 
     async fn complete_stream_with_realtime(

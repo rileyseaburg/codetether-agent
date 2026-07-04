@@ -13,12 +13,13 @@
 //!
 //! [`IDLE_TIMEOUT`]: super::idle_timeout::IDLE_TIMEOUT
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::provider::StreamChunk;
 use crate::session::SessionEvent;
 use futures::StreamExt;
 use futures::stream::BoxStream;
+use tokio::time::Instant;
 
 /// How often to emit a liveness keepalive while awaiting the next chunk.
 const KEEPALIVE_TICK: Duration = Duration::from_secs(10);
@@ -39,6 +40,10 @@ pub(super) async fn next_with_keepalive(
     event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
     budget: Duration,
 ) -> Next {
+    // `tokio::time::Instant` shares tokio's clock with `timeout` below, so the
+    // budget depletes in lockstep with the timers (and advances under paused
+    // virtual time in tests). A `std::time::Instant` here would never expire
+    // under `start_paused` and would drift from the timer clock in production.
     let start = Instant::now();
     loop {
         let remaining = budget.saturating_sub(start.elapsed());

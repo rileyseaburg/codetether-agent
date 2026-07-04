@@ -89,5 +89,40 @@
     "status": "pending",
     "priority": "high",
     "created_at": "2026-06-21T16:29:41.622513934+00:00"
+  },
+  {
+    "id": "todo_1783168924515",
+    "content": "Protocol gap: verify openai_codex premature-EOF SSE guard compiles + file limits",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-07-04T12:42:04.515204440+00:00"
+  },
+  {
+    "id": "todo_1783168929467",
+    "content": "Transport gap: add a shared provider HTTP client that applies socket_opts (keepalive, tcp_user_timeout, nodelay)",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-07-04T12:42:09.467758332+00:00"
+  },
+  {
+    "id": "todo_1783168929468",
+    "content": "Wire the socket-hardened client into openai_codex constructors (replace shared_client)",
+    "status": "inprogress",
+    "priority": "high",
+    "created_at": "2026-07-04T12:42:09.468009763+00:00"
+  },
+  {
+    "id": "todo_1783168929468",
+    "content": "Wire TCP_INFO probe for provider host so terminations are observable in TRANSPORT_METRICS",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-07-04T12:42:09.468129308+00:00"
+  },
+  {
+    "id": "todo_1783168929468",
+    "content": "Tests + file-limit + fmt, then commit",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-07-04T12:42:09.468473394+00:00"
   }
 ]

@@ -108,7 +108,7 @@ impl VertexAnthropicProvider {
             "Creating Vertex Anthropic provider with service account"
         );
 
-        let client = Client::builder()
+        let client = crate::a2a::stream::socket_opts::apply_socket_opts(Client::builder())
             .connect_timeout(CONNECT_TIMEOUT)
             .timeout(REQUEST_TIMEOUT)
             .build()

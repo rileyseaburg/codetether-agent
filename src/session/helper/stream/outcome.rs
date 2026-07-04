@@ -2,22 +2,28 @@
 //!
 //! The drain loop reports *why* a provider stream stopped so the restart
 //! engine ([`super::super::restart`]) can decide whether re-opening a fresh
-//! stream is sound. LLM streams are not resumable mid-flight, so only
-//! [`StreamStop::ColdStall`] and [`StreamStop::Fault`] are restart-eligible:
-//! both mean no usable assistant content was committed and a clean re-request
-//! is safe.
+//! stream is sound. LLM streams are not resumable mid-flight, so restarts are
+//! only sound for [`StreamStop::ColdStall`], [`StreamStop::PrematureEnd`], and
+//! transient [`StreamStop::Fault`]: each means a clean re-request yields one
+//! complete answer (any partial is discarded, never token-stitched).
 
 use crate::provider::CompletionResponse;
 
 /// Reason a provider stream stopped.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum StreamStop {
-    /// Provider signalled normal end (`Done` or `None` after content).
+    /// Provider signalled normal end: a `Done` chunk was observed.
     Clean,
     /// Idle timeout before any chunk arrived — nothing committed; retryable.
     ColdStall,
     /// Idle timeout after partial content — partial returned, not retried.
     MidStreamStall,
+    /// Byte stream ended (`None`) *before* any `Done` chunk. The HTTP body
+    /// closed mid-turn; the model never signalled completion. Restart-eligible
+    /// even if partial content was committed, because re-requesting a fresh
+    /// stream yields one complete answer (LLM streams are not token-resumable,
+    /// so the partial is discarded rather than stitched).
+    PrematureEnd,
     /// Terminal error chunk; retryable only if `transient`.
     Fault { transient: bool },
 }
@@ -27,8 +33,16 @@ impl StreamStop {
     pub(crate) fn restart_eligible(&self) -> bool {
         matches!(
             self,
-            StreamStop::ColdStall | StreamStop::Fault { transient: true }
+            StreamStop::ColdStall | StreamStop::PrematureEnd | StreamStop::Fault { transient: true }
         )
+    }
+
+    /// Whether a restart should proceed *even if* partial content was
+    /// committed this pass. Only a [`StreamStop::PrematureEnd`] discards the
+    /// committed partial to re-request a clean, complete stream; an idle
+    /// [`StreamStop::MidStreamStall`] keeps its partial instead.
+    pub(crate) fn restart_over_committed(&self) -> bool {
+        matches!(self, StreamStop::PrematureEnd)
     }
 }
 
