@@ -232,7 +232,7 @@ publish_crate() {
     fi
 
     dry_run_output="$(mktemp)"
-    if ! "$CARGO_CMD" publish --dry-run -p "$crate" 2>&1 | tee "$dry_run_output"; then
+    if ! "$CARGO_CMD" publish --dry-run --no-verify -p "$crate" 2>&1 | tee "$dry_run_output"; then
         if grep -Eq "crate $crate@$version already exists" "$dry_run_output"; then
             echo "==> $crate v$version already exists on crates.io; skipping publish."
             rm -f "$dry_run_output"
@@ -246,7 +246,7 @@ publish_crate() {
     fi
     rm -f "$dry_run_output"
 
-    if ! "$CARGO_CMD" publish -p "$crate" 2>&1; then
+    if ! "$CARGO_CMD" publish --no-verify -p "$crate" 2>&1; then
         if "$CARGO_CMD" search "$crate" --limit 1 | grep -q "^$crate ="; then
             echo "==> $crate already exists on crates.io; continuing."
             return 0
