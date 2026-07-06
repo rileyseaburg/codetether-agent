@@ -27,8 +27,10 @@ COPY examples ./examples
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/build/target \
-    cargo build --release --bin codetether
+    cargo build --release --bin codetether && \
+    mkdir -p /out && \
+    cp /build/target/release/codetether /out/codetether
 
 FROM scratch AS artifact
 
-COPY --from=builder /build/target/release/codetether /codetether
+COPY --from=builder /out/codetether /codetether
