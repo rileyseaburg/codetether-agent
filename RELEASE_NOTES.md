@@ -1,25 +1,41 @@
-# v4.7.3
+# v4.7.4
 
 ## What's New
 
-- **QUIC transport (Phase 6)** — Multiplexed QUIC stream transport with connection migration and framed session resume, plus a TUI transport widget and TCP_INFO telemetry sampling.
-- **Bedrock thinking-effort & service-tier settings** — New TUI Settings controls for Claude Fable 5 / Opus adaptive reasoning, backed by thread-safe process state instead of runtime env-var mutation. `claude-fable-5` now routes through the Bedrock InvokeModel adapter, with mid-session bearer-token refresh on live auth failure.
-- **Interactive `/spawn` form** — Wired into TUI render and key dispatch, with non-blocking detach mode for sub-agent messaging.
-- **Cerebras model support** — Registered `gemma-4-31b` in the default catalog and capture `reasoning_content` via raw SSE stream to prevent empty turns.
-- **Workspace-aware release publishing** — `release.sh` now checks crates.io for existing versions and treats already-published workspace crates as a skippable, non-fatal case.
+- **Session picker is far easier to navigate.** Rows now show the project
+  directory and a relative age (`3m ago`, `2h ago`, `5d ago`) alongside the
+  8-char id and title, so sessions that share a near-identical first-message
+  title are visually distinct instead of indistinguishable.
 
 ## Bug Fixes
 
-- **Sub-agent workflows (#294–#297)** — Broke an infinite identical-edit retry loop, auto-start the first turn on spawn, unified sub-agent registries for TUI visibility, made dispatch non-blocking by default, surfaced sub-agent liveness from tool activity, and enabled auto-apply for spawned sub-agents.
-- **Worktree safety (#297)** — Guard worktree removal against a dirty working tree so uncommitted changes are never discarded.
-- **OKR progress** — Zero-target key results now report correct progress and completion.
-- **OpenAI-compatible streams** — Repair dangling tool-call sequences that could break streaming turns.
-- **Vector DB** — Make BERT embeddings contiguous and log embedding failures instead of silently failing.
-- **Memory** — Always run init so the embedder installs on every tool instance.
+- **Bedrock: `claude-sonnet-4-6` now resolves to a valid inference profile.**
+  The alias table mapped it to `us.anthropic.claude-sonnet-4-6-v1:0`, which
+  Bedrock rejects with `400 ValidationException: The provided model
+  identifier is invalid`. The canonical id has no `-v1:0` suffix. Verified
+  live against Bedrock; opus-4-5/4-6/4-7/4-8, sonnet-4-5/5 and haiku-4-5 were
+  already correct and are unchanged.
+- **Provider failover no longer jumps straight to `zai`.** A failing Bedrock
+  model now retries sibling Bedrock models (Sonnet/Opus/Haiku) before falling
+  through to the cross-provider tail.
+- **Windows clipboard image paste over SSH restored.** Reads `CF_DIB`, wraps
+  it in a BMP header, and re-encodes as a PNG data URL so `codetether
+  clipboard image` works again when SSH'd from Windows. Ctrl+V probes the
+  real clipboard even under SSH (X11/Wayland forwarding) and embedded image
+  data URLs are extracted even when chunked or mixed with caption text.
+- **Transparent restart on premature stream termination** so a dropped
+  upstream connection no longer aborts the turn.
+- **Provider account-exhaustion detection** skips same-provider retries when a
+  plan/billing failure is detected, leaving the dead provider behind.
+- **stdout log pollution fixed**: tracing logs go to stderr so MCP stdio
+  JSON-RPC and piped `codetether run` output are no longer corrupted.
 
 ## Changes
 
-- Refactored oversized TUI settings modules to meet the 50-line file budget.
-- Raised the Fable default thinking effort to medium and require narration before tool calls.
-
-_181 commits since v4.7.1 · 1,671 files changed._
+- Faster session picker loads via `(mtime,size)`-cached listings.
+- Test isolation: reset leaked global access-mode/grant state between policy
+  tests to eliminate spurious parallel-run failures.
+- Release CI: workspace-aware publishing, `build-essential` / `libasound2-dev`
+  / `protoc` for Linux release binaries, and an attach-to-existing tag mode.
+- New reusable TetherScript probe (`examples/tetherscript/bedrock_model_probe.tether`)
+  that validates Bedrock model ids live via `aws bedrock-runtime converse`.
