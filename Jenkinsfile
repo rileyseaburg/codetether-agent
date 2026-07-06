@@ -164,8 +164,12 @@ if ! command -v protoc >/dev/null 2>&1; then
 fi
 export PROTOC="$(command -v protoc)"
 rustup target add aarch64-apple-darwin x86_64-apple-darwin
-if command -v sccache >/dev/null 2>&1; then
+# Only use sccache if it actually executes; a stale PATH/shim otherwise
+# makes rustc fail with "could not execute process `sccache`".
+if command -v sccache >/dev/null 2>&1 && sccache --version >/dev/null 2>&1; then
   export RUSTC_WRAPPER=sccache
+else
+  unset RUSTC_WRAPPER || true
 fi
 
 echo "===> Building arm64 (native)..."
