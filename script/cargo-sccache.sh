@@ -8,8 +8,12 @@ if [ -f "$HOME/.bashrc" ]; then
   set -u
 fi
 
-if command -v sccache >/dev/null 2>&1; then
+if command -v sccache >/dev/null 2>&1 && sccache --version >/dev/null 2>&1; then
   export RUSTC_WRAPPER="${RUSTC_WRAPPER:-sccache}"
+else
+  # sccache is absent or not runnable (e.g. broken shim); run rustc directly
+  # instead of failing with "could not execute process `sccache`".
+  unset RUSTC_WRAPPER || true
 fi
 
 # Capture output so we can feed errors to the agent on failure
