@@ -71,3 +71,8 @@ state_v5.py
 
 # Large generated content (radio episodes audio/metadata, ~hundreds of MB)
 /episodes/
+
+# CI: Depot CLI install dir (~47 MB binary). Untracked and non-ignored it
+# gets swept into `cargo package`, inflating the crate past crates.io's 10 MiB
+# limit (surfaces as a 503 on upload). Keep it out of the packaged tree.
+/.depot/
