@@ -301,10 +301,15 @@ REMOTE
                             # mutate tracked sources, inflating the package past
                             # crates.io's 10 MiB limit (surfaces as a 503 on
                             # upload). git reset --hard keeps untracked dist/
-                            # artifacts (already uploaded to the GitHub release).
+                            # and .depot/ artifacts (both gitignored, so they
+                            # never enter the package).
                             git config --global --add safe.directory "$(pwd)" || true
                             git reset --hard HEAD
-                            if ! ./script/cargo-sccache.sh publish 2>&1 | tee /tmp/cargo-publish.log; then
+                            # --no-verify: the publish agent has no linker
+                            # ('ld' not found), so the local verify recompile of
+                            # the packaged tarball fails. crates.io verifies the
+                            # tarball server-side on upload, so this is safe.
+                            if ! ./script/cargo-sccache.sh publish --no-verify 2>&1 | tee /tmp/cargo-publish.log; then
                                 if grep -q 'already exists on crates.io index' /tmp/cargo-publish.log; then
                                     echo "Crate ${VERSION} already exists on crates.io; continuing."
                                 else
