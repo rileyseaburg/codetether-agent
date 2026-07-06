@@ -10,11 +10,11 @@ use crate::session::SessionEvent;
 use futures::stream::BoxStream;
 use std::time::Duration;
 
+use super::finalize;
 use super::idle_drain::{DrainState, apply};
 use super::idle_fault::fault_from;
 use super::idle_keepalive::{Next, next_with_keepalive};
 use super::outcome::{DrainOutcome, StreamStop};
-use super::finalize;
 
 /// Maximum gap between consecutive stream chunks before the stream is
 /// considered stalled. GLM-5.2 can think 60-90 s before the first token,

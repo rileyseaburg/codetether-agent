@@ -61,7 +61,11 @@ fn paste_chars_no_newlines(text: &str, mut f: impl FnMut(char)) {
 }
 
 /// Insert pasted text into the chat input buffer.
-fn paste_into_chat(app: &mut App, normalized: &str) {
+///
+/// Shared by the bracketed-paste event path and the Ctrl+V clipboard
+/// path so both get identical image-data-URL extraction and sidecar
+/// summarisation behavior. Expects line endings already normalised.
+pub fn paste_into_chat(app: &mut App, normalized: &str) {
     if super::try_attach_data_url(app, normalized) {
         return;
     }

@@ -20,6 +20,30 @@ pub(super) fn is_retryable_status(status: reqwest::StatusCode) -> bool {
     )
 }
 
+/// Check whether an error body indicates a *permanent* failure that must
+/// not be retried, even when the HTTP status is otherwise retryable (e.g. a
+/// 429 whose body is really a billing/subscription problem).
+///
+/// Providers like Z.AI return HTTP 429 for an expired plan (`code 1309`),
+/// which no amount of backoff can fix. Retrying just wastes the full attempt
+/// budget before surfacing the real cause, so callers should bail early.
+///
+/// # Arguments
+///
+/// * `msg` — The non-success response body or error string.
+pub(super) fn is_permanent_message(msg: &str) -> bool {
+    let lower = msg.to_lowercase();
+    lower.contains("has expired")
+        || lower.contains("package has expired")
+        || lower.contains("renewing the subscription")
+        || lower.contains("renew the subscription")
+        || lower.contains("subscription has expired")
+        || lower.contains("\"1309\"")
+        || lower.contains("code\":1309")
+        || lower.contains("insufficient balance")
+        || lower.contains("account has been suspended")
+}
+
 /// Check whether an error message string indicates a transient failure.
 ///
 /// Catches provider-specific messages like Z.AI's "temporarily overloaded"

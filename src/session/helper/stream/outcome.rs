@@ -33,7 +33,9 @@ impl StreamStop {
     pub(crate) fn restart_eligible(&self) -> bool {
         matches!(
             self,
-            StreamStop::ColdStall | StreamStop::PrematureEnd | StreamStop::Fault { transient: true }
+            StreamStop::ColdStall
+                | StreamStop::PrematureEnd
+                | StreamStop::Fault { transient: true }
         )
     }
 

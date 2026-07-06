@@ -510,9 +510,13 @@ async fn main() -> anyhow::Result<()> {
         // Git parses credential-helper stdout as a key=value protocol. Do not
         // install stdout tracing here, or normal startup logs become credentials.
     } else {
+        // Logs go to STDERR, never stdout. stdout is reserved for program and
+        // protocol output (MCP stdio JSON-RPC, `codetether run` piped into
+        // other tools, etc.); writing logs there corrupts that stream and is
+        // the #1 "codetether pollutes stdout" complaint from agents.
         tracing_subscriber::registry()
             .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-            .with(tracing_subscriber::fmt::layer().with_writer(std::io::stdout))
+            .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
             .init();
     }
 

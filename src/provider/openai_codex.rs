@@ -1625,9 +1625,7 @@ impl OpenAiCodexProvider {
     /// loop ([`crate::session::helper::stream`]), which classifies a missing
     /// `Done` as a premature termination and re-requests — so this driver does
     /// not need its own premature-EOF synthesis.
-    fn drive_responses_http_stream(
-        response: reqwest::Response,
-    ) -> BoxStream<'static, StreamChunk> {
+    fn drive_responses_http_stream(response: reqwest::Response) -> BoxStream<'static, StreamChunk> {
         Box::pin(async_stream::stream! {
             let mut parser = ResponsesSseParser::default();
             let mut byte_stream = response.bytes_stream();

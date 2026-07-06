@@ -2,16 +2,7 @@
 
 impl super::AppState {
     pub fn filtered_models(&self) -> Vec<&str> {
-        if self.model_filter.is_empty() {
-            self.available_models.iter().map(String::as_str).collect()
-        } else {
-            let filter = self.model_filter.to_lowercase();
-            self.available_models
-                .iter()
-                .map(String::as_str)
-                .filter(|model| model.to_lowercase().contains(&filter))
-                .collect()
-        }
+        super::model_filter::matching(&self.available_models, &self.model_filter)
     }
 
     pub fn set_available_models(&mut self, models: Vec<String>) {

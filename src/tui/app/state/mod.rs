@@ -32,6 +32,7 @@ pub mod history;
 pub mod input_cursor;
 pub mod input_edit;
 pub mod message_cache;
+pub mod model_filter;
 pub mod model_picker;
 pub mod model_picker_nav;
 pub mod model_store;

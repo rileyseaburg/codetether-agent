@@ -1,4 +1,6 @@
-use super::classify::{backoff_delay, is_retryable_message, is_retryable_status};
+use super::classify::{
+    backoff_delay, is_permanent_message, is_retryable_message, is_retryable_status,
+};
 
 /// Send a streaming request with automatic retry on transient HTTP errors.
 ///
@@ -65,15 +67,14 @@ where
                 let status = resp.status();
                 // Drain body so the connection can be reused
                 let body = resp.text().await.unwrap_or_default();
+                if is_permanent_message(&body) {
+                    anyhow::bail!("Non-retryable provider error: {status} {body}");
+                }
                 if attempt >= MAX_ATTEMPTS {
                     anyhow::bail!("Streaming error after {attempt} attempts: {status} {body}");
                 }
                 let delay = backoff_delay(attempt);
-                tracing::warn!(
-                    attempt, %status,
-                    delay_secs = delay.as_secs(),
-                    "Transient streaming error, retrying"
-                );
+                tracing::warn!(attempt, %status, delay_secs = delay.as_secs(), "Transient streaming error, retrying");
                 tokio::time::sleep(delay).await;
             }
             Ok(resp) => {
@@ -84,11 +85,7 @@ where
                         anyhow::bail!("Streaming error after {attempt} attempts: {status} {text}");
                     }
                     let delay = backoff_delay(attempt);
-                    tracing::warn!(
-                        attempt, %status,
-                        delay_secs = delay.as_secs(),
-                        "Transient streaming error (body), retrying"
-                    );
+                    tracing::warn!(attempt, %status, delay_secs = delay.as_secs(), "Transient streaming error (body), retrying");
                     tokio::time::sleep(delay).await;
                     continue;
                 }
@@ -99,11 +96,7 @@ where
                     return Err(e);
                 }
                 let delay = backoff_delay(attempt);
-                tracing::warn!(
-                    attempt, error = %e,
-                    delay_secs = delay.as_secs(),
-                    "Transient network error, retrying"
-                );
+                tracing::warn!(attempt, error = %e, delay_secs = delay.as_secs(), "Transient network error, retrying");
                 tokio::time::sleep(delay).await;
             }
             Err(e) => return Err(e),

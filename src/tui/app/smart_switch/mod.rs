@@ -1,5 +1,6 @@
 //! Smart model switching on provider errors.
 
+pub mod account_state;
 pub mod candidates;
 pub mod error_detection;
 pub mod extra;
@@ -7,14 +8,18 @@ pub mod helpers;
 pub mod local_model;
 pub mod models;
 pub mod priority;
+pub mod provider_filter;
 pub mod retry;
 pub mod same_provider;
 
+#[cfg(test)]
+mod account_state_tests;
 #[cfg(test)]
 mod test_candidates;
 #[cfg(test)]
 mod tests;
 
+pub use account_state::is_provider_account_exhausted;
 pub use candidates::smart_switch_candidates;
 pub use error_detection::{
     is_retryable_provider_error, normalize_provider_alias, smart_switch_model_key,

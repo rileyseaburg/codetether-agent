@@ -5,6 +5,8 @@
 //! never terminate an agentic session. Used by provider `complete` and
 //! `complete_stream` implementations in [`super::zai`].
 mod classify;
+#[cfg(test)]
+mod classify_tests;
 mod send;
 mod stream;
 

@@ -2,8 +2,10 @@
 
 use std::collections::HashSet;
 
+use super::account_state::is_provider_account_exhausted;
 use super::candidates::smart_switch_candidates;
 use super::error_detection::{is_retryable_provider_error, smart_switch_model_key};
+use super::provider_filter::filter_out_provider;
 
 /// A pending smart switch retry with the prompt and target model.
 #[derive(Debug, Clone)]
@@ -39,6 +41,14 @@ pub fn maybe_schedule_smart_switch_retry(
         available_providers,
         &attempted,
     );
+    // An expired subscription / account-wide quota is not fixed by trying
+    // another model on the same provider — drop every candidate that belongs
+    // to the exhausted provider so we actually leave it (e.g. off zai).
+    let candidates = if is_provider_account_exhausted(error_msg) {
+        filter_out_provider(candidates, current_provider)
+    } else {
+        candidates
+    };
     candidates
         .into_iter()
         .next()

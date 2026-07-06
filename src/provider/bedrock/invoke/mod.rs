@@ -7,9 +7,11 @@
 
 pub mod body;
 pub mod complete;
+pub mod error;
 pub mod invoke_convert;
 pub mod invoke_msgconvert;
 pub mod response;
+pub(in crate::provider::bedrock) mod retention;
 pub mod stream;
 
 #[cfg(test)]

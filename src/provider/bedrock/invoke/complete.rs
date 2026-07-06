@@ -1,13 +1,17 @@
-//! Non-streaming InvokeModel completion dispatch.
+//! Non-streaming InvokeModel completion dispatch with retry handling.
 
 use crate::provider::bedrock::invoke::body::build_anthropic_messages_body;
+use crate::provider::bedrock::invoke::error::invoke_error;
 use crate::provider::bedrock::invoke::response::parse_anthropic_messages_response;
-use crate::provider::bedrock::{BedrockError, BedrockProvider};
+use crate::provider::bedrock::{BedrockProvider, retry};
 use crate::provider::{CompletionRequest, CompletionResponse};
 use anyhow::{Context, Result};
 
 impl BedrockProvider {
     /// Complete a request via the Bedrock InvokeModel API.
+    ///
+    /// Retries transient throttling/5xx failures with exponential backoff +
+    /// jitter, matching the Converse path's [`retry::RetryPolicy`].
     pub(in crate::provider::bedrock) async fn complete_invoke_model(
         &self,
         request: &CompletionRequest,
@@ -16,32 +20,27 @@ impl BedrockProvider {
         let body = build_anthropic_messages_body(request, model_id);
         let body_bytes = serde_json::to_vec(&body)?;
         let url = format!("{}/model/{}/invoke", self.base_url(), model_id);
+        let policy = retry::RetryPolicy::default();
 
-        let response = self
-            .send_request("POST", &url, Some(&body_bytes), "bedrock")
-            .await?;
-        let status = response.status();
-        let text = response
-            .text()
-            .await
-            .context("Failed to read Bedrock InvokeModel response")?;
+        for attempt in 1..=policy.max_attempts {
+            let response = self
+                .send_request("POST", &url, Some(&body_bytes), "bedrock")
+                .await?;
+            let status = response.status();
+            let text = response
+                .text()
+                .await
+                .context("Failed to read Bedrock InvokeModel response")?;
 
-        if status.is_success() {
-            return parse_anthropic_messages_response(&text);
+            if status.is_success() {
+                return parse_anthropic_messages_response(&text);
+            }
+            if retry::should_retry_status(status.as_u16()) && attempt < policy.max_attempts {
+                tokio::time::sleep(policy.delay_for(attempt)).await;
+                continue;
+            }
+            return Err(invoke_error(status, &text, model_id, self.region()));
         }
-        tracing::debug!(
-            provider = "bedrock",
-            model = %model_id,
-            status = %status,
-            raw = %crate::util::truncate_bytes_safe(&text, 800),
-            "Bedrock InvokeModel error response"
-        );
-        if let Ok(err) = serde_json::from_str::<BedrockError>(&text) {
-            anyhow::bail!("Bedrock InvokeModel error ({status}): {}", err.message);
-        }
-        anyhow::bail!(
-            "Bedrock InvokeModel error ({status}): {}",
-            crate::util::truncate_bytes_safe(&text, 500)
-        );
+        unreachable!("retry loop exits via return");
     }
 }

@@ -1,8 +1,9 @@
 //! Clipboard paste handler for the TUI.
 //!
-//! Prefers plain text (inserted into the chat input as a single block,
-//! preserving newlines without submitting them) and falls back to an
-//! image attachment when no text is on the clipboard.
+//! Prefers plain text (routed through the shared chat paste path so
+//! image data URLs, sidecar summarisation, and newline handling all
+//! match bracketed paste) and tries an image attachment when no text
+//! is on the clipboard.
 //!
 //! # Examples
 //!
@@ -11,7 +12,6 @@
 //! ```
 
 use crate::tui::app::state::App;
-use crate::tui::models::InputMode;
 
 /// Paste clipboard contents into the chat input.
 ///
@@ -20,8 +20,8 @@ use crate::tui::models::InputMode;
 /// pasted block is delivered as a separate `Enter` key event, which
 /// would otherwise submit each line as an independent chat message.
 ///
-/// Falls back to attaching an image from the clipboard when no text
-/// is available.
+/// When no text is available, attaches an image from the clipboard;
+/// when neither is available, shows SSH bridge guidance.
 ///
 /// # Examples
 ///
@@ -30,10 +30,8 @@ use crate::tui::models::InputMode;
 /// ```
 pub(super) fn handle_clipboard_paste(app: &mut App) {
     if let Some(text) = crate::tui::clipboard::get_clipboard_text() {
-        if crate::tui::app::input::try_attach_data_url(app, &text) {
-            return;
-        }
-        insert_clipboard_text(app, &text);
+        let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
+        crate::tui::app::input::paste_into_chat(app, &normalized);
         return;
     }
 
@@ -51,52 +49,4 @@ pub(super) fn handle_clipboard_paste(app: &mut App) {
             app.state.status = crate::tui::clipboard_ssh::clipboard_unavailable_message();
         }
     }
-}
-
-/// Insert clipboard text into the chat input as a single block.
-///
-/// Mirrors the bracketed-paste handling in
-/// [`crate::tui::app::input::handle_paste`] so that multi-line clipboard
-/// contents stay in the input buffer instead of each line submitting
-/// itself as a separate chat message.
-fn insert_clipboard_text(app: &mut App, text: &str) {
-    use crate::tui::app::input::pasted_text;
-
-    let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
-    if pasted_text::should_summarize(&normalized) {
-        let line_count = normalized.lines().count();
-        let byte_count = normalized.len();
-        let size = pasted_text::format_size(byte_count);
-        let placeholder = pasted_text::attach_paste(&mut app.state, normalized);
-        let id = app
-            .state
-            .pending_text_pastes
-            .last()
-            .map(|p| p.id)
-            .unwrap_or(0);
-        if app.state.input.starts_with('/') {
-            app.state.input_mode = InputMode::Command;
-        } else {
-            app.state.input_mode = InputMode::Editing;
-        }
-        app.state.insert_text(&placeholder);
-        app.state.status = format!(
-            "Pasted {line_count} lines ({size}) from clipboard summarised as #{id}; full text will be sent to the agent."
-        );
-        return;
-    }
-    app.state.input_mode = if app.state.input.is_empty() && normalized.starts_with('/') {
-        InputMode::Command
-    } else if app.state.input.starts_with('/') {
-        InputMode::Command
-    } else {
-        InputMode::Editing
-    };
-    app.state.insert_text(&normalized);
-    let line_count = normalized.lines().count();
-    app.state.status = if line_count > 1 {
-        format!("Pasted {line_count} lines from clipboard")
-    } else {
-        "Pasted from clipboard".to_string()
-    };
 }
