@@ -129,7 +129,7 @@ pipeline {
                         sh '''#!/bin/bash
                         set -euo pipefail
                         export SSHPASS="${MAC_PASS}"
-                        MAC_HOST_ADDR="${MAC_USER}@192.168.50.251"
+                        MAC_HOST_ADDR="${MAC_USER}@192.168.50.249"
                         echo "==> Building macOS binaries on Mac Mini (${MAC_HOST_ADDR})..."
 
                         # Copy source to Mac Mini
