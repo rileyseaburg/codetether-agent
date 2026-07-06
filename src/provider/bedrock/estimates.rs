@@ -52,7 +52,7 @@ pub fn estimate_context_window(model_id: &str) -> usize {
 ///
 /// ```rust
 /// use codetether_agent::provider::bedrock::estimate_max_output;
-/// assert_eq!(estimate_max_output("us.anthropic.claude-sonnet-4-6-v1:0"), 128_000);
+/// assert_eq!(estimate_max_output("us.anthropic.claude-sonnet-4-6"), 128_000);
 /// assert_eq!(estimate_max_output("global.anthropic.claude-fable-5"), 128_000);
 /// assert_eq!(estimate_max_output("amazon.nova-pro-v1:0"), 5_000);
 /// ```

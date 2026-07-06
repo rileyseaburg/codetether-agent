@@ -19,11 +19,11 @@ fn bedrock_fable_failure_prefers_bedrock_siblings_over_zai() {
 
 #[test]
 fn bedrock_ladder_excludes_the_failed_model() {
-    let candidates = known_good_router_candidates("bedrock", "us.anthropic.claude-sonnet-4-6-v1:0");
+    let candidates = known_good_router_candidates("bedrock", "us.anthropic.claude-sonnet-4-6");
     assert!(
         !candidates
             .iter()
-            .any(|c| c.eq_ignore_ascii_case("bedrock/us.anthropic.claude-sonnet-4-6-v1:0")),
+            .any(|c| c.eq_ignore_ascii_case("bedrock/us.anthropic.claude-sonnet-4-6")),
         "failed model must not be re-offered: {candidates:?}"
     );
     assert!(candidates.iter().any(|c| c.starts_with("bedrock/")));

@@ -1,0 +1,97 @@
+// Live Bedrock model-id validator.
+//
+// Iterates candidate model/inference-profile IDs, fires a tiny Converse
+// request at each via the aws CLI, and reports which return 200 versus an
+// invalid-identifier 400. Use this to prove the canonical ID for every
+// Anthropic model before touching Rust.
+//
+// JSON payloads are built with json_encode on real maps/lists so the
+// plugin parser never sees manually escaped quotes.
+//
+// Usage:
+//   tetherscript_plugin path=examples/tetherscript/bedrock_model_probe.tether
+//     hook=probe_all args=[us-west-2, bedrock-ttse]
+
+fn messages_json() {
+    let part = map()
+    part["text"] = "hi"
+    let turn = map()
+    turn["role"] = "user"
+    turn["content"] = [part]
+    return json_encode([turn])
+}
+
+fn config_json() {
+    let cfg = map()
+    cfg["maxTokens"] = 1
+    return json_encode(cfg)
+}
+
+fn probe_one(region, profile, model) {
+    region = region.trim()
+    profile = profile.trim()
+    model = model.trim()
+    let msgs = messages_json()
+    let cfg = config_json()
+    let cmd = "aws bedrock-runtime converse --region " + region + " --profile " + profile + " --model-id '" + model + "' --messages '" + msgs + "' --inference-config '" + cfg + "' 2>&1"
+    let res = process_run("bash", ["-lc", cmd], nil, 60000)??
+    let out = str(res["stdout"]) + str(res["stderr"])
+    let m = map()
+    m["model"] = model
+    if res["success"] && out.contains("output") {
+        m["valid"] = true
+        m["status"] = "200"
+    } else {
+        m["valid"] = false
+        if out.contains("model identifier is invalid") {
+            m["status"] = "400-invalid-id"
+        } else if out.contains("AccessDenied") || out.contains("not authorized") {
+            m["status"] = "403-access"
+        } else if out.contains("granted access") || out.contains("not been granted") {
+            m["status"] = "403-not-granted"
+        } else if out.contains("ThrottlingException") {
+            m["status"] = "429-throttled"
+        } else {
+            m["status"] = "other"
+        }
+    }
+    m["detail"] = out.trim()
+    return Ok(m)
+}
+
+fn candidate_models() {
+    let mut c = []
+    c.push("us.anthropic.claude-sonnet-4-6")
+    c.push("us.anthropic.claude-sonnet-4-6-v1:0")
+    c.push("us.anthropic.claude-opus-4-6-v1")
+    c.push("us.anthropic.claude-opus-4-7")
+    c.push("us.anthropic.claude-opus-4-8")
+    c.push("us.anthropic.claude-sonnet-5")
+    c.push("us.anthropic.claude-haiku-4-5-20251001-v1:0")
+    c.push("us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+    c.push("us.anthropic.claude-opus-4-5-20251101-v1:0")
+    c.push("us.anthropic.claude-fable-5")
+    return c
+}
+
+fn probe_all(region, profile) {
+    let mut results = []
+    for model in candidate_models() {
+        let r = probe_one(region, profile, model)?
+        results.push(r)
+    }
+    let out = map()
+    out["region"] = region.trim()
+    out["profile"] = profile.trim()
+    out["results"] = results
+    return Ok(json_encode(out))
+}
+
+fn probe_list(region, profile, models) {
+    let mut results = []
+    for model in models {
+        let r = probe_one(region, profile, str(model))?
+        results.push(r)
+    }
+    return Ok(json_encode(results))
+}

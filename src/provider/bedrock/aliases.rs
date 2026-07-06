@@ -38,6 +38,12 @@
 ///
 /// assert_eq!(resolve_model_id("claude-opus-4-7"), "us.anthropic.claude-opus-4-7");
 /// assert_eq!(resolve_model_id("nova-lite"), "amazon.nova-lite-v1:0");
+/// // sonnet-4-6 is an unsuffixed inference profile; the `-v1:0` form 400s.
+/// assert_eq!(resolve_model_id("claude-sonnet-4-6"), "us.anthropic.claude-sonnet-4-6");
+/// assert_eq!(
+///     resolve_model_id("us.anthropic.claude-sonnet-4-6"),
+///     "us.anthropic.claude-sonnet-4-6"
+/// );
 /// // fable must use the invokable `us.` profile, not the 500-returning `global.`
 /// assert_eq!(resolve_model_id("fable"), "us.anthropic.claude-fable-5");
 /// assert_eq!(
@@ -60,14 +66,14 @@ pub fn resolve_model_id(model: &str) -> &str {
         m if m == "fable" || m.ends_with("claude-fable-5") => "us.anthropic.claude-fable-5",
 
         "claude-sonnet-4.6" | "claude-4.6-sonnet" | "claude-sonnet-4-6" => {
-            "us.anthropic.claude-sonnet-4-6-v1:0"
+            "us.anthropic.claude-sonnet-4-6"
         }
         "claude-sonnet-4.5" | "claude-4.5-sonnet" => "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
         "claude-sonnet-4" | "claude-4-sonnet" => "us.anthropic.claude-sonnet-4-20250514-v1:0",
         "claude-haiku-4.5" | "claude-4.5-haiku" => "us.anthropic.claude-haiku-4-5-20251001-v1:0",
 
         // Handle full IDs without version suffix (common user input)
-        "us.anthropic.claude-sonnet-4-6" => "us.anthropic.claude-sonnet-4-6-v1:0",
+        "us.anthropic.claude-sonnet-4-6" => "us.anthropic.claude-sonnet-4-6",
         "us.anthropic.claude-sonnet-4-5" => "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
         "us.anthropic.claude-sonnet-4" => "us.anthropic.claude-sonnet-4-20250514-v1:0",
         "us.anthropic.claude-opus-4-6" => "us.anthropic.claude-opus-4-6-v1",

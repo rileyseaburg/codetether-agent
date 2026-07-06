@@ -19,7 +19,7 @@ pub(in crate::session::helper) fn provider_failover_candidates(provider: &str) -
         "zai" => vec!["zai/glm-5.1".to_string(), "zai/glm-5".to_string()],
         "glm5" => vec!["glm5/glm-5".to_string()],
         "bedrock" => vec![
-            "bedrock/us.anthropic.claude-sonnet-4-6-v1:0".to_string(),
+            "bedrock/us.anthropic.claude-sonnet-4-6".to_string(),
             "bedrock/us.anthropic.claude-opus-4-6-v1".to_string(),
             "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0".to_string(),
         ],
