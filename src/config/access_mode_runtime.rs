@@ -5,9 +5,7 @@ static PROCESS_ACCESS_MODE: OnceLock<RwLock<Option<AccessMode>>> = OnceLock::new
 
 impl Config {
     pub fn apply_process_access_mode_override(access_mode: Option<AccessMode>) {
-        if access_mode.is_some() {
-            *slot().write().unwrap_or_else(|e| e.into_inner()) = access_mode;
-        }
+        *slot().write().unwrap_or_else(|e| e.into_inner()) = access_mode;
     }
 }
 

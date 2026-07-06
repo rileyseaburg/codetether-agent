@@ -37,9 +37,13 @@ pub(crate) mod test_env {
     /// Acquire the shared env lock, recovering from poison so one panicking
     /// test does not cascade `PoisonError` failures into unrelated tests.
     pub(crate) fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-        ENV_LOCK
+        let guard = ENV_LOCK
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        crate::approval::session_grants::reset();
+        crate::approval::session_command_grants::reset();
+        crate::config::Config::apply_process_access_mode_override(None);
+        guard
     }
 }
 

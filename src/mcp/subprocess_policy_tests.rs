@@ -1,5 +1,6 @@
 use super::{guard, policy_args};
 use crate::approval::{ApprovalStore, test_env::lock_env};
+use crate::config::{AccessMode, Config};
 
 #[path = "subprocess_policy_alias_tests.rs"]
 mod alias;
@@ -9,6 +10,7 @@ struct EnvGuard;
 impl EnvGuard {
     fn data_dir(path: &std::path::Path) -> Self {
         unsafe { std::env::set_var("CODETETHER_DATA_DIR", path) };
+        Config::apply_process_access_mode_override(Some(AccessMode::Ask));
         Self
     }
 }
@@ -16,6 +18,7 @@ impl EnvGuard {
 impl Drop for EnvGuard {
     fn drop(&mut self) {
         unsafe { std::env::remove_var("CODETETHER_DATA_DIR") };
+        Config::apply_process_access_mode_override(None);
     }
 }
 

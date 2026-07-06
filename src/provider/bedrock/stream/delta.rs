@@ -47,6 +47,7 @@ pub(super) fn handle_block_delta(state: &StreamState, body: &Value) -> Vec<Strea
                 idx,
                 sig,
             );
+            return vec![StreamChunk::Thinking(String::new())];
         }
     }
 
