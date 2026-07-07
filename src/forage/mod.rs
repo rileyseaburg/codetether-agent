@@ -7,10 +7,12 @@ use crate::okr::{
 };
 use crate::provider::ProviderRegistry;
 use crate::swarm::{DecompositionStrategy, ExecutionMode, SwarmConfig, SwarmExecutor};
+use run_exec::execute_opportunity_with_run;
 mod clarify;
 pub mod console;
 mod console_entry;
 mod quality_shell;
+mod run_exec;
 mod s3_optional;
 mod tetherscript_score;
 use crate::forage_println;
@@ -826,38 +828,6 @@ async fn run_quality_gates(changed_files: &[String]) -> Result<(String, bool)> {
     }
 
     Ok((results.join("\n"), all_passed))
-}
-
-async fn execute_opportunity_with_run(
-    item: &ForageOpportunity,
-    args: &ForageArgs,
-) -> Result<String> {
-    let run_args = RunArgs {
-        message: item.prompt.clone(),
-        continue_session: false,
-        session: None,
-        model: args.model.clone(),
-        agent: Some("build".to_string()),
-        access_mode: None,
-        format: "default".to_string(),
-        file: Vec::new(),
-        codex_session: None,
-        max_steps: None,
-        auto_continue_until: None,
-        branches: 1,
-        strategies: Vec::new(),
-    };
-    let timeout_secs = args.run_timeout_secs.clamp(30, 86_400);
-    match tokio::time::timeout(
-        Duration::from_secs(timeout_secs),
-        crate::cli::run::execute(run_args),
-    )
-    .await
-    {
-        Ok(Ok(())) => Ok("run execution completed".to_string()),
-        Ok(Err(err)) => Err(err),
-        Err(_) => anyhow::bail!("run execution timed out after {timeout_secs}s"),
-    }
 }
 
 async fn execute_opportunity_with_swarm(

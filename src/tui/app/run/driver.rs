@@ -76,7 +76,7 @@ pub async fn run(
     let access_mode = super::full_auto::apply(&mut session, access_mode, yolo);
     let mut app = App::default();
 
-    super::hydrate::initial(&mut app, &cwd, allow_network, peer.ready, &session);
+    super::hydrate_initial::initial(&mut app, &cwd, allow_network, peer.ready, &session);
     let view = SessionView::from_session(&session);
     draw_ui(&mut terminal_runtime.terminal, &mut app, &view)?;
 

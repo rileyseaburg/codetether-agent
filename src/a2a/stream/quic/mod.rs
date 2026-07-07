@@ -19,6 +19,7 @@ pub mod codec;
 pub mod listener;
 pub mod migration;
 pub mod reader;
+pub(self) mod reader_outcome;
 pub mod server;
 pub mod session;
 pub mod writer;

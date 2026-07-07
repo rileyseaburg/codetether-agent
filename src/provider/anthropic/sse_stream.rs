@@ -23,6 +23,10 @@ pub(crate) struct SseChunkStream {
     pub(crate) pending_event: Option<String>,
     /// Content-block parser with tool-call ID tracking.
     blocks: BlockParser,
+    /// Set to `true` once a real [`StreamChunk::Done`] has been yielded from
+    /// a `message_delta` SSE event. Used by the poll impl to distinguish a
+    /// clean byte-stream close (after a real Done) from a premature EOF.
+    pub(crate) saw_done: bool,
 }
 
 impl SseChunkStream {
@@ -33,6 +37,7 @@ impl SseChunkStream {
             buffer: String::new(),
             pending_event: None,
             blocks: BlockParser::new(),
+            saw_done: false,
         }
     }
 
@@ -56,3 +61,11 @@ impl SseChunkStream {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "sse_stream_tests.rs"]
+mod tests;
+
+#[cfg(test)]
+#[path = "sse_stream_premature_eof_tests.rs"]
+mod premature_eof_tests;
