@@ -28,6 +28,12 @@
 //! * [`terminal`] / [`terminal_marker`] — terminal truncation last resort.
 //! * [`shrink`] / `shrink_*` — payload head/tail shrinking.
 
+#[path = "../compression_defer.rs"]
+mod compression_defer;
+#[path = "../compression_last_message.rs"]
+mod compression_last_message;
+#[path = "../compression_summary.rs"]
+mod compression_summary;
 mod context;
 pub(crate) mod dropped_toc;
 #[cfg(test)]

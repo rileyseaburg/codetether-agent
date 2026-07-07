@@ -11,9 +11,6 @@ pub mod bare_json;
 pub mod bootstrap;
 pub mod build;
 pub mod compression;
-mod compression_defer;
-mod compression_last_message;
-mod compression_summary;
 pub mod confirmation;
 pub mod cost_guard;
 pub mod defaults;
@@ -51,6 +48,7 @@ pub(in crate::session::helper) use tool_modules::*;
 mod tool_heartbeat;
 pub mod validation;
 mod workspace_tools;
+mod step_model_restore;
 
 #[cfg(test)]
 mod prompt_events_test_provider;

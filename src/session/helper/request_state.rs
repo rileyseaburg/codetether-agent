@@ -6,6 +6,8 @@ use crate::tool::ToolRegistry;
 
 use super::workspace_tools::registry_for_cwd;
 
+#[path = "request_state/apply_to.rs"]
+mod apply_to;
 #[path = "request_state/settings.rs"]
 mod settings;
 #[path = "request_state/tools.rs"]

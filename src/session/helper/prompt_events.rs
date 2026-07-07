@@ -173,6 +173,8 @@ pub(crate) async fn run_prompt_with_events(
     };
 
     for step in 1..=max_steps {
+        // Restore original model if a within-step retry swapped it.
+        super::step_model_restore::restore_step_model(session, &providers, &registry, &cwd, &mut selected_provider, &mut model, &mut provider, &mut provider_state, &mut tool_registry, &mut tool_definitions, &mut temperature, &mut model_supports_tools, &mut advertised_tool_definitions, &mut system_prompt)?;
         tracing::info!(step = step, "Agent step starting");
         let _ = event_tx.send(SessionEvent::Thinking).await;
 
@@ -335,7 +337,6 @@ pub(crate) async fn run_prompt_with_events(
                                 &cwd,
                             )
                             .await;
-                            session.metadata.model = Some(format!("{selected_provider}/{model}"));
                             attempt = 0;
                         }
                         continue;

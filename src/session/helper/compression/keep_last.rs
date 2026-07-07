@@ -52,7 +52,7 @@ pub(crate) async fn compress_messages_keep_last(
         messages.extend(tail);
         return Ok(false);
     }
-    if let Some(summary) = crate::session::helper::compression_defer::context_summary(
+    if let Some(summary) = crate::session::helper::compression::compression_defer::context_summary(
         &context,
         ctx_window,
         &ctx.session_id,
@@ -62,7 +62,7 @@ pub(crate) async fn compress_messages_keep_last(
         &ctx.rlm_config,
     ) {
         let toc = crate::session::helper::compression::dropped_toc::render_toc(&prefix, 0);
-        crate::session::helper::compression_summary::install(messages, tail, summary, &toc);
+        crate::session::helper::compression::compression_summary::install(messages, tail, summary, &toc);
         return Ok(true);
     }
     Ok(false)

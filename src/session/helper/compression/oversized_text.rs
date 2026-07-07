@@ -33,7 +33,7 @@ pub(super) fn build_replacement(
     );
     cached
         .map(|summary| {
-            crate::session::helper::compression_last_message::wrap_cached(
+            crate::session::helper::compression::compression_last_message::wrap_cached(
                 summary,
                 original,
                 msg_tokens,
