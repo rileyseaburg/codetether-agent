@@ -10,6 +10,8 @@ use crate::tui::ui::status_bar::format_timestamp;
 
 use super::elapsed_badge::elapsed_badge;
 use super::spinner::{current_spinner_frame, spinner_color};
+use crate::tui::ui::gradient::rgb_supported;
+use crate::tui::ui::gradient_rule::gradient_rule;
 
 /// Build the neon separator + header line for the streaming preview block.
 ///
@@ -19,10 +21,12 @@ pub(super) fn streaming_header(
     separator_width: usize,
 ) -> (Line<'static>, Line<'static>) {
     let neon = spinner_color();
-    let sep = Line::from(Span::styled(
-        "━".repeat(separator_width.min(60)),
-        Style::default().fg(neon),
-    ));
+    let width = separator_width.min(60);
+    let sep = if let (true, ratatui::style::Color::Rgb(r, g, b)) = (rgb_supported(), neon) {
+        gradient_rule("━", width, (r, g, b), (40, 40, 50))
+    } else {
+        Line::from(Span::styled("━".repeat(width), Style::default().fg(neon)))
+    };
     let header = Line::from(vec![
         Span::styled(
             format!("[{}] ", format_timestamp(std::time::SystemTime::now())),

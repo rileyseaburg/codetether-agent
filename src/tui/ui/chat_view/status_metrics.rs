@@ -27,9 +27,9 @@ pub fn metric_spans(app: &App) -> Vec<Span<'static>> {
         spans.push(Span::raw(" | "));
     }
     push_token_spans(&mut spans);
-    if let Some(gauge) = super::context_gauge::context_gauge_span(app) {
+    if let Some(gauge) = super::context_gauge::context_gauge_spans(app) {
         spans.push(Span::raw(" | "));
-        spans.push(gauge);
+        spans.extend(gauge);
     }
     push_throughput_span(&mut spans, app);
     if let Some(spark) = super::throughput_sparkline::sparkline_span(app) {

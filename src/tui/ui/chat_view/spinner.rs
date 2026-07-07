@@ -7,6 +7,9 @@
 
 use ratatui::style::Color;
 
+#[path = "spinner_hue.rs"]
+pub mod spinner_hue;
+
 const SPINNER: [&str; 8] = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
 
 /// Neon colors that cycle every ~300 ms.
@@ -38,7 +41,11 @@ pub fn current_spinner_frame() -> &'static str {
     SPINNER[idx]
 }
 
-/// Return a neon [`Color`] that cycles every ~300 ms.
+/// Return a neon [`Color`] for spinner/accent glow.
+///
+/// On truecolor terminals this is a smooth continuously-rotating HSV hue
+/// (fluid "breathing" glow); otherwise it steps through named neon colors
+/// every ~300 ms.
 ///
 /// # Examples
 ///
@@ -47,6 +54,9 @@ pub fn current_spinner_frame() -> &'static str {
 /// let _c = spinner_color();
 /// ```
 pub fn spinner_color() -> Color {
+    if crate::tui::ui::gradient::rgb_supported() {
+        return spinner_hue::hue_color(3_000);
+    }
     let idx = (std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

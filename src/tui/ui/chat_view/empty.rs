@@ -1,8 +1,10 @@
-//! Empty-placeholder line when the chat has no messages.
+//! Empty-state banner shown when the chat has no messages.
 
-use ratatui::{style::Stylize, text::Line};
+use ratatui::text::Line;
 
-/// Push a welcoming placeholder when no messages exist yet.
+use crate::tui::ui::banner::push_welcome_banner;
+
+/// Push the neon welcome banner when no messages exist yet.
 ///
 /// # Examples
 ///
@@ -10,10 +12,8 @@ use ratatui::{style::Stylize, text::Line};
 /// use codetether_agent::tui::ui::chat_view::empty::push_empty_placeholder;
 /// let mut lines: Vec<ratatui::text::Line<'static>> = Vec::new();
 /// push_empty_placeholder(&mut lines);
-/// assert_eq!(lines.len(), 1);
+/// assert!(lines.len() >= 5);
 /// ```
 pub fn push_empty_placeholder(lines: &mut Vec<Line<'static>>) {
-    lines.push(Line::from(
-        "No messages yet. Type a prompt and press Enter, or use /help.".dim(),
-    ));
+    push_welcome_banner(lines);
 }

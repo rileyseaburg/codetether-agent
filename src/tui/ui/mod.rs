@@ -1,8 +1,11 @@
+pub mod banner;
 pub mod border_style;
 pub mod chat_view;
 pub mod editor;
 pub mod fuzzy_find_overlay;
 pub mod goal_prompt_overlay;
+pub mod gradient;
+pub mod gradient_rule;
 pub mod inspector;
 pub mod main;
 pub mod mode_accent;

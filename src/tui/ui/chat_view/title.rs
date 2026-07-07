@@ -1,7 +1,7 @@
 //! Chat-panel block title with neon gradient styling.
 //!
 //! [`build_title`] returns a [`Line`] with colored spans for the messages-panel
-//! title bar: a neon `⬡ CodeTether` brand, then dim model/session labels.
+//! title bar: a gradient `⬡ CodeTether` brand, then dim model/session labels.
 
 use ratatui::{
     style::{Color, Modifier, Style},
@@ -10,9 +10,13 @@ use ratatui::{
 
 use crate::tui::app::session_runtime::SessionView;
 use crate::tui::app::state::App;
-use crate::tui::ui::status_bar::session_model_label;
 
 use super::spinner::spinner_color;
+
+#[path = "title_brand.rs"]
+pub mod brand;
+#[path = "title_labels.rs"]
+pub mod labels;
 
 /// Build the messages-panel neon title [`Line`].
 ///
@@ -26,42 +30,24 @@ use super::spinner::spinner_color;
 /// # }
 /// ```
 pub fn build_title(app: &App, session: &SessionView) -> Line<'static> {
-    let session_label = app
-        .state
-        .session_id
-        .as_deref()
-        .map(|id| {
-            if id.len() > 18 {
-                format!("{}…", &id[..18])
-            } else {
-                id.to_string()
-            }
-        })
-        .unwrap_or_else(|| "new".to_string());
-    let model_label = session
-        .model
-        .clone()
-        .or_else(|| session_model_label(&app.state))
-        .unwrap_or_else(|| "auto".to_string());
     let neon = spinner_color();
-    Line::from(vec![
-        Span::styled(
-            " ⬡ ",
-            Style::default().fg(neon).add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(
-            "CodeTether",
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD),
-        ),
+    let mut spans = vec![Span::styled(
+        " ⬡ ",
+        Style::default().fg(neon).add_modifier(Modifier::BOLD),
+    )];
+    spans.extend(brand::brand_spans());
+    spans.extend([
         Span::styled(" ▸ ", Style::default().fg(Color::DarkGray)),
         Span::styled(
-            format!("model:{model_label}"),
+            format!("model:{}", labels::model_label(app, session)),
             Style::default().fg(Color::Cyan),
         ),
         Span::styled("  session:", Style::default().fg(Color::DarkGray)),
-        Span::styled(session_label, Style::default().fg(Color::Yellow)),
+        Span::styled(
+            labels::session_label(app),
+            Style::default().fg(Color::Yellow),
+        ),
         Span::raw(" "),
-    ])
+    ]);
+    Line::from(spans)
 }
