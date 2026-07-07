@@ -28,9 +28,14 @@ fn hash_content(content: &[u8]) -> u64 {
 }
 
 /// Returns `true` if `content` is byte-identical to the last successful save
-/// for `id` (i.e. the write can be safely skipped). Never elides the first
-/// save of a session in this process.
-pub(super) fn is_unchanged(id: &str, content: &[u8]) -> bool {
+/// for `id` **and** the target file still exists on disk (so eliding the
+/// write is safe). Never elides the first save of a session in this process,
+/// and never elides when `path` is missing — this keeps the guard correct
+/// across data-dir swaps in tests and if a file is deleted underneath us.
+pub(super) fn is_unchanged(id: &str, content: &[u8], path: &std::path::Path) -> bool {
+    if !path.exists() {
+        return false;
+    }
     let hash = hash_content(content);
     store()
         .lock()

@@ -5,13 +5,13 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use tokio::fs;
 
-#[path = "save_guard.rs"]
-mod save_guard;
-
 use super::header::SessionHeader;
 use super::tail_load::TailLoad;
 use super::tail_seed::with_tail_cap;
 use super::types::Session;
+
+#[path = "save_guard.rs"]
+mod save_guard;
 
 impl Session {
     /// Load an existing session by its UUID.
@@ -116,7 +116,7 @@ impl Session {
         // successful save for this id — save() is called on hot paths and the
         // disk write + rename + journal + index upsert are pure overhead when
         // nothing changed.
-        if save_guard::is_unchanged(&self.id, &content) {
+        if save_guard::is_unchanged(&self.id, &content, &path) {
             tracing::trace!(session_id = %self.id, "session save elided (unchanged)");
             return Ok(());
         }
