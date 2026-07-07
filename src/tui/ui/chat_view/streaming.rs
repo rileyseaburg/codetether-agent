@@ -15,7 +15,7 @@ use ratatui::{
 use crate::tui::app::state::AppState;
 use crate::tui::message_formatter::MessageFormatter;
 
-use super::streaming_header::streaming_header;
+use crate::tui::ui::chat_view::streaming_header::streaming_header;
 
 const STREAM_REPARSE_THRESHOLD: usize = 256;
 

@@ -72,22 +72,21 @@ pub async fn run(
     // directory, or create a fresh one only when none exists. This prevents
     // a blank placeholder from being allocated and then silently discarded.
     let mut startup = super::startup::load(&cwd, bus.clone()).await;
-    let mut session = super::session_resolve::resolve(startup.session_load.take(), &bus).await?;
-    let access_mode = super::full_auto::apply(&mut session, access_mode, yolo);
+    let resolved = super::session_resolve::resolve(startup.session_load.take(), &bus).await?;
+    let mut session = resolved.session;
     let mut app = App::default();
 
     super::hydrate_initial::initial(&mut app, &cwd, allow_network, peer.ready, &session);
     let view = SessionView::from_session(&session);
     draw_ui(&mut terminal_runtime.terminal, &mut app, &view)?;
 
-    super::config::apply_startup(&mut session, &mut startup, access_mode);
-    let outcome = super::session_outcome::from_session(&session);
+    super::config::apply_policies(&mut session, &mut startup, access_mode, yolo);
     super::hydrate::complete(
         &mut app,
         allow_network,
         &mut session,
         startup.worker_bridge.as_ref(),
-        outcome,
+        resolved.outcome,
         startup.workspace,
     );
 

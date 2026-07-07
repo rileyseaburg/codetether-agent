@@ -12,7 +12,7 @@ pub(super) struct Startup {
     pub registry: Option<Arc<ProviderRegistry>>,
     pub worker_bridge: Option<TuiWorkerBridge>,
     pub session_load: Option<anyhow::Result<TailLoad>>,
-    pub config: anyhow::Result<Config>,
+    pub config: Option<anyhow::Result<Config>>,
     pub workspace: WorkspaceSnapshot,
 }
 
@@ -33,7 +33,7 @@ pub(super) async fn load(cwd: &Path, bus: Arc<AgentBus>) -> Startup {
         registry,
         worker_bridge: worker_result.ok().flatten(),
         session_load: Some(session_load),
-        config,
+        config: Some(config),
         workspace,
     }
 }

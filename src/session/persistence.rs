@@ -5,6 +5,9 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use tokio::fs;
 
+#[path = "save_guard.rs"]
+mod save_guard;
+
 use super::header::SessionHeader;
 use super::tail_load::TailLoad;
 use super::tail_seed::with_tail_cap;
@@ -109,18 +112,16 @@ impl Session {
         let content = tokio::task::spawn_blocking(move || serde_json::to_vec(&snapshot))
             .await
             .map_err(|e| anyhow::anyhow!("session serialize task panicked: {e}"))??;
-        fs::write(&tmp, content).await?;
-        // Atomic swap. On POSIX `rename` is atomic over existing files;
-        // on Windows we fall back to remove-then-rename.
-        if let Err(primary) = fs::rename(&tmp, &path).await {
-            let _ = fs::remove_file(&path).await;
-            if let Err(retry) = fs::rename(&tmp, &path).await {
-                let _ = fs::remove_file(&tmp).await;
-                return Err(anyhow::anyhow!(
-                    "session rename failed: {primary} (retry: {retry})"
-                ));
-            }
+        // Elide the write entirely when the serialized bytes match the last
+        // successful save for this id — save() is called on hot paths and the
+        // disk write + rename + journal + index upsert are pure overhead when
+        // nothing changed.
+        if save_guard::is_unchanged(&self.id, &content) {
+            tracing::trace!(session_id = %self.id, "session save elided (unchanged)");
+            return Ok(());
         }
+        save_guard::atomic_write(&tmp, &path, &content).await?;
+        save_guard::record_saved(&self.id, &content);
         let mut journal = super::journal::WritebackJournal::new(&session_id_for_journal);
         let tx = journal.stage(super::journal::Op::Save);
         if let Err(reason) = journal.commit(tx) {
@@ -129,11 +130,7 @@ impl Session {
         if let Err(err) =
             super::journal::append_entries(&session_id_for_journal, journal.entries()).await
         {
-            tracing::warn!(
-                %err,
-                session_id = %session_id_for_journal,
-                "save journal append failed (non-fatal)"
-            );
+            tracing::warn!(%err, session_id = %session_id_for_journal, "save journal append failed (non-fatal)");
         }
         // Update the workspace index so the next resume is O(1). Best
         // effort — a failed index write must not fail the session save.
@@ -196,6 +193,7 @@ impl Session {
     /// Delete a session file by ID. No-op if the file does not exist.
     pub async fn delete(id: &str) -> Result<()> {
         let path = Self::session_path(id)?;
+        save_guard::forget(id);
         match tokio::fs::remove_file(&path).await {
             Ok(()) => Ok(()),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),

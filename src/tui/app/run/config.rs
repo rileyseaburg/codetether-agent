@@ -23,8 +23,27 @@ pub(super) fn apply_startup(
 ) {
     apply(
         session,
-        std::mem::replace(&mut startup.config, Ok(Config::default())),
+        startup
+            .config
+            .take()
+            .unwrap_or_else(|| Ok(Config::default())),
         startup.registry.as_deref(),
         access_mode,
     );
+}
+
+/// Apply startup access-mode + config + `--yolo` policy in the correct order.
+///
+/// Access mode is resolved first (yolo forces `Full`), config is applied, then
+/// the yolo session flag is set last so it is never clobbered by
+/// [`Session::apply_config`].
+pub(super) fn apply_policies(
+    session: &mut Session,
+    startup: &mut super::startup::Startup,
+    access_mode: Option<AccessMode>,
+    yolo: bool,
+) {
+    let access_mode = super::full_auto::effective_access_mode(access_mode, yolo);
+    apply_startup(session, startup, access_mode);
+    super::full_auto::apply_session_policy(session, yolo);
 }

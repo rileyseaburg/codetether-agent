@@ -20,6 +20,7 @@ mod secrets;
 mod session_banner;
 mod session_outcome;
 mod session_resolve;
+mod session_resolve_helpers;
 mod session_scan;
 mod session_status;
 mod startup;
