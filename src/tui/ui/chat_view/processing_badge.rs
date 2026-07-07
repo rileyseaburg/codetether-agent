@@ -1,7 +1,7 @@
-//! Live "processing" badge: a gated spinner plus active-agent count.
+//! Live "processing" badge: animated neon spinner + active-agent count.
 //!
-//! The spinner glyph is derived from wall-clock time, but the surrounding
-//! event loop only redraws while `app.state.processing` is true (see
+//! The spinner glyph and color cycle from wall-clock time. The event loop
+//! only redraws while `app.state.processing` is true (see
 //! `event_loop::dirty`), so the animation runs during a turn and freezes
 //! at 0% idle CPU once the turn completes.
 
@@ -11,15 +11,13 @@ use ratatui::{
 };
 
 use crate::tui::app::state::App;
-use crate::tui::ui::chat_view::spinner::current_spinner_frame;
+
+use super::spinner::{current_spinner_frame, spinner_color};
 
 /// Build the processing badge span when a turn is in flight.
 ///
-/// Returns `None` when idle so the status bar stays static and no redraw
-/// is triggered. While processing it shows the animated spinner. A count is
-/// appended only when there is genuine concurrent in-flight work (queued
-/// plus active remote A2A tasks) — never the static set of bus-registered
-/// agents, which is constant and misleading.
+/// Returns `None` when idle. While processing, shows an animated neon
+/// spinner. A task count is appended only for genuine concurrent work.
 ///
 /// # Examples
 ///
@@ -45,7 +43,7 @@ pub fn processing_badge(app: &App) -> Option<Span<'static>> {
         label,
         Style::default()
             .fg(Color::Black)
-            .bg(Color::Cyan)
+            .bg(spinner_color())
             .add_modifier(Modifier::BOLD),
     ))
 }

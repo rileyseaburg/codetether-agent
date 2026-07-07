@@ -1,12 +1,25 @@
-//! Animated spinner and elapsed-time formatting.
+//! Animated spinner glyphs and neon cycling colors.
 //!
-//! Ported from the legacy TUI. [`current_spinner_frame`] cycles through
-//! braille-pattern glyphs every 100 ms. [`format_elapsed`] renders an
-//! [`Instant`] delta as `MmSS` or `S.s` seconds.
+//! [`current_spinner_frame`] cycles through a dense braille-arc pattern.
+//! [`spinner_color`] returns a neon hue that rotates cyan → magenta → yellow
+//! every ~300 ms so the spinner visually "pulses" with color.
+//! [`format_elapsed`] renders an [`Instant`] delta as `MmSS` or `S.s`.
 
-const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+use ratatui::style::Color;
 
-/// Return the current braille-spinner glyph based on wall-clock time.
+const SPINNER: [&str; 8] = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+
+/// Neon colors that cycle every ~300 ms.
+const NEON: [Color; 6] = [
+    Color::Cyan,
+    Color::LightCyan,
+    Color::Magenta,
+    Color::LightMagenta,
+    Color::Yellow,
+    Color::LightYellow,
+];
+
+/// Return the current spinner glyph based on wall-clock time (100 ms steps).
 ///
 /// # Examples
 ///
@@ -25,6 +38,24 @@ pub fn current_spinner_frame() -> &'static str {
     SPINNER[idx]
 }
 
+/// Return a neon [`Color`] that cycles every ~300 ms.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::tui::ui::chat_view::spinner::spinner_color;
+/// let _c = spinner_color();
+/// ```
+pub fn spinner_color() -> Color {
+    let idx = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        / 300) as usize
+        % NEON.len();
+    NEON[idx]
+}
+
 /// Format the time elapsed since `started` as a human-readable string.
 ///
 /// Returns ` MmSS` for durations ≥ 60 s, otherwise ` S.s`.
@@ -33,7 +64,6 @@ pub fn current_spinner_frame() -> &'static str {
 ///
 /// ```rust
 /// use codetether_agent::tui::ui::chat_view::spinner::format_elapsed;
-/// // Instant::now() has ≈0 s elapsed, so format is " 0.xs"
 /// let s = format_elapsed(std::time::Instant::now());
 /// assert!(s.starts_with(' '));
 /// assert!(s.contains('s'));

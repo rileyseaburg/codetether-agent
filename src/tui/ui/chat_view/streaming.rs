@@ -8,21 +8,18 @@
 use std::cell::RefCell;
 
 use ratatui::{
-    style::{Color, Modifier, Style},
+    style::{Color, Style},
     text::{Line, Span},
 };
 
 use crate::tui::app::state::AppState;
 use crate::tui::message_formatter::MessageFormatter;
-use crate::tui::ui::status_bar::format_timestamp;
 
-/// Reparse threshold: reuse the previously-parsed streaming preview while the
-/// text has grown by fewer than this many bytes.
+use super::streaming_header::streaming_header;
+
 const STREAM_REPARSE_THRESHOLD: usize = 256;
 
 thread_local! {
-    /// `(streaming_text_len_at_parse, parsed_lines)`. Keyed per UI thread;
-    /// the TUI renders single-threaded so this avoids any locking cost.
     static STREAM_PARSE_CACHE: RefCell<Option<(usize, Vec<Line<'static>>)>> =
         const { RefCell::new(None) };
 }
@@ -44,27 +41,10 @@ pub fn push_streaming_preview(
     if !state.processing || state.streaming_text.is_empty() {
         return;
     }
-    lines.push(Line::from(Span::styled(
-        "─".repeat(separator_width.min(40)),
-        Style::default().fg(Color::DarkGray).dim(),
-    )));
-    lines.push(Line::from(vec![
-        Span::styled(
-            format!("[{}] ", format_timestamp(std::time::SystemTime::now())),
-            Style::default().fg(Color::DarkGray).dim(),
-        ),
-        Span::styled("◆ ", Style::default().fg(Color::Cyan).bold()),
-        Span::styled("assistant", Style::default().fg(Color::Cyan).bold()),
-        Span::styled(
-            " (streaming…)",
-            Style::default()
-                .fg(Color::DarkGray)
-                .add_modifier(Modifier::DIM),
-        ),
-        super::elapsed_badge::elapsed_badge(state),
-    ]));
-    let formatted = cached_format(&state.streaming_text, formatter);
-    for line in formatted {
+    let (sep, header) = streaming_header(state, separator_width);
+    lines.push(sep);
+    lines.push(header);
+    for line in cached_format(&state.streaming_text, formatter) {
         let mut spans = vec![Span::styled("  ", Style::default().fg(Color::Cyan))];
         spans.extend(line.spans);
         lines.push(Line::from(spans));
@@ -86,9 +66,10 @@ fn cached_format(text: &str, formatter: &MessageFormatter) -> Vec<Line<'static>>
     })
 }
 
-/// Reset the streaming parse cache. Call when a new assistant turn begins
-/// (e.g. `streaming_text` was cleared) so a shrunken buffer doesn't keep
-/// reusing stale parsed lines.
+/// Reset the streaming parse cache.
+///
+/// Call when a new assistant turn begins so a shrunken buffer doesn't reuse
+/// stale parsed lines.
 pub fn reset_stream_parse_cache() {
     STREAM_PARSE_CACHE.with(|cell| *cell.borrow_mut() = None);
 }

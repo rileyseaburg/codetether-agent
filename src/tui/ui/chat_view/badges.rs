@@ -12,11 +12,13 @@ use super::auto_apply::auto_apply_spans;
 use super::images_badge::pending_images_badge;
 use super::status_hints::session_label_spans;
 use super::turn_badge::turn_latency_badge;
+use super::yolo_badge::yolo_badge;
 
 /// Assemble session, bus, image, request, and turn latency badges.
 pub fn badge_spans(app: &App, session_label: &str) -> Vec<Span<'static>> {
     let mut spans = session_label_spans(session_label);
     spans.extend(auto_apply_spans(app));
+    push_optional_badge(&mut spans, yolo_badge(app));
     push_optional_badge(&mut spans, trust_status_badge_span());
     spans.push(Span::raw(" | "));
     spans.push(bus_status_badge_span(app));
