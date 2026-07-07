@@ -10,7 +10,6 @@ pub(super) enum SessionLoadOutcome {
         title: Option<String>,
         /// Messages dropped by the tail-cap window (0 = full transcript loaded).
         dropped: usize,
-        file_bytes: u64,
     },
     /// No prior session existed — a fresh session was started.
     Fresh,

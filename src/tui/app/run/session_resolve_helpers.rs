@@ -28,7 +28,6 @@ pub(super) fn resolve_loaded(load: TailLoad, bus: &Arc<AgentBus>) -> Resolved {
             msg_count,
             title,
             dropped,
-            file_bytes,
         },
     }
 }
