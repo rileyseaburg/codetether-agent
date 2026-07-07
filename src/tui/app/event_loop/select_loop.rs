@@ -30,6 +30,9 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
         }
         Some(notice) = args.io.notice_rx.recv() => {
             crate::tui::app::background::apply_single_notice(app, args.cwd, slot, bridge, args.io.event_rx, notice).await;
+            // Reconnect takes priority: if a stream disconnect was scheduled,
+            // re-submit on the same model before trying a provider smart-switch.
+            crate::tui::app::background::stream_reconnect_execute::execute(app, slot, args.registry, args.runtime).await;
             super::smart_retry::execute_smart_switch_retry(app, slot, args.registry, args.runtime).await;
             super::watchdog_retry::execute(app, slot, args.registry, args.runtime).await;
         }

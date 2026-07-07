@@ -1,6 +1,7 @@
 //! Apply failed session runtime notices.
 
 use crate::session::Session;
+use crate::tui::app::background::stream_reconnect;
 use crate::tui::app::session_runtime::SessionSlot;
 use crate::tui::app::state::App;
 use crate::tui::app::worker_bridge::handle_processing_stopped;
@@ -19,6 +20,9 @@ pub(super) async fn apply(
     slot.restore(session);
     handle_processing_stopped(app, worker_bridge).await;
     app.state.complete_request_timing();
+    // Schedule a same-model reconnect for transient stream disconnects BEFORE
+    // smart-switch so a broken-pipe doesn't needlessly change providers.
+    stream_reconnect::schedule(app, &error);
     runtime_retry::schedule(app, slot, &error);
     app.state
         .messages
