@@ -13,6 +13,9 @@ use super::spinner::{current_spinner_frame, spinner_color};
 use crate::tui::ui::gradient::rgb_supported;
 use crate::tui::ui::gradient_rule::gradient_rule;
 
+#[path = "thinking_pulse.rs"]
+pub mod thinking_pulse;
+
 /// Build the neon separator + header line for the streaming preview block.
 ///
 /// Returns `(separator_line, header_line)`.
@@ -37,15 +40,10 @@ pub(super) fn streaming_header(
             Style::default().fg(neon).add_modifier(Modifier::BOLD),
         ),
         Span::styled(
-            "assistant",
+            "assistant ",
             Style::default().fg(neon).add_modifier(Modifier::BOLD),
         ),
-        Span::styled(
-            " (streaming…)",
-            Style::default()
-                .fg(Color::DarkGray)
-                .add_modifier(Modifier::DIM),
-        ),
+        thinking_pulse::thinking_span(),
         elapsed_badge(state),
     ]);
     (sep, header)

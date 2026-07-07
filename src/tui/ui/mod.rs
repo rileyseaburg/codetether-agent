@@ -6,6 +6,7 @@ pub mod fuzzy_find_overlay;
 pub mod goal_prompt_overlay;
 pub mod gradient;
 pub mod gradient_rule;
+pub mod gradient_sweep;
 pub mod inspector;
 pub mod main;
 pub mod mode_accent;

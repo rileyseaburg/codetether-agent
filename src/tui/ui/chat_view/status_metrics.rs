@@ -32,9 +32,9 @@ pub fn metric_spans(app: &App) -> Vec<Span<'static>> {
         spans.extend(gauge);
     }
     push_throughput_span(&mut spans, app);
-    if let Some(spark) = super::throughput_sparkline::sparkline_span(app) {
+    if let Some(spark) = super::throughput_sparkline::sparkline_spans(app) {
         spans.push(Span::raw(" "));
-        spans.push(spark);
+        spans.extend(spark);
     }
     spans.push(Span::raw(" | "));
     spans.push(status_text_span(app));

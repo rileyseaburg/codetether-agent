@@ -14,6 +14,8 @@ use super::cursor::place_cursor;
 use crate::tui::app::state::App;
 use crate::tui::color_palette::ColorPalette;
 use crate::tui::models::InputMode;
+use crate::tui::ui::chat_view::spinner::spinner_color;
+use crate::tui::ui::gradient::rgb_supported;
 
 /// Draw the input textbox and place the terminal cursor.
 ///
@@ -34,7 +36,12 @@ pub fn render_input(f: &mut Frame, app: &App, area: Rect, palette: &ColorPalette
         )
     };
     let border_color = if app.state.processing {
-        Color::Yellow
+        // Pulse with the live neon hue while the agent works.
+        if rgb_supported() {
+            spinner_color()
+        } else {
+            Color::Yellow
+        }
     } else if matches!(app.state.input_mode, InputMode::Command) {
         Color::Magenta
     } else {

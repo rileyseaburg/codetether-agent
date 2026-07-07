@@ -8,6 +8,8 @@ mod edit_diff;
 mod entry_builder;
 mod format_meta;
 mod formatted;
+mod formatted_body;
+mod formatted_header;
 pub mod icons;
 mod image_file;
 mod item;
