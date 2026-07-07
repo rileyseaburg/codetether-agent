@@ -1850,6 +1850,7 @@ async fn main() -> anyhow::Result<()> {
                 false,
                 Some(crate::a2a::spawn::SpawnOptions::auto()),
                 None,
+                false,
             )
             .await
         }
