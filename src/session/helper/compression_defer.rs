@@ -18,7 +18,7 @@ pub(super) fn context_summary(
     if tokens == 0 {
         return None;
     }
-    let cached = super::rlm_background::context_summary(
+    let cached = crate::session::helper::rlm_background::context_summary(
         context, reason, session_id, model, provider, config,
     );
     tracing::info!(tokens, "RLM context compaction deferred to background");

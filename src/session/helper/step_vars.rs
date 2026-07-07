@@ -6,10 +6,10 @@ use std::sync::Arc;
 use crate::provider::{Provider, ToolDefinition};
 use crate::tool::ToolRegistry;
 use crate::session::Session;
-use super::request_state::ProviderStepState;
+use crate::session::helper::request_state::ProviderStepState;
 
 /// All mutable step-loop state that may need restoring at each step start.
-pub(super) struct StepVars<'a> {
+pub(crate) struct StepVars<'a> {
     pub selected_provider: &'a mut String,
     pub model: &'a mut String,
     pub provider: &'a mut Arc<dyn Provider>,

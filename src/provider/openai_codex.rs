@@ -247,18 +247,9 @@ impl Default for OpenAiCodexProvider {
 
 impl OpenAiCodexProvider {
     fn chatgpt_supported_models() -> &'static [&'static str] {
-        &[
-            "gpt-5",
-            "gpt-5-mini",
-            "gpt-5.1-codex",
-            "gpt-5.2",
-            "gpt-5.3-codex",
-            "gpt-5.4",
-            "gpt-5.5",
-            "gpt-5.5-fast",
-            "o3",
-            "o4-mini",
-        ]
+        // Only gpt-5.5 is available on the ChatGPT/Codex backend.
+        // Verified live against https://chatgpt.com/backend-api/codex/models?client_version=1.0.0
+        &["gpt-5.5"]
     }
 
     fn model_is_supported_by_backend(&self, model: &str) -> bool {
@@ -2039,18 +2030,9 @@ impl Provider for OpenAiCodexProvider {
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         let mut models = vec![
-            Self::model_info("gpt-5", "GPT-5", 400_000, 128_000, false),
-            Self::model_info("gpt-5-mini", "GPT-5 Mini", 264_000, 64_000, false),
-            Self::model_info("gpt-5.1-codex", "GPT-5.1 Codex", 400_000, 128_000, false),
-            Self::model_info("gpt-5.2", "GPT-5.2", 400_000, 128_000, false),
-            Self::model_info("gpt-5.3-codex", "GPT-5.3 Codex", 400_000, 128_000, false),
-            Self::model_info("gpt-5.4", "GPT-5.4", 272_000, 128_000, false),
-            Self::model_info("gpt-5.4-fast", "GPT-5.4 Fast", 272_000, 128_000, false),
-            Self::model_info("gpt-5.4-pro", "GPT-5.4 Pro", 272_000, 128_000, false),
-            Self::model_info("gpt-5.5", "GPT-5.5", 400_000, 128_000, false),
-            Self::model_info("gpt-5.5-fast", "GPT-5.5 Fast", 400_000, 128_000, false),
-            Self::model_info("o3", "O3", 200_000, 100_000, true),
-            Self::model_info("o4-mini", "O4 Mini", 200_000, 100_000, true),
+            // ChatGPT backend: only gpt-5.5 is available (verified live).
+            // context_window=272_000 per /codex/models API response.
+            Self::model_info("gpt-5.5", "GPT-5.5", 272_000, 128_000, false),
         ];
 
         if self.using_chatgpt_backend() {
@@ -2194,12 +2176,9 @@ mod tests {
             .await
             .expect("model listing should succeed");
 
-        assert!(models.iter().any(|model| model.id == "gpt-5.4"));
-        assert!(models.iter().any(|model| model.id == "gpt-5-mini"));
-        assert!(!models.iter().any(|model| model.id == "gpt-5.4-fast"));
+        // Only gpt-5.5 is available on the ChatGPT/Codex backend (verified live).
         assert!(models.iter().any(|model| model.id == "gpt-5.5"));
-        assert!(models.iter().any(|model| model.id == "gpt-5.5-fast"));
-        assert!(!models.iter().any(|model| model.id == "gpt-5.4-pro"));
+        assert_eq!(models.len(), 1, "chatgpt backend should expose exactly gpt-5.5");
     }
 
     #[tokio::test]
@@ -2211,7 +2190,6 @@ mod tests {
             .expect("model listing should succeed");
 
         assert!(!models.iter().any(|model| model.id == "gpt-5.5"));
-        assert!(!models.iter().any(|model| model.id == "gpt-5.5-fast"));
     }
 
     #[test]
@@ -2237,9 +2215,7 @@ mod tests {
     #[test]
     fn allows_fast_alias_for_chatgpt_backend() {
         let provider = OpenAiCodexProvider::new();
-        provider
-            .validate_model_for_backend("gpt-5.4-fast:high")
-            .expect("chatgpt backend should allow fast alias");
+        // gpt-5.5-fast resolves to gpt-5.5 which is the only supported model.
         provider
             .validate_model_for_backend("gpt-5.5-fast:high")
             .expect("chatgpt backend should allow GPT-5.5 fast alias");

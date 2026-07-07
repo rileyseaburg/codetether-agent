@@ -7,7 +7,7 @@
 use std::sync::Arc;
 use anyhow::Result;
 use crate::provider::ProviderRegistry;
-use super::request_state::build_provider_step_state;
+use crate::session::helper::request_state::build_provider_step_state;
 
 #[path = "step_vars.rs"]
 mod step_vars;

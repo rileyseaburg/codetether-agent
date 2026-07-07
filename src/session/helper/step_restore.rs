@@ -8,7 +8,7 @@ use anyhow::Result;
 use crate::provider::{Provider, ProviderRegistry, ToolDefinition, parse_model_string};
 use crate::session::Session;
 use crate::tool::ToolRegistry;
-use super::request_state::{ProviderStepState, build_provider_step_state};
+use crate::session::helper::request_state::{ProviderStepState, build_provider_step_state};
 
 /// Reset provider/model to the session's original selection when they drifted.
 ///
@@ -16,7 +16,7 @@ use super::request_state::{ProviderStepState, build_provider_step_state};
 /// updated by within-step failover) and restores all derived state when the
 /// current values differ.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn restore_step_model(
+pub(crate) fn restore_step_model(
     session: &Session,
     _providers: &[&str],
     registry: &ProviderRegistry,
