@@ -38,6 +38,13 @@ const RETRYABLE_NEEDLES: &[&str] = &[
     "ratelimit",
     "quota exceeded",
     "too many requests",
+    // Empty-response errors: provider returned 200 but with no content/choices.
+    // Happens under model capacity pressure or brief upstream hiccups; always
+    // retryable because the request itself was valid.
+    "no choices",
+    "empty response",
+    "stream ended without producing any content",
+    "stream ended without assistant content",
 ];
 
 /// Returns true when an upstream provider error is worth retrying.

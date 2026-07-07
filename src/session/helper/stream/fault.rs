@@ -33,6 +33,11 @@ const TRANSIENT_MARKERS: &[&str] = &[
     "503",
     "504",
     "temporarily",
+    // Empty-response errors from the provider (valid 200 but no content).
+    "no choices",
+    "empty response",
+    "stream ended without producing any content",
+    "stream ended without assistant content",
 ];
 
 /// Classify a terminal error message as transient (`true`) or permanent.
