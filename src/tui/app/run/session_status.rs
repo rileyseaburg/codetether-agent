@@ -1,40 +1,70 @@
+//! Status bar text and chat-banner generation for session load outcomes.
+
+use crate::tui::app::state::App;
+use crate::tui::chat::message::{ChatMessage, MessageType};
+
 use super::session_outcome::SessionLoadOutcome;
 
 impl SessionLoadOutcome {
+    /// One-line status bar summary shown after startup completes.
     pub(super) fn status(&self, session_id: &str) -> String {
         match self {
             Self::Loaded { msg_count: 0, .. } => {
-                format!("Loaded session {session_id} (empty - type a message to start)")
+                format!("Loaded session {session_id} (empty)")
             }
             Self::Loaded {
                 msg_count,
                 title,
                 dropped,
-                file_bytes,
-                original_id,
-            } => loaded_status(*msg_count, title, *dropped, *file_bytes, original_id),
-            Self::NewFallback { reason } => {
-                format!("New session (no prior session for this workspace: {reason})")
+                ..
+            } => loaded_status(session_id, *msg_count, title, *dropped),
+            Self::Fresh => "New session — type a message to start".to_string(),
+            Self::ScanFailed { reason } => {
+                format!("⚠ New session (prior session could not be loaded: {reason})")
             }
+        }
+    }
+
+    /// Push a visible chat banner for outcomes the user must not miss.
+    pub(super) fn push_banner(&self, app: &mut App) {
+        match self {
+            Self::ScanFailed { reason } => {
+                let msg = format!(
+                    "⚠ WARNING: Your previous session could not be resumed.\n\
+                     Reason: {reason}\n\
+                     A new session has been started. Your old session is still on disk."
+                );
+                app.state
+                    .messages
+                    .push(ChatMessage::new(MessageType::System, msg));
+                app.state.scroll_to_bottom();
+            }
+            Self::Loaded { dropped, .. } if *dropped > 0 => {
+                let msg = format!(
+                    "ℹ Session resumed with tail-cap: {dropped} older messages were not \
+                     loaded to stay within the context window. Your full history is \
+                     preserved on disk."
+                );
+                app.state
+                    .messages
+                    .push(ChatMessage::new(MessageType::System, msg));
+                app.state.scroll_to_bottom();
+            }
+            _ => {}
         }
     }
 }
 
 fn loaded_status(
+    session_id: &str,
     msg_count: usize,
     title: &Option<String>,
     dropped: usize,
-    file_bytes: u64,
-    original_id: &Option<String>,
 ) -> String {
-    let label = title.as_deref().unwrap_or("(untitled)");
+    let label = title.as_deref().unwrap_or(session_id);
     if dropped == 0 {
-        return format!("Loaded previous session: {label} - {msg_count} messages");
+        format!("Resumed: {label} ({msg_count} messages)")
+    } else {
+        format!("Resumed: {label} — showing last {msg_count} messages ({dropped} older not loaded)")
     }
-    let mb = file_bytes as f64 / (1024.0 * 1024.0);
-    let orig = original_id.as_deref().unwrap_or("?");
-    format!(
-        "Large session ({mb:.1} MiB): showing last {msg_count} of {total} entries from \"{label}\". Forked to a new session - original {orig} preserved on disk.",
-        total = msg_count + dropped
-    )
 }

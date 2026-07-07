@@ -8,7 +8,6 @@
 //! focused submodules.
 
 use crate::config::AccessMode;
-use crate::session::Session;
 use crate::tui::app::safe_draw::draw_ui;
 use crate::tui::app::session_runtime::SessionView;
 use crate::tui::app::state::App;
@@ -68,7 +67,12 @@ pub async fn run(
     let cwd = std::env::current_dir().unwrap_or_default();
     let bus = super::bus::start();
     let peer = super::peer::start(a2a_options, bus.clone()).await;
-    let mut session = Session::new().await?.with_bus(bus.clone());
+
+    // Resolve session before first draw: load the prior session for this
+    // directory, or create a fresh one only when none exists. This prevents
+    // a blank placeholder from being allocated and then silently discarded.
+    let mut startup = super::startup::load(&cwd, bus.clone()).await;
+    let mut session = super::session_resolve::resolve(startup.session_load.take(), &bus).await?;
     let access_mode = super::full_auto::apply(&mut session, access_mode, yolo);
     let mut app = App::default();
 
@@ -76,9 +80,8 @@ pub async fn run(
     let view = SessionView::from_session(&session);
     draw_ui(&mut terminal_runtime.terminal, &mut app, &view)?;
 
-    let mut startup = super::startup::load(&cwd, bus.clone()).await;
     super::config::apply_startup(&mut session, &mut startup, access_mode);
-    let outcome = super::session_outcome::apply_load(&mut session, &bus, startup.session_load);
+    let outcome = super::session_outcome::from_session(&session);
     super::hydrate::complete(
         &mut app,
         allow_network,

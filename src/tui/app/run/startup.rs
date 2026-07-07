@@ -11,7 +11,7 @@ use crate::tui::worker_bridge::TuiWorkerBridge;
 pub(super) struct Startup {
     pub registry: Option<Arc<ProviderRegistry>>,
     pub worker_bridge: Option<TuiWorkerBridge>,
-    pub session_load: anyhow::Result<TailLoad>,
+    pub session_load: Option<anyhow::Result<TailLoad>>,
     pub config: anyhow::Result<Config>,
     pub workspace: WorkspaceSnapshot,
 }
@@ -32,7 +32,7 @@ pub(super) async fn load(cwd: &Path, bus: Arc<AgentBus>) -> Startup {
     Startup {
         registry,
         worker_bridge: worker_result.ok().flatten(),
-        session_load,
+        session_load: Some(session_load),
         config,
         workspace,
     }
