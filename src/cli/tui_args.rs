@@ -9,6 +9,10 @@ pub struct TuiArgs {
     /// Transient access mode: ask, approve, or full
     #[arg(long, value_parser = clap::value_parser!(AccessMode))]
     pub access_mode: Option<AccessMode>,
+    /// Full-auto mode: skip all prompts, auto-apply edits, no sandbox.
+    /// Equivalent to --access-mode full with edit auto-apply on.
+    #[arg(long)]
+    pub yolo: bool,
     /// Allow network access in sandboxed commands
     #[arg(long)]
     pub allow_network: bool,

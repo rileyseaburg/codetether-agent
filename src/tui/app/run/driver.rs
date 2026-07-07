@@ -34,6 +34,10 @@ use crate::tui::app::state::App;
 ///   network-backed features such as peer collaboration and remote providers.
 /// * `a2a_options` - Optional spawn configuration for starting or connecting to
 ///   an A2A peer for collaboration.
+/// * `access_mode` - Optional access mode override applied to the session
+///   configuration during startup.
+/// * `yolo` - Full-auto mode: forces `AccessMode::Full` and auto-applies edits
+///   without prompting.
 ///
 /// # Returns
 ///
@@ -57,6 +61,7 @@ pub async fn run(
     allow_network: bool,
     a2a_options: Option<crate::a2a::spawn::SpawnOptions>,
     access_mode: Option<AccessMode>,
+    yolo: bool,
 ) -> anyhow::Result<()> {
     super::project::enter(project, allow_network)?;
     let mut terminal_runtime = super::terminal::enter()?;
@@ -64,6 +69,7 @@ pub async fn run(
     let bus = super::bus::start();
     let peer = super::peer::start(a2a_options, bus.clone()).await;
     let mut session = Session::new().await?.with_bus(bus.clone());
+    let access_mode = super::full_auto::apply(&mut session, access_mode, yolo);
     let mut app = App::default();
 
     super::hydrate::initial(&mut app, &cwd, allow_network, peer.ready, &session);

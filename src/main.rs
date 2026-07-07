@@ -563,6 +563,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Tui(args)) => {
             let allow_network = args.allow_network;
             let access_mode = args.access_mode;
+            let yolo = args.yolo;
             // A2A peer is on by default. `--no-a2a` opts out entirely.
             // When on, every field auto-picks a sensible default unless the
             // user supplied an explicit override (--a2a-port / --a2a-name /
@@ -591,7 +592,7 @@ async fn main() -> anyhow::Result<()> {
             if start_new {
                 unsafe { std::env::set_var("CODETETHER_TUI_NEW_SESSION", "1") }
             };
-            tui::run(project, allow_network, a2a_options, access_mode).await
+            tui::run(project, allow_network, a2a_options, access_mode, yolo).await
         }
         Some(Command::Serve(args)) => server::serve(args).await,
         Some(Command::Run(args)) => cli::run::execute(args).await,

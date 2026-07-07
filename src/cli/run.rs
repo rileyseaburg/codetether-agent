@@ -864,6 +864,7 @@ async fn execute_inner(args: RunArgs) -> Result<()> {
     // Set model: CLI arg > env var > config default
     let model = args
         .model
+        .clone()
         .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok())
         .or(config.default_model);
 
@@ -882,10 +883,7 @@ async fn execute_inner(args: RunArgs) -> Result<()> {
     }
 
     session.metadata.knowledge_snapshot = knowledge_snapshot;
-    if let Some(0) = args.max_steps {
-        anyhow::bail!("--max-steps must be at least 1");
-    }
-    session.max_steps = args.max_steps;
+    super::run_config::apply_session_policy(&mut session, &args)?;
 
     // Wire bus for thinking capture + S3 training data
     let bus = AgentBus::new().into_arc();
