@@ -1,15 +1,16 @@
-//! Vertical scrollbar column for the message pane.
+//! Position-aware gradient scrollbar thumb.
 //!
-//! Produces a column of spans: a `█` thumb over a `│` track, sized to the
-//! viewport height with the thumb positioned proportionally to the scroll
-//! offset. Pure function — no application state.
+//! The thumb color interpolates from cyan (top) to magenta (bottom)
+//! as `scroll_offset` approaches `max_offset`, giving a spatial sense
+//! of where you are in the conversation without any numbers.
 
-use ratatui::{
-    style::{Color, Style},
-    text::Span,
-};
+use ratatui::{style::Style, text::Span};
 
-/// Build a vertical scrollbar column, or empty when no scrolling is needed.
+use crate::tui::ui::gradient::{NEON_CYAN, NEON_MAGENTA, lerp_rgb, rgb_supported};
+
+/// Build a vertical scrollbar column with a position-aware gradient thumb.
+///
+/// Returns empty when content fits in the viewport.
 ///
 /// # Examples
 ///
@@ -29,14 +30,29 @@ pub fn scrollbar_column(
     }
     let max_offset = total_lines - viewport_height;
     let offset = scroll_offset.min(max_offset);
-    let thumb = (offset * (viewport_height.saturating_sub(1))) / max_offset.max(1);
+    let thumb = (offset * viewport_height.saturating_sub(1)) / max_offset.max(1);
+    let t = offset as f32 / max_offset.max(1) as f32;
     (0..viewport_height)
         .map(|row| {
             if row == thumb {
-                Span::styled("█", Style::default().fg(Color::Cyan))
+                thumb_span(t)
             } else {
-                Span::styled("│", Style::default().fg(Color::DarkGray))
+                track_span()
             }
         })
         .collect()
+}
+
+fn thumb_span(t: f32) -> Span<'static> {
+    let color = if rgb_supported() {
+        lerp_rgb(NEON_CYAN, NEON_MAGENTA, t)
+    } else {
+        ratatui::style::Color::Cyan
+    };
+    Span::styled("█", Style::default().fg(color))
+}
+
+fn track_span() -> Span<'static> {
+    use ratatui::style::Color;
+    Span::styled("│", Style::default().fg(Color::DarkGray))
 }

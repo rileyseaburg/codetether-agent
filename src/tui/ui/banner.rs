@@ -7,8 +7,9 @@
 use ratatui::style::Stylize;
 use ratatui::text::Line;
 
-use super::gradient::{NEON_CYAN, NEON_MAGENTA, gradient_spans, rgb_supported};
+use super::gradient::{NEON_CYAN, NEON_MAGENTA, rgb_supported};
 use super::gradient_rule::gradient_rule;
+use super::gradient_sweep::sweep_spans;
 
 const WORDMARK: &str = "  ⬡  C O D E T E T H E R";
 const RULE_WIDTH: usize = 30;
@@ -35,7 +36,8 @@ pub fn push_welcome_banner(lines: &mut Vec<Line<'static>>) {
 
 fn wordmark_line() -> Line<'static> {
     if rgb_supported() {
-        Line::from(gradient_spans(WORDMARK, NEON_CYAN, NEON_MAGENTA, true))
+        // Animated sweep: the gradient band travels through the wordmark.
+        Line::from(sweep_spans(WORDMARK, NEON_CYAN, NEON_MAGENTA, true, 4_000))
     } else {
         Line::from(WORDMARK.cyan().bold())
     }

@@ -1,3 +1,4 @@
+pub mod agent_color;
 pub mod banner;
 pub mod border_style;
 pub mod chat_view;

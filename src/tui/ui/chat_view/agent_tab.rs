@@ -1,9 +1,10 @@
 //! Formatting for one spawned-agent header tab.
 
-use ratatui::{
-    style::{Color, Modifier, Style},
-    text::Span,
-};
+use ratatui::{style::Style, text::Span};
+
+#[path = "agent_tab_style.rs"]
+pub mod agent_tab_style;
+use agent_tab_style::tab_style;
 
 /// Data needed to render a compact agent tab.
 pub struct AgentTabMeta<'a> {
@@ -16,6 +17,9 @@ pub struct AgentTabMeta<'a> {
 }
 
 /// Build a single tab span with name, model id, session id, and busy marker.
+///
+/// Each agent gets a stable identity color derived from its name: selected
+/// tabs use it as the background, unselected tabs tint the label with it.
 pub fn agent_tab(meta: AgentTabMeta<'_>) -> Span<'static> {
     let dots = "·".repeat(meta.indent as usize);
     let model = meta
@@ -28,17 +32,7 @@ pub fn agent_tab(meta: AgentTabMeta<'_>) -> Span<'static> {
         .unwrap_or_else(|| "new".into());
     let marker = if meta.processing { " ⋯" } else { "" };
     let label = format!(" {dots}{} {model} {session}{marker} ", meta.name);
-    Span::styled(label, style(meta.selected))
-}
-
-fn style(selected: bool) -> Style {
-    if selected {
-        return Style::default()
-            .fg(Color::Black)
-            .bg(Color::Cyan)
-            .add_modifier(Modifier::BOLD);
-    }
-    Style::default().fg(Color::Gray)
+    Span::styled(label, tab_style(meta.name, meta.selected))
 }
 
 fn short_id(value: &str) -> String {
