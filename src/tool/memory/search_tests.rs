@@ -22,7 +22,10 @@ fn ranks_semantically_closest_first() {
 }
 
 #[tokio::test]
-async fn search_embedded_falls_back_to_local_without_backend() {
+async fn search_embedded_without_backend_uses_lexical_ranking() {
+    // No embedder configured: query_vec is None, ranking is lexical-only.
+    // The tokio entry shares more tokens with the query so it ranks first.
+    // Critically: we do NOT mix hash-space vectors with learned-space vectors.
     let mut store = MemoryStore::default();
     store.add(embedded("rust async tokio runtime tasks"));
     store.add(embedded("python data science pandas"));
@@ -30,5 +33,6 @@ async fn search_embedded_falls_back_to_local_without_backend() {
     let results = store
         .search_embedded(Some("tokio runtime"), None, None, 5)
         .await;
+    assert!(!results.is_empty());
     assert!(results[0].content.contains("tokio"));
 }
