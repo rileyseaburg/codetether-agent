@@ -252,9 +252,9 @@ impl Default for OpenAiCodexProvider {
 
 impl OpenAiCodexProvider {
     fn chatgpt_supported_models() -> &'static [&'static str] {
-        // Only gpt-5.5 is available on the ChatGPT/Codex backend.
+        // gpt-5.5 is available; -fast maps to service_tier=priority.
         // Verified live against https://chatgpt.com/backend-api/codex/models?client_version=1.0.0
-        &["gpt-5.5"]
+        &["gpt-5.5", "gpt-5.5-fast"]
     }
 
     fn model_is_supported_by_backend(&self, model: &str) -> bool {
@@ -2036,11 +2036,10 @@ impl Provider for OpenAiCodexProvider {
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         let mut models = vec![
-            // ChatGPT backend: only gpt-5.5 is available (verified live).
-            // context_window=272_000 per /codex/models API response.
-            // NOTE: GPT-5.6 Sol/Terra/Luna are Bedrock-hosted (`openai.gpt-5.6-*`)
-            // and are exposed through the bedrock provider, not this backend.
+            // ChatGPT backend: gpt-5.5 plus Fast mode via service_tier=priority.
+            // GPT-5.6 Sol/Terra/Luna are Bedrock-hosted (`openai.gpt-5.6-*`).
             Self::model_info("gpt-5.5", "GPT-5.5", 272_000, 128_000, false),
+            Self::model_info("gpt-5.5-fast", "GPT-5.5 Fast", 272_000, 128_000, false),
         ];
 
         if self.using_chatgpt_backend() {
@@ -2190,13 +2189,9 @@ mod tests {
             .await
             .expect("model listing should succeed");
 
-        // Only gpt-5.5 is available on the ChatGPT/Codex backend (verified live).
         assert!(models.iter().any(|model| model.id == "gpt-5.5"));
-        assert_eq!(
-            models.len(),
-            1,
-            "chatgpt backend should expose exactly gpt-5.5"
-        );
+        assert!(models.iter().any(|model| model.id == "gpt-5.5-fast"));
+        assert_eq!(models.len(), 2, "chatgpt backend should expose base + fast");
     }
 
     #[tokio::test]
@@ -2208,6 +2203,7 @@ mod tests {
             .expect("model listing should succeed");
 
         assert!(!models.iter().any(|model| model.id == "gpt-5.5"));
+        assert!(!models.iter().any(|model| model.id == "gpt-5.5-fast"));
     }
 
     #[test]
