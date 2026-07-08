@@ -11,9 +11,15 @@ pub(crate) fn render(cwd: &Path) -> String {
     if cwd.join(".codetether/session-ledgers").exists() {
         facts.push("session scope ledgers present");
     }
-    if facts.is_empty() {
+    let mut out = if facts.is_empty() {
         "Runtime prefetch facts: none loaded.".to_string()
     } else {
         format!("Runtime prefetch facts: {}.", facts.join("; "))
+    };
+    let recent = super::writeback_read::render(cwd);
+    if !recent.is_empty() {
+        out.push('\n');
+        out.push_str(&recent);
     }
+    out
 }

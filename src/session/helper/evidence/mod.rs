@@ -24,6 +24,10 @@ mod ledger_persist;
 mod level;
 mod memory_protocol;
 mod message_text;
+mod palace_belief;
+mod palace_sync;
+#[cfg(test)]
+mod palace_sync_tests;
 mod prefetch;
 mod prompt;
 mod record;
@@ -38,6 +42,7 @@ mod workflow_templates;
 mod writeback;
 mod writeback_path;
 mod writeback_persist;
+mod writeback_read;
 
 pub(crate) use final_gate::gate as gate_final_answer;
 pub(crate) use prompt::append_guardrails_for_cwd;

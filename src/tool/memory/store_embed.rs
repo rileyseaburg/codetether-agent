@@ -5,7 +5,7 @@
 //! vectors in the same embedding space. All fall back to the local engine.
 
 use super::embedder_handle::EmbedderHandle;
-use super::{MemoryEntry, MemoryStore, search};
+use super::{MemoryEntry, MemoryStore, scope_widen, search};
 use crate::vectordb::{Embeddable, LocalEmbeddingEngine, TextEmbedder};
 use std::sync::Arc;
 
@@ -48,7 +48,13 @@ impl MemoryStore {
             },
             None => None,
         };
-        let candidates = search::collect(&mut self.entries, query, tags, scope);
-        search::rank(candidates, query_vec.as_ref(), limit)
+        scope_widen::run(
+            &mut self.entries,
+            query,
+            tags,
+            scope,
+            query_vec.as_ref(),
+            limit,
+        )
     }
 }

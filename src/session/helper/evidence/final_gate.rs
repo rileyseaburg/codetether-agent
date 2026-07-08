@@ -8,6 +8,7 @@ pub(crate) fn gate(answer: &str, session: &Session) -> String {
     let ledger = super::ledger::build(session);
     super::ledger_persist::save(&ledger);
     super::writeback_persist::save(session, &ledger);
+    super::palace_sync::save(&ledger);
     if ledger.items.is_empty() {
         return answer.to_string();
     }
