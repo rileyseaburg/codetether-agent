@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 
-use super::status_bar::bus_status_badge_span;
+use super::{sessions_list_item::session_list_item, status_bar::bus_status_badge_span};
 use crate::tui::app::state::App;
 
 pub fn render_sessions_view(f: &mut Frame, app: &mut App) {
@@ -52,7 +52,7 @@ pub fn render_sessions_view(f: &mut Frame, app: &mut App) {
             .iter()
             .map(|(_, session)| {
                 let is_active = app.state.session_id.as_deref() == Some(session.id.as_str());
-                ListItem::new(super::sessions_row::session_row_summary(session, is_active))
+                session_list_item(session, is_active)
             })
             .collect()
     };

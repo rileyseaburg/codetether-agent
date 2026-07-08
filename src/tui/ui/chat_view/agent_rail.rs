@@ -1,16 +1,17 @@
-//! Per-agent status rail badges.
+//! Per-agent identity color in the worker-agent rail badges.
 //!
-//! Renders one compact badge per registered worker agent so the multi-agent
-//! workload is visible at a glance. Driven by
-//! `app.state.worker_bridge_registered_agents` (a `HashSet<String>`); returns
-//! an empty `Vec` when no agents are registered.
+//! Each registered agent's `◆ name` badge is tinted with its stable
+//! identity color (see [`crate::tui::ui::agent_color`]).
+//! Processing agents glow at full brightness; idle agents are dimmed.
 
 use ratatui::{
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::Span,
 };
 
 use crate::tui::app::state::App;
+use crate::tui::ui::agent_color::agent_color;
+use crate::tui::ui::gradient::rgb_supported;
 
 /// Build one diamond-prefixed badge per registered worker agent.
 ///
@@ -30,20 +31,18 @@ pub fn agent_rail_spans(app: &App) -> Vec<Span<'static>> {
         .state
         .worker_bridge_processing_state
         .unwrap_or(app.state.processing);
-    let color = if processing {
-        Color::Cyan
-    } else {
-        Color::DarkGray
-    };
+    let rgb = rgb_supported();
     let mut spans = Vec::new();
     for (i, name) in names.iter().enumerate() {
         if i > 0 {
             spans.push(Span::raw(" "));
         }
-        spans.push(Span::styled(
-            format!("◆ {name}"),
-            Style::default().fg(color).add_modifier(Modifier::DIM),
-        ));
+        let color = agent_color(name, rgb);
+        let mut style = Style::default().fg(color);
+        if !processing {
+            style = style.add_modifier(Modifier::DIM);
+        }
+        spans.push(Span::styled(format!("◆ {name}"), style));
     }
     spans
 }

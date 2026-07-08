@@ -12,6 +12,8 @@ pub mod inspector;
 pub mod main;
 pub mod mode_accent;
 pub mod sessions;
+pub mod sessions_age_color;
+pub mod sessions_list_item;
 pub mod sessions_row;
 pub mod status_bar;
 pub mod tool_panel;
