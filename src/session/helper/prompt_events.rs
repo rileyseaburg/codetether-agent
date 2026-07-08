@@ -173,9 +173,11 @@ pub(crate) async fn run_prompt_with_events(
     };
 
     for step in 1..=max_steps {
-        // Restore original model if a within-step retry swapped it.
-        super::step_model_restore::restore_step_model(session, &providers, &registry, &cwd, &mut selected_provider, &mut model, &mut provider, &mut provider_state, &mut tool_registry, &mut tool_definitions, &mut temperature, &mut model_supports_tools, &mut advertised_tool_definitions, &mut system_prompt)?;
+        // Restore original model (and optionally apply rate-gate failover).
+        #[rustfmt::skip]
+        super::step_begin::begin_step(session, &providers, &registry, &cwd, true, &mut selected_provider, &mut model, &mut provider, &mut provider_state, &mut tool_registry, &mut tool_definitions, &mut temperature, &mut model_supports_tools, &mut advertised_tool_definitions, &mut system_prompt)?;
         tracing::info!(step = step, "Agent step starting");
+
         let _ = event_tx.send(SessionEvent::Thinking).await;
 
         super::cost_guard::enforce_cost_budget()?;
@@ -356,12 +358,10 @@ pub(crate) async fn run_prompt_with_events(
         };
         let mut response = normalize_textual_tool_calls(response, &tool_definitions);
 
-        crate::telemetry::TOKEN_USAGE.record_model_usage_with_cache(
+        crate::session::helper::usage_record::record_step_usage(
+            &selected_provider,
             &model,
-            response.usage.prompt_tokens as u64,
-            response.usage.completion_tokens as u64,
-            response.usage.cache_read_tokens.unwrap_or(0) as u64,
-            response.usage.cache_write_tokens.unwrap_or(0) as u64,
+            &response.usage,
         );
 
         let _ = event_tx

@@ -45,10 +45,12 @@ pub mod text;
 pub mod token;
 mod tool_modules;
 pub(in crate::session::helper) use tool_modules::*;
+mod step_begin;
+mod step_model_restore;
 mod tool_heartbeat;
+mod usage_record;
 pub mod validation;
 mod workspace_tools;
-mod step_model_restore;
 
 #[cfg(test)]
 mod prompt_events_test_provider;

@@ -1,17 +1,19 @@
 //! Pulsing `⚡ YOLO` badge shown when full-auto mode is active.
+//!
+//! On truecolor terminals the badge uses an inverted neon block:
+//! black text on a spinning neon background — unmissable.
+//! On 8-color terminals it stays bold yellow text.
 
 use ratatui::{
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::Span,
 };
 
 use crate::tui::app::state::App;
-
-use super::spinner::spinner_color;
+use crate::tui::ui::chat_view::spinner::spinner_color;
+use crate::tui::ui::gradient::rgb_supported;
 
 /// Returns a pulsing neon `⚡ YOLO` badge when `--yolo` / auto-apply is on.
-///
-/// The badge color cycles through neon hues so it catches the eye immediately.
 ///
 /// # Examples
 ///
@@ -25,10 +27,15 @@ pub fn yolo_badge(app: &App) -> Option<Span<'static>> {
     if !app.state.auto_apply_edits {
         return None;
     }
-    Some(Span::styled(
-        " ⚡ YOLO ",
+    let style = if rgb_supported() {
         Style::default()
-            .fg(spinner_color())
-            .add_modifier(Modifier::BOLD),
-    ))
+            .fg(Color::Black)
+            .bg(spinner_color())
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
+    };
+    Some(Span::styled(" ⚡ YOLO ", style))
 }

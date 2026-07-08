@@ -82,6 +82,7 @@ mod listing_all;
 pub mod oracle;
 pub mod oracle_replay;
 pub mod pages;
+pub mod rate_gate;
 pub mod relevance;
 pub mod tasks;
 pub mod thread_events;
@@ -96,7 +97,6 @@ pub use self::codex_import::{
 pub use self::context::{DerivedContext, derive_context, derive_with_policy, effective_policy};
 pub use self::delegation::{BetaPosterior, DelegationConfig, DelegationState};
 pub use self::derive_policy::DerivePolicy;
-pub use self::eval::{PolicyRunResult, pareto_frontier, reuse_rate};
 pub use self::event_compaction::*;
 pub use self::event_rlm::{RlmCompletion, RlmOutcome, RlmProgressEvent, RlmSubcallFallback};
 pub use self::event_token::{TokenDelta, TokenEstimate, TokenSource};

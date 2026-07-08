@@ -32,6 +32,7 @@
 //! - [`discovery`] — dynamic model list via management APIs
 
 pub mod aliases;
+pub mod aliases_openai;
 pub mod auth;
 pub mod body;
 pub mod convert;
@@ -111,7 +112,6 @@ impl BedrockProvider {
     /// let p = BedrockProvider::new("token-abc".into()).unwrap();
     /// assert_eq!(p.region(), "us-east-1");
     /// ```
-    #[allow(dead_code)]
     pub fn new(api_key: String) -> Result<Self> {
         Self::with_region(api_key, DEFAULT_REGION.to_string())
     }

@@ -47,10 +47,11 @@ pub mod status_pack;
 pub mod status_text;
 pub mod streaming;
 pub mod streaming_header;
-pub mod suggestions;
 pub mod throughput_sparkline;
 pub mod token_spans;
 pub mod turn_badge;
 pub mod yolo_badge;
+
+include!("mods_extra.rs");
 
 pub use render::render_chat_view;

@@ -159,7 +159,8 @@ pub fn resolve_model_id(model: &str) -> &str {
         "glm-4.7" => "zai.glm-4.7",
         "glm-4.7-flash" => "zai.glm-4.7-flash",
 
-        // Pass through full model IDs unchanged.
-        other => other,
+        // Delegate OpenAI GPT aliases (see `aliases_openai`), else pass
+        // through full model IDs unchanged.
+        other => super::aliases_openai::resolve_openai_alias(other).unwrap_or(other),
     }
 }

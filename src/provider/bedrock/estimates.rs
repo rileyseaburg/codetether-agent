@@ -60,6 +60,9 @@ pub fn estimate_max_output(model_id: &str) -> usize {
     let id = model_id.to_lowercase();
     if super::output_budget::has_encrypted_reasoning(model_id) {
         128_000
+    } else if id.contains("openai.gpt-5") {
+        // Bedrock-hosted GPT-5.x (incl. 5.6 Sol/Terra/Luna): 128k max output.
+        128_000
     } else if id.contains("claude-opus-4-6")
         || id.contains("claude-opus-4-5")
         || id.contains("claude-opus-4-1")

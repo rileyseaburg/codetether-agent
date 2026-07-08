@@ -5,6 +5,8 @@ use ratatui::{
     text::Span,
 };
 
+use super::kb_style::kb;
+
 /// Build the CHAT banner and keybinding hint spans.
 ///
 /// # Examples
@@ -24,9 +26,6 @@ pub fn header_spans(session_label: &str) -> Vec<Span<'static>> {
 }
 
 /// Keybinding hint spans without the trailing session badge.
-///
-/// Used when the status bar stacks across multiple rows so that
-/// session/badge info can live on its own line.
 ///
 /// # Examples
 ///
@@ -79,9 +78,4 @@ pub fn session_label_spans(session_label: &str) -> Vec<Span<'static>> {
         Span::raw(": "),
         Span::styled(session_label.to_string(), Style::default().fg(Color::Cyan)),
     ]
-}
-
-/// Style a keyboard shortcut key in yellow.
-fn kb(key: &str) -> Span<'static> {
-    Span::styled(key.to_string(), Style::default().fg(Color::Yellow))
 }

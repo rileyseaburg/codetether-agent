@@ -1,0 +1,34 @@
+// Module declarations (part 1) — spliced into `chat_view/mod.rs` via
+// `include!` so the module tree and all `super::` paths stay unchanged.
+pub mod agent_bar;
+pub mod agent_bar_tool;
+pub mod agent_bar_tui;
+pub mod agent_rail;
+pub mod agent_tab;
+pub mod agent_tab_style;
+pub(crate) mod approval_overlay;
+pub mod attachment;
+pub mod auto_apply;
+pub mod badges;
+pub mod bubble;
+pub mod bubble_assistant;
+pub mod bubble_mods;
+mod build_uncached;
+pub mod compact_hints;
+pub mod context_gauge;
+pub mod context_gauge_heat;
+pub mod cursor;
+pub mod diff_lines;
+mod drawn_lines;
+pub mod elapsed_badge;
+pub mod empty;
+pub mod entries;
+pub mod entry_result;
+pub mod format_cache;
+pub mod hit;
+pub mod images_badge;
+pub mod input_area;
+pub mod kb_style;
+pub mod layout_chunks;
+pub mod layout_compute;
+pub mod lines;

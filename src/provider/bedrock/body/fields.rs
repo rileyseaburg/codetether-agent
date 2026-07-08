@@ -19,6 +19,10 @@ pub(in crate::provider::bedrock) fn additional_model_request_fields(
             json!({"effort": configured_effort()}),
         );
     }
+    if is_bedrock_openai_gpt(model_id) {
+        // GPT-5.6 Sol/Terra/Luna (Codex rust-v0.143.0) support `max` effort.
+        fields.insert("reasoning_effort".into(), json!(configured_effort()));
+    }
     (!fields.is_empty()).then(|| Value::Object(fields))
 }
 
@@ -26,28 +30,26 @@ fn configured_service_tier() -> Option<String> {
     super::super::runtime_config::service_tier()
 }
 
-fn configured_effort() -> &'static str {
+pub(super) fn configured_effort() -> &'static str {
     let raw = super::super::runtime_config::thinking_effort().unwrap_or_default();
     match raw.as_str() {
         "low" => "low",
         "high" => "high",
+        // `max` reasoning effort (GPT-5.6 Sol/Terra/Luna, Codex rust-v0.143.0)
+        "max" => "max",
         _ => "medium",
     }
 }
 
-fn uses_adaptive_thinking(model_id: &str) -> bool {
+pub(super) fn uses_adaptive_thinking(model_id: &str) -> bool {
     super::super::output_budget::has_encrypted_reasoning(model_id)
         || model_id.to_ascii_lowercase().contains("claude-mythos-5")
 }
 
-#[cfg(test)]
-mod tests {
-    use super::additional_model_request_fields;
-
-    #[test]
-    fn fable_fields_include_adaptive_thinking() {
-        let fields = additional_model_request_fields("global.anthropic.claude-fable-5").unwrap();
-        assert_eq!(fields["thinking"]["type"], "adaptive");
-        assert_eq!(fields["output_config"]["effort"], "medium");
-    }
+/// Bedrock-hosted OpenAI GPT models (`openai.gpt-5.4/5.5/5.6-sol/terra/luna`).
+pub(super) fn is_bedrock_openai_gpt(model_id: &str) -> bool {
+    model_id.to_ascii_lowercase().contains("openai.gpt-5")
 }
+
+#[cfg(test)]
+mod tests;

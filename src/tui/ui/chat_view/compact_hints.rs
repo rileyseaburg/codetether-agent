@@ -1,17 +1,15 @@
 //! Compact keybinding hints for the status bar.
 //!
 //! Shows only the four most important shortcuts so the bar stays readable;
-//! the full list lives in the `?` help overlay. Mirrors the yellow-key style
-//! used by [`super::status_hints`].
+//! the full list lives in the `?` help overlay. Key names cycle with the
+//! live spinner hue on truecolor terminals via [`super::kb_style::kb`].
 
 use ratatui::{
     style::{Color, Style},
     text::Span,
 };
 
-fn kb(key: &str) -> Span<'static> {
-    Span::styled(key.to_string(), Style::default().fg(Color::Yellow))
-}
+use super::kb_style::kb;
 
 /// Build the four-shortcut compact keybinding hint spans.
 ///

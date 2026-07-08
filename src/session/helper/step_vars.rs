@@ -4,9 +4,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::provider::{Provider, ToolDefinition};
-use crate::tool::ToolRegistry;
 use crate::session::Session;
 use crate::session::helper::request_state::ProviderStepState;
+use crate::tool::ToolRegistry;
 
 /// All mutable step-loop state that may need restoring at each step start.
 pub(crate) struct StepVars<'a> {

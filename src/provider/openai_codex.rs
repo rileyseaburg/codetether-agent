@@ -60,6 +60,9 @@ enum ThinkingLevel {
     Medium,
     High,
     XHigh,
+    /// Maximum reasoning effort — maps to `"max"` in the Responses API.
+    /// Introduced in Codex rust-v0.143.0 for GPT-5.6 Sol/Terra/Luna.
+    Max,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -81,6 +84,7 @@ impl ThinkingLevel {
             "medium" => Some(Self::Medium),
             "high" => Some(Self::High),
             "xhigh" => Some(Self::XHigh),
+            "max" => Some(Self::Max),
             _ => None,
         }
     }
@@ -92,6 +96,7 @@ impl ThinkingLevel {
             Self::Medium => "medium",
             Self::High => "high",
             Self::XHigh => "xhigh",
+            Self::Max => "max",
         }
     }
 }
@@ -1142,6 +1147,7 @@ impl OpenAiCodexProvider {
     fn model_supports_reasoning_effort(model: &str) -> bool {
         let normalized = model.to_ascii_lowercase();
         normalized.starts_with("gpt-5")
+            || normalized.starts_with("openai.gpt-5")
             || normalized.starts_with("o1")
             || normalized.starts_with("o3")
             || normalized.starts_with("o4")
@@ -2032,6 +2038,8 @@ impl Provider for OpenAiCodexProvider {
         let mut models = vec![
             // ChatGPT backend: only gpt-5.5 is available (verified live).
             // context_window=272_000 per /codex/models API response.
+            // NOTE: GPT-5.6 Sol/Terra/Luna are Bedrock-hosted (`openai.gpt-5.6-*`)
+            // and are exposed through the bedrock provider, not this backend.
             Self::model_info("gpt-5.5", "GPT-5.5", 272_000, 128_000, false),
         ];
 
@@ -2127,6 +2135,12 @@ mod tests {
             OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.5:xhigh");
         assert_eq!(model, "gpt-5.5");
         assert_eq!(level.map(ThinkingLevel::as_str), Some("xhigh"));
+
+        // `max` effort — added in Codex rust-v0.143.0 for GPT-5.6 Sol/Terra/Luna.
+        let (model, level) =
+            OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.6-sol:max");
+        assert_eq!(model, "gpt-5.6-sol");
+        assert_eq!(level.map(ThinkingLevel::as_str), Some("max"));
     }
 
     #[test]
@@ -2178,7 +2192,11 @@ mod tests {
 
         // Only gpt-5.5 is available on the ChatGPT/Codex backend (verified live).
         assert!(models.iter().any(|model| model.id == "gpt-5.5"));
-        assert_eq!(models.len(), 1, "chatgpt backend should expose exactly gpt-5.5");
+        assert_eq!(
+            models.len(),
+            1,
+            "chatgpt backend should expose exactly gpt-5.5"
+        );
     }
 
     #[tokio::test]

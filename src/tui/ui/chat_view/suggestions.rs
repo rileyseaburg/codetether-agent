@@ -8,6 +8,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState},
 };
 
+use super::suggestion_style::highlight_style;
 use crate::tui::app::state::App;
 
 /// Render the autocomplete suggestions panel in `area`.
@@ -20,8 +21,6 @@ use crate::tui::app::state::App;
 /// ```
 pub fn render_suggestions(f: &mut Frame, app: &App, area: Rect) {
     let mut list_state = ListState::default();
-    // Empty prefix-match list + a known command → inline usage hint so the
-    // user sees `<args>` shape while typing past the command name.
     if app.state.slash_suggestions.is_empty() {
         let Some(hint) = app.state.current_slash_hint() else {
             return;
@@ -58,6 +57,6 @@ pub fn render_suggestions(f: &mut Frame, app: &App, area: Rect) {
     list_state.select(Some(app.state.selected_slash_suggestion));
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(" Commands "))
-        .highlight_style(Style::default().bg(Color::DarkGray).fg(Color::Cyan).bold());
+        .highlight_style(highlight_style());
     f.render_stateful_widget(list, area, &mut list_state);
 }

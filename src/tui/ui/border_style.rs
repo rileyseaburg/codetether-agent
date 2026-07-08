@@ -1,19 +1,25 @@
 //! Focus-aware rounded pane borders.
 //!
-//! Provides a consistent border treatment across TUI panes: the focused
-//! pane gets a bright, bold cyan rounded border; unfocused panes get a dim
-//! dark-gray one. Pure styling helpers — no application state, no compute.
+//! Focused panes get a neon animated border whose color cycles with the
+//! global spinner hue (truecolor) or stays bold cyan (8-color). Unfocused
+//! panes are dim dark-gray. Pure styling helpers — no application state.
 
 use ratatui::{
     style::{Color, Modifier, Style},
     widgets::{Block, BorderType, Borders},
 };
 
+use crate::tui::ui::chat_view::spinner::spinner_color;
+use crate::tui::ui::gradient::rgb_supported;
+
 fn border_style(focused: bool) -> Style {
     if focused {
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD)
+        let color = if rgb_supported() {
+            spinner_color()
+        } else {
+            Color::Cyan
+        };
+        Style::default().fg(color).add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::DarkGray)
     }
