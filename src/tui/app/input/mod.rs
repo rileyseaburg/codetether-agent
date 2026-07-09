@@ -4,10 +4,6 @@
 //! to the appropriate subsystem.
 
 pub(crate) mod approval_command;
-#[cfg(test)]
-mod approval_command_deny_tests;
-#[cfg(test)]
-mod approval_command_tests;
 mod backspace;
 mod base_branch;
 mod bus;
@@ -30,10 +26,11 @@ mod image_data_paste;
 mod image_data_url;
 mod image_file;
 mod image_mime;
-mod image_tests;
+mod image_sidecar_recover;
 mod mention_route;
 mod merge;
 mod paste;
+mod paste_expand_raw;
 pub(crate) mod pasted_text;
 mod pr;
 mod pr_body;
@@ -44,13 +41,11 @@ mod pr_request;
 mod pr_title;
 mod sessions;
 pub(crate) mod shell_bg;
-mod tests_enter;
-mod tests_image_paste;
-mod tests_paste;
-mod tests_pr;
-mod tests_submit;
 pub(crate) mod worktree;
 pub(crate) mod worktree_result;
+
+#[cfg(test)]
+mod tests_all;
 
 pub use backspace::handle_backspace;
 pub use bus::{handle_bus_c, handle_bus_g, handle_bus_slash};

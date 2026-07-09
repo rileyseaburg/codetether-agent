@@ -32,7 +32,7 @@ pub(super) async fn handle_enter_chat(
     worker_bridge: &Option<TuiWorkerBridge>,
     runtime: &TuiSessionHandle,
 ) {
-    super::image_data_paste::drain_embedded_images(app);
+    super::image_sidecar_recover::recover_pasted_images(app);
     let prompt = app.state.input.trim().to_string();
     if !prompt.is_empty() {
         app.state.push_history(prompt.clone());

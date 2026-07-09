@@ -1,5 +1,5 @@
-use super::approval_command;
 use crate::approval::{ApprovalStatus, ApprovalStore, test_env::lock_env};
+use crate::tui::app::input::approval_command;
 use crate::tui::app::state::App;
 
 struct EnvGuard;
