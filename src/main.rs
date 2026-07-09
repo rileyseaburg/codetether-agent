@@ -476,6 +476,11 @@ async fn main() -> anyhow::Result<()> {
     // Existing process environment still takes precedence over .env values.
     let _ = dotenvy::dotenv();
 
+    // Harden the process environment so every spawned subprocess (git,
+    // credential helpers, ssh) fails fast instead of prompting on the
+    // terminal (e.g. "Username for 'https://forgejo...':" freezing the TUI).
+    codetether_agent::noninteractive_env::harden();
+
     // Install the rustls crypto provider before any TLS usage (reqwest, hyper-rustls, etc.)
     // Both aws-lc-rs and ring are in the dependency tree, so rustls cannot auto-detect.
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();

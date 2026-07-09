@@ -38,6 +38,7 @@ pub mod mcp;
 pub mod memory;
 pub mod mesh;
 pub mod moltbook;
+pub mod noninteractive_env;
 pub mod okr;
 pub mod platform;
 pub mod plugin_marketplace;
