@@ -27,6 +27,7 @@ pub mod persistence_cap;
 pub mod prompt;
 pub mod prompt_call;
 pub mod prompt_events;
+pub(crate) mod publish_user_prompt;
 #[path = "prompt_too_long/mod.rs"]
 pub(crate) mod prompt_too_long;
 pub mod provider;

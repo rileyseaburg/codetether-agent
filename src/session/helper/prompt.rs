@@ -30,8 +30,6 @@ use crate::tool::ToolRegistry;
 
 #[path = "prompt_codesearch_guard.rs"]
 mod codesearch_guard;
-#[path = "publish_user_prompt.rs"]
-pub(super) mod publish_user_prompt;
 #[path = "prompt_subagent_watch.rs"]
 mod subagent_watch;
 use super::super::{DEFAULT_MAX_STEPS, Session, SessionResult};
