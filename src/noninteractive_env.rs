@@ -10,6 +10,9 @@
 const DEFAULTS: &[(&str, &str)] = &[
     // Git: never prompt on the controlling terminal; fail instead.
     ("GIT_TERMINAL_PROMPT", "0"),
+    // Git: if a prompt would still be attempted, route it to a failing
+    // askpass instead of the TTY (covers PTY-inheriting children).
+    ("GIT_ASKPASS", "/bin/false"),
     // Git Credential Manager: never pop interactive UI.
     ("GCM_INTERACTIVE", "never"),
     // SSH: refuse askpass UI prompts.
