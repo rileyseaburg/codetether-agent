@@ -3,7 +3,8 @@
 use crate::bus::BusMessage;
 
 use super::{
-    entry_agent, entry_parts::EntryParts, entry_ralph, entry_task, entry_tool, entry_voice,
+    entry_agent, entry_parts::EntryParts, entry_ralph, entry_task, entry_tool, entry_user_prompt,
+    entry_voice,
 };
 
 pub(super) fn entry_parts(message: &BusMessage) -> EntryParts {
@@ -27,6 +28,11 @@ pub(super) fn entry_parts(message: &BusMessage) -> EntryParts {
         | BusMessage::VoiceTranscript { .. }
         | BusMessage::VoiceAgentStateChanged { .. }
         | BusMessage::VoiceSessionEnded { .. } => entry_voice::entry_parts(message),
-        BusMessage::UserPrompt { .. } => entry_agent::entry_parts(message),
+        BusMessage::UserPrompt {
+            agent_id,
+            text,
+            workspace,
+            session_id,
+        } => entry_user_prompt::user_prompt(agent_id, text, workspace, session_id),
     }
 }
