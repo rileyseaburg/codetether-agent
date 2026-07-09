@@ -30,25 +30,22 @@ use crate::tool::ToolRegistry;
 
 #[path = "prompt_codesearch_guard.rs"]
 mod codesearch_guard;
+#[path = "publish_user_prompt.rs"]
+pub(super) mod publish_user_prompt;
 #[path = "prompt_subagent_watch.rs"]
 mod subagent_watch;
 use super::super::{DEFAULT_MAX_STEPS, Session, SessionResult};
 use super::bootstrap::list_tools_bootstrap_output;
-use super::build::{
-    build_request_requires_tool, is_build_agent, should_force_build_tool_first_retry,
-};
-use super::confirmation::{
-    auto_apply_pending_confirmation, pending_confirmation_tool_result_content,
-    tool_result_requires_confirmation,
-};
+use super::build::{build_request_requires_tool, is_build_agent, should_force_build_tool_first_retry};
+use super::confirmation::{auto_apply_pending_confirmation, pending_confirmation_tool_result_content, tool_result_requires_confirmation};
 use super::defaults::default_model_for_provider;
 use super::edit::{detect_stub_in_tool_input, normalize_tool_call_for_execution};
 use super::error::is_retryable_upstream_error;
 use super::loop_constants::{
     BUILD_MODE_TOOL_FIRST_MAX_RETRIES, BUILD_MODE_TOOL_FIRST_NUDGE, FORCE_FINAL_ANSWER_NUDGE,
     MAX_CONSECUTIVE_SAME_TOOL, MAX_STEPS_WITHOUT_PROGRESS, MAX_TOTAL_TOOL_CALLS,
-    NATIVE_TOOL_PROMISE_NUDGE, NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES, NO_PROGRESS_NUDGE,
-    POST_EDIT_VALIDATION_MAX_RETRIES,
+    NATIVE_TOOL_PROMISE_NUDGE, NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES,
+    NO_PROGRESS_NUDGE, POST_EDIT_VALIDATION_MAX_RETRIES,
 };
 use super::markup::normalize_textual_tool_calls;
 use super::provider::{
@@ -99,6 +96,8 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
             text: message.to_string(),
         }],
     });
+
+    super::publish_user_prompt::publish(session, message);
 
     if session.title.is_none() {
         session.generate_ai_title(&registry).await?;

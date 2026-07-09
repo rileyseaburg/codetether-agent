@@ -50,6 +50,4 @@ pub mod theme_utils;
 pub mod token_display;
 pub mod token_display_context;
 pub mod worker_bridge;
-
-// Simplify public API by re-exporting the main entrypoint.
 pub use app::run::run;

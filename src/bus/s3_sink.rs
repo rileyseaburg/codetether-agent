@@ -338,7 +338,8 @@ fn envelope_step(message: &BusMessage) -> Option<usize> {
         | BusMessage::VoiceTranscript { .. }
         | BusMessage::VoiceAgentStateChanged { .. }
         | BusMessage::VoiceSessionEnded { .. }
-        | BusMessage::AgentSpeech { .. } => None,
+        | BusMessage::AgentSpeech { .. }
+        | BusMessage::UserPrompt { .. } => None,
     }
 }
 
@@ -570,11 +571,7 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
         },
 
         // ── Agent thinking → assistant reasoning ────────────────────
-        BusMessage::AgentThinking {
-            agent_id,
-            thinking,
-            step,
-        } => TrainingRecord {
+        BusMessage::AgentThinking { agent_id, thinking, step } => TrainingRecord {
             role: "assistant".into(),
             content: Some(format!("<thinking>\n{thinking}\n</thinking>")),
             tool_calls: None,
@@ -584,11 +581,7 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
         },
 
         // ── Voice session lifecycle → system ────────────────────────
-        BusMessage::VoiceSessionStarted {
-            room_name,
-            agent_id,
-            voice_id,
-        } => TrainingRecord {
+        BusMessage::VoiceSessionStarted { room_name, agent_id, voice_id } => TrainingRecord {
             role: "system".into(),
             content: Some(format!(
                 "Voice session started: room={room_name}, agent={agent_id}, voice={voice_id}"
@@ -599,12 +592,7 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
             metadata: meta,
         },
 
-        BusMessage::VoiceTranscript {
-            room_name,
-            text,
-            role,
-            is_final,
-        } => TrainingRecord {
+        BusMessage::VoiceTranscript { room_name, text, role, is_final } => TrainingRecord {
             role: if role == "user" {
                 "user".into()
             } else {
@@ -646,6 +634,14 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
             conversation_id,
             content,
         } => s3_speech_record::build(act, from, to, conversation_id, content, meta),
+        BusMessage::UserPrompt { agent_id, text, session_id, .. } => TrainingRecord {
+            role: "user".into(),
+            content: Some(text.clone()),
+            tool_calls: None,
+            tool_call_id: None,
+            name: Some(format!("user.{agent_id}.{session_id}")),
+            metadata: meta,
+        },
     }
 }
 

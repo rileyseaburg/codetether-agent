@@ -27,5 +27,6 @@ pub(super) fn entry_parts(message: &BusMessage) -> EntryParts {
         | BusMessage::VoiceTranscript { .. }
         | BusMessage::VoiceAgentStateChanged { .. }
         | BusMessage::VoiceSessionEnded { .. } => entry_voice::entry_parts(message),
+        BusMessage::UserPrompt { .. } => entry_agent::entry_parts(message),
     }
 }

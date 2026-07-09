@@ -183,6 +183,14 @@ pub enum BusMessage {
         step: usize,
     },
 
+    /// User prompt that initiated an agent turn (SFT training trace).
+    UserPrompt {
+        agent_id: String,
+        text: String,
+        workspace: String,
+        session_id: String,
+    },
+
     // ── Voice session messages ───────────────────────────────────────
     /// A voice session (LiveKit room) has been created.
     VoiceSessionStarted {
@@ -256,9 +264,7 @@ impl AgentBus {
     }
 
     /// Wrap `self` in an `Arc` for sharing across tasks.
-    pub fn into_arc(self) -> Arc<Self> {
-        Arc::new(self)
-    }
+    pub fn into_arc(self) -> Arc<Self> { Arc::new(self) }
 
     /// Create a `BusHandle` scoped to a specific agent.
     pub fn handle(self: &Arc<Self>, agent_id: impl Into<String>) -> BusHandle {
@@ -281,15 +287,11 @@ impl AgentBus {
     }
 
     /// Number of active receivers.
-    pub fn receiver_count(&self) -> usize {
-        self.tx.receiver_count()
-    }
+    pub fn receiver_count(&self) -> usize { self.tx.receiver_count() }
 }
 
 impl Default for AgentBus {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // ─── BusHandle ───────────────────────────────────────────────────────────

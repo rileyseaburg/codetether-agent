@@ -114,6 +114,8 @@ pub(crate) async fn run_prompt_with_events(
         content: content_parts,
     });
 
+    super::publish_user_prompt::publish(session, message);
+
     if session.title.is_none() {
         session.generate_ai_title(&registry).await?;
     }

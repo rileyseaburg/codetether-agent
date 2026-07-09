@@ -28,7 +28,7 @@ use summarise::attach_summarised_paste;
 /// handle_paste(&mut app, "pasted\ntext").await;
 /// ```
 pub async fn handle_paste(app: &mut App, text: &str) {
-    let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
+    let normalized = crate::tui::chat::strip::normalize_paste(text);
 
     if symbol_search_active(app) {
         paste_chars_no_newlines(&normalized, |ch| app.state.symbol_search.handle_char(ch));
