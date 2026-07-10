@@ -13,7 +13,10 @@ fn strips_leading_border_only() {
 
 #[test]
 fn strips_double_border_prefix() {
-    assert_eq!(strip_tui_artifacts("││ tool output line"), "tool output line");
+    assert_eq!(
+        strip_tui_artifacts("││ tool output line"),
+        "tool output line"
+    );
 }
 
 #[test]
@@ -42,5 +45,8 @@ fn strips_real_tui_selection() {
     // Matches the exact format from the bug report.
     let raw = "│  The diagnostics are already resolved — the LSP reports no issues.  │\n└──────────────────────────────────────────────────────────────────────┘";
     let result = strip_tui_artifacts(raw);
-    assert_eq!(result, "The diagnostics are already resolved — the LSP reports no issues.");
+    assert_eq!(
+        result,
+        "The diagnostics are already resolved — the LSP reports no issues."
+    );
 }

@@ -8,7 +8,13 @@ use std::time::Duration;
 #[test]
 fn cold_stall_and_transient_fault_are_restart_eligible() {
     assert!(StreamStop::ColdStall.restart_eligible());
-    assert!(StreamStop::Fault { transient: true }.restart_eligible());
+    assert!(
+        StreamStop::Fault {
+            transient: true,
+            message: String::new()
+        }
+        .restart_eligible()
+    );
 }
 
 #[test]
@@ -25,14 +31,26 @@ fn only_premature_end_overrides_committed() {
     assert!(!StreamStop::MidStreamStall.restart_over_committed());
     assert!(!StreamStop::ColdStall.restart_over_committed());
     assert!(!StreamStop::Clean.restart_over_committed());
-    assert!(!StreamStop::Fault { transient: true }.restart_over_committed());
+    assert!(
+        !StreamStop::Fault {
+            transient: true,
+            message: String::new()
+        }
+        .restart_over_committed()
+    );
 }
 
 #[test]
 fn clean_partial_and_permanent_fault_are_not_eligible() {
     assert!(!StreamStop::Clean.restart_eligible());
     assert!(!StreamStop::MidStreamStall.restart_eligible());
-    assert!(!StreamStop::Fault { transient: false }.restart_eligible());
+    assert!(
+        !StreamStop::Fault {
+            transient: false,
+            message: String::new()
+        }
+        .restart_eligible()
+    );
 }
 
 #[test]
