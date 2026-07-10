@@ -28,8 +28,8 @@ pub(super) fn accept(outcome: DrainOutcome, attempts: u32) -> Result<CompletionR
             "provider stream ended before completion over {} attempt(s); connection dropped mid-turn",
             attempts + 1
         ),
-        StreamStop::Fault { transient } => anyhow::bail!(
-            "stream faulted (transient={transient}) with no content over {} attempt(s)",
+        StreamStop::Fault { transient, message } => anyhow::bail!(
+            "stream faulted (transient={transient}) with no content over {} attempt(s): {message}",
             attempts + 1
         ),
         _ => anyhow::bail!("provider stream ended without assistant content; none emitted"),

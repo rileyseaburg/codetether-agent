@@ -47,6 +47,7 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &SessionView) {
         ViewMode::Swarm => render_swarm_view(f, &mut app.state.swarm, f.area()),
         ViewMode::Ralph => render_ralph_view(f, &mut app.state.ralph, f.area()),
         ViewMode::Bus => render_bus_view(f, app),
+        ViewMode::Subagents => super::subagent_view::render(f, f.area(), &app.state),
         ViewMode::Model => crate::tui::model_picker::render_model_picker(f, f.area(), app, session),
         ViewMode::Settings => render_settings(f, f.area(), &app.state),
         ViewMode::Lsp => render_lsp(f, f.area(), &app.state.cwd_display, &app.state.status),

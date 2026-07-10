@@ -13,8 +13,17 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::sync::Arc;
 
+mod input;
+mod input_error;
+#[cfg(test)]
+#[path = "swarm_execute/input_tests.rs"]
+mod input_tests;
+mod schema;
 mod support;
+mod task_input;
 mod worktrees;
+
+use input::parse_tasks;
 
 pub struct SwarmExecuteTool;
 
@@ -28,14 +37,6 @@ impl Default for SwarmExecuteTool {
     fn default() -> Self {
         Self::new()
     }
-}
-
-#[derive(Clone)]
-struct TaskInput {
-    id: Option<String>,
-    name: String,
-    instruction: String,
-    specialty: Option<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -60,141 +61,20 @@ impl Tool for SwarmExecuteTool {
     }
 
     fn description(&self) -> &str {
-        "Execute multiple tasks in parallel across multiple sub-agents. \
-         Each task runs independently in its own agent context. \
-         Returns aggregated results from all swarm participants. \
-         Handles partial failures gracefully based on aggregation strategy."
+        "Run independent tasks in parallel. Pass tasks as instruction strings, for example \
+         {\"tasks\":[\"Inspect the API\",\"Run focused tests\"]}. Use task objects only when \
+         names, IDs, or specialties are needed; orchestration settings are optional."
     }
 
     fn parameters(&self) -> Value {
-        json!({
-            "type": "object",
-            "properties": {
-                "tasks": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "string",
-                                "description": "Unique identifier for this task (auto-generated if not provided)"
-                            },
-                            "name": {
-                                "type": "string",
-                                "description": "Human-readable name for this task"
-                            },
-                            "instruction": {
-                                "type": "string",
-                                "description": "The instruction for the sub-agent to execute"
-                            },
-                            "specialty": {
-                                "type": "string",
-                                "description": "Optional specialty for the sub-agent (e.g., 'Code Writer', 'Researcher', 'Tester')"
-                            }
-                        },
-                        "required": ["name", "instruction"]
-                    },
-                    "description": "Array of tasks to execute in parallel"
-                },
-                "concurrency_limit": {
-                    "type": "integer",
-                    "description": "Maximum number of concurrent agents (default: 5)",
-                    "default": 5
-                },
-                "aggregation_strategy": {
-                    "type": "string",
-                    "enum": ["all", "first_error", "best_effort"],
-                    "description": "How to aggregate results: 'all' (all must succeed), 'first_error' (stop on first error), 'best_effort' (collect all, report failures)",
-                    "default": "best_effort"
-                },
-                "model": {
-                    "type": "string",
-                    "description": "Model to use for sub-agents (provider/model format, e.g., 'anthropic/claude-sonnet-4-20250514'). Defaults to configured default."
-                },
-                "max_steps": {
-                    "type": "integer",
-                    "description": "Maximum steps per sub-agent (default: 50)",
-                    "default": 50
-                },
-                "timeout_secs": {
-                    "type": "integer",
-                    "description": "Timeout per sub-agent in seconds (default: 300)",
-                    "default": 300
-                }
-            },
-            "required": ["tasks"]
-        })
+        schema::parameters()
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let example = json!({
-            "tasks": [{"name": "Task 1", "instruction": "Do something"}],
-            "concurrency_limit": 5,
-            "aggregation_strategy": "best_effort"
-        });
-
-        // Parse tasks array
-        let tasks_val = match params.get("tasks").and_then(|v| v.as_array()) {
-            Some(arr) if !arr.is_empty() => arr,
-            Some(_) => {
-                return Ok(ToolResult::structured_error(
-                    "INVALID_FIELD",
-                    "swarm_execute",
-                    "tasks array must contain at least one task",
-                    Some(vec!["tasks"]),
-                    Some(example),
-                ));
-            }
-            None => {
-                return Ok(ToolResult::structured_error(
-                    "MISSING_FIELD",
-                    "swarm_execute",
-                    "tasks is required and must be an array of task objects with 'name' and 'instruction' fields",
-                    Some(vec!["tasks"]),
-                    Some(example),
-                ));
-            }
+        let tasks = match parse_tasks(&params) {
+            Ok(tasks) => tasks,
+            Err(error) => return Ok(error),
         };
-
-        let mut tasks = Vec::new();
-        for (i, task_val) in tasks_val.iter().enumerate() {
-            let name = match task_val.get("name").and_then(|v| v.as_str()) {
-                Some(s) => s.to_string(),
-                None => {
-                    return Ok(ToolResult::structured_error(
-                        "INVALID_FIELD",
-                        "swarm_execute",
-                        &format!("tasks[{i}].name is required and must be a string"),
-                        Some(vec!["name"]),
-                        Some(json!({"name": "Task Name", "instruction": "Do something"})),
-                    ));
-                }
-            };
-            let instruction = match task_val.get("instruction").and_then(|v| v.as_str()) {
-                Some(s) => s.to_string(),
-                None => {
-                    return Ok(ToolResult::structured_error(
-                        "INVALID_FIELD",
-                        "swarm_execute",
-                        &format!("tasks[{i}].instruction is required and must be a string"),
-                        Some(vec!["instruction"]),
-                        Some(json!({"name": name, "instruction": "What the sub-agent should do"})),
-                    ));
-                }
-            };
-            tasks.push(TaskInput {
-                id: task_val
-                    .get("id")
-                    .and_then(|v| v.as_str())
-                    .map(String::from),
-                name,
-                instruction,
-                specialty: task_val
-                    .get("specialty")
-                    .and_then(|v| v.as_str())
-                    .map(String::from),
-            });
-        }
 
         let concurrency_limit = params
             .get("concurrency_limit")

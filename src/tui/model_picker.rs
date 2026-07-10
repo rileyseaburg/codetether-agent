@@ -93,7 +93,7 @@ pub fn render_model_picker(f: &mut Frame, area: Rect, app: &mut App, session: &S
         Span::raw(": Apply "),
         Span::styled("Esc", Style::default().fg(Color::Yellow)),
         Span::raw(": Cancel | "),
-        Span::raw(app.state.status.clone()).dim(),
+        Span::raw("Codex/Bedrock effort: configure in /settings").dim(),
     ]))
     .block(Block::default().borders(Borders::ALL).title(" Controls "));
     f.render_widget(footer, chunks[3]);

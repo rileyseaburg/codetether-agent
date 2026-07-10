@@ -1,8 +1,7 @@
 //! Per-line stripping helpers for [`super::strip_tui_artifacts`].
 
 /// Box-drawing characters produced by ratatui Block borders.
-pub(super) const BOX_CHARS: &[char] =
-    &['│', '┌', '┐', '└', '┘', '─', '├', '┤', '┬', '┴', '┼'];
+pub(super) const BOX_CHARS: &[char] = &['│', '┌', '┐', '└', '┘', '─', '├', '┤', '┬', '┴', '┼'];
 
 /// Return `true` when every non-whitespace character on the line is a
 /// box-drawing character — i.e. it is a pure border/separator line.

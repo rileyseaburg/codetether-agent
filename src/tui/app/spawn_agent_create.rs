@@ -53,6 +53,6 @@ pub(super) async fn create_agent(app: &mut App, args: SpawnArgs, depth: u8) {
             is_processing: false,
         },
     );
-    app.state.status = format!("Spawned agent: {}{lineage}", args.name);
-    note(app, format!("Spawned agent '{}'{lineage}.", args.name));
+    app.state.status = format!("Deployed subagent: {}{lineage}", args.name);
+    note(app, format!("Parent deployed subagent '{}'{lineage}. Open /agents to watch all children and report-back state.", args.name));
 }

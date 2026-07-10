@@ -16,6 +16,8 @@ pub mod sessions_age_color;
 pub mod sessions_list_item;
 pub mod sessions_row;
 pub mod status_bar;
+pub mod subagent_lines;
+pub mod subagent_view;
 pub mod tool_panel;
 pub mod trust_status;
 pub mod webview;

@@ -45,6 +45,8 @@ pub enum ViewMode {
     Ralph,
     /// Agent bus event and collaboration log view.
     Bus,
+    /// Parent/child sub-agent deployment and reporting dashboard.
+    Subagents,
     /// Model picker and provider model selection view.
     Model,
     /// User-configurable TUI and runtime settings view.

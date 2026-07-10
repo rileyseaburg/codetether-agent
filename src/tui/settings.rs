@@ -11,6 +11,8 @@ use crate::tui::status::render_status;
 
 #[path = "settings_lines.rs"]
 mod lines;
+#[path = "settings_provider_lines.rs"]
+mod provider_lines;
 #[path = "settings_rows.rs"]
 mod rows;
 
@@ -49,7 +51,8 @@ mod tests {
 
         assert!(text.contains("Edit auto-apply"));
         assert!(text.contains("Access mode"));
-        assert!(text.contains("thinking effort"));
+        assert!(text.contains("Bedrock thinking effort"));
+        assert!(text.contains("OpenAI Codex thinking effort"));
         assert!(text.contains("Up / Down selects a setting"));
     }
 }

@@ -14,9 +14,8 @@ pub(super) fn user_prompt(
     session_id: &str,
 ) -> EntryParts {
     let preview = truncate(text, 80);
-    let detail = format!(
-        "agent: {agent_id}\nsession: {session_id}\nworkspace: {workspace}\n\n{text}"
-    );
+    let detail =
+        format!("agent: {agent_id}\nsession: {session_id}\nworkspace: {workspace}\n\n{text}");
     EntryParts::new(
         "USER",
         format!("{agent_id}: {preview}"),

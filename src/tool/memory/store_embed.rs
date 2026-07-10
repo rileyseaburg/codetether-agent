@@ -54,6 +54,13 @@ impl MemoryStore {
             },
             None => None,
         };
-        scope_widen::run(&mut self.entries, query, tags, scope, query_vec.as_ref(), limit)
+        scope_widen::run(
+            &mut self.entries,
+            query,
+            tags,
+            scope,
+            query_vec.as_ref(),
+            limit,
+        )
     }
 }

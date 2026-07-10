@@ -871,7 +871,7 @@ pub async fn handle_slash_command(
             app.state.status = "Protocol bus log".to_string();
         }
         "/model" => open_model_picker(app, session, registry).await,
-        "/settings" => app.state.set_view_mode(ViewMode::Settings),
+        cmd @ ("/settings" | "/agents" | "/subagents") => app.state.set_view_mode(if cmd == "/settings" { ViewMode::Settings } else { ViewMode::Subagents }),
         "/lsp" => app.state.set_view_mode(ViewMode::Lsp),
         "/rlm" => app.state.set_view_mode(ViewMode::Rlm),
         "/latency" => {

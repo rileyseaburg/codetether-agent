@@ -8,6 +8,7 @@ pub const ALL_VIEW_MODES: &[ViewMode] = &[
     ViewMode::Swarm,
     ViewMode::Ralph,
     ViewMode::Bus,
+    ViewMode::Subagents,
     ViewMode::Model,
     ViewMode::Settings,
     ViewMode::Lsp,

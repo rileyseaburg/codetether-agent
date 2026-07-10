@@ -37,11 +37,11 @@ pub async fn handle_detach_command(app: &mut App, session: &mut Session, rest: &
     };
     let child_id = child.id.clone();
     register_detached(app, &name, child);
-    app.state.status = format!("Detached thread → background agent '{name}'");
+    app.state.status = format!("Detached thread → subagent '{name}'");
     push(
         app,
         format!(
-            "Detached this thread into background agent '{name}' ({}).\n  Switch with Tab or /focus {name}.",
+            "Detached this thread into subagent '{name}' ({}).\n  Open /agents for the all-child dashboard, or switch with Tab / /focus {name}.",
             &child_id[..8.min(child_id.len())]
         ),
     );

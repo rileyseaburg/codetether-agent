@@ -24,8 +24,11 @@ pub(crate) enum StreamStop {
     /// stream yields one complete answer (LLM streams are not token-resumable,
     /// so the partial is discarded rather than stitched).
     PrematureEnd,
-    /// Terminal error chunk; retryable only if `transient`.
-    Fault { transient: bool },
+    /// Terminal error chunk; retryable only if `transient`. Carries the
+    /// provider's error message so the final failure surfaces the cause
+    /// (e.g. an OpenAI 400 "model is not supported" body) instead of an
+    /// opaque "stream faulted" line.
+    Fault { transient: bool, message: String },
 }
 
 impl StreamStop {
@@ -35,7 +38,10 @@ impl StreamStop {
             self,
             StreamStop::ColdStall
                 | StreamStop::PrematureEnd
-                | StreamStop::Fault { transient: true }
+                | StreamStop::Fault {
+                    transient: true,
+                    ..
+                }
         )
     }
 

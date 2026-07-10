@@ -11,6 +11,7 @@ use crate::tui::app::state::App;
 use super::access_mode;
 use super::bedrock::cycle_bedrock_service_tier;
 use super::bedrock_effort::cycle_bedrock_thinking_effort;
+use super::codex_effort::cycle_codex_thinking_effort;
 use super::network;
 use super::{set_slash_autocomplete, set_use_worktree};
 
@@ -24,6 +25,7 @@ pub async fn toggle_selected_setting(app: &mut App, session: &mut Session) {
         4 => access_mode::cycle_access_mode(app, session).await,
         5 => cycle_bedrock_service_tier(app, session).await,
         6 => cycle_bedrock_thinking_effort(app, session).await,
+        7 => cycle_codex_thinking_effort(app, session).await,
         _ => {}
     }
 }

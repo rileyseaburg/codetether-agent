@@ -18,6 +18,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::io::ErrorKind;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
@@ -30,6 +31,17 @@ use tokio_tungstenite::{
         http::{HeaderValue, Request},
     },
 };
+
+#[path = "openai_codex/reasoning_catalog.rs"]
+pub mod reasoning_catalog;
+#[path = "openai_codex/runtime_config.rs"]
+pub mod runtime_config;
+#[path = "openai_codex/thinking_level.rs"]
+mod thinking_level;
+#[path = "openai_codex/token_expiry.rs"]
+mod token_expiry;
+
+use thinking_level::ThinkingLevel;
 
 const OPENAI_API_URL: &str = "https://api.openai.com/v1";
 // `chatgpt.com/backend-api/codex` is not the public OpenAI API. Keep it behind
@@ -46,24 +58,10 @@ const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
 const SCOPE: &str = "openid profile email offline_access";
 const CHATGPT_BACKEND_OPT_IN_ENV: &str = "CODETETHER_OPENAI_CODEX_ALLOW_CHATGPT_BACKEND";
-const THINKING_LEVEL_ENV: &str = "CODETETHER_OPENAI_CODEX_THINKING_LEVEL";
-const REASONING_EFFORT_ENV: &str = "CODETETHER_OPENAI_CODEX_REASONING_EFFORT";
 const DEFAULT_RESPONSES_INSTRUCTIONS: &str = "You are CodeTether Agent running on OpenAI Codex. \
 Resolve software tasks directly: inspect the workspace, make focused changes, validate with \
 available tools, and report concise results. When model availability or external APIs are involved, \
 verify live behavior before treating it as supported.";
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ThinkingLevel {
-    NoReasoning,
-    Low,
-    Medium,
-    High,
-    XHigh,
-    /// Maximum reasoning effort — maps to `"max"` in the Responses API.
-    /// Introduced in Codex rust-v0.143.0 for GPT-5.6 Sol/Terra/Luna.
-    Max,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ResponsesWsBackend {
@@ -74,31 +72,6 @@ enum ResponsesWsBackend {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CodexServiceTier {
     Priority,
-}
-
-impl ThinkingLevel {
-    fn parse(raw: &str) -> Option<Self> {
-        match raw.trim().to_ascii_lowercase().as_str() {
-            "none" => Some(Self::NoReasoning),
-            "low" => Some(Self::Low),
-            "medium" => Some(Self::Medium),
-            "high" => Some(Self::High),
-            "xhigh" => Some(Self::XHigh),
-            "max" => Some(Self::Max),
-            _ => None,
-        }
-    }
-
-    fn as_str(self) -> &'static str {
-        match self {
-            Self::NoReasoning => "none",
-            Self::Low => "low",
-            Self::Medium => "medium",
-            Self::High => "high",
-            Self::XHigh => "xhigh",
-            Self::Max => "max",
-        }
-    }
 }
 
 impl CodexServiceTier {
@@ -252,9 +225,21 @@ impl Default for OpenAiCodexProvider {
 
 impl OpenAiCodexProvider {
     fn chatgpt_supported_models() -> &'static [&'static str] {
-        // gpt-5.5 is available; -fast maps to service_tier=priority.
-        // Verified live against https://chatgpt.com/backend-api/codex/models?client_version=1.0.0
-        &["gpt-5.5", "gpt-5.5-fast"]
+        &[
+            "gpt-5.5",
+            "gpt-5.5-fast",
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+            "gpt-5.6-luna",
+        ]
+    }
+
+    fn needs_chatgpt_http_transport(model: &str) -> bool {
+        let (model, _, _) = Self::resolve_model_and_reasoning_effort_and_service_tier(model);
+        matches!(
+            model.as_str(),
+            "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna"
+        )
     }
 
     fn model_is_supported_by_backend(&self, model: &str) -> bool {
@@ -294,8 +279,33 @@ impl OpenAiCodexProvider {
         }
     }
 
+    fn codex_auth_file_credentials() -> Option<OAuthCredentials> {
+        #[derive(Deserialize)]
+        struct AuthFile {
+            tokens: AuthTokens,
+        }
+        #[derive(Deserialize)]
+        struct AuthTokens {
+            id_token: String,
+            access_token: String,
+            refresh_token: String,
+            account_id: String,
+        }
+        let home = std::env::var_os("HOME").map(PathBuf::from)?;
+        let raw = std::fs::read_to_string(home.join(".codex/auth.json")).ok()?;
+        let auth: AuthFile = serde_json::from_str(&raw).ok()?;
+        Some(OAuthCredentials {
+            id_token: Some(auth.tokens.id_token),
+            chatgpt_account_id: Some(auth.tokens.account_id),
+            access_token: auth.tokens.access_token,
+            refresh_token: auth.tokens.refresh_token,
+            expires_at: u64::MAX,
+        })
+    }
+
     /// Create from stored OAuth credentials (from Vault)
     pub fn from_credentials(credentials: OAuthCredentials) -> Self {
+        let credentials = Self::codex_auth_file_credentials().unwrap_or(credentials);
         let chatgpt_account_id = credentials
             .chatgpt_account_id
             .clone()
@@ -698,15 +708,18 @@ impl OpenAiCodexProvider {
             anyhow::bail!("No OAuth credentials available. Run OAuth flow first.");
         };
 
-        let expires_in = creds.expires_at
-            - std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .context("System time error")?
-                .as_secs();
+        let now_epoch = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .context("System time error")?
+            .as_secs();
 
         let cached = CachedTokens {
             access_token: creds.access_token.clone(),
-            expires_at: std::time::Instant::now() + std::time::Duration::from_secs(expires_in),
+            expires_at: token_expiry::cache_deadline(
+                creds.expires_at,
+                now_epoch,
+                std::time::Instant::now(),
+            ),
         };
 
         let token = cached.access_token.clone();
@@ -1136,10 +1149,8 @@ impl OpenAiCodexProvider {
         (base_model.to_string(), Some(level))
     }
 
-    fn env_thinking_level() -> Option<ThinkingLevel> {
-        std::env::var(THINKING_LEVEL_ENV)
-            .ok()
-            .or_else(|| std::env::var(REASONING_EFFORT_ENV).ok())
+    fn configured_thinking_level() -> Option<ThinkingLevel> {
+        runtime_config::thinking_level()
             .as_deref()
             .and_then(ThinkingLevel::parse)
     }
@@ -1173,11 +1184,15 @@ impl OpenAiCodexProvider {
         model: &str,
     ) -> (String, Option<ThinkingLevel>, Option<CodexServiceTier>) {
         let (base_model, level_from_model) = Self::parse_model_thinking_level(model);
-        let level = level_from_model.or_else(Self::env_thinking_level);
+        let level = level_from_model.or_else(Self::configured_thinking_level);
         let (base_model, service_tier) = Self::parse_service_tier_model_alias(&base_model);
         if !Self::model_supports_reasoning_effort(&base_model) {
             return (base_model, None, service_tier);
         }
+        let supported = reasoning_catalog::supported_levels(&base_model);
+        let level = level.filter(|effort| {
+            supported.is_empty() || reasoning_catalog::supports(&base_model, effort.as_str())
+        });
         (base_model, level, service_tier)
     }
 
@@ -1209,7 +1224,10 @@ impl OpenAiCodexProvider {
     }
 
     fn api_key_hidden_model(model: &str) -> bool {
-        matches!(model, "gpt-5.5" | "gpt-5.5-fast")
+        matches!(
+            model,
+            "gpt-5.5" | "gpt-5.5-fast" | "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna"
+        )
     }
 
     fn format_openai_api_error(status: StatusCode, body: &str, model: &str) -> String {
@@ -1760,6 +1778,11 @@ impl OpenAiCodexProvider {
         let account_id = self.resolved_chatgpt_account_id(&access_token).context(
             "OpenAI Codex OAuth token is missing ChatGPT workspace/account ID. Re-run `codetether auth codex --device-code`.",
         )?;
+        if Self::needs_chatgpt_http_transport(&request.model) {
+            return self
+                .complete_stream_with_chatgpt_http_responses(request, access_token, account_id)
+                .await;
+        }
         match self
             .complete_stream_with_realtime(
                 request.clone(),
@@ -1861,6 +1884,7 @@ impl OpenAiCodexProvider {
             .header("Authorization", format!("Bearer {}", access_token))
             .header("chatgpt-account-id", account_id)
             .header("Content-Type", "application/json")
+            .header("version", "0.144.0")
             .json(&body)
             .send()
             .await
@@ -2037,9 +2061,13 @@ impl Provider for OpenAiCodexProvider {
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         let mut models = vec![
             // ChatGPT backend: gpt-5.5 plus Fast mode via service_tier=priority.
-            // GPT-5.6 Sol/Terra/Luna are Bedrock-hosted (`openai.gpt-5.6-*`).
+            // Authenticated Codex catalog: Sol/Terra support max+ultra; Luna supports max.
+            // All three are available through the ChatGPT backend and Bedrock aliases.
             Self::model_info("gpt-5.5", "GPT-5.5", 272_000, 128_000, false),
             Self::model_info("gpt-5.5-fast", "GPT-5.5 Fast", 272_000, 128_000, false),
+            Self::model_info("gpt-5.6-sol", "GPT-5.6 Sol", 272_000, 128_000, false),
+            Self::model_info("gpt-5.6-terra", "GPT-5.6 Terra", 272_000, 128_000, false),
+            Self::model_info("gpt-5.6-luna", "GPT-5.6 Luna", 272_000, 128_000, false),
         ];
 
         if self.using_chatgpt_backend() {
@@ -2092,31 +2120,8 @@ mod tests {
         },
     };
 
-    #[test]
-    fn test_generate_pkce() {
-        let pkce = OpenAiCodexProvider::generate_pkce();
-        assert!(!pkce.verifier.is_empty());
-        assert!(!pkce.challenge.is_empty());
-        assert_ne!(pkce.verifier, pkce.challenge);
-    }
-
-    #[test]
-    fn test_generate_state() {
-        let state = OpenAiCodexProvider::generate_state();
-        assert_eq!(state.len(), 32);
-    }
-
-    #[test]
-    fn formats_scope_error_with_actionable_message() {
-        let body = r#"{"error":{"message":"Missing scopes: model.request"}}"#;
-        let msg = OpenAiCodexProvider::format_openai_api_error(
-            StatusCode::UNAUTHORIZED,
-            body,
-            "gpt-5.3-codex",
-        );
-        assert!(msg.contains("model.request"));
-        assert!(msg.contains("codetether auth codex"));
-    }
+    include!("openai_codex_basic_tests.rs");
+    include!("openai_codex_reasoning_tests.rs");
 
     #[test]
     fn parses_model_suffix_for_thinking_level() {
@@ -2128,57 +2133,18 @@ mod tests {
         let (model, level) =
             OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.5:none");
         assert_eq!(model, "gpt-5.5");
-        assert_eq!(level.map(ThinkingLevel::as_str), Some("none"));
+        assert_eq!(level, None);
 
         let (model, level) =
             OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.5:xhigh");
         assert_eq!(model, "gpt-5.5");
         assert_eq!(level.map(ThinkingLevel::as_str), Some("xhigh"));
 
-        // `max` effort — added in Codex rust-v0.143.0 for GPT-5.6 Sol/Terra/Luna.
+        // The authenticated model catalog reports `max` for all GPT-5.6 variants.
         let (model, level) =
             OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.6-sol:max");
         assert_eq!(model, "gpt-5.6-sol");
         assert_eq!(level.map(ThinkingLevel::as_str), Some("max"));
-    }
-
-    #[test]
-    fn maps_fast_model_alias_to_priority_service_tier() {
-        let (model, level, service_tier) =
-            OpenAiCodexProvider::resolve_model_and_reasoning_effort_and_service_tier(
-                "gpt-5.4-fast:high",
-            );
-        assert_eq!(model, "gpt-5.4");
-        assert_eq!(level.map(ThinkingLevel::as_str), Some("high"));
-        assert_eq!(service_tier.map(CodexServiceTier::as_str), Some("priority"));
-
-        let (model, level, service_tier) =
-            OpenAiCodexProvider::resolve_model_and_reasoning_effort_and_service_tier(
-                "gpt-5.5-fast:high",
-            );
-        assert_eq!(model, "gpt-5.5");
-        assert_eq!(level.map(ThinkingLevel::as_str), Some("high"));
-        assert_eq!(service_tier.map(CodexServiceTier::as_str), Some("priority"));
-    }
-
-    #[test]
-    fn ignores_unknown_model_suffix() {
-        let (model, level) =
-            OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.3-codex:turbo");
-        assert_eq!(model, "gpt-5.3-codex:turbo");
-        assert_eq!(level, None);
-
-        let (model, level) =
-            OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.5:minimal");
-        assert_eq!(model, "gpt-5.5:minimal");
-        assert_eq!(level, None);
-    }
-
-    #[test]
-    fn skips_reasoning_effort_for_non_reasoning_models() {
-        let (model, level) = OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-4o:high");
-        assert_eq!(model, "gpt-4o");
-        assert_eq!(level, None);
     }
 
     #[tokio::test]
@@ -2189,9 +2155,11 @@ mod tests {
             .await
             .expect("model listing should succeed");
 
-        assert!(models.iter().any(|model| model.id == "gpt-5.5"));
-        assert!(models.iter().any(|model| model.id == "gpt-5.5-fast"));
-        assert_eq!(models.len(), 2, "chatgpt backend should expose base + fast");
+        let ids = models
+            .iter()
+            .map(|model| model.id.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(ids, OpenAiCodexProvider::chatgpt_supported_models());
     }
 
     #[tokio::test]
@@ -2204,6 +2172,7 @@ mod tests {
 
         assert!(!models.iter().any(|model| model.id == "gpt-5.5"));
         assert!(!models.iter().any(|model| model.id == "gpt-5.5-fast"));
+        assert!(!models.iter().any(|model| model.id.starts_with("gpt-5.6")));
     }
 
     #[test]
