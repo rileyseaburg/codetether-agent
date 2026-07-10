@@ -11,6 +11,7 @@ use crate::tui::app::detach::name::pick_name;
 use crate::tui::app::detach::register::register_detached;
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
+use crate::tui::models::ViewMode;
 
 /// Handle `/detach [name]`: snapshot the current thread into a backgrounded
 /// sub-agent that keeps running inside the TUI.
@@ -38,6 +39,7 @@ pub async fn handle_detach_command(app: &mut App, session: &mut Session, rest: &
     let child_id = child.id.clone();
     register_detached(app, &name, child);
     app.state.status = format!("Detached thread → subagent '{name}'");
+    app.state.set_view_mode(ViewMode::Subagents);
     push(
         app,
         format!(

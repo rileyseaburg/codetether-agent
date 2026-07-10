@@ -5,6 +5,8 @@ mod ai_model;
 mod ai_request;
 mod extract;
 
+pub(crate) use extract::is_title_candidate;
+
 use anyhow::Result;
 use chrono::Utc;
 

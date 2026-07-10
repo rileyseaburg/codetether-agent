@@ -23,5 +23,5 @@ fn content_text(item: &Value) -> Option<String> {
 
 fn clean_text(text: &str) -> Option<String> {
     let text = text.trim();
-    (!text.is_empty()).then(|| text.to_string())
+    crate::session::title::is_title_candidate(text).then(|| text.to_string())
 }

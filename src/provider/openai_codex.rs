@@ -36,6 +36,7 @@ use tokio_tungstenite::{
 pub mod reasoning_catalog;
 #[path = "openai_codex/runtime_config.rs"]
 pub mod runtime_config;
+pub(crate) mod service_tier_catalog;
 #[path = "openai_codex/thinking_level.rs"]
 mod thinking_level;
 #[path = "openai_codex/token_expiry.rs"]
@@ -1165,12 +1166,10 @@ impl OpenAiCodexProvider {
     }
 
     fn parse_service_tier_model_alias(model: &str) -> (String, Option<CodexServiceTier>) {
-        match model {
-            // OpenAI's Codex app implements Fast mode via `service_tier=priority`.
-            "gpt-5.4-fast" => ("gpt-5.4".to_string(), Some(CodexServiceTier::Priority)),
-            "gpt-5.5-fast" => ("gpt-5.5".to_string(), Some(CodexServiceTier::Priority)),
-            _ => (model.to_string(), None),
+        if let Some(base) = service_tier_catalog::parse_fast_alias(model) {
+            return (base.to_string(), Some(CodexServiceTier::Priority));
         }
+        (model.to_string(), None)
     }
 
     #[cfg(test)]
@@ -1289,7 +1288,7 @@ impl OpenAiCodexProvider {
             event["tools"] = json!(tools);
         }
         if let Some(level) = reasoning_effort {
-            event["reasoning"] = json!({ "effort": level.as_str() });
+            event["reasoning"] = json!({ "effort": level.as_wire_str() });
         }
         Self::apply_service_tier(&mut event, service_tier);
         if backend == ResponsesWsBackend::OpenAi {
@@ -1858,7 +1857,7 @@ impl OpenAiCodexProvider {
             body["tools"] = json!(tools);
         }
         if let Some(level) = reasoning_effort {
-            body["reasoning"] = json!({ "effort": level.as_str() });
+            body["reasoning"] = json!({ "effort": level.as_wire_str() });
         }
         Self::apply_service_tier(&mut body, service_tier);
 
@@ -1924,7 +1923,7 @@ impl OpenAiCodexProvider {
             body["tools"] = json!(tools);
         }
         if let Some(level) = reasoning_effort {
-            body["reasoning"] = json!({ "effort": level.as_str() });
+            body["reasoning"] = json!({ "effort": level.as_wire_str() });
         }
         Self::apply_service_tier(&mut body, service_tier);
 

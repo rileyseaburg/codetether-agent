@@ -1,9 +1,9 @@
 //! Text rows for the sub-agent dashboard.
 
 use ratatui::style::Stylize;
-use ratatui::text::{Line, Span};
+use ratatui::text::Line;
 
-use crate::tui::app::state::{AppState, SpawnedAgent};
+use crate::tui::app::state::AppState;
 
 /// Build dashboard rows for all spawned children.
 pub fn lines(state: &AppState) -> Vec<Line<'static>> {
@@ -15,7 +15,7 @@ pub fn lines(state: &AppState) -> Vec<Line<'static>> {
             "No subagents yet. Use /spawn <name> [--parent <p>] [mission].".dim(),
         ));
     }
-    rows.extend(agents.into_iter().map(agent_line));
+    rows.extend(agents.into_iter().map(super::subagent_row::line));
     rows
 }
 
@@ -37,26 +37,4 @@ fn header(state: &AppState) -> Vec<Line<'static>> {
         ),
         Line::from(""),
     ]
-}
-
-fn agent_line(agent: &SpawnedAgent) -> Line<'static> {
-    let parent = agent.parent.as_deref().unwrap_or("main");
-    let state = if agent.is_processing {
-        "working"
-    } else {
-        "idle"
-    };
-    let model = agent.model_id.as_deref().unwrap_or("default model");
-    let mission = if agent.instructions.is_empty() {
-        "detached thread"
-    } else {
-        &agent.instructions
-    };
-    Line::from(vec![
-        Span::raw("  ".repeat(agent.depth as usize)),
-        format!("{} ", agent.name).cyan().bold(),
-        format!("← {parent} ").dim(),
-        format!("[{state}] ").yellow(),
-        format!("{model} · {mission}").dim(),
-    ])
 }

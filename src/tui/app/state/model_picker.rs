@@ -1,7 +1,6 @@
 //! Async model list refresh from the provider registry.
-
-use std::sync::Arc;
-use std::time::Duration;
+mod reasoning_refs;
+use std::{sync::Arc, time::Duration};
 
 use futures::future::join_all;
 use tokio::sync::mpsc;
@@ -152,11 +151,11 @@ async fn load_available_models(registry: &ProviderRegistry) -> (Vec<String>, Mod
         match result {
             Ok(Ok(provider_models)) => {
                 let before = models.len();
-                models.extend(
-                    provider_models
-                        .iter()
-                        .filter_map(|model| model_ref_for_provider(&provider_name, model)),
-                );
+                models.extend(provider_models.iter().flat_map(|model| {
+                    model_ref_for_provider(&provider_name, model)
+                        .into_iter()
+                        .flat_map(|model_ref| reasoning_refs::expand(&provider_name, model_ref))
+                }));
                 if models.len() > before {
                     summary.loaded_providers += 1;
                 }

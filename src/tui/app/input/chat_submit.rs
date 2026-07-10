@@ -39,9 +39,6 @@ pub(super) async fn handle_enter_chat(
     }
     let prompt =
         super::mention_route::route_prompt(&prompt, app.state.active_spawned_agent.as_deref());
-    if super::forage_offer::intercept(app, slot, &prompt) {
-        return;
-    }
     if super::continue_command::run(app, cwd, slot, registry, worker_bridge, runtime, &prompt).await
     {
         return;

@@ -1,10 +1,14 @@
 //! Session creation and registration for `/spawn` (see [`super`]).
 
+#[path = "spawn_agent_message.rs"]
+mod message;
+#[path = "spawn_agent_register.rs"]
+mod register;
 use super::SpawnArgs;
-use super::prompt::system_prompt;
 use crate::session::Session;
-use crate::tui::app::state::{App, SpawnedAgent};
+use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
+use crate::tui::models::ViewMode;
 
 /// Push a system note into the chat transcript.
 pub(super) fn note(app: &mut App, content: impl Into<String>) {
@@ -18,41 +22,34 @@ pub(super) fn note(app: &mut App, content: impl Into<String>) {
 pub(super) async fn create_agent(app: &mut App, args: SpawnArgs, depth: u8) {
     let mut session = match Session::new().await {
         Ok(s) => s,
-        Err(e) => {
-            app.state.status = format!("Failed to create agent session: {e}");
-            return;
-        }
+        Err(e) => return fail(app, e),
     };
     session.agent = format!("spawned:{}", args.name);
-    // Autonomous sub-agents cannot interactively confirm edits; without this
-    // they loop re-issuing the same pending edit forever (issue #294).
     session.metadata.auto_apply_edits = true;
-    session.add_message(crate::provider::Message {
-        role: crate::provider::Role::System,
-        content: vec![crate::provider::ContentPart::Text {
-            text: system_prompt(&args.name, &args.instructions),
-        }],
-    });
+    session.add_message(message::system(&args));
     if let Err(e) = session.save().await {
         tracing::warn!(error = %e, "Failed to save spawned agent session");
     }
-    let lineage = args
-        .parent
-        .as_deref()
+    let lineage = lineage(args.parent.as_deref(), depth);
+    let name = args.name.clone();
+    register::insert(app, args, depth, session);
+    app.state.status = format!("Deployed subagent: {name}{lineage}");
+    app.state.set_view_mode(ViewMode::Subagents);
+    note(app, deployment_notice(&name, &lineage));
+}
+
+fn fail(app: &mut App, e: anyhow::Error) {
+    app.state.status = format!("Failed to create agent session: {e}");
+}
+
+fn lineage(parent: Option<&str>, depth: u8) -> String {
+    parent
         .map(|p| format!(" under '{p}' (depth {depth})"))
-        .unwrap_or_default();
-    app.state.spawned_agents.insert(
-        args.name.clone(),
-        SpawnedAgent {
-            name: args.name.clone(),
-            instructions: args.instructions,
-            parent: args.parent,
-            depth,
-            session,
-            model_id: super::model::current_model_id(app),
-            is_processing: false,
-        },
-    );
-    app.state.status = format!("Deployed subagent: {}{lineage}", args.name);
-    note(app, format!("Parent deployed subagent '{}'{lineage}. Open /agents to watch all children and report-back state.", args.name));
+        .unwrap_or_default()
+}
+
+fn deployment_notice(name: &str, lineage: &str) -> String {
+    format!(
+        "Parent deployed subagent '{name}'{lineage}. Open /agents to watch all children and report-back state."
+    )
 }

@@ -23,9 +23,7 @@ pub(super) fn parse_message_item(
                 if text.is_empty() {
                     continue;
                 }
-                if role == Role::User && first_user_text.is_none() {
-                    *first_user_text = Some(text.clone());
-                }
+                super::capture::capture_user_text(&role, &text, first_user_text);
                 content.push(ContentPart::Text { text });
             }
             "input_image" => {

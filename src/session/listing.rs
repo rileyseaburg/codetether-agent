@@ -4,6 +4,7 @@ mod cache;
 mod cache_io;
 mod count_seq;
 mod directory;
+mod merge;
 mod parse;
 mod record;
 mod resolve;
@@ -15,4 +16,5 @@ mod workspace;
 mod tests;
 
 pub use directory::{list_sessions, list_sessions_for_directory, list_sessions_paged};
+pub(super) use merge::merge_summary;
 pub use summary::SessionSummary;

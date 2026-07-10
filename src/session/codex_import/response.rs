@@ -1,3 +1,4 @@
+mod capture;
 mod message;
 mod tool;
 

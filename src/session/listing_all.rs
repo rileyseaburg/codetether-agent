@@ -1,5 +1,5 @@
 use super::codex_import::discover_codex_sessions_for_directory;
-use super::listing::{SessionSummary, list_sessions_for_directory};
+use super::listing::{SessionSummary, list_sessions_for_directory, merge_summary};
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::Path;
@@ -48,12 +48,11 @@ pub async fn list_all_sessions_for_directory(dir: &Path) -> Result<Vec<SessionSu
     };
 
     for session in codex {
-        match merged.get(&session.id) {
-            Some(existing) if existing.updated_at >= session.updated_at => {}
-            _ => {
-                merged.insert(session.id.clone(), session);
-            }
-        }
+        let summary = match merged.remove(&session.id) {
+            Some(native) => merge_summary(native, session),
+            None => session,
+        };
+        merged.insert(summary.id.clone(), summary);
     }
 
     let mut sessions = merged.into_values().collect::<Vec<_>>();

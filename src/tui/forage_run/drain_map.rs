@@ -2,26 +2,20 @@
 
 use crate::tui::app::state::App;
 
-use super::state::{ForageOffer, ForageUpdate};
+use super::state::ForageUpdate;
 
 /// Convert an update into `(message_text, status_text)`, applying any
-/// side effects (clearing `active`, setting a pending offer) on `app`.
+/// side effects (such as clearing `active`) on `app`.
 pub(super) fn map_update(app: &mut App, update: ForageUpdate) -> (String, String) {
     match update {
         ForageUpdate::Status(s) => (s.clone(), format!("Forage: {s}")),
+        ForageUpdate::ScanComplete(s) => {
+            app.state.forage.active = false;
+            (scan_message(s), "Forage scan complete".to_string())
+        }
         ForageUpdate::Complete(s) => {
             app.state.forage.active = false;
             (s, "Forage complete".to_string())
-        }
-        ForageUpdate::Offer {
-            text,
-            selected,
-            top,
-            model,
-        } => {
-            app.state.forage.active = false;
-            app.state.forage.pending_offer = Some(ForageOffer { top, model });
-            offer_message(text, selected)
         }
         ForageUpdate::Error(e) => {
             app.state.forage.active = false;
@@ -30,13 +24,13 @@ pub(super) fn map_update(app: &mut App, update: ForageUpdate) -> (String, String
     }
 }
 
-fn offer_message(text: String, selected: usize) -> (String, String) {
-    let things = if selected == 1 { "thing" } else { "things" };
-    (
-        format!(
-            "{text}\n\nI found {selected} {things} I can work on. \
-             Want me to start? Type 'yes' to begin or 'no' to skip."
-        ),
-        "Start working? (yes / no)".to_string(),
+fn scan_message(text: String) -> String {
+    format!(
+        "{text}\n\nScan complete; no work was executed. \
+         Run `/forage execute` to scan and execute the top selections."
     )
 }
+
+#[cfg(test)]
+#[path = "drain_map_tests.rs"]
+mod tests;

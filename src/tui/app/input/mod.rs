@@ -16,7 +16,6 @@ mod chat_submit_finish;
 mod chat_submit_slash;
 mod codex_parity_command;
 mod continue_command;
-mod forage_offer;
 
 // Re-exports so the event loop's auto-drain hook can submit a queued
 // user message as a fresh turn without duplicating the dispatch logic.

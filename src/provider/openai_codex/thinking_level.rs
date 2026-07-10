@@ -36,4 +36,11 @@ impl ThinkingLevel {
             Self::Ultra => "ultra",
         }
     }
+
+    pub(super) fn as_wire_str(self) -> &'static str {
+        match self {
+            Self::Ultra => Self::Max.as_str(),
+            level => level.as_str(),
+        }
+    }
 }
