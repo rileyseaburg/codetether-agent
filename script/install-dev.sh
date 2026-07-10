@@ -48,9 +48,9 @@ while true; do
 
   echo "---"
   echo "Build failed. Running codetether to fix errors..."
-  cd .. && codetether run -c --model bedrock/us.anthropic.claude-fable-5 --access-mode full "fix these build errors:
+  (cd .. && codetether run -c --model openai-codex/gpt-5.6-sol --access-mode full "fix these build errors:
 
-${errors}"
+${errors}")
 
   echo "---"
   echo "Retrying build..."
