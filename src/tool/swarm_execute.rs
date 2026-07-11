@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::sync::Arc;
 
+mod default_impl;
 mod input;
 mod input_error;
 #[cfg(test)]
@@ -21,9 +22,11 @@ mod input_tests;
 mod schema;
 mod support;
 mod task_input;
+mod task_result;
 mod worktrees;
 
 use input::parse_tasks;
+use task_result::TaskResult;
 
 pub struct SwarmExecuteTool;
 
@@ -31,23 +34,6 @@ impl SwarmExecuteTool {
     pub fn new() -> Self {
         Self
     }
-}
-
-impl Default for SwarmExecuteTool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(serde::Serialize)]
-struct TaskResult {
-    task_id: String,
-    task_name: String,
-    success: bool,
-    output: String,
-    error: Option<String>,
-    steps: usize,
-    tool_calls: usize,
 }
 
 #[async_trait]
@@ -195,6 +181,8 @@ Share any intermediate results using the swarm_share tool so other agents can be
                 .id
                 .clone()
                 .unwrap_or_else(|| format!("task_{}", uuid::Uuid::new_v4()));
+            let failed_task_id = task_id.clone();
+            let failed_task_name = task_input.name.clone();
             let model_name = model_name.clone();
             let max_steps = max_steps;
             let timeout_secs = timeout_secs;
@@ -249,14 +237,14 @@ Share any intermediate results using the swarm_share tool so other agents can be
                 })
             });
 
-            join_handles.push((idx, handle));
+            join_handles.push((idx, failed_task_id, failed_task_name, handle));
         }
 
         // Wait for all tasks to complete
         let mut results: Vec<TaskResult> = Vec::new();
         let mut failures = 0;
 
-        for (idx, handle) in join_handles {
+        for (idx, failed_task_id, failed_task_name, handle) in join_handles {
             match handle.await {
                 Ok(Ok(mut result)) => {
                     worktrees.finish(idx, &mut result).await;
@@ -268,10 +256,20 @@ Share any intermediate results using the swarm_share tool so other agents can be
                 Ok(Err(e)) => {
                     failures += 1;
                     tracing::error!(error = %e, "Task execution failed");
+                    results.push(TaskResult::failed(
+                        failed_task_id,
+                        failed_task_name,
+                        e.to_string(),
+                    ));
                 }
                 Err(e) => {
                     failures += 1;
                     tracing::error!(error = %e, "Task join failed");
+                    results.push(TaskResult::failed(
+                        failed_task_id,
+                        failed_task_name,
+                        format!("Task join failed: {e}"),
+                    ));
                 }
             }
         }

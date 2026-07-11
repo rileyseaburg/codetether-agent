@@ -1,6 +1,6 @@
 //! Surfaces async sub-agent completions into the parent's agent loop.
 //!
-//! Sub-agents publish `TaskUpdate` envelopes on `agent.<name>` topics, but the
+//! Sub-agents publish `TaskUpdate` envelopes on `task.<name>` topics, but the
 //! parent loop only reasons over its own tool returns. This drains *terminal*
 //! sub-agent updates (Completed / Failed) that arrived since the last check and
 //! formats them as a notice, so a parent that spawned work asynchronously is
@@ -37,7 +37,7 @@ impl SubAgentWatch {
     pub(super) fn drain_notice(&mut self) -> Option<String> {
         let bus = global()?;
         let mut lines = Vec::new();
-        for env in bus.recorder.recent(1024, Some("agent.")) {
+        for env in bus.recorder.recent(1024, Some("task.")) {
             if let BusMessage::TaskUpdate {
                 task_id,
                 state,

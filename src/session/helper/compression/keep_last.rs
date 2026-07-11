@@ -60,7 +60,9 @@ pub(crate) async fn compress_messages_keep_last(
         model,
         Arc::clone(&provider),
         &ctx.rlm_config,
-    ) {
+    )
+    .await
+    {
         let toc = crate::session::helper::compression::dropped_toc::render_toc(&prefix, 0);
         crate::session::helper::compression::compression_summary::install(
             messages, tail, summary, &toc,

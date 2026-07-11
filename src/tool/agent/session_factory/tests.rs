@@ -39,6 +39,7 @@ async fn child_session_uses_parent_workspace_not_process_cwd() {
     .unwrap();
 
     assert_eq!(session.metadata.directory, Some(parent_workspace.clone()));
+    assert_eq!(session.title.as_deref(), Some("Sub-agent: child"));
     let ContentPart::Text { text } = &session.messages[0].content[0] else {
         panic!("expected system prompt text");
     };

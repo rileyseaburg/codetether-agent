@@ -17,7 +17,7 @@ use tokio::sync::mpsc;
 #[path = "swarm_view_detail.rs"]
 mod swarm_view_detail;
 #[path = "swarm_view_fmt.rs"]
-mod swarm_view_fmt;
+pub(crate) mod swarm_view_fmt;
 #[path = "swarm_view_list.rs"]
 mod swarm_view_list;
 #[path = "swarm_view_row.rs"]

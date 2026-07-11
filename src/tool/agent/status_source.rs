@@ -1,6 +1,6 @@
 //! Reads the latest sub-agent `TaskState` from the global bus recorder.
 //!
-//! Sub-agents publish `TaskUpdate` envelopes on `agent.<name>` topics. The
+//! Sub-agents publish `TaskUpdate` envelopes on `task.<name>` topics. The
 //! parent agent has no live subscription, so this scans the recorder's recent
 //! history and keeps the newest update per task id.
 
@@ -30,7 +30,7 @@ pub(super) fn latest_states() -> HashMap<String, AgentStatus> {
     let Some(bus) = global() else {
         return out;
     };
-    for env in bus.recorder.recent(1024, Some("agent.")) {
+    for env in bus.recorder.recent(1024, Some("task.")) {
         if let BusMessage::TaskUpdate {
             task_id,
             state,

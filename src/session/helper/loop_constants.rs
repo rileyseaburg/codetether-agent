@@ -32,10 +32,6 @@ pub(crate) const POST_EDIT_VALIDATION_MAX_RETRIES: u8 = 3;
 /// forces a final answer.
 pub(crate) const MAX_CONSECUTIVE_SAME_TOOL: u32 = 3;
 
-/// Absolute ceiling on total tool calls within a single agentic turn.
-/// Beyond this the loop terminates with an error summarising what happened.
-pub(crate) const MAX_TOTAL_TOOL_CALLS: u32 = 60;
-
 /// Steps with no file mutations (write/edit/bash) before we nudge the model
 /// to either make progress or provide a final answer.
 pub(crate) const MAX_STEPS_WITHOUT_PROGRESS: u32 = 15;

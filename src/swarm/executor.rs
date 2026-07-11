@@ -2320,8 +2320,7 @@ pub async fn run_agent_loop(
     bus: Option<Arc<AgentBus>>,
     working_dir: Option<std::path::PathBuf>,
 ) -> Result<(String, usize, usize, AgentLoopExit)> {
-    // Let the provider handle temperature - K2 models need 0.6 when thinking is disabled
-    let temperature = 0.7;
+    let temperature = crate::session::helper::request_state::settings::temperature_for(model);
 
     tracing::info!(
         model = %model,
@@ -2375,7 +2374,7 @@ pub async fn run_agent_loop(
             messages: messages.clone(),
             tools: tools.clone(),
             model: model.to_string(),
-            temperature: Some(temperature),
+            temperature,
             top_p: None,
             max_tokens: Some(8192),
             stop: Vec::new(),

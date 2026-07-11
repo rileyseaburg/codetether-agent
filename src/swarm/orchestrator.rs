@@ -473,25 +473,6 @@ Decompose the task now:"#,
 }
 
 pub(crate) fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
-    let preferred = [
-        "minimax",
-        "openai-codex",
-        "openai",
-        "anthropic",
-        "github-copilot",
-        "github-copilot-enterprise",
-        "zai",
-        "moonshotai",
-        "openrouter",
-        "novita",
-        "google",
-        "bedrock",
-    ];
-    for name in preferred {
-        if let Some(found) = providers.iter().copied().find(|p| *p == name) {
-            return Some(found);
-        }
-    }
     providers.first().copied()
 }
 

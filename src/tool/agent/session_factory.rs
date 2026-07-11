@@ -82,6 +82,7 @@ pub(super) async fn create_agent_session(
     let mut session = Session::new().await.context("Failed to create session")?;
     let workspace = parent_workspace.or_else(|| session.metadata.directory.clone());
     session.set_agent_name(name.to_string());
+    session.set_title(format!("Sub-agent: {name}"));
     session.metadata.model = Some(model.to_string());
     session.metadata.directory = workspace.clone();
     // Spawned sub-agents are autonomous and cannot interactively confirm edits,

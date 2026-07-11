@@ -1,11 +1,15 @@
-//! Fast fallback for foreground context compaction.
+//! Foreground RLM summarisation for budget-critical context compaction.
 
 use std::sync::Arc;
 
 use crate::provider::Provider;
-use crate::rlm::{RlmChunker, RlmConfig};
+use crate::rlm::router::AutoProcessContext;
+use crate::rlm::{RlmChunker, RlmConfig, RlmRouter};
 
-pub(super) fn context_summary(
+#[path = "rlm_local_model.rs"]
+mod local_model;
+
+pub(super) async fn context_summary(
     context: &str,
     ctx_window: usize,
     session_id: &str,
@@ -14,15 +18,28 @@ pub(super) fn context_summary(
     provider: Arc<dyn Provider>,
     config: &RlmConfig,
 ) -> Option<String> {
-    let tokens = RlmChunker::estimate_tokens(context);
-    if tokens == 0 {
+    if RlmChunker::estimate_tokens(context) == 0 {
         return None;
     }
-    let cached = crate::session::helper::rlm_background::context_summary(
-        context, reason, session_id, model, provider, config,
-    );
-    tracing::info!(tokens, "RLM context compaction deferred to background");
-    Some(cached.unwrap_or_else(|| {
-        RlmChunker::compress(context, (ctx_window as f64 * 0.25) as usize, None)
-    }))
+    let (provider, model) = local_model::resolve(provider, model).await;
+    let request = AutoProcessContext {
+        tool_id: "session_context",
+        tool_args: serde_json::json!({ "reason": reason }),
+        session_id,
+        abort: None,
+        on_progress: None,
+        provider,
+        model,
+        bus: None,
+        trace_id: None,
+        subcall_provider: None,
+        subcall_model: None,
+    };
+    match RlmRouter::auto_process(context, request, config).await {
+        Ok(result) => Some(result.processed),
+        Err(error) => {
+            tracing::warn!(%error, "Foreground RLM compaction failed; using deterministic compression");
+            Some(RlmChunker::compress(context, ctx_window / 4, None))
+        }
+    }
 }

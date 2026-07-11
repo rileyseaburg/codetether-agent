@@ -6,7 +6,7 @@ use super::super::runtime::{is_local_cuda_provider, local_cuda_light_system_prom
 use crate::provider::ToolDefinition;
 use std::path::Path;
 
-pub(super) fn temperature_for(model: &str) -> Option<f32> {
+pub(crate) fn temperature_for(model: &str) -> Option<f32> {
     if temperature_is_deprecated(model) {
         None
     } else if prefers_temperature_one(model) {
