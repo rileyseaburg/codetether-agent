@@ -1015,7 +1015,7 @@ dependencies = [
  "syntect",
  "sysinfo",
  "tempfile",
- "tetherscript",
+ "tetherscript 0.1.0-alpha.18",
  "thiserror 2.0.18",
  "tokenizers",
  "tokio",
@@ -1054,7 +1054,7 @@ dependencies = [
  "reqwest 0.13.4",
  "serde",
  "serde_json",
- "tetherscript",
+ "tetherscript 0.1.0-alpha.19",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -6343,6 +6343,11 @@ dependencies = [
  "wezterm-input-types",
  "winapi",
 ]
+
+[[package]]
+name = "tetherscript"
+version = "0.1.0-alpha.18"
+source = "git+https://github.com/CodeTether/TetherScript.git?rev=e9d34333e3a5d3a31a1610ad8c08ba2db5f49493#e9d34333e3a5d3a31a1610ad8c08ba2db5f49493"
 
 [[package]]
 name = "tetherscript"
