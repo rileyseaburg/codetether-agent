@@ -18,6 +18,7 @@ mod input_error;
 #[cfg(test)]
 #[path = "swarm_execute/input_tests.rs"]
 mod input_tests;
+mod model_request;
 mod model_selection;
 #[cfg(test)]
 #[path = "swarm_execute/model_selection_tests.rs"]
@@ -78,10 +79,7 @@ impl Tool for SwarmExecuteTool {
             .and_then(|v| v.as_str())
             .unwrap_or("best_effort")
             .to_string();
-        let model = params
-            .get("model")
-            .and_then(|v| v.as_str())
-            .map(String::from);
+        let model = model_request::requested(&params).map(String::from);
         let max_steps = params
             .get("max_steps")
             .and_then(|v| v.as_u64())

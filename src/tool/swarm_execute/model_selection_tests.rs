@@ -1,4 +1,5 @@
-use super::model_selection::resolve;
+use super::{model_request, model_selection::resolve};
+use serde_json::json;
 
 #[test]
 fn preserves_luna_fast_high_model_reference() {
@@ -12,6 +13,18 @@ fn preserves_luna_fast_high_model_reference() {
     );
     assert_eq!(selected.resolved_provider, "openai-codex");
     assert_eq!(selected.resolved_model, "gpt-5.6-luna-fast:high");
+}
+
+#[test]
+fn routes_tool_json_into_serialized_model_diagnostics() {
+    let params = json!({ "model": "openai-codex/gpt-5.6-luna-fast:high" });
+    let selected = resolve(model_request::requested(&params), &["openai-codex"])
+        .expect("tool model should resolve");
+    let diagnostics = serde_json::to_value(selected).expect("selection should serialize");
+
+    assert_eq!(diagnostics["requested_model"], params["model"]);
+    assert_eq!(diagnostics["resolved_provider"], "openai-codex");
+    assert_eq!(diagnostics["resolved_model"], "gpt-5.6-luna-fast:high");
 }
 
 #[test]
