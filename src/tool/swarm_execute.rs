@@ -4,9 +4,8 @@
 //! sub-agents in a swarm pattern, with configurable concurrency and aggregation.
 
 use super::{Tool, ToolResult};
-use crate::provider::{ProviderRegistry, parse_model_string};
+use crate::provider::ProviderRegistry;
 use crate::swarm::executor::run_agent_loop;
-use crate::swarm::orchestrator::{choose_default_provider, default_model_for_provider};
 use crate::tool::ToolRegistry;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -19,10 +18,17 @@ mod input_error;
 #[cfg(test)]
 #[path = "swarm_execute/input_tests.rs"]
 mod input_tests;
+mod model_selection;
+#[cfg(test)]
+#[path = "swarm_execute/model_selection_tests.rs"]
+mod model_selection_tests;
 mod schema;
 mod support;
 mod task_input;
 mod task_result;
+#[cfg(test)]
+#[path = "swarm_execute/task_result_tests.rs"]
+mod task_result_tests;
 mod worktrees;
 
 use input::parse_tasks;
@@ -107,44 +113,19 @@ impl Tool for SwarmExecuteTool {
             ));
         }
 
-        // Determine provider/model to use
-        let (provider_name, model_name) = if let Some(ref model_str) = model {
-            let (prov, mod_id) = parse_model_string(model_str);
-            let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
-            let provider_name = if let Some(explicit_provider) = prov {
-                if provider_list.contains(&explicit_provider) {
-                    explicit_provider.to_string()
-                } else {
-                    return Ok(ToolResult::error(format!(
-                        "Provider '{}' selected explicitly but is unavailable. Available providers: {}",
-                        explicit_provider,
-                        provider_list.join(", ")
-                    )));
-                }
-            } else {
-                choose_default_provider(provider_list.as_slice())
-                    .ok_or_else(|| anyhow::anyhow!("No providers available for swarm execution"))?
-                    .to_string()
-            };
-            let model_name = if mod_id.trim().is_empty() {
-                default_model_for_provider(&provider_name)
-            } else {
-                mod_id.to_string()
-            };
-            (provider_name, model_name)
-        } else {
-            let provider_name = choose_default_provider(provider_list.as_slice())
-                .ok_or_else(|| anyhow::anyhow!("No providers available for swarm execution"))?
-                .to_string();
-            let model_name = default_model_for_provider(&provider_name);
-            (provider_name, model_name)
+        let selected_model = match model_selection::resolve(model.as_deref(), &provider_list) {
+            Ok(selected) => selected,
+            Err(error) => return Ok(ToolResult::error(error.to_string())),
         };
-
         let provider = providers
-            .get(&provider_name)
+            .get(&selected_model.resolved_provider)
             .context("Failed to get provider")?;
-
-        tracing::info!(provider = %provider_name, model = %model_name, "Using provider for swarm");
+        tracing::info!(
+            requested_model = ?selected_model.requested_model,
+            resolved_provider = %selected_model.resolved_provider,
+            resolved_model = %selected_model.resolved_model,
+            "Using provider for swarm"
+        );
 
         // Get tool definitions (filtered for sub-agents)
         let tools = support::subagent_tools();
@@ -183,7 +164,8 @@ Share any intermediate results using the swarm_share tool so other agents can be
                 .unwrap_or_else(|| format!("task_{}", uuid::Uuid::new_v4()));
             let failed_task_id = task_id.clone();
             let failed_task_name = task_input.name.clone();
-            let model_name = model_name.clone();
+            let model_selection = selected_model.clone();
+            let model_name = model_selection.resolved_model.clone();
             let max_steps = max_steps;
             let timeout_secs = timeout_secs;
 
@@ -234,17 +216,24 @@ Share any intermediate results using the swarm_share tool so other agents can be
                     },
                     steps,
                     tool_calls,
+                    model: model_selection,
                 })
             });
 
-            join_handles.push((idx, failed_task_id, failed_task_name, handle));
+            join_handles.push((
+                idx,
+                failed_task_id,
+                failed_task_name,
+                selected_model.clone(),
+                handle,
+            ));
         }
 
         // Wait for all tasks to complete
         let mut results: Vec<TaskResult> = Vec::new();
         let mut failures = 0;
 
-        for (idx, failed_task_id, failed_task_name, handle) in join_handles {
+        for (idx, failed_task_id, failed_task_name, model, handle) in join_handles {
             match handle.await {
                 Ok(Ok(mut result)) => {
                     worktrees.finish(idx, &mut result).await;
@@ -260,6 +249,7 @@ Share any intermediate results using the swarm_share tool so other agents can be
                         failed_task_id,
                         failed_task_name,
                         e.to_string(),
+                        model,
                     ));
                 }
                 Err(e) => {
@@ -269,6 +259,7 @@ Share any intermediate results using the swarm_share tool so other agents can be
                         failed_task_id,
                         failed_task_name,
                         format!("Task join failed: {e}"),
+                        model,
                     ));
                 }
             }

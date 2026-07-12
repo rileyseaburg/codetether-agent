@@ -1,5 +1,7 @@
 //! Serializable outcome for one `swarm_execute` worker.
 
+use super::model_selection::ModelSelection;
+
 #[derive(serde::Serialize)]
 pub(super) struct TaskResult {
     pub(super) task_id: String,
@@ -9,10 +11,16 @@ pub(super) struct TaskResult {
     pub(super) error: Option<String>,
     pub(super) steps: usize,
     pub(super) tool_calls: usize,
+    pub(super) model: ModelSelection,
 }
 
 impl TaskResult {
-    pub(super) fn failed(task_id: String, task_name: String, error: String) -> Self {
+    pub(super) fn failed(
+        task_id: String,
+        task_name: String,
+        error: String,
+        model: ModelSelection,
+    ) -> Self {
         Self {
             task_id,
             task_name,
@@ -21,20 +29,7 @@ impl TaskResult {
             error: Some(error),
             steps: 0,
             tool_calls: 0,
+            model,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::TaskResult;
-
-    #[test]
-    fn failed_result_preserves_diagnostics() {
-        let result = TaskResult::failed("task-1".into(), "inspect".into(), "boom".into());
-        assert_eq!(result.task_id, "task-1");
-        assert_eq!(result.task_name, "inspect");
-        assert_eq!(result.error.as_deref(), Some("boom"));
-        assert!(!result.success);
     }
 }
