@@ -14,6 +14,9 @@ mod extract_artifact;
 mod extract_db;
 mod extract_platform;
 mod extract_runtime;
+mod failure_attribution;
+#[cfg(test)]
+mod failure_attribution_tests;
 mod final_gate;
 mod final_note;
 mod gate_mode;

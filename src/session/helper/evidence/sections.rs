@@ -7,6 +7,7 @@ pub(crate) fn build(
     super::assembly::PromptSections {
         system_prompt,
         guardrails: super::guardrails::render(),
+        failure_attribution: super::failure_attribution::render(),
         capabilities: super::capabilities::render(),
         trapdoor: super::trapdoor::render(),
         memory_protocol: super::memory_protocol::render(),

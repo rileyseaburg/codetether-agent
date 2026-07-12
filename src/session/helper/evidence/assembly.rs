@@ -1,6 +1,7 @@
 pub(crate) struct PromptSections<'a> {
     pub system_prompt: String,
     pub guardrails: String,
+    pub failure_attribution: &'a str,
     pub capabilities: String,
     pub trapdoor: &'a str,
     pub memory_protocol: &'a str,
@@ -13,9 +14,10 @@ pub(crate) struct PromptSections<'a> {
 
 pub(crate) fn render(parts: PromptSections<'_>) -> String {
     format!(
-        "{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}{}",
+        "{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}{}",
         parts.system_prompt,
         parts.guardrails,
+        parts.failure_attribution,
         parts.capabilities,
         parts.trapdoor,
         parts.memory_protocol,
