@@ -1,4 +1,4 @@
-use super::prompt::append_guardrails_for_cwd;
+use super::super::prompt::append_guardrails_for_cwd;
 use std::path::Path;
 
 fn prompt() -> String {

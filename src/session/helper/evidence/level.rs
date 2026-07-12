@@ -21,15 +21,18 @@ impl EvidenceLevel {
     }
 
     pub(crate) fn all_labels() -> String {
-        [
-            Self::NotRun,
-            Self::StaticLocal,
-            Self::MockedLocal,
-            Self::FocusedCiLike,
-            Self::LiveDeploymentArgo,
-            Self::RealPlatformUpload,
-        ]
-        .map(Self::label)
-        .join(", ")
+        labels().join(", ")
     }
+}
+
+pub(super) fn labels() -> [&'static str; 6] {
+    [
+        EvidenceLevel::NotRun,
+        EvidenceLevel::StaticLocal,
+        EvidenceLevel::MockedLocal,
+        EvidenceLevel::FocusedCiLike,
+        EvidenceLevel::LiveDeploymentArgo,
+        EvidenceLevel::RealPlatformUpload,
+    ]
+    .map(EvidenceLevel::label)
 }

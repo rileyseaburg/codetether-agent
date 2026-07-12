@@ -14,3 +14,7 @@ Failure attribution rules:
 pub(super) fn render() -> &'static str {
     RULES
 }
+
+#[cfg(test)]
+#[path = "failure_attribution_tests.rs"]
+mod tests;

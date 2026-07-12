@@ -1,8 +1,8 @@
 //! Tests for palace sync and belief conversion.
 
-use super::ledger::ScopeLedger;
-use super::palace_belief;
-use super::scope_item::ScopeItem;
+use super::super::ledger::ScopeLedger;
+use super::super::palace_belief;
+use super::super::scope_item::ScopeItem;
 
 fn item(deliverable: &str, status: &str) -> ScopeItem {
     ScopeItem {

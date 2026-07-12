@@ -49,3 +49,7 @@ fn disabled() -> bool {
         Some("off")
     )
 }
+
+#[cfg(test)]
+#[path = "palace_sync_tests.rs"]
+mod tests;
