@@ -10,6 +10,7 @@ mod prompts;
 mod quality_contract;
 mod registry;
 mod runtime_gate;
+mod source_metric_contract;
 #[cfg(test)]
 mod tests;
 mod verification_contract;

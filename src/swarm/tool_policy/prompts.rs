@@ -11,6 +11,8 @@ pub(crate) fn system_prompt(input: SystemPromptInput<'_>) -> String {
     let quality =
         super::quality_contract::render(input.read_only, input.line_limit.or(project.line_limit));
     let verification = super::VerificationContract::from_instruction(input.instruction).prompt();
+    let metrics =
+        super::source_metric_contract::render(input.specialty, input.instruction, input.read_only);
     let constraints = super::constraint_ledger::render(
         input.instruction,
         input.context,
@@ -18,7 +20,7 @@ pub(crate) fn system_prompt(input: SystemPromptInput<'_>) -> String {
         input.read_only,
     );
     format!(
-        "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.\n\nWORKING DIRECTORY: {}\nAll file operations should be relative to this directory.\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\nWhen done, provide a brief summary of what you accomplished.{}",
+        "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.\n\nWORKING DIRECTORY: {}\nAll file operations should be relative to this directory.\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\nWhen done, provide a brief summary of what you accomplished.{}",
         input.specialty,
         input.subtask_id,
         input.working_dir,
@@ -28,11 +30,15 @@ pub(crate) fn system_prompt(input: SystemPromptInput<'_>) -> String {
         workflow,
         quality,
         verification,
+        metrics,
         constraints,
         project.instructions,
     )
 }
 
+#[cfg(test)]
+#[path = "source_metric_prompt_tests.rs"]
+mod metric_tests;
 #[cfg(test)]
 #[path = "verification_prompt_tests.rs"]
 mod verification_tests;
