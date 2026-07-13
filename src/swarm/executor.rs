@@ -1040,13 +1040,8 @@ impl SwarmExecutor {
 
                 let start = Instant::now();
 
-                // Load AGENTS.md from working directory
-                let working_path = std::path::Path::new(&working_dir);
-                let agents_md_content = crate::agent::builtin::load_agents_md(working_path)
-                    .map(|(content, _)| {
-                        format!("\n\nPROJECT INSTRUCTIONS (from AGENTS.md):\n{content}")
-                    })
-                    .unwrap_or_default();
+                let project_quality =
+                    tool_policy::load_project_quality(std::path::Path::new(&working_dir));
 
                 // Build the system prompt for this sub-agent
                 let prd_filename = format!("prd_{}.json", subtask_id.replace("-", "_"));
@@ -1056,7 +1051,8 @@ impl SwarmExecutor {
                     working_dir: &working_dir,
                     model: &model,
                     prd_filename: &prd_filename,
-                    agents_md: &agents_md_content,
+                    agents_md: &project_quality.instructions,
+                    line_limit: project_quality.line_limit,
                     read_only: read_only_task,
                 });
 

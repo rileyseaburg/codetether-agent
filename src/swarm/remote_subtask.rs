@@ -6,7 +6,6 @@ use super::kubernetes_executor::{
 };
 use super::subtask::SubTaskResult;
 use super::tool_policy;
-use crate::agent::builtin::load_agents_md;
 use crate::cli::SwarmSubagentArgs;
 use crate::provider::ProviderRegistry;
 use crate::tool::ToolRegistry;
@@ -61,9 +60,7 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
     } else {
         payload.specialty.clone()
     };
-    let agents_md_content = load_agents_md(&working_dir)
-        .map(|(content, _)| format!("\n\nPROJECT INSTRUCTIONS (from AGENTS.md):\n{content}"))
-        .unwrap_or_default();
+    let project_quality = tool_policy::load_project_quality(&working_dir);
     let working_dir_display = working_dir.display().to_string();
     let prd_filename = format!("prd_{}.json", payload.subtask_id.replace("-", "_"));
     let system_prompt = tool_policy::system_prompt(tool_policy::SystemPromptInput {
@@ -72,7 +69,8 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
         working_dir: &working_dir_display,
         model: &payload.model,
         prd_filename: &prd_filename,
-        agents_md: &agents_md_content,
+        agents_md: &project_quality.instructions,
+        line_limit: project_quality.line_limit,
         read_only: payload.read_only,
     });
     let user_prompt = if payload.context.trim().is_empty() {
