@@ -9,7 +9,7 @@ pub(super) fn agent_tool_parameters() -> Value {
     json!({
         "type": "object",
         "properties": {
-            "action": { "type": "string", "enum": ["spawn", "message", "list", "status", "kill"] },
+            "action": { "type": "string", "enum": ["spawn", "message", "list", "status", "kill"], "description": "Agent-instance action. `list` shows spawned agent instances, not available providers or models; use `codetether models --json` for the model capability catalog." },
             "name": { "type": "string", "description": "Agent name" },
             "instructions": { "type": "string", "description": "System instructions (spawn)" },
             "message": { "type": "string", "description": "Message to send" },
@@ -20,3 +20,7 @@ pub(super) fn agent_tool_parameters() -> Value {
         "required": ["action"]
     })
 }
+
+#[cfg(test)]
+#[path = "tool_schema_tests.rs"]
+mod tests;

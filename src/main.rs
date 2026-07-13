@@ -604,61 +604,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Pr(args)) => github_pr::run(args).await,
         Some(Command::Approval(args)) => cli::approval::execute(args),
         Some(Command::Clipboard(args)) => cli::clipboard::execute(args),
-        Some(Command::Models(args)) => {
-            let registry = provider::ProviderRegistry::from_vault().await?;
-            let mut all_models: Vec<provider::ModelInfo> = Vec::new();
-
-            for provider_name in registry.list() {
-                if let Some(filter) = &args.provider
-                    && provider_name != filter.as_str()
-                {
-                    continue;
-                }
-                if let Some(p) = registry.get(provider_name) {
-                    match p.list_models().await {
-                        Ok(models) => all_models.extend(models),
-                        Err(e) => eprintln!(
-                            "Warning: failed to list models for {}: {}",
-                            provider_name, e
-                        ),
-                    }
-                }
-            }
-
-            all_models.sort_by(|a, b| a.provider.cmp(&b.provider).then(a.id.cmp(&b.id)));
-
-            if args.json {
-                println!("{}", serde_json::to_string_pretty(&all_models)?);
-            } else {
-                let mut current_provider = String::new();
-                for m in &all_models {
-                    if m.provider != current_provider {
-                        if !current_provider.is_empty() {
-                            println!();
-                        }
-                        println!("\x1b[1;36m{}\x1b[0m", m.provider);
-                        current_provider = m.provider.clone();
-                    }
-                    let ctx = m.context_window / 1000;
-                    let out = m
-                        .max_output_tokens
-                        .map(|t| format!("{}k", t / 1000))
-                        .unwrap_or_else(|| "-".to_string());
-                    println!("  {:<45} {:>5}k ctx  {:>5} out", m.id, ctx, out);
-                }
-                println!(
-                    "\n\x1b[2m{} models from {} providers\x1b[0m",
-                    all_models.len(),
-                    {
-                        let mut providers: Vec<&str> =
-                            all_models.iter().map(|m| m.provider.as_str()).collect();
-                        providers.dedup();
-                        providers.len()
-                    }
-                );
-            }
-            Ok(())
-        }
+        Some(Command::Models(args)) => args.execute().await,
         Some(Command::Index(args)) => indexer::run(args).await,
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
         Some(Command::Connect(args)) => cli::connect::execute(args).await,
