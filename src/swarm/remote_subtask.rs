@@ -62,14 +62,13 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
     };
     let project_quality = tool_policy::load_project_quality(&working_dir);
     let working_dir_display = working_dir.display().to_string();
-    let prd_filename = format!("prd_{}.json", payload.subtask_id.replace("-", "_"));
     let system_prompt = tool_policy::system_prompt(tool_policy::SystemPromptInput {
         specialty: &specialty,
         subtask_id: &payload.subtask_id,
         working_dir: &working_dir_display,
         model: &payload.model,
-        prd_filename: &prd_filename,
         agents_md: &project_quality.instructions,
+        instruction: &payload.instruction,
         line_limit: project_quality.line_limit,
         read_only: payload.read_only,
     });
@@ -118,6 +117,7 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
 
     let result = match run_result {
         Ok((output, steps, tool_calls, exit_reason)) => {
+            let output = tool_policy::verify_output(&payload.instruction, &output);
             let (success, error) = match exit_reason {
                 AgentLoopExit::Completed => (true, None),
                 AgentLoopExit::MaxStepsReached => (

@@ -24,8 +24,8 @@ fn system_prompt_accepts_an_exact_limit() {
         subtask_id: "one",
         working_dir: ".",
         model: "provider/model",
-        prd_filename: "prd.json",
         agents_md: "",
+        instruction: "Refactor the module",
         line_limit: Some(50),
         read_only: false,
     });

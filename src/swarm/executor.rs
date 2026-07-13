@@ -1044,14 +1044,13 @@ impl SwarmExecutor {
                     tool_policy::load_project_quality(std::path::Path::new(&working_dir));
 
                 // Build the system prompt for this sub-agent
-                let prd_filename = format!("prd_{}.json", subtask_id.replace("-", "_"));
                 let system_prompt = tool_policy::system_prompt(tool_policy::SystemPromptInput {
                     specialty: &specialty,
                     subtask_id: &subtask_id,
                     working_dir: &working_dir,
                     model: &model,
-                    prd_filename: &prd_filename,
                     agents_md: &project_quality.instructions,
+                    instruction: &instruction,
                     line_limit: project_quality.line_limit,
                     read_only: read_only_task,
                 });
@@ -1200,6 +1199,7 @@ impl SwarmExecutor {
 
                 let task_result = match result {
                     Ok((output, steps, tool_calls, exit_reason)) => {
+                        let output = tool_policy::verify_output(&instruction, &output);
                         let (success, status, error) = match exit_reason {
                             AgentLoopExit::Completed => (true, SubTaskStatus::Completed, None),
                             AgentLoopExit::MaxStepsReached => (

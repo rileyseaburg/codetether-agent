@@ -1,15 +1,6 @@
 use super::prompt_sections::{coordination_prompt, workflow_prompt};
 
-pub struct SystemPromptInput<'a> {
-    pub specialty: &'a str,
-    pub subtask_id: &'a str,
-    pub working_dir: &'a str,
-    pub model: &'a str,
-    pub prd_filename: &'a str,
-    pub agents_md: &'a str,
-    pub line_limit: Option<usize>,
-    pub read_only: bool,
-}
+use super::prompt_input::SystemPromptInput;
 
 pub fn mode_prompt(read_only: bool) -> &'static str {
     if read_only {
@@ -27,12 +18,14 @@ pub fn tools_prompt(read_only: bool) -> &'static str {
     }
 }
 
-pub fn system_prompt(input: SystemPromptInput<'_>) -> String {
+pub(crate) fn system_prompt(input: SystemPromptInput<'_>) -> String {
     let coordination = coordination_prompt(input.read_only, input.model);
-    let workflow = workflow_prompt(input.read_only, input.prd_filename);
+    let prd_filename = format!("prd_{}.json", input.subtask_id.replace('-', "_"));
+    let workflow = workflow_prompt(input.read_only, &prd_filename);
     let quality = super::quality_contract::render(input.read_only, input.line_limit);
+    let verification = super::VerificationContract::from_instruction(input.instruction).prompt();
     format!(
-        "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.\n\nWORKING DIRECTORY: {}\nAll file operations should be relative to this directory.\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\nWhen done, provide a brief summary of what you accomplished.{}",
+        "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.\n\nWORKING DIRECTORY: {}\nAll file operations should be relative to this directory.\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\nWhen done, provide a brief summary of what you accomplished.{}",
         input.specialty,
         input.subtask_id,
         input.working_dir,
@@ -41,6 +34,11 @@ pub fn system_prompt(input: SystemPromptInput<'_>) -> String {
         coordination,
         workflow,
         quality,
+        verification,
         input.agents_md,
     )
 }
+
+#[cfg(test)]
+#[path = "verification_prompt_tests.rs"]
+mod verification_tests;
