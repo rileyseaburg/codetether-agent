@@ -3,6 +3,7 @@
 use std::path::Path;
 
 pub(crate) struct ProjectQuality {
+    pub(crate) policy: String,
     pub(crate) instructions: String,
     pub(crate) line_limit: Option<usize>,
 }
@@ -18,6 +19,7 @@ pub(crate) fn load(working_dir: &Path) -> ProjectQuality {
         format!("\n\nPROJECT INSTRUCTIONS (from AGENTS.md):\n{content}")
     };
     ProjectQuality {
+        policy: content,
         instructions,
         line_limit,
     }

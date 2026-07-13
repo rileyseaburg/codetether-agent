@@ -5,8 +5,8 @@ pub(crate) struct SystemPromptInput<'a> {
     pub subtask_id: &'a str,
     pub working_dir: &'a str,
     pub model: &'a str,
-    pub agents_md: &'a str,
     pub instruction: &'a str,
+    pub context: &'a str,
     pub line_limit: Option<usize>,
     pub read_only: bool,
 }

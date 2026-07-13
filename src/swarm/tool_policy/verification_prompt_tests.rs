@@ -7,8 +7,8 @@ fn contradictory_task_gets_static_confidence_prompt() {
         subtask_id: "conflict",
         working_dir: ".",
         model: "provider/model",
-        agents_md: "",
         instruction: "Preserve every behavior. Do not run tests, builds, compilers, or linters.",
+        context: "",
         line_limit: None,
         read_only: false,
     });
@@ -16,4 +16,5 @@ fn contradictory_task_gets_static_confidence_prompt() {
     assert!(prompt.contains("VERIFICATION CONFLICT"));
     assert!(prompt.contains("label the result static/local"));
     assert!(prompt.contains("do not claim behavioral equivalence"));
+    assert!(prompt.contains("[delegated task instruction]"));
 }

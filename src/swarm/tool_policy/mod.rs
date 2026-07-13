@@ -1,3 +1,7 @@
+mod capability_prompt;
+mod constraint_entry;
+mod constraint_extract;
+mod constraint_ledger;
 mod definitions;
 mod project_quality;
 mod prompt_input;
@@ -13,7 +17,6 @@ mod verification_language;
 mod verification_output;
 
 pub use definitions::{definitions, is_read_only_task};
-pub(crate) use project_quality::load as load_project_quality;
 pub(crate) use prompt_input::SystemPromptInput;
 pub(crate) use prompts::system_prompt;
 pub use registry::restrict_registry;

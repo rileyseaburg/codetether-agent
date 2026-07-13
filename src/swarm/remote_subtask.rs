@@ -60,16 +60,15 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
     } else {
         payload.specialty.clone()
     };
-    let project_quality = tool_policy::load_project_quality(&working_dir);
     let working_dir_display = working_dir.display().to_string();
     let system_prompt = tool_policy::system_prompt(tool_policy::SystemPromptInput {
         specialty: &specialty,
         subtask_id: &payload.subtask_id,
         working_dir: &working_dir_display,
         model: &payload.model,
-        agents_md: &project_quality.instructions,
         instruction: &payload.instruction,
-        line_limit: project_quality.line_limit,
+        context: &payload.context,
+        line_limit: None,
         read_only: payload.read_only,
     });
     let user_prompt = if payload.context.trim().is_empty() {

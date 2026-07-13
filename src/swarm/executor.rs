@@ -1040,18 +1040,15 @@ impl SwarmExecutor {
 
                 let start = Instant::now();
 
-                let project_quality =
-                    tool_policy::load_project_quality(std::path::Path::new(&working_dir));
-
                 // Build the system prompt for this sub-agent
                 let system_prompt = tool_policy::system_prompt(tool_policy::SystemPromptInput {
                     specialty: &specialty,
                     subtask_id: &subtask_id,
                     working_dir: &working_dir,
                     model: &model,
-                    agents_md: &project_quality.instructions,
                     instruction: &instruction,
-                    line_limit: project_quality.line_limit,
+                    context: &context,
+                    line_limit: None,
                     read_only: read_only_task,
                 });
 
