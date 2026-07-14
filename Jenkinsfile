@@ -24,7 +24,7 @@ def isReleaseRefBuild() {
 // - Or configure GitHub webhook to trigger builds on tag push events
 // - The "Package & Release" and "Publish to crates.io" stages only run when building tags
 // - Linux and Windows release binaries build on Depot remote builders via `depot build`
-// - macOS builds run on the local Mac Mini via SSH (requires mac-mini-ssh Jenkins credential: usernamePassword type)
+// - Signed macOS builds run on the local Mac Mini via SSH; its login password also unlocks the signing keychain
 // - sshpass must be installed on the Jenkins agent for macOS builds
 
 pipeline {
@@ -137,47 +137,12 @@ pipeline {
                             -e "ssh ${MAC_SSH_OPTS}" \
                             ./ "${MAC_HOST_ADDR}":/tmp/codetether-build/
 
-                        # Build both architectures (native arm64 + cross-compiled x86_64)
-                        sshpass -e ssh ${MAC_SSH_OPTS} "${MAC_HOST_ADDR}" \
-                            "bash -s" <<'REMOTE'
-set -euo pipefail
-cd /tmp/codetether-build
-source "$HOME/.cargo/env" 2>/dev/null || true
-if command -v brew >/dev/null 2>&1; then
-  BREW_PROTOBUF_PREFIX="$(brew --prefix protobuf 2>/dev/null || true)"
-  if [ -n "$BREW_PROTOBUF_PREFIX" ] && [ -x "$BREW_PROTOBUF_PREFIX/bin/protoc" ]; then
-    export PATH="$BREW_PROTOBUF_PREFIX/bin:$PATH"
-  fi
-fi
-if ! command -v protoc >/dev/null 2>&1; then
-  if command -v brew >/dev/null 2>&1; then
-    brew install protobuf
-  else
-    PROTOC_BOOTSTRAP_DIR="$HOME/.local/protoc"
-    mkdir -p "$PROTOC_BOOTSTRAP_DIR"
-    curl -L \
-      https://github.com/protocolbuffers/protobuf/releases/download/v31.1/protoc-31.1-osx-universal_binary.zip \
-      -o /tmp/protoc.zip
-    unzip -oq /tmp/protoc.zip -d "$PROTOC_BOOTSTRAP_DIR"
-    export PATH="$PROTOC_BOOTSTRAP_DIR/bin:$PATH"
-  fi
-fi
-export PROTOC="$(command -v protoc)"
-rustup target add aarch64-apple-darwin x86_64-apple-darwin
-# Only use sccache if it actually executes; a stale PATH/shim otherwise
-# makes rustc fail with "could not execute process `sccache`".
-if command -v sccache >/dev/null 2>&1 && sccache --version >/dev/null 2>&1; then
-  export RUSTC_WRAPPER=sccache
-else
-  unset RUSTC_WRAPPER || true
-fi
-
-echo "===> Building arm64 (native)..."
-./script/cargo-sccache.sh build --release --target aarch64-apple-darwin
-
-echo "===> Building x86_64 (cross)..."
-./script/cargo-sccache.sh build --release --target x86_64-apple-darwin
-REMOTE
+                        # Send the keychain password over SSH stdin, never argv or disk.
+                        set +x
+                        printf '%s\n' "${MAC_PASS}" | sshpass -e ssh ${MAC_SSH_OPTS} \
+                            "${MAC_HOST_ADDR}" \
+                            'IFS= read -r MAC_KEYCHAIN_PASS; export MAC_KEYCHAIN_PASS; cd /tmp/codetether-build; exec ./script/macos-release-build.sh'
+                        set -x
 
                         # Fetch artifacts back
                         mkdir -p dist
@@ -309,10 +274,12 @@ REMOTE
                             # ('ld' not found), so the local verify recompile of
                             # the packaged tarball fails. crates.io verifies the
                             # tarball server-side on upload, so this is safe.
-                            if ! ./script/cargo-sccache.sh publish --no-verify 2>&1 | tee /tmp/cargo-publish.log; then
-                                if grep -q 'already exists on crates.io index' /tmp/cargo-publish.log; then
-                                    echo "Crate ${VERSION} already exists on crates.io; continuing."
+                            if ! bash -o pipefail -c './script/cargo-sccache.sh publish --no-verify 2>&1 | tee /tmp/cargo-publish.log'; then
+                                package_version="${VERSION#v}"
+                                if cargo info "codetether-agent@${package_version}" >/dev/null 2>&1; then
+                                    echo "Crate codetether-agent ${package_version} already exists; continuing."
                                 else
+                                    echo "Cargo publish failed and ${package_version} is absent from crates.io." >&2
                                     exit 1
                                 fi
                             fi
