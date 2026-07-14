@@ -950,6 +950,7 @@ version = "4.7.4"
 dependencies = [
  "anyhow",
  "arboard",
+ "async-global-executor",
  "async-openai",
  "async-stream",
  "async-trait",
