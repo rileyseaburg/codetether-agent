@@ -2,8 +2,8 @@ use super::auth::ImagesAuth;
 use anyhow::{Result, bail};
 
 pub(super) async fn resolve() -> Result<ImagesAuth> {
-    if let Some(key) = crate::secrets::get_api_key("openai-codex").await {
-        return Ok(ImagesAuth::openai(key));
+    if let Some(auth) = super::vault_credentials::resolve().await? {
+        return Ok(auth);
     }
     let disabled = std::env::var("CODETETHER_DISABLE_ENV_FALLBACK")
         .is_ok_and(|value| value == "1" || value.eq_ignore_ascii_case("true"));
@@ -19,5 +19,5 @@ pub(super) async fn resolve() -> Result<ImagesAuth> {
     {
         return Ok(ImagesAuth::chatgpt(auth));
     }
-    bail!("image credentials unavailable; configure OpenAI or opted-in Codex authentication")
+    bail!("image credentials unavailable in Vault or permitted local fallbacks")
 }

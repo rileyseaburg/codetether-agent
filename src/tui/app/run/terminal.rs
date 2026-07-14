@@ -1,12 +1,12 @@
 use crossterm::{
-    event::{EnableBracketedPaste, KeyboardEnhancementFlags, PushKeyboardEnhancementFlags},
+    event::{KeyboardEnhancementFlags, PushKeyboardEnhancementFlags},
     execute,
-    terminal::{EnterAlternateScreen, enable_raw_mode},
+    terminal::enable_raw_mode,
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
 
 use crate::tui::app::panic_cleanup::{PanicHookGuard, install_panic_cleanup_hook};
-use crate::tui::app::terminal_state::{TerminalGuard, restore_terminal_state};
+use crate::tui::app::terminal_state::{TerminalGuard, enter_display_mode, restore_terminal_state};
 
 pub(super) struct Runtime {
     pub terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
@@ -21,7 +21,7 @@ pub(super) fn enter() -> anyhow::Result<Runtime> {
     let terminal_guard = TerminalGuard;
     let panic_guard = install_panic_cleanup_hook();
     let mut stdout = std::io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableBracketedPaste)?;
+    enter_display_mode(&mut stdout)?;
     let _ = execute!(
         stdout,
         PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)

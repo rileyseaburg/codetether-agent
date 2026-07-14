@@ -7,9 +7,8 @@
 //! 2. **Panic guard** — catches any panic inside the render closure so a
 //!    single bad frame never kills the process (critical for long-running
 //!    sessions that accumulate diverse message content).
-//! 3. **Error tolerance** — terminal I/O errors (broken pipe, transient state)
-//!    are logged and swallowed rather than propagated, because a failed frame
-//!    is purely visual — the next redraw will almost certainly succeed.
+//! 3. **Error recovery** — interrupted draws clear the retained terminal state
+//!    and retry once so the physical screen and ratatui buffers stay aligned.
 //!
 //! The public entry point, [`draw_ui`], always returns `Ok(())` unless the
 //! terminal backend is fundamentally broken, in which case the caller can
@@ -19,6 +18,8 @@ use ratatui::{Terminal, backend::CrosstermBackend};
 
 #[path = "safe_draw_recover.rs"]
 mod safe_draw_recover;
+#[path = "safe_draw_resync.rs"]
+mod safe_draw_resync;
 #[path = "safe_draw_size.rs"]
 mod safe_draw_size;
 
@@ -31,7 +32,7 @@ use safe_draw_size::safe_size;
 /// The function reads the terminal size, rejects unsafe dimensions, and
 /// delegates to the panic-guarded renderer. Size-query errors, draw errors,
 /// and render-closure panics are all logged and swallowed so the event loop
-/// continues — a failed frame is purely visual.
+/// continues after clearing and retrying the interrupted frame once.
 ///
 /// # Side Effects
 ///
@@ -55,7 +56,7 @@ pub fn draw_ui(
         return Ok(());
     }
     if let Err(err) = draw_or_recover(terminal, app, session) {
-        tracing::warn!(%err, "terminal draw failed — skipping frame");
+        safe_draw_resync::clear_and_retry(terminal, app, session, err);
     }
     Ok(())
 }

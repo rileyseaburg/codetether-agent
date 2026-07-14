@@ -1,7 +1,7 @@
 #[tokio::test]
 async fn empty_primary_switches_to_recovery_stream() {
     let primary = Box::pin(stream::empty());
-    let recovered = stream_recovery::with_http_retry(primary, || async {
+    let recovered = stream_recovery::with_http_retry(Some(primary), || async {
         Ok(Box::pin(stream::iter(vec![
             StreamChunk::Text("recovered".into()),
             StreamChunk::Done { usage: None },
@@ -17,7 +17,7 @@ async fn completed_primary_does_not_open_recovery_stream() {
     let primary = Box::pin(stream::iter(vec![StreamChunk::Done { usage: None }]));
     let opened = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let observed = Arc::clone(&opened);
-    let recovered = stream_recovery::with_http_retry(primary, move || {
+    let recovered = stream_recovery::with_http_retry(Some(primary), move || {
         let observed = Arc::clone(&observed);
         async move {
             observed.store(true, std::sync::atomic::Ordering::SeqCst);

@@ -13,7 +13,7 @@
 use clap::Parser;
 use cli::{Cli, Command};
 use codetether_agent::{
-    a2a, benchmark, bus, cli, config, crash, forage, github_pr, indexer, mcp, moltbook, okr,
+    a2a, benchmark, bus, cli, config, crash, forage, github_pr, indexer, mcp, moltbook, mux, okr,
     provider, ralph, rlm, secrets, server, swarm, telemetry, tool, tui, worker_server,
 };
 use std::io::IsTerminal;
@@ -599,6 +599,7 @@ async fn main() -> anyhow::Result<()> {
             };
             tui::run(project, allow_network, a2a_options, access_mode, yolo).await
         }
+        Some(Command::Mux(args)) => mux::execute(args).await,
         Some(Command::Serve(args)) => server::serve(args).await,
         Some(Command::Run(args)) => cli::run::execute(args).await,
         Some(Command::Pr(args)) => github_pr::run(args).await,

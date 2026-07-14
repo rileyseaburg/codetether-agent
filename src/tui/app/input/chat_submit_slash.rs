@@ -8,6 +8,8 @@ use crate::tui::app::commands::handle_slash_command;
 use crate::tui::app::session_runtime::SessionSlot;
 use crate::tui::app::state::App;
 
+#[path = "mux_command/mod.rs"]
+mod mux_command;
 #[path = "shell/mod.rs"]
 mod shell;
 #[path = "slash_no_session.rs"]
@@ -30,6 +32,9 @@ pub(super) async fn run(
         return false;
     }
     if super::approval_command::run(app, prompt) {
+        return true;
+    }
+    if mux_command::run(app, cwd, prompt).await {
         return true;
     }
     let Some(session) = slot.borrow_mut() else {

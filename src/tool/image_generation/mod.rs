@@ -16,6 +16,7 @@ mod response;
 mod result;
 mod schema;
 mod tool_impl;
+mod vault_credentials;
 
 pub use tool_impl::ImageGenerationTool;
 
@@ -31,3 +32,5 @@ mod input_tests;
 mod request_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod vault_credentials_tests;

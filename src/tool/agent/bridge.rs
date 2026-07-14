@@ -20,6 +20,7 @@ pub struct AgentSnapshot {
     pub model_id: Option<String>,
     pub parent: Option<String>,
     pub depth: u8,
+    pub is_processing: bool,
 }
 
 /// Returns snapshots of all agents spawned via the `agent` tool.
@@ -47,6 +48,7 @@ fn snapshots(parent_session_id: Option<&str>) -> Vec<AgentSnapshot> {
     rows.into_iter()
         .map(
             |(name, instructions, msg_count, model_id, parent, depth)| AgentSnapshot {
+                is_processing: super::execution_state::is_running(&name),
                 name,
                 instructions,
                 message_count: msg_count,

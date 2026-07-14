@@ -11,10 +11,17 @@ use super::{
 };
 use clap::Subcommand;
 
+#[path = "mux_args.rs"]
+pub mod mux_args;
+use mux_args::MuxArgs;
+
 #[derive(Subcommand, Debug)]
 pub enum Command {
     /// Start interactive terminal UI
     Tui(TuiArgs),
+
+    /// Manage persistent network mux sessions
+    Mux(MuxArgs),
 
     /// Start a headless API server
     Serve(ServeArgs),

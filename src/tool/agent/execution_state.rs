@@ -1,9 +1,7 @@
 //! Per-agent execution state for spawned child sessions.
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Mutex,
-};
+use std::collections::{HashMap, HashSet};
+use std::sync::Mutex;
 use tokio::task::{AbortHandle, JoinHandle};
 
 lazy_static::lazy_static! {
@@ -44,6 +42,10 @@ pub(super) fn abort(name: &str) -> bool {
     } else {
         false
     }
+}
+
+pub(super) fn is_running(name: &str) -> bool {
+    RUNNING.lock().is_ok_and(|running| running.contains(name))
 }
 
 /// Tries to mark a sub-agent as busy.

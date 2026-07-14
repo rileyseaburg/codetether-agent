@@ -17,13 +17,13 @@ pub(super) fn lines(state: &AppState, name: &str) -> Vec<Line<'static>> {
         .unwrap_or_default();
     let parent = agent.parent.as_deref().unwrap_or("main");
     let model = agent.model_id.as_deref().unwrap_or("default model");
-    let mut rows = super::subagent_detail_metadata::lines(
-        name,
-        parent,
-        "tool-agent",
-        model,
-        &agent.instructions,
-    );
+    let status = if agent.is_processing {
+        "working"
+    } else {
+        "idle"
+    };
+    let mut rows =
+        super::subagent_detail_metadata::lines(name, parent, status, model, &agent.instructions);
     super::subagent_message_lines::append(&mut rows, &messages);
     rows
 }

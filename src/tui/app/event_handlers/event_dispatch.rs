@@ -2,7 +2,7 @@
 
 use std::{path::Path, sync::Arc};
 
-use crossterm::event::{KeyEvent, KeyEventKind};
+use crossterm::event::KeyEvent;
 
 use crate::provider::ProviderRegistry;
 use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
@@ -19,7 +19,7 @@ pub(crate) async fn handle_event(
     runtime: &TuiSessionHandle,
     key: KeyEvent,
 ) -> anyhow::Result<bool> {
-    if key.kind != KeyEventKind::Press {
+    if !super::key_repeat::dispatchable(key) {
         return Ok(false);
     }
     if let Some(quit) = super::interrupt_key::handle(app, runtime, key) {

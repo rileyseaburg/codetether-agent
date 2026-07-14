@@ -11,11 +11,28 @@ pub(super) fn append(rows: &mut Vec<Line<'static>>, messages: &[Message]) {
         return;
     }
     for message in messages {
+        if message.role == Role::System {
+            rows.push(Line::from(
+                format!(
+                    "SYSTEM · runtime prompt hidden ({} chars)",
+                    message_len(message)
+                )
+                .dim(),
+            ));
+            rows.push(Line::from(""));
+            continue;
+        }
         rows.push(Line::from(role_label(message.role)));
         let text = crate::tui::app::message_text::extract_message_text(&message.content);
         rows.extend(text.lines().map(|line| Line::from(format!("  {line}"))));
         rows.push(Line::from(""));
     }
+}
+
+fn message_len(message: &Message) -> usize {
+    crate::tui::app::message_text::extract_message_text(&message.content)
+        .chars()
+        .count()
 }
 
 fn role_label(role: Role) -> ratatui::text::Span<'static> {
@@ -26,3 +43,7 @@ fn role_label(role: Role) -> ratatui::text::Span<'static> {
         Role::Tool => "TOOL RESULT".magenta().bold(),
     }
 }
+
+#[cfg(test)]
+#[path = "subagent_message_lines_tests.rs"]
+mod tests;

@@ -15,14 +15,14 @@ use crate::tui::app::state::App;
 
 /// Draw a frame, catching any panic inside the render closure.
 ///
-/// Returns `Ok(())` on success or when a panic was caught (logged at `error`
-/// level). Returns `Err` only for non-panic I/O failures from the terminal
-/// backend, which the caller may also downgrade to non-fatal.
+/// Returns `Ok(())` on success. Returns `Err` for terminal I/O failures and
+/// caught render panics so the caller can resynchronize the retained buffers.
 pub(super) fn draw_or_recover(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     app: &mut App,
     session: &SessionView,
 ) -> anyhow::Result<()> {
+    let _recovery_scope = crate::tui::app::panic_cleanup::begin_render_recovery();
     let result: Result<Result<(), std::io::Error>, Box<dyn std::any::Any + Send>> =
         catch_unwind(AssertUnwindSafe(|| {
             match terminal.draw(|f: &mut Frame| ui_render(f, app, session)) {
@@ -39,8 +39,7 @@ pub(super) fn draw_or_recover(
                 .map(String::as_str)
                 .or_else(|| panic_payload.downcast_ref::<&'static str>().copied())
                 .unwrap_or("(non-string panic)");
-            tracing::error!(panic = %msg, "render panic caught — frame skipped, TUI continues");
-            Ok(())
+            Err(anyhow::anyhow!("render panicked: {msg}"))
         }
     }
 }

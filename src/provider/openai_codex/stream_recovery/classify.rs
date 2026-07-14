@@ -4,18 +4,21 @@ const PERMANENT: &[&str] = &[
     "bad request",
     "unauthorized",
     "forbidden",
+    "not found",
+    "unprocessable",
     "invalid api key",
     "context length",
     "content policy",
     " 400 ",
     " 401 ",
     " 403 ",
+    " 404 ",
+    " 422 ",
 ];
 
 const TRANSIENT: &[&str] = &[
     "you can retry",
     "processing your request",
-    "request id",
     "timeout",
     "timed out",
     "connection reset",
@@ -26,6 +29,12 @@ const TRANSIENT: &[&str] = &[
     "too many requests",
     "service unavailable",
     "bad gateway",
+    "connection refused",
+    "429 too many requests",
+    "500 internal server error",
+    "502 bad gateway",
+    "503 service unavailable",
+    "504 gateway timeout",
     " 429 ",
     " 500 ",
     " 502 ",
@@ -40,18 +49,5 @@ pub(super) fn is_retryable(message: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::is_retryable;
-
-    #[test]
-    fn openai_request_id_error_is_retryable() {
-        assert!(is_retryable(
-            "An error occurred while processing your request. You can retry your request. Please include the request ID abc"
-        ));
-    }
-
-    #[test]
-    fn permanent_status_wins() {
-        assert!(!is_retryable("403 forbidden; request ID abc"));
-    }
-}
+#[path = "classify/tests.rs"]
+mod tests;

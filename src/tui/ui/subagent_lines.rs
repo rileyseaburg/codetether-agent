@@ -31,8 +31,7 @@ fn compose(state: &AppState, tool_agents: &[AgentSnapshot]) -> Vec<Line<'static>
         .green(),
     )];
     rows.push(Line::from(
-        "Tab/↑↓: select child · Enter: details · swarm workers open when no child is selected"
-            .dim(),
+        "Tab/↑↓: child · Enter: transcript · /swarm: worker details".dim(),
     ));
     rows.push(Line::from(""));
     super::subagent_managed_lines::append(&mut rows, state, tool_agents);

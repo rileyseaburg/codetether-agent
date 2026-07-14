@@ -2,6 +2,11 @@ use std::{panic, sync::Arc};
 
 use super::terminal_state::restore_terminal_state;
 
+#[path = "panic_cleanup/recovery_scope.rs"]
+mod recovery_scope;
+
+pub(super) use recovery_scope::enter as begin_render_recovery;
+
 type PanicHook = dyn Fn(&panic::PanicHookInfo<'_>) + Send + Sync + 'static;
 
 pub(super) struct PanicHookGuard {
@@ -12,6 +17,9 @@ pub(super) fn install_panic_cleanup_hook() -> PanicHookGuard {
     let previous: Arc<PanicHook> = panic::take_hook().into();
     let hook = Arc::clone(&previous);
     panic::set_hook(Box::new(move |info| {
+        if recovery_scope::active() {
+            return;
+        }
         restore_terminal_state();
         hook(info);
     }));

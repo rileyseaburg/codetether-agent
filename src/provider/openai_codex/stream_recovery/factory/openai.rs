@@ -3,9 +3,28 @@
 use super::super::super::{CompletionRequest, OpenAiCodexProvider};
 use super::super::{Chunks, retry};
 
+/// Recover an interrupted WebSocket request through OpenAI HTTP.
 pub(in crate::provider::openai_codex) fn recover(
     provider: OpenAiCodexProvider,
     primary: Chunks,
+    request: CompletionRequest,
+    key: String,
+) -> Chunks {
+    retry_stream(provider, Some(primary), request, key)
+}
+
+/// Start an OpenAI HTTP request with private transport retries.
+pub(in crate::provider::openai_codex) fn start(
+    provider: OpenAiCodexProvider,
+    request: CompletionRequest,
+    key: String,
+) -> Chunks {
+    retry_stream(provider, None, request, key)
+}
+
+fn retry_stream(
+    provider: OpenAiCodexProvider,
+    primary: Option<Chunks>,
     request: CompletionRequest,
     key: String,
 ) -> Chunks {
@@ -18,12 +37,4 @@ pub(in crate::provider::openai_codex) fn recover(
                 .await
         }
     })
-}
-
-pub(in crate::provider::openai_codex) fn start(
-    provider: OpenAiCodexProvider,
-    request: CompletionRequest,
-    key: String,
-) -> Chunks {
-    recover(provider, Box::pin(futures::stream::empty()), request, key)
 }

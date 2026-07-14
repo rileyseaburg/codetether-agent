@@ -1,14 +1,16 @@
 //! Bounded private retries for Codex streaming transports.
 
 use anyhow::Result;
+use futures::StreamExt;
 use std::{future::Future, time::Duration};
 
 use super::{Chunks, StreamChunk, attempt, attempt::Outcome, classify};
 
 const MAX_HTTP_ATTEMPTS: u32 = 3;
 
+/// Retry pre-content transient failures privately with bounded backoff.
 pub(in crate::provider::openai_codex) fn with_http_retry<F, Fut>(
-    primary: Chunks,
+    primary: Option<Chunks>,
     mut retry: F,
 ) -> Chunks
 where
@@ -16,22 +18,26 @@ where
     Fut: Future<Output = Result<Chunks>> + Send + 'static,
 {
     Box::pin(async_stream::stream! {
-        match attempt::collect(primary).await {
-            Outcome::Complete(chunks) | Outcome::Permanent(chunks) => {
-                for chunk in chunks { yield chunk; }
-                return;
+        if let Some(primary) = primary {
+            match attempt::inspect(primary).await {
+                Outcome::Ready(first, mut remaining) => {
+                    yield first;
+                    while let Some(chunk) = remaining.next().await { yield chunk; }
+                    return;
+                }
+                Outcome::Retry(reason) => log_retry(0, &reason),
             }
-            Outcome::Retry(reason) => log_retry(0, &reason),
         }
         for number in 1..=MAX_HTTP_ATTEMPTS {
             let outcome = match retry().await {
-                Ok(stream) => attempt::collect(stream).await,
+                Ok(stream) => attempt::inspect(stream).await,
                 Err(error) if classify::is_retryable(&format!("{error:#}")) => Outcome::Retry(format!("{error:#}")),
-                Err(error) => Outcome::Permanent(vec![StreamChunk::Error(format!("{error:#}"))]),
+                Err(error) => Outcome::Ready(StreamChunk::Error(format!("{error:#}")), Box::pin(futures::stream::empty())),
             };
             match outcome {
-                Outcome::Complete(chunks) | Outcome::Permanent(chunks) => {
-                    for chunk in chunks { yield chunk; }
+                Outcome::Ready(first, mut remaining) => {
+                    yield first;
+                    while let Some(chunk) = remaining.next().await { yield chunk; }
                     return;
                 }
                 Outcome::Retry(reason) if number < MAX_HTTP_ATTEMPTS => {

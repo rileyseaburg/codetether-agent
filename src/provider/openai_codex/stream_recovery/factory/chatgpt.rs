@@ -3,9 +3,30 @@
 use super::super::super::{CompletionRequest, OpenAiCodexProvider};
 use super::super::{Chunks, retry};
 
+/// Recover an interrupted WebSocket request through ChatGPT HTTP.
 pub(in crate::provider::openai_codex) fn recover(
     provider: OpenAiCodexProvider,
     primary: Chunks,
+    request: CompletionRequest,
+    token: String,
+    account: String,
+) -> Chunks {
+    retry_stream(provider, Some(primary), request, token, account)
+}
+
+/// Start a ChatGPT HTTP request with private transport retries.
+pub(in crate::provider::openai_codex) fn start(
+    provider: OpenAiCodexProvider,
+    request: CompletionRequest,
+    token: String,
+    account: String,
+) -> Chunks {
+    retry_stream(provider, None, request, token, account)
+}
+
+fn retry_stream(
+    provider: OpenAiCodexProvider,
+    primary: Option<Chunks>,
     request: CompletionRequest,
     token: String,
     account: String,
@@ -24,19 +45,4 @@ pub(in crate::provider::openai_codex) fn recover(
                 .await
         }
     })
-}
-
-pub(in crate::provider::openai_codex) fn start(
-    provider: OpenAiCodexProvider,
-    request: CompletionRequest,
-    token: String,
-    account: String,
-) -> Chunks {
-    recover(
-        provider,
-        Box::pin(futures::stream::empty()),
-        request,
-        token,
-        account,
-    )
 }

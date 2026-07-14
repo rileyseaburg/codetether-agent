@@ -1,30 +1,20 @@
-//! Transactional collection of one Codex transport attempt.
+//! First-event inspection for one Codex transport attempt.
 
 use futures::StreamExt;
 
 use super::{Chunks, StreamChunk, classify};
 
 pub(super) enum Outcome {
-    Complete(Vec<StreamChunk>),
-    Permanent(Vec<StreamChunk>),
+    Ready(StreamChunk, Chunks),
     Retry(String),
 }
 
-pub(super) async fn collect(mut stream: Chunks) -> Outcome {
-    let mut chunks = Vec::new();
-    while let Some(chunk) = stream.next().await {
-        if let StreamChunk::Error(message) = &chunk {
-            if classify::is_retryable(message) {
-                return Outcome::Retry(message.clone());
-            }
-            chunks.push(chunk);
-            return Outcome::Permanent(chunks);
+pub(super) async fn inspect(mut stream: Chunks) -> Outcome {
+    match stream.next().await {
+        Some(StreamChunk::Error(message)) if classify::is_retryable(&message) => {
+            Outcome::Retry(message)
         }
-        let done = matches!(chunk, StreamChunk::Done { .. });
-        chunks.push(chunk);
-        if done {
-            return Outcome::Complete(chunks);
-        }
+        Some(first) => Outcome::Ready(first, stream),
+        None => Outcome::Retry("transport stream ended before completion".into()),
     }
-    Outcome::Retry("transport stream ended before completion".into())
 }

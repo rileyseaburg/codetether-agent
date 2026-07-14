@@ -30,7 +30,7 @@ pub fn push_tool_agents(
             session_id: None,
             indent: snap.depth + 1,
             selected: active == Some(snap.name.as_str()),
-            processing: false,
+            processing: snap.is_processing,
         }));
     }
 }

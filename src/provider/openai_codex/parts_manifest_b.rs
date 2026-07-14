@@ -13,6 +13,7 @@ include!("parts/exchange_code.rs");
 include!("parts/exchange_code_with_redirect_uri.rs");
 include!("parts/exchange_id_token_for_api_key.rs");
 include!("parts/local_chatgpt_backend_auth.rs");
+include!("parts/chatgpt_backend_auth.rs");
 include!("parts/extract_chatgpt_account_id.rs");
 include!("parts/extract_chatgpt_account_id_from_jwt.rs");
 include!("parts/extract_json_string.rs");
