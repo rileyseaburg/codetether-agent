@@ -21,6 +21,17 @@ fn model_defaults_to_parent_current_model() {
     }));
     let request = SpawnRequest::from_params(&p).expect("spawn request");
     assert_eq!(request.model, "zai/glm-5.1");
+    assert_eq!(request.parent_session_id, None);
+}
+
+#[test]
+fn parent_session_id_is_preserved() {
+    let p = params(json!({
+        "action": "spawn", "name": "reviewer", "instructions": "audit",
+        "model": "zai/glm-5.1", "__ct_session_id": "parent-42",
+    }));
+    let request = SpawnRequest::from_params(&p).expect("spawn request");
+    assert_eq!(request.parent_session_id, Some("parent-42"));
 }
 
 #[test]

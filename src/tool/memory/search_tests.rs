@@ -21,6 +21,14 @@ fn ranks_semantically_closest_first() {
     assert!(results[0].content.contains("tokio"));
 }
 
+#[test]
+fn refresh_embedding_replaces_unknown_vector_space() {
+    let mut entry = MemoryEntry::new("local vector", vec![]);
+    entry.embedding = Some(crate::vectordb::EmbeddingVector::new(vec![1.0, 0.0]));
+    entry.refresh_embedding();
+    assert_ne!(entry.embedding.as_ref().expect("embedding").len(), 2);
+}
+
 #[tokio::test]
 async fn search_embedded_without_backend_uses_lexical_ranking() {
     // No embedder configured: query_vec is None, ranking is lexical-only.

@@ -1,5 +1,4 @@
-//! Tests that the `detach` field on spawn params is correctly propagated to the
-//! `SpawnRequest`, enabling background-first-turn dispatch (issue #295/#296).
+//! Tests synchronous defaults and explicit background spawn dispatch.
 
 use super::params::Params;
 use super::spawn_request::SpawnRequest;
@@ -10,7 +9,7 @@ fn params(value: serde_json::Value) -> Params {
 }
 
 #[test]
-fn detach_defaults_to_true() {
+fn durable_spawn_defaults_to_synchronous() {
     let p = params(json!({
         "action": "spawn",
         "name": "reviewer",
@@ -18,7 +17,10 @@ fn detach_defaults_to_true() {
         "__ct_current_model": "zai/glm-5.1",
     }));
     let request = SpawnRequest::from_params(&p).expect("spawn request");
-    assert!(request.detach, "detach should default to true (#296)");
+    assert!(
+        !request.detach,
+        "model callers must receive the child result"
+    );
 }
 
 #[test]
@@ -35,4 +37,13 @@ fn detach_false_is_propagated() {
         !request.detach,
         "detach should be false when explicitly set"
     );
+}
+
+#[test]
+fn ephemeral_spawn_defaults_to_synchronous() {
+    let p = params(json!({
+        "action": "spawn", "name": "once", "instructions": "inspect",
+        "model": "zai/glm-5.1", "ephemeral": true,
+    }));
+    assert!(!SpawnRequest::from_params(&p).unwrap().detach);
 }

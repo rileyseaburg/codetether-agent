@@ -24,6 +24,7 @@ fn toc_lists_user_turns_with_base_offset() {
     assert!(toc.contains("[turn 5] implement auth middleware"));
     assert!(toc.contains("[turn 7] now fix the failing tests"));
     assert!(toc.contains("context_browse"));
+    assert!(toc.contains("When the user allows history access"));
 }
 
 #[test]

@@ -2,6 +2,8 @@ use super::*;
 
 #[path = "agent_focus_back_tests.rs"]
 mod agent_focus_back_tests;
+#[path = "swarm_detail_tests.rs"]
+mod swarm_detail_tests;
 
 #[test]
 fn help_overlay_consumes_chat_arrow_navigation() {

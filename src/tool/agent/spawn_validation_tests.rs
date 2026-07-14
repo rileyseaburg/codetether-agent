@@ -14,6 +14,7 @@ fn request(model: &'static str) -> SpawnRequest<'static> {
         ephemeral: true,
         detach: false,
         parent_workspace: None,
+        parent_session_id: None,
     }
 }
 

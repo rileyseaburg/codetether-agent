@@ -19,6 +19,11 @@ fn test_validate_configuration() {
 }
 
 #[test]
+fn ordinary_swarms_do_not_prune_required_branches() {
+    assert!(!SwarmConfig::default().collapse_enabled);
+}
+
+#[test]
 fn test_token_estimate() {
     let validator = SwarmValidator::new(SwarmConfig::default(), "test".into(), "model".into());
     let provider_status = ProviderStatus {

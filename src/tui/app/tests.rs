@@ -306,30 +306,19 @@ async fn slash_new_preserves_session_metadata() {
 }
 
 #[tokio::test]
-async fn slash_spawn_persists_agent_session() {
+async fn slash_spawn_requires_a_selected_model() {
     let mut app = App::default();
+    let mut session = Session::new().await.expect("session should create");
 
     handle_slash_command(
         &mut app,
         std::path::Path::new("."),
-        &mut Session::new().await.expect("session should create"),
+        &mut session,
         None,
         "/spawn coder",
     )
     .await;
 
-    let agent = app
-        .state
-        .spawned_agents
-        .get("coder")
-        .expect("agent should be spawned");
-    assert_eq!(agent.session.agent, "spawned:coder");
-
-    // Verify the persisted session can be loaded back from disk.
-    let agent_session_id = agent.session.id.clone();
-    let loaded = crate::session::Session::load(&agent_session_id)
-        .await
-        .expect("spawned agent session should be loadable from disk");
-    assert_eq!(loaded.agent, "spawned:coder");
-    assert_eq!(loaded.messages.len(), 1, "should have the system prompt");
+    assert!(app.state.spawned_agents.is_empty());
+    assert!(app.state.status.contains("Select a model"));
 }

@@ -35,6 +35,19 @@ fn status_keeps_previous_substantive_user_turn() {
 }
 
 #[test]
+fn bare_go_keeps_previous_substantive_user_turn() {
+    let messages = vec![
+        msg(
+            Role::User,
+            "use repository docs and do not inspect sessions",
+        ),
+        msg(Role::Assistant, "understood"),
+        msg(Role::User, "go"),
+    ];
+    assert_eq!(active_user_tail_start(&messages, 1), Some(0));
+}
+
+#[test]
 fn no_user_falls_back_to_recent_window() {
     let messages = vec![msg(Role::Assistant, "a"), msg(Role::Assistant, "b")];
     assert_eq!(active_tail_start(&messages, 1), 1);

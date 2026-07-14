@@ -13,4 +13,7 @@ fn build_system_prompt_includes_non_interactive_build_guardrail() {
     std::fs::create_dir_all(tmp.path().join(".git")).expect("create .git dir");
     let prompt = build_system_prompt(tmp.path());
     assert!(prompt.contains("do not ask the user for permission to continue"));
+    assert!(prompt.contains("repository documentation or files as the source of truth"));
+    assert!(prompt.contains("restriction persists until explicitly revoked"));
+    assert!(!prompt.contains("call the `session_recall` tool BEFORE"));
 }

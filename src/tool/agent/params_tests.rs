@@ -1,4 +1,4 @@
-//! Tests for `Params` defaults, focusing on the `detach` flag (issue #296).
+//! Tests for synchronous defaults and explicit background dispatch.
 
 use super::params::Params;
 use serde_json::json;
@@ -8,11 +8,11 @@ fn parse(value: serde_json::Value) -> Params {
 }
 
 #[test]
-fn detach_defaults_to_true() {
+fn detach_defaults_to_false() {
     let p = parse(json!({ "action": "message", "name": "w", "message": "hi" }));
     assert!(
-        p.detach_or_default(),
-        "detach should default to true (#296)"
+        !p.detach_or_default(),
+        "callers should receive delegated results"
     );
 }
 

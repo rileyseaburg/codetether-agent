@@ -2,7 +2,7 @@ use super::super::prompt::append_guardrails_for_cwd;
 use std::path::Path;
 
 fn prompt() -> String {
-    append_guardrails_for_cwd("base".to_string(), Path::new("."))
+    append_guardrails_for_cwd("base".to_string(), Path::new("."), true)
 }
 
 #[test]

@@ -5,8 +5,8 @@ use std::path::PathBuf;
 #[test]
 fn includes_agent_name_and_instructions() {
     let msg = build_system_message("reviewer", "Audit the PR", None);
-    assert!(msg.contains("@reviewer"));
-    assert!(msg.contains("Audit the PR"));
+    assert!(msg.contains("@reviewer") && msg.contains("Audit the PR"));
+    assert!(msg.contains("STATUS: completed") && msg.contains("STATUS: blocked"));
 }
 
 #[test]
@@ -22,8 +22,8 @@ fn embeds_current_working_directory() {
 #[test]
 fn warns_against_discovery_tool_calls() {
     let msg = build_system_message("x", "y", None);
-    assert!(msg.contains("Do NOT waste turns discovering the workspace"));
-    assert!(msg.contains("no pwd/ls/glob"));
+    assert!(msg.contains("Start with paths named in the task"));
+    assert!(msg.contains("targeted search when a required path is unknown"));
 }
 
 #[tokio::test]
@@ -34,24 +34,16 @@ async fn child_session_uses_parent_workspace_not_process_cwd() {
         "work in the parent repo",
         "example/model",
         Some(parent_workspace.clone()),
+        true,
     )
     .await
     .unwrap();
 
     assert_eq!(session.metadata.directory, Some(parent_workspace.clone()));
+    assert_eq!(session.metadata.inherited_prior_context_allowed, Some(true));
     assert_eq!(session.title.as_deref(), Some("Sub-agent: child"));
     let ContentPart::Text { text } = &session.messages[0].content[0] else {
         panic!("expected system prompt text");
     };
     assert!(text.contains(&parent_workspace.display().to_string()));
-}
-
-#[tokio::test]
-async fn child_session_enables_auto_apply_edits() {
-    // Issue #294: autonomous sub-agents cannot interactively confirm edits, so
-    // their session must auto-apply pending edit previews.
-    let session = create_agent_session("child", "edit files", "example/model", None)
-        .await
-        .unwrap();
-    assert!(session.metadata.auto_apply_edits);
 }

@@ -22,6 +22,7 @@ fn reset_summary_message_carries_expected_markers() {
         assert!(text.contains("the summary body"));
         assert!(text.contains("[DROPPED-RANGE INDEX]"));
         assert!(text.contains("session_recall"));
+        assert!(text.contains("only when the user allows history access"));
     } else {
         panic!("expected text content");
     }
