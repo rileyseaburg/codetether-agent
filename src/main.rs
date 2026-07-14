@@ -470,7 +470,7 @@ async fn run_rlm_command(args: cli::RlmArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(worker_threads = 8)]
 async fn main() -> anyhow::Result<()> {
     // Load local .env for developer workflows (e.g. `cargo run` without exported vars).
     // Existing process environment still takes precedence over .env values.

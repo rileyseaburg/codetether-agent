@@ -10,9 +10,9 @@ impl OpenAiCodexProvider {
         if Self::needs_chatgpt_http_transport(&request.model)
             || self.transport_health.requires_http()
         {
-            return self
-                .complete_stream_with_chatgpt_http_responses(request, access_token, account_id)
-                .await;
+            return Ok(stream_recovery::chatgpt_http(
+                self.clone(), request, access_token, account_id,
+            ));
         }
         match self
             .complete_stream_with_realtime(
@@ -34,8 +34,9 @@ impl OpenAiCodexProvider {
             Err(error) => {
                 tracing::warn!(error = %error, "Codex transport unavailable; switching to HTTP");
                 self.transport_health.mark_interrupted();
-                self.complete_stream_with_chatgpt_http_responses(request, access_token, account_id)
-                    .await
+                Ok(stream_recovery::chatgpt_http(
+                    self.clone(), request, access_token, account_id,
+                ))
             }
         }
     }

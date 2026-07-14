@@ -4,8 +4,12 @@ use super::{AgentBus, BusS3Sink, BusS3SinkConfig};
 use std::sync::Arc;
 use tracing::{error, warn};
 
+#[path = "s3_spawn/runtime.rs"]
+mod runtime;
+
 /// Spawn the bus S3 sink in a non-blocking background task.
 pub fn spawn_bus_s3_sink(bus: Arc<AgentBus>) -> tokio::task::JoinHandle<()> {
+    runtime::initialize();
     tokio::spawn(async move {
         match BusS3SinkConfig::from_env_or_vault().await {
             Ok(config) => run_configured(bus, config).await,

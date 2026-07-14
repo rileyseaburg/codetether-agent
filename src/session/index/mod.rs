@@ -26,6 +26,7 @@ mod tests;
 mod tests_async;
 #[cfg(test)]
 mod tests_summary_for;
+mod tree_serde;
 pub mod types;
 
 pub use cache::SummaryIndex;

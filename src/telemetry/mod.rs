@@ -81,6 +81,7 @@ pub mod persistent;
 pub mod provider;
 pub mod rss_watchdog;
 pub mod swarm;
+pub(crate) mod system_allocator;
 pub mod tokens;
 pub mod tools;
 pub mod transport;

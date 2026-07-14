@@ -15,7 +15,7 @@ use super::types::{SummaryNode, SummaryRange};
 /// Cache miss: [`Self::summary_for`] calls a producer, then caches.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SummaryIndex {
-    #[serde(default)]
+    #[serde(default, with = "super::tree_serde")]
     pub(super) tree: BTreeMap<SummaryRange, SummaryNode>,
     #[serde(default)]
     pub(super) generation: u64,

@@ -25,6 +25,7 @@ const FALLBACK_RAM_BYTES: usize = 16 * 1024 * 1024 * 1024;
 /// Arm the allocator guard. Call once, early in process startup. Idempotent
 /// for the spool dir; the ceiling is simply restored on repeat calls.
 pub fn configure(spool_dir: PathBuf) {
+    super::system_allocator::configure();
     let _ = SPOOL_DIR.set(spool_dir);
     CEILING.store(resolve_ceiling(), Ordering::Relaxed);
 }

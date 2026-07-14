@@ -5,9 +5,7 @@ impl OpenAiCodexProvider {
         api_key: String,
     ) -> Result<BoxStream<'static, StreamChunk>> {
         if self.transport_health.requires_http() {
-            return self
-                .complete_stream_with_openai_http_responses(request, api_key)
-                .await;
+            return Ok(stream_recovery::openai_http(self.clone(), request, api_key));
         }
         match self
             .complete_stream_with_realtime(
@@ -28,8 +26,7 @@ impl OpenAiCodexProvider {
             Err(error) => {
                 tracing::warn!(error = %error, "Codex transport unavailable; switching to HTTP");
                 self.transport_health.mark_interrupted();
-                self.complete_stream_with_openai_http_responses(request, api_key)
-                    .await
+                Ok(stream_recovery::openai_http(self.clone(), request, api_key))
             }
         }
     }

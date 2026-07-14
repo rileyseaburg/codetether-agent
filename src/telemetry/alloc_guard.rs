@@ -31,6 +31,7 @@ pub struct GuardAlloc;
 
 #[inline]
 fn check(size: usize) {
+    super::system_allocator::initialize_early();
     let ceiling = CEILING.load(Ordering::Relaxed);
     if ceiling != 0 && size > ceiling {
         super::alloc_guard_report::trip(size, ceiling);
