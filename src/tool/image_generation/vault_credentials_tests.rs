@@ -5,7 +5,9 @@ use serde_json::json;
 fn parses_vault_oauth_credentials() {
     let mut secrets = ProviderSecrets::default();
     secrets.extra.insert("access_token".into(), json!("access"));
-    secrets.extra.insert("refresh_token".into(), json!("refresh"));
+    secrets
+        .extra
+        .insert("refresh_token".into(), json!("refresh"));
     secrets.extra.insert("expires_at".into(), json!(42));
     secrets
         .extra
@@ -22,4 +24,12 @@ fn rejects_incomplete_vault_oauth_credentials() {
     let mut secrets = ProviderSecrets::default();
     secrets.extra.insert("access_token".into(), json!("access"));
     assert!(super::vault_credentials::oauth_credentials(&secrets).is_none());
+}
+
+#[test]
+fn codex_vault_aliases_do_not_require_openai_provider() {
+    assert_eq!(
+        super::vault_credentials::CODEX_PROVIDER_IDS,
+        ["codex", "chatgpt", "openai-codex"]
+    );
 }

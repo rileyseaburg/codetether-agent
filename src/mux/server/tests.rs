@@ -6,6 +6,11 @@ use crate::mux::model::MuxSnapshot;
 use crate::mux::protocol::{ClientRequest, ServerResponse};
 use crate::mux::registry::MuxRecord;
 
+mod pty;
+mod pty_io;
+mod pty_replay;
+mod pty_support;
+
 #[tokio::test]
 async fn authenticated_client_reads_server_snapshot() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();

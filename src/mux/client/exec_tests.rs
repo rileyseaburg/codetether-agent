@@ -1,13 +1,9 @@
-use tempfile::tempdir;
+use crate::mux::client::parse::{ParsedCommand, parse};
 
-#[tokio::test]
-async fn command_runs_in_active_workspace() {
-    let workspace = tempdir().unwrap();
-    super::run("pwd > mux-pwd.txt", workspace.path())
-        .await
-        .unwrap();
-    let observed = tokio::fs::read_to_string(workspace.path().join("mux-pwd.txt"))
-        .await
-        .unwrap();
-    assert_eq!(observed.trim(), workspace.path().to_str().unwrap());
+#[test]
+fn program_command_is_preserved_for_server_startup() {
+    let ParsedCommand::Exec(command) = parse("codetether tui --access-mode full") else {
+        panic!("expected server-owned program command");
+    };
+    assert_eq!(command, "codetether tui --access-mode full");
 }
