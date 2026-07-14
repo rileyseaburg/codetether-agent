@@ -35,6 +35,7 @@ pub(super) async fn execute_claimed_task<'a>(
         provider_keys,
     )
     .await?;
+    preseed_task_title(&mut session, title);
     timeline.checkpoint_with_detail(
         task_timeline::TaskCheckpoint::AgentStarting,
         Some(format!(
@@ -76,4 +77,37 @@ pub(super) async fn execute_claimed_task<'a>(
         error,
         Some(session_id.unwrap_or_else(|| session.id.clone())),
     ))
+}
+
+/// A2A tasks already have a human-readable title. Preseed it so worker
+/// execution does not block on the optional, provider-backed title call before
+/// the actual task model is invoked. Preserve titles on resumed sessions.
+fn preseed_task_title(session: &mut crate::session::Session, title: &str) {
+    if session.title.is_none() {
+        session.set_title(title.to_string());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::preseed_task_title;
+
+    #[tokio::test]
+    async fn preseeds_missing_worker_session_title() {
+        let mut session = crate::session::Session::new().await.expect("session");
+
+        preseed_task_title(&mut session, "Forgejo PR review");
+
+        assert_eq!(session.title.as_deref(), Some("Forgejo PR review"));
+    }
+
+    #[tokio::test]
+    async fn preserves_resumed_session_title() {
+        let mut session = crate::session::Session::new().await.expect("session");
+        session.set_title("Existing session");
+
+        preseed_task_title(&mut session, "Replacement task title");
+
+        assert_eq!(session.title.as_deref(), Some("Existing session"));
+    }
 }
