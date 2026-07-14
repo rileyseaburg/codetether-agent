@@ -8,7 +8,12 @@ use crate::tui::app::state::AppState;
 
 /// Build dashboard rows for managed, tool-spawned, and swarm agents.
 pub fn lines(state: &AppState) -> Vec<Line<'static>> {
-    compose(state, &list_agent_tool_agents())
+    let tools = state
+        .session_id
+        .as_deref()
+        .map(crate::tool::agent::bridge::list_agent_tool_agents_for_parent)
+        .unwrap_or_else(list_agent_tool_agents);
+    compose(state, &tools)
 }
 
 fn compose(state: &AppState, tool_agents: &[AgentSnapshot]) -> Vec<Line<'static>> {
@@ -26,7 +31,8 @@ fn compose(state: &AppState, tool_agents: &[AgentSnapshot]) -> Vec<Line<'static>
         .green(),
     )];
     rows.push(Line::from(
-        "Tab or /focus: managed · Enter: swarm details".dim(),
+        "Tab/↑↓: select child · Enter: details · swarm workers open when no child is selected"
+            .dim(),
     ));
     rows.push(Line::from(""));
     super::subagent_managed_lines::append(&mut rows, state, tool_agents);

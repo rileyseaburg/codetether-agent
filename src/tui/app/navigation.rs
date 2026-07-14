@@ -12,13 +12,15 @@ mod jump;
 #[path = "navigation/agent_focus.rs"]
 mod agent_focus;
 
+#[path = "navigation/subagent.rs"]
+mod subagent;
 #[path = "navigation/symbol_enter.rs"]
 mod symbol_enter;
 
 #[cfg(test)]
 mod tests;
 
-pub use agent_focus::{cycle_agent_focus_back, handle_tab};
+pub use agent_focus::{cycle_agent_focus, cycle_agent_focus_back, handle_tab};
 pub use jump::{handle_end, handle_home};
 
 pub fn handle_escape(app: &mut App) {
@@ -44,6 +46,7 @@ pub fn handle_escape(app: &mut App) {
                 }
             }
             ViewMode::Swarm if app.state.swarm.detail_mode => app.state.swarm.exit_detail(),
+            ViewMode::Subagents => subagent::escape(app),
             ViewMode::Ralph if app.state.ralph.detail_mode => app.state.ralph.exit_detail(),
             ViewMode::Bus if app.state.bus_log.filter_input_mode => {
                 app.state.bus_log.exit_filter_mode();
@@ -103,13 +106,8 @@ pub fn handle_up(app: &mut App, modifiers: KeyModifiers) {
     }
 
     match app.state.view_mode {
-        ViewMode::Swarm => {
-            if app.state.swarm.detail_mode {
-                app.state.swarm.select_prev();
-            } else {
-                app.state.swarm.select_prev();
-            }
-        }
+        ViewMode::Subagents => subagent::up(app),
+        ViewMode::Swarm => app.state.swarm.select_prev(),
         ViewMode::Ralph => {
             if app.state.ralph.detail_mode {
                 app.state.ralph.detail_scroll_up(1);
@@ -166,13 +164,8 @@ pub fn handle_down(app: &mut App, modifiers: KeyModifiers) {
     }
 
     match app.state.view_mode {
-        ViewMode::Swarm => {
-            if app.state.swarm.detail_mode {
-                app.state.swarm.select_next();
-            } else {
-                app.state.swarm.select_next();
-            }
-        }
+        ViewMode::Subagents => subagent::down(app),
+        ViewMode::Swarm => app.state.swarm.select_next(),
         ViewMode::Ralph => {
             if app.state.ralph.detail_mode {
                 app.state.ralph.detail_scroll_down(1);
@@ -199,6 +192,7 @@ pub fn handle_page_up(app: &mut App) {
     }
 
     match app.state.view_mode {
+        ViewMode::Subagents => subagent::page_up(app),
         ViewMode::Swarm if app.state.swarm.detail_mode => app.state.swarm.detail_scroll_up(10),
         ViewMode::Ralph if app.state.ralph.detail_mode => app.state.ralph.detail_scroll_up(10),
         ViewMode::Bus if app.state.bus_log.detail_mode => app.state.bus_log.detail_scroll_up(10),
@@ -215,6 +209,7 @@ pub fn handle_page_down(app: &mut App) {
     }
 
     match app.state.view_mode {
+        ViewMode::Subagents => subagent::page_down(app),
         ViewMode::Swarm if app.state.swarm.detail_mode => app.state.swarm.detail_scroll_down(10),
         ViewMode::Ralph if app.state.ralph.detail_mode => app.state.ralph.detail_scroll_down(10),
         ViewMode::Bus if app.state.bus_log.detail_mode => app.state.bus_log.detail_scroll_down(10),

@@ -6,9 +6,10 @@ use ratatui::text::{Line, Span};
 use crate::tool::agent::bridge::AgentSnapshot;
 
 /// Render one agent-tool child row.
-pub fn line(agent: &AgentSnapshot) -> Line<'static> {
+pub fn line(agent: &AgentSnapshot, selected: bool) -> Line<'static> {
     let parent = agent.parent.as_deref().unwrap_or("main");
     Line::from(vec![
+        Span::raw(if selected { "› " } else { "  " }),
         Span::raw("  ".repeat(agent.depth as usize)),
         format!("{} ", agent.name).cyan().bold(),
         format!("← {parent} ").dim(),

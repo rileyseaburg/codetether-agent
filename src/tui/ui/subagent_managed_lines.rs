@@ -16,7 +16,12 @@ pub fn append(rows: &mut Vec<Line<'static>>, state: &AppState, tool_agents: &[Ag
     rows.push(Line::from("Managed children".cyan().bold()));
     let mut agents = state.spawned_agents.values().collect::<Vec<_>>();
     agents.sort_by_key(|agent| (&agent.parent, agent.depth, &agent.name));
-    rows.extend(agents.into_iter().map(super::subagent_row::line));
+    rows.extend(agents.into_iter().map(|agent| {
+        super::subagent_row::line(
+            agent,
+            state.active_spawned_agent.as_deref() == Some(agent.name.as_str()),
+        )
+    }));
 
     let managed = state
         .spawned_agents
@@ -28,6 +33,11 @@ pub fn append(rows: &mut Vec<Line<'static>>, state: &AppState, tool_agents: &[Ag
         .filter(|agent| !managed.contains(agent.name.as_str()))
         .collect::<Vec<_>>();
     tools.sort_by_key(|agent| (&agent.parent, agent.depth, &agent.name));
-    rows.extend(tools.into_iter().map(super::subagent_tool_row::line));
+    rows.extend(tools.into_iter().map(|agent| {
+        super::subagent_tool_row::line(
+            agent,
+            state.active_spawned_agent.as_deref() == Some(agent.name.as_str()),
+        )
+    }));
     rows.push(Line::from(""));
 }

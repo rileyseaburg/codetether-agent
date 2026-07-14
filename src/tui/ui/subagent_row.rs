@@ -6,7 +6,7 @@ use ratatui::text::{Line, Span};
 use crate::tui::app::state::SpawnedAgent;
 
 /// Render one child agent row.
-pub fn line(agent: &SpawnedAgent) -> Line<'static> {
+pub fn line(agent: &SpawnedAgent, selected: bool) -> Line<'static> {
     let parent = agent.parent.as_deref().unwrap_or("main");
     let state = if agent.is_processing {
         "working"
@@ -14,6 +14,7 @@ pub fn line(agent: &SpawnedAgent) -> Line<'static> {
         "idle"
     };
     Line::from(vec![
+        Span::raw(if selected { "› " } else { "  " }),
         Span::raw("  ".repeat(agent.depth as usize)),
         format!("{} ", agent.name).cyan().bold(),
         format!("← {parent} ").dim(),

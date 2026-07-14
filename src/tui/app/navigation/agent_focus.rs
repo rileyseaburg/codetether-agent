@@ -9,24 +9,28 @@ use crate::tui::app::state::App;
 
 #[path = "agent_focus_back.rs"]
 mod back;
+#[path = "agent_focus_detail.rs"]
+mod detail;
+#[path = "agent_focus_names.rs"]
+mod names;
 pub use back::cycle_agent_focus_back;
+use names::agent_names;
 
 /// Handle the Tab key: accept a slash suggestion if one is active,
 /// otherwise cycle the active spawned-agent focus.
 pub fn handle_tab(app: &mut App) {
     if app.state.apply_selected_slash_suggestion() {
         app.state.status = "Command autocompleted".to_string();
+    } else if app.state.view_mode == crate::tui::models::ViewMode::Subagents
+        && app.state.subagent_detail_mode
+    {
+        detail::cycle(app);
     } else {
         cycle_agent_focus(app);
+        if app.state.view_mode == crate::tui::models::ViewMode::Subagents {
+            app.state.subagent_detail_scroll = 0;
+        }
     }
-}
-
-/// Depth-first spawned-agent names (parents before children) for the ring.
-pub(super) fn agent_names(app: &App) -> Vec<String> {
-    crate::tui::app::state::agent_tree::dfs_order(&app.state.spawned_agents)
-        .into_iter()
-        .map(|n| n.name)
-        .collect()
 }
 
 /// Apply a focus selection and update the status line.

@@ -90,7 +90,7 @@ impl Default for super::AppState {
             selected_settings_index: 0,
             mcp_registry: Arc::new(crate::tui::app::mcp::TuiMcpRegistry::new()),
             spawned_agents: HashMap::new(),
-            active_spawned_agent: None,
+            active_spawned_agent: None, subagent_detail_mode: false, subagent_detail_scroll: 0,
             streaming_agent_texts: HashMap::new(),
             cached_message_lines: Vec::new(),
             cached_messages_len: 0,

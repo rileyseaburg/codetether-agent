@@ -9,6 +9,10 @@ use super::subagent_lines;
 
 /// Render managed children and swarm workers in one dashboard.
 pub fn render(f: &mut Frame, area: Rect, state: &AppState) {
+    if state.subagent_detail_mode {
+        super::subagent_detail_view::render(f, area, state);
+        return;
+    }
     let block = Block::default()
         .title(" Agents: managed children · tool agents · swarm workers ")
         .borders(Borders::ALL);

@@ -20,6 +20,7 @@ mod continue_command;
 // Re-exports so the event loop's auto-drain hook can submit a queued
 // user message as a fresh turn without duplicating the dispatch logic.
 mod enter;
+mod enter_subagents;
 pub(crate) mod image;
 mod image_data_paste;
 mod image_data_url;
