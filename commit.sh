@@ -31,7 +31,7 @@ gen_message() {
     payload="${diff_stat}
 ---
 ${diff_patch}"
-    local model="${CODETETHER_COMMIT_MODEL:-zai/glm-5.2}"
+    local model="${CODETETHER_COMMIT_MODEL:-openai-codex/gpt-5.6-sol:high}"
     local raw msg exit_code=0
     raw="$(RUST_LOG=error codetether run --model "$model" "Generate a conventional commit message for these git changes. Output ONLY the commit message in format 'type: description'. Types: feat|fix|refactor|docs|test|chore|perf|style|build|ci. Be specific about WHAT changed (file names, features, functions). One line only.
 
