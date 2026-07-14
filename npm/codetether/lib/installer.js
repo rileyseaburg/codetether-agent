@@ -4,6 +4,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const { preserveOrAdhocSign } = require('./darwin_signature');
 const { downloadFile, downloadText, requestJson } = require('./http');
 const { tlsRemediationFor } = require('./tls_remediation');
 
@@ -256,10 +257,7 @@ async function prepareInstalledBinary(destPath) {
     throw xattr.error;
   }
 
-  const codesign = spawnSync('codesign', ['--force', '--sign', '-', destPath], { stdio: 'ignore' });
-  if (codesign.error && codesign.error.code !== 'ENOENT') {
-    throw codesign.error;
-  }
+  preserveOrAdhocSign(destPath);
 }
 
 function sha256OfFile(p) {
