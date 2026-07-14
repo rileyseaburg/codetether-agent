@@ -26,7 +26,7 @@ fn task() -> SubTaskInfo {
 fn agents_enter_opens_swarm_detail() {
     let mut app = App::default();
     app.state.swarm.subtasks.push(task());
-    dispatch_subagents_enter(&mut app);
+    dispatch(&mut app);
     assert_eq!(app.state.view_mode, ViewMode::Swarm);
     assert!(app.state.swarm.detail_mode);
 }
@@ -34,6 +34,6 @@ fn agents_enter_opens_swarm_detail() {
 #[test]
 fn agents_enter_reports_empty_swarm() {
     let mut app = App::default();
-    dispatch_subagents_enter(&mut app);
-    assert_eq!(app.state.status, "No swarm agents to inspect");
+    dispatch(&mut app);
+    assert_eq!(app.state.status, "No agents to inspect");
 }

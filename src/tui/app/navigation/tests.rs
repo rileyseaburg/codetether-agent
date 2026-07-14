@@ -2,6 +2,8 @@ use super::*;
 
 #[path = "agent_focus_back_tests.rs"]
 mod agent_focus_back_tests;
+#[path = "subagent_detail_tests.rs"]
+mod subagent_detail_tests;
 #[path = "swarm_detail_tests.rs"]
 mod swarm_detail_tests;
 
