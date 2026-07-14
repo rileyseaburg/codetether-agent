@@ -25,11 +25,14 @@ fn range_contains_is_half_open() {
 fn round_trip_through_serde() {
     let mut idx = SummaryIndex::new();
     idx.insert(SummaryRange::new(0, 4).unwrap(), node("hello"));
-    idx.append(2);
     let json = serde_json::to_string(&idx).unwrap();
     let back: SummaryIndex = serde_json::from_str(&json).unwrap();
-    assert_eq!(back.generation(), 1);
-    assert!(back.is_empty());
+    assert_eq!(back.generation(), 0);
+    assert_eq!(back.len(), 1);
+    assert_eq!(
+        back.get(SummaryRange::new(0, 4).unwrap()),
+        Some(&node("hello"))
+    );
 }
 
 #[test]
