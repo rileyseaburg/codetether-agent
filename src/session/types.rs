@@ -2,20 +2,19 @@
 //! persistent metadata, and the image attachment helper used by multimodal
 //! prompts.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::agent::ToolUse;
-use crate::provenance::ExecutionProvenance;
 use crate::provider::{Message, Usage};
-use crate::session::delegation::DelegationState;
-use crate::session::derive_policy::DerivePolicy;
-use crate::session::history_sink::HistorySinkConfig;
 use crate::session::index::SummaryIndex;
 use crate::session::pages::PageKind;
+
+#[path = "metadata.rs"]
+mod metadata;
+pub use metadata::SessionMetadata;
 
 /// Default maximum agentic loop iterations when [`Session::max_steps`] is
 /// `None`. 250 was far too generous — most tasks converge in under 20 steps
@@ -76,9 +75,8 @@ pub struct Session {
     /// history/context split.
     #[serde(default)]
     pub pages: Vec<PageKind>,
-    /// Hierarchical summary cache — Phase B step 14. Populated lazily
-    /// by step 18's producer and invalidated on the
-    /// [`Session::add_message`] hot path.
+    /// Hierarchical summary cache used as the seed for proactive RLM
+    /// preparation and invalidated on the [`Session::add_message`] hot path.
     #[serde(default)]
     pub summary_index: SummaryIndex,
     /// Per-tool-call audit records.
@@ -93,120 +91,4 @@ pub struct Session {
     /// Optional bus for publishing agent thinking/reasoning.
     #[serde(skip)]
     pub bus: Option<Arc<crate::bus::AgentBus>>,
-}
-
-/// Persistent, user-facing configuration for a [`Session`].
-#[derive(Clone, Default, Serialize, Deserialize)]
-pub struct SessionMetadata {
-    /// Workspace directory the session operates in.
-    pub directory: Option<PathBuf>,
-    /// Model selector in `"provider/model"` or `"model"` form.
-    pub model: Option<String>,
-    /// Optional snapshot of the workspace knowledge graph.
-    pub knowledge_snapshot: Option<PathBuf>,
-    /// Execution provenance for audit/traceability.
-    pub provenance: Option<ExecutionProvenance>,
-    /// When true, pending edit previews are auto-confirmed in the TUI.
-    #[serde(default)]
-    pub auto_apply_edits: bool,
-    /// When true, network-reaching tools are allowed.
-    #[serde(default)]
-    pub allow_network: bool,
-    /// When true, the TUI shows slash-command autocomplete.
-    #[serde(default = "default_slash_autocomplete")]
-    pub slash_autocomplete: bool,
-    /// When true, the CLI runs inside an isolated git worktree.
-    #[serde(default = "default_use_worktree")]
-    pub use_worktree: bool,
-    /// Whether this session has been shared publicly.
-    pub shared: bool,
-    /// Public share URL, if any.
-    pub share_url: Option<String>,
-    /// RLM (Recursive Language Model) settings active for this session.
-    ///
-    /// Seeded from [`crate::config::Config::rlm`] at session creation
-    /// (via [`crate::session::Session::apply_config`]) and persisted on
-    /// disk so subsequent runs honour the same thresholds, models, and
-    /// iteration limits. Existing sessions without this field load with
-    /// [`crate::rlm::RlmConfig::default`].
-    #[serde(default)]
-    pub rlm: crate::rlm::RlmConfig,
-    /// Per-session context derivation policy.
-    ///
-    /// Defaults to [`DerivePolicy::Legacy`]. The prompt loop can still
-    /// override this at runtime via `CODETETHER_CONTEXT_POLICY`.
-    #[serde(default)]
-    pub context_policy: DerivePolicy,
-    /// CADMAS-CTX routing posteriors for this session.
-    #[serde(default)]
-    pub delegation: DelegationState,
-    /// Resumable run checkpoint data, persisted beside session metadata.
-    #[serde(default)]
-    pub run_checkpoint: Option<crate::session::RunCheckpoint>,
-    /// Runtime MinIO / S3 history sink configuration.
-    ///
-    /// Intentionally not serialized: carrying live access keys inside the
-    /// session JSON would persist secrets to disk.
-    #[serde(skip)]
-    pub history_sink: Option<HistorySinkConfig>,
-    /// Claim-scoped provider key payload. Not serialized so BYOK secrets are not written to disk.
-    #[serde(skip)]
-    pub provider_keys: Option<serde_json::Value>,
-    /// Pre-resolved subcall provider from
-    /// [`RlmConfig::subcall_model`](crate::rlm::RlmConfig::subcall_model).
-    ///
-    /// Not serialised — re-resolved from the provider registry each time
-    /// [`Session::apply_config`] runs. When `None`, all RLM iterations
-    /// use the root provider.
-    #[serde(skip)]
-    pub subcall_provider: Option<std::sync::Arc<dyn crate::provider::Provider>>,
-    /// Model name resolved alongside [`Self::subcall_provider`].
-    /// Not serialised.
-    #[serde(skip)]
-    pub subcall_model_name: Option<String>,
-}
-
-impl std::fmt::Debug for SessionMetadata {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SessionMetadata")
-            .field("directory", &self.directory)
-            .field("model", &self.model)
-            .field("knowledge_snapshot", &self.knowledge_snapshot)
-            .field("provenance", &self.provenance)
-            .field("auto_apply_edits", &self.auto_apply_edits)
-            .field("allow_network", &self.allow_network)
-            .field("slash_autocomplete", &self.slash_autocomplete)
-            .field("use_worktree", &self.use_worktree)
-            .field("shared", &self.shared)
-            .field("share_url", &self.share_url)
-            .field("rlm", &self.rlm)
-            .field("context_policy", &self.context_policy)
-            .field("delegation", &self.delegation)
-            .field("run_checkpoint", &self.run_checkpoint)
-            .field(
-                "history_sink",
-                &self
-                    .history_sink
-                    .as_ref()
-                    .map(|cfg| (&cfg.endpoint, &cfg.bucket, &cfg.prefix)),
-            )
-            .field(
-                "provider_keys",
-                &self.provider_keys.as_ref().map(|_| "<redacted>"),
-            )
-            .field(
-                "subcall_provider",
-                &self.subcall_provider.as_ref().map(|_| "<provider>"),
-            )
-            .field("subcall_model_name", &self.subcall_model_name)
-            .finish()
-    }
-}
-
-fn default_slash_autocomplete() -> bool {
-    true
-}
-
-fn default_use_worktree() -> bool {
-    true
 }

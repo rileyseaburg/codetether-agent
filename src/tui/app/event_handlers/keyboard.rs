@@ -79,7 +79,7 @@ pub(super) fn handle_ctrl_key(
         }
         KeyCode::Char('l') if ctrl && app.state.view_mode == ViewMode::Chat => {
             app.state.messages.clear();
-            app.state.streaming_text.clear();
+            app.state.clear_streaming_text();
             app.state.status = "Screen cleared".to_string();
         }
         KeyCode::Char('s') if ctrl && app.state.view_mode == ViewMode::Chat => {

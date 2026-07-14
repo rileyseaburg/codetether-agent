@@ -1,6 +1,5 @@
 //! [`StepVars`] struct for the step-model restore helper.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::provider::{Provider, ToolDefinition};
@@ -21,5 +20,4 @@ pub(crate) struct StepVars<'a> {
     pub model_supports_tools: &'a mut bool,
     pub system_prompt: &'a mut String,
     pub session: &'a mut Session,
-    pub cwd: &'a PathBuf,
 }

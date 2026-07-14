@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```ignore
-//! let session = finish_handle(handle, &mut error).await;
+//! let session = finish_handle(handle, false, &mut error).await;
 //! ```
 
 use crate::session::Session;
@@ -17,14 +17,16 @@ use anyhow::Result;
 /// # Examples
 ///
 /// ```ignore
-/// let session = finish_handle(handle, &mut error).await;
+/// let session = finish_handle(handle, false, &mut error).await;
 /// ```
 pub(super) async fn finish_handle(
     handle: tokio::task::JoinHandle<Result<Session>>,
+    timed_out: bool,
     error: &mut Option<String>,
 ) -> Option<Session> {
-    if !handle.is_finished() {
+    if timed_out {
         handle.abort();
+        let _ = handle.await;
         return None;
     }
     match handle.await {

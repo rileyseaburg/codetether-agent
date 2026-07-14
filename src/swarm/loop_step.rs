@@ -9,7 +9,7 @@
 use crate::provider::FinishReason;
 
 /// What the agentic loop should do after an assistant turn.
-pub(super) enum AfterTurn {
+pub enum AfterTurn {
     /// Tool calls are pending: execute them and continue.
     Execute,
     /// Response was truncated mid-thought: re-prompt to let it finish.
@@ -19,6 +19,15 @@ pub(super) enum AfterTurn {
 }
 
 /// Decide the next loop action from the stop reason and tool-call presence.
+///
+/// # Arguments
+///
+/// * `finish` — Provider-reported reason generation stopped.
+/// * `has_tool_calls` — Whether the response contains executable tool calls.
+///
+/// # Returns
+///
+/// The action the agent loop should take next.
 ///
 /// # Examples
 ///

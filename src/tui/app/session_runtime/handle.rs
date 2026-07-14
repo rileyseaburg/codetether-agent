@@ -7,7 +7,7 @@
 
 use tokio::sync::mpsc;
 
-use super::{PromptRequest, SessionCommand};
+use super::{PromptRequest, SessionCommand, active_cancel::ActiveCancel};
 
 /// Cloneable handle for controlling the TUI session runtime.
 ///
@@ -23,6 +23,7 @@ use super::{PromptRequest, SessionCommand};
 #[derive(Clone)]
 pub(crate) struct TuiSessionHandle {
     tx: mpsc::Sender<SessionCommand>,
+    active_cancel: ActiveCancel,
 }
 
 impl TuiSessionHandle {
@@ -35,8 +36,8 @@ impl TuiSessionHandle {
     /// # Returns
     ///
     /// A cloneable handle that forwards control requests to the runtime task.
-    pub(super) fn new(tx: mpsc::Sender<SessionCommand>) -> Self {
-        Self { tx }
+    pub(super) fn new(tx: mpsc::Sender<SessionCommand>, active_cancel: ActiveCancel) -> Self {
+        Self { tx, active_cancel }
     }
 
     /// Submit one moved-session prompt.
@@ -76,16 +77,20 @@ impl TuiSessionHandle {
     /// queued or the runtime channel is closed. A closed channel is ignored
     /// because cancellation is best-effort during teardown.
     pub(crate) async fn cancel_current(&self) {
-        let _ = self.tx.send(SessionCommand::CancelCurrent).await;
+        if !self.active_cancel.notify() {
+            let _ = self.tx.send(SessionCommand::CancelCurrent).await;
+        }
     }
 
     /// Best-effort non-blocking interrupt for key handlers.
     ///
-    /// This variant is intended for latency-sensitive UI input paths. It tries
-    /// to enqueue a cancellation command immediately and silently drops the
-    /// request if the channel is full or closed.
+    /// This variant is intended for latency-sensitive UI input paths. It signals
+    /// the active executor directly, falling back to the command queue only
+    /// during the short prompt-submission handoff.
     pub(crate) fn request_cancel_current(&self) {
-        let _ = self.tx.try_send(SessionCommand::CancelCurrent);
+        if !self.active_cancel.notify() {
+            let _ = self.tx.try_send(SessionCommand::CancelCurrent);
+        }
     }
 
     /// Ask the runtime to stop accepting work.

@@ -31,6 +31,7 @@ pub mod git_state;
 pub mod history;
 pub mod input_cursor;
 pub mod input_edit;
+pub mod input_replace;
 pub mod message_cache;
 pub mod model_filter;
 pub mod model_picker;

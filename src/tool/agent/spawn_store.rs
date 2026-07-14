@@ -3,26 +3,26 @@
 //! Saves newly created sessions and registers them in the in-memory agent
 //! store only after durable persistence succeeds.
 
+use super::spawn_request::SpawnRequest;
 use super::store::{self, AgentEntry};
 use crate::session::Session;
 use anyhow::Result;
 
 /// Saves a spawned agent session and registers it in the in-memory store.
 pub(super) async fn persist_spawned_agent(
-    name: &str,
-    instructions: &str,
+    request: &SpawnRequest<'_>,
     session: Session,
-    model: &str,
 ) -> Result<()> {
-    save_session(name, &session).await?;
+    save_session(request.name, &session).await?;
     store::insert(
-        name.to_string(),
+        request.name.to_string(),
         AgentEntry {
-            instructions: instructions.to_string(),
+            instructions: request.instructions.to_string(),
             session,
             parent: None,
+            owner_session_id: request.parent_session_id.map(str::to_string),
             depth: 0,
-            model_id: Some(model.to_string()),
+            model_id: Some(request.model.to_string()),
         },
     );
     Ok(())

@@ -26,4 +26,5 @@ pub(super) struct EventLoopState {
     pub(super) tools: Vec<Value>,
     pub(super) error: Option<String>,
     pub(super) done: bool,
+    pub(super) timed_out: bool,
 }

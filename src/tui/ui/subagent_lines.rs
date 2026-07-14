@@ -25,7 +25,9 @@ fn compose(state: &AppState, tool_agents: &[AgentSnapshot]) -> Vec<Line<'static>
         )
         .green(),
     )];
-    rows.push(Line::from("Tab or /focus: managed · /swarm: details".dim()));
+    rows.push(Line::from(
+        "Tab or /focus: managed · Enter: swarm details".dim(),
+    ));
     rows.push(Line::from(""));
     super::subagent_managed_lines::append(&mut rows, state, tool_agents);
     super::subagent_swarm_lines::append(&mut rows, &state.swarm);

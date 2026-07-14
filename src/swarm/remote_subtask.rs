@@ -1,23 +1,15 @@
 //! Remote subtask runner for Kubernetes-backed swarm execution.
 
-use super::executor::{AgentLoopExit, run_agent_loop};
-use super::kubernetes_executor::{
-    RemoteBranchProbe, SWARM_SUBTASK_PROBE_PREFIX, SWARM_SUBTASK_RESULT_PREFIX, decode_payload,
-};
+use super::executor::{AgentLoopExit, run_agent_loop, workspace_registry};
+use super::kubernetes_executor::{SWARM_SUBTASK_RESULT_PREFIX, decode_payload};
 use super::subtask::SubTaskResult;
 use super::tool_policy;
 use crate::cli::SwarmSubagentArgs;
 use crate::provider::ProviderRegistry;
-use crate::tool::ToolRegistry;
 use anyhow::{Context, Result, anyhow};
 use std::path::PathBuf;
-use std::process::Command;
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::sync::Arc;
+use std::time::Instant;
 
 pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
     let payload_b64 = if let Some(payload) = args.payload_base64 {
@@ -41,19 +33,15 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
         .get(&payload.provider)
         .ok_or_else(|| anyhow!("Provider '{}' unavailable in remote pod", payload.provider))?;
 
-    let (tool_registry, tool_defs) = if payload.read_only {
-        let mut registry =
-            ToolRegistry::with_provider(Arc::clone(&provider), payload.model.clone());
-        tool_policy::restrict_registry(&mut registry, true);
-        let registry = Arc::new(registry);
-        let definitions = tool_policy::definitions(&registry.definitions(), true);
-        (registry, definitions)
-    } else {
-        let registry =
-            ToolRegistry::with_provider_arc(Arc::clone(&provider), payload.model.clone());
-        let definitions = tool_policy::definitions(&registry.definitions(), false);
-        (registry, definitions)
-    };
+    let capability =
+        workspace_registry::Capability::from_flags(payload.read_only, payload.verification);
+    let tool_registry = Arc::new(workspace_registry::with_provider(
+        Arc::clone(&provider),
+        payload.model.clone(),
+        &working_dir,
+        capability,
+    ));
+    let tool_defs = tool_registry.definitions();
 
     let specialty = if payload.specialty.is_empty() {
         "generalist".to_string()
@@ -70,6 +58,7 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
         context: &payload.context,
         line_limit: None,
         read_only: payload.read_only,
+        expects_changes: !payload.read_only && !payload.verification,
     });
     let user_prompt = if payload.context.trim().is_empty() {
         payload.instruction.clone()
@@ -80,20 +69,7 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
         )
     };
 
-    let done = Arc::new(AtomicBool::new(false));
-    let done_for_probe = Arc::clone(&done);
-    let subtask_id_for_probe = payload.subtask_id.clone();
-    let probe_interval = payload.probe_interval_secs.max(3);
-    let probe_thread = thread::spawn(move || {
-        emit_probe(&subtask_id_for_probe);
-        while !done_for_probe.load(Ordering::Relaxed) {
-            thread::sleep(Duration::from_secs(probe_interval));
-            if done_for_probe.load(Ordering::Relaxed) {
-                break;
-            }
-            emit_probe(&subtask_id_for_probe);
-        }
-    });
+    let probe = super::remote_probe::start(&payload.subtask_id, payload.probe_interval_secs);
 
     let started = Instant::now();
     let run_result = run_agent_loop(
@@ -111,14 +87,16 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
         Some(working_dir.clone()),
     )
     .await;
-    done.store(true, Ordering::Relaxed);
-    let _ = probe_thread.join();
+    probe.finish();
 
     let result = match run_result {
         Ok((output, steps, tool_calls, exit_reason)) => {
             let output = tool_policy::verify_output(&payload.instruction, &output);
             let (success, error) = match exit_reason {
-                AgentLoopExit::Completed => (true, None),
+                AgentLoopExit::Completed => match tool_policy::deliverable_error(&output) {
+                    Some(error) => (false, Some(error)),
+                    None => (true, None),
+                },
                 AgentLoopExit::MaxStepsReached => (
                     false,
                     Some(format!("Sub-agent hit max steps ({})", payload.max_steps)),
@@ -166,57 +144,4 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
         serde_json::to_string(&result)?
     );
     Ok(())
-}
-
-fn emit_probe(subtask_id: &str) {
-    let changed_files = collect_changed_files().unwrap_or_default();
-    let changed_lines = collect_changed_lines().unwrap_or(0);
-    let probe = RemoteBranchProbe {
-        subtask_id: subtask_id.to_string(),
-        compile_ok: run_cargo_check().unwrap_or(false),
-        changed_files: changed_files.into_iter().collect(),
-        changed_lines,
-    };
-    if let Ok(json) = serde_json::to_string(&probe) {
-        println!("{SWARM_SUBTASK_PROBE_PREFIX}{json}");
-    }
-}
-
-fn run_cargo_check() -> Result<bool> {
-    super::quality_shell::cargo_check_quiet(None)
-}
-
-fn collect_changed_files() -> Result<std::collections::HashSet<String>> {
-    let output = Command::new("git")
-        .args(["diff", "--name-only"])
-        .output()
-        .context("Failed to collect changed files in remote subtask")?;
-    if !output.status.success() {
-        return Ok(Default::default());
-    }
-    Ok(String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(ToString::to_string)
-        .collect())
-}
-
-fn collect_changed_lines() -> Result<u32> {
-    let output = Command::new("git")
-        .args(["diff", "--numstat"])
-        .output()
-        .context("Failed to collect changed lines in remote subtask")?;
-    if !output.status.success() {
-        return Ok(0);
-    }
-    let mut total = 0u32;
-    for line in String::from_utf8_lossy(&output.stdout).lines() {
-        let parts: Vec<&str> = line.split('\t').collect();
-        if parts.len() < 2 {
-            continue;
-        }
-        total += parts[0].parse::<u32>().unwrap_or(0);
-        total += parts[1].parse::<u32>().unwrap_or(0);
-    }
-    Ok(total)
 }

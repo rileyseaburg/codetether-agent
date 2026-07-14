@@ -2,20 +2,16 @@
 
 use std::path::Path;
 
+use crate::session::Session;
 use crate::session::helper::edit::{detect_stub_in_tool_input, normalize_tool_call_for_execution};
-use crate::session::helper::runtime::{
-    enrich_tool_input_with_runtime_context, is_interactive_tool,
-};
+use crate::session::helper::runtime::{enrich_tool_input_for_session, is_interactive_tool};
 
 use super::job::Job;
 
 pub(super) fn prepare(
     calls: &[(String, String, serde_json::Value)],
     cwd: &Path,
-    model: Option<&str>,
-    session_id: &str,
-    agent: &str,
-    provenance: Option<&crate::provenance::ExecutionProvenance>,
+    session: &Session,
 ) -> Option<Vec<Job>> {
     if calls.len() < 2 {
         return None;
@@ -29,14 +25,7 @@ pub(super) fn prepare(
         {
             return None;
         }
-        let exec_input = enrich_tool_input_with_runtime_context(
-            &tool_input,
-            cwd,
-            model,
-            session_id,
-            agent,
-            provenance,
-        );
+        let exec_input = enrich_tool_input_for_session(&tool_input, cwd, session);
         jobs.push(Job {
             tool_id: tool_id.clone(),
             tool_name,

@@ -248,8 +248,7 @@ impl SwarmViewState {
             }
             SwarmEvent::AgentToolCallDetail { subtask_id, detail } => {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
-                    task.current_tool = Some(detail.tool_name.clone());
-                    task.steps += 1;
+                    task.current_tool = None;
                     crate::tui::agent_detail_update::push(&mut task.tool_call_history, detail);
                 }
             }

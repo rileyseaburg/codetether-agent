@@ -34,7 +34,7 @@ pub(crate) fn render_toc(prefix: &[Message], base_index: usize) -> String {
     }
     format!(
         "\n\n[DROPPED-RANGE INDEX] turns {}-{} were compressed. User turns in that range:\n{}\n\
-         Retrieve any of them via `context_browse` (action=show_turn, turn=N) or a targeted `session_recall` query.",
+         When the user allows history access, retrieve one via `context_browse` (action=show_turn, turn=N) or a targeted `session_recall` query.",
         base_index,
         base_index + prefix.len().saturating_sub(1),
         lines.join("\n")

@@ -25,12 +25,10 @@ pub struct RemoteSubtaskPayload {
     pub working_dir: Option<String>,
     #[serde(default)]
     pub read_only: bool,
-    #[serde(default = "default_probe_interval_secs")]
+    #[serde(default)]
+    pub verification: bool,
+    #[serde(default)]
     pub probe_interval_secs: u64,
-}
-
-fn default_probe_interval_secs() -> u64 {
-    10
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,6 +90,7 @@ mod tests {
             timeout_secs: 180,
             working_dir: Some("/workspace".to_string()),
             read_only: true,
+            verification: false,
             probe_interval_secs: 5,
         };
         let encoded = encode_payload(&payload).expect("encode");

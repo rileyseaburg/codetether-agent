@@ -27,7 +27,7 @@ impl Agent {
     /// let response = agent.execute(&mut session, "review this file").await?;
     /// ```
     pub async fn execute(&self, session: &mut Session, prompt: &str) -> Result<AgentResponse> {
-        session.add_message(Message {
+        session.add_human_message(Message {
             role: Role::User,
             content: vec![ContentPart::Text {
                 text: prompt.to_string(),

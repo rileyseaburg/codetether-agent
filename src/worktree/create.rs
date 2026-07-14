@@ -38,6 +38,7 @@ impl WorktreeManager {
             active: true,
         };
         self.worktrees.lock().await.push(info.clone());
+        self.prepare_validation_dependencies(&worktree_path);
         tracing::info!(worktree = %name, path = %worktree_path.display(), "Created git worktree");
         self.auto_open_in_vscode(&info).await;
         Ok(info)

@@ -21,6 +21,7 @@ pub(super) async fn complete_worker_step_with_context_fallback(
         top_p: None,
         max_tokens: Some(8192),
         force_keep_last: None,
+        policy_override: None,
     };
     match crate::session::context::complete_with_context(
         Arc::clone(&provider),
@@ -35,7 +36,7 @@ pub(super) async fn complete_worker_step_with_context_fallback(
         Ok(response) => Ok(response),
         Err(error) if crate::session::helper::error::is_prompt_too_long_error(&error) => {
             let compact = compact_worker_tool_definitions(tool_definitions);
-            tracing::warn!(error = %error, tool_count = tool_definitions.len(), original_tool_schema_bytes = tool_schema_bytes(tool_definitions), compact_tool_schema_bytes = tool_schema_bytes(&compact), "Provider rejected prompt after context compaction; retrying with compact tool schemas");
+            tracing::warn!(error = %error, tool_count = tool_definitions.len(), original_tool_schema_bytes = tool_schema_bytes(tool_definitions), compact_tool_schema_bytes = tool_schema_bytes(&compact), "Provider rejected prompt after prepared-context recovery; retrying with compact tool schemas");
             crate::session::context::complete_with_context(provider, session, model, system_prompt, &compact, options).await.map_err(|retry| {
                 if crate::session::helper::error::is_prompt_too_long_error(&retry) {
                     retry.context("provider rejected prompt as too long after RLM compaction and compact tool-schema fallback")

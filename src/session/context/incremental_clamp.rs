@@ -8,9 +8,9 @@ use crate::session::helper::token::estimate_request_tokens;
 use super::incremental_coverage::uncovered_ranges;
 use super::incremental_types::MessageOrigin;
 
-/// Trim messages from the oldest side until the request fits, keeping
-/// `resolutions` and `origins` in lock-step, then recompute the
-/// canonical `dropped_ranges` from the final origins.
+/// Trim stale messages from the oldest side without crossing the active user
+/// turn, keeping `resolutions` and `origins` in lock-step. If fixed request
+/// overhead already exceeds the budget, preserving the active turn wins.
 ///
 /// Returns `(final_dropped_ranges, provenance_tags)`. The caller
 /// merges `provenance_tags` into its own provenance vector.
@@ -27,10 +27,14 @@ pub(super) fn clamp_and_recompute(
     let mut est = estimate_request_tokens(system_prompt, messages, tools);
     let mut tags = Vec::new();
     let mut clamped = false;
-    while est > budget_tokens && messages.len() > 1 {
+    let mut removed = 0;
+    let removable =
+        super::active_tail::active_tail_start(messages, 0).min(messages.len().saturating_sub(1));
+    while est > budget_tokens && messages.len() > 1 && removed < removable {
         messages.remove(0);
         resolutions.remove(0);
         origins.remove(0);
+        removed += 1;
         clamped = true;
         est = estimate_request_tokens(system_prompt, messages, tools);
     }

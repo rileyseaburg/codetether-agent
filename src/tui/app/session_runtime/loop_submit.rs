@@ -12,7 +12,7 @@ use tokio::sync::{Notify, mpsc};
 
 use crate::session::SessionEvent;
 
-use super::{PromptRequest, SessionNotice};
+use super::{PromptRequest, SessionNotice, active_cancel::ActiveCancel};
 
 /// Submits a prompt request for asynchronous execution.
 ///
@@ -26,8 +26,7 @@ use super::{PromptRequest, SessionNotice};
 /// # Arguments
 ///
 /// * `request` - Prompt and session metadata to execute.
-/// * `cancel` - Slot for the active cancellation notifier. `Some` means the
-///   runtime is already busy; `None` means this call may start a new run.
+/// * `cancel` - Shared slot for the active cancellation notifier.
 /// * `event_tx` - Channel used by the executor to publish streamed
 ///   [`SessionEvent`] values.
 /// * `notice_tx` - Channel used to report lifecycle notices such as start,
@@ -42,7 +41,7 @@ use super::{PromptRequest, SessionNotice};
 ///
 /// # Side Effects
 ///
-/// Sends lifecycle notices on `notice_tx`, mutates `cancel` when a request is
+/// Sends lifecycle notices on `notice_tx`, sets `cancel` when a request is
 /// accepted, and spawns a Tokio task for accepted work. Channel send failures are
 /// intentionally ignored because they only mean the receiver has gone away.
 ///
@@ -52,12 +51,13 @@ use super::{PromptRequest, SessionNotice};
 /// completion; otherwise later submissions will continue to be treated as busy.
 pub(super) async fn submit(
     request: PromptRequest,
-    cancel: &mut Option<Arc<Notify>>,
+    cancel: &ActiveCancel,
     event_tx: &mpsc::Sender<SessionEvent>,
     notice_tx: &mpsc::Sender<SessionNotice>,
     done_tx: &mpsc::Sender<()>,
 ) -> bool {
-    if cancel.is_some() {
+    let notify = Arc::new(Notify::new());
+    if !cancel.set(Arc::clone(&notify)) {
         let _ = notice_tx
             .send(SessionNotice::Failed {
                 session: request.session,
@@ -66,8 +66,6 @@ pub(super) async fn submit(
             .await;
         return false;
     }
-    let notify = Arc::new(Notify::new());
-    *cancel = Some(Arc::clone(&notify));
     let _ = notice_tx.send(SessionNotice::Started).await;
     tokio::spawn(super::execute::run(
         request,

@@ -20,18 +20,16 @@ mod discover_parse;
 #[cfg(test)]
 mod discover_parse_tests;
 mod info;
+mod integration;
 mod integrity;
 mod integrity_error;
 mod manager;
 mod merge;
-mod merge_dirty;
-mod merge_fail;
-mod merge_finish;
-mod merge_git;
 mod merge_lookup;
 mod merge_staged;
 #[cfg(test)]
 mod merge_staged_tests;
+mod node_dependencies;
 mod output;
 #[cfg(test)]
 mod output_tests;

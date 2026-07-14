@@ -60,8 +60,8 @@ pub(crate) async fn dispatch_enter(
                 toggle_selected_setting(app, session).await;
             }
         }
-        ViewMode::Subagents
-        | ViewMode::Lsp
+        ViewMode::Subagents => enter_swarm::dispatch_subagents_enter(app),
+        ViewMode::Lsp
         | ViewMode::Rlm
         | ViewMode::Latency
         | ViewMode::Transport

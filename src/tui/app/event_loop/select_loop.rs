@@ -37,6 +37,7 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
             super::watchdog_retry::execute(app, slot, args.registry, args.runtime).await;
         }
         _ = args.timers.watchdog.tick() => super::watchdog::maybe_watchdog_restart(app, args.runtime, args.timers.watchdog_interval).await,
+        _ = args.timers.audit.tick() => super::tick::refresh_audit(app).await,
         _ = args.timers.tick.tick() => {
             super::tick::run(app).await;
             super::tick::check(app, args.runtime, args.timers.watchdog_interval).await;

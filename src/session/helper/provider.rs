@@ -121,7 +121,7 @@ pub fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> 
             return Some(found);
         }
     }
-    providers.first().copied()
+    providers.iter().copied().min()
 }
 
 pub fn resolve_provider_for_session_request<'a>(

@@ -33,7 +33,7 @@ pub mod file;
 pub mod file_extras;
 pub mod git;
 pub mod go;
-pub mod image;
+include!("image_modules.rs");
 pub mod invalid;
 pub mod k8s_tool;
 pub mod lsp;

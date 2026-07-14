@@ -27,7 +27,7 @@ use crate::tui::ui::gradient::rgb_supported;
 /// ```
 pub fn render_input(f: &mut Frame, app: &App, area: Rect, palette: &ColorPalette, suffix: &str) {
     let title = if app.state.processing {
-        format!(" Message (Processing — Enter to queue steering){suffix}")
+        format!(" Message (Processing — Enter queues steering · Esc cancels){suffix}")
     } else if matches!(app.state.input_mode, InputMode::Command) {
         format!(" Command (/ for commands, Tab to autocomplete){suffix}")
     } else {

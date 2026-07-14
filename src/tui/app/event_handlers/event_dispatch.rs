@@ -22,11 +22,14 @@ pub(crate) async fn handle_event(
     if key.kind != KeyEventKind::Press {
         return Ok(false);
     }
+    if let Some(quit) = super::interrupt_key::handle(app, runtime, key) {
+        return Ok(quit);
+    }
     if super::goal_prompt_key::handle_goal_prompt_key(app, key) {
         return Ok(false);
     }
     if app.state.spawn_form.is_some()
-        && crate::tui::app::spawn_form::handle_spawn_form_key(app, key).await
+        && crate::tui::app::spawn_form::handle_spawn_form_key(app, cwd, slot, key).await
     {
         return Ok(false);
     }

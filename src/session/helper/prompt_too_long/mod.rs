@@ -1,18 +1,27 @@
 //! Prompt-too-long retry policy.
 
+mod derive_plan;
+mod plan;
 mod retry_plan;
+
+pub(crate) use plan::Plan;
 
 use anyhow::Error;
 
 use super::error::is_prompt_too_long_error;
 
 /// Return the forced keep-last value for this prompt-too-long attempt.
-pub(crate) fn keep_last(error: &Error, attempt: usize) -> Option<usize> {
+pub(crate) use derive_plan::resolve as derivation;
+
+pub(crate) fn recovery(
+    error: &Error,
+    attempt: usize,
+    policy: crate::session::DerivePolicy,
+) -> Option<Plan> {
     if !is_prompt_too_long_error(error) {
         return None;
     }
-
-    retry_plan::keep_last_for_attempt(attempt)
+    plan::for_attempt(attempt, policy)
 }
 
 #[cfg(test)]

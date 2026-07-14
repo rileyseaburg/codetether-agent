@@ -31,7 +31,7 @@ pub(super) async fn run(
     handle: tokio::task::JoinHandle<Result<Session>>,
 ) -> (String, String, Vec<Value>, Option<String>, Option<Session>) {
     let mut state = collect::collect_events(rx).await;
-    let updated_session = finalize::finish_handle(handle, &mut state.error).await;
+    let updated_session = finalize::finish_handle(handle, state.timed_out, &mut state.error).await;
     (
         state.response,
         state.thinking,

@@ -18,13 +18,14 @@ use std::collections::HashMap;
 /// # Examples
 ///
 /// ```ignore
-/// let entry = AgentEntry { instructions: "Review".into(), session, parent: None, depth: 0, model_id: None };
+/// let entry = AgentEntry { instructions: "Review".into(), session, parent: None, owner_session_id: None, depth: 0, model_id: None };
 /// ```
 #[derive(Clone)]
 pub(super) struct AgentEntry {
     pub instructions: String,
     pub session: Session,
     pub parent: Option<String>,
+    pub owner_session_id: Option<String>,
     pub depth: u8,
     pub model_id: Option<String>,
 }
@@ -32,6 +33,9 @@ pub(super) struct AgentEntry {
 lazy_static::lazy_static! {
     static ref AGENT_STORE: RwLock<HashMap<String, AgentEntry>> = RwLock::new(HashMap::new());
 }
+
+#[path = "store_scope.rs"]
+mod scope;
 
 /// Inserts or replaces a spawned agent entry.
 pub(super) fn insert(name: String, entry: AgentEntry) {
@@ -53,14 +57,7 @@ pub(super) fn contains(name: &str) -> bool {
     AGENT_STORE.read().contains_key(name)
 }
 
-/// Lists spawned agents as `(name, instructions, message_count)` tuples.
-pub(super) fn list() -> Vec<(String, String, usize)> {
-    AGENT_STORE
-        .read()
-        .iter()
-        .map(|(n, e)| (n.clone(), e.instructions.clone(), e.session.messages.len()))
-        .collect()
-}
+pub(super) use scope::{get_for_parent, list_for_parent};
 
 /// Replaces the stored session for a spawned agent when it exists.
 pub(super) fn update_session(name: &str, session: Session) {
@@ -70,11 +67,13 @@ pub(super) fn update_session(name: &str, session: Session) {
 }
 
 /// Lists agents with full metadata for the TUI bridge (#297 Part A).
-pub(super) fn list_with_metadata()
--> Vec<(String, String, usize, Option<String>, Option<String>, u8)> {
+pub(super) fn list_with_metadata(
+    parent: Option<&str>,
+) -> Vec<(String, String, usize, Option<String>, Option<String>, u8)> {
     AGENT_STORE
         .read()
         .iter()
+        .filter(|(_, entry)| parent.is_none() || entry.owner_session_id.as_deref() == parent)
         .map(|(n, e)| {
             (
                 n.clone(),

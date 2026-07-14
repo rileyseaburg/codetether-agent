@@ -7,34 +7,39 @@
 
 use serde_json::{Value, json};
 
+use super::bus_publish::lifecycle;
 use super::status_liveness::liveness;
 use super::status_source::{AgentStatus, latest_states};
 use super::store;
 use crate::tool::ToolResult;
 
-/// Build the JSON status report for all known sub-agents.
-pub(super) fn handle_status() -> ToolResult {
-    let states = latest_states();
-    let agents = store::list();
-    if agents.is_empty() && states.is_empty() {
+/// Build the JSON status report for sub-agents owned by the calling session.
+pub(super) fn handle_status(parent: Option<&str>) -> ToolResult {
+    let agents = store::list_for_parent(parent);
+    if agents.is_empty() {
         return ToolResult::success("No sub-agents spawned. Use action \"spawn\".");
     }
-    let mut rows: Vec<Value> = agents
+    let states = latest_states(&lifecycle::task_to_agent(parent));
+    let rows: Vec<Value> = agents
         .iter()
-        .map(|(name, _, msgs)| row(name, *msgs, states.get(name)))
+        .map(|(name, _, msgs)| {
+            let session_id = store::get(name).map(|entry| entry.session.id);
+            row(name, session_id.as_deref(), *msgs, states.get(name))
+        })
         .collect();
-    for (name, st) in &states {
-        if !agents.iter().any(|(n, _, _)| n == name) {
-            rows.push(row(name, 0, Some(st)));
-        }
-    }
     ToolResult::success(serde_json::to_string_pretty(&rows).unwrap_or_default())
 }
 
-fn row(name: &str, messages: usize, status: Option<&AgentStatus>) -> Value {
+fn row(
+    name: &str,
+    session_id: Option<&str>,
+    messages: usize,
+    status: Option<&AgentStatus>,
+) -> Value {
     match status {
         Some(st) => json!({
             "agent": name,
+            "session_id": session_id,
             "messages": messages,
             "state": format!("{:?}", st.state),
             "liveness": liveness(&st.state, st.at),
@@ -43,6 +48,7 @@ fn row(name: &str, messages: usize, status: Option<&AgentStatus>) -> Value {
         }),
         None => json!({
             "agent": name,
+            "session_id": session_id,
             "messages": messages,
             "state": "Unknown",
             "liveness": "no_activity",

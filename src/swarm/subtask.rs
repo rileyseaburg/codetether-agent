@@ -117,16 +117,33 @@ impl SubTask {
 
     /// Decide whether this subtask should run in an isolated worktree.
     /// Mutating intent always wins over model-provided read-only metadata.
+    /// Verification intent defaults to isolation but honors an explicit
+    /// read-only workspace choice, where mutating tools remain unavailable.
     pub fn needs_worktree(&self) -> bool {
-        match classify_task(&self.instruction, self.specialty.as_deref()) {
-            TaskKind::Mutating => true,
-            TaskKind::ReadOnly => self.needs_worktree.unwrap_or(false),
+        match self.kind() {
+            super::subtask_kind::TaskKind::Mutating => true,
+            super::subtask_kind::TaskKind::Verification => self.needs_worktree.unwrap_or(true),
+            super::subtask_kind::TaskKind::ReadOnly => self.needs_worktree.unwrap_or(false),
         }
     }
 
     /// Whether this task should receive only read-only tools.
     pub fn is_read_only(&self) -> bool {
         !self.needs_worktree()
+    }
+
+    /// Whether successful completion should produce mergeable source changes.
+    pub fn expects_file_changes(&self) -> bool {
+        self.kind() == super::subtask_kind::TaskKind::Mutating
+    }
+
+    /// Whether this task runs checks but must not change source files.
+    pub(crate) fn is_verification(&self) -> bool {
+        self.kind() == super::subtask_kind::TaskKind::Verification
+    }
+
+    fn kind(&self) -> super::subtask_kind::TaskKind {
+        super::subtask_kind::classify(&self.name, &self.instruction, self.specialty.as_deref())
     }
 
     /// Check if this subtask can run (all dependencies complete)
@@ -148,33 +165,6 @@ impl SubTask {
             SubTaskStatus::Failed
         };
         self.completed_at = Some(Utc::now());
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TaskKind {
-    ReadOnly,
-    Mutating,
-}
-
-fn classify_task(instruction: &str, specialty: Option<&str>) -> TaskKind {
-    let instruction = instruction.to_ascii_lowercase();
-    let mutating = "write edit create fix implement refactor apply commit patch scaffold build delete remove rename move mkdir install deploy";
-    if mutating
-        .split_whitespace()
-        .any(|needle| instruction.contains(needle))
-    {
-        return TaskKind::Mutating;
-    }
-    let specialty = specialty.unwrap_or_default().to_ascii_lowercase();
-    let readonly = "research review analy audit plan fact summari explore docs read-only readonly search investigate";
-    if readonly
-        .split_whitespace()
-        .any(|needle| specialty.contains(needle))
-    {
-        TaskKind::ReadOnly
-    } else {
-        TaskKind::Mutating
     }
 }
 

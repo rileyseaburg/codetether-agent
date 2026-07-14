@@ -1,33 +1,12 @@
 use std::{path::Path, sync::Arc};
 
-use crate::{
-    provider::{ContentPart, Message, Role},
-    session::Session,
-};
+use crate::session::Session;
 
+#[path = "session_step_tools/collect.rs"]
+mod collect;
 mod tool_run;
 use super::session_output;
-
-pub(super) type ToolCall = (String, String, serde_json::Value);
-
-pub(super) fn collect_tool_calls(parts: &[ContentPart]) -> Vec<ToolCall> {
-    parts
-        .iter()
-        .filter_map(|part| match part {
-            ContentPart::ToolCall {
-                id,
-                name,
-                arguments,
-                ..
-            } => Some((
-                id.clone(),
-                name.clone(),
-                serde_json::from_str(arguments).unwrap_or(serde_json::json!({})),
-            )),
-            _ => None,
-        })
-        .collect()
-}
+pub(super) use collect::{ToolCall, collect_tool_calls};
 
 pub(super) async fn execute_tool_call(
     session: &mut Session,
@@ -52,13 +31,11 @@ pub(super) async fn execute_tool_call(
         );
         return;
     }
-    let input = super::super::enrich_tool_input_with_runtime_context(
+    let input = super::super::enrich_tool_input_for_session_model(
         &tool_input,
         workspace_dir,
+        session,
         Some(model),
-        &session.id,
-        &session.agent,
-        session.metadata.provenance.as_ref(),
     );
     let output = tool_run::run_tool(registry, &tool_name, input, cb).await;
     session_output::add_tool_result(session, tool_id, output);

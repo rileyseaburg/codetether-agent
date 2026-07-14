@@ -17,9 +17,7 @@ impl MemoryTool {
         let scope = scope::search(&args);
         let results = {
             let mut store = self.store.lock().await;
-            store
-                .search_embedded(query, tags.as_deref(), scope.as_deref(), limit)
-                .await
+            store.search(query, tags.as_deref(), scope.as_deref(), limit)
         };
         if results.is_empty() {
             return Ok(ToolResult::success(

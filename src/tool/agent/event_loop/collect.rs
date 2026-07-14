@@ -31,6 +31,7 @@ pub(super) async fn collect_events(rx: &mut mpsc::Receiver<SessionEvent>) -> Eve
             _ = &mut timeout_fut => {
                 state.error = Some("Agent timed out after 5 minutes".into());
                 state.done = true;
+                state.timed_out = true;
             }
         }
     }

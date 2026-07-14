@@ -9,19 +9,16 @@ mod derive;
 mod helpers;
 mod incremental;
 mod incremental_below_budget;
+mod incremental_budget_config;
 mod incremental_clamp;
 mod incremental_coverage;
 mod incremental_insert;
-mod incremental_observability;
 mod incremental_repair;
 mod incremental_repair_drop;
 mod incremental_repair_inject;
 mod incremental_types;
+pub(crate) mod input_budget;
 
-#[cfg(test)]
-mod incremental_coverage_tests;
-#[cfg(test)]
-mod incremental_repair_tests;
 mod options;
 mod policy;
 mod policy_dispatch;
@@ -32,19 +29,11 @@ mod reset_helpers;
 mod reset_rebuild;
 mod reset_summary;
 mod reset_threshold;
-#[cfg(test)]
-mod reset_threshold_tests;
 mod state_header;
 mod state_header_pins;
-#[cfg(test)]
-mod state_header_pins_base_tests;
-#[cfg(test)]
-mod state_header_pins_tests;
-#[cfg(test)]
-mod state_header_tests;
 
 #[cfg(test)]
-mod active_tail_tests;
+include!("tests_manifest.rs");
 
 pub use self::complete::complete_with_context;
 pub use self::derive::derive_context;

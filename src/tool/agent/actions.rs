@@ -23,7 +23,10 @@ use anyhow::{Context, Result};
 /// ```
 pub(super) fn execute_kill(params: &Params) -> Result<ToolResult> {
     let name = params.name.as_deref().context("name required for kill")?;
-    Ok(handlers::handle_kill(name))
+    Ok(handlers::handle_kill(
+        name,
+        params.parent_session_id.as_deref(),
+    ))
 }
 
 /// Formats the fallback error result for unsupported actions.

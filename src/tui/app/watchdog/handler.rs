@@ -5,7 +5,7 @@ use crate::tui::app::state::AppState;
 /// Dismiss the watchdog notification and stop processing.
 pub fn handle_watchdog_cancel(state: &mut AppState) {
     state.processing = false;
-    state.streaming_text.clear();
+    state.clear_streaming_text();
     state.clear_request_timing();
     state.watchdog_notification = None;
     state.status = "Request cancelled.".to_string();

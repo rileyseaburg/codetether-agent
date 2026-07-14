@@ -1,8 +1,11 @@
-use super::{RuntimeToolPolicy, ToolPolicyOutcome};
 use crate::config::Config;
 use crate::tool::ToolResult;
 use serde_json::Value;
 use std::path::Path;
+
+#[path = "invocation_configured.rs"]
+mod configured;
+pub use configured::evaluate_tool_invocation_with_config;
 
 pub async fn evaluate_tool_invocation(tool_name: &str, args: &Value) -> Option<ToolResult> {
     let config = match super::workspace::from_args(args) {
@@ -24,28 +27,9 @@ pub async fn evaluate_tool_invocation_for_workspace(
     evaluate_tool_invocation_with_config(&config, tool_name, args)
 }
 
-pub fn evaluate_tool_invocation_with_config(
-    config: &Config,
-    tool_name: &str,
-    args: &Value,
-) -> Option<ToolResult> {
-    let policy = RuntimeToolPolicy::from_config(config);
-    let decision = super::invocation_decision::decide(&policy, tool_name, args);
-    let scope = super::invocation_scope::for_tool(tool_name, args);
-    if matches!(decision.outcome, ToolPolicyOutcome::RequireApproval)
-        && super::approval_gate::allowed(tool_name, args, scope.action, &scope.resource)
-    {
-        return None;
-    }
-    super::result::blocking_result_with_approval_request_for_args(
-        tool_name,
-        decision,
-        scope.action,
-        &scope.resource,
-        args,
-    )
-}
-
+#[cfg(test)]
+#[path = "prior_context_tests.rs"]
+mod prior_context_tests;
 #[cfg(test)]
 #[path = "invocation_tests.rs"]
 mod tests;

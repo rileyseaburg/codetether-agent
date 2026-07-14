@@ -28,13 +28,14 @@ pub(super) fn system_prompt_for(
     model_supports_tools: bool,
     advertised_tools: &[ToolDefinition],
     cwd: &Path,
+    prior_context_allowed: bool,
 ) -> String {
     let prompt = if is_local_cuda_provider(selected_provider) {
         local_cuda_light_system_prompt()
     } else {
         crate::agent::builtin::build_system_prompt(cwd)
     };
-    let prompt = append_guardrails_for_cwd(prompt, cwd);
+    let prompt = append_guardrails_for_cwd(prompt, cwd, prior_context_allowed);
     if !model_supports_tools && !advertised_tools.is_empty() {
         inject_tool_prompt(&prompt, advertised_tools)
     } else {

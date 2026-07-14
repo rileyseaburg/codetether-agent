@@ -12,7 +12,7 @@ pub(super) fn surface(app: &mut App) {
     let max = WATCHDOG_MAX_RESTARTS;
     app.state.watchdog_notification = None;
     app.state.processing = false;
-    app.state.streaming_text.clear();
+    app.state.clear_streaming_text();
     app.state.clear_request_timing();
     app.state.status = format!("Watchdog gave up after {max} retries");
     app.state.messages.push(ChatMessage::new(

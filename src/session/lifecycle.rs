@@ -218,9 +218,7 @@ impl Session {
             self.pages = classify_all(&self.messages);
         }
         self.pages.push(classify(&message));
-        let appended_idx = self.messages.len();
-        self.messages.push(message);
-        self.summary_index.append(appended_idx);
+        super::index_produce::notify::appended(self, message);
         self.updated_at = Utc::now();
     }
 

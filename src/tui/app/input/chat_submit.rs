@@ -37,6 +37,9 @@ pub(super) async fn handle_enter_chat(
     if !prompt.is_empty() {
         app.state.push_history(prompt.clone());
     }
+    if crate::tui::app::managed_agent::chat::route(app, &prompt).await {
+        return;
+    }
     let prompt =
         super::mention_route::route_prompt(&prompt, app.state.active_spawned_agent.as_deref());
     if super::continue_command::run(app, cwd, slot, registry, worker_bridge, runtime, &prompt).await

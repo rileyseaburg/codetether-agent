@@ -1,6 +1,21 @@
 //! Reasoning levels reported by the authenticated Codex model catalog.
 
 /// Return supported wire-level efforts for a Codex model.
+///
+/// # Arguments
+///
+/// * `model` — Model identifier, optionally provider-prefixed or effort-suffixed.
+///
+/// # Returns
+///
+/// Returns an empty slice when the model has no catalog entry.
+///
+/// # Examples
+///
+/// ```
+/// use codetether_agent::provider::openai_codex::reasoning_catalog::supported_levels;
+/// assert!(supported_levels("gpt-5.6-sol").contains(&"ultra"));
+/// ```
 pub fn supported_levels(model: &str) -> &'static [&'static str] {
     let model = base_model(model);
     match model {
@@ -17,6 +32,23 @@ pub fn supported_levels(model: &str) -> &'static [&'static str] {
 }
 
 /// Report whether a model accepts a reasoning-effort wire value.
+///
+/// # Arguments
+///
+/// * `model` — Model identifier to inspect.
+/// * `effort` — Wire-level reasoning effort such as `"high"`.
+///
+/// # Returns
+///
+/// Returns `true` only when the catalog lists the effort for the model.
+///
+/// # Examples
+///
+/// ```
+/// use codetether_agent::provider::openai_codex::reasoning_catalog::supports;
+/// assert!(supports("gpt-5.5", "high"));
+/// assert!(!supports("gpt-5.5", "ultra"));
+/// ```
 pub fn supports(model: &str, effort: &str) -> bool {
     supported_levels(model).contains(&effort)
 }

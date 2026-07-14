@@ -16,8 +16,7 @@ use crate::tui::app::state::App;
 pub(super) fn handle_ctrl_c(app: &mut App, runtime: &TuiSessionHandle) -> bool {
     if app.state.processing {
         runtime.request_cancel_current();
-        app.state.status =
-            "Interrupted — partial turn saved. Press Ctrl+C again to quit.".to_string();
+        app.state.status = "Cancellation requested — partial turn will be saved.".to_string();
         return false;
     }
     true

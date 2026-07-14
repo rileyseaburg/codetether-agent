@@ -34,7 +34,7 @@ async fn thinking(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
 
 async fn done(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
     handle_processing_stopped(app, worker_bridge).await;
-    app.state.streaming_text.clear();
+    app.state.clear_streaming_text();
     app.state.complete_turn_timing();
     app.state.streaming_start = None;
     // NOTE: do NOT reset main_watchdog_restart_count here. The count must

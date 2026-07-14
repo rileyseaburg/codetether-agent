@@ -72,8 +72,10 @@ impl Tool for AgentTool {
         match parsed.action.as_str() {
             "spawn" => spawn::handle_spawn(&parsed).await,
             "message" => message::handle_message(&parsed).await,
-            "list" => Ok(handlers::handle_list()),
-            "status" => Ok(super::status::handle_status()),
+            "list" => Ok(handlers::handle_list(parsed.parent_session_id.as_deref())),
+            "status" => Ok(super::status::handle_status(
+                parsed.parent_session_id.as_deref(),
+            )),
             "kill" => execute_kill(&parsed),
             _ => Ok(super::actions::unknown_action_result(&parsed.action)),
         }

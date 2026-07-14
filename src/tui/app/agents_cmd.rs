@@ -7,7 +7,7 @@ use crate::tui::app::state::App;
 pub fn build_agent_list(app: &App) -> Vec<String> {
     let mut lines = Vec::new();
     collect_tui_agents(app, &mut lines);
-    collect_agent_tool_agents(&mut lines);
+    collect_agent_tool_agents(app, &mut lines);
     lines
 }
 
@@ -27,8 +27,11 @@ fn collect_tui_agents(app: &App, out: &mut Vec<String>) {
     }
 }
 
-fn collect_agent_tool_agents(out: &mut Vec<String>) {
-    let snapshots = crate::tool::agent::bridge::list_agent_tool_agents();
+fn collect_agent_tool_agents(app: &App, out: &mut Vec<String>) {
+    let Some(parent) = app.state.session_id.as_deref() else {
+        return;
+    };
+    let snapshots = crate::tool::agent::bridge::list_agent_tool_agents_for_parent(parent);
     let existing: std::collections::HashSet<String> =
         out.iter().filter_map(|l| name_from_line(l)).collect();
     for snap in snapshots {

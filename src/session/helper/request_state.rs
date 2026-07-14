@@ -1,34 +1,31 @@
-use std::path::Path;
 use std::sync::Arc;
 
-use crate::provider::{Provider, ToolDefinition};
-use crate::tool::ToolRegistry;
+use crate::provider::Provider;
+use crate::session::Session;
 
 use super::workspace_tools::registry_for_cwd;
 
 #[path = "request_state/apply_to.rs"]
 mod apply_to;
+#[path = "request_state/session_context.rs"]
+mod session_context;
 #[path = "request_state/settings.rs"]
 pub(crate) mod settings;
+#[path = "request_state/state.rs"]
+mod state;
 #[path = "request_state/tools.rs"]
 mod tools;
 
-pub(crate) struct ProviderStepState {
-    pub tool_registry: Arc<ToolRegistry>,
-    pub tool_definitions: Vec<ToolDefinition>,
-    pub advertised_tool_definitions: Vec<ToolDefinition>,
-    pub temperature: Option<f32>,
-    pub model_supports_tools: bool,
-    pub system_prompt: String,
-}
+pub(crate) use state::ProviderStepState;
 
 pub(crate) fn build_provider_step_state(
     provider: Arc<dyn Provider>,
     selected_provider: &str,
     model: &str,
-    cwd: &Path,
+    session: &Session,
 ) -> ProviderStepState {
-    let tool_registry = registry_for_cwd(provider, model, cwd);
+    let (cwd, prior_context_allowed, autonomous) = session_context::resolve(session);
+    let tool_registry = registry_for_cwd(provider, model, &cwd, prior_context_allowed, autonomous);
     let tool_definitions = tools::active_tool_definitions(&tool_registry);
     let model_supports_tools = settings::model_supports_tools(selected_provider);
     let advertised_tool_definitions =
@@ -37,7 +34,8 @@ pub(crate) fn build_provider_step_state(
         selected_provider,
         model_supports_tools,
         &advertised_tool_definitions,
-        cwd,
+        &cwd,
+        prior_context_allowed,
     );
 
     ProviderStepState {

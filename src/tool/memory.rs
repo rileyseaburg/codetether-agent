@@ -120,7 +120,7 @@ impl MemoryStore {
         let content = fs::read_to_string(&path).await?;
         let mut store: MemoryStore = serde_json::from_str(&content)?;
         for entry in store.entries.values_mut() {
-            entry.ensure_embedding();
+            entry.refresh_embedding();
         }
         Ok(store)
     }
@@ -242,7 +242,7 @@ impl MemoryTool {
 
         let mut store = self.store.lock().await;
         if let Ok(loaded) = MemoryStore::load().await {
-            *store = loaded.install_auto_embedder().await;
+            *store = loaded;
         }
         self.initialized.store(true, Ordering::SeqCst);
         Ok(())
@@ -313,9 +313,8 @@ impl Tool for MemoryTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        // Initialize store from disk if not already loaded
-        // Initialize once per tool instance (loads from disk + installs the
-        // embedding backend). The `initialized` flag inside init() guards it.
+        // Initialize once per tool instance. Interactive memory operations use
+        // the deterministic local embedding engine and never await providers.
         self.init().await.ok();
 
         let action = args["action"]

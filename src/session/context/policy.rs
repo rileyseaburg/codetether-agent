@@ -11,6 +11,9 @@ use crate::session::Session;
 use crate::session::SessionEvent;
 use crate::session::derive_policy::DerivePolicy;
 
+#[path = "policy_implicit.rs"]
+mod policy_implicit;
+
 use super::derive::derive_context;
 use super::helpers::DerivedContext;
 use super::reset_helpers::latest_reset_marker_index;
@@ -35,29 +38,27 @@ use super::reset_helpers::latest_reset_marker_index;
 /// 1M-context model is not compressed at 3% utilisation.
 pub fn effective_policy(session: &Session, model: &str) -> DerivePolicy {
     let persisted = session.metadata.context_policy;
+    let implicit = policy_implicit::resolve(policy_implicit::Inputs {
+        persisted,
+        has_reset_marker: latest_reset_marker_index(&session.messages).is_some(),
+        reset_threshold: resolve_reset_threshold(persisted, model),
+        incremental_budget: super::incremental_budget_config::resolve(persisted, model),
+    });
     let Ok(raw) = env::var("CODETETHER_CONTEXT_POLICY") else {
-        if matches!(persisted, DerivePolicy::Legacy)
-            && latest_reset_marker_index(&session.messages).is_some()
-        {
-            return DerivePolicy::Reset {
-                threshold_tokens: resolve_reset_threshold(persisted, model),
-            };
-        }
-        return persisted;
+        return implicit;
     };
-    let normalized = raw.trim().to_ascii_lowercase();
-    match normalized.as_str() {
-        "" => persisted,
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "" => implicit,
         "legacy" => DerivePolicy::Legacy,
         "reset" => DerivePolicy::Reset {
             threshold_tokens: resolve_reset_threshold(persisted, model),
         },
         "incremental" => DerivePolicy::Incremental {
-            budget_tokens: resolve_incremental_budget(persisted),
+            budget_tokens: super::incremental_budget_config::resolve(persisted, model),
         },
         _ => {
-            tracing::warn!(raw = %raw, "Unknown CODETETHER_CONTEXT_POLICY override; using persisted session policy");
-            persisted
+            tracing::warn!(raw = %raw, "Unknown CODETETHER_CONTEXT_POLICY override; using proactive default");
+            implicit
         }
     }
 }
@@ -70,18 +71,6 @@ fn resolve_reset_threshold(persisted: DerivePolicy, model: &str) -> usize {
         | DerivePolicy::OracleReplay { .. } => None,
     };
     super::reset_threshold::resolve_for_model(model, persisted_tokens)
-}
-
-fn resolve_incremental_budget(persisted: DerivePolicy) -> usize {
-    let default_budget = match persisted {
-        DerivePolicy::Incremental { budget_tokens } if budget_tokens > 0 => budget_tokens,
-        _ => super::incremental::DEFAULT_INCREMENTAL_BUDGET,
-    };
-    env::var("CODETETHER_CONTEXT_INCREMENTAL_BUDGET_TOKENS")
-        .ok()
-        .and_then(|value| value.trim().parse::<usize>().ok())
-        .filter(|n| *n > 0)
-        .unwrap_or(default_budget)
 }
 
 /// Derive an ephemeral [`DerivedContext`] under a chosen [`DerivePolicy`].

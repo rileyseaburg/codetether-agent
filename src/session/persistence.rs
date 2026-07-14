@@ -116,12 +116,12 @@ impl Session {
         // successful save for this id — save() is called on hot paths and the
         // disk write + rename + journal + index upsert are pure overhead when
         // nothing changed.
-        if save_guard::is_unchanged(&self.id, &content, &path) {
+        if save_guard::notify::is_unchanged(self, &content, &path) {
             tracing::trace!(session_id = %self.id, "session save elided (unchanged)");
             return Ok(());
         }
         save_guard::atomic_write(&tmp, &path, &content).await?;
-        save_guard::record_saved(&self.id, &content);
+        save_guard::notify::record_saved(self, &content);
         let mut journal = super::journal::WritebackJournal::new(&session_id_for_journal);
         let tx = journal.stage(super::journal::Op::Save);
         if let Err(reason) = journal.commit(tx) {
@@ -193,7 +193,7 @@ impl Session {
     /// Delete a session file by ID. No-op if the file does not exist.
     pub async fn delete(id: &str) -> Result<()> {
         let path = Self::session_path(id)?;
-        save_guard::forget(id);
+        save_guard::notify::forget(id).await?;
         match tokio::fs::remove_file(&path).await {
             Ok(()) => Ok(()),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),

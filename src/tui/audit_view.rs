@@ -16,10 +16,13 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph, Wrap},
 };
 
 use crate::audit::{AuditCategory, AuditEntry, AuditOutcome, try_audit_log};
+
+#[path = "audit_view_list.rs"]
+mod list;
 
 /// Maximum number of entries the view caches / renders per category.
 const SNAPSHOT_LIMIT: usize = 500;
@@ -155,31 +158,8 @@ fn render_body(f: &mut Frame, state: &mut AuditViewState, area: Rect) {
         .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
         .split(area);
 
-    render_list(f, state, chunks[0]);
+    list::render(f, state, chunks[0]);
     render_detail(f, state, chunks[1]);
-}
-
-fn render_list(f: &mut Frame, state: &mut AuditViewState, area: Rect) {
-    let items: Vec<ListItem> = state
-        .entries
-        .iter()
-        .map(|e| ListItem::new(format_row(e)))
-        .collect();
-
-    let mut list_state = ListState::default();
-    if !state.entries.is_empty() {
-        list_state.select(Some(state.selected));
-    }
-
-    let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title(" Events "))
-        .highlight_style(
-            Style::default()
-                .bg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        )
-        .highlight_symbol("▶ ");
-    f.render_stateful_widget(list, area, &mut list_state);
 }
 
 fn render_detail(f: &mut Frame, state: &AuditViewState, area: Rect) {
@@ -242,63 +222,9 @@ fn render_footer(f: &mut Frame, _state: &AuditViewState, area: Rect) {
     f.render_widget(Paragraph::new(hint), area);
 }
 
-fn format_row(e: &AuditEntry) -> Line<'static> {
-    let ts = e.timestamp.format("%H:%M:%S").to_string();
-    let outcome_color = match e.outcome {
-        AuditOutcome::Success => Color::Green,
-        AuditOutcome::Failure => Color::Red,
-        AuditOutcome::Denied => Color::Yellow,
-    };
-    let outcome_mark = match e.outcome {
-        AuditOutcome::Success => "✓",
-        AuditOutcome::Failure => "✗",
-        AuditOutcome::Denied => "⊘",
-    };
-    Line::from(vec![
-        Span::styled(ts, Style::default().fg(Color::DarkGray)),
-        " ".into(),
-        Span::styled(outcome_mark.to_string(), Style::default().fg(outcome_color)),
-        " ".into(),
-        Span::styled(
-            format!("{:<10}", category_short(e.category)),
-            Style::default().fg(Color::Cyan),
-        ),
-        " ".into(),
-        Span::raw(truncate(&e.action, 40)),
-        " ".into(),
-        Span::styled(
-            format!("[{}]", e.principal.as_deref().unwrap_or("-")),
-            Style::default().fg(Color::DarkGray),
-        ),
-    ])
-}
-
 fn kv_line(key: &str, value: &str) -> Line<'static> {
     Line::from(vec![
         Span::styled(format!("{key:>12}: "), Style::default().fg(Color::DarkGray)),
         Span::raw(value.to_string()),
     ])
-}
-
-fn category_short(c: AuditCategory) -> &'static str {
-    match c {
-        AuditCategory::Api => "api",
-        AuditCategory::ToolExecution => "tool",
-        AuditCategory::Session => "session",
-        AuditCategory::Cognition => "cognition",
-        AuditCategory::Swarm => "swarm",
-        AuditCategory::Auth => "auth",
-        AuditCategory::K8s => "k8s",
-        AuditCategory::Sandbox => "sandbox",
-        AuditCategory::Config => "config",
-    }
-}
-
-fn truncate(s: &str, max: usize) -> String {
-    if s.chars().count() <= max {
-        s.to_string()
-    } else {
-        let cut: String = s.chars().take(max.saturating_sub(1)).collect();
-        format!("{cut}…")
-    }
 }

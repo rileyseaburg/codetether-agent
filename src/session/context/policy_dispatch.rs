@@ -12,7 +12,7 @@ use crate::provider::{Provider, ToolDefinition};
 use crate::session::{Session, SessionEvent};
 
 use super::helpers::DerivedContext;
-use super::incremental::{DEFAULT_INCREMENTAL_BUDGET, derive_incremental};
+use super::incremental::derive_incremental;
 use super::reset::derive_reset;
 
 /// Run the [`DerivePolicy::Reset`] arm.
@@ -49,11 +49,7 @@ pub(super) async fn dispatch_incremental(
     budget_tokens: usize,
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
-    let budget = if budget_tokens == 0 {
-        DEFAULT_INCREMENTAL_BUDGET
-    } else {
-        budget_tokens
-    };
+    let budget = super::input_budget::resolve(model, budget_tokens);
     derive_incremental(
         session,
         provider,

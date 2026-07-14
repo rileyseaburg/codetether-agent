@@ -17,8 +17,14 @@ pub fn parameters() -> Value {
             },
             "limit": {
                 "type": "integer",
-                "description": "Recent sessions to include (default 3, max 5)",
+                "description": "Maximum evidence matches (default 3, max 5)",
                 "default": 3
+            },
+            "mode": {
+                "type": "string",
+                "enum": ["evidence", "answer"],
+                "description": "Local evidence (default) or slower RLM synthesis",
+                "default": "evidence"
             }
         },
         "required": ["query"]

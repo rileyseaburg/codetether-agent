@@ -18,7 +18,7 @@ impl RuntimeCapability {
             Self::SpeculativePrefetch => "Prefetch obvious files, Argo state, logs, and artifacts.",
             Self::EvidenceClassifier => "Classify proof as local, mocked, live, or platform.",
             Self::BackgroundContextIndex => {
-                "Use indexed session, git, artifact, and cluster facts."
+                "Use indexed session facts only when the user allows prior-context access; git, artifact, and cluster facts remain available."
             }
             Self::ToolOutputDigest => "Return compact digests while preserving full artifacts.",
             Self::DynamicTetherScript => "Use TetherScript for repeatable parsers and validators.",

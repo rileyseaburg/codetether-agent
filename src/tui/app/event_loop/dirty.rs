@@ -1,5 +1,7 @@
 //! Dirty-state helpers for the TUI event loop.
 
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 use crate::tui::app::state::App;
 
 #[derive(PartialEq, Eq)]
@@ -12,7 +14,7 @@ pub(super) struct Snapshot {
     audit_tick: u64,
     queue: usize,
     processing: bool,
-    spinner_frame: u8,
+    animation_epoch: u64,
 }
 
 impl Snapshot {
@@ -26,7 +28,7 @@ impl Snapshot {
             audit_tick: app.state.audit.refresh_counter,
             queue: app.state.worker_task_queue.len(),
             processing: app.state.processing,
-            spinner_frame: spinner_frame(app.state.processing),
+            animation_epoch: animation_epoch(app.state.processing),
         }
     }
 
@@ -35,19 +37,21 @@ impl Snapshot {
     }
 }
 
-/// Spinner frame index that advances only while `processing`.
+/// Animation epoch that advances only while `processing`.
 ///
-/// While idle this returns a constant `0`, so the snapshot is stable and
-/// no redraw is triggered (0% idle CPU). While a turn is in flight it
-/// cycles every 100 ms so the spinner animates without a free-running
-/// render loop.
-fn spinner_frame(processing: bool) -> u8 {
-    if !processing {
-        return 0;
-    }
-    let ms = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis())
-        .unwrap_or(0);
-    ((ms / 100) % 10) as u8
+/// While idle this remains `0`. During processing it advances once per second,
+/// avoiding expensive full-chat redraws solely for decorative animation.
+fn animation_epoch(processing: bool) -> u64 {
+    let elapsed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    animation_epoch_at(processing, elapsed)
 }
+
+pub(super) fn animation_epoch_at(processing: bool, elapsed: Duration) -> u64 {
+    if processing { elapsed.as_secs() } else { 0 }
+}
+
+#[cfg(test)]
+#[path = "dirty_tests.rs"]
+mod tests;

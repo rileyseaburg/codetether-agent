@@ -5,6 +5,7 @@ const WATCHDOG_CHECK_INTERVAL: Duration = Duration::from_secs(2);
 
 pub(crate) struct LoopTimers {
     pub tick: tokio::time::Interval,
+    pub audit: tokio::time::Interval,
     pub watchdog: tokio::time::Interval,
     pub watchdog_interval: Duration,
 }
@@ -13,6 +14,7 @@ impl LoopTimers {
     pub fn new(watchdog_interval: Duration) -> Self {
         Self {
             tick: tokio::time::interval(Duration::from_millis(100)),
+            audit: tokio::time::interval(Duration::from_secs(1)),
             // The watchdog fires frequently (every 2s) but the *timeout*
             // (watchdog_interval) determines how long of inactivity is
             // required before action is taken. This decouples "how often we

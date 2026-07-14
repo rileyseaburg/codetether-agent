@@ -45,6 +45,7 @@ const RETRYABLE_NEEDLES: &[&str] = &[
     "empty response",
     "stream ended without producing any content",
     "stream ended without assistant content",
+    "temporary provider availability issue",
 ];
 
 /// Returns true when an upstream provider error is worth retrying.

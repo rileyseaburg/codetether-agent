@@ -39,21 +39,27 @@ pub(super) struct Params {
     pub ephemeral: bool,
     /// Controls whether `message`/`spawn` blocks the caller.
     ///
-    /// `None` (default) → non-blocking (detach = true): the sub-agent runs in
-    /// the background and the caller is free to continue (issue #296).
-    /// `Some(false)` → blocking: waits for the full sub-agent turn.
+    /// `None` (default) waits for the child result so model callers cannot
+    /// finish before their delegated work. Interactive callers opt into detach.
     #[serde(default)]
     pub detach: Option<bool>,
     #[serde(default, rename = "__ct_current_model")]
     pub _current_model: Option<String>,
     #[serde(default, rename = "__ct_parent_workspace")]
     pub parent_workspace: Option<PathBuf>,
+    #[serde(default, rename = "__ct_session_id")]
+    pub parent_session_id: Option<String>,
+    #[serde(default, rename = "__ct_prior_context_allowed")]
+    pub parent_prior_context_allowed: Option<bool>,
 }
 
 impl Params {
-    /// Returns the effective detach flag, defaulting to `true` (non-blocking)
-    /// when not explicitly set (issue #296).
+    /// Returns the effective detach flag, defaulting to synchronous execution.
     pub(super) fn detach_or_default(&self) -> bool {
-        self.detach.unwrap_or(true)
+        self.detach.unwrap_or(false)
+    }
+
+    pub(super) fn detach_for_spawn(&self) -> bool {
+        self.detach.unwrap_or(false)
     }
 }

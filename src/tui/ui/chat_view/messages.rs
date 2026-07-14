@@ -65,10 +65,11 @@ pub fn render_messages_ref(
         .border_style(ratatui::style::Style::default().fg(accent))
         .title(build_title(app, session));
     let scroll = clamp_scroll(app, chunks.messages, lines);
-    app.state.chat_hit.record(chunks.messages, scroll, lines);
-    let chat = Paragraph::new(lines.to_vec())
-        .block(block)
-        .scroll((scroll, 0));
+    let visible = super::viewport::visible_lines(lines, scroll, chunks.messages.height);
+    app.state
+        .chat_hit
+        .record_visible(chunks.messages, scroll, visible);
+    let chat = Paragraph::new(visible.to_vec()).block(block);
     f.render_widget(chat, chunks.messages);
     super::scrollbar_render::render_scrollbar(f, chunks.messages, lines.len(), scroll as usize);
 }

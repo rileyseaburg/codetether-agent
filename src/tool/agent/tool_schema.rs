@@ -14,8 +14,8 @@ pub(super) fn agent_tool_parameters() -> Value {
             "instructions": { "type": "string", "description": "System instructions (spawn)" },
             "message": { "type": "string", "description": "Message to send" },
             "model": { "type": "string", "description": "Model (spawn). Should be free/subscription-eligible; otherwise a cost warning is returned." },
-            "ephemeral": { "type": "boolean", "description": "Spawn without durable session persistence; returns an explicit warning." },
-            "detach": { "type": "boolean", "description": "Default true: sub-agent runs in the background and the caller is not blocked. Set false to block until the sub-agent finishes its turn. Watch progress with action \"status\"." }
+            "ephemeral": { "type": "boolean", "description": "Run once without a child transcript or registry entry. Ephemeral runs are synchronous." },
+            "detach": { "type": "boolean", "description": "Defaults to false so the caller receives the result. Interactive clients may set true for background execution. Ephemeral agents cannot detach." }
         },
         "required": ["action"]
     })

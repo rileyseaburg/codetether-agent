@@ -15,6 +15,9 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::{Mutex, OnceLock};
 
+#[path = "persistence/notify.rs"]
+pub(super) mod notify;
+
 fn store() -> &'static Mutex<HashMap<String, u64>> {
     static STORE: OnceLock<Mutex<HashMap<String, u64>>> = OnceLock::new();
     STORE.get_or_init(|| Mutex::new(HashMap::new()))

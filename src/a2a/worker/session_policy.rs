@@ -30,7 +30,7 @@ pub(super) async fn execute_session_with_policy(
     let provider = registry
         .get(&selection.provider)
         .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selection.provider))?;
-    session.add_message(Message {
+    session.add_delegated_message(Message {
         role: crate::provider::Role::User,
         content: vec![ContentPart::Text {
             text: prompt.to_string(),

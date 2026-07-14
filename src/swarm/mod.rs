@@ -22,14 +22,19 @@ mod live_bus;
 pub mod orchestrator;
 mod quality_shell;
 pub mod rate_limiter;
+mod remote_probe;
+mod remote_probe_metrics;
 pub mod remote_subtask;
 pub mod result_store;
 pub mod speculative;
 pub mod subtask;
+mod subtask_kind;
 pub mod token_exhaustion;
 pub mod token_truncate;
-mod tool_policy;
+pub(crate) mod tool_policy;
 pub mod validation;
+pub(crate) mod worktree_branch;
+pub(crate) mod worktree_commit;
 
 pub use cache::{CacheConfig, CacheStats, SwarmCache};
 pub use collapse_controller::{
@@ -44,6 +49,12 @@ pub use result_store::{ResultStore, ResultStoreContext, SharedResult, SubTaskSto
 pub use subtask::{SubAgent, SubTask, SubTaskContext, SubTaskResult, SubTaskStatus};
 
 use {anyhow::Result, async_trait::async_trait};
+
+#[path = "config_defaults.rs"]
+mod config_defaults;
+use config_defaults::{
+    default_base_delay_ms, default_k8s_pod_budget, default_max_delay_ms, default_max_retries,
+};
 
 /// Actor trait for swarm participants
 ///
@@ -154,6 +165,10 @@ pub struct SwarmConfig {
     /// Automatically merge worktree changes on success
     pub worktree_auto_merge: bool,
 
+    /// Enable speculative branch pruning for explicitly equivalent alternatives.
+    #[serde(default)]
+    pub collapse_enabled: bool,
+
     /// Working directory for worktree creation
     pub working_dir: Option<String>,
 
@@ -183,9 +198,8 @@ pub struct SwarmConfig {
 }
 
 /// Sub-agent execution mode.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[derive(Default)]
 pub enum ExecutionMode {
     /// Run sub-agents as local async tasks in the current process.
     #[default]
@@ -201,22 +215,6 @@ impl ExecutionMode {
             _ => Self::LocalThread,
         }
     }
-}
-
-fn default_k8s_pod_budget() -> usize {
-    8
-}
-
-fn default_max_retries() -> u32 {
-    3
-}
-
-fn default_base_delay_ms() -> u64 {
-    500
-}
-
-fn default_max_delay_ms() -> u64 {
-    30_000
 }
 
 impl Default for SwarmConfig {
@@ -236,6 +234,7 @@ impl Default for SwarmConfig {
             request_delay_ms: 250,
             worktree_enabled: true,    // Enable worktree isolation by default
             worktree_auto_merge: true, // Auto-merge on success
+            collapse_enabled: false,
             working_dir: None,
             execution_mode: ExecutionMode::LocalThread,
             k8s_pod_budget: 8,

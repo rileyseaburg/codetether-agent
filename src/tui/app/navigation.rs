@@ -12,6 +12,9 @@ mod jump;
 #[path = "navigation/agent_focus.rs"]
 mod agent_focus;
 
+#[path = "navigation/symbol_enter.rs"]
+mod symbol_enter;
+
 #[cfg(test)]
 mod tests;
 
@@ -102,7 +105,7 @@ pub fn handle_up(app: &mut App, modifiers: KeyModifiers) {
     match app.state.view_mode {
         ViewMode::Swarm => {
             if app.state.swarm.detail_mode {
-                app.state.swarm.detail_scroll_up(1);
+                app.state.swarm.select_prev();
             } else {
                 app.state.swarm.select_prev();
             }
@@ -165,7 +168,7 @@ pub fn handle_down(app: &mut App, modifiers: KeyModifiers) {
     match app.state.view_mode {
         ViewMode::Swarm => {
             if app.state.swarm.detail_mode {
-                app.state.swarm.detail_scroll_down(1);
+                app.state.swarm.select_next();
             } else {
                 app.state.swarm.select_next();
             }
@@ -250,13 +253,4 @@ pub fn handle_delete(app: &mut App) {
     }
 }
 
-pub fn handle_symbol_enter(app: &mut App) {
-    if let Some(symbol) = app.state.symbol_search.selected_symbol() {
-        let location = symbol
-            .line
-            .map(|line| format!("at line {line}"))
-            .unwrap_or_default();
-        app.state.status = format!("Selected symbol {} {}", symbol.name, location);
-    }
-    app.state.symbol_search.close();
-}
+pub use symbol_enter::handle as handle_symbol_enter;

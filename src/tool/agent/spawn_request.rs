@@ -18,6 +18,7 @@ pub(super) struct SpawnRequest<'a> {
     pub ephemeral: bool,
     pub detach: bool,
     pub parent_workspace: Option<PathBuf>,
+    pub parent_session_id: Option<&'a str>,
 }
 
 impl<'a> SpawnRequest<'a> {
@@ -40,8 +41,9 @@ impl<'a> SpawnRequest<'a> {
                 .context("instructions required for spawn")?,
             model,
             ephemeral: params.ephemeral,
-            detach: params.detach_or_default(),
+            detach: params.detach_for_spawn(),
             parent_workspace: params.parent_workspace.clone(),
+            parent_session_id: params.parent_session_id.as_deref(),
         })
     }
 }

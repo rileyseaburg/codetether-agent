@@ -6,10 +6,21 @@
 use super::{
     DecompositionStrategy, SubAgent, SubTask, SubTaskResult, SubTaskStatus, SwarmConfig, SwarmStats,
 };
-use crate::provider::{CompletionRequest, ContentPart, Message, ProviderRegistry, Role};
+use crate::provider::ProviderRegistry;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+#[path = "orchestrator/decomposition_request.rs"]
+mod decomposition_request;
+#[path = "orchestrator/dependencies.rs"]
+mod dependencies;
+#[path = "orchestrator/plan.rs"]
+mod plan;
+#[path = "orchestrator/repair_prompt.rs"]
+mod repair_prompt;
+#[path = "orchestrator/stages.rs"]
+mod stages;
 
 /// The orchestrator manages task decomposition and sub-agent coordination
 pub struct Orchestrator {
@@ -133,34 +144,13 @@ impl Orchestrator {
             0.7
         };
 
-        let request = CompletionRequest {
-            messages: vec![Message {
-                role: Role::User,
-                content: vec![ContentPart::Text {
-                    text: decomposition_prompt,
-                }],
-            }],
-            tools: Vec::new(),
-            model: self.model.clone(),
-            temperature: Some(temperature),
-            top_p: None,
-            max_tokens: Some(8192),
-            stop: Vec::new(),
-        };
-
-        let response = provider.complete(request).await?;
-
-        // Parse the decomposition response
-        let text = response
-            .message
-            .content
-            .iter()
-            .filter_map(|p| match p {
-                ContentPart::Text { text } => Some(text.clone()),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
+        let text = decomposition_request::complete(
+            provider.as_ref(),
+            &self.model,
+            decomposition_prompt,
+            temperature,
+        )
+        .await?;
 
         tracing::debug!("Decomposition response: {}", text);
 
@@ -172,23 +162,38 @@ impl Orchestrator {
             return Ok(vec![subtask]);
         }
 
-        let subtasks = self.parse_decomposition(&text)?;
-
-        // Store subtasks
-        for subtask in &subtasks {
-            self.subtasks.insert(subtask.id.clone(), subtask.clone());
-        }
-
-        // Assign stages based on dependencies
-        self.assign_stages();
+        let parsed = self.parse_decomposition(&text).and_then(plan::validate);
+        self.subtasks = match parsed {
+            Ok(plan) => plan,
+            Err(error) => {
+                tracing::warn!(%error, response = %text, "Invalid swarm plan; requesting one repair");
+                let prompt = repair_prompt::build(task, &text, &error.to_string());
+                match decomposition_request::complete(
+                    provider.as_ref(),
+                    &self.model,
+                    prompt,
+                    temperature,
+                )
+                .await
+                .and_then(|text| self.parse_decomposition(&text))
+                .and_then(plan::validate)
+                {
+                    Ok(plan) => plan,
+                    Err(repair_error) => {
+                        tracing::warn!(%repair_error, "Swarm plan repair failed; using one truthful task");
+                        plan::single(task)
+                    }
+                }
+            }
+        };
 
         tracing::info!(
             "Decomposed task into {} subtasks across {} stages",
-            subtasks.len(),
+            self.subtasks.len(),
             self.max_stage() + 1
         );
 
-        Ok(subtasks)
+        Ok(self.subtasks.values().cloned().collect())
     }
 
     /// Build the decomposition prompt
@@ -230,7 +235,7 @@ OUTPUT FORMAT (JSON):
       "name": "Subtask Name",
       "instruction": "Detailed instruction for this subtask",
       "specialty": "Role/specialty (e.g., Researcher, Coder, Analyst)",
-      "dependencies": ["id-of-dependency-1"],
+      "dependencies": ["Exact Prior Subtask Name"],
       "priority": 1,
       "needs_worktree": false
     }}
@@ -243,6 +248,8 @@ files** in the repository (implementation, refactor, patch). Set it to \
 `false` for read-only work (research, review, analysis, fact-check, \
 planning, summarisation). When in doubt, omit the field and the \
 executor will decide from heuristics.
+
+Dependency entries MUST exactly match earlier subtask `name` values. Do not invent IDs.
 
 Decompose the task now:"#,
             task = task,
@@ -316,66 +323,15 @@ Decompose the task now:"#,
         }
 
         // Second pass: resolve dependencies
-        let result: Vec<SubTask> = subtasks
+        let result: Result<Vec<SubTask>> = subtasks
             .into_iter()
             .map(|(mut subtask, deps)| {
-                let resolved_deps: Vec<String> = deps
-                    .iter()
-                    .filter_map(|dep| name_to_id.get(dep).cloned())
-                    .collect();
-                subtask.dependencies = resolved_deps;
-                subtask
+                subtask.dependencies = dependencies::resolve(&deps, &name_to_id)?;
+                Ok(subtask)
             })
             .collect();
 
-        Ok(result)
-    }
-
-    /// Assign stages to subtasks based on dependencies
-    fn assign_stages(&mut self) {
-        let mut changed = true;
-
-        while changed {
-            changed = false;
-
-            // First collect all updates needed
-            let updates: Vec<(String, usize)> = self
-                .subtasks
-                .iter()
-                .filter_map(|(id, subtask)| {
-                    if subtask.dependencies.is_empty() {
-                        if subtask.stage != 0 {
-                            Some((id.clone(), 0))
-                        } else {
-                            None
-                        }
-                    } else {
-                        let max_dep_stage = subtask
-                            .dependencies
-                            .iter()
-                            .filter_map(|dep_id| self.subtasks.get(dep_id))
-                            .map(|dep| dep.stage)
-                            .max()
-                            .unwrap_or(0);
-
-                        let new_stage = max_dep_stage + 1;
-                        if subtask.stage != new_stage {
-                            Some((id.clone(), new_stage))
-                        } else {
-                            None
-                        }
-                    }
-                })
-                .collect();
-
-            // Then apply updates
-            for (id, new_stage) in updates {
-                if let Some(subtask) = self.subtasks.get_mut(&id) {
-                    subtask.stage = new_stage;
-                    changed = true;
-                }
-            }
-        }
+        result
     }
 
     /// Get maximum stage number
@@ -473,7 +429,7 @@ Decompose the task now:"#,
 }
 
 pub(crate) fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
-    providers.first().copied()
+    crate::session::helper::provider::choose_default_provider(providers)
 }
 
 /// Get default model for a provider.

@@ -6,7 +6,10 @@
 
 mod background;
 mod call;
+pub(crate) mod notify;
 mod observability;
+#[path = "../proactive_rlm/mod.rs"]
+pub(crate) mod proactive;
 pub mod summary_gate;
 pub mod summary_text;
 

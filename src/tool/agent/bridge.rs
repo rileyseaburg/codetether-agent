@@ -21,7 +21,26 @@ pub struct AgentSnapshot {
 
 /// Returns snapshots of all agents spawned via the `agent` tool.
 pub fn list_agent_tool_agents() -> Vec<AgentSnapshot> {
-    let rows = store::list_with_metadata();
+    snapshots(None)
+}
+
+/// Returns only agents owned by `parent_session_id`.
+pub fn list_agent_tool_agents_for_parent(parent_session_id: &str) -> Vec<AgentSnapshot> {
+    snapshots(Some(parent_session_id))
+}
+
+/// Looks up an agent only when it belongs to `parent_session_id`.
+pub fn find_agent_tool_agent_for_parent(
+    name: &str,
+    parent_session_id: &str,
+) -> Option<AgentSnapshot> {
+    snapshots(Some(parent_session_id))
+        .into_iter()
+        .find(|agent| agent.name == name)
+}
+
+fn snapshots(parent_session_id: Option<&str>) -> Vec<AgentSnapshot> {
+    let rows = store::list_with_metadata(parent_session_id);
     rows.into_iter()
         .map(
             |(name, instructions, msg_count, model_id, parent, depth)| AgentSnapshot {
@@ -35,3 +54,7 @@ pub fn list_agent_tool_agents() -> Vec<AgentSnapshot> {
         )
         .collect()
 }
+
+#[cfg(test)]
+#[path = "bridge_tests.rs"]
+mod tests;

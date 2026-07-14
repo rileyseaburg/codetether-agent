@@ -27,8 +27,13 @@ impl MemoryEntry {
     /// ```
     pub fn ensure_embedding(&mut self) {
         if self.embedding.is_none() {
-            self.embedding = Some(self.embed_with(&LocalEmbeddingEngine::default()));
+            self.refresh_embedding();
         }
+    }
+
+    /// Replace any cached vector with a local-engine embedding.
+    pub(super) fn refresh_embedding(&mut self) {
+        self.embedding = Some(self.embed_with(&LocalEmbeddingEngine::default()));
     }
 
     /// Borrow the cached embedding, computing nothing.

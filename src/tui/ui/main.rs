@@ -111,11 +111,7 @@ fn render_bus_view(f: &mut Frame, app: &mut App) {
 }
 
 fn render_overlays(f: &mut Frame, app: &mut App) {
-    if app.state.symbol_search.loading
-        || !app.state.symbol_search.query.is_empty()
-        || !app.state.symbol_search.results.is_empty()
-        || app.state.symbol_search.error.is_some()
-    {
+    if app.state.symbol_search.active {
         render_symbol_search(f, &mut app.state.symbol_search, f.area());
     }
 

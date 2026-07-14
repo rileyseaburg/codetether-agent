@@ -2,6 +2,7 @@
 //! announces completion on the bus, and builds the tool result.
 
 use super::bus_publish;
+use super::bus_publish::lifecycle;
 use super::message_result;
 use super::store;
 use crate::session::Session;
@@ -23,7 +24,10 @@ pub(super) async fn finalize(
             tracing::warn!(agent = %name, error = %e, "Failed to save agent session after message");
         }
     }
+    let error = message_result::effective_error(&response, error);
     let success = error.is_none();
-    bus_publish::announce_done(&name, success, format!("{} tool call(s)", tools.len()));
+    let summary = lifecycle::terminal_summary(tools.len(), error.as_deref());
+    bus_publish::announce_result(&name, &response, error.as_deref());
+    bus_publish::announce_done(&name, success, summary);
     message_result::build_message_result(name, response, thinking, tools, error)
 }

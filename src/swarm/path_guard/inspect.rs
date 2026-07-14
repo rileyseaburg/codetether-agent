@@ -6,7 +6,7 @@ pub fn reject_unknown_path_fields(value: &Value, specs: &[String], prefix: Strin
         Value::Object(map) => {
             for (key, child) in map {
                 let path = join(&prefix, key);
-                if is_path_like(key) && !specs.iter().any(|spec| spec == &path) {
+                if is_path_like(key) && !declared(&path, specs) {
                     bail!("undeclared filesystem path field: {path}");
                 }
                 reject_unknown_path_fields(child, specs, path)?;
@@ -20,6 +20,12 @@ pub fn reject_unknown_path_fields(value: &Value, specs: &[String], prefix: Strin
         _ => {}
     }
     Ok(())
+}
+
+fn declared(path: &str, specs: &[String]) -> bool {
+    specs
+        .iter()
+        .any(|spec| spec == path || spec.starts_with(&format!("{path}.")))
 }
 
 pub fn contains_path_like(value: &Value) -> bool {

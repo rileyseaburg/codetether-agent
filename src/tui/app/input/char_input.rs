@@ -43,6 +43,10 @@ pub async fn handle_char(app: &mut App, modifiers: KeyModifiers, c: char) {
     } else if app.state.view_mode == ViewMode::FilePicker && no_mods {
         crate::tui::app::file_picker::file_picker_filter_push(app, c);
     } else if app.state.view_mode == ViewMode::Chat && no_mods {
+        if c == '@' {
+            crate::tui::app::symbols::mention::open(app);
+            return;
+        }
         app.state.input_mode = if app.state.input.is_empty() && c == '/' {
             InputMode::Command
         } else if app.state.input.starts_with('/') || c == '/' {

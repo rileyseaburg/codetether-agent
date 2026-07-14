@@ -30,19 +30,18 @@ use std::sync::Arc;
 use anyhow::Result;
 use tokio::sync::mpsc;
 
-use crate::provider::{Message, Role, ToolDefinition};
+use crate::provider::{Message, ToolDefinition};
 use crate::session::helper::token::{estimate_request_tokens, estimate_tokens_for_messages};
-use crate::session::index::Granularity;
-use crate::session::index_produce::produce_summary;
 use crate::session::relevance::{RelevanceMeta, extract};
 use crate::session::{ResidencyLevel, Session, SessionEvent};
 
+#[path = "prepared_gaps.rs"]
+mod prepared_gaps;
+
 use super::helpers::DerivedContext;
 use super::incremental_clamp::clamp_and_recompute;
-use super::incremental_insert::{interleave, range_from_tuple};
-use super::incremental_observability::DerivationObservability;
+use super::incremental_insert::interleave;
 use super::incremental_repair::repair_with_origins;
-use super::incremental_types::SummaryGap;
 
 /// Default recent-window size — last N entries always retained.
 const DEFAULT_RECENT_WINDOW: usize = 8;
@@ -63,12 +62,12 @@ const RECENCY_DECAY_WEIGHT: f64 = 0.05;
 /// implementation.
 pub(super) async fn derive_incremental(
     session: &Session,
-    provider: Arc<dyn crate::provider::Provider>,
-    model: &str,
+    _provider: Arc<dyn crate::provider::Provider>,
+    _model: &str,
     system_prompt: &str,
     tools: &[ToolDefinition],
     budget_tokens: usize,
-    event_tx: Option<&mpsc::Sender<SessionEvent>>,
+    _event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
     let origin_len = session.messages.len();
     let mut clone = session.messages.clone();
@@ -125,39 +124,8 @@ pub(super) async fn derive_incremental(
     }
 
     let dropped_ranges = collect_dropped_ranges(&keep);
-    let mut gaps = Vec::new();
-    let rlm_config = session.metadata.rlm.clone();
-    let mut summary_index = session.summary_index.clone();
-
-    let observability = DerivationObservability::new(event_tx);
-
-    for tuple in &dropped_ranges {
-        let Some(range) = range_from_tuple(*tuple) else {
-            continue;
-        };
-        let node = summary_index
-            .summary_for(range, |r| {
-                produce_summary(
-                    &clone,
-                    r,
-                    512,
-                    Granularity::Phase,
-                    session.summary_index.generation(),
-                    Arc::clone(&provider),
-                    model,
-                    &rlm_config,
-                    &session.id,
-                    session.metadata.subcall_provider.clone(),
-                    session.metadata.subcall_model_name.clone(),
-                    observability.template(),
-                )
-            })
-            .await?;
-        gaps.push(SummaryGap {
-            range,
-            content: node.content,
-        });
-    }
+    let prepared = crate::session::index_produce::proactive::prepared_index(session).await;
+    let gaps = prepared_gaps::select(&prepared, &dropped_ranges);
     let (mut messages, _, mut origins) = interleave(&clone, &keep, &gaps);
     repair_with_origins(&mut messages, &mut origins);
     let mut resolutions: Vec<ResidencyLevel> = messages.iter().map(residency_for_message).collect();
@@ -185,10 +153,8 @@ pub(super) async fn derive_incremental(
 
 /// Build a relevance signature from the most recent user turn.
 fn task_signature(messages: &[Message]) -> RelevanceMeta {
-    messages
-        .iter()
-        .rev()
-        .find(|m| matches!(m.role, Role::User))
+    super::active_tail::active_user_tail_start(messages, 0)
+        .and_then(|idx| messages.get(idx))
         .map(extract)
         .unwrap_or_default()
 }
@@ -258,9 +224,6 @@ fn collect_dropped_ranges(keep: &[bool]) -> Vec<(usize, usize)> {
     }
     ranges
 }
-
-/// Default per-policy budget when the variant carries `budget_tokens: 0`.
-pub(super) const DEFAULT_INCREMENTAL_BUDGET: usize = 16_000;
 
 #[cfg(test)]
 mod tests {

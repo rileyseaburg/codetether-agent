@@ -27,7 +27,7 @@ pub mod persistence_cap;
 pub mod prompt;
 pub mod prompt_call;
 pub mod prompt_events;
-#[path = "prompt_too_long/mod.rs"]
+mod prompt_loop;
 pub(crate) mod prompt_too_long;
 pub mod provider;
 pub(crate) mod publish_user_prompt;
@@ -54,13 +54,4 @@ pub mod validation;
 mod workspace_tools;
 
 #[cfg(test)]
-mod prompt_events_test_provider;
-#[cfg(test)]
-mod prompt_events_tests;
-#[cfg(test)]
-#[path = "repeat_guard_tests.rs"]
-mod repeat_guard_tests;
-#[cfg(test)]
-mod retry_error_tests;
-#[cfg(test)]
-mod validation_tests;
+include!("tests_manifest.rs");

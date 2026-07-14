@@ -5,16 +5,14 @@
 //! a [`TuiSessionHandle`], forwards streamed [`SessionEvent`] values to the TUI,
 //! and emits [`SessionNotice`] messages when session ownership changes.
 //!
-//! The runtime keeps cancellation state local to the spawned task so callers can
-//! request cancellation without sharing prompt-execution internals.
+//! The runtime shares only a focused cancellation signal with its handle so key
+//! handlers can interrupt immediately without waiting on the command queue.
 
-use std::sync::Arc;
-
-use tokio::sync::{Notify, mpsc};
+use tokio::sync::mpsc;
 
 use crate::session::SessionEvent;
 
-use super::{SessionCommand, SessionNotice, TuiSessionHandle};
+use super::{SessionCommand, SessionNotice, TuiSessionHandle, active_cancel::ActiveCancel};
 
 /// Spawn the TUI-owned session runtime task.
 ///
@@ -42,8 +40,9 @@ pub(crate) fn spawn(
     notice_tx: mpsc::Sender<SessionNotice>,
 ) -> TuiSessionHandle {
     let (cmd_tx, cmd_rx) = mpsc::channel(8);
-    tokio::spawn(run(cmd_rx, event_tx, notice_tx));
-    TuiSessionHandle::new(cmd_tx)
+    let active_cancel = ActiveCancel::default();
+    tokio::spawn(run(cmd_rx, event_tx, notice_tx, active_cancel.clone()));
+    TuiSessionHandle::new(cmd_tx, active_cancel)
 }
 
 /// Run the session runtime command loop until shutdown or channel closure.
@@ -58,6 +57,7 @@ pub(crate) fn spawn(
 /// * `cmd_rx` - Receiver for runtime commands.
 /// * `event_tx` - Sender used by prompt execution for streamed session events.
 /// * `notice_tx` - Sender used for runtime lifecycle notices.
+/// * `active_cancel` - Shared direct signal for the current prompt.
 ///
 /// # Side Effects
 ///
@@ -68,17 +68,17 @@ async fn run(
     mut cmd_rx: mpsc::Receiver<SessionCommand>,
     event_tx: mpsc::Sender<SessionEvent>,
     notice_tx: mpsc::Sender<SessionNotice>,
+    active_cancel: ActiveCancel,
 ) {
     let (done_tx, mut done_rx) = mpsc::channel(1);
-    let mut cancel: Option<Arc<Notify>> = None;
     loop {
         tokio::select! {
             Some(command) = cmd_rx.recv() => {
-                if super::loop_step::handle(command, &mut cancel, &event_tx, &notice_tx, &done_tx).await {
+                if super::loop_step::handle(command, &active_cancel, &event_tx, &notice_tx, &done_tx).await {
                     break;
                 }
             }
-            Some(()) = done_rx.recv() => cancel = None,
+            Some(()) = done_rx.recv() => active_cancel.clear(),
             else => break,
         }
     }

@@ -68,8 +68,8 @@ pub fn format_reset_marker(summary: &str, bytes: usize) -> String {
          The agent requested a Lu et al. (arXiv:2510.06727) context \
          reset. Everything older than this point should be treated as \
          summarised by the text below. The canonical transcript is \
-         preserved on disk; call `session_recall` for dropped \
-         details.\n\
+         preserved on disk; use `session_recall` for dropped details \
+         only when the user allows history access.\n\
          \n\
          bytes={bytes}\n\
          \n\
@@ -98,8 +98,8 @@ impl Tool for ContextResetTool {
          decisions, open questions, and any must-remember details. The \
          tool records the reset and returns a `[CONTEXT RESET]` marker \
          that will become the anchor for the next turn. The canonical \
-         chat history is preserved on disk — call `session_recall` if \
-         you later need a specific detail you dropped."
+         chat history is preserved on disk — use `session_recall` only \
+         when the user allows history access."
     }
 
     fn parameters(&self) -> Value {

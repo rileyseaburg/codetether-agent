@@ -14,29 +14,15 @@ impl SwarmWorktrees {
             tracing::info!(worktree_path = %wt.path.display(), "Keeping failed swarm worktree");
             return;
         }
-        match self.mgr.merge(&wt.name).await {
-            Ok(merge) if merge.success => {
-                result
-                    .output
-                    .push_str(&format!("\n\n--- Merge Result ---\n{}", merge.summary));
-                if let Err(error) = self.mgr.cleanup(&wt.name).await {
-                    tracing::warn!(error = %error, "Failed to cleanup swarm worktree");
-                }
-            }
-            Ok(merge) => {
-                result.success = false;
-                result.error = Some(merge.summary.clone());
-                result
-                    .output
-                    .push_str(&format!("\n\n--- Merge Failed ---\n{}", merge.summary));
-            }
-            Err(error) => mark_merge_error(result, error),
+        if let Err(error) = crate::swarm::worktree_commit::prepare(&wt, &result.task_id).await {
+            super::integrate::error(result, error);
+            return;
         }
+        let contributed = match crate::swarm::worktree_branch::has_net_changes(&self.mgr, &wt).await
+        {
+            Ok(contributed) => contributed,
+            Err(error) => return super::integrate::error(result, error),
+        };
+        super::integrate::apply(self, index, result, &wt, contributed).await;
     }
-}
-
-fn mark_merge_error(result: &mut TaskResult, error: anyhow::Error) {
-    tracing::error!(error = %error, "Failed to merge swarm worktree");
-    result.success = false;
-    result.error = Some(format!("worktree merge failed: {error}"));
 }

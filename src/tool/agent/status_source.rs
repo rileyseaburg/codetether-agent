@@ -1,6 +1,6 @@
 //! Reads the latest sub-agent `TaskState` from the global bus recorder.
 //!
-//! Sub-agents publish `TaskUpdate` envelopes on `task.<name>` topics. The
+//! Sub-agents publish `TaskUpdate` envelopes on session-unique task topics. The
 //! parent agent has no live subscription, so this scans the recorder's recent
 //! history and keeps the newest update per task id.
 
@@ -9,7 +9,10 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 
 use crate::a2a::types::TaskState;
-use crate::bus::{BusMessage, global};
+use crate::bus::global;
+
+#[path = "status_filter.rs"]
+mod status_filter;
 
 /// Latest known status for one sub-agent.
 #[derive(Clone)]
@@ -19,37 +22,17 @@ pub(super) struct AgentStatus {
     pub at: DateTime<Utc>,
 }
 
-/// Return the newest `TaskUpdate` per agent name from recent bus history.
+/// Return the newest owned `TaskUpdate` per agent name from recent bus history.
 ///
 /// Agents seen only via tool activity (no `TaskUpdate` yet) are backfilled
 /// with a `Working` state so they are not misreported as idle (issue #295).
 ///
 /// Returns an empty map when no global bus is installed.
-pub(super) fn latest_states() -> HashMap<String, AgentStatus> {
-    let mut out: HashMap<String, AgentStatus> = HashMap::new();
+pub(super) fn latest_states(owners: &HashMap<String, String>) -> HashMap<String, AgentStatus> {
     let Some(bus) = global() else {
-        return out;
+        return HashMap::new();
     };
-    for env in bus.recorder.recent(1024, Some("task.")) {
-        if let BusMessage::TaskUpdate {
-            task_id,
-            state,
-            message,
-        } = env.message
-        {
-            let newer = out.get(&task_id).is_none_or(|p| env.timestamp >= p.at);
-            if newer {
-                out.insert(
-                    task_id,
-                    AgentStatus {
-                        state,
-                        summary: message,
-                        at: env.timestamp,
-                    },
-                );
-            }
-        }
-    }
-    super::status_tool_activity::backfill(&mut out);
-    out
+    let mut statuses = status_filter::collect(bus.recorder.recent(1024, Some("task.")), owners);
+    super::status_tool_activity::backfill(&mut statuses, owners.values());
+    statuses
 }

@@ -29,9 +29,9 @@ pub(super) async fn kick_off(name: &str, detach: bool) -> Result<ToolResult> {
             "Spawned @{name}. Agent will start once its current turn finishes."
         )));
     };
-    let session = store::get(name)
-        .map(|e| e.session)
-        .context(format!("Agent @{name} vanished after spawn"))?;
+    let entry = store::get(name).context(format!("Agent @{name} vanished after spawn"))?;
+    let session = entry.session;
+    let kickoff = format!("Assigned task:\n\n{}", entry.instructions);
     let registry = helpers::get_registry().await?;
     bus_publish::announce_working(name, "starting first turn");
     let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
@@ -41,10 +41,11 @@ pub(super) async fn kick_off(name: &str, detach: bool) -> Result<ToolResult> {
     }
     let handle = tokio::spawn(async move {
         session_for_task
-            .prompt_with_events(KICKOFF_MSG, tx, registry)
+            .prompt_with_events(&kickoff, tx, registry)
             .await
             .map(|_| session_for_task)
     });
+    execution_state::register(name, &handle);
     if detach {
         return Ok(message_detach::dispatch(
             name.to_string(),
@@ -56,5 +57,3 @@ pub(super) async fn kick_off(name: &str, detach: bool) -> Result<ToolResult> {
     let r = event_loop::run(&mut rx, handle).await;
     Ok(message_finalize::finalize(name.to_string(), r.0, r.1, r.2, r.3, r.4).await)
 }
-
-const KICKOFF_MSG: &str = "Begin working on your assigned task now.";

@@ -2,7 +2,6 @@
 
 use crate::provider::{ContentPart, Message, Role};
 use crate::session::ResidencyLevel;
-use crate::session::index::SummaryRange;
 
 use super::incremental_types::{MessageOrigin, SummaryGap};
 
@@ -48,9 +47,4 @@ fn summary_message(gap: &SummaryGap) -> Message {
             ),
         }],
     }
-}
-
-/// Turn a tuple range into a typed summary range.
-pub fn range_from_tuple(range: (usize, usize)) -> Option<SummaryRange> {
-    SummaryRange::new(range.0, range.1)
 }

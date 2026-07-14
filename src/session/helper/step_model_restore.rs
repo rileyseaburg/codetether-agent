@@ -9,6 +9,8 @@ use crate::session::helper::request_state::build_provider_step_state;
 use anyhow::Result;
 use std::sync::Arc;
 
+#[path = "step_prepare.rs"]
+pub(super) mod step_prepare;
 #[path = "step_restore.rs"]
 mod step_restore;
 #[path = "step_restore_apply.rs"]
@@ -35,7 +37,7 @@ pub(super) fn apply_failover(
         Arc::clone(vars.provider),
         vars.selected_provider,
         vars.model,
-        vars.cwd,
+        vars.session,
     );
     vars.provider_state.apply_to(
         vars.tool_registry,
@@ -45,5 +47,6 @@ pub(super) fn apply_failover(
         vars.advertised_tool_definitions,
         vars.system_prompt,
     );
+    step_prepare::run(vars.session, Arc::clone(vars.provider), vars.model);
     Ok(())
 }

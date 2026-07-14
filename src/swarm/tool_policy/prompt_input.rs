@@ -9,4 +9,5 @@ pub(crate) struct SystemPromptInput<'a> {
     pub context: &'a str,
     pub line_limit: Option<usize>,
     pub read_only: bool,
+    pub expects_changes: bool,
 }

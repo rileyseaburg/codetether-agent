@@ -1,5 +1,6 @@
 //! Move-based TUI session runtime.
 
+mod active_cancel;
 mod command;
 mod execute;
 mod handle;

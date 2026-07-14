@@ -1,4 +1,3 @@
-pub mod agents_cmd;
 pub mod ask;
 pub mod auto_apply;
 pub mod autochat;
@@ -21,6 +20,7 @@ pub mod impl_app;
 pub mod inbox;
 #[path = "input/mod.rs"]
 pub mod input;
+pub(crate) mod managed_agent;
 pub mod mcp;
 pub mod message_cache_invalidate;
 #[cfg(test)]

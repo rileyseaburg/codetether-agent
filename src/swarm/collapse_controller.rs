@@ -12,6 +12,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::Instant;
 
+#[path = "collapse_git_probe.rs"]
+mod collapse_git_probe;
+
 /// Multi-dimensional coherence score for a branch.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CoherenceScore {
@@ -146,7 +149,7 @@ impl CollapseController {
                 Ok(BranchObservation {
                     subtask_id,
                     branch: branch_name,
-                    compile_ok: run_cargo_check(&worktree_path)?,
+                    compile_ok: collapse_git_probe::static_clean(&worktree_path)?,
                     changed_files: collect_changed_files(&worktree_path)?,
                     changed_lines: collect_changed_lines(&worktree_path)?,
                     resource_health_score: 1.0,
@@ -390,10 +393,6 @@ impl CollapseController {
             promoted_subtask_id,
         }
     }
-}
-
-fn run_cargo_check(worktree_path: &PathBuf) -> Result<bool> {
-    super::quality_shell::cargo_check_quiet(Some(worktree_path))
 }
 
 fn collect_changed_files(worktree_path: &PathBuf) -> Result<HashSet<String>> {

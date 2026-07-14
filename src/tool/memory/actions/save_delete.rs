@@ -26,7 +26,7 @@ impl MemoryTool {
         }
         let id = {
             let mut store = self.store.lock().await;
-            store.add_embedded(entry).await
+            store.add(entry)
         };
         self.persist().await?;
         Ok(ToolResult::success(format!(

@@ -129,8 +129,8 @@ impl Tool for ContextBrowseTool {
          arXiv:2603.28052). Materializes real files under \
          `.codetether-agent/history/<session-id>/turn-NNNN-<role>.md` \
          — one per turn in the canonical transcript — and returns the \
-         body of any specific turn on request. Use this when the active \
-         context doesn't have what you need but you suspect it was said earlier. \
+         body of any specific turn on request. Use only when the user allows \
+         history access and user-designated repository sources are insufficient. \
          Distinct from `session_recall` (RLM-summarised archive) and \
          `memory` (curated notes). Actions: `list` (default) or \
          `show_turn` with an integer `turn`."

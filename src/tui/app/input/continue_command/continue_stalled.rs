@@ -23,7 +23,7 @@ pub(super) async fn resume(app: &mut App, prompt: String, runtime: &TuiSessionHa
         0,
     ));
     app.state.processing = false;
-    app.state.streaming_text.clear();
+    app.state.clear_streaming_text();
     app.state.clear_request_timing();
     app.state.status = "Continuing — resubmitting stalled turn…".to_string();
     app.state.messages.push(ChatMessage::new(

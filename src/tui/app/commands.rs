@@ -321,7 +321,7 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
     }
 
     session.updated_at = chrono::Utc::now();
-    app.state.streaming_text.clear();
+    app.state.clear_streaming_text();
     app.state.scroll_to_bottom();
 
     if let Err(error) = session.save().await {
@@ -447,7 +447,7 @@ async fn handle_fork_command(app: &mut App, _cwd: &Path, session: &mut Session, 
     let forked_tui = app.state.messages[..tui_cut].to_vec();
     app.state.messages = forked_tui;
     app.state.session_id = Some(session.id.clone());
-    app.state.streaming_text.clear();
+    app.state.clear_streaming_text();
     app.state.clear_request_timing();
     app.state.scroll_to_bottom();
     app.state.set_view_mode(ViewMode::Chat);
@@ -954,7 +954,7 @@ pub async fn handle_slash_command(
                     }
                     app.state.session_id = Some(session.id.clone());
                     app.state.messages.clear();
-                    app.state.streaming_text.clear();
+                    app.state.clear_streaming_text();
                     app.state.processing = false;
                     app.state.clear_request_timing();
                     app.state.scroll_to_bottom();
@@ -1010,18 +1010,23 @@ pub async fn handle_slash_command(
             // No args → open interactive form
             crate::tui::app::spawn_form::open_spawn_form(app);
         } else {
-            handle_spawn_command(app, rest).await;
+            handle_spawn_command(app, session, cwd, rest).await;
         }
         return;
     }
 
     if let Some(rest) = command_with_optional_args(&normalized, "/kill") {
-        handle_kill_command(app, rest);
+        crate::tui::app::managed_agent::command::admin::kill(app, session, rest).await;
         return;
     }
 
     if command_with_optional_args(&normalized, "/agents").is_some() {
-        handle_agents_command(app);
+        crate::tui::app::managed_agent::command::admin::list(app);
+        return;
+    }
+
+    if let Some(rest) = command_with_optional_args(&normalized, "/agent") {
+        crate::tui::app::managed_agent::command::handle(app, session, rest).await;
         return;
     }
 
@@ -1079,37 +1084,6 @@ pub async fn handle_slash_command(
     }
 }
 
-fn handle_kill_command(app: &mut App, rest: &str) {
-    let name = rest.trim();
-    if name.is_empty() {
-        app.state.status = "Usage: /kill <name>".to_string();
-        return;
-    }
-
-    if app.state.spawned_agents.remove(name).is_some() {
-        if app.state.active_spawned_agent.as_deref() == Some(name) {
-            app.state.active_spawned_agent = None;
-        }
-        app.state.streaming_agent_texts.remove(name);
-        app.state.status = format!("Agent '{name}' removed.");
-        push_system_message(app, format!("Agent '{name}' has been shut down."));
-    } else {
-        app.state.status = format!("Agent '{name}' not found.");
-    }
-}
-
-fn handle_agents_command(app: &mut App) {
-    let lines = super::agents_cmd::build_agent_list(app);
-    if lines.is_empty() {
-        app.state.status = "No spawned agents.".to_string();
-        push_system_message(app, "No spawned agents. Use /spawn or the agent tool.");
-    } else {
-        let count = lines.len();
-        let body = lines.join("\n");
-        app.state.status = format!("{count} spawned agent(s)");
-        push_system_message(app, format!("Spawned agents ({count}):\n{body}"));
-    }
-}
 async fn handle_go_command(
     app: &mut App,
     session: &mut Session,

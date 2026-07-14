@@ -16,6 +16,8 @@ pub(in crate::tool::swarm_execute) struct SwarmWorktrees {
     pub(super) mgr: Arc<WorktreeManager>,
     /// Per-participant worktree metadata, indexed by swarm task position.
     pub(super) infos: Vec<Option<WorktreeInfo>>,
+    pub(super) expects_changes: Vec<bool>,
+    pub(super) verification: Vec<bool>,
 }
 
 impl SwarmWorktrees {
@@ -55,5 +57,13 @@ impl SwarmWorktrees {
     /// This method performs no filesystem access and has no side effects.
     pub(super) fn info(&self, index: usize) -> Option<&WorktreeInfo> {
         self.infos.get(index).and_then(Option::as_ref)
+    }
+
+    pub(in crate::tool::swarm_execute) fn expects_changes(&self, index: usize) -> bool {
+        self.expects_changes.get(index).copied().unwrap_or(true)
+    }
+
+    pub(in crate::tool::swarm_execute) fn is_verification(&self, index: usize) -> bool {
+        self.verification.get(index).copied().unwrap_or(false)
     }
 }

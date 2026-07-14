@@ -2,7 +2,7 @@
 //!
 //! Opened via `/spawn` (no arguments). Submitting the form
 //! reuses the existing [`crate::tui::app::spawn_agent::handle_spawn_command`]
-//! path so spawn logic is never duplicated.
+//! path so managed-agent dispatch is never duplicated.
 
 pub mod keys;
 pub mod render;
@@ -12,7 +12,7 @@ pub mod state;
 mod state_tests;
 pub mod submit;
 
-pub use keys::handle_spawn_form_key;
+pub(crate) use keys::handle_spawn_form_key;
 pub use render::render_spawn_form_if_needed;
 pub use state::{SpawnField, SpawnFormState};
 pub use submit::submit_spawn_form;

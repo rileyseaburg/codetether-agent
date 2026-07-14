@@ -6,7 +6,7 @@ pub(crate) fn render(beliefs: &[Belief]) -> String {
         return "Belief-guided recall: no active belief keywords.".to_string();
     }
     format!(
-        "Belief-guided recall: prioritize memories and session_recall queries related to: {}.",
+        "Belief-guided recall, when prior-context access is allowed: prioritize memories and session_recall queries related to: {}.",
         keywords.join(", ")
     )
 }

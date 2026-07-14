@@ -8,9 +8,8 @@
 //!
 //! ## Variants
 //!
-//! * [`DerivePolicy::Legacy`] — the Phase A behaviour. Current default
-//!   until the Pareto benchmark ([plan step 23]) demonstrates one of
-//!   the alternatives is dominant.
+//! * [`DerivePolicy::Legacy`] — the opt-in Phase A compaction behaviour.
+//!   Retained for compatibility and explicit operator overrides.
 //! * [`DerivePolicy::Reset`] — **Lu et al.** reset-to-(prompt, summary)
 //!   semantic from arXiv:2510.06727. When the token estimate exceeds
 //!   the threshold, compresses the prefix to a single summary message
@@ -19,10 +18,9 @@
 //!   [`derive_with_policy`](super::context::derive_with_policy) for
 //!   the implementation.
 //! * [`DerivePolicy::Incremental`] — Liu et al. select-then-pack
-//!   relevance scoring against a per-(message) [`RelevanceMeta`]
-//!   sidecar. Step-18-driven hierarchical summary lookup is wired
-//!   in a later commit; until then the policy returns the selected
-//!   tail without summary fillers.
+//!   relevance scoring against a per-message [`RelevanceMeta`] sidecar.
+//!   A continuous proactive RLM worker prepares hierarchical summaries;
+//!   request derivation consumes only those ready artifacts.
 //! * [`DerivePolicy::OracleReplay`] *(reserved, Phase B)* — ClawVM
 //!   replay oracle with `h`-turn future-demand lookahead.
 //!
@@ -46,8 +44,8 @@ use serde::{Deserialize, Serialize};
 
 /// Per-session derivation strategy selector.
 ///
-/// Defaults to [`DerivePolicy::Legacy`] so existing code paths that do
-/// not opt into a new policy get the Phase A behaviour unchanged.
+/// Defaults to [`DerivePolicy::Incremental`] so RLM prepares relevant
+/// context continuously instead of waiting for compaction pressure.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "policy", rename_all = "snake_case")]
 pub enum DerivePolicy {
@@ -117,7 +115,7 @@ impl DerivePolicy {
 
 impl Default for DerivePolicy {
     fn default() -> Self {
-        DerivePolicy::Legacy
+        DerivePolicy::Incremental { budget_tokens: 0 }
     }
 }
 
@@ -126,8 +124,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_is_legacy() {
-        assert!(matches!(DerivePolicy::default(), DerivePolicy::Legacy));
+    fn default_is_incremental() {
+        assert_eq!(DerivePolicy::default().kind(), "incremental");
     }
 
     #[test]

@@ -95,7 +95,7 @@ impl Default for super::AppState {
             cached_message_lines: Vec::new(),
             cached_messages_len: 0,
             cached_max_width: 0,
-            cached_streaming_snapshot: None,
+            cached_streaming_current: false,
             cached_processing: false,
             cached_tool_preview_scroll: 0,
             cached_frozen_len: 0,

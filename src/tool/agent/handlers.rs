@@ -4,15 +4,15 @@ use super::store;
 use crate::tool::ToolResult;
 use serde_json::{Value, json};
 
-/// Lists all currently spawned sub-agents as a JSON array.
+/// Lists sub-agents owned by the calling session as a JSON array.
 ///
 /// # Examples
 ///
 /// ```ignore
 /// let result = handle_list();
 /// ```
-pub(super) fn handle_list() -> ToolResult {
-    let agents = store::list();
+pub(super) fn handle_list(parent: Option<&str>) -> ToolResult {
+    let agents = store::list_for_parent(parent);
     if agents.is_empty() {
         return ToolResult::success("No sub-agents spawned. Use action \"spawn\".");
     }
@@ -32,12 +32,14 @@ pub(super) fn handle_list() -> ToolResult {
 /// ```ignore
 /// let result = handle_kill("reviewer");
 /// ```
-pub(super) fn handle_kill(name: &str) -> ToolResult {
-    match store::remove(name) {
+pub(super) fn handle_kill(name: &str, parent: Option<&str>) -> ToolResult {
+    match store::get_for_parent(name, parent) {
         Some(_) => {
-            tracing::info!(agent = %name, "Sub-agent killed");
-            super::bus_publish::announce_done(name, true, "killed");
-            ToolResult::success(format!("Removed @{name}"))
+            let aborted = super::execution_state::abort(name);
+            tracing::info!(agent = %name, aborted, "Sub-agent killed");
+            super::bus_publish::announce_done(name, false, "killed by user");
+            store::remove(name);
+            ToolResult::success(format!("Terminated and removed @{name}"))
         }
         None => ToolResult::error(format!("Agent @{name} not found")),
     }

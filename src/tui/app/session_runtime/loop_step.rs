@@ -5,13 +5,11 @@
 //! path, while cancellation and shutdown commands notify the active executor via
 //! its shared [`Notify`] handle.
 
-use std::sync::Arc;
-
-use tokio::sync::{Notify, mpsc};
+use tokio::sync::mpsc;
 
 use crate::session::SessionEvent;
 
-use super::{SessionCommand, SessionNotice};
+use super::{SessionCommand, SessionNotice, active_cancel::ActiveCancel};
 
 /// Handles one command received by the session runtime loop.
 ///
@@ -23,8 +21,7 @@ use super::{SessionCommand, SessionNotice};
 /// # Arguments
 ///
 /// * `command` - Command to apply to the current session runtime state.
-/// * `cancel` - Cancellation notifier for the active prompt execution. `None`
-///   means there is no running prompt to cancel.
+/// * `cancel` - Shared cancellation signal for the active prompt execution.
 /// * `event_tx` - Channel used by prompt execution to publish streamed
 ///   [`SessionEvent`] values.
 /// * `notice_tx` - Channel used to publish lifecycle notices for the session
@@ -44,7 +41,7 @@ use super::{SessionCommand, SessionNotice};
 /// cancellation notifier depending on the command.
 pub(super) async fn handle(
     command: SessionCommand,
-    cancel: &mut Option<Arc<Notify>>,
+    cancel: &ActiveCancel,
     event_tx: &mpsc::Sender<SessionEvent>,
     notice_tx: &mpsc::Sender<SessionNotice>,
     done_tx: &mpsc::Sender<()>,
@@ -66,7 +63,7 @@ pub(super) async fn handle(
 ///
 /// # Arguments
 ///
-/// * `cancel` - Optional cancellation handle shared with the in-flight executor.
+/// * `cancel` - Cancellation handle shared with the in-flight executor.
 /// * `should_break` - Whether the runtime loop should stop after the
 ///   notification attempt.
 ///
@@ -74,9 +71,7 @@ pub(super) async fn handle(
 ///
 /// Returns `should_break` unchanged so callers can combine cancellation
 /// notification with command-loop control.
-fn notify_cancel(cancel: &Option<Arc<Notify>>, should_break: bool) -> bool {
-    if let Some(notify) = cancel.as_ref() {
-        notify.notify_one();
-    }
+fn notify_cancel(cancel: &ActiveCancel, should_break: bool) -> bool {
+    cancel.notify();
     should_break
 }

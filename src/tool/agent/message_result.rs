@@ -12,6 +12,11 @@
 use crate::tool::ToolResult;
 use serde_json::{Value, json};
 
+#[path = "message_result/deliverable.rs"]
+mod deliverable;
+
+pub(super) use deliverable::{contract as deliverable_contract, effective_error};
+
 /// Builds the final tool result for a sub-agent message exchange.
 ///
 /// # Examples
@@ -35,13 +40,12 @@ pub(super) fn build_message_result(
         output["tool_calls"] = json!(tools);
     }
     if let Some(error) = error {
-        if fallback.is_empty() {
-            return ToolResult::error(format!(
-                "Agent @{} failed: {error}",
-                output["agent"].as_str().unwrap_or("unknown")
-            ));
-        }
         output["warning"] = json!(error);
+        return ToolResult::error(serde_json::to_string_pretty(&output).unwrap_or(fallback));
     }
     ToolResult::success(serde_json::to_string_pretty(&output).unwrap_or(fallback))
 }
+
+#[cfg(test)]
+#[path = "message_result_tests.rs"]
+mod tests;

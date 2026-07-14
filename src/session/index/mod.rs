@@ -18,6 +18,8 @@
 pub mod cache;
 pub mod cache_async;
 pub mod cache_mut;
+#[path = "../recall/mod.rs"]
+pub(crate) mod recall;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

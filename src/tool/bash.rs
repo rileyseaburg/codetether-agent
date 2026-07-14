@@ -15,8 +15,12 @@ use tokio::process::Command;
 
 use crate::telemetry::{TOOL_EXECUTIONS, ToolExecution, record_persistent};
 
+#[path = "bash_auth_risk.rs"]
+mod bash_auth_risk;
 #[path = "bash_capture.rs"]
 mod bash_capture;
+#[path = "bash_interactive.rs"]
+mod bash_interactive;
 #[path = "bash_output.rs"]
 mod bash_output;
 #[path = "bash_sandbox_config.rs"]
@@ -74,42 +78,7 @@ impl BashTool {
     }
 }
 
-fn interactive_auth_risk_reason(command: &str) -> Option<&'static str> {
-    let lower = command.to_ascii_lowercase();
-
-    let has_sudo = lower.starts_with("sudo ")
-        || lower.contains(";sudo ")
-        || lower.contains("&& sudo ")
-        || lower.contains("|| sudo ")
-        || lower.contains("| sudo ");
-    let sudo_non_interactive =
-        lower.contains("sudo -n") || lower.contains("sudo --non-interactive");
-    if has_sudo && !sudo_non_interactive {
-        return Some("Command uses sudo without non-interactive mode (-n).");
-    }
-
-    let has_ssh_family = lower.starts_with("ssh ")
-        || lower.contains(";ssh ")
-        || lower.starts_with("scp ")
-        || lower.contains(";scp ")
-        || lower.starts_with("sftp ")
-        || lower.contains(";sftp ")
-        || lower.contains(" rsync ");
-    if has_ssh_family && !lower.contains("batchmode=yes") {
-        return Some("SSH-family command may prompt for a password (add -o BatchMode=yes).");
-    }
-
-    if lower.starts_with("su ")
-        || lower.contains(";su ")
-        || lower.contains(" passwd ")
-        || lower.starts_with("passwd")
-        || lower.contains("ssh-add")
-    {
-        return Some("Command is interactive and may require a password prompt.");
-    }
-
-    None
-}
+use bash_auth_risk::reason as interactive_auth_risk_reason;
 
 fn looks_like_auth_prompt(output: &str) -> bool {
     let lower = output.to_ascii_lowercase();
@@ -224,9 +193,13 @@ impl Tool for BashTool {
             return Ok(blocked);
         }
 
+        if let Some(reason) = bash_interactive::shell_reason(command) {
+            return Ok(ToolResult::error(format!(
+                "{reason} Use a noninteractive command such as `bash -c '...'`."
+            )));
+        }
         if let Some(reason) = interactive_auth_risk_reason(command) {
-            // Log warning but don't block anymore per user request
-            tracing::warn!("Interactive auth risk detected: {}", reason);
+            tracing::warn!(reason, "Interactive auth risk detected");
         }
 
         // Sandboxed execution path: restricted env, resource limits, audit logged
@@ -326,6 +299,7 @@ impl Tool for BashTool {
             bash_sandbox_config::unsafe_reason_for_args(self.sandboxed, command, &args).await;
         let shell = super::bash_shell::resolve();
         let mut cmd = Command::new(&shell.program);
+        cmd.kill_on_drop(true);
         cmd.args(&shell.prefix_args).arg(&wrapped_command);
         super::bash_noninteractive::configure(&mut cmd);
         if let Some((codetether_bin, path)) = codetether_runtime_env() {

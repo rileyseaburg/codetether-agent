@@ -4,11 +4,13 @@ use super::event_loop;
 use super::execution_state;
 use super::helpers;
 use super::message_finalize;
-use super::store;
 use crate::session::SessionEvent;
 use crate::tool::ToolResult;
 use anyhow::{Context, Result};
 use tokio::sync::mpsc;
+
+#[path = "message/session.rs"]
+mod task_session;
 
 /// Sends a message to an existing spawned sub-agent and returns its response.
 ///
@@ -32,26 +34,17 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
             "Agent @{name} is busy processing another message; retry shortly"
         )));
     };
-
-    let session = store::get(&name)
-        .map(|e| e.session)
-        .context(format!("Agent @{name} not found"))?;
+    let mut session_for_task = task_session::load(&name, params).await?;
     let registry = helpers::get_registry().await?;
     super::bus_publish::announce_working(&name, "processing message");
     let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
-    let mut session_for_task = session.clone();
-    // `bus` is `#[serde(skip)]`, so reloaded sessions start with `None`.
-    // Re-attach the process-wide bus so sub-agent traffic is visible to peers.
-    if session_for_task.bus.is_none() {
-        session_for_task.bus = crate::bus::global();
-    }
-
     let handle = tokio::spawn(async move {
         session_for_task
             .prompt_with_events(&message, tx, registry)
             .await
             .map(|_| session_for_task)
     });
+    execution_state::register(&name, &handle);
 
     if params.detach_or_default() {
         return Ok(super::message_detach::dispatch(

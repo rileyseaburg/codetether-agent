@@ -9,7 +9,7 @@ pub(super) use crate::{
         worker_workspace_record::{RegisteredWorkspaceRecord, fetch_workspace_record},
     },
     provenance::{ensure_provenance_trailers, install_commit_msg_hook},
-    session::helper::runtime::enrich_tool_input_with_runtime_context,
+    session::helper::runtime::enrich_tool_input_for_session_model,
 };
 pub(super) use codetether_a2a_worker_core::{
     CognitionLatestSnapshot, CognitionStatusSnapshot, export_worker_runtime_env, is_forage_agent,

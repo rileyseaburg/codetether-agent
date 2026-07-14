@@ -18,8 +18,8 @@ pub(super) fn build_reset_summary_message(summary: &str, toc: &str) -> Message {
             text: format!(
                 "{RESET_MARKER_PREFIX}\nEverything older than the preserved active-task tail \
                  was compressed into the summary below. Recent task-defining turns stay \
-                 verbatim — call `session_recall` if you need \
-                 a specific dropped detail.\n\n{summary}{toc}"
+                 verbatim — use `session_recall` for a dropped detail only \
+                 when the user allows history access.\n\n{summary}{toc}"
             ),
         }],
     }

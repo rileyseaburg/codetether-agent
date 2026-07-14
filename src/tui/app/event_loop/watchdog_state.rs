@@ -18,7 +18,7 @@ pub(in crate::tui::app::event_loop) fn apply_watchdog_state(
     let count = app.state.main_watchdog_restart_count;
     app.state.watchdog_notification = Some(notif);
     app.state.processing = false;
-    app.state.streaming_text.clear();
+    app.state.clear_streaming_text();
     app.state.clear_request_timing();
     app.state.status = format!("Watchdog timeout — restarting (attempt {count})");
     app.state.messages.push(ChatMessage::new(

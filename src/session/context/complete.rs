@@ -4,14 +4,15 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use crate::provider::{CompletionResponse, Provider, ToolDefinition};
-use crate::session::Session;
-use crate::session::helper::prompt_too_long;
-
 use super::options::RequestOptions;
 use super::request::build_request_with_context;
 
-/// Complete a derived-context request, retrying with forced compaction.
+#[path = "complete_recovery.rs"]
+mod complete_recovery;
+use crate::provider::{CompletionResponse, Provider, ToolDefinition};
+use crate::session::Session;
+
+/// Complete a derived-context request, prioritizing prepared RLM recovery.
 pub async fn complete_with_context(
     provider: Arc<dyn Provider>,
     session: &Session,
@@ -34,13 +35,13 @@ pub async fn complete_with_context(
         match provider.complete(request).await {
             Ok(response) => return Ok(response),
             Err(error) => {
-                let Some(keep_last) = prompt_too_long::keep_last(&error, attempt) else {
+                let policy = opts
+                    .policy_override
+                    .unwrap_or_else(|| super::policy::effective_policy(session, model));
+                let Some(next) = complete_recovery::next(&error, attempt, policy, opts) else {
                     return Err(error);
                 };
-                opts = RequestOptions {
-                    force_keep_last: Some(keep_last),
-                    ..opts
-                };
+                opts = next;
                 attempt += 1;
             }
         }

@@ -30,7 +30,7 @@ pub fn view_mode_shortcut_hint(mode: ViewMode) -> &'static str {
     match mode {
         ViewMode::Chat => "Default (Esc)",
         ViewMode::Sessions => "/sessions",
-        ViewMode::Swarm => "Ctrl+W",
+        ViewMode::Swarm => "Ctrl+S",
         ViewMode::Ralph => "/ralph",
         ViewMode::Bus => "Ctrl+L",
         ViewMode::Subagents => "/agents",

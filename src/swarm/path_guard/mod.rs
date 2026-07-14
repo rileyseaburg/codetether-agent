@@ -4,11 +4,13 @@ use anyhow::Result;
 use serde_json::Value;
 use std::path::Path;
 
+mod authoritative;
 mod inspect;
 mod normalize;
 mod spec;
 
 pub fn normalize_tool_args(tool: &str, args: &mut Value, root: &Path) -> Result<()> {
+    authoritative::apply(tool, args, root);
     let specs = spec::field_specs(tool, args)?;
     for field in &specs {
         normalize::field(args, field, root)?;
@@ -17,6 +19,9 @@ pub fn normalize_tool_args(tool: &str, args: &mut Value, root: &Path) -> Result<
     Ok(())
 }
 
+#[cfg(test)]
+#[path = "../path_guard_authoritative_tests.rs"]
+mod authoritative_tests;
 #[cfg(test)]
 #[path = "../path_guard_tests.rs"]
 mod tests;

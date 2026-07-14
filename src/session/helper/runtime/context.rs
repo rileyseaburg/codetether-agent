@@ -35,10 +35,8 @@ pub fn enrich_tool_input_with_runtime_context(
     let mut enriched = tool_input.clone();
     if let Value::Object(ref mut obj) = enriched {
         insert_field(obj, "__ct_current_model", current_model);
-        obj.entry("__ct_session_id".to_string())
-            .or_insert_with(|| json!(session_id));
-        obj.entry("__ct_agent_name".to_string())
-            .or_insert_with(|| json!(agent_name));
+        obj.insert("__ct_session_id".to_string(), json!(session_id));
+        obj.insert("__ct_agent_name".to_string(), json!(agent_name));
         if let Some(provenance) = provenance {
             insert_provenance_fields(obj, provenance);
         }

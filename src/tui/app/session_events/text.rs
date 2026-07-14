@@ -10,14 +10,15 @@ pub(super) fn chunk(app: &mut App, chunk: String) {
     }
     app.state.note_text_token();
     let chunk_len = chunk.len();
-    app.state.streaming_text = super::text_bound::bounded_chunk(chunk);
+    app.state
+        .replace_streaming_text(super::text_bound::bounded_chunk(chunk));
     app.state.record_streaming_chars(chunk_len);
     app.state.status = format!("Streaming reply… {} chars", app.state.streaming_text.len());
 }
 
 pub(super) fn complete(app: &mut App, text: String) {
     app.state.note_text_token();
-    app.state.streaming_text.clear();
+    app.state.clear_streaming_text();
     app.state
         .messages
         .push(ChatMessage::new(MessageType::Assistant, text));

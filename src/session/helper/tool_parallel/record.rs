@@ -20,14 +20,7 @@ pub(crate) async fn try_execute(
     event_tx: &mpsc::Sender<SessionEvent>,
     no_match_count: &mut u32,
 ) -> bool {
-    let Some(jobs) = super::eligibility::prepare(
-        calls,
-        cwd,
-        session.metadata.model.as_deref(),
-        &session.id,
-        &session.agent,
-        session.metadata.provenance.as_ref(),
-    ) else {
+    let Some(jobs) = super::eligibility::prepare(calls, cwd, session) else {
         return false;
     };
     let _ = session.save().await;

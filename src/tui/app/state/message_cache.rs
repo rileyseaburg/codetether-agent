@@ -25,7 +25,7 @@ impl super::AppState {
             && self.cached_messages_len == self.messages.len()
             && self.cached_max_width == max_width
             && self.cached_tool_preview_scroll == self.tool_preview_scroll
-            && self.cached_streaming_snapshot.as_deref() == Some(&self.streaming_text)
+            && (!self.processing || self.cached_streaming_current)
             && self.cached_processing == self.processing
     }
 
@@ -72,18 +72,18 @@ impl super::AppState {
     /// Stores freshly rebuilt chat lines and their validation metadata.
     ///
     /// `lines` must have been rendered for `max_width`. The method records the
-    /// current message count, processing flag, and streaming text snapshot so a
+    /// current message count, processing flag, and streaming-cache state so a
     /// later frame can decide whether the buffer is still safe to reuse.
     pub(crate) fn store_message_lines(&mut self, lines: Vec<Line<'static>>, max_width: usize) {
         self.cached_message_lines = lines;
         self.cached_messages_len = self.messages.len();
         self.cached_max_width = max_width;
         self.cached_tool_preview_scroll = self.tool_preview_scroll;
-        self.cached_streaming_snapshot = if self.processing {
-            Some(self.streaming_text.clone())
-        } else {
-            None
-        };
+        self.cached_streaming_current = true;
         self.cached_processing = self.processing;
     }
 }
+
+#[cfg(test)]
+#[path = "message_cache_tests.rs"]
+mod tests;

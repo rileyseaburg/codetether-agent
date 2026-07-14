@@ -8,6 +8,7 @@ const FAST_MODELS: &[&str] = &[
     "gpt-5.6-luna",
 ];
 
+/// Reports whether a model supports the priority-backed Fast alias.
 pub(crate) fn supports_fast(model: &str) -> bool {
     FAST_MODELS.contains(&base_model(model))
 }

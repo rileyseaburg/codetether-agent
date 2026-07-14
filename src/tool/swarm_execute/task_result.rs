@@ -1,6 +1,19 @@
 //! Serializable outcome for one `swarm_execute` worker.
 
 use super::model_selection::ModelSelection;
+use crate::swarm::executor::AgentLoopExit;
+
+pub(super) fn completed(exit: AgentLoopExit, output: &str) -> bool {
+    failure(exit, output).is_none()
+}
+
+pub(super) fn failure(exit: AgentLoopExit, output: &str) -> Option<String> {
+    match exit {
+        AgentLoopExit::Completed => crate::swarm::tool_policy::deliverable_error(output),
+        AgentLoopExit::MaxStepsReached => Some("Sub-agent reached its step limit".into()),
+        AgentLoopExit::TimedOut => Some("Sub-agent timed out".into()),
+    }
+}
 
 #[derive(serde::Serialize)]
 pub(super) struct TaskResult {

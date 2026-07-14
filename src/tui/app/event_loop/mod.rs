@@ -51,7 +51,7 @@ pub(crate) async fn run_event_loop(
     let mut setup = setup::create();
 
     loop {
-        tick::before_draw(app, &worker_bridge);
+        tick::before_draw(app, &worker_bridge, &mut setup.worker_sync_cursor);
         if app.state.needs_redraw {
             crate::tui::app::safe_draw::draw_ui(terminal, app, slot.view())?;
             app.state.needs_redraw = false;

@@ -10,8 +10,13 @@
 //!
 //! All K8s operations are audit-logged.
 
+mod coordination;
+mod deployment_patch;
+mod deployment_restart;
+mod deployment_scale;
 mod list_pods;
 mod list_pods_selector;
+mod subagent_name;
 
 use anyhow::{Context, Result, anyhow};
 use chrono::Utc;
@@ -19,10 +24,9 @@ use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::core::v1::Pod;
 use kube::{
     Api, Client, Config as KubeConfig,
-    api::{ListParams, LogParams, Patch, PatchParams, PostParams},
+    api::{ListParams, LogParams, PostParams},
 };
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -88,6 +92,7 @@ pub struct K8sManager {
     pod_name: Option<String>,
     deployment_name: Option<String>,
     actions: Arc<RwLock<Vec<DeployAction>>>,
+    coordinator: coordination::MutationCoordinator,
 }
 
 impl std::fmt::Debug for K8sManager {
@@ -103,35 +108,7 @@ impl std::fmt::Debug for K8sManager {
 
 impl K8sManager {
     pub fn subagent_pod_name(subagent_id: &str) -> String {
-        // DNS-1123 label: lowercase alphanumeric or '-', max 63 chars.
-        let mut sanitized: String = subagent_id
-            .to_ascii_lowercase()
-            .chars()
-            .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
-            .collect();
-        sanitized = sanitized.trim_matches('-').to_string();
-        if sanitized.is_empty() {
-            sanitized = "subagent".to_string();
-        }
-
-        let mut hasher = Sha256::new();
-        hasher.update(subagent_id.as_bytes());
-        let hash_hex = hex::encode(hasher.finalize());
-        let hash_suffix = &hash_hex[..10];
-
-        // "codetether-subagent-" + "{name}" + "-" + "{hash}"
-        const PREFIX: &str = "codetether-subagent-";
-        let max_name_len = 63usize
-            .saturating_sub(PREFIX.len())
-            .saturating_sub(1)
-            .saturating_sub(hash_suffix.len());
-        let mut name_part: String = sanitized.chars().take(max_name_len.max(1)).collect();
-        name_part = name_part.trim_matches('-').to_string();
-        if name_part.is_empty() {
-            name_part = "subagent".to_string();
-        }
-
-        format!("{PREFIX}{name_part}-{hash_suffix}")
+        subagent_name::pod_name(subagent_id)
     }
 
     /// Attempt to initialize from in-cluster configuration.
@@ -197,6 +174,7 @@ impl K8sManager {
             pod_name,
             deployment_name,
             actions: Arc::new(RwLock::new(Vec::new())),
+            coordinator: coordination::MutationCoordinator,
         }
     }
 
@@ -265,104 +243,6 @@ impl K8sManager {
         }
     }
 
-    /// Scale the agent's own deployment.
-    pub async fn scale(&self, replicas: i32) -> Result<DeployAction> {
-        let client = self
-            .client
-            .as_ref()
-            .ok_or_else(|| anyhow!("K8s client not available — cannot scale"))?;
-        let dep_name = self
-            .deployment_name
-            .as_ref()
-            .ok_or_else(|| anyhow!("Deployment name not set — set CODETETHER_DEPLOYMENT_NAME"))?;
-
-        let deployments: Api<Deployment> = Api::namespaced(client.clone(), &self.namespace);
-
-        let patch = serde_json::json!({
-            "spec": {
-                "replicas": replicas
-            }
-        });
-
-        deployments
-            .patch(
-                dep_name,
-                &PatchParams::apply("codetether"),
-                &Patch::Merge(&patch),
-            )
-            .await
-            .with_context(|| {
-                format!(
-                    "Failed to scale deployment {} to {} replicas",
-                    dep_name, replicas
-                )
-            })?;
-
-        let action = DeployAction {
-            action: format!("scale:{}", replicas),
-            success: true,
-            message: format!("Scaled deployment '{}' to {} replicas", dep_name, replicas),
-            timestamp: Utc::now().to_rfc3339(),
-        };
-
-        tracing::info!(
-            deployment = %dep_name,
-            replicas = replicas,
-            "Self-deployment: scaled"
-        );
-
-        self.record_action(action.clone()).await;
-        Ok(action)
-    }
-
-    /// Perform a rolling restart of the agent's deployment.
-    pub async fn rolling_restart(&self) -> Result<DeployAction> {
-        let client = self
-            .client
-            .as_ref()
-            .ok_or_else(|| anyhow!("K8s client not available — cannot restart"))?;
-        let dep_name = self
-            .deployment_name
-            .as_ref()
-            .ok_or_else(|| anyhow!("Deployment name not set — set CODETETHER_DEPLOYMENT_NAME"))?;
-
-        let deployments: Api<Deployment> = Api::namespaced(client.clone(), &self.namespace);
-
-        // Trigger rolling restart by updating the restart annotation.
-        let patch = serde_json::json!({
-            "spec": {
-                "template": {
-                    "metadata": {
-                        "annotations": {
-                            "codetether.run/restartedAt": Utc::now().to_rfc3339()
-                        }
-                    }
-                }
-            }
-        });
-
-        deployments
-            .patch(
-                dep_name,
-                &PatchParams::apply("codetether"),
-                &Patch::Merge(&patch),
-            )
-            .await
-            .with_context(|| format!("Failed to trigger rolling restart for {}", dep_name))?;
-
-        let action = DeployAction {
-            action: "rolling_restart".to_string(),
-            success: true,
-            message: format!("Triggered rolling restart for deployment '{}'", dep_name),
-            timestamp: Utc::now().to_rfc3339(),
-        };
-
-        tracing::info!(deployment = %dep_name, "Self-deployment: rolling restart");
-
-        self.record_action(action.clone()).await;
-        Ok(action)
-    }
-
     /// List pods belonging to our deployment.
     #[allow(dead_code)]
     /// Spawn a new pod for a swarm sub-agent.
@@ -394,14 +274,23 @@ impl K8sManager {
             .as_ref()
             .ok_or_else(|| anyhow!("K8s client not available — cannot spawn sub-agent pod"))?;
 
+        let pod_name = Self::subagent_pod_name(subagent_id);
+        let claim = self
+            .coordinator
+            .acquire(
+                client.clone(),
+                &self.namespace,
+                "Pod",
+                &pod_name,
+                "spawn-subagent",
+            )
+            .await?;
         let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
 
         let image = spec
             .image
             .as_deref()
             .unwrap_or("ghcr.io/rileyseaburg/codetether-agent:latest");
-        let pod_name = Self::subagent_pod_name(subagent_id);
-
         let mut env_list: Vec<serde_json::Value> = spec
             .env_vars
             .iter()
@@ -431,7 +320,8 @@ impl K8sManager {
             "metadata": {
                 "name": pod_name,
                 "namespace": &self.namespace,
-                "labels": labels
+                "labels": labels,
+                "annotations": claim.annotations()
             },
             "spec": {
                 "restartPolicy": "Never",
@@ -449,7 +339,11 @@ impl K8sManager {
             }
         }))?;
 
-        match pods.create(&PostParams::default(), &pod_manifest).await {
+        let create_params = PostParams {
+            field_manager: Some(claim.field_manager().into()),
+            ..PostParams::default()
+        };
+        match pods.create(&create_params, &pod_manifest).await {
             Ok(_) => {}
             Err(kube::Error::Api(api_err)) if api_err.code == 409 => {
                 tracing::warn!(
@@ -461,7 +355,7 @@ impl K8sManager {
                     .delete(&pod_name, &kube::api::DeleteParams::default())
                     .await;
                 tokio::time::sleep(std::time::Duration::from_millis(600)).await;
-                pods.create(&PostParams::default(), &pod_manifest)
+                pods.create(&create_params, &pod_manifest)
                     .await
                     .with_context(|| {
                         format!("Failed to create sub-agent pod {} after retry", pod_name)
@@ -490,6 +384,7 @@ impl K8sManager {
         );
 
         self.record_action(action.clone()).await;
+        claim.release().await;
         Ok(action)
     }
 
@@ -500,8 +395,18 @@ impl K8sManager {
             .as_ref()
             .ok_or_else(|| anyhow!("K8s client not available"))?;
 
-        let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
         let pod_name = Self::subagent_pod_name(subagent_id);
+        let claim = self
+            .coordinator
+            .acquire(
+                client.clone(),
+                &self.namespace,
+                "Pod",
+                &pod_name,
+                "delete-subagent",
+            )
+            .await?;
+        let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
 
         match pods
             .delete(&pod_name, &kube::api::DeleteParams::default())
@@ -528,6 +433,7 @@ impl K8sManager {
         };
 
         self.record_action(action.clone()).await;
+        claim.release().await;
         Ok(action)
     }
 

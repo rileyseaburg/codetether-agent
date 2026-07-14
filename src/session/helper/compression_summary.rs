@@ -11,9 +11,9 @@ pub(super) fn install(messages: &mut Vec<Message>, tail: Vec<Message>, summary: 
                  to fit the model context window.\n\n{summary}{toc}\n\n\
                  [RECOVERY] If you need specific details that this summary \
                  dropped (exact file paths, prior tool output, earlier user \
-                 instructions, numeric values), call the `session_recall` \
-                 tool with a targeted query instead of guessing or asking \
-                 the user to repeat themselves."
+                 instructions, numeric values), use a targeted `session_recall` \
+                 query only when the user allows history access and the detail \
+                 is absent from user-designated repository sources."
             ),
         }],
     };

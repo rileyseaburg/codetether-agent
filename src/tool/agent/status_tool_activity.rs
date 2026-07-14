@@ -15,6 +15,9 @@ use super::status_source::AgentStatus;
 use crate::a2a::types::TaskState;
 use crate::bus::{BusMessage, global};
 
+#[path = "status_tool_filter.rs"]
+mod status_tool_filter;
+
 /// Newest tool-activity timestamp per agent id from recent bus history.
 fn tool_activity() -> HashMap<String, DateTime<Utc>> {
     let mut out: HashMap<String, DateTime<Utc>> = HashMap::new();
@@ -36,8 +39,12 @@ fn tool_activity() -> HashMap<String, DateTime<Utc>> {
 }
 
 /// Insert a `Working` status for agents with tool activity but no `TaskUpdate`.
-pub(super) fn backfill(out: &mut HashMap<String, AgentStatus>) {
-    merge(out, tool_activity());
+/// Add recent tool activity for children owned by the current parent.
+pub(super) fn backfill<'a>(
+    out: &mut HashMap<String, AgentStatus>,
+    allowed: impl Iterator<Item = &'a String>,
+) {
+    merge(out, status_tool_filter::owned(tool_activity(), allowed));
 }
 
 /// Pure merge: activity overrides `out` only when strictly newer.

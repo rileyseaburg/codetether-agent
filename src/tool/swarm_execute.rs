@@ -6,13 +6,18 @@
 use super::{Tool, ToolResult};
 use crate::provider::ProviderRegistry;
 use crate::swarm::executor::run_agent_loop;
-use crate::tool::ToolRegistry;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::sync::Arc;
 
+pub(crate) mod agent_prompt;
+pub(crate) mod agent_registry;
+mod agent_registry_policy;
+mod aggregate;
+mod aggregate_response;
 mod default_impl;
+mod execution_config;
 mod input;
 mod input_error;
 #[cfg(test)]
@@ -24,7 +29,7 @@ mod model_selection;
 #[path = "swarm_execute/model_selection_tests.rs"]
 mod model_selection_tests;
 mod schema;
-mod support;
+pub(crate) mod support;
 mod task_input;
 mod task_result;
 #[cfg(test)]
@@ -32,6 +37,7 @@ mod task_result;
 mod task_result_tests;
 mod worktrees;
 
+use execution_config::ExecutionConfig;
 use input::parse_tasks;
 use task_result::TaskResult;
 
@@ -69,28 +75,13 @@ impl Tool for SwarmExecuteTool {
             Err(error) => return Ok(error),
         };
 
-        let concurrency_limit = params
-            .get("concurrency_limit")
-            .and_then(|v| v.as_u64())
-            .map(|v| v as usize)
-            .unwrap_or(5);
-        let aggregation_strategy = params
-            .get("aggregation_strategy")
-            .and_then(|v| v.as_str())
-            .unwrap_or("best_effort")
-            .to_string();
-        let model = model_request::requested(&params).map(String::from);
-        let max_steps = params
-            .get("max_steps")
-            .and_then(|v| v.as_u64())
-            .map(|v| v as usize)
-            .unwrap_or(50);
-        let timeout_secs = params
-            .get("timeout_secs")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(300);
-
-        let concurrency = concurrency_limit.min(20).max(1);
+        let ExecutionConfig {
+            concurrency,
+            aggregation_strategy,
+            model,
+            max_steps,
+            timeout_secs,
+        } = ExecutionConfig::from_params(&params);
 
         tracing::info!(
             task_count = tasks.len(),
@@ -125,26 +116,19 @@ impl Tool for SwarmExecuteTool {
             "Using provider for swarm"
         );
 
-        // Get tool definitions (filtered for sub-agents)
-        let tools = support::subagent_tools();
+        let parent_workspace = support::workspace(&params);
+        let shared_results = crate::swarm::result_store::ResultStore::new_arc();
 
         // Provision one isolated worktree per mutating task so sub-agents
         // never edit the shared checkout (read-only tasks share the dir).
         let worktrees = worktrees::SwarmWorktrees::create(
+            &parent_workspace,
             &tasks
                 .iter()
-                .map(|t| (t.name.clone(), t.instruction.clone()))
+                .map(|t| (t.name.clone(), t.instruction.clone(), t.specialty.clone()))
                 .collect::<Vec<_>>(),
         )
         .await;
-
-        // System prompt for sub-agents
-        let system_prompt = r#"You are a sub-agent in a swarm execution context.
-Your role is to execute the given task independently and report your results.
-Focus on completing your specific task efficiently.
-Use available tools to accomplish your goal.
-When done, provide a clear summary of what you accomplished.
-Share any intermediate results using the swarm_share tool so other agents can benefit."#;
 
         // Execute tasks concurrently using semaphore for rate limiting
         let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency));
@@ -153,17 +137,24 @@ Share any intermediate results using the swarm_share tool so other agents can be
         for (idx, task_input) in tasks.clone().into_iter().enumerate() {
             let semaphore = semaphore.clone();
             let provider = provider.clone();
-            let tools = tools.clone();
-            let working_dir = worktrees.dir(idx);
-            let system_prompt = system_prompt.to_string();
+            let read_only = support::is_read_only(
+                &task_input.name,
+                &task_input.instruction,
+                task_input.specialty.as_deref(),
+            );
+            let expects_changes = worktrees.expects_changes(idx);
+            let verification = worktrees.is_verification(idx);
+            let working_dir =
+                support::working_directory(worktrees.dir(idx), read_only, &parent_workspace);
             let task_id = task_input
                 .id
                 .clone()
                 .unwrap_or_else(|| format!("task_{}", uuid::Uuid::new_v4()));
-            let failed_task_id = task_id.clone();
-            let failed_task_name = task_input.name.clone();
             let model_selection = selected_model.clone();
             let model_name = model_selection.resolved_model.clone();
+            let shared_results = Arc::clone(&shared_results);
+            let failed_task_id = task_id.clone();
+            let failed_task_name = task_input.name.clone();
             let max_steps = max_steps;
             let timeout_secs = timeout_secs;
 
@@ -172,6 +163,26 @@ Share any intermediate results using the swarm_share tool so other agents can be
                     .acquire()
                     .await
                     .expect("swarm semaphore closed unexpectedly");
+                let working_dir = working_dir?;
+                let registry = agent_registry::shared(
+                    read_only,
+                    verification,
+                    &working_dir,
+                    shared_results,
+                    task_id.clone(),
+                    Arc::clone(&provider),
+                    model_name.clone(),
+                );
+                let tools = registry.definitions();
+                let system_prompt = agent_prompt::build(
+                    &task_id,
+                    task_input.specialty.as_deref(),
+                    &working_dir,
+                    &model_name,
+                    &task_input.instruction,
+                    read_only,
+                    expects_changes,
+                );
 
                 let user_prompt = format!(
                     "Task: {}\nSpecialty: {}\n\nInstruction: {}",
@@ -189,29 +200,25 @@ Share any intermediate results using the swarm_share tool so other agents can be
                     &system_prompt,
                     &user_prompt,
                     tools,
-                    Arc::new(ToolRegistry::new()),
+                    registry,
                     max_steps,
                     timeout_secs,
                     None,
                     task_id.clone(),
                     None,
-                    working_dir,
+                    Some(working_dir),
                 )
                 .await?;
 
-                let success = matches!(exit, crate::swarm::executor::AgentLoopExit::Completed)
-                    || matches!(exit, crate::swarm::executor::AgentLoopExit::MaxStepsReached);
+                let error = task_result::failure(exit, &output);
+                let success = error.is_none();
 
                 Ok::<TaskResult, anyhow::Error>(TaskResult {
                     task_id,
                     task_name: task_input.name,
                     success,
                     output,
-                    error: if success {
-                        None
-                    } else {
-                        Some(format!("{:?}", exit))
-                    },
+                    error,
                     steps,
                     tool_calls,
                     model: model_selection,
@@ -263,52 +270,8 @@ Share any intermediate results using the swarm_share tool so other agents can be
             }
         }
 
-        // Build aggregation response
-        let total = results.len();
-        let successes = results.iter().filter(|r| r.success).count();
+        let response = aggregate_response::build(results, failures, &aggregation_strategy);
 
-        let response = if failures == 0 {
-            json!({
-                "status": "success",
-                "results": results,
-                "summary": {
-                    "total": total,
-                    "success": successes,
-                    "failures": failures
-                }
-            })
-        } else {
-            match aggregation_strategy.as_str() {
-                "all" => json!({
-                    "status": "partial_failure",
-                    "results": results,
-                    "summary": {
-                        "total": total,
-                        "success": successes,
-                        "failures": failures
-                    }
-                }),
-                "first_error" => json!({
-                    "status": "error",
-                    "results": results,
-                    "summary": {
-                        "total": total,
-                        "success": successes,
-                        "failures": failures
-                    }
-                }),
-                _ => json!({
-                    "status": "partial_success",
-                    "results": results,
-                    "summary": {
-                        "total": total,
-                        "success": successes,
-                        "failures": failures
-                    }
-                }),
-            }
-        };
-
-        Ok(ToolResult::success(response.to_string()))
+        Ok(aggregate::result(response, failures))
     }
 }

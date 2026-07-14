@@ -26,7 +26,7 @@ mod image_data_url;
 mod image_file;
 mod image_mime;
 mod image_sidecar_recover;
-mod mention_route;
+pub(crate) mod mention_route;
 mod merge;
 mod paste;
 mod paste_expand_raw;

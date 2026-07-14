@@ -9,6 +9,7 @@ pub(super) struct LoopSetup {
     pub reader: EventStream,
     pub shutdown_rx: tokio::sync::mpsc::Receiver<()>,
     pub timers: LoopTimers,
+    pub worker_sync_cursor: Option<u64>,
 }
 
 pub(super) fn create() -> LoopSetup {
@@ -17,5 +18,6 @@ pub(super) fn create() -> LoopSetup {
         reader: EventStream::new(),
         shutdown_rx: crate::tui::app::signal_shutdown::spawn_shutdown_listener(),
         timers: LoopTimers::new(wd),
+        worker_sync_cursor: None,
     }
 }
