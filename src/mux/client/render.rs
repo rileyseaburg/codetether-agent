@@ -16,6 +16,9 @@ pub(super) fn response(response: &ServerResponse) -> bool {
             return true;
         }
         ServerResponse::Authenticated { .. } => {}
+        ServerResponse::ProgramAttached { .. }
+        | ServerResponse::ProgramOutput { .. }
+        | ServerResponse::Acknowledged => {}
     }
     false
 }
@@ -38,6 +41,8 @@ pub(super) fn snapshot(state: &MuxSnapshot) {
 }
 
 pub(super) fn help() {
-    println!("mux: ls | new PATH | cd PATH | select ID | close ID | detach | kill | help");
+    println!("mux: ls | new PATH | cd PATH | select ID | close ID | attach | detach | kill | help");
     println!("programs: enter any other command, e.g. codetether tui --access-mode full");
+    println!("folders: press Tab after cd or new to complete from the active workspace");
+    println!("detach a live program: Ctrl+B, then D");
 }

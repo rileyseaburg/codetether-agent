@@ -5,25 +5,24 @@ use crate::{
 };
 use anyhow::Result;
 
+pub(super) const CODEX_PROVIDER_IDS: [&str; 3] = ["codex", "chatgpt", "openai-codex"];
+
 pub(super) async fn resolve() -> Result<Option<ImagesAuth>> {
-    if let Some(secrets) = crate::secrets::get_provider_secrets("openai").await
-        && let Some(key) = valid_key(&secrets)
-    {
-        return Ok(Some(ImagesAuth::openai(key)));
+    for provider_id in CODEX_PROVIDER_IDS {
+        let Some(secrets) = crate::secrets::get_provider_secrets(provider_id).await else {
+            continue;
+        };
+        if let Some(credentials) = oauth_credentials(&secrets) {
+            let provider = OpenAiCodexProvider::from_credentials(credentials);
+            return Ok(Some(ImagesAuth::chatgpt(
+                provider.chatgpt_backend_auth().await?,
+            )));
+        }
+        if let Some(key) = valid_key(&secrets) {
+            return Ok(Some(ImagesAuth::openai(key)));
+        }
     }
-    let Some(secrets) = crate::secrets::get_provider_secrets("openai-codex").await else {
-        return Ok(None);
-    };
-    if let Some(key) = valid_key(&secrets) {
-        return Ok(Some(ImagesAuth::openai(key)));
-    }
-    let Some(credentials) = oauth_credentials(&secrets) else {
-        return Ok(None);
-    };
-    let provider = OpenAiCodexProvider::from_credentials(credentials);
-    Ok(Some(ImagesAuth::chatgpt(
-        provider.chatgpt_backend_auth().await?,
-    )))
+    Ok(None)
 }
 
 fn valid_key(secrets: &ProviderSecrets) -> Option<String> {

@@ -47,6 +47,7 @@ pub(in crate::mux) async fn serve(
     }
     clients.abort_all();
     while clients.join_next().await.is_some() {}
+    context.programs.stop_all();
     registry::remove(&name).await?;
     tracing::info!(session = %name, "Mux server stopped");
     Ok(())

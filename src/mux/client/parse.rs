@@ -7,6 +7,7 @@ use crate::mux::protocol::ClientRequest;
 pub(in crate::mux) enum ParsedCommand {
     Request(ClientRequest),
     Exec(String),
+    Attach,
     Help,
     Invalid(String),
 }
@@ -26,6 +27,7 @@ pub(in crate::mux) fn parse(line: &str) -> ParsedCommand {
         "detach" | "quit" => ParsedCommand::Request(ClientRequest::Detach),
         "kill" => ParsedCommand::Request(ClientRequest::Shutdown),
         "help" | "?" => ParsedCommand::Help,
+        "attach" => ParsedCommand::Attach,
         "" => ParsedCommand::Request(ClientRequest::Snapshot),
         _ => ParsedCommand::Exec(line.trim().into()),
     }

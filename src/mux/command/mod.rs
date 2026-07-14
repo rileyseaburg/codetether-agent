@@ -5,8 +5,12 @@ mod kill;
 mod list;
 mod new_session;
 mod serve;
+mod shutdown;
 pub(in crate::mux) mod spawn;
 pub(in crate::mux) mod startup;
+
+#[cfg(test)]
+mod shutdown_tests;
 
 use anyhow::Result;
 
@@ -21,7 +25,15 @@ pub(super) async fn execute(command: MuxCommand) -> Result<()> {
         } => new_session::run(session, directory, detached).await,
         MuxCommand::Attach { target } => attach::run(&target).await,
         MuxCommand::List { json } => list::run(json).await,
-        MuxCommand::Kill { target } => kill::run(&target).await,
+        MuxCommand::Kill {
+            target,
+            named_target,
+        } => {
+            let target = target
+                .or(named_target)
+                .ok_or_else(|| anyhow::anyhow!("mux target is required"))?;
+            kill::run(&target).await
+        }
         MuxCommand::Serve {
             session,
             directory,

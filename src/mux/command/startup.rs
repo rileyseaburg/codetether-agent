@@ -6,10 +6,7 @@ pub(in crate::mux) async fn reject_duplicate(name: &str) -> Result<()> {
     let Ok(record) = crate::mux::registry::load(name).await else {
         return Ok(());
     };
-    if crate::mux::client::MuxConnection::connect(&record)
-        .await
-        .is_ok()
-    {
+    if crate::mux::client::probe(&record).await.is_ok() {
         bail!("mux session '{name}' already exists");
     }
     bail!("mux session '{name}' has a stale registry record; inspect it before removing it")

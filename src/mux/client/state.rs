@@ -1,8 +1,7 @@
 //! Attached-client tracking of the latest server snapshot.
 
-use std::path::Path;
-
 use anyhow::{Result, anyhow};
+use std::path::PathBuf;
 
 use crate::mux::model::MuxSnapshot;
 use crate::mux::protocol::ServerResponse;
@@ -13,14 +12,21 @@ pub(super) fn update(current: &mut Option<MuxSnapshot>, response: &ServerRespons
     }
 }
 
-pub(super) fn workspace(state: &Option<MuxSnapshot>) -> Result<&Path> {
-    let state = state
+pub(super) fn active_id(state: &Option<MuxSnapshot>) -> Result<u64> {
+    state
+        .as_ref()
+        .map(|value| value.active_window)
+        .ok_or_else(|| anyhow!("mux state is unavailable"))
+}
+
+pub(super) fn active_workspace(state: &Option<MuxSnapshot>) -> Result<PathBuf> {
+    let snapshot = state
         .as_ref()
         .ok_or_else(|| anyhow!("mux state is unavailable"))?;
-    state
+    snapshot
         .windows
         .iter()
-        .find(|window| window.id == state.active_window)
-        .map(|window| window.workspace.as_path())
+        .find(|window| window.id == snapshot.active_window)
+        .map(|window| window.workspace.clone())
         .ok_or_else(|| anyhow!("active mux window is unavailable"))
 }

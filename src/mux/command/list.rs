@@ -3,8 +3,6 @@
 use anyhow::Result;
 use serde::Serialize;
 
-use crate::mux::client::MuxConnection;
-
 #[derive(Serialize)]
 struct ListedSession {
     name: String,
@@ -20,7 +18,7 @@ pub(super) async fn run(json: bool) -> Result<()> {
     for record in crate::mux::registry::list().await? {
         let reachable = tokio::time::timeout(
             std::time::Duration::from_millis(300),
-            MuxConnection::connect(&record),
+            crate::mux::client::probe(&record),
         )
         .await
         .is_ok_and(|result| result.is_ok());

@@ -12,23 +12,11 @@ pub(in crate::mux) struct MuxConnection {
 
 impl MuxConnection {
     pub(in crate::mux) async fn connect(record: &MuxRecord) -> Result<Self> {
-        let stream = TcpStream::connect(record.address)
-            .await
-            .context("connect to mux server")?;
-        let mut connection = Self { stream };
-        let response = connection
-            .request(ClientRequest::Authenticate {
-                token: record.token.clone(),
-            })
-            .await?;
-        match response {
-            ServerResponse::Authenticated { version: VERSION } => Ok(connection),
-            ServerResponse::Authenticated { version } => {
-                bail!("unsupported mux protocol version {version}")
-            }
-            ServerResponse::Error { message } => bail!("{message}"),
-            _ => bail!("mux server returned an invalid authentication response"),
+        let (stream, version) = super::handshake::connect(record).await?;
+        if version != VERSION {
+            bail!("unsupported mux protocol version {version}");
         }
+        Ok(Self { stream })
     }
 
     pub(in crate::mux) async fn request(

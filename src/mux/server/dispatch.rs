@@ -15,6 +15,13 @@ pub(super) async fn apply(
         ClientRequest::Snapshot => (snapshot(context).await, false),
         ClientRequest::Detach => (ServerResponse::Detached, true),
         ClientRequest::Shutdown => (ServerResponse::ShuttingDown, true),
+        request @ (ClientRequest::StartProgram { .. }
+        | ClientRequest::AttachProgram { .. }
+        | ClientRequest::ProgramInput { .. }
+        | ClientRequest::ReadProgram { .. }
+        | ClientRequest::ResizeProgram { .. }) => {
+            (super::program::apply(context, request).await, false)
+        }
         request => match super::mutate::apply(context, request).await {
             Ok(()) => (snapshot(context).await, false),
             Err(message) => (error(&message), false),

@@ -19,6 +19,7 @@ mod command;
 pub(crate) mod control;
 mod model;
 mod protocol;
+mod pty;
 mod registry;
 mod server;
 mod token;

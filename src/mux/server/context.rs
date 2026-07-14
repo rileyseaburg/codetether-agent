@@ -8,6 +8,7 @@ use chrono::{DateTime, Utc};
 use tokio::sync::{Mutex, Notify, RwLock};
 
 use crate::mux::model::MuxSnapshot;
+use crate::mux::pty::PtyRegistry;
 use crate::mux::registry::{self, MuxRecord};
 
 pub(super) struct ServerContext {
@@ -16,6 +17,7 @@ pub(super) struct ServerContext {
     pub address: SocketAddr,
     pub started_at: DateTime<Utc>,
     pub shutdown: Notify,
+    pub programs: PtyRegistry,
     persist_lock: Mutex<()>,
 }
 
@@ -27,6 +29,7 @@ impl ServerContext {
             address,
             started_at: Utc::now(),
             shutdown: Notify::new(),
+            programs: PtyRegistry::new(),
             persist_lock: Mutex::new(()),
         })
     }
