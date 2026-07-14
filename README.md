@@ -720,6 +720,13 @@ the canonical workspace path hash.
 | `CODETETHER_DATA_DIR` | `.codetether-agent` | Runtime data directory |
 | `CODETETHER_GRPC_PORT` | `50051` | gRPC server port |
 | `CODETETHER_A2A_PEERS` | — | Comma-separated peer seed URLs |
+| `CODETETHER_MALLOC_ARENA_MAX` | `4` | Maximum glibc allocator arenas |
+| `CODETETHER_MALLOC_TRIM_KIB` | `128` | glibc automatic trim threshold |
+| `CODETETHER_RSS_TRIM_SECS` | `30` | High-RSS allocator reclamation interval |
+| `CODETETHER_S3_RUNTIME_THREADS` | `2` | MinIO async executor threads, clamped to 1–8 |
+
+See [Runtime Memory Controls](docs/runtime_memory.md) for the prevention,
+reclamation, and pre-OOM evidence model.
 
 ### Runtime Folders
 
