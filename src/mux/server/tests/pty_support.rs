@@ -20,11 +20,14 @@ pub(super) async fn server(
     let context = ServerContext::new(state.clone(), "secret".into(), address);
     let server_context = context.clone();
     let task = tokio::spawn(async move {
+        let mut clients = tokio::task::JoinSet::new();
         for _ in 0..2 {
             let (stream, _) = listener.accept().await.unwrap();
-            super::super::connection::handle(stream, server_context.clone())
-                .await
-                .unwrap();
+            let context = server_context.clone();
+            clients.spawn(async move { super::super::connection::handle(stream, context).await });
+        }
+        while let Some(result) = clients.join_next().await {
+            result.unwrap().unwrap();
         }
     });
     let record = MuxRecord {

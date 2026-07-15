@@ -17,7 +17,7 @@ pub(super) async fn wait_for(path: &std::path::Path) {
 
 pub(super) async fn wait_for_exit(context: &ServerContext) {
     for _ in 0..100 {
-        if !context.programs.read(0, 0).unwrap().running {
+        if !context.programs.read(0, 0).await.unwrap().running {
             return;
         }
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;

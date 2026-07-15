@@ -6,6 +6,8 @@ use crate::mux::model::MuxSnapshot;
 use crate::mux::protocol::{ClientRequest, ServerResponse};
 use crate::mux::registry::MuxRecord;
 
+mod idle_benchmark;
+mod long_poll;
 mod pty;
 mod pty_io;
 mod pty_replay;
