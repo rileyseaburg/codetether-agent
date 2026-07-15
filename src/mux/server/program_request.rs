@@ -34,7 +34,7 @@ pub(super) async fn execute(
             ServerResponse::Acknowledged
         }
         ClientRequest::ReadProgram { window_id, offset } => {
-            super::program_operations::read(context, window_id, offset)?
+            super::program_operations::read(context, window_id, offset).await?
         }
         ClientRequest::ResizeProgram {
             window_id,

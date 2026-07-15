@@ -2,6 +2,12 @@
 
 use std::collections::VecDeque;
 
+mod append;
+#[cfg(test)]
+mod benchmark;
+#[cfg(test)]
+mod tests;
+
 const OUTPUT_LIMIT: usize = 4 * 1024 * 1024;
 const READ_LIMIT: usize = 64 * 1024;
 
@@ -16,13 +22,6 @@ impl OutputBuffer {
             base: 0,
             bytes: VecDeque::new(),
         }
-    }
-
-    pub(super) fn append(&mut self, data: &[u8]) {
-        self.bytes.extend(data);
-        let excess = self.bytes.len().saturating_sub(OUTPUT_LIMIT);
-        self.bytes.drain(..excess);
-        self.base += excess as u64;
     }
 
     pub(super) fn read(&self, offset: u64) -> (Vec<u8>, u64) {

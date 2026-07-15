@@ -20,12 +20,12 @@ pub(super) fn attach(
     })
 }
 
-pub(super) fn read(
+pub(super) async fn read(
     context: &ServerContext,
     id: u64,
     offset: u64,
 ) -> anyhow::Result<ServerResponse> {
-    let chunk = context.programs.read(id, offset)?;
+    let chunk = context.programs.read(id, offset).await?;
     Ok(ServerResponse::ProgramOutput {
         data: chunk.data,
         next_offset: chunk.next_offset,

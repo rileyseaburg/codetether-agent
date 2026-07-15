@@ -8,6 +8,7 @@ use crate::mux::registry::MuxRecord;
 
 pub(in crate::mux) struct MuxConnection {
     stream: TcpStream,
+    record: MuxRecord,
 }
 
 impl MuxConnection {
@@ -16,7 +17,14 @@ impl MuxConnection {
         if version != VERSION {
             bail!("unsupported mux protocol version {version}");
         }
-        Ok(Self { stream })
+        Ok(Self {
+            stream,
+            record: record.clone(),
+        })
+    }
+
+    pub(super) async fn secondary(&self) -> Result<Self> {
+        Self::connect(&self.record).await
     }
 
     pub(in crate::mux) async fn request(

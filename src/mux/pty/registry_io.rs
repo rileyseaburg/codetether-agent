@@ -11,8 +11,8 @@ impl PtyRegistry {
         self.live(id)?.input(data)
     }
 
-    pub(in crate::mux) fn read(&self, id: u64, offset: u64) -> Result<PtyChunk> {
-        Ok(self.get(id)?.read(offset))
+    pub(in crate::mux) async fn read(&self, id: u64, offset: u64) -> Result<PtyChunk> {
+        Ok(self.get(id)?.read_wait(offset).await)
     }
 
     pub(in crate::mux) fn resize(&self, id: u64, size: TerminalSize) -> Result<()> {

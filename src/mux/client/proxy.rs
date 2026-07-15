@@ -1,14 +1,13 @@
-//! Bidirectional polling proxy between a terminal and server-owned PTY.
+//! Event-driven proxy between a terminal and server-owned PTY.
 
 mod detach;
 mod input;
+mod output;
 
 use std::io::Write;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use tokio::io::AsyncReadExt;
-
-use crate::mux::protocol::{ClientRequest, ServerResponse};
 
 use super::connection::MuxConnection;
 
@@ -18,16 +17,13 @@ pub(super) enum Outcome {
     Exited,
 }
 
-pub(super) async fn run(
-    connection: &mut MuxConnection,
-    id: u64,
-    mut offset: u64,
-) -> Result<Outcome> {
+pub(super) async fn run(connection: &mut MuxConnection, id: u64, offset: u64) -> Result<Outcome> {
     let _terminal = super::terminal::ProxyTerminal::enter()?;
     let mut stdin = tokio::io::stdin();
     let mut input = [0_u8; 4096];
     let mut detector = detach::Detector::new();
-    let mut poll = tokio::time::interval(std::time::Duration::from_millis(16));
+    let output_connection = connection.secondary().await?;
+    let mut output = output::start(output_connection, id, offset);
     loop {
         tokio::select! {
             count = stdin.read(&mut input) => {
@@ -37,16 +33,11 @@ pub(super) async fn run(
                 if !filtered.data.is_empty() { input::send(connection, id, filtered.data).await?; }
                 if filtered.detach { return Ok(Outcome::Detached); }
             }
-            _ = poll.tick() => {
-                let response = connection.request(ClientRequest::ReadProgram { window_id: id, offset }).await?;
-                let ServerResponse::ProgramOutput { data, next_offset, running } = response else {
-                    bail!("mux server returned an invalid PTY output response");
-                };
-                let drained = data.is_empty();
-                std::io::stdout().write_all(&data)?;
+            event = output.recv() => {
+                let event = event.ok_or_else(|| anyhow::anyhow!("mux output connection closed"))??;
+                std::io::stdout().write_all(&event.data)?;
                 std::io::stdout().flush()?;
-                offset = next_offset;
-                if !running && drained { return Ok(Outcome::Exited); }
+                if event.exited { return Ok(Outcome::Exited); }
             }
         }
     }
