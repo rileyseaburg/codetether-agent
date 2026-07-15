@@ -1,20 +1,15 @@
 use super::{blocked, policy_args};
-use crate::approval::{ApprovalStore, test_env::lock_env};
-
-struct EnvGuard;
-
-impl Drop for EnvGuard {
-    fn drop(&mut self) {
-        unsafe { std::env::remove_var("CODETETHER_DATA_DIR") };
-    }
-}
+use crate::approval::{
+    ApprovalStore,
+    test_env::{ScopedEnv, lock_env},
+};
+use crate::config::AccessMode;
 
 #[tokio::test]
 async fn bridge_policy_block_includes_approval_id() {
     let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
-    unsafe { std::env::set_var("CODETETHER_DATA_DIR", data.path()) };
-    let _env = EnvGuard;
+    let _env = ScopedEnv::data_dir_with_access(data.path(), AccessMode::Ask);
     let result = blocked("npx", &["github-mcp"], None)
         .await
         .expect("approval required");
@@ -25,8 +20,7 @@ async fn bridge_policy_block_includes_approval_id() {
 async fn bridge_policy_accepts_approved_id() {
     let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
-    unsafe { std::env::set_var("CODETETHER_DATA_DIR", data.path()) };
-    let _env = EnvGuard;
+    let _env = ScopedEnv::data_dir_with_access(data.path(), AccessMode::Ask);
     let request = blocked("npx", &["github-mcp"], None).await.unwrap();
     let id = request.metadata["approval_request_id"].as_str().unwrap();
     ApprovalStore::open(data.path().join("approvals"))
@@ -40,8 +34,7 @@ async fn bridge_policy_accepts_approved_id() {
 async fn bridge_policy_accepts_alias_approved_id() {
     let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
-    unsafe { std::env::set_var("CODETETHER_DATA_DIR", data.path()) };
-    let _env = EnvGuard;
+    let _env = ScopedEnv::data_dir_with_access(data.path(), AccessMode::Ask);
     let args = policy_args("npx", &["github-mcp"], None);
     let request = crate::runtime_policy::evaluate_tool_invocation("mcp_bridge", &args)
         .await

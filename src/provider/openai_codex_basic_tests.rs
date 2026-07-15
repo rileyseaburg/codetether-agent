@@ -1,5 +1,3 @@
-use super::*;
-
 #[test]
 fn test_generate_pkce() {
     let pkce = OpenAiCodexProvider::generate_pkce();

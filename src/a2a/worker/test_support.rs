@@ -1,11 +1,7 @@
-use crate::provider::ModelInfo;
-use anyhow::Result;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, AtomicUsize, Ordering},
 };
-
-use super::test_support_provider;
 
 pub(super) struct ContextErrorUntilCompactProvider {
     pub(super) calls: AtomicUsize,

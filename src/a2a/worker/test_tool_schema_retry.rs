@@ -43,6 +43,6 @@ async fn worker_retries_context_window_error_with_compact_tool_schema() {
         })
         .collect();
     assert_eq!(text, "ok");
-    assert_eq!(provider.calls(), 5);
+    assert_eq!(provider.calls(), 6);
     assert!(provider.saw_compact_schema());
 }

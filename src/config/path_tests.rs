@@ -31,7 +31,7 @@ fn workspace_data_dir_falls_back_to_start_when_not_git_repo() {
 }
 
 fn temp_repo_nested() -> (std::path::PathBuf, std::path::PathBuf) {
-    let temp = tempdir().expect("tempdir").into_path();
+    let temp = tempdir().expect("tempdir").keep();
     let repo_root = temp.join("repo");
     std::fs::create_dir_all(repo_root.join(".git")).expect("create .git");
     let nested = repo_root.join("src").join("nested");

@@ -1,3 +1,4 @@
+#[test]
 fn parses_model_suffix_for_thinking_level() {
     let (model, level) =
         OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.3-codex:high");

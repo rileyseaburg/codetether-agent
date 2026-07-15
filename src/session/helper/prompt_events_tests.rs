@@ -25,6 +25,7 @@ async fn streaming_context_errors_retry_with_forced_compaction() {
 
     assert!(result.is_ok());
     assert_eq!(provider.calls(), 2);
+    assert!(!crate::session::step_limit::was_budget_exhausted());
 }
 
 fn text_message() -> Message {

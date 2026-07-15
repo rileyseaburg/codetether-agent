@@ -1,5 +1,3 @@
-use super::*;
-
 #[test]
 fn ignores_unknown_model_suffix() {
     let (model, level) =

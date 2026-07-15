@@ -1,22 +1,16 @@
 use super::super::{BashTool, Tool};
-use crate::approval::{ApprovalStore, test_env::lock_env};
-use crate::config::Config;
+use crate::approval::{
+    ApprovalStore,
+    test_env::{ScopedEnv, lock_env},
+};
+use crate::config::{AccessMode, Config};
 use serde_json::json;
-
-struct EnvGuard;
-
-impl Drop for EnvGuard {
-    fn drop(&mut self) {
-        unsafe { std::env::remove_var("CODETETHER_DATA_DIR") };
-    }
-}
 
 #[tokio::test]
 async fn approved_bash_keeps_sandbox_or_uses_approved_fallback() {
     let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");
-    unsafe { std::env::set_var("CODETETHER_DATA_DIR", data.path()) };
-    let _env = EnvGuard;
+    let _env = ScopedEnv::data_dir_with_access(data.path(), AccessMode::Ask);
     let mut args = json!({
         "command": "printf ok > approved.txt",
         "cwd": data.path().display().to_string()

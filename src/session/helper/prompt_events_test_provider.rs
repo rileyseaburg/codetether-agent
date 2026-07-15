@@ -43,7 +43,7 @@ impl Provider for StreamContextErrorProvider {
         if self.calls.fetch_add(1, Ordering::SeqCst) == 0 {
             Err(anyhow::anyhow!("Your input exceeds the context window"))
         } else {
-            Ok(Box::pin(stream::iter([StreamChunk::Text("ok".into())])))
+            Ok(Box::pin(stream::iter([StreamChunk::Text("ok".into()), StreamChunk::Done { usage: None }])))
         }
     }
 }

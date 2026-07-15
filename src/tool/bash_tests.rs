@@ -6,5 +6,7 @@ mod misc;
 mod readonly;
 #[path = "bash_tests_sandbox.rs"]
 mod sandbox;
+#[path = "bash_tests_sandbox_basic.rs"]
+mod sandbox_basic;
 #[path = "bash_tests_wrap.rs"]
 mod wrap;
