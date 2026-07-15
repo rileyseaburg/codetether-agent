@@ -20,20 +20,35 @@ pub(crate) async fn run(
     options: SearchOptions<'_>,
 ) -> Result<Vec<RecallHit>> {
     let started = Instant::now();
-    let source = super::search_source::SearchSource::load(workspace, options.session_id).await;
-    let sessions = source.sessions();
-    let hits = super::rank::search(
-        &sessions,
-        query,
-        options.excluded_session,
-        options.limit,
-        options.minimum_score,
-    );
+    let Some(query) = super::rank::Query::new(query, options.minimum_score) else {
+        return Ok(Vec::new());
+    };
+    let (hits, sessions) = match options.session_id {
+        Some(id) => direct(id, &query, options.excluded_session, options.limit).await,
+        None => {
+            super::search_workspace::run(workspace, &query, options.excluded_session, options.limit)
+                .await
+        }
+    };
     tracing::debug!(
         query_ms = started.elapsed().as_millis(),
-        sessions = sessions.len(),
+        sessions,
         hits = hits.len(),
         "local session recall completed"
     );
     Ok(hits)
+}
+
+async fn direct(
+    id: &str,
+    query: &super::rank::Query,
+    excluded: Option<&str>,
+    limit: usize,
+) -> (Vec<RecallHit>, usize) {
+    let Some(session) = super::load::session(id).await else {
+        return (Vec::new(), 0);
+    };
+    let mut hits = Vec::new();
+    super::rank::merge(&mut hits, query.hits(&session, excluded), limit);
+    (hits, 1)
 }

@@ -7,6 +7,38 @@
 
 A high-performance AI coding agent written in Rust. A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, local FunctionGemma tool-call router, **derived context per turn**, and a **TetherScript plugin platform** — extend the agent with zero Rust and zero rebuilds by dropping a `.tether` script file.
 
+## Persistent Agents Without Runaway Memory
+
+CodeTether can keep independent shells and agent TUIs alive in named network
+mux sessions, detach from them, and reconnect later. Each window owns its
+process and working directory on the mux server, so agents can work in separate
+repositories without requiring an outer tmux session.
+
+```bash
+codetether mux new --session backend -- /path/to/backend
+# At mux>, launch any program, including a full-access agent TUI:
+codetether tui --access-mode full
+# Detach the live program with Ctrl+B, then D. Reconnect later:
+codetether mux attach --target backend
+```
+
+The long-running path is bounded and measured against real workloads:
+
+| Workload | Before | After | Improvement |
+|---|---:|---:|---:|
+| Recall retained RSS, 4,844 sessions | 749,128 KiB | 27,356 KiB | 96.3% less |
+| Idle mux reads per second | 57 | 1 | 98.2% fewer |
+| Mux replay-buffer RSS delta | 10,664 KiB | 6,668 KiB | 37.5% less |
+| Threads for 24 live programs | 48 | 25 | 47.9% fewer |
+| Replay-buffer throughput | 15,369 MiB/s | 20,769 MiB/s | 35.1% faster |
+
+Recall now streams every cataloged session through a bounded top-K ranker
+instead of retaining a decoded workspace in every TUI process. The mux uses
+event-driven output, shared child reaping, and a bounded 4 MiB replay buffer.
+See the reproducible [recall memory](docs/benchmarks/recall-memory.md) and
+[mux long-horizon](docs/benchmarks/mux-long-horizon.md) benchmark reports for
+commands, methodology, and correctness coverage.
+
 ## Install
 
 ### Via npx (no Rust required)
