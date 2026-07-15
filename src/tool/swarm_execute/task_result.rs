@@ -3,6 +3,7 @@
 use super::model_selection::ModelSelection;
 use crate::swarm::executor::AgentLoopExit;
 
+#[cfg(test)]
 pub(super) fn completed(exit: AgentLoopExit, output: &str) -> bool {
     failure(exit, output).is_none()
 }

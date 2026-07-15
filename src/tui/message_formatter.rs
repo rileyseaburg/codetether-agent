@@ -225,10 +225,6 @@ impl MessageFormatter {
         result
     }
 
-    fn highlight_code_block_syntect(&self, lines: &[String], _language: &str) -> Vec<String> {
-        lines.iter().map(|l| l.trim_end().to_string()).collect()
-    }
-
     /// Render a LaTeX/math display block with a boxed border.
     ///
     /// LaTeX cannot be typeset in a terminal, so we preserve the source
@@ -525,17 +521,6 @@ mod tests {
         assert!(!lines.is_empty());
     }
 
-    #[test]
-    fn test_syntax_highlighting() {
-        let formatter = MessageFormatter::new(80);
-        let lines = vec![
-            "fn main() {".to_string(),
-            "    println!(\"Hello!\");".to_string(),
-            "}".to_string(),
-        ];
-        let highlighted = formatter.highlight_code_block_syntect(&lines, "rust");
-        assert_eq!(highlighted.len(), 3);
-    }
     #[test]
     fn take_fit_breaks_on_whitespace() {
         let (taken, rest) = take_fit("hello world foo", 8, true);

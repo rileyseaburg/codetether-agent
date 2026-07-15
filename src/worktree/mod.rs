@@ -11,7 +11,6 @@ mod cleanup_branches;
 mod cleanup_remove;
 mod cleanup_worktrees;
 mod complete;
-mod conflicts;
 mod create;
 mod create_git;
 mod dirty_check;
@@ -26,7 +25,6 @@ mod integrity_error;
 mod manager;
 mod merge;
 mod merge_lookup;
-mod merge_staged;
 #[cfg(test)]
 mod merge_staged_tests;
 mod node_dependencies;

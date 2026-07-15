@@ -21,7 +21,6 @@ pub(super) use super::{
     worker_env::{env_u64, trim_for_heartbeat},
     worker_init::init_worker,
     worker_loop::run_worker_loop,
-    worker_registration::register_worker,
     worker_server_loop::run_worker_server_loop,
     workspace_scope::{resolve_and_log_workspace_ids, sync_timeline_to_runtime},
     workspace_sync::sync_workspaces_from_server,

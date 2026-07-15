@@ -1,7 +1,9 @@
 //! Executable, autonomous tool registries for direct swarm workers.
 
 use crate::provider::Provider;
-use crate::swarm::{executor::workspace_registry, result_store::ResultStore};
+#[cfg(test)]
+use crate::swarm::executor::workspace_registry;
+use crate::swarm::result_store::ResultStore;
 use crate::tool::{ToolRegistry, swarm_share::SwarmShareTool};
 use std::{path::Path, sync::Arc};
 

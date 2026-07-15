@@ -11,6 +11,8 @@ mod args;
 pub mod model;
 #[path = "spawn_agent_prompt.rs"]
 mod prompt;
+#[path = "spawn_agent_watch.rs"]
+mod watch;
 
 /// Spawn and immediately dispatch a managed child agent.
 pub async fn handle_spawn_command(app: &mut App, session: &Session, cwd: &Path, rest: &str) {
@@ -27,9 +29,7 @@ pub async fn handle_spawn_command(app: &mut App, session: &Session, cwd: &Path, 
     let result =
         crate::tui::app::managed_agent::spawn(session, cwd, &args.name, &instructions).await;
     if result.success {
-        app.state.active_spawned_agent = Some(args.name.clone());
-        app.state
-            .set_view_mode(crate::tui::models::ViewMode::Subagents);
+        watch::open(app, &args.name);
     }
     crate::tui::app::managed_agent::ui::present(
         app,

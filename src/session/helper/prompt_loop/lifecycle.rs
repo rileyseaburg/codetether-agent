@@ -18,6 +18,7 @@ pub(crate) async fn run(runner: &mut Runner<'_>) -> Result<SessionResult> {
             super::response::handle(runner, step, response).await?,
             StepFlow::Finish
         ) {
+            crate::session::step_limit::clear_budget();
             break;
         }
     }

@@ -4,6 +4,7 @@ use crate::provider::Provider;
 use crate::rlm::RlmConfig;
 use std::sync::Arc;
 
+#[cfg(test)]
 pub(super) use super::description::DESCRIPTION;
 
 /// Local-first recall tool over persisted session evidence.

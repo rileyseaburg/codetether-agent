@@ -31,21 +31,7 @@ pub use status::ApprovalStatus;
 pub use store::ApprovalStore;
 
 #[cfg(test)]
-pub(crate) mod test_env {
-    pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-    /// Acquire the shared env lock, recovering from poison so one panicking
-    /// test does not cascade `PoisonError` failures into unrelated tests.
-    pub(crate) fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-        let guard = ENV_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        crate::approval::session_grants::reset();
-        crate::approval::session_command_grants::reset();
-        crate::config::Config::apply_process_access_mode_override(None);
-        guard
-    }
-}
+pub(crate) mod test_env;
 
 #[cfg(test)]
 mod tests;

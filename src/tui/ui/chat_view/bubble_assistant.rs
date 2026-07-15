@@ -4,10 +4,7 @@
 //! cyan→magenta gradient as the message grows, so long responses have a
 //! visible depth cue. The first line gets a `◉` timeline anchor instead.
 
-use ratatui::{
-    style::{Color, Style},
-    text::{Line, Span},
-};
+use ratatui::{style::Color, text::Line};
 
 use super::timeline::{anchor_line, rail_line};
 use crate::tui::ui::gradient::{NEON_CYAN, NEON_MAGENTA, lerp_rgb, rgb_supported};

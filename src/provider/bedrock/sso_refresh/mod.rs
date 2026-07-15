@@ -21,4 +21,4 @@ mod stored;
 mod vault_expiry;
 
 pub use auto::ensure_fresh;
-pub(crate) use auto::{Refreshed, refresh_now};
+pub(crate) use auto::refresh_now;

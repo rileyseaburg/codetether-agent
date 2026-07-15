@@ -5,9 +5,6 @@ use ratatui::{
     text::{Line, Span},
 };
 
-#[path = "token_display_context.rs"]
-mod context;
-
 /// Enhanced token usage display with costs and warnings
 pub struct TokenDisplay;
 

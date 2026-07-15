@@ -41,5 +41,6 @@ pub(super) const READING: &[&str] = &[
     "document",
     "read",
     "search",
+    "find",
     "investigate",
 ];

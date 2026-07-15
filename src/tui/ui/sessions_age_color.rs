@@ -6,7 +6,7 @@
 use chrono::{DateTime, Utc};
 use ratatui::style::Color;
 
-use crate::tui::ui::gradient::{lerp_rgb, rgb_supported};
+use crate::tui::ui::gradient::lerp_rgb;
 
 const FRESH: (u8, u8, u8) = (0, 229, 255);
 const STALE: (u8, u8, u8) = (80, 80, 100);

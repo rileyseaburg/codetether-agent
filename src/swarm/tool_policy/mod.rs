@@ -10,6 +10,7 @@ mod prompt_input;
 mod prompt_sections;
 mod prompts;
 mod quality_contract;
+#[cfg(test)]
 mod registry;
 mod runtime_gate;
 mod source_metric_contract;
@@ -22,10 +23,13 @@ mod verification_output;
 #[path = "worktree_policy_tests.rs"]
 mod worktree_policy_tests;
 
-pub use definitions::{definitions, is_read_only_task};
+#[cfg(test)]
+pub use definitions::definitions;
+pub use definitions::is_read_only_task;
 pub(crate) use deliverable_status::error as deliverable_error;
 pub(crate) use prompt_input::SystemPromptInput;
 pub(crate) use prompts::system_prompt;
+#[cfg(test)]
 pub use registry::restrict_registry;
 pub use runtime_gate::runtime_denial;
 pub(crate) use verification_contract::VerificationContract;

@@ -6,7 +6,7 @@ use reqwest::Client;
 
 use super::{
     CognitionHeartbeatConfig, CognitionLatestSnapshot, CognitionStatusSnapshot,
-    heartbeat_cognition_merge, trim_for_heartbeat,
+    heartbeat_cognition_merge,
 };
 
 pub(super) async fn fetch_cognition_heartbeat_payload(

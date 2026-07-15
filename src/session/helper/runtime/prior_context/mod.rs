@@ -23,21 +23,23 @@ mod session_update;
 mod source_preference;
 mod targets;
 
+#[cfg(test)]
 use crate::provider::Message;
 
 /// Resolve prior-context access from an in-memory message slice.
+#[cfg(test)]
 pub(crate) fn allowed(messages: &[Message]) -> bool {
     directive::resolve(messages)
 }
 
+#[cfg(test)]
+pub(crate) use blocking::{for_messages as block, serialized_messages as block_serialized};
 pub(crate) use blocking::{
-    for_messages as block, runtime_context as block_runtime_context,
-    serialized_messages as block_serialized, serialized_session as block_serialized_for_session,
+    runtime_context as block_runtime_context, serialized_session as block_serialized_for_session,
 };
-pub(crate) use registry::{
-    messages_available as tool_available, remove_tools,
-    session_available as tool_available_for_session,
-};
+#[cfg(test)]
+pub(crate) use registry::messages_available as tool_available;
+pub(crate) use registry::{remove_tools, session_available as tool_available_for_session};
 pub(crate) use session_state::allowed as allowed_for_session;
 
 #[cfg(test)]

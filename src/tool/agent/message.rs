@@ -37,6 +37,7 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
     let mut session_for_task = task_session::load(&name, params).await?;
     let registry = helpers::get_registry().await?;
     super::bus_publish::announce_working(&name, "processing message");
+    super::event_loop::live_trace::begin(&name, message.clone());
     let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
     let handle = tokio::spawn(async move {
         session_for_task
@@ -53,7 +54,7 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
     }
 
     let (response, thinking, tools, error, updated_session) =
-        event_loop::run(&mut rx, handle).await;
+        event_loop::run(&name, &mut rx, handle).await;
 
     Ok(message_finalize::finalize(name, response, thinking, tools, error, updated_session).await)
 }

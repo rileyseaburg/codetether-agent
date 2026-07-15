@@ -1,7 +1,7 @@
 //! Workspace clone lock helpers.
 
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 

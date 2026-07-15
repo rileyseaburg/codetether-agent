@@ -9,7 +9,9 @@ use super::Block;
 
 #[path = "message_formatter_block_bullets.rs"]
 mod bullets;
-pub(super) use bullets::{bullet_for_depth, list_block};
+#[cfg(test)]
+pub(super) use bullets::bullet_for_depth;
+pub(super) use bullets::list_block;
 
 /// Detect a GFM task item `- [ ] text` / `- [x] text`.
 ///

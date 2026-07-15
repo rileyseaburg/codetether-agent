@@ -14,7 +14,7 @@ use super::outcome::{DrainOutcome, StreamStop};
 /// Accept the final outcome after restarts are exhausted (`attempts` used).
 pub(super) fn accept(outcome: DrainOutcome, attempts: u32) -> Result<CompletionResponse> {
     if matches!(outcome.stop, StreamStop::PrematureEnd) {
-        anyhow::bail!("temporary provider availability issue; retry the request");
+        anyhow::bail!("provider stream ended before completion; retry the request");
     }
     let response = outcome.response.filter(|r| !r.message.content.is_empty());
     if let Some(r) = response {

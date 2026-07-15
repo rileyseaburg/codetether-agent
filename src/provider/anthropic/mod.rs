@@ -36,7 +36,9 @@ mod sse_line;
 mod sse_message_delta;
 mod sse_stream;
 mod sse_stream_poll;
+#[cfg(test)]
 mod test_support;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 #[path = "tests_sanitize.rs"]

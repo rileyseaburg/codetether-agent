@@ -27,7 +27,7 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use zai_stream_assembly::{append_stream_tool_call_chunks, finish_stream_tool_call_chunks};
 use zai_stream_state::ZaiStreamToolState;
-use zai_stream_types::{ZaiStreamFunction, ZaiStreamResponse, ZaiStreamToolCall};
+use zai_stream_types::ZaiStreamResponse;
 
 pub const DEFAULT_BASE_URL: &str = "https://api.z.ai/api/paas/v4";
 const CODING_BASE_URL: &str = "https://api.z.ai/api/coding/paas/v4";
@@ -1216,10 +1216,10 @@ mod tests {
 
         append_stream_tool_call_chunks(
             &mut chunks,
-            &[ZaiStreamToolCall {
+            &[zai_stream_types::ZaiStreamToolCall {
                 index: Some(0),
                 id: Some("call_1".to_string()),
-                function: Some(ZaiStreamFunction {
+                function: Some(zai_stream_types::ZaiStreamFunction {
                     name: Some("bash".to_string()),
                     arguments: Some(Value::String("{\"".to_string())),
                 }),
@@ -1231,10 +1231,10 @@ mod tests {
 
         append_stream_tool_call_chunks(
             &mut chunks,
-            &[ZaiStreamToolCall {
+            &[zai_stream_types::ZaiStreamToolCall {
                 index: Some(0),
                 id: None,
-                function: Some(ZaiStreamFunction {
+                function: Some(zai_stream_types::ZaiStreamFunction {
                     name: None,
                     arguments: Some(Value::String("command\":\"pwd\"}".to_string())),
                 }),

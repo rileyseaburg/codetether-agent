@@ -39,6 +39,7 @@ pub(super) fn handle_kill(name: &str, parent: Option<&str>) -> ToolResult {
             tracing::info!(agent = %name, aborted, "Sub-agent killed");
             super::bus_publish::announce_done(name, false, "killed by user");
             store::remove(name);
+            super::event_loop::live_trace::clear(name);
             ToolResult::success(format!("Terminated and removed @{name}"))
         }
         None => ToolResult::error(format!("Agent @{name} not found")),

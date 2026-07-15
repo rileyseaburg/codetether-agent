@@ -6,7 +6,7 @@ pub(super) use crate::{
         task_scope::check_task_scope,
         worker_tool_registry::{create_filtered_registry, is_tool_allowed},
         worker_workspace_context::resolve_task_workspace_dir,
-        worker_workspace_record::{RegisteredWorkspaceRecord, fetch_workspace_record},
+        worker_workspace_record::fetch_workspace_record,
     },
     provenance::{ensure_provenance_trailers, install_commit_msg_hook},
     session::helper::runtime::enrich_tool_input_for_session_model,

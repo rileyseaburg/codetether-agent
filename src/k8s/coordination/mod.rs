@@ -31,6 +31,4 @@ mod resource;
 #[cfg(test)]
 mod test_support;
 
-pub use claim::MutationClaim;
 pub use coordinator::MutationCoordinator;
-pub use error::LeaseConflict;

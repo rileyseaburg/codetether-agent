@@ -36,8 +36,6 @@ macro_rules! forage_println {
 }
 
 use super::ForageOpportunity;
-use crate::forage_println;
-
 /// Print a forage cycle's selected opportunities to stdout (quiet-gated).
 pub(super) fn print_cycle(cycle: usize, selected: &[ForageOpportunity], show_moonshot: bool) {
     forage_println!("\n=== Forage Cycle {cycle} ===");

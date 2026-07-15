@@ -34,6 +34,7 @@ pub(super) async fn kick_off(name: &str, detach: bool) -> Result<ToolResult> {
     let kickoff = format!("Assigned task:\n\n{}", entry.instructions);
     let registry = helpers::get_registry().await?;
     bus_publish::announce_working(name, "starting first turn");
+    super::event_loop::live_trace::begin(name, kickoff.clone());
     let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
     let mut session_for_task = session.clone();
     if session_for_task.bus.is_none() {
@@ -54,6 +55,6 @@ pub(super) async fn kick_off(name: &str, detach: bool) -> Result<ToolResult> {
             handle,
         ));
     }
-    let r = event_loop::run(&mut rx, handle).await;
+    let r = event_loop::run(name, &mut rx, handle).await;
     Ok(message_finalize::finalize(name.to_string(), r.0, r.1, r.2, r.3, r.4).await)
 }

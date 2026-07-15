@@ -17,14 +17,6 @@ pub fn wrap(result: Result<Value, String>) -> Value {
     }))
 }
 
-pub fn ok(value: Value) -> Value {
-    Value::Result(Rc::new(ResultValue::Ok(value)))
-}
-
-pub fn err(error: String) -> Value {
-    Value::Result(Rc::new(ResultValue::Err(error)))
-}
-
 pub fn string(value: impl Into<String>) -> Value {
     Value::Str(Rc::new(value.into()))
 }

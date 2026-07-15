@@ -11,61 +11,75 @@
 
 use super::state::EventLoopState;
 use crate::session::SessionEvent;
-use serde_json::json;
+use std::time::Duration;
 use tokio::sync::mpsc;
 
+const IDLE_TIMEOUT: Duration = Duration::from_secs(300);
+
 /// Collects streamed session events until completion or timeout.
+///
+/// # Arguments
+///
+/// * `rx` - Channel carrying streamed sub-agent session events.
+///
+/// # Returns
+///
+/// The accumulated event-loop state after completion or inactivity.
 ///
 /// # Examples
 ///
 /// ```ignore
-/// let state = collect_events(&mut rx).await;
+/// let state = collect_events("reviewer", &mut rx).await;
 /// ```
-pub(super) async fn collect_events(rx: &mut mpsc::Receiver<SessionEvent>) -> EventLoopState {
+pub(super) async fn collect_events(
+    agent_name: &str,
+    rx: &mut mpsc::Receiver<SessionEvent>,
+) -> EventLoopState {
+    collect_events_with_idle_timeout(agent_name, rx, IDLE_TIMEOUT).await
+}
+
+/// Collect events while enforcing a caller-selected inactivity limit.
+///
+/// # Arguments
+///
+/// * `rx` - Channel carrying streamed sub-agent session events.
+/// * `idle_timeout` - Maximum duration allowed between consecutive events.
+///
+/// # Returns
+///
+/// The accumulated event-loop state, marked timed out after inactivity.
+///
+/// # Examples
+///
+/// ```ignore
+/// let state = collect_events_with_idle_timeout(
+///     "reviewer", &mut rx, Duration::from_secs(30)
+/// ).await;
+/// ```
+pub(super) async fn collect_events_with_idle_timeout(
+    agent_name: &str,
+    rx: &mut mpsc::Receiver<SessionEvent>,
+    idle_timeout: Duration,
+) -> EventLoopState {
     let mut state = EventLoopState::default();
-    let timeout_fut = tokio::time::sleep(std::time::Duration::from_secs(300));
-    tokio::pin!(timeout_fut);
     while !state.done {
-        tokio::select! {
-            res = rx.recv() => handle_recv_result(res, &mut state),
-            _ = &mut timeout_fut => {
-                state.error = Some("Agent timed out after 5 minutes".into());
-                state.done = true;
-                state.timed_out = true;
-            }
+        match tokio::time::timeout(idle_timeout, rx.recv()).await {
+            Ok(result) => observe_and_apply(agent_name, result, &mut state),
+            Err(_) => mark_timed_out(&mut state),
         }
     }
     state
 }
 
-fn handle_recv_result(result: Option<SessionEvent>, state: &mut EventLoopState) {
-    match result {
-        Some(event) => handle_event(event, state),
-        None => state.done = true,
+fn observe_and_apply(agent_name: &str, result: Option<SessionEvent>, state: &mut EventLoopState) {
+    if let Some(event) = result.as_ref() {
+        super::live_trace::observe(agent_name, event);
     }
+    super::handle::recv_result(result, state);
 }
 
-fn handle_event(event: SessionEvent, state: &mut EventLoopState) {
-    match event {
-        SessionEvent::TextComplete(t) => state.response.push_str(&t),
-        SessionEvent::ThinkingComplete(t) => state.thinking.push_str(&t),
-        SessionEvent::ToolCallComplete {
-            name,
-            output,
-            success,
-            duration_ms: _,
-            ..
-        } => state.tools.push(json!({
-            "tool": name,
-            "success": success,
-            "output_preview": crate::tool::agent::text::truncate_preview(&output, 200),
-        })),
-        SessionEvent::Error(e) => {
-            state.response.push_str(&format!("\n[Error: {e}]"));
-            state.error = Some(e);
-        }
-        SessionEvent::ApprovalRequest(req) => super::approve::auto_approve(&req),
-        SessionEvent::Done => state.done = true,
-        _ => {}
-    }
+fn mark_timed_out(state: &mut EventLoopState) {
+    state.error = Some("Agent timed out after 5 minutes of inactivity".into());
+    state.done = true;
+    state.timed_out = true;
 }

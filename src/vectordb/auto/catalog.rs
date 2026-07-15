@@ -27,7 +27,7 @@ pub const COMPACT: ModelSpec = ModelSpec {
 
 /// Choose the best model that fits within `total_memory_bytes`.
 ///
-/// Leaves headroom by requiring ~3x the weight size in RAM.
+/// Leaves headroom by requiring ~5x the weight size in RAM.
 ///
 /// # Examples
 ///
@@ -38,7 +38,7 @@ pub const COMPACT: ModelSpec = ModelSpec {
 /// assert_eq!(best_fitting(5 * 1024 * 1024 * 1024).repo, COMPACT.repo);
 /// ```
 pub fn best_fitting(total_memory_bytes: u64) -> ModelSpec {
-    if total_memory_bytes >= BEST.approx_bytes.saturating_mul(3) {
+    if total_memory_bytes >= BEST.approx_bytes.saturating_mul(5) {
         BEST
     } else {
         COMPACT

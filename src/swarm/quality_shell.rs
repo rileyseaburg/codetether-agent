@@ -1,5 +1,7 @@
 //! Policy-gated shell checks used by swarm branch probes.
 
+#![cfg(test)]
+
 use crate::tool::{Tool, bash::BashTool};
 use anyhow::{Context, Result};
 use serde_json::{Value, json};

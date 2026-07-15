@@ -1,6 +1,6 @@
 //! Neon highlight style for the autocomplete suggestions list.
 
-use ratatui::style::{Color, Style, Stylize};
+use ratatui::style::{Color, Style};
 
 use crate::tui::ui::chat_view::spinner::spinner_color;
 use crate::tui::ui::gradient::rgb_supported;

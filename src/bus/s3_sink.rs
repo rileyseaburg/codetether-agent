@@ -31,7 +31,6 @@
 //! ```
 
 use super::{AgentBus, BusEnvelope, BusMessage};
-use crate::a2a::types::Part;
 use crate::secrets;
 #[path = "s3_record_format.rs"]
 mod s3_record_format;
@@ -771,7 +770,7 @@ fn serialize_training_records(records: &[TrainingRecord]) -> Vec<String> {
 
 /// S3 sink that archives all bus messages as JSONL training records
 pub struct BusS3Sink {
-    bus: Arc<AgentBus>,
+    _bus: Arc<AgentBus>,
     client: MinioClient,
     config: BusS3SinkConfig,
     rx: broadcast::Receiver<BusEnvelope>,
@@ -818,7 +817,7 @@ impl BusS3Sink {
         let rx = bus.tx.subscribe();
 
         Ok(Self {
-            bus,
+            _bus: bus,
             client,
             config,
             rx,
@@ -1139,7 +1138,7 @@ mod tests {
             message: BusMessage::AgentMessage {
                 from: "coder".into(),
                 to: "planner".into(),
-                parts: vec![Part::Text {
+                parts: vec![crate::a2a::types::Part::Text {
                     text: "I fixed the bug".into(),
                 }],
             },

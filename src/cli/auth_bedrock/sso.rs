@@ -7,11 +7,10 @@ use super::aws_paths;
 use super::sso_parse::{Sections, parse_sections};
 use anyhow::{Context, Result};
 
-/// Resolved AWS profile and optional default Bedrock region.
+/// Resolved AWS profile for the requested SSO portal.
 #[derive(Clone)]
 pub(super) struct SsoProfile {
     pub profile: String,
-    pub region: Option<String>,
 }
 
 /// Resolve a user-provided SSO URL to an existing AWS CLI profile.
@@ -52,7 +51,6 @@ fn find_match(sections: &Sections, target: &str) -> Option<SsoProfile> {
             .is_some_and(|v| normalize(v) == target);
         (direct || via_session).then(|| SsoProfile {
             profile: profile.to_string(),
-            region: values.get("region").cloned(),
         })
     })
 }

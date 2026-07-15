@@ -24,7 +24,7 @@ use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::core::v1::Pod;
 use kube::{
     Api, Client, Config as KubeConfig,
-    api::{ListParams, LogParams, PostParams},
+    api::{LogParams, PostParams},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

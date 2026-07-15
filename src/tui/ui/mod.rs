@@ -22,6 +22,7 @@ mod subagent_detail_metadata;
 mod subagent_detail_tool;
 mod subagent_detail_view;
 pub mod subagent_lines;
+mod subagent_live_lines;
 mod subagent_managed_lines;
 mod subagent_message_lines;
 pub mod subagent_row;

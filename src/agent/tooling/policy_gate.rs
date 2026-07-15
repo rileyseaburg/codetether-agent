@@ -1,5 +1,6 @@
 //! Runtime policy gate for agent tool dispatch.
 
+#[cfg(test)]
 use crate::config::Config;
 use crate::tool::ToolResult;
 use serde_json::Value;

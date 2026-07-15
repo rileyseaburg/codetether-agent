@@ -25,6 +25,11 @@ pub(super) fn lines(state: &AppState, name: &str) -> Vec<Line<'static>> {
     let mut rows =
         super::subagent_detail_metadata::lines(name, parent, status, model, &agent.instructions);
     super::subagent_message_lines::append(&mut rows, &messages);
+    if let Some(trace) =
+        crate::tool::agent::bridge::agent_tool_live_trace_for_parent(name, parent_id)
+    {
+        super::subagent_live_lines::append(&mut rows, &trace);
+    }
     rows
 }
 

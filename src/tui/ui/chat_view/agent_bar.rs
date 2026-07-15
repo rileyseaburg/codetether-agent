@@ -3,11 +3,7 @@
 //! Merges both registries: TUI `/spawn` agents and agent-tool-spawned agents
 //! (issue #295 / #297 Part A).
 
-use ratatui::{
-    Frame,
-    text::{Line, Span},
-    widgets::Paragraph,
-};
+use ratatui::{Frame, text::Line, widgets::Paragraph};
 
 use super::agent_bar_tool::push_tool_agents;
 use super::agent_bar_tui::push_tui_agents;

@@ -7,12 +7,6 @@ impl Config {
         self.permissions.paths.extend(other.paths);
     }
 
-    pub(super) fn merge_a2a(&mut self, other: &Self) {
-        if other.a2a.server_url.is_some() {
-            self.a2a = other.a2a.clone();
-        }
-    }
-
     pub(super) fn merge_telemetry(&mut self, other: TelemetryConfig) {
         if other.crash_reporting.is_some() {
             self.telemetry.crash_reporting = other.crash_reporting;

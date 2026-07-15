@@ -5,7 +5,7 @@ use anyhow::Result;
 use crate::provenance::ClaimProvenance;
 
 use super::{
-    TaskContext, WorkerTaskRuntime, build_output_callback, build_task_context, execute_task_agent,
+    WorkerTaskRuntime, build_output_callback, build_task_context, execute_task_agent,
     finalize_task_result, prepare_task_session, sync_timeline_to_runtime, task_dispatch_special,
     task_timeline,
 };

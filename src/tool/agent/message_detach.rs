@@ -27,7 +27,8 @@ pub(super) fn dispatch(
     let agent = name.clone();
     tokio::spawn(async move {
         let _guard = guard;
-        let (response, thinking, tools, error, updated) = event_loop::run(&mut rx, handle).await;
+        let (response, thinking, tools, error, updated) =
+            event_loop::run(&agent, &mut rx, handle).await;
         message_finalize::finalize(agent, response, thinking, tools, error, updated).await;
     });
     ToolResult::success(format!(

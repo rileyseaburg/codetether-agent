@@ -1,6 +1,6 @@
 //! Formatting for one spawned-agent header tab.
 
-use ratatui::{style::Style, text::Span};
+use ratatui::text::Span;
 
 #[path = "agent_tab_style.rs"]
 pub mod agent_tab_style;

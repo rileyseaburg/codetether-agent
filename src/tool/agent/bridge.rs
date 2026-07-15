@@ -7,8 +7,11 @@
 //! (issue #295 / #297 Part A).
 
 use super::store;
+#[path = "bridge_live.rs"]
+mod live;
 #[path = "bridge_transcript.rs"]
 mod transcript;
+pub(crate) use live::{LiveTraceEntry, LiveTraceSnapshot, agent_tool_live_trace_for_parent};
 pub(crate) use transcript::agent_tool_transcript_for_parent;
 
 /// A read-only snapshot of a spawned sub-agent, suitable for TUI display.

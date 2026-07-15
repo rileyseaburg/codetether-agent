@@ -7,9 +7,13 @@ pub(crate) fn render(project_root: &Path) -> String {
     let recall = super::belief_recall::render(&beliefs);
     let context = crate::memory::palace::belief_context(&beliefs);
     if context.trim().is_empty() {
-        return format!("{EMPTY}\n{recall}");
+        return format!("{EMPTY}\n{recall}\n{}", storage_hint());
     }
-    format!("Core memory:\n{}\n{recall}", context.trim())
+    format!(
+        "Core memory:\n{}\n{recall}\n{}",
+        context.trim(),
+        storage_hint()
+    )
 }
 
 pub(crate) fn storage_hint() -> &'static str {

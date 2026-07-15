@@ -1,5 +1,6 @@
 //! Runtime rejection of forbidden prior-context tool calls.
 
+#[cfg(test)]
 use crate::provider::Message;
 use crate::session::Session;
 use crate::tool::ToolResult;
@@ -8,11 +9,13 @@ use serde_json::Value;
 const MESSAGE: &str = "The user disabled prior memory/session/history access. Do not retry this tool or substitute another prior-context source. Use the active conversation and user-designated repository files or documentation. Only a later explicit opt-in restores access.";
 
 /// Block a prior-context request using transcript-derived policy.
+#[cfg(test)]
 pub(crate) fn for_messages(messages: &[Message], name: &str, args: &Value) -> Option<ToolResult> {
     blocked(!super::allowed(messages), name, args)
 }
 
 /// Parse and block serialized arguments using transcript-derived policy.
+#[cfg(test)]
 pub(crate) fn serialized_messages(
     messages: &[Message],
     name: &str,

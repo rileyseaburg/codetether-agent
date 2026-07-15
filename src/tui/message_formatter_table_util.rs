@@ -18,16 +18,6 @@ pub(super) fn w(s: &str) -> usize {
     UnicodeWidthStr::width(s)
 }
 
-/// Pad `s` to `width` columns with trailing spaces.
-pub(super) fn pad(s: &str, width: usize) -> String {
-    let used = w(s);
-    if used >= width {
-        s.to_string()
-    } else {
-        format!("{s}{}", " ".repeat(width - used))
-    }
-}
-
 /// Build a styled span from owned text.
 pub(super) fn span(text: String, style: Style) -> Span<'static> {
     Span::styled(text, style)

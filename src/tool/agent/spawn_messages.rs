@@ -20,14 +20,6 @@ pub(super) fn success_message(request: &SpawnRequest<'_>) -> String {
     )
 }
 
-/// Message for a successful ephemeral (non-persisted) spawn.
-pub(super) fn ephemeral_message(request: &SpawnRequest<'_>) -> String {
-    format!(
-        "{}\nwarning: ephemeral: true; child session was not persisted",
-        success_message(request)
-    )
-}
-
 /// Message for a durable spawn whose persistence failed.
 pub(super) fn failure_message(request: &SpawnRequest<'_>, error: &anyhow::Error) -> String {
     format!(

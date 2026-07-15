@@ -13,7 +13,6 @@ use std::sync::Arc;
 
 pub(crate) mod agent_prompt;
 pub(crate) mod agent_registry;
-mod agent_registry_policy;
 mod aggregate;
 mod aggregate_response;
 mod default_impl;

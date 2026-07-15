@@ -23,10 +23,7 @@ pub(super) fn resolve() -> Result<SsoProfile> {
         .filter_map(|(name, values)| {
             let profile = name.strip_prefix("profile ")?.to_string();
             let is_sso = values.contains_key("sso_session") || values.contains_key("sso_start_url");
-            is_sso.then(|| SsoProfile {
-                profile,
-                region: values.get("region").cloned(),
-            })
+            is_sso.then_some(SsoProfile { profile })
         })
         .collect();
     match matches.as_slice() {

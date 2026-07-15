@@ -30,5 +30,4 @@ pub(super) struct DeviceAuthorization {
 #[serde(rename_all = "camelCase")]
 pub(super) struct DeviceToken {
     pub access_token: String,
-    pub expires_in: i64,
 }

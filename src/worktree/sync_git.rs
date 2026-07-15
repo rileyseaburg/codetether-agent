@@ -11,10 +11,3 @@ pub(super) fn git_output(repo_path: &Path, args: &[&str]) -> Result<Output> {
         .output()
         .with_context(|| format!("Failed to execute git {}", args.join(" ")))
 }
-
-pub(super) fn git_best_effort(repo_path: &Path, args: &[&str]) {
-    let _ = Command::new("git")
-        .args(args)
-        .current_dir(repo_path)
-        .output();
-}

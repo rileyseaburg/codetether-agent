@@ -19,14 +19,6 @@ impl ApprovalIntent {
         matches!(self, Self::ApproveForSession)
     }
 
-    pub(super) fn live_decision(self) -> LiveApprovalDecision {
-        if self.approves() {
-            LiveApprovalDecision::Approved
-        } else {
-            LiveApprovalDecision::denied()
-        }
-    }
-
     pub(super) fn live_decision_with_reason(self, reason: &str) -> LiveApprovalDecision {
         if self.approves() {
             LiveApprovalDecision::Approved

@@ -27,6 +27,7 @@ pub(super) fn selected_runner() -> Runner {
     select_for(false, None)
 }
 
+#[cfg(any(test, not(target_os = "linux")))]
 pub(super) fn select_for(is_linux: bool, bwrap: Option<PathBuf>) -> Runner {
     if !is_linux {
         return Runner::Direct("non_linux");

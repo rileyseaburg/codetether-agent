@@ -29,6 +29,7 @@ pub(crate) async fn run_prompt_with_events(
     event_tx: mpsc::Sender<SessionEvent>,
     registry: Arc<ProviderRegistry>,
 ) -> Result<SessionResult> {
+    crate::session::step_limit::mark_budget_active();
     let mut runner = super::prompt_loop::initialize(session, Some(event_tx), registry).await?;
     runner.accept(message, images).await?;
     super::prompt_loop::run(&mut runner).await

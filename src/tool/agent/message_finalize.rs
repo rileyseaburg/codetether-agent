@@ -20,6 +20,7 @@ pub(super) async fn finalize(
 ) -> ToolResult {
     if let Some(updated) = updated_session {
         store::update_session(&name, updated.clone());
+        super::event_loop::live_trace::clear(&name);
         if let Err(e) = updated.save().await {
             tracing::warn!(agent = %name, error = %e, "Failed to save agent session after message");
         }
