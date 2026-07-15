@@ -5,7 +5,7 @@
 // the agent loop forever (e.g. a command stuck for 700+ seconds).
 
 fn run_guarded(command, timeout_ms) {
-    let res = process_run("bash", ["-c", command], nil, timeout_ms)?
+    let res = process_run("bash", ["-c", command], nil, timeout_ms)??
     let m = map()
     m["success"] = res["success"]
     m["timed_out"] = res["timed_out"]
@@ -20,7 +20,7 @@ fn kill_stuck(pattern, max_secs) {
     // string interpolation.
     let script = "pgrep -f \"$1\" | while read -r pid; do t=$(ps -o etimes= -p \"$pid\" | tr -d ' '); if [ \"$\{t:-0\}\" -ge \"$2\" ] && [ \"$pid\" != \"$$\" ]; then kill -9 \"$pid\" && echo \"$pid\"; fi; done"
     let args = ["-c", script, "bash", pattern, str(max_secs)]
-    let res = process_run("bash", args, nil, 10000)?
+    let res = process_run("bash", args, nil, 10000)??
     let m = map()
     m["killed"] = res["stdout"].trim()
     m["timed_out"] = res["timed_out"]
