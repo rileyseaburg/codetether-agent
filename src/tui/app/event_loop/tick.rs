@@ -22,10 +22,12 @@ pub async fn run(app: &mut App) {
     let swarm_changed = app.state.swarm.drain_events();
     let forage_changed = crate::tui::forage_run::drain_forage_updates(app);
     let shell_changed = crate::tui::app::input::shell_bg::drain_shell_events(app);
+    let history_changed = crate::tui::app::state::history_page::drain(app);
     app.state.needs_redraw |= ralph_changed
         || swarm_changed
         || forage_changed
         || shell_changed
+        || history_changed
         || before.changed_since(app);
 }
 

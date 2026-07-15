@@ -21,7 +21,7 @@ impl Default for super::AppState {
             chat_scroll: 0,
             chat_last_max_scroll: 0,
             chat_auto_follow: true,
-            tool_preview_scroll: 0,
+            history_page: Default::default(), tool_preview_scroll: 0,
             tool_preview_last_max_scroll: 0,
             protocol_selected: 0,
             protocol_scroll: 0,

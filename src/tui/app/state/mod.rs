@@ -29,6 +29,7 @@ pub mod context_health;
 pub mod default_impl;
 pub mod git_state;
 pub mod history;
+pub mod history_page;
 pub mod input_cursor;
 pub mod input_edit;
 pub mod input_replace;
@@ -42,6 +43,7 @@ pub mod pending_tool;
 pub mod profile_defs;
 pub mod prompt_queue;
 pub mod scroll;
+pub mod scroll_page;
 pub mod session_fuzzy;
 #[cfg(test)]
 mod session_fuzzy_tests;

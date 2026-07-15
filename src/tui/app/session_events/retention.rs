@@ -4,6 +4,9 @@ use crate::tui::app::state::App;
 use crate::tui::retained_payload::CHAT_RETAINED_MAX_ITEMS;
 
 pub(super) fn trim(app: &mut App) {
+    if app.state.history_page.expanded() {
+        return;
+    }
     let len = app.state.messages.len();
     if len <= CHAT_RETAINED_MAX_ITEMS {
         return;

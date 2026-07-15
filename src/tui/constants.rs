@@ -1,4 +1,4 @@
-/// Sentinel value meaning "follow the latest message position" (top in newest-first chat view).
+/// Sentinel value meaning "follow the latest message at the bottom of chat".
 /// Kept as a legacy name to avoid touching many call sites.
 pub const SCROLL_BOTTOM: usize = 1_000_000;
 

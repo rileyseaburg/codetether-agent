@@ -67,6 +67,8 @@ pub fn clamp_scroll(app: &mut App, messages_rect: Rect, lines: &[Line<'_>]) -> u
     // Paragraph is rendered without Wrap → 1 line == 1 terminal row.
     let total = lines.len();
     let visible = messages_rect.height.saturating_sub(2) as usize;
+    app.state.history_page.set_viewport_height(visible);
+    app.state.apply_pending_history_anchor(total);
     let max_scroll = total.saturating_sub(visible);
     app.state.set_chat_max_scroll(max_scroll);
     let scroll = if app.state.chat_scroll >= SCROLL_BOTTOM {

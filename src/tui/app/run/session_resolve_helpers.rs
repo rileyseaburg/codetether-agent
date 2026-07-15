@@ -14,7 +14,7 @@ pub(super) fn resolve_loaded(load: TailLoad, bus: &Arc<AgentBus>) -> Resolved {
     let title = load.session.title.clone();
     let dropped = load.dropped;
     let file_bytes = load.file_bytes;
-    let session = load.session.with_bus(bus.clone());
+    let mut session = load.session.with_bus(bus.clone());
     if dropped > 0 {
         tracing::warn!(
             session_id = %session.id, dropped, file_bytes,
@@ -22,12 +22,14 @@ pub(super) fn resolve_loaded(load: TailLoad, bus: &Arc<AgentBus>) -> Resolved {
         );
     }
     let msg_count = session.history().len();
+    let source_id = crate::tui::app::session_fork::fork_if_truncated(&mut session, dropped);
     Resolved {
         session,
         outcome: SessionLoadOutcome::Loaded {
             msg_count,
             title,
             dropped,
+            source_id,
         },
     }
 }

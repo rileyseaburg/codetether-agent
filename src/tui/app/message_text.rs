@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
 use crate::provider::{ContentPart, Message, Role};
-use crate::session::Session;
-use crate::tui::app::state::App;
 use crate::tui::app::text::truncate_preview;
 use crate::tui::chat::message::{ChatMessage, MessageType};
+
+#[path = "message_text/sync.rs"]
+mod sync;
+pub use sync::sync_messages_from_session;
+pub(crate) use sync::sync_messages_from_source;
 
 pub fn extract_message_text(content: &[ContentPart]) -> String {
     let mut out = String::new();
@@ -24,31 +27,13 @@ pub fn extract_message_text(content: &[ContentPart]) -> String {
     out
 }
 
-pub fn sync_messages_from_session(app: &mut App, session: &Session) {
-    app.state.messages = session_messages_to_chat_messages(session);
-    crate::tui::app::message_cache_invalidate::clear(&mut app.state);
-    app.state.current_request_first_token_ms = None;
-    app.state.current_request_last_token_ms = None;
-    app.state.last_request_first_token_ms = None;
-    app.state.last_request_last_token_ms = None;
-    app.state.last_completion_model = None;
-    app.state.last_completion_latency_ms = None;
-    app.state.last_completion_prompt_tokens = None;
-    app.state.last_completion_output_tokens = None;
-    app.state.last_tool_name = None;
-    app.state.last_tool_latency_ms = None;
-    app.state.last_tool_success = None;
-    app.state.chat_latency.clear();
-    app.state.reset_tool_preview_scroll();
-    app.state.set_tool_preview_max_scroll(0);
-    app.state.scroll_to_bottom();
-}
-
-fn session_messages_to_chat_messages(session: &Session) -> Vec<ChatMessage> {
+pub(crate) fn provider_messages_to_chat_messages<'a>(
+    messages: impl IntoIterator<Item = &'a Message>,
+) -> Vec<ChatMessage> {
     let mut chat_messages = Vec::new();
     let mut tool_call_names = HashMap::new();
 
-    for message in crate::tui::app::message_window::recent(session) {
+    for message in messages {
         if is_hidden_context_marker(message) {
             continue;
         }

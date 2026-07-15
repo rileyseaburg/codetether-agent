@@ -33,6 +33,8 @@ fn loaded_status(
     if dropped == 0 {
         format!("Resumed: {label} ({msg_count} messages)")
     } else {
-        format!("Resumed: {label} — showing last {msg_count} messages ({dropped} older not loaded)")
+        format!(
+            "Resumed: {label} — showing last {msg_count} messages; scroll up for {dropped} older"
+        )
     }
 }

@@ -1,5 +1,5 @@
 use crate::session::Session;
-use crate::tui::app::message_text::sync_messages_from_session;
+use crate::tui::app::message_text::sync_messages_from_source;
 use crate::tui::app::state::App;
 use crate::tui::models::WorkspaceSnapshot;
 use crate::tui::worker_bridge::TuiWorkerBridge;
@@ -22,7 +22,8 @@ pub(super) fn complete(
     app.state.session_id = Some(session.id.clone());
     session.metadata.allow_network = app.state.allow_network;
     super::network_env::apply(app.state.allow_network);
-    sync_messages_from_session(app, session);
+    let (source_id, has_older) = outcome.history_source(&session.id);
+    sync_messages_from_source(app, session, source_id, has_older);
     super::worker_attach::attach(app, worker_bridge);
     app.state.refresh_slash_suggestions();
     app.state.move_cursor_end();

@@ -1,6 +1,6 @@
 //! Alt-key scroll bindings for the chat view.
 //!
-//! Handles Alt-j/k (scroll 1), Alt-d/u (scroll 5),
+//! Handles Alt-j/k (scroll 1), Alt-d/u (scroll one viewport),
 //! Ctrl-g/G (scroll to top/bottom) while in Chat view mode.
 //!
 //! # Examples
@@ -39,8 +39,8 @@ pub(super) fn handle_alt_scroll(app: &mut App, key: KeyEvent) -> Option<anyhow::
     match key.code {
         KeyCode::Char('j') if alt => app.state.scroll_down(1),
         KeyCode::Char('k') if alt => app.state.scroll_up(1),
-        KeyCode::Char('d') if alt => app.state.scroll_down(5),
-        KeyCode::Char('u') if alt => app.state.scroll_up(5),
+        KeyCode::Char('d') if alt => app.state.page_down(),
+        KeyCode::Char('u') if alt => app.state.page_up(),
         KeyCode::Char('g') if ctrl => app.state.scroll_to_top(),
         KeyCode::Char('G') if ctrl => app.state.scroll_to_bottom(),
         _ => return None,

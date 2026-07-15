@@ -55,7 +55,7 @@ pub struct App {
 #[rustfmt::skip]
 pub struct AppState {
     pub view_mode: ViewMode, pub input_mode: InputMode, pub messages: Vec<ChatMessage>, pub input: String, pub input_cursor: usize, pub input_scroll: usize,
-    pub chat_scroll: usize, pub chat_last_max_scroll: usize, pub chat_auto_follow: bool, pub tool_preview_scroll: usize, pub tool_preview_last_max_scroll: usize,
+    pub chat_scroll: usize, pub chat_last_max_scroll: usize, pub chat_auto_follow: bool, pub(crate) history_page: super::history_page::HistoryPageState, pub tool_preview_scroll: usize, pub tool_preview_last_max_scroll: usize,
     pub protocol_selected: usize, pub protocol_scroll: usize, pub status: String, pub processing: bool, pub session_id: Option<String>, pub sessions: Vec<SessionSummary>, pub selected_session: usize, pub session_filter: String, pub cwd_display: String,
     pub bus_log: BusLogState, pub swarm: SwarmViewState, pub audit: AuditViewState, pub git: git_state::GitViewState, pub ralph: RalphViewState, pub audit_loop: crate::tui::audit_loop_view::audit_loop_state::AuditLoopState, pub symbol_search: SymbolSearchState,
     pub slash_suggestions: Vec<String>, pub selected_slash_suggestion: usize, pub command_history: Vec<String>, pub history_index: Option<usize>,

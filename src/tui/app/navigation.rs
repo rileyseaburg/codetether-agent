@@ -197,7 +197,7 @@ pub fn handle_page_up(app: &mut App) {
         ViewMode::Ralph if app.state.ralph.detail_mode => app.state.ralph.detail_scroll_up(10),
         ViewMode::Bus if app.state.bus_log.detail_mode => app.state.bus_log.detail_scroll_up(10),
         ViewMode::FilePicker => crate::tui::app::file_picker::file_picker_page_up(app),
-        ViewMode::Chat => app.state.scroll_up(10),
+        ViewMode::Chat => app.state.page_up(),
         _ => {}
     }
 }
@@ -217,7 +217,7 @@ pub fn handle_page_down(app: &mut App) {
         ViewMode::Protocol => {
             app.state.protocol_scroll = app.state.protocol_scroll.saturating_add(10);
         }
-        ViewMode::Chat => app.state.scroll_down(10),
+        ViewMode::Chat => app.state.page_down(),
         _ => {}
     }
 }

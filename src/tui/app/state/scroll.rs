@@ -13,12 +13,11 @@ impl super::AppState {
         // Manual scroll-up disengages auto-follow so streaming output
         // stops yanking the user back to the bottom of the chat.
         self.chat_auto_follow = false;
-        let base = if self.chat_scroll >= 1_000_000 {
-            self.chat_last_max_scroll
-        } else {
-            self.chat_scroll
-        };
+        let base = self.manual_chat_scroll();
         self.chat_scroll = base.saturating_sub(amount);
+        if self.chat_scroll == 0 {
+            self.history_page.request_older(amount.saturating_sub(base));
+        }
     }
 
     pub fn scroll_down(&mut self, amount: usize) {
