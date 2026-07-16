@@ -24,10 +24,23 @@ the working directory mid-task, silently discarding uncommitted edits.
    is responsible for committing or stashing before requesting worktree
    cleanup. The worktree manager will not silently destroy work.
 
-4. **Manual override.** If a caller truly needs to discard a worktree
-   regardless of dirty state (e.g., abandoned task), they should explicitly
-   commit or `git stash` first, or use `cleanup_all()` after confirming no
-   in-flight work exists.
+4. **No filesystem fallback.** A failed `git worktree remove` preserves the
+   checkout. Cleanup never bypasses Git by deleting the directory directly.
+
+5. **Repository-wide maintenance.** Preview clean, merged worktrees across
+   legacy roots before applying cleanup:
+   ```bash
+   codetether worktree cleanup --base main \
+     --root ../project-worktrees --root ../project.worktrees
+   codetether worktree cleanup --base main \
+     --root ../project-worktrees --root ../project.worktrees --apply
+   ```
+   Dirty, unmerged, locked, current, and primary worktrees are preserved.
+   Local branches are also preserved so cleanup cannot erase committed work.
+
+6. **Legacy managed cleanup.** Automatic Ralph/swarm cleanup removes a local
+   branch only through Git's merged-branch check (`git branch -d`). Committed
+   but unmerged branches remain available even after a clean checkout closes.
 
 ## Implementation
 

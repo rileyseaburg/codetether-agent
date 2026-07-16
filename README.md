@@ -382,6 +382,7 @@ in `.codetether-worktrees`. Preview cleanup before removing generated state:
 ```bash
 codetether cleanup --dry-run
 codetether cleanup --artifacts
+codetether worktree cleanup --base main --root ../project-worktrees
 ```
 
 ## Architecture
