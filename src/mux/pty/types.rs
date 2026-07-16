@@ -13,6 +13,12 @@ impl TerminalSize {
     }
 }
 
+/// Reconnect position and display mode captured before a PTY resize.
+pub(in crate::mux) struct PtyAttach {
+    pub offset: u64,
+    pub alternate_screen: bool,
+}
+
 /// One bounded slice of persistent terminal output.
 pub(in crate::mux) struct PtyChunk {
     pub data: Vec<u8>,

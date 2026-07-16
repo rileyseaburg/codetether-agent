@@ -5,7 +5,7 @@ use std::sync::atomic::Ordering;
 
 use anyhow::Result;
 
-use super::{PtyChunk, TerminalSize, program::PtyProgram};
+use super::{PtyAttach, PtyChunk, TerminalSize, program::PtyProgram};
 
 impl PtyProgram {
     pub(super) fn input(&self, data: &[u8]) -> Result<()> {
@@ -24,6 +24,14 @@ impl PtyProgram {
 
     pub(super) fn earliest(&self) -> u64 {
         self.output.lock().unwrap().earliest()
+    }
+
+    pub(super) fn attach_state(&self) -> PtyAttach {
+        let (offset, alternate_screen) = self.output.lock().unwrap().attach_state();
+        PtyAttach {
+            offset,
+            alternate_screen,
+        }
     }
 
     pub(super) fn running(&self) -> bool {

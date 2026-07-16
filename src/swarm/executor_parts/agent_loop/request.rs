@@ -3,8 +3,8 @@
 use super::state::State;
 use crate::provider::{CompletionRequest, CompletionResponse};
 use anyhow::Result;
-use std::time::Instant;
-use tokio::time::{Duration, timeout};
+use std::time::{Duration, Instant};
+use tokio::time::timeout;
 
 pub(super) enum Outcome {
     Response(CompletionResponse),
@@ -21,10 +21,7 @@ pub(super) async fn execute(state: &State) -> Result<Outcome> {
         max_tokens: Some(8192),
         stop: Vec::new(),
     };
-    let remaining = state
-        .deadline
-        .saturating_duration_since(Instant::now())
-        .min(Duration::from_secs(120));
+    let remaining = remaining(state.deadline, Instant::now());
     match timeout(remaining, state.provider.complete(request)).await {
         Ok(response) => Ok(Outcome::Response(response?)),
         Err(_) => {
@@ -36,3 +33,11 @@ pub(super) async fn execute(state: &State) -> Result<Outcome> {
         }
     }
 }
+
+fn remaining(deadline: Instant, now: Instant) -> Duration {
+    deadline.saturating_duration_since(now)
+}
+
+#[cfg(test)]
+#[path = "request_tests.rs"]
+mod tests;

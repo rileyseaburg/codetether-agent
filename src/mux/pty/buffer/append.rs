@@ -4,6 +4,7 @@ use super::{OUTPUT_LIMIT, OutputBuffer};
 
 impl OutputBuffer {
     pub(in crate::mux::pty) fn append(&mut self, data: &[u8]) {
+        self.mode.observe(data);
         if data.len() >= OUTPUT_LIMIT {
             self.base += (self.bytes.len() + data.len() - OUTPUT_LIMIT) as u64;
             self.bytes.clear();

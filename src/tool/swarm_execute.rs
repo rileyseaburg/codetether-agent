@@ -4,13 +4,13 @@
 //! sub-agents in a swarm pattern, with configurable concurrency and aggregation.
 
 use super::{Tool, ToolResult};
-use crate::provider::ProviderRegistry;
 use crate::swarm::executor::run_agent_loop;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 use std::sync::Arc;
 
+mod abort_on_drop;
 pub(crate) mod agent_prompt;
 pub(crate) mod agent_registry;
 mod aggregate;
@@ -27,6 +27,7 @@ mod model_selection;
 #[cfg(test)]
 #[path = "swarm_execute/model_selection_tests.rs"]
 mod model_selection_tests;
+mod provider_setup;
 mod schema;
 pub(crate) mod support;
 mod task_input;
@@ -34,6 +35,7 @@ mod task_result;
 #[cfg(test)]
 #[path = "swarm_execute/task_result_tests.rs"]
 mod task_result_tests;
+pub(crate) mod tui_bridge;
 mod worktrees;
 
 use execution_config::ExecutionConfig;
@@ -89,25 +91,14 @@ impl Tool for SwarmExecuteTool {
             "Starting swarm execution"
         );
 
-        // Get provider registry from Vault
-        let providers = ProviderRegistry::from_vault()
-            .await
-            .context("Failed to load providers")?;
-        let provider_list = providers.list();
+        let mut observer = tui_bridge::Observer::begin(&tasks, max_steps);
 
-        if provider_list.is_empty() {
-            return Ok(ToolResult::error(
-                "No providers available for swarm execution",
-            ));
-        }
-
-        let selected_model = match model_selection::resolve(model.as_deref(), &provider_list) {
+        let selected = match provider_setup::load(model.as_deref(), &mut observer).await? {
             Ok(selected) => selected,
-            Err(error) => return Ok(ToolResult::error(error.to_string())),
+            Err(error) => return Ok(error),
         };
-        let provider = providers
-            .get(&selected_model.resolved_provider)
-            .context("Failed to get provider")?;
+        let provider = selected.provider;
+        let selected_model = selected.model;
         tracing::info!(
             requested_model = ?selected_model.requested_model,
             resolved_provider = %selected_model.resolved_provider,
@@ -148,7 +139,7 @@ impl Tool for SwarmExecuteTool {
             let task_id = task_input
                 .id
                 .clone()
-                .unwrap_or_else(|| format!("task_{}", uuid::Uuid::new_v4()));
+                .unwrap_or_else(|| tui_bridge::task_id(&task_input, idx));
             let model_selection = selected_model.clone();
             let model_name = model_selection.resolved_model.clone();
             let shared_results = Arc::clone(&shared_results);
@@ -156,6 +147,7 @@ impl Tool for SwarmExecuteTool {
             let failed_task_name = task_input.name.clone();
             let max_steps = max_steps;
             let timeout_secs = timeout_secs;
+            let events = observer.sender();
 
             let handle = tokio::spawn(async move {
                 let _permit = semaphore
@@ -163,6 +155,7 @@ impl Tool for SwarmExecuteTool {
                     .await
                     .expect("swarm semaphore closed unexpectedly");
                 let working_dir = working_dir?;
+                tui_bridge::started(&events, &task_id, task_input.specialty.as_deref());
                 let registry = agent_registry::shared(
                     read_only,
                     verification,
@@ -183,15 +176,7 @@ impl Tool for SwarmExecuteTool {
                     expects_changes,
                 );
 
-                let user_prompt = format!(
-                    "Task: {}\nSpecialty: {}\n\nInstruction: {}",
-                    task_input.name,
-                    task_input
-                        .specialty
-                        .as_deref()
-                        .unwrap_or("Generalist execution"),
-                    task_input.instruction
-                );
+                let user_prompt = agent_prompt::user(&task_input);
 
                 let (output, steps, tool_calls, exit) = run_agent_loop(
                     provider,
@@ -202,7 +187,7 @@ impl Tool for SwarmExecuteTool {
                     registry,
                     max_steps,
                     timeout_secs,
-                    None,
+                    Some(events),
                     task_id.clone(),
                     None,
                     Some(working_dir),
@@ -229,7 +214,7 @@ impl Tool for SwarmExecuteTool {
                 failed_task_id,
                 failed_task_name,
                 selected_model.clone(),
-                handle,
+                abort_on_drop::AbortOnDrop::new(handle),
             ));
         }
 
@@ -238,7 +223,7 @@ impl Tool for SwarmExecuteTool {
         let mut failures = 0;
 
         for (idx, failed_task_id, failed_task_name, model, handle) in join_handles {
-            match handle.await {
+            match handle.join().await {
                 Ok(Ok(mut result)) => {
                     worktrees.finish(idx, &mut result).await;
                     if !result.success {
@@ -269,6 +254,7 @@ impl Tool for SwarmExecuteTool {
             }
         }
 
+        observer.complete(&results);
         let response = aggregate_response::build(results, failures, &aggregation_strategy);
 
         Ok(aggregate::result(response, failures))

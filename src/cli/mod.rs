@@ -25,7 +25,7 @@ pub mod search;
 pub mod search_render;
 mod swarm_subagent_args;
 mod tui_args;
-mod worktree_args;
+pub mod worktree_args;
 
 use clap::{Parser, Subcommand};
 pub use command::Command;

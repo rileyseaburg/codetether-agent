@@ -24,5 +24,6 @@ pub(super) async fn start(
     Ok(ServerResponse::ProgramAttached {
         window_id: id,
         offset,
+        alternate_screen: false,
     })
 }

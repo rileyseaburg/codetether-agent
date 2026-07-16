@@ -17,6 +17,8 @@ pub(in crate::mux) enum ServerResponse {
     ProgramAttached {
         window_id: u64,
         offset: u64,
+        #[serde(default)]
+        alternate_screen: bool,
     },
     ProgramOutput {
         data: Vec<u8>,

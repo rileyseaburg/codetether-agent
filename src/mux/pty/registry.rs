@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::{Result, bail};
 
-use super::{TerminalSize, program::PtyProgram};
+use super::{PtyAttach, TerminalSize, program::PtyProgram};
 
 pub(in crate::mux) struct PtyRegistry {
     pub(super) programs: Mutex<HashMap<u64, Arc<PtyProgram>>>,
@@ -36,11 +36,17 @@ impl PtyRegistry {
         Ok(offset)
     }
 
-    pub(in crate::mux) fn attach(&self, id: u64, size: TerminalSize) -> Result<u64> {
+    pub(in crate::mux) fn attach(&self, id: u64, size: TerminalSize) -> Result<PtyAttach> {
         let program = self.get(id)?;
         if program.running() {
+            let attach = program.attach_state();
             program.resize(size)?;
+            Ok(attach)
+        } else {
+            Ok(PtyAttach {
+                offset: program.earliest(),
+                alternate_screen: false,
+            })
         }
-        Ok(program.earliest())
     }
 }

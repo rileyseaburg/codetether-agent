@@ -2,6 +2,12 @@ use super::{WorktreeInfo, WorktreeManager, discover_parse::parse_worktree_list};
 use anyhow::{Context, Result};
 
 impl WorktreeManager {
+    /// Get information about a managed worktree.
+    #[allow(dead_code)]
+    pub async fn get(&self, name: &str) -> Option<WorktreeInfo> {
+        self.list().await.into_iter().find(|info| info.name == name)
+    }
+
     /// List tracked and Git-discovered CodeTether worktrees.
     pub async fn list(&self) -> Vec<WorktreeInfo> {
         let mut infos = self.worktrees.lock().await.clone();

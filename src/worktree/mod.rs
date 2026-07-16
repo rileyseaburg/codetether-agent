@@ -9,6 +9,8 @@ mod branch;
 mod cleanup;
 mod cleanup_branches;
 mod cleanup_remove;
+#[cfg(test)]
+mod cleanup_remove_tests;
 mod cleanup_worktrees;
 mod complete;
 mod create;
@@ -22,6 +24,7 @@ mod info;
 mod integration;
 mod integrity;
 mod integrity_error;
+pub mod maintenance;
 mod manager;
 mod merge;
 mod merge_lookup;
@@ -31,7 +34,6 @@ mod node_dependencies;
 mod output;
 #[cfg(test)]
 mod output_tests;
-mod remove_outcome;
 mod repair;
 mod stash;
 mod sync_git;

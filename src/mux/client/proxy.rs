@@ -17,8 +17,13 @@ pub(super) enum Outcome {
     Exited,
 }
 
-pub(super) async fn run(connection: &mut MuxConnection, id: u64, offset: u64) -> Result<Outcome> {
-    let _terminal = super::terminal::ProxyTerminal::enter()?;
+pub(super) async fn run(
+    connection: &mut MuxConnection,
+    id: u64,
+    offset: u64,
+    alternate_screen: bool,
+) -> Result<Outcome> {
+    let mut terminal = super::terminal::ProxyTerminal::enter(alternate_screen)?;
     let mut stdin = tokio::io::stdin();
     let mut input = [0_u8; 4096];
     let mut detector = detach::Detector::new();
@@ -31,10 +36,14 @@ pub(super) async fn run(connection: &mut MuxConnection, id: u64, offset: u64) ->
                 if count == 0 { return Ok(Outcome::Detached); }
                 let filtered = detector.filter(&input[..count]);
                 if !filtered.data.is_empty() { input::send(connection, id, filtered.data).await?; }
-                if filtered.detach { return Ok(Outcome::Detached); }
+                if filtered.detach {
+                    terminal.clear_after_detach();
+                    return Ok(Outcome::Detached);
+                }
             }
             event = output.recv() => {
                 let event = event.ok_or_else(|| anyhow::anyhow!("mux output connection closed"))??;
+                terminal.observe_output(&event.data);
                 std::io::stdout().write_all(&event.data)?;
                 std::io::stdout().flush()?;
                 if event.exited { return Ok(Outcome::Exited); }

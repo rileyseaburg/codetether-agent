@@ -23,8 +23,7 @@ impl WorktreeManager {
             if keep.contains(branch) {
                 continue;
             }
-            Self::delete_branch(&self.repo_path, branch).await;
-            deleted += 1;
+            deleted += usize::from(Self::delete_branch(&self.repo_path, branch).await);
         }
         deleted
     }

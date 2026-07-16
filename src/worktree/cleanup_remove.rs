@@ -1,5 +1,6 @@
-use super::remove_outcome::RemoveOutcome;
 use super::{WorktreeInfo, WorktreeManager};
+mod outcome;
+pub(crate) use outcome::RemoveOutcome;
 
 impl WorktreeManager {
     /// Remove a worktree unless it has uncommitted changes.
@@ -25,27 +26,17 @@ impl WorktreeManager {
                 tracing::info!(worktree = %info.name, "Removed git worktree");
             }
             Ok(output) => {
-                tracing::warn!(
+                tracing::error!(
                     worktree = %info.name, error = %String::from_utf8_lossy(&output.stderr),
-                    "Git worktree remove failed, falling back to directory removal"
+                    "Git worktree removal failed; preserving checkout"
                 );
-                self.remove_worktree_dir(info).await;
+                return RemoveOutcome::Failed;
             }
             Err(error) => {
-                tracing::warn!(worktree = %info.name, error = %error, "Failed git worktree remove");
-                self.remove_worktree_dir(info).await;
+                tracing::error!(worktree = %info.name, error = %error, "Git worktree removal failed");
+                return RemoveOutcome::Failed;
             }
         }
         RemoveOutcome::Removed
-    }
-
-    async fn remove_worktree_dir(&self, info: &WorktreeInfo) {
-        if let Err(error) = tokio::fs::remove_dir_all(&info.path).await {
-            tracing::warn!(worktree = %info.name, error = %error, "Failed to remove worktree dir");
-        }
-    }
-
-    pub(crate) async fn untrack(&self, name: &str) {
-        self.worktrees.lock().await.retain(|info| info.name != name);
     }
 }

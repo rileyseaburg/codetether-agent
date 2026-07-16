@@ -12,7 +12,7 @@ pub(super) async fn start(
     command: String,
 ) -> Result<super::proxy::Outcome> {
     let offset = super::exec::start(connection, id, command).await?;
-    super::proxy::run(connection, id, offset).await
+    super::proxy::run(connection, id, offset, false).await
 }
 
 pub(super) async fn attach(
@@ -28,9 +28,13 @@ pub(super) async fn attach(
         })
         .await?;
     match response {
-        ServerResponse::ProgramAttached { offset, .. } => {
-            Ok(Some(super::proxy::run(connection, id, offset).await?))
-        }
+        ServerResponse::ProgramAttached {
+            offset,
+            alternate_screen,
+            ..
+        } => Ok(Some(
+            super::proxy::run(connection, id, offset, alternate_screen).await?,
+        )),
         ServerResponse::Error { message } if message.contains("no running program") => Ok(None),
         ServerResponse::Error { message } => bail!(message),
         _ => bail!("mux server returned an invalid program-attach response"),

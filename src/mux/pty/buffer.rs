@@ -2,6 +2,8 @@
 
 use std::collections::VecDeque;
 
+use super::terminal_mode::TerminalMode;
+
 mod append;
 #[cfg(test)]
 mod benchmark;
@@ -14,6 +16,7 @@ const READ_LIMIT: usize = 64 * 1024;
 pub(super) struct OutputBuffer {
     base: u64,
     bytes: VecDeque<u8>,
+    mode: TerminalMode,
 }
 
 impl OutputBuffer {
@@ -21,6 +24,7 @@ impl OutputBuffer {
         Self {
             base: 0,
             bytes: VecDeque::new(),
+            mode: TerminalMode::new(false),
         }
     }
 
@@ -40,5 +44,14 @@ impl OutputBuffer {
 
     pub(super) fn earliest(&self) -> u64 {
         self.base
+    }
+
+    pub(super) fn attach_state(&self) -> (u64, bool) {
+        let offset = if self.mode.active() {
+            self.base + self.bytes.len() as u64
+        } else {
+            self.base
+        };
+        (offset, self.mode.active())
     }
 }

@@ -11,12 +11,13 @@ pub(super) fn attach(
     columns: u16,
     rows: u16,
 ) -> anyhow::Result<ServerResponse> {
-    let offset = context
+    let attach = context
         .programs
         .attach(id, TerminalSize::new(columns, rows))?;
     Ok(ServerResponse::ProgramAttached {
         window_id: id,
-        offset,
+        offset: attach.offset,
+        alternate_screen: attach.alternate_screen,
     })
 }
 

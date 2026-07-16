@@ -1,6 +1,9 @@
 use super::WorktreeManager;
 use anyhow::{Context, Result};
 
+#[cfg(test)]
+mod tests;
+
 impl WorktreeManager {
     pub(crate) async fn codetether_branches(&self) -> Result<Vec<String>> {
         let output = tokio::process::Command::new("git")
@@ -22,22 +25,26 @@ impl WorktreeManager {
             .collect())
     }
 
-    pub(crate) async fn delete_branch(repo_path: &std::path::Path, branch: &str) {
+    pub(crate) async fn delete_branch(repo_path: &std::path::Path, branch: &str) -> bool {
         match tokio::process::Command::new("git")
-            .args(["branch", "-D", branch])
+            .args(["branch", "-d", branch])
             .current_dir(repo_path)
             .output()
             .await
         {
             Ok(output) if output.status.success() => {
-                tracing::info!(branch, "Deleted worktree branch")
+                tracing::info!(branch, "Deleted merged worktree branch");
+                true
             }
-            Ok(output) => tracing::debug!(
-                branch,
-                error = %String::from_utf8_lossy(&output.stderr),
-                "Branch delete skipped"
-            ),
-            Err(error) => tracing::debug!(branch, error = %error, "Branch delete failed"),
+            Ok(output) => {
+                tracing::warn!(branch, error = %String::from_utf8_lossy(&output.stderr),
+                    "Preserving unmerged worktree branch");
+                false
+            }
+            Err(error) => {
+                tracing::warn!(branch, error = %error, "Worktree branch delete failed");
+                false
+            }
         }
     }
 }

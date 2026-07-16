@@ -25,11 +25,7 @@ pub fn compute_chat_chunks(area: Rect, app: &App) -> ChatChunks {
     let input_lines_count = app.state.input.lines().count().max(1);
     let input_height = (input_lines_count as u16 + 2).clamp(3, 6);
     let status_height = status_bar_height(area.width);
-    let agent_bar_height: u16 = if app.state.spawned_agents.is_empty() {
-        0
-    } else {
-        1
-    };
+    let agent_bar_height = u16::from(super::agent_bar::presence::visible(app));
     let mut constraints = vec![
         Constraint::Length(agent_bar_height),
         Constraint::Min(8),
@@ -64,3 +60,7 @@ fn status_bar_height(width: u16) -> u16 {
         3
     }
 }
+
+#[cfg(test)]
+#[path = "layout_compute_tests.rs"]
+mod tests;

@@ -1,3 +1,8 @@
+//! Worktree command arguments for listing, opening, and safely cleaning checkouts.
+//!
+//! [`WorktreeCommand::Cleanup`] defaults to a read-only preview and requires
+//! `--apply` before it mutates Git worktree registrations.
+
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -18,6 +23,9 @@ pub enum WorktreeCommand {
 
     /// Write a multi-root `.code-workspace` covering the repo and worktrees
     Workspace(WorktreeWorkspaceArgs),
+
+    /// Preview or remove clean worktrees already merged into a base branch
+    Cleanup(WorktreeCleanupArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -46,4 +54,21 @@ pub struct WorktreeWorkspaceArgs {
     /// Open the generated workspace in VS Code after writing it
     #[arg(long)]
     pub open: bool,
+}
+
+/// Options for repository-wide safe worktree cleanup.
+#[derive(Parser, Debug)]
+pub struct WorktreeCleanupArgs {
+    /// Branch or commit that candidates must already be merged into.
+    #[arg(long, default_value = "main")]
+    pub base: String,
+    /// Limit cleanup to worktrees beneath one or more directories.
+    #[arg(long)]
+    pub root: Vec<PathBuf>,
+    /// Apply cleanup; omission produces a read-only preview.
+    #[arg(long)]
+    pub apply: bool,
+    /// Output the complete cleanup report as JSON.
+    #[arg(long)]
+    pub json: bool,
 }

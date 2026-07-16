@@ -293,11 +293,10 @@ impl SwarmViewState {
                 self.current_stage = stage + 1;
             }
             SwarmEvent::Complete { success: _, stats } => {
-                self.stats = Some(stats);
-                self.complete = true;
+                (self.active, self.stats, self.complete) = (false, Some(stats), true);
             }
             SwarmEvent::Error(err) => {
-                self.error = Some(err);
+                (self.active, self.complete, self.error) = (false, true, Some(err));
             }
         }
     }

@@ -12,7 +12,8 @@ mod registry;
 mod registry_io;
 mod resize;
 mod spawn;
+pub(super) mod terminal_mode;
 mod types;
 
 pub(super) use registry::PtyRegistry;
-pub(super) use types::{PtyChunk, TerminalSize};
+pub(super) use types::{PtyAttach, PtyChunk, TerminalSize};

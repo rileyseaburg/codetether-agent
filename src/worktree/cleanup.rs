@@ -3,12 +3,6 @@ use anyhow::Result;
 use std::collections::HashSet;
 
 impl WorktreeManager {
-    /// Get information about a worktree.
-    #[allow(dead_code)]
-    pub async fn get(&self, name: &str) -> Option<WorktreeInfo> {
-        self.list().await.into_iter().find(|info| info.name == name)
-    }
-
     /// Clean up a specific worktree and its local branch.
     ///
     /// A dirty worktree is left intact (branch kept, still tracked) so
@@ -18,7 +12,7 @@ impl WorktreeManager {
             return Ok(());
         };
         if self.remove_worktree(&info).await.removed() {
-            Self::delete_branch(&self.repo_path, &info.branch).await;
+            let _ = Self::delete_branch(&self.repo_path, &info.branch).await;
             self.untrack(name).await;
         }
         Ok(())
@@ -26,7 +20,7 @@ impl WorktreeManager {
 
     /// Clean up all tracked or Git-discovered CodeTether worktrees.
     ///
-    /// Dirty worktrees (and their branches) are preserved.
+    /// Dirty worktrees and unmerged branches are preserved.
     pub async fn cleanup_all(&self) -> Result<usize> {
         let infos = self.list().await;
         let refused = self.remove_all(&infos).await;
@@ -48,5 +42,9 @@ impl WorktreeManager {
             }
         }
         refused
+    }
+
+    pub(crate) async fn untrack(&self, name: &str) {
+        self.worktrees.lock().await.retain(|info| info.name != name);
     }
 }

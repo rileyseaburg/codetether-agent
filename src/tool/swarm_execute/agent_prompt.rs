@@ -3,6 +3,8 @@
 use crate::swarm::tool_policy::{SystemPromptInput, system_prompt};
 use std::path::Path;
 
+use super::task_input::TaskInput;
+
 pub(crate) fn build(
     task_id: &str,
     specialty: Option<&str>,
@@ -25,4 +27,13 @@ pub(crate) fn build(
         expects_changes,
     });
     format!("{prompt}\n\nRecursive delegation is unavailable in this direct swarm worker.")
+}
+
+pub(super) fn user(task: &TaskInput) -> String {
+    format!(
+        "Task: {}\nSpecialty: {}\n\nInstruction: {}",
+        task.name,
+        task.specialty.as_deref().unwrap_or("Generalist execution"),
+        task.instruction
+    )
 }
