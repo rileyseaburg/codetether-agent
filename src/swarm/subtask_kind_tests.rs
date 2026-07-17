@@ -13,6 +13,14 @@ fn schema_examples_have_non_mutating_intent() {
 }
 
 #[test]
+fn design_review_is_read_only() {
+    assert_eq!(
+        classify("chunk-design-review", "Design review", None),
+        TaskKind::ReadOnly
+    );
+}
+
+#[test]
 fn explicit_mutation_wins_over_review_language() {
     assert_eq!(
         classify("reviewer", "Review and fix the API", Some("Researcher")),

@@ -22,13 +22,22 @@ fn oversized_append_keeps_latest_replay_bytes() {
 }
 
 #[test]
-fn alternate_screen_reconnect_starts_at_live_tail() {
+fn wrapped_replay_preserves_byte_order() {
+    let mut buffer = OutputBuffer::new();
+    buffer.append(&vec![b'x'; OUTPUT_LIMIT - 2]);
+    buffer.append(b"abcdef");
+    let (replay, _) = buffer.read(buffer.earliest() + OUTPUT_LIMIT as u64 - 6);
+    assert_eq!(replay, b"abcdef");
+}
+
+#[test]
+fn alternate_screen_reconnect_replays_bounded_screen_state() {
     let mut buffer = OutputBuffer::new();
     buffer.append(b"before\x1b[?10");
     buffer.append(b"49hhistoric-redraws");
     let (offset, alternate_screen) = buffer.attach_state();
     assert!(alternate_screen);
-    assert_eq!(offset, b"before\x1b[?1049hhistoric-redraws".len() as u64);
+    assert_eq!(offset, buffer.earliest());
 }
 
 #[test]

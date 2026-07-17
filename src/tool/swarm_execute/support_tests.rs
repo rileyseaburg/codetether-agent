@@ -16,3 +16,11 @@ fn mutating_task_fails_when_isolation_is_unavailable() {
     assert!(working_directory(None, false, parent).is_err());
     assert_eq!(working_directory(None, true, parent).unwrap(), parent);
 }
+
+#[test]
+fn explicit_read_only_flag_uses_parent_workspace() {
+    let parent = std::path::Path::new("/tmp/shared");
+    let read_only = super::is_read_only("chunk-design-review", "Design review", None, Some(false));
+    assert!(read_only);
+    assert_eq!(working_directory(None, read_only, parent).unwrap(), parent);
+}

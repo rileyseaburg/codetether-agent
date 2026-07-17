@@ -30,6 +30,15 @@ fn preserves_named_object_tasks() {
 }
 
 #[test]
+fn parses_explicit_read_only_worktree_flag() {
+    let tasks = parse_tasks(&json!({
+        "tasks": [{"instruction": "Design review", "needs_worktree": false}]
+    }))
+    .unwrap();
+    assert_eq!(tasks[0].needs_worktree, Some(false));
+}
+
+#[test]
 fn rejects_empty_tasks() {
     assert!(parse_tasks(&json!({"tasks": []})).is_err());
 }
