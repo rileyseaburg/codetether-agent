@@ -21,6 +21,7 @@ Thumbs.db
 /dist/
 /.docker-cache/
 __pycache__/
+artifacts/codex-parity/
 *.pyc
 nohup.out
 

@@ -1,0 +1,23 @@
+[[case]]
+id = "unicode-whitespace"
+fixture = "fixtures/unicode-whitespace"
+prompt = "Fix the word counter so it handles all Unicode whitespace correctly. Preserve the public API, add useful implementation documentation, do not edit tests, and run the acceptance tests."
+checks = ["cargo test --quiet", "cargo clippy --quiet -- -D warnings"]
+protected = ["tests/acceptance.rs"]
+timeout_seconds = 300
+
+[[case]]
+id = "layered-config"
+fixture = "fixtures/layered-config"
+prompt = "Repair layered configuration merging: absent override values must inherit the base, present values must win, and labels must remain ordered without duplicates. Preserve the public API, do not edit tests, and run the acceptance tests."
+checks = ["cargo test --quiet", "cargo clippy --quiet -- -D warnings"]
+protected = ["tests/acceptance.rs"]
+timeout_seconds = 300
+
+[[case]]
+id = "record-parser"
+fixture = "fixtures/record-parser"
+prompt = "Make parse_record robust and panic-free while preserving its typed error variants. It must trim fields and reject missing, empty, or invalid scores. Do not edit tests; run all acceptance checks."
+checks = ["cargo test --quiet", "cargo clippy --quiet -- -D warnings"]
+protected = ["tests/acceptance.rs"]
+timeout_seconds = 300
