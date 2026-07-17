@@ -4,6 +4,8 @@ ARG ICEBERG_VERSION=1.10.0
 ARG HADOOP_VERSION=3.3.4
 ARG AWS_SDK_VERSION=1.12.262
 USER root
+COPY docker/training-data-requirements.txt /tmp/training-data-requirements.txt
+RUN python3 -m pip install --no-cache-dir -r /tmp/training-data-requirements.txt
 RUN set -eu; \
     base=https://repo1.maven.org/maven2; \
     fetch() { curl -fsSL "$1" -o "/opt/spark/jars/$2"; echo "$3  /opt/spark/jars/$2" | sha256sum -c -; }; \
