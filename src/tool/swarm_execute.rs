@@ -30,12 +30,14 @@ mod model_selection_tests;
 mod provider_setup;
 mod schema;
 pub(crate) mod support;
+mod support_task;
 mod task_input;
 mod task_result;
 #[cfg(test)]
 #[path = "swarm_execute/task_result_tests.rs"]
 mod task_result_tests;
 pub(crate) mod tui_bridge;
+mod worktree_specs;
 mod worktrees;
 
 use execution_config::ExecutionConfig;
@@ -111,14 +113,8 @@ impl Tool for SwarmExecuteTool {
 
         // Provision one isolated worktree per mutating task so sub-agents
         // never edit the shared checkout (read-only tasks share the dir).
-        let worktrees = worktrees::SwarmWorktrees::create(
-            &parent_workspace,
-            &tasks
-                .iter()
-                .map(|t| (t.name.clone(), t.instruction.clone(), t.specialty.clone()))
-                .collect::<Vec<_>>(),
-        )
-        .await;
+        let specs = worktree_specs::from_tasks(&tasks);
+        let worktrees = worktrees::SwarmWorktrees::create(&parent_workspace, &specs).await;
 
         // Execute tasks concurrently using semaphore for rate limiting
         let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency));
@@ -128,14 +124,16 @@ impl Tool for SwarmExecuteTool {
             let semaphore = semaphore.clone();
             let provider = provider.clone();
             let read_only = support::is_read_only(
-                &task_input.name,
+                task_input.intent_name(),
                 &task_input.instruction,
                 task_input.specialty.as_deref(),
+                task_input.needs_worktree,
             );
             let expects_changes = worktrees.expects_changes(idx);
             let verification = worktrees.is_verification(idx);
-            let working_dir =
-                support::working_directory(worktrees.dir(idx), read_only, &parent_workspace);
+            let working_dir = worktrees.dir(idx).and_then(|isolated| {
+                support::working_directory(isolated, read_only, &parent_workspace)
+            });
             let task_id = task_input
                 .id
                 .clone()

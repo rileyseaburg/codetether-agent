@@ -13,7 +13,7 @@ pub async fn run(
 ) {
     let mut buf = vec![0_u8; 2048];
     loop {
-        let Ok((len, _)) = socket.recv_from(&mut buf).await else {
+        let Ok((len, source)) = socket.recv_from(&mut buf).await else {
             continue;
         };
         let Ok(beacon) = serde_json::from_slice::<Beacon>(&buf[..len]) else {
@@ -22,7 +22,12 @@ pub async fn run(
         if !is_peer(&beacon, &self_name, &self_url) {
             continue;
         }
-        if peer_tx.send(to_peer(beacon)).await.is_err() {
+        tracing::debug!(
+            peer_name = %beacon.name,
+            source = %source,
+            "A2A LAN beacon discovered"
+        );
+        if peer_tx.send(to_peer(beacon, source.ip())).await.is_err() {
             return;
         }
     }
@@ -32,9 +37,10 @@ fn is_peer(beacon: &Beacon, self_name: &str, self_url: &str) -> bool {
     beacon.is_valid() && beacon.name != self_name && beacon.url != self_url
 }
 
-fn to_peer(beacon: Beacon) -> DiscoveredPeer {
+fn to_peer(beacon: Beacon, source: std::net::IpAddr) -> DiscoveredPeer {
     DiscoveredPeer {
-        urls: vec![beacon.url],
+        urls: vec![super::endpoint::from_source(&beacon.url, source)],
         instance_name: beacon.name,
+        token: Some(beacon.token),
     }
 }

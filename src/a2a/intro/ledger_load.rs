@@ -8,7 +8,7 @@ use std::collections::HashSet;
 
 use super::ledger_path::ledger_path;
 
-/// Load the set of endpoints we have already introduced ourselves to.
+/// Load the set of identities we have already introduced ourselves to.
 pub fn load() -> Result<HashSet<String>, std::io::Error> {
     let Some(path) = ledger_path() else {
         return Ok(HashSet::new());

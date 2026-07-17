@@ -26,6 +26,7 @@ fn parse_task((index, value): (usize, &Value)) -> Result<TaskInput, ToolResult> 
             name: default_name,
             instruction: instruction.to_string(),
             specialty: None,
+            needs_worktree: None,
         });
     }
     let Some(instruction) = value.get("instruction").and_then(Value::as_str) else {
@@ -46,5 +47,6 @@ fn parse_task((index, value): (usize, &Value)) -> Result<TaskInput, ToolResult> 
             .get("specialty")
             .and_then(Value::as_str)
             .map(String::from),
+        needs_worktree: value.get("needs_worktree").and_then(Value::as_bool),
     })
 }

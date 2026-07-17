@@ -9,8 +9,8 @@ pub(super) fn agent_tool_parameters() -> Value {
     json!({
         "type": "object",
         "properties": {
-            "action": { "type": "string", "enum": ["spawn", "message", "list", "status", "kill"], "description": "Agent-instance action. `list` shows spawned agent instances, not available providers or models; use `codetether models --json` for the model capability catalog." },
-            "name": { "type": "string", "description": "Agent name" },
+            "action": { "type": "string", "enum": ["spawn", "message", "list", "status", "kill"], "description": "Agent-instance action. `list` shows spawned agents and automatically discovered LAN peers." },
+            "name": { "type": "string", "description": "Local or discovered LAN agent name" },
             "instructions": { "type": "string", "description": "System instructions (spawn)" },
             "message": { "type": "string", "description": "Message to send" },
             "model": { "type": "string", "description": "Model (spawn). Should be free/subscription-eligible; otherwise a cost warning is returned." },

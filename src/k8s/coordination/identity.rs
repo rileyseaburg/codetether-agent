@@ -43,6 +43,10 @@ fn sanitize(value: &str) -> String {
 }
 
 fn bounded(mut value: String, max: usize) -> String {
-    value.truncate(value.floor_char_boundary(max));
+    let mut end = max.min(value.len());
+    while end > 0 && !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    value.truncate(end);
     value
 }

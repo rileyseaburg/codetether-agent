@@ -44,7 +44,6 @@
 //! HTTP/JSON-RPC API, curl recipes, cross-host setup, troubleshooting,
 //! source map).
 
-use crate::a2a::client::A2AClient;
 use crate::a2a::intro::send_intro;
 use crate::a2a::lan;
 use crate::a2a::mdns::{self, DiscoveredPeer};
@@ -53,12 +52,24 @@ use crate::bus::AgentBus;
 use crate::cli::SpawnArgs;
 use anyhow::{Context, Result};
 use axum::Router;
-use reqwest::Url;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
+
+#[path = "spawn/lan_address.rs"]
+mod lan_address;
+#[path = "spawn/mdns_addresses.rs"]
+mod mdns_addresses;
+#[path = "spawn/mdns_probe.rs"]
+mod mdns_probe;
+#[path = "spawn/peer_probe.rs"]
+mod peer_probe;
+#[path = "spawn/peer_url.rs"]
+mod peer_url;
+use peer_probe::try_fetch_agent_card;
+use peer_url::{collect_peers, normalize_base_url, peer_candidates};
 
 /// Inputs for starting an A2A peer runtime.
 ///
@@ -162,30 +173,6 @@ fn sanitize_name(input: &str) -> String {
         .collect()
 }
 
-/// First non-loopback non-link-local IPv4 address on any UP interface.
-/// Used to substitute for `0.0.0.0` in the public agent-card URL so the
-/// card advertises a reachable address.
-fn first_lan_ipv4() -> Option<String> {
-    let ifaces = if_addrs::get_if_addrs().ok()?;
-    ifaces
-        .into_iter()
-        .filter_map(|iface| {
-            let std::net::IpAddr::V4(v4) = iface.ip() else {
-                return None;
-            };
-            if v4.is_loopback() || v4.is_link_local() || v4.is_unspecified() {
-                return None;
-            }
-            // Skip docker bridge and similar internal addresses by preferring
-            // the actual host LAN interface — but we don't filter by name
-            // since interface naming is platform-specific. The first match
-            // is good enough; users with strict requirements can pass
-            // `--public-url` explicitly.
-            Some(v4.to_string())
-        })
-        .next()
-}
-
 /// Handle to A2A peer background tasks (server + discovery loop + mDNS).
 ///
 /// Returned by [`start_a2a_in_background`]. The handle MUST be kept alive
@@ -270,7 +257,9 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     //    first non-loopback IPv4 address on a real interface so the card
     //    advertises something callers can actually reach.
     let public_host = match opts.hostname.as_str() {
-        "0.0.0.0" | "::" | "[::]" => first_lan_ipv4().unwrap_or_else(|| "127.0.0.1".to_string()),
+        "0.0.0.0" | "::" | "[::]" => {
+            lan_address::first_lan_ipv4().unwrap_or_else(|| "127.0.0.1".to_string())
+        }
         other => other.to_string(),
     };
     let public_url = opts
@@ -313,26 +302,32 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
 
     // 6. mDNS announce + browse (true P2P, default on).
     //
-    // Pass concrete bound addrs to mdns-sd that match what the HTTP server
-    // will actually accept — anything else risks advertising a URL no
-    // peer can reach. For a wildcard bind (`0.0.0.0`) we leave the addr
-    // list empty so mdns-sd's `enable_addr_auto` enumerates the real
-    // interface IPs; for a loopback bind we pass loopback so we don't
-    // advertise LAN addrs the server isn't bound to.
-    let mdns_bind_addrs: Vec<std::net::IpAddr> = match opts.hostname.as_str() {
-        "0.0.0.0" | "::" | "[::]" => vec![],
-        other => other.parse::<std::net::IpAddr>().ok().into_iter().collect(),
-    };
+    // Advertise the single concrete address used in the agent card. Auto
+    // detection can publish every container bridge on busy hosts, causing
+    // peers to waste time probing endpoints that were never externally useful.
+    let mdns_bind_addrs = mdns_addresses::concrete(&public_host, local_addr.ip());
     let mut lan_tasks = Vec::new();
     let (mdns_handle, mdns_intake_task) = if opts.mdns {
+        let collaboration_token = crate::a2a::collaboration_token::local().to_string();
         let (peer_tx, peer_rx) = mpsc::channel::<DiscoveredPeer>(64);
-        match lan::announce_and_listen(agent_name.clone(), public_url.clone(), peer_tx.clone())
-            .await
+        match lan::announce_and_listen(
+            agent_name.clone(),
+            public_url.clone(),
+            collaboration_token.clone(),
+            peer_tx.clone(),
+        )
+        .await
         {
             Ok(tasks) => lan_tasks = tasks,
             Err(error) => tracing::warn!(%error, "A2A LAN broadcast discovery unavailable"),
         }
-        match mdns::announce_and_browse(&agent_name, effective_port, mdns_bind_addrs, peer_tx) {
+        match mdns::announce_and_browse(
+            &agent_name,
+            effective_port,
+            mdns_bind_addrs,
+            &collaboration_token,
+            peer_tx,
+        ) {
             Ok(handle) => {
                 let intake = tokio::spawn(mdns_intake_loop(
                     Arc::clone(&bus),
@@ -371,11 +366,6 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     })
 }
 
-/// Per-peer card-fetch deadline. mDNS may resolve a peer via several IPs
-/// (LAN, VPN, docker bridge, link-local v6); we want to fail fast on the
-/// unreachable ones rather than blocking the queue.
-const MDNS_PEER_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
-
 /// Drain peers discovered over mDNS, fetch their cards, register them, and
 /// optionally send the same auto-intro the explicit-seed loop sends.
 ///
@@ -397,6 +387,7 @@ async fn mdns_intake_loop(
 ) {
     let self_url = Arc::new(self_url.trim_end_matches('/').to_string());
     let liveness = Arc::new(Mutex::new(crate::a2a::peer_liveness::PeerLiveness::new()));
+    let in_flight = Arc::new(Mutex::new(HashSet::<String>::new()));
 
     // Background sweep: age out peers that have stopped re-announcing so the
     // TUI registry / UI counts don't show ghosts. mDNS re-resolves live peers
@@ -419,23 +410,26 @@ async fn mdns_intake_loop(
         if recently_seen {
             continue;
         }
+        if !in_flight.lock().await.insert(peer.instance_name.clone()) {
+            continue;
+        }
 
         // Spawn one task per discovered peer so a slow/unreachable peer
         // can't block the next event in the queue.
         let bus = Arc::clone(&bus);
         let liveness = Arc::clone(&liveness);
+        let in_flight = Arc::clone(&in_flight);
         let self_url = Arc::clone(&self_url);
         let agent_name = agent_name.clone();
         tokio::spawn(async move {
+            let instance_name = peer.instance_name.clone();
             handle_mdns_peer(bus, liveness, self_url, agent_name, peer, auto_introduce).await;
+            in_flight.lock().await.remove(&instance_name);
         });
     }
 }
 
-/// Try each URL the resolver gave us until one yields a valid agent card,
-/// then register and (optionally) intro. Each fetch attempt is bounded by
-/// `MDNS_PEER_PROBE_TIMEOUT`. Multi-homed peers commonly resolve to
-/// several addrs (LAN/VPN/docker); we cycle through them in order.
+/// Resolve a discovered peer, then register and optionally introduce it.
 async fn handle_mdns_peer(
     bus: Arc<AgentBus>,
     liveness: Arc<Mutex<crate::a2a::peer_liveness::PeerLiveness>>,
@@ -444,41 +438,7 @@ async fn handle_mdns_peer(
     peer: DiscoveredPeer,
     auto_introduce: bool,
 ) {
-    let mut resolved: Option<(String, crate::a2a::types::AgentCard)> = None;
-
-    'urls: for url in &peer.urls {
-        if url.trim_end_matches('/') == self_url.as_str() {
-            continue;
-        }
-        for candidate in peer_candidates(url) {
-            match tokio::time::timeout(MDNS_PEER_PROBE_TIMEOUT, try_fetch_agent_card(&candidate))
-                .await
-            {
-                Ok(Ok(card)) => {
-                    resolved = Some((candidate, card));
-                    break 'urls;
-                }
-                Ok(Err(error)) => {
-                    tracing::debug!(
-                        agent = %agent_name,
-                        peer = %candidate,
-                        error = %error,
-                        "mDNS peer probe failed"
-                    );
-                }
-                Err(_) => {
-                    tracing::debug!(
-                        agent = %agent_name,
-                        peer = %candidate,
-                        timeout_secs = MDNS_PEER_PROBE_TIMEOUT.as_secs(),
-                        "mDNS peer probe timed out"
-                    );
-                }
-            }
-        }
-    }
-
-    let Some((endpoint, card)) = resolved else {
+    let Some((endpoint, card)) = mdns_probe::resolve(&peer, &self_url, &agent_name).await else {
         return;
     };
 
@@ -488,6 +448,7 @@ async fn handle_mdns_peer(
     };
 
     bus.registry.register(card.clone());
+    crate::a2a::peer_route::register(&card.name, &endpoint, peer.token.clone());
 
     // Re-emit on every accepted resolution (not just first sight) so a peer
     // that was registered once but later dropped by a consumer reappears on
@@ -504,7 +465,13 @@ async fn handle_mdns_peer(
             "Discovered A2A peer"
         );
         if auto_introduce
-            && let Err(error) = send_intro(&endpoint, &agent_name, self_url.as_str()).await
+            && let Err(error) = send_intro(
+                &endpoint,
+                &agent_name,
+                self_url.as_str(),
+                peer.token.as_deref(),
+            )
+            .await
         {
             tracing::warn!(
                 agent = %agent_name,
@@ -598,45 +565,6 @@ async fn shutdown_signal() {
     tracing::info!("Shutdown signal received");
 }
 
-fn normalize_base_url(url: &str) -> Result<String> {
-    let trimmed = url.trim();
-    if trimmed.is_empty() {
-        anyhow::bail!("URL cannot be empty");
-    }
-
-    let normalized = if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-        trimmed.to_string()
-    } else {
-        format!("http://{trimmed}")
-    };
-
-    let parsed = Url::parse(&normalized).with_context(|| format!("Invalid URL: {normalized}"))?;
-    let mut cleaned = parsed.to_string();
-    if cleaned.ends_with('/') {
-        cleaned.pop();
-    }
-    Ok(cleaned)
-}
-
-fn collect_peers(raw_peers: &[String], self_url: &str) -> Vec<String> {
-    let mut dedup = HashSet::new();
-    let self_url = self_url.trim_end_matches('/');
-
-    for raw in raw_peers {
-        if raw.trim().is_empty() {
-            continue;
-        }
-
-        if let Ok(normalized) = normalize_base_url(raw)
-            && normalized.trim_end_matches('/') != self_url
-        {
-            dedup.insert(normalized);
-        }
-    }
-
-    dedup.into_iter().collect()
-}
-
 async fn discovery_loop(
     bus: Arc<AgentBus>,
     peers: Vec<String>,
@@ -687,6 +615,7 @@ async fn discovery_loop(
             };
 
             bus.registry.register(card.clone());
+            crate::a2a::peer_route::register(&card.name, &endpoint, None);
 
             if is_new {
                 crate::a2a::mdns_liveness::emit_discovered(&bus, &card.name, &endpoint);
@@ -699,7 +628,7 @@ async fn discovery_loop(
                 );
 
                 if auto_introduce
-                    && let Err(error) = send_intro(&endpoint, &agent_name, &self_url).await
+                    && let Err(error) = send_intro(&endpoint, &agent_name, &self_url, None).await
                 {
                     tracing::warn!(
                         agent = %agent_name,
@@ -710,63 +639,5 @@ async fn discovery_loop(
                 }
             }
         }
-    }
-}
-
-fn peer_candidates(seed: &str) -> Vec<String> {
-    if seed.ends_with("/a2a") {
-        return vec![seed.to_string()];
-    }
-
-    vec![seed.to_string(), format!("{seed}/a2a")]
-}
-
-async fn try_fetch_agent_card(endpoint: &str) -> Result<crate::a2a::types::AgentCard> {
-    let mut client = A2AClient::new(endpoint);
-    if let Ok(token) = std::env::var("CODETETHER_AUTH_TOKEN") {
-        client = client.with_token(token);
-    }
-    let card = client.get_agent_card().await?;
-    Ok(card)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{collect_peers, peer_candidates};
-
-    #[test]
-    fn collect_peers_deduplicates_and_skips_self() {
-        let peers = vec![
-            "localhost:5000".to_string(),
-            "http://localhost:5000/".to_string(),
-            "http://localhost:5001".to_string(),
-            "http://localhost:5002".to_string(),
-        ];
-
-        let mut out = collect_peers(&peers, "http://localhost:5001");
-        out.sort();
-
-        assert_eq!(
-            out,
-            vec![
-                "http://localhost:5000".to_string(),
-                "http://localhost:5002".to_string(),
-            ]
-        );
-    }
-
-    #[test]
-    fn peer_candidates_adds_a2a_variant() {
-        let out = peer_candidates("http://localhost:4096");
-        assert_eq!(
-            out,
-            vec![
-                "http://localhost:4096".to_string(),
-                "http://localhost:4096/a2a".to_string()
-            ]
-        );
-
-        let out2 = peer_candidates("http://localhost:4096/a2a");
-        assert_eq!(out2, vec!["http://localhost:4096/a2a".to_string()]);
     }
 }

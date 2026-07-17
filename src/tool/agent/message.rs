@@ -9,6 +9,8 @@ use crate::tool::ToolResult;
 use anyhow::{Context, Result};
 use tokio::sync::mpsc;
 
+#[path = "remote/mod.rs"]
+pub(super) mod remote;
 #[path = "message/session.rs"]
 mod task_session;
 
@@ -29,6 +31,9 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
         .context("name required for message")?
         .clone();
     let message = params.message.as_ref().context("message required")?.clone();
+    if let Some(result) = remote::message(&name, &message).await {
+        return result;
+    }
     let Some(_run_guard) = execution_state::try_start(&name) else {
         return Ok(ToolResult::error(format!(
             "Agent @{name} is busy processing another message; retry shortly"

@@ -7,21 +7,16 @@ pub(super) enum TaskKind {
     Mutating,
 }
 
+#[path = "subtask_kind_decision.rs"]
+mod decision;
 #[path = "subtask_kind_words.rs"]
 mod words;
 
 pub(super) fn classify(name: &str, instruction: &str, specialty: Option<&str>) -> TaskKind {
     let intent = format!("{instruction} {name} {}", specialty.unwrap_or_default());
+    let label = tokens(name);
     let tokens = tokens(&intent);
-    if has_directive(&tokens, words::MUTATING) {
-        TaskKind::Mutating
-    } else if is_verification(&tokens) {
-        TaskKind::Verification
-    } else if has_directive(&tokens, words::READING) {
-        TaskKind::ReadOnly
-    } else {
-        TaskKind::Mutating
-    }
+    decision::classify(&tokens, &label)
 }
 
 fn tokens(text: &str) -> Vec<String> {
@@ -30,6 +25,10 @@ fn tokens(text: &str) -> Vec<String> {
         .filter(|word| !word.is_empty())
         .map(str::to_owned)
         .collect()
+}
+
+fn has_label(tokens: &[String], actions: &[&str]) -> bool {
+    tokens.iter().any(|token| actions.contains(&token.as_str()))
 }
 
 fn has_directive(tokens: &[String], actions: &[&str]) -> bool {

@@ -1,19 +1,24 @@
 //! Support helpers for `swarm_execute`: sub-agent tool filtering and
 //! shared tool filtering for autonomous sub-agents.
 //!
-use crate::swarm::SubTask;
 use std::path::PathBuf;
 
-pub(crate) fn is_read_only(name: &str, instruction: &str, specialty: Option<&str>) -> bool {
-    let mut task = SubTask::new(name, instruction);
-    task.specialty = specialty.map(String::from);
-    task.is_read_only()
+pub(crate) fn is_read_only(
+    name: &str,
+    instruction: &str,
+    specialty: Option<&str>,
+    needs_worktree: Option<bool>,
+) -> bool {
+    super::support_task::build(name, instruction, specialty, needs_worktree).is_read_only()
 }
 
-pub(crate) fn expects_changes(name: &str, instruction: &str, specialty: Option<&str>) -> bool {
-    let mut task = SubTask::new(name, instruction);
-    task.specialty = specialty.map(String::from);
-    task.expects_file_changes()
+pub(crate) fn expects_changes(
+    name: &str,
+    instruction: &str,
+    specialty: Option<&str>,
+    needs_worktree: Option<bool>,
+) -> bool {
+    super::support_task::build(name, instruction, specialty, needs_worktree).expects_file_changes()
 }
 
 pub(super) fn workspace(params: &serde_json::Value) -> PathBuf {

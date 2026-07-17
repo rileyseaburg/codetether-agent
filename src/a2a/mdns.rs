@@ -16,6 +16,7 @@
 //!   - `path=/` (JSON-RPC root)
 //!   - `protocol=a2a-jsonrpc`
 //!   - `version=<crate version>`
+//!   - `auth=<process-scoped collaboration capability>`
 //!
 //! # Why mDNS
 //!
@@ -37,17 +38,22 @@
 //! through that interface (controlled by `IP_MULTICAST_LOOP`, default on)
 //! delivers the announcement to other same-host listeners.
 //!
-//! Code in `spawn.rs` mirrors this by passing only the bound IPs that are
-//! actually reachable: loopback addrs alone when `--hostname 127.0.0.1`,
-//! and an empty list (which `enable_addr_auto` then expands to all
-//! detected interfaces) when `--hostname 0.0.0.0` is requested.
+//! Code in `spawn.rs` mirrors this by advertising the concrete IP used in
+//! the agent card, including for wildcard listeners. This avoids publishing
+//! container bridges and other host-only interfaces as peer candidates.
 
 use anyhow::{Context, Result};
-use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
+use mdns_sd::{IfKind, ServiceDaemon, ServiceEvent, ServiceInfo};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
 use tokio::sync::mpsc;
+
+#[path = "mdns_hostname.rs"]
+mod hostname;
+pub use hostname::sanitize_hostname;
+#[path = "mdns_scope.rs"]
+mod scope;
 
 /// mDNS service type used by all CodeTether A2A peers.
 pub const SERVICE_TYPE: &str = "_codetether-a2a._tcp.local.";
@@ -141,7 +147,7 @@ impl Drop for MdnsHandle {
 ///   the peer's advertised card name.
 /// * URL ordering is resolver-dependent and should not be treated as a stable
 ///   preference across networks or process runs.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct DiscoveredPeer {
     /// All `http://<addr>:<port>` URLs reported for this peer's service
     /// record. In multi-homed environments mDNS may resolve several IPs
@@ -151,6 +157,8 @@ pub struct DiscoveredPeer {
     pub urls: Vec<String>,
     /// Service instance name reported by mDNS (== card name).
     pub instance_name: String,
+    /// Per-process bearer capability advertised by a first-party peer.
+    pub token: Option<String>,
 }
 
 /// Announce ourselves on mDNS and start a browse loop that emits every
@@ -173,10 +181,11 @@ pub struct DiscoveredPeer {
 ///   used by the service registration.
 /// * `bind_port` - TCP port where the local A2A HTTP server is listening. This
 ///   port is advertised to peers and used to filter loopback self-observations.
-/// * `bound_addrs` - Concrete IP addresses accepted by the HTTP listener. When
-///   non-empty, only these addresses are advertised. When empty, the service is
-///   registered with address auto-detection so mdns-sd can advertise all
-///   eligible interface addresses for wildcard binds such as `0.0.0.0`.
+/// * `bound_addrs` - Concrete IP addresses accepted by the HTTP listener. The
+///   list must be non-empty and is bounded to prevent unrestrained socket growth.
+/// * `collaboration_token` - Process-scoped bearer capability that lets another
+///   discovered CodeTether peer call the A2A endpoint without sharing the
+///   control-plane token.
 /// * `peer_tx` - Async channel used by the blocking mDNS browse task to forward
 ///   resolved peers into the caller's discovery pipeline.
 ///
@@ -202,9 +211,13 @@ pub fn announce_and_browse(
     instance_name: &str,
     bind_port: u16,
     bound_addrs: Vec<IpAddr>,
+    collaboration_token: &str,
     peer_tx: mpsc::Sender<DiscoveredPeer>,
 ) -> Result<MdnsHandle> {
+    let bound_addrs = scope::bounded(bound_addrs)?;
     let daemon = ServiceDaemon::new().context("Failed to start mDNS daemon")?;
+    daemon.disable_interface(IfKind::All)?;
+    daemon.enable_interface(bound_addrs.clone())?;
     let daemon = Arc::new(daemon);
 
     // Properties surfaced in TXT records so peers can sanity-check us.
@@ -213,40 +226,21 @@ pub fn announce_and_browse(
     props.insert("path".to_string(), "/".to_string());
     props.insert("protocol".to_string(), "a2a-jsonrpc".to_string());
     props.insert("version".to_string(), env!("CARGO_PKG_VERSION").to_string());
+    props.insert("auth".to_string(), collaboration_token.to_string());
 
     // mdns-sd's hostname must end with `.local.` and be unique per service
     // instance on the LAN. We derive it from the instance name.
     let mdns_hostname = format!("{}.local.", sanitize_hostname(instance_name));
 
-    // If the caller passed concrete bound addrs (e.g. for `--hostname
-    // 127.0.0.1` they pass loopback only) we use exactly those — that
-    // matches what the HTTP server will actually accept.
-    //
-    // If the caller passed an empty list (i.e. they bound `0.0.0.0` and
-    // genuinely want all interfaces advertised), we ask mdns-sd to
-    // auto-detect interface addrs via `enable_addr_auto`. We must still
-    // pass at least one address to ServiceInfo::new for it to construct,
-    // so use loopback as a placeholder — the auto-detect will replace
-    // it with real interface IPs.
-    let auto_detect = bound_addrs.is_empty();
-    let addrs: Vec<IpAddr> = if auto_detect {
-        vec!["127.0.0.1".parse().unwrap()]
-    } else {
-        bound_addrs.clone()
-    };
-
-    let mut service = ServiceInfo::new(
+    let service = ServiceInfo::new(
         SERVICE_TYPE,
         instance_name,
         &mdns_hostname,
-        addrs.as_slice(),
+        bound_addrs.as_slice(),
         bind_port,
         Some(props),
     )
     .context("Failed to construct mDNS ServiceInfo")?;
-    if auto_detect {
-        service = service.enable_addr_auto();
-    }
 
     let fullname = service.get_fullname().to_string();
     daemon
@@ -317,6 +311,7 @@ pub fn announce_and_browse(
                     let peer = DiscoveredPeer {
                         urls,
                         instance_name: instance,
+                        token: info.get_property_val_str("auth").map(ToString::to_string),
                     };
                     if peer_tx.blocking_send(peer).is_err() {
                         break;
@@ -333,96 +328,4 @@ pub fn announce_and_browse(
     });
 
     Ok(MdnsHandle { daemon, fullname })
-}
-
-/// Produce a valid DNS label: ascii alnum + `-` only, lowercase, no
-/// leading/trailing hyphen, ≤ 63 chars (RFC 1035 §2.3.1). An empty
-/// result falls back to "agent" so the caller never gets an invalid
-/// hostname (which would silently break `ServiceInfo::new`).
-///
-/// Sanitizes an arbitrary agent or host name for use as the host portion of an
-/// mDNS service record. ASCII letters and digits are kept, ASCII letters are
-/// lowercased, hyphens are kept, and every other character is converted to a
-/// hyphen before the label is length-limited and trimmed.
-///
-/// # Parameters
-///
-/// * `input` - Raw text to convert into a single DNS label. The input may
-///   contain uppercase letters, whitespace, punctuation, or non-ASCII
-///   characters.
-///
-/// # Returns
-///
-/// A non-empty DNS-safe label containing only lowercase ASCII alphanumeric
-/// characters and hyphens, with no leading or trailing hyphen and no more than
-/// 63 bytes.
-///
-/// # Side effects
-///
-/// This function is pure: it allocates the returned [`String`] but performs no
-/// filesystem, network, or mDNS operations.
-pub fn sanitize_hostname(input: &str) -> String {
-    const MAX_LABEL: usize = 63;
-    let mut s: String = input
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() {
-                c.to_ascii_lowercase()
-            } else if c == '-' {
-                c
-            } else {
-                '-'
-            }
-        })
-        .collect();
-    if s.len() > MAX_LABEL {
-        s.truncate(MAX_LABEL);
-    }
-    let trimmed = s.trim_matches('-');
-    if trimmed.is_empty() {
-        "agent".to_string()
-    } else {
-        trimmed.to_string()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::sanitize_hostname;
-
-    #[test]
-    fn sanitize_hostname_preserves_alnum_and_dash() {
-        assert_eq!(sanitize_hostname("alice-7"), "alice-7");
-    }
-
-    #[test]
-    fn sanitize_hostname_replaces_dots_and_underscores() {
-        assert_eq!(sanitize_hostname("my.host_name"), "my-host-name");
-    }
-
-    #[test]
-    fn sanitize_hostname_lowercases() {
-        assert_eq!(sanitize_hostname("Alice-Host"), "alice-host");
-    }
-
-    #[test]
-    fn sanitize_hostname_trims_leading_and_trailing_dashes() {
-        assert_eq!(sanitize_hostname(".alice."), "alice");
-        assert_eq!(sanitize_hostname("---bob---"), "bob");
-    }
-
-    #[test]
-    fn sanitize_hostname_truncates_to_63_chars() {
-        let long = "a".repeat(100);
-        let out = sanitize_hostname(&long);
-        assert_eq!(out.len(), 63);
-        assert!(out.chars().all(|c| c == 'a'));
-    }
-
-    #[test]
-    fn sanitize_hostname_falls_back_when_all_dashes() {
-        assert_eq!(sanitize_hostname("..."), "agent");
-        assert_eq!(sanitize_hostname(""), "agent");
-        assert_eq!(sanitize_hostname("---"), "agent");
-    }
 }

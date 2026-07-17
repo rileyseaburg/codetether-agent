@@ -1,5 +1,7 @@
 //! Incremental tracking of alternate-screen ANSI mode transitions.
 
+use memchr::memchr_iter;
+
 const HISTORY_LEN: usize = 7;
 const ENTER: [&[u8]; 3] = [b"\x1b[?47h", b"\x1b[?1047h", b"\x1b[?1049h"];
 const LEAVE: [&[u8]; 3] = [b"\x1b[?47l", b"\x1b[?1047l", b"\x1b[?1049l"];
@@ -22,7 +24,7 @@ impl TerminalMode {
         let mut bytes = Vec::with_capacity(self.history.len() + data.len());
         bytes.extend_from_slice(&self.history);
         bytes.extend_from_slice(data);
-        for index in 0..bytes.len() {
+        for index in memchr_iter(b'\x1b', &bytes) {
             if let Some(active) = mode_at(&bytes[index..]) {
                 self.active = active;
             }

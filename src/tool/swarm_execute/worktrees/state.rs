@@ -1,5 +1,5 @@
 use crate::worktree::{WorktreeInfo, WorktreeManager};
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 /// Worktree allocation state shared by swarm task runners.
 ///
@@ -15,33 +15,12 @@ pub(in crate::tool::swarm_execute) struct SwarmWorktrees {
     /// Manager responsible for creating and cleaning up swarm worktrees.
     pub(super) mgr: Arc<WorktreeManager>,
     /// Per-participant worktree metadata, indexed by swarm task position.
-    pub(super) infos: Vec<Option<WorktreeInfo>>,
+    pub(super) infos: Vec<anyhow::Result<Option<WorktreeInfo>>>,
     pub(super) expects_changes: Vec<bool>,
     pub(super) verification: Vec<bool>,
 }
 
 impl SwarmWorktrees {
-    /// Return the filesystem directory for a participant worktree.
-    ///
-    /// # Arguments
-    ///
-    /// * `index` - Zero-based swarm participant index.
-    ///
-    /// # Returns
-    ///
-    /// Returns `Some(PathBuf)` containing the worktree path when `index` is in
-    /// range and that participant has an allocated worktree. Returns `None` when
-    /// the index is out of range or the participant has no worktree.
-    ///
-    /// The returned path is cloned from the stored [`WorktreeInfo`], so callers
-    /// may keep or modify the `PathBuf` value without mutating this state.
-    pub(in crate::tool::swarm_execute) fn dir(&self, index: usize) -> Option<PathBuf> {
-        self.infos
-            .get(index)
-            .and_then(|info| info.as_ref())
-            .map(|info| info.path.clone())
-    }
-
     /// Return metadata for a participant worktree.
     ///
     /// # Arguments
@@ -56,7 +35,10 @@ impl SwarmWorktrees {
     ///
     /// This method performs no filesystem access and has no side effects.
     pub(super) fn info(&self, index: usize) -> Option<&WorktreeInfo> {
-        self.infos.get(index).and_then(Option::as_ref)
+        match self.infos.get(index) {
+            Some(Ok(Some(info))) => Some(info),
+            Some(Ok(None) | Err(_)) | None => None,
+        }
     }
 
     pub(in crate::tool::swarm_execute) fn expects_changes(&self, index: usize) -> bool {

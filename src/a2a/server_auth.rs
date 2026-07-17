@@ -13,6 +13,10 @@ use axum::{
     response::Response,
 };
 
+#[path = "server_auth_token.rs"]
+mod token;
+pub use token::constant_time_eq;
+
 /// Paths that stay public even when auth is enabled.
 const PUBLIC_PATHS: [&str; 2] = ["/.well-known/agent.json", "/.well-known/agent-card.json"];
 
@@ -33,7 +37,7 @@ fn cached_token() -> Option<&'static str> {
 
 /// Enforce bearer auth on A2A RPC calls when a token is configured.
 pub async fn require_a2a_auth(request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
-    let Some(expected) = cached_token() else {
+    let Some(configured_token) = cached_token() else {
         return Ok(next.run(request).await);
     };
     if PUBLIC_PATHS.contains(&request.uri().path()) {
@@ -45,22 +49,8 @@ pub async fn require_a2a_auth(request: Request<Body>, next: Next) -> Result<Resp
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
         .ok_or(StatusCode::UNAUTHORIZED)?;
-    if !constant_time_eq(provided.as_bytes(), expected.as_bytes()) {
+    if !token::accepted(provided, configured_token) {
         return Err(StatusCode::UNAUTHORIZED);
     }
     Ok(next.run(request).await)
-}
-
-/// Length-padded constant-time byte comparison. Always walks the longer
-/// of the two inputs so a length mismatch does not shortcut the
-/// comparison and leak token length via timing.
-pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
-    let len_diff = (a.len() ^ b.len()) as u8;
-    let mut diff = len_diff;
-    for i in 0..a.len().max(b.len()) {
-        let left = a.get(i).copied().unwrap_or(0);
-        let right = b.get(i).copied().unwrap_or(0);
-        diff |= left ^ right;
-    }
-    diff == 0
 }

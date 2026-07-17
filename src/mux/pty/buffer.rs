@@ -1,21 +1,23 @@
 //! Bounded replay buffer for reconnecting PTY clients.
 
-use std::collections::VecDeque;
-
 use super::terminal_mode::TerminalMode;
 
 mod append;
 #[cfg(test)]
 mod benchmark;
+mod replay;
+mod replay_append;
 #[cfg(test)]
 mod tests;
+
+use replay::ReplayBytes;
 
 const OUTPUT_LIMIT: usize = 4 * 1024 * 1024;
 const READ_LIMIT: usize = 64 * 1024;
 
 pub(super) struct OutputBuffer {
     base: u64,
-    bytes: VecDeque<u8>,
+    bytes: ReplayBytes,
     mode: TerminalMode,
 }
 
@@ -23,7 +25,7 @@ impl OutputBuffer {
     pub(super) fn new() -> Self {
         Self {
             base: 0,
-            bytes: VecDeque::new(),
+            bytes: ReplayBytes::new(),
             mode: TerminalMode::new(false),
         }
     }
@@ -31,13 +33,7 @@ impl OutputBuffer {
     pub(super) fn read(&self, offset: u64) -> (Vec<u8>, u64) {
         let start = offset.max(self.base);
         let skip = start.saturating_sub(self.base) as usize;
-        let data = self
-            .bytes
-            .iter()
-            .skip(skip)
-            .take(READ_LIMIT)
-            .copied()
-            .collect::<Vec<_>>();
+        let data = self.bytes.read(skip, READ_LIMIT);
         let next = start + data.len() as u64;
         (data, next)
     }
@@ -47,11 +43,6 @@ impl OutputBuffer {
     }
 
     pub(super) fn attach_state(&self) -> (u64, bool) {
-        let offset = if self.mode.active() {
-            self.base + self.bytes.len() as u64
-        } else {
-            self.base
-        };
-        (offset, self.mode.active())
+        (self.base, self.mode.active())
     }
 }

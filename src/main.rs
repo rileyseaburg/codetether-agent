@@ -3,8 +3,8 @@
 //! A Rust implementation of an AI coding agent with first-class support for the
 //! A2A (Agent-to-Agent) protocol and the CodeTether ecosystem.
 //!
-//! By default, runs as an A2A worker connecting to the CodeTether platform.
-//! Use the 'tui' subcommand for interactive terminal mode.
+//! Running `codetether` without a subcommand opens the interactive TUI.
+//! Use the `worker` subcommand to connect an A2A worker to CodeTether.
 //!
 //! SECURITY: Provider credentials are loaded from HashiCorp Vault first.
 //! Local development may also use env/AWS fallback credentials unless
@@ -568,7 +568,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Tui(args)) => {
             let allow_network = args.allow_network;
             let access_mode = args.access_mode;
-            let yolo = args.yolo;
+            let yolo = args.yolo || cli.yolo;
             // A2A peer is on by default. `--no-a2a` opts out entirely.
             // When on, every field auto-picks a sensible default unless the
             // user supplied an explicit override (--a2a-port / --a2a-name /
@@ -1802,7 +1802,7 @@ async fn main() -> anyhow::Result<()> {
                 false,
                 Some(crate::a2a::spawn::SpawnOptions::auto()),
                 None,
-                false,
+                cli.yolo,
             )
             .await
         }

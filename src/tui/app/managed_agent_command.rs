@@ -5,6 +5,8 @@ use crate::tui::app::state::App;
 
 #[path = "managed_agent_admin.rs"]
 pub(crate) mod admin;
+#[path = "managed_agent_swarm.rs"]
+mod swarm;
 
 pub(crate) async fn handle(app: &mut App, session: &Session, rest: &str) {
     let mut parts = rest.trim().splitn(2, char::is_whitespace);
@@ -12,6 +14,13 @@ pub(crate) async fn handle(app: &mut App, session: &Session, rest: &str) {
         app.state.status = "Usage: /agent <name> [message]".to_string();
         return;
     };
+    if swarm::focus(app, name) {
+        if parts.next().is_some() {
+            app.state.status =
+                "Swarm workers are detail-only; messaging is unavailable".to_string();
+        }
+        return;
+    }
     if !crate::tui::app::managed_agent::owned(&session.id, name)
         && !app.state.spawned_agents.contains_key(name)
     {

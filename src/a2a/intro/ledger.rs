@@ -2,8 +2,9 @@
 //!
 //! The in-memory `discovered` set in the discovery loops forgets on
 //! restart, which caused thousands of duplicate intros. This ledger
-//! persists introduced endpoints to `<data_dir>/a2a/introduced.json`
-//! keyed by endpoint only (peer names embed PIDs and churn per restart).
+//! persists introduction identities to `<data_dir>/a2a/introduced.json`.
+//! First-party LAN identities include hashes of both process capabilities so
+//! recycled ports and other local agents cannot suppress a new introduction.
 //!
 //! Split across:
 //! - [`ledger_path`] — filesystem location
@@ -23,9 +24,9 @@ mod ledger_record;
 pub use ledger_load::load;
 pub use ledger_record::record;
 
-/// Whether `endpoint` was already introduced to (normalized, no trailing `/`).
-pub fn contains(endpoint: &str) -> bool {
+/// Whether `identity` was already introduced (normalized, no trailing `/`).
+pub fn contains(identity: &str) -> bool {
     load()
         .unwrap_or_default()
-        .contains(endpoint.trim_end_matches('/'))
+        .contains(identity.trim_end_matches('/'))
 }

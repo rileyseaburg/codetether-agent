@@ -16,8 +16,16 @@ pub fn append(rows: &mut Vec<Line<'static>>, swarm: &SwarmViewState) {
             .cyan()
             .bold(),
     ));
-    let mut tasks = swarm.subtasks.iter().collect::<Vec<_>>();
-    tasks.sort_by_key(|task| (task.stage, &task.name));
-    rows.extend(tasks.into_iter().map(super::subagent_swarm_row::line));
+    rows.extend(swarm.subtasks.iter().map(|task| {
+        let selected = task.agent_name.as_deref() == swarm_focus_name(swarm);
+        super::subagent_swarm_row::line(task, selected)
+    }));
     rows.push(Line::from("Open /swarm for details and controls.".dim()));
+}
+
+fn swarm_focus_name(swarm: &SwarmViewState) -> Option<&str> {
+    swarm
+        .subtasks
+        .get(swarm.selected_index)
+        .and_then(|task| task.agent_name.as_deref())
 }

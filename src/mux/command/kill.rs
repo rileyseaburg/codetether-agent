@@ -9,7 +9,17 @@ pub(super) async fn run(target: &str) -> Result<()> {
     let record = crate::mux::registry::load(target)
         .await
         .with_context(|| format!("mux session '{target}' was not found"))?;
-    match super::shutdown::request(&record).await? {
+    let response = match super::shutdown::request(&record).await {
+        Ok(response) => response,
+        Err(error) => {
+            tracing::warn!(session = target, %error, "Graceful mux shutdown failed");
+            super::terminate::run(&record).await?;
+            crate::mux::registry::remove(target).await?;
+            println!("force-stopped mux session '{target}'");
+            return Ok(());
+        }
+    };
+    match response {
         ServerResponse::ShuttingDown => {
             println!("stopped mux session '{target}'");
             Ok(())

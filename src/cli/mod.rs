@@ -16,6 +16,7 @@ pub mod context;
 pub mod go_ralph;
 mod models_args;
 pub mod oracle;
+mod root_args;
 pub mod run;
 mod run_args;
 pub mod run_checkpoint;
@@ -30,6 +31,7 @@ pub mod worktree_args;
 use clap::{Parser, Subcommand};
 pub use command::Command;
 pub use config_args::{ConfigArgs, ConfigCommand, ProjectArgs, ProjectCommand};
+pub use root_args::Cli;
 use std::path::PathBuf;
 pub use worktree_args::{
     WorktreeArgs, WorktreeCommand, WorktreeListArgs, WorktreeOpenArgs, WorktreeWorkspaceArgs,
@@ -38,43 +40,6 @@ pub use {
     cleanup_args::CleanupArgs, models_args::ModelsArgs, run_args::RunArgs,
     swarm_subagent_args::SwarmSubagentArgs, tui_args::TuiArgs,
 };
-
-/// CodeTether Agent - A2A-native AI coding agent
-///
-/// By default, runs as an A2A worker connecting to the CodeTether server.
-/// Use the 'tui' subcommand for interactive terminal mode.
-#[derive(Parser, Debug)]
-#[command(name = "codetether")]
-#[command(version, about, long_about = None)]
-pub struct Cli {
-    /// Project directory to operate on
-    #[arg(global = true, last = true)]
-    pub project: Option<PathBuf>,
-
-    /// Print logs to stderr
-    #[arg(long, global = true)]
-    pub print_logs: bool,
-
-    /// Log level
-    #[arg(long, global = true, value_parser = ["DEBUG", "INFO", "WARN", "ERROR"])]
-    pub log_level: Option<String>,
-
-    // Default A2A args (when no subcommand)
-    /// A2A server URL (default mode)
-    #[arg(short, long, env = "CODETETHER_SERVER")]
-    pub server: Option<String>,
-
-    /// Authentication token
-    #[arg(short, long, env = "CODETETHER_TOKEN")]
-    pub token: Option<String>,
-
-    /// Worker name
-    #[arg(short, long, env = "CODETETHER_WORKER_NAME")]
-    pub name: Option<String>,
-
-    #[command(subcommand)]
-    pub command: Option<Command>,
-}
 
 #[derive(Parser, Debug)]
 pub struct AuthArgs {
@@ -327,13 +292,9 @@ pub struct SpawnArgs {
     #[arg(short, long)]
     pub name: Option<String>,
 
-    /// Hostname to bind. 127.0.0.1 (default) is loopback-only and SAFE
-    /// (the peer is unreachable from outside the host) but mDNS multicast
-    /// does NOT traverse the Linux `lo` interface, so same-host peers
-    /// cannot find each other via mDNS at this binding. Use 0.0.0.0 to
-    /// be reachable on the LAN AND to enable mDNS auto-discovery between
-    /// same-host agents (multicast loops back through the real interface).
-    #[arg(long, default_value = "127.0.0.1")]
+    /// Hostname to bind. The zero-config default is reachable on the LAN and
+    /// enables mDNS collaboration. Use 127.0.0.1 to opt into loopback-only.
+    #[arg(long, default_value = "0.0.0.0")]
     pub hostname: String,
 
     /// Port to bind. 0 (default) lets the OS pick an available port.

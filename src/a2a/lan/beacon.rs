@@ -44,12 +44,13 @@ const MAGIC: &str = "codetether-a2a-v1";
 /// let beacon = Beacon::new(
 ///     "desktop-worker".to_string(),
 ///     "http://192.168.1.10:8001".to_string(),
+///     "peer-capability".to_string(),
 /// );
 ///
 /// assert!(beacon.is_valid());
 /// assert_eq!(beacon.name, "desktop-worker");
 /// ```
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Beacon {
     /// Protocol marker used to validate that this payload belongs to A2A discovery.
     magic: String,
@@ -64,6 +65,8 @@ pub struct Beacon {
     /// Because it may come from the network, callers should treat it as
     /// untrusted until a connection is successfully established.
     pub url: String,
+    /// Per-process bearer capability scoped to first-party collaboration.
+    pub token: String,
 }
 
 impl Beacon {
@@ -83,11 +86,12 @@ impl Beacon {
     ///
     /// This function performs no I/O and has no network side effects. It only
     /// allocates and stores the beacon fields.
-    pub fn new(name: String, url: String) -> Self {
+    pub fn new(name: String, url: String, token: String) -> Self {
         Self {
             magic: MAGIC.to_string(),
             name,
             url,
+            token,
         }
     }
 

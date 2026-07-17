@@ -27,6 +27,7 @@ pub(super) async fn unsafe_reason_for_args(
 
 pub(super) fn allow_network() -> bool {
     std::env::var("CODETETHER_SANDBOX_BASH_ALLOW_NETWORK")
+        .or_else(|_| std::env::var("CODETETHER_ALLOW_NETWORK"))
         .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes"))
         .unwrap_or(false)
 }

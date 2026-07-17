@@ -17,7 +17,8 @@ pub(super) fn parameters() -> Value {
                                 "instruction": {"type": "string"},
                                 "name": {"type": "string", "description": "Optional display name"},
                                 "id": {"type": "string", "description": "Optional stable identifier"},
-                                "specialty": {"type": "string", "description": "Optional agent role"}
+                                "specialty": {"type": "string", "description": "Optional agent role"},
+                                "needs_worktree": {"type": "boolean", "description": "Set false for explicitly read-only analysis/review tasks"}
                             },
                             "required": ["instruction"]
                         }

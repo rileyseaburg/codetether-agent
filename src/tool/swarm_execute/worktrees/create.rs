@@ -13,7 +13,7 @@ const PARALLELISM: usize = 8;
 impl SwarmWorktrees {
     pub(in crate::tool::swarm_execute) async fn create(
         repo: &std::path::Path,
-        tasks: &[(String, String, Option<String>)],
+        tasks: &[(String, String, Option<String>, Option<bool>)],
     ) -> Self {
         let mgr = Arc::new(WorktreeManager::for_repo(repo).without_vscode_auto_open());
         let (prepared, expects_changes, verification) = create_tasks::prepare(tasks);

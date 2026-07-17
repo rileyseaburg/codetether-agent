@@ -50,11 +50,7 @@ pub(crate) async fn dispatch_enter(
             super::chat_submit::handle_enter_chat(app, cwd, slot, registry, worker_bridge, runtime)
                 .await
         }
-        ViewMode::Model => {
-            if let Some(session) = slot.borrow_mut() {
-                crate::tui::app::model_picker::apply_selected_model(app, session);
-            }
-        }
+        ViewMode::Model => super::model_apply::selected(app, slot),
         ViewMode::Settings => {
             if let Some(session) = slot.borrow_mut() {
                 toggle_selected_setting(app, session).await;

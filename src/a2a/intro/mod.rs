@@ -6,8 +6,11 @@
 //! - [`send`] — outbound tagged intro with ledger dedup
 //! - [`reply`] — canned no-LLM acknowledgement for inbound intros
 
+mod deliver;
 pub mod detect;
+mod identity;
 pub mod ledger;
+mod payload;
 pub mod reply;
 pub mod send;
 

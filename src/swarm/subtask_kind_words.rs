@@ -27,6 +27,7 @@ pub(super) const VERIFYING: &[&str] = &[
     "test", "tests", "lint", "verify", "format", "clippy", "check",
 ];
 pub(super) const READING: &[&str] = &[
+    "design",
     "inspect",
     "research",
     "review",

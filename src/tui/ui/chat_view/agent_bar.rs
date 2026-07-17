@@ -24,9 +24,10 @@ pub fn render_agent_bar(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         return;
     }
     let active = app.state.active_spawned_agent.as_deref();
+    let model = crate::tui::app::spawn_agent::model::current_model_id(app);
     let mut spans = vec![agent_tab(AgentTabMeta {
         name: "main",
-        model_id: app.state.last_completion_model.as_deref(),
+        model_id: model.as_deref(),
         session_id: app.state.session_id.as_deref(),
         indent: 0,
         selected: active.is_none(),

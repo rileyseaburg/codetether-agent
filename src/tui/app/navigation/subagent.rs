@@ -16,7 +16,7 @@ pub(super) fn up(app: &mut App) {
     if app.state.subagent_detail_mode {
         app.state.subagent_detail_scroll = app.state.subagent_detail_scroll.saturating_sub(1);
     } else {
-        super::cycle_agent_focus_back(app);
+        super::agent_focus::cycle_child_focus_back(app);
     }
 }
 
@@ -24,7 +24,7 @@ pub(super) fn down(app: &mut App) {
     if app.state.subagent_detail_mode {
         app.state.subagent_detail_scroll = app.state.subagent_detail_scroll.saturating_add(1);
     } else {
-        super::cycle_agent_focus(app);
+        super::agent_focus::cycle_child_focus(app);
     }
 }
 

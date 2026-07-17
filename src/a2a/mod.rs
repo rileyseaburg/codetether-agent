@@ -11,6 +11,7 @@ pub mod bridge;
 pub mod bus_emit;
 pub mod claim;
 pub mod client;
+pub(crate) mod collaboration_token;
 #[path = "git_credentials/mod.rs"]
 pub mod git_credentials;
 pub mod grpc;
@@ -20,6 +21,7 @@ pub mod mdns;
 pub mod mdns_addr;
 pub mod mdns_liveness;
 pub mod peer_liveness;
+pub(crate) mod peer_route;
 pub mod prompt_runtime;
 pub mod server;
 pub mod server_auth;
@@ -36,9 +38,7 @@ pub mod worker_workspace_context;
 pub mod worker_workspace_record;
 
 /// Generated protobuf/tonic types from `proto/a2a/v1/a2a.proto`.
-pub mod proto {
-    tonic::include_proto!("a2a.v1");
-}
+pub mod proto;
 
 // Re-export commonly used types
 #[allow(unused_imports)]

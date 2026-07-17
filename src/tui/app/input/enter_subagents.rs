@@ -3,9 +3,15 @@
 use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 
+#[path = "enter_subagents_swarm.rs"]
+mod swarm;
+
 pub(super) fn dispatch(app: &mut App) {
     discard_stale_focus(app);
     if let Some(name) = app.state.active_spawned_agent.clone() {
+        if swarm::open(app, &name) {
+            return;
+        }
         app.state.subagent_detail_mode = true;
         app.state.subagent_detail_scroll = 0;
         app.state.status = format!("Agent @{name} detail");
@@ -28,10 +34,11 @@ fn discard_stale_focus(app: &mut App) {
         return;
     };
     let local = app.state.spawned_agents.contains_key(name);
+    let swarm = swarm::contains(app, name);
     let owned_tool = app.state.session_id.as_deref().is_some_and(|parent| {
         crate::tool::agent::bridge::find_agent_tool_agent_for_parent(name, parent).is_some()
     });
-    if !local && !owned_tool {
+    if !local && !owned_tool && !swarm {
         app.state.active_spawned_agent = None;
     }
 }

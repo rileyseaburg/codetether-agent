@@ -43,6 +43,7 @@ pub fn model_label(app: &App, session: &SessionView) -> String {
     session
         .model
         .clone()
+        .or_else(|| crate::tui::app::spawn_agent::model::current_model_id(app))
         .or_else(|| session_model_label(&app.state))
         .unwrap_or_else(|| "auto".to_string())
 }

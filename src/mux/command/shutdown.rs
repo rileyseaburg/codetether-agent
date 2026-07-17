@@ -6,6 +6,12 @@ use crate::mux::protocol::{ClientRequest, ServerResponse, VERSION, read_frame, w
 use crate::mux::registry::MuxRecord;
 
 pub(super) async fn request(record: &MuxRecord) -> Result<ServerResponse> {
+    tokio::time::timeout(std::time::Duration::from_secs(2), exchange(record))
+        .await
+        .context("mux server did not confirm shutdown within 2 seconds")?
+}
+
+async fn exchange(record: &MuxRecord) -> Result<ServerResponse> {
     let (mut stream, version) = crate::mux::client::handshake::connect(record).await?;
     if !(1..=VERSION).contains(&version) {
         bail!("unsupported mux protocol version {version}");

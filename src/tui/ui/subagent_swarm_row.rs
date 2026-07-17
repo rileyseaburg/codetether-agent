@@ -6,11 +6,11 @@ use ratatui::text::{Line, Span};
 use crate::tui::swarm_view::{SubTaskInfo, swarm_view_fmt::status_glyph};
 
 /// Render one swarm subtask in the unified agent dashboard.
-pub fn line(task: &SubTaskInfo) -> Line<'static> {
+pub fn line(task: &SubTaskInfo, selected: bool) -> Line<'static> {
     let (glyph, color) = status_glyph(task.status);
     let worker = task.agent_name.as_deref().unwrap_or("unassigned");
     let mut spans = vec![
-        Span::raw("  "),
+        Span::raw(if selected { "▶ " } else { "  " }),
         Span::styled(format!("{glyph} "), Style::default().fg(color)),
         format!("{worker} ").cyan().bold(),
         format!("[swarm:S{}] ", task.stage).magenta(),

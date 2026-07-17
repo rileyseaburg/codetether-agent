@@ -18,8 +18,8 @@ use serde_json::Value;
 
 /// Tool entrypoint for spawning and managing sub-agents.
 ///
-/// The tool supports `spawn`, `message`, `list`, and `kill` actions and
-/// delegates the implementation to narrower modules.
+/// The tool manages local children and messages discovered LAN peers through
+/// the same `message` and `list` actions.
 ///
 /// # Examples
 ///
@@ -59,7 +59,7 @@ impl Tool for AgentTool {
     }
 
     fn description(&self) -> &str {
-        "Spawn and communicate with specialized sub-agents. Actions: spawn, message, list, status, kill. Use 'status' to check whether spawned sub-agents are active, stalled, or settled. Spawned agents should use a free/subscription-eligible model; non-eligible models produce a cost warning."
+        "Spawn and communicate with specialized agents, including zero-config LAN peers discovered over mDNS. Actions: spawn, message, list, status, kill. Use list to see local and LAN agents before messaging."
     }
 
     fn parameters(&self) -> Value {

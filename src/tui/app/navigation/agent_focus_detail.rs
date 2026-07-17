@@ -1,21 +1,31 @@
-//! Child-only focus cycling while the transcript detail pane is open.
+//! Child-only focus cycling while a transcript detail pane is open.
 
 use crate::tui::app::state::App;
+use crate::tui::models::ViewMode;
 
 pub(super) fn cycle(app: &mut App) {
-    let names = super::agent_names(app);
-    if names.is_empty() {
-        app.state.active_spawned_agent = None;
-        return;
-    }
-    let next = app
-        .state
-        .active_spawned_agent
-        .as_ref()
-        .and_then(|current| names.iter().position(|name| name == current))
-        .map_or(0, |index| (index + 1) % names.len());
-    super::set_focus(app, Some(names[next].clone()));
+    super::child::next(app);
+    open_swarm_detail(app);
     app.state.subagent_detail_scroll = 0;
+}
+
+pub(super) fn cycle_back(app: &mut App) {
+    super::child::previous(app);
+    open_swarm_detail(app);
+    app.state.subagent_detail_scroll = 0;
+}
+
+fn open_swarm_detail(app: &mut App) {
+    let selected = app
+        .state
+        .swarm
+        .selected_subtask()
+        .and_then(|task| task.agent_name.as_deref());
+    if selected == app.state.active_spawned_agent.as_deref() {
+        app.state.subagent_detail_mode = false;
+        app.state.set_view_mode(ViewMode::Swarm);
+        app.state.swarm.enter_detail();
+    }
 }
 
 #[cfg(test)]

@@ -49,6 +49,7 @@ pub async fn expire_loop(bus: Arc<AgentBus>, liveness: Arc<Mutex<PeerLiveness>>)
             l.expire(MDNS_PEER_TTL)
         };
         for card_name in expired {
+            crate::a2a::peer_route::remove(&card_name);
             bus.registry.deregister(&card_name);
             bus.handle("a2a-discovery").send(
                 "broadcast",

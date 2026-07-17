@@ -35,6 +35,12 @@ impl SessionSlot {
         &self.view
     }
 
+    pub(crate) fn refresh_view(&mut self) {
+        if let Some(session) = self.session.as_ref() {
+            self.view = SessionView::from_session(session);
+        }
+    }
+
     /// Move the active session into a prompt request.
     pub(crate) fn take_for_prompt(&mut self) -> Option<Session> {
         let session = self.session.take()?;

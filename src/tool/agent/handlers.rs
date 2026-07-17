@@ -2,7 +2,7 @@
 
 use super::store;
 use crate::tool::ToolResult;
-use serde_json::{Value, json};
+use serde_json::json;
 
 /// Lists sub-agents owned by the calling session as a JSON array.
 ///
@@ -12,17 +12,17 @@ use serde_json::{Value, json};
 /// let result = handle_list();
 /// ```
 pub(super) fn handle_list(parent: Option<&str>) -> ToolResult {
-    let agents = store::list_for_parent(parent);
-    if agents.is_empty() {
-        return ToolResult::success("No sub-agents spawned. Use action \"spawn\".");
-    }
-    let list: Vec<Value> = agents
+    let mut agents = store::list_for_parent(parent)
         .into_iter()
-        .map(|(name, instructions, msgs)| {
-            json!({ "name": name, "instructions": instructions, "messages": msgs })
+        .map(|(name, instructions, messages)| {
+            json!({ "name": name, "instructions": instructions, "messages": messages })
         })
-        .collect();
-    ToolResult::success(serde_json::to_string_pretty(&list).unwrap_or_default())
+        .collect::<Vec<_>>();
+    agents.extend(super::message::remote::list());
+    if agents.is_empty() {
+        return ToolResult::success("No local or LAN agents are available yet.");
+    }
+    ToolResult::success(serde_json::to_string_pretty(&agents).unwrap_or_default())
 }
 
 /// Removes a spawned sub-agent from the in-memory store.

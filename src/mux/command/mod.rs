@@ -8,6 +8,8 @@ mod serve;
 mod shutdown;
 pub(in crate::mux) mod spawn;
 pub(in crate::mux) mod startup;
+mod terminate;
+mod terminate_identity;
 
 #[cfg(test)]
 mod shutdown_tests;
