@@ -1012,6 +1012,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "similar",
+ "socket2 0.6.4",
  "streaming-iterator",
  "syntect",
  "sysinfo",

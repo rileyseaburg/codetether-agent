@@ -1,0 +1,5 @@
+1784249653.796930 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2366875, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784249653.812854 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2366910, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784249653.835656 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2366913, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784249654.771503 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2366919, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784249654.772148 +++ exited with 0 +++

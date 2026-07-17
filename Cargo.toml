@@ -215,6 +215,7 @@ streaming-iterator = "0.1.9"
 mdns-sd = "0.13"
 gethostname = "1"
 if-addrs = "0.13"
+socket2 = "0.6"
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = [
     "Win32_Foundation",

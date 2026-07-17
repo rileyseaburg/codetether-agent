@@ -1,0 +1,2 @@
+1784250620.826493 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2520028, si_uid=1000, si_status=0, si_utime=4 /* 0.04 s */, si_stime=6 /* 0.06 s */} ---
+1784250620.828060 +++ exited with 0 +++

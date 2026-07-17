@@ -1,0 +1,3 @@
+1784249653.978501 --- SIGPIPE {si_signo=SIGPIPE, si_code=SI_USER, si_pid=2366907, si_uid=1000} ---
+1784249653.978876 --- SIGPIPE {si_signo=SIGPIPE, si_code=SI_TKILL, si_pid=2366907, si_uid=1000} ---
+1784249653.979369 +++ killed by SIGPIPE +++

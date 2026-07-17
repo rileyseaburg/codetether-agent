@@ -1,0 +1,2 @@
+1784247834.883532 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2050051, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784247834.884015 +++ exited with 0 +++

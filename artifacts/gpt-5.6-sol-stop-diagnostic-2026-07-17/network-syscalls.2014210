@@ -1,0 +1,16 @@
+1784246966.989693 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2014211, si_uid=1000, si_status=0, si_utime=0, si_stime=4 /* 0.04 s */} ---
+1784246967.143798 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2014215, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784247027.261245 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2014228, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784247027.305460 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2016308, si_uid=1000, si_status=0, si_utime=0, si_stime=1 /* 0.01 s */} ---
+1784247027.406087 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2016309, si_uid=1000, si_status=0, si_utime=0, si_stime=1 /* 0.01 s */} ---
+1784247087.458566 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2016310, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784247087.734116 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2018025, si_uid=1000, si_status=0, si_utime=0, si_stime=3 /* 0.03 s */} ---
+1784247087.798663 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2018048, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784247147.967754 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2018049, si_uid=1000, si_status=0, si_utime=0, si_stime=2 /* 0.02 s */} ---
+1784247148.038244 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2020743, si_uid=1000, si_status=0, si_utime=0, si_stime=1 /* 0.01 s */} ---
+1784247148.087789 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2020746, si_uid=1000, si_status=0, si_utime=0, si_stime=1 /* 0.01 s */} ---
+1784247160.112773 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2020749, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784247160.129628 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2021295, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+1784247160.199492 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2021297, si_uid=1000, si_status=0, si_utime=0, si_stime=1 /* 0.01 s */} ---
+1784247160.260463 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2021299, si_uid=1000, si_status=0, si_utime=0, si_stime=1 /* 0.01 s */} ---
+1784247160.263904 +++ exited with 0 +++
