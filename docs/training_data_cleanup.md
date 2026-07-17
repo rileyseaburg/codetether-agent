@@ -33,9 +33,15 @@ roles; root credentials are used only by the idempotent setup job.
 
 The pinned runtime is Spark 3.5.7, Iceberg 1.10.0, Hadoop AWS 3.3.4, and Java 17.
 Its published image is
-`codetether-training-pipeline:20260717-v9` with digest
-`sha256:c01821f503ac8aff9bc80782ff6a8da505628e423f46e7f5f05f4e3b2a02805a`.
+`codetether-training-pipeline:20260717-v10` with digest
+`sha256:a7e34cfe5ac8d2a42e7aaa1a0082aafb76c3b1ab0df692a50e5cbc90ef5f84e6`.
 Trino 482 supplies distributed SQL and the browser query UI.
+
+Source discovery descends only to day-sized shards, lists those shards
+concurrently through paginated S3 APIs, and distributes object reads across
+Spark executors. The historical cutoff currently resolves to 97,888 objects;
+the live discovery completes in roughly 45 seconds instead of recursively
+walking every hour directory on the driver.
 
 ## Operator UI
 
