@@ -32,7 +32,7 @@ swarm execution, MCP, A2A, and a scriptable plugin runtime in one binary.
 Try the TUI without installing Rust:
 
 ```bash
-npx codetether tui
+npx codetether
 ```
 
 Or install the binary and start a session:
@@ -40,7 +40,7 @@ Or install the binary and start a session:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 codetether auth codex
-codetether tui
+codetether
 ```
 
 Run one task without opening the TUI:
@@ -147,7 +147,7 @@ correctness coverage.
 
 | Goal | Command |
 |---|---|
-| Interactive agent | `codetether tui` |
+| Interactive agent | `codetether` |
 | One-shot task | `codetether run "task"` |
 | Parallel sub-agents | `codetether swarm "complex task"` |
 | PRD-driven loop | `codetether ralph run --prd prd.json` |

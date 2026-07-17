@@ -11,6 +11,8 @@ Spawn an autonomous A2A agent runtime that:
 - also accepts explicit `--peer` URLs for cross-host setups where mDNS
   isn't routable,
 - **auto-introduces** itself to newly discovered peers (default on),
+- exposes discovered peers through the normal first-party `agent` tool, so
+  `list` and `message` work for LAN teammates without URLs or pairing steps,
 - runs an LLM session per inbound `message/send` to actually *answer*.
 
 This is the mode to use when you want **two (or more) terminals running
@@ -44,8 +46,11 @@ INFO codetether_agent::a2a::spawn: Discovered A2A peer             agent=ubuntu-
 INFO codetether_agent::a2a::spawn: Auto-intro message sent         peer=http://192.168.50.101:37195
 ```
 
-After that, either side (or any third-party tool) can drive the other
-over plain HTTP JSON-RPC.
+After that, the regular `agent` tool sees the other process as a teammate.
+An agent can call `agent {"action":"list"}` and then
+`agent {"action":"message","name":"<peer>","message":"..."}`; CodeTether
+routes the turn over A2A and returns the peer's response through the same tool
+result used for local sub-agents.
 
 > **Why `--hostname 0.0.0.0`?** mDNS multicast doesn't traverse the
 > Linux loopback interface (it lacks the `MULTICAST` flag by default),
@@ -79,7 +84,7 @@ cross-LAN/WAN deployments where multicast isn't routable.
 
 | Mode | Command | Bind | What it does |
 |---|---|---|---|
-| **Spawn** | `codetether spawn` | `127.0.0.1:4097` (configurable) | Standalone headless A2A peer with discovery + auto-intro. **Use for two-terminal / multi-repo / decentralized agent meshes when you don't need a TUI.** |
+| **Spawn** | `codetether spawn` | `0.0.0.0` + OS-assigned port (configurable) | Standalone headless A2A peer with discovery + auto-intro. **Use for two-terminal / multi-repo / decentralized agent meshes when you don't need a TUI.** |
 | **TUI + A2A** | `codetether tui --a2a-port <P> --a2a-peer <URL>` | configurable | Interactive TUI **plus** the same A2A peer endpoint inside the same process. **Use when you want to drive the agent yourself in the TUI and have it reachable as a peer.** Inbound A2A messages are answered by a fresh background session — they do not appear in your TUI conversation. |
 | Serve | `codetether serve` | `127.0.0.1:4096` | Headless A2A API with optional mDNS. No outbound peer discovery. |
 | Worker | `codetether worker --server URL` | (outbound) | Connects *to* a CodeTether server as a worker. No inbound API. |
@@ -329,7 +334,8 @@ Refused (`-32002 TASK_NOT_CANCELABLE`) if the task is already in a terminal stat
 
 ## Peer discovery
 
-Implementation: `src/a2a/spawn.rs::discovery_loop`.
+Explicit seeds use `src/a2a/spawn.rs::discovery_loop`. Zero-config discovery
+uses DNS-SD plus a reusable UDP broadcast fallback and feeds the same intake.
 
 Every `discovery_interval_secs` (≥ 5 s):
 
@@ -344,7 +350,10 @@ Every `discovery_interval_secs` (≥ 5 s):
 
 Discovery is **idempotent**: re-seeing a known peer re-registers the card (so cards can be refreshed) but skips the intro message.
 
-> Discovery is **outbound-only**. To make agents truly find each other, every peer must seed at least one other peer's URL — symmetrically is fastest, but as long as the graph is connected discovery propagates over time.
+Once a discovered card is reachable, CodeTether registers a callable route for
+the peer. The first-party `agent` tool includes those routes in `list` and uses
+them automatically for `message`; explicit URLs remain necessary only when
+multicast/broadcast cannot cross the network boundary.
 
 ### Self-skip
 
@@ -372,12 +381,19 @@ The bus is **per-process**. Cross-process coordination is via the A2A HTTP API, 
 
 ## Authentication
 
-The spawned agent's HTTP server itself is **unauthenticated by default** — it accepts any JSON-RPC request on the bound interface. Restrict access with:
+The spawned agent's HTTP server is unauthenticated when no bearer token is
+configured. When `CODETETHER_AUTH_TOKEN` is set, RPC requests require it.
+Agent-card discovery remains public.
 
-- `--hostname 127.0.0.1` (default) — loopback only.
+- `--hostname 127.0.0.1` — opt into loopback only.
 - A reverse proxy / firewall when binding `0.0.0.0`.
 
-The **outbound A2A client** (used by discovery and by `A2AClient`) attaches a bearer token if `CODETETHER_AUTH_TOKEN` is set in the environment. Set this on both ends if you front the spawned agent with an auth-checking proxy.
+For zero-config first-party collaboration, each process also creates an
+unguessable, A2A-only capability and advertises it in the local-link discovery
+record. Discovered peers use that capability for introductions and delegated
+turns, so two agents do not need to share their control-plane bearer tokens.
+Treat the local LAN as the pairing boundary; use explicit peer URLs and a
+shared `CODETETHER_AUTH_TOKEN` across routed or untrusted networks.
 
 ---
 
@@ -398,7 +414,7 @@ At least one provider must be configured (Vault or env) or the session creation 
 | Var | Used by | Effect |
 |---|---|---|
 | `CODETETHER_A2A_PEERS` | spawn | Comma-separated peer seed URLs (alternative to `--peer`). |
-| `CODETETHER_AUTH_TOKEN` | A2A client (discovery + intro) | Bearer token attached to outbound A2A calls. |
+| `CODETETHER_AUTH_TOKEN` | A2A server and explicit-peer client | Requires this bearer for RPC and attaches it to explicit-peer calls; mDNS peers use their scoped discovery capability. |
 | `CODETETHER_DEFAULT_MODEL` | spawn-served sessions | Override default model used to answer inbound messages. |
 | `CODETETHER_SERVER` | worker mode | Not used by `spawn`. |
 
