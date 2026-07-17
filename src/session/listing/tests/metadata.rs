@@ -4,7 +4,7 @@ use super::super::scan::scan;
 use super::write_session;
 
 #[tokio::test]
-async fn scan_excludes_workspace_index_from_results() {
+async fn scan_excludes_internal_metadata_from_results() {
     let temp = tempfile::tempdir().unwrap();
     let sessions = temp.path().join("sessions");
     let workspace = temp.path().join("workspace");
@@ -12,6 +12,7 @@ async fn scan_excludes_workspace_index_from_results() {
     std::fs::create_dir_all(&workspace).unwrap();
     write_session(&sessions, ".workspace_index", &workspace, 1);
     write_session(&sessions, "session-id", &workspace, 1);
+    std::fs::write(sessions.join("run.checkpoint.json"), b"{}").unwrap();
 
     let summaries = scan(sessions, Some(workspace)).await.unwrap();
     assert_eq!(summaries.len(), 1);
