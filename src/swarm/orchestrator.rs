@@ -442,7 +442,7 @@ pub(crate) fn default_model_for_provider(provider: &str) -> String {
         "google" => "gemini-2.5-pro".to_string(),
         "zhipuai" | "zai" => "glm-5".to_string(),
         "openrouter" => "z-ai/glm-5".to_string(),
-        "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
+        "novita" => "qwen/qwen3.5-35b-a3b".to_string(),
         "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
         "openai-codex" => "gpt-5.5".to_string(),
         _ => "MiniMax-M3".to_string(),

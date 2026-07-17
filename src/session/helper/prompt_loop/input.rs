@@ -30,9 +30,12 @@ impl Runner<'_> {
             role: Role::User,
             content,
         });
-        super::super::publish_user_prompt::publish(self.session, message);
+        let turn_id = self.progress.turn_id.clone();
+        super::super::publish_user_prompt::publish(self.session, message, Some(turn_id));
         if self.session.title.is_none() {
-            self.session.generate_ai_title(&self.registry).await?;
+            self.session
+                .generate_ai_title_with(self.model.provider.as_ref(), &self.model.model_id)
+                .await?;
         }
         Ok(())
     }

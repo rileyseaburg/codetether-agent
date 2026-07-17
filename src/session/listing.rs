@@ -6,6 +6,7 @@ mod count_seq;
 mod directory;
 mod merge;
 mod parse;
+mod path;
 mod record;
 mod resolve;
 mod scan;

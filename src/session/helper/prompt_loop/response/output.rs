@@ -20,9 +20,10 @@ pub(super) async fn emit(runner: &mut Runner<'_>, step: usize, response: &Comple
         }
     }
     if !thinking.is_empty() {
-        publish_thinking(runner, step, &thinking);
+        super::assistant_bus::thinking(runner, step, &thinking);
     }
     if !text.is_empty() {
+        super::assistant_bus::text(runner, &text);
         runner.progress.output.push_str(&format!("{text}\n"));
     }
 }
@@ -38,19 +39,4 @@ fn collect(parts: &[ContentPart], thinking: bool) -> String {
         .filter(|text| !text.is_empty())
         .collect::<Vec<_>>()
         .join("\n")
-}
-
-fn publish_thinking(runner: &Runner<'_>, step: usize, thinking: &str) {
-    let Some(bus) = &runner.session.bus else {
-        return;
-    };
-    bus.handle(&runner.session.agent).send_with_correlation(
-        format!("agent.{}.thinking", runner.session.agent),
-        crate::bus::BusMessage::AgentThinking {
-            agent_id: runner.session.agent.clone(),
-            thinking: super::super::super::live_bus::compact_thinking(thinking),
-            step,
-        },
-        Some(runner.progress.turn_id.clone()),
-    );
 }

@@ -8,7 +8,6 @@ use super::cache_io::{load, store};
 use super::resolve::resolve_all;
 use super::summary::SessionSummary;
 use super::workspace::matches_workspace;
-use crate::session::workspace_index::INDEX_FILENAME;
 
 pub(super) async fn scan(
     sessions_dir: PathBuf,
@@ -40,17 +39,9 @@ async fn collect_json_paths(sessions_dir: &Path) -> Result<Vec<PathBuf>> {
     let mut entries = fs::read_dir(sessions_dir).await?;
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
-        if is_session_json(&path) {
+        if super::path::is_session_json(&path) {
             paths.push(path);
         }
     }
     Ok(paths)
-}
-
-fn is_session_json(path: &Path) -> bool {
-    let name = path.file_name().and_then(|name| name.to_str());
-    if name == Some(".listing_cache.json") || name == Some(INDEX_FILENAME) {
-        return false;
-    }
-    path.extension().is_some_and(|ext| ext == "json")
 }

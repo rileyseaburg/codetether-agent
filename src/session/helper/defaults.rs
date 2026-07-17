@@ -19,7 +19,7 @@ pub(crate) fn default_model_for_provider(provider: &str) -> String {
         "zhipuai" | "zai" | "zai-api" => "glm-5".to_string(),
         // OpenRouter uses model IDs like "z-ai/glm-5".
         "openrouter" => "z-ai/glm-5".to_string(),
-        "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
+        "novita" => "qwen/qwen3.5-35b-a3b".to_string(),
         "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
         _ => "gpt-4o".to_string(),
     }
@@ -49,5 +49,10 @@ mod tests {
         assert_eq!(default_model_for_provider("zai"), "glm-5");
         assert_eq!(default_model_for_provider("zhipuai"), "glm-5");
         assert_eq!(default_model_for_provider("zai-api"), "glm-5");
+    }
+
+    #[test]
+    fn novita_default_uses_canonical_model_id() {
+        assert_eq!(default_model_for_provider("novita"), "qwen/qwen3.5-35b-a3b");
     }
 }

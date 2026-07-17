@@ -1,16 +1,16 @@
 //! MinIO S3 Bus Sink
 //!
-//! Subscribes to the AgentBus and uploads all messages to MinIO S3
-//! as structured JSONL records suitable for LLM pretraining.
+//! Subscribes to the AgentBus and uploads training-relevant messages to
+//! MinIO S3 as structured JSONL records for local-model datasets.
 //!
 //! Each bus message is transformed into a training-friendly record with:
 //! - Clear role attribution (system/user/assistant/tool)
 //! - Paired tool_call → tool_result sequences
-//! - Full, untruncated content (code, file paths, arguments, outputs)
+//! - One paired result per tool call, without telemetry duplicates
 //! - Rich metadata for filtering, deduplication, and curriculum design
 //!
-//! The output format follows the OpenAI chat-completions schema so it can
-//! be fed directly into fine-tuning pipelines (SFT, DPO, RLHF).
+//! Records use common chat roles and tool-call fields. Correlation metadata
+//! keeps each turn reconstructable by local SFT dataset loaders.
 //!
 //! ## Usage
 //!
@@ -40,6 +40,14 @@ mod s3_spawn;
 mod s3_speech_record;
 #[path = "s3_spool.rs"]
 mod s3_spool;
+#[path = "s3_training_collect.rs"]
+mod s3_training_collect;
+#[path = "s3_training_group.rs"]
+mod s3_training_group;
+#[path = "s3_training_merge.rs"]
+mod s3_training_merge;
+#[path = "s3_training_order.rs"]
+mod s3_training_order;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use minio::s3::builders::ObjectContent;
@@ -47,9 +55,8 @@ use minio::s3::client::{MinioClient, MinioClientBuilder};
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
 use minio::s3::types::S3Api;
-use s3_record_format::{build_s3_key, bus_message_kind, parts_to_text};
+use s3_record_format::{agent_message_text, build_s3_key, bus_message_kind, parts_to_text};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tokio::task;
@@ -247,11 +254,10 @@ fn vault_extra_str(secrets: &secrets::ProviderSecrets, keys: &[&str]) -> Option<
 
 // ─── LLM Pretraining Record ─────────────────────────────────────────────
 
-/// A single training record in OpenAI chat-completions format.
+/// One chronological chat message in the training event stream.
 ///
-/// Each bus envelope maps to one `TrainingRecord` line in the JSONL output.
-/// The schema is compatible with OpenAI fine-tuning, Axolotl, and similar
-/// pipelines so the data can be used directly for SFT / DPO / RLHF.
+/// Dataset loaders group these records by correlation id to build complete
+/// chat trajectories while retaining source provenance for quality filters.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct TrainingRecord {
     /// "system" | "user" | "assistant" | "tool"
@@ -384,7 +390,7 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
             let text = parts_to_text(parts);
             TrainingRecord {
                 role: "assistant".into(),
-                content: Some(format!("[{from} → {to}] {text}")),
+                content: Some(agent_message_text(from, to, &text)),
                 tool_calls: None,
                 tool_call_id: None,
                 name: None,
@@ -662,103 +668,6 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
     }
 }
 
-type ToolGroupKey = (String, usize, Option<String>);
-
-fn collect_training_records(envelopes: &[BusEnvelope]) -> Vec<TrainingRecord> {
-    let mut grouped_records: BTreeMap<ToolGroupKey, Vec<TrainingRecord>> = BTreeMap::new();
-    let mut passthrough_records = Vec::new();
-
-    for env in envelopes {
-        if matches!(env.message, BusMessage::Heartbeat { .. }) {
-            continue;
-        }
-        let record = envelope_to_training_record(env);
-        if let Some(step) = record.metadata.step
-            && matches!(
-                env.message,
-                BusMessage::ToolRequest { .. } | BusMessage::ToolResponse { .. }
-            )
-        {
-            grouped_records
-                .entry((
-                    record.metadata.sender_id.clone(),
-                    step,
-                    record.metadata.correlation_id.clone(),
-                ))
-                .or_default()
-                .push(record);
-            continue;
-        }
-        passthrough_records.push(record);
-    }
-
-    let mut records = passthrough_records;
-    for (_key, mut group) in grouped_records {
-        append_training_group(&mut group, &mut records);
-    }
-    records
-}
-
-fn append_training_group(records: &mut [TrainingRecord], output: &mut Vec<TrainingRecord>) {
-    if records.is_empty() {
-        return;
-    }
-
-    let assistant_prefix_len = records
-        .iter()
-        .take_while(|record| {
-            record.role == "assistant"
-                && record
-                    .tool_calls
-                    .as_ref()
-                    .is_some_and(|calls| calls.len() == 1)
-        })
-        .count();
-    let tool_suffix_len = records[assistant_prefix_len..]
-        .iter()
-        .take_while(|record| record.role == "tool" && record.tool_call_id.is_some())
-        .count();
-    let can_merge = assistant_prefix_len > 0
-        && tool_suffix_len > 0
-        && assistant_prefix_len + tool_suffix_len == records.len();
-
-    if can_merge {
-        let mut merged = records[0].clone();
-        let mut tool_calls = Vec::with_capacity(assistant_prefix_len);
-        let mut envelope_ids = Vec::with_capacity(assistant_prefix_len);
-        let mut contents = Vec::new();
-
-        for record in records.iter().take(assistant_prefix_len) {
-            envelope_ids.push(record.metadata.envelope_id.clone());
-            if let Some(content) = record
-                .content
-                .as_ref()
-                .filter(|content| !content.is_empty())
-            {
-                contents.push(content.clone());
-            }
-            if let Some(mut calls) = record.tool_calls.clone() {
-                tool_calls.append(&mut calls);
-            }
-        }
-
-        merged.tool_calls = Some(tool_calls);
-        merged.content = if contents.is_empty() {
-            None
-        } else {
-            Some(contents.join("\n"))
-        };
-        merged.metadata.bus_kind = "tool_request_batch".into();
-        merged.metadata.envelope_id = envelope_ids.join(",");
-
-        output.push(merged);
-        output.extend(records.iter().skip(assistant_prefix_len).cloned());
-        return;
-    }
-
-    output.extend(records.iter().cloned());
-}
-
 fn serialize_training_records(records: &[TrainingRecord]) -> Vec<String> {
     records
         .iter()
@@ -936,9 +845,8 @@ impl BusS3Sink {
 
     /// Flush the current batch to S3 as JSONL (one training record per line).
     ///
-    /// Heartbeats are filtered out as noise. Every other envelope is
-    /// transformed into a `TrainingRecord` and serialized as a single JSON
-    /// line, making the file directly ingestible by LLM fine-tuning tools.
+    /// Heartbeats and duplicate full-output telemetry are filtered out. Each
+    /// retained envelope becomes one chronological `TrainingRecord` JSON line.
     async fn flush_batch(
         &self,
         batch: &mut Vec<BusEnvelope>,
@@ -957,7 +865,7 @@ impl BusS3Sink {
         // correlation id so separate turns do not merge when a sender reuses
         // the same step number. Legacy producers with `None` correlation ids
         // still group together compatibly.
-        let records = collect_training_records(&envelopes);
+        let records = s3_training_collect::collect(&envelopes);
         let lines = serialize_training_records(&records);
         if lines.is_empty() {
             return Ok(());
@@ -1191,7 +1099,7 @@ mod tests {
             tool_response_envelope("env-4", "req-2", Some("turn-2")),
         ];
 
-        let records = collect_training_records(&envelopes);
+        let records = s3_training_collect::collect(&envelopes);
         let assistant_batches: Vec<_> = records
             .iter()
             .filter(|record| record.metadata.bus_kind == "tool_request_batch")
@@ -1220,7 +1128,7 @@ mod tests {
             tool_response_envelope("env-4", "req-2", None),
         ];
 
-        let records = collect_training_records(&envelopes);
+        let records = s3_training_collect::collect(&envelopes);
         let assistant_batches: Vec<_> = records
             .iter()
             .filter(|record| record.metadata.bus_kind == "tool_request_batch")

@@ -52,7 +52,7 @@ fn local_cuda_model_name() -> String {
 fn default_openrouter_rlm_model() -> String {
     std::env::var("CODETETHER_RLM_DEFAULT_MODEL")
         .or_else(|_| std::env::var("OPENROUTER_RLM_MODEL"))
-        .unwrap_or_else(|_| "Qwen/Qwen3.5-35B-A3B".to_string())
+        .unwrap_or_else(|_| "qwen/qwen3.5-35b-a3b".to_string())
 }
 
 fn resolve_rlm_provider_and_model(

@@ -7,22 +7,30 @@
 
 use anyhow::Result;
 
-use crate::provider::{ContentPart, ProviderRegistry, Role};
+use crate::provider::{ContentPart, Provider, Role};
 
 use super::super::types::Session;
 use super::ai_model::title_from_model;
 
 impl Session {
-    /// Generate an AI title from the first user message, falling back to the
-    /// truncated-first-message heuristic when no model is reachable.
-    pub async fn generate_ai_title(&mut self, registry: &ProviderRegistry) -> Result<()> {
+    /// Generate a title with the provider and model selected for this turn.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if heuristic title generation fails after the model
+    /// request fails or produces no usable title.
+    pub(crate) async fn generate_ai_title_with(
+        &mut self,
+        provider: &dyn Provider,
+        model: &str,
+    ) -> Result<()> {
         if self.title.is_some() {
             return Ok(());
         }
         let Some(seed) = self.first_user_text() else {
             return Ok(());
         };
-        match title_from_model(registry, &seed).await {
+        match title_from_model(provider, model, &seed).await {
             Ok(Some(title)) => self.set_title(title),
             _ => self.generate_title().await?,
         }

@@ -7,6 +7,10 @@ use super::BusMessage;
 use crate::a2a::types::Part;
 use chrono::Utc;
 
+#[cfg(test)]
+#[path = "s3_record_format_tests.rs"]
+mod tests;
+
 /// Build a date-partitioned, unique S3 object key for a JSONL batch.
 pub(super) fn build_s3_key(prefix: &str, now: chrono::DateTime<Utc>) -> String {
     let prefix = if prefix.is_empty() {
@@ -41,4 +45,13 @@ pub(super) fn parts_to_text(parts: &[Part]) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// Format an agent message without polluting user-facing assistant text.
+pub(super) fn agent_message_text(from: &str, to: &str, text: &str) -> String {
+    if to == "user" {
+        text.to_string()
+    } else {
+        format!("[{from} → {to}] {text}")
+    }
 }

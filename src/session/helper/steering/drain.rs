@@ -17,7 +17,7 @@ fn append(session: &mut Session, inputs: Vec<super::SteeringInput>) -> usize {
     for input in inputs {
         let (message, text) = input.into_message();
         session.add_human_message(message);
-        super::super::publish_user_prompt::publish(session, &text);
+        super::super::publish_user_prompt::publish(session, &text, None);
     }
     if count > 0 {
         tracing::info!(session_id = %session.id, input_count = count, "Applied steering input");

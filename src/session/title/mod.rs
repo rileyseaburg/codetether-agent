@@ -1,6 +1,7 @@
 //! Title generation and context-change hooks.
 
 mod ai;
+mod ai_default;
 mod ai_model;
 mod ai_request;
 mod extract;

@@ -12,7 +12,7 @@ use crate::session::Session;
 /// Publish a `UserPrompt` bus message for `message` if the session has a bus.
 ///
 /// Non-fatal: when the session has no bus attached this is a no-op.
-pub(crate) fn publish(session: &Session, message: &str) {
+pub(crate) fn publish(session: &Session, message: &str, correlation_id: Option<String>) {
     let Some(ref bus) = session.bus else {
         return;
     };
@@ -24,7 +24,7 @@ pub(crate) fn publish(session: &Session, message: &str) {
         .map(|p| p.display().to_string())
         .unwrap_or_default();
     let handle = bus.handle(&session.agent);
-    handle.send(
+    handle.send_with_correlation(
         format!("agent.{}.user", session.agent),
         crate::bus::BusMessage::UserPrompt {
             agent_id: session.agent.clone(),
@@ -32,5 +32,6 @@ pub(crate) fn publish(session: &Session, message: &str) {
             workspace,
             session_id: session.id.clone(),
         },
+        correlation_id,
     );
 }

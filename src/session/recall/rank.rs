@@ -1,6 +1,7 @@
 //! Hybrid lexical and local-vector ranking for recall evidence.
 
 use super::hit::RecallHit;
+#[cfg(test)]
 use super::indexed_session::IndexedSession;
 
 mod query;
@@ -8,6 +9,7 @@ mod query;
 const EMBEDDING_DIMENSIONS: usize = 96;
 pub(super) use query::Query;
 
+#[cfg(test)]
 pub(super) fn search(
     sessions: &[IndexedSession],
     query: &str,

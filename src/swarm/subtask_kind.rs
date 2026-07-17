@@ -27,27 +27,6 @@ fn tokens(text: &str) -> Vec<String> {
         .collect()
 }
 
-fn has_label(tokens: &[String], actions: &[&str]) -> bool {
-    tokens.iter().any(|token| actions.contains(&token.as_str()))
-}
-
-fn has_directive(tokens: &[String], actions: &[&str]) -> bool {
-    tokens.iter().enumerate().any(|(index, token)| {
-        actions.contains(&token.as_str())
-            && (index == 0 || words::CONNECTORS.contains(&tokens[index - 1].as_str()))
-    })
-}
-
-fn is_verification(tokens: &[String]) -> bool {
-    has_directive(tokens, words::VERIFYING)
-        || (tokens
-            .first()
-            .is_some_and(|token| words::RUN.contains(&token.as_str()))
-            && tokens
-                .iter()
-                .any(|token| words::VERIFYING.contains(&token.as_str())))
-}
-
 #[cfg(test)]
 #[path = "subtask_kind_tests.rs"]
 mod tests;

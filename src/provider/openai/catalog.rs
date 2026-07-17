@@ -40,7 +40,7 @@ fn default_pairs(provider_name: &str) -> Vec<(&'static str, &'static str)> {
             ("MiniMax-M2", "MiniMax M2"),
         ],
         "novita" => vec![
-            ("Qwen/Qwen3.5-35B-A3B", "Qwen 3.5 35B A3B"),
+            ("qwen/qwen3.5-35b-a3b", "Qwen 3.5 35B A3B"),
             ("deepseek/deepseek-v3-0324", "DeepSeek V3"),
             ("meta-llama/llama-3.1-70b-instruct", "Llama 3.1 70B"),
             ("meta-llama/llama-3.1-8b-instruct", "Llama 3.1 8B"),
