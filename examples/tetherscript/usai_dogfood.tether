@@ -1,0 +1,29 @@
+fn name() {
+    return "usai-dogfood"
+}
+
+fn dogfood(messages, opts) {
+    let report = map()
+    report["provider"] = "usai"
+    report["base_url"] = "https://api.gsa.usai.gov/api/v1"
+    report["checks"] = []
+
+    let described = map()
+    described["name"] = "provider_describe"
+    let desc = provider.describe()
+    described["ok"] = desc["endpoint"] != nil
+    described["endpoint"] = desc["endpoint"]
+    described["path"] = desc["path"]
+    described["bound_header_names"] = desc["bound_header_names"]
+    report["checks"].push(described)
+
+    let chat = map()
+    chat["name"] = "chat_json"
+    let raw = provider.chat_json(messages, opts)
+    chat["ok"] = raw["choices"] != nil
+    chat["model"] = raw["model"]
+    chat["usage"] = raw["usage"]
+    report["checks"].push(chat)
+
+    return report
+}

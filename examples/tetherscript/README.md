@@ -128,6 +128,35 @@ For a LAN-hosted LM Studio server, call `chat_at` with the base URL:
 
 This is a TetherScript plugin helper, not a `ProviderRegistry` entry.
 
+## USAi provider
+
+USAi is wired as a `ProviderRegistry` TetherScript provider. Configure it via Vault:
+
+```bash
+vault kv put secret/codetether/providers/usai \
+  api_key="..." \
+  base_url="https://api.gsa.usai.gov/api/v1"
+```
+
+For local dogfooding, environment registration is also supported:
+
+```bash
+export USAI_API_KEY="..."
+export USAI_API_BASE_URL="http://localhost:8080/api/v1"
+codetether models
+codetether run --model usai/gemini-2.5-flash "reply with usai ok"
+```
+
+The provider script mirrors the existing TetherScript provider pattern:
+
+```json
+{
+  "path": "examples/tetherscript/usai_chat.tether",
+  "hook": "list_models",
+  "args": []
+}
+```
+
 ## Language features (alpha.23)
 
 Use current TetherScript syntax in plugin hooks: mutable bindings, `for x in

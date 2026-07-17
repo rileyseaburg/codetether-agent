@@ -6,6 +6,7 @@ use super::fallback_policy;
 use super::google;
 use super::openai;
 use super::registry::ProviderRegistry;
+use super::tetherscript_provider;
 use anyhow::Result;
 use std::sync::Arc;
 
@@ -71,6 +72,20 @@ impl ProviderRegistry {
                 url,
                 "novita",
             )?));
+        }
+
+        // ---- USAi / GSAi (TetherScript OpenAI-compatible provider) ----
+        for provider_name in ["usai", "usai-gov", "gsai"] {
+            if let Some(pc) = config.providers.get(provider_name)
+                && let Some(key) = &pc.api_key
+            {
+                let url = pc
+                    .base_url
+                    .clone()
+                    .unwrap_or_else(|| tetherscript_provider::usai::default_base_url().into());
+                registry.register(Arc::new(tetherscript_provider::usai::new(key, Some(&url))?));
+                break;
+            }
         }
 
         // ---- Bedrock (auto-detect from env / ~/.aws) ----

@@ -29,10 +29,8 @@ fn split_pair(raw: &str) -> Option<(String, String)> {
     if raw.is_empty() {
         return None;
     }
-    match raw.split_once('=') {
-        Some((k, v)) => Some((k.trim().to_string(), v.trim().to_string())),
-        None => None,
-    }
+    raw.split_once('=')
+        .map(|(k, v)| (k.trim().to_string(), v.trim().to_string()))
 }
 
 #[cfg(test)]

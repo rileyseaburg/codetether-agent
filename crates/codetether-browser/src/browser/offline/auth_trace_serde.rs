@@ -1,7 +1,5 @@
 //! Serialize a tetherscript Cookie into the public CookieRecord JSON shape.
 
-#![cfg(feature = "tetherscript")]
-
 use std::collections::BTreeMap;
 
 use super::cookie_parse::CookieRecord;

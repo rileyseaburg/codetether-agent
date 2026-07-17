@@ -126,6 +126,7 @@ impl ProviderRegistry {
             let normalized = match provider_name {
                 "local-cuda" | "localcuda" => "local_cuda",
                 "zhipuai" => "zai",
+                "gsai" | "usai-gov" => "usai",
                 other => other,
             };
 

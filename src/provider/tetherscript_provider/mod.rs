@@ -8,5 +8,6 @@ mod model_list;
 mod model_record;
 mod provider_impl;
 mod runner;
+pub mod usai;
 
 pub use runner::TetherScriptProvider;

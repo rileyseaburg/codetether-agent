@@ -53,6 +53,10 @@ pub fn register_env_fallbacks(registry: &mut ProviderRegistry) {
         ("cerebras", "CEREBRAS_API_KEY", |k| {
             super::tetherscript_provider::cerebras::provider(&k, None)
         }),
+        ("usai", "USAI_API_KEY", |k| {
+            let base_url = usai_base_url_from_env();
+            super::tetherscript_provider::usai::provider(&k, base_url.as_deref())
+        }),
     ];
 
     for (pid, env_var, ctor) in fallbacks {
@@ -72,6 +76,21 @@ pub fn register_env_fallbacks(registry: &mut ProviderRegistry) {
     register_huggingface(registry);
     register_glm5(registry);
     register_local_cuda(registry);
+}
+
+fn usai_base_url_from_env() -> Option<String> {
+    [
+        "CODETETHER_USAI_BASE_URL",
+        "CODETETHER_USAI_API_BASE_URL",
+        "USAI_BASE_URL",
+        "USAI_API_BASE_URL",
+    ]
+    .into_iter()
+    .find_map(|name| {
+        std::env::var(name)
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+    })
 }
 
 fn register_huggingface(registry: &mut ProviderRegistry) {

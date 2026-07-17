@@ -7,7 +7,7 @@ pub(super) fn name(line: &str) -> Option<String> {
     let words: Vec<&str> = line.split_whitespace().collect();
     for (i, word) in words.iter().enumerate() {
         if is_decl(word) {
-            return words.get(i + 1).and_then(|w| ident(w));
+            return words.get(i + 1).and_then(ident);
         }
     }
     None

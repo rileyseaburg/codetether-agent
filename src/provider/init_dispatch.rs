@@ -132,6 +132,16 @@ pub fn dispatch(provider_id: &str, secrets: &ProviderSecrets) -> Option<Arc<dyn 
                 provider_id
             );
         }
+        "usai" | "usai-gov" | "gsai" => {
+            let url = secrets
+                .base_url
+                .clone()
+                .unwrap_or_else(|| super::tetherscript_provider::usai::default_base_url().into());
+            try_register!(
+                super::tetherscript_provider::usai::new(api_key, Some(&url)),
+                provider_id
+            );
+        }
         "minimax" | "minimax-credits" => {
             let url = secrets
                 .base_url

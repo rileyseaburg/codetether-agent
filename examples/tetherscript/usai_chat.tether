@@ -1,0 +1,39 @@
+fn name() {
+    return "usai"
+}
+
+fn models() {
+    return ["claude_4_5_opus", "claude_4_5_sonnet", "claude_3_5_haiku", "llama_4_maverick", "cohere_english_v3", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", "text-embedding-005", "gpt-5.4-latest-guardrails-defaultv2", "gpt-5.2-latest-guardrails-defaultv2"]
+}
+
+fn list_models() {
+    let a = model_info("claude_4_5_opus", "Claude 4.5 Opus", 200000, true, false)
+    let b = model_info("claude_4_5_sonnet", "Claude 4.5 Sonnet", 200000, true, false)
+    let c = model_info("claude_3_5_haiku", "Claude 3.5 Haiku", 200000, true, false)
+    let d = model_info("llama_4_maverick", "Llama 4 Maverick", 128000, false, false)
+    let e = model_info("cohere_english_v3", "Cohere English v3", 128000, false, false)
+    let f = model_info("gemini-2.5-flash", "Gemini 2.5 Flash", 1048576, true, true)
+    let g = model_info("gemini-2.5-flash-lite", "Gemini 2.5 Flash Lite", 1048576, true, true)
+    let h = model_info("gemini-2.5-pro", "Gemini 2.5 Pro", 1048576, true, true)
+    let i = model_info("text-embedding-005", "Text Embedding 005", 8192, false, false)
+    let j = model_info("gpt-5.4-latest-guardrails-defaultv2", "GPT 5.4 Latest Guardrails Default v2", 128000, true, false)
+    let k = model_info("gpt-5.2-latest-guardrails-defaultv2", "GPT 5.2 Latest Guardrails Default v2", 128000, true, false)
+    return [a, b, c, d, e, f, g, h, i, j, k]
+}
+
+fn complete(arg) {
+    return provider.chat_json(arg["messages"], arg["opts"])
+}
+
+fn model_info(id, name, ctx, tools, vision) {
+    let m = map()
+    m["id"] = id
+    m["name"] = name
+    m["provider"] = "usai"
+    m["context_window"] = ctx
+    m["max_output_tokens"] = 8192
+    m["supports_vision"] = vision
+    m["supports_tools"] = tools
+    m["supports_streaming"] = true
+    return m
+}
