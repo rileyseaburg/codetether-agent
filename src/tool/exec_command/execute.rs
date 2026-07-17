@@ -6,21 +6,14 @@ use serde_json::Value;
 use super::{ExecCommandTool, input::Input};
 use crate::tool::{ToolResult, command_session};
 
+#[path = "execute/validate.rs"]
+mod validate;
+
 pub(super) async fn run(tool: &ExecCommandTool, args: Value) -> Result<ToolResult> {
-    let input: Input = match serde_json::from_value(args.clone()) {
+    let input: Input = match validate::input(&args) {
         Ok(input) => input,
-        Err(error) => {
-            return Ok(ToolResult::error(format!(
-                "invalid exec_command input: {error}"
-            )));
-        }
+        Err(result) => return Ok(result),
     };
-    if input.cmd.trim().is_empty() {
-        return Ok(ToolResult::error("cmd must not be empty"));
-    }
-    if let Some(blocked) = crate::tool::shell_command_guard::result("exec_command", &input.cmd) {
-        return Ok(blocked);
-    }
     let cwd = super::shell::cwd(tool.default_cwd.as_deref(), input.workdir.as_deref())?;
     let (program, command_args) = super::shell::invocation(&input);
     let policy = super::policy::resolve(&input.cmd, &args, &cwd).await;

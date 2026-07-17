@@ -32,6 +32,12 @@ mod tests;
 #[cfg(test)]
 #[path = "command_session/tool_tests.rs"]
 mod tool_tests;
+#[cfg(test)]
+#[path = "command_session/escalation_tests.rs"]
+mod escalation_tests;
+#[cfg(test)]
+#[path = "command_session/buffer_integration_tests.rs"]
+mod buffer_integration_tests;
 #[cfg(all(test, unix))]
 #[path = "command_session/pty_tests.rs"]
 mod pty_tests;

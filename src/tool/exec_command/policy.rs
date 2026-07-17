@@ -39,5 +39,20 @@ fn enabled(config: &Config, command: &str, args: &Value) -> bool {
     }
     let unavailable = crate::tool::sandbox::unavailable_reason().is_some();
     let approved = crate::runtime_policy::approved_or_session_command("exec_command", args);
+    if escalated(args) && approved {
+        return false;
+    }
     !(unavailable && !crate::tool::sandbox::direct_fallback_env_allowed() && approved)
 }
+
+pub(super) fn unapproved_escalation(args: &Value) -> bool {
+    escalated(args) && !crate::runtime_policy::approved_or_session_command("exec_command", args)
+}
+
+fn escalated(args: &Value) -> bool {
+    args.get("sandbox_permissions").and_then(Value::as_str) == Some("require_escalated")
+}
+
+#[cfg(test)]
+#[path = "policy/tests.rs"]
+mod tests;
