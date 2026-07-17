@@ -11,7 +11,9 @@ include!("tests_parts/falls_back_to_default_responses_instructions_without_syste
 include!("tests_parts/lists_chatgpt_codex_models.rs");
 include!("tests_parts/omits_gpt_5_5_from_api_key_model_listing_for_now.rs");
 include!("tests_parts/parses_model_suffix_for_thinking_level.rs");
+include!("tests_parts/prompt_cache_key_is_stable_across_transports.rs");
 include!("tests_parts/rejects_pro_model_for_chatgpt_backend.rs");
+include!("tests_parts/reasoning_signature_round_trip.rs");
 include!("tests_parts/responses_input_ignores_system_messages.rs");
 include!("tests_parts/responses_sse_parser_buffers_split_tool_call_events.rs");
 include!("tests_parts/responses_sse_parser_falls_back_to_done_item_arguments.rs");

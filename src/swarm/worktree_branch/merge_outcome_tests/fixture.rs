@@ -17,8 +17,7 @@ impl Fixture {
         fs::create_dir(&repo).unwrap();
         git::init(&repo);
         git::write_commit(&repo, "base\n", "base");
-        let manager =
-            WorktreeManager::with_repo(root.path().join("trees"), &repo).without_vscode_auto_open();
+        let manager = WorktreeManager::for_repo(&repo).without_vscode_auto_open();
         let worktree = manager.create("agent").await.unwrap();
         Self {
             _root: root,

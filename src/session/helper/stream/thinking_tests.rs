@@ -55,6 +55,6 @@ async fn empty_thinking_emits_activity_without_content() {
         .unwrap_err();
     // Stream ended before a `Done` chunk with no committed content: the drain
     // classifies this as a premature termination, not a clean empty finish.
-    assert!(err.to_string().contains("ended before completion"));
+    assert!(err.to_string().contains("availability"));
     assert!(matches!(rx.try_recv(), Ok(SessionEvent::Thinking)));
 }

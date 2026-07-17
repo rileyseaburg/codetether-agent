@@ -26,14 +26,17 @@ async fn interrupted_ws_keeps_partial_private_and_disables_ws() {
     .unwrap();
     let (socket, _) = client_async(request, client_io).await.unwrap();
     let health = TransportHealth::default();
+    let pool: WsPool<_> = WsPool::default();
     let chunks = ws_stream::drive(
         OpenAiRealtimeConnection::new(socket),
         json!({"type":"response.create"}),
         health.clone(),
+        pool.clone(),
     )
     .collect::<Vec<_>>()
     .await;
     server.await.unwrap();
     assert!(chunks.is_empty(), "partial chunks must remain private");
     assert!(health.requires_http());
+    assert!(pool.take().await.is_none());
 }

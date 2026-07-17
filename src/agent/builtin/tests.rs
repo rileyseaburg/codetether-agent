@@ -3,6 +3,8 @@
 mod agents_md_cap;
 mod agents_md_discovery;
 mod agents_md_global;
+mod build_prompt_quality;
+mod worktree_prompt;
 
 use super::build_system_prompt;
 use tempfile::tempdir;

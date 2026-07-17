@@ -26,10 +26,12 @@ async fn completed_ws_releases_buffered_output() {
     .unwrap();
     let (socket, _) = client_async(request, client_io).await.unwrap();
     let health = TransportHealth::default();
+    let pool: WsPool<_> = WsPool::default();
     let chunks = ws_stream::drive(
         OpenAiRealtimeConnection::new(socket),
         json!({"type":"response.create"}),
         health.clone(),
+        pool.clone(),
     )
     .collect::<Vec<_>>()
     .await;
@@ -37,4 +39,5 @@ async fn completed_ws_releases_buffered_output() {
     assert!(matches!(&chunks[0], StreamChunk::Text(text) if text == "complete"));
     assert!(matches!(&chunks[1], StreamChunk::Done { .. }));
     assert!(!health.requires_http());
+    assert!(pool.take().await.is_some());
 }
