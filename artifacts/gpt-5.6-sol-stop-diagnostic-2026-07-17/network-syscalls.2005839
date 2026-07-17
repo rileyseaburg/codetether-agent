@@ -1,2 +1,0 @@
-1784246822.940597 recvfrom(13, "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Length: 0\r\nContent-Type: application/xml\r\nServer: MinIO\r\nStrict-Transport-Security: max-age=31536000; includeSubDomains\r\nVary: Origin\r\nVary: Accept-Encoding\r\nX-Amz-Id-2: dd9025bab4ad464b049177c95eb6ebf374d3b3f"..., 8192, 0, NULL, NULL) = 478 <0.000050>
-1784251322.723912 +++ killed by SIGTERM +++

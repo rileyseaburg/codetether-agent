@@ -1,2 +1,0 @@
-1784247228.048321 --- SIGPIPE {si_signo=SIGPIPE, si_code=SI_USER, si_pid=2023788, si_uid=1000} ---
-1784247228.048820 +++ killed by SIGPIPE +++

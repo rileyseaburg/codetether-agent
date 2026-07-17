@@ -1,2 +1,0 @@
-1784251322.701636 --- SIGTERM {si_signo=SIGTERM, si_code=SI_USER, si_pid=2005829, si_uid=1000} ---
-1784251322.709258 +++ killed by SIGTERM +++

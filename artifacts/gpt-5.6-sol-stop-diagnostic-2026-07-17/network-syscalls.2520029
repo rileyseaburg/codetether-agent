@@ -1,6 +1,0 @@
-1784250619.610193 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2520038, si_uid=1000, si_status=0, si_utime=0, si_stime=1 /* 0.01 s */} ---
-1784250619.971615 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2520049, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
-1784250620.268592 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2520057, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
-1784250620.621585 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2520061, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
-1784250620.732272 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2520127, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
-1784250620.739031 +++ exited with 0 +++

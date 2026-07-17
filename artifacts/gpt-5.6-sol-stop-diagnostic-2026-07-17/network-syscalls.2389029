@@ -1,2 +1,0 @@
-1784249731.418337 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=2389033, si_uid=1000, si_status=0, si_utime=3 /* 0.03 s */, si_stime=3 /* 0.03 s */} ---
-1784249731.419347 +++ exited with 0 +++
