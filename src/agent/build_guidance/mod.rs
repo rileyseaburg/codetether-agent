@@ -9,4 +9,7 @@
 //! assert!(BUILD_GITHUB_AUTH_GUIDANCE.contains("GitHub authentication"));
 //! ```
 
+mod worktree;
+
 pub(super) const BUILD_GITHUB_AUTH_GUIDANCE: &str = "\n- In repositories prepared by CodeTether, assume GitHub authentication is already provisioned for `git` and `gh`. Do not search the filesystem for tokens or run interactive `gh auth login`.";
+pub(crate) use worktree::WORKTREE_GUIDANCE;

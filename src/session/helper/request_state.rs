@@ -26,7 +26,7 @@ pub(crate) fn build_provider_step_state(
 ) -> ProviderStepState {
     let (cwd, prior_context_allowed, autonomous) = session_context::resolve(session);
     let tool_registry = registry_for_cwd(provider, model, &cwd, prior_context_allowed, autonomous);
-    let tool_definitions = tools::active_tool_definitions(&tool_registry);
+    let tool_definitions = tools::active_tool_definitions(&tool_registry, selected_provider);
     let model_supports_tools = settings::model_supports_tools(selected_provider);
     let advertised_tool_definitions =
         tools::advertised_tools(model_supports_tools, &tool_definitions);

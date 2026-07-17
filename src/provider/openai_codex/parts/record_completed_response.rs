@@ -13,6 +13,7 @@ impl OpenAiCodexProvider {
             Self::record_response_error(event, chunks, "Response failed");
             return;
         }
+        Self::record_completed_reasoning(response, chunks);
         let usage = response
             .and_then(|value| value.get("usage"))
             .map(|usage| Self::parse_responses_usage(Some(usage)));

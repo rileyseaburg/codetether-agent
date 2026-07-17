@@ -7,12 +7,12 @@ pub mod agent;
 pub mod alias;
 pub mod auto_apply;
 pub mod avatar;
-pub mod bash;
+include!("command_modules.rs");
 pub mod bash_file_edit_guard;
 mod bash_github;
 mod bash_identity;
 mod bash_noninteractive;
-mod bash_shell;
+pub(crate) mod bash_shell;
 pub mod batch;
 pub mod browserctl;
 pub mod budget;
@@ -37,7 +37,7 @@ include!("image_modules.rs");
 pub mod invalid;
 pub mod k8s_tool;
 pub mod lsp;
-pub mod mcp_bridge;
+include!("mcp_modules.rs");
 pub mod mcp_tools;
 pub mod memory;
 pub mod morph_backend;
@@ -288,7 +288,7 @@ impl ToolRegistry {
         registry.register(Arc::new(search::GrepTool::new()));
         registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
         registry.register(Arc::new(edit::EditTool::new()));
-        registry.register(Arc::new(bash::BashTool::new()));
+        command_session::register(&mut registry, None);
         registry.register(Arc::new(lsp::LspTool::with_root(
             std::env::current_dir()
                 .map(|p| format!("file://{}", p.display()))
@@ -364,7 +364,7 @@ impl ToolRegistry {
         registry.register(Arc::new(search::GrepTool::new()));
         registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
         registry.register(Arc::new(edit::EditTool::new()));
-        registry.register(Arc::new(bash::BashTool::new()));
+        command_session::register(&mut registry, None);
         registry.register(Arc::new(lsp::LspTool::with_root(
             std::env::current_dir()
                 .map(|p| format!("file://{}", p.display()))

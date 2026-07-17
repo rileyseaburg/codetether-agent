@@ -21,15 +21,16 @@ pub(super) struct ToolAccumulator {
 /// from accumulated thinking, text, and tool calls.
 pub(super) fn build_response(
     thinking: String,
+    reasoning_signature: Option<String>,
     text: String,
     tools: Vec<ToolAccumulator>,
     usage: Usage,
 ) -> crate::provider::CompletionResponse {
     let mut content = Vec::new();
-    if !thinking.is_empty() {
+    if !thinking.is_empty() || reasoning_signature.is_some() {
         content.push(ContentPart::Thinking {
             text: thinking,
-            signature: None,
+            signature: reasoning_signature,
         });
     }
     if !text.is_empty() {

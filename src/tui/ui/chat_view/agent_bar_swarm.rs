@@ -14,7 +14,7 @@ pub(super) fn push_swarm_agents(spans: &mut Vec<Span<'static>>, app: &App) {
         spans.push(agent_tab(AgentTabMeta {
             name,
             model_id: model.as_deref(),
-            session_id: None,
+            session_id: Some(&task.id),
             indent: 1,
             selected: active == Some(name),
             processing: task.status == SubTaskStatus::Running,

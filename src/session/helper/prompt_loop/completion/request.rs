@@ -21,6 +21,7 @@ pub(super) async fn build(runner: &mut Runner<'_>, attempt: &mut Attempt) -> Com
     )
     .await;
     messages.extend(attempt.derived.messages.clone());
+    super::reasoning_context::sanitize(&mut messages, &runner.model.provider_name);
     CompletionRequest {
         messages,
         tools: runner.model.advertised.clone(),

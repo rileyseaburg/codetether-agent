@@ -9,7 +9,12 @@ impl CompletionCollector {
             } => {
                 self.append_tool_arguments(id, arguments_delta);
             }
-            StreamChunk::ToolCallEnd { .. } | StreamChunk::Thinking(_) => {}
+            StreamChunk::ToolCallEnd { .. } => {}
+            StreamChunk::Thinking(value) => {
+                if super::codex_reasoning::is_signature(&value) {
+                    self.reasoning_signature = Some(value);
+                }
+            }
             StreamChunk::Done { usage } => {
                 self.saw_done = true;
                 if let Some(usage) = usage {

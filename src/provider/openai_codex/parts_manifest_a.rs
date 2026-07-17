@@ -11,6 +11,7 @@ include!("parts/append_response_output_text.rs");
 include!("parts/append_response_output_tool.rs");
 include!("parts/append_responses_assistant.rs");
 include!("parts/append_responses_message.rs");
+include!("parts/append_responses_reasoning.rs");
 include!("parts/append_responses_tool.rs");
 include!("parts/append_responses_user.rs");
 include!("parts/apply_service_tier.rs");

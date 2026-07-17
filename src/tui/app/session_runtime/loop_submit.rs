@@ -57,7 +57,7 @@ pub(super) async fn submit(
     done_tx: &mpsc::Sender<()>,
 ) -> bool {
     let notify = Arc::new(Notify::new());
-    if !cancel.set(Arc::clone(&notify)) {
+    if !cancel.set(&request.session.id, Arc::clone(&notify)) {
         let _ = notice_tx
             .send(SessionNotice::Failed {
                 session: request.session,

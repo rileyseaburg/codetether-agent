@@ -22,10 +22,11 @@ pub(crate) fn system_prompt(input: SystemPromptInput<'_>) -> String {
         non_mutating,
     );
     format!(
-        "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.\n\nWORKING DIRECTORY: {}\nAll file operations should be relative to this directory.\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\nWhen done, provide a brief evidence summary.\n\n{}",
+        "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.\n\nWORKING DIRECTORY: {}\nAll file operations should be relative to this directory.{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\nWhen done, provide a brief evidence summary.\n\n{}",
         input.specialty,
         input.subtask_id,
         input.working_dir,
+        crate::agent::build_guidance::WORKTREE_GUIDANCE,
         super::capability_prompt::mode(input.read_only, input.expects_changes),
         super::capability_prompt::tools(input.read_only, input.expects_changes),
         coordination,
@@ -40,8 +41,4 @@ pub(crate) fn system_prompt(input: SystemPromptInput<'_>) -> String {
 }
 
 #[cfg(test)]
-#[path = "source_metric_prompt_tests.rs"]
-mod metric_tests;
-#[cfg(test)]
-#[path = "verification_prompt_tests.rs"]
-mod verification_tests;
+include!("prompt_tests_manifest.rs");

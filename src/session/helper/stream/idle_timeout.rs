@@ -10,8 +10,8 @@ use crate::session::SessionEvent;
 use futures::stream::BoxStream;
 use std::time::Duration;
 
-use super::finalize;
-use super::idle_drain::{DrainState, apply};
+use super::drain_state::DrainState;
+use super::idle_drain::apply;
 use super::idle_fault::fault_from;
 use super::idle_keepalive::{Next, next_with_keepalive};
 use super::outcome::{DrainOutcome, StreamStop};
@@ -64,7 +64,7 @@ pub(super) async fn drain(
             }
         }
     };
-    let response = finalize::build_response(state.thinking, state.text, state.tools, state.usage);
+    let response = state.finish();
     DrainOutcome {
         response: Some(response),
         stop,

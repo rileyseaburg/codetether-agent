@@ -6,9 +6,11 @@ mod bus;
 mod call;
 mod call_guard;
 mod codesearch;
+mod dispatch;
 mod invoke;
 mod outcome;
 mod outcome_detail;
+mod parallel;
 mod publish;
 mod rlm;
 mod simple;
@@ -27,27 +29,5 @@ pub(super) async fn execute(
     step: usize,
     calls: Vec<ToolCall>,
 ) -> Result<()> {
-    if let Some(events) = &runner.events {
-        if super::super::tool_parallel::try_execute(
-            runner.session,
-            &calls,
-            &runner.model.registry,
-            &runner.workspace.cwd,
-            &runner.model.model_id,
-            runner.model.provider.clone(),
-            events,
-            &mut runner.progress.codesearch_misses,
-        )
-        .await
-        {
-            return Ok(());
-        }
-    }
-    for (id, name, input) in calls {
-        let call = call::Call::new(id, name, input);
-        if call::run(runner, step, call).await? {
-            break;
-        }
-    }
-    Ok(())
+    dispatch::run(runner, step, calls).await
 }

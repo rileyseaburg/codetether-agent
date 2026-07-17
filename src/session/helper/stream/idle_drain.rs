@@ -4,34 +4,12 @@
 //! module within the line budget and isolates the per-variant accumulation
 //! logic in one focused place.
 
-use crate::provider::{StreamChunk, Usage};
+use crate::provider::StreamChunk;
 use crate::session::SessionEvent;
 use anyhow::Result;
-use std::collections::HashMap;
 
-use super::finalize::ToolAccumulator;
-use super::{text_acc, tool_acc};
-
-/// Mutable accumulators threaded through stream draining.
-pub(super) struct DrainState {
-    pub(super) text: String,
-    pub(super) thinking: String,
-    pub(super) tools: Vec<ToolAccumulator>,
-    pub(super) idx: HashMap<String, usize>,
-    pub(super) usage: Usage,
-}
-
-impl DrainState {
-    pub(super) fn new() -> Self {
-        Self {
-            text: String::new(),
-            thinking: String::new(),
-            tools: Vec::new(),
-            idx: HashMap::new(),
-            usage: Usage::default(),
-        }
-    }
-}
+use super::drain_state::DrainState;
+use super::{reasoning, text_acc, tool_acc};
 
 /// Apply a single [`StreamChunk`] to the accumulating [`DrainState`].
 pub(super) async fn apply(
@@ -49,7 +27,7 @@ pub(super) async fn apply(
             arguments_delta,
         } => tool_acc::on_tool_delta(&mut state.tools, &mut state.idx, id, arguments_delta)?,
         StreamChunk::ToolCallEnd { .. } => {}
-        StreamChunk::Thinking(d) => text_acc::on_thinking(&mut state.thinking, &d, event_tx)?,
+        StreamChunk::Thinking(delta) => reasoning::apply(state, delta, event_tx)?,
         StreamChunk::Done { usage: u } => {
             if let Some(u) = u {
                 state.usage = u;

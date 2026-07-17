@@ -22,20 +22,32 @@ use futures::stream::BoxStream;
 mod accept;
 #[cfg(test)]
 mod drain_end_tests;
+mod drain_state;
 mod fault;
+#[cfg(test)]
+mod fault_tests;
 mod finalize;
 mod idle_drain;
 mod idle_fault;
 mod idle_keepalive;
 mod idle_timeout;
 mod outcome;
+mod reasoning;
+#[cfg(test)]
+mod reasoning_signature_tests;
 mod restart;
+#[cfg(test)]
+mod restart_policy_tests;
 #[cfg(test)]
 mod restart_test_provider;
 #[cfg(test)]
 mod restart_tests;
 #[cfg(test)]
 mod srp_tests;
+#[cfg(test)]
+mod stall_restart_tests;
+#[cfg(test)]
+mod stall_test_provider;
 mod text_acc;
 #[cfg(test)]
 mod thinking_tests;

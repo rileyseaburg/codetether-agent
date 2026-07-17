@@ -23,7 +23,7 @@ use super::{PromptRequest, SessionCommand, active_cancel::ActiveCancel};
 #[derive(Clone)]
 pub(crate) struct TuiSessionHandle {
     tx: mpsc::Sender<SessionCommand>,
-    active_cancel: ActiveCancel,
+    pub(super) active_cancel: ActiveCancel,
 }
 
 impl TuiSessionHandle {

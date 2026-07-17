@@ -93,8 +93,5 @@ pub(super) async fn spawn_provider_task(
         original_dir,
         worktree_root,
     );
-    if let Err(request) = runtime.submit(request).await {
-        slot.restore(request.session);
-        app.state.status = "Session runtime is unavailable".to_string();
-    }
+    super::chat_runtime_submit::submit(app, slot, runtime, request).await;
 }

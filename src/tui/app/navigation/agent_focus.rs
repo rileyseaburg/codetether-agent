@@ -9,6 +9,8 @@ mod back;
 mod child;
 #[path = "agent_focus_detail.rs"]
 mod detail;
+#[path = "agent_focus_set.rs"]
+mod focus;
 #[path = "agent_focus_main.rs"]
 mod main;
 #[path = "agent_focus_names.rs"]
@@ -16,6 +18,7 @@ mod names;
 #[path = "agent_focus_swarm.rs"]
 mod swarm;
 pub use back::cycle_agent_focus_back;
+use focus::set_focus;
 pub use main::cycle_agent_focus;
 use names::agent_names;
 
@@ -41,13 +44,4 @@ pub(super) fn cycle_child_focus(app: &mut App) {
 
 pub(super) fn cycle_child_focus_back(app: &mut App) {
     child::previous(app);
-}
-
-pub(super) fn set_focus(app: &mut App, next: Option<String>) {
-    app.state.status = next.as_ref().map_or_else(
-        || "Focused main chat".to_string(),
-        |name| format!("Focused agent: {name}"),
-    );
-    swarm::sync(app, next.as_deref());
-    app.state.active_spawned_agent = next;
 }

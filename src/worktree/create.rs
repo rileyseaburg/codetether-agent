@@ -4,6 +4,7 @@ use anyhow::{Context, Result, anyhow};
 impl WorktreeManager {
     /// Create a new Git worktree for a task.
     pub async fn create(&self, name: &str) -> Result<WorktreeInfo> {
+        self.validate_storage()?;
         self.ensure_repo_integrity_once().await?;
         Self::validate_worktree_name(name)?;
         let worktree_path = self.base_dir.join(name);

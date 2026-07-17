@@ -5,48 +5,61 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use tokio::sync::Notify;
 
+use super::active_turn::ActiveTurn;
+use crate::session::helper::steering::SteeringInput;
+
+/// Synchronized control plane for cancellation and active-turn steering.
 #[derive(Clone, Default)]
-pub(super) struct ActiveCancel(Arc<Mutex<Option<Arc<Notify>>>>);
+pub(super) struct ActiveCancel(Arc<Mutex<ActiveTurn>>);
 
 impl ActiveCancel {
-    pub(super) fn set(&self, notify: Arc<Notify>) -> bool {
+    /// Reserve `session_id` and open its steering inbox before handoff.
+    pub(super) fn prepare(&self, session_id: &str) -> bool {
         let mut active = self.0.lock();
-        if active.is_some() {
+        if !active.prepare(session_id) {
             return false;
         }
-        *active = Some(notify);
+        crate::session::helper::steering::open(session_id);
         true
     }
 
-    pub(super) fn clear(&self) {
-        *self.0.lock() = None;
+    /// Attach a runtime cancellation notifier to the named session.
+    pub(super) fn set(&self, session_id: &str, notify: Arc<Notify>) -> bool {
+        let mut active = self.0.lock();
+        let attached = active.attach(session_id, notify);
+        if attached {
+            crate::session::helper::steering::open(session_id);
+        }
+        attached
     }
 
+    /// Clear active state and reject all later steering for that run.
+    pub(super) fn clear(&self) {
+        let mut active = self.0.lock();
+        if let Some(session_id) = active.clear() {
+            crate::session::helper::steering::clear(&session_id);
+        }
+    }
+
+    /// Notify the active executor, returning whether one was attached.
     pub(super) fn notify(&self) -> bool {
-        let active = self.0.lock().clone();
-        if let Some(notify) = active {
+        if let Some(notify) = self.0.lock().cancel() {
             notify.notify_one();
             return true;
         }
         false
     }
+
+    /// Atomically append input when the active session still accepts it.
+    pub(super) fn steer(&self, input: SteeringInput) -> bool {
+        let active = self.0.lock();
+        let Some(session_id) = active.session_id() else {
+            return false;
+        };
+        crate::session::helper::steering::push(session_id, input)
+    }
 }
 
 #[cfg(test)]
-mod tests {
-    use futures::FutureExt;
-
-    use super::*;
-
-    #[test]
-    fn notifies_only_while_a_turn_is_active() {
-        let active = ActiveCancel::default();
-        let notify = Arc::new(Notify::new());
-        assert!(!active.notify());
-        assert!(active.set(Arc::clone(&notify)));
-        assert!(active.notify());
-        assert!(notify.notified().now_or_never().is_some());
-        active.clear();
-        assert!(!active.notify());
-    }
-}
+#[path = "active_cancel_tests.rs"]
+mod tests;

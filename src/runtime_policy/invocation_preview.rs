@@ -14,6 +14,7 @@ use serde_json::Value;
 pub(crate) fn summarize(tool_name: &str, args: &Value) -> Option<String> {
     match tool_name {
         "bash" => field(args, "command").map(|cmd| format!("run: {}", clip(&cmd))),
+        "exec_command" => field(args, "cmd").map(|cmd| format!("run: {}", clip(&cmd))),
         "write" => field(args, "path").map(|p| format!("write file: {p}")),
         "edit" | "multiedit" => field(args, "path").map(|p| format!("edit file: {p}")),
         "apply_patch" | "patch" => Some("apply patch to workspace".to_string()),

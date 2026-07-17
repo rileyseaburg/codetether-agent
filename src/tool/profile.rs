@@ -1,47 +1,47 @@
-//! Benchmark tool profile: optionally restrict the tool surface.
+//! Deterministic tool-schema profiles for coding agents.
 //!
-//! A large tool surface bloats the request context and degrades tool-selection
-//! accuracy. For SWE-bench / Terminal-Bench runs, set
-//! `CODETETHER_TOOL_PROFILE=lean` to expose only the core coding tools.
+//! The default registry remains complete. OpenAI Codex sessions advertise a
+//! focused coding surface unless `CODETETHER_TOOL_PROFILE=full` is set.
+
+#[path = "profile/catalog.rs"]
+mod catalog;
+#[path = "profile/selection.rs"]
+mod selection;
 
 use crate::provider::ToolDefinition;
 
-/// Core tool IDs kept in the `lean` profile.
-const LEAN_TOOL_IDS: &[&str] = &[
-    "read",
-    "write",
-    "edit",
-    "multiedit",
-    "bash",
-    "grep",
-    "glob",
-    "list",
-    "tree",
-    "codesearch",
-    "file_info",
-    "head_tail",
-    "diff",
-    "lsp",
-    "patch",
-    "todo_read",
-    "todo_write",
-];
-
-/// Returns `true` when the lean benchmark profile is active.
+/// Returns whether an explicitly requested compact profile is active.
+///
+/// # Examples
+///
+/// ```rust
+/// let _active = codetether_agent::tool::profile::is_lean();
+/// ```
 pub fn is_lean() -> bool {
-    std::env::var("CODETETHER_TOOL_PROFILE")
-        .map(|v| v.eq_ignore_ascii_case("lean"))
-        .unwrap_or(false)
+    selection::requested().is_coding()
 }
 
-/// Filter tool definitions according to the active profile.
+/// Applies an explicit profile and deterministic ordering to tool definitions.
 ///
-/// When the lean profile is inactive, definitions pass through unchanged.
-pub fn apply(defs: Vec<ToolDefinition>) -> Vec<ToolDefinition> {
-    if !is_lean() {
-        return defs;
+/// # Examples
+///
+/// ```rust
+/// let definitions = Vec::new();
+/// assert!(codetether_agent::tool::profile::apply(definitions).is_empty());
+/// ```
+pub fn apply(mut definitions: Vec<ToolDefinition>) -> Vec<ToolDefinition> {
+    if is_lean() {
+        definitions = catalog::retain_coding_tools(definitions);
     }
-    defs.into_iter()
-        .filter(|d| LEAN_TOOL_IDS.contains(&d.name.as_str()))
-        .collect()
+    catalog::sort(definitions)
+}
+
+pub(crate) fn apply_for_provider(
+    definitions: Vec<ToolDefinition>,
+    provider: &str,
+) -> Vec<ToolDefinition> {
+    if selection::use_coding_profile(provider) {
+        return catalog::sort(catalog::retain_coding_tools(definitions));
+    }
+    catalog::sort(definitions)
 }

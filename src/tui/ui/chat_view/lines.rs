@@ -31,6 +31,9 @@ pub fn build_chat_lines(
     formatter: &MessageFormatter,
     palette: &ColorPalette,
 ) -> DrawnLines {
+    if let Some(lines) = super::swarm_lines::build(app, content_width, formatter, palette) {
+        return lines;
+    }
     // Hot path: cache is valid — take ownership, no clone.
     if let Some(lines) = app.state.take_cached_if_valid(max_width) {
         return DrawnLines::from_cache(lines);

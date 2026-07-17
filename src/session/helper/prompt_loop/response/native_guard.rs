@@ -35,5 +35,5 @@ pub(super) fn native_call(
         runner.progress.build_retries = 0;
         runner.progress.native_retries = 0;
     }
-    super::terminal::ensure_build_calls(runner)
+    super::build_exhaustion::ensure_calls(runner)
 }

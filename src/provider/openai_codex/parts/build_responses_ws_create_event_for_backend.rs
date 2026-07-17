@@ -16,6 +16,8 @@ impl OpenAiCodexProvider {
             "store": false,
             "instructions": instructions,
             "input": input,
+            "include": ["reasoning.encrypted_content"],
+            "prompt_cache_key": Self::prompt_cache_key(&instructions),
         });
 
         if !tools.is_empty() {

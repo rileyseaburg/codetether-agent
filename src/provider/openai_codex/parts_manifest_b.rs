@@ -28,6 +28,7 @@ include!("parts/generate_state.rs");
 include!("parts/get_access_token.rs");
 include!("parts/get_authorization_url.rs");
 include!("parts/log_http_responses_request.rs");
+include!("parts/log_responses_ws_request.rs");
 include!("parts/message_text.rs");
 include!("parts/model_info.rs");
 include!("parts/model_is_supported_by_backend.rs");

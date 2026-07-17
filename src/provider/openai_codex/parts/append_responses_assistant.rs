@@ -4,6 +4,7 @@ impl OpenAiCodexProvider {
         input: &mut Vec<Value>,
         known_calls: &mut std::collections::HashSet<String>,
     ) {
+        Self::append_responses_reasoning(message, input);
         let text = Self::message_text(message, "");
         if !text.is_empty() {
             input.push(json!({

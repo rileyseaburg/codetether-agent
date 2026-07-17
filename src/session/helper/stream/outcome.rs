@@ -3,9 +3,9 @@
 //! The drain loop reports *why* a provider stream stopped so the restart
 //! engine ([`super::super::restart`]) can decide whether re-opening a fresh
 //! stream is sound. LLM streams are not resumable mid-flight, so restarts are
-//! only sound for [`StreamStop::ColdStall`], [`StreamStop::PrematureEnd`], and
-//! transient [`StreamStop::Fault`]: each means a clean re-request yields one
-//! complete answer (any partial is discarded, never token-stitched).
+//! sound for idle stalls, premature endings, and transient faults: each means
+//! a clean re-request yields one complete answer. Partials are discarded,
+//! never token-stitched.
 
 use crate::provider::CompletionResponse;
 
@@ -16,7 +16,7 @@ pub(crate) enum StreamStop {
     Clean,
     /// Idle timeout before any chunk arrived — nothing committed; retryable.
     ColdStall,
-    /// Idle timeout after partial content — partial returned, not retried.
+    /// Idle timeout after partial content — partial discarded and retried.
     MidStreamStall,
     /// Byte stream ended (`None`) *before* any `Done` chunk. The HTTP body
     /// closed mid-turn; the model never signalled completion. Restart-eligible
@@ -37,6 +37,7 @@ impl StreamStop {
         matches!(
             self,
             StreamStop::ColdStall
+                | StreamStop::MidStreamStall
                 | StreamStop::PrematureEnd
                 | StreamStop::Fault {
                     transient: true,
@@ -45,12 +46,9 @@ impl StreamStop {
         )
     }
 
-    /// Whether a restart should proceed *even if* partial content was
-    /// committed this pass. Only a [`StreamStop::PrematureEnd`] discards the
-    /// committed partial to re-request a clean, complete stream; an idle
-    /// [`StreamStop::MidStreamStall`] keeps its partial instead.
+    /// Whether an incomplete response must be discarded even after content.
     pub(crate) fn restart_over_committed(&self) -> bool {
-        matches!(self, StreamStop::PrematureEnd)
+        matches!(self, StreamStop::MidStreamStall | StreamStop::PrematureEnd)
     }
 }
 

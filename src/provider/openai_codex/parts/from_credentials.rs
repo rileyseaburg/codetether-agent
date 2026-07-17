@@ -41,6 +41,7 @@ impl OpenAiCodexProvider {
             chatgpt_account_id,
             stored_credentials: Some(credentials),
             transport_health: TransportHealth::default(),
+            ws_pool: WsPool::default(),
         }
     }
 }

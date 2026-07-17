@@ -36,8 +36,7 @@ mod sandbox_execute;
 mod sandbox_landlock;
 #[path = "sandbox_plan_state.rs"]
 mod sandbox_plan_state;
-#[path = "sandbox_process.rs"]
-mod sandbox_process;
+include!("sandbox_process_modules.rs");
 #[path = "sandbox_result_builder.rs"]
 mod sandbox_result_builder;
 #[path = "sandbox_runner.rs"]

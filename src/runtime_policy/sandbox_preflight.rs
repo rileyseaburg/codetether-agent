@@ -9,7 +9,7 @@ pub(super) fn decision(
     tool_name: &str,
     args: &Value,
 ) -> Option<ToolPolicyDecision> {
-    let command = args.get("command").and_then(Value::as_str)?;
+    let command = super::command::value(tool_name, args)?;
     if matches!(policy.approval_policy(), ApprovalPolicy::Never) {
         return None;
     }
@@ -29,7 +29,9 @@ fn decision_for_state(
     unavailable: Option<&str>,
     env_allows_direct: bool,
 ) -> Option<ToolPolicyDecision> {
-    if tool_name != "bash" || super::command::is_read_only_command(command) {
+    if !matches!(tool_name, "bash" | "exec_command")
+        || super::command::is_read_only_command(command)
+    {
         return None;
     }
     if matches!(mode, SandboxMode::DangerFullAccess) || unavailable.is_none() || env_allows_direct {

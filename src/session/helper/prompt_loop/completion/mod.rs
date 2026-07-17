@@ -3,6 +3,7 @@
 mod context;
 mod derived;
 mod failover;
+mod reasoning_context;
 mod recovery;
 mod request;
 

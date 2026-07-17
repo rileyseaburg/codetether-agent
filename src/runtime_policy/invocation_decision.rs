@@ -12,7 +12,7 @@ pub(super) fn decide(
     if let Some(decision) = super::session_command::allow(tool_name, args) {
         return decision;
     }
-    if tool_name == "bash" && super::command::is_read_only_bash(args) {
+    if super::command::is_read_only_shell(tool_name, args) {
         return ToolPolicyDecision::new(
             ToolPolicyOutcome::Allow,
             DecisionReason::ReadOnlyCommand,
@@ -42,8 +42,8 @@ fn command_rule(
     tool_name: &str,
     args: &Value,
 ) -> Option<ToolPolicyDecision> {
-    let command = args.get("command").and_then(Value::as_str)?;
-    let outcome = (tool_name == "bash").then(|| policy.command_rule(command))??;
+    let command = super::command::value(tool_name, args)?;
+    let outcome = policy.command_rule(command)?;
     Some(ToolPolicyDecision::new(
         outcome,
         DecisionReason::MutatingTool,

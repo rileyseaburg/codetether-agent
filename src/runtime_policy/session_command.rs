@@ -19,9 +19,7 @@ pub(super) fn approved(tool_name: &str, args: &Value) -> bool {
 }
 
 fn command<'a>(tool_name: &str, args: &'a Value) -> Option<&'a str> {
-    (tool_name == "bash")
-        .then(|| args.get("command").and_then(Value::as_str))
-        .flatten()
+    super::command::value(tool_name, args)
 }
 
 fn approved_command(command: &str) -> bool {

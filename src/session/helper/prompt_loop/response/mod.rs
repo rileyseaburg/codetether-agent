@@ -1,5 +1,6 @@
 //! Completion normalization and usage reporting.
 
+mod build_exhaustion;
 pub(super) mod build_guard;
 mod flow;
 mod native_guard;

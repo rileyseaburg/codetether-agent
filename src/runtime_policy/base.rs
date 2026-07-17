@@ -12,6 +12,9 @@ pub(super) fn decide(
     if matches!(kind, ToolKind::ReadOnly) {
         return (ToolPolicyOutcome::Allow, DecisionReason::ReadOnlyTool);
     }
+    if matches!(kind, ToolKind::SessionTransport) {
+        return (ToolPolicyOutcome::Allow, DecisionReason::SessionApproval);
+    }
     if matches!(profile, PermissionProfile::Disabled) {
         return (
             ToolPolicyOutcome::Deny,

@@ -4,8 +4,8 @@
 //! user messages, and delegates to
 //! [`super::chat_submit_dispatch::dispatch_prompt`].
 //!
-//! Mid-stream behavior: while a turn is in flight, plain-text Enter stores
-//! one follow-up prompt and the event loop submits it after completion.
+//! Mid-stream behavior: while a local turn is in flight, Enter injects text
+//! and images before its next model step.
 
 use std::{path::Path, sync::Arc};
 
@@ -22,8 +22,7 @@ mod queue_tests;
 ///
 /// Handles `!shell` and slash commands, pushes user/image messages,
 /// then delegates prompt preparation and dispatch. While a previous
-/// request is still in flight, plain-text input is queued as the next
-/// prompt.
+/// request is still in flight, input steers that active prompt run.
 pub(super) async fn handle_enter_chat(
     app: &mut App,
     cwd: &Path,
@@ -50,7 +49,7 @@ pub(super) async fn handle_enter_chat(
         return;
     }
     if app.state.processing {
-        crate::tui::app::state::prompt_queue::store(app, prompt);
+        super::chat_steer::submit(app, runtime, &prompt);
         return;
     }
     super::chat_submit_finish::finish_submit(

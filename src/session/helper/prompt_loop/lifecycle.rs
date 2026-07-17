@@ -10,6 +10,7 @@ use anyhow::Result;
 ///
 /// Returns an error from setup, completion, tool execution, or persistence.
 pub(crate) async fn run(runner: &mut Runner<'_>) -> Result<SessionResult> {
+    let _steering = super::super::steering::RunGuard::open(&runner.session.id);
     for step in 1..=runner.progress.max_steps {
         begin(runner, step).await?;
         let response = super::completion::complete(runner, step).await?;
@@ -26,6 +27,7 @@ pub(crate) async fn run(runner: &mut Runner<'_>) -> Result<SessionResult> {
 }
 
 async fn begin(runner: &mut Runner<'_>, step: usize) -> Result<()> {
+    super::super::steering::drain_into(runner.session);
     let model = &mut runner.model;
     #[rustfmt::skip]
     super::super::step_begin::begin_step(super::super::step_model_restore::StepVars {

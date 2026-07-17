@@ -9,7 +9,7 @@
 //! let prompt = build_system_prompt(std::path::Path::new("."));
 //! ```
 
-use crate::agent::build_guidance::BUILD_GITHUB_AUTH_GUIDANCE;
+use crate::agent::build_guidance::{BUILD_GITHUB_AUTH_GUIDANCE, WORKTREE_GUIDANCE};
 use std::path::Path;
 
 use super::agents_md::load_all_agents_md;
@@ -28,7 +28,7 @@ pub fn build_system_prompt(cwd: &Path) -> String {
     let agents_section = render_agents_section(cwd);
     let lm_tools_section = render_vscode_lm_tools_section(cwd);
     format!(
-        "{base_prompt}{agents_section}{lm_tools_section}{BUILD_GITHUB_AUTH_GUIDANCE}{BUILD_MODE_GUARDRAIL}"
+        "{base_prompt}{agents_section}{lm_tools_section}{BUILD_GITHUB_AUTH_GUIDANCE}{WORKTREE_GUIDANCE}{BUILD_MODE_GUARDRAIL}"
     )
 }
 

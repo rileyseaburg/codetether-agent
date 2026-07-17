@@ -1,11 +1,15 @@
 //! Transactional driver for one Codex WebSocket response.
 
+#[path = "ws_stream/interrupted.rs"]
+mod interrupted;
+
 use futures::stream::BoxStream;
 use serde_json::Value;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use super::{
-    OpenAiCodexProvider, OpenAiRealtimeConnection, ResponsesSseParser, StreamChunk, TransportHealth,
+    OpenAiCodexProvider, OpenAiRealtimeConnection, ResponsesSseParser, StreamChunk,
+    TransportHealth, WsPool,
 };
 
 /// Buffer one WebSocket attempt until completion so interrupted output stays private.
@@ -13,18 +17,20 @@ pub(super) fn drive<S>(
     mut connection: OpenAiRealtimeConnection<S>,
     body: Value,
     health: TransportHealth,
+    pool: WsPool<S>,
 ) -> BoxStream<'static, StreamChunk>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     Box::pin(async_stream::stream! {
         if let Err(error) = connection.send_event(&body).await {
-            interrupted(&health, Some(&error));
+            interrupted::record(&health, Some(&error));
             let _ = connection.close().await;
             return;
         }
         let mut parser = ResponsesSseParser::default();
         let mut buffered = Vec::new();
+        let mut reusable = false;
         loop {
             match connection.recv_event().await {
                 Ok(Some(event)) => {
@@ -36,21 +42,15 @@ where
                     }
                     if buffered.iter().any(|chunk| matches!(chunk, StreamChunk::Done { .. })) {
                         for chunk in buffered.drain(..) { yield chunk; }
+                        reusable = true;
                         break;
                     }
                 }
-                Ok(None) => { interrupted(&health, None); break; }
-                Err(error) => { interrupted(&health, Some(&error)); break; }
+                Ok(None) => { interrupted::record(&health, None); break; }
+                Err(error) => { interrupted::record(&health, Some(&error)); break; }
             }
         }
-        let _ = connection.close().await;
+        if reusable { pool.put(connection).await; }
+        else { let _ = connection.close().await; }
     })
-}
-
-fn interrupted(health: &TransportHealth, error: Option<&anyhow::Error>) {
-    tracing::warn!(
-        error = error.map(ToString::to_string),
-        "Codex transport retrying privately"
-    );
-    health.mark_interrupted();
 }

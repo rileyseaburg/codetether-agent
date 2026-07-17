@@ -13,6 +13,9 @@
 //!
 //! [`SessionEvent::Thinking`]: crate::session::SessionEvent::Thinking
 
+#[path = "codex_reasoning/signature.rs"]
+mod signature;
+
 use crate::provider::StreamChunk;
 use serde_json::Value;
 
@@ -36,6 +39,23 @@ pub(super) fn push_if_reasoning(
         .and_then(Value::as_str)
         .unwrap_or_default();
     chunks.push(StreamChunk::Thinking(delta.to_string()));
+}
+
+pub(super) fn push_item_if_reasoning(item: &Value, chunks: &mut Vec<StreamChunk>) -> bool {
+    if item.get("type").and_then(Value::as_str) != Some("reasoning") {
+        return false;
+    }
+    let chunk = signature::encode(item).unwrap_or_default();
+    chunks.push(StreamChunk::Thinking(chunk));
+    true
+}
+
+pub(crate) fn is_signature(value: &str) -> bool {
+    signature::decode(value).is_some()
+}
+
+pub(super) fn decode_signature(value: &str) -> Option<Value> {
+    signature::decode(value)
 }
 
 #[cfg(test)]

@@ -11,6 +11,7 @@ impl WorktreeManager {
     }
 
     fn integrate(&self, name: &str, branch: &str) -> Result<MergeResult> {
+        self.validate_storage()?;
         let integration = IntegrationDir::create(&self.repo_path, &self.base_dir, name)?;
         let files = match merge::merge(integration.path(), branch)? {
             Outcome::Merged(files) => files,

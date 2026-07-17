@@ -29,6 +29,8 @@ mod token_expiry;
 mod transport_catalog;
 #[path = "openai_codex/transport_health.rs"]
 mod transport_health;
+#[path = "openai_codex/ws_pool.rs"]
+mod ws_pool;
 #[path = "openai_codex/ws_stream.rs"]
 mod ws_stream;
 
@@ -54,5 +56,6 @@ mod tests {
     include!("openai_codex_stream_recovery_tests.rs");
     include!("openai_codex_ws_completion_tests.rs");
     include!("openai_codex_ws_interruption_tests.rs");
+    include!("openai_codex_ws_reuse_tests.rs");
     include!("openai_codex/tests_manifest.rs");
 }

@@ -40,6 +40,7 @@ pub(crate) mod rlm_background;
 mod rlm_model;
 pub mod router;
 pub mod runtime;
+pub(crate) mod steering;
 pub mod stream;
 pub mod stream_caps;
 pub mod text;

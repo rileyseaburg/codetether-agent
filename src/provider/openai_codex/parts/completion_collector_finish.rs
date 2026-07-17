@@ -4,6 +4,12 @@ impl CompletionCollector {
             anyhow::bail!("temporary provider availability issue; retry the request");
         }
         let mut content = Vec::new();
+        if let Some(signature) = self.reasoning_signature {
+            content.push(ContentPart::Thinking {
+                text: String::new(),
+                signature: Some(signature),
+            });
+        }
         if !self.text.is_empty() {
             content.push(ContentPart::Text { text: self.text });
         }

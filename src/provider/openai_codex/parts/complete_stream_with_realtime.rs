@@ -16,27 +16,10 @@ impl OpenAiCodexProvider {
             service_tier,
             ws_backend,
         );
-        tracing::info!(
-            backend = backend,
-            instructions_len = body
-                .get("instructions")
-                .and_then(|v| v.as_str())
-                .map(str::len)
-                .unwrap_or(0),
-            input_items = body
-                .get("input")
-                .and_then(|v| v.as_array())
-                .map(Vec::len)
-                .unwrap_or(0),
-            has_tools = body
-                .get("tools")
-                .and_then(|v| v.as_array())
-                .is_some_and(|tools| !tools.is_empty()),
-            "Sending responses websocket request"
-        );
+        Self::log_responses_ws_request(&body, backend);
 
         let connection = self
-            .connect_responses_ws_with_token(
+            .pooled_ws_connection(
                 &access_token,
                 chatgpt_account_id.as_deref(),
                 ws_backend,
@@ -47,6 +30,7 @@ impl OpenAiCodexProvider {
             connection,
             body,
             self.transport_health.clone(),
+            self.ws_pool.clone(),
         ))
     }
 }

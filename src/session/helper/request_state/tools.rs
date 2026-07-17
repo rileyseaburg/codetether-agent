@@ -7,13 +7,17 @@ fn is_dead_confirmation_tool(name: &str) -> bool {
     matches!(name, "confirm_edit" | "confirm_multiedit")
 }
 
-pub(super) fn active_tool_definitions(registry: &ToolRegistry) -> Vec<ToolDefinition> {
-    registry
+pub(super) fn active_tool_definitions(
+    registry: &ToolRegistry,
+    selected_provider: &str,
+) -> Vec<ToolDefinition> {
+    let definitions = registry
         .definitions()
         .into_iter()
         .filter(|tool| !is_interactive_tool(&tool.name))
         .filter(|tool| !is_dead_confirmation_tool(&tool.name))
-        .collect()
+        .collect();
+    crate::tool::profile::apply_for_provider(definitions, selected_provider)
 }
 
 pub(super) fn advertised_tools(

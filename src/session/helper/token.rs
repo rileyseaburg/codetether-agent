@@ -1,20 +1,19 @@
 use crate::provider::{ContentPart, Message, ToolDefinition};
 use crate::rlm::RlmChunker;
 
+#[path = "token/max_output.rs"]
+mod max_output;
+#[path = "token/thinking.rs"]
+mod thinking;
+
+pub use max_output::session_completion_max_tokens;
+
 /// Delegate to the canonical implementation in [`crate::provider::limits`].
 ///
 /// Kept here as a re-export so existing call sites don't need to update
 /// their import paths. New code may import
 /// [`crate::provider::limits::context_window_for_model`] directly.
 pub use crate::provider::limits::context_window_for_model;
-
-pub fn session_completion_max_tokens() -> usize {
-    std::env::var("CODETETHER_SESSION_MAX_TOKENS")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .filter(|v| *v > 0)
-        .unwrap_or(8192)
-}
 
 pub fn estimate_tokens_for_part(part: &ContentPart) -> usize {
     match part {
@@ -39,7 +38,7 @@ pub fn estimate_tokens_for_part(part: &ContentPart) -> usize {
             }
             RlmChunker::estimate_tokens(&s)
         }
-        ContentPart::Thinking { text, .. } => RlmChunker::estimate_tokens(text),
+        ContentPart::Thinking { text, signature } => thinking::estimate(text, signature),
         ContentPart::Image { .. } => 2000,
         ContentPart::File { path, mime_type } => {
             let mut s = String::new();
