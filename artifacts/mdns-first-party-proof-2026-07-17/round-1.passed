@@ -1,9 +1,0 @@
-alpha=proof-1-alpha-1c834a7e pid=2918574
-beta=proof-1-beta-1c834a7e pid=2918575
-endpoint=http://192.168.50.101:39873
-reciprocal_mdns=true
-reciprocal_intro=true
-agent_tool_turn=true
-missing_token_401=true
-foreign_control_401=true
-own_control_200=true

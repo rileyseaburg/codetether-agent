@@ -76,3 +76,10 @@ state_v5.py
 # gets swept into `cargo package`, inflating the crate past crates.io's 10 MiB
 # limit (surfaces as a 503 on upload). Keep it out of the packaged tree.
 /.depot/
+
+# Local/generated diagnostics and runtime artifacts
+/artifacts/
+/codetether-bin
+/cookies.txt
+*.jsonl
+*.stderr
