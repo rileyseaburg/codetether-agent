@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: polaris-postgres
+  namespace: codetether-data
+spec:
+  serviceName: polaris-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: polaris-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: polaris-postgres
+    spec:
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: postgres:17.5-alpine
+          env:
+            - name: POSTGRES_USER
+              valueFrom: {secretKeyRef: {name: training-data-secrets, key: postgres-user}}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: training-data-secrets, key: postgres-password}}
+            - name: POSTGRES_DB
+              value: polaris
+            - name: POSTGRES_INITDB_ARGS
+              value: --encoding=UTF8 --data-checksums
+          ports:
+            - {name: postgres, containerPort: 5432}
+          readinessProbe:
+            exec: {command: [pg_isready, -U, polaris, -d, polaris]}
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "2", memory: 2Gi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources: {requests: {storage: 10Gi}}

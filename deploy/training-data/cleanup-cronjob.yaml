@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: training-cleanup
+  namespace: codetether-data
+spec:
+  schedule: "15 1 * * *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 14
+  failedJobsHistoryLimit: 14
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 7200
+      template:
+        metadata:
+          labels: {app.kubernetes.io/name: training-cleanup}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: training-spark
+          containers:
+            - name: submit
+              image: us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260717-v9
+              command: [/opt/spark/jobs/submit_training_cleanup_k8s.sh]
+              env:
+                - {name: PIPELINE_IMAGE, value: "us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260717-v9"}
+                - {name: CLEANUP_APPLY, value: "true"}

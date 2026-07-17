@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trino
+  namespace: codetether-data
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: trino}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: trino}
+    spec:
+      containers:
+        - name: trino
+          image: trinodb/trino:482
+          env:
+            - name: POLARIS_CREDENTIAL
+              valueFrom: {secretKeyRef: {name: training-data-secrets, key: polaris-pipeline-credential}}
+          ports:
+            - {name: http, containerPort: 8080}
+          readinessProbe:
+            httpGet: {path: /v1/info, port: http}
+            initialDelaySeconds: 20
+          resources:
+            requests: {cpu: 500m, memory: 1Gi}
+            limits: {cpu: "2", memory: 4Gi}
+          volumeMounts:
+            - {name: catalog, mountPath: /etc/trino/catalog/iceberg.properties, subPath: iceberg.properties}
+      volumes:
+        - name: catalog
+          configMap: {name: trino-config}

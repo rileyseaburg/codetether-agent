@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-history
+  namespace: codetether-data
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: spark-history}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: spark-history}
+    spec:
+      serviceAccountName: training-spark
+      containers:
+        - name: history
+          image: us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260717-v4
+          command: [/opt/spark/sbin/start-history-server.sh]
+          env:
+            - {name: SPARK_NO_DAEMONIZE, value: "true"}
+            - {name: AWS_ACCESS_KEY_ID, valueFrom: {secretKeyRef: {name: training-data-secrets, key: minio-access-key}}}
+            - {name: AWS_SECRET_ACCESS_KEY, valueFrom: {secretKeyRef: {name: training-data-secrets, key: minio-secret-key}}}
+          ports:
+            - {name: http, containerPort: 18080}
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            initialDelaySeconds: 15
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "1", memory: 2Gi}
+          volumeMounts:
+            - {name: config, mountPath: /opt/spark/conf/spark-defaults.conf, subPath: spark-defaults.conf}
+      volumes:
+        - name: config
+          configMap: {name: spark-history-config}

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-history-config
+  namespace: codetether-data
+data:
+  spark-defaults.conf: |
+    spark.history.fs.logDirectory s3a://codetether-training/spark-events/
+    spark.history.fs.update.interval 10s
+    spark.history.retainedApplications 100
+    spark.hadoop.fs.s3a.endpoint http://192.168.50.223:9000
+    spark.hadoop.fs.s3a.path.style.access true
+    spark.hadoop.fs.s3a.connection.ssl.enabled false
+    spark.hadoop.fs.s3a.aws.credentials.provider com.amazonaws.auth.EnvironmentVariableCredentialsProvider

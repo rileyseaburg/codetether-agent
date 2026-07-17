@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polaris-bootstrap-v1
+  namespace: codetether-data
+spec:
+  backoffLimit: 4
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: polaris-bootstrap}
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-postgres
+          image: postgres:17.5-alpine
+          command: [sh, -c, "until pg_isready -h polaris-postgres -U polaris -d polaris; do sleep 2; done"]
+      containers:
+        - name: bootstrap
+          image: apache/polaris-admin-tool:1.3.0-incubating
+          args: [bootstrap, --realm=POLARIS, --credential=$(BOOTSTRAP_CREDENTIALS)]
+          env:
+            - {name: POLARIS_PERSISTENCE_TYPE, value: relational-jdbc}
+            - name: BOOTSTRAP_CREDENTIALS
+              valueFrom: {secretKeyRef: {name: training-data-secrets, key: polaris-bootstrap-credentials}}
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              valueFrom: {secretKeyRef: {name: training-data-secrets, key: postgres-jdbc-url}}
+            - name: QUARKUS_DATASOURCE_USERNAME
+              valueFrom: {secretKeyRef: {name: training-data-secrets, key: postgres-user}}
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              valueFrom: {secretKeyRef: {name: training-data-secrets, key: postgres-password}}

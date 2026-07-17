@@ -1,0 +1,40 @@
+replicaCount: 2
+image:
+  repository: apache/polaris
+  tag: 1.3.0-incubating
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+realmContext:
+  realms: [POLARIS]
+advancedConfig:
+  polaris.realm-context.require-header: "true"
+features:
+  SUPPORTED_CATALOG_STORAGE_TYPES: [S3]
+persistence:
+  type: relational-jdbc
+  relationalJdbc:
+    secret:
+      name: training-data-secrets
+      username: postgres-user
+      password: postgres-password
+      jdbcUrl: postgres-jdbc-url
+storage:
+  secret:
+    name: training-data-secrets
+    awsAccessKeyId: minio-access-key
+    awsSecretAccessKey: minio-secret-key
+authentication:
+  type: internal
+  tokenBroker:
+    type: symmetric-key
+    secret:
+      name: training-data-secrets
+      symmetricKey:
+        secretKey: polaris-token-key
+resources:
+  requests: {cpu: 250m, memory: 512Mi}
+  limits: {cpu: "2", memory: 2Gi}
+extraEnv:
+  - {name: AWS_REGION, value: us-east-1}
+  - {name: QUARKUS_OTEL_SDK_DISABLED, value: "true"}
