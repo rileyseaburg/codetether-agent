@@ -112,14 +112,15 @@ codetether mux kill backend
 codetether mux kill-all
 ```
 
-At the `mux>` prompt:
+From the persistent shell, run `codetether tui --access-mode full` or any other
+normal shell command. Press `Ctrl+B`, then `D` to return to the shell that
+launched CodeTether while the mux shell and its children keep running.
 
-- Enter `bash -l` for a full interactive shell.
-- Enter `codetether tui --access-mode full` to start an agent TUI.
-- Enter any other program command to run it in the active window.
+If the persistent shell exits, the `mux>` control prompt appears:
+
+- Enter the desired shell command to start another persistent program.
 - Use `new PATH`, `cd PATH`, `select ID`, and `close ID` to manage windows.
 - Press `Tab` after `new` or `cd` to complete folders.
-- Press `Ctrl+B`, then `D` to detach back to the shell that launched CodeTether.
 - Enter `detach` at `mux>` to disconnect while the session keeps running.
 
 The mux prompt is a control surface, not a shell parser. Launch `bash -l` when
