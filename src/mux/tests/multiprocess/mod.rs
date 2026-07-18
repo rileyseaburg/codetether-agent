@@ -1,6 +1,7 @@
 //! Separate-process proof for concurrent named mux sessions.
 
 mod child;
+mod initial_shell;
 mod kill_all;
 mod process;
 mod proof;
