@@ -27,8 +27,15 @@ async fn zero_config_peers_appear_in_the_agent_tool() {
         start_a2a_in_background(support::options(beta.clone()), AgentBus::new().into_arc())
             .await
             .unwrap();
+    assert!(first.bind_addr.starts_with("0.0.0.0:"));
+    assert!(second.bind_addr.starts_with("0.0.0.0:"));
+    assert!(!first.public_url.contains("127.0.0.1"));
+    assert!(!second.public_url.contains("127.0.0.1"));
     let found = support::wait_for(&alpha, &beta).await;
     assert!(found.contains("a2a-mdns"), "LAN route missing: {found}");
+    assert!(found.contains("CodeTether agent for workspace"));
+    assert!(found.contains("\"skills\""));
+    assert!(!found.contains("\"endpoint\""));
     unsafe { std::env::set_var("CODETETHER_AUTH_TOKEN", "client-wrong") };
     let reply = AgentTool::new().execute(json!({
         "action": "message", "name": beta,

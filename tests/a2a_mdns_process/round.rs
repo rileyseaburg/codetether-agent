@@ -28,6 +28,7 @@ pub async fn run(round: usize, proof_directory: &Path) {
     let manifest = format!(
         "alpha={alpha_name} pid={}\nbeta={beta_name} pid={}\nendpoint={}\n\
          reciprocal_mdns=true\nreciprocal_intro=true\nagent_tool_turn=true\n\
+         workspace_context=true\nraw_endpoint_hidden=true\n\
          missing_token_401=true\nforeign_control_401=true\nown_control_200=true\n",
         process_ids.0, process_ids.1, routes.beta
     );

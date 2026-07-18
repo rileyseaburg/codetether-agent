@@ -3,20 +3,23 @@ use serde_json::json;
 use std::time::Duration;
 
 pub async fn assert_remote_turn(name: &str) {
-    tokio::time::timeout(Duration::from_secs(20), async {
+    let roster = tokio::time::timeout(Duration::from_secs(20), async {
         loop {
             let listed = AgentTool::new()
                 .execute(json!({"action": "list"}))
                 .await
                 .unwrap();
             if listed.output.contains(name) {
-                break;
+                break listed.output;
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
     })
     .await
     .expect("independent peer never appeared in first-party agent list");
+    assert!(roster.contains("CodeTether agent for workspace"));
+    assert!(roster.contains("\"skills\""));
+    assert!(!roster.contains("\"endpoint\""));
     unsafe { std::env::set_var("CODETETHER_AUTH_TOKEN", "observer-wrong") };
     let reply = AgentTool::new()
         .execute(json!({
