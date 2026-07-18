@@ -44,5 +44,5 @@ pub(super) fn help() {
     println!("mux: ls | new PATH | cd PATH | select ID | close ID | attach | detach | kill | help");
     println!("programs: enter any other command, e.g. codetether tui --access-mode full");
     println!("folders: press Tab after cd or new to complete from the active workspace");
-    println!("detach a live program: Ctrl+B, then D");
+    println!("detach to your launching shell: Ctrl+B, then D");
 }

@@ -9,6 +9,7 @@ mod program_operations;
 mod program_request;
 mod program_start;
 mod run;
+mod startup;
 
 pub(super) use run::serve;
 

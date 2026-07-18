@@ -7,10 +7,7 @@ use anyhow::{Result, bail};
 use tokio::net::TcpListener;
 use tokio::task::JoinSet;
 
-use crate::mux::model::MuxSnapshot;
 use crate::mux::registry;
-
-use super::context::ServerContext;
 
 pub(in crate::mux) async fn serve(
     name: String,
@@ -20,15 +17,8 @@ pub(in crate::mux) async fn serve(
     if !bind.ip().is_loopback() {
         bail!("mux currently requires a loopback bind; use an SSH tunnel remotely");
     }
-    let token = std::env::var(crate::mux::token::BOOTSTRAP_ENV)
-        .map_err(|_| anyhow::anyhow!("missing mux bootstrap token"))?;
     let listener = TcpListener::bind(bind).await?;
-    let context = ServerContext::new(
-        MuxSnapshot::new(name.clone(), workspace),
-        token,
-        listener.local_addr()?,
-    );
-    context.persist().await?;
+    let context = super::startup::initialize(&name, workspace, listener.local_addr()?).await?;
     tracing::info!(session = %name, address = %context.address, "Mux server listening");
     let mut clients = JoinSet::new();
     loop {

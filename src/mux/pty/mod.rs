@@ -3,6 +3,7 @@
 #[cfg(all(test, target_os = "linux"))]
 mod benchmark;
 mod buffer;
+pub(in crate::mux) mod default_shell;
 mod monitor;
 mod program;
 mod program_io;
