@@ -19,16 +19,7 @@ use crate::session::Session;
 /// file is small (a few KB at most) and this is used from the sync
 /// `complete_with_context` prompt-composition path without a tokio handle.
 pub(super) fn compose_system_prompt(base: &str, session: &Session) -> String {
-    let log = match crate::session::tasks::TaskLog::for_session(&session.id) {
-        Ok(l) => l,
-        Err(_) => return base.to_string(),
-    };
-    let events = log.read_all_blocking().unwrap_or_default();
-    let state = crate::session::tasks::TaskState::from_log(&events);
-    match crate::session::tasks::governance_block(&state) {
-        Some(block) => format!("{base}\n\n{block}"),
-        None => base.to_string(),
-    }
+    crate::session::tasks::runtime::compose(base, &session.id)
 }
 
 /// Extracts the canonical tool-call content parts from a provider message.

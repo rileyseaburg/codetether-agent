@@ -17,8 +17,18 @@ def build(settings: Settings, counts: Mapping[object, int]) -> str:
             'source_before': settings.cutoff_uri,
             'tables': settings.tables.__dict__,
             'accepted_samples': counts.get('samples', 0),
+            'quality_tiers': _details(counts, 'samples:'),
             'quarantined_records': counts.get('quarantine', 0),
+            'quarantine_reasons': _details(counts, 'quarantine:'),
             'source_objects': counts.get('manifests', 0),
         },
         sort_keys=True,
     )
+
+
+def _details(counts: Mapping[object, int], prefix: str) -> dict[str, int]:
+    return {
+        str(key).removeprefix(prefix): value
+        for key, value in counts.items()
+        if str(key).startswith(prefix)
+    }

@@ -1,5 +1,6 @@
 """Distributed Spark driver for historical training-data cleanup."""
 
+from .run_metrics import pairs as metric_pairs
 from .run_summary import build as summary
 from .settings_loader import load
 from .spark_output import write
@@ -19,7 +20,7 @@ def main() -> None:
                 item, settings.max_content_chars, settings.run_id
             )
         ).persist()
-        counts = tagged.countByKey()
+        counts = tagged.flatMap(metric_pairs).countByKey()
         if settings.apply:
             write(spark, tagged, settings)
         print(summary(settings, counts))

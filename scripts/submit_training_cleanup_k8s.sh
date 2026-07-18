@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-run_id=${CLEANUP_RUN_ID:-"cleanup-$(date -u +%Y%m%dT%H%M%SZ)"}
+run_id=${CLEANUP_RUN_ID:-"cleanup-$(date -u +%Y%m%d-%H%M%S)"}
 source_before=${CLEANUP_SOURCE_BEFORE:-"training/v2/$(date -u +%Y/%m/%d/%H)/"}
 pipeline_image=${PIPELINE_IMAGE:?PIPELINE_IMAGE is required}
 job_args=(--run-id "$run_id" --source-before "$source_before")

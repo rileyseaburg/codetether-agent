@@ -1,4 +1,4 @@
-"""Concurrent discovery of day-sized S3 key-prefix shards."""
+"""Concurrent discovery of hour-sized S3 key-prefix shards."""
 
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -7,16 +7,17 @@ from typing import cast
 from .s3_client import S3Client
 
 
-def day_shards(client: S3Client, bucket: str, root: str) -> list[str]:
-    """Discover hierarchical shards down to the source day level."""
+def hour_shards(client: S3Client, bucket: str, root: str) -> list[str]:
+    """Discover hierarchical shards down to the source hour level."""
     years = _children(client, bucket, root)
     months = _next_level(client, bucket, years or [root])
     days = _next_level(client, bucket, months or years or [root])
-    return days or months or years or [root]
+    hours = _next_level(client, bucket, days or months or years or [root])
+    return hours or days or months or years or [root]
 
 
 def _next_level(client: S3Client, bucket: str, parents: list[str]) -> list[str]:
-    with ThreadPoolExecutor(max_workers=16) as pool:
+    with ThreadPoolExecutor(max_workers=8) as pool:
         groups = pool.map(partial(_children, client, bucket), parents)
         return [prefix for group in groups for prefix in group]
 

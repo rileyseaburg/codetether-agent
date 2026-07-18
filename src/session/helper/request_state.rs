@@ -37,6 +37,7 @@ pub(crate) fn build_provider_step_state(
         &cwd,
         prior_context_allowed,
     );
+    let system_prompt = crate::session::tasks::runtime::compose(&system_prompt, &session.id);
 
     ProviderStepState {
         tool_registry,

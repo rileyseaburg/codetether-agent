@@ -4,8 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import Protocol, cast
 
-from .s3_client import S3Client, create
-from .s3_prefixes import day_shards
+from .s3_client import create
+from .s3_prefixes import hour_shards
 from .settings import Settings
 
 
@@ -21,11 +21,14 @@ def keys(settings: Settings) -> list[str]:
     """List immutable JSONL keys before the exclusive cutoff."""
     client = create(settings.endpoint)
     root = f'{settings.source_prefix.strip("/")}/'
-    shards = day_shards(client, settings.bucket, root)
-    with ThreadPoolExecutor(max_workers=32) as pool:
+    shards = hour_shards(client, settings.bucket, root)
+    with ThreadPoolExecutor(max_workers=8) as pool:
         groups = pool.map(
             partial(
-                _shard_keys, client, settings.bucket, settings.source_before
+                _shard_keys,
+                settings.endpoint,
+                settings.bucket,
+                settings.source_before,
             ),
             shards,
         )
@@ -33,8 +36,9 @@ def keys(settings: Settings) -> list[str]:
 
 
 def _shard_keys(
-    client: S3Client, bucket: str, cutoff: str, prefix: str
+    endpoint: str, bucket: str, cutoff: str, prefix: str
 ) -> list[str]:
+    client = create(endpoint)
     paginator = cast(Paginator, client.get_paginator('list_objects_v2'))
     pages = cast(
         list[dict[str, object]],

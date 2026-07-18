@@ -1,6 +1,11 @@
 """Timezone-aware source timestamp validation."""
 
+import re
+
 from datetime import datetime
+
+
+_NANOSECONDS = re.compile(r'(\.\d{6})\d+(?=Z|[+-]\d{2}:\d{2}$)')
 
 
 def valid(value: str | None) -> bool:
@@ -8,9 +13,9 @@ def valid(value: str | None) -> bool:
     if not value:
         return False
     try:
-        return (
-            datetime.fromisoformat(value.replace('Z', '+00:00')).tzinfo
-            is not None
-        )
+        normalized = _NANOSECONDS.sub(r'\1', value)
+        if normalized.endswith('Z'):
+            normalized = f'{normalized[:-1]}+00:00'
+        return datetime.fromisoformat(normalized).tzinfo is not None
     except ValueError:
         return False

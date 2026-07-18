@@ -3,7 +3,7 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 manifests="$repo_root/deploy/training-data"
-image=${PIPELINE_IMAGE:-us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260717-v10}
+image=${PIPELINE_IMAGE:-us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260717-v15}
 chart=https://github.com/apache/polaris/releases/download/apache-polaris-1.3.0-incubating/polaris-1.3.0-incubating.tgz
 if [[ ${SKIP_PIPELINE_BUILD:-false} != true ]]; then
     docker build -f "$repo_root/docker/training-data-pipeline.Dockerfile" -t "$image" "$repo_root"

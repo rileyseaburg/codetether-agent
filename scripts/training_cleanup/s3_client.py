@@ -26,8 +26,10 @@ def create(endpoint: str) -> S3Client:
     from botocore.config import Config
 
     config = Config(
-        retries={'max_attempts': 5, 'mode': 'standard'},
-        max_pool_connections=64,
+        retries={'max_attempts': 6, 'mode': 'standard'},
+        connect_timeout=5,
+        read_timeout=20,
+        max_pool_connections=8,
         s3={'addressing_style': 'path'},
     )
     return cast(
