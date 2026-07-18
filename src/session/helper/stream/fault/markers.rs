@@ -1,0 +1,41 @@
+//! Message fragments used by generic stream-fault classification.
+
+pub(super) const PERMANENT: &[&str] = &[
+    "context length",
+    "context_length",
+    "maximum context",
+    "content filter",
+    "content_policy",
+    "invalid api key",
+    "unauthorized",
+    "forbidden",
+    "400 bad request",
+    "401",
+    "403",
+];
+
+pub(super) const TRANSIENT: &[&str] = &[
+    "you can retry",
+    "processing your request",
+    "timeout",
+    "timed out",
+    "connection reset",
+    "connection closed",
+    "connection refused",
+    "broken pipe",
+    "eof",
+    "rate limit",
+    "too many requests",
+    "service unavailable",
+    "bad gateway",
+    "429",
+    "500",
+    "502",
+    "503",
+    "504",
+    "temporarily",
+    "no choices",
+    "empty response",
+    "stream ended without producing any content",
+    "stream ended without assistant content",
+];

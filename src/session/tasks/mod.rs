@@ -5,7 +5,7 @@
 //! and the lifecycle of its **tasks** so goal-governance middleware can:
 //!
 //! - Inject the current objective into per-turn system prompts.
-//! - Detect drift (tool calls / errors since last goal reaffirmation).
+//! - Account token/time progress and continue active goals automatically.
 //! - Survive crashes and session resumes without losing intent.
 //!
 //! ## File layout
@@ -32,11 +32,12 @@ mod event;
 mod log;
 mod path;
 mod render;
+pub(crate) mod runtime;
 mod state;
 
 #[allow(unused_imports)]
-pub use event::{GoalSourceKind, SessionTaskStatus, TaskEvent};
+pub use event::{GoalRuntimeUpdate, GoalSourceKind, GoalStatus, SessionTaskStatus, TaskEvent};
 pub use log::TaskLog;
 pub use path::task_log_path;
 pub use render::governance_block;
-pub use state::TaskState;
+pub use state::{Goal, TaskState};

@@ -100,7 +100,7 @@ pub use self::derive_policy::DerivePolicy;
 pub use self::event_compaction::*;
 pub use self::event_rlm::{RlmCompletion, RlmOutcome, RlmProgressEvent, RlmSubcallFallback};
 pub use self::event_token::{TokenDelta, TokenEstimate, TokenSource};
-pub use self::events::{SessionEvent, SessionResult};
+pub use self::events::{SessionEvent, SessionResult, StreamRetryEvent};
 pub use self::faults::Fault;
 pub use self::history::History;
 pub use self::history_sink::{HistorySinkConfig, PointerHandle};
@@ -114,7 +114,7 @@ pub use self::relevance::{
     Bucket, Dependency, Difficulty, RelevanceMeta, ToolUse, bucket_for_messages,
 };
 pub use self::tail_load::TailLoad;
-pub use self::tasks::{SessionTaskStatus, TaskEvent, TaskLog, TaskState};
+pub use self::tasks::{GoalStatus, SessionTaskStatus, TaskEvent, TaskLog, TaskState};
 pub use self::types::{DEFAULT_MAX_STEPS, ImageAttachment, Session, SessionMetadata};
 
 #[cfg(test)]

@@ -11,6 +11,11 @@ impl ThreadEventMapper {
         match event {
             SessionEvent::TextChunk(text) => self.text_chunk(text),
             SessionEvent::TextComplete(text) => self.text_completed(text),
+            SessionEvent::StreamRetry(super::super::StreamRetryEvent {
+                attempt,
+                max_restarts,
+                reason,
+            }) => self.stream_retry(*attempt, *max_restarts, reason),
             SessionEvent::ToolCallStart {
                 tool_call_id,
                 name,

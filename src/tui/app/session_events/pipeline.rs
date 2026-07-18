@@ -12,6 +12,7 @@ pub(super) async fn run(
     mut evt: SessionEvent,
 ) -> Option<SessionEvent> {
     evt = super::lifecycle::handle_event(app, slot, worker_bridge, evt).await?;
+    evt = super::retry::handle_event(app, evt)?;
     evt = super::tools::handle_event(app, worker_bridge, evt).await?;
     evt = super::text_dispatch::handle_event(app, evt)?;
     evt = super::usage::handle_event(app, evt)?;

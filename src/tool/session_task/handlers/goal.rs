@@ -12,6 +12,7 @@ pub async fn set_goal(log: &TaskLog, p: Params) -> Result<ToolResult> {
         .ok_or_else(|| anyhow!("`objective` is required"))?;
     log.append(&TaskEvent::GoalSet {
         at: Utc::now(),
+        goal_id: uuid::Uuid::new_v4().to_string(),
         objective: objective.clone(),
         success_criteria: p.success_criteria.unwrap_or_default(),
         forbidden: p.forbidden.unwrap_or_default(),

@@ -1,11 +1,8 @@
 //! Streaming session event variants.
 
-use super::super::event_compaction::{
-    CompactionFailure, CompactionOutcome, CompactionStart, ContextTruncation,
-};
-use super::super::event_rlm::{RlmCompletion, RlmProgressEvent, RlmSubcallFallback};
-use super::super::event_token::{TokenDelta, TokenEstimate};
-use super::super::types::Session;
+#[path = "types_imports.rs"]
+mod imports;
+use imports::*;
 
 /// Events emitted during session processing.
 ///
@@ -57,6 +54,8 @@ pub enum SessionEvent {
     ApprovalRequest(crate::approval::LiveApprovalRequest),
     /// Partial assistant text output.
     TextChunk(String),
+    /// A failed stream attempt is being replaced by a fresh request.
+    StreamRetry(StreamRetryEvent),
     /// Final per-step assistant text output.
     TextComplete(String),
     /// Model thinking or reasoning output.

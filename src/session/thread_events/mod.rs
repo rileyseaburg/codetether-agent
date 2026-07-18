@@ -12,6 +12,7 @@ mod lifecycle;
 mod mapper;
 mod patch;
 mod patch_metadata;
+mod retry;
 mod session;
 mod time;
 mod tool;

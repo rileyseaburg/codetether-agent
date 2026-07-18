@@ -1,8 +1,7 @@
 //! Serialized session task-log events.
 
-use super::{GoalSourceKind, SessionTaskStatus};
+use super::{GoalRuntimeUpdate, GoalSourceKind, SessionTaskStatus};
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 /// A single durable event in the session task log.
 ///
 /// `TaskEvent` is the append-only record format for session goal governance and
@@ -13,7 +12,7 @@ use serde::{Deserialize, Serialize};
 /// Events are serialized with an internally tagged Serde representation. The
 /// `kind` field stores the variant name in `snake_case`, which keeps persisted
 /// JSONL task logs readable and stable across releases.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TaskEvent {
     /// Declares or replaces the active session goal.
@@ -23,6 +22,9 @@ pub enum TaskEvent {
     /// describing where the objective came from. When this event is folded into
     /// task state, it supersedes any previously active goal.
     GoalSet {
+        /// Stable identifier for accounting and stale-update rejection.
+        #[serde(default)]
+        goal_id: String,
         /// Time at which the goal was declared.
         at: DateTime<Utc>,
         /// Human-readable objective the agent should work toward.
@@ -72,6 +74,8 @@ pub enum TaskEvent {
         #[serde(default)]
         confidence: f32,
     },
+    /// Applies a lifecycle, accounting, or continuation update to the goal.
+    GoalRuntime { #[serde(flatten)] update: GoalRuntimeUpdate },
     /// Records that the agent reaffirmed alignment with the active goal.
     ///
     /// Reaffirmation does not change the objective. It stores a progress note so

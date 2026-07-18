@@ -12,6 +12,12 @@ use super::outcome::{DrainOutcome, StreamStop};
 
 /// Accept the final outcome after restarts are exhausted (`attempts` used).
 pub(super) fn accept(outcome: DrainOutcome, attempts: u32) -> Result<CompletionResponse> {
+    if let StreamStop::Fault { transient, message } = &outcome.stop {
+        anyhow::bail!(
+            "stream faulted (transient={transient}) over {} attempt(s): {message}",
+            attempts + 1
+        );
+    }
     if matches!(
         outcome.stop,
         StreamStop::MidStreamStall | StreamStop::PrematureEnd
@@ -31,10 +37,7 @@ pub(super) fn accept(outcome: DrainOutcome, attempts: u32) -> Result<CompletionR
         StreamStop::MidStreamStall | StreamStop::PrematureEnd => {
             unreachable!("handled before accepting response")
         }
-        StreamStop::Fault { transient, message } => anyhow::bail!(
-            "stream faulted (transient={transient}) with no content over {} attempt(s): {message}",
-            attempts + 1
-        ),
+        StreamStop::Fault { .. } => unreachable!("handled before accepting response"),
         _ => anyhow::bail!("provider stream ended without assistant content; none emitted"),
     }
 }

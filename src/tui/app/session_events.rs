@@ -17,6 +17,7 @@ mod flow;
 mod lifecycle;
 mod pipeline;
 mod retention;
+mod retry;
 mod text;
 mod text_bound;
 mod text_dispatch;

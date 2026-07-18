@@ -46,9 +46,17 @@ impl StreamStop {
         )
     }
 
-    /// Whether an incomplete response must be discarded even after content.
+    /// Whether a retryable incomplete response overrides partial content.
     pub(crate) fn restart_over_committed(&self) -> bool {
-        matches!(self, StreamStop::MidStreamStall | StreamStop::PrematureEnd)
+        matches!(
+            self,
+            StreamStop::MidStreamStall
+                | StreamStop::PrematureEnd
+                | StreamStop::Fault {
+                    transient: true,
+                    ..
+                }
+        )
     }
 }
 

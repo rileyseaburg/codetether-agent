@@ -25,6 +25,8 @@ mod drain_end_tests;
 mod drain_state;
 mod fault;
 #[cfg(test)]
+mod fault_accept_tests;
+#[cfg(test)]
 mod fault_tests;
 mod finalize;
 mod idle_drain;
@@ -52,6 +54,8 @@ mod text_acc;
 #[cfg(test)]
 mod thinking_tests;
 mod tool_acc;
+#[cfg(test)]
+mod transient_fault_restart_tests;
 
 pub(crate) use restart::{RestartPolicy, run as run_with_restart};
 
