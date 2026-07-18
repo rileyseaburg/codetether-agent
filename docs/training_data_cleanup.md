@@ -23,6 +23,18 @@ The quarantine table is not training input. Rows rejected as possible secrets,
 embedded images, or oversized content retain a source pointer but do not copy
 the payload into the table.
 
+## Verified initial load
+
+Run `cleanup-v6-20260717` processed 97,888 immutable objects before the 21:00
+UTC cutoff. It committed 220 samples (217 `tool_use`, 3 `complete`), 595,053
+quarantine rows, and 97,888 manifests. The three initial Iceberg snapshot IDs
+are `769963461985822594`, `8030728867989525809`, and
+`4179817863758059339`, respectively.
+
+The v15 scheduled-path canary then discovered 97,896 objects, anti-joined the
+existing manifests, and processed only eight unseen objects. It added 12
+quarantine rows and eight manifests without rewriting historical samples.
+
 ## Deployed catalog and query plane
 
 Apache Polaris is the physical catalog. It runs as two replicas with PostgreSQL
@@ -33,11 +45,11 @@ roles; root credentials are used only by the idempotent setup job.
 
 The pinned runtime is Spark 3.5.7, Iceberg 1.10.0, Hadoop AWS 3.3.4, and Java 17.
 Its published image is
-`codetether-training-pipeline:20260717-v10` with digest
-`sha256:a7e34cfe5ac8d2a42e7aaa1a0082aafb76c3b1ab0df692a50e5cbc90ef5f84e6`.
-Trino 482 supplies distributed SQL and the browser query UI.
+`codetether-training-pipeline:20260717-v15` with digest
+`sha256:c17c63bfe49d97c03cb98ee94135fc4a394d725cc0d651316a18bbb7e7e1d0e7`.
+Trino 482 supplies distributed SQL and the browser query-monitoring UI.
 
-Source discovery descends only to day-sized shards, lists those shards
+Source discovery descends only to hour-sized shards, lists those shards
 concurrently through paginated S3 APIs, and distributes object reads across
 Spark executors. The historical cutoff currently resolves to 97,888 objects;
 the live discovery completes in roughly 45 seconds instead of recursively
