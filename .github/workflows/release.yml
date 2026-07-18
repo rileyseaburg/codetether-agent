@@ -60,6 +60,9 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT || github.token }}
 
+      - name: Verify version calculator
+        run: ./script/tests/release-version.sh
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -85,29 +88,9 @@ jobs:
             next="${INPUT_VERSION_OVERRIDE#v}"
             # Force current==next so all bump/commit/tag steps are skipped.
             current="${next}"
-          elif [ -n "${INPUT_VERSION_OVERRIDE}" ]; then
-            next="${INPUT_VERSION_OVERRIDE#v}"
           else
-            IFS='.' read -r major minor patch <<< "${current}"
-            case "${INPUT_BUMP}" in
-              major)
-                major=$((major + 1))
-                minor=0
-                patch=0
-                ;;
-              minor)
-                minor=$((minor + 1))
-                patch=0
-                ;;
-              patch)
-                patch=$((patch + 1))
-                ;;
-              *)
-                echo "Unsupported bump type: ${INPUT_BUMP}" >&2
-                exit 1
-                ;;
-            esac
-            next="${major}.${minor}.${patch}"
+            next="$(./script/release-version.sh \
+              "${current}" "${INPUT_BUMP}" "${INPUT_VERSION_OVERRIDE}")"
           fi
           tag="v${next}"
           echo "current=${current}" >> "$GITHUB_OUTPUT"

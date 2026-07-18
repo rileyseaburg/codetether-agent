@@ -14,10 +14,10 @@ spec:
       serviceAccountName: training-spark
       containers:
         - name: submit
-          image: us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260717-v10
+          image: us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260717-v13
           command: [/opt/spark/jobs/submit_training_cleanup_k8s.sh]
           env:
-            - {name: PIPELINE_IMAGE, value: "us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260717-v10"}
-            - {name: CLEANUP_RUN_ID, value: cleanup-v3-20260717}
+            - {name: PIPELINE_IMAGE, value: "us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260717-v13"}
+            - {name: CLEANUP_RUN_ID, value: cleanup-v6-20260717}
             - {name: CLEANUP_SOURCE_BEFORE, value: "training/v2/2026/07/17/21/"}
             - {name: CLEANUP_APPLY, value: "true"}
