@@ -6,6 +6,7 @@ mod command;
 mod item;
 mod lifecycle;
 mod patch;
+mod retry;
 mod stable_item;
 mod tool;
 mod tool_output;

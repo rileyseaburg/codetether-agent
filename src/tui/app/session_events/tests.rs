@@ -1,5 +1,7 @@
 #[path = "tests_done.rs"]
 mod tests_done;
+#[path = "tests_retry.rs"]
+mod tests_retry;
 #[path = "tests_text.rs"]
 mod tests_text;
 #[path = "tests_tool.rs"]

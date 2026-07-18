@@ -17,5 +17,13 @@ fn tool_and_terminal_events_are_durable() {
 #[test]
 fn streaming_chunks_stay_ephemeral() {
     assert!(!SessionEvent::TextChunk("partial".into()).is_durable());
+    assert!(
+        !SessionEvent::StreamRetry(super::super::StreamRetryEvent {
+            attempt: 1,
+            max_restarts: 3,
+            reason: "connection reset".into(),
+        })
+        .is_durable()
+    );
     assert!(!SessionEvent::Thinking.is_durable());
 }

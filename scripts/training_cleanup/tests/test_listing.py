@@ -41,7 +41,7 @@ class ListingTests(unittest.TestCase):
         with (
             patch('training_cleanup.s3_listing.create', return_value=client),
             patch(
-                'training_cleanup.s3_listing.day_shards',
+                'training_cleanup.s3_listing.hour_shards',
                 return_value=['shard/'],
             ),
         ):

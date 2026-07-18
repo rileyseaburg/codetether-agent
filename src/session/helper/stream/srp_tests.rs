@@ -23,11 +23,11 @@ fn incomplete_stops_are_restart_eligible_after_content() {
 }
 
 #[test]
-fn complete_or_empty_stops_do_not_override_content() {
+fn transient_fault_overrides_content_but_complete_or_cold_stops_do_not() {
     assert!(!StreamStop::ColdStall.restart_over_committed());
     assert!(!StreamStop::Clean.restart_over_committed());
     assert!(
-        !StreamStop::Fault {
+        StreamStop::Fault {
             transient: true,
             message: String::new()
         }
