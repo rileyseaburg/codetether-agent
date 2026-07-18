@@ -24,3 +24,14 @@ fn parses_named_kill_target() {
         target: None, named_target: Some(target),
     } if target == "work"));
 }
+
+#[test]
+fn parses_kill_all_and_tmux_alias() {
+    for command in ["kill-all", "kill-server"] {
+        let cli = Cli::try_parse_from(["codetether", "mux", command]).unwrap();
+        let Some(Command::Mux(args)) = cli.command else {
+            panic!()
+        };
+        assert!(matches!(args.command, MuxCommand::KillAll));
+    }
+}
