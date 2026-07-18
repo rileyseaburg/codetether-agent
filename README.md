@@ -106,6 +106,7 @@ codetether mux new -s frontend -c /work/frontend -d
 codetether mux list
 codetether mux attach -t backend
 codetether mux kill backend
+codetether mux kill-all
 ```
 
 At the `mux>` prompt:
