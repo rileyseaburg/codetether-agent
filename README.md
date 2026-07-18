@@ -93,7 +93,10 @@ cargo install --path .
 
 The network mux keeps the server, windows, working directories, and child
 processes alive after the client disconnects. Each window can run a different
-shell or CodeTether TUI in a different repository.
+shell or CodeTether TUI in a different repository. New sessions immediately
+start the user's login shell (`$SHELL`, including zsh on macOS). Windows shell
+selection prefers PowerShell and falls back to `cmd.exe`; interactive Windows
+mux sessions still require a future ConPTY backend.
 
 ```bash
 # Create and attach to a session in a project directory.
@@ -116,7 +119,7 @@ At the `mux>` prompt:
 - Enter any other program command to run it in the active window.
 - Use `new PATH`, `cd PATH`, `select ID`, and `close ID` to manage windows.
 - Press `Tab` after `new` or `cd` to complete folders.
-- Press `Ctrl+B`, then `D` to detach from a live program back to `mux>`.
+- Press `Ctrl+B`, then `D` to detach back to the shell that launched CodeTether.
 - Enter `detach` at `mux>` to disconnect while the session keeps running.
 
 The mux prompt is a control surface, not a shell parser. Launch `bash -l` when
