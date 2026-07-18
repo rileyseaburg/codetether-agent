@@ -54,6 +54,9 @@ pub enum MuxCommand {
         #[arg(short = 't', long = "target", value_name = "TARGET")]
         named_target: Option<String>,
     },
+    /// Stop every persistent mux session.
+    #[command(name = "kill-all", alias = "kill-server")]
+    KillAll,
     /// Internal network-server entry point.
     #[command(hide = true)]
     Serve {

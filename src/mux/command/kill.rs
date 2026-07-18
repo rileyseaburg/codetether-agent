@@ -3,12 +3,18 @@
 use anyhow::{Context, Result};
 
 use crate::mux::protocol::ServerResponse;
+use crate::mux::registry::MuxRecord;
 
 pub(super) async fn run(target: &str) -> Result<()> {
     crate::mux::registry::validate_name(target)?;
     let record = crate::mux::registry::load(target)
         .await
         .with_context(|| format!("mux session '{target}' was not found"))?;
+    run_record(record).await
+}
+
+pub(super) async fn run_record(record: MuxRecord) -> Result<()> {
+    let target = record.name.as_str();
     let response = match super::shutdown::request(&record).await {
         Ok(response) => response,
         Err(error) => {

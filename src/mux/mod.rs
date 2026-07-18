@@ -12,6 +12,7 @@
 //! codetether mux attach -t work
 //! codetether mux list
 //! codetether mux kill -t work
+//! codetether mux kill-all
 //! ```
 
 mod client;

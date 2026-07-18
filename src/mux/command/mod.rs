@@ -2,6 +2,7 @@
 
 mod attach;
 mod kill;
+pub(in crate::mux) mod kill_all;
 mod list;
 mod new_session;
 mod serve;
@@ -36,6 +37,7 @@ pub(super) async fn execute(command: MuxCommand) -> Result<()> {
                 .ok_or_else(|| anyhow::anyhow!("mux target is required"))?;
             kill::run(&target).await
         }
+        MuxCommand::KillAll => kill_all::run().await,
         MuxCommand::Serve {
             session,
             directory,
