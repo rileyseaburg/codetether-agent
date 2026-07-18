@@ -2,7 +2,7 @@
 
 use futures::stream;
 
-use super::collect_stream_completion_with_events;
+use super::super::collect_stream_completion_with_events;
 use crate::provider::StreamChunk;
 
 #[tokio::test]

@@ -36,9 +36,15 @@ async fn premature_end_discards_partial_and_restarts() {
     let provider: Arc<dyn Provider> = Arc::new(FlakyThenCompleteProvider {
         calls: AtomicUsize::new(0),
     });
-    let resp = run(&provider, empty_request(), None, &zero_backoff_policy())
-        .await
-        .unwrap();
+    let resp = run(
+        &provider,
+        empty_request(),
+        "test-session",
+        None,
+        &zero_backoff_policy(),
+    )
+    .await
+    .unwrap();
     // The truncated first pass was discarded; the complete second pass wins.
     assert!(matches!(
         &resp.message.content[0],

@@ -28,7 +28,9 @@ async fn transient_fault_after_partial_restarts_whole_request() {
         multiplier: 1,
     };
     let (tx, mut rx) = tokio::sync::mpsc::channel(8);
-    let response = run(&provider, request, Some(&tx), &policy).await.unwrap();
+    let response = run(&provider, request, "test-session", Some(&tx), &policy)
+        .await
+        .unwrap();
     assert_eq!(concrete.calls.load(Ordering::SeqCst), 2);
     assert!(matches!(&response.message.content[0],
         ContentPart::Text { text } if text == "complete answer"));

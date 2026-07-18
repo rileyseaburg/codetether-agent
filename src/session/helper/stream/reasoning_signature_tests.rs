@@ -1,4 +1,4 @@
-use super::collect_stream_completion_with_events;
+use super::super::collect_stream_completion_with_events;
 use crate::provider::{ContentPart, StreamChunk};
 use futures::stream;
 

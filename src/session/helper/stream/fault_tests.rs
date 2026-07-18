@@ -1,6 +1,6 @@
 //! Unit tests for transient stream-fault classification.
 
-use super::fault::is_transient;
+use super::is_transient;
 
 #[test]
 fn permanent_markers_override_transient_markers() {

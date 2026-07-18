@@ -1,4 +1,4 @@
-use super::execution_state::{abort, is_running, register, try_start};
+use super::{abort, is_running, register, try_start};
 
 #[tokio::test]
 async fn abort_cancels_registered_turn() {

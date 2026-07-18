@@ -1,6 +1,6 @@
 //! Tests for the compact tool catalog.
 
-use super::{retain_coding_tools, sort};
+use super::retain_coding_tools;
 use crate::provider::ToolDefinition;
 use serde_json::json;
 
@@ -21,6 +21,10 @@ fn compact_catalog_keeps_core_and_mcp_tools_without_edit_aliases() {
         "edit",
         "bash",
         "exec_command",
+        "close_agent",
+        "resume_agent",
+        "send_input",
+        "send_message",
         "write_stdin",
     ];
     let retained = retain_coding_tools(names.into_iter().map(definition).collect());
@@ -28,20 +32,18 @@ fn compact_catalog_keeps_core_and_mcp_tools_without_edit_aliases() {
 
     assert_eq!(
         retained,
-        ["mcp:issues", "apply_patch", "exec_command", "write_stdin"]
+        [
+            "mcp:issues",
+            "apply_patch",
+            "exec_command",
+            "close_agent",
+            "resume_agent",
+            "send_input",
+            "send_message",
+            "write_stdin"
+        ]
     );
 }
 
-#[test]
-fn schema_order_is_deterministic() {
-    let definitions = ["read", "apply_patch", "bash"]
-        .into_iter()
-        .map(definition)
-        .collect();
-    let names: Vec<_> = sort(definitions)
-        .into_iter()
-        .map(|tool| tool.name)
-        .collect();
-
-    assert_eq!(names, ["apply_patch", "bash", "read"]);
-}
+#[path = "catalog_sort_tests.rs"]
+mod sort_tests;

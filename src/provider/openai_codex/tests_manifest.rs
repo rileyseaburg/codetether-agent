@@ -15,6 +15,7 @@ include!("tests_parts/prompt_cache_key_is_stable_across_transports.rs");
 include!("tests_parts/rejects_pro_model_for_chatgpt_backend.rs");
 include!("tests_parts/reasoning_signature_round_trip.rs");
 include!("tests_parts/responses_input_ignores_system_messages.rs");
+include!("tests_parts/responses_input_preserves_developer_messages.rs");
 include!("tests_parts/responses_sse_parser_buffers_split_tool_call_events.rs");
 include!("tests_parts/responses_sse_parser_falls_back_to_done_item_arguments.rs");
 include!("tests_parts/responses_sse_parser_flushes_final_event_without_trailing_blank_line.rs");

@@ -44,11 +44,8 @@ impl Provider for MockProvider {
 
 #[tokio::test]
 async fn durable_spawn_fails_when_session_store_is_unwritable() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    unsafe {
-        std::env::set_var("CODETETHER_DATA_DIR", dir.path().join("blocked"));
-    }
-    std::fs::write(dir.path().join("blocked"), "not a directory").expect("blocker");
+    let (dir, _guard) = super::persistence::test_support::isolate();
+    std::fs::write(dir.path().join("sessions"), "not a directory").expect("blocker");
     let mut registry = crate::provider::ProviderRegistry::new();
     registry.register(Arc::new(MockProvider));
     super::registry::set_registry_for_test(Arc::new(registry)).await;

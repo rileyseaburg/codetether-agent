@@ -1,8 +1,8 @@
 //! Tests for spawn validation warning behavior.
 
-use super::registry::set_registry_for_test;
-use super::spawn_request::SpawnRequest;
-use super::spawn_validation::validate_spawn_request;
+use super::super::registry::set_registry_for_test;
+use super::super::spawn_request::SpawnRequest;
+use super::validate_spawn_request;
 use crate::provider::ProviderRegistry;
 use std::sync::Arc;
 
@@ -15,6 +15,7 @@ fn request(model: &'static str) -> SpawnRequest<'static> {
         detach: false,
         parent_workspace: None,
         parent_session_id: None,
+        fork_turns: super::super::collaboration_runtime::fork_turns::ForkTurns::All,
     }
 }
 

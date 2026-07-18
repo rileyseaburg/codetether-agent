@@ -12,9 +12,9 @@ fn prefers_the_public_ip() {
 }
 
 #[test]
-fn falls_back_to_a_resolved_listener() {
+fn rejects_a_loopback_only_listener() {
     let listener = IpAddr::V4(Ipv4Addr::LOCALHOST);
-    assert_eq!(concrete("localhost", listener), vec![listener]);
+    assert!(concrete("localhost", listener).is_empty());
 }
 
 #[test]

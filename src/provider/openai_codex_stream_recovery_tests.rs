@@ -30,3 +30,4 @@ async fn completed_primary_does_not_open_recovery_stream() {
 }
 
 include!("openai_codex_stream_recovery_tests/retryable_event.rs");
+include!("openai_codex_stream_recovery_tests/retry_after_event.rs");

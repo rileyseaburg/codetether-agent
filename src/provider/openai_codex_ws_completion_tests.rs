@@ -30,6 +30,7 @@ async fn completed_ws_releases_buffered_output() {
     let chunks = ws_stream::drive(
         OpenAiRealtimeConnection::new(socket),
         json!({"type":"response.create"}),
+        "session-a".to_string(),
         health.clone(),
         pool.clone(),
     )
@@ -38,6 +39,6 @@ async fn completed_ws_releases_buffered_output() {
     server.await.unwrap();
     assert!(matches!(&chunks[0], StreamChunk::Text(text) if text == "complete"));
     assert!(matches!(&chunks[1], StreamChunk::Done { .. }));
-    assert!(!health.requires_http());
-    assert!(pool.take().await.is_some());
+    assert!(!health.requires_http("session-a"));
+    assert!(pool.take("session-a").await.is_some());
 }

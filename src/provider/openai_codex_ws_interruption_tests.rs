@@ -30,6 +30,7 @@ async fn interrupted_ws_keeps_partial_private_and_disables_ws() {
     let chunks = ws_stream::drive(
         OpenAiRealtimeConnection::new(socket),
         json!({"type":"response.create"}),
+        "session-a".to_string(),
         health.clone(),
         pool.clone(),
     )
@@ -37,6 +38,7 @@ async fn interrupted_ws_keeps_partial_private_and_disables_ws() {
     .await;
     server.await.unwrap();
     assert!(chunks.is_empty(), "partial chunks must remain private");
-    assert!(health.requires_http());
-    assert!(pool.take().await.is_none());
+    assert!(health.requires_http("session-a"));
+    assert!(!health.requires_http("session-b"));
+    assert!(pool.take("session-a").await.is_none());
 }

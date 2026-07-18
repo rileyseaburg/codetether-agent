@@ -27,7 +27,9 @@ async fn mid_stream_stall_discards_partial_and_restarts() {
         base_backoff: Duration::ZERO,
         multiplier: 1,
     };
-    let response = run(&provider, request, None, &policy).await.unwrap();
+    let response = run(&provider, request, "test-session", None, &policy)
+        .await
+        .unwrap();
 
     assert!(matches!(
         &response.message.content[0],

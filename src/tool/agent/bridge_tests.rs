@@ -9,19 +9,18 @@ use crate::tui::app::state::App;
 #[tokio::test]
 async fn owned_session_result_is_rendered_without_becoming_a_prompt() {
     let child = Session::new().await.expect("child session");
+    let child_id = child.id.clone();
     let name = format!("render-{}", child.id);
     let parent = format!("parent-{}", child.id);
-    store::insert(
-        name.clone(),
-        AgentEntry {
-            instructions: "test".into(),
-            session: child,
-            parent: None,
-            owner_session_id: Some(parent.clone()),
-            depth: 0,
-            model_id: Some("test/model".into()),
-        },
-    );
+    store::insert(AgentEntry {
+        name: name.clone(),
+        instructions: "test".into(),
+        session: child,
+        parent: None,
+        owner_session_id: Some(parent.clone()),
+        depth: 0,
+        model_id: Some("test/model".into()),
+    });
     let envelope = BusEnvelope {
         id: "result-1".into(),
         topic: format!("agent.{parent}"),
@@ -46,5 +45,5 @@ async fn owned_session_result_is_rendered_without_becoming_a_prompt() {
             .any(|message| message.content == "done")
     );
     assert!(app.state.dequeue_worker_task().is_none());
-    store::remove(&name);
+    store::remove(&child_id);
 }

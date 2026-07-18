@@ -6,7 +6,7 @@
 
 use super::collect_stream_completion_with_events;
 use crate::provider::{ContentPart, StreamChunk};
-use futures::stream;
+use futures::{StreamExt, stream};
 
 #[tokio::test]
 async fn single_drain_rejects_partial_on_premature_end() {
@@ -32,6 +32,23 @@ async fn stream_ending_with_done_is_clean() {
         .unwrap();
     assert!(matches!(
         &resp.message.content[0],
+        ContentPart::Text { text } if text == "complete"
+    ));
+}
+
+#[tokio::test]
+async fn done_finishes_without_waiting_for_transport_close() {
+    let terminal = stream::iter(vec![
+        StreamChunk::Text("complete".to_string()),
+        StreamChunk::Done { usage: None },
+    ]);
+    let trailing = stream::once(async { panic!("collector polled past terminal Done") });
+    let open = terminal.chain(trailing);
+    let response = collect_stream_completion_with_events(Box::pin(open), None)
+        .await
+        .unwrap();
+    assert!(matches!(
+        &response.message.content[0],
         ContentPart::Text { text } if text == "complete"
     ));
 }

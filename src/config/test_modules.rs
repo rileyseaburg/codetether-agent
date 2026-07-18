@@ -4,6 +4,12 @@ pub use super::*;
 mod access_mode_override_tests;
 #[path = "access_mode_tests.rs"]
 mod access_mode_tests;
+#[path = "agent_limit_settings_tests.rs"]
+mod agent_limit_settings_tests;
+#[path = "agent_settings_roundtrip_tests.rs"]
+mod agent_settings_roundtrip_tests;
+#[path = "agent_settings_tests.rs"]
+mod agent_settings_tests;
 #[path = "codex_policy_tests.rs"]
 mod codex_policy_tests;
 #[path = "path_tests.rs"]

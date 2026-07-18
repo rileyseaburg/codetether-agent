@@ -32,6 +32,7 @@ fn tool_agents_and_swarm_workers_share_the_dashboard() {
     let mut state = AppState::default();
     state.swarm.subtasks = vec![fixture::task("test", SubTaskStatus::Pending)];
     let tool = AgentSnapshot {
+        id: "planner-id".into(),
         name: "planner".into(),
         instructions: "Plan work".into(),
         message_count: 3,

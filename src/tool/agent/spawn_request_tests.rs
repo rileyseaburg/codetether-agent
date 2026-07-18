@@ -3,8 +3,8 @@
 //! Verifies that `model` defaults to the runtime-injected parent model
 //! (`__ct_current_model`) so spawning works when the caller omits `model`.
 
-use super::params::Params;
-use super::spawn_request::SpawnRequest;
+use super::super::params::Params;
+use super::SpawnRequest;
 use serde_json::json;
 
 fn params(value: serde_json::Value) -> Params {
