@@ -3,27 +3,11 @@
 use super::Capability;
 use crate::tool::{ToolRegistry, readonly};
 
-const UNSCOPED: &[&str] = &[
-    "question",
-    "confirm_edit",
-    "confirm_multiedit",
-    "plan_enter",
-    "plan_exit",
-    "agent",
-    "swarm_execute",
-    "relay_autochat",
-    "ralph",
-    "prd",
-    "go",
-    "undo",
-    "kubernetes",
-    "k8s_tool",
-    "tetherscript_plugin",
-    "diff",
-];
+#[path = "policy_unscoped.rs"]
+mod unscoped;
 
 pub(super) fn apply(registry: &mut ToolRegistry, capability: Capability) {
-    for id in UNSCOPED {
+    for id in unscoped::IDS {
         registry.unregister(id);
     }
     if capability == Capability::Mutating {

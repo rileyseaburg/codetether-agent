@@ -32,7 +32,7 @@ pub async fn complete_with_context(
             opts,
         )
         .await?;
-        match provider.complete(request).await {
+        match provider.complete_scoped(request, &session.id).await {
             Ok(response) => return Ok(response),
             Err(error) => {
                 let policy = opts

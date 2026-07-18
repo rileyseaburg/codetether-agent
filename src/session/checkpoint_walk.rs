@@ -34,6 +34,6 @@ fn scan_message(msg: &Message, state: &mut ScanState) {
     match msg.role {
         Role::Tool => checkpoint_tool::scan(&msg.content, state),
         Role::Assistant => checkpoint_assistant::scan(&msg.content, state),
-        Role::User | Role::System => {}
+        Role::User | Role::System | Role::Developer => {}
     }
 }

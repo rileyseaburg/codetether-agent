@@ -220,7 +220,7 @@ impl VertexAnthropicProvider {
 
         for msg in messages {
             match msg.role {
-                Role::System => {
+                Role::System | Role::Developer => {
                     for part in &msg.content {
                         match part {
                             ContentPart::Text { text } => {

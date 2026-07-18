@@ -1,6 +1,6 @@
 use crate::config::guardrails::CostGuardrails;
 use crate::config::{
-    A2aConfig, AccessMode, AgentConfig, ApprovalPolicy, LspSettings, PermissionConfig,
+    A2aConfig, AccessMode, AgentsConfig, ApprovalPolicy, LspSettings, PermissionConfig,
     PermissionProfileConfig, PolicyRequirements, ProjectTrustLevel, ProviderConfig, SandboxMode,
     SessionConfig, TelemetryConfig, UiConfig,
 };
@@ -29,7 +29,7 @@ pub struct Config {
     #[serde(default)]
     pub providers: HashMap<String, ProviderConfig>,
     #[serde(default)]
-    pub agents: HashMap<String, AgentConfig>,
+    pub agents: AgentsConfig,
     #[serde(default)]
     pub permissions: PermissionConfig,
     #[serde(default)]

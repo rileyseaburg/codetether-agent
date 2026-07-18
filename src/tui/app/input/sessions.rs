@@ -10,11 +10,17 @@
 //! ```
 
 use std::path::Path;
+use std::sync::Arc;
 
 use crossterm::event::KeyModifiers;
 
-use crate::session::Session;
+use crate::provider::ProviderRegistry;
+use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
+use crate::tui::worker_bridge::TuiWorkerBridge;
+
+#[path = "goal_autostart.rs"]
+pub(crate) mod goal_autostart;
 
 /// Append a character to the session filter string.
 ///
@@ -42,14 +48,29 @@ pub fn handle_sessions_char(app: &mut App, modifiers: KeyModifiers, c: char) {
 /// ```ignore
 /// handle_enter_sessions(&mut app, cwd, &mut session).await;
 /// ```
-pub(super) async fn handle_enter_sessions(app: &mut App, cwd: &Path, session: &mut Session) {
+pub(super) async fn handle_enter_sessions(
+    app: &mut App,
+    cwd: &Path,
+    slot: &mut SessionSlot,
+    registry: &Option<Arc<ProviderRegistry>>,
+    worker_bridge: &Option<TuiWorkerBridge>,
+    runtime: &TuiSessionHandle,
+) {
     let session_id = app
         .state
         .filtered_sessions()
         .get(app.state.selected_session)
         .map(|(orig_idx, _)| app.state.sessions[*orig_idx].id.clone());
     if let Some(session_id) = session_id {
-        crate::tui::app::codex_sessions::load_selected_session(app, cwd, session, &session_id)
-            .await;
+        if let Some(session) = slot.borrow_mut() {
+            crate::tui::app::codex_sessions::load_selected_session(app, cwd, session, &session_id)
+                .await;
+        }
+        if slot
+            .borrow()
+            .is_some_and(|session| session.id == session_id)
+        {
+            goal_autostart::resume(app, cwd, slot, registry, worker_bridge, runtime).await;
+        }
     }
 }

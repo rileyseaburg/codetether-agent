@@ -27,6 +27,8 @@ include!("parts/chatgpt_backend_opted_in.rs");
 include!("parts/chatgpt_supported_models.rs");
 include!("parts/codex_auth_file_credentials.rs");
 include!("parts/collect_stream_completion.rs");
+include!("parts/complete_in_session.rs");
+include!("parts/complete_stream_in_session.rs");
 include!("parts/complete_stream_with_chatgpt_http_responses.rs");
 include!("parts/complete_stream_with_chatgpt_responses.rs");
 include!("parts/complete_stream_with_openai_http_responses.rs");

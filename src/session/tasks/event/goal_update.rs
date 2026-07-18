@@ -14,6 +14,9 @@ pub struct GoalRuntimeUpdate {
     pub at: DateTime<Utc>,
     /// Goal receiving the update; stale updates are ignored.
     pub goal_id: String,
+    /// Optional user-authored replacement objective.
+    #[serde(default)]
+    pub objective: Option<String>,
     /// Optional lifecycle transition.
     #[serde(default)]
     pub status: Option<GoalStatus>,

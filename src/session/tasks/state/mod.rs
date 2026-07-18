@@ -19,7 +19,10 @@ impl TaskState {
 
     /// Returns tasks that are pending or in progress, ordered by id.
     pub fn open_tasks(&self) -> Vec<&Task> {
-        self.tasks.values().filter(|task| task.status.is_open()).collect()
+        self.tasks
+            .values()
+            .filter(|task| task.status.is_open())
+            .collect()
     }
 }
 

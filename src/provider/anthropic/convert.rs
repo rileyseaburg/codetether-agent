@@ -51,7 +51,9 @@ pub(crate) fn messages(
     let known_tool_calls = super::sanitize::declared_tool_call_ids(messages);
     for msg in messages {
         match msg.role {
-            Role::System => super::convert_role::push_system(&mut system_blocks, msg),
+            Role::System | Role::Developer => {
+                super::convert_role::push_system(&mut system_blocks, msg)
+            }
             Role::User => push_message(
                 &mut api_messages,
                 "user",

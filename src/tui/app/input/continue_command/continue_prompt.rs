@@ -20,6 +20,9 @@ pub(super) fn resolve(app: &App, session: Option<&Session>) -> String {
         }
     }
     if let Some(session) = session {
+        if let Some(prompt) = crate::session::tasks::runtime::resume_prompt(&session.id) {
+            return prompt;
+        }
         if let Some(text) = last_user_text(session) {
             return text;
         }

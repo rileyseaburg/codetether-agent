@@ -33,12 +33,15 @@ pub(crate) use policy::RestartPolicy;
 pub(crate) async fn run(
     provider: &Arc<dyn Provider>,
     request: CompletionRequest,
+    session_id: &str,
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
     policy: &RestartPolicy,
 ) -> Result<CompletionResponse> {
     let mut attempt = 0u32;
     loop {
-        let stream = provider.complete_stream(request.clone()).await?;
+        let stream = provider
+            .complete_stream_scoped(request.clone(), session_id)
+            .await?;
         let outcome = drain(stream, event_tx).await;
         let restart = outcome.stop.restart_eligible()
             && (!outcome.committed() || outcome.stop.restart_over_committed())
@@ -46,10 +49,10 @@ pub(crate) async fn run(
         if !restart {
             return super::accept::accept(outcome, attempt);
         }
-        let wait = policy.backoff(attempt);
+        let wait = policy.delay(attempt, &outcome.stop);
         attempt += 1;
         notify::retry(event_tx, attempt, policy.max_restarts, &outcome.stop).await;
-        tracing::warn!(attempt, stop = ?outcome.stop, wait_secs = wait.as_secs(), "SRP restart");
+        tracing::warn!(attempt, stop = ?outcome.stop, wait_ms = wait.as_millis(), "SRP restart");
         tokio::time::sleep(wait).await;
     }
 }

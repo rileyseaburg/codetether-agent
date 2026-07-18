@@ -2,10 +2,10 @@
 
 use super::super::TransportHealth;
 
-pub(super) fn record(health: &TransportHealth, error: Option<&anyhow::Error>) {
+pub(super) fn record(health: &TransportHealth, session_id: &str, error: Option<&anyhow::Error>) {
     tracing::warn!(
         error = error.map(ToString::to_string),
         "Codex transport retrying privately"
     );
-    health.mark_interrupted();
+    health.mark_interrupted(session_id);
 }

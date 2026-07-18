@@ -26,7 +26,10 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+
+#[path = "traits/model_info.rs"]
+mod model_info;
+pub use model_info::ModelInfo;
 
 use super::types::{
     CompletionRequest, CompletionResponse, EmbeddingRequest, EmbeddingResponse, StreamChunk,
@@ -72,6 +75,24 @@ pub trait Provider: Send + Sync {
     /// ```
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse>;
 
+    /// Generate a completion with transport state isolated to one session.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` — Model, messages, tools, and sampling configuration.
+    /// * `_session_id` — Stable conversation identifier used for isolation.
+    ///
+    /// # Returns
+    ///
+    /// The completed response, or a provider error.
+    async fn complete_scoped(
+        &self,
+        request: CompletionRequest,
+        _session_id: &str,
+    ) -> Result<CompletionResponse> {
+        self.complete(request).await
+    }
+
     /// Generate a streaming completion.
     ///
     /// # Examples
@@ -87,6 +108,24 @@ pub trait Provider: Send + Sync {
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>>;
 
+    /// Stream with connection health and pooling isolated to one session.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` — Model, messages, tools, and sampling configuration.
+    /// * `_session_id` — Stable conversation identifier used for isolation.
+    ///
+    /// # Returns
+    ///
+    /// A stream of response chunks, or a provider error.
+    async fn complete_stream_scoped(
+        &self,
+        request: CompletionRequest,
+        _session_id: &str,
+    ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
+        self.complete_stream(request).await
+    }
+
     /// Whether streaming preserves structured output such as tool calls.
     fn supports_structured_streaming(&self) -> bool {
         true
@@ -96,48 +135,4 @@ pub trait Provider: Send + Sync {
     async fn embed(&self, _request: EmbeddingRequest) -> Result<EmbeddingResponse> {
         anyhow::bail!("Provider '{}' does not support embeddings", self.name())
     }
-}
-
-/// Metadata about a model offered by a provider.
-///
-/// # Examples
-///
-/// ```rust
-/// use codetether_agent::provider::ModelInfo;
-/// let info = ModelInfo {
-///     id: "gpt-4o".into(),
-///     name: "GPT-4o".into(),
-///     provider: "openai".into(),
-///     context_window: 128_000,
-///     max_output_tokens: Some(16_384),
-///     supports_vision: true,
-///     supports_tools: true,
-///     supports_streaming: true,
-///     input_cost_per_million: Some(2.5),
-///     output_cost_per_million: Some(10.0),
-/// };
-/// assert!(info.supports_vision);
-/// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelInfo {
-    /// Canonical model ID (e.g. `"us.anthropic.claude-sonnet-4-20250514-v1:0"`).
-    pub id: String,
-    /// Human-readable name.
-    pub name: String,
-    /// Provider that owns this model.
-    pub provider: String,
-    /// Input + output token budget.
-    pub context_window: usize,
-    /// Maximum tokens the model can generate in one call.
-    pub max_output_tokens: Option<usize>,
-    /// Whether the model accepts image inputs.
-    pub supports_vision: bool,
-    /// Whether the model supports tool/function calling.
-    pub supports_tools: bool,
-    /// Whether the model supports server-sent streaming.
-    pub supports_streaming: bool,
-    /// Cost per million input tokens (USD), if known.
-    pub input_cost_per_million: Option<f64>,
-    /// Cost per million output tokens (USD), if known.
-    pub output_cost_per_million: Option<f64>,
 }

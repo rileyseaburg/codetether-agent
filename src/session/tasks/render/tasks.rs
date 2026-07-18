@@ -13,7 +13,9 @@ pub(super) fn append(output: &mut String, state: &TaskState) {
         let marker = match task.status {
             SessionTaskStatus::InProgress => "◐",
             SessionTaskStatus::Pending => "○",
-            SessionTaskStatus::Done | SessionTaskStatus::Blocked | SessionTaskStatus::Cancelled => "·",
+            SessionTaskStatus::Done | SessionTaskStatus::Blocked | SessionTaskStatus::Cancelled => {
+                "·"
+            }
         };
         let _ = writeln!(output, "{marker} [{}] {}", task.id, task.content);
     }

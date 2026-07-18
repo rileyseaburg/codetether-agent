@@ -3,6 +3,8 @@
 use dashmap::DashMap;
 use std::sync::LazyLock;
 
+use crate::a2a::types::AgentCard;
+
 static ROUTES: LazyLock<DashMap<String, PeerRoute>> = LazyLock::new(DashMap::new);
 
 /// Callable A2A endpoint learned from LAN discovery.
@@ -12,16 +14,22 @@ pub(crate) struct PeerRoute {
     pub endpoint: String,
     /// Peer-scoped bearer capability when advertised.
     pub token: Option<String>,
+    /// Human-readable responsibility advertised by the peer.
+    pub description: String,
+    /// Stable skill identifiers advertised by the peer.
+    pub skills: Vec<String>,
 }
 
 /// Inserts or refreshes the callable route for an agent name.
-pub(crate) fn register(name: &str, endpoint: &str, token: Option<String>) {
-    let token = token.or_else(|| ROUTES.get(name).and_then(|route| route.token.clone()));
+pub(crate) fn register(card: &AgentCard, endpoint: &str, token: Option<String>) {
+    let token = token.or_else(|| ROUTES.get(&card.name).and_then(|route| route.token.clone()));
     ROUTES.insert(
-        name.to_string(),
+        card.name.clone(),
         PeerRoute {
             endpoint: endpoint.to_string(),
             token,
+            description: card.description.clone(),
+            skills: card.skills.iter().map(|skill| skill.id.clone()).collect(),
         },
     );
 }

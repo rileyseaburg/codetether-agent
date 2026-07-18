@@ -26,29 +26,31 @@ impl Provider for OpenAiCodexProvider {
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
-        self.validate_model_for_backend(&request.model)?;
-        let access_token = self.get_access_token().await?;
-        if self.using_chatgpt_backend() {
-            return self
-                .complete_with_chatgpt_responses(request, access_token)
-                .await;
-        }
-        self.complete_with_openai_responses(request, access_token)
+        self.complete_in_session(request, transport_health::UNSCOPED)
             .await
+    }
+
+    async fn complete_scoped(
+        &self,
+        request: CompletionRequest,
+        session_id: &str,
+    ) -> Result<CompletionResponse> {
+        self.complete_in_session(request, session_id).await
     }
 
     async fn complete_stream(
         &self,
         request: CompletionRequest,
     ) -> Result<BoxStream<'static, StreamChunk>> {
-        self.validate_model_for_backend(&request.model)?;
-        let access_token = self.get_access_token().await?;
-        if self.using_chatgpt_backend() {
-            return self
-                .complete_stream_with_chatgpt_responses(request, access_token)
-                .await;
-        }
-        self.complete_stream_with_openai_responses(request, access_token)
+        self.complete_stream_in_session(request, transport_health::UNSCOPED)
             .await
+    }
+
+    async fn complete_stream_scoped(
+        &self,
+        request: CompletionRequest,
+        session_id: &str,
+    ) -> Result<BoxStream<'static, StreamChunk>> {
+        self.complete_stream_in_session(request, session_id).await
     }
 }

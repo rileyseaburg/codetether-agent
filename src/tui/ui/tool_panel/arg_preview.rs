@@ -32,6 +32,7 @@ pub fn smart_arg_preview(tool_name: &str, arguments: &str) -> String {
         ),
         "grep_search" | "search_files" => format!("🔍 \"{}\"", str_or(&value, "query")),
         "file_search" | "semantic_search" => format!("🔍 {}", str_or(&value, "query")),
+        "agent" => super::arg_preview_agent::format(&value),
         "question" => str_or(&value, "question"),
         n if n.starts_with("mcp_k8s_") => format_k8s(&value),
         _ => serde_json::to_string(&value).unwrap_or_default(),

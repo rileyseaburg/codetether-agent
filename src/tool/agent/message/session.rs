@@ -5,10 +5,10 @@ use crate::session::Session;
 use anyhow::{Context, Result};
 
 /// Load a child session and apply its parent's current access policy.
-pub(super) async fn load(name: &str, params: &helpers::Params) -> Result<Session> {
-    let mut session = store::get_for_parent(name, params.parent_session_id.as_deref())
+pub(super) async fn load(agent_id: &str, params: &helpers::Params) -> Result<Session> {
+    let mut session = store::get_for_parent(agent_id, params.parent_session_id.as_deref())
         .map(|entry| entry.session)
-        .context(format!("Agent @{name} not found"))?;
+        .context(format!("Agent {agent_id} not found"))?;
     session.metadata.inherited_prior_context_allowed = Some(
         session_factory::parent_prior_context_allowed(
             params.parent_prior_context_allowed,

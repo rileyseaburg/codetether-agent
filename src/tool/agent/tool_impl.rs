@@ -9,8 +9,6 @@
 //! let tool = AgentTool::new();
 //! ```
 
-use super::actions::execute_kill;
-use super::{handlers, message, spawn};
 use crate::tool::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -59,7 +57,7 @@ impl Tool for AgentTool {
     }
 
     fn description(&self) -> &str {
-        "Spawn and communicate with specialized agents, including zero-config LAN peers discovered over mDNS. Actions: spawn, message, list, status, kill. Use list to see local and LAN agents before messaging."
+        "First-party collaboration with local agents and authenticated LAN peers discovered over mDNS. Actions include spawn, message, list, status, interrupt, close, resume, and kill."
     }
 
     fn parameters(&self) -> Value {
@@ -69,15 +67,7 @@ impl Tool for AgentTool {
     async fn execute(&self, params: Value) -> Result<ToolResult> {
         let parsed: super::params::Params =
             serde_json::from_value(params).context("Invalid params")?;
-        match parsed.action.as_str() {
-            "spawn" => spawn::handle_spawn(&parsed).await,
-            "message" => message::handle_message(&parsed).await,
-            "list" => Ok(handlers::handle_list(parsed.parent_session_id.as_deref())),
-            "status" => Ok(super::status::handle_status(
-                parsed.parent_session_id.as_deref(),
-            )),
-            "kill" => execute_kill(&parsed),
-            _ => Ok(super::actions::unknown_action_result(&parsed.action)),
-        }
+        super::persistence::hydrate_parent(parsed.parent_session_id.as_deref()).await?;
+        super::dispatch::execute(&parsed).await
     }
 }

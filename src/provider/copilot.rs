@@ -50,7 +50,7 @@ impl CopilotProvider {
             .iter()
             .map(|msg| {
                 let role = match msg.role {
-                    Role::System => "system",
+                    Role::System | Role::Developer => "system",
                     Role::User => "user",
                     Role::Assistant => "assistant",
                     Role::Tool => "tool",
@@ -151,7 +151,7 @@ impl CopilotProvider {
         messages
             .iter()
             .rev()
-            .find(|msg| msg.role != Role::System)
+            .find(|msg| !matches!(msg.role, Role::System | Role::Developer))
             .map(|msg| msg.role != Role::User)
             .unwrap_or(false)
     }

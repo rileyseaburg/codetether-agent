@@ -42,7 +42,7 @@ mod pr_description;
 mod pr_helpers;
 mod pr_request;
 mod pr_title;
-mod sessions;
+pub(crate) mod sessions;
 pub(crate) mod shell_bg;
 pub(crate) mod worktree;
 pub(crate) mod worktree_result;

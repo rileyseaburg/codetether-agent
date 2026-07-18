@@ -17,6 +17,10 @@
 
 use serde::{Deserialize, Serialize};
 
+#[path = "types/role.rs"]
+mod role;
+pub use role::Role;
+
 /// A message in a conversation.
 ///
 /// # Examples
@@ -35,20 +39,6 @@ pub struct Message {
     pub role: Role,
     /// Ordered content blocks (text, images, tool calls, etc.).
     pub content: Vec<ContentPart>,
-}
-
-/// Participant role in a conversation.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum Role {
-    /// System prompt / instructions.
-    System,
-    /// End-user input.
-    User,
-    /// Model response.
-    Assistant,
-    /// Tool result to be fed back to the model.
-    Tool,
 }
 
 /// One content block within a [`Message`].

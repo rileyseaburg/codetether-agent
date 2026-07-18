@@ -20,6 +20,7 @@ pub async fn load_selected_session(
             *session = loaded.session;
             let original_id = fork_if_truncated(session, dropped);
             session.attach_global_bus_if_missing();
+            crate::tool::agent::persistence::hydrate_best_effort(&session.id).await;
             app.state.auto_apply_edits = session.metadata.auto_apply_edits;
             app.state.use_worktree = session.metadata.use_worktree;
             app.state.session_id = Some(session.id.clone());

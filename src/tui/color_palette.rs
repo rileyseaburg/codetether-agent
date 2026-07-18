@@ -111,7 +111,7 @@ impl ColorPalette {
         match role.to_lowercase().as_str() {
             "user" => self.user_message,
             "assistant" => self.assistant_message,
-            "system" => self.system_message,
+            "system" | "developer" => self.system_message,
             "tool" => self.tool_message,
             "error" => self.error,
             _ => self.text,

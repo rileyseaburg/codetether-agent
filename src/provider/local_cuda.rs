@@ -277,7 +277,7 @@ impl LocalCudaProvider {
 
         for msg in messages {
             match msg.role {
-                Role::System => {
+                Role::System | Role::Developer => {
                     let text = Self::content_to_string(&msg.content);
                     if !text.is_empty() {
                         system_lines.push(text);
@@ -409,7 +409,7 @@ impl LocalCudaProvider {
 
         for msg in messages {
             match msg.role {
-                Role::System => {
+                Role::System | Role::Developer => {
                     prompt.push_str("System: ");
                     prompt.push_str(&Self::content_to_string(&msg.content));
                     prompt.push_str("\n\n");

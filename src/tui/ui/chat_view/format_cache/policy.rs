@@ -41,7 +41,7 @@ fn role_discrim(role: &str) -> u8 {
     match role {
         "user" => 1,
         "assistant" => 2,
-        "system" => 3,
+        "system" | "developer" => 3,
         "error" => 4,
         _ => 0,
     }

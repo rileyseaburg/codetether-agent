@@ -13,7 +13,7 @@ use super::Session;
 
 pub(crate) fn role_label(role: &Role) -> &'static str {
     match role {
-        Role::System => "system",
+        Role::System | Role::Developer => "system",
         Role::User => "user",
         Role::Assistant => "assistant",
         Role::Tool => "tool",

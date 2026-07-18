@@ -40,4 +40,4 @@ pub use event::{GoalRuntimeUpdate, GoalSourceKind, GoalStatus, SessionTaskStatus
 pub use log::TaskLog;
 pub use path::task_log_path;
 pub use render::governance_block;
-pub use state::{Goal, TaskState};
+pub use state::{Goal, Task, TaskState};

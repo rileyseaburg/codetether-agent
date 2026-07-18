@@ -38,18 +38,19 @@ pub(super) async fn drain(
 ) -> DrainOutcome {
     let mut state = DrainState::new();
     let mut got_chunk = false;
-    let mut saw_done = false;
     let stop = loop {
         match next_with_keepalive(&mut stream, event_tx, IDLE_TIMEOUT).await {
             Next::Chunk(Some(StreamChunk::Error(msg))) => break fault_from(&msg),
             Next::Chunk(Some(c)) => {
                 got_chunk = true;
-                saw_done |= matches!(c, StreamChunk::Done { .. });
+                let done = matches!(c, StreamChunk::Done { .. });
                 if let Err(e) = apply(&mut state, c, event_tx).await {
                     break fault_from(&e.to_string());
                 }
+                if done {
+                    break StreamStop::Clean;
+                }
             }
-            Next::Chunk(None) if saw_done => break StreamStop::Clean,
             Next::Chunk(None) => {
                 tracing::warn!("Stream ended before Done; premature termination");
                 break StreamStop::PrematureEnd;

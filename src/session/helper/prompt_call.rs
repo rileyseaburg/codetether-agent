@@ -12,7 +12,8 @@ use tokio::sync::mpsc;
 use crate::provider::{CompletionRequest, CompletionResponse, Provider};
 use crate::session::SessionEvent;
 
-use super::stream::{RestartPolicy, run_with_restart};
+#[path = "prompt_call/dispatch.rs"]
+mod dispatch;
 
 /// Hard wall-clock deadline for a single provider completion.
 ///
@@ -52,17 +53,12 @@ const DEFAULT_STEP_TIMEOUT_SECS: u64 = 300;
 pub(super) async fn complete_step(
     provider: &Arc<dyn Provider>,
     request: CompletionRequest,
+    session_id: &str,
     supports_tools: bool,
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<CompletionResponse> {
     let timeout = step_timeout();
-    let fut = async {
-        if !supports_tools || !provider.supports_structured_streaming() {
-            provider.complete(request).await
-        } else {
-            run_with_restart(provider, request, event_tx, &RestartPolicy::default()).await
-        }
-    };
+    let fut = dispatch::run(provider, request, session_id, supports_tools, event_tx);
     match tokio::time::timeout(timeout, fut).await {
         Ok(result) => result,
         Err(_) => Err(anyhow::anyhow!(

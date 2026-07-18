@@ -1,6 +1,8 @@
 //! Tool-activity panel: groups, renders, and decorates inline tool calls.
 
+mod activity;
 pub mod arg_preview;
+mod arg_preview_agent;
 mod arg_preview_helpers;
 mod diff_primitives;
 mod diff_render;
@@ -29,12 +31,17 @@ mod pending_spinner;
 mod preview;
 mod preview_excerpt;
 mod render_chat;
+mod result_preview;
 
+#[cfg(test)]
+mod peer_render_tests;
+
+pub use activity::is_tool_activity;
 pub use entry_builder::{build_render_entries, separator_pattern};
 pub use panel::{PendingToolSnapshot, build_tool_activity_panel};
 pub use render_chat::render_chat_message;
 
-use crate::tui::chat::message::{ChatMessage, MessageType};
+use crate::tui::chat::message::ChatMessage;
 
 /// Max visible lines inside the compact tool panel.
 pub const TOOL_PANEL_VISIBLE_LINES: usize = 12;
@@ -48,11 +55,4 @@ pub struct RenderEntry<'a> {
 pub struct ToolPanelRender {
     pub lines: Vec<ratatui::text::Line<'static>>,
     pub max_scroll: usize,
-}
-
-pub fn is_tool_activity(message_type: &MessageType) -> bool {
-    matches!(
-        message_type,
-        MessageType::ToolCall { .. } | MessageType::ToolResult { .. } | MessageType::Thinking(_)
-    )
 }

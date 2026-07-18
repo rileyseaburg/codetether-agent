@@ -1,60 +1,16 @@
-//! Per-agent execution state for spawned child sessions.
+//! Per-agent execution and close state for spawned child sessions.
 
-use std::collections::{HashMap, HashSet};
-use std::sync::Mutex;
-use tokio::task::{AbortHandle, JoinHandle};
+#[path = "execution_state/guard.rs"]
+mod guard;
+#[path = "execution_state/lifecycle.rs"]
+mod lifecycle;
+#[path = "execution_state/registry.rs"]
+mod registry;
 
-lazy_static::lazy_static! {
-    static ref RUNNING: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
-    static ref ABORTS: Mutex<HashMap<String, AbortHandle>> = Mutex::new(HashMap::new());
-}
+pub(super) use guard::AgentRunGuard;
+pub(super) use lifecycle::{close, is_closed, reopen};
+pub(super) use registry::{abort, is_running, register, try_start};
 
-/// Guard representing the active message run for one sub-agent.
-pub(super) struct AgentRunGuard {
-    name: String,
-}
-
-impl Drop for AgentRunGuard {
-    fn drop(&mut self) {
-        if let Ok(mut running) = RUNNING.lock() {
-            running.remove(&self.name);
-        }
-        if let Ok(mut aborts) = ABORTS.lock() {
-            aborts.remove(&self.name);
-        }
-    }
-}
-
-pub(super) fn register<T>(name: &str, handle: &JoinHandle<T>) {
-    if let Ok(mut aborts) = ABORTS.lock() {
-        aborts.insert(name.to_string(), handle.abort_handle());
-    }
-}
-
-pub(super) fn abort(name: &str) -> bool {
-    let handle = ABORTS
-        .lock()
-        .ok()
-        .and_then(|mut aborts| aborts.remove(name));
-    if let Some(handle) = handle {
-        handle.abort();
-        true
-    } else {
-        false
-    }
-}
-
-pub(super) fn is_running(name: &str) -> bool {
-    RUNNING.lock().is_ok_and(|running| running.contains(name))
-}
-
-/// Tries to mark a sub-agent as busy.
-pub(super) fn try_start(name: &str) -> Option<AgentRunGuard> {
-    let mut running = RUNNING.lock().ok()?;
-    if !running.insert(name.to_string()) {
-        return None;
-    }
-    Some(AgentRunGuard {
-        name: name.to_string(),
-    })
-}
+#[cfg(test)]
+#[path = "execution_state_tests.rs"]
+mod tests;

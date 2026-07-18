@@ -75,7 +75,7 @@ pub enum TaskEvent {
         confidence: f32,
     },
     /// Applies a lifecycle, accounting, or continuation update to the goal.
-    GoalRuntime { #[serde(flatten)] update: GoalRuntimeUpdate },
+    GoalRuntime(GoalRuntimeUpdate),
     /// Records that the agent reaffirmed alignment with the active goal.
     ///
     /// Reaffirmation does not change the objective. It stores a progress note so
@@ -127,17 +127,13 @@ pub enum TaskEvent {
         #[serde(default)]
         note: Option<String>,
     },
-    /// Records that governance detected possible drift from the active goal.
-    ///
-    /// Drift events preserve the counters that triggered an alignment warning,
-    /// allowing later inspection to understand why the agent was asked to
-    /// reaffirm the goal or stop before continuing.
+    /// Records counters that triggered an alignment warning.
     DriftDetected {
         /// Time at which drift was detected.
         at: DateTime<Utc>,
-        /// Number of tool calls since the last goal reaffirmation.
+        /// Tool calls made since the latest goal reaffirmation.
         tool_calls_since_reaffirm: u32,
-        /// Number of errors since the last goal reaffirmation.
+        /// Errors observed since the latest goal reaffirmation.
         errors_since_reaffirm: u32,
     },
 }

@@ -31,6 +31,7 @@ fn parse_role(s: &str) -> Role {
         "user" => Role::User,
         "assistant" => Role::Assistant,
         "system" => Role::System,
+        "developer" => Role::Developer,
         "tool" => Role::Tool,
         _ => Role::User,
     }

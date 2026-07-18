@@ -16,7 +16,7 @@ fn role_str(role: Role) -> &'static str {
         Role::Assistant => "assistant",
         Role::User => "user",
         Role::Tool => "tool",
-        Role::System => "system",
+        Role::System | Role::Developer => "system",
     }
 }
 

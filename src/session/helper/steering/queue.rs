@@ -16,12 +16,16 @@ pub(crate) fn open(session_id: &str) {
 
 /// Append input when the named session is still accepting steering.
 pub(crate) fn push(session_id: &str, input: SteeringInput) -> bool {
-    let mut inboxes = inboxes();
-    let Some(inbox) = inboxes.get_mut(session_id) else {
-        return false;
+    let accepted = {
+        let mut inboxes = inboxes();
+        let Some(inbox) = inboxes.get_mut(session_id) else {
+            return false;
+        };
+        inbox.push_back(input);
+        true
     };
-    inbox.push_back(input);
-    true
+    crate::tool::agent::collaboration_runtime::parent_activity::steered(session_id);
+    accepted
 }
 
 /// Remove all state for a completed or aborted prompt run.

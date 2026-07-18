@@ -9,7 +9,7 @@ pub fn messages(req: &CompletionRequest) -> Value {
             .iter()
             .map(|m| {
                 let role = match m.role {
-                    Role::System => "system",
+                    Role::System | Role::Developer => "system",
                     Role::User => "user",
                     Role::Assistant => "assistant",
                     Role::Tool => "tool",

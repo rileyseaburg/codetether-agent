@@ -7,6 +7,10 @@ impl OpenAiCodexProvider {
                 "role": "system",
                 "content": Self::message_text(message, "\n"),
             }),
+            Role::Developer => json!({
+                "role": "developer",
+                "content": Self::message_text(message, "\n"),
+            }),
             Role::User => json!({
                 "role": "user",
                 "content": Self::message_text(message, "\n"),

@@ -1,8 +1,8 @@
 //! Validation helpers for sub-agent spawning.
 //!
-//! This module enforces spawn-time policy checks such as model
-//! eligibility and name uniqueness. Model eligibility is advisory
-//! (a warning), while duplicate names remain a hard error.
+//! This module enforces spawn-time depth and model eligibility policy.
+//! Owner-scoped identity exclusion lives in `spawn::identity` so its claim can
+//! remain active throughout asynchronous construction and persistence.
 //!
 //! # Examples
 //!
@@ -13,14 +13,18 @@
 use super::policy;
 use super::registry;
 use super::spawn_request::SpawnRequest;
-use super::store;
 use crate::tool::ToolResult;
+
+#[path = "spawn_depth.rs"]
+mod spawn_depth;
+#[path = "spawn_threads.rs"]
+pub(in crate::tool::agent) mod spawn_threads;
 
 /// Validates whether a requested sub-agent spawn is allowed.
 ///
 /// Returns `Ok(Some(warning))` when the model is not free/subscription
 /// eligible (the spawn proceeds with a warning), `Ok(None)` when fully
-/// eligible, and `Err` for hard failures such as duplicate agent names.
+/// eligible, and `Err` for invalid depth or provider inspection failures.
 ///
 /// # Examples
 ///
@@ -30,7 +34,7 @@ use crate::tool::ToolResult;
 pub(super) async fn validate_spawn_request(
     request: &SpawnRequest<'_>,
 ) -> Result<Option<String>, ToolResult> {
-    validate_name_is_available(request.name)?;
+    spawn_depth::validate(request).await?;
     model_eligibility_warning(request.model).await
 }
 
@@ -45,15 +49,6 @@ async fn model_eligibility_warning(model: &str) -> Result<Option<String>, ToolRe
     Ok(Some(ineligible_model_warning(model)))
 }
 
-fn validate_name_is_available(name: &str) -> Result<(), ToolResult> {
-    if !store::contains(name) {
-        return Ok(());
-    }
-    Err(ToolResult::error(format!(
-        "Agent @{name} exists. Use kill first."
-    )))
-}
-
 fn ineligible_model_warning(model: &str) -> String {
     format!(
         "warning: '{model}' is not free/subscription-eligible; \
@@ -61,3 +56,7 @@ fn ineligible_model_warning(model: &str) -> String {
          subscription providers, or OAuth providers."
     )
 }
+
+#[cfg(test)]
+#[path = "spawn_validation_tests.rs"]
+mod tests;

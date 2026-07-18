@@ -36,9 +36,10 @@ pub(super) fn system_prompt_for(
         crate::agent::builtin::build_system_prompt(cwd)
     };
     let prompt = append_guardrails_for_cwd(prompt, cwd, prior_context_allowed);
-    if !model_supports_tools && !advertised_tools.is_empty() {
+    let prompt = if !model_supports_tools && !advertised_tools.is_empty() {
         inject_tool_prompt(&prompt, advertised_tools)
     } else {
         prompt
-    }
+    };
+    crate::a2a::peer_prompt::append(prompt)
 }

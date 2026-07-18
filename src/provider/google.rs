@@ -55,7 +55,7 @@ impl GoogleProvider {
             .iter()
             .map(|msg| {
                 let role = match msg.role {
-                    Role::System => "system",
+                    Role::System | Role::Developer => "system",
                     Role::User => "user",
                     Role::Assistant => "assistant",
                     Role::Tool => "tool",

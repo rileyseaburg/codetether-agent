@@ -43,9 +43,12 @@ impl GoalStatus {
     /// Stable serialized name used in tool responses.
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Active => "active", Self::Paused => "paused",
-            Self::Complete => "complete", Self::Blocked => "blocked",
-            Self::UsageLimited => "usage_limited", Self::BudgetLimited => "budget_limited",
+            Self::Active => "active",
+            Self::Paused => "paused",
+            Self::Complete => "complete",
+            Self::Blocked => "blocked",
+            Self::UsageLimited => "usage_limited",
+            Self::BudgetLimited => "budget_limited",
         }
     }
 }

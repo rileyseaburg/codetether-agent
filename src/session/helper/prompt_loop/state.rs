@@ -31,6 +31,8 @@ pub(crate) struct Runner<'a> {
 pub(crate) enum StepFlow {
     /// Continue with another provider step.
     Continue,
+    /// Continue an active goal with a fresh per-turn step budget.
+    ContinueGoal,
     /// Persist the session and return the accumulated answer.
     Finish,
 }

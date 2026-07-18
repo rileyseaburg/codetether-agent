@@ -6,10 +6,14 @@ pub(super) fn concrete(public_host: &str, listener: IpAddr) -> Vec<IpAddr> {
     public_host
         .parse()
         .ok()
-        .filter(|address: &IpAddr| !address.is_unspecified())
-        .or_else(|| (!listener.is_unspecified()).then_some(listener))
+        .filter(is_publishable)
+        .or_else(|| is_publishable(&listener).then_some(listener))
         .into_iter()
         .collect()
+}
+
+fn is_publishable(address: &IpAddr) -> bool {
+    !address.is_unspecified() && !address.is_loopback()
 }
 
 #[cfg(test)]

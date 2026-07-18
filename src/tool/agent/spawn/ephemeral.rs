@@ -11,7 +11,8 @@ pub(super) async fn run(request: &SpawnRequest<'_>, warning: Option<&str>) -> Re
             "ephemeral agents cannot detach; omit detach or set it to false",
         ));
     }
-    let Some(_guard) = execution_state::try_start(request.name) else {
+    let runtime_id = format!("ephemeral-{}", uuid::Uuid::new_v4());
+    let Some(_guard) = execution_state::try_start(&runtime_id) else {
         return Ok(ToolResult::error(format!(
             "Agent @{} is busy",
             request.name
@@ -28,7 +29,7 @@ pub(super) async fn run(request: &SpawnRequest<'_>, warning: Option<&str>) -> Re
         crate::session::DEFAULT_MAX_STEPS,
         300,
         None,
-        format!("ephemeral-{}", request.name),
+        runtime_id,
         None,
         Some(setup.workspace),
     )

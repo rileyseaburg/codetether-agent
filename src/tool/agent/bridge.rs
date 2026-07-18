@@ -17,6 +17,7 @@ pub(crate) use transcript::agent_tool_transcript_for_parent;
 /// A read-only snapshot of a spawned sub-agent, suitable for TUI display.
 #[derive(Clone, Debug)]
 pub struct AgentSnapshot {
+    pub id: String,
     pub name: String,
     pub instructions: String,
     pub message_count: usize,
@@ -43,23 +44,22 @@ pub fn find_agent_tool_agent_for_parent(
 ) -> Option<AgentSnapshot> {
     snapshots(Some(parent_session_id))
         .into_iter()
-        .find(|agent| agent.name == name)
+        .find(|agent| agent.name == name || agent.id == name)
 }
 
 fn snapshots(parent_session_id: Option<&str>) -> Vec<AgentSnapshot> {
-    let rows = store::list_with_metadata(parent_session_id);
-    rows.into_iter()
-        .map(
-            |(name, instructions, msg_count, model_id, parent, depth)| AgentSnapshot {
-                is_processing: super::execution_state::is_running(&name),
-                name,
-                instructions,
-                message_count: msg_count,
-                model_id,
-                parent,
-                depth,
-            },
-        )
+    store::entries_for_parent(parent_session_id)
+        .into_iter()
+        .map(|entry| AgentSnapshot {
+            id: entry.session.id.clone(),
+            name: entry.name,
+            instructions: entry.instructions,
+            message_count: entry.session.messages.len(),
+            model_id: entry.model_id,
+            parent: entry.parent,
+            depth: entry.depth,
+            is_processing: super::execution_state::is_running(&entry.session.id),
+        })
         .collect()
 }
 

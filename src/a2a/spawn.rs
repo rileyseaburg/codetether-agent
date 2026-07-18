@@ -58,6 +58,8 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
+#[path = "spawn/card_description.rs"]
+mod card_description;
 #[path = "spawn/lan_address.rs"]
 mod lan_address;
 #[path = "spawn/mdns_addresses.rs"]
@@ -271,9 +273,7 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     // 4. Build card.
     let mut card = A2AServer::default_card(&public_url);
     card.name = agent_name.clone();
-    if let Some(description) = opts.description.clone() {
-        card.description = description;
-    }
+    card.description = card_description::resolve(opts.description.as_deref());
 
     bus.registry.register(card.clone());
     let bus_handle = bus.handle(&agent_name);
@@ -307,7 +307,7 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     // peers to waste time probing endpoints that were never externally useful.
     let mdns_bind_addrs = mdns_addresses::concrete(&public_host, local_addr.ip());
     let mut lan_tasks = Vec::new();
-    let (mdns_handle, mdns_intake_task) = if opts.mdns {
+    let (mdns_handle, mdns_intake_task) = if opts.mdns && !mdns_bind_addrs.is_empty() {
         let collaboration_token = crate::a2a::collaboration_token::local().to_string();
         let (peer_tx, peer_rx) = mpsc::channel::<DiscoveredPeer>(64);
         match lan::announce_and_listen(
@@ -448,7 +448,7 @@ async fn handle_mdns_peer(
     };
 
     bus.registry.register(card.clone());
-    crate::a2a::peer_route::register(&card.name, &endpoint, peer.token.clone());
+    crate::a2a::peer_route::register(&card, &endpoint, peer.token.clone());
 
     // Re-emit on every accepted resolution (not just first sight) so a peer
     // that was registered once but later dropped by a consumer reappears on
@@ -615,7 +615,7 @@ async fn discovery_loop(
             };
 
             bus.registry.register(card.clone());
-            crate::a2a::peer_route::register(&card.name, &endpoint, None);
+            crate::a2a::peer_route::register(&card, &endpoint, None);
 
             if is_new {
                 crate::a2a::mdns_liveness::emit_discovered(&bus, &card.name, &endpoint);

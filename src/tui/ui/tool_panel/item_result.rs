@@ -37,9 +37,10 @@ pub(super) fn render_tool_result(
             Style::default().fg(color).bold(),
         ),
     ]));
+    let output = super::result_preview::format(name, output);
     push_preview_lines(
         body_lines,
-        output,
+        &output,
         preview_width,
         Style::default().fg(color).dim(),
         "(empty output)",

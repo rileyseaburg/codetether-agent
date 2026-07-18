@@ -11,18 +11,28 @@ use anyhow::Result;
 /// Returns an error from setup, completion, tool execution, or persistence.
 pub(crate) async fn run(runner: &mut Runner<'_>) -> Result<SessionResult> {
     let _steering = super::super::steering::RunGuard::open(&runner.session.id);
-    for step in 1..=runner.progress.max_steps {
+    let mut step = 0;
+    loop {
+        step += 1;
         begin(runner, step).await?;
-        let response = super::completion::complete(runner, step).await?;
+        let Some(response) = super::turn_completion::next(runner, step).await? else {
+            step = 0;
+            continue;
+        };
         let response = super::response::normalize(runner, response).await;
-        if matches!(
-            super::response::handle(runner, step, response).await?,
-            StepFlow::Finish
-        ) {
-            crate::session::step_limit::clear_budget();
-            break;
+        match super::response::handle(runner, step, response).await? {
+            StepFlow::Finish => break,
+            StepFlow::ContinueGoal => step = 0,
+            StepFlow::Continue if step >= runner.progress.max_steps => {
+                match super::response::continue_goal(runner).await {
+                    StepFlow::ContinueGoal => step = 0,
+                    StepFlow::Finish | StepFlow::Continue => break,
+                }
+            }
+            StepFlow::Continue => {}
         }
     }
+    crate::session::step_limit::clear_budget();
     super::finish::finish(runner).await
 }
 

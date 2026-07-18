@@ -39,7 +39,7 @@ fn role_label(role: Role) -> ratatui::text::Span<'static> {
     match role {
         Role::User => "USER".to_string().bold(),
         Role::Assistant => "ASSISTANT".cyan().bold(),
-        Role::System => "SYSTEM".dim().bold(),
+        Role::System | Role::Developer => "SYSTEM".dim().bold(),
         Role::Tool => "TOOL RESULT".magenta().bold(),
     }
 }

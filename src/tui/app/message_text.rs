@@ -157,7 +157,7 @@ fn message_type(role: Role) -> MessageType {
     match role {
         Role::User => MessageType::User,
         Role::Assistant => MessageType::Assistant,
-        Role::System | Role::Tool => MessageType::System,
+        Role::System | Role::Developer | Role::Tool => MessageType::System,
     }
 }
 

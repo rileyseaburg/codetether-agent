@@ -658,7 +658,7 @@ impl Provider for GeminiWebProvider {
             .iter()
             .map(|m| {
                 let role = match m.role {
-                    Role::System => "System",
+                    Role::System | Role::Developer => "System",
                     Role::User => "User",
                     Role::Assistant => "Assistant",
                     Role::Tool => "Tool",
@@ -747,7 +747,7 @@ impl Provider for GeminiWebProvider {
             .iter()
             .map(|m| {
                 let role = match m.role {
-                    Role::System => "System",
+                    Role::System | Role::Developer => "System",
                     Role::User => "User",
                     Role::Assistant => "Assistant",
                     Role::Tool => "Tool",

@@ -1,6 +1,7 @@
 pub use super::a2a::{A2aConfig, AutoApprovePolicy};
 pub use super::access_mode::AccessMode;
 pub use super::agent::AgentConfig;
+pub use super::agents::AgentsConfig;
 pub use super::approval::ApprovalPolicy;
 pub use super::core::Config;
 pub use super::lsp::{LspLinterEntry, LspServerEntry, LspSettings};

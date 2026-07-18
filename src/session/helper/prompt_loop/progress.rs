@@ -38,6 +38,12 @@ pub(crate) struct LoopState {
     pub steps_since_write: u32,
     /// Correlation identifier used for agent-bus messages.
     pub turn_id: String,
+    /// Baseline for durable goal elapsed-time accounting.
+    pub goal_accounted_at: std::time::Instant,
+    /// Diagnostic signature of the latest exhausted goal failure.
+    pub goal_failure_signature: Option<String>,
+    /// Consecutive goal turns stopped by that same failure.
+    pub goal_failure_repeats: u8,
 }
 
 impl LoopState {
@@ -55,6 +61,9 @@ impl LoopState {
             native_retries: 0,
             steps_since_write: 0,
             turn_id: Uuid::new_v4().to_string(),
+            goal_accounted_at: std::time::Instant::now(),
+            goal_failure_signature: None,
+            goal_failure_repeats: 0,
         }
     }
 }

@@ -14,10 +14,11 @@
 mod actions;
 pub mod bridge;
 mod bus_publish;
+pub(crate) mod collaboration_runtime;
+pub(crate) mod communication;
+mod dispatch;
 mod event_loop;
 mod execution_state;
-#[cfg(test)]
-mod execution_state_tests;
 mod handlers;
 mod helpers;
 mod message;
@@ -28,12 +29,14 @@ mod params;
 #[cfg(test)]
 #[path = "params_tests.rs"]
 mod params_tests;
+pub(crate) mod persistence;
 mod policy;
 mod policy_constants;
 mod policy_free;
 mod policy_parse;
 mod policy_registry;
 mod registry;
+pub(crate) mod residency;
 mod session_factory;
 mod spawn;
 #[cfg(test)]
@@ -41,13 +44,9 @@ mod spawn;
 mod spawn_detach_tests;
 mod spawn_messages;
 mod spawn_request;
-#[cfg(test)]
-mod spawn_request_tests;
 mod spawn_run;
 mod spawn_store;
 mod spawn_validation;
-#[cfg(test)]
-mod spawn_validation_tests;
 mod status;
 mod status_liveness;
 #[cfg(test)]
@@ -56,6 +55,7 @@ mod status_source;
 mod status_tool_activity;
 mod store;
 mod text;
+mod thread_lifecycle;
 mod tool_impl;
 mod tool_schema;
 

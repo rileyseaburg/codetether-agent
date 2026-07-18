@@ -13,12 +13,9 @@ pub(in crate::tool::agent) fn task_id(session: &Session) -> String {
 }
 
 pub(in crate::tool::agent) fn task_to_agent(parent: Option<&str>) -> HashMap<String, String> {
-    store::list_for_parent(parent)
+    store::entries_for_parent(parent)
         .into_iter()
-        .filter_map(|(name, _, _)| {
-            let entry = store::get(&name)?;
-            Some((task_id(&entry.session), name))
-        })
+        .map(|entry| (task_id(&entry.session), entry.session.id))
         .collect()
 }
 

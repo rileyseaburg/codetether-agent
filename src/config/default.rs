@@ -1,6 +1,7 @@
 use crate::config::guardrails::CostGuardrails;
 use crate::config::{
-    A2aConfig, Config, LspSettings, PermissionConfig, SessionConfig, TelemetryConfig, UiConfig,
+    A2aConfig, AgentsConfig, Config, LspSettings, PermissionConfig, SessionConfig, TelemetryConfig,
+    UiConfig,
 };
 use std::collections::HashMap;
 
@@ -16,7 +17,7 @@ impl Default for Config {
             permission_profile: None,
             requirements: Default::default(),
             providers: HashMap::new(),
-            agents: HashMap::new(),
+            agents: AgentsConfig::default(),
             permissions: PermissionConfig::default(),
             a2a: A2aConfig::default(),
             ui: UiConfig::default(),

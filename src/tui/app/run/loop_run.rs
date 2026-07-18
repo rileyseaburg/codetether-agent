@@ -22,8 +22,18 @@ pub(super) async fn run(
     worker_bridge: Option<TuiWorkerBridge>,
     channels: SessionChannels,
 ) -> anyhow::Result<()> {
+    crate::tool::agent::persistence::hydrate_best_effort(&session.id).await;
     let runtime = session_runtime::spawn(channels.event_tx, channels.notice_tx);
     let mut slot = SessionSlot::new(session);
+    crate::tui::app::input::sessions::goal_autostart::resume(
+        app,
+        cwd,
+        &mut slot,
+        &registry,
+        &worker_bridge,
+        &runtime,
+    )
+    .await;
     run_event_loop(
         terminal,
         app,

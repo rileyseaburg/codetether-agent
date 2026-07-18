@@ -6,6 +6,7 @@ impl OpenAiCodexProvider {
     ) {
         match message.role {
             Role::System => {}
+            Role::Developer => input.push(Self::convert_message(message)),
             Role::User => Self::append_responses_user(message, input),
             Role::Assistant => Self::append_responses_assistant(message, input, known_calls),
             Role::Tool => Self::append_responses_tool(message, input, known_calls),

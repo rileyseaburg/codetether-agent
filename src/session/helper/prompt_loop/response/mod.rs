@@ -4,19 +4,31 @@ mod assistant_bus;
 mod build_exhaustion;
 pub(super) mod build_guard;
 mod flow;
+mod goal;
 mod native_guard;
 mod output;
 mod progress;
 mod repeat;
 mod terminal;
 mod truncation;
+mod usage;
 
 use super::Runner;
 use crate::provider::CompletionResponse;
-use crate::session::SessionEvent;
-use std::time::Duration;
 
 pub(super) use flow::handle;
+
+pub(super) async fn continue_goal(runner: &mut Runner<'_>) -> super::state::StepFlow {
+    goal::flow(runner).await
+}
+
+pub(super) async fn usage(
+    runner: &mut Runner<'_>,
+    response: &CompletionResponse,
+    elapsed: std::time::Duration,
+) {
+    usage::record(runner, response, elapsed).await;
+}
 
 /// Normalizes textual or router-formatted tool calls in a completion.
 pub(super) async fn normalize(
@@ -31,24 +43,4 @@ pub(super) async fn normalize(
         response
     };
     super::super::markup::normalize_textual_tool_calls(response, &runner.model.tools)
-}
-
-/// Records provider usage and emits a streaming usage report when enabled.
-pub(super) async fn usage(runner: &Runner<'_>, response: &CompletionResponse, elapsed: Duration) {
-    super::super::usage_record::record_step_usage(
-        &runner.model.provider_name,
-        &runner.model.model_id,
-        &response.usage,
-    );
-    let Some(tx) = &runner.events else {
-        return;
-    };
-    let _ = tx
-        .send(SessionEvent::UsageReport {
-            prompt_tokens: response.usage.prompt_tokens,
-            completion_tokens: response.usage.completion_tokens,
-            duration_ms: elapsed.as_millis() as u64,
-            model: runner.model.model_id.clone(),
-        })
-        .await;
 }

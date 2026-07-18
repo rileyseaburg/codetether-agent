@@ -275,7 +275,7 @@ impl MessageFormatter {
         let role_color = match role {
             "user" => Color::White,
             "assistant" => Color::Cyan,
-            "system" => Color::Yellow,
+            "system" | "developer" => Color::Yellow,
             "tool" => Color::Green,
             _ => Color::White,
         };

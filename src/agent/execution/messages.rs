@@ -19,7 +19,8 @@ use crate::session::Session;
 /// file is small (a few KB at most) and this is used from the sync
 /// `complete_with_context` prompt-composition path without a tokio handle.
 pub(super) fn compose_system_prompt(base: &str, session: &Session) -> String {
-    crate::session::tasks::runtime::compose(base, &session.id)
+    let prompt = crate::session::tasks::runtime::compose(base, &session.id);
+    crate::a2a::peer_prompt::append(prompt)
 }
 
 /// Extracts the canonical tool-call content parts from a provider message.

@@ -15,11 +15,13 @@ use std::{path::Path, sync::Arc};
 
 use crate::provider::ProviderRegistry;
 use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
-use crate::tui::app::{settings::toggle_selected_setting, state::App};
+use crate::tui::app::state::App;
 use crate::tui::{models::ViewMode, worker_bridge::TuiWorkerBridge};
 
 #[path = "enter_swarm.rs"]
 mod enter_swarm;
+#[path = "enter_session.rs"]
+mod mode;
 
 /// Dispatch Enter to the handler matching the active view.
 pub(crate) async fn dispatch_enter(
@@ -32,9 +34,7 @@ pub(crate) async fn dispatch_enter(
 ) {
     match app.state.view_mode {
         ViewMode::Sessions => {
-            if let Some(session) = slot.borrow_mut() {
-                super::sessions::handle_enter_sessions(app, cwd, session).await;
-            }
+            mode::sessions(app, cwd, slot, registry, worker_bridge, runtime).await
         }
         ViewMode::FilePicker => crate::tui::app::file_picker::file_picker_enter(app, cwd),
         ViewMode::Swarm => {
@@ -51,11 +51,7 @@ pub(crate) async fn dispatch_enter(
                 .await
         }
         ViewMode::Model => super::model_apply::selected(app, slot),
-        ViewMode::Settings => {
-            if let Some(session) = slot.borrow_mut() {
-                toggle_selected_setting(app, session).await;
-            }
-        }
+        ViewMode::Settings => mode::settings(app, slot).await,
         ViewMode::Subagents => super::enter_subagents::dispatch(app),
         ViewMode::Lsp
         | ViewMode::Rlm

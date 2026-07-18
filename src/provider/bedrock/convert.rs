@@ -80,7 +80,7 @@ pub fn convert_messages(messages: &[Message]) -> (Vec<Value>, Vec<Value>) {
 
     for msg in messages {
         match msg.role {
-            Role::System => append_system(msg, &mut system_parts),
+            Role::System | Role::Developer => append_system(msg, &mut system_parts),
             Role::User => append_user(msg, &mut api_messages),
             Role::Assistant => append_assistant(msg, &mut api_messages),
             Role::Tool => append_tool(msg, &mut api_messages),

@@ -1,18 +1,24 @@
 //! Exclusive recycling of a completed Responses WebSocket connection.
 
 use super::OpenAiRealtimeConnection;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::Mutex;
 
+#[path = "ws_pool/insert.rs"]
+mod insert;
+
+type Connections<S> = Arc<Mutex<HashMap<String, OpenAiRealtimeConnection<S>>>>;
+
 pub(super) struct WsPool<S = tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>> {
-    connection: Arc<Mutex<Option<OpenAiRealtimeConnection<S>>>>,
+    connections: Connections<S>,
 }
 
 impl<S> Clone for WsPool<S> {
     fn clone(&self) -> Self {
         Self {
-            connection: Arc::clone(&self.connection),
+            connections: Arc::clone(&self.connections),
         }
     }
 }
@@ -20,7 +26,7 @@ impl<S> Clone for WsPool<S> {
 impl<S> Default for WsPool<S> {
     fn default() -> Self {
         Self {
-            connection: Arc::new(Mutex::new(None)),
+            connections: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -29,17 +35,11 @@ impl<S> WsPool<S>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    pub(super) async fn take(&self) -> Option<OpenAiRealtimeConnection<S>> {
-        self.connection.lock().await.take()
+    pub(super) async fn take(&self, session_id: &str) -> Option<OpenAiRealtimeConnection<S>> {
+        self.connections.lock().await.remove(session_id)
     }
 
-    pub(super) async fn put(&self, mut connection: OpenAiRealtimeConnection<S>) {
-        let mut slot = self.connection.lock().await;
-        if slot.is_none() {
-            *slot = Some(connection);
-            return;
-        }
-        drop(slot);
-        let _ = connection.close().await;
+    pub(super) async fn put(&self, session_id: String, connection: OpenAiRealtimeConnection<S>) {
+        insert::put(&self.connections, session_id, connection).await;
     }
 }

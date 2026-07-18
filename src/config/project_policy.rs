@@ -27,7 +27,7 @@ fn strip_policy_fields(config: &mut Config) {
     config.requirements = Default::default();
     config.permissions = PermissionConfig::default();
     config.providers.clear();
-    config.agents.clear();
+    config.agents = Default::default();
     config.a2a = Default::default();
     config.lsp = Default::default();
 }

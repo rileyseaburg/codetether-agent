@@ -14,6 +14,8 @@
 use serde::Deserialize;
 use std::path::PathBuf;
 
+use super::collaboration_runtime::message_input::MessageImage;
+
 /// Parsed input payload for the sub-agent management tool.
 ///
 /// This structure is shared by all agent-tool actions so parsing happens once
@@ -33,6 +35,8 @@ pub(super) struct Params {
     pub instructions: Option<String>,
     #[serde(default)]
     pub message: Option<String>,
+    #[serde(default, rename = "__ct_message_images")]
+    pub message_images: Vec<MessageImage>,
     #[serde(default)]
     pub model: Option<String>,
     #[serde(default)]
@@ -43,6 +47,8 @@ pub(super) struct Params {
     /// finish before their delegated work. Interactive callers opt into detach.
     #[serde(default)]
     pub detach: Option<bool>,
+    #[serde(default)]
+    pub fork_turns: Option<String>,
     #[serde(default, rename = "__ct_current_model")]
     pub _current_model: Option<String>,
     #[serde(default, rename = "__ct_parent_workspace")]
@@ -61,5 +67,13 @@ impl Params {
 
     pub(super) fn detach_for_spawn(&self) -> bool {
         self.detach.unwrap_or(false)
+    }
+
+    pub(super) fn resume_config(&self) -> super::residency::ResumeConfig {
+        super::residency::ResumeConfig::new(
+            self._current_model.clone(),
+            self.parent_workspace.clone(),
+            self.parent_prior_context_allowed,
+        )
     }
 }

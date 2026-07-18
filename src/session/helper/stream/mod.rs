@@ -24,10 +24,6 @@ mod accept;
 mod drain_end_tests;
 mod drain_state;
 mod fault;
-#[cfg(test)]
-mod fault_accept_tests;
-#[cfg(test)]
-mod fault_tests;
 mod finalize;
 mod idle_drain;
 mod idle_fault;
@@ -35,8 +31,6 @@ mod idle_keepalive;
 mod idle_timeout;
 mod outcome;
 mod reasoning;
-#[cfg(test)]
-mod reasoning_signature_tests;
 mod restart;
 #[cfg(test)]
 mod restart_policy_tests;
@@ -98,9 +92,10 @@ pub(crate) use restart::{RestartPolicy, run as run_with_restart};
 /// use futures::stream;
 ///
 /// // In practice the stream comes from a Provider::stream() call.
-/// let s = Box::pin(stream::iter([codetether_agent::provider::StreamChunk::Text(
-///     "ok".into(),
-/// )]));
+/// let s = Box::pin(stream::iter([
+///     codetether_agent::provider::StreamChunk::Text("ok".into()),
+///     codetether_agent::provider::StreamChunk::Done { usage: None },
+/// ]));
 /// let response = collect_stream_completion_with_events(s, None).await.unwrap();
 /// // `response` is a CompletionResponse; inspect it as needed.
 /// let _ = response;

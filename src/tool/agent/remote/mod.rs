@@ -10,7 +10,7 @@ use anyhow::Result;
 use serde_json::{Value, json};
 
 pub(super) async fn message(name: &str, text: &str) -> Option<Result<ToolResult>> {
-    if super::super::store::contains(name) {
+    if super::super::store::contains_name(name, None) {
         return None;
     }
     let route = crate::a2a::peer_route::get(name)?;
@@ -20,12 +20,13 @@ pub(super) async fn message(name: &str, text: &str) -> Option<Result<ToolResult>
 pub(in crate::tool::agent) fn list() -> Vec<Value> {
     crate::a2a::peer_route::list()
         .into_iter()
-        .filter(|(name, _)| !super::super::store::contains(name))
+        .filter(|(name, _)| !super::super::store::contains_name(name, None))
         .map(|(name, route)| {
             json!({
                 "name": name,
                 "kind": "lan-peer",
-                "endpoint": route.endpoint,
+                "description": route.description,
+                "skills": route.skills,
                 "transport": "a2a-mdns"
             })
         })

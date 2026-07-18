@@ -1,16 +1,17 @@
 //! Handle the "message" action.
 
-use super::event_loop;
-use super::execution_state;
-use super::helpers;
-use super::message_finalize;
-use crate::session::SessionEvent;
+use super::{execution_state, helpers};
 use crate::tool::ToolResult;
 use anyhow::{Context, Result};
-use tokio::sync::mpsc;
 
 #[path = "remote/mod.rs"]
 pub(super) mod remote;
+#[path = "message/run.rs"]
+pub(super) mod run;
+#[path = "message/start.rs"]
+mod start;
+#[path = "message/submit.rs"]
+mod submit;
 #[path = "message/session.rs"]
 mod task_session;
 
@@ -25,41 +26,39 @@ mod task_session;
 /// let result = handle_message(&params).await?;
 /// ```
 pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResult> {
-    let name = params
+    let target = params
         .name
         .as_ref()
         .context("name required for message")?
         .clone();
     let message = params.message.as_ref().context("message required")?.clone();
-    if let Some(result) = remote::message(&name, &message).await {
-        return result;
+    let Some((agent_id, entry)) =
+        super::store::scope::resolve_for_parent(&target, params.parent_session_id.as_deref())
+    else {
+        if let Some(result) = remote::message(&target, &message).await {
+            return result;
+        }
+        return Ok(ToolResult::error(format!("Agent {target} not found")));
+    };
+    if params.detach_or_default() {
+        return submit::detached(agent_id, message, params).await;
     }
-    let Some(_run_guard) = execution_state::try_start(&name) else {
-        return Ok(ToolResult::error(format!(
-            "Agent @{name} is busy processing another message; retry shortly"
+    let Some(guard) = execution_state::try_start(&agent_id) else {
+        let submitted =
+            super::collaboration_runtime::message_queue::enqueue(&agent_id, message, params)
+                .await?;
+        return Ok(ToolResult::success(format!(
+            "Queued follow-up for @{} ({agent_id}) at mailbox position {} (submission {})",
+            entry.name, submitted.depth, submitted.id
         )));
     };
-    let mut session_for_task = task_session::load(&name, params).await?;
-    let registry = helpers::get_registry().await?;
-    super::bus_publish::announce_working(&name, "processing message");
-    super::event_loop::live_trace::begin(&name, message.clone());
-    let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
-    let handle = tokio::spawn(async move {
-        session_for_task
-            .prompt_with_events(&message, tx, registry)
-            .await
-            .map(|_| session_for_task)
-    });
-    execution_state::register(&name, &handle);
-
-    if params.detach_or_default() {
-        return Ok(super::message_detach::dispatch(
-            name, _run_guard, rx, handle,
-        ));
-    }
-
-    let (response, thinking, tools, error, updated_session) =
-        event_loop::run(&name, &mut rx, handle).await;
-
-    Ok(message_finalize::finalize(name, response, thinking, tools, error, updated_session).await)
+    run::execute(
+        agent_id,
+        message,
+        params.message_images.clone(),
+        params,
+        guard,
+        None,
+    )
+    .await
 }

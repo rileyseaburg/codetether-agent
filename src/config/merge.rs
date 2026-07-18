@@ -8,7 +8,17 @@ impl Config {
             self.a2a = other.a2a.clone();
         }
         self.providers.extend(other.providers);
-        self.agents.extend(other.agents);
+        if other.agents.interrupt_message.is_some() {
+            self.agents.interrupt_message = other.agents.interrupt_message;
+        }
+        if other.agents.max_concurrent_threads_per_session.is_some() {
+            self.agents.max_concurrent_threads_per_session =
+                other.agents.max_concurrent_threads_per_session;
+        }
+        if other.agents.max_depth.is_some() {
+            self.agents.max_depth = other.agents.max_depth;
+        }
+        self.agents.profiles.extend(other.agents.profiles);
         self.merge_permissions(other.permissions);
         self.merge_telemetry(other.telemetry);
         self.merge_lsp(other.lsp);

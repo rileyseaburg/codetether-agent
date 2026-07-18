@@ -7,6 +7,8 @@ use std::sync::Arc;
 mod calls;
 #[path = "metrics/provider_impl.rs"]
 mod provider_impl;
+#[path = "metrics/provider_impl_delegates.rs"]
+mod provider_impl_delegates;
 #[path = "metrics/record.rs"]
 mod record;
 #[path = "metrics/stream.rs"]

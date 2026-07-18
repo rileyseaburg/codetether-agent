@@ -14,6 +14,7 @@ fn message_json(msg: &Message) -> Value {
     let text = joined_text(msg);
     match msg.role {
         Role::System => json!({ "role": "system", "content": text }),
+        Role::Developer => json!({ "role": "developer", "content": text }),
         Role::User => json!({ "role": "user", "content": text }),
         Role::Assistant => assistant_json(msg, text),
         Role::Tool => tool_json(msg),

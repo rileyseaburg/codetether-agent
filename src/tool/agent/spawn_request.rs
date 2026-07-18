@@ -3,6 +3,7 @@
 //! This module validates that spawn-specific fields are present and returns
 //! borrowed references for downstream spawn logic.
 
+use super::collaboration_runtime::fork_turns::ForkTurns;
 use super::params::Params;
 use anyhow::{Context, Result};
 use std::path::PathBuf;
@@ -19,7 +20,12 @@ pub(super) struct SpawnRequest<'a> {
     pub detach: bool,
     pub parent_workspace: Option<PathBuf>,
     pub parent_session_id: Option<&'a str>,
+    pub fork_turns: ForkTurns,
 }
+
+#[cfg(test)]
+#[path = "spawn_request_tests.rs"]
+mod tests;
 
 impl<'a> SpawnRequest<'a> {
     /// Extracts the required spawn fields from the parsed params object.
@@ -44,6 +50,7 @@ impl<'a> SpawnRequest<'a> {
             detach: params.detach_for_spawn(),
             parent_workspace: params.parent_workspace.clone(),
             parent_session_id: params.parent_session_id.as_deref(),
+            fork_turns: ForkTurns::parse(params.fork_turns.as_deref())?,
         })
     }
 }

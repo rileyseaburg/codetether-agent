@@ -826,7 +826,7 @@ fn render_story_detail(f: &mut Frame, state: &RalphViewState, area: Rect) {
                 "user" => (Color::White, "USER"),
                 "assistant" => (Color::Cyan, "ASST"),
                 "tool" => (Color::Yellow, "TOOL"),
-                "system" => (Color::DarkGray, "SYS "),
+                "system" | "developer" => (Color::DarkGray, "SYS "),
                 _ => (Color::White, "    "),
             };
             content_lines.push(Line::from(vec![Span::styled(

@@ -21,6 +21,7 @@ pub mod mdns;
 pub mod mdns_addr;
 pub mod mdns_liveness;
 pub mod peer_liveness;
+pub(crate) mod peer_prompt;
 pub(crate) mod peer_route;
 pub mod prompt_runtime;
 pub mod server;

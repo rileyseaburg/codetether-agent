@@ -3,7 +3,11 @@
 use std::path::PathBuf;
 
 /// Build the workspace-aware system message for a spawned agent.
-pub(super) fn build(name: &str, instructions: &str, workspace: Option<PathBuf>) -> String {
+pub(in crate::tool::agent) fn build(
+    name: &str,
+    instructions: &str,
+    workspace: Option<PathBuf>,
+) -> String {
     let cwd = workspace
         .or_else(|| std::env::current_dir().ok())
         .map(|path| path.display().to_string())

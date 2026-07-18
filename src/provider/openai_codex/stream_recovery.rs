@@ -8,8 +8,12 @@ use super::StreamChunk;
 mod attempt;
 #[path = "stream_recovery/classify.rs"]
 mod classify;
+#[path = "stream_recovery/delay.rs"]
+mod delay;
 #[path = "stream_recovery/factory.rs"]
 mod factory;
+#[path = "stream_recovery/log.rs"]
+mod log;
 #[path = "stream_recovery/request_anchor.rs"]
 pub(super) mod request_anchor;
 #[path = "stream_recovery/retry.rs"]

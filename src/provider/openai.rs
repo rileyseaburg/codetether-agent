@@ -9,11 +9,8 @@ use async_openai::{
     Client,
     config::OpenAIConfig,
     types::chat::{
-        ChatCompletionMessageToolCall, ChatCompletionMessageToolCalls,
-        ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
-        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestToolMessageArgs,
-        ChatCompletionRequestUserMessageArgs, ChatCompletionTool, ChatCompletionTools,
-        CreateChatCompletionRequestArgs, FinishReason as OpenAIFinishReason, FunctionCall,
+        ChatCompletionMessageToolCalls, ChatCompletionRequestMessage, ChatCompletionTool,
+        ChatCompletionTools, CreateChatCompletionRequestArgs, FinishReason as OpenAIFinishReason,
         FunctionObjectArgs,
     },
 };
@@ -23,6 +20,7 @@ use reqwest::Client as HttpClient;
 
 pub mod alias;
 mod catalog;
+mod chat_messages;
 mod discovery;
 mod minimax_error;
 mod model_caps;
@@ -121,89 +119,7 @@ impl OpenAIProvider {
     }
 
     fn convert_messages(messages: &[Message]) -> Result<Vec<ChatCompletionRequestMessage>> {
-        let mut result = Vec::new();
-
-        for msg in messages {
-            let content = msg
-                .content
-                .iter()
-                .filter_map(|p| match p {
-                    ContentPart::Text { text } => Some(text.clone()),
-                    _ => None,
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
-
-            match msg.role {
-                Role::System => {
-                    result.push(
-                        ChatCompletionRequestSystemMessageArgs::default()
-                            .content(content)
-                            .build()?
-                            .into(),
-                    );
-                }
-                Role::User => {
-                    result.push(
-                        ChatCompletionRequestUserMessageArgs::default()
-                            .content(content)
-                            .build()?
-                            .into(),
-                    );
-                }
-                Role::Assistant => {
-                    let tool_calls: Vec<ChatCompletionMessageToolCalls> = msg
-                        .content
-                        .iter()
-                        .filter_map(|p| match p {
-                            ContentPart::ToolCall {
-                                id,
-                                name,
-                                arguments,
-                                ..
-                            } => Some(ChatCompletionMessageToolCalls::Function(
-                                ChatCompletionMessageToolCall {
-                                    id: id.clone(),
-                                    function: FunctionCall {
-                                        name: name.clone(),
-                                        arguments: arguments.clone(),
-                                    },
-                                },
-                            )),
-                            _ => None,
-                        })
-                        .collect();
-
-                    let mut builder = ChatCompletionRequestAssistantMessageArgs::default();
-                    if !content.is_empty() {
-                        builder.content(content);
-                    }
-                    if !tool_calls.is_empty() {
-                        builder.tool_calls(tool_calls);
-                    }
-                    result.push(builder.build()?.into());
-                }
-                Role::Tool => {
-                    for part in &msg.content {
-                        if let ContentPart::ToolResult {
-                            tool_call_id,
-                            content,
-                        } = part
-                        {
-                            result.push(
-                                ChatCompletionRequestToolMessageArgs::default()
-                                    .tool_call_id(tool_call_id.clone())
-                                    .content(content.clone())
-                                    .build()?
-                                    .into(),
-                            );
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(result)
+        chat_messages::convert(messages)
     }
 
     fn convert_tools(tools: &[ToolDefinition]) -> Result<Vec<ChatCompletionTools>> {

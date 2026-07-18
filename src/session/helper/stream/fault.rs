@@ -19,3 +19,7 @@ pub(crate) fn is_transient(msg: &str) -> bool {
     }
     markers::TRANSIENT.iter().any(|m| lower.contains(m))
 }
+
+#[cfg(test)]
+#[path = "fault_tests.rs"]
+mod tests;

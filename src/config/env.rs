@@ -6,6 +6,7 @@ impl Config {
         self.apply_default_env();
         self.apply_provider_env();
         self.apply_a2a_env();
+        self.apply_agent_env();
         self.apply_telemetry_env();
     }
 

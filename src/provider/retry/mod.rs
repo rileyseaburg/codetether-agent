@@ -9,6 +9,7 @@ mod classify;
 mod classify_tests;
 mod send;
 mod stream;
+pub(crate) mod timing;
 
 pub use send::send_with_retry;
 pub use stream::send_response_with_retry;

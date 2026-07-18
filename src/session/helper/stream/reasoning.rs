@@ -18,3 +18,7 @@ pub(super) fn apply(
     }
     super::text_acc::on_thinking(&mut state.thinking, &delta, event_tx)
 }
+
+#[cfg(test)]
+#[path = "reasoning_signature_tests.rs"]
+mod tests;

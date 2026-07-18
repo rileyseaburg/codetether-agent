@@ -147,7 +147,7 @@ impl PageKind {
 ///
 /// Heuristic (Phase A):
 ///
-/// * [`Role::System`] → [`PageKind::Bootstrap`].
+/// * [`Role::System`] or [`Role::Developer`] → [`PageKind::Bootstrap`].
 /// * [`Role::Tool`] or any content part that is
 ///   [`ContentPart::ToolResult`] → [`PageKind::Evidence`].
 /// * Everything else → [`PageKind::Conversation`].
@@ -171,7 +171,7 @@ impl PageKind {
 /// assert_eq!(classify(&user), PageKind::Conversation);
 /// ```
 pub fn classify(msg: &Message) -> PageKind {
-    if matches!(msg.role, Role::System) {
+    if matches!(msg.role, Role::System | Role::Developer) {
         return PageKind::Bootstrap;
     }
     if matches!(msg.role, Role::Tool) {

@@ -1,6 +1,7 @@
 //! System-prompt rendering for persisted goal governance.
 
 mod goal;
+mod status;
 mod tasks;
 
 use super::TaskState;

@@ -52,7 +52,7 @@ fn assistant_msg(m: &Message) -> Value {
 
 fn text_msg(m: &Message) -> Value {
     let role = match m.role {
-        Role::System => "system",
+        Role::System | Role::Developer => "system",
         _ => "user",
     };
     json!({"role": role, "content": convert_helpers::collect_text(m)})

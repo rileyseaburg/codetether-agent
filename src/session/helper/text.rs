@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 
 pub fn role_label(role: Role) -> &'static str {
     match role {
-        Role::System => "System",
+        Role::System | Role::Developer => "System",
         Role::User => "User",
         Role::Assistant => "Assistant",
         Role::Tool => "Tool",

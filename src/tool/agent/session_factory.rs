@@ -32,7 +32,7 @@ use std::path::PathBuf;
 #[path = "session_factory/parent_policy.rs"]
 mod parent_policy;
 #[path = "session_factory/system_message.rs"]
-mod system_message;
+pub(super) mod system_message;
 use system_message::build as build_system_message;
 
 /// Create a fresh [`Session`] for a spawned sub-agent.

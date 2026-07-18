@@ -41,3 +41,7 @@ pub(super) fn accept(outcome: DrainOutcome, attempts: u32) -> Result<CompletionR
         _ => anyhow::bail!("provider stream ended without assistant content; none emitted"),
     }
 }
+
+#[cfg(test)]
+#[path = "fault_accept_tests.rs"]
+mod tests;

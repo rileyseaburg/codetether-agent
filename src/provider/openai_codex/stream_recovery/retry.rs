@@ -2,9 +2,9 @@
 
 use anyhow::Result;
 use futures::StreamExt;
-use std::{future::Future, time::Duration};
+use std::future::Future;
 
-use super::{Chunks, StreamChunk, attempt, attempt::Outcome, classify};
+use super::{Chunks, StreamChunk, attempt, attempt::Outcome, delay, log};
 
 const MAX_HTTP_ATTEMPTS: u32 = 3;
 
@@ -25,15 +25,11 @@ where
                     while let Some(chunk) = remaining.next().await { yield chunk; }
                     return;
                 }
-                Outcome::Retry(reason) => log_retry(0, &reason),
+                Outcome::Retry(reason) => log::retrying(0, &reason),
             }
         }
         for number in 1..=MAX_HTTP_ATTEMPTS {
-            let outcome = match retry().await {
-                Ok(stream) => attempt::inspect(stream).await,
-                Err(error) if classify::is_retryable(&format!("{error:#}")) => Outcome::Retry(format!("{error:#}")),
-                Err(error) => Outcome::Ready(StreamChunk::Error(format!("{error:#}")), Box::pin(futures::stream::empty())),
-            };
+            let outcome = attempt::open(retry().await).await;
             match outcome {
                 Outcome::Ready(first, mut remaining) => {
                     yield first;
@@ -41,8 +37,8 @@ where
                     return;
                 }
                 Outcome::Retry(reason) if number < MAX_HTTP_ATTEMPTS => {
-                    log_retry(number, &reason);
-                    tokio::time::sleep(Duration::from_secs(1 << (number - 1))).await;
+                    log::retrying(number, &reason);
+                    tokio::time::sleep(delay::before(number - 1, &reason)).await;
                 }
                 Outcome::Retry(reason) => {
                     yield StreamChunk::Error(format!("temporary Codex transport failure after {number} attempts: {reason}"));
@@ -50,8 +46,4 @@ where
             }
         }
     })
-}
-
-fn log_retry(attempt: u32, reason: &str) {
-    tracing::warn!(attempt, reason, "Codex transport retrying privately");
 }

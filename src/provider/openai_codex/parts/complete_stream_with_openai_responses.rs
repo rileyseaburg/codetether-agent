@@ -3,8 +3,9 @@ impl OpenAiCodexProvider {
         &self,
         request: CompletionRequest,
         api_key: String,
+        session_id: &str,
     ) -> Result<BoxStream<'static, StreamChunk>> {
-        if self.transport_health.requires_http() {
+        if self.transport_health.requires_http(session_id) {
             return Ok(stream_recovery::openai_http(self.clone(), request, api_key));
         }
         match self
@@ -14,6 +15,7 @@ impl OpenAiCodexProvider {
                 None,
                 "openai-responses-ws",
                 ResponsesWsBackend::OpenAi,
+                session_id,
             )
             .await
         {
@@ -25,7 +27,7 @@ impl OpenAiCodexProvider {
             )),
             Err(error) => {
                 tracing::warn!(error = %error, "Codex transport unavailable; switching to HTTP");
-                self.transport_health.mark_interrupted();
+                self.transport_health.mark_interrupted(session_id);
                 Ok(stream_recovery::openai_http(self.clone(), request, api_key))
             }
         }

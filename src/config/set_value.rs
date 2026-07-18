@@ -20,6 +20,11 @@ impl Config {
             }
             "a2a.server_url" => self.a2a.server_url = Some(value.to_string()),
             "a2a.worker_name" => self.a2a.worker_name = Some(value.to_string()),
+            "agents.max_threads" | "agents.max_concurrent_threads_per_session" => {
+                self.agents.max_concurrent_threads_per_session = Some(value.parse()?)
+            }
+            "agents.max_depth" => self.agents.max_depth = Some(value.parse()?),
+            "agents.interrupt_message" => self.agents.interrupt_message = Some(parse_bool(value)?),
             "ui.theme" => self.ui.theme = value.to_string(),
             "telemetry.crash_reporting" => {
                 self.telemetry.crash_reporting = Some(parse_bool(value)?)

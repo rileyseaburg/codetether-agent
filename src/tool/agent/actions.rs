@@ -21,12 +21,22 @@ use anyhow::{Context, Result};
 /// ```ignore
 /// let result = execute_kill(&params)?;
 /// ```
-pub(super) fn execute_kill(params: &Params) -> Result<ToolResult> {
+pub(super) async fn execute_kill(params: &Params) -> Result<ToolResult> {
     let name = params.name.as_deref().context("name required for kill")?;
-    Ok(handlers::handle_kill(
-        name,
-        params.parent_session_id.as_deref(),
-    ))
+    handlers::handle_kill(name, params.parent_session_id.as_deref()).await
+}
+
+/// Interrupts a running turn while preserving the spawned agent.
+pub(super) async fn execute_interrupt(params: &Params) -> Result<ToolResult> {
+    let name = params
+        .name
+        .as_deref()
+        .context("name required for interrupt")?;
+    let marker_enabled = crate::config::Config::load()
+        .await?
+        .agents
+        .interrupt_message_enabled();
+    handlers::handle_interrupt(name, params.parent_session_id.as_deref(), marker_enabled).await
 }
 
 /// Formats the fallback error result for unsupported actions.
@@ -38,6 +48,6 @@ pub(super) fn execute_kill(params: &Params) -> Result<ToolResult> {
 /// ```
 pub(super) fn unknown_action_result(action: &str) -> ToolResult {
     ToolResult::error(format!(
-        "Unknown action: {action}. Valid: spawn, message, list, status, kill"
+        "Unknown action: {action}. Valid: spawn, message, list, status, interrupt, close, resume, kill"
     ))
 }

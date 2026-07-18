@@ -1,6 +1,8 @@
 use std::path::Path;
 use std::sync::Arc;
 
+#[path = "commands/goal/mod.rs"]
+mod goal;
 #[path = "commands/open_editor.rs"]
 mod open_editor;
 use open_editor::open_editor;
@@ -171,102 +173,6 @@ async fn handle_mcp_command(app: &mut App, raw: &str) {
     app.state.status =
         "Usage: /mcp connect <name> <command...> | /mcp servers | /mcp tools [server] | /mcp call <server> <tool> [json]"
             .to_string();
-}
-
-/// Dispatch a `/goal ...` command — the human operator's manual entry
-/// point for the session task log.
-///
-/// Subcommands:
-/// - `/goal set <objective...>` — set the session objective.
-/// - `/goal done [reason]` — clear the goal.
-/// - `/goal reaffirm <note>` — record progress.
-/// - `/goal show` (or bare `/goal`) — print goal + open tasks.
-async fn handle_goal_command(app: &mut App, session: &Session, rest: &str) {
-    use crate::session::tasks::{TaskEvent, TaskLog, TaskState, governance_block};
-
-    let log = match TaskLog::for_session(&session.id) {
-        Ok(l) => l,
-        Err(e) => {
-            app.state.status = format!("/goal: {e}");
-            return;
-        }
-    };
-
-    let rest = rest.trim();
-    let (verb, tail) = match rest.split_once(char::is_whitespace) {
-        Some((v, t)) => (v, t.trim()),
-        None => (rest, ""),
-    };
-
-    let event = match verb {
-        "" | "show" | "status" => {
-            let events = log.read_all().await.unwrap_or_default();
-            let state = TaskState::from_log(&events);
-            let text = governance_block(&state)
-                .unwrap_or_else(|| "No goal and no tasks for this session.".to_string());
-            push_system_message(app, text);
-            app.state.status = "Goal shown".to_string();
-            return;
-        }
-        "set" => {
-            if tail.is_empty() {
-                app.state.status = "Usage: /goal set <objective>".to_string();
-                return;
-            }
-            TaskEvent::GoalSet {
-                at: chrono::Utc::now(),
-                objective: tail.to_string(),
-                success_criteria: Vec::new(),
-                forbidden: Vec::new(),
-                source_session_id: session.id.clone(),
-                source_turn_id: String::new(),
-                source_text_hash: String::new(),
-                source_kind: Default::default(),
-                confidence: 0.0,
-            }
-        }
-        "done" | "clear" => TaskEvent::GoalCleared {
-            at: chrono::Utc::now(),
-            reason: if tail.is_empty() {
-                "completed".to_string()
-            } else {
-                tail.to_string()
-            },
-        },
-        "reaffirm" => {
-            if tail.is_empty() {
-                app.state.status = "Usage: /goal reaffirm <progress note>".to_string();
-                return;
-            }
-            TaskEvent::GoalReaffirmed {
-                at: chrono::Utc::now(),
-                progress_note: tail.to_string(),
-            }
-        }
-        other => {
-            app.state.status =
-                format!("Unknown /goal subcommand `{other}`. Try: set | done | reaffirm | show");
-            return;
-        }
-    };
-
-    match log.append(&event).await {
-        Ok(()) => {
-            let summary = match &event {
-                TaskEvent::GoalSet { objective, .. } => format!("Goal set: {objective}"),
-                TaskEvent::GoalCleared { reason, .. } => format!("Goal cleared: {reason}"),
-                TaskEvent::GoalReaffirmed { progress_note, .. } => {
-                    format!("Goal reaffirmed: {progress_note}")
-                }
-                _ => "Goal updated".to_string(),
-            };
-            push_system_message(app, summary.clone());
-            app.state.status = summary;
-        }
-        Err(e) => {
-            app.state.status = format!("/goal write failed: {e}");
-        }
-    }
 }
 
 /// Dispatch a `/context ...` command for context/RLM health status.
@@ -826,7 +732,7 @@ pub async fn handle_slash_command(
     }
 
     if let Some(rest) = command_with_optional_args(&normalized, "/goal") {
-        handle_goal_command(app, session, rest).await;
+        goal::handle(app, session, rest).await;
         return;
     }
 

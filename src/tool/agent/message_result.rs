@@ -25,6 +25,7 @@ pub(super) use deliverable::{contract as deliverable_contract, effective_error};
 /// let result = build_message_result("name".into(), "ok".into(), String::new(), vec![], None);
 /// ```
 pub(super) fn build_message_result(
+    agent_id: String,
     name: String,
     response: String,
     thinking: String,
@@ -32,7 +33,7 @@ pub(super) fn build_message_result(
     error: Option<String>,
 ) -> ToolResult {
     let fallback = response.clone();
-    let mut output = json!({ "agent": name, "response": response });
+    let mut output = json!({ "agent_id": agent_id, "agent": name, "response": response });
     if !thinking.is_empty() {
         output["thinking"] = json!(thinking);
     }

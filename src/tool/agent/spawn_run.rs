@@ -1,60 +1,39 @@
-//! Auto-starts the first model turn after a sub-agent is spawned (issue #295).
-//!
-//! Previously, `spawn` only created a session and stored it — no model call was
-//! ever made until the caller explicitly invoked `message`. This left spawned
-//! agents permanently idle (`no_activity`).
-//!
-//! This module sends a kick-off user message and runs the turn either detached
-//! (background tokio task) or synchronously.
+//! Start and settle the first turn of a durable child agent.
 
-use super::bus_publish;
-use super::event_loop;
-use super::execution_state;
-use super::helpers;
-use super::message_detach;
-use super::message_finalize;
-use super::store;
-use crate::session::SessionEvent;
+use super::{event_loop, execution_state, message_detach, message_finalize};
 use crate::tool::ToolResult;
-use anyhow::{Context, Result};
-use tokio::sync::mpsc;
+use anyhow::Result;
 
-/// Kick off the first turn for a freshly spawned sub-agent.
-///
-/// When `detach` is true the turn runs in a background task and returns
-/// immediately; otherwise it blocks until the turn completes.
-pub(super) async fn kick_off(name: &str, detach: bool) -> Result<ToolResult> {
-    let Some(_guard) = execution_state::try_start(name) else {
+#[path = "spawn_run/start.rs"]
+mod start;
+
+pub(super) async fn kick_off(agent_id: &str, detach: bool) -> Result<ToolResult> {
+    let Some(guard) = execution_state::try_start(agent_id) else {
         return Ok(ToolResult::success(format!(
-            "Spawned @{name}. Agent will start once its current turn finishes."
+            "Spawned {agent_id}. Agent will start once its current turn finishes."
         )));
     };
-    let entry = store::get(name).context(format!("Agent @{name} vanished after spawn"))?;
-    let session = entry.session;
-    let kickoff = format!("Assigned task:\n\n{}", entry.instructions);
-    let registry = helpers::get_registry().await?;
-    bus_publish::announce_working(name, "starting first turn");
-    super::event_loop::live_trace::begin(name, kickoff.clone());
-    let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
-    let mut session_for_task = session.clone();
-    if session_for_task.bus.is_none() {
-        session_for_task.bus = crate::bus::global();
-    }
-    let handle = tokio::spawn(async move {
-        session_for_task
-            .prompt_with_events(&kickoff, tx, registry)
-            .await
-            .map(|_| session_for_task)
-    });
-    execution_state::register(name, &handle);
+    let (mut rx, handle) = start::begin(agent_id).await?;
+    execution_state::register(agent_id, &handle);
     if detach {
         return Ok(message_detach::dispatch(
-            name.to_string(),
-            _guard,
+            agent_id.to_string(),
+            guard,
             rx,
             handle,
+            None,
         ));
     }
-    let r = event_loop::run(name, &mut rx, handle).await;
-    Ok(message_finalize::finalize(name.to_string(), r.0, r.1, r.2, r.3, r.4).await)
+    let result = event_loop::run(agent_id, &mut rx, handle).await;
+    let output = message_finalize::finalize(
+        agent_id.to_string(),
+        result.0,
+        result.1,
+        result.2,
+        result.3,
+        result.4,
+    )
+    .await;
+    super::collaboration_runtime::message_queue::finished(agent_id.to_string(), None, guard).await;
+    Ok(output)
 }

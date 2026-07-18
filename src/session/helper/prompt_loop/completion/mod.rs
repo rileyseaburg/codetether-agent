@@ -26,6 +26,7 @@ pub(super) async fn complete(runner: &mut Runner<'_>, step: usize) -> Result<Com
         let result = super::super::prompt_call::complete_step(
             &runner.model.provider,
             request,
+            &runner.session.id,
             runner.model.supports_tools,
             runner.events.as_ref(),
         )
@@ -39,6 +40,8 @@ pub(super) async fn complete(runner: &mut Runner<'_>, step: usize) -> Result<Com
                     true,
                 );
                 super::response::usage(runner, &response, started.elapsed()).await;
+                runner.progress.goal_failure_signature = None;
+                runner.progress.goal_failure_repeats = 0;
                 return Ok(response);
             }
             Err(error) if recovery::recover(runner, step, &mut attempt, &error).await? => {}

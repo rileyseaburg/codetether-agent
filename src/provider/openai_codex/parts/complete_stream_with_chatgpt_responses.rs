@@ -3,12 +3,13 @@ impl OpenAiCodexProvider {
         &self,
         request: CompletionRequest,
         access_token: String,
+        session_id: &str,
     ) -> Result<BoxStream<'static, StreamChunk>> {
         let account_id = self.resolved_chatgpt_account_id(&access_token).context(
             "OpenAI Codex OAuth token is missing ChatGPT workspace/account ID. Re-run `codetether auth codex --device-code`.",
         )?;
         if Self::needs_chatgpt_http_transport(&request.model)
-            || self.transport_health.requires_http()
+            || self.transport_health.requires_http(session_id)
         {
             return Ok(stream_recovery::chatgpt_http(
                 self.clone(), request, access_token, account_id,
@@ -21,6 +22,7 @@ impl OpenAiCodexProvider {
                 Some(account_id.clone()),
                 "chatgpt-codex-responses-ws",
                 ResponsesWsBackend::ChatGptCodex,
+                session_id,
             )
             .await
         {
@@ -33,7 +35,7 @@ impl OpenAiCodexProvider {
             )),
             Err(error) => {
                 tracing::warn!(error = %error, "Codex transport unavailable; switching to HTTP");
-                self.transport_health.mark_interrupted();
+                self.transport_health.mark_interrupted(session_id);
                 Ok(stream_recovery::chatgpt_http(
                     self.clone(), request, access_token, account_id,
                 ))

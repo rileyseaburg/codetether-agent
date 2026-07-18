@@ -38,6 +38,7 @@ pub mod invalid;
 pub mod k8s_tool;
 pub mod lsp;
 include!("mcp_modules.rs");
+pub mod goal;
 pub mod mcp_tools;
 pub mod memory;
 pub mod morph_backend;
@@ -62,7 +63,6 @@ mod sandbox_paths;
 pub mod search;
 pub mod search_router;
 pub mod session_recall;
-pub mod session_task;
 pub mod skill;
 pub mod swarm_execute;
 pub mod swarm_share;
@@ -302,7 +302,7 @@ impl ToolRegistry {
         registry.register(Arc::new(patch::ApplyPatchTool::new()));
         registry.register(Arc::new(todo::TodoReadTool::new()));
         registry.register(Arc::new(todo::TodoWriteTool::new()));
-        registry.register(Arc::new(session_task::SessionTaskTool::new()));
+        goal::register(&mut registry);
         registry.register(Arc::new(context_reset::ContextResetTool));
         registry.register(Arc::new(context_browse::ContextBrowseTool));
         registry.register(Arc::new(context_budget::ContextBudgetTool));
@@ -331,7 +331,7 @@ impl ToolRegistry {
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
         // Agent orchestration tool
-        registry.register(Arc::new(agent::AgentTool::new()));
+        collaboration::register(&mut registry);
         // Swarm execution tool for parallel task execution
         registry.register(Arc::new(swarm_execute::SwarmExecuteTool::new()));
         // Relay autochat tool for autonomous agent communication
@@ -378,7 +378,7 @@ impl ToolRegistry {
         registry.register(Arc::new(patch::ApplyPatchTool::new()));
         registry.register(Arc::new(todo::TodoReadTool::new()));
         registry.register(Arc::new(todo::TodoWriteTool::new()));
-        registry.register(Arc::new(session_task::SessionTaskTool::new()));
+        goal::register(&mut registry);
         registry.register(Arc::new(context_reset::ContextResetTool));
         registry.register(Arc::new(context_browse::ContextBrowseTool));
         registry.register(Arc::new(context_budget::ContextBudgetTool));
@@ -419,7 +419,7 @@ impl ToolRegistry {
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
         // Agent orchestration tool
-        registry.register(Arc::new(agent::AgentTool::new()));
+        collaboration::register(&mut registry);
         // Swarm execution tool for parallel task execution
         registry.register(Arc::new(swarm_execute::SwarmExecuteTool::new()));
         // Relay autochat tool for autonomous agent communication
