@@ -1,0 +1,20 @@
+--- /dev/null
++++ tests/test_forgejo_author_lock.py
+@@ -0,0 +1,17 @@
++import pytest
++
++from a2a_server.forgejo_author_lock import serialized
++from tests.test_forgejo_author_protocol import metadata
++
++
++@pytest.mark.asyncio
++async def test_lock_fails_closed_when_database_is_unconfigured(monkeypatch):
++    from a2a_server import database as db
++
++    async def no_pool():
++        return None
++
++    monkeypatch.setattr(db, 'get_pool', no_pool)
++    with pytest.raises(RuntimeError, match='durable'):
++        async with serialized(metadata()):
++            pytest.fail('lock body must not run')

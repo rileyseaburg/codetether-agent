@@ -6,12 +6,15 @@ use crate::mux::model::MuxSnapshot;
 use crate::mux::protocol::{ClientRequest, ServerResponse};
 use crate::mux::registry::MuxRecord;
 
+mod coordination;
+mod coordination_identity;
 mod idle_benchmark;
 mod long_poll;
 mod pty;
 mod pty_io;
 mod pty_replay;
 mod pty_support;
+mod requests;
 
 #[tokio::test]
 async fn authenticated_client_reads_server_snapshot() {

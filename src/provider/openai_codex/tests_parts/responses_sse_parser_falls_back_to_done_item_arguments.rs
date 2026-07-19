@@ -6,7 +6,7 @@ fn responses_sse_parser_falls_back_to_done_item_arguments() {
 "#;
 
     let chunks = OpenAiCodexProvider::parse_responses_sse_bytes(&mut parser, bytes);
-    assert_eq!(chunks.len(), 3);
+    assert_eq!(chunks.len(), 4);
     match &chunks[0] {
         StreamChunk::ToolCallStart { id, name } => {
             assert_eq!(id, "call_2");
@@ -28,4 +28,10 @@ fn responses_sse_parser_falls_back_to_done_item_arguments() {
         StreamChunk::ToolCallEnd { id } => assert_eq!(id, "call_2"),
         other => panic!("expected tool end, got {other:?}"),
     }
+    assert_tool_checkpoint(
+        &chunks[3],
+        "call_2",
+        "read",
+        "{\"path\":\"src/main.rs\"}",
+    );
 }

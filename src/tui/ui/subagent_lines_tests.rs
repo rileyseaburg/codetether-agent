@@ -40,6 +40,8 @@ fn tool_agents_and_swarm_workers_share_the_dashboard() {
         parent: None,
         depth: 0,
         is_processing: true,
+        is_remote: false,
+        failed: false,
     };
     let text = fixture::text(&compose(&state, &[tool]));
     assert!(text.contains("managed: 1 · swarm: 1"));

@@ -11,12 +11,7 @@ async fn program_survives_detach_and_accepts_input_after_reconnect() {
     let mut first = MuxConnection::connect(&record).await.unwrap();
     let command = "read value; printf '%s' \"$value\" > mux-proof.txt; sleep 5";
     let started = first
-        .request(ClientRequest::StartProgram {
-            window_id: 0,
-            command: command.into(),
-            columns: 80,
-            rows: 24,
-        })
+        .request(super::requests::start(command))
         .await
         .unwrap();
     assert!(matches!(
@@ -27,11 +22,7 @@ async fn program_survives_detach_and_accepts_input_after_reconnect() {
 
     let mut second = MuxConnection::connect(&record).await.unwrap();
     let attached = second
-        .request(ClientRequest::AttachProgram {
-            window_id: 0,
-            columns: 100,
-            rows: 30,
-        })
+        .request(super::requests::attach(100, 30))
         .await
         .unwrap();
     assert!(matches!(
@@ -39,10 +30,7 @@ async fn program_survives_detach_and_accepts_input_after_reconnect() {
         ServerResponse::ProgramAttached { window_id: 0, .. }
     ));
     second
-        .request(ClientRequest::ProgramInput {
-            window_id: 0,
-            data: b"persisted\n".to_vec(),
-        })
+        .request(super::requests::input(b"persisted\n"))
         .await
         .unwrap();
     super::pty_io::wait_for(&proof).await;

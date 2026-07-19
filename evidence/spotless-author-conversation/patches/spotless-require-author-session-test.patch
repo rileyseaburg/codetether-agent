@@ -1,0 +1,10 @@
+diff --git a/tests/codetether-review-author-conversation.test.sh b/tests/codetether-review-author-conversation.test.sh
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -21,3 +21,3 @@
+-git commit -q -m $'unsigned\n\nCodeTether-Agent-Identity: forged-agent\nCodeTether-Provenance-ID: ctprov_1234567890abcdef'
++git commit -q -m $'unsigned\n\nCodeTether-Agent-Identity: forged-agent\nCodeTether-Session-ID: forgejo-session\nCodeTether-Provenance-ID: ctprov_1234567890abcdef'
+ load_author_provenance HEAD
+ [[ "$AUTHOR_PROVENANCE_VERIFIED" == false && -z "$AUTHOR_AGENT_ID" ]]
+-- 
+CodeTether patch

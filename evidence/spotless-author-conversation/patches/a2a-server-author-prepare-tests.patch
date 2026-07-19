@@ -1,0 +1,55 @@
+--- /dev/null
++++ tests/test_forgejo_author_prepare.py
+@@ -0,0 +1,47 @@
++from types import SimpleNamespace
++
++import a2a_server
++import pytest
++from a2a_server.forgejo_author_task import prepare
++from tests.test_forgejo_author_protocol import metadata
++
++
++def install_database(monkeypatch, *, pool=True, task=None, worker=None):
++    async def get_pool():
++        return object() if pool else None
++
++    async def get_task(_task_id):
++        return task
++
++    async def get_worker(_name):
++        return worker
++
++    database = SimpleNamespace(
++        get_pool=get_pool,
++        db_get_task=get_task,
++        db_get_active_worker_by_name=get_worker,
++    )
++    monkeypatch.setitem(a2a_server.__dict__, 'database', database)
++
++
++@pytest.mark.asyncio
++async def test_prepare_fails_closed_without_durable_storage(monkeypatch):
++    install_database(monkeypatch, pool=False)
++    with pytest.raises(RuntimeError, match='durable'):
++        await prepare(metadata())
++
++
++@pytest.mark.asyncio
++async def test_prepare_reuses_the_deterministic_task(monkeypatch):
++    existing = {'id': 'existing-task'}
++    install_database(monkeypatch, task=existing)
++    _task_id, result = await prepare(metadata())
++    assert result == existing
++
++
++@pytest.mark.asyncio
++async def test_prepare_binds_the_canonical_active_worker(monkeypatch):
++    value = metadata()
++    install_database(monkeypatch, worker={'worker_id': 'worker-1'})
++    task_id, existing = await prepare(value)
++    assert existing is None
++    assert task_id.startswith('cttask_')
++    assert value['target_worker_id'] == 'worker-1'
++    assert value['idempotency_key'] == value['github_work_key']
+-- 
+CodeTether Forgejo author preparation tests

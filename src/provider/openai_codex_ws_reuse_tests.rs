@@ -12,7 +12,7 @@ async fn completed_connection_handles_two_sequential_responses() {
             socket.next().await.unwrap().unwrap();
             for event in [
                 json!({"type":"response.output_text.delta","delta":text}),
-                json!({"type":"response.completed","response":{"status":"completed"}}),
+                json!({"type":"response.completed","response":{"id":format!("resp-{text}"),"status":"completed"}}),
             ] {
                 socket
                     .send(WsMessage::Text(event.to_string().into()))
@@ -39,6 +39,7 @@ async fn completed_connection_handles_two_sequential_responses() {
             json!({"type":"response.create"}),
             "session-a".to_string(),
             TransportHealth::default(),
+            TurnStateStore::default(),
             pool.clone(),
         )
         .collect::<Vec<_>>()

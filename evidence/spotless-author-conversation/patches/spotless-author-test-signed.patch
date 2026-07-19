@@ -1,0 +1,29 @@
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -28,6 +28,4 @@
+ printf 'signed\n' >> file.txt
+ git add file.txt
+-git commit -q -S -m signed -m 'CodeTether-Agent-Identity: author-agent' \
+-  -m 'CodeTether-Session-ID: author-session' \
+-  -m 'CodeTether-Provenance-ID: ctprov_1234567890abcdef'
++git commit -q -S -m $'signed\n\nCodeTether-Agent-Identity: author-agent\nCodeTether-Session-ID: author-session\nCodeTether-Provenance-ID: ctprov_1234567890abcdef'
+ HEAD_SHA="$(git rev-parse HEAD)"
+-- 
+CodeTether patch
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -12,9 +12,9 @@
+ git init -q "$tmp/repo"
+ cd "$tmp/repo"
+ git config user.name "CodeTether Agent"
+ git config user.email "author@example.test"
++git config commit.gpgsign false
+ printf 'unsigned\n' > file.txt
+ git add file.txt
+-git commit -q -m unsigned -m 'CodeTether-Agent-Identity: forged-agent' \
+-  -m 'CodeTether-Provenance-ID: ctprov_1234567890abcdef'
++git commit -q -m $'unsigned\n\nCodeTether-Agent-Identity: forged-agent\nCodeTether-Provenance-ID: ctprov_1234567890abcdef'
+ load_author_provenance HEAD
+-- 
+CodeTether patch
+--- /dev/null

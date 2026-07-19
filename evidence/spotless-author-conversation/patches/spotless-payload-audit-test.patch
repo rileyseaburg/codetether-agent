@@ -1,0 +1,14 @@
+diff --git a/tests/codetether-review-author-conversation.test.sh b/tests/codetether-review-author-conversation.test.sh
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -67,6 +67,8 @@
+   and .metadata.source=="forgejo-pr-review"
+   and .metadata.preserve_session_workspace==true
+   and .metadata.forgejo_author_login=="author-agent"
++  and .metadata.author_provenance_id=="ctprov_1234567890abcdef"
++  and (.metadata.git_signer|length)>0
+   and .metadata.head_sha==$head and .metadata.provenance_verified==true
+   and (.prompt|contains("BEGIN UNTRUSTED REVIEW MARKDOWN"))' \
+   "$tmp/payload.json" >/dev/null
+-- 
+CodeTether patch

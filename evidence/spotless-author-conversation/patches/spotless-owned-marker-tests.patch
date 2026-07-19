@@ -1,0 +1,31 @@
+diff --git a/tests/codetether-review-comment-owner.test.sh b/tests/codetether-review-comment-owner.test.sh
+--- a/tests/codetether-review-comment-owner.test.sh
++++ b/tests/codetether-review-comment-owner.test.sh
+@@ -3,10 +3,14 @@
+ 
+ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ source "$repo_root/scripts/codetether-review/comment_owner.sh"
++source "$repo_root/scripts/codetether-review/author_delivery.sh"
+ tmp="$(mktemp -d)"
+ trap 'rm -rf "$tmp"' EXIT
+ 
+-jq -n '[{user:{login:"attacker"},body:"spoof"},
+-  {user:{login:"codetether-bot"},body:"owned"}]' > "$tmp/comments.json"
++HEAD_SHA=head-sha
++jq -n --arg head "$HEAD_SHA" '[
++  {user:{login:"attacker"},body:("<!-- codetether-author-followup:"+$head+":spoof -->")},
++  {user:{login:"codetether-bot"},body:"owned"}]' > "$tmp/comments.json"
+ filter_owned_comments "$tmp/comments.json" codetether-bot "$tmp/owned.json"
+ jq -e 'length==1 and .[0].body=="owned"' "$tmp/owned.json" >/dev/null
++[[ -z "$(existing_author_followup_task "$tmp/owned.json")" ]]
+diff --git a/tests/playwright/codetether/pr-review-workflow.spec.ts b/tests/playwright/codetether/pr-review-workflow.spec.ts
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -91,2 +91,5 @@
+     expect(script).toContain("preserve_session_workspace:true");
++    expect(script).toContain(
++      'route_author_followup "$api_base" "$token" "$temp_dir/owned-comments.json"',
++    );
+     expect(script).toContain("codetether-author-followup:");
+-- 
+CodeTether patch

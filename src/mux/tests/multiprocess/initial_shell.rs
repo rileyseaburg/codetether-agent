@@ -1,6 +1,6 @@
 //! Multi-process proof that new sessions own a login shell immediately.
 
-use crate::mux::protocol::{ClientRequest, ServerResponse};
+use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
 #[tokio::test]
 async fn new_session_starts_with_persistent_shell() {
@@ -13,10 +13,12 @@ async fn new_session_starts_with_persistent_shell() {
         .unwrap();
 
     let response = client
-        .request(ClientRequest::AttachProgram {
-            window_id: 0,
-            columns: 80,
-            rows: 24,
+        .request(ClientRequest::Program {
+            request: ProgramRequest::Attach {
+                window_id: 0,
+                columns: 80,
+                rows: 24,
+            },
         })
         .await
         .unwrap();

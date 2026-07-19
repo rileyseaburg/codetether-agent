@@ -1,0 +1,25 @@
+diff --git a/tests/codetether-review-approval-credentials.test.sh b/tests/codetether-review-approval-credentials.test.sh
+--- a/tests/codetether-review-approval-credentials.test.sh
++++ b/tests/codetether-review-approval-credentials.test.sh
+@@ -17,3 +17,3 @@
+ run_case() {
+-  local author="$1" actor="$2" path="$3" excluded="${4:-}" event="$tmp/event.json"
++  local author="$1" actor="$2" path="$3" excluded="${4:-}" signer="${5:-}" event="$tmp/event.json"
+   jq -n --arg author "$author" '{pull_request:{user:{login:$author}}}' > "$event"
+@@ -20,3 +20,3 @@
+   : > "$tmp/vault-paths"; export VAULT_TOKEN=available
+-  load_forgejo_approval_credentials "$event" "$excluded"
++  load_forgejo_approval_credentials "$event" "$excluded" "$signer"
+   assert_eq "$approval_actor" "$actor"
+@@ -33,7 +33,8 @@
+ run_case riley codetether-bot kv/forgejo/codetether-bot spotless-agent
+ run_case riley spotless-agent kv/forgejo/spotlessbinco-agent codetether-bot
++run_case riley codetether-bot kv/forgejo/codetether-bot durable-agent spotless-agent
+ 
+ jq -n '{pull_request:{user:{login:"spotless-agent"}}}' > "$tmp/event.json"
+-if load_forgejo_approval_credentials "$tmp/event.json" codetether-bot >/dev/null 2>&1; then
++if load_forgejo_approval_credentials "$tmp/event.json" durable-agent codetether-bot >/dev/null 2>&1; then
+   fail "reviewer shared with the opener or verified agent was accepted"
+ fi
+-- 
+CodeTether patch

@@ -1,0 +1,48 @@
+diff --git a/tests/codetether-review-signature-owner.test.sh b/tests/codetether-review-signature-owner.test.sh
+--- a/tests/codetether-review-signature-owner.test.sh
++++ b/tests/codetether-review-signature-owner.test.sh
+@@ -9,15 +9,21 @@
+ FORGEJO_TOKEN=test-token
+ PR_AUTHOR_LOGIN=author-agent
+ REPO_FULL=owner/repo
+ head_sha=0123456789abcdef0123456789abcdef01234567
+-forgejo_request() {
+-  local output="$5"
+-  jq -n --arg sha "$head_sha" --arg signer "$mock_signer" \
+-    '{sha:$sha,commit:{verification:{verified:true,signer:{username:$signer}}}}' > "$output"
+-}
++mkdir -p "$tmp/bin"
++cat > "$tmp/bin/forgejo-cli" <<'SCRIPT'
++#!/usr/bin/env bash
++set -euo pipefail
++output="${@: -1}"
++jq -n --arg sha "$HEAD_SHA" --arg signer "$MOCK_SIGNER" \
++  '{sha:$sha,commit:{verification:{verified:true,signer:{username:$signer}}}}' > "$output"
++SCRIPT
++chmod +x "$tmp/bin/forgejo-cli"
++export PATH="$tmp/bin:$PATH"
++export HEAD_SHA="$head_sha"
+ 
+-mock_signer=attacker
++export MOCK_SIGNER=attacker
+ ! forgejo_signature_verified "$head_sha" "$tmp/mismatch.json"
+-mock_signer=author-agent
++export MOCK_SIGNER=author-agent
+ forgejo_signature_verified "$head_sha" "$tmp/match.json"
+ [[ "$AUTHOR_GIT_SIGNER" == forgejo:author-agent ]]
+diff --git a/tests/codetether-review-comment-owner.test.sh b/tests/codetether-review-comment-owner.test.sh
+--- a/tests/codetether-review-comment-owner.test.sh
++++ b/tests/codetether-review-comment-owner.test.sh
+@@ -6,10 +6,4 @@
+ tmp="$(mktemp -d)"
+ trap 'rm -rf "$tmp"' EXIT
+ 
+-forgejo_request() {
+-  [[ "$1" == GET ]]
+-  printf '{"login":"codetether-bot"}\n' > "$5"
+-}
+-[[ "$(forgejo_comment_actor https://forgejo.test token "$tmp/actor.json")" == codetether-bot ]]
+-
+ jq -n '[{user:{login:"attacker"},body:"spoof"},
+-- 
+CodeTether patch

@@ -1,0 +1,24 @@
+diff --git a/tests/codetether-review-approval-credentials.test.sh b/tests/codetether-review-approval-credentials.test.sh
+--- a/tests/codetether-review-approval-credentials.test.sh
++++ b/tests/codetether-review-approval-credentials.test.sh
+@@ -17,3 +17,3 @@
+ run_case() {
+-  local author="$1" actor="$2" path="$3" event="$tmp/event.json"
++  local author="$1" actor="$2" path="$3" excluded="${4:-}" event="$tmp/event.json"
+   jq -n --arg author "$author" '{pull_request:{user:{login:$author}}}' > "$event"
+@@ -19,4 +19,4 @@
+   jq -n --arg author "$author" '{pull_request:{user:{login:$author}}}' > "$event"
+   : > "$tmp/vault-paths"; export VAULT_TOKEN=available
+-  load_forgejo_approval_credentials "$event"
++  load_forgejo_approval_credentials "$event" "$excluded"
+   assert_eq "$approval_actor" "$actor"
+@@ -30,5 +30,7 @@
+ run_case spotless-agent codetether-bot kv/forgejo/codetether-bot
+ run_case codetether-bot spotless-agent kv/forgejo/spotlessbinco-agent
+ run_case riley spotless-agent kv/forgejo/spotlessbinco-agent
++run_case riley codetether-bot kv/forgejo/codetether-bot spotless-agent
++run_case riley spotless-agent kv/forgejo/spotlessbinco-agent codetether-bot
+ 
+ printf '{}\n' > "$tmp/missing-author.json"
+-- 
+CodeTether patch

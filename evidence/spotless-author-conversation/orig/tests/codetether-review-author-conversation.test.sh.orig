@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$repo_root/scripts/codetether-review/common.sh"
+source "$repo_root/scripts/codetether-review/author_provenance.sh"
+source "$repo_root/scripts/codetether-review/forgejo_signature.sh"
+source "$repo_root/scripts/codetether-review/author_payload.sh"
+source "$repo_root/scripts/codetether-review/author_delivery.sh"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+git init -q "$tmp/repo"
+cd "$tmp/repo"
+git config user.name "CodeTether Agent"
+git config user.email "author@example.test"
+git config commit.gpgsign false
+printf 'unsigned\n' > file.txt
+git add file.txt
+git commit -q -m $'unsigned\n\nCodeTether-Agent-Identity: forged-agent\nCodeTether-Provenance-ID: ctprov_1234567890abcdef'
+load_author_provenance HEAD
+[[ "$AUTHOR_PROVENANCE_VERIFIED" == false && -z "$AUTHOR_AGENT_ID" ]]
+
+unsigned_sha="$(git rev-parse HEAD)"
+REPO_FULL=owner/repo
+PR_AUTHOR_LOGIN=author-agent
+FORGEJO_TOKEN=test-token
+forgejo_request() {
+  local output="$5"
+  jq -n --arg sha "$unsigned_sha" '{sha:$sha,commit:{verification:{verified:true,
+    signer:{username:"author-agent"}}}}' > "$output"
+  printf '200\n'
+}
+load_author_provenance "$unsigned_sha" "$tmp/verification.json"
+[[ "$AUTHOR_PROVENANCE_VERIFIED" == true && "$AUTHOR_AGENT_ID" == forged-agent ]]
+[[ "$AUTHOR_GIT_SIGNER" == forgejo:author-agent ]]
+unset FORGEJO_TOKEN
+unset -f forgejo_request
+
+ssh-keygen -q -t ed25519 -N '' -f "$tmp/signing-key"
+printf 'author@example.test %s\n' "$(cat "$tmp/signing-key.pub")" > "$tmp/allowed-signers"
+git config gpg.format ssh
+git config user.signingkey "$tmp/signing-key"
+git config gpg.ssh.allowedSignersFile "$tmp/allowed-signers"
+printf 'signed\n' >> file.txt
+git add file.txt
+git commit -q -S -m $'signed\n\nCodeTether-Agent-Identity: author-agent\nCodeTether-Session-ID: author-session\nCodeTether-Provenance-ID: ctprov_1234567890abcdef'
+HEAD_SHA="$(git rev-parse HEAD)"
+BASE_SHA="$(git rev-parse HEAD^)"
+PR_NUMBER=42
+PR_AUTHOR_LOGIN=author-agent
+load_author_provenance "$HEAD_SHA"
+[[ "$AUTHOR_PROVENANCE_VERIFIED" == true ]]
+[[ "$AUTHOR_AGENT_ID" == author-agent ]]
+[[ "$AUTHOR_SESSION_ID" == author-session ]]
+
+jq -n '{markdown:"Review diagnostic",blocking_findings:1}' > "$tmp/review.json"
+write_author_followup_payload "$tmp/review.json" "$tmp/payload.json" \
+  "$(author_conversation_id)"
+jq -e --arg head "$HEAD_SHA" '.metadata.target_agent_name=="author-agent"
+  and .metadata.resume_session_id=="author-session"
+  and (.metadata.context_id|startswith("forgejo_pr_42_"))
+  and .metadata.preserve_session_workspace==true
+  and .metadata.forgejo_author_login=="author-agent"
+  and .metadata.head_sha==$head and .metadata.provenance_verified==true
+  and (.prompt|contains("BEGIN UNTRUSTED REVIEW MARKDOWN"))' \
+  "$tmp/payload.json" >/dev/null
+
+printf '[]\n' > "$tmp/comments.json"
+CODETETHER_URL=https://codetether.test/v1/agent/tasks
+CODETETHER_TOKEN=test-token
+create_codetether_task() {
+  jq -e '.metadata.target_agent_name=="author-agent"' "$3" >/dev/null
+  printf 'task-author-1\n'
+}
+task_id="$(ensure_author_followup "$tmp/comments.json" "$tmp/review.json" "$tmp")"
+[[ "$task_id" == task-author-1 ]]
+printf 'review\n' > "$tmp/review.md"
+append_author_followup_marker "$tmp/review.md" "$task_id"
+grep -F "<!-- codetether-author-followup:$HEAD_SHA:task-author-1 -->" \
+  "$tmp/review.md" >/dev/null
+jq -n --arg head "$HEAD_SHA" '[{body:("<!-- codetether-author-followup:"+$head+":task-author-1 -->")}]' \
+  > "$tmp/comments-existing.json"
+existing_author_followup_task "$tmp/comments-existing.json" | grep -Fx task-author-1
+

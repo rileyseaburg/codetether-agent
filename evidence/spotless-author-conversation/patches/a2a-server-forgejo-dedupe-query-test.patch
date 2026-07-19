@@ -1,0 +1,22 @@
+diff --git a/tests/test_forgejo_work_dedupe.py b/tests/test_forgejo_work_dedupe.py
+--- a/tests/test_forgejo_work_dedupe.py
++++ b/tests/test_forgejo_work_dedupe.py
+@@ -1,4 +1,6 @@
+ from contextlib import asynccontextmanager
++from types import SimpleNamespace
+ 
++import a2a_server
+ import pytest
+ from a2a_server import persistent_worker_pool as pool
+@@ -38,7 +40,6 @@
+     async def fake_get_pool():
+         return DatabasePool()
+ 
+-    from a2a_server import database
+-
+-    monkeypatch.setattr(database, 'get_pool', fake_get_pool)
++    database = SimpleNamespace(get_pool=fake_get_pool)
++    monkeypatch.setattr(a2a_server, 'database', database, raising=False)
+     task_id = await pool._active_github_work_task_id(key)
+-- 
+CodeTether patch

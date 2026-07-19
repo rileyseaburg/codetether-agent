@@ -7,7 +7,7 @@ fn responses_sse_parser_flushes_final_event_without_trailing_blank_line() {
     assert!(first.is_empty());
 
     let flushed = OpenAiCodexProvider::finish_responses_sse_parser(&mut parser);
-    assert_eq!(flushed.len(), 3);
+    assert_eq!(flushed.len(), 4);
     match &flushed[0] {
         StreamChunk::ToolCallStart { id, name } => {
             assert_eq!(id, "call_3");
@@ -29,4 +29,5 @@ fn responses_sse_parser_flushes_final_event_without_trailing_blank_line() {
         StreamChunk::ToolCallEnd { id } => assert_eq!(id, "call_3"),
         other => panic!("expected tool end, got {other:?}"),
     }
+    assert_tool_checkpoint(&flushed[3], "call_3", "read", "{\"path\":\"src/lib.rs\"}");
 }

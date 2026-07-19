@@ -1,0 +1,18 @@
+diff --git a/tests/codetether-review-author-conversation.test.sh b/tests/codetether-review-author-conversation.test.sh
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -38,5 +38,12 @@
+ load_author_provenance "$unsigned_sha" "$tmp/verification.json"
+ [[ "$AUTHOR_PROVENANCE_VERIFIED" == true && "$AUTHOR_AGENT_ID" == forged-agent ]]
+ [[ "$AUTHOR_GIT_SIGNER" == forgejo:author-agent ]]
++printf 'no session\n' >> file.txt
++git add file.txt
++git commit -q -m $'no session\n\nCodeTether-Agent-Identity: forged-agent\nCodeTether-Provenance-ID: ctprov_1234567890abcdef'
++FORGEJO_TEST_SHA="$(git rev-parse HEAD)"
++load_author_provenance "$FORGEJO_TEST_SHA" "$tmp/no-session.json"
++[[ "$AUTHOR_PROVENANCE_VERIFIED" == false && -z "$AUTHOR_AGENT_ID" ]]
++
+ unset FORGEJO_TOKEN
+ 
+-- 
+CodeTether patch

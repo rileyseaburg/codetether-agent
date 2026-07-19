@@ -1,0 +1,16 @@
+diff --git a/tests/codetether-review-author-conversation.test.sh b/tests/codetether-review-author-conversation.test.sh
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -27,8 +27,6 @@
+ PR_AUTHOR_LOGIN=author-agent
+ FORGEJO_TOKEN=test-token
+-forgejo_request() {
+-  local output="$5"
++forgejo-cli() {
+   jq -n --arg sha "$unsigned_sha" '{sha:$sha,commit:{verification:{verified:true,
+-    signer:{username:"author-agent"}}}}' > "$output"
+-  printf '200\n'
++    signer:{username:"author-agent"}}}}'
+ }
+-- 
+CodeTether patch

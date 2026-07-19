@@ -1,19 +1,21 @@
-//! Complete replay proof for programs that exit while detached.
+//! Bounded replay proof for programs that produced detached output.
 
 use crate::mux::client::MuxConnection;
-use crate::mux::protocol::{ClientRequest, ServerResponse};
+use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
 #[tokio::test]
-async fn exited_program_replays_every_buffered_chunk_after_reconnect() {
+async fn reconnect_replays_only_the_latest_output_chunk() {
     let workspace = tempfile::tempdir().unwrap();
     let (record, context, server) = super::pty_support::server(workspace.path().into()).await;
     let mut first = MuxConnection::connect(&record).await.unwrap();
     first
-        .request(ClientRequest::StartProgram {
-            window_id: 0,
-            command: "head -c 70000 /dev/zero | tr '\\000' x".into(),
-            columns: 80,
-            rows: 24,
+        .request(ClientRequest::Program {
+            request: ProgramRequest::Start {
+                window_id: 0,
+                command: "head -c 70000 /dev/zero | tr '\\000' x".into(),
+                columns: 80,
+                rows: 24,
+            },
         })
         .await
         .unwrap();
@@ -22,10 +24,12 @@ async fn exited_program_replays_every_buffered_chunk_after_reconnect() {
 
     let mut second = MuxConnection::connect(&record).await.unwrap();
     let attached = second
-        .request(ClientRequest::AttachProgram {
-            window_id: 0,
-            columns: 80,
-            rows: 24,
+        .request(ClientRequest::Program {
+            request: ProgramRequest::Attach {
+                window_id: 0,
+                columns: 80,
+                rows: 24,
+            },
         })
         .await
         .unwrap();
@@ -33,7 +37,7 @@ async fn exited_program_replays_every_buffered_chunk_after_reconnect() {
         panic!()
     };
     let output = super::pty_io::read_all(&mut second, &mut offset).await;
-    assert_eq!(output.len(), 70_000);
+    assert_eq!(output.len(), 64 * 1024);
     second.request(ClientRequest::Detach).await.unwrap();
     server.await.unwrap();
 }

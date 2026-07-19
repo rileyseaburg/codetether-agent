@@ -16,4 +16,7 @@ fn classifies_permanent() {
     assert!(!is_stream_disconnect("403 Forbidden"));
     assert!(!is_stream_disconnect("context length exceeded"));
     assert!(!is_stream_disconnect("invalid api key"));
+    assert!(!is_stream_disconnect(
+        "stream retry limit exhausted after 5 retries: connection reset"
+    ));
 }

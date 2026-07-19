@@ -1,22 +1,14 @@
 #[tokio::test(start_paused = true)]
-async fn retryable_openai_event_is_retried_inside_transport() {
-    let primary = Box::pin(stream::iter(vec![StreamChunk::Error(
-        "An error occurred while processing your request. You can retry your request. Request ID abc"
-            .into(),
-    )]));
+async fn retryable_request_failure_is_retried_before_streaming() {
     let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let observed = Arc::clone(&calls);
-    let recovered = stream_recovery::with_http_retry(Some(primary), move || {
+    let recovered = stream_recovery::with_http_retry(move || {
         let call = observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         async move {
-            let chunks = if call == 0 {
-                vec![StreamChunk::Error("service unavailable".into())]
-            } else {
-                vec![
-                    StreamChunk::Text("recovered".into()),
-                    StreamChunk::Done { usage: None },
-                ]
-            };
+            if call == 0 {
+                anyhow::bail!("OpenAI API error (503 Service Unavailable): overloaded");
+            }
+            let chunks = vec![StreamChunk::Text("recovered".into()), StreamChunk::Done { usage: None }];
             Ok(Box::pin(stream::iter(chunks)) as BoxStream<'static, StreamChunk>)
         }
     });
@@ -27,11 +19,31 @@ async fn retryable_openai_event_is_retried_inside_transport() {
 }
 
 #[tokio::test]
-async fn direct_http_starts_without_a_synthetic_primary_attempt() {
-    let recovered = stream_recovery::with_http_retry(None, || async {
-        Ok(Box::pin(stream::iter(vec![StreamChunk::Done { usage: None }]))
-            as BoxStream<'static, StreamChunk>)
+async fn request_retry_exhaustion_returns_to_stream_recovery() {
+    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let observed = Arc::clone(&calls);
+    let recovered = stream_recovery::with_http_retry(move || {
+        observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        async { anyhow::bail!("OpenAI API error (503 Service Unavailable): overloaded") }
     });
     let chunks = recovered.collect::<Vec<_>>().await;
-    assert!(matches!(&chunks[0], StreamChunk::Done { .. }));
+    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 5);
+    assert!(matches!(&chunks[0], StreamChunk::Error(message) if message.starts_with("codex-retryable:")));
+}
+
+#[tokio::test(start_paused = true)]
+async fn overload_code_stops_after_request_retry_exhaustion() {
+    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let observed = Arc::clone(&calls);
+    let recovered = stream_recovery::with_http_retry(move || {
+        observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        async {
+            anyhow::bail!(
+                "OpenAI API error (503 Service Unavailable): server_is_overloaded"
+            )
+        }
+    });
+    let chunks = recovered.collect::<Vec<_>>().await;
+    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 5);
+    assert!(matches!(&chunks[0], StreamChunk::Error(message) if message.starts_with("codex-permanent:")));
 }

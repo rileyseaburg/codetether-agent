@@ -1,5 +1,6 @@
 include!("tests_parts/allows_fast_alias_for_chatgpt_backend.rs");
 include!("tests_parts/allows_pro_model_for_api_key_backend.rs");
+include!("tests_parts/assert_tool_checkpoint.rs");
 include!("tests_parts/assert_tool_completion.rs");
 include!("tests_parts/assert_tool_start.rs");
 include!("tests_parts/builds_responses_ws_create_event_for_tools.rs");
@@ -19,6 +20,7 @@ include!("tests_parts/responses_input_preserves_developer_messages.rs");
 include!("tests_parts/responses_sse_parser_buffers_split_tool_call_events.rs");
 include!("tests_parts/responses_sse_parser_falls_back_to_done_item_arguments.rs");
 include!("tests_parts/responses_sse_parser_flushes_final_event_without_trailing_blank_line.rs");
+include!("tests_parts/responses_terminal_events_match_codex.rs");
 include!("tests_parts/responses_ws_connection_round_trips_json_events.rs");
 include!("tests_parts/responses_ws_request_includes_chatgpt_account_id_when_provided.rs");
 include!("tests_parts/responses_ws_request_uses_bearer_auth.rs");

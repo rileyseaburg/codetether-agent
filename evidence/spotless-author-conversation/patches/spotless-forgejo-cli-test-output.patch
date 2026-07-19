@@ -1,0 +1,13 @@
+diff --git a/tests/codetether-review-signature-owner.test.sh b/tests/codetether-review-signature-owner.test.sh
+--- a/tests/codetether-review-signature-owner.test.sh
++++ b/tests/codetether-review-signature-owner.test.sh
+@@ -15,6 +15,5 @@
+ #!/usr/bin/env bash
+ set -euo pipefail
+-output="${@: -1}"
+ jq -n --arg sha "$HEAD_SHA" --arg signer "$MOCK_SIGNER" \
+-  '{sha:$sha,commit:{verification:{verified:true,signer:{username:$signer}}}}' > "$output"
++  '{sha:$sha,commit:{verification:{verified:true,signer:{username:$signer}}}}'
+ SCRIPT
+-- 
+CodeTether patch

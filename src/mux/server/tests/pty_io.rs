@@ -1,7 +1,7 @@
 //! Polling and output collection helpers for PTY persistence tests.
 
 use crate::mux::client::MuxConnection;
-use crate::mux::protocol::{ClientRequest, ServerResponse};
+use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
 use super::super::context::ServerContext;
 
@@ -29,9 +29,11 @@ pub(super) async fn read_all(connection: &mut MuxConnection, offset: &mut u64) -
     let mut output = Vec::new();
     loop {
         let response = connection
-            .request(ClientRequest::ReadProgram {
-                window_id: 0,
-                offset: *offset,
+            .request(ClientRequest::Program {
+                request: ProgramRequest::Read {
+                    window_id: 0,
+                    offset: *offset,
+                },
             })
             .await
             .unwrap();

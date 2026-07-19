@@ -1,0 +1,164 @@
+import { expect, test } from "@playwright/test";
+import { execFile } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+const workflowPath = ".forgejo/workflows/codetether-pr-review.yml";
+const scriptPaths = [
+  "scripts/codetether-pr-review.sh",
+  "scripts/codetether-review/common.sh",
+  "scripts/codetether-review/context.sh",
+  "scripts/codetether-review/author_provenance.sh",
+  "scripts/codetether-review/forgejo_signature.sh",
+  "scripts/codetether-review/author_payload.sh",
+  "scripts/codetether-review/task_create.sh",
+  "scripts/codetether-review/author_delivery.sh",
+  "scripts/codetether-review/diff.sh",
+  "scripts/codetether-review/chunks.sh",
+  "scripts/codetether-review/chunk_pipeline.sh",
+  "scripts/codetether-review/payload.sh",
+  "scripts/codetether-review/request_async.sh",
+  "scripts/codetether-review/request_sync.sh",
+  "scripts/codetether-review/response.sh",
+  "scripts/codetether-review/forgejo.sh",
+  "scripts/codetether-review/approval_state.sh",
+  "scripts/codetether-review/approval.sh",
+  "scripts/codetether-review/approval_credentials.sh",
+];
+
+test.describe("CodeTether PR review workflow", () => {
+  test("fails loudly when review credentials are missing", async () => {
+    const workflow = await readFile(workflowPath, "utf8");
+    const script = (await Promise.all(scriptPaths.map((path) => readFile(path, "utf8")))).join("\n");
+
+    expect(workflow).not.toContain("continue-on-error: true");
+    expect(script).toContain("CodeTether review failed:");
+    expect(script).toContain("--rawfile diff");
+    expect(script).toContain("/v1/agent/tasks");
+    expect(script).not.toContain('blocking_findings // 0');
+  });
+
+  test("waits for a truthful async terminal state", async () => {
+    const workflow = await readFile(workflowPath, "utf8");
+    const script = (await Promise.all(scriptPaths.map((path) => readFile(path, "utf8")))).join("\n");
+
+    expect(workflow).toContain("CODETETHER_TASK_POLL_ATTEMPTS: '360'");
+    expect(workflow).toContain("CODETETHER_REVIEW_TARGET_AGENT: pr-review-worker");
+    expect(workflow).toContain("pull_request_target:");
+    expect(workflow).toContain("CODETETHER_REVIEW_MODEL: openai-codex/gpt-5.6-sol-fast:high");
+    expect(workflow).toContain("CODETETHER_REVIEW_AUTO_APPROVE: 'true'");
+    expect(workflow).toContain("CODETETHER_REVIEW_DIFF_MAX_BYTES: '1500000'");
+    expect(workflow).toContain("CODETETHER_REVIEW_CHUNK_MAX_BYTES: '200000'");
+    expect(workflow).toContain("CODETETHER_REVIEW_PROMPT_MAX_BYTES: '240000'");
+    expect(workflow).toContain("CODETETHER_REVIEW_TASK_MAX_BYTES: '900000'");
+    expect(script).toContain("CODETETHER_REVIEW_DIFF_MAX_BYTES:-1500000");
+    expect(script).toContain("CODETETHER_REVIEW_CHUNK_MAX_BYTES:-200000");
+    expect(script).toContain("CODETETHER_REVIEW_PROMPT_MAX_BYTES:-240000");
+    expect(script).toContain("CODETETHER_REVIEW_TASK_MAX_BYTES:-900000");
+    expect(workflow).toContain("FORGEJO_TOKEN: ${{ github.token }}");
+    expect(workflow).not.toContain("${{ secrets.FORGEJO_TOKEN }}");
+    expect(script).toContain('load_forgejo_approval_credentials "$EVENT_PATH"');
+    expect(script).toContain('CODETETHER_FORGEJO_APPROVAL_ACTOR="$approval_actor"');
+    expect(script).toContain("clear_forgejo_approval_credentials");
+    expect(workflow).toContain("bash tests/codetether-review-approval.test.sh");
+    expect(workflow).toContain("bash tests/codetether-review-approval-credentials.test.sh");
+    expect(workflow).toContain("bash tests/codetether-review-chunks.test.sh");
+    expect(workflow).toContain("bash tests/codetether-review-provenance.test.sh");
+    expect(workflow).toContain("bash tests/codetether-review-author-conversation.test.sh");
+    expect(workflow).toContain("bash tests/codetether-review-response.test.sh");
+    expect(script).toContain('event:"APPROVED"');
+    expect(script).toContain("current_head");
+    expect(script).toContain("CODETETHER_TASK_POLL_ATTEMPTS:-360");
+    expect(script).toContain("target_agent_name:$target_agent");
+    expect(script).toContain("task_timeout_seconds:$task_timeout");
+    expect(script).toContain("{model:$model}");
+    expect(script).toContain("CodeTether task failed with status $task_status");
+    expect(script).toContain("did not finish after $attempts poll attempts");
+    expect(script).toContain("git verify-commit");
+    expect(script).toContain("CodeTether-Agent-Identity");
+    expect(script).toContain(".commit.verification.verified");
+    expect(script).toContain(".commit.verification.signer.username");
+    expect(script).toContain("context_id:$context");
+    expect(script).toContain("forgejo_author_login:$forgejo_author");
+    expect(script).toContain("conversation_id:$context");
+    expect(script).toContain("target_agent_name:$target");
+    expect(script).toContain("preserve_session_workspace:true");
+    expect(script).toContain("codetether-author-followup:");
+  });
+
+  test("requires structured counts before a formal approval", async () => {
+    const payload = await readFile("scripts/codetether-review/payload.sh", "utf8");
+    const response = await readFile("scripts/codetether-review/response.sh", "utf8");
+    const approval = await readFile("scripts/codetether-review/approval.sh", "utf8");
+
+    expect(payload).toContain("Return exactly one JSON object");
+    expect(payload).toContain('"blocking_findings":0');
+    expect(payload).toContain('"reviewed_chunk_sha256":"hex"');
+    expect((await readFile("scripts/codetether-review/chunks.sh", "utf8"))).toContain(
+      ".reviewed_chunk_sha256 == $sha",
+    );
+    expect(response).toContain("select(type == \"number\" and . >= 0 and floor == .)");
+    expect(approval).toContain("if (( blocking != 0 ))");
+    expect(approval).toContain("A Forgejo approval credential is required");
+    expect((await readFile("scripts/codetether-review/approval_credentials.sh", "utf8"))).toContain("unset VAULT_TOKEN");
+    expect(approval).toContain("current_head");
+  });
+
+  test("normalizes async JSON and rejects a missing blocking count", async () => {
+    const responsePath = "scripts/codetether-review/response.sh";
+    const valid = await execFileAsync("bash", ["-c", `
+      set -euo pipefail; source "$1"; input="$(mktemp)"; output="$(mktemp)";
+      trap 'rm -f "$input" "$output"' EXIT;
+      printf '%s' '{"result":"{\\"markdown\\":\\"ready\\",\\"blocking_findings\\":2}"}' > "$input";
+      normalize_review_response "$input" "$output";
+      printf '%s:%s' "$(extract_review_markdown "$output")" "$(extract_blocking_findings "$output")"
+    `, "bash", responsePath]);
+    expect(valid.stdout).toBe("ready:2");
+
+    const prefixed = await execFileAsync("bash", ["-c", `
+      set -euo pipefail; source "$1"; input="$(mktemp)"; output="$(mktemp)";
+      trap 'rm -f "$input" "$output"' EXIT;
+      printf '%s' '{"result":"analysis before result\\n{\\"markdown\\":\\"ready\\",\\"blocking_findings\\":4}"}' > "$input";
+      normalize_review_response "$input" "$output";
+      printf '%s:%s' "$(extract_review_markdown "$output")" "$(extract_blocking_findings "$output")"
+    `, "bash", responsePath]);
+    expect(prefixed.stdout).toBe("ready:4");
+
+    const trailing = await execFileAsync("bash", ["-c", `
+      set -euo pipefail; source "$1"; input="$(mktemp)"; output="$(mktemp)";
+      trap 'rm -f "$input" "$output"' EXIT;
+      printf '%s' '{"result":"{\\"markdown\\":\\"ready\\",\\"blocking_findings\\":0,\\"nonblocking_findings\\":0}\\n\\nCommitted and pushed task changes: deadbeef on stale-branch"}' > "$input";
+      normalize_review_response "$input" "$output";
+      printf '%s:%s' "$(extract_review_markdown "$output")" "$(extract_blocking_findings "$output")"
+    `, "bash", responsePath]);
+    expect(trailing.stdout).toBe("ready:0");
+
+    const ambiguous = await execFileAsync("bash", ["-c", `
+      source "$1"; input="$(mktemp)"; output="$(mktemp)";
+      trap 'rm -f "$input" "$output"' EXIT;
+      printf '%s' '{"result":"{\\"markdown\\":\\"one\\",\\"blocking_findings\\":0} then {\\"markdown\\":\\"two\\",\\"blocking_findings\\":0}"}' > "$input";
+      normalize_review_response "$input" "$output";
+      extract_blocking_findings "$output"
+    `, "bash", responsePath]).then(() => false, () => true);
+    expect(ambiguous).toBe(true);
+
+    const missing = await execFileAsync("bash", ["-c", `
+      source "$1"; input="$(mktemp)"; output="$(mktemp)";
+      trap 'rm -f "$input" "$output"' EXIT;
+      printf '%s' '{"markdown":"unsafe"}' > "$input";
+      normalize_review_response "$input" "$output";
+      extract_blocking_findings "$output"
+    `, "bash", responsePath]).then(() => false, () => true);
+    expect(missing).toBe(true);
+  });
+
+  test("keeps every hand-written shell module valid and under 100 lines", async () => {
+    for (const path of scriptPaths) {
+      const source = await readFile(path, "utf8");
+      expect(source.trimEnd().split("\n").length).toBeLessThanOrEqual(100);
+      const { stderr } = await execFileAsync("bash", ["-n", path]);
+      expect(stderr).toBe("");
+    }
+  });
+});

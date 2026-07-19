@@ -32,6 +32,9 @@ fn ignores_non_retryable_bad_request_errors() {
     assert!(!is_retryable_provider_error(
         "OpenAI API error (422 Unprocessable Entity): Invalid request"
     ));
+    assert!(!is_retryable_provider_error(
+        "stream retry limit exhausted after 5 retries: service unavailable"
+    ));
 }
 
 #[test]

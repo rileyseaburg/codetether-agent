@@ -11,7 +11,7 @@ async fn completed_ws_releases_buffered_output() {
         socket.next().await.unwrap().unwrap();
         for event in [
             json!({"type":"response.output_text.delta","delta":"complete"}),
-            json!({"type":"response.completed","response":{"status":"completed"}}),
+            json!({"type":"response.completed","response":{"id":"resp-1","status":"completed"}}),
         ] {
             socket
                 .send(WsMessage::Text(event.to_string().into()))
@@ -32,6 +32,7 @@ async fn completed_ws_releases_buffered_output() {
         json!({"type":"response.create"}),
         "session-a".to_string(),
         health.clone(),
+        TurnStateStore::default(),
         pool.clone(),
     )
     .collect::<Vec<_>>()

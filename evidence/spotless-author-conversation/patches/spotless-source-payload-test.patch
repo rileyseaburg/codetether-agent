@@ -1,0 +1,12 @@
+diff --git a/tests/codetether-review-author-conversation.test.sh b/tests/codetether-review-author-conversation.test.sh
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -59,5 +59,6 @@
+ jq -e --arg head "$HEAD_SHA" '.metadata.target_agent_name=="author-agent"
+   and .metadata.resume_session_id=="author-session"
+   and (.metadata.context_id|startswith("forgejo_pr_42_"))
++  and .metadata.source=="forgejo-pr-review"
+   and .metadata.preserve_session_workspace==true
+   and .metadata.forgejo_author_login=="author-agent"
+-- 
+CodeTether patch

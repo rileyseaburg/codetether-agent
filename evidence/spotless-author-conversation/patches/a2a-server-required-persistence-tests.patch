@@ -1,0 +1,61 @@
+--- /dev/null
++++ tests/test_agent_bridge_required_persistence.py
+@@ -0,0 +1,48 @@
++import pytest
++
++from a2a_server.agent_bridge import AgentBridge
++
++
++def bridge_with_save_result(saved):
++    bridge = AgentBridge.__new__(AgentBridge)
++    bridge._tasks = {}
++    bridge._codebase_tasks = {}
++
++    async def save(_task):
++        return saved
++
++    bridge._save_task = save
++    return bridge
++
++
++@pytest.mark.asyncio
++async def test_required_persistence_rolls_back_new_task():
++    bridge = bridge_with_save_result(False)
++    task = await bridge.create_task(
++        codebase_id=None,
++        title='author review',
++        prompt='review',
++        task_id='cttask_fixed',
++        require_persistence=True,
++    )
++    assert task is None
++    assert 'cttask_fixed' not in bridge._tasks
++    assert bridge._codebase_tasks[None] == []
++
++
++@pytest.mark.asyncio
++async def test_required_persistence_rechecks_cached_task():
++    bridge = bridge_with_save_result(False)
++    cached = object()
++    bridge._tasks['cttask_fixed'] = cached
++    task = await bridge.create_task(
++        codebase_id=None,
++        title='author review',
++        prompt='review',
++        task_id='cttask_fixed',
++        require_persistence=True,
++    )
++    assert task is None
++
++
++@pytest.mark.asyncio
++async def test_non_required_cache_remains_backward_compatible():
++    bridge = bridge_with_save_result(False)
++    cached = object()
++    bridge._tasks['cttask_fixed'] = cached
++    task = await bridge.create_task(
++        codebase_id=None, title='legacy', prompt='legacy', task_id='cttask_fixed'
++    )
++    assert task is cached
+-- 
+CodeTether required persistence tests

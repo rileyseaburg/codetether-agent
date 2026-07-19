@@ -28,3 +28,11 @@ fn generic_provider_availability_is_retryable() {
     assert!(is_retryable_upstream_error(&err));
     assert!(!err.to_string().to_ascii_lowercase().contains("websocket"));
 }
+
+#[test]
+fn exhausted_stream_budget_is_not_retried_by_prompt_loop() {
+    let err = anyhow::anyhow!(
+        "stream retry limit exhausted after 5 retries: websocket connection reset"
+    );
+    assert!(!is_retryable_upstream_error(&err));
+}

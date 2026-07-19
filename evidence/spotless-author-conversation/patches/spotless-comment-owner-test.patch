@@ -1,0 +1,40 @@
+diff --git a/tests/codetether-review-comment-owner.test.sh b/tests/codetether-review-comment-owner.test.sh
+new file mode 100755
+--- /dev/null
++++ b/tests/codetether-review-comment-owner.test.sh
+@@ -0,0 +1,18 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
++source "$repo_root/scripts/codetether-review/comment_owner.sh"
++tmp="$(mktemp -d)"
++trap 'rm -rf "$tmp"' EXIT
++
++forgejo_request() {
++  [[ "$1" == GET ]]
++  printf '{"login":"codetether-bot"}\n' > "$5"
++}
++[[ "$(forgejo_comment_actor https://forgejo.test token "$tmp/actor.json")" == codetether-bot ]]
++
++jq -n '[{user:{login:"attacker"},body:"spoof"},
++  {user:{login:"codetether-bot"},body:"owned"}]' > "$tmp/comments.json"
++filter_owned_comments "$tmp/comments.json" codetether-bot "$tmp/owned.json"
++jq -e 'length==1 and .[0].body=="owned"' "$tmp/owned.json" >/dev/null
+diff --git a/.forgejo/workflows/codetether-pr-review.yml b/.forgejo/workflows/codetether-pr-review.yml
+--- a/.forgejo/workflows/codetether-pr-review.yml
++++ b/.forgejo/workflows/codetether-pr-review.yml
+@@ -64,3 +64,4 @@
+           bash tests/codetether-review-provenance.test.sh
+           bash tests/codetether-review-author-conversation.test.sh
++          bash tests/codetether-review-comment-owner.test.sh
+           bash tests/codetether-review-response.test.sh
+diff --git a/tests/playwright/codetether/pr-review-workflow.spec.ts b/tests/playwright/codetether/pr-review-workflow.spec.ts
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -69,2 +69,3 @@
+     expect(workflow).toContain("bash tests/codetether-review-author-conversation.test.sh");
++    expect(workflow).toContain("bash tests/codetether-review-comment-owner.test.sh");
+     expect(workflow).toContain("bash tests/codetether-review-response.test.sh");
+-- 
+CodeTether patch

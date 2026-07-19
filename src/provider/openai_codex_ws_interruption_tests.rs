@@ -1,5 +1,5 @@
 #[tokio::test]
-async fn interrupted_ws_keeps_partial_private_and_disables_ws() {
+async fn interrupted_ws_surfaces_failure_without_disabling_ws() {
     let (client_io, server_io) = duplex(16 * 1024);
     let server = tokio::spawn(async move {
         let mut socket =
@@ -32,13 +32,15 @@ async fn interrupted_ws_keeps_partial_private_and_disables_ws() {
         json!({"type":"response.create"}),
         "session-a".to_string(),
         health.clone(),
+        TurnStateStore::default(),
         pool.clone(),
     )
     .collect::<Vec<_>>()
     .await;
     server.await.unwrap();
-    assert!(chunks.is_empty(), "partial chunks must remain private");
-    assert!(health.requires_http("session-a"));
+    assert!(matches!(&chunks[0], StreamChunk::Text(text) if text == "secret partial"));
+    assert!(matches!(&chunks[1], StreamChunk::Error(message) if message.contains("response.completed")));
+    assert!(!health.requires_http("session-a"));
     assert!(!health.requires_http("session-b"));
     assert!(pool.take("session-a").await.is_none());
 }

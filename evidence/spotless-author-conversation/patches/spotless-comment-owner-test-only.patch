@@ -1,0 +1,13 @@
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -83,3 +83,8 @@
+ jq -n --arg head "$HEAD_SHA" '[{body:("<!-- codetether-author-followup:"+$head+":task-author-1 -->")}]' \
+   > "$tmp/comments-existing.json"
+ existing_author_followup_task "$tmp/comments-existing.json" | grep -Fx task-author-1
++jq -n '[{user:{login:"attacker"},body:"spoof"},
++  {user:{login:"codetether-bot"},body:"owned"}]' > "$tmp/comment-owners.json"
++filter_owned_comments "$tmp/comment-owners.json" codetether-bot \
++  "$tmp/owned-comments.json"
++jq -e 'length==1 and .[0].body=="owned"' "$tmp/owned-comments.json" >/dev/null
+-- 
+CodeTether patch
