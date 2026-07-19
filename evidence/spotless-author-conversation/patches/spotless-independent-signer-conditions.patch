@@ -1,0 +1,15 @@
+diff --git a/scripts/codetether-review/approval_credentials.sh b/scripts/codetether-review/approval_credentials.sh
+--- a/scripts/codetether-review/approval_credentials.sh
++++ b/scripts/codetether-review/approval_credentials.sh
+@@ -18,2 +18,3 @@
+-  if [[ "$author" != "spotless-agent" && "$excluded_agent" != "spotless-agent" ]]; then
++  if [[ "$author" != "spotless-agent" && "$excluded_agent" != "spotless-agent" \
++    && "$excluded_signer" != "spotless-agent" ]]; then
+     approval_actor="spotless-agent"
+@@ -21,2 +22,3 @@
+-  elif [[ "$author" != "codetether-bot" && "$excluded_agent" != "codetether-bot" ]]; then
++  elif [[ "$author" != "codetether-bot" && "$excluded_agent" != "codetether-bot" \
++    && "$excluded_signer" != "codetether-bot" ]]; then
+     approval_actor="codetether-bot"
+-- 
+CodeTether patch

@@ -1,0 +1,50 @@
+diff --git a/a2a_server/persistent_worker_pool.py b/a2a_server/persistent_worker_pool.py
+--- a/a2a_server/persistent_worker_pool.py
++++ b/a2a_server/persistent_worker_pool.py
+@@ -111,6 +111,6 @@
+             SELECT id
+             FROM tasks
+             WHERE status IN ('pending', 'queued', 'running', 'working')
+-              AND COALESCE(metadata, '{}'::jsonb)->>'source' = 'github-app'
++              AND COALESCE(metadata, '{}'::jsonb)->>'source' = split_part($1, ':', 1)
+               AND COALESCE(metadata, '{}'::jsonb)->>'github_work_key' = $1
+             ORDER BY created_at ASC
+diff --git a/tests/test_forgejo_work_dedupe.py b/tests/test_forgejo_work_dedupe.py
+--- a/tests/test_forgejo_work_dedupe.py
++++ b/tests/test_forgejo_work_dedupe.py
+@@ -1,1 +1,4 @@
++from contextlib import asynccontextmanager
++
++import pytest
+ from a2a_server import persistent_worker_pool as pool
+@@ -15,2 +18,28 @@
+         'forgejo-pr-review:owner/repo:7:forgejo-author-review:abc123'
+     )
++
++
++@pytest.mark.asyncio
++async def test_active_lookup_uses_source_embedded_in_work_key(monkeypatch):
++    key = 'forgejo-pr-review:owner/repo:7:forgejo-author-review:abc123'
++
++    class Connection:
++        async def fetchrow(self, query, *args):
++            assert "split_part($1, ':', 1)" in query
++            assert args == (key,)
++            return {'id': 'existing-task'}
++
++    class DatabasePool:
++        @asynccontextmanager
++        async def acquire(self):
++            yield Connection()
++
++    async def fake_get_pool():
++        return DatabasePool()
++
++    from a2a_server import database
++
++    monkeypatch.setattr(database, 'get_pool', fake_get_pool)
++    task_id = await pool._active_github_work_task_id(key)
++
++    assert task_id == 'existing-task'
+-- 
+CodeTether patch

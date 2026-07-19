@@ -1,0 +1,88 @@
+diff --git a/scripts/codetether-review/comment_owner.sh b/scripts/codetether-review/comment_owner.sh
+new file mode 100755
+--- /dev/null
++++ b/scripts/codetether-review/comment_owner.sh
+@@ -0,0 +1,15 @@
++#!/usr/bin/env bash
++
++forgejo_comment_actor() {
++  local api_base="$1" token="$2" output="$3" status
++  status="$(forgejo_request GET "${api_base%/}/user" "$token" '' "$output")"
++  require_http_success "$status" "Forgejo token identity" "$output"
++  jq -er '.login | select(type == "string" and length > 0)' "$output"
++}
++
++filter_owned_comments() {
++  local comments="$1" actor="$2" output="$3"
++  jq --arg actor "$actor" '[.[] | select(
++    ((.user.login // .user.username // "") == $actor)
++  )]' "$comments" > "$output"
++}
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -8,3 +8,4 @@
+ source "$script_dir/codetether-review/author_provenance.sh"
+ source "$script_dir/codetether-review/forgejo_signature.sh"
++source "$script_dir/codetether-review/comment_owner.sh"
+ source "$script_dir/codetether-review/author_payload.sh"
+@@ -81,7 +82,9 @@
+ fi
+ api_base="${FORGEJO_API_URL:-${GITHUB_SERVER_URL:-https://forgejo.quantum-forge.io}/api/v1}"
++comment_actor="$(forgejo_comment_actor "$api_base" "$token" "$temp_dir/comment-actor.json")"
+ load_pr_comments "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" "$comments_file"
++filter_owned_comments "$comments_file" "$comment_actor" "$temp_dir/owned-comments.json"
+ upsert_review_comment "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" \
+-  "$comments_file" "$review_marker" "$review_file" "$temp_dir/review-comment.json"
++  "$temp_dir/owned-comments.json" "$review_marker" "$review_file" "$temp_dir/review-comment.json"
+ route_author_followup "$api_base" "$token" "$comments_file" "$normalized_file" \
+-  "$review_file" "$temp_dir"
++  "$review_file" "$temp_dir" "$comment_actor"
+diff --git a/scripts/codetether-review/author_delivery.sh b/scripts/codetether-review/author_delivery.sh
+--- a/scripts/codetether-review/author_delivery.sh
++++ b/scripts/codetether-review/author_delivery.sh
+@@ -42,4 +42,4 @@
+ }
+ 
+ route_author_followup() {
+-  local api_base="$1" token="$2" comments="$3" review_json="$4" review_file="$5" temp_dir="$6"
++  local api_base="$1" token="$2" comments="$3" review_json="$4" review_file="$5" temp_dir="$6" actor="$7"
+@@ -49,5 +49,7 @@
+   append_author_followup_marker "$review_file" "$task_id"
+   load_pr_comments "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" \
+     "$temp_dir/comments-with-review.json"
++  filter_owned_comments "$temp_dir/comments-with-review.json" "$actor" \
++    "$temp_dir/owned-comments-with-review.json"
+   upsert_review_comment "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" \
+-    "$temp_dir/comments-with-review.json" "$review_marker" "$review_file" \
++    "$temp_dir/owned-comments-with-review.json" "$review_marker" "$review_file" \
+diff --git a/tests/codetether-review-author-conversation.test.sh b/tests/codetether-review-author-conversation.test.sh
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -6,3 +6,4 @@
+ source "$repo_root/scripts/codetether-review/author_provenance.sh"
+ source "$repo_root/scripts/codetether-review/forgejo_signature.sh"
++source "$repo_root/scripts/codetether-review/comment_owner.sh"
+ source "$repo_root/scripts/codetether-review/author_payload.sh"
+@@ -83,3 +84,8 @@
+ jq -n --arg head "$HEAD_SHA" '[{body:("<!-- codetether-author-followup:"+$head+":task-author-1 -->")}]' \
+   > "$tmp/comments-existing.json"
+ existing_author_followup_task "$tmp/comments-existing.json" | grep -Fx task-author-1
++jq -n '[{user:{login:"attacker"},body:"spoof"},
++  {user:{login:"codetether-bot"},body:"owned"}]' > "$tmp/comment-owners.json"
++filter_owned_comments "$tmp/comment-owners.json" codetether-bot \
++  "$tmp/owned-comments.json"
++jq -e 'length==1 and .[0].body=="owned"' "$tmp/owned-comments.json" >/dev/null
+diff --git a/tests/playwright/codetether/pr-review-workflow.spec.ts b/tests/playwright/codetether/pr-review-workflow.spec.ts
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -11,2 +11,3 @@
+   "scripts/codetether-review/author_provenance.sh",
+   "scripts/codetether-review/forgejo_signature.sh",
++  "scripts/codetether-review/comment_owner.sh",
+@@ -81,2 +82,3 @@
+     expect(script).toContain(".commit.verification.signer.username");
+     expect(script).toContain("context_id:$context");
++    expect(script).toContain("filter_owned_comments");
+-- 
+CodeTether patch

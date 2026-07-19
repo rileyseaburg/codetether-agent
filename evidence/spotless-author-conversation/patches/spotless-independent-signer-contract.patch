@@ -1,0 +1,11 @@
+diff --git a/tests/playwright/codetether/pr-review-workflow.spec.ts b/tests/playwright/codetether/pr-review-workflow.spec.ts
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -65,4 +65,5 @@
+     expect(script).toContain(
+       'load_forgejo_approval_credentials "$EVENT_PATH" "$AUTHOR_AGENT_ID"',
+     );
++    expect(script).toContain('"${AUTHOR_GIT_SIGNER#forgejo:}"');
+     expect(script.indexOf("resolve_commit_range")).toBeLessThan(
+-- 
+CodeTether patch

@@ -1,0 +1,27 @@
+--- a/scripts/codetether-review/author_payload.sh
++++ b/scripts/codetether-review/author_payload.sh
+@@ -31,4 +31,5 @@
+         workflow_stage:"forgejo-author-review",pr_head_sha:$head,head_sha:$head,
+         target_agent_name:$target,context_id:$context,conversation_id:$context,
+         author_agent_identity:$target,author_provenance_id:$provenance,
++        preserve_session_workspace:true,
+         provenance_verified:true,task_timeout_seconds:1800}
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -43,4 +43,5 @@
+ jq -e --arg head "$HEAD_SHA" '.metadata.target_agent_name=="author-agent"
+   and .metadata.resume_session_id=="author-session"
+   and (.metadata.context_id|startswith("forgejo_pr_42_"))
++  and .metadata.preserve_session_workspace==true
+   and .metadata.head_sha==$head and .metadata.provenance_verified==true
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -78,5 +78,6 @@
+     expect(script).toContain("CodeTether-Agent-Identity");
+     expect(script).toContain("context_id:$context");
+     expect(script).toContain("conversation_id:$context");
+     expect(script).toContain("target_agent_name:$target");
++    expect(script).toContain("preserve_session_workspace:true");
+     expect(script).toContain("codetether-author-followup:");
+-- 
+CodeTether patch

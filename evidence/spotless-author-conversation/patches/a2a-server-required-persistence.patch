@@ -1,0 +1,16 @@
+--- a2a_server/agent_bridge.py
++++ a2a_server/agent_bridge.py
+@@ -1691,4 +1691,10 @@
+         self._codebase_tasks[codebase_id].append(task_id)
+ 
+         # Persist to database
+-        await self._save_task(task)
++        saved = await self._save_task(task)
++        if require_persistence and not saved:
++            self._tasks.pop(task_id, None)
++            self._codebase_tasks[codebase_id] = [
++                value for value in self._codebase_tasks[codebase_id] if value != task_id
++            ]
++            return None
+-- 
+CodeTether required persistence

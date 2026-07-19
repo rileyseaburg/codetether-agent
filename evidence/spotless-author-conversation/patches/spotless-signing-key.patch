@@ -1,0 +1,34 @@
+diff --git a/config/codetether/author-signing-key.asc b/config/codetether/author-signing-key.asc
+new file mode 100644
+--- /dev/null	2026-07-18 11:44:46.783000000 +0000
++++ b/config/codetether/author-signing-key.asc	2026-07-18 22:47:27.946179220 +0000
+@@ -0,0 +1,29 @@
++-----BEGIN PGP PUBLIC KEY BLOCK-----
++
++mQINBGl5EngBEAC0i/J5YwXX8YLID14BGHhcfElevAu6y3JsY7/PelA1or/szHss
++nLZbRn/PczqSMH4Am1rlNvfn5wEZJZ/d2SokYZbXAqlUJbdjsuoNrHOOjcfeFcCc
++MIB2mJvI/mPrDy29gDeHTMy3rNB157gZekvvNR74cVUx96ji/rzA4CuNz+ttZElM
++9VjsJVphDbJ2fkHIb7So5D5jeWwLPVA0xTrkq+gd+OXA1Cjbees/ESW6nh7pMcpw
++uWHqxeT43VtZ3YPJ6Wn/Co/EgW/Au/JYHbPJM+TxLbzM7z2sNp/YIZ83DPoEPPju
++ksHvxV61MhShMgJfiXBP9kE1KSdMTk5OLaD5ysI2RcmP5irnn02Zqi3DcMAi3+3q
++BT3WY8Jcy7afG55KgbfR2MJ4sLdiBsaNJeFiEm4klQkXqTeiISQpao4oEZYfwGwH
++WlCk3QxO1DiH0iCI4sDhViKmrHhMdcvr0un9pS4k9FNCcjZ3JbPv3NVUAF9V0vb6
++Hqbasi7BjCeNrVudhbV2lJ5AzOc3PcixjEfqtDXFIgD+qApOPZtYeJLodkACbCAH
++bGVebY5ZhFB5W5GdZv0won1CN70kANOQ8qYK2qs3OYI/8pIT4VMXNME6sljoCjG5
++uzndt9MpNjJ6DhyEeMT1pd3SoiDL1Xc5mATD0aiYNirJHsHQfd7CUgN2mwARAQAB
++tCZSaWxleSBTZWFidXJnIDxyaWxleUByaWxleXNlYWJ1cmcuY29tPokCUgQTAQoA
++PBYhBLLbj9hE/i/KtjCeh7ky2AgKlfE7BQJpeRJ4AxsvBAULCQgHAgIiAgYVCgkI
++CwIEFgIDAQIeBwIXgAAKCRC5MtgICpXxO8ADD/4le9NvZ33K1Kuw1sii7IByFQtC
++8qKuAIoxrfS04xOuQKwukWyZPflJ4ApnVRy3iodMSF2vTGyOd4mZ8BEyQIeR63vX
++6m3HiX+o2bWm+WuYWs9j05GLC0C0YMzw879ifZPrSIhWzwXUy4abJ+FLQyeP1/C1
++zoktIMVsgL3+CLACHPFiAfCYIvMFjWJTlBtyUrSqcXl47W/kNadO7pc6QSUjwAx0
++BjUzhBQcpQhLsUUsTppymHhEuWWFUkNLhq9Tyog61+q+F0YfUTXsxneHwPSVjwdn
++Yr2QHj0jUldPSKyN4PKc5l5286mcXxYCbliPMICD5eBo+KLN4Hm5ZQZr7VocgcQr
++fzZK3hFFtnnX23nZq05gHQ0452m2FD7lrLPqoaZk+SLIg0M4snM+srFQmv3EQp0f
++OKFYojH7fYNrYQgKiiQacg+ETjbQNogTOOa2Jd1hPuUA/pdZOqFwWNTsBlfW5oNE
++Hn0LvbegKLVMBWDzOQtGjcv2C7JkrMjE2ECDAZCQBl/8gHsLP0X1jiXjiFA9KjGi
++Q26N/SBgHwhcdFuwYeRXiSrQUMGUxwmaHUMu0aDYqTVatvlsoG/dqRitR9oO80qv
++oHhyB4RnKN6D5Yjf2z83cxrt2EQMhrxZOqhIucRb2YXV9RF2LTA0vu+dha8/JXiN
++ERzVKwqvfNxdap+iwg==
++=Tkjc
++-----END PGP PUBLIC KEY BLOCK-----

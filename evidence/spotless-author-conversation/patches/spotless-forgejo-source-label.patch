@@ -1,0 +1,18 @@
+diff --git a/scripts/codetether-review/author_payload.sh b/scripts/codetether-review/author_payload.sh
+--- a/scripts/codetether-review/author_payload.sh
++++ b/scripts/codetether-review/author_payload.sh
+@@ -30,4 +30,4 @@
+         + "\n--- END UNTRUSTED REVIEW MARKDOWN ---"),
+       agent_type:"build",workspace_id:"global",priority:7,
+-      metadata:({source:"github-app",repo:$repo,pr_number:($pr|tonumber),
++      metadata:({source:"forgejo-pr-review",repo:$repo,pr_number:($pr|tonumber),
+         workflow_stage:"forgejo-author-review",pr_head_sha:$head,head_sha:$head,
+diff --git a/tests/playwright/codetether/pr-review-workflow.spec.ts b/tests/playwright/codetether/pr-review-workflow.spec.ts
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -91,2 +91,3 @@
+     expect(script).toContain("preserve_session_workspace:true");
++    expect(script).toContain('source:"forgejo-pr-review"');
+     expect(script).toContain(
+-- 
+CodeTether patch

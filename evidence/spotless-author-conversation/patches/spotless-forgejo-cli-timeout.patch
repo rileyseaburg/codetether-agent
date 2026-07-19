@@ -1,0 +1,31 @@
+diff --git a/scripts/codetether-review/forgejo_signature.sh b/scripts/codetether-review/forgejo_signature.sh
+--- a/scripts/codetether-review/forgejo_signature.sh
++++ b/scripts/codetether-review/forgejo_signature.sh
+@@ -7,4 +7,5 @@
+   [[ -n "$output" && -n "$token" && -n "$expected_author" ]] || return 1
+   api_base="${FORGEJO_API_URL:-${GITHUB_SERVER_URL:-https://forgejo.quantum-forge.io}/api/v1}"
+-  forgejo-cli --base "$api_base" --token "$token" get \
++  timeout --foreground "${CODETETHER_HTTP_TIMEOUT_SECONDS:-60}s" \
++    forgejo-cli --base "$api_base" --token "$token" get \
+     "/repos/$REPO_FULL/git/commits/$head" > "$output" || return 1
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -34,5 +34,6 @@
+ require_command jq
+ require_command curl
+ require_command forgejo-cli
++require_command timeout
+ require_command gpg
+ require_command python3
+diff --git a/tests/playwright/codetether/pr-review-workflow.spec.ts b/tests/playwright/codetether/pr-review-workflow.spec.ts
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -60,3 +60,5 @@
+     expect(script).toContain("require_command forgejo-cli");
++    expect(script).toContain("require_command timeout");
++    expect(script).toContain('timeout --foreground "${CODETETHER_HTTP_TIMEOUT_SECONDS:-60}s"');
+     expect(script).toContain("require_command gpg");
+     expect(workflow).toContain("config/codetether/author-signing-key.asc");
+-- 
+CodeTether patch

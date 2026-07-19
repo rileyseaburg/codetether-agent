@@ -1,0 +1,97 @@
+--- /dev/null
++++ a2a_server/forgejo_author_lock.py
+@@ -0,0 +1,30 @@
++"""Cross-replica serialization for one Forgejo author work item."""
++
++from contextlib import asynccontextmanager
++from typing import Any, AsyncIterator, Dict
++
++from .forgejo_author_task import task_identity
++
++
++@asynccontextmanager
++async def serialized(metadata: Dict[str, Any]) -> AsyncIterator[None]:
++    """Hold a PostgreSQL advisory lock for one immutable review work key."""
++    from . import database as db
++
++    key, _task_id = task_identity(metadata)
++    pool = await db.get_pool()
++    if pool is None:
++        raise RuntimeError('durable task storage is unavailable')
++    conn = await pool.acquire()
++    try:
++        await conn.execute(
++            'SELECT pg_advisory_lock(hashtextextended($1, 0))', key
++        )
++        yield
++    finally:
++        try:
++            await conn.execute(
++                'SELECT pg_advisory_unlock(hashtextextended($1, 0))', key
++            )
++        finally:
++            await pool.release(conn)
+--- /dev/null
++++ a2a_server/forgejo_author_service.py
+@@ -0,0 +1,41 @@
++"""Atomic creation service for verified Forgejo author conversations."""
++
++from typing import Any, Awaitable, Callable, Dict
++
++from .forgejo_author_lock import serialized
++from .forgejo_author_task import prepare
++
++WorkerValidator = Callable[..., Awaitable[None]]
++
++
++async def create(
++    bridge: Any,
++    task_data: Any,
++    metadata: Dict[str, Any],
++    routing_decision: Any,
++    workspace_id: str,
++    validate_worker: WorkerValidator,
++):
++    """Create or replay exactly one durable task for an immutable PR head."""
++    async with serialized(metadata):
++        task_id, existing = await prepare(metadata)
++        if existing:
++            return existing
++        await validate_worker(metadata, strict=True)
++        task = await bridge.create_task(
++            codebase_id=workspace_id,
++            title=task_data.title,
++            prompt=task_data.prompt,
++            agent_type=task_data.agent_type,
++            priority=task_data.priority,
++            model=metadata.get('model'),
++            metadata=metadata,
++            model_ref=routing_decision.model_ref,
++            task_id=task_id,
++            require_persistence=True,
++        )
++        if not task:
++            raise RuntimeError(
++                'verified author task could not be durably persisted'
++            )
++        return task
+--- /dev/null
++++ tests/test_forgejo_author_lock.py
+@@ -0,0 +1,17 @@
++import pytest
++
++from a2a_server.forgejo_author_lock import serialized
++from tests.test_forgejo_author_protocol import metadata
++
++
++@pytest.mark.asyncio
++async def test_lock_fails_closed_when_database_is_unconfigured(monkeypatch):
++    from a2a_server import database as db
++
++    async def no_pool():
++        return None
++
++    monkeypatch.setattr(db, 'get_pool', no_pool)
++    with pytest.raises(RuntimeError, match='durable'):
++        async with serialized(metadata()):
++            pytest.fail('lock body must not run')

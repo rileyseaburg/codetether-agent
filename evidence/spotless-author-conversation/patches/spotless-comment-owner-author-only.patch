@@ -1,0 +1,22 @@
+diff --git a/scripts/codetether-review/author_delivery.sh b/scripts/codetether-review/author_delivery.sh
+--- a/scripts/codetether-review/author_delivery.sh
++++ b/scripts/codetether-review/author_delivery.sh
+@@ -42,5 +42,5 @@
+ }
+ 
+ route_author_followup() {
+-  local api_base="$1" token="$2" comments="$3" review_json="$4" review_file="$5" temp_dir="$6"
++  local api_base="$1" token="$2" comments="$3" review_json="$4" review_file="$5" temp_dir="$6" actor="$7"
+   local task_id
+@@ -49,6 +49,8 @@
+   append_author_followup_marker "$review_file" "$task_id"
+   load_pr_comments "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" \
+     "$temp_dir/comments-with-review.json"
++  filter_owned_comments "$temp_dir/comments-with-review.json" "$actor" \
++    "$temp_dir/owned-comments-with-review.json"
+   upsert_review_comment "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" \
+-    "$temp_dir/comments-with-review.json" "$review_marker" "$review_file" \
++    "$temp_dir/owned-comments-with-review.json" "$review_marker" "$review_file" \
+     "$temp_dir/review-conversation-comment.json"
+-- 
+CodeTether patch

@@ -1,0 +1,8 @@
+diff --git a/scripts/codetether-review/approval_credentials.sh b/scripts/codetether-review/approval_credentials.sh
+--- a/scripts/codetether-review/approval_credentials.sh
++++ b/scripts/codetether-review/approval_credentials.sh
+@@ -4 +4 @@
+-# Parameters: pull-request event path and optional verified author agent.
++# Parameters: event path, optional author agent ID, optional verified signer login.
+-- 
+CodeTether patch

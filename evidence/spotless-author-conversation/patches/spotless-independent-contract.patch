@@ -1,0 +1,27 @@
+diff --git a/scripts/codetether-review/approval_credentials.sh b/scripts/codetether-review/approval_credentials.sh
+--- a/scripts/codetether-review/approval_credentials.sh
++++ b/scripts/codetether-review/approval_credentials.sh
+@@ -1,6 +1,7 @@
+ #!/usr/bin/env bash
+ 
+-# Selects a real Forgejo reviewer that is not the pull-request author.
++# Selects a reviewer distinct from the PR opener and verified author agent.
++# Parameters: pull-request event path and optional verified author agent.
+ # Sets non-exported approval_actor and approval_token for the trusted workflow.
+ load_forgejo_approval_credentials() {
+   local event_path="$1" excluded_agent="${2:-}" author vault_path
+diff --git a/tests/playwright/codetether/pr-review-workflow.spec.ts b/tests/playwright/codetether/pr-review-workflow.spec.ts
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -62,3 +62,9 @@
+     expect(script).toContain('timeout --foreground "${CODETETHER_HTTP_TIMEOUT_SECONDS:-60}s"');
+     expect(script).toContain("require_command gpg");
++    expect(script).toContain(
++      'load_forgejo_approval_credentials "$EVENT_PATH" "$AUTHOR_AGENT_ID"',
++    );
++    expect(script.indexOf("resolve_commit_range")).toBeLessThan(
++      script.indexOf("load_author_provenance"),
++    );
+     expect(workflow).toContain("config/codetether/author-signing-key.asc");
+-- 
+CodeTether patch

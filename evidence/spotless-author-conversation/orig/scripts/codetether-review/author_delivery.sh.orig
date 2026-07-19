@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+author_conversation_id() {
+  local digest
+  digest="$(printf '%s' "$REPO_FULL#$PR_NUMBER" | git hash-object --stdin)"
+  printf 'forgejo_pr_%s_%s\n' "$PR_NUMBER" "${digest:0:20}"
+}
+
+existing_author_followup_task() {
+  local comments="$1" prefix
+  prefix="<!-- codetether-author-followup:${HEAD_SHA}:"
+  jq -r --arg prefix "$prefix" '[.[] | (.body // "") | split("\n")[]
+    | select(startswith($prefix)) | ltrimstr($prefix) | split(" -->")[0]]
+    | first // empty' "$comments"
+}
+
+ensure_author_followup() {
+  local comments="$1" review="$2" temp_dir="$3" existing context payload response task_id
+  [[ "$AUTHOR_PROVENANCE_VERIFIED" == true ]] || return 0
+  existing="$(existing_author_followup_task "$comments")"
+  if [[ "$existing" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
+    log "Author follow-up already exists for ${HEAD_SHA:0:12}: $existing" >&2
+    printf '%s\n' "$existing"
+    return 0
+  fi
+  context="$(author_conversation_id)"
+  payload="$temp_dir/author-followup-payload.json"
+  response="$temp_dir/author-followup-response.json"
+  write_author_followup_payload "$review" "$payload" "$context"
+  task_id="$(create_codetether_task "$CODETETHER_URL" "$CODETETHER_TOKEN" \
+    "$payload" "$response")"
+  log "Queued verified author conversation task $task_id for $AUTHOR_AGENT_ID" >&2
+  printf '%s\n' "$task_id"
+}
+
+append_author_followup_marker() {
+  local review_file="$1" task_id="$2"
+  [[ "$task_id" =~ ^[A-Za-z0-9_-]{1,128}$ ]] || return 1
+  printf '\n<!-- codetether-author-followup:%s:%s -->\n' "$HEAD_SHA" "$task_id" >> "$review_file"
+  printf '_Reviewer conversation routed to signed author `%s` as task `%s`._\n' \
+    "$AUTHOR_AGENT_ID" "$task_id" >> "$review_file"
+}
+
+route_author_followup() {
+  local api_base="$1" token="$2" comments="$3" review_json="$4" review_file="$5" temp_dir="$6"
+  local task_id
+  task_id="$(ensure_author_followup "$comments" "$review_json" "$temp_dir")"
+  [[ -n "$task_id" ]] || return 0
+  append_author_followup_marker "$review_file" "$task_id"
+  load_pr_comments "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" \
+    "$temp_dir/comments-with-review.json"
+  upsert_review_comment "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" \
+    "$temp_dir/comments-with-review.json" "$review_marker" "$review_file" \
+    "$temp_dir/review-conversation-comment.json"
+}

@@ -1,0 +1,12 @@
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -83,5 +83,5 @@
+ filter_owned_comments "$comments_file" "$comment_actor" "$temp_dir/owned-comments.json"
+ upsert_review_comment "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" \
+   "$temp_dir/owned-comments.json" "$review_marker" "$review_file" "$temp_dir/review-comment.json"
+-route_author_followup "$api_base" "$token" "$comments_file" "$normalized_file" \
++route_author_followup "$api_base" "$token" "$temp_dir/owned-comments.json" "$normalized_file" \
+   "$review_file" "$temp_dir" "$comment_actor"
+-- 
+CodeTether patch

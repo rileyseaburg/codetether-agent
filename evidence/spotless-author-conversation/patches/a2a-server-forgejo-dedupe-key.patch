@@ -1,0 +1,35 @@
+diff --git a/a2a_server/persistent_worker_pool.py b/a2a_server/persistent_worker_pool.py
+--- a/a2a_server/persistent_worker_pool.py
++++ b/a2a_server/persistent_worker_pool.py
+@@ -65,6 +65,6 @@
+ 
+     if not (repo and number and stage):
+         return None
+-    return f'github-app:{repo}:{number}:{stage}:{head_sha}'
++    return f'{source}:{repo}:{number}:{stage}:{head_sha}'
+ 
+ 
+diff --git a/tests/test_forgejo_work_dedupe.py b/tests/test_forgejo_work_dedupe.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_forgejo_work_dedupe.py
+@@ -0,0 +1,17 @@
++from a2a_server import persistent_worker_pool as pool
++
++
++def test_forgejo_review_uses_active_work_dedupe_key():
++    key = pool._github_work_key(
++        {
++            'source': 'forgejo-pr-review',
++            'repo': 'owner/repo',
++            'pr_number': 7,
++            'workflow_stage': 'forgejo-author-review',
++            'pr_head_sha': 'abc123',
++        }
++    )
++
++    assert key == (
++        'forgejo-pr-review:owner/repo:7:forgejo-author-review:abc123'
++    )
+-- 
+CodeTether patch

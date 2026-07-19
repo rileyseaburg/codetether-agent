@@ -1,0 +1,49 @@
+diff --git a/scripts/codetether-review/approval_credentials.sh b/scripts/codetether-review/approval_credentials.sh
+--- a/scripts/codetether-review/approval_credentials.sh
++++ b/scripts/codetether-review/approval_credentials.sh
+@@ -4,4 +4,5 @@
+ # Parameters: pull-request event path and optional verified author agent.
+ # Sets non-exported approval_actor and approval_token for the trusted workflow.
+ load_forgejo_approval_credentials() {
+-  local event_path="$1" excluded_agent="${2:-}" author vault_path
++  local event_path="$1" excluded_agent="${2:-}" excluded_signer="${3:-}"
++  local author vault_path
+@@ -17,1 +18,2 @@
+-  if [[ "$author" != "spotless-agent" && "$excluded_agent" != "spotless-agent" ]]; then
++  if [[ "$author" != "spotless-agent" && "$excluded_agent" != "spotless-agent" \
++    && "$excluded_signer" != "spotless-agent" ]]; then
+@@ -20,1 +21,2 @@
+-  elif [[ "$author" != "codetether-bot" && "$excluded_agent" != "codetether-bot" ]]; then
++  elif [[ "$author" != "codetether-bot" && "$excluded_agent" != "codetether-bot" \
++    && "$excluded_signer" != "codetether-bot" ]]; then
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -53,5 +53,6 @@
+ temp_dir="$(mktemp -d)"
+ trap 'rm -rf "$temp_dir"' EXIT
+ load_author_provenance "$HEAD_SHA" "$temp_dir/author-commit.json"
+-load_forgejo_approval_credentials "$EVENT_PATH" "$AUTHOR_AGENT_ID"
++load_forgejo_approval_credentials "$EVENT_PATH" "$AUTHOR_AGENT_ID" \
++  "${AUTHOR_GIT_SIGNER#forgejo:}"
+ CODETETHER_FORGEJO_APPROVAL_ACTOR="$approval_actor"
+diff --git a/tests/codetether-review-approval-credentials.test.sh b/tests/codetether-review-approval-credentials.test.sh
+--- a/tests/codetether-review-approval-credentials.test.sh
++++ b/tests/codetether-review-approval-credentials.test.sh
+@@ -17,2 +17,2 @@
+ run_case() {
+-  local author="$1" actor="$2" path="$3" excluded="${4:-}" event="$tmp/event.json"
++  local author="$1" actor="$2" path="$3" excluded="${4:-}" signer="${5:-}" event="$tmp/event.json"
+@@ -21,1 +21,1 @@
+-  load_forgejo_approval_credentials "$event" "$excluded"
++  load_forgejo_approval_credentials "$event" "$excluded" "$signer"
+@@ -33,5 +33,6 @@
+ run_case riley codetether-bot kv/forgejo/codetether-bot spotless-agent
+ run_case riley spotless-agent kv/forgejo/spotlessbinco-agent codetether-bot
++run_case riley codetether-bot kv/forgejo/codetether-bot durable-agent spotless-agent
+ 
+ jq -n '{pull_request:{user:{login:"spotless-agent"}}}' > "$tmp/event.json"
+-if load_forgejo_approval_credentials "$tmp/event.json" codetether-bot >/dev/null 2>&1; then
++if load_forgejo_approval_credentials "$tmp/event.json" durable-agent codetether-bot >/dev/null 2>&1; then
+-- 
+CodeTether patch

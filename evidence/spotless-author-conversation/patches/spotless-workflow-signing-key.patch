@@ -1,0 +1,41 @@
+diff --git a/.forgejo/workflows/codetether-pr-review.yml b/.forgejo/workflows/codetether-pr-review.yml
+--- a/.forgejo/workflows/codetether-pr-review.yml
++++ b/.forgejo/workflows/codetether-pr-review.yml
+@@ -58,4 +58,6 @@
+           for helper in scripts/codetether-pr-review.sh scripts/codetether-review/*.sh; do
+             bash -n "$helper"
+           done
++          gpg --show-keys --with-colons config/codetether/author-signing-key.asc |
++            grep -Fq ':B2DB8FD844FE2FCAB6309E87B932D8080A95F13B:'
+           bash tests/codetether-review-approval.test.sh
+@@ -71,5 +73,9 @@
+         shell: bash
+         run: |
+           set -euo pipefail
++          export GNUPGHOME="$(mktemp -d)"
++          trap 'rm -rf "$GNUPGHOME"' EXIT
++          chmod 700 "$GNUPGHOME"
++          gpg --batch --import config/codetether/author-signing-key.asc
+           chmod +x scripts/codetether-pr-review.sh
+           scripts/codetether-pr-review.sh
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -34,4 +34,5 @@
+ require_command jq
+ require_command curl
+ require_command forgejo-cli
++require_command gpg
+ require_command python3
+diff --git a/tests/playwright/codetether/pr-review-workflow.spec.ts b/tests/playwright/codetether/pr-review-workflow.spec.ts
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -59,3 +59,6 @@
+     expect(script).toContain("CODETETHER_REVIEW_TASK_MAX_BYTES:-900000");
+     expect(script).toContain("require_command forgejo-cli");
++    expect(script).toContain("require_command gpg");
++    expect(workflow).toContain("config/codetether/author-signing-key.asc");
++    expect(workflow).toContain('export GNUPGHOME="$(mktemp -d)"');
+     expect(workflow).toContain("FORGEJO_TOKEN: ${{ github.token }}");
+-- 
+CodeTether patch

@@ -1,0 +1,14 @@
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -16,3 +16,8 @@
+ source "$script_dir/codetether-review/approval_state.sh"
+ source "$script_dir/codetether-review/approval.sh"
+ source "$script_dir/codetether-review/approval_credentials.sh"
++source "$script_dir/codetether-review/author_signature.sh"
++source "$script_dir/codetether-review/author_identity.sh"
++source "$script_dir/codetether-review/author_payload.sh"
++source "$script_dir/codetether-review/task_create.sh"
++source "$script_dir/codetether-review/author_delivery.sh"
+-- 
+CodeTether universal author sources

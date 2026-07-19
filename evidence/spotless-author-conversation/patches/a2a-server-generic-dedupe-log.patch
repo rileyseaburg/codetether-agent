@@ -1,0 +1,17 @@
+diff --git a/a2a_server/persistent_worker_pool.py b/a2a_server/persistent_worker_pool.py
+--- a/a2a_server/persistent_worker_pool.py
++++ b/a2a_server/persistent_worker_pool.py
+@@ -72,1 +72,1 @@
+-    """Serialize GitHub App task creation for one work key across API pods."""
++    """Serialize source-control task creation for one work key across API pods."""
+@@ -97,1 +97,1 @@
+-    """Return the oldest active task for a GitHub App idempotency key."""
++    """Return the oldest active task for a source-control idempotency key."""
+@@ -173,3 +173,3 @@
+         if existing_task_id:
+             logger.info(
+-                'Reusing active GitHub App task %s for work key %s',
++                'Reusing active source-control task %s for work key %s',
+                 existing_task_id,
+-- 
+CodeTether patch

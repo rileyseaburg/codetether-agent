@@ -1,0 +1,35 @@
+diff --git a/scripts/codetether-review/forgejo_signature.sh b/scripts/codetether-review/forgejo_signature.sh
+--- a/scripts/codetether-review/forgejo_signature.sh
++++ b/scripts/codetether-review/forgejo_signature.sh
+@@ -3,5 +3,6 @@
+ forgejo_signature_verified() {
+   local head="$1" output="$2" token="${FORGEJO_TOKEN:-}"
++  local expected_author="${PR_AUTHOR_LOGIN:-}"
+   local api_base status verified signer response_sha
+-  [[ -n "$output" && -n "$token" ]] || return 1
++  [[ -n "$output" && -n "$token" && -n "$expected_author" ]] || return 1
+   api_base="${FORGEJO_API_URL:-${GITHUB_SERVER_URL:-https://forgejo.quantum-forge.io}/api/v1}"
+diff --git a/scripts/codetether-review/author_payload.sh b/scripts/codetether-review/author_payload.sh
+--- a/scripts/codetether-review/author_payload.sh
++++ b/scripts/codetether-review/author_payload.sh
+@@ -17,5 +17,6 @@
+     --arg target "$AUTHOR_AGENT_ID" --arg session "$AUTHOR_SESSION_ID" \
+     --arg provenance "$AUTHOR_PROVENANCE_ID" --arg signer "$AUTHOR_GIT_SIGNER" \
+     --arg context "$context_id" --arg repo "$REPO_FULL" --arg pr "$PR_NUMBER" \
+-    --arg base "$BASE_SHA" --arg head "$HEAD_SHA" '
++    --arg base "$BASE_SHA" --arg head "$HEAD_SHA" \
++    --arg forgejo_author "$PR_AUTHOR_LOGIN" '
+       {title:("Forgejo reviewer conversation for " + $repo + "#" + $pr),
+diff --git a/tests/playwright/codetether/pr-review-workflow.spec.ts b/tests/playwright/codetether/pr-review-workflow.spec.ts
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -78,5 +78,7 @@
+     expect(script).toContain("git verify-commit");
+     expect(script).toContain("CodeTether-Agent-Identity");
+     expect(script).toContain(".commit.verification.verified");
++    expect(script).toContain(".commit.verification.signer.username");
+     expect(script).toContain("context_id:$context");
++    expect(script).toContain("forgejo_author_login:$forgejo_author");
+     expect(script).toContain("conversation_id:$context");
+-- 
+CodeTether patch

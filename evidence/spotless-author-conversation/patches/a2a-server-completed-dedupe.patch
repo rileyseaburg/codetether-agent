@@ -1,0 +1,25 @@
+diff --git a/a2a_server/persistent_worker_pool.py b/a2a_server/persistent_worker_pool.py
+--- a/a2a_server/persistent_worker_pool.py
++++ b/a2a_server/persistent_worker_pool.py
+@@ -98,1 +98,1 @@
+-    """Return the oldest active task for a source-control idempotency key."""
++    """Return the oldest active or completed task for an idempotency key."""
+@@ -112,1 +112,3 @@
+-            WHERE status IN ('pending', 'queued', 'running', 'working')
++            WHERE status IN (
++                'pending', 'queued', 'running', 'working', 'completed'
++            )
+@@ -175,1 +177,1 @@
+-                'Reusing active source-control task %s for work key %s',
++                'Reusing source-control task %s for work key %s',
+diff --git a/tests/test_forgejo_work_dedupe.py b/tests/test_forgejo_work_dedupe.py
+--- a/tests/test_forgejo_work_dedupe.py
++++ b/tests/test_forgejo_work_dedupe.py
+@@ -29,4 +29,5 @@
+         async def fetchrow(self, query, *args):
+             assert "split_part($1, ':', 1)" in query
++            assert "'completed'" in query
+             assert args == (key,)
+             return {'id': 'existing-task'}
+-- 
+CodeTether patch

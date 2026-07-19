@@ -1,0 +1,9 @@
+diff --git a/scripts/codetether-review/author_payload.sh b/scripts/codetether-review/author_payload.sh
+--- a/scripts/codetether-review/author_payload.sh
++++ b/scripts/codetether-review/author_payload.sh
+@@ -39,2 +39,2 @@
+-        + if $session=="" then {} else {resume_session_id:$session} end)}' > "$output"
++        + {resume_session_id:$session})}' > "$output"
+   rm -f "$prompt_file"
+-- 
+CodeTether patch

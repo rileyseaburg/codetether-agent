@@ -1,0 +1,66 @@
+diff --git a/scripts/codetether-review/approval_credentials.sh b/scripts/codetether-review/approval_credentials.sh
+--- a/scripts/codetether-review/approval_credentials.sh
++++ b/scripts/codetether-review/approval_credentials.sh
+@@ -3,4 +3,4 @@
+ # Selects a real Forgejo reviewer that is not the pull-request author.
+ # Sets non-exported approval_actor and approval_token for the trusted workflow.
+ load_forgejo_approval_credentials() {
+-  local event_path="$1" author vault_path
++  local event_path="$1" excluded_agent="${2:-}" author vault_path
+@@ -14,9 +14,12 @@
+     return 1
+   }
+-  if [[ "$author" == "spotless-agent" ]]; then
++  if [[ "$author" != "spotless-agent" && "$excluded_agent" != "spotless-agent" ]]; then
++    approval_actor="spotless-agent"
++    vault_path="kv/forgejo/spotlessbinco-agent"
++  elif [[ "$author" != "codetether-bot" && "$excluded_agent" != "codetether-bot" ]]; then
+     approval_actor="codetether-bot"
+     vault_path="kv/forgejo/codetether-bot"
+   else
+-    approval_actor="spotless-agent"
+-    vault_path="kv/forgejo/spotlessbinco-agent"
++    echo "Cannot select an independent Forgejo reviewer." >&2
++    return 1
+   fi
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -48,12 +48,12 @@
+   echo "Not a pull_request event or repository context is missing; skipping CodeTether review."
+   exit 0
+ fi
+-load_forgejo_approval_credentials "$EVENT_PATH"
++temp_dir="$(mktemp -d)"
++trap 'rm -rf "$temp_dir"' EXIT
++load_author_provenance "$HEAD_SHA" "$temp_dir/author-commit.json"
++load_forgejo_approval_credentials "$EVENT_PATH" "$AUTHOR_AGENT_ID"
+ CODETETHER_FORGEJO_APPROVAL_ACTOR="$approval_actor"
+ log "Starting Forgejo PR review for ${REPO_FULL}#${PR_NUMBER}"
+ resolve_commit_range
+ 
+-temp_dir="$(mktemp -d)"
+-trap 'rm -rf "$temp_dir"' EXIT
+-load_author_provenance "$HEAD_SHA" "$temp_dir/author-commit.json"
+ diff_stat_file="$temp_dir/diff-stat.txt"
+diff --git a/tests/codetether-review-approval-credentials.test.sh b/tests/codetether-review-approval-credentials.test.sh
+--- a/tests/codetether-review-approval-credentials.test.sh
++++ b/tests/codetether-review-approval-credentials.test.sh
+@@ -15,4 +15,4 @@
+ }
+ 
+ run_case() {
+-  local author="$1" actor="$2" path="$3" event="$tmp/event.json"
++  local author="$1" actor="$2" path="$3" excluded="${4:-}" event="$tmp/event.json"
+@@ -20,2 +20,2 @@
+   : > "$tmp/vault-paths"; export VAULT_TOKEN=available
+-  load_forgejo_approval_credentials "$event"
++  load_forgejo_approval_credentials "$event" "$excluded"
+@@ -30,3 +30,5 @@
+ run_case spotless-agent codetether-bot kv/forgejo/codetether-bot
+ run_case codetether-bot spotless-agent kv/forgejo/spotlessbinco-agent
+ run_case riley spotless-agent kv/forgejo/spotlessbinco-agent
++run_case riley codetether-bot kv/forgejo/codetether-bot spotless-agent
++run_case riley spotless-agent kv/forgejo/spotlessbinco-agent codetether-bot
+-- 
+CodeTether patch

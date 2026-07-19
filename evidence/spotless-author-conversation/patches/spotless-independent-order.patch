@@ -1,0 +1,31 @@
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -51,8 +51,8 @@
++log "Starting Forgejo PR review for ${REPO_FULL}#${PR_NUMBER}"
++resolve_commit_range
+ temp_dir="$(mktemp -d)"
+ trap 'rm -rf "$temp_dir"' EXIT
+ load_author_provenance "$HEAD_SHA" "$temp_dir/author-commit.json"
+ load_forgejo_approval_credentials "$EVENT_PATH" "$AUTHOR_AGENT_ID"
+ CODETETHER_FORGEJO_APPROVAL_ACTOR="$approval_actor"
+-log "Starting Forgejo PR review for ${REPO_FULL}#${PR_NUMBER}"
+-resolve_commit_range
+ 
+diff --git a/tests/codetether-review-approval-credentials.test.sh b/tests/codetether-review-approval-credentials.test.sh
+--- a/tests/codetether-review-approval-credentials.test.sh
++++ b/tests/codetether-review-approval-credentials.test.sh
+@@ -33,6 +33,11 @@
+ run_case riley codetether-bot kv/forgejo/codetether-bot spotless-agent
+ run_case riley spotless-agent kv/forgejo/spotlessbinco-agent codetether-bot
+ 
++jq -n '{pull_request:{user:{login:"spotless-agent"}}}' > "$tmp/event.json"
++if load_forgejo_approval_credentials "$tmp/event.json" codetether-bot >/dev/null 2>&1; then
++  fail "reviewer shared with the opener or verified agent was accepted"
++fi
++
+ printf '{}\n' > "$tmp/missing-author.json"
+ if load_forgejo_approval_credentials "$tmp/missing-author.json" >/dev/null 2>&1; then
+   fail "missing PR author was accepted"
+-- 
+CodeTether patch

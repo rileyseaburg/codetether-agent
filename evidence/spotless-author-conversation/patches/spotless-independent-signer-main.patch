@@ -1,0 +1,13 @@
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -53,5 +53,6 @@
+ temp_dir="$(mktemp -d)"
+ trap 'rm -rf "$temp_dir"' EXIT
+ load_author_provenance "$HEAD_SHA" "$temp_dir/author-commit.json"
+-load_forgejo_approval_credentials "$EVENT_PATH" "$AUTHOR_AGENT_ID"
++load_forgejo_approval_credentials "$EVENT_PATH" "$AUTHOR_AGENT_ID" \
++  "${AUTHOR_GIT_SIGNER#forgejo:}"
+ CODETETHER_FORGEJO_APPROVAL_ACTOR="$approval_actor"
+-- 
+CodeTether patch

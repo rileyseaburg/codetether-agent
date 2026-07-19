@@ -1,0 +1,11 @@
+--- a/scripts/codetether-review/forgejo_signature.sh
++++ b/scripts/codetether-review/forgejo_signature.sh
+@@ -14,5 +14,4 @@
+   signer="$(jq -r '.verification.signer.login // .verification.signer.email
+     // .verification.signer.name // "unknown"' "$output")"
+-  key_id="$(jq -r '.verification.key_id // .verification.signature.key_id
+-    // empty' "$output")"
++  key_id="$(jq -r '.verification.key_id // empty' "$output")"
+   AUTHOR_GIT_SIGNER="forgejo:${signer}${key_id:+:$key_id}"
+-- 
+CodeTether patch

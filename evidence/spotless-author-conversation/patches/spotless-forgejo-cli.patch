@@ -1,0 +1,58 @@
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -33,4 +33,5 @@
+ fi
+ require_command jq
+ require_command curl
++require_command forgejo-cli
+ require_command python3
+@@ -71,4 +72,4 @@
+ }
+ 
+-token="${FORGEJO_TOKEN:-}"
++token="$approval_token"
+ review_marker="<!-- codetether-pr-review:${PR_NUMBER} -->"
+@@ -82,3 +83,3 @@
+ api_base="${FORGEJO_API_URL:-${GITHUB_SERVER_URL:-https://forgejo.quantum-forge.io}/api/v1}"
+-comment_actor="$(forgejo_comment_actor "$api_base" "$token" "$temp_dir/comment-actor.json")"
++comment_actor="$approval_actor"
+ load_pr_comments "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" "$comments_file"
+diff --git a/scripts/codetether-review/forgejo_signature.sh b/scripts/codetether-review/forgejo_signature.sh
+--- a/scripts/codetether-review/forgejo_signature.sh
++++ b/scripts/codetether-review/forgejo_signature.sh
+@@ -7,5 +7,5 @@
+   [[ -n "$output" && -n "$token" && -n "$expected_author" ]] || return 1
+   api_base="${FORGEJO_API_URL:-${GITHUB_SERVER_URL:-https://forgejo.quantum-forge.io}/api/v1}"
+-  forgejo_request GET "$api_base/repos/$REPO_FULL/git/commits/$head" \
+-    "$token" '' "$output" || return 1
++  forgejo-cli --base "$api_base" --token "$token" get \
++    "/repos/$REPO_FULL/git/commits/$head" > "$output" || return 1
+   response_sha="$(jq -r '.sha // empty' "$output")"
+diff --git a/scripts/codetether-review/comment_owner.sh b/scripts/codetether-review/comment_owner.sh
+--- a/scripts/codetether-review/comment_owner.sh
++++ b/scripts/codetether-review/comment_owner.sh
+@@ -1,9 +1,3 @@
+ #!/usr/bin/env bash
+ 
+-forgejo_comment_actor() {
+-  local api_base="$1" token="$2" output="$3"
+-  forgejo_request GET "${api_base%/}/user" "$token" '' "$output" || return 1
+-  jq -er '.login | select(type == "string" and length > 0)' "$output"
+-}
+-
+ filter_owned_comments() {
+diff --git a/tests/playwright/codetether/pr-review-workflow.spec.ts b/tests/playwright/codetether/pr-review-workflow.spec.ts
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -59,2 +59,3 @@
+     expect(script).toContain("CODETETHER_REVIEW_TASK_MAX_BYTES:-900000");
++    expect(script).toContain("require_command forgejo-cli");
+     expect(workflow).toContain("FORGEJO_TOKEN: ${{ github.token }}");
+@@ -86,3 +87,4 @@
+     expect(script).toContain("filter_owned_comments");
++    expect(script).toContain('comment_actor="$approval_actor"');
+     expect(script).toContain("forgejo_author_login:$forgejo_author");
+     expect(script).toContain("conversation_id:$context");
+-- 
+CodeTether patch

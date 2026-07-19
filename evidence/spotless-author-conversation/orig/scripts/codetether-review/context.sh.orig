@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# Loads pull-request context into the orchestration globals.
+# Parameters: Forgejo event JSON path. Returns nonzero for invalid JSON.
+# Side effects: sets PR_NUMBER, SHAs, title, body, and REPO_FULL.
+# Example: load_review_context "$GITHUB_EVENT_PATH"
+load_review_context() {
+  local event_path="$1"
+  PR_NUMBER="$(jq -r '.pull_request.number // .number // empty' "$event_path")"
+  BASE_SHA="$(jq -r '.pull_request.base.sha // empty' "$event_path")"
+  HEAD_SHA="$(jq -r '.pull_request.head.sha // empty' "$event_path")"
+  PR_TITLE="$(jq -r '.pull_request.title // empty' "$event_path")"
+  PR_BODY="$(jq -r '.pull_request.body // empty' "$event_path")"
+  REPO_FULL="${FORGEJO_REPOSITORY:-${GITHUB_REPOSITORY:-$(
+    jq -r '.repository.full_name // empty' "$event_path"
+  )}}"
+}
+
+# Resolves the exact event SHAs without ever substituting trusted base HEAD.
+# Parameters: none. Returns nonzero if either immutable PR commit is unavailable.
+# Side effects: may fetch BASE_SHA and HEAD_SHA from origin.
+resolve_commit_range() {
+  if [[ ! "$BASE_SHA" =~ ^[0-9a-fA-F]{40}$ || ! "$HEAD_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+    echo "Forgejo event did not provide exact base and head commit SHAs." >&2
+    return 1
+  fi
+  local sha
+  for sha in "$BASE_SHA" "$HEAD_SHA"; do
+    if ! git rev-parse --verify "$sha^{commit}" >/dev/null 2>&1; then
+      log "Commit $sha is absent; fetching the exact object from origin."
+      git fetch --no-tags --depth=1 origin "$sha" || return 1
+    fi
+    git rev-parse --verify "$sha^{commit}" >/dev/null 2>&1 || {
+      echo "Required review commit $sha is unavailable after fetch." >&2
+      return 1
+    }
+  done
+  log "Review commit range: ${BASE_SHA}..${HEAD_SHA}"
+}

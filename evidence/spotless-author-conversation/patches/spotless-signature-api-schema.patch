@@ -1,0 +1,43 @@
+--- a/scripts/codetether-review/forgejo_signature.sh
++++ b/scripts/codetether-review/forgejo_signature.sh
+@@ -2,4 +2,4 @@
+ 
+ forgejo_signature_verified() {
+   local head="$1" output="$2" token="${FORGEJO_TOKEN:-}"
+-  local api_base status verified signer key_id response_sha
++  local api_base status verified signer response_sha
+@@ -10,9 +10,8 @@
+   require_http_success "$status" "Forgejo commit verification" "$output" || return 1
+   response_sha="$(jq -r '.sha // empty' "$output")"
+-  verified="$(jq -r '.verification.verified // false' "$output")"
++  verified="$(jq -r '.commit.verification.verified // false' "$output")"
+   [[ "$response_sha" == "$head" && "$verified" == true ]] || return 1
+-  signer="$(jq -r '.verification.signer.login // .verification.signer.email
+-    // .verification.signer.name // "unknown"' "$output")"
+-  key_id="$(jq -r '.verification.key_id // empty' "$output")"
+-  AUTHOR_GIT_SIGNER="forgejo:${signer}${key_id:+:$key_id}"
++  signer="$(jq -r '.commit.verification.signer.login
++    // .commit.verification.signer.email // "unknown"' "$output")"
++  AUTHOR_GIT_SIGNER="forgejo:$signer"
+ }
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -27,4 +27,4 @@
+ forgejo_request() {
+   local output="$5"
+-  jq -n --arg sha "$unsigned_sha" '{sha:$sha,verification:{verified:true,
+-    signer:{login:"author-agent"},key_id:"test-key"}}' > "$output"
++  jq -n --arg sha "$unsigned_sha" '{sha:$sha,commit:{verification:{verified:true,
++    signer:{login:"author-agent"}}}}' > "$output"
+@@ -33,3 +33,3 @@
+ load_author_provenance "$unsigned_sha" "$tmp/verification.json"
+ [[ "$AUTHOR_PROVENANCE_VERIFIED" == true && "$AUTHOR_AGENT_ID" == forged-agent ]]
+-[[ "$AUTHOR_GIT_SIGNER" == forgejo:author-agent:test-key ]]
++[[ "$AUTHOR_GIT_SIGNER" == forgejo:author-agent ]]
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -80,1 +80,1 @@
+-    expect(script).toContain(".verification.verified");
++    expect(script).toContain(".commit.verification.verified");
+-- 
+CodeTether patch

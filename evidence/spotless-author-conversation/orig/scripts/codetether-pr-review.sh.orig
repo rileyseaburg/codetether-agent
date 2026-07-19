@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/codetether-review/common.sh
+source "$script_dir/codetether-review/common.sh"
+source "$script_dir/codetether-review/context.sh"
+source "$script_dir/codetether-review/author_provenance.sh"
+source "$script_dir/codetether-review/forgejo_signature.sh"
+source "$script_dir/codetether-review/author_payload.sh"
+source "$script_dir/codetether-review/task_create.sh"
+source "$script_dir/codetether-review/author_delivery.sh"
+source "$script_dir/codetether-review/diff.sh"
+source "$script_dir/codetether-review/chunks.sh"
+source "$script_dir/codetether-review/payload.sh"
+source "$script_dir/codetether-review/chunk_pipeline.sh"
+source "$script_dir/codetether-review/request_async.sh"
+source "$script_dir/codetether-review/request_sync.sh"
+source "$script_dir/codetether-review/response.sh"
+source "$script_dir/codetether-review/forgejo.sh"
+source "$script_dir/codetether-review/approval_state.sh"
+source "$script_dir/codetether-review/approval.sh"
+source "$script_dir/codetether-review/approval_credentials.sh"
+
+CODETETHER_URL="${CODETETHER_JSON_URL:-}"
+if [[ -z "$CODETETHER_URL" && -n "${CODETETHER_API_URL:-}" ]]; then
+  CODETETHER_URL="${CODETETHER_API_URL%/}/v1/json"
+fi
+if [[ -z "$CODETETHER_URL" || -z "${CODETETHER_TOKEN:-}" ]]; then
+  echo "CodeTether review failed: CODETETHER_API_URL/CODETETHER_JSON_URL and CODETETHER_TOKEN must be configured." >&2
+  exit 1
+fi
+require_command jq
+require_command curl
+require_command python3
+
+EVENT_PATH="${GITHUB_EVENT_PATH:-}"
+if [[ -z "$EVENT_PATH" || ! -f "$EVENT_PATH" ]]; then
+  echo "GITHUB_EVENT_PATH is missing; cannot determine PR context." >&2
+  exit 1
+fi
+load_review_context "$EVENT_PATH"
+if [[ -z "$PR_NUMBER" || -z "$REPO_FULL" ]]; then
+  echo "Not a pull_request event or repository context is missing; skipping CodeTether review."
+  exit 0
+fi
+load_forgejo_approval_credentials "$EVENT_PATH"
+CODETETHER_FORGEJO_APPROVAL_ACTOR="$approval_actor"
+log "Starting Forgejo PR review for ${REPO_FULL}#${PR_NUMBER}"
+resolve_commit_range
+
+temp_dir="$(mktemp -d)"
+trap 'rm -rf "$temp_dir"' EXIT
+load_author_provenance "$HEAD_SHA" "$temp_dir/author-commit.json"
+diff_stat_file="$temp_dir/diff-stat.txt"
+diff_file="$temp_dir/diff.patch"
+normalized_file="$temp_dir/aggregate.json"
+comments_file="$temp_dir/comments.json"
+chunks_dir="$temp_dir/chunks"
+collect_review_diff "$BASE_SHA" "$HEAD_SHA" "$diff_stat_file" "$diff_file"
+manifest_file="$(prepare_review_chunks "$diff_file" "$chunks_dir")"
+run_chunk_review_pipeline "$manifest_file" "$diff_stat_file" "$temp_dir" "$normalized_file"
+review_markdown="$(extract_review_markdown "$normalized_file")" || {
+  echo "CodeTether returned no markdown review field." >&2
+  exit 1
+}
+blocking_findings="$(extract_blocking_findings "$normalized_file")" || {
+  echo "CodeTether returned no valid blocking_findings count; refusing an unsafe autofix decision." >&2
+  exit 1
+}
+
+token="${FORGEJO_TOKEN:-}"
+review_marker="<!-- codetether-pr-review:${PR_NUMBER} -->"
+review_file="$temp_dir/review.md"
+printf '%s\n### CodeTether PR Review\n\n%s\n\n---\n_Reviewed by CodeTether Agent for commit `%s`._\n' \
+  "$review_marker" "$review_markdown" "${HEAD_SHA:0:12}" > "$review_file"
+if [[ -z "$token" ]]; then
+  echo "Forgejo comment skipped: FORGEJO_TOKEN is not configured."
+  cat "$review_file"
+  exit 0
+fi
+api_base="${FORGEJO_API_URL:-${GITHUB_SERVER_URL:-https://forgejo.quantum-forge.io}/api/v1}"
+load_pr_comments "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" "$comments_file"
+upsert_review_comment "$api_base" "$REPO_FULL" "$PR_NUMBER" "$token" \
+  "$comments_file" "$review_marker" "$review_file" "$temp_dir/review-comment.json"
+route_author_followup "$api_base" "$token" "$comments_file" "$normalized_file" \
+  "$review_file" "$temp_dir"
+approve_clean_review "$api_base" "$REPO_FULL" "$PR_NUMBER" "$HEAD_SHA" \
+  "$blocking_findings" "$approval_token" "$temp_dir"
+clear_forgejo_approval_credentials
+unset CODETETHER_FORGEJO_APPROVAL_ACTOR
+if (( blocking_findings == 0 )); then
+  log "No blocking review findings; formal approval is current."
+else
+  log "Blocking findings remain; PR was not approved."
+fi

@@ -1,0 +1,29 @@
+--- a/scripts/codetether-review/author_payload.sh
++++ b/scripts/codetether-review/author_payload.sh
+@@ -29,5 +29,5 @@
+       agent_type:"build",workspace_id:"global",priority:7,
+       metadata:({source:"github-app",repo:$repo,pr_number:($pr|tonumber),
+         workflow_stage:"forgejo-author-review",pr_head_sha:$head,head_sha:$head,
+-        target_agent_name:$target,conversation_id:$context,
++        target_agent_name:$target,context_id:$context,conversation_id:$context,
+         author_agent_identity:$target,author_provenance_id:$provenance,
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -41,5 +41,6 @@
+ write_author_followup_payload "$tmp/review.json" "$tmp/payload.json" \
+   "$(author_conversation_id)"
+ jq -e --arg head "$HEAD_SHA" '.metadata.target_agent_name=="author-agent"
+-  and .metadata.resume_session_id=="author-session"
++  and .metadata.resume_session_id=="author-session"
++  and (.metadata.context_id|startswith("forgejo_pr_42_"))
+   and .metadata.head_sha==$head and .metadata.provenance_verified==true
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -75,4 +75,5 @@
+     expect(script).toContain("did not finish after $attempts poll attempts");
+     expect(script).toContain("git verify-commit");
+     expect(script).toContain("CodeTether-Agent-Identity");
++    expect(script).toContain("context_id:$context");
+     expect(script).toContain("conversation_id:$context");
+-- 
+CodeTether patch

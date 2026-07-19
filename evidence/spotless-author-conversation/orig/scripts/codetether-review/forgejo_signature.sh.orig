@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+forgejo_signature_verified() {
+  local head="$1" output="$2" token="${FORGEJO_TOKEN:-}"
+  local api_base status verified signer response_sha
+  [[ -n "$output" && -n "$token" ]] || return 1
+  api_base="${FORGEJO_API_URL:-${GITHUB_SERVER_URL:-https://forgejo.quantum-forge.io}/api/v1}"
+  status="$(forgejo_request GET \
+    "$api_base/repos/$REPO_FULL/git/commits/$head" "$token" '' "$output")"
+  require_http_success "$status" "Forgejo commit verification" "$output" || return 1
+  response_sha="$(jq -r '.sha // empty' "$output")"
+  verified="$(jq -r '.commit.verification.verified // false' "$output")"
+  [[ "$response_sha" == "$head" && "$verified" == true ]] || return 1
+  signer="$(jq -r '.commit.verification.signer.login
+    // .commit.verification.signer.email // "unknown"' "$output")"
+  AUTHOR_GIT_SIGNER="forgejo:$signer"
+}

@@ -1,0 +1,15 @@
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -76,9 +76,4 @@
+ review_file="$temp_dir/review.md"
+ printf '%s\n### CodeTether PR Review\n\n%s\n\n---\n_Reviewed by CodeTether Agent for commit `%s`._\n' \
+   "$review_marker" "$review_markdown" "${HEAD_SHA:0:12}" > "$review_file"
+-if [[ -z "$token" ]]; then
+-  echo "Forgejo comment skipped: FORGEJO_TOKEN is not configured."
+-  cat "$review_file"
+-  exit 0
+-fi
+ api_base="${FORGEJO_API_URL:-${GITHUB_SERVER_URL:-https://forgejo.quantum-forge.io}/api/v1}"
+-- 
+CodeTether patch

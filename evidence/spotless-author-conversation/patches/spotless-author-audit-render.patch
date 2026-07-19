@@ -1,0 +1,29 @@
+--- scripts/codetether-review/author_delivery.sh
++++ scripts/codetether-review/author_delivery.sh
+@@ -12,15 +12,13 @@
+   task_id="$(create_codetether_task "$(author_task_url)" "$CODETETHER_TOKEN" \
+     "$key" "$payload" "$response")"
+-  cat >> "$review_file" <<EOF
+-
+-### Verified author-agent conversation
+-
+-- Protocol: `codetether.forgejo-author.v1`
+-- Author route: `$AUTHOR_AGENT_ID`
+-- CodeTether task: `$task_id`
+-- Signed provenance: `$AUTHOR_PROVENANCE_ID`
+-
+-<!-- codetether-author-conversation:v1:$HEAD_SHA:task:$task_id -->
+-EOF
++  {
++    printf '\n### Verified author-agent conversation\n\n'
++    printf -- '- Protocol: `%s`\n' 'codetether.forgejo-author.v1'
++    printf -- '- Author route: `%s`\n' "$AUTHOR_AGENT_ID"
++    printf -- '- CodeTether task: `%s`\n' "$task_id"
++    printf -- '- Signed provenance: `%s`\n\n' "$AUTHOR_PROVENANCE_ID"
++    printf '<!-- codetether-author-conversation:v1:%s:task:%s -->\n' \
++      "$HEAD_SHA" "$task_id"
++  } >> "$review_file"
+   log "Routed verified review conversation task $task_id to $AUTHOR_AGENT_ID"
+ }
+-- 
+CodeTether audit render

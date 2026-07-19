@@ -1,0 +1,22 @@
+diff --git a/scripts/codetether-pr-review.sh b/scripts/codetether-pr-review.sh
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -48,14 +48,14 @@
+   echo "Not a pull_request event or repository context is missing; skipping CodeTether review."
+   exit 0
+ fi
+-load_forgejo_approval_credentials "$EVENT_PATH"
++temp_dir="$(mktemp -d)"
++trap 'rm -rf "$temp_dir"' EXIT
++load_author_provenance "$HEAD_SHA" "$temp_dir/author-commit.json"
++load_forgejo_approval_credentials "$EVENT_PATH" "$AUTHOR_AGENT_ID"
+ CODETETHER_FORGEJO_APPROVAL_ACTOR="$approval_actor"
+ log "Starting Forgejo PR review for ${REPO_FULL}#${PR_NUMBER}"
+ resolve_commit_range
+ 
+-temp_dir="$(mktemp -d)"
+-trap 'rm -rf "$temp_dir"' EXIT
+-load_author_provenance "$HEAD_SHA" "$temp_dir/author-commit.json"
+ diff_stat_file="$temp_dir/diff-stat.txt"
+ diff_file="$temp_dir/diff.patch"
+ normalized_file="$temp_dir/aggregate.json"

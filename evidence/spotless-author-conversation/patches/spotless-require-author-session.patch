@@ -1,0 +1,38 @@
+diff --git a/scripts/codetether-review/author_provenance.sh b/scripts/codetether-review/author_provenance.sh
+--- a/scripts/codetether-review/author_provenance.sh
++++ b/scripts/codetether-review/author_provenance.sh
+@@ -38,8 +38,9 @@
+     AUTHOR_AGENT_ID=""
+     return 0
+   fi
+-  if [[ -n "$AUTHOR_SESSION_ID" && ! "$AUTHOR_SESSION_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
+-    log "Ignoring unsafe author session identity from commit provenance."
+-    AUTHOR_SESSION_ID=""
++  if [[ ! "$AUTHOR_SESSION_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
++    log "Author delivery disabled: verified commit lacks a reusable session identity."
++    AUTHOR_AGENT_ID=""
++    return 0
+   fi
+   AUTHOR_PROVENANCE_VERIFIED=true
+diff --git a/scripts/codetether-review/author_payload.sh b/scripts/codetether-review/author_payload.sh
+--- a/scripts/codetether-review/author_payload.sh
++++ b/scripts/codetether-review/author_payload.sh
+@@ -36,4 +36,4 @@
+         author_agent_identity:$target,author_provenance_id:$provenance,
+         preserve_session_workspace:true,
+         provenance_verified:true,task_timeout_seconds:1800}
+-        + if $session=="" then {} else {resume_session_id:$session} end)}' > "$output"
++        + {resume_session_id:$session})}' > "$output"
+diff --git a/tests/codetether-review-author-conversation.test.sh b/tests/codetether-review-author-conversation.test.sh
+--- a/tests/codetether-review-author-conversation.test.sh
++++ b/tests/codetether-review-author-conversation.test.sh
+@@ -18,6 +18,6 @@
+ git config commit.gpgsign false
+ printf 'unsigned\n' > file.txt
+ git add file.txt
+-git commit -q -m $'unsigned\n\nCodeTether-Agent-Identity: forged-agent\nCodeTether-Provenance-ID: ctprov_1234567890abcdef'
++git commit -q -m $'unsigned\n\nCodeTether-Agent-Identity: forged-agent\nCodeTether-Session-ID: forgejo-session\nCodeTether-Provenance-ID: ctprov_1234567890abcdef'
+ load_author_provenance HEAD
+ [[ "$AUTHOR_PROVENANCE_VERIFIED" == false && -z "$AUTHOR_AGENT_ID" ]]
+-- 
+CodeTether patch

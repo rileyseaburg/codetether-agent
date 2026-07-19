@@ -1,0 +1,10 @@
+diff --git a/scripts/codetether-review/approval_credentials.sh b/scripts/codetether-review/approval_credentials.sh
+--- a/scripts/codetether-review/approval_credentials.sh
++++ b/scripts/codetether-review/approval_credentials.sh
+@@ -7,2 +7,3 @@
+-  local event_path="$1" excluded_agent="${2:-}" author vault_path
++  local event_path="$1" excluded_agent="${2:-}" excluded_signer="${3:-}"
++  local author vault_path
+   if [[ -z "$event_path" || ! -f "$event_path" ]]; then
+-- 
+CodeTether patch

@@ -1,0 +1,18 @@
+diff --git a/scripts/codetether-review/author_provenance.sh b/scripts/codetether-review/author_provenance.sh
+--- a/scripts/codetether-review/author_provenance.sh
++++ b/scripts/codetether-review/author_provenance.sh
+@@ -38,8 +38,9 @@
+     AUTHOR_AGENT_ID=""
+     return 0
+   fi
+-  if [[ -n "$AUTHOR_SESSION_ID" && ! "$AUTHOR_SESSION_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
+-    log "Ignoring unsafe author session identity from commit provenance."
+-    AUTHOR_SESSION_ID=""
++  if [[ ! "$AUTHOR_SESSION_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
++    log "Author delivery disabled: verified commit lacks a reusable session identity."
++    AUTHOR_AGENT_ID=""
++    return 0
+   fi
+   AUTHOR_PROVENANCE_VERIFIED=true
+-- 
+CodeTether patch

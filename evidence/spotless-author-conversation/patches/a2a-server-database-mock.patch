@@ -1,0 +1,8 @@
+diff --git a/tests/test_forgejo_work_dedupe.py b/tests/test_forgejo_work_dedupe.py
+--- a/tests/test_forgejo_work_dedupe.py
++++ b/tests/test_forgejo_work_dedupe.py
+@@ -44 +44 @@
+-    monkeypatch.setattr(a2a_server, 'database', database, raising=False)
++    monkeypatch.setitem(a2a_server.__dict__, 'database', database)
+-- 
+CodeTether patch

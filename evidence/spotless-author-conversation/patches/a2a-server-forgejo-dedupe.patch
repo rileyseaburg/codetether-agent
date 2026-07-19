@@ -1,0 +1,19 @@
+diff --git a/a2a_server/persistent_worker_pool.py b/a2a_server/persistent_worker_pool.py
+--- a/a2a_server/persistent_worker_pool.py
++++ b/a2a_server/persistent_worker_pool.py
+@@ -43,11 +43,11 @@
+ 
+ def _github_work_key(metadata: Dict[str, Any]) -> Optional[str]:
+-    """Return a stable idempotency key for active GitHub App work.
++    """Return a stable idempotency key for active source-control work.
+ 
+     The key is intentionally scoped to one workflow stage and head SHA so a PR can
+     move from prepare -> code, and a new commit can trigger fresh work, while
+     concurrent webhook/active-work scans cannot create duplicate workers for the
+     same PR commit/stage.
+     """
+-    if metadata.get('source') != 'github-app':
++    if (source := metadata.get('source')) not in ('github-app', 'forgejo-pr-review'):
+         return None
+-- 
+CodeTether patch

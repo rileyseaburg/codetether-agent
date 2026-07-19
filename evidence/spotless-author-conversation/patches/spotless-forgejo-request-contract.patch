@@ -1,0 +1,31 @@
+diff --git a/scripts/codetether-review/forgejo_signature.sh b/scripts/codetether-review/forgejo_signature.sh
+--- a/scripts/codetether-review/forgejo_signature.sh
++++ b/scripts/codetether-review/forgejo_signature.sh
+@@ -3,10 +3,9 @@
+ forgejo_signature_verified() {
+   local head="$1" output="$2" token="${FORGEJO_TOKEN:-}"
+   local expected_author="${PR_AUTHOR_LOGIN:-}"
+-  local api_base status verified signer response_sha
++  local api_base verified signer response_sha
+   [[ -n "$output" && -n "$token" && -n "$expected_author" ]] || return 1
+   api_base="${FORGEJO_API_URL:-${GITHUB_SERVER_URL:-https://forgejo.quantum-forge.io}/api/v1}"
+-  status="$(forgejo_request GET \
+-    "$api_base/repos/$REPO_FULL/git/commits/$head" "$token" '' "$output")"
+-  require_http_success "$status" "Forgejo commit verification" "$output" || return 1
++  forgejo_request GET "$api_base/repos/$REPO_FULL/git/commits/$head" \
++    "$token" '' "$output" || return 1
+   response_sha="$(jq -r '.sha // empty' "$output")"
+diff --git a/scripts/codetether-review/comment_owner.sh b/scripts/codetether-review/comment_owner.sh
+--- a/scripts/codetether-review/comment_owner.sh
++++ b/scripts/codetether-review/comment_owner.sh
+@@ -2,6 +2,5 @@
+ 
+ forgejo_comment_actor() {
+-  local api_base="$1" token="$2" output="$3" status
+-  status="$(forgejo_request GET "${api_base%/}/user" "$token" '' "$output")"
+-  require_http_success "$status" "Forgejo token identity" "$output"
++  local api_base="$1" token="$2" output="$3"
++  forgejo_request GET "${api_base%/}/user" "$token" '' "$output" || return 1
+   jq -er '.login | select(type == "string" and length > 0)' "$output"
+-- 
+CodeTether patch

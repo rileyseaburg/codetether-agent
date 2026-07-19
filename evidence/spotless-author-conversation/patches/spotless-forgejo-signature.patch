@@ -1,0 +1,80 @@
+--- /dev/null
++++ b/scripts/codetether-review/forgejo_signature.sh
+@@ -0,0 +1,17 @@
++#!/usr/bin/env bash
++
++forgejo_signature_verified() {
++  local head="$1" output="$2" token="${FORGEJO_TOKEN:-}"
++  local api_base status verified signer response_sha
++  [[ -n "$output" && -n "$token" ]] || return 1
++  api_base="${FORGEJO_API_URL:-${GITHUB_SERVER_URL:-https://forgejo.quantum-forge.io}/api/v1}"
++  status="$(forgejo_request GET \
++    "$api_base/repos/$REPO_FULL/git/commits/$head" "$token" '' "$output")"
++  require_http_success "$status" "Forgejo commit verification" "$output" || return 1
++  response_sha="$(jq -r '.sha // empty' "$output")"
++  verified="$(jq -r '.commit.verification.verified // false' "$output")"
++  [[ "$response_sha" == "$head" && "$verified" == true ]] || return 1
++  signer="$(jq -r '.commit.verification.signer.login
++    // .commit.verification.signer.email // "unknown"' "$output")"
++  AUTHOR_GIT_SIGNER="forgejo:$signer"
++}
+--- a/scripts/codetether-review/author_provenance.sh
++++ b/scripts/codetether-review/author_provenance.sh
+@@ -11,13 +11,16 @@
+ 
+ load_author_provenance() {
+-  local head="$1" signature_fields
++  local head="$1" verification_output="${2:-}" signature_fields
+   AUTHOR_AGENT_ID=""
+   AUTHOR_SESSION_ID=""
+   AUTHOR_PROVENANCE_ID=""
+   AUTHOR_GIT_SIGNER=""
+   AUTHOR_PROVENANCE_VERIFIED=false
+-  git verify-commit "$head" >/dev/null 2>&1 || {
++  if git verify-commit "$head" >/dev/null 2>&1; then
++    signature_fields="$(git show -s --format='%G?;%GF;%GK' "$head")"
++    AUTHOR_GIT_SIGNER="$(cut -d ';' -f 2- <<< "$signature_fields")"
++  elif ! forgejo_signature_verified "$head" "$verification_output"; then
+     log "Author delivery disabled: head commit is not signature-verified."
+     return 0
+-  }
++  fi
+   AUTHOR_AGENT_ID="$(commit_trailer "$head" CodeTether-Agent-Identity)"
+@@ -26,5 +28,3 @@
+   AUTHOR_SESSION_ID="$(commit_trailer "$head" CodeTether-Session-ID)"
+   AUTHOR_PROVENANCE_ID="$(commit_trailer "$head" CodeTether-Provenance-ID)"
+-  signature_fields="$(git show -s --format='%G?;%GF;%GK' "$head")"
+-  AUTHOR_GIT_SIGNER="$(cut -d ';' -f 2- <<< "$signature_fields")"
+   if ! valid_agent_identity "$AUTHOR_AGENT_ID"; then
+--- a/scripts/codetether-pr-review.sh
++++ b/scripts/codetether-pr-review.sh
+@@ -6,4 +6,5 @@
+ source "$script_dir/codetether-review/common.sh"
+ source "$script_dir/codetether-review/context.sh"
+ source "$script_dir/codetether-review/author_provenance.sh"
++source "$script_dir/codetether-review/forgejo_signature.sh"
+ source "$script_dir/codetether-review/author_payload.sh"
+@@ -47,8 +48,8 @@
+ CODETETHER_FORGEJO_APPROVAL_ACTOR="$approval_actor"
+ log "Starting Forgejo PR review for ${REPO_FULL}#${PR_NUMBER}"
+ resolve_commit_range
+-load_author_provenance "$HEAD_SHA"
+ 
+ temp_dir="$(mktemp -d)"
+ trap 'rm -rf "$temp_dir"' EXIT
++load_author_provenance "$HEAD_SHA" "$temp_dir/author-commit.json"
+ diff_stat_file="$temp_dir/diff-stat.txt"
+--- a/tests/playwright/codetether/pr-review-workflow.spec.ts
++++ b/tests/playwright/codetether/pr-review-workflow.spec.ts
+@@ -11,3 +11,4 @@
+   "scripts/codetether-review/context.sh",
+   "scripts/codetether-review/author_provenance.sh",
++  "scripts/codetether-review/forgejo_signature.sh",
+   "scripts/codetether-review/author_payload.sh",
+@@ -77,3 +78,4 @@
+     expect(script).toContain("git verify-commit");
+     expect(script).toContain("CodeTether-Agent-Identity");
++    expect(script).toContain(".commit.verification.verified");
+     expect(script).toContain("context_id:$context");
+-- 
+CodeTether patch
