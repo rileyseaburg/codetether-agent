@@ -20,6 +20,9 @@ use serde::{Deserialize, Serialize};
 #[path = "types/role.rs"]
 mod role;
 pub use role::Role;
+#[path = "types/stream_chunk.rs"]
+mod stream_chunk;
+pub use stream_chunk::StreamChunk;
 
 /// A message in a conversation.
 ///
@@ -186,33 +189,6 @@ pub struct EmbeddingResponse {
     pub embeddings: Vec<Vec<f32>>,
     /// Token usage.
     pub usage: Usage,
-}
-
-/// A streaming chunk produced by [`Provider::complete_stream`](super::Provider::complete_stream).
-///
-/// # Examples
-///
-/// ```rust
-/// use codetether_agent::provider::StreamChunk;
-/// let chunk = StreamChunk::Text("hello".into());
-/// assert!(matches!(chunk, StreamChunk::Text(_)));
-/// ```
-#[derive(Debug, Clone)]
-pub enum StreamChunk {
-    /// Incremental text delta.
-    Text(String),
-    /// Model thinking/reasoning content.
-    Thinking(String),
-    /// Beginning of a tool call.
-    ToolCallStart { id: String, name: String },
-    /// Partial tool-call arguments.
-    ToolCallDelta { id: String, arguments_delta: String },
-    /// End of a tool call.
-    ToolCallEnd { id: String },
-    /// Stream finished.
-    Done { usage: Option<Usage> },
-    /// Recoverable error (stream continues).
-    Error(String),
 }
 
 /// Token usage statistics.

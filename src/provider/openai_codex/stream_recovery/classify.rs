@@ -1,51 +1,53 @@
-//! Retry classification for Codex transport and response-event failures.
+//! Retry classification for pre-stream HTTP request failures.
 
-const PERMANENT: &[&str] = &[
-    "bad request",
-    "unauthorized",
-    "forbidden",
-    "not found",
-    "unprocessable",
-    "invalid api key",
-    "context length",
-    "content policy",
-    " 400 ",
-    " 401 ",
-    " 403 ",
-    " 404 ",
-    " 422 ",
-];
+#[path = "classify/auth.rs"]
+mod auth;
+pub(in crate::provider::openai_codex) use auth::{is_unauthorized, is_upgrade_required};
+#[path = "classify/status.rs"]
+mod status;
 
-const TRANSIENT: &[&str] = &[
-    "you can retry",
-    "processing your request",
+const NETWORK: &[&str] = &[
     "timeout",
     "timed out",
     "connection reset",
     "connection closed",
     "broken pipe",
     "unexpected eof",
-    "rate limit",
-    "too many requests",
-    "service unavailable",
-    "bad gateway",
     "connection refused",
-    "429 too many requests",
-    "500 internal server error",
-    "502 bad gateway",
-    "503 service unavailable",
-    "504 gateway timeout",
-    " 429 ",
-    " 500 ",
-    " 502 ",
-    " 503 ",
-    " 504 ",
+    "network error",
+    "dns error",
 ];
 
-pub(super) fn is_retryable(message: &str) -> bool {
-    let lower = message.to_ascii_lowercase();
-    !PERMANENT.iter().any(|marker| lower.contains(marker))
-        && TRANSIENT.iter().any(|marker| lower.contains(marker))
+pub(super) fn is_retryable_request(error: &anyhow::Error) -> bool {
+    if error
+        .chain()
+        .any(|cause| cause.downcast_ref::<reqwest::Error>().is_some())
+    {
+        return true;
+    }
+    let message = format!("{error:#}").to_ascii_lowercase();
+    server_status(&message) || NETWORK.iter().any(|marker| message.contains(marker))
+}
+
+fn server_status(message: &str) -> bool {
+    let Some(rest) = message.split("openai api error (").nth(1) else {
+        return false;
+    };
+    rest.get(..3)
+        .and_then(|status| status.parse::<u16>().ok())
+        .is_some_and(|status| (500..=599).contains(&status))
+}
+
+pub(super) fn terminal_stream_retryable(error: &anyhow::Error) -> bool {
+    status::terminal_stream_retryable(error)
+}
+
+pub(super) fn exhausted_request_retryable(reason: &str) -> bool {
+    status::exhausted_request_retryable(reason)
+}
+
+pub(in crate::provider::openai_codex) fn tag_stream_open(error: anyhow::Error) -> anyhow::Error {
+    status::tag_stream_open(error)
 }
 
 #[cfg(test)]

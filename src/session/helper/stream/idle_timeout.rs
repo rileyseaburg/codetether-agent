@@ -18,8 +18,8 @@ use super::outcome::{DrainOutcome, StreamStop};
 
 /// Maximum gap between consecutive stream chunks before the stream is
 /// considered stalled. GLM-5.2 can think 60-90 s before the first token,
-/// so 3 min gives generous headroom.
-pub(super) const IDLE_TIMEOUT: Duration = Duration::from_secs(180);
+/// Codex uses a five-minute per-activity timeout for Responses streams.
+pub(super) const IDLE_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// Drain `stream`, classifying the stop reason. Never errors on its own; a
 /// terminal error chunk is reported as [`StreamStop::Fault`] for the caller.
@@ -65,9 +65,10 @@ pub(super) async fn drain(
             }
         }
     };
-    let response = state.finish();
+    let (response, completed) = state.finish();
     DrainOutcome {
         response: Some(response),
+        completed,
         stop,
     }
 }

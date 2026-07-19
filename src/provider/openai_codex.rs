@@ -13,6 +13,10 @@
 //! assert_eq!(format!("{provider:?}").contains("has_api_key: true"), true);
 //! ```
 
+#[path = "openai_codex/event_error.rs"]
+mod event_error;
+#[path = "openai_codex/output_item.rs"]
+mod output_item;
 #[path = "openai_codex/reasoning_catalog.rs"]
 pub mod reasoning_catalog;
 #[path = "openai_codex/runtime_config.rs"]
@@ -29,6 +33,8 @@ mod token_expiry;
 mod transport_catalog;
 #[path = "openai_codex/transport_health.rs"]
 mod transport_health;
+#[path = "openai_codex/turn_state.rs"]
+mod turn_state;
 #[path = "openai_codex/ws_pool.rs"]
 mod ws_pool;
 #[path = "openai_codex/ws_stream.rs"]

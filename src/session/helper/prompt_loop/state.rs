@@ -15,6 +15,8 @@ pub(crate) struct Runner<'a> {
     pub events: Option<mpsc::Sender<SessionEvent>>,
     /// Provider registry used for routing and failover.
     pub registry: Arc<ProviderRegistry>,
+    /// Unique owner identity for mux leases held by this prompt run.
+    pub lease_owner: String,
     /// Active provider and model settings.
     pub model: super::model::ModelState,
     /// Workspace paths tracked for post-edit validation.

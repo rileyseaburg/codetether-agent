@@ -44,8 +44,13 @@ pub(super) async fn complete(runner: &mut Runner<'_>, step: usize) -> Result<Com
                 runner.progress.goal_failure_repeats = 0;
                 return Ok(response);
             }
-            Err(error) if recovery::recover(runner, step, &mut attempt, &error).await? => {}
-            Err(error) => return Err(error),
+            Err(error) => {
+                super::super::prompt_call::persist_stream_checkpoints(runner.session, &error)
+                    .await?;
+                if !recovery::recover(runner, step, &mut attempt, &error).await? {
+                    return Err(error);
+                }
+            }
         }
     }
 }

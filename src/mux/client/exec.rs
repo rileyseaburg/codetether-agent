@@ -2,7 +2,7 @@
 
 use anyhow::{Result, bail};
 
-use crate::mux::protocol::{ClientRequest, ServerResponse};
+use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
 use super::connection::MuxConnection;
 
@@ -13,11 +13,13 @@ pub(super) async fn start(
 ) -> Result<u64> {
     let (columns, rows) = crossterm::terminal::size().unwrap_or((80, 24));
     let response = connection
-        .request(ClientRequest::StartProgram {
-            window_id,
-            command,
-            columns,
-            rows,
+        .request(ClientRequest::Program {
+            request: ProgramRequest::Start {
+                window_id,
+                command,
+                columns,
+                rows,
+            },
         })
         .await?;
     match response {

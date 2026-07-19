@@ -34,10 +34,12 @@ pub(crate) async fn initialize<'a>(
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     let baseline_dirty = super::super::validation::capture_git_dirty_files(&cwd).await;
     let max_steps = session.max_steps.unwrap_or(DEFAULT_MAX_STEPS);
+    let lease_owner = format!("{}:{}", session.id, uuid::Uuid::new_v4());
     Ok(Runner {
         session,
         events,
         registry,
+        lease_owner,
         model,
         workspace: WorkspaceState {
             cwd,

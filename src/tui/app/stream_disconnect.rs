@@ -23,6 +23,7 @@ const DISCONNECT_MARKERS: &[&str] = &[
 ];
 
 const PERMANENT_MARKERS: &[&str] = &[
+    "retry limit exhausted",
     "401",
     "403",
     "invalid api key",

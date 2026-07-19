@@ -5,7 +5,6 @@ impl OpenAiCodexProvider {
         chunks: &mut Vec<StreamChunk>,
     ) {
         if data == "[DONE]" {
-            chunks.push(StreamChunk::Done { usage: None });
             return;
         }
 

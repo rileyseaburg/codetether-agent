@@ -24,7 +24,12 @@ impl OpenAiCodexProvider {
         } else {
             ResponsesWsBackend::OpenAi
         };
-        self.connect_responses_ws_with_token(&token, account_id.as_deref(), backend)
-            .await
+        self.connect_responses_ws_with_token(
+            &token,
+            account_id.as_deref(),
+            backend,
+            transport_health::UNSCOPED,
+        )
+        .await
     }
 }

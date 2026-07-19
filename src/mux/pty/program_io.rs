@@ -27,9 +27,10 @@ impl PtyProgram {
     }
 
     pub(super) fn attach_state(&self) -> PtyAttach {
-        let (offset, alternate_screen) = self.output.lock().unwrap().attach_state();
+        let (offset, replay_until, alternate_screen) = self.output.lock().unwrap().attach_state();
         PtyAttach {
             offset,
+            replay_until,
             alternate_screen,
         }
     }

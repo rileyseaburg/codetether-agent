@@ -8,17 +8,22 @@ use crate::tool::agent::bridge::AgentSnapshot;
 /// Render one agent-tool child row.
 pub fn line(agent: &AgentSnapshot, selected: bool) -> Line<'static> {
     let parent = agent.parent.as_deref().unwrap_or("main");
-    let state = if agent.is_processing {
-        "working"
+    let state = match (agent.is_processing, agent.failed) {
+        (true, _) => "working",
+        (false, true) => "failed",
+        (false, false) => "idle",
+    };
+    let kind = if agent.is_remote {
+        "[LAN peer] "
     } else {
-        "idle"
+        "[tool-agent] "
     };
     Line::from(vec![
         Span::raw(if selected { "› " } else { "  " }),
         Span::raw("  ".repeat(agent.depth as usize)),
         format!("{} ", agent.name).cyan().bold(),
         format!("← {parent} ").dim(),
-        "[tool-agent] ".magenta(),
+        kind.magenta(),
         format!("[{state}] ").yellow(),
         summary(agent).dim(),
     ])
@@ -33,3 +38,7 @@ fn summary(agent: &AgentSnapshot) -> String {
     };
     format!("{model} · {} msg(s) · {mission}", agent.message_count)
 }
+
+#[cfg(test)]
+#[path = "subagent_tool_row_tests.rs"]
+mod tests;

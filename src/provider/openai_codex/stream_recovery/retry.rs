@@ -1,47 +1,44 @@
-//! Bounded private retries for Codex streaming transports.
+//! Bounded retries for opening Codex HTTP requests.
 
 use anyhow::Result;
 use futures::StreamExt;
 use std::future::Future;
 
-use super::{Chunks, StreamChunk, attempt, attempt::Outcome, delay, log};
+use super::{Chunks, StreamChunk, attempt, attempt::Outcome, classify, delay, log};
 
-const MAX_HTTP_ATTEMPTS: u32 = 3;
+const MAX_REQUEST_RETRIES: u32 = 4;
 
-/// Retry pre-content transient failures privately with bounded backoff.
-pub(in crate::provider::openai_codex) fn with_http_retry<F, Fut>(
-    primary: Option<Chunks>,
-    mut retry: F,
-) -> Chunks
+/// Retry HTTP handshakes without consuming or restarting the response stream.
+pub(in crate::provider::openai_codex) fn with_http_retry<F, Fut>(mut retry: F) -> Chunks
 where
     F: FnMut() -> Fut + Send + 'static,
     Fut: Future<Output = Result<Chunks>> + Send + 'static,
 {
     Box::pin(async_stream::stream! {
-        if let Some(primary) = primary {
-            match attempt::inspect(primary).await {
-                Outcome::Ready(first, mut remaining) => {
-                    yield first;
-                    while let Some(chunk) = remaining.next().await { yield chunk; }
-                    return;
-                }
-                Outcome::Retry(reason) => log::retrying(0, &reason),
-            }
-        }
-        for number in 1..=MAX_HTTP_ATTEMPTS {
+        for number in 0..=MAX_REQUEST_RETRIES {
             let outcome = attempt::open(retry().await).await;
             match outcome {
-                Outcome::Ready(first, mut remaining) => {
-                    yield first;
+                Outcome::Ready(mut remaining) => {
                     while let Some(chunk) = remaining.next().await { yield chunk; }
                     return;
                 }
-                Outcome::Retry(reason) if number < MAX_HTTP_ATTEMPTS => {
-                    log::retrying(number, &reason);
-                    tokio::time::sleep(delay::before(number - 1, &reason)).await;
+                Outcome::Retry(reason) if number < MAX_REQUEST_RETRIES => {
+                    log::retrying(number + 1, &reason);
+                    tokio::time::sleep(delay::before(number)).await;
                 }
                 Outcome::Retry(reason) => {
-                    yield StreamChunk::Error(format!("temporary Codex transport failure after {number} attempts: {reason}"));
+                    let prefix = if classify::exhausted_request_retryable(&reason) {
+                        "codex-retryable"
+                    } else {
+                        "codex-permanent"
+                    };
+                    yield StreamChunk::Error(format!("{prefix}: {reason}"));
+                    return;
+                }
+                Outcome::Terminal(reason, retryable) => {
+                    let prefix = if retryable { "codex-retryable" } else { "codex-permanent" };
+                    yield StreamChunk::Error(format!("{prefix}: {reason}"));
+                    return;
                 }
             }
         }

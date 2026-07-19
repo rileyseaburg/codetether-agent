@@ -21,7 +21,8 @@ mod retry;
 
 type Chunks = BoxStream<'static, StreamChunk>;
 
-pub(super) use factory::{chatgpt, chatgpt_http, openai, openai_http};
+pub(super) use classify::{is_unauthorized, is_upgrade_required, tag_stream_open};
+pub(super) use factory::{chatgpt_http, openai_http};
 
 #[cfg(test)]
 pub(super) use retry::with_http_retry;

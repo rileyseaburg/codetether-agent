@@ -4,6 +4,8 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use super::ProgramRequest;
+
 /// One authenticated mux control request.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -24,29 +26,11 @@ pub(in crate::mux) enum ClientRequest {
     ChangeDirectory {
         workspace: PathBuf,
     },
-    StartProgram {
-        window_id: u64,
-        command: String,
-        columns: u16,
-        rows: u16,
+    Program {
+        request: ProgramRequest,
     },
-    AttachProgram {
-        window_id: u64,
-        columns: u16,
-        rows: u16,
-    },
-    ProgramInput {
-        window_id: u64,
-        data: Vec<u8>,
-    },
-    ReadProgram {
-        window_id: u64,
-        offset: u64,
-    },
-    ResizeProgram {
-        window_id: u64,
-        columns: u16,
-        rows: u16,
+    Coordinate {
+        request: crate::mux::lease::CoordinationRequest,
     },
     Detach,
     Shutdown,

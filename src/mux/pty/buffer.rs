@@ -14,6 +14,7 @@ use replay::ReplayBytes;
 
 const OUTPUT_LIMIT: usize = 4 * 1024 * 1024;
 const READ_LIMIT: usize = 64 * 1024;
+const ATTACH_REPLAY_LIMIT: u64 = READ_LIMIT as u64;
 
 pub(super) struct OutputBuffer {
     base: u64,
@@ -42,7 +43,13 @@ impl OutputBuffer {
         self.base
     }
 
-    pub(super) fn attach_state(&self) -> (u64, bool) {
-        (self.base, self.mode.active())
+    pub(super) fn latest(&self) -> u64 {
+        self.base + self.bytes.len() as u64
+    }
+
+    pub(super) fn attach_state(&self) -> (u64, u64, bool) {
+        let latest = self.latest();
+        let offset = latest.saturating_sub(ATTACH_REPLAY_LIMIT).max(self.base);
+        (offset, latest, self.mode.active())
     }
 }

@@ -2,6 +2,10 @@
 
 mod connection;
 mod context;
+mod context_persist;
+mod coordination;
+mod coordination_identity;
+mod coordination_path;
 mod dispatch;
 mod mutate;
 mod program;

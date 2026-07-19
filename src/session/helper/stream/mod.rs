@@ -33,6 +33,12 @@ mod outcome;
 mod reasoning;
 mod restart;
 #[cfg(test)]
+mod restart_checkpoint_tests;
+#[cfg(test)]
+mod restart_exhaustion_tests;
+#[cfg(test)]
+mod restart_fallback_tests;
+#[cfg(test)]
 mod restart_policy_tests;
 #[cfg(test)]
 mod restart_test_provider;
@@ -51,6 +57,7 @@ mod tool_acc;
 #[cfg(test)]
 mod transient_fault_restart_tests;
 
+pub(super) use restart::checkpointed_content;
 pub(crate) use restart::{RestartPolicy, run as run_with_restart};
 
 /// Collect a streaming completion into a [`CompletionResponse`](crate::provider::CompletionResponse),

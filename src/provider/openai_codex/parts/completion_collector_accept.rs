@@ -1,6 +1,7 @@
 impl CompletionCollector {
     fn accept(&mut self, chunk: StreamChunk) -> Result<()> {
         match chunk {
+            StreamChunk::KeepAlive => {}
             StreamChunk::Text(delta) => self.text.push_str(&delta),
             StreamChunk::ToolCallStart { id, name } => self.start_tool(id, name),
             StreamChunk::ToolCallDelta {
@@ -10,6 +11,7 @@ impl CompletionCollector {
                 self.append_tool_arguments(id, arguments_delta);
             }
             StreamChunk::ToolCallEnd { .. } => {}
+            StreamChunk::OutputItemDone { .. } => {}
             StreamChunk::Thinking(value) => {
                 if super::codex_reasoning::is_signature(&value) {
                     self.reasoning_signature = Some(value);

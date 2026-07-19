@@ -35,6 +35,9 @@ pub(super) struct Params {
     pub instructions: Option<String>,
     #[serde(default)]
     pub message: Option<String>,
+    /// Reusable A2A conversation identifier for a remote message.
+    #[serde(default)]
+    pub context_id: Option<String>,
     #[serde(default, rename = "__ct_message_images")]
     pub message_images: Vec<MessageImage>,
     #[serde(default)]

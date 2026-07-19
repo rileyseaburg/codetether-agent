@@ -6,6 +6,8 @@
 
 mod atomic;
 mod backfill;
+mod backfill_load;
+mod backfill_policy;
 mod backfill_worker;
 mod build;
 mod catalog;

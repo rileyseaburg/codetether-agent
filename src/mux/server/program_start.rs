@@ -12,18 +12,21 @@ pub(super) async fn start(
     size: TerminalSize,
 ) -> anyhow::Result<ServerResponse> {
     let state = context.state.read().await;
-    let workspace = state
+    let window = state
         .windows
         .iter()
         .find(|window| window.id == id)
-        .ok_or_else(|| anyhow::anyhow!("window {id} does not exist"))?
-        .workspace
-        .clone();
+        .ok_or_else(|| anyhow::anyhow!("window {id} does not exist"))?;
+    let workspace = window.workspace.clone();
+    let mux_session = state.name.clone();
     drop(state);
-    let offset = context.programs.start(id, command, &workspace, size)?;
+    let offset = context
+        .programs
+        .start(id, command, &workspace, size, &mux_session)?;
     Ok(ServerResponse::ProgramAttached {
         window_id: id,
         offset,
+        replay_until: offset,
         alternate_screen: false,
     })
 }

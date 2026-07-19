@@ -12,34 +12,24 @@ impl OpenAiCodexProvider {
             || self.transport_health.requires_http(session_id)
         {
             return Ok(stream_recovery::chatgpt_http(
-                self.clone(), request, access_token, account_id,
+                self.clone(), request, session_id.to_string(),
             ));
         }
         match self
-            .complete_stream_with_realtime(
-                request.clone(),
-                access_token.clone(),
-                Some(account_id.clone()),
-                "chatgpt-codex-responses-ws",
-                ResponsesWsBackend::ChatGptCodex,
-                session_id,
+            .complete_chatgpt_realtime_with_auth(
+                request.clone(), access_token, account_id, session_id,
             )
             .await
         {
-            Ok(stream) => Ok(stream_recovery::chatgpt(
-                self.clone(),
-                stream,
-                request,
-                access_token,
-                account_id,
-            )),
-            Err(error) => {
+            Ok(stream) => Ok(stream),
+            Err(error) if stream_recovery::is_upgrade_required(&error) => {
                 tracing::warn!(error = %error, "Codex transport unavailable; switching to HTTP");
                 self.transport_health.mark_interrupted(session_id);
                 Ok(stream_recovery::chatgpt_http(
-                    self.clone(), request, access_token, account_id,
+                    self.clone(), request, session_id.to_string(),
                 ))
             }
+            Err(error) => Err(stream_recovery::tag_stream_open(error)),
         }
     }
 }

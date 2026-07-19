@@ -9,6 +9,20 @@ pub(crate) fn enrich(input: &Value, cwd: &Path, session: &Session) -> Value {
     enrich_with_model(input, cwd, session, session.metadata.model.as_deref())
 }
 
+/// Enrich input and overwrite its prompt-run lease owner.
+pub(crate) fn enrich_for_turn(
+    input: &Value,
+    cwd: &Path,
+    session: &Session,
+    lease_owner: &str,
+) -> Value {
+    let mut enriched = enrich(input, cwd, session);
+    if let Value::Object(fields) = &mut enriched {
+        fields.insert("__ct_lease_owner".into(), json!(lease_owner));
+    }
+    enriched
+}
+
 /// Enrich session input while using a caller-resolved model selector.
 pub(crate) fn enrich_with_model(
     input: &Value,

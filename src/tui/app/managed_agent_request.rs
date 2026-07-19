@@ -35,7 +35,7 @@ pub(crate) async fn spawn(
 pub(crate) async fn message(parent: &str, name: &str, message: &str) -> ToolResult {
     execute(json!({
         "action": "message", "name": name, "message": message, "detach": true,
-        "__ct_session_id": parent,
+        "context_id": parent, "__ct_session_id": parent,
     }))
     .await
 }

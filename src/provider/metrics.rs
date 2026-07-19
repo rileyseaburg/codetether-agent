@@ -9,6 +9,9 @@ mod calls;
 mod provider_impl;
 #[path = "metrics/provider_impl_delegates.rs"]
 mod provider_impl_delegates;
+#[cfg(test)]
+#[path = "metrics/provider_impl_tests.rs"]
+mod provider_impl_tests;
 #[path = "metrics/record.rs"]
 mod record;
 #[path = "metrics/stream.rs"]

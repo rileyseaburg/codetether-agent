@@ -6,6 +6,7 @@ mod approval_routes;
 pub mod auth;
 mod config_status;
 mod models_catalog;
+mod openai_stream;
 pub mod policy;
 mod policy_user;
 mod tool_contract;
@@ -1790,6 +1791,7 @@ async fn openai_chat_completions(
 
         let (stream_id, stream_model) = (chat_id.clone(), openai_model.clone());
         let event_stream = async_stream::stream! {
+            use crate::provider::StreamChunk as Chunk;
             let mut tool_call_indices: HashMap<String, usize> = HashMap::new();
             let mut next_tool_call_index = 0usize;
             let mut saw_text = false;
@@ -1806,7 +1808,7 @@ async fn openai_chat_completions(
 
             while let Some(chunk) = provider_stream.next().await {
                 match chunk {
-                    crate::provider::StreamChunk::Text(text) => {
+                    Chunk::Text(text) => {
                         if text.is_empty() {
                             continue;
                         }
@@ -1820,7 +1822,7 @@ async fn openai_chat_completions(
                         );
                         yield Ok(openai_stream_event(&content_chunk));
                     }
-                    crate::provider::StreamChunk::ToolCallStart { id, name } => {
+                    Chunk::ToolCallStart { id, name } => {
                         saw_tool_calls = true;
                         let index = *tool_call_indices.entry(id.clone()).or_insert_with(|| {
                             let value = next_tool_call_index;
@@ -1846,7 +1848,7 @@ async fn openai_chat_completions(
                         );
                         yield Ok(openai_stream_event(&tool_chunk));
                     }
-                    crate::provider::StreamChunk::ToolCallDelta { id, arguments_delta } => {
+                    Chunk::ToolCallDelta { id, arguments_delta } => {
                         if arguments_delta.is_empty() {
                             continue;
                         }
@@ -1874,10 +1876,12 @@ async fn openai_chat_completions(
                         );
                         yield Ok(openai_stream_event(&tool_delta_chunk));
                     }
-                    crate::provider::StreamChunk::ToolCallEnd { .. } => {}
-                    crate::provider::StreamChunk::Done { .. }
-                    | crate::provider::StreamChunk::Thinking(_) => {}
-                    crate::provider::StreamChunk::Error(error) => {
+                    Chunk::KeepAlive
+                    | Chunk::ToolCallEnd { .. }
+                    | Chunk::OutputItemDone { .. }
+                    | Chunk::Done { .. }
+                    | Chunk::Thinking(_) => {}
+                    Chunk::Error(error) => {
                         let error_chunk = openai_stream_chunk(
                             &stream_id,
                             now,
@@ -1892,11 +1896,7 @@ async fn openai_chat_completions(
                 }
             }
 
-            let finish_reason = if saw_tool_calls && !saw_text {
-                "tool_calls"
-            } else {
-                "stop"
-            };
+            let finish_reason = openai_stream::finish_reason(saw_tool_calls, saw_text);
             let final_chunk = openai_stream_chunk(
                 &stream_id,
                 now,

@@ -14,10 +14,22 @@ mod markers;
 /// retried even if the message also mentions a port number like 500.
 pub(crate) fn is_transient(msg: &str) -> bool {
     let lower = msg.to_ascii_lowercase();
+    if lower.starts_with("codex-retryable: ") {
+        return true;
+    }
+    if lower.starts_with("codex-permanent: ") {
+        return false;
+    }
     if markers::PERMANENT.iter().any(|m| lower.contains(m)) {
         return false;
     }
     markers::TRANSIENT.iter().any(|m| lower.contains(m))
+}
+
+pub(crate) fn display_message(msg: &str) -> &str {
+    msg.strip_prefix("codex-retryable: ")
+        .or_else(|| msg.strip_prefix("codex-permanent: "))
+        .unwrap_or(msg)
 }
 
 #[cfg(test)]

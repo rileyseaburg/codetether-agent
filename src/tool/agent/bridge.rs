@@ -9,6 +9,8 @@
 use super::store;
 #[path = "bridge_live.rs"]
 mod live;
+#[path = "bridge_snapshots.rs"]
+mod snapshots;
 #[path = "bridge_transcript.rs"]
 mod transcript;
 pub(crate) use live::{LiveTraceEntry, LiveTraceSnapshot, agent_tool_live_trace_for_parent};
@@ -25,16 +27,20 @@ pub struct AgentSnapshot {
     pub parent: Option<String>,
     pub depth: u8,
     pub is_processing: bool,
+    /// Whether this entry represents a discovered A2A peer.
+    pub is_remote: bool,
+    /// Whether the latest observed turn failed.
+    pub failed: bool,
 }
 
 /// Returns snapshots of all agents spawned via the `agent` tool.
 pub fn list_agent_tool_agents() -> Vec<AgentSnapshot> {
-    snapshots(None)
+    snapshots::all(None)
 }
 
 /// Returns only agents owned by `parent_session_id`.
 pub fn list_agent_tool_agents_for_parent(parent_session_id: &str) -> Vec<AgentSnapshot> {
-    snapshots(Some(parent_session_id))
+    snapshots::all(Some(parent_session_id))
 }
 
 /// Looks up an agent only when it belongs to `parent_session_id`.
@@ -42,27 +48,14 @@ pub fn find_agent_tool_agent_for_parent(
     name: &str,
     parent_session_id: &str,
 ) -> Option<AgentSnapshot> {
-    snapshots(Some(parent_session_id))
+    snapshots::all(Some(parent_session_id))
         .into_iter()
         .find(|agent| agent.name == name || agent.id == name)
 }
 
-fn snapshots(parent_session_id: Option<&str>) -> Vec<AgentSnapshot> {
-    store::entries_for_parent(parent_session_id)
-        .into_iter()
-        .map(|entry| AgentSnapshot {
-            id: entry.session.id.clone(),
-            name: entry.name,
-            instructions: entry.instructions,
-            message_count: entry.session.messages.len(),
-            model_id: entry.model_id,
-            parent: entry.parent,
-            depth: entry.depth,
-            is_processing: super::execution_state::is_running(&entry.session.id),
-        })
-        .collect()
-}
-
+#[cfg(test)]
+#[path = "bridge_remote_tests.rs"]
+mod remote_tests;
 #[cfg(test)]
 #[path = "bridge_tests.rs"]
 mod tests;

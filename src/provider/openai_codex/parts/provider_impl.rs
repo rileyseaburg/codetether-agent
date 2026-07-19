@@ -5,24 +5,7 @@ impl Provider for OpenAiCodexProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        let mut models = vec![
-            // ChatGPT backend: gpt-5.5 plus Fast mode via service_tier=priority.
-            // Authenticated Codex catalog: Sol/Terra support max+ultra; Luna supports max.
-            // All three are available through the ChatGPT backend and Bedrock aliases.
-            Self::model_info("gpt-5.5", "GPT-5.5", 272_000, 128_000, false),
-            Self::model_info("gpt-5.5-fast", "GPT-5.5 Fast", 272_000, 128_000, false),
-            Self::model_info("gpt-5.6-sol", "GPT-5.6 Sol", 272_000, 128_000, false),
-            Self::model_info("gpt-5.6-terra", "GPT-5.6 Terra", 272_000, 128_000, false),
-            Self::model_info("gpt-5.6-luna", "GPT-5.6 Luna", 272_000, 128_000, false),
-        ];
-
-        if self.using_chatgpt_backend() {
-            models.retain(|model| Self::chatgpt_supported_models().contains(&model.id.as_str()));
-        } else {
-            models.retain(|model| !Self::api_key_hidden_model(&model.id));
-        }
-
-        Ok(models)
+        Ok(self.available_models())
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
@@ -52,5 +35,19 @@ impl Provider for OpenAiCodexProvider {
         session_id: &str,
     ) -> Result<BoxStream<'static, StreamChunk>> {
         self.complete_stream_in_session(request, session_id).await
+    }
+
+    fn begin_stream_recovery(&self, session_id: &str) {
+        self.turn_states.begin(session_id);
+    }
+
+    fn try_stream_fallback(&self, request: &CompletionRequest, session_id: &str) -> bool {
+        let forced = self.using_chatgpt_backend()
+            && Self::needs_chatgpt_http_transport(&request.model);
+        if forced || self.transport_health.requires_http(session_id) {
+            return false;
+        }
+        self.transport_health.mark_interrupted(session_id);
+        true
     }
 }

@@ -8,7 +8,7 @@ pub(super) async fn run(name: String, directory: Option<PathBuf>, detached: bool
     let record = crate::mux::control::start_record(&name, workspace).await?;
     if detached {
         println!("started mux session '{}' at {}", name, record.address);
-        println!("attach with: codetether mux attach -t {name}");
+        println!("attach with: codetether mux attach {name}");
         Ok(())
     } else {
         crate::mux::client::attach(&record).await

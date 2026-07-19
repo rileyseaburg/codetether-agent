@@ -32,3 +32,7 @@ mod tests;
 #[cfg(test)]
 #[path = "mux_args_kill_tests.rs"]
 mod kill_tests;
+
+#[cfg(test)]
+#[path = "mux_args_help_tests.rs"]
+mod help_tests;

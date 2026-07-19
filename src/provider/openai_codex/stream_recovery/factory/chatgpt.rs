@@ -1,47 +1,35 @@
 //! ChatGPT OAuth HTTP recovery factory.
 
+use anyhow::Context;
+
 use super::super::super::{CompletionRequest, OpenAiCodexProvider};
 use super::super::{Chunks, retry};
 
-/// Recover an interrupted WebSocket request through ChatGPT HTTP.
-pub(in crate::provider::openai_codex) fn recover(
-    provider: OpenAiCodexProvider,
-    primary: Chunks,
-    request: CompletionRequest,
-    token: String,
-    account: String,
-) -> Chunks {
-    retry_stream(provider, Some(primary), request, token, account)
-}
-
-/// Start a ChatGPT HTTP request with private transport retries.
+/// Start a ChatGPT HTTP request with request-opening retries.
 pub(in crate::provider::openai_codex) fn start(
     provider: OpenAiCodexProvider,
     request: CompletionRequest,
-    token: String,
-    account: String,
+    session_id: String,
 ) -> Chunks {
-    retry_stream(provider, None, request, token, account)
+    retry_stream(provider, request, session_id)
 }
 
 fn retry_stream(
     provider: OpenAiCodexProvider,
-    primary: Option<Chunks>,
     request: CompletionRequest,
-    token: String,
-    account: String,
+    session_id: String,
 ) -> Chunks {
-    retry::with_http_retry(primary, move || {
-        let values = (
-            provider.clone(),
-            request.clone(),
-            token.clone(),
-            account.clone(),
-        );
+    retry::with_http_retry(move || {
+        let values = (provider.clone(), request.clone(), session_id.clone());
         async move {
+            let token = values.0.get_access_token().await?;
+            let account = values
+                .0
+                .resolved_chatgpt_account_id(&token)
+                .context("OpenAI Codex token is missing ChatGPT account ID")?;
             values
                 .0
-                .complete_stream_with_chatgpt_http_responses(values.1, values.2, values.3)
+                .complete_stream_with_chatgpt_http_responses(values.1, token, account, &values.2)
                 .await
         }
     })

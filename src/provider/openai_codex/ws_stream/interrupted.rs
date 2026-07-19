@@ -1,11 +1,5 @@
-//! Structured reporting and health updates for interrupted WebSockets.
+//! Structured reporting for interrupted WebSockets.
 
-use super::super::TransportHealth;
-
-pub(super) fn record(health: &TransportHealth, session_id: &str, error: Option<&anyhow::Error>) {
-    tracing::warn!(
-        error = error.map(ToString::to_string),
-        "Codex transport retrying privately"
-    );
-    health.mark_interrupted(session_id);
+pub(super) fn record(session_id: &str, reason: &str) {
+    tracing::warn!(session_id, reason, "Codex WebSocket stream interrupted");
 }

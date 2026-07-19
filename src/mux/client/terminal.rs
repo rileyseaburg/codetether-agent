@@ -1,33 +1,41 @@
 //! Local terminal state guard while proxying a remote PTY.
 
+mod cleanup;
+mod synchronized;
+
 use std::io;
 
 use anyhow::Result;
 use crossterm::{
-    cursor::{MoveTo, Show},
+    cursor::MoveTo,
     execute,
-    terminal::{
-        Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
-        enable_raw_mode,
-    },
+    terminal::{Clear, ClearType, EnterAlternateScreen, enable_raw_mode},
 };
 
 use crate::mux::pty::terminal_mode::TerminalMode;
 
+use synchronized::SynchronizedOutput;
+
 pub(super) struct ProxyTerminal {
     mode: TerminalMode,
     clear_on_drop: bool,
+    synchronized: SynchronizedOutput,
 }
 
 impl ProxyTerminal {
-    pub(super) fn enter(alternate_screen: bool) -> Result<Self> {
+    pub(super) fn enter(alternate_screen: bool, replaying: bool) -> Result<Self> {
         enable_raw_mode()?;
         if alternate_screen {
             execute!(io::stdout(), EnterAlternateScreen)?;
         }
+        let synchronized = SynchronizedOutput::begin(replaying)?;
+        if replaying {
+            execute!(io::stdout(), Clear(ClearType::All), MoveTo(0, 0))?;
+        }
         Ok(Self {
             mode: TerminalMode::new(alternate_screen),
             clear_on_drop: false,
+            synchronized,
         })
     }
 
@@ -35,25 +43,11 @@ impl ProxyTerminal {
         self.mode.observe(data);
     }
 
+    pub(super) fn finish_replay(&mut self) -> Result<()> {
+        self.synchronized.finish()
+    }
+
     pub(super) fn clear_after_detach(&mut self) {
         self.clear_on_drop = true;
-    }
-}
-
-impl Drop for ProxyTerminal {
-    fn drop(&mut self) {
-        let _ = disable_raw_mode();
-        if self.mode.active() {
-            let _ = execute!(io::stdout(), LeaveAlternateScreen);
-        }
-        if self.clear_on_drop {
-            let _ = execute!(
-                io::stdout(),
-                Clear(ClearType::Purge),
-                Clear(ClearType::All),
-                MoveTo(0, 0)
-            );
-        }
-        let _ = execute!(io::stdout(), Show);
     }
 }

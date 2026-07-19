@@ -3,13 +3,11 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use tokio::sync::{Mutex, Notify, RwLock};
 
 use crate::mux::model::MuxSnapshot;
 use crate::mux::pty::PtyRegistry;
-use crate::mux::registry::{self, MuxRecord};
 
 pub(super) struct ServerContext {
     pub state: RwLock<MuxSnapshot>,
@@ -18,7 +16,8 @@ pub(super) struct ServerContext {
     pub started_at: DateTime<Utc>,
     pub shutdown: Notify,
     pub programs: PtyRegistry,
-    persist_lock: Mutex<()>,
+    pub leases: crate::mux::lease::LeaseRegistry,
+    pub(super) persist_lock: Mutex<()>,
 }
 
 impl ServerContext {
@@ -30,21 +29,8 @@ impl ServerContext {
             started_at: Utc::now(),
             shutdown: Notify::new(),
             programs: PtyRegistry::new(),
+            leases: crate::mux::lease::LeaseRegistry::new(),
             persist_lock: Mutex::new(()),
         })
-    }
-
-    pub(super) async fn persist(&self) -> Result<()> {
-        let _guard = self.persist_lock.lock().await;
-        let state = self.state.read().await.clone();
-        registry::store(&MuxRecord {
-            name: state.name.clone(),
-            address: self.address,
-            token: self.token.clone(),
-            pid: std::process::id(),
-            started_at: self.started_at,
-            state,
-        })
-        .await
     }
 }

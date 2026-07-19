@@ -3,12 +3,13 @@
 use anyhow::{Result, bail};
 use tokio::sync::mpsc;
 
-use crate::mux::protocol::{ClientRequest, ServerResponse};
+use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
 use super::super::connection::MuxConnection;
 
 pub(super) struct Event {
     pub data: Vec<u8>,
+    pub next_offset: u64,
     pub exited: bool,
 }
 
@@ -21,9 +22,11 @@ pub(super) fn start(
     tokio::spawn(async move {
         loop {
             let response = connection
-                .request(ClientRequest::ReadProgram {
-                    window_id: id,
-                    offset,
+                .request(ClientRequest::Program {
+                    request: ProgramRequest::Read {
+                        window_id: id,
+                        offset,
+                    },
                 })
                 .await;
             let result = response.and_then(|response| match response {
@@ -34,6 +37,7 @@ pub(super) fn start(
                 } => {
                     offset = next_offset;
                     Ok(Event {
+                        next_offset,
                         exited: !running && data.is_empty(),
                         data,
                     })
@@ -41,10 +45,7 @@ pub(super) fn start(
                 ServerResponse::Error { message } => bail!(message),
                 _ => bail!("mux server returned an invalid PTY output response"),
             });
-            let finished = match &result {
-                Ok(event) => event.exited,
-                Err(_) => true,
-            };
+            let finished = result.as_ref().map_or(true, |event| event.exited);
             if sender.send(result).await.is_err() || finished {
                 break;
             }

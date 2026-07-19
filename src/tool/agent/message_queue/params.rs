@@ -9,6 +9,7 @@ pub(super) fn queued(item: &Item) -> Params {
         name: None,
         instructions: None,
         message: None,
+        context_id: None,
         message_images: Vec::new(),
         model: None,
         ephemeral: false,

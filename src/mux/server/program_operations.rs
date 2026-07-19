@@ -17,6 +17,7 @@ pub(super) fn attach(
     Ok(ServerResponse::ProgramAttached {
         window_id: id,
         offset: attach.offset,
+        replay_until: attach.replay_until,
         alternate_screen: attach.alternate_screen,
     })
 }

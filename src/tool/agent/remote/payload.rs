@@ -2,7 +2,7 @@
 
 use crate::a2a::types::{Message, MessageRole, MessageSendConfiguration, MessageSendParams, Part};
 
-pub(super) fn build(text: &str) -> MessageSendParams {
+pub(super) fn build(text: &str, context_id: Option<&str>) -> MessageSendParams {
     MessageSendParams {
         message: Message {
             message_id: uuid::Uuid::new_v4().to_string(),
@@ -10,7 +10,7 @@ pub(super) fn build(text: &str) -> MessageSendParams {
             parts: vec![Part::Text {
                 text: text.to_string(),
             }],
-            context_id: None,
+            context_id: context_id.map(ToString::to_string),
             task_id: None,
             metadata: std::collections::HashMap::from([(
                 "codetether.transport".to_string(),
@@ -26,3 +26,7 @@ pub(super) fn build(text: &str) -> MessageSendParams {
         }),
     }
 }
+
+#[cfg(test)]
+#[path = "payload_tests.rs"]
+mod tests;

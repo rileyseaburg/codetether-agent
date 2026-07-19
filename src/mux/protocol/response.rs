@@ -18,12 +18,17 @@ pub(in crate::mux) enum ServerResponse {
         window_id: u64,
         offset: u64,
         #[serde(default)]
+        replay_until: u64,
+        #[serde(default)]
         alternate_screen: bool,
     },
     ProgramOutput {
         data: Vec<u8>,
         next_offset: u64,
         running: bool,
+    },
+    Coordination {
+        reply: crate::mux::lease::CoordinationReply,
     },
     Acknowledged,
     Detached,

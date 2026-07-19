@@ -11,6 +11,6 @@ use super::outcome::StreamStop;
 pub(super) fn fault_from(msg: &str) -> StreamStop {
     StreamStop::Fault {
         transient: fault::is_transient(msg),
-        message: msg.to_string(),
+        message: fault::display_message(msg).to_string(),
     }
 }

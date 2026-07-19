@@ -22,6 +22,9 @@ pub(super) const TRANSIENT: &[&str] = &[
     "connection reset",
     "connection closed",
     "connection refused",
+    "websocket",
+    "sse stream",
+    "stream closed",
     "broken pipe",
     "eof",
     "rate limit",
@@ -36,6 +39,7 @@ pub(super) const TRANSIENT: &[&str] = &[
     "temporarily",
     "no choices",
     "empty response",
+    "incomplete response",
     "stream ended without producing any content",
     "stream ended without assistant content",
 ];

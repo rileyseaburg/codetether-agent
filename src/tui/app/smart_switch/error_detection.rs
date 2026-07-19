@@ -1,18 +1,8 @@
 //! Provider error classification and normalization.
 
-/// Normalizes provider aliases (zhipuai/z-ai -> zai).
-pub fn normalize_provider_alias(provider_name: &str) -> &str {
-    if provider_name.eq_ignore_ascii_case("zhipuai") || provider_name.eq_ignore_ascii_case("z-ai") {
-        "zai"
-    } else {
-        provider_name
-    }
-}
-
-/// Normalizes a model reference for use as a key in the attempted models set.
-pub fn smart_switch_model_key(model_ref: &str) -> String {
-    model_ref.trim().to_ascii_lowercase()
-}
+#[path = "error_detection/normalization.rs"]
+mod normalization;
+pub use normalization::{normalize_provider_alias, smart_switch_model_key};
 
 /// Classifies provider errors as retryable (rate limit, timeout, 5xx) vs permanent.
 pub fn is_retryable_provider_error(err: &str) -> bool {
@@ -47,9 +37,10 @@ pub fn is_retryable_provider_error(err: &str) -> bool {
         "context window",
     ];
 
-    if non_retryable_status_codes
-        .iter()
-        .any(|c| normalized.contains(c))
+    if normalized.contains("retry limit exhausted")
+        || non_retryable_status_codes
+            .iter()
+            .any(|c| normalized.contains(c))
     {
         return false;
     }

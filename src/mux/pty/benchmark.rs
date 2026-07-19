@@ -16,7 +16,13 @@ fn live_program_scaling_benchmark() {
     let before_rss = MemorySnapshot::capture().rss_kb.unwrap_or_default();
     for id in 0..PROGRAMS {
         registry
-            .start(id, "sleep 20", &workspace, TerminalSize::new(80, 24))
+            .start(
+                id,
+                "sleep 20",
+                &workspace,
+                TerminalSize::new(80, 24),
+                "benchmark",
+            )
             .unwrap();
     }
     std::thread::sleep(Duration::from_millis(100));

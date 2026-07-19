@@ -7,7 +7,7 @@
 //! a clean re-request yields one complete answer. Partials are discarded,
 //! never token-stitched.
 
-use crate::provider::CompletionResponse;
+use crate::provider::{CompletionResponse, ContentPart};
 
 /// Reason a provider stream stopped.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,6 +64,7 @@ impl StreamStop {
 /// the classified stop reason.
 pub(crate) struct DrainOutcome {
     pub(crate) response: Option<CompletionResponse>,
+    pub(crate) completed: Vec<ContentPart>,
     pub(crate) stop: StreamStop,
 }
 

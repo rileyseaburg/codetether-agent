@@ -17,7 +17,7 @@ use crate::tui::app::state::App;
 
 /// Render the agent tab bar into `area` (no-op when empty and zero height).
 pub fn render_agent_bar(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
-    let tool_agents = crate::tool::agent::bridge::list_agent_tool_agents();
+    let tool_agents = tool_agents(app);
     let has_tui = !app.state.spawned_agents.is_empty();
     let has_swarm = !app.state.swarm.subtasks.is_empty();
     if area.height == 0 || (!has_tui && !has_swarm && tool_agents.is_empty()) {
@@ -37,4 +37,12 @@ pub fn render_agent_bar(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     push_tool_agents(&mut spans, &tool_agents, app, active);
     swarm::push_swarm_agents(&mut spans, app);
     f.render_widget(Paragraph::new(Line::from(spans)), area);
+}
+
+fn tool_agents(app: &App) -> Vec<crate::tool::agent::bridge::AgentSnapshot> {
+    app.state
+        .session_id
+        .as_deref()
+        .map(crate::tool::agent::bridge::list_agent_tool_agents_for_parent)
+        .unwrap_or_else(crate::tool::agent::bridge::list_agent_tool_agents)
 }

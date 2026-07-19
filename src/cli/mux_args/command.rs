@@ -13,20 +13,19 @@ use clap::Subcommand;
 /// use codetether_agent::cli::command::mux_args::MuxCommand;
 ///
 /// let command = MuxCommand::Kill {
-///     target: Some("work".into()),
-///     named_target: None,
+///     target: "work".into(),
 /// };
-/// assert!(matches!(command, MuxCommand::Kill { target: Some(_), .. }));
+/// assert!(matches!(command, MuxCommand::Kill { target } if target == "work"));
 /// ```
 #[derive(Debug, Subcommand)]
 pub enum MuxCommand {
     /// Create a persistent named mux session.
     New {
         /// Unique mux session name.
-        #[arg(short = 's', long)]
+        #[arg(value_name = "SESSION")]
         session: String,
-        /// Initial window workspace.
-        #[arg(short = 'c', long)]
+        /// Initial window workspace supplied positionally.
+        #[arg(value_name = "DIRECTORY")]
         directory: Option<PathBuf>,
         /// Leave the server detached instead of opening its client.
         #[arg(short = 'd', long)]
@@ -35,7 +34,7 @@ pub enum MuxCommand {
     /// Attach an interactive network client to a named session.
     Attach {
         /// Mux session to attach.
-        #[arg(short = 't', long)]
+        #[arg(value_name = "SESSION")]
         target: String,
     },
     /// List persistent mux sessions.
@@ -47,12 +46,9 @@ pub enum MuxCommand {
     },
     /// Stop a persistent mux session.
     Kill {
-        /// Mux session name supplied positionally.
-        #[arg(value_name = "TARGET", conflicts_with = "named_target")]
-        target: Option<String>,
-        /// Mux session name supplied with the tmux-style option.
-        #[arg(short = 't', long = "target", value_name = "TARGET")]
-        named_target: Option<String>,
+        /// Mux session name.
+        #[arg(value_name = "TARGET")]
+        target: String,
     },
     /// Stop every persistent mux session.
     #[command(name = "kill-all", alias = "kill-server")]

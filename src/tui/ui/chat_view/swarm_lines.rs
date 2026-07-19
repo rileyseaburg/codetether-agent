@@ -35,3 +35,7 @@ pub(super) fn build(
 #[cfg(test)]
 #[path = "swarm_lines_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "real_session_benchmark.rs"]
+mod real_session_benchmark;

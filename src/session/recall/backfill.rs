@@ -5,6 +5,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 pub(super) fn schedule(workspace: &Path) {
+    if !super::backfill_policy::enabled() {
+        return;
+    }
     let workspace = super::paths::canonical(workspace);
     let key = super::paths::catalog(&workspace).unwrap_or_else(|_| workspace.clone());
     let start = scheduled()

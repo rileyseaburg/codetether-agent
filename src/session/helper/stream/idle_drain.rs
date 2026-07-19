@@ -18,6 +18,7 @@ pub(super) async fn apply(
     event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
 ) -> Result<()> {
     match chunk {
+        StreamChunk::KeepAlive => {}
         StreamChunk::Text(d) => text_acc::on_text(&mut state.text, &d, event_tx).await?,
         StreamChunk::ToolCallStart { id, name } => {
             tool_acc::on_tool_start(&mut state.tools, &mut state.idx, id, name)
@@ -27,6 +28,7 @@ pub(super) async fn apply(
             arguments_delta,
         } => tool_acc::on_tool_delta(&mut state.tools, &mut state.idx, id, arguments_delta)?,
         StreamChunk::ToolCallEnd { .. } => {}
+        StreamChunk::OutputItemDone { content } => state.completed.push(content),
         StreamChunk::Thinking(delta) => reasoning::apply(state, delta, event_tx)?,
         StreamChunk::Done { usage: u } => {
             if let Some(u) = u {

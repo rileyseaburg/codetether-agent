@@ -10,7 +10,12 @@ impl OpenAiCodexProvider {
             tracing::debug!(session_id, "Reusing Codex responses websocket");
             return Ok(connection);
         }
-        self.connect_responses_ws_with_token(access_token, chatgpt_account_id, backend)
-            .await
+        self.connect_responses_ws_with_token(
+            access_token,
+            chatgpt_account_id,
+            backend,
+            session_id,
+        )
+        .await
     }
 }

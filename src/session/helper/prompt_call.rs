@@ -12,15 +12,17 @@ use tokio::sync::mpsc;
 use crate::provider::{CompletionRequest, CompletionResponse, Provider};
 use crate::session::SessionEvent;
 
+#[path = "prompt_call/checkpoint.rs"]
+mod checkpoint;
 #[path = "prompt_call/dispatch.rs"]
 mod dispatch;
 
-/// Hard wall-clock deadline for a single provider completion.
+pub(super) use checkpoint::persist as persist_stream_checkpoints;
+
+/// Hard wall-clock deadline for a non-streaming provider completion.
 ///
-/// A stalled stream (no error, no completion) must never hang the agent loop
-/// indefinitely. When this deadline elapses the step errors out loudly so the
-/// caller's retry/error path can take over. Overridable via the
-/// `CODETETHER_STEP_TIMEOUT_SECS` env var.
+/// Streaming calls use the per-activity idle timeout in the stream collector,
+/// matching Codex without imposing a deadline on the entire response.
 const DEFAULT_STEP_TIMEOUT_SECS: u64 = 300;
 
 /// Execute one provider completion without bypassing retryable errors.
@@ -57,8 +59,12 @@ pub(super) async fn complete_step(
     supports_tools: bool,
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<CompletionResponse> {
+    let streaming = supports_tools && provider.supports_structured_streaming();
     let timeout = step_timeout();
     let fut = dispatch::run(provider, request, session_id, supports_tools, event_tx);
+    if streaming {
+        return fut.await;
+    }
     match tokio::time::timeout(timeout, fut).await {
         Ok(result) => result,
         Err(_) => Err(anyhow::anyhow!(

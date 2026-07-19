@@ -52,6 +52,7 @@ mod step_model_restore;
 mod tool_heartbeat;
 mod usage_record;
 pub mod validation;
+mod workspace_coordination;
 mod workspace_tools;
 
 #[cfg(test)]

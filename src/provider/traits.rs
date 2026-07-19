@@ -126,6 +126,14 @@ pub trait Provider: Send + Sync {
         self.complete_stream(request).await
     }
 
+    /// Start one logical turn's stream-recovery scope.
+    fn begin_stream_recovery(&self, _session_id: &str) {}
+
+    /// Switch to a fallback transport after stream retries are exhausted.
+    fn try_stream_fallback(&self, _request: &CompletionRequest, _session_id: &str) -> bool {
+        false
+    }
+
     /// Whether streaming preserves structured output such as tool calls.
     fn supports_structured_streaming(&self) -> bool {
         true

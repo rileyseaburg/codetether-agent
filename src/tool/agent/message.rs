@@ -6,6 +6,8 @@ use anyhow::{Context, Result};
 
 #[path = "remote/mod.rs"]
 pub(super) mod remote;
+#[path = "message/remote_fallback.rs"]
+mod remote_fallback;
 #[path = "message/run.rs"]
 pub(super) mod run;
 #[path = "message/start.rs"]
@@ -35,10 +37,7 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
     let Some((agent_id, entry)) =
         super::store::scope::resolve_for_parent(&target, params.parent_session_id.as_deref())
     else {
-        if let Some(result) = remote::message(&target, &message).await {
-            return result;
-        }
-        return Ok(ToolResult::error(format!("Agent {target} not found")));
+        return remote_fallback::execute(&target, &message, params).await;
     };
     if params.detach_or_default() {
         return submit::detached(agent_id, message, params).await;

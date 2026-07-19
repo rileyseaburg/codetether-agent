@@ -18,7 +18,8 @@ pub(super) struct Startup {
 
 pub(super) async fn load(cwd: &Path, bus: Arc<AgentBus>) -> Startup {
     let registry_task = super::provider::load_registry();
-    let worker_task = TuiWorkerBridge::spawn(None, None, None, bus);
+    let worker_task =
+        TuiWorkerBridge::spawn(None, None, crate::provenance::runtime_agent_identity(), bus);
     let session_task = super::session_scan::load(cwd);
     let config_task = Config::load();
     let workspace_task = super::workspace::capture(cwd.to_path_buf());

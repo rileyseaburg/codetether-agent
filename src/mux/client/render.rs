@@ -18,6 +18,7 @@ pub(super) fn response(response: &ServerResponse) -> bool {
         ServerResponse::Authenticated { .. } => {}
         ServerResponse::ProgramAttached { .. }
         | ServerResponse::ProgramOutput { .. }
+        | ServerResponse::Coordination { .. }
         | ServerResponse::Acknowledged => {}
     }
     false

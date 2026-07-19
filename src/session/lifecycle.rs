@@ -13,6 +13,9 @@ use crate::provider::{Message, Usage};
 use super::pages::{PageKind, classify, classify_all};
 use super::types::{Session, SessionMetadata};
 
+#[path = "lifecycle/normalize.rs"]
+mod normalize;
+
 impl Session {
     /// Create a new empty session rooted at the current working directory.
     ///
@@ -72,21 +75,6 @@ impl Session {
     pub(crate) fn attach_global_bus_if_missing(&mut self) {
         if self.bus.is_none() {
             self.bus = crate::bus::global();
-        }
-    }
-
-    /// Rebuild / hydrate runtime sidecars that legacy sessions do not
-    /// carry on disk.
-    pub(crate) fn normalize_sidecars(&mut self) {
-        self.attach_global_bus_if_missing();
-        if self.pages.len() != self.messages.len() {
-            self.pages = classify_all(&self.messages);
-        }
-        if self.metadata.history_sink.is_none() {
-            self.metadata.history_sink =
-                crate::session::history_sink::HistorySinkConfig::from_env()
-                    .ok()
-                    .flatten();
         }
     }
 

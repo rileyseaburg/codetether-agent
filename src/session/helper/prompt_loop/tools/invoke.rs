@@ -4,10 +4,11 @@ use super::{super::Runner, call::Call, outcome::Outcome};
 
 /// Applies approval policy and executes a normalized tool call.
 pub(super) async fn execute(runner: &mut Runner<'_>, call: &Call) -> Outcome {
-    let input = super::super::super::runtime::enrich_tool_input_for_session(
+    let input = super::super::super::runtime::enrich_tool_input_for_turn(
         &call.input,
         &runner.workspace.cwd,
         runner.session,
+        &runner.lease_owner,
     );
     let started = super::super::super::persist::before_tool(runner.session).await;
     let (input, blocked) = if let Some(events) = &runner.events {

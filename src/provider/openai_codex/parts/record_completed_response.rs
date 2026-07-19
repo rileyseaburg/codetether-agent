@@ -4,18 +4,19 @@ impl OpenAiCodexProvider {
         event: &Value,
         chunks: &mut Vec<StreamChunk>,
     ) {
-        Self::record_completed_tools(parser, event, chunks);
-        let response = event.get("response");
-        let status = response
-            .and_then(|value| value.get("status"))
-            .and_then(Value::as_str);
-        if matches!(status, Some("failed" | "cancelled" | "incomplete")) {
-            Self::record_response_error(event, chunks, "Response failed");
+        let Some(response) = event.get("response") else {
+            return;
+        };
+        if !response.get("id").is_some_and(Value::is_string) {
+            chunks.push(StreamChunk::Error(
+                "codex-retryable: failed to parse ResponseCompleted: missing response id".into(),
+            ));
             return;
         }
-        Self::record_completed_reasoning(response, chunks);
+        Self::record_completed_tools(parser, event, chunks);
+        Self::record_completed_reasoning(Some(response), chunks);
         let usage = response
-            .and_then(|value| value.get("usage"))
+            .get("usage")
             .map(|usage| Self::parse_responses_usage(Some(usage)));
         chunks.push(StreamChunk::Done { usage });
     }

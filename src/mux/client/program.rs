@@ -2,7 +2,7 @@
 
 use anyhow::{Result, bail};
 
-use crate::mux::protocol::{ClientRequest, ServerResponse};
+use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
 use super::connection::MuxConnection;
 
@@ -12,7 +12,7 @@ pub(super) async fn start(
     command: String,
 ) -> Result<super::proxy::Outcome> {
     let offset = super::exec::start(connection, id, command).await?;
-    super::proxy::run(connection, id, offset, false).await
+    super::proxy::run(connection, id, offset, offset, false).await
 }
 
 pub(super) async fn attach(
@@ -21,19 +21,22 @@ pub(super) async fn attach(
 ) -> Result<Option<super::proxy::Outcome>> {
     let (columns, rows) = crossterm::terminal::size().unwrap_or((80, 24));
     let response = connection
-        .request(ClientRequest::AttachProgram {
-            window_id: id,
-            columns,
-            rows,
+        .request(ClientRequest::Program {
+            request: ProgramRequest::Attach {
+                window_id: id,
+                columns,
+                rows,
+            },
         })
         .await?;
     match response {
         ServerResponse::ProgramAttached {
             offset,
+            replay_until,
             alternate_screen,
             ..
         } => Ok(Some(
-            super::proxy::run(connection, id, offset, alternate_screen).await?,
+            super::proxy::run(connection, id, offset, replay_until, alternate_screen).await?,
         )),
         ServerResponse::Error { message } if message.contains("no running program") => Ok(None),
         ServerResponse::Error { message } => bail!(message),

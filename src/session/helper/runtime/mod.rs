@@ -27,4 +27,5 @@ pub use prompt::{
     local_cuda_light_system_prompt,
 };
 pub(crate) use session_input::enrich as enrich_tool_input_for_session;
+pub(crate) use session_input::enrich_for_turn as enrich_tool_input_for_turn;
 pub(crate) use session_input::enrich_with_model as enrich_tool_input_for_session_model;

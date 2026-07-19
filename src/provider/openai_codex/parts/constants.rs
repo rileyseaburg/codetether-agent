@@ -13,6 +13,7 @@ const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
 const SCOPE: &str = "openid profile email offline_access";
 const CHATGPT_BACKEND_OPT_IN_ENV: &str = "CODETETHER_OPENAI_CODEX_ALLOW_CHATGPT_BACKEND";
+const X_CODEX_TURN_STATE_HEADER: &str = "x-codex-turn-state";
 const DEFAULT_RESPONSES_INSTRUCTIONS: &str = "You are CodeTether Agent running on OpenAI Codex. \
 Resolve software tasks directly: inspect the workspace, make focused changes, validate with \
 available tools, and report concise results. When model availability or external APIs are involved, \

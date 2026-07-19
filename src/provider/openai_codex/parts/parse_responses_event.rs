@@ -20,23 +20,23 @@ impl OpenAiCodexProvider {
                 Self::record_responses_tool_arguments(parser, event, chunks, true);
             }
             Some("response.output_item.done") => {
-                if !event
-                    .get("item")
+                let item = event.get("item");
+                if !item
                     .is_some_and(|item| super::codex_reasoning::push_item_if_reasoning(item, chunks))
                 {
                     Self::record_done_tool(parser, event, chunks);
                 }
+                if let Some(content) = item.and_then(output_item::checkpoint) {
+                    chunks.push(StreamChunk::OutputItemDone { content });
+                }
             }
-            Some("response.completed") | Some("response.done")
-                if event.pointer("/response/status").and_then(Value::as_str)
-                    != Some("in_progress") =>
-            {
+            Some("response.completed") => {
                 Self::record_completed_response(parser, event, chunks)
             }
             Some("response.failed") => {
                 Self::record_response_error(event, chunks, "Response failed")
             }
-            Some("error") => Self::record_response_error(event, chunks, "Realtime error"),
+            Some("response.incomplete") => Self::record_incomplete_response(event, chunks),
             other => super::codex_reasoning::push_if_reasoning(other, event, chunks),
         }
     }

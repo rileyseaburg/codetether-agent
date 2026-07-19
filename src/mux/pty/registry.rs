@@ -25,12 +25,13 @@ impl PtyRegistry {
         command: &str,
         workspace: &Path,
         size: TerminalSize,
+        mux_session: &str,
     ) -> Result<u64> {
         let mut programs = self.programs.lock().unwrap();
         if programs.get(&id).is_some_and(|program| program.running()) {
             bail!("window {id} already has a running program");
         }
-        let program = Arc::new(PtyProgram::start(command, workspace, size)?);
+        let program = Arc::new(PtyProgram::start(command, workspace, size, mux_session)?);
         let offset = program.earliest();
         programs.insert(id, program);
         Ok(offset)
@@ -38,15 +39,10 @@ impl PtyRegistry {
 
     pub(in crate::mux) fn attach(&self, id: u64, size: TerminalSize) -> Result<PtyAttach> {
         let program = self.get(id)?;
+        let attach = program.attach_state();
         if program.running() {
-            let attach = program.attach_state();
             program.resize(size)?;
-            Ok(attach)
-        } else {
-            Ok(PtyAttach {
-                offset: program.earliest(),
-                alternate_screen: false,
-            })
         }
+        Ok(attach)
     }
 }

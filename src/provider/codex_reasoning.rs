@@ -16,7 +16,7 @@
 #[path = "codex_reasoning/signature.rs"]
 mod signature;
 
-use crate::provider::StreamChunk;
+use crate::provider::{ContentPart, StreamChunk};
 use serde_json::Value;
 
 /// Push a [`StreamChunk::Thinking`] when `event_type` is a reasoning event.
@@ -48,6 +48,14 @@ pub(super) fn push_item_if_reasoning(item: &Value, chunks: &mut Vec<StreamChunk>
     let chunk = signature::encode(item).unwrap_or_default();
     chunks.push(StreamChunk::Thinking(chunk));
     true
+}
+
+pub(super) fn checkpoint(item: &Value) -> Option<ContentPart> {
+    let signature = signature::encode(item)?;
+    Some(ContentPart::Thinking {
+        text: String::new(),
+        signature: Some(signature),
+    })
 }
 
 pub(crate) fn is_signature(value: &str) -> bool {

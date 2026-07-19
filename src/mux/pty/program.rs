@@ -20,8 +20,9 @@ impl PtyProgram {
         command: &str,
         workspace: &std::path::Path,
         size: TerminalSize,
+        mux_session: &str,
     ) -> Result<Self> {
-        let (master, child) = super::spawn::open(command, workspace, size)?;
+        let (master, child) = super::spawn::open(command, workspace, size, mux_session)?;
         let reader = master.try_clone()?;
         let output = Arc::new(Mutex::new(OutputBuffer::new()));
         let running = Arc::new(AtomicBool::new(true));

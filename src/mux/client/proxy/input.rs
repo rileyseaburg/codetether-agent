@@ -2,15 +2,17 @@
 
 use anyhow::{Result, bail};
 
-use crate::mux::protocol::{ClientRequest, ServerResponse};
+use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
 use super::super::connection::MuxConnection;
 
 pub(super) async fn send(connection: &mut MuxConnection, id: u64, data: Vec<u8>) -> Result<()> {
     match connection
-        .request(ClientRequest::ProgramInput {
-            window_id: id,
-            data,
+        .request(ClientRequest::Program {
+            request: ProgramRequest::Input {
+                window_id: id,
+                data,
+            },
         })
         .await?
     {

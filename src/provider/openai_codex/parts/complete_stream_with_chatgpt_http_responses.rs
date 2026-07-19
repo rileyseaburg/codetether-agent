@@ -4,20 +4,20 @@ impl OpenAiCodexProvider {
         request: CompletionRequest,
         access_token: String,
         account_id: String,
+        session_id: &str,
     ) -> Result<BoxStream<'static, StreamChunk>> {
-        let body = Self::build_http_responses_body(&request);
-        Self::log_http_responses_request("chatgpt-codex-responses-http", &body);
-        let response = self
-            .client
-            .post(format!("{CHATGPT_CODEX_API_URL}/responses"))
-            .header("Authorization", format!("Bearer {access_token}"))
-            .header("chatgpt-account-id", account_id)
-            .header("Content-Type", "application/json")
-            .header("version", "0.144.0")
-            .json(&body)
-            .send()
-            .await
-            .context("Failed to send streaming request to ChatGPT Codex backend")?;
+        let mut response = self
+            .send_chatgpt_http_response(&request, &access_token, &account_id, session_id)
+            .await?;
+        if response.status() == StatusCode::UNAUTHORIZED {
+            let access_token = self.force_refresh_access_token().await?;
+            let account_id = self
+                .resolved_chatgpt_account_id(&access_token)
+                .unwrap_or(account_id);
+            response = self
+                .send_chatgpt_http_response(&request, &access_token, &account_id, session_id)
+                .await?;
+        }
         Self::validate_http_response(response, &request.model).await
     }
 }

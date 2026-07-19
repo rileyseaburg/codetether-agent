@@ -26,5 +26,8 @@ impl Stream for MetricsStream {
 }
 
 fn is_output(result: &Poll<Option<StreamChunk>>) -> bool {
-    matches!(result, Poll::Ready(Some(chunk)) if !matches!(chunk, StreamChunk::Done { .. } | StreamChunk::Error(_)))
+    matches!(result, Poll::Ready(Some(chunk)) if !matches!(
+        chunk,
+        StreamChunk::KeepAlive | StreamChunk::Done { .. } | StreamChunk::Error(_)
+    ))
 }

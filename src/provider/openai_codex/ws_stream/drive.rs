@@ -5,8 +5,8 @@ use serde_json::Value;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use super::super::{
-    OpenAiCodexProvider, OpenAiRealtimeConnection, ResponsesSseParser, StreamChunk,
-    TransportHealth, WsPool,
+    OpenAiRealtimeConnection, ResponsesSseParser, StreamChunk, TransportHealth, TurnStateStore,
+    WsPool,
 };
 
 pub(in super::super) fn run<S>(
@@ -14,36 +14,37 @@ pub(in super::super) fn run<S>(
     body: Value,
     session_id: String,
     health: TransportHealth,
+    turn_states: TurnStateStore,
     pool: WsPool<S>,
 ) -> BoxStream<'static, StreamChunk>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     Box::pin(async_stream::stream! {
-        if let Err(error) = connection.send_event(&body).await {
-            super::interrupted::record(&health, &session_id, Some(&error));
-            let _ = connection.close().await;
+        if let Err(reason) = super::send::request(&mut connection, &body, &session_id).await {
+            yield StreamChunk::Error(reason);
             return;
         }
         let mut parser = ResponsesSseParser::default();
-        let mut buffered = Vec::new();
         let mut reusable = false;
         loop {
-            match connection.recv_event().await {
-                Ok(Some(event)) => {
-                    OpenAiCodexProvider::parse_responses_event(&mut parser, &event, &mut buffered);
-                    if buffered.iter().any(|chunk| matches!(chunk, StreamChunk::Error(_))) {
-                        yield buffered.pop().expect("error chunk exists");
-                        break;
-                    }
-                    if buffered.iter().any(|chunk| matches!(chunk, StreamChunk::Done { .. })) {
-                        for chunk in buffered.drain(..) { yield chunk; }
-                        reusable = true;
-                        break;
-                    }
+            let event = match super::next_event::get(&mut connection, &session_id).await {
+                super::next_event::Next::Event(event) => event,
+                super::next_event::Next::Activity => {
+                    yield StreamChunk::KeepAlive;
+                    continue;
                 }
-                Ok(None) => { super::interrupted::record(&health, &session_id, None); break; }
-                Err(error) => { super::interrupted::record(&health, &session_id, Some(&error)); break; }
+                super::next_event::Next::Failed(reason) => {
+                    yield StreamChunk::Error(reason);
+                    break;
+                }
+            };
+            super::turn_state::capture(&turn_states, &session_id, &event);
+            let parsed = super::parse::event(&mut parser, &event);
+            for chunk in parsed.chunks { yield chunk; }
+            if parsed.terminal {
+                reusable = parsed.reusable;
+                break;
             }
         }
         super::recycle::finish(connection, session_id, reusable, &health, &pool).await;

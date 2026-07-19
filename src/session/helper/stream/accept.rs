@@ -42,6 +42,15 @@ pub(super) fn accept(outcome: DrainOutcome, attempts: u32) -> Result<CompletionR
     }
 }
 
+/// Reject a retryable outcome after the configured restart budget is spent.
+pub(super) fn exhausted(outcome: DrainOutcome, retries: u32) -> anyhow::Error {
+    let reason = match outcome.stop {
+        StreamStop::Fault { message, .. } => message,
+        other => format!("{other:?}"),
+    };
+    anyhow::anyhow!("stream retry limit exhausted after {retries} retries: {reason}")
+}
+
 #[cfg(test)]
 #[path = "fault_accept_tests.rs"]
 mod tests;

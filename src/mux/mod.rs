@@ -8,16 +8,18 @@
 //! ## Usage
 //!
 //! ```text
-//! codetether mux new -s work -c /path/to/project -d
-//! codetether mux attach -t work
+//! codetether mux new work /path/to/project -d
+//! codetether mux attach work
 //! codetether mux list
-//! codetether mux kill -t work
+//! codetether mux kill work
 //! codetether mux kill-all
 //! ```
 
 mod client;
 mod command;
 pub(crate) mod control;
+pub(crate) mod coordination;
+pub(crate) mod lease;
 mod model;
 mod protocol;
 mod pty;

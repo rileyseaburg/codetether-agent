@@ -51,5 +51,8 @@ const RETRYABLE_NEEDLES: &[&str] = &[
 /// Returns true when an upstream provider error is worth retrying.
 pub fn is_retryable_upstream_error(err: &anyhow::Error) -> bool {
     let msg = err.to_string().to_ascii_lowercase();
+    if msg.contains("retry limit exhausted") {
+        return false;
+    }
     RETRYABLE_NEEDLES.iter().any(|needle| msg.contains(needle))
 }

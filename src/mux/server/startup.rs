@@ -25,6 +25,7 @@ pub(super) async fn initialize(
         &crate::mux::pty::default_shell::command(),
         &workspace,
         TerminalSize::new(80, 24),
+        name,
     )?;
     context.persist().await?;
     Ok(context)

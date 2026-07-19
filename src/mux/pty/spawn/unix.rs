@@ -2,18 +2,20 @@
 
 use std::fs::File;
 use std::os::fd::FromRawFd;
-use std::process::{Child, Command, Stdio};
+use std::process::Child;
 
 use anyhow::{Result, bail};
 
 use super::super::TerminalSize;
 
+mod command;
 mod control;
 
 pub(super) fn open(
     command: &str,
     workspace: &std::path::Path,
     size: TerminalSize,
+    mux_session: &str,
 ) -> Result<(File, Child)> {
     let mut master = -1;
     let mut slave = -1;
@@ -39,14 +41,7 @@ pub(super) fn open(
     // SAFETY: successful openpty returned unique owned descriptors.
     let master = unsafe { File::from_raw_fd(master) };
     let slave = unsafe { File::from_raw_fd(slave) };
-    let mut process = Command::new(std::env::var_os("SHELL").unwrap_or_else(|| "/bin/sh".into()));
-    process
-        .arg("-lc")
-        .arg(command)
-        .current_dir(workspace)
-        .stdin(Stdio::from(slave.try_clone()?))
-        .stdout(Stdio::from(slave.try_clone()?))
-        .stderr(Stdio::from(slave));
+    let mut process = command::configured(command, workspace, slave, mux_session)?;
     control::assign(&mut process);
     Ok((master, process.spawn()?))
 }

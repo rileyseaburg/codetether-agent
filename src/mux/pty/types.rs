@@ -16,6 +16,7 @@ impl TerminalSize {
 /// Reconnect position and display mode captured before a PTY resize.
 pub(in crate::mux) struct PtyAttach {
     pub offset: u64,
+    pub replay_until: u64,
     pub alternate_screen: bool,
 }
 

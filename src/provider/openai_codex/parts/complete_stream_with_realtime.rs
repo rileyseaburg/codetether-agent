@@ -10,13 +10,16 @@ impl OpenAiCodexProvider {
     ) -> Result<BoxStream<'static, StreamChunk>> {
         let (model, reasoning_effort, service_tier) =
             Self::resolve_model_and_reasoning_effort_and_service_tier(&request.model);
-        let body = Self::build_responses_ws_create_event_for_backend(
+        let mut body = Self::build_responses_ws_create_event_for_backend(
             &request,
             &model,
             reasoning_effort,
             service_tier,
             ws_backend,
         );
+        if let Some(value) = self.turn_states.current(session_id).get() {
+            body["client_metadata"] = json!({ (X_CODEX_TURN_STATE_HEADER): value });
+        }
         Self::log_responses_ws_request(&body, backend);
 
         let connection = self
@@ -33,6 +36,7 @@ impl OpenAiCodexProvider {
             body,
             session_id.to_string(),
             self.transport_health.clone(),
+            self.turn_states.clone(),
             self.ws_pool.clone(),
         ))
     }

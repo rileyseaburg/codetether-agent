@@ -7,15 +7,17 @@
 
 #[path = "tool_exec_audit.rs"]
 mod tool_exec_audit;
+#[path = "tool_exec_failure.rs"]
+mod tool_exec_failure;
+#[path = "tool_exec_run.rs"]
+mod tool_exec_run;
 
 use tokio::sync::mpsc;
 
-use crate::audit::AuditOutcome;
 use crate::session::SessionEvent;
 use crate::tool::ToolRegistry;
 
-use super::tool_audit_detail::{tool_failure_detail, tool_success_detail};
-use tool_exec_audit::{audit, progress_input, unknown_tool};
+use tool_exec_audit::{progress_input, unknown_tool};
 
 /// Execute one tool and return its `(output, success, metadata)` tuple.
 pub(in crate::session::helper) async fn execute_tool(
@@ -32,31 +34,12 @@ pub(in crate::session::helper) async fn execute_tool(
     if let Some(blocked) = super::tool_policy::blocked(tool_name, exec_input).await {
         return blocked;
     }
+    if let Some(blocked) =
+        super::super::workspace_coordination::blocked(tool_name, exec_input).await
+    {
+        return blocked;
+    }
     let _guard = progress.map(|(tx, id)| crate::tool::progress::register(id, tool_name, tx));
     let exec_input = progress_input(exec_input, progress.map(|(_, id)| id));
-    let ms = || exec_start.elapsed().as_millis() as u64;
-    match tool.execute(exec_input).await {
-        Ok(result) => {
-            let outcome = if result.success {
-                AuditOutcome::Success
-            } else {
-                AuditOutcome::Failure
-            };
-            tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
-            audit(
-                tool_name,
-                session_id,
-                outcome,
-                tool_success_detail(ms(), &result),
-            )
-            .await;
-            (result.output, result.success, Some(result.metadata))
-        }
-        Err(e) => {
-            tracing::warn!(tool = %tool_name, error = %e, "Tool execution failed");
-            let detail = tool_failure_detail(ms(), &e.to_string());
-            audit(tool_name, session_id, AuditOutcome::Failure, detail).await;
-            (format!("Error: {e}"), false, None)
-        }
-    }
+    tool_exec_run::run(tool, exec_input, tool_name, session_id, exec_start).await
 }

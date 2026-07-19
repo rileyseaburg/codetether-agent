@@ -17,6 +17,7 @@ pub struct OpenAiCodexProvider {
     /// Stored credentials from Vault (for refresh on startup)
     stored_credentials: Option<OAuthCredentials>,
     transport_health: TransportHealth,
+    turn_states: TurnStateStore,
     ws_pool: WsPool,
 }
 

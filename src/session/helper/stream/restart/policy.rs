@@ -14,7 +14,7 @@ pub(crate) struct RestartPolicy {
 impl Default for RestartPolicy {
     fn default() -> Self {
         Self {
-            max_restarts: 3,
+            max_restarts: 5,
             base_backoff: Duration::from_millis(200),
             multiplier: 2,
         }
