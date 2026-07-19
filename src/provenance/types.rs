@@ -1,4 +1,3 @@
-use super::ClaimProvenance;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -68,20 +67,6 @@ impl ExecutionProvenance {
         self.task_id = Some(task_id.to_string());
     }
 
-    pub fn apply_claim(&mut self, claim: &ClaimProvenance) {
-        self.apply_worker_task(&claim.worker_id, &claim.task_id);
-        self.run_id = claim.run_id.clone().or_else(|| self.run_id.clone());
-        self.attempt_id = claim.attempt_id.clone().or_else(|| self.attempt_id.clone());
-        self.identity.tenant_id = claim
-            .tenant_id
-            .clone()
-            .or_else(|| self.identity.tenant_id.clone());
-        self.identity.agent_identity_id = claim
-            .agent_identity_id
-            .clone()
-            .or_else(|| self.identity.agent_identity_id.clone());
-    }
-
     pub fn set_run_id(&mut self, run_id: impl Into<String>) {
         self.run_id = Some(run_id.into());
     }
@@ -96,7 +81,7 @@ impl ExecutionProvenance {
             issued_at: Utc::now(),
             identity: AgentIdentity {
                 tenant_id: std::env::var("CODETETHER_TENANT_ID").ok(),
-                agent_identity_id: std::env::var("CODETETHER_AGENT_IDENTITY_ID").ok(),
+                agent_identity_id: super::runtime_agent_identity(),
                 agent_name: agent_name.to_string(),
                 origin,
                 worker_id: std::env::var("CODETETHER_WORKER_ID").ok(),

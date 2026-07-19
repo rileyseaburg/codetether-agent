@@ -58,6 +58,8 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
+#[path = "spawn/agent_card.rs"]
+mod agent_card;
 #[path = "spawn/card_description.rs"]
 mod card_description;
 #[path = "spawn/lan_address.rs"]
@@ -271,9 +273,7 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     let public_url = normalize_base_url(&public_url)?;
 
     // 4. Build card.
-    let mut card = A2AServer::default_card(&public_url);
-    card.name = agent_name.clone();
-    card.description = card_description::resolve(opts.description.as_deref());
+    let card = agent_card::build(&agent_name, &public_url, opts.description.as_deref());
 
     bus.registry.register(card.clone());
     let bus_handle = bus.handle(&agent_name);

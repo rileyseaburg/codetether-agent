@@ -1,4 +1,6 @@
 //! Extended task heartbeat support for persistent workers.
+#[path = "extended_heartbeat_request.rs"]
+mod request;
 
 use anyhow::{Context, Result};
 use reqwest::Client;
@@ -26,14 +28,8 @@ pub(super) async fn send_extended_task_heartbeat(
         .get("current_checkpoint")
         .and_then(|value| value.as_str())
         .map(ToString::to_string);
-    let mut request = client.post(format!("{}/v1/worker/tasks/heartbeat-extended", server));
-    if let Some(token) = token {
-        request = request.bearer_auth(token);
-    }
-    let response = request
-        .json(&serde_json::json!({ "task_id": &task_id, "worker_id": worker_id, "status_message": status_message, "checkpoint": progress, "checkpoint_seq": checkpoint_seq, "lease_extension_seconds": lease_seconds }))
-        .send()
-        .await?;
+    let payload = serde_json::json!({ "task_id": &task_id, "worker_id": worker_id, "status_message": status_message, "checkpoint": progress, "checkpoint_seq": checkpoint_seq, "lease_extension_seconds": lease_seconds });
+    let response = request::send(client, server, token, worker_id, &task_id, &payload).await?;
     if !response.status().is_success() {
         anyhow::bail!(
             "extended heartbeat rejected with {}: {}",

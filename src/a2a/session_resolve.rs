@@ -13,7 +13,7 @@ use anyhow::Result;
 /// Mirrors the validation in `Session::session_path`: non-empty, ≤ 128
 /// bytes, and only `[A-Za-z0-9_-]` so it cannot escape the sessions
 /// directory.
-fn usable_as_session_id(context_id: &str) -> bool {
+pub(crate) fn usable_as_session_id(context_id: &str) -> bool {
     !context_id.is_empty()
         && context_id.len() <= 128
         && !context_id.contains(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_')
@@ -25,16 +25,40 @@ fn usable_as_session_id(context_id: &str) -> bool {
 ///   are remembered.
 /// * `Some(id)` with no existing session → a new session pinned to `id` so
 ///   the *next* turn can find it.
-/// * `Some(id)` unsafe as a filename, or `None` → a brand-new random session.
+/// * `Some(id)` unsafe as a filename → an error.
+/// * `None` → a brand-new random session.
+///
+/// # Arguments
+///
+/// * `context_id` — Optional A2A conversation identifier to resume or pin to a
+///   new session.
+///
+/// # Returns
+///
+/// The persisted session for the conversation, or a new session when the
+/// context is omitted or has not been seen before.
 ///
 /// # Errors
 ///
-/// Returns an error only if creating a new session fails. A failed load of
-/// an otherwise-valid id falls through to a new session pinned to that id.
+/// Returns an error for an unsafe context ID or if creating a new session
+/// fails. A failed load of a valid ID starts a new session pinned to that ID.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+/// use codetether_agent::a2a::session_resolve::resolve_session;
+/// let session = resolve_session(Some("forgejo_pr_42_head")).await.unwrap();
+/// assert_eq!(session.id, "forgejo_pr_42_head");
+/// # });
+/// ```
 pub async fn resolve_session(context_id: Option<&str>) -> Result<Session> {
-    let Some(id) = context_id.filter(|id| usable_as_session_id(id)) else {
+    let Some(id) = context_id else {
         return Session::new().await;
     };
+    if !usable_as_session_id(id) {
+        anyhow::bail!("A2A context_id must match [A-Za-z0-9_-] and be at most 128 bytes");
+    }
 
     if let Ok(session) = Session::load(id).await {
         tracing::debug!(context_id = %id, "Resumed A2A conversation session");
@@ -48,20 +72,5 @@ pub async fn resolve_session(context_id: Option<&str>) -> Result<Session> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::usable_as_session_id;
-
-    #[test]
-    fn accepts_uuid_like_ids() {
-        assert!(usable_as_session_id("a1b2c3d4-0000-1111-2222-333344445555"));
-        assert!(usable_as_session_id("ctx_42-abc"));
-    }
-
-    #[test]
-    fn rejects_unsafe_ids() {
-        assert!(!usable_as_session_id(""));
-        assert!(!usable_as_session_id("../escape"));
-        assert!(!usable_as_session_id("has space"));
-        assert!(!usable_as_session_id(&"x".repeat(129)));
-    }
-}
+#[path = "session_resolve_tests.rs"]
+mod tests;

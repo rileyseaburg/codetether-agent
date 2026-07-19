@@ -116,7 +116,7 @@ mod worker_init;
 mod worker_init_helpers;
 mod worker_init_runtime;
 mod worker_loop;
-mod worker_registration;
+mod worker_security;
 mod worker_server_loop;
 pub(super) mod workspace_resolve;
 mod workspace_scope;

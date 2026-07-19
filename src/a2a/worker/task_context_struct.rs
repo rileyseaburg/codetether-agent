@@ -3,6 +3,8 @@
 pub(super) struct TaskContext {
     pub(super) metadata: serde_json::Map<String, serde_json::Value>,
     pub(super) resume_session_id: Option<String>,
+    pub(super) context_id: Option<String>,
+    pub(super) preserve_session_workspace: bool,
     pub(super) complexity_hint: Option<String>,
     pub(super) model_tier: Option<String>,
     pub(super) worker_personality: Option<String>,

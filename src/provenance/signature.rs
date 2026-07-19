@@ -35,20 +35,5 @@ fn part(value: Option<&str>) -> &str {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::sign_provenance;
-    use crate::provenance::{ExecutionOrigin, ExecutionProvenance};
-
-    #[test]
-    fn signs_provenance_with_secret() {
-        unsafe {
-            std::env::set_var("CODETETHER_SIGNING_SECRET", "test-secret");
-        }
-        let provenance = ExecutionProvenance::for_operation("worker", ExecutionOrigin::Worker);
-        let signature = sign_provenance(&provenance);
-        unsafe {
-            std::env::remove_var("CODETETHER_SIGNING_SECRET");
-        }
-        assert!(signature.is_some());
-    }
-}
+#[path = "signature_tests.rs"]
+mod tests;

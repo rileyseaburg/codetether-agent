@@ -11,10 +11,17 @@ add_trailer() {
 git_cfg() {
   git config --local --get \"$1\" 2>/dev/null || true
 }
+forgejo_host=\"$CODETETHER_FORGEJO_HOST\"
+forgejo_host=\"${forgejo_host#https://}\"
+forgejo_host=\"${forgejo_host#http://}\"
+forgejo_host=\"${forgejo_host%%/*}\"
 add_trailer \"CodeTether-Provenance-ID\" \"$CODETETHER_PROVENANCE_ID\"
 add_trailer \"CodeTether-Origin\" \"$CODETETHER_ORIGIN\"
 add_trailer \"CodeTether-Agent-Name\" \"$CODETETHER_AGENT_NAME\"
 add_trailer \"CodeTether-Agent-Identity\" \"$CODETETHER_AGENT_IDENTITY_ID\"
+add_trailer \"CodeTether-Forgejo-Host\" \"$forgejo_host\"
+add_trailer \"CodeTether-Forgejo-Login\" \"$CODETETHER_FORGEJO_LOGIN\"
+add_trailer \"CodeTether-Agent-Slot\" \"${CODETETHER_AGENT_SLOT:-default}\"
 add_trailer \"CodeTether-Tenant-ID\" \"$CODETETHER_TENANT_ID\"
 add_trailer \"CodeTether-Worker-ID\" \"$CODETETHER_WORKER_ID\"
 add_trailer \"CodeTether-Session-ID\" \"$CODETETHER_SESSION_ID\"
@@ -27,3 +34,7 @@ add_trailer \"CodeTether-GitHub-App-ID\" \"$(git_cfg codetether.githubAppId)\"
 add_trailer \"CodeTether-Signature\" \"$CODETETHER_SIGNATURE\"
 "
 }
+
+#[cfg(test)]
+#[path = "hook_script_tests.rs"]
+mod tests;

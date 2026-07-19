@@ -1,5 +1,8 @@
 //! Task context builder helpers.
 
+#[path = "task_author_binding.rs"]
+mod task_author_binding;
+
 use super::task_context_helpers;
 
 pub(super) use super::task_context_struct::TaskContext;
@@ -10,7 +13,10 @@ pub(super) fn build_task_context(task: &serde_json::Value, title: &str) -> TaskC
     let model_tier =
         task_context_helpers::tier_from_metadata(&metadata, complexity_hint.as_deref());
     let workspace_id = task_context_helpers::context_workspace_id(task, &metadata);
-    let resume_session_id = task_context_helpers::trimmed_metadata(&metadata, "resume_session_id");
+    let resume_session_id = task_author_binding::resume_session_id(&metadata);
+    let context_id = super::metadata_str(&metadata, &["context_id", "conversation_id"]);
+    let preserve_session_workspace =
+        task_author_binding::preserve_workspace(&metadata, &resume_session_id);
     TaskContext {
         worker_personality: super::metadata_str(
             &metadata,
@@ -31,8 +37,14 @@ pub(super) fn build_task_context(task: &serde_json::Value, title: &str) -> TaskC
             .is_some_and(|v| v == "global" || v.is_empty()),
         metadata,
         resume_session_id,
+        context_id,
+        preserve_session_workspace,
         complexity_hint,
         model_tier,
         workspace_id,
     }
 }
+
+#[cfg(test)]
+#[path = "task_context_tests.rs"]
+mod tests;

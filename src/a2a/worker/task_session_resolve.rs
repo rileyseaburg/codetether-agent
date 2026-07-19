@@ -13,7 +13,9 @@ pub(super) async fn resolve_workspace(
     timeline: &mut task_timeline::TaskTimeline,
 ) -> Result<()> {
     if context.is_virtual_task {
-        session.metadata.directory = None;
+        if !context.preserve_session_workspace {
+            session.metadata.directory = None;
+        }
         return Ok(());
     }
     if let Some(workspace_path) = resolve_task_workspace_dir(

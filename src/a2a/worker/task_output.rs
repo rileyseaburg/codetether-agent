@@ -1,4 +1,6 @@
 //! Output streaming callback for active tasks.
+#[path = "task_output_request.rs"]
+mod request;
 
 use std::sync::Arc;
 
@@ -26,17 +28,8 @@ pub(super) fn build_output_callback(
                 message: Some(output.clone()),
             },
         );
-        tokio::spawn(async move {
-            let mut request = client
-                .post(format!("{}/v1/agent/tasks/{}/output", server, task_id))
-                .header("X-Worker-ID", &worker_id);
-            if let Some(token) = &token {
-                request = request.bearer_auth(token);
-            }
-            let _ = request
-                .json(&serde_json::json!({ "worker_id": worker_id, "output": output }))
-                .send()
-                .await;
-        });
+        tokio::spawn(request::send(
+            client, server, token, worker_id, task_id, output,
+        ));
     })
 }

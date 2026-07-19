@@ -7,6 +7,7 @@
 //! - **JSON-RPC** (default) — `server.rs` / `client.rs`
 //! - **gRPC** — `grpc.rs` (tonic-based, compiled from `proto/a2a/v1/a2a.proto`)
 
+pub(crate) mod agent_identity;
 pub mod bridge;
 pub mod bus_emit;
 pub mod claim;

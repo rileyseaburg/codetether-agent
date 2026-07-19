@@ -17,13 +17,7 @@ pub(super) async fn claim_task(
     timeline: &mut task_timeline::TaskTimeline,
 ) -> Result<Option<ClaimedTaskData>> {
     timeline.checkpoint(task_timeline::TaskCheckpoint::ClaimRequested);
-    let mut request = runtime
-        .client
-        .post(format!("{}/v1/worker/tasks/claim", runtime.server))
-        .header("X-Worker-ID", &runtime.worker_id);
-    if let Some(token) = &runtime.token {
-        request = request.bearer_auth(token);
-    }
+    let request = super::worker_security::build_claim_request(runtime, task_id)?;
     let response = request
         .json(&serde_json::json!({ "task_id": task_id }))
         .send()

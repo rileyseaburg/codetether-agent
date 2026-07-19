@@ -5,6 +5,10 @@ use std::process::Command;
 pub fn enrich_from_repo(provenance: &ExecutionProvenance, repo_path: &Path) -> ExecutionProvenance {
     let mut enriched = provenance.clone();
     fill(
+        &mut enriched.identity.agent_identity_id,
+        super::runtime_agent_identity(),
+    );
+    fill(
         &mut enriched.identity.github_installation_id,
         git_config(repo_path, "codetether.githubInstallationId"),
     );

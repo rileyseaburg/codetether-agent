@@ -44,3 +44,13 @@ pub(super) fn parse_codebases(args: &A2aArgs) -> Vec<String> {
         })
         .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()])
 }
+
+pub(super) fn resolve_name(configured: Option<&str>) -> String {
+    match configured {
+        Some(name) => crate::provenance::bind_runtime_agent_identity(name),
+        None => crate::provenance::ensure_runtime_agent_identity(&format!(
+            "codetether-{}",
+            std::process::id()
+        )),
+    }
+}

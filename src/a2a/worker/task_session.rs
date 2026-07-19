@@ -8,6 +8,7 @@ use super::task_session_resolve::{normalize_agent, resolve_workspace};
 use super::{TaskContext, WorkerTaskRuntime, task_timeline};
 
 mod task_session_git;
+mod task_session_load;
 
 pub(super) async fn prepare_task_session(
     runtime: &WorkerTaskRuntime,
@@ -17,12 +18,7 @@ pub(super) async fn prepare_task_session(
     claim_provenance: &ClaimProvenance,
     provider_keys: Option<serde_json::Value>,
 ) -> Result<(Session, String)> {
-    let mut session = match &context.resume_session_id {
-        Some(session_id) => Session::load(session_id)
-            .await
-            .unwrap_or(Session::new().await?),
-        None => Session::new().await?,
-    };
+    let mut session = task_session_load::load(context).await?;
     timeline.checkpoint_with_detail(
         task_timeline::TaskCheckpoint::SessionReady,
         Some(format!("session_id={}", session.id)),

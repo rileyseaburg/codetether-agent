@@ -15,11 +15,7 @@ use super::{
 
 pub(super) async fn init_worker(args: A2aArgs) -> Result<WorkerContext> {
     let server = args.server.trim_end_matches('/').to_string();
-    let name = args
-        .name
-        .as_deref()
-        .map(ToString::to_string)
-        .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
+    let name = worker_init_helpers::resolve_name(args.name.as_deref());
     let worker_id = resolve_worker_id();
     export_worker_runtime_env(&server, &args.token, &worker_id);
     let shared_codebases = Arc::new(Mutex::new(worker_init_helpers::parse_codebases(&args)));
