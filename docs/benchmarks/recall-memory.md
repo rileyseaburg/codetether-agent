@@ -34,3 +34,15 @@ of JSON sidecars, which expanded into the process-global decoded cache. Agent
 steps also produced temporary 1.3–2.5 GiB peaks; the existing RSS watchdog
 successfully reclaimed those temporary allocations, but could not reclaim the
 live cache.
+
+## Legacy backfill guardrail
+
+A July 19 long-running TUI audit found a separate startup problem: workspace
+search scheduled a legacy full-session backfill in every process. On a tree
+with 5,427 sidecars, an idle ten-hour TUI still consumed one full core and
+oscillated between roughly 2.0 and 5.6 GiB RSS while that worker advanced.
+
+Automatic legacy backfill is now disabled. Explicit migration with
+`CODETETHER_RECALL_BACKFILL=1` is capped at eight source sessions per run,
+skips files larger than 8 MiB, and decodes JSON on the blocking pool. A normal
+447-session query after the guard took 1,261 ms and retained 24,712 KiB RSS.

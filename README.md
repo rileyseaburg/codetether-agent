@@ -100,14 +100,14 @@ mux sessions still require a future ConPTY backend.
 
 ```bash
 # Create and attach to a session in a project directory.
-codetether mux new -s backend -c /work/backend
+codetether mux new backend /work/backend
 
 # Create one without attaching.
-codetether mux new -s frontend -c /work/frontend -d
+codetether mux new frontend /work/frontend -d
 
 # List, reconnect, and stop sessions.
 codetether mux list
-codetether mux attach -t backend
+codetether mux attach backend
 codetether mux kill backend
 codetether mux kill-all
 ```
@@ -115,6 +115,14 @@ codetether mux kill-all
 From the persistent shell, run `codetether tui --access-mode full` or any other
 normal shell command. Press `Ctrl+B`, then `D` to return to the shell that
 launched CodeTether while the mux shell and its children keep running.
+
+Every child process inherits the mux session identity. Before a mutating tool
+runs, the mux server atomically leases its target paths to that prompt; an
+overlapping edit from another agent is rejected with the owning agent and path.
+Unclassified shell commands lease the whole workspace, while proven read-only
+commands remain concurrent. Mutations fail closed if the mux authority cannot
+be reached, and leases are renewed during the prompt, released on completion,
+or expired after 90 seconds if an agent disappears.
 
 If the persistent shell exits, the `mux>` control prompt appears:
 
@@ -142,6 +150,11 @@ not only synthetic unit fixtures.
 Recall streams every cataloged sidecar through a bounded top-K ranker instead
 of retaining a decoded workspace in every TUI. The mux uses event-driven
 output, shared child reaping, and a bounded 4 MiB replay buffer.
+
+Legacy recall backfill is disabled by default so opening a TUI never scans and
+deserializes an entire workspace's historical sessions. Set
+`CODETETHER_RECALL_BACKFILL=1` for a bounded migration of up to eight session
+files smaller than 8 MiB; ordinary session saves keep sidecars current.
 
 See the reproducible [recall memory benchmark](docs/benchmarks/recall-memory.md),
 [mux long-horizon benchmark](docs/benchmarks/mux-long-horizon.md), and
