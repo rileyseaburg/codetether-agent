@@ -19,6 +19,7 @@ pub(super) fn response(response: &ServerResponse) -> bool {
         ServerResponse::ProgramAttached { .. }
         | ServerResponse::ProgramOutput { .. }
         | ServerResponse::Coordination { .. }
+        | ServerResponse::Agent { .. }
         | ServerResponse::Acknowledged => {}
     }
     false

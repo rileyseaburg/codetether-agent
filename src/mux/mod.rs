@@ -15,6 +15,7 @@
 //! codetether mux kill-all
 //! ```
 
+mod agent_task;
 mod client;
 mod command;
 pub(crate) mod control;
