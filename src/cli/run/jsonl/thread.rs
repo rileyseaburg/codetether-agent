@@ -24,14 +24,7 @@ pub(in crate::cli::run) fn write_thread_event_to<W: Write>(
 
 fn to_run_event(event: &ThreadEvent) -> Option<RunEvent<'_>> {
     match event.kind.as_str() {
-        "item.started" => Some(RunEvent::ItemStarted {
-            item_id: field(event, "item_id")?,
-            timestamp_ms: event.timestamp_ms,
-        }),
-        "item.completed" => Some(RunEvent::ItemCompleted {
-            item_id: field(event, "item_id")?,
-            timestamp_ms: event.timestamp_ms,
-        }),
+        "item.started" | "item.delta" | "item.completed" => super::item::from_thread(event),
         "tool.started" | "tool.completed" | "tool.metadata" => {
             super::thread_tool::to_run_event(event)
         }
