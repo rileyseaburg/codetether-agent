@@ -831,22 +831,8 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
             "/v1/agent/tasks/{task_id}/output/stream",
             get(stream_agent_task_output),
         )
-        // Worker connectivity (dashboard polls this)
-        .route("/v1/worker/connected", get(list_connected_workers))
-        .route("/v1/agent/workers", get(list_connected_workers))
-        // Worker task lifecycle (what the Rust worker calls)
-        .route(
-            "/v1/worker/tasks/stream",
-            get(worker_modules::worker_task_stream),
-        )
-        .route(
-            "/v1/worker/tasks/claim",
-            post(worker_modules::worker_task_claim),
-        )
-        .route(
-            "/v1/worker/tasks/release",
-            post(worker_modules::worker_task_release),
-        )
+        // Worker lifecycle and Rust-native mux realtime
+        .merge(worker_modules::router())
         // Task dispatch (Knative-backed)
         .route("/v1/tasks/dispatch", post(dispatch_task))
         // Voice REST bridge (dashboard expects REST, server has gRPC)

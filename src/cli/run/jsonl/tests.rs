@@ -8,6 +8,7 @@ mod command;
 mod item;
 mod lifecycle;
 mod patch;
+mod text;
 mod thread;
 mod thread_tool;
 mod tool;
