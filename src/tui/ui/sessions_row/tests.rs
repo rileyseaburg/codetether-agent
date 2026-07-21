@@ -43,3 +43,13 @@ fn active_marker_and_untitled_default() {
     assert!(row.contains("Untitled session"));
     assert!(row.contains('●'), "active session shows marker: {row}");
 }
+
+#[test]
+fn injected_context_is_not_rendered_as_a_title() {
+    let row = session_row_summary(
+        &summary(Some("# AGENTS.md instructions for /tmp/x"), None),
+        false,
+    );
+    assert!(row.contains("Untitled session"));
+    assert!(!row.contains("AGENTS.md"));
+}

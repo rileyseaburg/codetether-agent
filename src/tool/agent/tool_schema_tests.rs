@@ -34,3 +34,15 @@ fn remote_messages_accept_a_conversation_context() {
             .contains("conversation")
     );
 }
+
+#[test]
+fn mux_sessions_are_first_class_agent_targets() {
+    let schema = agent_tool_parameters();
+    let action = &schema["properties"]["action"];
+    let actions = action["enum"].as_array().unwrap();
+    let description = action["description"].as_str().unwrap();
+
+    assert!(actions.iter().any(|item| item == "read"));
+    assert!(actions.iter().any(|item| item == "interact"));
+    assert!(description.contains("mux-backed"));
+}

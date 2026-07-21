@@ -28,7 +28,6 @@ mod inline_success;
 mod invalid_params;
 #[cfg(feature = "tetherscript")]
 mod language_features;
-#[cfg(feature = "tetherscript")]
 mod path_escape;
 #[cfg(feature = "tetherscript")]
 mod registry;

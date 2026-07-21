@@ -37,6 +37,7 @@ fn claim(owner: &str, agent: &str, root: &std::path::Path, path: &str) -> Client
             agent: agent.into(),
             workspace: root.into(),
             paths: vec![path.into()],
+            wait_ms: 0,
         },
     }
 }

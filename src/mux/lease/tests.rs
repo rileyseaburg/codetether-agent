@@ -3,3 +3,4 @@
 mod atomic;
 mod hierarchy;
 mod lifecycle;
+mod wait;

@@ -3,9 +3,10 @@ use crate::provider::Usage;
 
 #[test]
 fn started_event_is_tagged_json_line() {
-    let out = event_bytes(&RunEvent::Started);
+    let out = event_bytes(&RunEvent::Started { session_id: "s1" });
     let value: serde_json::Value = serde_json::from_slice(&out).unwrap();
     assert_eq!(value["type"], "run.started");
+    assert_eq!(value["session_id"], "s1");
     assert!(out.ends_with(b"\n"));
 }
 

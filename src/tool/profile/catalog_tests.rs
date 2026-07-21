@@ -47,3 +47,6 @@ fn compact_catalog_keeps_core_and_mcp_tools_without_edit_aliases() {
 
 #[path = "catalog_sort_tests.rs"]
 mod sort_tests;
+
+#[path = "catalog_mux_tests.rs"]
+mod mux_tests;

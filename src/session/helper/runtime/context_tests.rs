@@ -21,3 +21,16 @@ fn runtime_identity_overrides_model_supplied_values() {
     assert_eq!(result["__ct_session_id"], "real-session");
     assert_eq!(result["__ct_agent_name"], "real-agent");
 }
+
+#[test]
+fn exec_workdir_is_resolved_against_the_session_workspace() {
+    let result = enrich_tool_input_with_runtime_context(
+        &json!({ "workdir": "repo" }),
+        Path::new("/workspace"),
+        None,
+        "session",
+        "agent",
+        None,
+    );
+    assert_eq!(result["workdir"], "/workspace/repo");
+}

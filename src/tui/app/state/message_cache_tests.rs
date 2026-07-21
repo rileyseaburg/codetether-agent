@@ -21,3 +21,17 @@ fn streaming_replacement_invalidates_cached_suffix() {
     state.replace_streaming_text("other".to_string());
     assert!(!state.is_message_cache_valid(80));
 }
+
+#[test]
+fn frozen_prefix_is_moved_without_retaining_streaming_suffix() {
+    let mut state = AppState::default();
+    state.store_message_lines_with_frozen(
+        vec![Line::from("history"), Line::from("preview")],
+        80,
+        1,
+    );
+
+    let frozen = state.take_frozen_prefix(80).expect("frozen prefix");
+    assert_eq!(frozen.len(), 1);
+    assert!(state.cached_message_lines.is_empty());
+}

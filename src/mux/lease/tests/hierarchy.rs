@@ -14,7 +14,7 @@ fn parent_path_blocks_another_owners_child_path() {
         root,
         vec![PathBuf::from("src/auth/mod.rs")],
     );
-    let CoordinationReply::Blocked { conflicts } = second else {
+    let CoordinationReply::Blocked { conflicts, .. } = second else {
         panic!("overlapping path was not blocked");
     };
     assert_eq!(conflicts[0].owner, "one");

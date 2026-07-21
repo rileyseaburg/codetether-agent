@@ -7,5 +7,5 @@ fn preserves_remote_conversation_context() {
         payload.message.context_id.as_deref(),
         Some("forgejo-repo-pr-42")
     );
-    assert_eq!(payload.configuration.unwrap().blocking, Some(true));
+    assert_eq!(payload.configuration.unwrap().blocking, Some(false));
 }
