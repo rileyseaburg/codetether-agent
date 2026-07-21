@@ -4,8 +4,8 @@ set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
 if [ -f "$HOME/.bashrc" ]; then
-  # shellcheck disable=SC1090
   set +u
+  # shellcheck disable=SC1091
   source "$HOME/.bashrc"
   set -u
 fi
@@ -15,7 +15,7 @@ if command -v sccache >/dev/null 2>&1; then
 fi
 
 # Reuse intermediate artifacts from previous builds
-export CARGO_BUILD_BUILD_DIR="$(pwd)/target"
+export CARGO_BUILD_BUILD_DIR="$PWD/target"
 
 # Capture output so we can feed errors to the agent on failure
 tmp=$(mktemp)
@@ -24,8 +24,11 @@ trap 'rm -f "$tmp"' EXIT
 # Default to install --path . if no args given
 args=("$@")
 if [ ${#args[@]} -eq 0 ]; then
-  args=(install --path .)
+  args=(install --path . --force)
 fi
+
+version=$(./script/bump-dev-version.sh) || exit 1
+echo "Using development version $version"
 
 while true; do
   cargo "${args[@]}" 2>&1 | tee "$tmp"
