@@ -1,0 +1,28 @@
+// Choose the next safe mux-manager operation from fresh structured state.
+
+fn result(action, reason, may_mutate) {
+    let m = map()
+    m["action"] = action
+    m["reason"] = reason
+    m["may_mutate"] = may_mutate
+    return Ok(json_encode(m))
+}
+
+fn next_action(state, reachable, current_tool, needs_interaction, lagging) {
+    if !reachable {
+        return result("unreachable", "The mux route cannot be reached.", false)
+    }
+    if state == "working" || current_tool != "" {
+        return result("watch", "Work is in flight; observe without steering.", false)
+    }
+    if lagging {
+        return result("read", "Read fresh semantic output before recovery.", false)
+    }
+    if needs_interaction {
+        return result("delegate", "The responsible manager must handle pending input.", false)
+    }
+    if state == "unknown" {
+        return result("delegate_bootstrap", "A domain manager must restore this route.", false)
+    }
+    return result("read", "Read fresh semantic output before choosing work.", false)
+}
