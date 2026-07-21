@@ -93,9 +93,10 @@ cargo install --path .
 
 The network mux keeps the server, windows, working directories, and child
 processes alive after the client disconnects. Each window can run a different
-shell or CodeTether TUI in a different repository. New sessions immediately
-start the user's login shell (`$SHELL`, including zsh on macOS). Windows shell
-selection prefers PowerShell and falls back to `cmd.exe`; interactive Windows
+shell or CodeTether TUI. Git-backed windows are automatically rooted in unique
+checkouts under `<repo>/.codetether-worktrees`; non-Git directories remain
+unchanged. New sessions immediately start the user's login shell (`$SHELL`,
+including zsh on macOS). Windows shell selection prefers PowerShell; interactive Windows
 mux sessions still require a future ConPTY backend.
 
 ```bash
@@ -117,12 +118,21 @@ normal shell command. Press `Ctrl+B`, then `D` to return to the shell that
 launched CodeTether while the mux shell and its children keep running.
 
 Every child process inherits the mux session identity. Before a mutating tool
-runs, the mux server atomically leases its target paths to that prompt; an
-overlapping edit from another agent is rejected with the owning agent and path.
-Unclassified shell commands lease the whole workspace, while proven read-only
-commands remain concurrent. Mutations fail closed if the mux authority cannot
-be reached, and leases are renewed during the prompt, released on completion,
-or expired after 90 seconds if an agent disappears.
+runs, the mux server atomically leases its target paths to that prompt. An
+overlapping edit waits inside the coordinator for up to 60 seconds and proceeds
+as soon as the owner releases it; agents never need to call `wait_agent`.
+Mux-managed prompts also cannot delegate blocked work to another agent.
+Mutating shell commands use their exact `workdir`/`cwd`, and lease paths are
+normalized to the containing Git worktree. An unscoped mutation cannot lease
+the filesystem root or home directory. Proven read-only commands remain
+concurrent. Mutations fail closed if the mux authority cannot be reached. A
+timed-out wait reports its duration plus the owning agent and path. Leases are
+renewed during the prompt, released on completion, or expired after 90 seconds
+if an agent disappears.
+
+Closing a window or killing its mux session does not delete its worktree or
+`codetether/mux-*` branch. This preserves unmerged agent changes for explicit
+review and integration instead of silently discarding them.
 
 If the persistent shell exits, the `mux>` control prompt appears:
 

@@ -3,6 +3,21 @@
 These scripts run through the existing `tetherscript_plugin` tool. They are
 small examples of useful project-local automation without adding Rust code.
 
+## Mux manager
+
+Choose a safe next operation from a fresh semantic mux status sample:
+
+```json
+{
+  "path": "examples/tetherscript/mux_manager.tether",
+  "hook": "next_action",
+  "args": ["idle", true, "", true, false]
+}
+```
+
+Agents may copy this starter into their own workspace and evolve focused
+TetherScript tools for recurring coordination work.
+
 ## Guardrails
 
 Deny sensitive paths:
