@@ -13,10 +13,13 @@ pub(in crate::tool::agent) fn begin(
 ) -> RemoteTurnGuard {
     let turn_id = uuid::Uuid::new_v4().to_string();
     let lookup = key(name, owner);
+    let prompt_text = prompt.to_string();
     let prompt = message(Role::User, prompt);
     if let Some(mut turn) = TURNS.get_mut(&lookup) {
         turn.turn_id.clone_from(&turn_id);
+        turn.prompt.clone_from(&prompt_text);
         turn.messages.push(prompt);
+        turn.activity.clear();
         turn.is_processing = true;
         turn.failed = false;
     } else {
@@ -26,7 +29,9 @@ pub(in crate::tool::agent) fn begin(
                 name: name.to_string(),
                 owner_session_id: owner.map(ToString::to_string),
                 turn_id: turn_id.clone(),
+                prompt: prompt_text,
                 messages: vec![prompt],
+                activity: Vec::new(),
                 is_processing: true,
                 failed: false,
             },

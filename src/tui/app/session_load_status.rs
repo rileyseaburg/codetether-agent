@@ -6,7 +6,7 @@ pub fn load_status_with_original(
     file_bytes: u64,
     original_id: Option<&str>,
 ) -> String {
-    let label = session.title.clone().unwrap_or_else(|| session.id.clone());
+    let label = session.display_label();
     if dropped == 0 {
         return format!("Loaded session {label}");
     }

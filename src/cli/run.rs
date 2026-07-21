@@ -555,9 +555,6 @@ async fn decide_dynamic_spawn_with_registry(
 
 pub async fn execute(args: RunArgs) -> Result<()> {
     let jsonl_output = jsonl::enabled(&args.format);
-    if jsonl_output {
-        jsonl::write_started()?;
-    }
     let result = execute_inner(args).await;
     if jsonl_output && let Err(error) = &result {
         jsonl::write_failed(error.to_string())?;
@@ -860,6 +857,9 @@ async fn execute_inner(args: RunArgs) -> Result<()> {
         tracing::info!("Created new session: {}", s.id);
         s
     };
+    if jsonl_output {
+        jsonl::write_started(&session.id)?;
+    }
 
     // Set model: CLI arg > env var > config default
     let model = args

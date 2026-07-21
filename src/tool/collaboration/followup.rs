@@ -20,8 +20,12 @@ struct Args {
 
 #[async_trait]
 impl Tool for FollowupTaskTool {
-    fn id(&self) -> &str { "followup_task" }
-    fn name(&self) -> &str { "Follow Up Task" }
+    fn id(&self) -> &str {
+        "followup_task"
+    }
+    fn name(&self) -> &str {
+        "Follow Up Task"
+    }
     fn description(&self) -> &str {
         "Steer a running child promptly, or trigger a background turn when it is idle."
     }
@@ -32,25 +36,43 @@ impl Tool for FollowupTaskTool {
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
         let args: Args = serde_json::from_value(input)?;
-        if args.message.trim().is_empty() { bail!("Empty message can't be sent to an agent"); }
+        if args.message.trim().is_empty() {
+            bail!("Empty message can't be sent to an agent");
+        }
         if let Some(result) = super::ensure::ready(&args.context, &args.target).await? {
             return Ok(result);
         }
         match crate::tool::agent::communication::steer(
-            &args.target, args.context.session_id.as_deref(), &args.message,
-        ).await {
+            &args.target,
+            args.context.session_id.as_deref(),
+            &args.message,
+        )
+        .await
+        {
             Route::Steered => Ok(ToolResult::success(String::new())),
-            Route::NotFound => Ok(ToolResult::error(format!("Agent {} not found", args.target))),
+            Route::NotFound => Ok(ToolResult::error(format!(
+                "Agent {} not found",
+                args.target
+            ))),
             Route::Idle => trigger(args).await,
         }
     }
 }
 
 async fn trigger(args: Args) -> Result<ToolResult> {
-    let mut result = legacy::execute(&args.context, json!({
-        "action":"message", "name":args.target,
-        "message":args.message, "detach":true
-    }).as_object().cloned().expect("object payload")).await?;
-    if result.success { result.output.clear(); }
+    let mut result = legacy::execute(
+        &args.context,
+        json!({
+            "action":"message", "name":args.target,
+            "message":args.message, "detach":true
+        })
+        .as_object()
+        .cloned()
+        .expect("object payload"),
+    )
+    .await?;
+    if result.success {
+        result.output.clear();
+    }
     Ok(result)
 }

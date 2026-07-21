@@ -9,17 +9,21 @@ use serde_json::{Value, json};
 mod args;
 #[path = "spawn/dispatch.rs"]
 mod dispatch;
-#[path = "spawn/result.rs"]
-mod result;
 #[path = "spawn_name.rs"]
 mod name;
+#[path = "spawn/result.rs"]
+mod result;
 
 pub(super) struct SpawnAgentTool;
 
 #[async_trait]
 impl Tool for SpawnAgentTool {
-    fn id(&self) -> &str { "spawn_agent" }
-    fn name(&self) -> &str { "Spawn Agent" }
+    fn id(&self) -> &str {
+        "spawn_agent"
+    }
+    fn name(&self) -> &str {
+        "Spawn Agent"
+    }
     fn description(&self) -> &str {
         "Spawn a named background sub-agent for one concrete, bounded task. The child inherits the workspace and parent context policy."
     }

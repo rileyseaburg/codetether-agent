@@ -18,8 +18,12 @@ struct Args {
 
 #[async_trait]
 impl Tool for InterruptAgentTool {
-    fn id(&self) -> &str { "interrupt_agent" }
-    fn name(&self) -> &str { "Interrupt Agent" }
+    fn id(&self) -> &str {
+        "interrupt_agent"
+    }
+    fn name(&self) -> &str {
+        "Interrupt Agent"
+    }
     fn description(&self) -> &str {
         "Interrupt an active sub-agent turn without deleting its persisted session."
     }
@@ -29,8 +33,15 @@ impl Tool for InterruptAgentTool {
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
         let args: Args = serde_json::from_value(input)?;
-        legacy::execute(&args.context, json!({
-            "action":"interrupt", "name":args.target
-        }).as_object().cloned().unwrap_or_default()).await
+        legacy::execute(
+            &args.context,
+            json!({
+                "action":"interrupt", "name":args.target
+            })
+            .as_object()
+            .cloned()
+            .unwrap_or_default(),
+        )
+        .await
     }
 }

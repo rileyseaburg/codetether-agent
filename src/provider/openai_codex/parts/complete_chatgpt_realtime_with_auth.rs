@@ -9,7 +9,7 @@ impl OpenAiCodexProvider {
         let first = self
             .complete_stream_with_realtime(
                 request.clone(),
-                access_token,
+                access_token.clone(),
                 Some(account_id.clone()),
                 "chatgpt-codex-responses-ws",
                 ResponsesWsBackend::ChatGptCodex,
@@ -19,7 +19,7 @@ impl OpenAiCodexProvider {
         if !first.as_ref().is_err_and(stream_recovery::is_unauthorized) {
             return first;
         }
-        let token = self.force_refresh_access_token().await?;
+        let token = self.force_refresh_access_token(&access_token).await?;
         let account = self
             .resolved_chatgpt_account_id(&token)
             .unwrap_or(account_id);

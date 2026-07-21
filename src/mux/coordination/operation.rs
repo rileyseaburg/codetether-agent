@@ -17,6 +17,7 @@ pub(super) async fn acquire(
         agent: agent.into(),
         workspace: workspace.into(),
         paths,
+        wait_ms: crate::mux::lease::ACQUIRE_WAIT_MILLIS,
     };
     send("acquire", owner, request).await
 }

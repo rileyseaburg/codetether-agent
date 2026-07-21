@@ -18,6 +18,8 @@ use crate::session::Session;
 pub struct SessionView {
     /// Active session id.
     pub id: String,
+    /// Human-readable session title, when available.
+    pub title: Option<String>,
     /// Selected model, if one has been pinned.
     pub model: Option<String>,
     /// Workspace directory associated with the session.
@@ -39,6 +41,7 @@ impl SessionView {
     pub(crate) fn from_session(session: &Session) -> Self {
         Self {
             id: session.id.clone(),
+            title: session.title.clone(),
             model: session.metadata.model.clone(),
             directory: session.metadata.directory.clone(),
             auto_apply_edits: session.metadata.auto_apply_edits,

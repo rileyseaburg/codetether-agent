@@ -30,7 +30,9 @@ pub fn is_lean() -> bool {
 /// assert!(codetether_agent::tool::profile::apply(definitions).is_empty());
 /// ```
 pub fn apply(mut definitions: Vec<ToolDefinition>) -> Vec<ToolDefinition> {
-    if is_lean() {
+    if selection::requested().is_mux_manager() {
+        definitions = catalog::retain_mux_manager_tools(definitions);
+    } else if is_lean() {
         definitions = catalog::retain_coding_tools(definitions);
     }
     catalog::sort(definitions)
@@ -40,6 +42,9 @@ pub(crate) fn apply_for_provider(
     definitions: Vec<ToolDefinition>,
     provider: &str,
 ) -> Vec<ToolDefinition> {
+    if selection::requested().is_mux_manager() {
+        return catalog::sort(catalog::retain_mux_manager_tools(definitions));
+    }
     if selection::use_coding_profile(provider) {
         return catalog::sort(catalog::retain_coding_tools(definitions));
     }

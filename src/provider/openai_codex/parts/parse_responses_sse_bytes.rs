@@ -1,4 +1,5 @@
 impl OpenAiCodexProvider {
+    #[cfg(test)]
     fn parse_responses_sse_bytes(
         parser: &mut ResponsesSseParser,
         bytes: &[u8],

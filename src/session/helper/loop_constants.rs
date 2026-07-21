@@ -28,10 +28,6 @@ pub(crate) const MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES: u32 = 5;
 /// we give up and surface the report to the caller.
 pub(crate) const POST_EDIT_VALIDATION_MAX_RETRIES: u8 = 3;
 
-/// Maximum number of consecutive identical tool calls allowed before the loop
-/// forces a final answer.
-pub(crate) const MAX_CONSECUTIVE_SAME_TOOL: u32 = 3;
-
 /// Steps with no file mutations (write/edit/bash) before we nudge the model
 /// to either make progress or provide a final answer.
 pub(crate) const MAX_STEPS_WITHOUT_PROGRESS: u32 = 15;
@@ -48,10 +44,6 @@ directly) or conclude the identifier is absent and continue with the best availa
 pub(crate) const NATIVE_TOOL_PROMISE_NUDGE: &str = "You said you would use tools. Do not describe the tool \
 call or promise a next step. Emit the actual tool call now. If native tool calling fails, emit a \
 <tool_call> JSON block immediately instead of prose.";
-
-/// Message sent when the loop-detection guard is forcing a final answer.
-pub(crate) const FORCE_FINAL_ANSWER_NUDGE: &str = "STOP using tools. Provide your final answer NOW \
-in plain text based on the tool results you already received. Do NOT output any <tool_call> blocks.";
 
 /// Nudge when the model is making many tool calls but not writing any files.
 pub(crate) const NO_PROGRESS_NUDGE: &str = "You have made many tool calls without writing or editing \

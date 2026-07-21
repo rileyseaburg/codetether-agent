@@ -24,12 +24,24 @@ impl LeaseRegistry {
             .cloned()
             .collect::<Vec<_>>();
         if !conflicts.is_empty() {
-            return CoordinationReply::Blocked { conflicts };
+            let retry_after_ms = conflicts
+                .iter()
+                .map(|lease| time::remaining(lease.expires_at_ms))
+                .min()
+                .unwrap_or_default();
+            return CoordinationReply::Blocked {
+                conflicts,
+                waited_ms: 0,
+                retry_after_ms,
+            };
         }
         let leases = paths
             .into_iter()
             .map(|path| super::claim::insert(&mut entries, owner, agent, workspace, path))
             .collect();
-        CoordinationReply::Acquired { leases }
+        CoordinationReply::Acquired {
+            leases,
+            waited_ms: 0,
+        }
     }
 }

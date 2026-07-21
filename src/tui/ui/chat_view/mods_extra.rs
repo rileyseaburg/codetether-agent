@@ -1,9 +1,11 @@
 // Extra chat-view sub-modules added in this session.
 // Included from `mod.rs` via `include!`.
+pub(crate) mod agent_lines;
 pub mod agent_tab_style;
 pub mod bubble_assistant;
 pub mod bubble_mods;
 pub mod context_gauge_heat;
+pub(crate) mod focused_lines;
 pub mod kb_style;
 pub mod spinner_hue;
 pub mod suggestion_style;

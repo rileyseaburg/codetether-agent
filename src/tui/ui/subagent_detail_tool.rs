@@ -24,6 +24,12 @@ pub(super) fn lines(state: &AppState, name: &str) -> Vec<Line<'static>> {
     };
     let mut rows =
         super::subagent_detail_metadata::lines(name, parent, status, model, &agent.instructions);
+    if agent.is_remote && agent.is_processing {
+        rows.push(Line::from(
+            "A2A request in flight; polling peer for completion…".yellow(),
+        ));
+        rows.push(Line::from(""));
+    }
     super::subagent_message_lines::append(&mut rows, &messages);
     if let Some(trace) =
         crate::tool::agent::bridge::agent_tool_live_trace_for_parent(name, parent_id)

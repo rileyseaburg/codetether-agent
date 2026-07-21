@@ -1,10 +1,7 @@
 //! Canonical task-name generation and validation.
 
 pub(super) fn generated() -> String {
-    format!(
-        "agent_{}",
-        &uuid::Uuid::new_v4().simple().to_string()[..8]
-    )
+    format!("agent_{}", &uuid::Uuid::new_v4().simple().to_string()[..8])
 }
 
 pub(super) fn resolve(requested: Option<String>) -> anyhow::Result<String> {

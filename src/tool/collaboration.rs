@@ -1,11 +1,11 @@
 //! Codex-compatible first-class collaboration tool registration.
 
+#[path = "collaboration/close.rs"]
+mod close;
 #[path = "collaboration/context.rs"]
 mod context;
 #[path = "collaboration/ensure.rs"]
 mod ensure;
-#[path = "collaboration/close.rs"]
-mod close;
 #[path = "collaboration/followup.rs"]
 mod followup;
 #[path = "collaboration/interrupt.rs"]
@@ -14,6 +14,8 @@ mod interrupt;
 mod legacy;
 #[path = "collaboration/list.rs"]
 mod list;
+#[path = "collaboration/mux_control.rs"]
+mod mux_control;
 #[path = "collaboration/resume.rs"]
 mod resume;
 #[path = "collaboration/send_input.rs"]
@@ -34,6 +36,7 @@ pub fn register(registry: &mut ToolRegistry) {
     registry.register(Arc::new(spawn::SpawnAgentTool));
     registry.register(Arc::new(followup::FollowupTaskTool));
     registry.register(Arc::new(list::ListAgentsTool));
+    registry.register(Arc::new(mux_control::MuxControlTool));
     registry.register(Arc::new(wait::WaitAgentTool));
     registry.register(Arc::new(interrupt::InterruptAgentTool));
     registry.register(Arc::new(close::CloseAgentTool));

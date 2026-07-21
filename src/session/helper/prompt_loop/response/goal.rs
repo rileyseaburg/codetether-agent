@@ -22,8 +22,6 @@ fn reset_turn(runner: &mut Runner<'_>) {
     let progress = &mut runner.progress;
     progress.output.clear();
     progress.validation_retries = 0;
-    progress.last_tool_signature = None;
-    progress.repeated_tools = 0;
     progress.repeat_guard = Default::default();
     progress.codesearch_misses = 0;
     progress.build_retries = 0;

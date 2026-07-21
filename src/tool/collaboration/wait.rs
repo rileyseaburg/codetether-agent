@@ -16,8 +16,12 @@ pub(super) struct WaitAgentTool;
 
 #[async_trait]
 impl Tool for WaitAgentTool {
-    fn id(&self) -> &str { "wait_agent" }
-    fn name(&self) -> &str { "Wait Agent" }
+    fn id(&self) -> &str {
+        "wait_agent"
+    }
+    fn name(&self) -> &str {
+        "Wait Agent"
+    }
     fn description(&self) -> &str {
         "Wait for a mailbox update from any live agent or steered user input."
     }

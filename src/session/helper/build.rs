@@ -2,6 +2,8 @@ use super::text::latest_user_text;
 use crate::provider::{Message, ToolDefinition};
 use std::path::Path;
 
+mod request_scope;
+
 pub fn looks_like_build_execution_request(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
     let keywords = [
@@ -110,15 +112,9 @@ pub fn should_force_build_tool_first_retry(
         || !is_build_agent(agent_name)
         || tool_definitions.is_empty()
         || has_tool_calls
+        || assistant_text.trim().is_empty()
+        || !build_request_requires_tool(session_messages, workspace_dir)
     {
-        return false;
-    }
-
-    if assistant_text.trim().is_empty() {
-        return false;
-    }
-
-    if !build_request_requires_tool(session_messages, workspace_dir) {
         return false;
     }
 
@@ -130,8 +126,9 @@ pub fn build_request_requires_tool(session_messages: &[Message], workspace_dir: 
         return false;
     };
 
-    if looks_like_build_execution_request(&text)
-        && !super::text::extract_candidate_file_paths(&text, workspace_dir, 1).is_empty()
+    let request = request_scope::explicit(&text);
+    if looks_like_build_execution_request(request)
+        && !super::text::extract_candidate_file_paths(request, workspace_dir, 1).is_empty()
     {
         return true;
     }
@@ -162,8 +159,9 @@ pub fn build_request_requires_tool(session_messages: &[Message], workspace_dir: 
             return true;
         }
 
-        if (looks_like_build_execution_request(&msg_text) || looks_like_proposed_change(&msg_text))
-            && !super::text::extract_candidate_file_paths(&msg_text, workspace_dir, 1).is_empty()
+        let request = request_scope::explicit(&msg_text);
+        if (looks_like_build_execution_request(request) || looks_like_proposed_change(request))
+            && !super::text::extract_candidate_file_paths(request, workspace_dir, 1).is_empty()
         {
             return true;
         }

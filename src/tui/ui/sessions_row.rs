@@ -22,10 +22,8 @@ use relative_time::relative_time;
 /// ```
 pub fn session_row_summary(session: &SessionSummary, is_active: bool) -> String {
     let title = session
-        .title
-        .as_deref()
-        .filter(|t| !t.trim().is_empty())
-        .unwrap_or("Untitled session");
+        .display_title()
+        .unwrap_or_else(|| "Untitled session".to_string());
     let active_marker = if is_active { " ●" } else { "" };
     let dir = session
         .directory

@@ -15,12 +15,16 @@ impl LeaseRegistry {
     }
 
     pub(in crate::mux) fn release(&self, owner: &str) -> CoordinationReply {
-        let mut entries = self.entries.lock().unwrap();
-        let before = entries.len();
-        entries.retain(|_, lease| lease.owner != owner);
-        CoordinationReply::Released {
-            count: before - entries.len(),
+        let count = {
+            let mut entries = self.entries.lock().unwrap();
+            let before = entries.len();
+            entries.retain(|_, lease| lease.owner != owner);
+            before - entries.len()
+        };
+        if count > 0 {
+            self.signal();
         }
+        CoordinationReply::Released { count }
     }
 
     pub(in crate::mux) fn snapshot(&self) -> CoordinationReply {

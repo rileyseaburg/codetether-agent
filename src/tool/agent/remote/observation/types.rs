@@ -1,13 +1,16 @@
 //! State models for one observed remote-agent conversation.
 
 use crate::provider::Message;
+use serde_json::Value;
 
 #[derive(Clone)]
 pub(super) struct RemoteTurn {
     pub name: String,
     pub owner_session_id: Option<String>,
     pub turn_id: String,
+    pub prompt: String,
     pub messages: Vec<Message>,
+    pub activity: Vec<Value>,
     pub is_processing: bool,
     pub failed: bool,
 }
@@ -28,7 +31,7 @@ pub(in crate::tool::agent) struct RemoteSnapshot {
 /// Marks an observed remote turn failed if its future is cancelled.
 pub(in crate::tool::agent) struct RemoteTurnGuard {
     pub(super) name: String,
-    pub(super) owner_session_id: Option<String>,
+    pub(in crate::tool::agent) owner_session_id: Option<String>,
     pub(super) turn_id: String,
     pub(super) settled: bool,
 }

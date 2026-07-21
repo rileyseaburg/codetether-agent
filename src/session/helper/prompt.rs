@@ -17,7 +17,7 @@ use crate::session::{Session, SessionResult};
 /// session persistence fails.
 pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<SessionResult> {
     let registry = Arc::new(ProviderRegistry::from_vault().await?);
-    crate::session::step_limit::mark_budget_active();
+    crate::session::step_limit::begin(session.max_steps);
     let mut runner = super::prompt_loop::initialize(session, None, registry).await?;
     runner.accept(message, Vec::new()).await?;
     super::prompt_loop::run(&mut runner).await

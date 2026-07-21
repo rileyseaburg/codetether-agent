@@ -12,7 +12,8 @@ pub(super) async fn execute(
     route: PeerRoute,
     turn: RemoteTurnGuard,
 ) -> Result<ToolResult> {
-    match transport::send(name, text, context_id, route).await {
+    let owner = turn.owner_session_id.as_deref();
+    match transport::send(name, text, context_id, owner, route).await {
         Ok(result) => {
             turn.complete(&result);
             Ok(result)

@@ -1,4 +1,4 @@
-//! Blocking A2A request construction for a remote agent turn.
+//! Non-blocking A2A request construction for a remote agent turn.
 
 use crate::a2a::types::{Message, MessageRole, MessageSendConfiguration, MessageSendParams, Part};
 
@@ -20,7 +20,7 @@ pub(super) fn build(text: &str, context_id: Option<&str>) -> MessageSendParams {
         },
         configuration: Some(MessageSendConfiguration {
             accepted_output_modes: vec!["text/plain".to_string()],
-            blocking: Some(true),
+            blocking: Some(false),
             history_length: Some(0),
             push_notification_config: None,
         }),

@@ -10,6 +10,8 @@ use super::tail_load::TailLoad;
 use super::tail_seed::with_tail_cap;
 use super::types::Session;
 
+mod location;
+mod paths;
 #[path = "save_guard.rs"]
 mod save_guard;
 
@@ -24,6 +26,10 @@ impl Session {
         let path = Self::session_path(id)?;
         super::helper::persistence_cap::ensure_session_file_size(&path).await?;
         let mut session: Session = serde_json::from_str(&fs::read_to_string(&path).await?)?;
+        anyhow::ensure!(
+            session.id == id,
+            "Session file identity does not match requested ID"
+        );
         session.normalize_sidecars();
         Ok(session)
     }
@@ -121,6 +127,7 @@ impl Session {
             return Ok(());
         }
         save_guard::atomic_write(&tmp, &path, &content).await?;
+        location::record(&self.id, &path);
         save_guard::notify::record_saved(self, &content);
         let mut journal = super::journal::WritebackJournal::new(&session_id_for_journal);
         let tx = journal.stage(super::journal::Op::Save);
@@ -195,31 +202,16 @@ impl Session {
         let path = Self::session_path(id)?;
         save_guard::notify::forget(id).await?;
         match tokio::fs::remove_file(&path).await {
-            Ok(()) => Ok(()),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Ok(()) => {
+                location::forget(id);
+                Ok(())
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                location::forget(id);
+                Ok(())
+            }
             Err(e) => Err(e.into()),
         }
-    }
-
-    /// Resolve the sessions directory (`<data_dir>/sessions`).
-    ///
-    /// Resolved from [`crate::config::Config::data_dir`] each time so tests
-    /// that override `CODETETHER_DATA_DIR` remain isolated.
-    pub(crate) fn sessions_dir() -> Result<PathBuf> {
-        crate::config::Config::data_dir()
-            .map(|d| d.join("sessions"))
-            .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))
-    }
-
-    /// Resolve the on-disk path for a session file.
-    pub(crate) fn session_path(id: &str) -> Result<PathBuf> {
-        if id.is_empty()
-            || id.len() > 128
-            || id.contains(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
-        {
-            anyhow::bail!("Invalid session ID:rejecting path traversal risk");
-        }
-        Ok(Self::sessions_dir()?.join(format!("{}.json", id)))
     }
 }
 

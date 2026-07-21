@@ -18,7 +18,11 @@ pub(super) fn paths(input: &Value) -> Option<Vec<PathBuf>> {
 fn line_path(line: &str) -> Option<PathBuf> {
     let raw = line
         .strip_prefix("+++ ")
-        .or_else(|| line.strip_prefix("--- "))?
+        .or_else(|| line.strip_prefix("--- "))
+        .or_else(|| line.strip_prefix("*** Update File: "))
+        .or_else(|| line.strip_prefix("*** Add File: "))
+        .or_else(|| line.strip_prefix("*** Delete File: "))
+        .or_else(|| line.strip_prefix("*** Move to: "))?
         .split('\t')
         .next()?
         .trim();

@@ -13,7 +13,7 @@ pub(super) async fn resolve() -> Result<Option<ImagesAuth>> {
             continue;
         };
         if let Some(credentials) = oauth_credentials(&secrets) {
-            let provider = OpenAiCodexProvider::from_credentials(credentials);
+            let provider = OpenAiCodexProvider::from_vault_credentials(provider_id, credentials);
             return Ok(Some(ImagesAuth::chatgpt(
                 provider.chatgpt_backend_auth().await?,
             )));

@@ -29,10 +29,12 @@ pub(super) async fn execute(
             columns,
             rows,
         } => super::program_operations::attach(context, window_id, columns, rows)?,
+        ProgramRequest::Tail { window_id } => super::program_tail::apply(context, window_id)?,
         ProgramRequest::Input { window_id, data } => {
             context.programs.input(window_id, &data)?;
             ServerResponse::Acknowledged
         }
+        ProgramRequest::Steer { text } => super::program_steer::apply(context, &text).await?,
         ProgramRequest::Read { window_id, offset } => {
             super::program_operations::read(context, window_id, offset).await?
         }

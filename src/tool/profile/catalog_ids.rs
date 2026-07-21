@@ -1,0 +1,37 @@
+//! Tool identifiers retained by compact runtime profiles.
+
+pub(super) const CODING: &[&str] = &[
+    "agent",
+    "apply_patch",
+    "browserctl",
+    "close_agent",
+    "codesearch",
+    "computer_use",
+    "create_goal",
+    "exec_command",
+    "followup_task",
+    "glob",
+    "grep",
+    "get_goal",
+    "image",
+    "image_gen",
+    "interrupt_agent",
+    "list",
+    "list_agents",
+    "lsp",
+    "mux_control",
+    "read",
+    "resume_agent",
+    "send_input",
+    "send_message",
+    "session_task",
+    "skill",
+    "spawn_agent",
+    "update_goal",
+    "wait_agent",
+    "webfetch",
+    "websearch",
+    "write_stdin",
+];
+
+pub(super) const MUX_MANAGER: &[&str] = &["mux_control"];

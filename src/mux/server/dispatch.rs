@@ -18,6 +18,10 @@ pub(super) async fn apply(
         ClientRequest::Coordinate { request } => {
             (super::coordination::apply(context, request).await, false)
         }
+        ClientRequest::Agent { request } => (super::agent::apply(context, request).await, false),
+        ClientRequest::ReportRuntime { status } => {
+            (super::runtime::apply(context, status).await, false)
+        }
         request @ ClientRequest::Program { .. } => {
             (super::program::apply(context, request).await, false)
         }

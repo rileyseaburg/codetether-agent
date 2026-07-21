@@ -2,7 +2,6 @@
 
 use super::super::super::loop_constants as limits;
 use super::super::Runner;
-use crate::provider::{ContentPart, Message, Role};
 use anyhow::Result;
 
 /// Requests a retry when build mode answers without first using tools.
@@ -23,17 +22,7 @@ pub(super) fn tool_first(runner: &mut Runner<'_>, text: &str, calls: bool) -> Re
     );
     if retry {
         runner.progress.build_retries += 1;
-        nudge(runner, limits::BUILD_MODE_TOOL_FIRST_NUDGE);
+        super::nudge::add(runner, limits::BUILD_MODE_TOOL_FIRST_NUDGE);
     }
     Ok(retry)
-}
-
-/// Adds a corrective user-role message to the session transcript.
-pub(in crate::session::helper::prompt_loop) fn nudge(runner: &mut Runner<'_>, text: &str) {
-    runner.session.add_message(Message {
-        role: Role::User,
-        content: vec![ContentPart::Text {
-            text: text.to_string(),
-        }],
-    });
 }

@@ -26,11 +26,19 @@ fn profiles_real_saved_session() {
     let pending = timed(&mut app, &formatter, &palette);
     println!(
         "provider={} chat={} cold={:?} cached={:?} pending={:?}",
-        messages.len(), app.state.messages.len(), cold, cached, pending
+        messages.len(),
+        app.state.messages.len(),
+        cold,
+        cached,
+        pending
     );
 }
 
-fn timed(app: &mut App, formatter: &MessageFormatter, palette: &ColorPalette) -> std::time::Duration {
+fn timed(
+    app: &mut App,
+    formatter: &MessageFormatter,
+    palette: &ColorPalette,
+) -> std::time::Duration {
     let started = Instant::now();
     let drawn = build_chat_lines(app, 180, 180, formatter, palette);
     let elapsed = started.elapsed();

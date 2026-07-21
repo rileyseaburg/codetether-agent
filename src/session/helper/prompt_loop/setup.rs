@@ -10,7 +10,7 @@ use super::{
     progress::{LoopState, WorkspaceState},
 };
 use crate::provider::ProviderRegistry;
-use crate::session::{DEFAULT_MAX_STEPS, Session, SessionEvent};
+use crate::session::{Session, SessionEvent};
 
 /// Initializes shared loop state for a session and optional event channel.
 ///
@@ -33,7 +33,7 @@ pub(crate) async fn initialize<'a>(
         .clone()
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     let baseline_dirty = super::super::validation::capture_git_dirty_files(&cwd).await;
-    let max_steps = session.max_steps.unwrap_or(DEFAULT_MAX_STEPS);
+    let max_steps = session.max_steps;
     let lease_owner = format!("{}:{}", session.id, uuid::Uuid::new_v4());
     Ok(Runner {
         session,

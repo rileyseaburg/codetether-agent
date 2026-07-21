@@ -2,8 +2,8 @@ use super::event::RunEvent;
 use crate::provider::Usage;
 use anyhow::Result;
 
-pub(in crate::cli::run) fn write_started() -> Result<()> {
-    super::writer::write_stdout(&RunEvent::Started)
+pub(in crate::cli::run) fn write_started(session_id: &str) -> Result<()> {
+    super::writer::write_stdout(&RunEvent::Started { session_id })
 }
 
 pub(in crate::cli::run) fn write_completed(

@@ -11,6 +11,16 @@
 
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
+pub(super) async fn finish(
+    bridge: &Option<TuiWorkerBridge>,
+    runtime: &crate::tui::app::session_runtime::TuiSessionHandle,
+    mux_status: super::setup::mux_status::Reporter,
+) {
+    mux_status.clear().await;
+    deregister_bridge(bridge);
+    runtime.shutdown().await;
+}
+
 /// Deregister the TUI agent from the worker bridge.
 ///
 /// Sends a `DeregisterAgent` command to the bridge if

@@ -26,7 +26,7 @@ pub(super) fn guard(runner: &mut Runner<'_>, step: usize) -> bool {
         consecutive_codesearch_no_matches = runner.progress.codesearch_misses,
         "Detected codesearch no-match thrash"
     );
-    super::super::response::build_guard::nudge(
+    super::super::response::nudge::add(
         runner,
         super::super::super::loop_constants::CODESEARCH_THRASH_NUDGE,
     );

@@ -24,6 +24,7 @@ pub(crate) fn agent_tool_live_trace_for_parent(
     name: &str,
     parent_session_id: &str,
 ) -> Option<LiveTraceSnapshot> {
-    let entry = store::get_for_parent(name, Some(parent_session_id))?;
-    super::super::event_loop::live_trace::snapshot(entry.id())
+    store::get_for_parent(name, Some(parent_session_id))
+        .and_then(|entry| super::super::event_loop::live_trace::snapshot(entry.id()))
+        .or_else(|| super::super::message::remote::observation::live_trace(name, parent_session_id))
 }

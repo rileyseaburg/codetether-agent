@@ -7,7 +7,7 @@ pub(super) enum SessionLoadOutcome {
     /// A prior session was successfully loaded and is now active.
     Loaded {
         msg_count: usize,
-        title: Option<String>,
+        label: String,
         /// Messages dropped by the tail-cap window (0 = full transcript loaded).
         dropped: usize,
         /// Original full-history session preserved when continuation is forked.

@@ -1,7 +1,8 @@
 impl OpenAiCodexProvider {
     /// Creates a provider from persisted OAuth credentials.
     ///
-    /// Credentials from the Codex CLI auth file take precedence when present.
+    /// The supplied credentials are used directly. Callers are responsible for
+    /// loading them from the configured secret backend.
     ///
     /// # Arguments
     ///
@@ -22,7 +23,6 @@ impl OpenAiCodexProvider {
     /// assert!(format!("{provider:?}").contains("has_credentials: true"));
     /// ```
     pub fn from_credentials(credentials: OAuthCredentials) -> Self {
-        let credentials = Self::codex_auth_file_credentials().unwrap_or(credentials);
         let chatgpt_account_id = credentials
             .chatgpt_account_id
             .clone()
@@ -39,10 +39,21 @@ impl OpenAiCodexProvider {
             cached_tokens: Arc::new(RwLock::new(None)),
             static_api_key: None,
             chatgpt_account_id,
-            stored_credentials: Some(credentials),
+            stored_credentials: Some(Arc::new(RwLock::new(OAuthCredentialState::new(credentials)))),
+            credential_store: None,
             transport_health: TransportHealth::default(),
             turn_states: TurnStateStore::default(),
             ws_pool: WsPool::default(),
         }
+    }
+
+    /// Creates an OAuth provider whose refreshed credentials persist to Vault.
+    pub(crate) fn from_vault_credentials(
+        provider_id: &str,
+        credentials: OAuthCredentials,
+    ) -> Self {
+        let mut provider = Self::from_credentials(credentials);
+        provider.credential_store = Some(VaultCredentialStore::new(provider_id));
+        provider
     }
 }

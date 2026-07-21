@@ -8,12 +8,12 @@ use anyhow::{Result, anyhow};
 mod legacy;
 #[path = "outcome.rs"]
 mod outcome;
-#[path = "timeout.rs"]
-mod timeout;
 #[path = "subscriptions.rs"]
 mod subscriptions;
 #[path = "targets.rs"]
 mod targets;
+#[path = "timeout.rs"]
+mod timeout;
 
 pub(super) async fn execute(args: Args) -> Result<ToolResult> {
     let owner = args
@@ -27,8 +27,7 @@ pub(super) async fn execute(args: Args) -> Result<ToolResult> {
     if !requested.is_empty() {
         return legacy::execute(owner, &requested, deadline).await;
     }
-    let activity = crate::tool::agent::collaboration_runtime::parent_activity::until(
-        owner, deadline,
-    ).await;
+    let activity =
+        crate::tool::agent::collaboration_runtime::parent_activity::until(owner, deadline).await;
     Ok(outcome::result(activity))
 }

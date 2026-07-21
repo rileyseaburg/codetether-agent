@@ -16,10 +16,12 @@ pub(super) struct Args {
 
 impl Args {
     pub(super) fn resolved_fork_turns(&self) -> String {
-        self.fork_turns.clone().unwrap_or_else(|| match self.fork_context {
-            Some(false) => "none".into(),
-            Some(true) | None => "all".into(),
-        })
+        self.fork_turns
+            .clone()
+            .unwrap_or_else(|| match self.fork_context {
+                Some(false) => "none".into(),
+                Some(true) | None => "all".into(),
+            })
     }
 }
 

@@ -39,9 +39,6 @@ pub(in crate::session::helper::prompt_loop) async fn handle(
     if super::truncation::record(runner, &response, &calls, &truncated).await {
         return Ok(StepFlow::Continue);
     }
-    if super::repeat::force_answer(runner, step, &response, &calls) {
-        return Ok(StepFlow::Continue);
-    }
     super::progress::track_writes(runner, step, &calls);
     runner.session.add_message(response.message);
     super::super::tools::execute(runner, step, calls).await?;

@@ -14,7 +14,8 @@ pub(super) fn resolve(
     let mut final_status = Map::new();
     let mut receivers = Vec::new();
     for target in targets {
-        let Some(agent) = crate::tool::agent::bridge::find_agent_tool_agent_for_parent(target, owner)
+        let Some(agent) =
+            crate::tool::agent::bridge::find_agent_tool_agent_for_parent(target, owner)
         else {
             final_status.insert(target.clone(), to_value(ThreadStatus::NotFound)?);
             continue;

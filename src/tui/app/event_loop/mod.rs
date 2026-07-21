@@ -8,6 +8,7 @@ mod autochat;
 mod bus_inbox;
 mod coalesce;
 mod io;
+mod redraw;
 mod resilient;
 mod select_args;
 mod select_loop;
@@ -49,13 +50,11 @@ pub(crate) async fn run_event_loop(
     mut notice_rx: mpsc::Receiver<SessionNotice>,
 ) -> anyhow::Result<()> {
     let mut setup = setup::create();
-
+    let mut last_draw = None;
     loop {
         tick::before_draw(app, &worker_bridge, &mut setup.worker_sync_cursor);
-        if app.state.needs_redraw {
-            crate::tui::app::safe_draw::draw_ui(terminal, app, slot.view())?;
-            app.state.needs_redraw = false;
-        }
+        setup.mux_status.update(app, slot.view()).await;
+        redraw::draw_if_ready(terminal, app, slot.view(), &mut last_draw)?;
         let mut io = LoopIo::new(&mut event_rx, &mut notice_rx, &mut setup.shutdown_rx);
         let mut args = SelectArgs {
             reader: &mut setup.reader,
@@ -74,7 +73,6 @@ pub(crate) async fn run_event_loop(
         }
     }
 
-    shutdown::deregister_bridge(&worker_bridge);
-    runtime.shutdown().await;
+    shutdown::finish(&worker_bridge, &runtime, setup.mux_status).await;
     Ok(())
 }

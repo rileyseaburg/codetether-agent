@@ -10,13 +10,12 @@ pub(super) fn mutation_paths(tool: &str, input: &Value) -> Option<Vec<PathBuf>> 
         "confirm_edit" if confirmed(input) => super::structured::single(input, "path"),
         "confirm_multiedit" if confirmed(input) => super::structured::many(input),
         "apply_patch" | "patch" if applies(input) => super::patch::paths(input),
-        "git" if input["op"] == "commit" => Some(vec![PathBuf::new()]),
+        "git" if input["op"] == "commit" => Some(super::command_path::directory(input)),
         "undo" if !input["preview"].as_bool().unwrap_or(false) => Some(vec![PathBuf::new()]),
-        "bash" => shell(input, "command"),
-        "exec_command" => shell(input, "cmd"),
+        "bash" => super::command_path::shell(input, "command"),
+        "exec_command" => super::command_path::shell(input, "cmd"),
         "write_stdin" if nonempty(input, "chars") => root(),
-        "todo_write" | "tetherscript_plugin" => root(),
-        "voice" if input["action"] == "speak" => root(),
+        "tetherscript_plugin" => root(),
         "browserctl" if input["action"] == "screenshot" => super::structured::single(input, "path"),
         "mcp" if input["action"] == "call_tool" => root(),
         "batch" => super::batch::paths(input),
@@ -32,11 +31,6 @@ fn applies(input: &Value) -> bool {
     !["dry_run", "preview"]
         .into_iter()
         .any(|key| input.get(key).and_then(Value::as_bool) == Some(true))
-}
-
-fn shell(input: &Value, field: &str) -> Option<Vec<PathBuf>> {
-    let command = input.get(field)?.as_str()?;
-    (!super::shell::read_only(command)).then(|| vec![PathBuf::new()])
 }
 
 fn nonempty(input: &Value, field: &str) -> bool {

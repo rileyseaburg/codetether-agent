@@ -15,12 +15,16 @@ pub(super) struct Args {
     pub(super) context: RuntimeContext,
 }
 
-fn default_timeout_ms() -> u64 { 30_000 }
+fn default_timeout_ms() -> u64 {
+    30_000
+}
 
 impl Args {
     pub(super) fn requested_targets(&self) -> Vec<String> {
         let mut targets = self.targets.clone();
-        if let Some(target) = &self.target { targets.push(target.clone()); }
+        if let Some(target) = &self.target {
+            targets.push(target.clone());
+        }
         targets
     }
 }

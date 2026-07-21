@@ -1,7 +1,7 @@
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
-const PATH_KEYS: &[&str] = &["path", "file", "file_path", "filePath", "cwd"];
+const PATH_KEYS: &[&str] = &["path", "file", "file_path", "filePath", "cwd", "workdir"];
 const PATH_COLLECTION_KEYS: &[&str] = &["edits", "changes", "operations"];
 
 /// Normalize supported path fields in a tool input object against a workspace root.

@@ -6,6 +6,9 @@ use std::path::PathBuf;
 pub struct TuiArgs {
     /// Project directory
     pub project: Option<PathBuf>,
+    /// Resume this exact durable session instead of creating a fresh one.
+    #[arg(long)]
+    pub session: Option<String>,
     /// Transient access mode: ask, approve, or full
     #[arg(long, value_parser = clap::value_parser!(AccessMode))]
     pub access_mode: Option<AccessMode>,

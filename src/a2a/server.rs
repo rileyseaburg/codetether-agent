@@ -1,6 +1,6 @@
 //! A2A Server - serve as an A2A agent
 
-use super::types::*;
+use super::{server_task_activity, types::*};
 use crate::session::SessionEvent;
 use anyhow::Result;
 use axum::{
@@ -604,8 +604,7 @@ async fn handle_message_stream(
             };
         crate::a2a::session_config::configure(&mut session).await;
 
-        // Spawn a task to forward session events to the bus
-        let bus_clone = bus.clone();
+        let (bus_clone, activity_tasks) = (bus.clone(), tasks.clone());
         let task_id_clone = task_id.clone();
         tokio::spawn(async move {
             while let Some(event) = event_rx.recv().await {
@@ -652,11 +651,9 @@ async fn handle_message_stream(
                     // dedicated SessionBus subscribers rather than SSE.
                     _ => continue,
                 };
-
-                // Emit to bus for SSE subscribers
+                server_task_activity::record(&activity_tasks, &task_id_clone, &event_data);
                 if let Some(ref bus) = bus_clone {
-                    let handle = bus.handle("a2a-stream");
-                    handle.send(
+                    bus.handle("a2a-stream").send(
                         format!("task.{}", task_id_clone),
                         crate::bus::BusMessage::TaskUpdate {
                             task_id: task_id_clone.clone(),
@@ -668,7 +665,6 @@ async fn handle_message_stream(
             }
         });
 
-        // Use prompt_with_events for streaming
         let registry = match crate::provider::ProviderRegistry::shared_from_vault().await {
             Ok(r) => r,
             Err(e) => {

@@ -4,7 +4,12 @@ mod ai;
 mod ai_default;
 mod ai_model;
 mod ai_request;
+pub(super) mod display;
 mod extract;
+
+#[cfg(test)]
+#[path = "display_tests.rs"]
+mod display_tests;
 
 pub(crate) use extract::is_title_candidate;
 
@@ -33,13 +38,20 @@ impl Session {
 
     fn set_title_from_first_user_message(&mut self) {
         if let Some(title) = extract::title_from_first_user_message(self) {
-            self.title = Some(title);
+            self.set_title(title);
         }
     }
 
     /// Set a custom title for the session.
+    ///
+    /// Whitespace is collapsed before persistence; empty or injected bootstrap
+    /// context clears the title so it can be regenerated safely.
+    ///
+    /// # Arguments
+    ///
+    /// * `title` - Candidate user-facing title.
     pub fn set_title(&mut self, title: impl Into<String>) {
-        self.title = Some(title.into());
+        self.title = display::normalize_title(&title.into());
         self.updated_at = Utc::now();
     }
 

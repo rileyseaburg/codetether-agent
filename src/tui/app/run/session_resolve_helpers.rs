@@ -11,7 +11,7 @@ use super::session_outcome::SessionLoadOutcome;
 use super::session_resolve::Resolved;
 
 pub(super) fn resolve_loaded(load: TailLoad, bus: &Arc<AgentBus>) -> Resolved {
-    let title = load.session.title.clone();
+    let label = load.session.display_label();
     let dropped = load.dropped;
     let file_bytes = load.file_bytes;
     let mut session = load.session.with_bus(bus.clone());
@@ -27,7 +27,7 @@ pub(super) fn resolve_loaded(load: TailLoad, bus: &Arc<AgentBus>) -> Resolved {
         session,
         outcome: SessionLoadOutcome::Loaded {
             msg_count,
-            title,
+            label,
             dropped,
             source_id,
         },

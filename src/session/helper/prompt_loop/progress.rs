@@ -18,14 +18,10 @@ pub(crate) struct WorkspaceState {
 pub(crate) struct LoopState {
     /// Assistant text accumulated for the final result.
     pub output: String,
-    /// Maximum provider/tool iterations allowed for the turn.
-    pub max_steps: usize,
+    /// Optional maximum provider/tool iterations allowed for the turn.
+    pub max_steps: Option<usize>,
     /// Number of failed post-edit validation attempts.
     pub validation_retries: u8,
-    /// Canonical signature of the previous tool-call batch.
-    pub last_tool_signature: Option<String>,
-    /// Number of consecutive batches matching the prior signature.
-    pub repeated_tools: u32,
     /// Guard against repeated edit-family invocations.
     pub repeat_guard: super::super::repeat_guard::RepeatGuard,
     /// Consecutive code-search calls returning no matches.
@@ -48,13 +44,11 @@ pub(crate) struct LoopState {
 
 impl LoopState {
     /// Creates zeroed progress state for the requested step budget.
-    pub fn new(max_steps: usize) -> Self {
+    pub fn new(max_steps: Option<usize>) -> Self {
         Self {
             output: String::new(),
             max_steps,
             validation_retries: 0,
-            last_tool_signature: None,
-            repeated_tools: 0,
             repeat_guard: Default::default(),
             codesearch_misses: 0,
             build_retries: 0,

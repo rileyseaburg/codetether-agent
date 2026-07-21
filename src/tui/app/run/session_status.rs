@@ -4,17 +4,19 @@ use super::session_outcome::SessionLoadOutcome;
 
 impl SessionLoadOutcome {
     /// One-line status bar summary shown after startup completes.
-    pub(super) fn status(&self, session_id: &str) -> String {
+    pub(super) fn status(&self) -> String {
         match self {
-            Self::Loaded { msg_count: 0, .. } => {
-                format!("Loaded session {session_id} (empty)")
-            }
+            Self::Loaded {
+                msg_count: 0,
+                label,
+                ..
+            } => format!("Loaded session {label} (empty)"),
             Self::Loaded {
                 msg_count,
-                title,
+                label,
                 dropped,
                 ..
-            } => loaded_status(session_id, *msg_count, title, *dropped),
+            } => loaded_status(label, *msg_count, *dropped),
             Self::Fresh => "New session — type a message to start".to_string(),
             Self::ScanFailed { reason } => {
                 format!("⚠ New session (prior session could not be loaded: {reason})")
@@ -23,13 +25,7 @@ impl SessionLoadOutcome {
     }
 }
 
-fn loaded_status(
-    session_id: &str,
-    msg_count: usize,
-    title: &Option<String>,
-    dropped: usize,
-) -> String {
-    let label = title.as_deref().unwrap_or(session_id);
+fn loaded_status(label: &str, msg_count: usize, dropped: usize) -> String {
     if dropped == 0 {
         format!("Resumed: {label} ({msg_count} messages)")
     } else {

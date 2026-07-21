@@ -7,7 +7,8 @@
 //! # Semantics
 //!
 //! The flag starts **cleared** (`false`). When a step-limited run begins,
-//! [`mark_budget_active`] sets it to `true`. At the end of the agentic loop:
+//! [`begin`] sets it based on whether the run has an explicit budget. At the
+//! end of a bounded agentic loop:
 //! - [`clear_budget`] is called if the run completed normally (did not hit
 //!   the step limit), setting the flag back to `false`.
 //! - If the flag is still `true` when the loop exits, the step budget was
@@ -22,9 +23,9 @@ thread_local! {
     static BUDGET_ACTIVE: Cell<bool> = const { Cell::new(false) };
 }
 
-/// Mark a step-limited run as active. Call at the start of the agentic loop.
-pub(crate) fn mark_budget_active() {
-    BUDGET_ACTIVE.with(|c| c.set(true));
+/// Records whether the next agentic run has an explicit step budget.
+pub(crate) fn begin(max_steps: Option<usize>) {
+    BUDGET_ACTIVE.with(|active| active.set(max_steps.is_some()));
 }
 
 /// Clear the step-limit flag because the run completed within budget.

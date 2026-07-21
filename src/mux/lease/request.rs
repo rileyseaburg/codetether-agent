@@ -12,6 +12,8 @@ pub(in crate::mux) enum CoordinationRequest {
         agent: String,
         workspace: PathBuf,
         paths: Vec<PathBuf>,
+        #[serde(default)]
+        wait_ms: u64,
     },
     Renew {
         owner: String,

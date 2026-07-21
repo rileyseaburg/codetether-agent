@@ -11,9 +11,14 @@ use super::store;
 mod live;
 #[path = "bridge_snapshots.rs"]
 mod snapshots;
+#[cfg(test)]
+#[path = "bridge_test_fixture.rs"]
+mod test_fixture;
 #[path = "bridge_transcript.rs"]
 mod transcript;
 pub(crate) use live::{LiveTraceEntry, LiveTraceSnapshot, agent_tool_live_trace_for_parent};
+#[cfg(test)]
+pub(crate) use test_fixture::record_remote_turn;
 pub(crate) use transcript::agent_tool_transcript_for_parent;
 
 /// A read-only snapshot of a spawned sub-agent, suitable for TUI display.

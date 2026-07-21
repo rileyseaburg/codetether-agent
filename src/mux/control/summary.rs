@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use crate::mux::MuxRuntimeStatus;
 use crate::mux::model::MuxSnapshot;
 use crate::mux::registry::MuxRecord;
 
@@ -22,6 +23,7 @@ pub(crate) struct MuxSessionSummary {
     pub active_window: u64,
     pub windows: Vec<MuxWindowSummary>,
     pub reachable: bool,
+    pub runtime: Option<MuxRuntimeStatus>,
 }
 
 impl MuxSessionSummary {
@@ -42,6 +44,7 @@ impl MuxSessionSummary {
             active_window: state.active_window,
             windows,
             reachable,
+            runtime: state.runtime.clone(),
         }
     }
 }

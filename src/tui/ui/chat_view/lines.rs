@@ -31,7 +31,7 @@ pub fn build_chat_lines(
     formatter: &MessageFormatter,
     palette: &ColorPalette,
 ) -> DrawnLines {
-    if let Some(lines) = super::swarm_lines::build(app, content_width, formatter, palette) {
+    if let Some(lines) = super::focused_lines::build(app, content_width, formatter, palette) {
         return lines;
     }
     // Hot path: cache is valid — take ownership, no clone.
@@ -43,7 +43,7 @@ pub fn build_chat_lines(
     let panel_width = content_width.saturating_sub(4);
 
     // Warm path: frozen prefix from prior frame + streaming suffix.
-    if let Some(mut prefix) = app.state.clone_frozen_prefix(max_width) {
+    if let Some(mut prefix) = app.state.take_frozen_prefix(max_width) {
         let frozen_len = prefix.len();
         push_streaming_preview(&mut prefix, &app.state, separator_width, formatter);
         return store_and_take(app, prefix, max_width, frozen_len);

@@ -30,7 +30,7 @@ pub(super) fn complete(
     // Push a visible banner for scan failures or tail-cap truncation BEFORE
     // setting the status bar, so the user sees it in chat not just the footer.
     outcome.push_banner(app);
-    let loaded = outcome.status(&session.id);
+    let loaded = outcome.status();
     let policy = crate::tui::ui::trust_status::startup_summary();
     if let Some(policy) = policy.as_deref() {
         super::policy_notice::push(app, policy);

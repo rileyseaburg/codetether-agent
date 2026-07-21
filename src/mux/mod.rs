@@ -15,10 +15,12 @@
 //! codetether mux kill-all
 //! ```
 
+mod agent_task;
 mod client;
 mod command;
 pub(crate) mod control;
 pub(crate) mod coordination;
+mod isolation;
 pub(crate) mod lease;
 mod model;
 mod protocol;
@@ -26,6 +28,8 @@ mod pty;
 mod registry;
 mod server;
 mod token;
+
+pub(crate) use model::MuxRuntimeStatus;
 
 use crate::cli::command::mux_args::MuxArgs;
 

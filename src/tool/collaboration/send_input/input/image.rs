@@ -26,7 +26,11 @@ pub(super) async fn local(path: &Path) -> Result<MessageImage> {
 fn mime(path: &Path) -> Result<&'static str> {
     match path.extension().and_then(|value| value.to_str()) {
         Some(value) if value.eq_ignore_ascii_case("png") => Ok("image/png"),
-        Some(value) if ["jpg", "jpeg"].iter().any(|ext| value.eq_ignore_ascii_case(ext)) => {
+        Some(value)
+            if ["jpg", "jpeg"]
+                .iter()
+                .any(|ext| value.eq_ignore_ascii_case(ext)) =>
+        {
             Ok("image/jpeg")
         }
         Some(value) if value.eq_ignore_ascii_case("gif") => Ok("image/gif"),

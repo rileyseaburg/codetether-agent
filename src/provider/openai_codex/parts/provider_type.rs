@@ -14,8 +14,8 @@ pub struct OpenAiCodexProvider {
     cached_tokens: Arc<RwLock<Option<CachedTokens>>>,
     static_api_key: Option<String>,
     chatgpt_account_id: Option<String>,
-    /// Stored credentials from Vault (for refresh on startup)
-    stored_credentials: Option<OAuthCredentials>,
+    stored_credentials: Option<Arc<RwLock<OAuthCredentialState>>>,
+    credential_store: Option<VaultCredentialStore>,
     transport_health: TransportHealth,
     turn_states: TurnStateStore,
     ws_pool: WsPool,

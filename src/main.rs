@@ -597,7 +597,15 @@ async fn main() -> anyhow::Result<()> {
             if start_new {
                 unsafe { std::env::set_var("CODETETHER_TUI_NEW_SESSION", "1") }
             };
-            tui::run(project, allow_network, a2a_options, access_mode, yolo).await
+            tui::run(
+                project,
+                allow_network,
+                a2a_options,
+                access_mode,
+                yolo,
+                args.session,
+            )
+            .await
         }
         Some(Command::Mux(args)) => mux::execute(args).await,
         Some(Command::Serve(args)) => server::serve(args).await,
@@ -1803,6 +1811,7 @@ async fn main() -> anyhow::Result<()> {
                 Some(crate::a2a::spawn::SpawnOptions::auto()),
                 None,
                 cli.yolo,
+                None,
             )
             .await
         }

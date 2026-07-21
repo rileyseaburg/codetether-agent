@@ -7,6 +7,8 @@ use crate::provider::traits::Provider;
 use crate::secrets::ProviderSecrets;
 use std::sync::Arc;
 
+pub(super) mod codex;
+
 pub(super) fn dispatch_bedrock(secrets: &ProviderSecrets) -> Option<Arc<dyn Provider>> {
     use crate::provider::bedrock;
     let region = secrets
@@ -93,39 +95,6 @@ pub(super) fn dispatch_vertex_anthropic(secrets: &ProviderSecrets) -> Option<Arc
             None
         }
     }
-}
-
-pub(super) fn dispatch_codex(secrets: &ProviderSecrets) -> Option<Arc<dyn Provider>> {
-    use crate::provider::openai_codex;
-    if let Some(key) = secrets.api_key.as_deref().filter(|k| !k.is_empty()) {
-        return Some(Arc::new(openai_codex::OpenAiCodexProvider::from_api_key(
-            key.into(),
-        )));
-    }
-    let access = secrets.extra.get("access_token").and_then(|v| v.as_str())?;
-    let refresh = secrets
-        .extra
-        .get("refresh_token")
-        .and_then(|v| v.as_str())?;
-    let expires = secrets.extra.get("expires_at").and_then(|v| v.as_u64())?;
-    let creds = openai_codex::OAuthCredentials {
-        id_token: secrets
-            .extra
-            .get("id_token")
-            .and_then(|v| v.as_str())
-            .map(String::from),
-        chatgpt_account_id: secrets
-            .extra
-            .get("chatgpt_account_id")
-            .and_then(|v| v.as_str())
-            .map(String::from),
-        access_token: access.into(),
-        refresh_token: refresh.into(),
-        expires_at: expires,
-    };
-    Some(Arc::new(
-        openai_codex::OpenAiCodexProvider::from_credentials(creds),
-    ))
 }
 
 pub(super) fn dispatch_gemini_web(secrets: &ProviderSecrets) -> Option<Arc<dyn Provider>> {

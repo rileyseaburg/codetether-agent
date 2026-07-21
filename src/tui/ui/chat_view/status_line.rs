@@ -17,12 +17,7 @@ use crate::tui::app::state::App;
 /// # fn d(f:&mut ratatui::Frame,a:&codetether_agent::tui::app::state::App){ render_status_line(f,a,ratatui::layout::Rect::new(0,23,80,3)); }
 /// ```
 pub fn render_status_line(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
-    let session_label = app
-        .state
-        .session_id
-        .as_deref()
-        .map(|id| id.to_string())
-        .unwrap_or_else(|| "new".to_string());
+    let session_label = super::title::labels::session_label(app);
     let lines = build_status_lines(app, &session_label, area.width);
     f.render_widget(Paragraph::new(lines), area);
 }

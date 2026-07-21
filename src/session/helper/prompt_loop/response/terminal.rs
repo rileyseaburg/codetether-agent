@@ -38,7 +38,7 @@ pub(super) async fn finish_or_retry(
             report.prompt
         );
     }
-    super::build_guard::nudge(runner, &report.prompt);
+    super::nudge::add(runner, &report.prompt);
     runner.progress.output.clear();
     Ok(StepFlow::Continue)
 }

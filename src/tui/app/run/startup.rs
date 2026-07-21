@@ -16,11 +16,11 @@ pub(super) struct Startup {
     pub workspace: WorkspaceSnapshot,
 }
 
-pub(super) async fn load(cwd: &Path, bus: Arc<AgentBus>) -> Startup {
+pub(super) async fn load(cwd: &Path, bus: Arc<AgentBus>, session_id: Option<&str>) -> Startup {
     let registry_task = super::provider::load_registry();
     let worker_task =
         TuiWorkerBridge::spawn(None, None, crate::provenance::runtime_agent_identity(), bus);
-    let session_task = super::session_scan::load(cwd);
+    let session_task = super::session_scan::load(session_id);
     let config_task = Config::load();
     let workspace_task = super::workspace::capture(cwd.to_path_buf());
     let (registry, worker_result, session_load, config, workspace) = tokio::join!(

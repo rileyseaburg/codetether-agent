@@ -16,9 +16,9 @@ pub(crate) async fn start_session(name: &str, workspace: PathBuf) -> Result<MuxS
 pub(in crate::mux) async fn start_record(name: &str, workspace: PathBuf) -> Result<MuxRecord> {
     crate::mux::registry::validate_name(name)?;
     crate::mux::command::startup::reject_duplicate(name).await?;
-    let workspace = tokio::fs::canonicalize(workspace)
+    let workspace = crate::mux::isolation::workspace(name, 0, &workspace)
         .await
-        .context("resolve initial workspace")?;
+        .context("create initial mux agent worktree")?;
     let token = crate::mux::token::generate();
     let mut process = crate::mux::command::spawn::command(name, &workspace, &token)?;
     let mut child = process.spawn().context("start mux server")?;

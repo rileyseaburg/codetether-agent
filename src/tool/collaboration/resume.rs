@@ -18,8 +18,12 @@ struct Args {
 
 #[async_trait]
 impl Tool for ResumeAgentTool {
-    fn id(&self) -> &str { "resume_agent" }
-    fn name(&self) -> &str { "Resume Agent" }
+    fn id(&self) -> &str {
+        "resume_agent"
+    }
+    fn name(&self) -> &str {
+        "Resume Agent"
+    }
     fn description(&self) -> &str {
         "Resume a closed durable child thread by its session ID."
     }
@@ -29,7 +33,13 @@ impl Tool for ResumeAgentTool {
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
         let args: Args = serde_json::from_value(input)?;
-        legacy::execute(&args.context, json!({"action":"resume", "name":args.id})
-            .as_object().cloned().unwrap_or_default()).await
+        legacy::execute(
+            &args.context,
+            json!({"action":"resume", "name":args.id})
+                .as_object()
+                .cloned()
+                .unwrap_or_default(),
+        )
+        .await
     }
 }

@@ -7,9 +7,15 @@ pub(super) fn attach_task_path(mut result: ToolResult, context: &RuntimeContext)
     if !result.success {
         return result;
     }
-    let Some(owner) = context.session_id.as_deref() else { return result };
-    let Ok(mut output) = serde_json::from_str::<Value>(&result.output) else { return result };
-    let Some(agent_id) = output.get("agent_id").and_then(Value::as_str) else { return result };
+    let Some(owner) = context.session_id.as_deref() else {
+        return result;
+    };
+    let Ok(mut output) = serde_json::from_str::<Value>(&result.output) else {
+        return result;
+    };
+    let Some(agent_id) = output.get("agent_id").and_then(Value::as_str) else {
+        return result;
+    };
     let Ok(Some(path)) =
         crate::tool::agent::collaboration_runtime::agent_tree::canonical(owner, agent_id)
     else {

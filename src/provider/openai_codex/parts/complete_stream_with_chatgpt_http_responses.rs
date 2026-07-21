@@ -10,7 +10,7 @@ impl OpenAiCodexProvider {
             .send_chatgpt_http_response(&request, &access_token, &account_id, session_id)
             .await?;
         if response.status() == StatusCode::UNAUTHORIZED {
-            let access_token = self.force_refresh_access_token().await?;
+            let access_token = self.force_refresh_access_token(&access_token).await?;
             let account_id = self
                 .resolved_chatgpt_account_id(&access_token)
                 .unwrap_or(account_id);

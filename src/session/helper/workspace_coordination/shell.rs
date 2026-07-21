@@ -1,5 +1,12 @@
 //! Conservative recognition of shell commands proven read-only.
 
+#[path = "shell/git.rs"]
+mod git;
+#[path = "shell/query.rs"]
+mod query;
+#[path = "shell/systemctl.rs"]
+mod systemctl;
+
 const SIMPLE: &[&str] = &[
     "cat", "cut", "df", "diff", "du", "echo", "grep", "head", "jq", "ls", "pwd", "readlink",
     "realpath", "rg", "stat", "tail", "test", "tr", "type", "uniq", "wc", "which",
@@ -23,21 +30,13 @@ fn hazardous(command: &str) -> bool {
 fn simple_read(command: &str) -> bool {
     let mut words = command.split_whitespace();
     match words.next() {
-        Some("git") => git_read(words.next(), command),
+        Some("git") => git::read(words, command),
+        Some("systemctl") => systemctl::read(words),
         Some("find") => find_read(command),
+        Some(_) if query::help_or_version(command) => true,
         Some(program) => SIMPLE.contains(&program),
         None => false,
     }
-}
-
-fn git_read(operation: Option<&str>, command: &str) -> bool {
-    if command.contains("--output") {
-        return false;
-    }
-    matches!(
-        operation,
-        Some("status" | "diff" | "log" | "show" | "rev-parse" | "ls-files" | "grep")
-    )
 }
 
 fn find_read(command: &str) -> bool {
@@ -47,3 +46,7 @@ fn find_read(command: &str) -> bool {
     .into_iter()
     .any(|flag| command.contains(flag))
 }
+
+#[cfg(test)]
+#[path = "shell/tests.rs"]
+mod tests;

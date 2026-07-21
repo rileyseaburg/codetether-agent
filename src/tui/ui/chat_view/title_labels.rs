@@ -4,28 +4,36 @@ use crate::tui::app::session_runtime::SessionView;
 use crate::tui::app::state::App;
 use crate::tui::ui::status_bar::session_model_label;
 
-/// The truncated session id label (`new` when no session yet).
+/// The truncated session title or id (`new` when no session exists).
 ///
 /// # Examples
 ///
 /// ```rust,no_run
 /// # fn demo(app: &codetether_agent::tui::app::state::App) {
 /// use codetether_agent::tui::ui::chat_view::title::labels::session_label;
-/// let _s = session_label(app);
+/// let _label = session_label(app);
 /// # }
 /// ```
 pub fn session_label(app: &App) -> String {
-    app.state
-        .session_id
-        .as_deref()
-        .map(|id| {
-            if id.len() > 18 {
-                format!("{}…", &id[..18])
-            } else {
-                id.to_string()
-            }
-        })
-        .unwrap_or_else(|| "new".to_string())
+    let Some(id) = app.state.session_id.as_deref() else {
+        return "new".to_string();
+    };
+    let label = app
+        .state
+        .sessions
+        .get(app.state.selected_session)
+        .filter(|session| session.id == id)
+        .map(crate::session::SessionSummary::display_label)
+        .unwrap_or_else(|| id.to_string());
+    compact(&label)
+}
+
+fn compact(label: &str) -> String {
+    if label.len() > 28 {
+        format!("{}…", crate::util::truncate_bytes_safe(label, 27))
+    } else {
+        label.to_string()
+    }
 }
 
 /// The active model label (`auto` when unresolved).

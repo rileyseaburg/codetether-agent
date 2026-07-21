@@ -28,7 +28,7 @@ pub(super) fn native_call(
     if retry {
         runner.progress.native_retries += 1;
         runner.session.add_message(response.message.clone());
-        super::build_guard::nudge(runner, limits::NATIVE_TOOL_PROMISE_NUDGE);
+        super::nudge::add(runner, limits::NATIVE_TOOL_PROMISE_NUDGE);
         return Ok(true);
     }
     if calls {

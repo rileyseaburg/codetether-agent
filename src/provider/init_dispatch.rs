@@ -49,7 +49,7 @@ pub fn dispatch(provider_id: &str, secrets: &ProviderSecrets) -> Option<Arc<dyn 
         return super::init_dispatch_impl::dispatch_vertex_anthropic(secrets);
     }
     if matches!(provider_id, "openai-codex" | "codex" | "chatgpt") {
-        return super::init_dispatch_impl::dispatch_codex(secrets);
+        return super::init_dispatch_impl::codex::dispatch(secrets);
     }
     if provider_id == "gemini-web" {
         return super::init_dispatch_impl::dispatch_gemini_web(secrets);

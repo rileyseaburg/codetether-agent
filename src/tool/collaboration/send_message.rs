@@ -19,8 +19,12 @@ struct Args {
 
 #[async_trait]
 impl Tool for SendMessageTool {
-    fn id(&self) -> &str { "send_message" }
-    fn name(&self) -> &str { "Send Message" }
+    fn id(&self) -> &str {
+        "send_message"
+    }
+    fn name(&self) -> &str {
+        "Send Message"
+    }
     fn description(&self) -> &str {
         "Deliver context to a child promptly without starting an idle child turn."
     }
@@ -31,7 +35,9 @@ impl Tool for SendMessageTool {
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
         let args: Args = serde_json::from_value(input)?;
-        if args.message.trim().is_empty() { bail!("Empty message can't be sent to an agent"); }
+        if args.message.trim().is_empty() {
+            bail!("Empty message can't be sent to an agent");
+        }
         if let Some(result) = super::ensure::ready(&args.context, &args.target).await? {
             return Ok(result);
         }

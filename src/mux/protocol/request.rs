@@ -4,7 +4,9 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use super::ProgramRequest;
+use crate::mux::model::MuxRuntimeStatus;
+
+use super::{AgentRequest, ProgramRequest};
 
 /// One authenticated mux control request.
 #[derive(Debug, Deserialize, Serialize)]
@@ -28,6 +30,12 @@ pub(in crate::mux) enum ClientRequest {
     },
     Program {
         request: ProgramRequest,
+    },
+    Agent {
+        request: AgentRequest,
+    },
+    ReportRuntime {
+        status: Option<MuxRuntimeStatus>,
     },
     Coordinate {
         request: crate::mux::lease::CoordinationRequest,

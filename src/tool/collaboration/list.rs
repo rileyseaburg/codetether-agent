@@ -18,9 +18,15 @@ struct Args {
 
 #[async_trait]
 impl Tool for ListAgentsTool {
-    fn id(&self) -> &str { "list_agents" }
-    fn name(&self) -> &str { "List Agents" }
-    fn description(&self) -> &str { "List live agents in the current root thread tree." }
+    fn id(&self) -> &str {
+        "list_agents"
+    }
+    fn name(&self) -> &str {
+        "List Agents"
+    }
+    fn description(&self) -> &str {
+        "List live agents in the current root thread tree."
+    }
     fn parameters(&self) -> Value {
         json!({"type":"object","properties":{
             "path_prefix":{"type":"string",
@@ -29,10 +35,14 @@ impl Tool for ListAgentsTool {
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
         let args: Args = serde_json::from_value(input)?;
-        let current = args.context.session_id.as_deref()
+        let current = args
+            .context
+            .session_id
+            .as_deref()
             .ok_or_else(|| anyhow::anyhow!("session id not available"))?;
         let agents = crate::tool::agent::collaboration_runtime::agent_tree::list(
-            current, args.path_prefix.as_deref(),
+            current,
+            args.path_prefix.as_deref(),
         )?;
         Ok(ToolResult::success(json!({"agents":agents}).to_string()))
     }

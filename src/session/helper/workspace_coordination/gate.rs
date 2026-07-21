@@ -1,6 +1,5 @@
 //! Fail-closed lease acquisition immediately before a mutating tool call.
 
-use crate::mux::lease::CoordinationReply;
 use serde_json::Value;
 
 pub(in crate::session::helper) async fn blocked(
@@ -10,28 +9,27 @@ pub(in crate::session::helper) async fn blocked(
     if !crate::mux::coordination::active() {
         return None;
     }
+    if let Some(action) = super::delegation::work_action(tool, input) {
+        return Some(super::gate_error::delegation(tool, action));
+    }
     let paths = super::paths::mutation_paths(tool, input)?;
     let context = match super::context::RuntimeContext::from_input(input) {
         Ok(context) => context,
         Err(error) => return Some(super::gate_failure::unavailable(tool, &error)),
     };
+    let scope = super::scope::resolve(&context.workspace, paths);
+    if super::scope::too_broad(&scope) {
+        return Some(super::scope_error::result(tool, &scope.workspace));
+    }
     let reply = crate::mux::coordination::acquire(
         &context.owner,
         &context.agent,
-        &context.workspace,
-        paths,
+        &scope.workspace,
+        scope.paths,
     )
     .await;
     match reply {
-        Ok(Some(CoordinationReply::Acquired { leases })) => {
-            tracing::info!(agent = %context.agent, count = leases.len(), "Mux worktree lease acquired");
-            None
-        }
-        Ok(Some(CoordinationReply::Blocked { conflicts })) => {
-            tracing::warn!(agent = %context.agent, count = conflicts.len(), "Mux blocked conflicting mutation");
-            Some(super::gate_error::conflict(tool, &conflicts))
-        }
-        Ok(Some(_)) => Some(super::gate_failure::invalid(tool)),
+        Ok(Some(reply)) => super::outcome::classify(tool, &context.agent, reply),
         Ok(None) => Some(super::gate_failure::missing(tool)),
         Err(error) => Some(super::gate_failure::unavailable(tool, &error)),
     }

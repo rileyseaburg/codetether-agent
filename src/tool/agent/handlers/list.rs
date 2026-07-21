@@ -2,9 +2,10 @@
 
 use super::super::store;
 use crate::tool::ToolResult;
+use anyhow::Result;
 use serde_json::json;
 
-pub(in crate::tool::agent) fn handle(parent: Option<&str>) -> ToolResult {
+pub(in crate::tool::agent) async fn handle(parent: Option<&str>) -> Result<ToolResult> {
     let mut agents = store::entries_for_parent(parent)
         .into_iter()
         .map(|entry| {
@@ -15,8 +16,13 @@ pub(in crate::tool::agent) fn handle(parent: Option<&str>) -> ToolResult {
         })
         .collect::<Vec<_>>();
     agents.extend(super::super::message::remote::list());
+    agents.extend(crate::mux::control::agent_sessions().await?);
     if agents.is_empty() {
-        return ToolResult::success("No local or LAN agents are available yet.");
+        return Ok(ToolResult::success(
+            "No local, LAN, or mux agents are available yet.",
+        ));
     }
-    ToolResult::success(serde_json::to_string_pretty(&agents).unwrap_or_default())
+    Ok(ToolResult::success(
+        serde_json::to_string_pretty(&agents).unwrap_or_default(),
+    ))
 }

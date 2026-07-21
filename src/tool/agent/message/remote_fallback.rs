@@ -9,6 +9,9 @@ pub(super) async fn execute(
     message: &str,
     params: &helpers::Params,
 ) -> Result<ToolResult> {
+    if let Some(output) = crate::mux::control::send_agent_message(target, message).await? {
+        return Ok(ToolResult::success(output));
+    }
     remote::message_or_missing(
         target,
         message,

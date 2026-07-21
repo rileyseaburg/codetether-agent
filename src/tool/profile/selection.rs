@@ -5,12 +5,17 @@ pub(super) enum RequestedProfile {
     Automatic,
     Coding,
     Full,
+    MuxManager,
     Unknown,
 }
 
 impl RequestedProfile {
     pub(super) fn is_coding(self) -> bool {
         self == Self::Coding
+    }
+
+    pub(super) fn is_mux_manager(self) -> bool {
+        self == Self::MuxManager
     }
 }
 
@@ -26,6 +31,7 @@ pub(super) fn use_coding_profile(provider: &str) -> bool {
 fn resolve(requested: RequestedProfile, provider: &str) -> bool {
     match requested {
         RequestedProfile::Coding => true,
+        RequestedProfile::MuxManager => false,
         RequestedProfile::Full | RequestedProfile::Unknown => false,
         RequestedProfile::Automatic => is_codex_provider(provider),
     }
@@ -36,6 +42,7 @@ fn parse(value: Option<&str>) -> RequestedProfile {
         None | Some("") => RequestedProfile::Automatic,
         Some("lean" | "coding" | "codex") => RequestedProfile::Coding,
         Some("full" | "all") => RequestedProfile::Full,
+        Some("mux-manager" | "mux_manager") => RequestedProfile::MuxManager,
         Some(_) => RequestedProfile::Unknown,
     }
 }

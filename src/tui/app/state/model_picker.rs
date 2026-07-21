@@ -1,11 +1,12 @@
 //! Async model list refresh from the provider registry.
 mod reasoning_refs;
+mod selection_policy;
 use std::{sync::Arc, time::Duration};
 
 use futures::future::join_all;
 use tokio::sync::mpsc;
 
-use crate::provider::{ModelInfo, ProviderRegistry};
+use crate::provider::ProviderRegistry;
 use crate::tui::models::ViewMode;
 
 const MODEL_LIST_TIMEOUT: Duration = Duration::from_secs(4);
@@ -152,7 +153,7 @@ async fn load_available_models(registry: &ProviderRegistry) -> (Vec<String>, Mod
             Ok(Ok(provider_models)) => {
                 let before = models.len();
                 models.extend(provider_models.iter().flat_map(|model| {
-                    model_ref_for_provider(&provider_name, model)
+                    selection_policy::model_ref(&provider_name, model)
                         .into_iter()
                         .flat_map(|model_ref| reasoning_refs::expand(&provider_name, model_ref))
                 }));
@@ -185,21 +186,6 @@ async fn load_available_models(registry: &ProviderRegistry) -> (Vec<String>, Mod
     (models, summary)
 }
 
-fn model_ref_for_provider(provider_name: &str, model: &ModelInfo) -> Option<String> {
-    let provider_name = provider_name.trim();
-    let model_id = model.id.trim();
-    if provider_name.is_empty() || model_id.is_empty() {
-        return None;
-    }
-
-    let provider_prefix = format!("{provider_name}/");
-    if model_id.starts_with(&provider_prefix) {
-        Some(model_id.to_string())
-    } else {
-        Some(format!("{provider_name}/{model_id}"))
-    }
-}
-
 fn plural(count: usize) -> &'static str {
     if count == 1 { "" } else { "s" }
 }
@@ -214,8 +200,8 @@ mod tests {
 
     use super::*;
     use crate::provider::{
-        CompletionRequest, CompletionResponse, EmbeddingRequest, EmbeddingResponse, Provider,
-        StreamChunk,
+        CompletionRequest, CompletionResponse, EmbeddingRequest, EmbeddingResponse, ModelInfo,
+        Provider, StreamChunk,
     };
 
     struct StaticProvider {
@@ -265,7 +251,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn refresh_prefixes_nested_model_ids_with_registry_provider() {
+    async fn refresh_excludes_non_codex_provider_models() {
         let mut registry = ProviderRegistry::new();
         registry.register(Arc::new(StaticProvider {
             name: "openrouter",
@@ -279,17 +265,17 @@ mod tests {
             .await
             .expect("refresh should succeed");
 
-        assert_eq!(state.available_models, vec!["openrouter/openai/gpt-5.5"]);
-        assert_eq!(summary.loaded_models, 1);
-        assert_eq!(summary.loaded_providers, 1);
+        assert!(state.available_models.is_empty());
+        assert_eq!(summary.loaded_models, 0);
+        assert_eq!(summary.loaded_providers, 0);
     }
 
     #[tokio::test]
-    async fn refresh_does_not_double_prefix_provider_qualified_ids() {
+    async fn refresh_excludes_pre_5_6_codex_models() {
         let mut registry = ProviderRegistry::new();
         registry.register(Arc::new(StaticProvider {
-            name: "openrouter",
-            models: vec![model("openrouter/z-ai/glm-5", "openrouter")],
+            name: "openai-codex",
+            models: vec![model("gpt-5.5", "openai-codex")],
         }));
         let registry = Arc::new(registry);
         let mut state = super::super::AppState::default();
@@ -299,6 +285,6 @@ mod tests {
             .await
             .expect("refresh should succeed");
 
-        assert_eq!(state.available_models, vec!["openrouter/z-ai/glm-5"]);
+        assert!(state.available_models.is_empty());
     }
 }

@@ -2,6 +2,7 @@
 
 pub(in crate::tool::agent) mod observation;
 mod payload;
+mod poll;
 mod request;
 mod result;
 #[cfg(test)]

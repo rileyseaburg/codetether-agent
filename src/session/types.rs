@@ -16,9 +16,9 @@ use crate::session::pages::PageKind;
 mod metadata;
 pub use metadata::SessionMetadata;
 
-/// Default maximum agentic loop iterations when [`Session::max_steps`] is
-/// `None`. 250 was far too generous — most tasks converge in under 20 steps
-/// and anything past 50 usually means the model is spinning without progress.
+/// Step budget used by bounded delegated runs that do not supply one.
+///
+/// Primary sessions are unbounded when [`Session::max_steps`] is [`None`].
 pub const DEFAULT_MAX_STEPS: usize = 50;
 
 /// An image attachment to include with a user message (e.g. pasted from the
@@ -84,8 +84,8 @@ pub struct Session {
     pub tool_uses: Vec<ToolUse>,
     /// Aggregate token usage across all completions in this session.
     pub usage: Usage,
-    /// Maximum agentic loop steps. [`None`] falls back to
-    /// [`DEFAULT_MAX_STEPS`].
+    /// Maximum agentic loop steps. [`None`] allows the turn to continue until
+    /// completion or an explicit cancellation.
     #[serde(skip)]
     pub max_steps: Option<usize>,
     /// Optional bus for publishing agent thinking/reasoning.

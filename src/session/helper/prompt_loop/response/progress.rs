@@ -25,6 +25,6 @@ pub(super) fn track_writes(runner: &mut Runner<'_>, step: usize, calls: &[ToolCa
         steps_since_last_write = runner.progress.steps_since_write,
         "No file-writing tools called recently"
     );
-    super::build_guard::nudge(runner, limits::NO_PROGRESS_NUDGE);
+    super::nudge::add(runner, limits::NO_PROGRESS_NUDGE);
     runner.progress.steps_since_write = 0;
 }

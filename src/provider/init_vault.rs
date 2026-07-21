@@ -7,11 +7,12 @@
 
 use super::bedrock;
 use super::fallback_policy;
-use super::init_dispatch;
 use super::init_env;
 use super::registry::ProviderRegistry;
 use anyhow::Result;
 use std::sync::Arc;
+
+mod register;
 
 impl ProviderRegistry {
     /// Initialize providers from HashiCorp Vault with optional env/AWS fallback.
@@ -50,17 +51,7 @@ impl ProviderRegistry {
             let results = futures::future::join_all(fetches).await;
 
             for (pid, secrets) in results {
-                let secrets = match secrets {
-                    Ok(Some(s)) => s,
-                    Ok(None) => continue,
-                    Err(err) => {
-                        tracing::warn!(provider = %pid, %err, "vault fetch failed; skipping");
-                        continue;
-                    }
-                };
-                if let Some(provider) = init_dispatch::dispatch(&pid, &secrets) {
-                    registry.register(provider);
-                }
+                register::provider(&mut registry, pid, secrets);
             }
         } else {
             tracing::warn!("Vault not configured, no providers loaded from Vault");

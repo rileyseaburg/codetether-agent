@@ -10,11 +10,7 @@ pub(super) async fn apply(
     context: &Arc<ServerContext>,
     request: ClientRequest,
 ) -> Result<(), String> {
-    let workspace = match &request {
-        ClientRequest::CreateWindow { workspace }
-        | ClientRequest::ChangeDirectory { workspace } => Some(resolve(workspace).await?),
-        _ => None,
-    };
+    let workspace = super::workspace::resolve(context, &request).await?;
     let mut state = context.state.write().await;
     let mut closed = None;
     match request {
@@ -38,10 +34,4 @@ pub(super) async fn apply(
 
 fn required(workspace: Option<std::path::PathBuf>) -> Result<std::path::PathBuf, String> {
     workspace.ok_or_else(|| "workspace is required".into())
-}
-
-async fn resolve(path: &std::path::Path) -> Result<std::path::PathBuf, String> {
-    tokio::fs::canonicalize(path)
-        .await
-        .map_err(|error| format!("invalid workspace: {error}"))
 }

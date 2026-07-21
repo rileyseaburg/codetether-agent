@@ -13,11 +13,5 @@ pub(super) async fn resolve() -> Result<ImagesAuth> {
     {
         return Ok(ImagesAuth::openai(key));
     }
-    if !disabled
-        && let Some(auth) =
-            crate::provider::openai_codex::OpenAiCodexProvider::local_chatgpt_backend_auth()
-    {
-        return Ok(ImagesAuth::chatgpt(auth));
-    }
-    bail!("image credentials unavailable in Vault or permitted local fallbacks")
+    bail!("image credentials unavailable in Vault or permitted environment fallbacks")
 }

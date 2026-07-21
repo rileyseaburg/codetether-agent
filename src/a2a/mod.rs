@@ -27,6 +27,7 @@ pub(crate) mod peer_route;
 pub mod prompt_runtime;
 pub mod server;
 pub mod server_auth;
+pub(crate) mod server_task_activity;
 pub mod session_config;
 pub mod session_resolve;
 pub mod spawn;

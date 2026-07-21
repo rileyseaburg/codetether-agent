@@ -1,5 +1,8 @@
 impl OpenAiCodexProvider {
-    async fn refresh_access_token(&self, refresh_token: &str) -> Result<OAuthCredentials> {
+    async fn request_refreshed_credentials(
+        &self,
+        refresh_token: &str,
+    ) -> Result<OAuthCredentials> {
         let form_body = format!(
             "grant_type={}&refresh_token={}&client_id={}",
             urlencoding::encode("refresh_token"),
@@ -21,14 +24,7 @@ impl OpenAiCodexProvider {
             anyhow::bail!("Token refresh failed: {}", body);
         }
 
-        #[derive(Deserialize)]
-        struct TokenResponse {
-            access_token: String,
-            refresh_token: String,
-            expires_in: u64,
-        }
-
-        let tokens: TokenResponse = response
+        let tokens: RefreshTokenResponse = response
             .json()
             .await
             .context("Failed to parse refresh response")?;
@@ -40,10 +36,12 @@ impl OpenAiCodexProvider {
             + tokens.expires_in;
 
         Ok(OAuthCredentials {
-            id_token: None,
+            id_token: tokens.id_token,
             chatgpt_account_id: self.chatgpt_account_id.clone(),
             access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
+            refresh_token: tokens
+                .refresh_token
+                .unwrap_or_else(|| refresh_token.to_string()),
             expires_at,
         })
     }

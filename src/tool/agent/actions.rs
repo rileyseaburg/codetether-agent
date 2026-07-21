@@ -48,6 +48,6 @@ pub(super) async fn execute_interrupt(params: &Params) -> Result<ToolResult> {
 /// ```
 pub(super) fn unknown_action_result(action: &str) -> ToolResult {
     ToolResult::error(format!(
-        "Unknown action: {action}. Valid: spawn, message, list, status, interrupt, close, resume, kill"
+        "Unknown action: {action}. Valid: spawn, message, list, read, interact, status, interrupt, close, resume, kill"
     ))
 }

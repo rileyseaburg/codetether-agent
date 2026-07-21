@@ -37,6 +37,7 @@ use crate::tui::app::state::App;
 ///   configuration during startup.
 /// * `yolo` - Full-auto mode: forces `AccessMode::Full` and auto-applies edits
 ///   without prompting.
+/// * `session_id` - Exact durable session to resume, when supplied.
 ///
 /// # Returns
 ///
@@ -61,6 +62,7 @@ pub async fn run(
     a2a_options: Option<crate::a2a::spawn::SpawnOptions>,
     access_mode: Option<AccessMode>,
     yolo: bool,
+    session_id: Option<String>,
 ) -> anyhow::Result<()> {
     super::project::enter(project, allow_network)?;
     let mut terminal_runtime = super::terminal::enter()?;
@@ -71,7 +73,7 @@ pub async fn run(
     // Resolve session before first draw: load the prior session for this
     // directory, or create a fresh one only when none exists. This prevents
     // a blank placeholder from being allocated and then silently discarded.
-    let mut startup = super::startup::load(&cwd, bus.clone()).await;
+    let mut startup = super::startup::load(&cwd, bus.clone(), session_id.as_deref()).await;
     let resolved = super::session_resolve::resolve(startup.session_load.take(), &bus).await?;
     let mut session = resolved.session;
     let mut app = App::default();
