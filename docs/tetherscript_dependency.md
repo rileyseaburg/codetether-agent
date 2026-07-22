@@ -6,13 +6,13 @@ and the native default backend for `browserctl` sessions.
 
 ## Version
 
-- **Crate**: `tetherscript` v0.1.0-alpha.16
+- **Crate**: `tetherscript` v0.1.0-alpha.23
 - **Source**: <https://crates.io/crates/tetherscript>
 - **Repository**: <https://github.com/CodeTether/TetherScript>
 
 ## Current language features
 
-Alpha.16 includes closures, recursion, lexical scopes, `let mut`, `for x in
+Alpha.23 includes closures, recursion, lexical scopes, `let mut`, `for x in
 iterable`, runtime `move` ownership checks, `Result` plus `?`, byte strings,
 JSON, HTTP, SMTP, filesystem/process/path/time/hash tools, and browser/JS
 agent primitives.

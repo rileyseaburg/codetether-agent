@@ -1,7 +1,7 @@
 # `browserctl offline` — TetherScript-backed browser probes
 
 Net-new capability surface introduced with the `tetherscript` v0.1.0-alpha.12
-bump and retained in the current v0.1.0-alpha.14 pin. These subcommands do
+bump and retained in the current v0.1.0-alpha.23 pin. These subcommands do
 **not** drive Chromium via DevTools — they probe HTTP/cookie/CORS state directly
 and replay captures through the deterministic
 `tetherscript::browser_session::BrowserSession`.
