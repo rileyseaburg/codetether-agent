@@ -14,6 +14,11 @@
 //!
 //! The model is selected via the `x-goog-ext-525001261-jspb` request header.
 
+mod prompt;
+#[cfg(test)]
+mod prompt_tests;
+mod stream_output;
+
 use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
@@ -446,11 +451,13 @@ impl GeminiWebProvider {
         static RE_TOOL_RESULT_BLOCK: OnceLock<Regex> = OnceLock::new();
 
         let re = RE_TOOL_CALL_BLOCK.get_or_init(|| {
-            Regex::new(r"(?s)<tool_call>\s*(?:```(?:json)?\s*)?(\{.*?\})(?:\s*```)?\s*</tool_call>")
-                .unwrap()
+            Regex::new(
+                r"(?is)<tool_call\s*>\s*(?:```(?:json)?\s*)?(\{.*?\})(?:\s*```)?\s*</?tool_call\s*>",
+            )
+            .unwrap()
         });
         let re_tool_result = RE_TOOL_RESULT_BLOCK
-            .get_or_init(|| Regex::new(r"(?s)<tool_result>.*?</tool_result>").unwrap());
+            .get_or_init(|| Regex::new(r"(?is)<tool_result\s*>.*?</?tool_result\s*>").unwrap());
 
         let normalized = normalize_tool_markup(text);
 
@@ -644,7 +651,7 @@ impl Provider for GeminiWebProvider {
                 context_window: *ctx,
                 max_output_tokens: Some(65_536),
                 supports_vision: false,
-                supports_tools: false,
+                supports_tools: true,
                 supports_streaming: true,
                 input_cost_per_million: Some(0.0),
                 output_cost_per_million: Some(0.0),
@@ -653,35 +660,7 @@ impl Provider for GeminiWebProvider {
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
-        let prompt = request
-            .messages
-            .iter()
-            .map(|m| {
-                let role = match m.role {
-                    Role::System | Role::Developer => "System",
-                    Role::User => "User",
-                    Role::Assistant => "Assistant",
-                    Role::Tool => "Tool",
-                };
-                let text = m
-                    .content
-                    .iter()
-                    .filter_map(|p| match p {
-                        ContentPart::Text { text } => Some(text.clone()),
-                        ContentPart::ToolCall {
-                            name, arguments, ..
-                        } => Some(format!("[Called tool: {name}({arguments})]")),
-                        ContentPart::ToolResult { content, .. } => {
-                            Some(format!("[Tool result]\n{content}"))
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                format!("{role}: {text}")
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
+        let prompt = prompt::render(&request.messages);
 
         let text = self
             .ask(&prompt, &request.model)
@@ -742,117 +721,12 @@ impl Provider for GeminiWebProvider {
         &self,
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
-        let prompt = request
-            .messages
-            .iter()
-            .map(|m| {
-                let role = match m.role {
-                    Role::System | Role::Developer => "System",
-                    Role::User => "User",
-                    Role::Assistant => "Assistant",
-                    Role::Tool => "Tool",
-                };
-                let text = m
-                    .content
-                    .iter()
-                    .filter_map(|p| match p {
-                        ContentPart::Text { text } => Some(text.clone()),
-                        ContentPart::ToolCall {
-                            name, arguments, ..
-                        } => Some(format!("[Called tool: {name}({arguments})]")),
-                        ContentPart::ToolResult { content, .. } => {
-                            Some(format!("[Tool result]\n{content}"))
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                format!("{role}: {text}")
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        let resp = self
-            .build_request(&prompt, &request.model)
-            .await?
-            .send()
+        let prompt = prompt::render(&request.messages);
+        let text = self
+            .ask(&prompt, &request.model)
             .await
-            .context("Failed to send streaming request to Gemini")?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            anyhow::bail!(
-                "Gemini StreamGenerate returned HTTP {}: {}",
-                status,
-                util::truncate_bytes_safe(&body, 500)
-            );
-        }
-
-        // Process the byte stream and emit text deltas as chunks arrive.
-        // Gemini sends cumulative text, so we track prev_len and emit only
-        // the newly-arrived portion on each iteration.
-        let byte_stream = resp.bytes_stream();
-        let model_for_errors = request.model.clone();
-        let (tx, rx) = futures::channel::mpsc::channel::<StreamChunk>(32);
-
-        tokio::spawn(async move {
-            futures::pin_mut!(byte_stream);
-            let mut buf = String::new();
-            let mut prev_len: usize = 0;
-            let mut tx = tx;
-
-            while let Some(chunk_result) = byte_stream.next().await {
-                let Ok(bytes) = chunk_result else { break };
-                let Ok(s) = std::str::from_utf8(&bytes) else {
-                    continue;
-                };
-                buf.push_str(s);
-
-                let current_text = Self::extract_text(&buf);
-                if current_text.len() > prev_len {
-                    let delta = current_text[prev_len..].to_string();
-                    prev_len = current_text.len();
-                    if tx.try_send(StreamChunk::Text(delta)).is_err() {
-                        return; // receiver dropped
-                    }
-                }
-            }
-
-            // Final pass for any remaining delta in the last chunk
-            let final_text = Self::extract_text(&buf);
-            if final_text.len() > prev_len {
-                let _ = tx.try_send(StreamChunk::Text(final_text[prev_len..].to_string()));
-                prev_len = final_text.len();
-            }
-
-            if prev_len == 0 {
-                if let Some(code) = Self::extract_protocol_error_code(&buf) {
-                    let _ = tx.try_send(StreamChunk::Error(Self::format_protocol_error(
-                        code,
-                        &model_for_errors,
-                        &buf,
-                    )));
-                    return;
-                }
-                if !buf.trim().is_empty() {
-                    let _ = tx.try_send(StreamChunk::Error(format!(
-                        "Gemini returned no text payload for model `{}`. Payload snippet: {}",
-                        model_for_errors,
-                        Self::compact_body_snippet(&buf, 240)
-                    )));
-                    return;
-                }
-            }
-            let _ = tx.try_send(StreamChunk::Done { usage: None });
-        });
-
-        let stream = futures::stream::unfold(rx, |mut rx| async {
-            use futures::StreamExt as _;
-            rx.next().await.map(|chunk| (chunk, rx))
-        });
-
-        Ok(Box::pin(stream))
+            .context("Gemini Web streaming completion failed")?;
+        Ok(futures::stream::iter(stream_output::chunks(&text)).boxed())
     }
 }
 

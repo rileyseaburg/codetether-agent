@@ -9,9 +9,8 @@
 use super::event_loop;
 use super::execution_state::AgentRunGuard;
 use super::message_finalize;
-use crate::session::{Session, SessionEvent};
+use crate::session::SessionEvent;
 use crate::tool::ToolResult;
-use anyhow::Result;
 use tokio::sync::mpsc;
 
 /// Spawn a background task to run the sub-agent turn and return immediately.
@@ -22,7 +21,7 @@ pub(super) fn dispatch(
     agent_id: String,
     guard: AgentRunGuard,
     mut rx: mpsc::Receiver<SessionEvent>,
-    handle: tokio::task::JoinHandle<Result<Session>>,
+    handle: event_loop::ChildTask,
     receipt: Option<String>,
 ) -> ToolResult {
     let display = super::store::get(&agent_id)

@@ -13,32 +13,7 @@
 //! assert_eq!(format!("{provider:?}").contains("has_api_key: true"), true);
 //! ```
 
-#[path = "openai_codex/event_error.rs"]
-mod event_error;
-#[path = "openai_codex/output_item.rs"]
-mod output_item;
-#[path = "openai_codex/reasoning_catalog.rs"]
-pub mod reasoning_catalog;
-#[path = "openai_codex/runtime_config.rs"]
-pub mod runtime_config;
-#[path = "openai_codex/service_tier_catalog.rs"]
-pub(crate) mod service_tier_catalog;
-#[path = "openai_codex/stream_recovery.rs"]
-mod stream_recovery;
-#[path = "openai_codex/thinking_level.rs"]
-mod thinking_level;
-#[path = "openai_codex/token_expiry.rs"]
-mod token_expiry;
-#[path = "openai_codex/transport_catalog.rs"]
-mod transport_catalog;
-#[path = "openai_codex/transport_health.rs"]
-mod transport_health;
-#[path = "openai_codex/turn_state.rs"]
-mod turn_state;
-#[path = "openai_codex/ws_pool.rs"]
-mod ws_pool;
-#[path = "openai_codex/ws_stream.rs"]
-mod ws_stream;
+include!("openai_codex/module_manifest.rs");
 
 include!("openai_codex/parts_manifest_a.rs");
 include!("openai_codex/parts_manifest_b.rs");

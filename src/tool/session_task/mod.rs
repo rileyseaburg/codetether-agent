@@ -6,8 +6,10 @@
 //! the `CODETETHER_SESSION_ID` environment variable which the agent
 //! runtime already sets for every turn (see `bash.rs`).
 
+mod dispatch;
 mod handlers;
 mod params;
+mod schema;
 mod tool;
 
 #[allow(unused_imports)]

@@ -29,6 +29,6 @@ pub(super) async fn status(name: &str) -> Result<Option<ToolResult>> {
     let sessions = crate::mux::control::agent_sessions().await?;
     Ok(sessions
         .into_iter()
-        .find(|item| item["name"] == name)
+        .find(|item| crate::mux::control::is_agent_route(item, name))
         .map(|item| ToolResult::success(item.to_string())))
 }

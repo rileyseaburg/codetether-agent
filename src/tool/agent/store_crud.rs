@@ -43,3 +43,11 @@ pub(in crate::tool::agent) fn update_session(id: &str, session: Session) {
         entry.session = session;
     }
 }
+
+pub(in crate::tool::agent) fn reparent_owner(from: &str, to: &str) {
+    for entry in AGENT_STORE.write().values_mut() {
+        if entry.owner_session_id.as_deref() == Some(from) {
+            entry.owner_session_id = Some(to.to_string());
+        }
+    }
+}

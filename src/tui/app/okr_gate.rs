@@ -56,10 +56,9 @@ impl PendingOkrApproval {
     pub async fn propose(task: String, agent_count: usize, model: String) -> Self {
         let mut pending = Self::new(task, agent_count, model);
         let okr_id = pending.okr.id;
-        let registry = crate::provider::ProviderRegistry::from_vault()
+        let registry = crate::provider::ProviderRegistry::shared_from_vault()
             .await
-            .ok()
-            .map(Arc::new);
+            .ok();
 
         let task = pending.task.clone();
         let agent_count = pending.agent_count;

@@ -27,6 +27,7 @@ impl Reporter {
             lagging: app.state.watchdog_notification.is_some()
                 || (app.state.processing && app.state.main_watchdog_restart_count > 0)
                 || app.state.status.starts_with("Watchdog gave up"),
+            principal: session.principal.clone(),
         };
         if self.last.as_ref() == Some(&status) {
             return;

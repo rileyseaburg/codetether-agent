@@ -13,17 +13,33 @@ use crate::session::SessionEvent;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(10);
 
+/// Cancellation-safe owner for one tool heartbeat task.
+pub(crate) struct ToolHeartbeat(JoinHandle<()>);
+
+impl ToolHeartbeat {
+    /// Stop the heartbeat immediately.
+    pub(crate) fn abort(&self) {
+        self.0.abort();
+    }
+}
+
+impl Drop for ToolHeartbeat {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
 /// Spawn a heartbeat sender. Drop the returned guard to stop it.
 pub(crate) fn spawn(
     event_tx: &mpsc::Sender<SessionEvent>,
     tool_call_id: &str,
     tool_name: &str,
     started_at: std::time::Instant,
-) -> JoinHandle<()> {
+) -> ToolHeartbeat {
     let tx = event_tx.clone();
     let tool_call_id = tool_call_id.to_string();
     let tool_name = tool_name.to_string();
-    tokio::spawn(async move {
+    ToolHeartbeat(tokio::spawn(async move {
         let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
         interval.tick().await; // skip immediate first tick
         loop {
@@ -41,5 +57,9 @@ pub(crate) fn spawn(
                 break;
             }
         }
-    })
+    }))
 }
+
+#[cfg(test)]
+#[path = "tool_heartbeat_tests.rs"]
+mod tests;

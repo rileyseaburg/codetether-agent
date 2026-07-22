@@ -40,7 +40,7 @@ pub(crate) async fn list_vscode_models() -> ModelsResult<Json<types_vscode::Vsco
 }
 
 async fn model_data() -> ModelsResult<Vec<types::Model>> {
-    let registry = crate::provider::ProviderRegistry::from_vault()
+    let registry = crate::provider::ProviderRegistry::shared_from_vault()
         .await
         .map_err(error::load_error)?;
     Ok(collect::collect_models(&registry, chrono::Utc::now().timestamp()).await)

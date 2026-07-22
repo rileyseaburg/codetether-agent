@@ -12,7 +12,7 @@ static PROVIDER_REGISTRY: OnceCell<Arc<ProviderRegistry>> = OnceCell::const_new(
 /// Returns a cached provider registry for agent-tool operations.
 pub(super) async fn get_registry() -> Result<Arc<ProviderRegistry>> {
     PROVIDER_REGISTRY
-        .get_or_try_init(|| async { Ok(Arc::new(ProviderRegistry::from_vault().await?)) })
+        .get_or_try_init(ProviderRegistry::shared_from_vault)
         .await
         .cloned()
 }

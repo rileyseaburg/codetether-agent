@@ -33,6 +33,8 @@ pub mod history_page;
 pub mod input_cursor;
 pub mod input_edit;
 pub mod input_replace;
+#[path = "../interlude.rs"]
+pub(crate) mod interlude;
 pub mod message_cache;
 pub mod model_filter;
 pub mod model_picker;

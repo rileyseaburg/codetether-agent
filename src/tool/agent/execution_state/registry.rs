@@ -27,7 +27,7 @@ pub(in crate::tool::agent) fn abort(name: &str) -> bool {
     let handle = STATE
         .lock()
         .ok()
-        .and_then(|mut state| state.aborts.remove(name));
+        .and_then(|state| state.aborts.get(name).cloned());
     handle.is_some_and(|handle| {
         handle.abort();
         true

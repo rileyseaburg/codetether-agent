@@ -25,6 +25,9 @@ pub(crate) async fn handle_event(
     if let Some(quit) = super::interrupt_key::handle(app, runtime, key) {
         return Ok(quit);
     }
+    if super::interlude_key::handle(app, key) {
+        return Ok(false);
+    }
     if super::goal_prompt_key::handle_goal_prompt_key(app, key) {
         return Ok(false);
     }

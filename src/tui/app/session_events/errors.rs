@@ -32,6 +32,7 @@ async fn handle(
     handle_processing_stopped(app, worker_bridge).await;
     app.state.clear_streaming_text();
     app.state.complete_request_timing();
+    app.state.interlude = None;
     smart_switch::schedule(app, slot, &err);
     app.state
         .messages

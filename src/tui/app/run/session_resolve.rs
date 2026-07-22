@@ -39,7 +39,7 @@ pub(super) async fn resolve(
     bus: &Arc<AgentBus>,
 ) -> Result<Resolved> {
     match scan.unwrap_or_else(|| Err(anyhow::anyhow!("no scan result"))) {
-        Ok(load) => Ok(resolve_loaded(load, bus)),
+        Ok(load) => resolve_loaded(load, bus).await,
         Err(err) => resolve_new(err.to_string(), bus).await,
     }
 }

@@ -11,7 +11,8 @@ mod entry;
 pub(super) mod scope;
 
 pub(super) use crud::{
-    contains_name, contains_name_for_owner, get, insert, insert_reserved, remove, update_session,
+    contains_name, contains_name_for_owner, get, insert, insert_reserved, remove, reparent_owner,
+    update_session,
 };
 pub(super) use entry::AgentEntry;
 pub(super) use scope::{entries_for_parent, get_for_parent, lineage_for_session};

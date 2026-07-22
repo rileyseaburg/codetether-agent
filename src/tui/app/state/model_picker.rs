@@ -251,7 +251,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn refresh_excludes_non_codex_provider_models() {
+    async fn refresh_includes_non_codex_provider_models() {
         let mut registry = ProviderRegistry::new();
         registry.register(Arc::new(StaticProvider {
             name: "openrouter",
@@ -265,13 +265,13 @@ mod tests {
             .await
             .expect("refresh should succeed");
 
-        assert!(state.available_models.is_empty());
-        assert_eq!(summary.loaded_models, 0);
-        assert_eq!(summary.loaded_providers, 0);
+        assert_eq!(state.available_models, ["openrouter/openai/gpt-5.5"]);
+        assert_eq!(summary.loaded_models, 1);
+        assert_eq!(summary.loaded_providers, 1);
     }
 
     #[tokio::test]
-    async fn refresh_excludes_pre_5_6_codex_models() {
+    async fn refresh_includes_pre_5_6_codex_models() {
         let mut registry = ProviderRegistry::new();
         registry.register(Arc::new(StaticProvider {
             name: "openai-codex",
@@ -285,6 +285,6 @@ mod tests {
             .await
             .expect("refresh should succeed");
 
-        assert!(state.available_models.is_empty());
+        assert_eq!(state.available_models, ["openai-codex/gpt-5.5"]);
     }
 }

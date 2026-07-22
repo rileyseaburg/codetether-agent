@@ -9,8 +9,8 @@
 //! let session = finish_handle(handle, false, &mut error).await;
 //! ```
 
+use super::ChildTask;
 use crate::session::Session;
-use anyhow::Result;
 
 /// Resolves the background task handle after streaming has finished.
 ///
@@ -20,16 +20,16 @@ use anyhow::Result;
 /// let session = finish_handle(handle, false, &mut error).await;
 /// ```
 pub(super) async fn finish_handle(
-    handle: tokio::task::JoinHandle<Result<Session>>,
+    handle: ChildTask,
     timed_out: bool,
     error: &mut Option<String>,
 ) -> Option<Session> {
     if timed_out {
         handle.abort();
-        let _ = handle.await;
+        let _ = handle.join().await;
         return None;
     }
-    match handle.await {
+    match handle.join().await {
         Ok(Ok(session)) => Some(session),
         Ok(Err(err)) => {
             *error = Some(err.to_string());

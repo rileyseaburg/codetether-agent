@@ -31,9 +31,6 @@ use super::{PromptRequest, SessionNotice, active_cancel::ActiveCancel};
 ///   [`SessionEvent`] values.
 /// * `notice_tx` - Channel used to report lifecycle notices such as start,
 ///   failure, and completion.
-/// * `done_tx` - Channel used by the executor to signal that the spawned run has
-///   finished.
-///
 /// # Returns
 ///
 /// Always returns `false`, indicating that submitting work does not by itself
@@ -45,16 +42,11 @@ use super::{PromptRequest, SessionNotice, active_cancel::ActiveCancel};
 /// accepted, and spawns a Tokio task for accepted work. Channel send failures are
 /// intentionally ignored because they only mean the receiver has gone away.
 ///
-/// # Preconditions
-///
-/// The caller must clear `cancel` when the corresponding executor task reports
-/// completion; otherwise later submissions will continue to be treated as busy.
 pub(super) async fn submit(
     request: PromptRequest,
     cancel: &ActiveCancel,
     event_tx: &mpsc::Sender<SessionEvent>,
     notice_tx: &mpsc::Sender<SessionNotice>,
-    done_tx: &mpsc::Sender<()>,
 ) -> bool {
     let notify = Arc::new(Notify::new());
     if !cancel.set(&request.session.id, Arc::clone(&notify)) {
@@ -72,7 +64,7 @@ pub(super) async fn submit(
         event_tx.clone(),
         notice_tx.clone(),
         notify,
-        done_tx.clone(),
+        cancel.clone(),
     ));
     false
 }

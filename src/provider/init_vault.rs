@@ -91,13 +91,9 @@ impl ProviderRegistry {
 
     /// Process-wide cached [`from_vault`](Self::from_vault) registry.
     ///
-    /// `from_vault` performs vault fetches plus env-var / AWS probing on
-    /// every call. Compression paths (e.g. RLM model resolution inside
-    /// [`enforce_on_messages`](crate::session::helper::compression::enforce_on_messages))
-    /// invoke it once per keep-last attempt per turn, which can add up
-    /// to several Vault round-trips of unnecessary latency in the hot
-    /// loop. This accessor lazily builds the registry exactly once and
-    /// hands out `Arc` clones thereafter.
+    /// `from_vault` performs Vault fetches plus environment and AWS probing on
+    /// every call. Runtime prompt, server, TUI, and tool paths should use this
+    /// accessor so provider discovery happens only once per process.
     ///
     /// The cache is process-global. Restart the binary to pick up
     /// re-keyed providers.

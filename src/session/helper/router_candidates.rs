@@ -26,12 +26,10 @@ pub(in crate::session::helper) fn provider_failover_candidates(provider: &str) -
         "github-copilot" | "github-copilot-enterprise" => {
             vec![format!("{provider}/gpt-5-mini")]
         }
-        "openai-codex" => {
-            vec![
-                "openai-codex/gpt-5.5".to_string(),
-                "openai-codex/gpt-5-mini".to_string(),
-            ]
-        }
+        "openai-codex" => crate::provider::openai_codex::model_catalog::chatgpt_models()
+            .iter()
+            .map(|model| format!("openai-codex/{model}"))
+            .collect(),
         "gemini-web" => vec!["gemini-web/gemini-2.5-flash".to_string()],
         "local_cuda" => vec!["local_cuda/qwen3.5-9b".to_string()],
         "google" => vec!["google/gemini-2.5-flash".to_string()],

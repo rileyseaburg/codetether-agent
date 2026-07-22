@@ -15,6 +15,7 @@ pub(super) async fn kick_off(agent_id: &str, detach: bool) -> Result<ToolResult>
     };
     let (mut rx, handle) = start::begin(agent_id).await?;
     execution_state::register(agent_id, &handle);
+    let handle = event_loop::ChildTask::new(handle);
     if detach {
         return Ok(message_detach::dispatch(
             agent_id.to_string(),

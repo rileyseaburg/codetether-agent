@@ -15,7 +15,7 @@ pub async fn execute_prompt_with_resume_events(
     workspace: &Path,
     event_tx: mpsc::Sender<SessionEvent>,
 ) -> Result<SessionResult> {
-    let registry = Arc::new(ProviderRegistry::from_vault().await?);
+    let registry = ProviderRegistry::shared_from_vault().await?;
     let mut prompt_text = message.to_string();
     let mut resumes_left = resume_attempts.unwrap_or(0);
     loop {

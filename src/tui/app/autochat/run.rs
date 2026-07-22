@@ -14,9 +14,9 @@ use super::run_step::{resolve_model_ref, run_step};
 /// Run the relay flow and publish UI events.
 pub async fn run_relay(task: String, model: String, ui_tx: mpsc::UnboundedSender<AutochatUiEvent>) {
     let _ = ui_tx.send(AutochatUiEvent::Progress(
-        "Loading providers from Vault…".to_string(),
+        "Resolving providers…".to_string(),
     ));
-    let registry = match crate::provider::ProviderRegistry::from_vault().await {
+    let registry = match crate::provider::ProviderRegistry::shared_from_vault().await {
         Ok(registry) => registry,
         Err(err) => return super::notify::send_registry_error(&ui_tx, err),
     };

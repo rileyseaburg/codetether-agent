@@ -27,7 +27,8 @@ pub fn tetherscript_to_json(value: &TetherScriptValue) -> Value {
         TetherScriptValue::Fn(_)
         | TetherScriptValue::VmFn(_)
         | TetherScriptValue::Native(_)
-        | TetherScriptValue::Capability(_) => Value::String(value.to_string()),
+        | TetherScriptValue::Capability(_)
+        | TetherScriptValue::Resource(_) => Value::String(value.to_string()),
     }
 }
 

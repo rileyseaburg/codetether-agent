@@ -7,11 +7,29 @@ const URI: &str = "https://codetether.run/extensions/agent-identity/v1";
 
 /// Adds the routable provenance identity extension to an agent card.
 pub(crate) fn attach(card: &mut AgentCard, identity: &str) {
+    let persona_id = crate::provenance::runtime_persona_id();
+    let spiffe_id = crate::provenance::runtime_spiffe_id();
+    attach_with_claims(card, identity, persona_id.as_deref(), spiffe_id.as_deref());
+}
+
+fn attach_with_claims(
+    card: &mut AgentCard,
+    identity: &str,
+    persona_id: Option<&str>,
+    spiffe_id: Option<&str>,
+) {
+    let mut params = json!({ "agentIdentityId": identity });
+    if let Some(persona_id) = persona_id {
+        params["personaId"] = json!(persona_id);
+    }
+    if let Some(spiffe_id) = spiffe_id {
+        params["spiffeId"] = json!(spiffe_id);
+    }
     card.capabilities.extensions.push(AgentExtension {
         uri: URI.to_string(),
         description: Some("Routable CodeTether provenance identity".to_string()),
         required: false,
-        params: Some(json!({ "agentIdentityId": identity })),
+        params: Some(params),
     });
 }
 

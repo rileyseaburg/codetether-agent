@@ -14,6 +14,8 @@ mod manifest;
 mod manifest_io;
 #[path = "persistence/manifest_scan.rs"]
 mod manifest_scan;
+#[path = "persistence/migration.rs"]
+mod migration;
 #[path = "persistence/paths.rs"]
 pub(crate) mod paths;
 #[path = "persistence/restore.rs"]
@@ -27,6 +29,7 @@ pub(in crate::tool::agent) use lifecycle::{activate_resume, close, exists, prepa
 pub(in crate::tool::agent) use lookup::is_open;
 pub(in crate::tool::agent) use lookup::{child_ids, durable_id};
 pub(in crate::tool::agent) use manifest_io::{remove, save};
+pub(crate) use migration::owner as reparent_owner;
 
 pub(crate) async fn hydrate_best_effort(parent: &str) {
     if let Err(error) = hydrate_parent(Some(parent)).await {
@@ -40,6 +43,9 @@ mod close_receipt_tests;
 #[cfg(test)]
 #[path = "persistence/lifecycle_tests.rs"]
 mod lifecycle_tests;
+#[cfg(test)]
+#[path = "persistence/migration_tests.rs"]
+mod migration_tests;
 #[cfg(test)]
 #[path = "persistence/restart_tests.rs"]
 mod restart_tests;

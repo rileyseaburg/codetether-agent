@@ -11,26 +11,7 @@ pub(super) async fn list() -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
         })?;
     let values = sessions
         .into_iter()
-        .map(|session| {
-            let windows = session
-                .windows
-                .into_iter()
-                .map(|window| {
-                    serde_json::json!({
-                        "id": window.id,
-                        "title": window.title,
-                        "workspace": window.workspace,
-                    })
-                })
-                .collect::<Vec<_>>();
-            serde_json::json!({
-                "name": session.name,
-                "pid": session.pid,
-                "active_window": session.active_window,
-                "windows": windows,
-                "reachable": session.reachable,
-            })
-        })
+        .map(super::session_projection::project)
         .collect();
     Ok(Json(values))
 }

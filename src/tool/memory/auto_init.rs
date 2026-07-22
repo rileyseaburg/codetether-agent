@@ -13,9 +13,9 @@ impl MemoryStore {
     /// the chosen backend so queries and entries share one space. A failure to
     /// build any backend leaves the store on its hashing engine.
     pub async fn install_auto_embedder(mut self) -> Self {
-        let registry = match ProviderRegistry::from_vault().await {
+        let registry = match ProviderRegistry::shared_from_vault().await {
             Ok(registry) => registry,
-            Err(_) => ProviderRegistry::new(),
+            Err(_) => std::sync::Arc::new(ProviderRegistry::new()),
         };
         let Some(embedder) = auto_embedder(&registry).await else {
             return self;

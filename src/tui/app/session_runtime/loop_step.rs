@@ -26,9 +26,6 @@ use super::{SessionCommand, SessionNotice, active_cancel::ActiveCancel};
 ///   [`SessionEvent`] values.
 /// * `notice_tx` - Channel used to publish lifecycle notices for the session
 ///   runtime.
-/// * `done_tx` - Channel used by prompt execution to signal completion to the
-///   runtime loop.
-///
 /// # Returns
 ///
 /// Returns `true` when the caller should break out of the runtime loop. This is
@@ -44,11 +41,10 @@ pub(super) async fn handle(
     cancel: &ActiveCancel,
     event_tx: &mpsc::Sender<SessionEvent>,
     notice_tx: &mpsc::Sender<SessionNotice>,
-    done_tx: &mpsc::Sender<()>,
 ) -> bool {
     match command {
         SessionCommand::SubmitPrompt(request) => {
-            super::loop_submit::submit(*request, cancel, event_tx, notice_tx, done_tx).await
+            super::loop_submit::submit(*request, cancel, event_tx, notice_tx).await
         }
         SessionCommand::CancelCurrent => notify_cancel(cancel, false),
         SessionCommand::Shutdown => notify_cancel(cancel, true),

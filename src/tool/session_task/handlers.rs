@@ -12,3 +12,6 @@ mod task;
 pub(super) use goal::{clear_goal, reaffirm, set_goal};
 pub(super) use list_handler::list;
 pub(super) use task::{task_add, task_status};
+#[path = "handlers/complete.rs"]
+mod complete;
+pub(super) use complete::complete_goal;

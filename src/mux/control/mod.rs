@@ -20,7 +20,7 @@ mod summary;
 pub(crate) use agent_interact::interact_agent;
 pub(crate) use agent_message::send_agent_message;
 pub(crate) use agent_read::read_agent_output;
-pub(crate) use agent_sessions::agent_sessions;
+pub(crate) use agent_sessions::{agent_sessions, is_agent_route};
 pub(crate) use agent_watch::watch_agent;
 pub(crate) use lifecycle::{restart_session, start_managed_session};
 pub(crate) use list::list_sessions;

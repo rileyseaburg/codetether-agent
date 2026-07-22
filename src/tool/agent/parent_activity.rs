@@ -13,8 +13,12 @@ pub(crate) fn mailbox(owner: &str) {
     registry::publish(owner, Activity::Mailbox);
 }
 
-pub(crate) fn steered(owner: &str) {
-    registry::publish(owner, Activity::Steered);
+pub(crate) fn steered(owner: &str, input_id: u64) {
+    registry::publish(owner, Activity::Steered(input_id));
+}
+
+pub(crate) fn acknowledge_steered(owner: &str, input_id: u64) {
+    registry::remove(owner, Activity::Steered(input_id));
 }
 
 pub(crate) async fn until(owner: &str, deadline: tokio::time::Instant) -> Option<Activity> {

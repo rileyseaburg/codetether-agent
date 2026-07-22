@@ -19,12 +19,11 @@ use imports::*;
 pub enum SessionEvent {
     /// The agent is thinking or waiting on the model.
     Thinking,
+    /// Opens or closes a lightweight activity while work continues.
+    PlayBreak(bool),
     /// A tool call has started.
-    ToolCallStart {
-        tool_call_id: String,
-        name: String,
-        arguments: String,
-    },
+    #[rustfmt::skip]
+    ToolCallStart { tool_call_id: String, name: String, arguments: String },
     /// A tool call has completed.
     ToolCallComplete {
         tool_call_id: String,

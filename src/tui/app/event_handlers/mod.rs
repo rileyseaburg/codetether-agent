@@ -20,6 +20,7 @@ mod editor_lsp_retry;
 mod event_dispatch;
 mod fuzzy_find_key;
 mod goal_prompt_key;
+mod interlude_key;
 mod interrupt_key;
 #[cfg(test)]
 mod interrupt_key_tests;

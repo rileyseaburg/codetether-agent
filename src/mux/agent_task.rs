@@ -4,6 +4,7 @@ mod buffer;
 mod cancel;
 mod entry;
 mod entry_read;
+mod executable;
 mod reader;
 mod registry;
 mod registry_start;

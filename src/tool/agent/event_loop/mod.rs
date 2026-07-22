@@ -22,13 +22,15 @@ mod live_trace_flow_tests;
 #[path = "../live_trace_tests.rs"]
 mod live_trace_tests;
 mod state;
+mod task;
 #[cfg(test)]
 mod tests;
 
 use crate::session::{Session, SessionEvent};
-use anyhow::Result;
 use serde_json::Value;
 use tokio::sync::mpsc;
+
+pub(super) use task::ChildTask;
 
 /// Collects streaming output and resolves the spawned task handle.
 ///
@@ -40,7 +42,7 @@ use tokio::sync::mpsc;
 pub(super) async fn run(
     agent_name: &str,
     rx: &mut mpsc::Receiver<SessionEvent>,
-    handle: tokio::task::JoinHandle<Result<Session>>,
+    handle: ChildTask,
 ) -> (String, String, Vec<Value>, Option<String>, Option<Session>) {
     let mut state = collect::collect_events(agent_name, rx).await;
     let updated_session = finalize::finish_handle(handle, state.timed_out, &mut state.error).await;

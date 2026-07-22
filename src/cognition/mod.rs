@@ -605,7 +605,7 @@ impl CognitionRuntime {
         let thinker_timeout_default = match thinker_backend {
             thinker::ThinkerBackend::OpenAICompat => 30_000,
             thinker::ThinkerBackend::Candle => 12_000,
-            thinker::ThinkerBackend::Bedrock => 60_000,
+            thinker::ThinkerBackend::Bedrock | thinker::ThinkerBackend::Registry => 60_000,
         };
         let thinker_config = ThinkerConfig {
             enabled: env_bool("CODETETHER_COGNITION_THINKER_ENABLED", true),

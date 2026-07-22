@@ -22,7 +22,7 @@ pub(crate) async fn watch_agent(name: &str, timeout_ms: u64) -> Result<Option<St
     let status = super::agent_sessions()
         .await?
         .into_iter()
-        .find(|item| item["name"] == name);
+        .find(|item| super::is_agent_route(item, name));
     Ok(Some(
         json!({"event": frame, "status": status, "timed_out": timed_out}).to_string(),
     ))

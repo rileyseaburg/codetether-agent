@@ -9,7 +9,7 @@ pub(super) async fn ensure(args: &Args) -> Result<()> {
     let status = crate::mux::control::agent_sessions()
         .await?
         .into_iter()
-        .find(|item| item["name"] == name)
+        .find(|item| crate::mux::control::is_agent_route(item, name))
         .context("mux session not found")?;
     if status["status"] == "working" {
         bail!("refusing lifecycle action on a working mux");

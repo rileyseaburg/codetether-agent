@@ -1,7 +1,7 @@
 //! Settlement of one accepted child-agent message.
 
 use super::super::collaboration_runtime::message_input::MessageImage;
-use super::super::{execution_state, helpers, message_detach, message_finalize};
+use super::super::{event_loop, execution_state, helpers, message_detach, message_finalize};
 use crate::tool::ToolResult;
 use anyhow::Result;
 
@@ -15,6 +15,7 @@ pub(in crate::tool::agent) async fn execute(
 ) -> Result<ToolResult> {
     let (mut rx, handle) = super::start::begin(&agent_id, message, images, params).await?;
     execution_state::register(&agent_id, &handle);
+    let handle = event_loop::ChildTask::new(handle);
     if params.detach_or_default() {
         return Ok(message_detach::dispatch(
             agent_id, guard, rx, handle, receipt,

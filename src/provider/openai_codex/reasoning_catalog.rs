@@ -53,6 +53,16 @@ pub fn supports(model: &str, effort: &str) -> bool {
     supported_levels(model).contains(&effort)
 }
 
+/// Report whether a model belongs to the GPT-5.6 Sol/Terra/Luna family.
+///
+/// Accepts provider-prefixed, Bedrock `openai.` and Codex `-fast` forms.
+pub fn is_gpt_56(model: &str) -> bool {
+    let base = base_model(model);
+    let base = base.strip_prefix("openai.").unwrap_or(base);
+    let base = base.strip_suffix("-fast").unwrap_or(base);
+    matches!(base, "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna")
+}
+
 fn base_model(model: &str) -> &str {
     let model = model.rsplit('/').next().unwrap_or(model);
     model.split(':').next().unwrap_or(model)
@@ -60,12 +70,19 @@ fn base_model(model: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::supported_levels;
+    use super::{is_gpt_56, supported_levels};
 
     #[test]
     fn catalog_distinguishes_ultra_and_max_models() {
         assert!(supported_levels("openai-codex/gpt-5.6-sol").contains(&"ultra"));
         assert!(!supported_levels("gpt-5.6-luna").contains(&"ultra"));
         assert_eq!(supported_levels("gpt-5.5").last(), Some(&"xhigh"));
+    }
+
+    #[test]
+    fn recognizes_codex_and_bedrock_gpt_56_names() {
+        assert!(is_gpt_56("openai-codex/gpt-5.6-sol-fast:max"));
+        assert!(is_gpt_56("bedrock/openai.gpt-5.6-terra"));
+        assert!(!is_gpt_56("openai-codex/gpt-5.5"));
     }
 }

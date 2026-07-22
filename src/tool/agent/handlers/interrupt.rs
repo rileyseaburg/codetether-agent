@@ -22,7 +22,13 @@ pub(in crate::tool::agent) async fn handle(
         super::super::collaboration_runtime::thread_status::interrupted(&agent_id);
         tracing::info!(agent_id, agent = %entry.name, "Sub-agent turn interrupted");
         super::super::bus_publish::announce_done(&agent_id, false, "interrupted");
-        wait::until_idle(&agent_id).await;
+        if !wait::until_idle(&agent_id).await {
+            tracing::warn!(agent_id, agent = %entry.name, "Sub-agent interrupt did not settle");
+            return Ok(ToolResult::error(format!(
+                "Interrupt requested for @{}, but its turn did not stop within 5 seconds",
+                entry.name
+            )));
+        }
         if marker_enabled {
             marker::persist(&agent_id).await?;
         }

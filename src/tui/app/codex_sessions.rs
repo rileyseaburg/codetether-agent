@@ -1,6 +1,6 @@
 use crate::session::{Session, import_codex_sessions_for_directory};
 use crate::tui::app::message_text::sync_messages_from_source;
-use crate::tui::app::session_fork::fork_if_truncated;
+use crate::tui::app::session_fork::fork_for_app;
 use crate::tui::app::session_load_status::load_status_with_original;
 use crate::tui::app::session_loader::load_session_for_tui;
 use crate::tui::app::session_sync::{refresh_sessions, return_to_chat};
@@ -18,7 +18,9 @@ pub async fn load_selected_session(
             let dropped = loaded.dropped;
             let file_bytes = loaded.file_bytes;
             *session = loaded.session;
-            let original_id = fork_if_truncated(session, dropped);
+            let Some(original_id) = fork_for_app(app, session, dropped).await else {
+                return;
+            };
             session.attach_global_bus_if_missing();
             crate::tool::agent::persistence::hydrate_best_effort(&session.id).await;
             app.state.auto_apply_edits = session.metadata.auto_apply_edits;

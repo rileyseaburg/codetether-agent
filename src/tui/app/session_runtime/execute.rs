@@ -21,8 +21,8 @@ use super::{PromptRequest, SessionNotice};
 /// The session runtime spawns this function for each accepted prompt request.
 /// It consumes the [`PromptRequest`], streams prompt events through `event_tx`,
 /// and sends exactly one lifecycle notice through `notice_tx` after the prompt
-/// finishes, fails, is cancelled, or panics. A final message is also sent on
-/// `done_tx` so the runtime loop can clear its active cancellation state.
+/// finishes, fails, is cancelled, or panics. Active ownership is cleared before
+/// that notice is sent, so a visible completion always permits the next turn.
 ///
 /// Cancellation is cooperative. If `cancel` is notified before `run_prompt`
 /// completes, the session directory is restored to the original directory and
@@ -41,8 +41,7 @@ use super::{PromptRequest, SessionNotice};
 ///   session state.
 /// * `cancel` - Shared notifier used by the runtime loop to request
 ///   cancellation of this prompt.
-/// * `done_tx` - Channel used to tell the runtime loop that this executor task
-///   has reached its cleanup point.
+/// * `active` - Shared runtime ownership cleared before the completion notice.
 ///
 /// # Side Effects
 ///
@@ -55,8 +54,9 @@ pub(super) async fn run(
     event_tx: mpsc::Sender<SessionEvent>,
     notice_tx: mpsc::Sender<SessionNotice>,
     cancel: Arc<Notify>,
-    done_tx: mpsc::Sender<()>,
+    active: super::active_cancel::ActiveCancel,
 ) {
+    let completion = super::active_completion::Guard::new(active);
     let PromptRequest {
         mut session,
         prompt,
@@ -90,6 +90,6 @@ pub(super) async fn run(
         Some(&prompt_for_pr),
     )
     .await;
+    completion.clear();
     let _ = notice_tx.send(notice).await;
-    let _ = done_tx.send(()).await;
 }

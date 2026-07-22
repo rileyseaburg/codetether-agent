@@ -3,7 +3,6 @@ use anyhow::{Context, Result, anyhow};
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
-use tokio::sync::OnceCell;
 
 #[derive(Debug, Deserialize)]
 struct MorphResponse {
@@ -20,8 +19,6 @@ struct MorphMessage {
     #[serde(default)]
     content: Option<String>,
 }
-
-static MORPH_PROVIDER_REGISTRY: OnceCell<Arc<ProviderRegistry>> = OnceCell::const_new();
 
 fn backend_enabled() -> bool {
     match std::env::var("CODETETHER_MORPH_TOOL_BACKEND") {
@@ -60,13 +57,7 @@ fn direct_openrouter_base_url() -> Option<String> {
 }
 
 async fn get_registry() -> Result<Arc<ProviderRegistry>> {
-    let registry = MORPH_PROVIDER_REGISTRY
-        .get_or_try_init(|| async {
-            let loaded = ProviderRegistry::from_vault().await?;
-            Ok::<_, anyhow::Error>(Arc::new(loaded))
-        })
-        .await?;
-    Ok(registry.clone())
+    ProviderRegistry::shared_from_vault().await
 }
 
 async fn apply_with_provider(prompt: &str) -> Result<String> {

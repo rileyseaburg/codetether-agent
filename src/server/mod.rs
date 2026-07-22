@@ -1683,7 +1683,7 @@ async fn openai_chat_completions(
         return Err(openai_bad_request("`messages` must not be empty"));
     }
 
-    let registry = crate::provider::ProviderRegistry::from_vault()
+    let registry = crate::provider::ProviderRegistry::shared_from_vault()
         .await
         .map_err(|error| {
             tracing::error!(error = %error, "Failed to load providers from Vault");

@@ -5,11 +5,10 @@ use crate::provider::ModelInfo;
 pub(super) fn model_ref(provider: &str, model: &ModelInfo) -> Option<String> {
     let provider = provider.trim();
     let model_id = model.id.trim();
-    let prefix = format!("{provider}/");
-    let unqualified = model_id.strip_prefix(&prefix).unwrap_or(model_id);
-    if provider != "openai-codex" || !unqualified.starts_with("gpt-5.6-") {
+    if provider.is_empty() || model_id.is_empty() {
         return None;
     }
+    let prefix = format!("{provider}/");
     Some(if model_id.starts_with(&prefix) {
         model_id.to_string()
     } else {
@@ -38,13 +37,16 @@ mod tests {
     }
 
     #[test]
-    fn admits_only_openai_codex_5_6_models() {
+    fn admits_models_from_every_provider() {
         assert_eq!(
-            model_ref("openai-codex", &model("gpt-5.6-sol")).as_deref(),
-            Some("openai-codex/gpt-5.6-sol")
+            model_ref("google", &model("gemini-2.5-pro")).as_deref(),
+            Some("google/gemini-2.5-pro")
         );
-        assert!(model_ref("openai-codex", &model("gpt-5.5")).is_none());
-        assert!(model_ref("bedrock", &model("gpt-5.6-sol")).is_none());
-        assert!(model_ref("openai-codex", &model("openai-codex/gpt-5.6-sol")).is_some());
+        assert_eq!(
+            model_ref("openrouter", &model("openrouter/openai/gpt-5.5")).as_deref(),
+            Some("openrouter/openai/gpt-5.5")
+        );
+        assert!(model_ref("", &model("gpt-5.6-sol")).is_none());
+        assert!(model_ref("openai-codex", &model(" ")).is_none());
     }
 }

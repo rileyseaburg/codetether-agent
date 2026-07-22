@@ -49,7 +49,7 @@ pub(super) fn notice(result: PromptRunResult, session: Session) -> SessionNotice
         Ok(Ok(())) => SessionNotice::Finished(session),
         Ok(Err(error)) => SessionNotice::Failed {
             session,
-            error: error.to_string(),
+            error: format!("{error:#}"),
         },
         Err(error) => SessionNotice::Failed {
             session,
@@ -85,3 +85,7 @@ fn panic_message(error: &Box<dyn std::any::Any + Send>) -> &str {
         .or_else(|| error.downcast_ref::<&str>().copied())
         .unwrap_or("unknown panic")
 }
+
+#[cfg(test)]
+#[path = "prompt_result_tests.rs"]
+mod tests;

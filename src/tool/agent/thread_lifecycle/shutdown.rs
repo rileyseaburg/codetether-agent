@@ -12,7 +12,13 @@ pub(super) async fn one(agent_id: &str) {
     }
     execution_state::close(agent_id);
     thread_status::shutdown(agent_id);
-    super::wait::until_idle(agent_id).await;
+    if !super::wait::until_idle(agent_id).await {
+        tracing::warn!(
+            agent_id,
+            "Child shutdown did not settle; keeping runtime resident"
+        );
+        return;
+    }
     store::remove(agent_id);
     event_loop::live_trace::clear(agent_id);
 }

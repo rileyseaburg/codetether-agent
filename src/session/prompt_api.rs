@@ -13,9 +13,7 @@ use super::types::{ImageAttachment, Session};
 impl Session {
     /// Execute a prompt and return the final text answer (non-streaming).
     ///
-    /// This loads the provider registry from Vault on every call, which is
-    /// fine for one-shot CLI use but expensive for the TUI — the TUI uses
-    /// [`Session::prompt_with_events`] with a shared registry instead.
+    /// Provider configuration is loaded lazily and shared for the process.
     ///
     /// # Errors
     ///

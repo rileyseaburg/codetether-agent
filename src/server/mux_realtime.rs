@@ -1,5 +1,7 @@
 //! Rust-owned HTTP surface for authoritative mux roster and realtime output.
 
+#[path = "mux_realtime/session_projection.rs"]
+mod session_projection;
 #[path = "mux_realtime/sessions.rs"]
 mod sessions;
 #[path = "mux_realtime/stream.rs"]

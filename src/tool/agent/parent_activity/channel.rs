@@ -9,7 +9,7 @@ const MAX_PENDING: usize = 256;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Activity {
     Mailbox,
-    Steered,
+    Steered(u64),
 }
 
 #[derive(Default)]
@@ -35,5 +35,12 @@ impl Channel {
             .lock()
             .expect("parent activity lock poisoned")
             .pop_front()
+    }
+
+    pub(super) fn remove(&self, activity: Activity) {
+        let mut pending = self.pending.lock().expect("parent activity lock poisoned");
+        if let Some(index) = pending.iter().position(|item| *item == activity) {
+            pending.remove(index);
+        }
     }
 }

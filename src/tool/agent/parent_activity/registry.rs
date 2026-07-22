@@ -20,6 +20,10 @@ pub(super) fn publish(owner: &str, activity: Activity) {
     channel(owner).push(activity);
 }
 
+pub(super) fn remove(owner: &str, activity: Activity) {
+    channel(owner).remove(activity);
+}
+
 #[cfg(test)]
 pub(super) fn clear(owner: &str) {
     CHANNELS

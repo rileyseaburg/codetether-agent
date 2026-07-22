@@ -16,6 +16,7 @@ pub(crate) fn open(session_id: &str) {
 
 /// Append input when the named session is still accepting steering.
 pub(crate) fn push(session_id: &str, input: SteeringInput) -> bool {
+    let activity_id = input.activity_id();
     let accepted = {
         let mut inboxes = inboxes();
         let Some(inbox) = inboxes.get_mut(session_id) else {
@@ -24,13 +25,12 @@ pub(crate) fn push(session_id: &str, input: SteeringInput) -> bool {
         inbox.push_back(input);
         true
     };
-    crate::tool::agent::collaboration_runtime::parent_activity::steered(session_id);
+    crate::tool::agent::collaboration_runtime::parent_activity::steered(session_id, activity_id);
     accepted
 }
 
-/// Remove all state for a completed or aborted prompt run.
-pub(crate) fn clear(session_id: &str) {
-    inboxes().remove(session_id);
+pub(super) fn discard(session_id: &str) -> VecDeque<SteeringInput> {
+    inboxes().remove(session_id).unwrap_or_default()
 }
 
 /// Drain all inputs while leaving the named inbox open.

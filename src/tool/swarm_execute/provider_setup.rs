@@ -15,7 +15,7 @@ pub(super) async fn load(
     requested: Option<&str>,
     observer: &mut Observer,
 ) -> Result<Result<SelectedProvider, ToolResult>> {
-    let providers = match ProviderRegistry::from_vault().await {
+    let providers = match ProviderRegistry::shared_from_vault().await {
         Ok(providers) => providers,
         Err(error) => {
             observer.fail(format!("Failed to load providers: {error:#}"));

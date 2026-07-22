@@ -37,6 +37,7 @@ async fn done(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
     app.state.clear_streaming_text();
     app.state.complete_turn_timing();
     app.state.streaming_start = None;
+    app.state.interlude = None;
     // NOTE: do NOT reset main_watchdog_restart_count here. The count must
     // survive a completed turn so a pathological "completes-then-immediately-
     // stalls" storm still climbs to WATCHDOG_MAX_RESTARTS instead of being

@@ -1,6 +1,7 @@
 //! Move-based TUI session runtime.
 
 mod active_cancel;
+mod active_completion;
 mod active_turn;
 mod command;
 mod execute;
@@ -14,6 +15,9 @@ mod runtime;
 mod slot;
 mod view;
 
+#[cfg(test)]
+#[path = "runtime_completion_tests.rs"]
+mod completion_tests;
 #[cfg(test)]
 mod tests;
 

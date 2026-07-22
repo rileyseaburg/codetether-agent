@@ -659,10 +659,9 @@ async fn execute_inner(args: RunArgs) -> Result<()> {
             };
             // Create OKR draft (LLM-proposed, with safe fallback)
             let okr_id = Uuid::new_v4();
-            let registry_for_draft = crate::provider::ProviderRegistry::from_vault()
+            let registry_for_draft = crate::provider::ProviderRegistry::shared_from_vault()
                 .await
-                .ok()
-                .map(std::sync::Arc::new);
+                .ok();
 
             let (mut okr, draft_note) = if let Some(registry) = &registry_for_draft {
                 match plan_okr_draft_with_registry(&task, &model, agent_count, registry).await {
@@ -738,7 +737,7 @@ async fn execute_inner(args: RunArgs) -> Result<()> {
             let registry = if let Some(registry) = registry_for_draft {
                 registry
             } else {
-                std::sync::Arc::new(crate::provider::ProviderRegistry::from_vault().await?)
+                crate::provider::ProviderRegistry::shared_from_vault().await?
             };
             let (provider, resolved_model) = resolve_provider_for_model_autochat(&registry, &model)
                 .ok_or_else(|| anyhow::anyhow!("No provider available for model '{model}'"))?;
@@ -1177,10 +1176,9 @@ async fn run_protocol_first_relay(
 
     let relay = ProtocolRelayRuntime::new(bus.clone());
 
-    let registry = crate::provider::ProviderRegistry::from_vault()
+    let registry = crate::provider::ProviderRegistry::shared_from_vault()
         .await
-        .ok()
-        .map(std::sync::Arc::new);
+        .ok();
 
     let mut planner_used = false;
     let profiles = if let Some(registry) = &registry {

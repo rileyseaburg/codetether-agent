@@ -27,39 +27,15 @@ use tokenizers::Tokenizer;
 
 use crate::provider::bedrock::{AwsCredentials, BedrockProvider};
 
-/// Available backends for the local thinker.
-///
-/// # Examples
-///
-/// ```rust
-/// use codetether_agent::cognition::thinker::ThinkerBackend;
-/// assert_eq!(ThinkerBackend::from_env("candle"), ThinkerBackend::Candle);
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ThinkerBackend {
-    OpenAICompat,
-    Candle,
-    Bedrock,
-}
-
-impl ThinkerBackend {
-    /// Parse a backend from an env-var string.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use codetether_agent::cognition::thinker::ThinkerBackend;
-    /// assert_eq!(ThinkerBackend::from_env("bedrock"), ThinkerBackend::Bedrock);
-    /// ```
-    pub fn from_env(value: &str) -> Self {
-        match value.trim().to_ascii_lowercase().as_str() {
-            "candle" => Self::Candle,
-            "openai" | "openai_compat" | "openai-compatible" | "http" => Self::OpenAICompat,
-            "bedrock" | "aws" | "aws_bedrock" => Self::Bedrock,
-            _ => Self::OpenAICompat,
-        }
-    }
-}
+#[path = "thinker/backend.rs"]
+mod backend;
+#[path = "thinker/provider.rs"]
+mod provider;
+#[path = "thinker/provider_output.rs"]
+mod provider_output;
+#[path = "thinker/provider_request.rs"]
+mod provider_request;
+pub use backend::ThinkerBackend;
 
 /// Device preference for Candle inference.
 ///
@@ -211,6 +187,7 @@ impl std::fmt::Debug for ThinkerClient {
 #[derive(Clone)]
 enum ThinkerClientBackend {
     OpenAICompat { http: Client },
+    Registry,
     Candle { runtime: Arc<Mutex<CandleThinker>> },
     Bedrock { provider: Arc<BedrockProvider> },
 }
@@ -234,6 +211,7 @@ impl ThinkerClient {
                     .context("failed to build thinker HTTP client")?;
                 ThinkerClientBackend::OpenAICompat { http }
             }
+            ThinkerBackend::Registry => ThinkerClientBackend::Registry,
             ThinkerBackend::Candle => {
                 let runtime = CandleThinker::new(&config)?;
                 ThinkerClientBackend::Candle {
@@ -285,6 +263,9 @@ impl ThinkerClient {
             ThinkerClientBackend::OpenAICompat { http } => {
                 self.think_openai_compat(http, system_prompt, user_prompt)
                     .await
+            }
+            ThinkerClientBackend::Registry => {
+                provider::think(&self.config, system_prompt, user_prompt).await
             }
             ThinkerClientBackend::Bedrock { provider } => {
                 self.think_bedrock(provider, system_prompt, user_prompt)

@@ -25,6 +25,7 @@ mod submission;
 
 pub(in crate::tool::agent) use completion::finished;
 pub(crate) use dispatcher::next as dispatch_next;
+pub(crate) use store_lifecycle::reparent_owner;
 pub(crate) use store_lifecycle::{clear, hydrate, pending};
 pub(crate) use submission::Submission;
 

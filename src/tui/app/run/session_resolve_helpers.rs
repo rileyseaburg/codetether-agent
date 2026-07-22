@@ -10,7 +10,7 @@ use crate::session::{Session, TailLoad};
 use super::session_outcome::SessionLoadOutcome;
 use super::session_resolve::Resolved;
 
-pub(super) fn resolve_loaded(load: TailLoad, bus: &Arc<AgentBus>) -> Resolved {
+pub(super) async fn resolve_loaded(load: TailLoad, bus: &Arc<AgentBus>) -> Result<Resolved> {
     let label = load.session.display_label();
     let dropped = load.dropped;
     let file_bytes = load.file_bytes;
@@ -22,8 +22,8 @@ pub(super) fn resolve_loaded(load: TailLoad, bus: &Arc<AgentBus>) -> Resolved {
         );
     }
     let msg_count = session.history().len();
-    let source_id = crate::tui::app::session_fork::fork_if_truncated(&mut session, dropped);
-    Resolved {
+    let source_id = crate::tui::app::session_fork::fork_if_truncated(&mut session, dropped).await?;
+    Ok(Resolved {
         session,
         outcome: SessionLoadOutcome::Loaded {
             msg_count,
@@ -31,7 +31,7 @@ pub(super) fn resolve_loaded(load: TailLoad, bus: &Arc<AgentBus>) -> Resolved {
             dropped,
             source_id,
         },
-    }
+    })
 }
 
 pub(super) async fn resolve_new(reason: String, bus: &Arc<AgentBus>) -> Result<Resolved> {

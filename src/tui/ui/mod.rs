@@ -9,6 +9,7 @@ pub mod gradient;
 pub mod gradient_rule;
 pub mod gradient_sweep;
 pub mod inspector;
+pub mod interlude;
 pub mod main;
 pub mod mode_accent;
 pub mod sessions;

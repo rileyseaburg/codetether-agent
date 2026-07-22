@@ -21,6 +21,11 @@ pub(super) async fn recover(
         attempt.derived = super::derived::derive(runner, policy, keep).await?;
         return Ok(true);
     }
+    if let Some(seconds) = super::retry_after::seconds(error) {
+        tracing::debug!(backoff_secs = seconds, "Provider requested a delayed retry");
+        super::interlude::wait(runner, seconds).await;
+        return Ok(true);
+    }
     if attempt.upstream_retries >= 3
         || !super::super::super::error::is_retryable_upstream_error(error)
     {

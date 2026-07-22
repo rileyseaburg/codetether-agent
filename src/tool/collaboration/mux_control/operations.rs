@@ -19,7 +19,7 @@ pub(super) async fn status(name: &str) -> Result<ToolResult> {
     let value = crate::mux::control::agent_sessions()
         .await?
         .into_iter()
-        .find(|item| item["name"] == name)
+        .find(|item| crate::mux::control::is_agent_route(item, name))
         .map(|item| item.to_string());
     result(value, name)
 }

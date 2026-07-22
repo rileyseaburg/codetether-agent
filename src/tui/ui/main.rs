@@ -117,7 +117,6 @@ fn render_overlays(f: &mut Frame, app: &mut App) {
 
     crate::tui::ui::goal_prompt_overlay::render_if_active(f, f.area(), &app.state.goal_prompt);
     crate::tui::ui::fuzzy_find_overlay::render_if_active(f, f.area(), &app.state.fuzzy_find);
-    if app.state.watchdog_notification.is_some() {
-        crate::tui::app::watchdog::render_watchdog_notification(f, f.area(), &app.state);
-    }
+    crate::tui::ui::interlude::render_if_active(f, f.area(), app);
+    crate::tui::app::watchdog::render_watchdog_notification(f, f.area(), &app.state);
 }

@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::provenance::RuntimePrincipal;
+
 /// Durable identity and live turn state for the active mux TUI.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub(crate) struct MuxRuntimeStatus {
@@ -22,4 +24,7 @@ pub(crate) struct MuxRuntimeStatus {
     /// Whether the owning TUI has detected a stalled turn.
     #[serde(default)]
     pub lagging: bool,
+    /// Identity/provenance metadata kept separate from conversational output.
+    #[serde(default)]
+    pub principal: RuntimePrincipal,
 }

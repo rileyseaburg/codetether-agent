@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use crate::provenance::RuntimePrincipal;
 use crate::session::Session;
 
 /// Read-only session facts needed while the full session is moved.
@@ -34,6 +35,8 @@ pub struct SessionView {
     pub use_worktree: bool,
     /// Number of transcript messages in the current session.
     pub message_count: usize,
+    /// Identity and provenance displayed as metadata outside the transcript.
+    pub principal: RuntimePrincipal,
 }
 
 impl SessionView {
@@ -49,6 +52,10 @@ impl SessionView {
             slash_autocomplete: session.metadata.slash_autocomplete,
             use_worktree: session.metadata.use_worktree,
             message_count: session.messages.len(),
+            principal: RuntimePrincipal::for_session(
+                &session.agent,
+                session.metadata.provenance.as_ref(),
+            ),
         }
     }
 

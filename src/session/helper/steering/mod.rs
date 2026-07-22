@@ -1,5 +1,6 @@
 //! Session-scoped input steering for active prompt runs.
 
+mod cleanup;
 mod drain;
 mod guard;
 mod input;
@@ -7,10 +8,11 @@ mod input;
 mod ipc;
 mod queue;
 
+pub(crate) use cleanup::clear;
 pub(crate) use drain::{drain_into, drain_or_close_into};
 pub(crate) use guard::RunGuard;
 pub(crate) use input::SteeringInput;
-pub(crate) use queue::{clear, open, push};
+pub(crate) use queue::{open, push};
 
 /// Send trusted user text to whichever process currently owns a session turn.
 ///
@@ -48,5 +50,8 @@ pub async fn send(session_id: &str, text: &str) -> anyhow::Result<bool> {
     }
 }
 
+#[cfg(test)]
+#[path = "steering_activity_tests.rs"]
+mod activity_tests;
 #[cfg(test)]
 mod tests;

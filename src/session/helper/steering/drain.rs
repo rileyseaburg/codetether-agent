@@ -15,6 +15,10 @@ pub(crate) fn drain_or_close_into(session: &mut Session) -> usize {
 fn append(session: &mut Session, inputs: Vec<super::SteeringInput>) -> usize {
     let count = inputs.len();
     for input in inputs {
+        crate::tool::agent::collaboration_runtime::parent_activity::acknowledge_steered(
+            &session.id,
+            input.activity_id(),
+        );
         let (message, text) = input.into_message();
         session.add_human_message(message);
         super::super::publish_user_prompt::publish(session, &text, None);

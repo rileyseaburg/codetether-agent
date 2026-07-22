@@ -13,7 +13,7 @@ pub(super) fn child(
     workspace: &Path,
     mux: &str,
 ) -> Result<tokio::process::Child> {
-    let mut command = tokio::process::Command::new(std::env::current_exe()?);
+    let mut command = super::executable::command()?;
     command.args([
         "run",
         "--format",

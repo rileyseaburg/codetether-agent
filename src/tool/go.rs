@@ -208,11 +208,9 @@ impl GoTool {
         let max_concurrent = p.max_concurrent_stories.unwrap_or(3);
 
         // Load provider registry from Vault
-        let registry = Arc::new(
-            crate::provider::ProviderRegistry::from_vault()
-                .await
-                .context("Failed to load providers from Vault")?,
-        );
+        let registry = crate::provider::ProviderRegistry::shared_from_vault()
+            .await
+            .context("Failed to load providers from Vault")?;
 
         // Resolve model and provider
         let model = p.model.unwrap_or_else(|| "zai/glm-5".to_string());

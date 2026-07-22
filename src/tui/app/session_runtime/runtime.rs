@@ -47,10 +47,8 @@ pub(crate) fn spawn(
 
 /// Run the session runtime command loop until shutdown or channel closure.
 ///
-/// The loop waits for commands from [`TuiSessionHandle`] and completion signals
-/// from prompt tasks. A single cancellation token is tracked for the active
-/// prompt and cleared when the prompt reports completion through the internal
-/// `done_rx` channel.
+/// The loop waits for commands from [`TuiSessionHandle`]. Prompt executors clear
+/// their shared active ownership before publishing their completion notice.
 ///
 /// # Arguments
 ///
@@ -70,16 +68,9 @@ async fn run(
     notice_tx: mpsc::Sender<SessionNotice>,
     active_cancel: ActiveCancel,
 ) {
-    let (done_tx, mut done_rx) = mpsc::channel(1);
-    loop {
-        tokio::select! {
-            Some(command) = cmd_rx.recv() => {
-                if super::loop_step::handle(command, &active_cancel, &event_tx, &notice_tx, &done_tx).await {
-                    break;
-                }
-            }
-            Some(()) = done_rx.recv() => active_cancel.clear(),
-            else => break,
+    while let Some(command) = cmd_rx.recv().await {
+        if super::loop_step::handle(command, &active_cancel, &event_tx, &notice_tx).await {
+            break;
         }
     }
 }

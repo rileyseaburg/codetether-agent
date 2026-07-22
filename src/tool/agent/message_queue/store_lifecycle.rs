@@ -30,3 +30,24 @@ pub(crate) async fn clear(agent_id: &str) -> Result<()> {
     super::super::execution_notify::signal(agent_id);
     Ok(())
 }
+
+pub(crate) async fn reparent_owner(agent_id: &str, from: &str, to: &str) -> Result<()> {
+    let mut queues = QUEUES.lock().await;
+    ensure(&mut queues, agent_id).await?;
+    let snapshot = queues.get_mut(agent_id).expect("mailbox inserted");
+    let original = snapshot.clone();
+    let mut changed = false;
+    for item in &mut snapshot.items {
+        if item.parent_id.as_deref() == Some(from) {
+            item.parent_id = Some(to.to_string());
+            changed = true;
+        }
+    }
+    if changed {
+        if let Err(error) = disk::save(snapshot).await {
+            *snapshot = original;
+            return Err(error);
+        }
+    }
+    Ok(())
+}
