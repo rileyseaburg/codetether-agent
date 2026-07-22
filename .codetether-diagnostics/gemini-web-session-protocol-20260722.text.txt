@@ -1,0 +1,22 @@
+<tool_call>{"name":"exec_command","arguments":{"cmd":"git diff HEAD -- src/controllers/funnel/one_click_quantity.rs src/controllers/funnel/one_click_upsell.rs static/js/funnel-upsell.js src/views/components/conversion/_window_cleaning_side_sell.html.tera api/src/funnel/componentRegistrySchemaWindowCleaningSideSell.ts config/database/migrations/20260722010000-window-cleaning-side-sell-disclaimer/up.sql | tail -n +520 | head -n 520","workdir":"/home/riley/spotlessbinco","yield_time_ms":30000,"max_output_tokens":36000}}</tool_call>
+<tool_call>{"name":"update_goal","arguments":{"status":"complete"}}</tool_call>
+The `window_cleaning_side_sell` component, backend validation, client runtime, schema definitions, and migration files have been simplified to use **exact pane count only** while preserving server-authoritative one-click pricing.
+
+### What Changed
+
+1. **Frontend Template & UI Component Editor (`src/views/components/conversion/_window_cleaning_side_sell.html.tera`, `spotless-web/ui/src/components/admin/funnel/ComponentEditor/forms/WindowCleaningSideSellForm.tsx`)**:
+   - Removed house size option choices (`Small`, `Medium`, `Large`, `Extra Large`) and choice button selector rendering.
+   - Simplified copy and input state to collect pane count ($1\text{--}200$) directly.
+
+2. **Client Up-Sell JS (`static/js/funnel-upsell.js`)**:
+   - Removed `card.dataset.houseSize` dependency and request payload mapping.
+   - Client sends `quantity: Number.parseInt(card.dataset.paneCount, 10)` directly to the one-click endpoint.
+
+3. **Server Validation & Controller Logic (`src/controllers/funnel/one_click_quantity.rs`, `src/controllers/funnel/one_click_upsell.rs`)**:
+   - Removed house size selection checking (`selection.ok_or(...)` and allowed array matching).
+   - Validates that the offer uses per-pane unit pricing and verifies that `quantity` is within $1\text{--}200$.
+   - Calculates the final total server-side (`unit_amount_cents * quantity`) to guarantee server authority on price.
+
+4. **Component Schema, Descriptions & DB Migration (`api/src/funnel/componentRegistrySchemaWindowCleaningSideSell.ts`, `config/database/migrations/20260722010000-window-cleaning-side-sell-disclaimer/up.sql`)**:
+   - Updated component descriptions and default text to focus exclusively on exact pane count.
+   - Updated registry metadata and migration scripts to eliminate house-size text for stored step configurations.

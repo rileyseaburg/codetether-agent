@@ -1,0 +1,19 @@
+{"type":"run.started","session_id":"b98e2e80-dc73-4b75-bcde-6ca8bd8f9fdb"}
+2026-07-22T02:50:18.984469Z  WARN codetether_agent::provider::bedrock::sso_refresh::auto: auto-refresh skipped provider="bedrock" error=Silent SSO refresh failed; the refresh token may have expired
+2026-07-22T02:50:19.527292Z  WARN codetether_agent::provider::init_env: Failed to init local_cuda from env: local_cuda requires --features candle-cuda
+2026-07-22T02:50:19.527400Z  WARN codetether_agent::tool::sandbox: No CODETETHER_PLUGIN_SIGNING_KEY set — generated ephemeral key. Plugin signatures will not persist across restarts.
+2026-07-22T02:50:19.669747Z  WARN codetether_agent::session::helper::steering::guard: Session steering unavailable error=session already has an active owner session_id=b98e2e80-dc73-4b75-bcde-6ca8bd8f9fdb
+2026-07-22T02:50:20.422658Z  WARN codetether_agent::provider::gemini_web: Gemini response had no parseable text; invalidating cached tokens and retrying once body_prefix=)]}'
+
+38
+[["wrb.fr",null,null,null,null,[3]]]
+58
+[["di",168],["af.httprm",167,"-6675009235212060963",23]]
+25
+[["e",4,null,null,133]]
+
+{"type":"run.failed","error":"Gemini Web completion failed"}
+Error: Gemini Web completion failed
+
+Caused by:
+    Gemini Web backend returned protocol status code 131 for model `gemini-web-thinking`. Payload snippet: )]}'  38 [["wrb.fr",null,null,null,null,[3]]] 56 [["di",168],["af.httprm",167,"331331948967312596",19]] 25 [["e",4,null,null,131]]

@@ -946,7 +946,7 @@ dependencies = [
 
 [[package]]
 name = "codetether-agent"
-version = "4.7.5-dev.0"
+version = "4.7.5-dev.3"
 dependencies = [
  "anyhow",
  "arboard",
@@ -1017,7 +1017,7 @@ dependencies = [
  "syntect",
  "sysinfo",
  "tempfile",
- "tetherscript 0.1.0-alpha.18",
+ "tetherscript",
  "thiserror 2.0.18",
  "tokenizers",
  "tokio",
@@ -1056,7 +1056,7 @@ dependencies = [
  "reqwest 0.13.4",
  "serde",
  "serde_json",
- "tetherscript 0.1.0-alpha.19",
+ "tetherscript",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -6348,14 +6348,9 @@ dependencies = [
 
 [[package]]
 name = "tetherscript"
-version = "0.1.0-alpha.18"
-source = "git+https://github.com/CodeTether/TetherScript.git?rev=e9d34333e3a5d3a31a1610ad8c08ba2db5f49493#e9d34333e3a5d3a31a1610ad8c08ba2db5f49493"
-
-[[package]]
-name = "tetherscript"
-version = "0.1.0-alpha.19"
+version = "0.1.0-alpha.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64664c14989d5884129c05605bd152aebd1a0fccce19c4f34c483e6daa9a71e3"
+checksum = "2a80c0267b9a114e9db41ba4110d61227aa84cd6e57f06e6e35a8c8ab4fabc99"
 
 [[package]]
 name = "thiserror"

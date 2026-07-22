@@ -1,0 +1,93 @@
+[
+  {
+    "turn": 1,
+    "question": "Hi Gemini. We are testing a seven-turn conversation. Call me Riley and reply briefly.",
+    "answer": "Hey Riley! Ready for turn one of seven. How can I help you today?",
+    "status": 200,
+    "promptBytes": 155,
+    "responseBytes": 6414,
+    "elapsedMs": 1703.2880249999998,
+    "outputChars": 65,
+    "charsPerSecond": 38.16148475534548,
+    "estimatedTokens": 17,
+    "estimatedTps": 9.980696012936509
+  },
+  {
+    "turn": 2,
+    "question": "What name did I ask you to call me, and how many turns are we testing?",
+    "answer": "You asked me to call you **Riley**, and we're testing a **seven-turn** conversation! That's turn two in the books. What's next?",
+    "status": 200,
+    "promptBytes": 309,
+    "responseBytes": 8538,
+    "elapsedMs": 1805.456338,
+    "outputChars": 127,
+    "charsPerSecond": 70.34232693806634,
+    "estimatedTokens": 32,
+    "estimatedTps": 17.72405088203246
+  },
+  {
+    "turn": 3,
+    "question": "Our bug was that a 1.3 MB resumed session failed, while a 240 KB bounded one worked. What is the likely lesson?",
+    "answer": "The likely lesson is that your system is hitting a **payload size or context limit** during session resumption. \n\nWhen you resume a session, the entire state (or history) gets re-hydrated. The 1.3 MB payload was likely too large for the specific API endpoint, state storage mechanism, or context window, causing a timeout or serialization error—whereas the 240 KB bounded session stayed safely under that threshold. \n\n**Key takeaway:** Always bound, truncate, or compress session history before attempting a resume operation to keep payload sizes manageable. \n\nThat's turn three! What's our next test?",
+    "status": 200,
+    "promptBytes": 566,
+    "responseBytes": 20262,
+    "elapsedMs": 2203.770578,
+    "outputChars": 601,
+    "charsPerSecond": 272.7144131969621,
+    "estimatedTokens": 151,
+    "estimatedTps": 68.51892910605869
+  },
+  {
+    "turn": 4,
+    "question": "Give one reason complete user turns are safer than cutting the transcript at an arbitrary byte offset.",
+    "answer": "Cutting at an arbitrary byte offset can split multi-byte UTF-8 characters or break structured formats (like JSON), resulting in corrupted data, parse errors, or truncated messages mid-thought. Keeping user turns complete guarantees valid syntax and preserves full semantic context. \n\nThat's turn four! What's next?",
+    "status": 200,
+    "promptBytes": 1290,
+    "responseBytes": 11287,
+    "elapsedMs": 2007.1689210000004,
+    "outputChars": 314,
+    "charsPerSecond": 156.43924968884068,
+    "estimatedTokens": 79,
+    "estimatedTps": 39.358919507701955
+  },
+  {
+    "turn": 5,
+    "question": "If a tool result is retained, what related item must also be retained?",
+    "answer": "The **tool call** itself (or the assistant message containing the tool call ID). \n\nWithout the matching tool call, the model sees a tool result with no corresponding request, which causes a schema or context validation error.\n\nThat's turn five! What's next?",
+    "status": 200,
+    "promptBytes": 1693,
+    "responseBytes": 11256,
+    "elapsedMs": 1681.7351770000005,
+    "outputChars": 257,
+    "charsPerSecond": 152.81835304084856,
+    "estimatedTokens": 65,
+    "estimatedTps": 38.65055621655703
+  },
+  {
+    "turn": 6,
+    "question": "Summarize the validation so far in exactly two short bullet points.",
+    "answer": "* Session state must be bounded to prevent payload size errors on resume.\n* Tool results and complete user turns require structural integrity to maintain valid context.",
+    "status": 200,
+    "promptBytes": 2036,
+    "responseBytes": 8905,
+    "elapsedMs": 1665.983225,
+    "outputChars": 168,
+    "charsPerSecond": 100.84135150880647,
+    "estimatedTokens": 42,
+    "estimatedTps": 25.210337877201617
+  },
+  {
+    "turn": 7,
+    "question": "Final continuity check: state my name, the original failing size, and the successful bounded size.",
+    "answer": "You are **Riley**, the original failing size was **1.3 MB**, and the successful bounded size was **240 KB**. \n\nThat wraps up turn seven!",
+    "status": 200,
+    "promptBytes": 2321,
+    "responseBytes": 8729,
+    "elapsedMs": 1680.6583599999994,
+    "outputChars": 136,
+    "charsPerSecond": 80.92066968327819,
+    "estimatedTokens": 34,
+    "estimatedTps": 20.230167420819548
+  }
+]

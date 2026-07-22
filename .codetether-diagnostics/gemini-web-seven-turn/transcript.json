@@ -1,0 +1,58 @@
+[
+  {
+    "turn": 1,
+    "question": "Hi Gemini. We are testing a seven-turn conversation. Call me Riley and reply briefly.",
+    "answer": "Hey Riley! Good to meet you. Turn one is officially locked in—what's next on the test script?",
+    "status": 200,
+    "promptBytes": 155,
+    "responseBytes": 8056
+  },
+  {
+    "turn": 2,
+    "question": "What name did I ask you to call me, and how many turns are we testing?",
+    "answer": "You asked me to call you **Riley**, and we're testing a **seven-turn** conversation. Turn two, checked!",
+    "status": 200,
+    "promptBytes": 339,
+    "responseBytes": 8393
+  },
+  {
+    "turn": 3,
+    "question": "Our bug was that a 1.3 MB resumed session failed, while a 240 KB bounded one worked. What is the likely lesson?",
+    "answer": "The likely lesson is that your system is hitting a **payload size or buffer limit** during the session resumption process. \n\nHere are the prime suspects:\n* **Storage/Buffer Constraints:** The component handling the resumed session (like a cache, database, or network buffer) can comfortably store or parse a 240 KB chunk but chokes on a 1.3 MB payload.\n* **Timeout Limits:** Serializing/deserializing a 1.3 MB state might be taking too long, causing the connection to time out before the resumption completes.\n* **Token/Context Window Blowing Out:** If this is an LLM context resumption, the 1.3 MB file might simply exceed the maximum token or history limit allowed for a single resumption injection. \n\n**The Takeaway:** You need to either implement chunking/pagination for larger sessions, optimize how the state is compressed, or raise the maximum payload/timeout thresholds on your resumption endpoint. \n\nTurn three is in the books—what's the next step in the triage?",
+    "status": 200,
+    "promptBytes": 572,
+    "responseBytes": 31683
+  },
+  {
+    "turn": 4,
+    "question": "Give one reason complete user turns are safer than cutting the transcript at an arbitrary byte offset.",
+    "answer": "Cutting a transcript at an arbitrary byte offset can split multi-byte UTF-8 characters or disrupt structured formats (like JSON or markup), leading to **malformed payload syntax or corrupted text**. Keeping complete user turns guarantees structural integrity and clean semantic boundaries. \n\nTurn four complete—what's turn five?",
+    "status": 200,
+    "promptBytes": 1666,
+    "responseBytes": 11551
+  },
+  {
+    "turn": 5,
+    "question": "If a tool result is retained, what related item must also be retained?",
+    "answer": "If a tool result is retained, the **corresponding tool call** (the request that generated that result) must also be retained. \n\nWithout the matching tool call, the context breaks because the model won't know what action, arguments, or function triggered that specific output.\n\nTurn five is locked in—what do you have for turn six?",
+    "status": 200,
+    "promptBytes": 2085,
+    "responseBytes": 11586
+  },
+  {
+    "turn": 6,
+    "question": "Summarize the validation so far in exactly two short bullet points.",
+    "answer": "* **Session State:** Large session resumptions fail due to payload size limits, making bounded contexts and full-turn retention essential.\n* **Context Integrity:** Retaining complete user turns and matching tool calls with their results prevents syntax corruption and broken conversation logic.",
+    "status": 200,
+    "promptBytes": 2503,
+    "responseBytes": 11876
+  },
+  {
+    "turn": 7,
+    "question": "Final continuity check: state my name, the original failing size, and the successful bounded size.",
+    "answer": "Your name is **Riley**, the original failing size was **1.3 MB**, and the successful bounded size was **240 KB**.",
+    "status": 200,
+    "promptBytes": 2914,
+    "responseBytes": 8552
+  }
+]

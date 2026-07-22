@@ -1,0 +1,29 @@
+{
+  "status": 200,
+  "statusText": "OK",
+  "headers": {
+    "accept-ch": "Sec-CH-UA-Arch, Sec-CH-UA-Bitness, Sec-CH-UA-Full-Version, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Model, Sec-CH-UA-WoW64, Sec-CH-UA-Form-Factors, Sec-CH-UA-Platform, Sec-CH-UA-Platform-Version",
+    "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+    "cache-control": "no-cache, no-store, max-age=0, must-revalidate",
+    "content-disposition": "attachment; filename=\"response.bin\"; filename*=UTF-8''response.bin",
+    "content-encoding": "gzip",
+    "content-security-policy": "require-trusted-types-for 'script';report-uri /_/BardChatUi/cspreport",
+    "content-type": "application/json; charset=utf-8",
+    "cross-origin-opener-policy": "same-origin-allow-popups",
+    "cross-origin-resource-policy": "same-site",
+    "date": "Wed, 22 Jul 2026 02:54:25 GMT",
+    "expires": "Mon, 01 Jan 1990 00:00:00 GMT",
+    "p3p": "CP=\"This is not a P3P policy! See g.co/p3phelp for more info.\"",
+    "permissions-policy": "ch-ua-arch=*, ch-ua-bitness=*, ch-ua-full-version=*, ch-ua-full-version-list=*, ch-ua-model=*, ch-ua-wow64=*, ch-ua-form-factors=*, ch-ua-platform=*, ch-ua-platform-version=*",
+    "pragma": "no-cache",
+    "server": "ESF",
+    "server-timing": "l2gfet4t7; dur=2216, gfet4t7; dur=2229",
+    "transfer-encoding": "chunked",
+    "vary": "Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "SAMEORIGIN",
+    "x-xss-protection": "0"
+  },
+  "promptBytes": 240797,
+  "responseBytes": 8380
+}
