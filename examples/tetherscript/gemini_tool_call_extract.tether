@@ -24,3 +24,16 @@ fn extract(text) {
     m["cleaned_text"] = cleaned
     return Ok(json_encode(m))
 }
+
+fn extract_file(path) {
+    return extract(fs_read(str(path))?)
+}
+
+fn main() {
+    let args = env_args()
+    if args.len() < 1 {
+        println("usage: gemini_tool_call_extract.tether <text-file>")
+        return
+    }
+    println(extract_file(args[0])?)
+}

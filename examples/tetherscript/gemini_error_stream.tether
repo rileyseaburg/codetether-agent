@@ -1,0 +1,28 @@
+fn analyze(text) {
+    let frames = []
+    let lines = str(text).split("\n")
+    for line in lines {
+        if line.contains("[[\"e\",") {
+            frames.push(line.trim())
+        }
+    }
+    let out = map()
+    out["protocol_frames"] = frames
+    out["has_status_131"] = str(text).contains("null,131")
+    out["has_status_132"] = str(text).contains("null,132")
+    out["source_bytes"] = str(text).len()
+    return Ok(json_encode_pretty(out))
+}
+
+fn analyze_file(path) {
+    return analyze(fs_read(str(path))?)
+}
+
+fn main() {
+    let args = env_args()
+    if args.len() < 1 {
+        println("usage: gemini_error_stream.tether <log-file>")
+        return
+    }
+    println(analyze_file(args[0])?)
+}
