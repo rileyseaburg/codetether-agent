@@ -1,0 +1,15 @@
+fn token() { return env_get("TRACE_UI_TOKEN").unwrap() }
+
+fn authorized(request) {
+    if request.query == "token=" + token() { return true }
+    let cookie = request.headers.cookie
+    return cookie != nil && cookie.contains("trace_token=" + token())
+}
+
+fn with_cookie(response) {
+    response.headers["Set-Cookie"] = "trace_token=" + token() + "; HttpOnly; SameSite=Strict"
+    return response
+}
+
+export authorized
+export with_cookie

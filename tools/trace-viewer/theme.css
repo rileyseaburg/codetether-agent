@@ -1,0 +1,31 @@
+:root {
+  color-scheme: dark;
+  --ink: #eefaf7;
+  --muted: #7f9b98;
+  --faint: #183330;
+  --panel: rgba(9, 25, 24, .82);
+  --line: rgba(137, 255, 225, .14);
+  --cyan: #6fffe0;
+  --lime: #c8ff55;
+  --orange: #ff9d55;
+  --violet: #a994ff;
+  --bg: #04110f;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 84% 5%, rgba(111, 255, 224, .12), transparent 25rem),
+    linear-gradient(rgba(111,255,224,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(111,255,224,.025) 1px, transparent 1px), var(--bg);
+  background-size: auto, 38px 38px, 38px 38px, auto;
+}
+button, input, select { font: inherit; }
+button, .upload { cursor: pointer; }
+::selection { color: #00100c; background: var(--cyan); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #204440; border-radius: 10px; }

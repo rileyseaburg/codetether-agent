@@ -1,0 +1,15 @@
+fn read_all() {
+    let root = env_get("TRACE_CHUNK_ROOT").unwrap()
+    let index = path_join([root, "chunks.txt"]).unwrap()
+    let names = fs_read(index).unwrap().split("\n")
+    let mut body = ""
+    for name in names {
+        if name != "" {
+            let path = path_join([root, name]).unwrap()
+            body = body + fs_read(path).unwrap()
+        }
+    }
+    return body
+}
+
+export read_all

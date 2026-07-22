@@ -1,0 +1,22 @@
+import "./trace_viewer_auth.tether" as auth
+import "./trace_viewer_page.tether" as page
+import "./trace_viewer_trace.tether" as trace
+
+fn response(status, content_type, body) {
+    let headers = map()
+    headers["Content-Type"] = content_type
+    let result = map()
+    result.status = status
+    result.headers = headers
+    result.body = body
+    return result
+}
+
+fn handle(request) {
+    if !auth.authorized(request) { return response(403, "text/plain", "forbidden") }
+    if request.path == "/" { return auth.with_cookie(response(200, "text/html; charset=utf-8", page.render())) }
+    if request.path == "/trace/all.jsonl" { return response(200, "application/x-ndjson", trace.read_all()) }
+    return response(404, "text/plain", "not found")
+}
+
+fn main() { http_serve(parse_int(env_get("TRACE_UI_PORT")?).unwrap(), handle) }

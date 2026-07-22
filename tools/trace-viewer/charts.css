@@ -1,0 +1,20 @@
+#timeline { width: 100%; min-height: 220px; overflow: visible; }
+.grid-line { stroke: rgba(137,255,225,.08); stroke-width: 1; }
+.area { fill: url(#area-fill); }
+.trace-line { fill: none; stroke: var(--cyan); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.trace-dot { fill: var(--lime); filter: drop-shadow(0 0 4px var(--lime)); }
+.axis-label { fill: var(--muted); font: 10px ui-monospace, monospace; }
+.donut-wrap { display: grid; grid-template-columns: 210px 1fr; align-items: center; gap: 14px; }
+#donut { width: 210px; transform: rotate(-90deg); }
+.donut-bg { fill: none; stroke: #102c28; stroke-width: 25; }
+.donut-segment { fill: none; stroke-width: 25; transition: opacity .2s; }
+#legend { margin: 0; padding: 0; list-style: none; font: 11px ui-monospace, monospace; }
+#legend li { display: grid; grid-template-columns: 8px 1fr auto; gap: 8px; align-items: center; margin: 10px 0; color: var(--muted); }
+#legend i { width: 7px; height: 7px; border-radius: 50%; }
+#flow { width: 100%; min-height: 210px; }
+.flow-node { fill: #09231f; stroke: var(--line); }
+.flow-path { stroke: var(--cyan); stroke-width: 2; fill: none; stroke-dasharray: 7 6; animation: dash 12s linear infinite; }
+.flow-title { fill: var(--ink); font: 700 12px ui-monospace, monospace; }
+.flow-meta { fill: var(--muted); font: 10px ui-monospace, monospace; }
+@keyframes dash { to { stroke-dashoffset: -200; } }
+@media (max-width: 700px) { .donut-wrap { grid-template-columns: 1fr; } }

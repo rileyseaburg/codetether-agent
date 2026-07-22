@@ -1,11 +1,20 @@
 //! Conversion of completed Gemini Web text into provider-neutral stream events.
 
-use super::GeminiWebProvider;
-use crate::provider::StreamChunk;
+use super::tool_validation;
+use crate::provider::{Message, StreamChunk, ToolDefinition};
+use anyhow::Result;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub(super) fn chunks(text: &str) -> Vec<StreamChunk> {
-    let (cleaned, calls) = GeminiWebProvider::extract_tool_calls(text);
+pub(super) fn chunks(
+    text: &str,
+    tools: &[ToolDefinition],
+    messages: &[Message],
+) -> Result<Vec<StreamChunk>> {
+    let (cleaned, calls) = tool_validation::extract(text, tools, messages)?;
+    Ok(from_parts(cleaned, calls))
+}
+
+pub(super) fn from_parts(cleaned: String, calls: Vec<(String, String)>) -> Vec<StreamChunk> {
     let mut chunks = Vec::new();
     if !cleaned.is_empty() {
         chunks.push(StreamChunk::Text(cleaned));

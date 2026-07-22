@@ -2,6 +2,10 @@ use super::{GeminiWebProvider, prompt};
 use crate::provider::{ContentPart, Message, Role};
 use serde_json::json;
 
+#[path = "prompt_tests/dedupe.rs"]
+mod dedupe_tests;
+#[path = "prompt_tests/protocol.rs"]
+mod protocol_tests;
 #[path = "prompt_tests/window.rs"]
 mod window_tests;
 
@@ -26,7 +30,7 @@ fn renders_history_as_parseable_tool_protocol() {
         },
     ];
 
-    let rendered = prompt::render(&messages);
+    let rendered = prompt::render(&messages, &[]).unwrap();
     let (_, calls) = GeminiWebProvider::extract_tool_calls(&rendered);
 
     assert!(!rendered.contains("[Called tool:"));

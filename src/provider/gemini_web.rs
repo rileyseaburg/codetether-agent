@@ -17,12 +17,15 @@
 mod prompt;
 #[cfg(test)]
 mod prompt_tests;
+mod response_text;
 mod stream_output;
+mod tool_calls;
+mod tool_validation;
 
 use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
-    Role, StreamChunk, Usage,
+    Role, StreamChunk, ToolDefinition, Usage,
 };
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -313,50 +316,14 @@ impl GeminiWebProvider {
         serde_json::to_string(&json!([null, inner_json])).unwrap_or_default()
     }
 
-    /// Walk streaming lines and return the longest parseable answer text.
+    /// Walk streaming lines and return the latest nonempty answer text.
     ///
     /// Wire format: each line is a JSON array of events:
     ///   `[["wrb.fr", key_or_null, inner_json_str, ...], ...]`
     /// The inner JSON has the response text at `inner[4][0][1][0]`.
-    /// Gemini sends cumulative chunks; we take the longest (= most complete).
+    /// Gemini usually sends cumulative chunks, but may replace a draft.
     fn extract_text(raw: &str) -> String {
-        let mut best = String::new();
-        for line in raw.lines() {
-            let line = line.trim();
-            if line.is_empty() || !line.starts_with('[') {
-                continue;
-            }
-            let Ok(outer) = serde_json::from_str::<Value>(line) else {
-                continue;
-            };
-            let Some(events) = outer.as_array() else {
-                continue;
-            };
-            // Each element of the outer array is one event: ["wrb.fr", null, inner_str, ...]
-            for event in events {
-                let Some(ev) = event.as_array() else { continue };
-                let Some(inner_str) = ev.get(2).and_then(Value::as_str) else {
-                    continue;
-                };
-                if !inner_str.starts_with('[') {
-                    continue;
-                }
-                let Ok(inner) = serde_json::from_str::<Value>(inner_str) else {
-                    continue;
-                };
-                if let Some(text) = inner
-                    .get(4)
-                    .and_then(|v| v.get(0))
-                    .and_then(|v| v.get(1))
-                    .and_then(|v| v.get(0))
-                    .and_then(Value::as_str)
-                    && text.len() > best.len()
-                {
-                    best = text.to_string();
-                }
-            }
-        }
-        best
+        response_text::latest(raw)
     }
 
     /// Extract Gemini protocol-level error code from SSE-like body lines.
@@ -436,61 +403,7 @@ impl GeminiWebProvider {
     /// - cleaned_text: original text with tool-call blocks removed
     /// - calls: parsed `(name, arguments_json_string)` tuples
     fn extract_tool_calls(text: &str) -> (String, Vec<(String, String)>) {
-        fn normalize_tool_markup(input: &str) -> String {
-            input
-                // HTML-escaped tags from some markdown renderers
-                .replace("&lt;", "<")
-                .replace("&gt;", ">")
-                // Backslash-escaped XML markers and markdown escapes
-                .replace("\\<", "<")
-                .replace("\\>", ">")
-                .replace("\\_", "_")
-        }
-
-        static RE_TOOL_CALL_BLOCK: OnceLock<Regex> = OnceLock::new();
-        static RE_TOOL_RESULT_BLOCK: OnceLock<Regex> = OnceLock::new();
-
-        let re = RE_TOOL_CALL_BLOCK.get_or_init(|| {
-            Regex::new(
-                r"(?is)<tool_call\s*>\s*(?:```(?:json)?\s*)?(\{.*?\})(?:\s*```)?\s*</?tool_call\s*>",
-            )
-            .unwrap()
-        });
-        let re_tool_result = RE_TOOL_RESULT_BLOCK
-            .get_or_init(|| Regex::new(r"(?is)<tool_result\s*>.*?</?tool_result\s*>").unwrap());
-
-        let normalized = normalize_tool_markup(text);
-
-        let mut calls: Vec<(String, String)> = Vec::new();
-        for captures in re.captures_iter(&normalized) {
-            let Some(block_json) = captures.get(1).map(|m| m.as_str()) else {
-                continue;
-            };
-            let Ok(value) = serde_json::from_str::<Value>(block_json) else {
-                continue;
-            };
-            let Some(name) = value.get("name").and_then(Value::as_str) else {
-                continue;
-            };
-            let name = name.trim();
-            if name.is_empty() {
-                continue;
-            }
-            let arguments = value.get("arguments").cloned().unwrap_or_else(|| json!({}));
-            let args_json = serde_json::to_string(&arguments).unwrap_or_else(|_| "{}".to_string());
-            calls.push((name.to_string(), args_json));
-        }
-
-        if calls.is_empty() {
-            return (text.to_string(), Vec::new());
-        }
-
-        let without_calls = re.replace_all(&normalized, "").to_string();
-        let cleaned = re_tool_result
-            .replace_all(&without_calls, "")
-            .trim()
-            .to_string();
-        (cleaned, calls)
+        tool_calls::extract(text)
     }
 
     /// Look up the `mode_id` string for a given model identifier.
@@ -633,6 +546,28 @@ impl GeminiWebProvider {
 
         anyhow::bail!("Gemini request retry exhausted without a successful response")
     }
+
+    async fn ask_validated(
+        &self,
+        prompt: &str,
+        model: &str,
+        tools: &[ToolDefinition],
+        messages: &[Message],
+    ) -> Result<(String, Vec<(String, String)>)> {
+        let text = self.ask(prompt, model).await?;
+        let first_error = match tool_validation::extract(&text, tools, messages) {
+            Ok(parts) => return Ok(parts),
+            Err(error) => error,
+        };
+        tracing::warn!(
+            error = %format!("{first_error:#}"),
+            "Gemini Web emitted invalid tool protocol; retrying once"
+        );
+        let corrected = prompt::retry(prompt, &format!("{first_error:#}"));
+        let text = self.ask(&corrected, model).await?;
+        tool_validation::extract(&text, tools, messages)
+            .context("Gemini Web tool protocol retry failed")
+    }
 }
 
 #[async_trait]
@@ -660,14 +595,13 @@ impl Provider for GeminiWebProvider {
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
-        let prompt = prompt::render(&request.messages);
+        let prompt = prompt::render(&request.messages, &request.tools)
+            .context("Failed to render Gemini Web prompt")?;
 
-        let text = self
-            .ask(&prompt, &request.model)
+        let (cleaned_text, parsed_tool_calls) = self
+            .ask_validated(&prompt, &request.model, &request.tools, &request.messages)
             .await
             .context("Gemini Web completion failed")?;
-
-        let (cleaned_text, parsed_tool_calls) = Self::extract_tool_calls(&text);
         let mut content: Vec<ContentPart> = Vec::new();
         if !cleaned_text.is_empty() {
             content.push(ContentPart::Text { text: cleaned_text });
@@ -684,10 +618,6 @@ impl Provider for GeminiWebProvider {
                 arguments: arguments.clone(),
                 thought_signature: None,
             });
-        }
-
-        if content.is_empty() {
-            content.push(ContentPart::Text { text });
         }
 
         let finish_reason = if parsed_tool_calls.is_empty() {
@@ -721,12 +651,14 @@ impl Provider for GeminiWebProvider {
         &self,
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
-        let prompt = prompt::render(&request.messages);
-        let text = self
-            .ask(&prompt, &request.model)
+        let prompt = prompt::render(&request.messages, &request.tools)
+            .context("Failed to render Gemini Web streaming prompt")?;
+        let (cleaned, calls) = self
+            .ask_validated(&prompt, &request.model, &request.tools, &request.messages)
             .await
             .context("Gemini Web streaming completion failed")?;
-        Ok(futures::stream::iter(stream_output::chunks(&text)).boxed())
+        let chunks = stream_output::from_parts(cleaned, calls);
+        Ok(futures::stream::iter(chunks).boxed())
     }
 }
 

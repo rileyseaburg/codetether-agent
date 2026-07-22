@@ -1,0 +1,26 @@
+fn read_asset(root, name) {
+    let path = path_join([root, "tools", "trace-viewer", name]).unwrap()
+    return fs_read(path).unwrap()
+}
+
+fn fallback(template, context) {
+    let mut html = template.replace("\{\{ title \}\}", context.title)
+    html = html.replace("\{\{ trace_name \}\}", context.trace_name)
+    html = html.replace("\{\{ styles | safe \}\}", context.styles)
+    return html.replace("\{\{ script | safe \}\}", context.script)
+}
+
+fn render() {
+    let root = env_get("TRACE_UI_ROOT").unwrap()
+    let template = read_asset(root, "index.html.tera")
+    let context = map()
+    context.title = "Trace Lens · OpenAI Codex"
+    context.trace_name = path_basename(env_get("TRACE_JSONL").unwrap()).unwrap()
+    context.styles = read_asset(root, "theme.css") + read_asset(root, "layout.css") + read_asset(root, "components.css") + read_asset(root, "charts.css")
+    context.script = read_asset(root, "dist/app.bundle.js")
+    let rendered = tera_render(template, context)
+    if rendered.is_ok() { return rendered.unwrap() }
+    return fallback(template, context)
+}
+
+export render

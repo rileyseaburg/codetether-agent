@@ -1,0 +1,71 @@
+// Protocol probe for the private ChatGPT Codex backend.
+// See docs/tetherscript/openai_codex_5_6_sol.md before supplying credentials.
+
+fn request_body(prompt) {
+    let content = map()
+    content["type"] = "input_text"
+    content["text"] = str(prompt)
+
+    let message = map()
+    message["type"] = "message"
+    message["role"] = "user"
+    message["content"] = [content]
+
+    let reasoning = map()
+    reasoning["effort"] = "medium"
+
+    let body = map()
+    body["model"] = "gpt-5.6-sol"
+    body["input"] = [message]
+    body["reasoning"] = reasoning
+    body["include"] = ["reasoning.encrypted_content"]
+    body["stream"] = true
+    body["store"] = false
+    return json_encode(body)
+}
+
+fn call( prompt) {
+    // if str(access_token) == "" { return Err("access token is required") }
+    // if str(account_id) == "" { return Err("ChatGPT account ID is required") }
+
+    // let headers = map()
+    // headers["Authorization"] = "Bearer " + str(access_token)
+    // headers["chatgpt-account-id"] = str(account_id)
+    // headers["Content-Type"] = "application/json"
+    // headers["version"] = "0.144.0"
+
+    // let url = "https://chatgpt.com/backend-api/codex/responses"
+    // let result = http_request("POST", url, request_body(prompt), headers)
+    // if result.is_err() { return Err(result.err()) }
+
+    // let response = result.unwrap()
+    // if response["ok"] == false {
+    //     return Err("HTTP " + str(response["status"]) + ": " + response["body"])
+    // }
+    // return Ok(response["body"])
+    let scope = map()
+    scope.path_prefix = "/backend-api/codex/responses"
+    let codex = provider.narrow(scope)
+
+    let messages = []
+    let user = map()
+    user.role = "user"
+    user.content = prompt()
+    messages.push(user)
+
+    // let opts = map()
+    // opts.model = "gpt-5.4"
+    // opts.max_completion_tokens = 64
+
+    let result = codex.request_body(prompt)
+    println(json_encode(result.unwrap()))
+}
+
+fn main() {
+    let args = env_args()
+    if args.len() != 1 { return Err("usage: script -- <prompt>") }
+
+    let response = call(args[0])?
+    println(response)
+    return Ok(nil)
+}

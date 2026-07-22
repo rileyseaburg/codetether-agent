@@ -1,0 +1,5 @@
+fn render_title(title) {
+    let context = map()
+    context.title = title
+    return tera_render("<title>\{\{ title \}\}</title>", context)?
+}
