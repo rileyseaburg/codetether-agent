@@ -6,5 +6,8 @@ fn reads_latest_semantic_excerpts() {
         {"excerpt": "old"}, {"excerpt": "user request"}, {"excerpt": "assistant reply"}
     ]});
 
-    assert_eq!(super::excerpts(&indexed), "user request\nassistant reply");
+    assert_eq!(
+        super::projection::excerpts(&indexed),
+        "user request\nassistant reply"
+    );
 }

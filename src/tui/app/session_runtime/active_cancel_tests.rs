@@ -24,3 +24,15 @@ fn steering_is_scoped_to_prepared_turn() {
     active.clear();
     assert!(!active.steer(input()));
 }
+
+#[test]
+fn dropped_completion_guard_releases_the_active_turn() {
+    let active = ActiveCancel::default();
+    assert!(active.prepare("first"));
+    let completion = super::super::active_completion::Guard::new(active.clone());
+
+    drop(completion);
+
+    assert!(active.prepare("second"));
+    active.clear();
+}

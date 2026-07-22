@@ -34,3 +34,14 @@ fn unknown_provider_still_gets_cross_provider_tail() {
     let candidates = known_good_router_candidates("bedrock-unknown", "some-model");
     assert!(candidates.iter().any(|c| c.starts_with("zai/")));
 }
+
+#[test]
+fn codex_ladder_contains_only_supported_models() {
+    let candidates = known_good_router_candidates("openai-codex", "gpt-5.6-sol-fast:high");
+    assert!(candidates.contains(&"openai-codex/gpt-5.5".to_string()));
+    assert!(
+        !candidates
+            .iter()
+            .any(|candidate| candidate == "openai-codex/gpt-5-mini")
+    );
+}

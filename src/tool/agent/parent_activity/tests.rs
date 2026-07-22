@@ -20,8 +20,8 @@ async fn steered_input_wakes_an_active_wait() {
         tokio::time::Instant::now() + Duration::from_secs(1),
     ));
     tokio::task::yield_now().await;
-    steered(owner);
-    assert_eq!(waiter.await.unwrap(), Some(Activity::Steered));
+    steered(owner, 7);
+    assert_eq!(waiter.await.unwrap(), Some(Activity::Steered(7)));
     registry::clear(owner);
 }
 

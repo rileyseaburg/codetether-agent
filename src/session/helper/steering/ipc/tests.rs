@@ -1,5 +1,5 @@
 use super::{client, endpoint::Endpoint};
-use crate::session::helper::steering::{SteeringInput, queue};
+use crate::session::helper::steering::{SteeringInput, clear, queue};
 
 #[tokio::test]
 async fn routes_text_to_the_active_session_owner() {
@@ -14,7 +14,7 @@ async fn routes_text_to_the_active_session_owner() {
     let (_, text) = inputs.into_iter().next().unwrap().into_message();
 
     assert_eq!(text, "change direction");
-    queue::clear(session_id);
+    clear(session_id);
 }
 
 #[test]
