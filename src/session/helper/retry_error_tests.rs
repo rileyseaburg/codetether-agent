@@ -30,6 +30,14 @@ fn generic_provider_availability_is_retryable() {
 }
 
 #[test]
+fn codex_server_overload_is_retryable() {
+    let err = anyhow::anyhow!(
+        "stream faulted (transient=false): Our servers are currently overloaded. Please try again later."
+    );
+    assert!(is_retryable_upstream_error(&err));
+}
+
+#[test]
 fn exhausted_stream_budget_is_not_retried_by_prompt_loop() {
     let err = anyhow::anyhow!(
         "stream retry limit exhausted after 5 retries: websocket connection reset"

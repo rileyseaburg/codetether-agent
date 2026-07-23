@@ -46,7 +46,7 @@ fn websocket_handshake_status_is_tagged_for_stream_recovery() {
 }
 
 #[test]
-fn overload_code_stops_after_request_budget() {
-    assert!(!exhausted_request_retryable("503 server_is_overloaded"));
+fn overload_code_remains_retryable_after_request_budget() {
+    assert!(exhausted_request_retryable("503 server_is_overloaded"));
     assert!(exhausted_request_retryable("503 internal server error"));
 }

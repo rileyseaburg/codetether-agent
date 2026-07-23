@@ -31,6 +31,8 @@ fn selected_mdns_agent_replaces_the_main_chat_transcript() {
         .map(ToString::to_string)
         .collect::<Vec<_>>()
         .join("\n");
+    assert!(text.contains("A2A REQUEST"));
+    assert!(text.contains("A2A RESPONSE"));
     assert!(text.contains("inspect backend"));
     assert!(text.contains("backend is healthy"));
     assert!(!text.contains("main-only message"));

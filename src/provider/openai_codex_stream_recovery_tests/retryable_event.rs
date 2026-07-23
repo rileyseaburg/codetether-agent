@@ -32,7 +32,7 @@ async fn request_retry_exhaustion_returns_to_stream_recovery() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn overload_code_stops_after_request_retry_exhaustion() {
+async fn overload_code_remains_retryable_after_request_retry_exhaustion() {
     let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let observed = Arc::clone(&calls);
     let recovered = stream_recovery::with_http_retry(move || {
@@ -45,5 +45,5 @@ async fn overload_code_stops_after_request_retry_exhaustion() {
     });
     let chunks = recovered.collect::<Vec<_>>().await;
     assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 5);
-    assert!(matches!(&chunks[0], StreamChunk::Error(message) if message.starts_with("codex-permanent:")));
+    assert!(matches!(&chunks[0], StreamChunk::Error(message) if message.starts_with("codex-retryable:")));
 }
