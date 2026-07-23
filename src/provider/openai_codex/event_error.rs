@@ -12,7 +12,6 @@ const PERMANENT_CODES: &[&str] = &[
     "cyber_policy",
     "invalid_prompt",
     "bio_policy",
-    "server_is_overloaded",
     "slow_down",
 ];
 const CONNECTION_LIMIT: &str = "websocket_connection_limit_reached";

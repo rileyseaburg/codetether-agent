@@ -1,5 +1,6 @@
 //! First-party agent-tool access to automatically discovered LAN peers.
 
+mod list;
 pub(in crate::tool::agent) mod observation;
 mod payload;
 mod poll;
@@ -13,7 +14,7 @@ mod transport;
 
 use crate::tool::ToolResult;
 use anyhow::Result;
-use serde_json::{Value, json};
+use serde_json::Value;
 
 pub(super) async fn message_or_missing(
     name: &str,
@@ -32,18 +33,5 @@ pub(super) async fn message_or_missing(
 }
 
 pub(in crate::tool::agent) fn list() -> Vec<Value> {
-    crate::a2a::peer_route::list()
-        .into_iter()
-        .filter(|(name, _)| !super::super::store::contains_name(name, None))
-        .map(|(name, route)| {
-            json!({
-                "name": name,
-                "kind": "lan-peer",
-                "description": route.description,
-                "skills": route.skills,
-                "agent_identity_id": route.agent_identity_id,
-                "transport": "a2a-mdns"
-            })
-        })
-        .collect()
+    list::all()
 }

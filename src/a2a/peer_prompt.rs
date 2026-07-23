@@ -12,7 +12,10 @@ pub(crate) fn append(mut prompt: String) -> String {
          the relevant peer. Do not run dns-sd, browse generic mDNS service types, scan \
          ports, or curl endpoints to locate a CodeTether collaborator.\n\n",
     );
+    let local_name = super::local_identity::current_name();
+    append_identity(&mut prompt, local_name.as_deref());
     let mut peers = super::peer_route::list();
+    peers.retain(|(name, _)| local_name.as_deref() != Some(name));
     peers.sort_by(|left, right| left.0.cmp(&right.0));
     if peers.is_empty() {
         prompt.push_str("- No live peers yet; `agent list` can observe arrivals.\n");
@@ -31,6 +34,14 @@ pub(crate) fn append(mut prompt: String) -> String {
         let _ = writeln!(prompt, "- {omitted} more live peers; use `agent list`.");
     }
     prompt
+}
+
+fn append_identity(prompt: &mut String, name: Option<&str>) {
+    if let Some(name) = name {
+        let _ = writeln!(prompt, "- Your LAN peer name is @{name} (this process).\n");
+    } else {
+        prompt.push_str("- This process has no active LAN peer endpoint.\n\n");
+    }
 }
 
 #[cfg(test)]

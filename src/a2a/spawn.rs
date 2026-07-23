@@ -44,10 +44,10 @@
 //! HTTP/JSON-RPC API, curl recipes, cross-host setup, troubleshooting,
 //! source map).
 
-use crate::a2a::intro::send_intro;
 use crate::a2a::lan;
 use crate::a2a::mdns::{self, DiscoveredPeer};
 use crate::a2a::server::A2AServer;
+use crate::a2a::{intro::send_intro, local_identity};
 use crate::bus::AgentBus;
 use crate::cli::SpawnArgs;
 use anyhow::{Context, Result};
@@ -62,8 +62,11 @@ use tokio::sync::mpsc;
 mod agent_card;
 #[path = "spawn/card_description.rs"]
 mod card_description;
+#[path = "spawn/handle.rs"]
+mod handle;
 #[path = "spawn/lan_address.rs"]
 mod lan_address;
+pub use handle::A2APeerHandle;
 #[path = "spawn/mdns_addresses.rs"]
 mod mdns_addresses;
 #[path = "spawn/mdns_probe.rs"]
@@ -175,48 +178,6 @@ fn sanitize_name(input: &str) -> String {
             }
         })
         .collect()
-}
-
-/// Handle to A2A peer background tasks (server + discovery loop + mDNS).
-///
-/// Returned by [`start_a2a_in_background`]. The handle MUST be kept alive
-/// (bound to a non-`_` variable, or stashed in app state) for the lifetime
-/// of the peer — dropping it aborts every background task and unregisters
-/// the mDNS service via the `Drop` impl below. `JoinHandle::drop()` on its
-/// own only *detaches* tasks; the explicit `Drop` here is what actually
-/// stops them.
-pub struct A2APeerHandle {
-    pub agent_name: String,
-    pub bind_addr: String,
-    pub public_url: String,
-    server_task: tokio::task::JoinHandle<()>,
-    discovery_task: tokio::task::JoinHandle<()>,
-    mdns_intake_task: Option<tokio::task::JoinHandle<()>>,
-    lan_tasks: Vec<tokio::task::JoinHandle<()>>,
-    /// Held to keep the daemon alive; on drop unregisters the service.
-    _mdns_handle: Option<mdns::MdnsHandle>,
-}
-
-impl A2APeerHandle {
-    /// Abort all background tasks and shut down mDNS immediately.
-    pub fn abort(self) {
-        // Drop runs on `self` falling out of scope — it does the work.
-        drop(self);
-    }
-}
-
-impl Drop for A2APeerHandle {
-    fn drop(&mut self) {
-        self.server_task.abort();
-        self.discovery_task.abort();
-        if let Some(t) = self.mdns_intake_task.as_ref() {
-            t.abort();
-        }
-        for task in &self.lan_tasks {
-            task.abort();
-        }
-        // _mdns_handle's own Drop unregisters the mDNS service.
-    }
 }
 
 struct A2APreparation {
@@ -501,6 +462,7 @@ pub async fn start_a2a_in_background(
         "A2A peer listening (background mode)"
     );
     let agent_name = prep.agent_name.clone();
+    local_identity::activate(&agent_name);
     let bind_addr = prep.bind_addr.clone();
     let public_url = prep.public_url.clone();
     let server_task = tokio::spawn(async move {

@@ -19,6 +19,10 @@ pub(super) fn lines(agent: &SpawnedAgent) -> Vec<Line<'static>> {
         model,
         &agent.instructions,
     );
-    super::subagent_message_lines::append(&mut rows, &agent.session.messages);
+    super::subagent_message_lines::append(
+        &mut rows,
+        &agent.session.messages,
+        super::subagent_message_lines::Source::ManagedAgent,
+    );
     rows
 }

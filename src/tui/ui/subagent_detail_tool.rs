@@ -30,7 +30,8 @@ pub(super) fn lines(state: &AppState, name: &str) -> Vec<Line<'static>> {
         ));
         rows.push(Line::from(""));
     }
-    super::subagent_message_lines::append(&mut rows, &messages);
+    let source = super::subagent_message_lines::Source::for_remote(agent.is_remote);
+    super::subagent_message_lines::append(&mut rows, &messages, source);
     if let Some(trace) =
         crate::tool::agent::bridge::agent_tool_live_trace_for_parent(name, parent_id)
     {

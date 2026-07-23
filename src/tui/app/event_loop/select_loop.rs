@@ -40,7 +40,7 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
         _ = args.timers.audit.tick() => super::tick::refresh_audit(app).await,
         _ = args.timers.tick.tick() => {
             super::tick::run(app).await;
-            super::tick::check(app, args.runtime, args.timers.watchdog_interval).await;
+            super::tick::check_and_retry(app, slot, args.registry, args.runtime, args.timers.watchdog_interval).await;
         }
     }
     // Drain background updates before marking dirty (they may produce new state).

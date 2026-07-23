@@ -306,7 +306,7 @@ impl SwarmViewState {
         if self.subtasks.is_empty() {
             return;
         }
-        self.selected_index = self.selected_index.saturating_sub(1);
+        self.selected_index = (self.selected_index + self.subtasks.len() - 1) % self.subtasks.len();
         self.list_state.select(Some(self.selected_index));
     }
 
@@ -315,7 +315,7 @@ impl SwarmViewState {
         if self.subtasks.is_empty() {
             return;
         }
-        self.selected_index = (self.selected_index + 1).min(self.subtasks.len() - 1);
+        self.selected_index = (self.selected_index + 1) % self.subtasks.len();
         self.list_state.select(Some(self.selected_index));
     }
 

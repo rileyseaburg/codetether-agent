@@ -39,6 +39,8 @@ pub(super) const TRANSIENT: &[&str] = &[
     "temporarily",
     "no choices",
     "empty response",
+    "servers are currently overloaded",
+    "server_is_overloaded",
     "incomplete response",
     "stream ended without producing any content",
     "stream ended without assistant content",

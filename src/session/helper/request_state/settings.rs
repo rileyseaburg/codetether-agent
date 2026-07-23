@@ -17,10 +17,7 @@ pub(crate) fn temperature_for(model: &str) -> Option<f32> {
 }
 
 pub(super) fn model_supports_tools(provider: &str) -> bool {
-    !matches!(
-        provider,
-        "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
-    )
+    !matches!(provider, "local-cuda" | "local_cuda" | "localcuda")
 }
 
 pub(super) fn system_prompt_for(
@@ -43,3 +40,7 @@ pub(super) fn system_prompt_for(
     };
     crate::a2a::peer_prompt::append(prompt)
 }
+
+#[cfg(test)]
+#[path = "settings_tests.rs"]
+mod tests;

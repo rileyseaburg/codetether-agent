@@ -1,6 +1,6 @@
 //! HTTP status and exhausted-request stream retry classification.
 
-const PERMANENT_OVERLOAD_CODES: &[&str] = &["server_is_overloaded", "slow_down"];
+const PERMANENT_OVERLOAD_CODES: &[&str] = &["slow_down"];
 
 pub(super) fn terminal_stream_retryable(error: &anyhow::Error) -> bool {
     let message = format!("{error:#}").to_ascii_lowercase();

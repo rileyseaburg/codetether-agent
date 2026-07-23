@@ -12,6 +12,9 @@
 //! ).await;
 //! ```
 
+#[path = "smart_retry/cooldown.rs"]
+mod cooldown;
+
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -42,6 +45,13 @@ pub(super) async fn execute_smart_switch_retry(
     let Some(pending) = app.state.pending_smart_switch_retry.take() else {
         return;
     };
+    if !cooldown::ready(app, &pending) {
+        app.state.pending_smart_switch_retry = Some(pending);
+        return;
+    }
+    if cooldown::restore(app, slot, &pending).await {
+        return;
+    }
     let Some(session) = slot.borrow() else { return };
     let current_model = session.metadata.model.as_deref();
     if !should_execute_smart_switch(current_model, Some(&pending)) {
@@ -61,5 +71,8 @@ pub(super) async fn execute_smart_switch_retry(
 
     if let Some(registry) = registry.as_ref() {
         super::smart_retry_submit::submit(slot, &pending.prompt, runtime, registry).await;
+    }
+    if let Some(restore) = cooldown::after_fallback(&pending) {
+        app.state.pending_smart_switch_retry = Some(restore);
     }
 }

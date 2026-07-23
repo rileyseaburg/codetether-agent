@@ -3,10 +3,12 @@ use crate::tui::worker_bridge::TuiWorkerBridge;
 
 #[path = "dirty.rs"]
 mod dirty;
+#[path = "tick/retry.rs"]
+mod retry;
 #[path = "tick_watchdog.rs"]
 mod tick_watchdog;
 
-pub(super) use tick_watchdog::check;
+pub(super) use {retry::check_and_retry, tick_watchdog::check};
 
 pub async fn refresh_audit(app: &mut App) {
     if app.state.view_mode == crate::tui::models::ViewMode::Audit {

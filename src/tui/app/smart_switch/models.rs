@@ -16,3 +16,42 @@ pub fn smart_switch_preferred_models(provider_name: &str) -> &'static [&'static 
         _ => &[],
     }
 }
+
+/// Select a lower-priority Codex family model for a temporary overload.
+pub fn codex_overload_fallback(current: Option<&str>, available: &[String]) -> Option<String> {
+    let current = current.unwrap_or_default();
+    let suffix = current.rsplit('/').next().unwrap_or_default();
+    let fast = suffix.contains("-fast");
+    let effort = suffix
+        .split_once(':')
+        .map(|(_, effort)| format!(":{effort}"));
+    ["gpt-5.6-terra", "gpt-5.6-luna"]
+        .iter()
+        .map(|base| {
+            format!(
+                "openai-codex/{base}{}{}",
+                if fast { "-fast" } else { "" },
+                effort.clone().unwrap_or_default()
+            )
+        })
+        .find(|candidate| {
+            !candidate.eq_ignore_ascii_case(current)
+                && available
+                    .iter()
+                    .any(|model| model.eq_ignore_ascii_case(candidate))
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::codex_overload_fallback;
+
+    #[test]
+    fn overload_fallback_preserves_fast_and_effort_variant() {
+        let models = vec!["openai-codex/gpt-5.6-terra-fast:high".into()];
+        assert_eq!(
+            codex_overload_fallback(Some("openai-codex/gpt-5.6-sol-fast:high"), &models),
+            Some("openai-codex/gpt-5.6-terra-fast:high".into())
+        );
+    }
+}

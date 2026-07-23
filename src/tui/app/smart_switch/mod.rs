@@ -22,10 +22,11 @@ mod tests;
 pub use account_state::is_provider_account_exhausted;
 pub use candidates::smart_switch_candidates;
 pub use error_detection::{
-    is_retryable_provider_error, normalize_provider_alias, smart_switch_model_key,
+    codex_overload, codex_overload_cooldown, is_retryable_provider_error, normalize_provider_alias,
+    smart_switch_model_key,
 };
 pub use helpers::{should_execute_smart_switch, smart_switch_max_retries};
-pub use models::smart_switch_preferred_models;
+pub use models::{codex_overload_fallback, smart_switch_preferred_models};
 pub use retry::{PendingSmartSwitchRetry, maybe_schedule_smart_switch_retry};
 
 /// Sentinel value meaning "follow the latest message position".

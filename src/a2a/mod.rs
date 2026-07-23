@@ -18,6 +18,7 @@ pub mod git_credentials;
 pub mod grpc;
 pub mod intro;
 pub mod lan;
+pub(crate) mod local_identity;
 pub mod mdns;
 pub mod mdns_addr;
 pub mod mdns_liveness;
