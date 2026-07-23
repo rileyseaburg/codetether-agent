@@ -1,0 +1,31 @@
+.option { position: relative; display: grid; grid-template-columns: 22px 1fr auto; gap: 15px; min-height: 82px; padding: 19px; align-items: start; background: var(--white); border: 1px solid var(--line); transition: border .2s, box-shadow .2s; cursor: pointer; }
+.option + .option { margin-top: 10px; }
+.option:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.option input { position: absolute; opacity: 0; }
+.checkmark { display: grid; width: 21px; height: 21px; place-items: center; color: transparent; border: 1px solid #aaa9a3; border-radius: 3px; font-size: 12px; }
+input:focus-visible + .checkmark { outline: 3px solid #e8a68d; outline-offset: 2px; }
+.option input:checked + .checkmark { color: white; background: var(--accent); border-color: var(--accent); }
+.option-copy { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
+.option-title { color: var(--ink); font-weight: 700; font-size: 14px; }
+.option-title b { margin-left: 8px; padding: 4px 7px; color: var(--accent); background: #f9e7df; font: 700 8px "Manrope"; letter-spacing: .7px; }
+.option > strong { padding-top: 2px; font-size: 12px; white-space: nowrap; }
+.measurements { padding: 21px 21px 23px; background: #faf5ef; border: solid var(--accent); border-width: 0 1px 1px; }
+.measurements[hidden] { display: none; }
+.measure-heading { display: flex; justify-content: space-between; margin-bottom: 16px; }
+.measure-heading strong { font-size: 12px; }
+.measure-heading span { color: var(--muted); font-size: 10px; }
+.measure-grid { display: grid; grid-template-columns: 1fr 18px 1fr 1.15fr; gap: 10px; align-items: end; }
+.measure-grid label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; }
+.measure-grid label > span { display: flex; background: white; border: 1px solid var(--line); }
+.measure-grid input { min-width: 0; width: 100%; padding: 9px 8px; border: 0; outline: 0; font-weight: 700; }
+.measure-grid label b { padding: 9px 8px; color: var(--muted); font-size: 10px; }
+.measure-grid em { padding-bottom: 10px; color: var(--muted); text-align: center; font-style: normal; }
+.area { display: grid; height: 54px; padding: 8px 12px; align-content: center; background: var(--ink); }
+.area small { color: #bdbeb8; font-size: 8px; letter-spacing: .8px; }
+.area output { color: white; font: 700 17px "Manrope"; }
+.sidewalk-option:has(input:checked) { border-bottom-color: transparent; }
+.sidewalk-option:not(:has(input:checked)) + .measurements { border: 0; padding: 0; }
+.measure-grid input:focus { box-shadow: inset 0 0 0 2px var(--accent); }
+.option:hover { border-color: #aaa9a3; }
+.option:has(input:checked):hover { border-color: var(--accent); }
+.option span { min-width: 0; }

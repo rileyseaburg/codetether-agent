@@ -1,0 +1,39 @@
+:root {
+  --ink: #20231f;
+  --muted: #696b65;
+  --paper: #f6f5f0;
+  --white: #fff;
+  --line: #deddd6;
+  --accent: #d9653b;
+  --green: #50664e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: "DM Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input { font: inherit; }
+button { cursor: pointer; }
+
+.site-header {
+  height: 76px;
+  padding: 0 max(5vw, 28px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--white);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand { color: var(--ink); font: 800 15px "Manrope"; letter-spacing: 1.6px; text-decoration: none; }
+.brand span { display: inline-grid; width: 29px; height: 29px; margin-right: 10px; place-items: center; color: white; background: var(--accent); border-radius: 50% 50% 45% 45%; }
+.secure { color: var(--muted); font-size: 13px; }
+.secure span { margin-right: 7px; color: var(--green); font-size: 8px; }
+
+h1, h2, legend { font-family: "Manrope", sans-serif; }

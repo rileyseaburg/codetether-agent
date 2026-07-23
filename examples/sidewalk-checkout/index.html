@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A responsive concrete project checkout with measured add-ons.">
+  <title>Groundwork | Customize your project</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/checkout.css">
+  <link rel="stylesheet" href="styles/options.css">
+  <link rel="stylesheet" href="styles/summary.css">
+  <link rel="stylesheet" href="styles/responsive.css">
+</head>
+<body>
+  <header class="site-header"><a class="brand" href="#" aria-label="Groundwork home"><span>G</span>GROUNDWORK</a><div class="secure"><span>●</span> Secure checkout</div></header>
+  <main class="checkout-shell">
+    <section class="checkout-content">
+      <div class="steps"><span class="done">✓</span><i></i><span class="active">2</span><i></i><span>3</span></div>
+      <p class="eyebrow">STEP 2 OF 3</p><h1>Make the project yours.</h1>
+      <p class="intro">Choose the finishing touches. Your estimate updates as you go.</p>
+      <div class="base-project"><div><small>YOUR PROJECT</small><strong>Driveway replacement</strong><span>640 sq ft · Standard concrete</span></div><button type="button">Edit</button></div>
+      <form id="project-form">
+        <fieldset><legend>Recommended add-ons</legend><p class="legend-help">Select any extras you'd like included in your estimate.</p>
+          <label class="option sidewalk-option"><input id="sidewalk" type="checkbox" checked><span class="checkmark">✓</span><span class="option-copy"><span class="option-title">Add a sidewalk <b>POPULAR</b></span><span>Create a clean, connected path to your entry.</span></span><strong>+$9.50 / sq ft</strong></label>
+          <div class="measurements" id="sidewalk-measurements"><div class="measure-heading"><strong>Sidewalk measurements</strong><span>We’ll verify these on site.</span></div><div class="measure-grid"><label>Length <span><input id="length" type="number" min="1" max="500" step="1" value="30" inputmode="decimal"><b>ft</b></span></label><em>×</em><label>Width <span><input id="width" type="number" min="1" max="50" step="1" value="4" inputmode="decimal"><b>ft</b></span></label><div class="area"><small>TOTAL AREA</small><output id="area">120 sq ft</output></div></div></div>
+          <label class="option"><input id="sealant" type="checkbox"><span class="checkmark">✓</span><span class="option-copy"><span class="option-title">Protective sealant</span><span>Helps resist stains, salt, and weather damage.</span></span><strong>+$280</strong></label>
+          <label class="option"><input id="haul" type="checkbox"><span class="checkmark">✓</span><span class="option-copy"><span class="option-title">Soil &amp; debris haul-away</span><span>We remove all excavation material when finished.</span></span><strong>+$390</strong></label>
+        </fieldset>
+      </form>
+    </section>
+    <aside class="summary" aria-labelledby="summary-title"><div class="summary-art"><span></span><p>PROJECT ESTIMATE</p></div><div class="summary-body"><h2 id="summary-title">Your project</h2><div class="line-item"><span>Driveway replacement<small>640 sq ft</small></span><strong>$6,720.00</strong></div><div id="addon-lines"></div><hr><div class="price-row"><span>Subtotal</span><strong id="subtotal"></strong></div><div class="price-row muted"><span>Estimated tax</span><strong id="tax"></strong></div><div class="total"><span>Estimated total<small>Final price confirmed after site visit</small></span><strong id="total"></strong></div><button class="continue" id="continue" type="button">Review &amp; confirm <span>→</span></button><p class="no-charge">🔒 &nbsp;You won’t be charged yet</p></div><div class="support"><span>?</span><p><strong>Questions about your estimate?</strong><br>Call us at (555) 014-0182</p></div></aside>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite">Estimate saved — ready to review.</div>
+  <script defer src="scripts/pricing.js"></script>
+  <script defer src="scripts/checkout.js"></script>
+</body>
+</html>

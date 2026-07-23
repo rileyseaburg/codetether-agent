@@ -1,0 +1,28 @@
+.summary { position: sticky; top: 28px; overflow: hidden; background: var(--white); border: 1px solid var(--line); box-shadow: 0 18px 45px rgba(36, 37, 32, .08); }
+.summary-art { position: relative; height: 103px; overflow: hidden; padding: 23px 25px; color: white; background: #596b53; }
+.summary-art::before, .summary-art::after { position: absolute; content: ""; width: 230px; height: 74px; border: 18px solid rgba(255,255,255,.1); transform: rotate(-18deg); }
+.summary-art::before { right: -65px; top: -27px; }.summary-art::after { right: 45px; bottom: -70px; }
+.summary-art span { display: block; width: 30px; height: 3px; margin-bottom: 14px; background: #e3aa73; }
+.summary-art p { position: relative; z-index: 1; margin: 0; font: 700 10px "Manrope"; letter-spacing: 1.5px; }
+.summary-body { padding: 27px 27px 22px; }
+.summary h2 { margin: 0 0 23px; font-size: 20px; }
+.line-item, .price-row, .total { display: flex; justify-content: space-between; gap: 20px; font-size: 13px; }
+.line-item { margin: 0 0 15px; }.line-item small, .total small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 400; }
+.line-item strong, .price-row strong { font-size: 12px; white-space: nowrap; }
+.remove-addon { margin-left: 6px; padding: 0; color: var(--accent); background: none; border: 0; font-size: 10px; text-decoration: underline; }
+.summary hr { margin: 23px 0 17px; border: 0; border-top: 1px solid var(--line); }
+.price-row { margin: 10px 0; }.muted { color: var(--muted); }
+.total { margin-top: 18px; padding-top: 18px; align-items: start; border-top: 1px solid var(--line); font-weight: 700; }
+.total > strong { font: 800 22px "Manrope"; }
+.continue { width: 100%; margin-top: 24px; padding: 16px 18px; display: flex; justify-content: space-between; color: white; background: var(--accent); border: 0; font-weight: 700; transition: background .2s, transform .2s; }
+.continue:hover { background: #bd4d27; transform: translateY(-1px); }
+.no-charge { margin: 13px 0 0; color: var(--muted); text-align: center; font-size: 10px; }
+.support { display: flex; gap: 12px; padding: 17px 27px; align-items: center; background: #f0efe9; }
+.support > span { display: grid; width: 27px; height: 27px; place-items: center; border: 1px solid #aaa; border-radius: 50%; font-weight: 700; }
+.support p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }.support strong { color: var(--ink); }
+.continue:focus-visible { outline: 3px solid #e8a68d; outline-offset: 3px; }
+.line-item button:focus-visible { outline: 2px solid var(--accent); }
+.support a { color: inherit; }
+.summary strong { font-variant-numeric: tabular-nums; }
+.price-row span { color: var(--muted); }
+.total span { color: var(--ink); }
