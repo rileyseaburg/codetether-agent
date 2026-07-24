@@ -13,6 +13,12 @@ class MergeTests(unittest.TestCase):
         self.assertIn('target.sample_id = source.sample_id', sql)
         self.assertNotIn('target.run_id', sql)
 
+    def test_manifest_can_upgrade_cleanup_version(self) -> None:
+        """Replace an older manifest while retaining its stable source key."""
+        sql = statement('catalog.ns.manifests', 'incoming', 'source_uri', True)
+        self.assertIn('source.cleanup_version > target.cleanup_version', sql)
+        self.assertIn('THEN UPDATE SET *', sql)
+
 
 if __name__ == '__main__':
     unittest.main()

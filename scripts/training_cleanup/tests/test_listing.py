@@ -22,7 +22,10 @@ class ListingTests(unittest.TestCase):
             'training',
             'run',
             100,
+            65_536,
+            96,
             4,
+            False,
             False,
         )
         paginator = MagicMock()
