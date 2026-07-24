@@ -6,7 +6,7 @@ metadata:
 spec:
   clusterIP: None
   selector:
-    app.kubernetes.io/name: polaris-postgres
+    app.kubernetes.io/name: polaris-postgres-nfs
   ports:
     - name: postgres
       port: 5432

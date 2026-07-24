@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: training-cleanup-reprocess-v2-v19
+  namespace: codetether-data
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 7200
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: training-cleanup-reprocess}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: training-spark
+      containers:
+        - name: submit
+          image: us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260723-v19
+          command: [/opt/spark/jobs/submit_training_cleanup_k8s.sh]
+          env:
+            - {name: PIPELINE_IMAGE, value: "us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260723-v19"}
+            - {name: CLEANUP_RUN_ID, value: "cleanup-v2-reprocess-v19-20260723"}
+            - {name: CLEANUP_SOURCE_PREFIX, value: "training/v2"}
+            - {name: CLEANUP_SOURCE_BEFORE, value: "training/v2/2026/07/23/21/"}
+            - {name: CLEANUP_MIN_PARTITIONS, value: "256"}
+            - {name: SPARK_EXECUTOR_INSTANCES, value: "4"}
+            - {name: SPARK_EXECUTOR_CORES, value: "1"}
+            - {name: SPARK_EXECUTOR_MEMORY, value: "4g"}
+            - {name: SPARK_EXECUTOR_OVERHEAD, value: "2g"}
+            - {name: SPARK_DRIVER_MEMORY, value: "3g"}
+            - {name: CLEANUP_APPLY, value: "true"}
+            - {name: CLEANUP_REPROCESS, value: "true"}

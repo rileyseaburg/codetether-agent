@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polaris-catalog-setup-recovery-v3
+  namespace: codetether-data
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: polaris-catalog-setup-recovery}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: training-spark
+      containers:
+        - name: setup
+          image: us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260723-v16
+          command: [python3, -m, training_catalog.setup]
+          env:
+            - {name: POLARIS_URI, value: "http://polaris:8181"}
+            - {name: POLARIS_REALM, value: POLARIS}
+            - {name: POLARIS_STORAGE_LOCATION, value: "s3://codetether-training/iceberg"}
+            - {name: MINIO_ENDPOINT, valueFrom: {secretKeyRef: {name: training-data-secrets, key: minio-endpoint}}}
+            - {name: POLARIS_ROOT_ID, valueFrom: {secretKeyRef: {name: training-data-secrets, key: polaris-root-id}}}
+            - {name: POLARIS_ROOT_SECRET, valueFrom: {secretKeyRef: {name: training-data-secrets, key: polaris-root-secret}}}
+            - {name: POLARIS_PIPELINE_ID, valueFrom: {secretKeyRef: {name: training-data-secrets, key: polaris-pipeline-id}}}
+            - {name: POLARIS_PIPELINE_SECRET, valueFrom: {secretKeyRef: {name: training-data-secrets, key: polaris-pipeline-secret}}}
