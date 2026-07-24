@@ -33,6 +33,7 @@ pub(super) async fn execute_opportunity_with_run(
         auto_continue_until: None,
         branches: 1,
         strategies: Vec::new(),
+        sol_planner: false,
     };
     let timeout_secs = args.run_timeout_secs.clamp(30, 86_400);
     match tokio::time::timeout(

@@ -46,4 +46,7 @@ pub struct RunArgs {
     /// Optional comma-separated strategy prompts for speculative branches.
     #[arg(long, value_delimiter = ',')]
     pub strategies: Vec<String>,
+    /// Use tool-free GPT-5.6 Sol planning and LSP review around a coding worker.
+    #[arg(long)]
+    pub sol_planner: bool,
 }

@@ -3,6 +3,8 @@
 mod events;
 mod jsonl;
 mod knowledge;
+mod run_execute;
+mod sol_workflow;
 
 use super::RunArgs;
 use crate::autochat::model_rotation::{RelayModelRotation, build_round_robin_model_rotation};
@@ -553,16 +555,9 @@ async fn decide_dynamic_spawn_with_registry(
     Some((runtime_profile, reason))
 }
 
-pub async fn execute(args: RunArgs) -> Result<()> {
-    let jsonl_output = jsonl::enabled(&args.format);
-    let result = execute_inner(args).await;
-    if jsonl_output && let Err(error) = &result {
-        jsonl::write_failed(error.to_string())?;
-    }
-    result
-}
+pub use run_execute::execute;
 
-async fn execute_inner(args: RunArgs) -> Result<()> {
+pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
     let message = args.message.trim();
     let jsonl_output = jsonl::enabled(&args.format);
     super::run_checkpoint::validate_auto_continue(args.auto_continue_until)?;
