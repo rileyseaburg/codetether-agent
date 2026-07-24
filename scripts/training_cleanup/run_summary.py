@@ -13,6 +13,7 @@ def build(settings: Settings, counts: Mapping[object, int]) -> str:
         {
             'mode': 'apply' if settings.apply else 'dry-run',
             'run_id': settings.run_id,
+            'reprocess': settings.reprocess,
             'source': settings.source_uri,
             'source_before': settings.cutoff_uri,
             'tables': settings.tables.__dict__,

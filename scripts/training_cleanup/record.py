@@ -28,6 +28,15 @@ def timestamp(record: SourceRecord) -> tuple[str, int]:
     return meta_text(record, 'timestamp') or '', record.line
 
 
+def source_order(record: SourceRecord) -> tuple[str, str, int]:
+    """Return a deterministic cross-object chronological key."""
+    return (
+        meta_text(record, 'timestamp') or '',
+        record.source_uri,
+        record.line,
+    )
+
+
 def message(record: SourceRecord) -> JsonObject:
     """Strip provenance fields to produce a trainer-facing message."""
     keys = ('role', 'content', 'tool_calls', 'tool_call_id', 'name')

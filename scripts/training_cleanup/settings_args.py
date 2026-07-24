@@ -17,6 +17,9 @@ def parser() -> ArgumentParser:
     value.add_argument('--table-prefix', default='training')
     value.add_argument('--run-id')
     value.add_argument('--max-content-chars', type=int, default=32_768)
+    value.add_argument('--max-sample-chars', type=int, default=65_536)
+    value.add_argument('--max-sample-messages', type=int, default=96)
     value.add_argument('--min-partitions', type=int, default=64)
     value.add_argument('--apply', action='store_true')
+    value.add_argument('--reprocess', action='store_true')
     return value

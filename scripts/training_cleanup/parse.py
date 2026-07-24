@@ -7,7 +7,9 @@ from typing import cast
 from .model import JsonObject, RejectedRecord, SourceRecord
 
 
-def jsonl(text: str) -> tuple[list[SourceRecord], list[RejectedRecord], int]:
+def jsonl(
+    text: str, source_uri: str = '', source_sha256: str = ''
+) -> tuple[list[SourceRecord], list[RejectedRecord], int]:
     """Parse non-empty JSONL lines and retain invalid source values."""
     records: list[SourceRecord] = []
     rejected: list[RejectedRecord] = []
@@ -19,12 +21,33 @@ def jsonl(text: str) -> tuple[list[SourceRecord], list[RejectedRecord], int]:
         try:
             value = json.loads(raw)
         except json.JSONDecodeError:
-            rejected.append(RejectedRecord(line_number, 'invalid_json', raw))
+            rejected.append(
+                RejectedRecord(
+                    line_number,
+                    'invalid_json',
+                    raw,
+                    source_uri,
+                    source_sha256,
+                )
+            )
             continue
         if not isinstance(value, dict):
             rejected.append(
-                RejectedRecord(line_number, 'non_object_json', value)
+                RejectedRecord(
+                    line_number,
+                    'non_object_json',
+                    value,
+                    source_uri,
+                    source_sha256,
+                )
             )
             continue
-        records.append(SourceRecord(line_number, cast(JsonObject, value)))
+        records.append(
+            SourceRecord(
+                line_number,
+                cast(JsonObject, value),
+                source_uri,
+                source_sha256,
+            )
+        )
     return records, rejected, count

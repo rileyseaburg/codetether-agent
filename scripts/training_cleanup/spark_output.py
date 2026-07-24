@@ -7,9 +7,9 @@ from .settings import Settings
 
 
 _OUTPUTS = (
-    ('samples', SAMPLES, 'sample_id'),
-    ('quarantine', QUARANTINE, 'quarantine_id'),
-    ('manifests', MANIFESTS, 'source_uri'),
+    ('samples', SAMPLES, 'sample_id', False),
+    ('quarantine', QUARANTINE, 'quarantine_id', False),
+    ('manifests', MANIFESTS, 'source_uri', True),
 )
 
 
@@ -17,7 +17,7 @@ def write(spark: object, tagged: object, settings: Settings) -> None:
     """Merge one run into format-version 2 Iceberg tables."""
     ensure(spark, settings)
     reject_completed_run(spark, settings)
-    for kind, schema, key in _OUTPUTS:
+    for kind, schema, key, update_version in _OUTPUTS:
         lines = tagged.filter(lambda item, name=kind: item[0] == name).values()
         if lines.isEmpty():
             continue
@@ -25,4 +25,4 @@ def write(spark: object, tagged: object, settings: Settings) -> None:
         view = f'training_cleanup_{kind}'
         frame.createOrReplaceTempView(view)
         table = getattr(settings.tables, kind)
-        spark.sql(statement(table, view, key))
+        spark.sql(statement(table, view, key, update_version))

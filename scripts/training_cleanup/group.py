@@ -6,6 +6,7 @@ from typing import TypeAlias
 from .group_samples import build
 from .model import JsonObject, RejectedRecord, SourceRecord
 from .pending_user import replace
+from .provenance import reject
 from .record import is_user, meta_text, text, timestamp
 
 
@@ -33,11 +34,9 @@ def conversations(
             key = sender, f'legacy-line-{pending_users[sender].line}'
             groups[key].extend((pending_users.pop(sender), record))
         else:
-            rejected.append(
-                RejectedRecord(record.line, 'missing_correlation', record.value)
-            )
+            rejected.append(reject(record, 'missing_correlation'))
     rejected.extend(
-        RejectedRecord(record.line, 'orphan_user_prompt', record.value)
+        reject(record, 'orphan_user_prompt')
         for record in pending_users.values()
     )
     samples = build(groups, source_uri, rejected)

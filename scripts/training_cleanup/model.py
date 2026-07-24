@@ -13,6 +13,8 @@ class SourceRecord:
 
     line: int
     value: JsonObject
+    source_uri: str = ''
+    source_sha256: str = ''
 
 
 @dataclass(frozen=True)
@@ -22,6 +24,8 @@ class RejectedRecord:
     line: int
     reason: str
     value: object
+    source_uri: str = ''
+    source_sha256: str = ''
 
 
 @dataclass

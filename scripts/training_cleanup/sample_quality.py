@@ -1,6 +1,7 @@
 """Conversation quality classification and bulk rejection."""
 
 from .model import RejectedRecord, SourceRecord
+from .provenance import reject as rejected
 from .record import meta_text, text
 
 
@@ -15,9 +16,7 @@ def quality(records: list[SourceRecord]) -> str:
 
 def reject(records: list[SourceRecord], reason: str) -> list[RejectedRecord]:
     """Reject all records in an unusable correlation group."""
-    return [
-        RejectedRecord(record.line, reason, record.value) for record in records
-    ]
+    return [rejected(record, reason) for record in records]
 
 
 def _visible_assistant(record: SourceRecord) -> bool:

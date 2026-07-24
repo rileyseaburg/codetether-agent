@@ -3,6 +3,7 @@
 import json
 
 from .model import RejectedRecord, SourceRecord
+from .provenance import reject
 from .record import meta_text
 from .schema_validation import rejection_reason as schema_rejection
 from .security import rejection_reason
@@ -29,7 +30,7 @@ def records(
         reason = reason or schema_rejection(record)
         reason = reason or rejection_reason(record, max_content_chars)
         if reason:
-            rejected.append(RejectedRecord(record.line, reason, record.value))
+            rejected.append(reject(record, reason))
         else:
             accepted.append(record)
     return accepted, rejected

@@ -1,6 +1,7 @@
 """Pending uncorrelated user-prompt replacement."""
 
 from .model import RejectedRecord, SourceRecord
+from .provenance import reject
 
 
 def replace(
@@ -12,7 +13,5 @@ def replace(
     """Store the newest prompt and quarantine an older orphan."""
     previous = pending.get(sender)
     if previous:
-        rejected.append(
-            RejectedRecord(previous.line, 'orphan_user_prompt', previous.value)
-        )
+        rejected.append(reject(previous, 'orphan_user_prompt'))
     pending[sender] = record

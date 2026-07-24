@@ -12,7 +12,11 @@ def objects(spark: object, settings: Settings) -> object:
     discovered = keys(settings)
     partitions = max(1, min(len(discovered), settings.min_partitions))
     paths = spark.sparkContext.parallelize(discovered, partitions)
-    if settings.apply and spark.catalog.tableExists(settings.tables.manifests):
+    if (
+        settings.apply
+        and not settings.reprocess
+        and spark.catalog.tableExists(settings.tables.manifests)
+    ):
         paths = _unseen(spark, paths, settings)
     reader = partial(
         partition, endpoint=settings.endpoint, bucket=settings.bucket

@@ -18,8 +18,11 @@ class Settings:
     table_prefix: str
     run_id: str
     max_content_chars: int
+    max_sample_chars: int
+    max_sample_messages: int
     min_partitions: int
     apply: bool
+    reprocess: bool
 
     @property
     def source_uri(self) -> str:

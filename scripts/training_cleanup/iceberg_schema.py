@@ -13,7 +13,9 @@ SAMPLES = f"""
   source_uri STRING, source_sha256 STRING, source_lines ARRAY<INT>,
   sender_id STRING, correlation_id STRING, quality_tier STRING,
   start_timestamp TIMESTAMP, end_timestamp TIMESTAMP,
-  messages ARRAY<{MESSAGE}>, cleaned_at TIMESTAMP
+  messages ARRAY<{MESSAGE}>, cleaned_at TIMESTAMP,
+  source_records ARRAY<STRUCT<uri: STRING, sha256: STRING, line: INT>>,
+  chunk_index INT, chunk_count INT, message_chars BIGINT
 """
 QUARANTINE = """
   run_id STRING, quarantine_id STRING, cleanup_version INT,

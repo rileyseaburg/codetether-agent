@@ -30,6 +30,9 @@ def load() -> Settings:
         run_id=args.run_id
         or datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'),
         max_content_chars=args.max_content_chars,
+        max_sample_chars=args.max_sample_chars,
+        max_sample_messages=args.max_sample_messages,
         min_partitions=args.min_partitions,
         apply=args.apply,
+        reprocess=args.reprocess,
     )

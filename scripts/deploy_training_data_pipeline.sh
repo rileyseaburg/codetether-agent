@@ -3,7 +3,7 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 manifests="$repo_root/deploy/training-data"
-image=${PIPELINE_IMAGE:-us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260717-v15}
+image=${PIPELINE_IMAGE:-us-central1-docker.pkg.dev/spotlessbinco/codetether/codetether-training-pipeline:20260723-v19}
 chart=https://github.com/apache/polaris/releases/download/apache-polaris-1.3.0-incubating/polaris-1.3.0-incubating.tgz
 if [[ ${SKIP_PIPELINE_BUILD:-false} != true ]]; then
     docker build -f "$repo_root/docker/training-data-pipeline.Dockerfile" -t "$image" "$repo_root"
@@ -16,7 +16,7 @@ kubectl get secret gcp-artifact-registry -n a2a-server -o json | jq \
     kubectl apply -f -
 kubectl apply -f "$manifests/postgres-service.yaml"
 kubectl apply -f "$manifests/postgres-statefulset.yaml"
-kubectl rollout status statefulset/polaris-postgres -n codetether-data --timeout=5m
+kubectl rollout status statefulset/polaris-postgres-nfs -n codetether-data --timeout=5m
 kubectl apply -f "$manifests/polaris-bootstrap-job.yaml"
 kubectl wait job/polaris-bootstrap-v1 -n codetether-data --for=condition=complete --timeout=5m
 helm upgrade --install polaris "$chart" -n codetether-data \

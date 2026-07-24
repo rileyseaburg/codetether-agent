@@ -1,5 +1,6 @@
 """Creation and completed-run checks for Iceberg tables."""
 
+from .iceberg_evolution import samples as evolve_samples
 from .iceberg_schema import TABLES
 from .settings import Settings
 
@@ -16,6 +17,7 @@ def ensure(spark: object, settings: Settings) -> None:
             f'USING iceberg PARTITIONED BY ({partitions}) '
             "TBLPROPERTIES ('format-version'='2')"
         )
+    evolve_samples(spark, names.samples)
 
 
 def reject_completed_run(spark: object, settings: Settings) -> None:

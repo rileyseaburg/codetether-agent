@@ -3,6 +3,7 @@
 import json
 
 from .model import JsonObject, RejectedRecord
+from .provenance import identity
 from .row_common import digest
 
 
@@ -17,7 +18,9 @@ def build(
     cleaned_at: str,
 ) -> JsonObject:
     """Convert one rejection into an auditable typed row."""
-    identity = f'v1:{source_sha256}:{record.line}:{record.reason}'
+    resolved_uri = record.source_uri or source_uri
+    resolved_sha256 = record.source_sha256 or source_sha256
+    row_identity = f'v2:{identity(record)}:{record.reason}'
     raw = (
         None
         if record.reason in _REDACTED
@@ -25,10 +28,10 @@ def build(
     )
     return {
         'run_id': run_id,
-        'quarantine_id': digest(identity),
-        'cleanup_version': 1,
-        'source_uri': source_uri,
-        'source_sha256': source_sha256,
+        'quarantine_id': digest(row_identity),
+        'cleanup_version': 2,
+        'source_uri': resolved_uri,
+        'source_sha256': resolved_sha256,
         'source_line': record.line,
         'reason': record.reason,
         'record_json': raw,
