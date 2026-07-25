@@ -33,5 +33,6 @@ pub(super) async fn complete(runner: &mut Runner<'_>, step: usize, call: &Call, 
             outcome.success,
             content,
         ));
+    super::super::super::persist::after_tool(runner.session).await;
     super::codesearch::record(runner, outcome.codesearch_miss);
 }
