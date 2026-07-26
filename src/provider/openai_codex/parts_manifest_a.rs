@@ -18,6 +18,7 @@ include!("parts/append_responses_message.rs");
 include!("parts/append_responses_reasoning.rs");
 include!("parts/append_responses_tool.rs");
 include!("parts/append_responses_user.rs");
+include!("parts/responses_tool_output.rs");
 include!("parts/apply_service_tier.rs");
 include!("parts/build_chatgpt_responses_ws_request.rs");
 include!("parts/build_http_responses_body.rs");

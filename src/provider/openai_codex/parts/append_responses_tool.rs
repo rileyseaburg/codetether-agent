@@ -13,10 +13,11 @@ impl OpenAiCodexProvider {
                 continue;
             };
             if known_calls.contains(tool_call_id) {
+                let output = Self::responses_tool_output(message, content);
                 input.push(json!({
                     "type": "function_call_output",
                     "call_id": tool_call_id,
-                    "output": content,
+                    "output": output,
                 }));
             } else {
                 tracing::warn!(

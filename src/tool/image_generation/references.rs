@@ -20,14 +20,18 @@ pub(super) async fn resolve(
     let Some(count) = args.num_last_images_to_include else {
         return Ok(Vec::new());
     };
-    let cache = recent
+    if !args.recent_images.is_empty() {
+        return tail(&args.recent_images, count, "conversation");
+    }
+    let mut cache = recent
         .lock()
         .map_err(|_| anyhow::anyhow!("image cache lock poisoned"))?;
-    if cache.len() < count {
-        bail!(
-            "requested the last {count} generated images, but only {} were available",
-            cache.len()
-        );
+    tail(cache.make_contiguous(), count, "generated")
+}
+
+fn tail(images: &[String], count: usize, source: &str) -> Result<Vec<String>> {
+    if images.len() < count {
+        bail!("requested the last {count} {source} images, but only {} were available", images.len());
     }
-    Ok(cache.iter().rev().take(count).rev().cloned().collect())
+    Ok(images[images.len() - count..].to_vec())
 }

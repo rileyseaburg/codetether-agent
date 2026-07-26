@@ -1,31 +1,36 @@
-use super::auth::ImagesAuth;
+use super::{auth::ImagesAuth, vault_choice::Choice};
 use crate::{
     provider::openai_codex::{OAuthCredentials, OpenAiCodexProvider},
     secrets::ProviderSecrets,
 };
 use anyhow::Result;
 
-pub(super) const CODEX_PROVIDER_IDS: [&str; 3] = ["codex", "chatgpt", "openai-codex"];
+pub(super) const IMAGE_PROVIDER_ID: &str = "openai-codex";
 
 pub(super) async fn resolve() -> Result<Option<ImagesAuth>> {
-    for provider_id in CODEX_PROVIDER_IDS {
-        let Some(secrets) = crate::secrets::get_provider_secrets(provider_id).await else {
-            continue;
-        };
-        if let Some(credentials) = oauth_credentials(&secrets) {
-            let provider = OpenAiCodexProvider::from_vault_credentials(provider_id, credentials);
-            return Ok(Some(ImagesAuth::chatgpt(
-                provider.chatgpt_backend_auth().await?,
-            )));
+    let Some(secrets) = crate::secrets::get_provider_secrets(IMAGE_PROVIDER_ID).await else {
+        return Ok(None);
+    };
+    let Some(choice) = super::vault_choice::select(&secrets) else {
+        return Ok(None);
+    };
+    match choice {
+        Choice::ApiKey(key) => {
+            tracing::info!(provider = IMAGE_PROVIDER_ID, kind = "api_key", "Image auth");
+            Ok(Some(ImagesAuth::openai(key)))
         }
-        if let Some(key) = valid_key(&secrets) {
-            return Ok(Some(ImagesAuth::openai(key)));
+        Choice::OAuth(credentials) => {
+            tracing::info!(provider = IMAGE_PROVIDER_ID, kind = "oauth", "Image auth");
+            let provider =
+                OpenAiCodexProvider::from_vault_credentials(IMAGE_PROVIDER_ID, credentials);
+            Ok(Some(ImagesAuth::chatgpt(
+                provider.chatgpt_backend_auth().await?,
+            )))
         }
     }
-    Ok(None)
 }
 
-fn valid_key(secrets: &ProviderSecrets) -> Option<String> {
+pub(super) fn valid_key(secrets: &ProviderSecrets) -> Option<String> {
     secrets.api_key.clone().filter(|key| !key.trim().is_empty())
 }
 

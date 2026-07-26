@@ -13,7 +13,7 @@ pub(super) async fn execute(
 ) -> Vec<ToolResult> {
     let futures = calls.iter().filter_map(|part| {
         let call = part.as_tool_call()?;
-        Some(agent.execute_tool_for_session(session, call.name, call.arguments))
+        Some(agent.execute_tool_for_session(session, call.id, call.name, call.arguments))
     });
     futures::future::join_all(futures).await
 }

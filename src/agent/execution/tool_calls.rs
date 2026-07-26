@@ -49,7 +49,7 @@ impl Agent {
                 continue;
             };
             out.push(
-                self.execute_tool_for_session(session, call.name, call.arguments)
+                self.execute_tool_for_session(session, call.id, call.name, call.arguments)
                     .await,
             );
         }

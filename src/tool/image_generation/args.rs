@@ -7,6 +7,12 @@ pub(super) struct ImagegenArgs {
     pub(super) prompt: String,
     pub(super) referenced_image_paths: Option<Vec<PathBuf>>,
     pub(super) num_last_images_to_include: Option<usize>,
+    #[serde(rename = "__ct_recent_images", default)]
+    pub(super) recent_images: Vec<String>,
+    #[serde(rename = "__ct_session_id", default)]
+    pub(super) session_id: Option<String>,
+    #[serde(rename = "__ct_tool_call_id", default)]
+    pub(super) call_id: Option<String>,
 }
 
 impl ImagegenArgs {

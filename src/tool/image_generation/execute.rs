@@ -16,7 +16,17 @@ impl ImageGenerationTool {
             .client
             .request(&auth, args.prompt.trim(), images)
             .await?;
-        let path = super::artifact::save(&encoded).await?;
+        let path = super::artifact::save(
+            &encoded,
+            args.session_id.as_deref(),
+            args.call_id.as_deref(),
+        )
+        .await
+        .map_err(|error| {
+            tracing::warn!(error = %error, "Failed to save generated image");
+            error
+        })
+        .ok();
         let data_url = format!("data:image/png;base64,{encoded}");
         let mut recent = self
             .recent
@@ -31,7 +41,9 @@ impl ImageGenerationTool {
             .decode(encoded)
             .map(|bytes| bytes.len())
             .unwrap_or_default();
-        tracing::info!(path = %path.display(), size_bytes = size, "Generated image saved");
-        Ok(super::result::generated(data_url, &path))
+        if let Some(path) = &path {
+            tracing::info!(path = %path.display(), size_bytes = size, "Generated image saved");
+        }
+        Ok(super::result::generated(data_url, path.as_deref()))
     }
 }

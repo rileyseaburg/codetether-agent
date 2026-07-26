@@ -2,9 +2,17 @@ use crate::tool::ToolResult;
 use serde_json::json;
 use std::path::Path;
 
-pub(super) fn generated(data_url: String, path: &Path) -> ToolResult {
-    let path_text = path.display().to_string();
-    ToolResult::success(format!("Generated image saved to {path_text}"))
+pub(super) fn generated(data_url: String, path: Option<&Path>) -> ToolResult {
+    let path_text = path.map(|value| value.display().to_string());
+    let output = path_text.as_ref().map_or_else(
+        || "Generated image returned; local artifact was not saved".into(),
+        |path| format!("Generated image saved to {path}"),
+    );
+    let mut image = json!({"image_url": data_url.clone()});
+    if let Some(path) = &path_text {
+        image["output_hint"] = json!(format!("Generated image saved to {path}"));
+    }
+    let mut result = ToolResult::success(output)
         .with_metadata(
             "image_data_url",
             json!({
@@ -13,12 +21,9 @@ pub(super) fn generated(data_url: String, path: &Path) -> ToolResult {
                 "detail": "auto"
             }),
         )
-        .with_metadata(
-            "generated_image",
-            json!({
-                "image_url": data_url,
-                "output_hint": format!("Generated image saved to {path_text}")
-            }),
-        )
-        .with_metadata("saved_path", json!(path_text))
+        .with_metadata("generated_image", image);
+    if let Some(path) = path_text {
+        result = result.with_metadata("saved_path", json!(path));
+    }
+    result
 }

@@ -17,10 +17,15 @@ mod run;
 mod tool_calls;
 mod tool_calls_parallel;
 mod tool_calls_policy;
+mod tool_image_context;
 mod tool_input;
 mod tool_result_record;
 
 #[cfg(test)]
 mod tool_calls_policy_tests;
 #[cfg(test)]
+mod tool_image_context_tests;
+#[cfg(test)]
 mod tool_input_tests;
+#[cfg(test)]
+mod tool_result_record_tests;
