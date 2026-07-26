@@ -19,7 +19,7 @@ def parse() -> Settings:
     """Parse explicit export bounds and destination."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--train-limit', type=int, default=5000)
-    parser.add_argument('--validation-limit', type=int, default=500)
+    parser.add_argument('--train-limit', type=int, default=40000)
+    parser.add_argument('--validation-limit', type=int, default=4000)
     values = parser.parse_args()
     return Settings(values.output, values.train_limit, values.validation_limit)

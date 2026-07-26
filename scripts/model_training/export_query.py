@@ -1,29 +1,30 @@
 """Snapshot-pinned SQL for correlation-isolated model exports."""
 
+from .export_bounds import redaction
+from .export_shard import shard as _shard
+from .export_sql import body
 
-def build(split: str, limit: int, snapshot_id: int) -> str:
-    """Return deterministic Trino SQL for one dataset split."""
+
+def build(
+    split: str,
+    limit: int,
+    snapshot_id: int,
+    encrypted: bool = True,
+    bucket: str | None = None,
+) -> str:
+    """Return deterministic Trino SQL for one dataset split.
+
+    `bucket` restricts the scan to one leading hex digit of the message
+    digest so the deduplicating window stays inside Trino's per-node
+    memory limit at full-corpus scale.
+    """
     predicate = (
         "split_bucket = '0'" if split == 'validation' else "split_bucket <> '0'"
     )
+    filtered = redaction(encrypted)
+    shard = _shard(bucket)
     return f"""
-WITH candidates AS (
-    SELECT sample_id, correlation_id,
-           json_format(CAST(messages AS JSON)) AS messages_json,
-           to_hex(sha256(
-               to_utf8(json_format(CAST(messages AS JSON)))
-           )) AS message_sha,
-           substr(to_hex(sha256(to_utf8(correlation_id))), 1, 1) AS split_bucket
-    FROM training_samples FOR VERSION AS OF {snapshot_id}
-    WHERE cleanup_version = 2
-      AND message_chars BETWEEN 64 AND 8192
-      AND json_format(CAST(messages AS JSON)) NOT LIKE '%encrypted_content%'
-), deduplicated AS (
-    SELECT *, row_number() OVER (
-        PARTITION BY message_sha ORDER BY sample_id
-    ) AS duplicate_rank
-    FROM candidates
-)
+{body(snapshot_id, shard, filtered)}
 SELECT sample_id, correlation_id, message_sha, messages_json
 FROM deduplicated
 WHERE duplicate_rank = 1 AND {predicate}
