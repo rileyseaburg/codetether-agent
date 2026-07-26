@@ -25,6 +25,15 @@ pub(super) fn shutdown(agent_id: &str) -> EntryParts {
     )
 }
 
+pub(super) fn tool_catalog(agent_id: &str, count: usize) -> EntryParts {
+    EntryParts::new(
+        "TOOLS",
+        format!("{agent_id} exposes {count} tools"),
+        format!("Agent: {agent_id}\nTool schemas: {count}"),
+        Color::Cyan,
+    )
+}
+
 pub(super) fn heartbeat(agent_id: &str, status: &str) -> EntryParts {
     let is_a2a = status.starts_with("discovered via A2A");
     let color = if is_a2a {

@@ -15,6 +15,9 @@ pub(super) fn entry_parts(message: &BusMessage) -> EntryParts {
     if let BusMessage::AgentShutdown { agent_id } = message {
         return entry_agent_lifecycle::shutdown(agent_id);
     }
+    if let BusMessage::AgentToolCatalog { agent_id, tools } = message {
+        return entry_agent_lifecycle::tool_catalog(agent_id, tools.len());
+    }
     if let BusMessage::AgentMessage { from, to, parts } = message {
         return entry_agent_message::message(from, to, parts);
     }

@@ -45,9 +45,16 @@ pub(super) fn workspace_data_dir_from(start: &Path) -> PathBuf {
         .join(".codetether-agent")
 }
 
+/// Find the nearest ancestor containing a `.git` marker.
+///
+/// Ancestors that are too broad to scope a workspace (the filesystem root or
+/// the user's home directory) are rejected, so a stray `.git` high in the tree
+/// cannot turn the entire machine into one workspace.
 pub(super) fn detect_workspace_root(start: &Path) -> Option<PathBuf> {
     start
         .ancestors()
-        .find(|path| path.join(".git").exists())
+        .find(|path| {
+            !super::path_guard::is_unsafe_workspace_root(path) && path.join(".git").exists()
+        })
         .map(Path::to_path_buf)
 }

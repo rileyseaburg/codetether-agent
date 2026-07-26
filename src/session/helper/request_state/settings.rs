@@ -1,7 +1,7 @@
 use super::super::bootstrap::inject_tool_prompt;
 use super::super::evidence::append_guardrails_for_cwd;
 use super::super::provider::{prefers_temperature_one, temperature_is_deprecated};
-use super::super::runtime::{is_local_cuda_provider, local_cuda_light_system_prompt};
+use super::super::runtime::{local_cuda_light_system_prompt, prefers_light_system_prompt};
 
 use crate::provider::ToolDefinition;
 use std::path::Path;
@@ -27,7 +27,7 @@ pub(super) fn system_prompt_for(
     cwd: &Path,
     prior_context_allowed: bool,
 ) -> String {
-    let prompt = if is_local_cuda_provider(selected_provider) {
+    let prompt = if prefers_light_system_prompt(selected_provider) {
         local_cuda_light_system_prompt()
     } else {
         crate::agent::builtin::build_system_prompt(cwd)

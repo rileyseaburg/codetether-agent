@@ -26,6 +26,7 @@ mod merge;
 mod merge_policy;
 mod merge_sections;
 mod path;
+mod path_guard;
 mod permission;
 mod policy_accessors;
 mod policy_raw;

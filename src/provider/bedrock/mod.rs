@@ -35,6 +35,7 @@ pub mod aliases;
 pub mod aliases_openai;
 pub mod auth;
 pub mod body;
+mod conversation;
 pub mod convert;
 pub mod discovery;
 pub mod empty_guard;
@@ -56,8 +57,7 @@ pub mod token_gen;
 
 pub use exports::*;
 
-use crate::provider::CompletionRequest;
-use {anyhow::Result, reqwest::Client};
+use {crate::provider::CompletionRequest, anyhow::Result, reqwest::Client};
 
 /// Default AWS region when none is configured.
 pub const DEFAULT_REGION: &str = "us-east-1";

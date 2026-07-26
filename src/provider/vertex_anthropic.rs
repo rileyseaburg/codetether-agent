@@ -11,6 +11,12 @@
 //! Reference: https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 
 use super::util;
+#[path = "vertex_anthropic_catalog.rs"]
+pub mod vertex_anthropic_catalog;
+#[path = "vertex_anthropic_model.rs"]
+pub mod vertex_anthropic_model;
+#[path = "vertex_anthropic_rows.rs"]
+pub mod vertex_anthropic_rows;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
@@ -452,80 +458,7 @@ impl Provider for VertexAnthropicProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        Ok(vec![
-            ModelInfo {
-                id: "claude-sonnet-4-6".to_string(),
-                name: "Claude Sonnet 4.6 (Vertex AI)".to_string(),
-                provider: "vertex-anthropic".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(3.0),
-                output_cost_per_million: Some(15.0),
-            },
-            ModelInfo {
-                id: "claude-sonnet-4-20250514".to_string(),
-                name: "Claude Sonnet 4 (Vertex AI)".to_string(),
-                provider: "vertex-anthropic".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(64_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(3.0),
-                output_cost_per_million: Some(15.0),
-            },
-            ModelInfo {
-                id: "claude-opus-4-20250514".to_string(),
-                name: "Claude Opus 4 (Vertex AI)".to_string(),
-                provider: "vertex-anthropic".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(32_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(15.0),
-                output_cost_per_million: Some(75.0),
-            },
-            ModelInfo {
-                id: "claude-3-5-sonnet-v2@20241022".to_string(),
-                name: "Claude 3.5 Sonnet v2 (Vertex AI)".to_string(),
-                provider: "vertex-anthropic".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(8_192),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(3.0),
-                output_cost_per_million: Some(15.0),
-            },
-            ModelInfo {
-                id: "claude-3-5-sonnet@20240620".to_string(),
-                name: "Claude 3.5 Sonnet (Vertex AI)".to_string(),
-                provider: "vertex-anthropic".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(8_192),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(3.0),
-                output_cost_per_million: Some(15.0),
-            },
-            ModelInfo {
-                id: "claude-3-haiku@20240307".to_string(),
-                name: "Claude 3 Haiku (Vertex AI)".to_string(),
-                provider: "vertex-anthropic".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(4_096),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.25),
-                output_cost_per_million: Some(1.25),
-            },
-        ])
+        Ok(vertex_anthropic_catalog::catalog())
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {

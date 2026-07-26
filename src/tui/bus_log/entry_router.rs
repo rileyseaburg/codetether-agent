@@ -10,6 +10,7 @@ use super::{
 pub(super) fn entry_parts(message: &BusMessage) -> EntryParts {
     match message {
         BusMessage::AgentReady { .. }
+        | BusMessage::AgentToolCatalog { .. }
         | BusMessage::AgentShutdown { .. }
         | BusMessage::AgentMessage { .. }
         | BusMessage::Heartbeat { .. }

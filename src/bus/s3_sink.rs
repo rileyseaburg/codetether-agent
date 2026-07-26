@@ -40,6 +40,8 @@ mod s3_spawn;
 mod s3_speech_record;
 #[path = "s3_spool.rs"]
 mod s3_spool;
+#[path = "s3_tool_catalog_record.rs"]
+pub mod s3_tool_catalog_record;
 #[path = "s3_training_collect.rs"]
 mod s3_training_collect;
 #[path = "s3_training_group.rs"]
@@ -332,6 +334,7 @@ fn envelope_step(message: &BusMessage) -> Option<usize> {
             iteration: step, ..
         } => Some(*step),
         BusMessage::AgentReady { .. }
+        | BusMessage::AgentToolCatalog { .. }
         | BusMessage::AgentShutdown { .. }
         | BusMessage::AgentMessage { .. }
         | BusMessage::TaskUpdate { .. }
@@ -370,6 +373,15 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
                 "Agent `{agent_id}` ready. Capabilities: {}",
                 capabilities.join(", ")
             )),
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+            metadata: meta,
+        },
+
+        BusMessage::AgentToolCatalog { tools, .. } => TrainingRecord {
+            role: "system".into(),
+            content: Some(s3_tool_catalog_record::catalog_text(tools)),
             tool_calls: None,
             tool_call_id: None,
             name: None,

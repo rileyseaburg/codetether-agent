@@ -25,7 +25,9 @@ pub(super) async fn init_worker(args: A2aArgs) -> Result<WorkerContext> {
     let heartbeat_state = HeartbeatState::new(worker_id.clone(), name.clone());
     let bus = AgentBus::new().into_arc();
     crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
-    bus.handle(&worker_id).announce_ready(worker_capabilities());
+    let handle = bus.handle(&worker_id);
+    handle.announce_ready(worker_capabilities());
+    super::worker_tool_catalog::announce(&handle);
     let a2a_peer = maybe_start_worker_a2a_peer(&args, &name, bus.clone()).await;
     let task_progress = Arc::new(Mutex::new(task_timeline::TaskProgressState::new()));
     let task_runtime = worker_init_helpers::build_task_runtime(

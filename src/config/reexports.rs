@@ -5,6 +5,7 @@ pub use super::agents::AgentsConfig;
 pub use super::approval::ApprovalPolicy;
 pub use super::core::Config;
 pub use super::lsp::{LspLinterEntry, LspServerEntry, LspSettings};
+pub use super::path_guard::is_unsafe_workspace_root;
 pub use super::permission::{PermissionAction, PermissionConfig};
 pub use super::profile::{PermissionProfile, PermissionProfileConfig, PermissionProfileDetails};
 pub use super::provider::ProviderConfig;

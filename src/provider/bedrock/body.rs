@@ -65,6 +65,7 @@ pub(super) mod fields;
 /// ```
 pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value {
     let (mut system_parts, mut messages) = convert_messages(&request.messages);
+    super::conversation::ensure_user_final_turn(&mut messages, model_id);
     let mut tools = convert_tools(&request.tools);
 
     // Anthropic prompt caching on Bedrock uses `cachePoint` content blocks.
@@ -105,9 +106,8 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
     let mut inference_config = json!({});
     inference_config["maxTokens"] = json!(effective_max_tokens(request.max_tokens, model_id));
 
-    let skip_temperature = super::output_budget::has_encrypted_reasoning(model_id);
     if let Some(temp) = request.temperature {
-        if !skip_temperature {
+        if !super::output_budget::has_encrypted_reasoning(model_id) {
             inference_config["temperature"] = json!(temp);
         } else {
             tracing::debug!(

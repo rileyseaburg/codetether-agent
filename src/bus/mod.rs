@@ -31,6 +31,7 @@ pub mod registry;
 pub mod relay;
 pub mod s3_sink;
 pub mod speech;
+pub mod tool_catalog;
 pub mod voice_handle;
 
 pub use global::{global, set_global};
@@ -69,6 +70,11 @@ pub enum BusMessage {
     AgentReady {
         agent_id: String,
         capabilities: Vec<String>,
+    },
+    /// The concrete tool schemas an agent had available for its turns.
+    AgentToolCatalog {
+        agent_id: String,
+        tools: Vec<tool_catalog::ToolSchema>,
     },
     /// An agent is shutting down
     AgentShutdown { agent_id: String },
@@ -330,15 +336,13 @@ impl BusHandle {
         message: BusMessage,
         correlation_id: Option<String>,
     ) -> usize {
-        let envelope = BusEnvelope {
-            id: Uuid::new_v4().to_string(),
-            topic: topic.into(),
-            sender_id: self.agent_id.clone(),
-            correlation_id,
-            timestamp: Utc::now(),
+        tool_catalog::publish(
+            &self.bus,
+            &self.agent_id,
+            topic.into(),
             message,
-        };
-        self.bus.publish(envelope)
+            correlation_id,
+        )
     }
 
     /// Announce this agent as ready.
@@ -348,6 +352,17 @@ impl BusHandle {
             BusMessage::AgentReady {
                 agent_id: self.agent_id.clone(),
                 capabilities,
+            },
+        )
+    }
+
+    /// Record the tool schemas this agent can call, for training fidelity.
+    pub fn announce_tool_catalog(&self, tools: Vec<tool_catalog::ToolSchema>) -> usize {
+        self.send(
+            "broadcast",
+            BusMessage::AgentToolCatalog {
+                agent_id: self.agent_id.clone(),
+                tools,
             },
         )
     }
