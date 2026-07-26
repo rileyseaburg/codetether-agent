@@ -9,4 +9,5 @@ fn accepts_runtime_provenance_fields() {
     }))
     .expect("runtime metadata must not invalidate model arguments");
     assert_eq!(args.prompt, "paint a moonlit lake");
+    assert_eq!(args.session_id.as_deref(), Some("session-1"));
 }

@@ -7,6 +7,8 @@ async fn agent_runtime_overwrites_model_policy_fields() {
     session.metadata.prior_context_allowed = Some(false);
     let value: Value = super::tool_input::prepare(
         &session,
+        "call-1",
+        "bash",
         r#"{"__ct_session_id":"fake","__ct_prior_context_allowed":true}"#,
     )
     .expect("prepared input");

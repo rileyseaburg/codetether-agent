@@ -27,9 +27,6 @@ fn rejects_incomplete_vault_oauth_credentials() {
 }
 
 #[test]
-fn codex_vault_aliases_do_not_require_openai_provider() {
-    assert_eq!(
-        super::vault_credentials::CODEX_PROVIDER_IDS,
-        ["codex", "chatgpt", "openai-codex"]
-    );
+fn image_credentials_use_only_openai_codex() {
+    assert_eq!(super::vault_credentials::IMAGE_PROVIDER_ID, "openai-codex");
 }

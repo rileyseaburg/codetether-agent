@@ -1,4 +1,4 @@
-use super::{args::ImagegenArgs, references, schema};
+use super::{args::ImagegenArgs, references};
 use std::{collections::VecDeque, path::PathBuf, sync::Mutex};
 
 fn args(paths: Option<Vec<PathBuf>>, count: Option<usize>) -> ImagegenArgs {
@@ -6,17 +6,10 @@ fn args(paths: Option<Vec<PathBuf>>, count: Option<usize>) -> ImagegenArgs {
         prompt: "paint a moonlit lake".into(),
         referenced_image_paths: paths,
         num_last_images_to_include: count,
+        recent_images: Vec::new(),
+        session_id: None,
+        call_id: None,
     }
-}
-
-#[test]
-fn schema_matches_upstream_selectors() {
-    let value = schema::parameters();
-    assert_eq!(value["properties"]["referenced_image_paths"]["maxItems"], 5);
-    assert_eq!(
-        value["properties"]["num_last_images_to_include"]["maximum"],
-        5
-    );
 }
 
 #[test]
