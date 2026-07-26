@@ -1,0 +1,57 @@
+// Live Bedrock Converse call using CodeTether's Vault provider secret.
+// Requires the `vault` CLI plus VAULT_ADDR and VAULT_TOKEN.
+
+fn vault_secret(path) {
+    let read = process_run("vault", ["kv", "get", "-format=json", path], nil, 15000)?
+    if !read["success"] { return Err("Vault read failed: " + str(read["stderr"]).trim()) }
+    let document = json_parse(read["stdout"])?
+    let secret = document["data"]["data"]
+    if secret["api_key"] == nil || str(secret["api_key"]).trim() == "" { return Err("Vault secret has no api_key") }
+    return Ok(secret)
+}
+
+fn request_body(prompt) {
+    let content = map()
+    content["text"] = prompt
+    let message = map()
+    message["role"] = "user"
+    message["content"] = [content]
+    let inference = map()
+    inference["maxTokens"] = 32000
+    let thinking = map()
+    thinking["type"] = "adaptive"
+    let output_config = map()
+    output_config["effort"] = "medium"
+    let fields = map()
+    fields["thinking"] = thinking
+    fields["output_config"] = output_config
+    let body = map()
+    body["messages"] = [message]
+    body["inferenceConfig"] = inference
+    body["additionalModelRequestFields"] = fields
+    return json_encode(body)
+}
+
+fn call_with(prompt, model, vault_path) {
+    let secret = vault_secret(vault_path)?
+    let mut region = "us-east-1"
+    if secret["region"] != nil && str(secret["region"]).trim() != "" { region = str(secret["region"]).trim() }
+    let url = "https://bedrock-runtime." + region + ".amazonaws.com/model/" + model + "/converse"
+    let headers = map()
+    headers["Authorization"] = "Bearer " + str(secret["api_key"]).trim()
+    headers["Content-Type"] = "application/json"
+    let response = http_request("POST", url, request_body(prompt), headers)?
+    if !response["ok"] { return Err("Bedrock HTTP " + str(response["status"]) + ": " + str(response["body"])) }
+    return Ok(json_parse(response["body"])?)
+}
+
+fn call(prompt) {
+    return call_with(prompt, "us.anthropic.claude-opus-5", "secret/codetether/providers/bedrock")
+}
+
+fn main() {
+    let args = env_args()
+    if args.len() != 1 { return Err("usage: script -- <prompt>") }
+    println(json_encode(call(args[0])?))
+    return Ok(nil)
+}
