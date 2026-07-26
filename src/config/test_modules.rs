@@ -12,6 +12,8 @@ mod agent_settings_roundtrip_tests;
 mod agent_settings_tests;
 #[path = "codex_policy_tests.rs"]
 mod codex_policy_tests;
+#[path = "path_guard_tests.rs"]
+mod path_guard_tests;
 #[path = "path_tests.rs"]
 mod path_tests;
 #[path = "profile_builtin_tests.rs"]
