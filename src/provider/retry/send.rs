@@ -1,11 +1,18 @@
-use super::classify::{backoff_delay, is_retryable_message, is_retryable_status};
+use super::classify::{
+    backoff_delay, is_permanent_message, is_retryable_message, is_retryable_status,
+};
 
 /// Send an HTTP request with automatic retry on transient errors.
 ///
-/// Wraps any async request factory in an infinite retry loop with
+/// Wraps any async request factory in a bounded retry loop with
 /// exponential backoff. Used by provider `complete` methods to survive
 /// 429/502/503 responses, Z.AI "temporarily overloaded" errors, and
 /// transient network failures before parsing the JSON body.
+///
+/// Retries stop after `MAX_ATTEMPTS`, and a rate-limit response whose body
+/// reports a permanent condition (expired plan, insufficient balance,
+/// suspended account) bails immediately: no amount of backoff can clear it,
+/// and retrying forever silently occupies the worker's task slot.
 ///
 /// # Arguments
 ///
@@ -55,6 +62,8 @@ where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = anyhow::Result<(String, reqwest::StatusCode)>>,
 {
+    const MAX_ATTEMPTS: u32 = 5;
+
     let mut attempt = 0u32;
     loop {
         attempt += 1;
@@ -63,6 +72,12 @@ where
                 return Ok((text, status));
             }
             Ok((text, status)) if is_retryable_status(status) || is_retryable_message(&text) => {
+                if is_permanent_message(&text) {
+                    anyhow::bail!("Non-retryable provider error: {status} {text}");
+                }
+                if attempt >= MAX_ATTEMPTS {
+                    anyhow::bail!("API error after {attempt} attempts: {status} {text}");
+                }
                 let delay = backoff_delay(attempt);
                 tracing::warn!(
                     attempt, %status,
@@ -75,6 +90,14 @@ where
                 anyhow::bail!("API error: {status} {text}");
             }
             Err(e) if is_retryable_message(&e.to_string()) => {
+                if is_permanent_message(&e.to_string()) {
+                    return Err(e);
+                }
+                if attempt >= MAX_ATTEMPTS {
+                    return Err(
+                        e.context(format!("network error persisted after {attempt} attempts"))
+                    );
+                }
                 let delay = backoff_delay(attempt);
                 tracing::warn!(
                     attempt, error = %e,

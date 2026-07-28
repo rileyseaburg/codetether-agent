@@ -8,9 +8,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /home/codetether
-
 COPY codetether-bin /usr/local/bin/codetether
 RUN chmod +x /usr/local/bin/codetether
+
+# The worker runs as an unprivileged user (uid 1000 in Kubernetes). Its home and
+# working directory must be writable by that user: the agent persists session
+# state and loop-halt diagnostics there, and a root-owned WORKDIR makes every
+# task fail immediately with "Permission denied".
+RUN mkdir -p /home/codetether \
+    && chown -R 1000:1000 /home/codetether \
+    && chmod 0775 /home/codetether
+
+WORKDIR /home/codetether
 
 ENTRYPOINT ["/usr/local/bin/codetether"]
