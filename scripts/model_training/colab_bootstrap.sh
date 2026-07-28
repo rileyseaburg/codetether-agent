@@ -21,6 +21,10 @@ cli=${CODETETHER_INSTALL_CLI:-0}
 
 mkdir -p "$state/data" "$output" "$(dirname "$log")"
 
+# Set the import path before any module runs. The reaper below imports
+# model_training, so exporting this later left it unresolvable.
+export PYTHONPATH="$bundle/scripts"
+
 # Refuse to start a second trainer, but only when the existing one is
 # healthy. A process whose code directory was deleted keeps running while
 # writing to deleted inodes, so it must not block a relaunch.
@@ -42,7 +46,6 @@ if [[ "${CODETETHER_SKIP_INSTALL:-0}" != "1" ]]; then
         "$bundle/scripts/model_training/requirements-gpu.txt"
 fi
 
-export PYTHONPATH="$bundle/scripts"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export TOKENIZERS_PARALLELISM=false
 

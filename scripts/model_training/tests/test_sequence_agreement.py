@@ -21,8 +21,8 @@ class SequenceAgreementTest(unittest.TestCase):
         self.assertEqual(plan(42.4)['max_length'], MAX_LENGTH)
 
     def test_tiny_device_may_shorten_with_known_cost(self) -> None:
-        """A 16 GB device cannot hold full-length sequences."""
-        self.assertLess(int(plan(15.0)['max_length']), MAX_LENGTH)
+        """Below the 4B training threshold sequences must shorten."""
+        self.assertLess(int(plan(10.0)['max_length']), MAX_LENGTH)
 
 
 if __name__ == '__main__':

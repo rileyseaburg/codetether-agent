@@ -6,9 +6,13 @@ from pathlib import Path
 
 from trl import SFTConfig
 
+from .attention import flash_available
+from .checkpoint_policy import CHECKPOINTING
 from .constants import SEED, WARMUP_STEPS
+from .distributed import accumulation_steps
 from .precision import supports_bf16
 from .sequence_length import resolve
+from .throughput import settings as throughput_settings
 
 
 def build(output: Path, epochs: float, masked: bool = False) -> SFTConfig:
@@ -18,9 +22,10 @@ def build(output: Path, epochs: float, masked: bool = False) -> SFTConfig:
     return SFTConfig(
         output_dir=str(output),
         num_train_epochs=epochs,
+        **throughput_settings(flash_available()),
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
-        gradient_accumulation_steps=16,
+        gradient_accumulation_steps=accumulation_steps(),
         learning_rate=2e-4,
         lr_scheduler_type='cosine',
         warmup_steps=WARMUP_STEPS,
@@ -30,21 +35,16 @@ def build(output: Path, epochs: float, masked: bool = False) -> SFTConfig:
         tf32=False,
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={'use_reentrant': False},
+        ddp_find_unused_parameters=False,
         max_grad_norm=0.3,
         optim='paged_adamw_8bit',
         logging_steps=10,
-        eval_strategy='steps',
-        eval_steps=250,
-        save_strategy='steps',
-        save_steps=250,
-        save_total_limit=3,
-        load_best_model_at_end=True,
-        metric_for_best_model='eval_loss',
-        greater_is_better=False,
+        **CHECKPOINTING,
         report_to='none',
         seed=SEED,
         data_seed=SEED,
         max_length=length,
         dataset_text_field=None if masked else 'text',
-        packing=False,
     )
+    # `packing` is supplied by throughput_settings above; repeating it here
+    # raised TypeError: got multiple values for keyword argument 'packing'.

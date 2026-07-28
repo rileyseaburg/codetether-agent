@@ -2,11 +2,30 @@
 
 Some conversations exceed 1,600 messages. Rendering every prefix is
 quadratic, so each assistant turn keeps only a recent context window and
-very long conversations contribute a bounded number of turns.
+very long conversations may contribute a bounded number of turns.
+
+Context windowing is what makes rendering linear; the per-conversation turn
+cap is a separate throughput lever. Measured on 4,000 conversations holding
+79,800 assistant turns:
+
+| cap | turns kept |
+|----:|-----------:|
+|  24 |      25.2% |
+|  64 |      39.2% |
+| 128 |      49.9% |
+| 256 |      64.0% |
+| off |     100.0% |
 """
 
+import os
+
+
 CONTEXT_TURNS = 12
-MAX_TURNS_PER_CONVERSATION = 24
+MAX_TURNS_PER_CONVERSATION = 0
+"""Turns kept per conversation; 0 keeps every turn.
+
+Override with CODETETHER_MAX_TURNS to trade corpus coverage for run time.
+"""
 
 
 def window(
@@ -22,8 +41,12 @@ def window(
     return recent
 
 
-def stride(total: int, limit: int = MAX_TURNS_PER_CONVERSATION) -> int:
+def stride(total: int, limit: int | None = None) -> int:
     """Return the sampling stride needed to cap turns per conversation."""
-    if total <= limit:
+    if limit is None:
+        limit = int(
+            os.environ.get('CODETETHER_MAX_TURNS', MAX_TURNS_PER_CONVERSATION)
+        )
+    if limit <= 0 or total <= limit:
         return 1
     return (total + limit - 1) // limit

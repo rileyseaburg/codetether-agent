@@ -1,7 +1,13 @@
-accelerate>=1.6.0
-bitsandbytes>=0.45.5
-datasets>=3.5.0
-peft>=0.15.2
-safetensors>=0.5.3
-transformers>=4.57.0
-trl>=0.17.0
+# Pinned against the Vertex prebuilt image's torch 2.4.0+cu124.
+#
+# Unpinned `>=` ranges resolved to transformers 5.14.1 and peft 0.19.1,
+# which failed at import with:
+#   cannot import name 'DTensor' from 'torch.distributed.tensor'
+# peft 0.15.2 requires only torch>=1.13.0, so these pins hold on torch 2.4.
+accelerate==1.6.0
+bitsandbytes==0.45.5
+datasets==3.5.0
+peft==0.15.2
+safetensors==0.5.3
+transformers==4.57.1
+trl==0.17.0

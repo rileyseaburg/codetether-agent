@@ -1,0 +1,13 @@
+# Pinned for the qwen3_5 architecture on torch 2.6.
+#
+# transformers 5.x is required because `model_type: qwen3_5` is absent from
+# every 4.x release checked (4.57.1, 4.58.0, 4.60.0) and from 5.0.0.
+# peft 0.19.1 imports `DTensor` from `torch.distributed.tensor`, which needs
+# torch 2.5 or newer; pairing it with torch 2.4 failed at import.
+accelerate==1.14.0
+bitsandbytes==0.50.0
+datasets==5.0.0
+peft==0.19.1
+safetensors==0.8.0
+transformers==5.14.1
+trl==1.9.1

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from peft import PeftModel
 
+from .adapter_dtype import align
 from .kbit_prepare import prepare
 from .lora_config import build
 
@@ -20,4 +21,4 @@ def configure(
         adapter,
         is_trainable=True,
     )
-    return attached, None
+    return align(attached), None

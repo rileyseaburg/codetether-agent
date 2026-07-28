@@ -1,5 +1,7 @@
 """Render prompt/completion pairs with inference-matched tool schemas."""
 
+import jinja2
+
 from .tool_schema import SCHEMAS
 from .turn_split import pairs, text_of
 from .turn_window import stride, window
@@ -18,7 +20,12 @@ def render(
         completion = text_of(reply)
         if not completion.strip():
             continue
-        prompt = _prompt(window(context), tokenizer, with_tools)
+        # Some conversations begin with an assistant or tool message, which
+        # the chat template rejects with "No user query found in messages".
+        try:
+            prompt = _prompt(window(context), tokenizer, with_tools)
+        except jinja2.exceptions.TemplateError:
+            continue
         records.append(
             {
                 'prompt': prompt,
