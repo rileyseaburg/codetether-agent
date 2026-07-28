@@ -1,0 +1,387 @@
+// TetherScript Stress Test — real algorithmic work, no handouts.
+//
+// 1. Sieve of Eratosthenes (primes up to 50,000)
+// 2. N-Queens solver (count all solutions for N=12)
+// 3. 25x15 maze generator (recursive backtracking) + BFS solver
+// 4. Render maze as HTML through the browser engine
+//
+// Run:
+//   tetherscript run examples/stress_test.tether
+
+// ── helpers ──
+
+fn make_rc(r, c) {
+    let m = map()
+    m.r = r
+    m.c = c
+    return m
+}
+
+fn make_rcd(r, c, d) {
+    let m = map()
+    m.r = r
+    m.c = c
+    m.dir = d
+    return m
+}
+
+fn make_rcp(r, c, p) {
+    let m = map()
+    m.r = r
+    m.c = c
+    m.path = p
+    return m
+}
+
+fn make_cell() {
+    let cell = map()
+    cell.wall_top = true
+    cell.wall_right = true
+    cell.wall_bottom = true
+    cell.wall_left = true
+    cell.visited = false
+    return cell
+}
+
+// ── 1. Prime sieve ─────────────────────────────────────────────────
+
+fn sieve(limit) {
+    let mut flags = []
+    let mut i = 0
+    while i < limit {
+        flags.push(true)
+        i = i + 1
+    }
+    flags[0] = false
+    flags[1] = false
+
+    let mut p = 2
+    while p * p < limit {
+        if flags[p] {
+            let mut m = p * p
+            while m < limit {
+                flags[m] = false
+                m = m + p
+            }
+        }
+        p = p + 1
+    }
+
+    let mut primes = []
+    let mut j = 2
+    while j < limit {
+        if flags[j] {
+            primes.push(j)
+        }
+        j = j + 1
+    }
+    return primes
+}
+
+// ── 2. N-Queens ────────────────────────────────────────────────────
+
+fn queens_n(n) {
+    let mut cols = []
+    let mut i = 0
+    while i < n {
+        cols.push(-1)
+        i = i + 1
+    }
+    let mut count = 0
+
+    fn safe(row, col) {
+        let mut r = 0
+        while r < row {
+            let c = cols[r]
+            if c == col {
+                return false
+            }
+            if r + c == row + col {
+                return false
+            }
+            if r - c == row - col {
+                return false
+            }
+            r = r + 1
+        }
+        return true
+    }
+
+    fn place(row) {
+        if row == n {
+            count = count + 1
+            return
+        }
+        let mut col = 0
+        while col < n {
+            if safe(row, col) {
+                cols[row] = col
+                place(row + 1)
+                cols[row] = -1
+            }
+            col = col + 1
+        }
+    }
+
+    place(0)
+    return count
+}
+
+// ── 3. Maze generator (iterative backtracking) ────────────────────
+
+fn new_grid(w, h) {
+    let mut rows = []
+    let mut r = 0
+    while r < h {
+        let mut row = []
+        let mut c = 0
+        while c < w {
+            row.push(make_cell())
+            c = c + 1
+        }
+        rows.push(row)
+        r = r + 1
+    }
+    return rows
+}
+
+fn carve_maze(grid, w, h) {
+    let mut stack = []
+    grid[0][0].visited = true
+    stack.push(make_rc(0, 0))
+
+    while stack.len() > 0 {
+        let current = stack[stack.len() - 1]
+        let r = current.r
+        let c = current.c
+
+        // Collect unvisited neighbors
+        let mut nb = []
+        if r > 0 && !grid[r-1][c].visited {
+            nb.push(make_rcd(r-1, c, "top"))
+        }
+        if r < h-1 && !grid[r+1][c].visited {
+            nb.push(make_rcd(r+1, c, "bottom"))
+        }
+        if c > 0 && !grid[r][c-1].visited {
+            nb.push(make_rcd(r, c-1, "left"))
+        }
+        if c < w-1 && !grid[r][c+1].visited {
+            nb.push(make_rcd(r, c+1, "right"))
+        }
+
+        if nb.len() == 0 {
+            stack.pop()
+        } else {
+            let next = nb[nb.len() - 1]
+            let nr = next.r
+            let nc = next.c
+
+            if next.dir == "top" {
+                grid[r][c].wall_top = false
+                grid[nr][nc].wall_bottom = false
+            }
+            if next.dir == "bottom" {
+                grid[r][c].wall_bottom = false
+                grid[nr][nc].wall_top = false
+            }
+            if next.dir == "left" {
+                grid[r][c].wall_left = false
+                grid[nr][nc].wall_right = false
+            }
+            if next.dir == "right" {
+                grid[r][c].wall_right = false
+                grid[nr][nc].wall_left = false
+            }
+
+            grid[nr][nc].visited = true
+            stack.push(make_rc(nr, nc))
+        }
+    }
+    return grid
+}
+
+// ── 4. BFS maze solver ─────────────────────────────────────────────
+
+fn solve_maze(grid, w, h) {
+    let mut queue = []
+    let mut visited = []
+
+    let mut i = 0
+    while i < w * h {
+        visited.push(false)
+        i = i + 1
+    }
+
+    let start_path = []
+    start_path.push([0, 0])
+    queue.push(make_rcp(0, 0, start_path))
+    visited[0] = true
+
+    while queue.len() > 0 {
+        let cur = queue[0]
+        let mut new_queue = []
+        let mut qi = 1
+        while qi < queue.len() {
+            new_queue.push(queue[qi])
+            qi = qi + 1
+        }
+        queue = new_queue
+
+        let r = cur.r
+        let c = cur.c
+        let path = cur.path
+
+        if r == h-1 && c == w-1 {
+            return path
+        }
+
+        let cell = grid[r][c]
+        let mut dirs = []
+        if !cell.wall_top && r > 0 {
+            dirs.push([r-1, c])
+        }
+        if !cell.wall_bottom && r < h-1 {
+            dirs.push([r+1, c])
+        }
+        if !cell.wall_left && c > 0 {
+            dirs.push([r, c-1])
+        }
+        if !cell.wall_right && c < w-1 {
+            dirs.push([r, c+1])
+        }
+
+        let mut di = 0
+        while di < dirs.len() {
+            let nr = dirs[di][0]
+            let nc = dirs[di][1]
+            let idx = nr * w + nc
+            if !visited[idx] {
+                visited[idx] = true
+                let mut new_path = []
+                let mut pi = 0
+                while pi < path.len() {
+                    new_path.push(path[pi])
+                    pi = pi + 1
+                }
+                new_path.push([nr, nc])
+                queue.push(make_rcp(nr, nc, new_path))
+            }
+            di = di + 1
+        }
+    }
+    return []
+}
+
+// ── 5. Render maze as HTML ─────────────────────────────────────────
+
+fn maze_to_html(grid, w, h, solution) {
+    let mut html = "<div class=\"maze\">"
+
+    // Build solution index set
+    let mut sol_set = []
+    let mut si = 0
+    while si < solution.len() {
+        let sr = solution[si][0]
+        let sc = solution[si][1]
+        sol_set.push(sr * w + sc)
+        si = si + 1
+    }
+
+    fn in_sol(set, idx) {
+        let mut k = 0
+        while k < set.len() {
+            if set[k] == idx {
+                return true
+            }
+            k = k + 1
+        }
+        return false
+    }
+
+    let mut r = 0
+    while r < h {
+        let mut c = 0
+        while c < w {
+            let cell = grid[r][c]
+            let idx = r * w + c
+            let mut classes = "c"
+            if in_sol(sol_set, idx) { classes = "s" }
+            if r == 0 && c == 0 { classes = "st" }
+            if r == h-1 && c == w-1 { classes = "e" }
+
+            let mut style = ""
+            if cell.wall_top { style = style + "bt;" }
+            if cell.wall_right { style = style + "br;" }
+            if cell.wall_bottom { style = style + "bb;" }
+            if cell.wall_left { style = style + "bl;" }
+
+            html = html + "<i class=" + classes + " v=" + style + "></i>"
+            c = c + 1
+        }
+        r = r + 1
+    }
+
+    html = html + "</div>"
+    return html
+}
+
+// ── Main ───────────────────────────────────────────────────────────
+
+fn main() {
+    println("TetherScript Stress Test")
+    println("========================")
+
+    // 1. Prime sieve
+    println("")
+    print("Sieve of Eratosthenes (limit 50000)... ")
+    let primes = sieve(50000)
+    println(str(primes.len()) + " primes")
+    println("  First 10: " + str(primes[0]) + ", " + str(primes[1]) + ", " + str(primes[2]) + ", " + str(primes[3]) + ", " + str(primes[4]) + ", " + str(primes[5]) + ", " + str(primes[6]) + ", " + str(primes[7]) + ", " + str(primes[8]) + ", " + str(primes[9]))
+    println("  Largest:  " + str(primes[primes.len() - 1]))
+
+    // 2. N-Queens
+    println("")
+    print("N-Queens (N=12)... ")
+    let solutions = queens_n(12)
+    println(str(solutions) + " solutions")
+
+    // 3. Maze generate + solve
+    let mw = 25
+    let mh = 15
+    println("")
+    println("Generating " + str(mw) + "x" + str(mh) + " maze...")
+    let grid = new_grid(mw, mh)
+    carve_maze(grid, mw, mh)
+    println("  Carved.")
+
+    print("Solving maze with BFS... ")
+    let path = solve_maze(grid, mw, mh)
+    println("path length " + str(path.len()))
+
+    // 4. Render maze through browser engine
+    println("")
+    print("Rendering maze as HTML via browser engine... ")
+    let maze_html = maze_to_html(grid, mw, mh, path)
+    let maze_css = ".maze { width: 500px } .c { height: 1px } .s { background: #48f } .st { background: #4c4 } .e { background: #c44 }"
+    let snap = browser_snapshot(maze_html, maze_css, 520)
+    println("done")
+
+    println("")
+    println("Maze Layout (start=green, end=red, path=blue):")
+    println(snap.text)
+
+    // 5. JS cross-engine check
+    println("")
+    print("JS engine: computing fib(25)... ")
+    let js_fib = js_eval("function f(n){if(n<2)return n;return f(n-1)+f(n-2)} f(25);")
+    println(str(js_fib))
+
+    // Summary
+    println("")
+    println("========================")
+    println("Primes:  " + str(primes.len()))
+    println("Queens:  " + str(solutions) + " solutions")
+    println("Maze:    " + str(mw) + "x" + str(mh) + ", path=" + str(path.len()))
+    println("JS fib:  " + str(js_fib))
+}

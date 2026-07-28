@@ -1,0 +1,33 @@
+// Simple RPC example - JSON-RPC call
+//
+// This demonstrates basic JSON-RPC usage without requiring a real server.
+//
+// Run with:
+//   tetherscript --grant-rpc http://localhost:3000 examples/rpc_simple.tether
+
+fn main() {
+    // Check if we have the RPC capability
+    if rpc == nil {
+        println("Error: RPC capability not granted");
+        println("Run with: tetherscript --grant-rpc http://localhost:3000 examples/rpc_simple.tether");
+        return;
+    }
+
+    println("RPC capability available!");
+    println("Endpoint: " + rpc.endpoint);
+
+    // Example: Make a JSON-RPC call
+    let params = map();
+    params.name = "TetherScript";
+    params.version = "0.1";
+
+    let result = rpc.call("echo", params);
+
+    if result.is_ok() {
+        println("Success: " + json_encode(result.unwrap()));
+    } else {
+        println("Error: " + result.unwrap_err());
+    }
+
+    println("RPC example complete");
+}

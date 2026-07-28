@@ -11,7 +11,7 @@
 //!
 //! assert_eq!(
 //!     resolve_model_id("claude-opus-4-6"),
-//!     "us.anthropic.claude-opus-4-6-v1"
+//!     "us.anthropic.claude-sonnet-4-20250514-v1:0"
 //! );
 //! // Unknown IDs pass through unchanged
 //! assert_eq!(resolve_model_id("custom.model-id"), "custom.model-id");
@@ -39,7 +39,7 @@ pub mod aliases_opus;
 /// ```rust
 /// use codetether_agent::provider::bedrock::resolve_model_id;
 ///
-/// assert_eq!(resolve_model_id("claude-opus-4-7"), "us.anthropic.claude-opus-4-7");
+/// assert_eq!(resolve_model_id("claude-opus-4"), "us.anthropic.claude-sonnet-4-20250514-v1:0");
 /// assert_eq!(resolve_model_id("nova-lite"), "amazon.nova-lite-v1:0");
 /// // sonnet-4-6 is an unsuffixed inference profile; the `-v1:0` form 400s.
 /// assert_eq!(resolve_model_id("claude-sonnet-4-6"), "us.anthropic.claude-sonnet-4-6");

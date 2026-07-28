@@ -1,0 +1,30 @@
+fn absolute_url(base, location) {
+    if location.starts_with("http://") { return location }
+    if location.starts_with("https://") { return location }
+    if location.starts_with("/") { return "https://realm.micro1.ai" + location }
+    return base + "/" + location
+}
+
+fn first_script_src(html) {
+    let parts = html.split("<script")
+    if parts.len() < 2 { return nil }
+    return parts[1].split("src=\"")[1].split("\"")[0]
+}
+
+fn inline_first_script(html, source) {
+    let parts = html.split("<script")
+    let tag = "<script" + parts[1].split("</script>")[0] + "</script>"
+    return html.replace(tag, "<script>" + source + "</script>")
+}
+
+fn main() {
+    let login = http_get("https://realm.micro1.ai/login").unwrap()
+    let redirected = http_get(absolute_url("https://realm.micro1.ai/login", login.headers.location)).unwrap()
+    let src = absolute_url("https://realm.micro1.ai/login", first_script_src(redirected.body))
+    println("external script: " + src)
+    let source = http_get(src).unwrap().body
+    println("script bytes: " + str(source.len()))
+    let inlined = inline_first_script(redirected.body, source)
+    println("inlined bytes: " + str(inlined.len()))
+    println(browser_run_scripts(inlined))
+}

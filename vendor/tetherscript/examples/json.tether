@@ -1,0 +1,31 @@
+// JSON parsing and encoding example.
+
+// Parse a JSON string into a TetherScript value (a map).
+let data = json_parse('{"name":"TetherScript","version":1,"tags":["lang","rust"],"active":true}');
+
+// Access fields using dot syntax (maps support field access).
+println("name:   " + data.name);
+println("version:" + " " + type_of(data.version));
+println("tags:   " + json_encode(data.tags));
+println("active: " + type_of(data.active));
+
+// Build a value in TetherScript and encode it back to JSON.
+let response = map();
+response.status = 200;
+response.body = "hello from TetherScript";
+response.headers = map();
+response.headers.content_type = "text/plain";
+
+println("");
+println("compact:");
+println(json_encode(response));
+
+println("");
+println("pretty:");
+println(json_encode_pretty(response));
+
+// Roundtrip: parse then re-encode.
+let original = '[1, 2, {"key": "value"}, null]';
+println("");
+println("original: " + original);
+println("roundtrip:" + " " + json_encode(json_parse(original)));

@@ -2,6 +2,7 @@ mod authority;
 mod call;
 pub mod cerebras;
 mod complete;
+mod complete_parse;
 mod convert;
 mod model_list;
 #[cfg(test)]

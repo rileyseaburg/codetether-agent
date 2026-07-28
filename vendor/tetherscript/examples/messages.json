@@ -1,0 +1,7 @@
+[
+  {"role": "user", "content": "  Hello world  "},
+  {"role": "assistant", "content": "Hi there!\\nHow can I help?"},
+  {"role": "user", "content": "Fix this\\tbroken\\ttext"},
+  {"role": "assistant", "content": "No changes needed"},
+  {"role": "user", "content": null}
+]

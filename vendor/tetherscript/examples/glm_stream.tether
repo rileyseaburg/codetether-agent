@@ -1,0 +1,38 @@
+// GLM 4.7 streaming via Cerebras — tokens printed as they arrive.
+//
+// Run with:
+//   tetherscript run \
+//     --grant-provider https://api.cerebras.ai \
+//     --grant-provider-key $CEREBRAS_API_KEY \
+//     examples/glm_stream.tether
+//
+// The stream() method calls a handler for each token delta,
+// including reasoning tokens from GLM 4.7's thinking mode.
+
+fn on_token(accumulated, delta) {
+    print(delta)
+}
+
+fn main() {
+    let messages = []
+    let user = map()
+    user.role = "user"
+    user.content = "Write a concise migration plan for upgrading to GLM 4.7."
+    messages.push(user)
+
+    let opts = map()
+    opts.model = "zai-glm-4.7"
+    opts.max_completion_tokens = 4000
+    opts.temperature = 1
+    opts.top_p = 0.95
+    opts.clear_thinking = false
+
+    println("Streaming GLM 4.7 response:")
+    let result = provider.stream(messages, on_token, opts)
+    println("")
+    if result.is_ok() {
+        println("(stream complete)")
+    } else {
+        println("Stream error: " + str(result))
+    }
+}

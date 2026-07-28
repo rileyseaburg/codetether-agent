@@ -1,0 +1,16 @@
+// Async syntax smoke test — zero-dependency scheduler frontend.
+//
+// In this P4 foundation pass, async/await/spawn/join parse and compile while
+// await/spawn currently evaluate synchronously. The scheduler runtime exists
+// in Rust and will be wired into VM suspension/resume in the next slice.
+
+async fn value() {
+    return 21
+}
+
+fn main() {
+    let a = spawn value()
+    let b = await value()
+    let both = join(a, b)
+    println("async smoke: " + both.len())
+}

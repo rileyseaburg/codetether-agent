@@ -1,0 +1,93 @@
+fn absolute_url(base, location) {
+    if location.starts_with("/") { return "https://realm.micro1.ai" + location }
+    return location
+}
+
+fn first_script_src(html) {
+    return html.split("<script")[1].split("src=\"")[1].split("\"")[0]
+}
+
+fn prefix(text, count) {
+    let mut out = ""
+    let mut i = 0
+    while i < count && i < text.len() {
+        out = out + text[i]
+        i = i + 1
+    }
+    return out
+}
+
+fn first_lines(text, count) {
+    let lines = text.lines()
+    let mut out = ""
+    let mut i = 0
+    while i < count && i < lines.len() {
+        out = out + lines[i] + "\n"
+        i = i + 1
+    }
+    return out
+}
+
+fn inline_first_script(html, source) {
+    let parts = html.split("<script")
+    let tag = "<script" + parts[1].split("</script>")[0] + "</script>"
+    return html.replace(tag, "<script>" + source + "</script>")
+}
+
+fn segment(text, start, count) {
+    let mut out = ""
+    let mut i = start
+    while i < start + count && i < text.len() {
+        out = out + text[i]
+        i = i + 1
+    }
+    return out
+}
+
+fn main() {
+    let first = http_get("https://realm.micro1.ai/login").unwrap()
+    let page = http_get(absolute_url("", first.headers.location)).unwrap()
+    let src = absolute_url("", first_script_src(page.body))
+    let source = http_get(src).unwrap().body
+    println("script bytes: " + str(source.len()))
+    println("line1: " + prefix(source.lines()[0], 1600))
+    println("line9: " + prefix(source.lines()[8], 300))
+    println("line25: " + prefix(source.lines()[24], 260))
+    println("line31: " + prefix(source.lines()[30], 220))
+    println("line32: " + prefix(source.lines()[31], 220))
+    println("line33: " + prefix(source.lines()[32], 520))
+    println("line33 bytes: " + str(source.lines()[32].len()))
+    println("line34: " + prefix(source.lines()[33], 260))
+    println("line35: " + prefix(source.lines()[34], 260))
+    println("line36: " + prefix(source.lines()[35], 260))
+    println("line37: " + prefix(source.lines()[36], 260))
+    println("line49: " + prefix(source.lines()[48], 900))
+    println("line49 seg: " + segment(source.lines()[48], 1360, 320))
+    println("line49 seg2: " + segment(source.lines()[48], 4020, 360))
+    println("line58: " + prefix(source.lines()[57], 900))
+    println("line58 seg: " + segment(source.lines()[57], 440, 320))
+    println("line67: " + prefix(source.lines()[66], 900))
+    println("line67 seg: " + segment(source.lines()[66], 6360, 360))
+    println("line67 seg2: " + segment(source.lines()[66], 9220, 360))
+    println("line67 seg3: " + segment(source.lines()[66], 11380, 420))
+    println("line67 seg4: " + segment(source.lines()[66], 13840, 420))
+    println("line67 seg5: " + segment(source.lines()[66], 20720, 420))
+    println("line67 seg6: " + segment(source.lines()[66], 26620, 420))
+    println("line67 seg7: " + segment(source.lines()[66], 40220, 420))
+    println("line67 seg8: " + segment(source.lines()[66], 41140, 360))
+    println("line72: " + prefix(source.lines()[71], 900))
+    println("line72 seg: " + segment(source.lines()[71], 29200, 560))
+    println("line746: " + prefix(source.lines()[745], 900))
+    println("line746 seg: " + segment(source.lines()[745], 11840, 560))
+    println("line757: " + prefix(source.lines()[756], 900))
+    println("line757 seg: " + segment(source.lines()[756], 7360, 560))
+    println("seg: " + segment(source.lines()[36], 29200, 220))
+    let prefix_source = source
+    println("prefix source bytes: " + str(prefix_source.len()))
+    let inlined = inline_first_script(page.body, prefix_source)
+    println("inlined html bytes: " + str(inlined.len()))
+    let result = browser_run_scripts(inlined)
+    println("browser result received")
+    println("browser value: " + str(result.value))
+    println("dom children: " + str(result.dom.len()))
+}

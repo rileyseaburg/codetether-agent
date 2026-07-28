@@ -1,0 +1,18 @@
+// Cached static server: reads index once, then serves from memory.
+
+fn main() {
+    let index = fs.read("dist/index.html").unwrap()
+    let headers = map()
+    headers["content-type"] = "text/html; charset=utf-8"
+
+    fn handle(req) {
+        let resp = map()
+        resp.status = 200
+        resp.headers = headers
+        resp.body = index
+        return resp
+    }
+
+    println("TetherScript cached static server on http://127.0.0.1:8790/")
+    http_serve(8790, handle)
+}

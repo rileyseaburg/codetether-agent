@@ -1,0 +1,49 @@
+// Static file server for the generated content site.
+//
+// Run:
+//   tetherscript run --grant-fs examples/content_site examples/static_site_server.tether
+//
+// Then open:
+//   http://127.0.0.1:8788/
+
+fn content_type(path) {
+    if path.ends_with(".html") { return "text/html; charset=utf-8" }
+    if path.ends_with(".json") { return "application/json" }
+    if path.ends_with(".xml") { return "application/xml" }
+    return "text/plain; charset=utf-8"
+}
+
+fn response(status, path, body) {
+    let resp = map()
+    resp.status = status
+    resp.body = body
+    let headers = map()
+    headers["content-type"] = content_type(path)
+    resp.headers = headers
+    return resp
+}
+
+fn not_found(path) {
+    return response(404, "404.txt", "not found: " + path + "\n")
+}
+
+fn safe_path(path) {
+    if path.contains("..") { return nil }
+    if path == "/" { return "dist/index.html" }
+    if path.ends_with("/") { return "dist" + path + "index.html" }
+    return "dist" + path
+}
+
+fn handle(req) {
+    let file = safe_path(req.path)
+    if file == nil { return not_found(req.path) }
+
+    let body = fs.read(file)
+    if body.is_err() { return not_found(req.path) }
+    return response(200, file, body.unwrap())
+}
+
+fn main() {
+    println("TetherScript static site server on http://127.0.0.1:8788/")
+    http_serve(8788, handle)
+}

@@ -1,0 +1,41 @@
+// Provider capability: call an LLM via OpenAI-compatible API.
+//
+// Run with (e.g. against local Ollama):
+//   tetherscript --grant-provider http://localhost:11434 examples/provider_chat.tether
+//   tetherscript --vm --grant-provider http://localhost:11434 examples/provider_chat.tether
+//
+// Requires a running LLM backend on the endpoint, e.g.:
+//   ollama serve
+//   ollama pull llama3
+
+fn main() {
+    // Check what we're connected to
+    let info = provider.describe()
+    println("Provider endpoint: " + info.endpoint)
+    println("Provider path: " + info.path)
+
+    // Build a simple messages list
+    let messages = []
+    let sys = map()
+    sys.role = "system"
+    sys.content = "You are a helpful assistant. Reply in one short sentence."
+    messages.push(sys)
+
+    let user = map()
+    user.role = "user"
+    user.content = "What is TetherScript?"
+    messages.push(user)
+
+    // Non-streaming: get the full response at once
+    let opts = map()
+    opts.model = "llama3"
+
+    println("")
+    println("Sending chat request...")
+    let result = provider.chat(messages, opts)
+    if result.ok {
+        println("Response: " + result.value)
+    } else {
+        println("Error: " + str(result))
+    }
+}

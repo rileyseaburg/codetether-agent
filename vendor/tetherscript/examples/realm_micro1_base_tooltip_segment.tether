@@ -1,0 +1,35 @@
+fn absolute_url(location) {
+    if location.starts_with("/") { return "https://realm.micro1.ai" + location }
+    return location
+}
+
+fn first_script_src(html) {
+    return html.split("<script")[1].split("src=\"")[1].split("\"")[0]
+}
+
+fn segment(text, start, count) {
+    let mut out = ""
+    let mut i = start
+    if i < 0 { i = 0 }
+    while i < start + count && i < text.len() {
+        out = out + text[i]
+        i = i + 1
+    }
+    return out
+}
+
+fn main() {
+    let first = http_get("https://realm.micro1.ai/login").unwrap()
+    let page = http_get(absolute_url(first.headers.location)).unwrap()
+    let source = http_get(absolute_url(first_script_src(page.body))).unwrap().body
+    let lines = source.lines()
+    let mut i = 0
+    while i < lines.len() {
+        if lines[i].contains("BaseTooltip=H") {
+            let before = lines[i].split("BaseTooltip=H")[0]
+            println("line " + str(i + 1) + " col " + str(before.len()))
+            println(segment(lines[i], before.len() - 600, 7000))
+        }
+        i = i + 1
+    }
+}

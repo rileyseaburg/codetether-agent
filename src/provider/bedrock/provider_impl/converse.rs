@@ -14,9 +14,9 @@ impl BedrockProvider {
         model_id: &str,
     ) -> Result<CompletionResponse> {
         let body = self.build_converse_body(request, model_id);
-        // Keep the runtime URL readable; the SigV4 signer canonicalizes path
-        // segments so model suffixes like `:0` are encoded exactly once.
-        let url = format!("{}/model/{}/converse", self.base_url(), model_id);
+        // Encode model suffixes like `:0` before dispatch; the signer preserves
+        // already encoded path segments instead of encoding them twice.
+        let url = self.runtime_model_url(model_id, "converse");
         let body_bytes = serde_json::to_vec(&body)?;
         let policy = retry::RetryPolicy::default();
 

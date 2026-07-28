@@ -1,0 +1,57 @@
+fn absolute_url(base, location) {
+    if location.starts_with("http://") { return location }
+    if location.starts_with("https://") { return location }
+    if location.starts_with("/") { return "https://realm.micro1.ai" + location }
+    return base + "/" + location
+}
+
+fn first_script_src(html) {
+    return html.split("<script")[1].split("src=\"")[1].split("\"")[0]
+}
+
+fn inline_first_script(html, source) {
+    let parts = html.split("<script")
+    let tag = "<script" + parts[1].split("</script>")[0] + "</script>"
+    return html.replace(tag, "<script>" + source + "</script>")
+}
+
+fn summary_probe() {
+    return ";console.log('axios probe',typeof F,typeof F.get,Object.keys(F).join(','));console.log('headers probe',typeof mg,typeof mg.prototype.getContentType,Object.getOwnPropertyNames(mg.prototype).join(','),typeof F.defaults.headers.getContentType);console.log('route probe',location.pathname,typeof XEt,typeof er,typeof Xr,typeof Qtt,Qtt());setTimeout(function(){let root=document.getElementById('root');console.log(location.href);console.log(root.children.length + '|' + root.childNodes.length + '|' + root.innerHTML.length);console.log(root.innerHTML);},1000);"
+}
+
+fn reveal_profile_error(source) {
+    let original = "catch{console.error(\"Failed to get profile\")}"
+    let patched = "catch(p){console.error(\"Failed to get profile\",p&&p.message?p.message:p)}"
+    return source.replace(original, patched)
+}
+
+fn reveal_transform_headers(source) {
+    let original = "function jse(e,t){const s=this||qye,r=t||s,i=mg.from(r.headers);let a=r.data;return At.forEach(e,function(l){a=l.call(s,a,i.normalize(),t?t.status:void 0)}),i.normalize(),a}"
+    let patched = "function jse(e,t){const s=this||qye,r=t||s,i=mg.from(r.headers);let a=r.data;console.log('jse probe',typeof r.headers.getContentType,typeof i.getContentType,typeof i.normalize().getContentType,Object.getOwnPropertyNames(Object.getPrototypeOf(i)).join(','));return At.forEach(e,function(l){a=l.call(s,a,i.normalize(),t?t.status:void 0)}),i.normalize(),a}"
+    return source.replace(original, patched)
+}
+
+fn reveal_route_calls(source) {
+    let mut out = source.replace("UGs=()=>{const{user:e}=$e(),", "UGs=()=>{console.log('UGs called',qu().pathname);const{user:e}=$e(),")
+    out = out.replace("Azt=({children:e})=>Qtt()?n.jsx(Xr,{to:\"/\",replace:!0}):n.jsx(n.Fragment,{children:e})", "Azt=({children:e})=>(console.log('Azt called',Qtt(),e&&e.type),Qtt()?n.jsx(Xr,{to:\"/\",replace:!0}):n.jsx(n.Fragment,{children:e}))")
+    out = out.replace("YPt=()=>{const e=ot(),", "YPt=()=>{console.log('YPt called');const e=ot(),")
+    out = out.replace("function XEt(e){let{children:t,location:s}=e;return FEt(Yhe(t),s)}", "function XEt(e){let{children:t,location:s}=e,r=Yhe(t);console.log('XEt routes',Array.isArray(t),t&&t.length,r.length,location.pathname);return FEt(r,s)}")
+    out = out.replace("let f=dEt(e,{pathname:g}),b=GEt(", "let f=dEt(e,{pathname:g});console.log('route match',h,g,f&&f.length,f&&f[0]&&f[0].route&&f[0].route.path);let b=GEt(")
+    return out
+}
+
+fn main() {
+    let login = http_get("https://realm.micro1.ai/login").unwrap()
+    let redirected = http_get(absolute_url("https://realm.micro1.ai/login", login.headers.location)).unwrap()
+    let src = absolute_url("https://realm.micro1.ai/login", first_script_src(redirected.body))
+    let source = reveal_route_calls(reveal_transform_headers(reveal_profile_error(http_get(src).unwrap().body))) + summary_probe()
+    let inlined = inline_first_script(redirected.body, source)
+    let result = browser_run_scripts_at("https://realm.micro1.ai/login", inlined)
+    println(result.console.join("\n"))
+    let mut i = 0
+    while i < result.network.len() {
+        let event = result.network[i]
+        println("network " + event.method + " " + event.url + " " + str(event.status) + " " + str(event.route_result))
+        i = i + 1
+    }
+}

@@ -1,0 +1,43 @@
+fn absolute_url(base, location) {
+    if location.starts_with("http://") { return location }
+    if location.starts_with("https://") { return location }
+    if location.starts_with("/") { return "https://realm.micro1.ai" + location }
+    return base + "/" + location
+}
+
+fn first_script_src(html) {
+    let parts = html.split("<script")
+    if parts.len() < 2 { return nil }
+    return parts[1].split("src=\"")[1].split("\"")[0]
+}
+
+fn segment(text, start, count) {
+    let mut out = ""
+    let mut i = start
+    if i < 0 { i = 0 }
+    while i < start + count && i < text.len() {
+        out = out + text[i]
+        i = i + 1
+    }
+    return out
+}
+
+fn print_pattern(source, pattern) {
+    let parts = source.split(pattern)
+    println("pattern: " + pattern + " hits: " + str(parts.len() - 1))
+    if parts.len() > 1 {
+        let before = parts[0]
+        let start = before.len() - 1800
+        println(segment(before + pattern + parts[1], start, 3600))
+    }
+}
+
+fn main() {
+    let login = http_get("https://realm.micro1.ai/login").unwrap()
+    let page = http_get(absolute_url("https://realm.micro1.ai/login", login.headers.location)).unwrap()
+    let source = http_get(absolute_url("https://realm.micro1.ai/login", first_script_src(page.body))).unwrap().body
+    print_pattern(source, ".default.register")
+    print_pattern(source, "r.register=b")
+    print_pattern(source, "register=function")
+    print_pattern(source, "register:")
+}

@@ -1,0 +1,233 @@
+// Static site generator — a Node.js-style content automation task.
+//
+// Reads markdown posts from ./posts, extracts YAML-ish frontmatter,
+// builds HTML pages, a search-index.json, and feed.xml.
+//
+// Run from repo root:
+//   tetherscript run --grant-fs examples/content_site examples/static_site_gen.tether
+
+fn substr(s, start, end) {
+    let mut out = ""
+    let mut i = 0
+    for ch in s {
+        if i >= start && i < end {
+            out = out + ch
+        }
+        i = i + 1
+    }
+    return out
+}
+
+fn min2(a, b) {
+    if a < b { return a }
+    return b
+}
+
+fn slug_from_file(path) {
+    let s = path
+    if s.ends_with(".md") {
+        return substr(s, 0, s.len() - 3)
+    }
+    return s
+}
+
+fn strip_prefix(path, prefix) {
+    if path.starts_with(prefix) {
+        return substr(path, prefix.len(), path.len())
+    }
+    return path
+}
+
+fn escape_html(s) {
+    let mut out = ""
+    for ch in s {
+        if ch == "<" {
+            out = out + "&lt;"
+        } else {
+            if ch == ">" {
+                out = out + "&gt;"
+            } else {
+                if ch == "&" {
+                    out = out + "&amp;"
+                } else {
+                    out = out + ch
+                }
+            }
+        }
+    }
+    return out
+}
+
+fn split_lines(s) {
+    let mut lines = []
+    let mut cur = ""
+    for ch in s {
+        if ch == "\n" {
+            lines.push(cur)
+            cur = ""
+        } else {
+            cur = cur + ch
+        }
+    }
+    lines.push(cur)
+    return lines
+}
+
+fn field(line, name) {
+    let p = name + ":"
+    if line.starts_with(p) {
+        let v = substr(line, p.len(), line.len())
+        if v.starts_with(" ") { return substr(v, 1, v.len()) }
+        return v
+    }
+    return nil
+}
+
+fn parse_post(path, content) {
+    let post = map()
+    post.path = path
+    post.slug = slug_from_file(strip_prefix(path, "posts/"))
+    post.url = "dist/" + post.slug + ".html"
+    post.title = post.slug
+    post.date = ""
+    post.tags = ""
+
+    let lines = split_lines(content)
+    let mut body = ""
+    let mut in_meta = false
+    let mut after_meta = false
+    let mut i = 0
+
+    if lines.len() > 0 && lines[0] == "---" {
+        in_meta = true
+        i = 1
+    }
+
+    while i < lines.len() {
+        let line = lines[i]
+        if in_meta && line == "---" {
+            in_meta = false
+            after_meta = true
+        } else if in_meta {
+            let title = field(line, "title")
+            let date = field(line, "date")
+            let tags = field(line, "tags")
+            if title != nil { post.title = title }
+            if date != nil { post.date = date }
+            if tags != nil { post.tags = tags }
+        } else {
+            body = body + line + "\n"
+        }
+        i = i + 1
+    }
+
+    post.body = body
+    post.excerpt = substr(body, 0, min2(body.len(), 140))
+    return post
+}
+
+fn md_to_html(md) {
+    let lines = split_lines(md)
+    let mut html = ""
+    let mut i = 0
+    while i < lines.len() {
+        let line = lines[i]
+        if line.starts_with("# ") {
+            html = html + "<h1>" + escape_html(substr(line, 2, line.len())) + "</h1>\n"
+        } else if line.starts_with("## ") {
+            html = html + "<h2>" + escape_html(substr(line, 3, line.len())) + "</h2>\n"
+        } else if line.len() == 0 {
+            html = html + "\n"
+        } else {
+            html = html + "<p>" + escape_html(line) + "</p>\n"
+        }
+        i = i + 1
+    }
+    return html
+}
+
+fn page_template(post) {
+    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>" + escape_html(post.title) + "</title><style>body{font-family:sans-serif;max-width:720px;margin:40px auto;line-height:1.6}a{color:#06c}.meta{color:#666}</style></head><body><p><a href=\"index.html\">← index</a></p><article><h1>" + escape_html(post.title) + "</h1><p class=\"meta\">" + escape_html(post.date) + " · " + escape_html(post.tags) + "</p>" + md_to_html(post.body) + "</article></body></html>"
+}
+
+fn index_page(posts) {
+    let mut html = "<!doctype html><html><head><meta charset=\"utf-8\"><title>TetherScript Content Site</title><style>body{font-family:sans-serif;max-width:760px;margin:40px auto}.post{margin:24px 0}.meta{color:#666}</style></head><body><h1>TetherScript Content Site</h1><p>Generated from markdown by TetherScript.</p>"
+    let mut i = 0
+    while i < posts.len() {
+        let p = posts[i]
+        html = html + "<section class=\"post\"><h2><a href=\"" + p.slug + ".html\">" + escape_html(p.title) + "</a></h2><p class=\"meta\">" + escape_html(p.date) + " · " + escape_html(p.tags) + "</p><p>" + escape_html(p.excerpt) + "</p></section>"
+        i = i + 1
+    }
+    return html + "</body></html>"
+}
+
+fn search_index(posts) {
+    let mut docs = []
+    let mut i = 0
+    while i < posts.len() {
+        let p = posts[i]
+        let d = map()
+        d.title = p.title
+        d.date = p.date
+        d.tags = p.tags
+        d.url = p.slug + ".html"
+        d.excerpt = p.excerpt
+        docs.push(d)
+        i = i + 1
+    }
+    return json_encode_pretty(docs)
+}
+
+fn feed(posts) {
+    let mut xml = "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel><title>TetherScript Content Site</title><link>./</link><description>Generated by TetherScript</description>"
+    let mut i = 0
+    while i < posts.len() {
+        let p = posts[i]
+        xml = xml + "<item><title>" + escape_html(p.title) + "</title><link>" + p.slug + ".html</link><description>" + escape_html(p.excerpt) + "</description><pubDate>" + escape_html(p.date) + "</pubDate></item>"
+        i = i + 1
+    }
+    return xml + "</channel></rss>"
+}
+
+fn ensure_dist() {
+    let r = fs.mkdir("dist")
+    return r
+}
+
+fn main() {
+    println("Static site generator")
+    println("=====================")
+    ensure_dist()
+
+    let entries = fs.list("posts").unwrap()
+    let mut posts = []
+    let mut i = 0
+    while i < entries.len() {
+        let name = entries[i]
+        if name.ends_with(".md") {
+            let path = "posts/" + name
+            let content = fs.read(path).unwrap()
+            let post = parse_post(path, content)
+            posts.push(post)
+            println("read: " + path + " → " + post.slug + ".html")
+        }
+        i = i + 1
+    }
+
+    let mut p = 0
+    while p < posts.len() {
+        let post = posts[p]
+        fs.write("dist/" + post.slug + ".html", page_template(post)).unwrap()
+        p = p + 1
+    }
+
+    fs.write("dist/index.html", index_page(posts)).unwrap()
+    fs.write("dist/search-index.json", search_index(posts)).unwrap()
+    fs.write("dist/feed.xml", feed(posts)).unwrap()
+
+    println("")
+    println("Generated " + str(posts.len()) + " posts into examples/content_site/dist")
+    println("- dist/index.html")
+    println("- dist/search-index.json")
+    println("- dist/feed.xml")
+}

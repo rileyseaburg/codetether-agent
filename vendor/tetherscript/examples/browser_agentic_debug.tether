@@ -1,0 +1,24 @@
+fn verify_checkout(browser, base_url) {
+    browser.goto(base_url)?
+    browser.click_text("Shop")?
+    browser.click_text("Add to cart")?
+    browser.click_text("Checkout")?
+
+    assert_no_console_errors(browser)?
+    assert_no_failed_requests(browser)?
+    assert_text(browser, "Payment details")?
+
+    let report = browser.page_snapshot()?
+    let component = browser."react.component_for_selector"("[data-testid='checkout-form']")?
+
+    return Ok(map() {
+        "ok": true,
+        "snapshot": report,
+        "component": component,
+        "trace": browser.trace()?
+    })
+}
+
+fn main() {
+    println(browser.describe()?)
+}

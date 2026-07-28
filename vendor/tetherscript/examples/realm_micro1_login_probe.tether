@@ -1,0 +1,78 @@
+fn fetch_login(url) {
+    let first = http_get(url)
+    if first.is_err() { return first }
+    let page = first.unwrap()
+    if page.status == 301 {
+        let next = absolute_url(url, page.headers.location)
+        println("redirect: " + next)
+        return http_get(next)
+    }
+    if page.status == 302 {
+        let next = absolute_url(url, page.headers.location)
+        println("redirect: " + next)
+        return http_get(next)
+    }
+    return first
+}
+
+fn absolute_url(base, location) {
+    if location.starts_with("http://") { return location }
+    if location.starts_with("https://") { return location }
+    if location.starts_with("/") { return "https://realm.micro1.ai" + location }
+    return base + "/" + location
+}
+
+fn first_script_src(html) {
+    let parts = html.split("<script")
+    if parts.len() < 2 { return nil }
+    let attrs = parts[1].split(">")[0]
+    let src_parts = attrs.split("src=\"")
+    if src_parts.len() < 2 { return nil }
+    return src_parts[1].split("\"")[0]
+}
+
+fn inline_first_script(html, source) {
+    let parts = html.split("<script")
+    let tag = "<script" + parts[1].split("</script>")[0] + "</script>"
+    return html.replace(tag, "<script>" + source + "</script>")
+}
+
+fn main() {
+    let url = "https://realm.micro1.ai/login"
+    let response = fetch_login(url)
+    if response.is_err() {
+        println("fetch error")
+        println(response.err())
+        return nil
+    }
+
+    let page = response.unwrap()
+    let html = page.body
+    println("realm status: " + str(page.status))
+    println("html bytes: " + str(html.len()))
+    println("script tags: " + str(html.split("<script").len() - 1))
+    println("link tags: " + str(html.split("<link").len() - 1))
+    println("root present: " + str(html.contains("id=\"root\"")))
+    println("running native browser scripts")
+    let result = browser_run_scripts(html)
+    println("browser value: " + str(result.value))
+
+    let src = first_script_src(html)
+    if src == nil {
+        println("external script: none")
+        return nil
+    }
+    let script_url = absolute_url(url, src)
+    println("external script: " + script_url)
+    let script_response = http_get(script_url)
+    if script_response.is_err() {
+        println("script fetch error")
+        println(script_response.err())
+        return nil
+    }
+    let source = script_response.unwrap().body
+    println("script bytes: " + str(source.len()))
+    println("running native browser with fetched script")
+    let hydrated = browser_run_scripts(inline_first_script(html, source))
+    println("hydrated value: " + str(hydrated.value))
+}

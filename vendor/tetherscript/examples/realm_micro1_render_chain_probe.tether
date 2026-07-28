@@ -1,0 +1,105 @@
+fn absolute_url(location) {
+    if location.starts_with("/") { return "https://realm.micro1.ai" + location }
+    return location
+}
+
+fn first_script_src(html) {
+    return html.split("<script")[1].split("src=\"")[1].split("\"")[0]
+}
+
+fn segment(text, start, count) {
+    let mut out = ""
+    let mut i = start
+    if i < 0 { i = 0 }
+    while i < start + count && i < text.len() {
+        out = out + text[i]
+        i = i + 1
+    }
+    return out
+}
+
+fn dump(source, pattern) {
+    let parts = source.split(pattern)
+    println("\n== " + pattern + " ==")
+    println("hits: " + str(parts.len() - 1))
+    if parts.len() > 1 {
+        println(segment(parts[0] + pattern + parts[1], parts[0].len() - 900, 2200))
+    }
+}
+
+fn main() {
+    let first = http_get("https://realm.micro1.ai/login").unwrap()
+    let page = http_get(absolute_url(first.headers.location)).unwrap()
+    let source = http_get(absolute_url(first_script_src(page.body))).unwrap().body
+    dump(source, "function h7(")
+    dump(source, "function SYe(")
+    dump(source, "function xm(")
+    dump(source, "function xQe(")
+    dump(source, "function hQe(")
+    dump(source, "function WSt(")
+    dump(source, "function KSt(")
+    dump(source, "function TE(")
+    dump(source, "function D(")
+    dump(source, "react.context")
+    dump(source, "react.provider")
+    dump(source, "$$typeof")
+    dump(source, "Failed to get profile")
+    dump(source, "getMyProfile")
+    dump(source, "GET_MY_PROFILE")
+    dump(source, "baseURL")
+    dump(source, "getUri")
+    dump(source, "prototype.get")
+    dump(source, "prototype[t]")
+    dump(source, "[\"delete\"")
+    dump(source, "head\",\"options")
+    dump(source, "post\",\"put")
+    dump(source, "getContentType")
+    dump(source, "accessor")
+    dump(source, "toCamelCase")
+    dump(source, "function _1t")
+    dump(source, "_1t=")
+    dump(source, "Object.defineProp")
+    dump(source, "axios")
+    dump(source, "XMLHttpRequest")
+    dump(source, "function jse")
+    dump(source, "jse=")
+    dump(source, "jse.call")
+    dump(source, "function B(")
+    dump(source, "const B=")
+    dump(source, "B=e=>")
+    dump(source, ".adapter")
+    dump(source, "profile")
+    dump(source, "login-bg")
+    dump(source, "realm-login")
+    dump(source, "/login")
+    dump(source, "createRoot")
+    dump(source, "getElementById(\"root\")")
+    dump(source, "root.render")
+    dump(source, "min-h-screen")
+    dump(source, "flex flex-col min-h-screen")
+    dump(source, "Azt=")
+    dump(source, "UGs=")
+    dump(source, "XEt")
+    dump(source, "Xr")
+    dump(source, "qu()")
+    dump(source, "function qu")
+    dump(source, "function $Et")
+    dump(source, "function XEt")
+    dump(source, "function Yhe")
+    dump(source, "function dEt")
+    dump(source, "function yEt")
+    dump(source, "function NEt")
+    dump(source, "function Aye")
+    dump(source, "function vS")
+    dump(source, "function UEt")
+    dump(source, "function BEt")
+    dump(source, "rankRouteBranches")
+    dump(source, "XEt=")
+    dump(source, "er=")
+    dump(source, "Xr=")
+    dump(source, "const Azt")
+    dump(source, "function Azt")
+    dump(source, "BrowserRouter")
+    dump(source, "Routes")
+    dump(source, "path:\"/login")
+}

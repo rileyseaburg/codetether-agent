@@ -1,0 +1,36 @@
+// Ownership demo.
+//
+// Scalars are Copy — move does nothing visible.
+// Lists (and other heap values) are owned — `move xs` tombstones the binding.
+
+fn describe(xs) {
+    // Implicit borrow — we can read xs here without moving it.
+    println("got list with len = " + xs.len())
+}
+
+fn consume(xs) {
+    // Takes ownership. Caller must have used `move` to get here.
+    println("consuming: " + xs)
+}
+
+fn main() {
+    let mut xs = [1, 2, 3]
+    xs.push(4)
+
+    // Implicit borrow — xs is still usable after these calls.
+    describe(xs)
+    describe(xs)
+    println("after borrows, xs = " + xs)
+
+    // Explicit move — after this, xs is a tombstone.
+    consume(move xs)
+
+    // Uncomment to see the runtime panic:
+    //   println(xs)
+    // tetherscript: use of moved value `xs` (value was moved earlier and cannot be used again)
+
+    println("scalars are Copy, so this is fine:")
+    let n = 42
+    let m = move n
+    println("n still = " + n + ", m = " + m)
+}

@@ -1,0 +1,27 @@
+fn main() {
+    let mut script = "function createElement(type, props, child) { return {type:type, props:props || {}, child:child}; }"
+    script = script + "let React = { createElement: createElement };"
+    script = script + "let ReactDOM = {};"
+    script = script + "ReactDOM.createRoot = function(root) {"
+    script = script + "  return { render: function(vnode) {"
+    script = script + "    if (typeof vnode.type === 'function') { vnode = vnode.type(); }"
+    script = script + "    let el = document.createElement(vnode.type);"
+    script = script + "    if (vnode.props && vnode.props.id) { el.setAttribute('id', vnode.props.id); }"
+    script = script + "    el.textContent = vnode.child;"
+    script = script + "    root.appendChild(el);"
+    script = script + "  }};"
+    script = script + "};"
+    script = script + "function App() { return React.createElement('h1', {id:'react-title'}, 'Hello React from tethercstp'); }"
+    script = script + "ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));"
+    script = script + "document.getElementById('root').innerHTML;"
+
+    let html = "<main id='root'></main><script>" + script + "</script>"
+    let css = "main { width: 48px; padding: 1px } h1 { height: 2px; color: blue }"
+    let result = browser_run_scripts(html)
+    let mounted = result.value
+    let mounted_page = "<main id='root'>" + mounted + "</main>"
+
+    println("tethercstp browser react")
+    println(browser_text_content(mounted_page, "#react-title"))
+    print(browser_render(mounted_page, css, 80))
+}

@@ -255,3 +255,7 @@ strip = "debuginfo"
 inherits = "release"
 lto = false
 codegen-units = 16
+
+[patch.crates-io]
+candle-kernels = { path = "vendor/candle-kernels" }
+tetherscript = { path = "vendor/tetherscript" }

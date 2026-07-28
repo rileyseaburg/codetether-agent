@@ -1,0 +1,9 @@
+// Native static server: preloads dist through the granted fs capability.
+//
+// Run:
+//   tetherscript run --grant-fs examples/content_site examples/static_site_server_native.tether
+
+fn main() {
+    println("TetherScript native static server on http://127.0.0.1:8792/")
+    http_serve_static(8792, "dist")
+}

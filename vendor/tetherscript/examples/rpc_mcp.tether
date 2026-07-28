@@ -1,0 +1,120 @@
+// Example: Using the RPC capability to talk to MCP servers
+//
+// This demonstrates JSON-RPC calls, SSE streaming, and WebSocket connections.
+//
+// Run with:
+//   tetherscript --grant-rpc http://localhost:3000 examples/rpc_mcp.tether
+
+// JSON-RPC call example
+fn call_mcp_method(rpc, method, params) {
+    println("Calling MCP method: " + method);
+
+    let result = rpc.call(method, params);
+
+    if result.is_ok() {
+        println("Success: " + json_encode(result.unwrap()));
+        return result.unwrap();
+    } else {
+        println("Error: " + result.unwrap_err());
+        return nil;
+    }
+}
+
+// MCP initialization
+fn initialize_mcp(rpc) {
+    let params = map();
+    params.protocolVersion = "2024-11-05";
+    params.capabilities = map();
+    params.capabilities.tools = map();
+
+    let result = call_mcp_method(rpc, "initialize", params);
+    if result != nil {
+        // Send initialized notification
+        rpc.call("notifications/initialized", map());
+    }
+    return result;
+}
+
+// List available tools
+fn list_tools(rpc) {
+    let result = call_mcp_method(rpc, "tools/list", map());
+    if result != nil {
+        let tools = result.tools;
+        println("Available tools:");
+        println("  Count: " + str(tools.len()));
+        // Note: TetherScript doesn't have for loops yet
+        // You can access tools by index: tools[0], tools[1], etc.
+    }
+}
+
+// Call a tool
+fn call_tool(rpc, name, args) {
+    let params = map();
+    params.name = name;
+    params.arguments = args;
+
+    let result = call_mcp_method(rpc, "tools/call", params);
+    if result != nil {
+        return result.content;
+    }
+    return nil;
+}
+
+// SSE streaming example
+fn subscribe_to_events(rpc, path) {
+    println("Subscribing to SSE events at: " + path);
+
+    let handler = fn(event) {
+        println("Event type: " + event.type);
+        println("Event id: " + event.id);
+        println("Event data: " + json_encode(event.data));
+        println("---");
+    };
+
+    let count = rpc.sse_subscribe(path, handler);
+    println("Received " + str(count) + " events");
+}
+
+// WebSocket example
+fn websocket_connect(rpc, path) {
+    println("Connecting to WebSocket at: " + path);
+
+    let handler = fn(message) {
+        println("Received: " + message);
+    };
+
+    let count = rpc.websocket(path, handler);
+    println("Received " + str(count) + " messages");
+}
+
+// Main example
+fn main() {
+    // Check if we have the RPC capability
+    if rpc == nil {
+        println("Error: RPC capability not granted");
+        println("Run with: tetherscript --grant-rpc http://localhost:3000 examples/rpc_mcp.tether");
+        return;
+    }
+
+    // Initialize MCP connection
+    let init_result = initialize_mcp(rpc);
+    if init_result == nil {
+        println("Failed to initialize MCP connection");
+        return;
+    }
+
+    // List available tools
+    list_tools(rpc);
+
+    // Example: Call a tool (if available)
+    // let tool_result = call_tool(rpc, "some_tool", map());
+    // println("Tool result: " + json_encode(tool_result));
+
+    // Example: Subscribe to SSE events
+    // subscribe_to_events(rpc, "/events");
+
+    // Example: Connect via WebSocket
+    // websocket_connect(rpc, "/ws");
+
+    println("RPC example complete");
+}

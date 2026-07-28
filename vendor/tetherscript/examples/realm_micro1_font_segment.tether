@@ -1,0 +1,42 @@
+fn absolute_url(location) {
+    if location.starts_with("/") { return "https://realm.micro1.ai" + location }
+    return location
+}
+
+fn first_script_src(html) {
+    return html.split("<script")[1].split("src=\"")[1].split("\"")[0]
+}
+
+fn segment(text, start, count) {
+    let mut out = ""
+    let mut i = start
+    if i < 0 { i = 0 }
+    while i < start + count && i < text.len() {
+        out = out + text[i]
+        i = i + 1
+    }
+    return out
+}
+
+fn print_hit(source, pattern) {
+    let parts = source.split(pattern)
+    println("pattern: " + pattern + " hits: " + str(parts.len() - 1))
+    if parts.len() > 1 {
+        let prefix = parts[0]
+        println(segment(prefix + pattern + parts[1], prefix.len() - 2000, 4200))
+    }
+}
+
+fn main() {
+    let first = http_get("https://realm.micro1.ai/login").unwrap()
+    let page = http_get(absolute_url(first.headers.location)).unwrap()
+    let source = http_get(absolute_url(first_script_src(page.body))).unwrap().body
+    print_hit(source, "formats/font")
+    print_hit(source, "FontClass")
+    print_hit(source, "FontStyle")
+    print_hit(source, "W5")
+    print_hit(source, "const W5")
+    print_hit(source, "var W5")
+    print_hit(source, "W5=")
+    print_hit(source, "W5=>")
+}

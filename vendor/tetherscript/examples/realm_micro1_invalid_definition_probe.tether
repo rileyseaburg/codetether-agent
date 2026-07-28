@@ -1,0 +1,30 @@
+fn absolute_url(base, location) {
+    if location.starts_with("http://") { return location }
+    if location.starts_with("https://") { return location }
+    if location.starts_with("/") { return "https://realm.micro1.ai" + location }
+    return base + "/" + location
+}
+
+fn first_script_src(html) {
+    let parts = html.split("<script")
+    if parts.len() < 2 { return nil }
+    return parts[1].split("src=\"")[1].split("\"")[0]
+}
+
+fn inline_first_script(html, source) {
+    let parts = html.split("<script")
+    let tag = "<script" + parts[1].split("</script>")[0] + "</script>"
+    return html.replace(tag, "<script>" + source + "</script>")
+}
+
+fn main() {
+    let login = http_get("https://realm.micro1.ai/login").unwrap()
+    let redirected = http_get(absolute_url("https://realm.micro1.ai/login", login.headers.location)).unwrap()
+    let src = absolute_url("https://realm.micro1.ai/login", first_script_src(redirected.body))
+    let source = http_get(src).unwrap().body
+    let probe = "if(typeof _.blotName!=\"string\"&&typeof _.attrName!=\"string\")throw new o(\"Invalid definition\")"
+    let patched = "if(typeof _.blotName!=\"string\"&&typeof _.attrName!=\"string\")throw new o(\"Invalid definition shape qkey=\"+_.__realmRegisterKey+\" name=\"+_.name+\" ctor=\"+(_.constructor&&_.constructor.name)+\" keys=\"+Object.keys(_).join(\",\")+\" type=\"+typeof _)"
+    let qprobe = "Object.keys(D).forEach(function(W){G.register(W,D[W],P)})"
+    let qpatched = "Object.keys(D).forEach(function(W){D[W]&&typeof D[W]==\"object\"&&(D[W].__realmRegisterKey=W),G.register(W,D[W],P)})"
+    println(browser_run_scripts(inline_first_script(redirected.body, source.replace(probe, patched).replace(qprobe, qpatched))))
+}

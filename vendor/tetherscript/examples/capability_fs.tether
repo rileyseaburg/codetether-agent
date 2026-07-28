@@ -1,0 +1,63 @@
+// Capability validation example.
+//
+// Run with:
+//     tetherscript --grant-fs ./examples/cap_workspace examples/capability_fs.tether
+//
+// Exercises every invariant the capability model is supposed to uphold:
+//   1. The agent can act through the granted `fs` capability.
+//   2. A narrowed `fs` (ro) still reads but can't write.
+//   3. Subdelegation composes — a function receiving `fs_ro` has only ro.
+//   4. Path escapes (../) are rejected before the authority even dispatches.
+//   5. Revoking the parent kills every narrowed descendant atomically.
+//   6. Result + ? carries errors out cleanly rather than panicking.
+
+fn read_or_report(handle, path) {
+    // Subdelegation: `handle` is whatever capability the caller passed.
+    // This function has no inherent authority; everything flows through
+    // the capability value.
+    let r = handle.read(path)
+    if r.is_ok() {
+        println("  read:", r.unwrap())
+    } else {
+        println("  read failed:", r.err())
+    }
+}
+
+fn try_write(handle, path, content) {
+    let r = handle.write(path, content)
+    if r.is_ok() {
+        println("  wrote:", path)
+    } else {
+        println("  write failed:", r.err())
+    }
+}
+
+fn main() {
+    println("== 1. Write via full fs ==")
+    try_write(fs, "hello.txt", "hello from a TetherScript agent\n")
+
+    println("== 2. Read via full fs ==")
+    read_or_report(fs, "hello.txt")
+
+    println("== 3. Narrow to read-only, pass to a sub-fn ==")
+    let ro_params = map()
+    ro_params["mode"] = "ro"
+    let fs_ro = fs.narrow(ro_params)
+    read_or_report(fs_ro, "hello.txt")
+    try_write(fs_ro, "hello.txt", "should fail")
+
+    println("== 4. Path escape is rejected ==")
+    read_or_report(fs, "../../etc/passwd")
+
+    println("== 5. List ==")
+    println("  entries:", fs.list("."))
+
+    println("== 6. Revoke parent, child dies too ==")
+    println("  fs_ro.is_revoked (before):", fs_ro.is_revoked())
+    fs.revoke()
+    println("  fs.is_revoked:",    fs.is_revoked())
+    println("  fs_ro.is_revoked:", fs_ro.is_revoked())
+    read_or_report(fs_ro, "hello.txt")
+
+    println("== done ==")
+}

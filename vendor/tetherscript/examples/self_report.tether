@@ -1,0 +1,115 @@
+// TetherScript Self-Report — generates a dynamic HTML report about
+// TetherScript's capabilities, renders it through the built-in browser
+// engine, and prints the layout.
+//
+// Run:
+//   tetherscript run examples/self_report.tether
+
+fn build_report() {
+    let html = "<div class=\"report\"><h1>TetherScript Capability Report</h1><div class=\"section\"><h2>Language Features</h2><ul><li>Dynamic typing with ownership</li><li>Closures and first-class functions</li><li>Result type with ? operator</li><li>Pattern matching</li></ul></div><div class=\"section\"><h2>Runtime</h2><ul><li>Tree-walking interpreter</li><li>Bytecode VM</li><li>JS engine built-in</li><li>HTML/CSS renderer</li></ul></div><div class=\"section\"><h2>Stdlib</h2><ul><li>HTTP server (http_serve)</li><li>JSON parse/encode</li><li>SMTP (smtp_send)</li><li>FS capabilities</li><li>LLM provider (chat + stream)</li><li>RPC (MCP + A2A)</li></ul></div><footer>Built with TetherScript 0.1.0-alpha.10</footer></div>"
+
+    let css = ".report { width: 80px; padding: 2px; background: #fafafa } h1 { height: 2px; color: #222 } .section { padding: 1px } h2 { height: 1px; color: #555 } ul { height: 5px } li { height: 1px; color: #666 } footer { height: 1px; color: #999 }"
+
+    let result = map()
+    result.html = html
+    result.css = css
+    return result
+}
+
+fn compute_summary() {
+    let data = map()
+    data.language = "TetherScript"
+    data.version = "0.1.0-alpha.10"
+    data.file_extension = ".tether"
+    data.impl_language = "Rust"
+
+    let features = []
+    features.push("dynamic typing")
+    features.push("ownership tracking")
+    features.push("closures")
+    features.push("bytecode VM")
+    features.push("HTTP server")
+    features.push("JSON")
+    features.push("browser rendering")
+    features.push("JS eval")
+    features.push("LLM provider")
+    features.push("SMTP")
+    features.push("RPC/MCP/A2A")
+    features.push("capability security")
+    features.push("LSP server")
+    features.push("REPL")
+    data.features = features
+    data.feature_count = features.len()
+
+    return data
+}
+
+fn print_separator(title) {
+    println("")
+    println("== " + title + " ==")
+    println("")
+}
+
+fn main() {
+    print_separator("TetherScript Self-Report")
+
+    // 1. Compute summary via tetherscript values
+    let summary = compute_summary()
+    print_separator("Language Summary")
+    println("  Name:     " + summary.language)
+    println("  Version:  " + summary.version)
+    println("  Extension:" + " " + summary.file_extension)
+    println("  Impl:     " + summary.impl_language)
+    println("  Features: " + str(summary.feature_count))
+    println("")
+
+    // 2. JSON output
+    print_separator("JSON Export")
+    println(json_encode_pretty(summary))
+
+    // 3. Render HTML report through browser engine
+    print_separator("Browser-Rendered Report")
+    let report = build_report()
+    println(browser_snapshot(report.html, report.css, 100))
+
+    // 4. Display list as raw value
+    print_separator("Display List (render primitives)")
+    let display = browser_render(report.html, report.css, 100)
+    println(str(display))
+
+    // 5. JS eval — prove the JS engine works inline
+    print_separator("JavaScript Engine Check")
+    let js_result = js_eval("var s = 0; for(var i = 1; i <= 10; i = i + 1) { s = s + i; } s;")
+    println("  js_eval sum(1..10) = " + str(js_result))
+
+    let js_fib = js_eval("function fib(n) { if (n < 2) return n; return fib(n-1) + fib(n-2); } fib(20);")
+    println("  js_eval fib(20) = " + str(js_fib))
+
+    // 6. Ownership demonstration
+    print_separator("Ownership Demo")
+    let data = [1, 2, 3, 4, 5]
+    let moved = move data
+    println("  moved array: " + json_encode(moved))
+    let mut sum = 0
+    for x in moved {
+        sum = sum + x
+    }
+    println("  sum of moved array: " + str(sum))
+
+    // 7. Closure demo
+    print_separator("Closure Demo")
+    fn make_counter(start) {
+        let mut n = start
+        return fn() {
+            n = n + 1
+            return n
+        }
+    }
+    let counter = make_counter(0)
+    println("  counter() = " + str(counter()))
+    println("  counter() = " + str(counter()))
+    println("  counter() = " + str(counter()))
+
+    print_separator("Done")
+    println("TetherScript: a scripting language with Rust-style ownership.")
+}

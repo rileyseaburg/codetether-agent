@@ -1,0 +1,40 @@
+// Minimal HTTP server. Run with:
+//     tetherscript examples/http_hello.tether
+//     tetherscript --vm examples/http_hello.tether
+// Then: curl http://127.0.0.1:8787/
+//       curl http://127.0.0.1:8787/hello
+//       curl -X POST -d 'hi' http://127.0.0.1:8787/echo
+
+fn handle(req) {
+    let path = req.path;
+
+    if path == "/" {
+        return "tetherscript http: hello\n";
+    }
+
+    if path == "/hello" {
+        let resp = map();
+        resp.status = 200;
+        resp.body = "hello from tetherscript\n";
+        let headers = map();
+        headers["content-type"] = "text/plain";
+        resp.headers = headers;
+        return resp;
+    }
+
+    if path == "/echo" {
+        let resp = map();
+        resp.status = 200;
+        resp.body = req.method + " " + req.path + "\n" + req.body;
+        return resp;
+    }
+
+    let resp = map();
+    resp.status = 404;
+    resp.body = "not found: " + path + "\n";
+    return resp;
+}
+
+fn main() {
+    http_serve(8787, handle);
+}

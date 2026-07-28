@@ -1,0 +1,9 @@
+fn main() {
+    println(js_eval("let r=/^x/g; typeof r;"))
+    println(js_eval("var a=/^[:A-Z_a-z][A-Z]*$/; typeof a;"))
+    println(js_eval("var b=/^[:A-Z_a-z\\u00C0-\\u00D6]*$/; typeof b;"))
+    println(js_eval("let o={}; o.begin||(o.begin=/\\B|\\b/); typeof o.begin;"))
+    println(js_eval("const xs=[\"-\",\"[\",\"]\",\"/\",\"\\\\\",\"|\"]; let r=RegExp(\"[\"+xs.join(\"\\\\\")+\"]\",\"g\"); function f(e){return e&&e.replace(/\\\\/g,\"/\")} typeof r + ':' + f('a\\\\b');"))
+    println(js_eval("let xs=[\"\\\\\",\"^\"]; xs[0];"))
+    println(browser_eval_js("<main></main>", "var b=/^[:A-Z_a-z\\u00C0-\\u00D6]*$/; typeof b;").value)
+}

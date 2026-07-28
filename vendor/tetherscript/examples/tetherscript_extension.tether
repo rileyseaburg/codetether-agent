@@ -1,0 +1,33 @@
+// Dogfood plugin: extends the TetherScript binary through the embedded plugin host.
+//
+// Run:
+//     tetherscript --plugin examples/tetherscript_extension.tether validate
+
+fn plugin() {
+    let meta = map()
+    meta.id = "tetherscript.self_extension"
+    meta.name = "tetherscript-self-extension"
+    meta.version = "0.1"
+    meta.hooks = ["validate"]
+    meta.capabilities = ["tetherscript.diagnose", "tetherscript.version", "tetherscript.language"]
+    meta.timeout_secs = 5
+    return meta
+}
+
+fn validate() {
+    let good = tetherscript.diagnose("fn main() { println(\"plugin ok\") }")?
+    if !good.ok {
+        return Err("expected valid TetherScript source, got " + good.stage + ": " + good.message)
+    }
+
+    let bad = tetherscript.diagnose("fn main( {")?
+    if bad.ok {
+        return Err("expected invalid TetherScript source to be rejected")
+    }
+
+    println("host:", tetherscript.language()? + " " + tetherscript.version()?)
+    println("valid source:", good.stage)
+    println("invalid source rejected by " + bad.stage + " at " + bad.line + ":" + bad.col)
+
+    return Ok("tetherscript extension validated")
+}

@@ -5,6 +5,7 @@
 //! delegate to the Converse helpers in [`converse`].
 
 mod converse;
+mod runtime_url;
 
 use crate::provider::bedrock::BedrockProvider;
 use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};

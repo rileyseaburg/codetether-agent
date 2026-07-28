@@ -25,7 +25,7 @@ impl BedrockProvider {
         model_id: &str,
         body: Vec<u8>,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
-        let url = format!("{}/model/{}/converse-stream", self.base_url(), model_id);
+        let url = self.runtime_model_url(model_id, "converse-stream");
         tracing::debug!("Bedrock stream URL: {}", url);
 
         let mut response = self

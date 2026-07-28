@@ -1,0 +1,179 @@
+// Example: Using the RPC capability to talk to A2A (Agent-to-Agent) servers
+//
+// A2A uses JSON-RPC over HTTP with specific protocol headers and task management.
+//
+// Run with:
+//   tetherscript --grant-rpc http://127.0.0.1:36627 examples/rpc_a2a.tether
+
+// Create a task on an A2A agent
+fn create_task(rpc, description) {
+    println("Creating task: " + description);
+
+    let params = map();
+    params.description = description;
+    params.context = map();
+
+    let result = rpc.call("tasks.create", params);
+
+    if result.is_ok() {
+        let task = result.unwrap();
+        println("Task created with ID: " + task.id);
+        println("Status: " + task.status);
+        return task;
+    } else {
+        println("Error creating task: " + result.unwrap_err());
+        return nil;
+    }
+}
+
+// Get task status
+fn get_task_status(rpc, task_id) {
+    println("Getting status for task: " + task_id);
+
+    let params = map();
+    params.task_id = task_id;
+
+    let result = rpc.call("tasks.get", params);
+
+    if result.is_ok() {
+        let task = result.unwrap();
+        println("Task status: " + task.status);
+        println("Progress: " + str(task.progress));
+        return task;
+    } else {
+        println("Error getting task: " + result.unwrap_err());
+        return nil;
+    }
+}
+
+// List all tasks
+fn list_tasks(rpc) {
+    println("Listing all tasks");
+
+    let result = rpc.call("tasks.list", map());
+
+    if result.is_ok() {
+        let tasks = result.unwrap();
+        println("Total tasks: " + str(tasks.len()));
+        return tasks;
+    } else {
+        println("Error listing tasks: " + result.unwrap_err());
+        return nil;
+    }
+}
+
+// Cancel a task
+fn cancel_task(rpc, task_id) {
+    println("Cancelling task: " + task_id);
+
+    let params = map();
+    params.task_id = task_id;
+
+    let result = rpc.call("tasks.cancel", params);
+
+    if result.is_ok() {
+        println("Task cancelled successfully");
+        return true;
+    } else {
+        println("Error cancelling task: " + result.unwrap_err());
+        return false;
+    }
+}
+
+// Subscribe to task updates via SSE
+fn subscribe_to_task_updates(rpc, task_id) {
+    println("Subscribing to updates for task: " + task_id);
+
+    let path = "/tasks/" + task_id + "/updates";
+
+    let handler = fn(event) {
+        println("Task update:");
+        println("  Type: " + event.type);
+        println("  Data: " + json_encode(event.data));
+    };
+
+    let count = rpc.sse_subscribe(path, handler);
+    println("Received " + str(count) + " updates");
+}
+
+// Send a message to an agent
+fn send_message(rpc, agent_id, message) {
+    println("Sending message to agent: " + agent_id);
+
+    let params = map();
+    params.to = agent_id;
+    params.content = message;
+
+    let result = rpc.call("messages.send", params);
+
+    if result.is_ok() {
+        let response = result.unwrap();
+        println("Message sent. Response: " + json_encode(response));
+        return response;
+    } else {
+        println("Error sending message: " + result.unwrap_err());
+        return nil;
+    }
+}
+
+// Query agent capabilities
+fn query_capabilities(rpc, agent_id) {
+    println("Querying capabilities for agent: " + agent_id);
+
+    let params = map();
+    params.agent_id = agent_id;
+
+    let result = rpc.call("agents.capabilities", params);
+
+    if result.is_ok() {
+        let caps = result.unwrap();
+        println("Agent capabilities:");
+        println("  " + json_encode(caps));
+        return caps;
+    } else {
+        println("Error querying capabilities: " + result.unwrap_err());
+        return nil;
+    }
+}
+
+// Main example
+fn main() {
+    // Check if we have the RPC capability
+    if rpc == nil {
+        println("Error: RPC capability not granted");
+        println("Run with: tetherscript --grant-rpc http://127.0.0.1:36627 examples/rpc_a2a.tether");
+        return;
+    }
+
+    // List existing tasks
+    let tasks = list_tasks(rpc);
+    if tasks != nil {
+        println("Found " + str(tasks.len) + " existing tasks");
+    }
+
+    // Create a new task
+    let task = create_task(rpc, "Analyze the codebase and suggest improvements");
+    if task == nil {
+        println("Failed to create task");
+        return;
+    }
+
+    // Get task status
+    let status = get_task_status(rpc, task.id);
+    if status != nil {
+        println("Current status: " + status.status);
+    }
+
+    // Subscribe to task updates (this will block)
+    // subscribe_to_task_updates(rpc, task.id);
+
+    // Send a message to another agent
+    // let response = send_message(rpc, "agent-123", "Hello from TetherScript!");
+    // println("Message response: " + json_encode(response));
+
+    // Query agent capabilities
+    // let caps = query_capabilities(rpc, "agent-123");
+    // println("Capabilities: " + json_encode(caps));
+
+    println("A2A example complete");
+}

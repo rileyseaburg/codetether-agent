@@ -1,0 +1,19 @@
+fn absolute_url(base, location) {
+    if location.starts_with("http://") { return location }
+    if location.starts_with("https://") { return location }
+    if location.starts_with("/") { return "https://realm.micro1.ai" + location }
+    return base + "/" + location
+}
+
+fn inline_probe(html) {
+    let parts = html.split("<script")
+    let tag = "<script" + parts[1].split("</script>")[0] + "</script>"
+    let probe = "<script>let r=document.getElementById('root'); r===null?'null':typeof r.addEventListener+':'+typeof document.addEventListener+':'+r.nodeType+':'+document.nodeType+':'+(r.ownerDocument===document);</script>"
+    return html.replace(tag, probe)
+}
+
+fn main() {
+    let first = http_get("https://realm.micro1.ai/login").unwrap()
+    let page = http_get(absolute_url("https://realm.micro1.ai/login", first.headers.location)).unwrap()
+    println(browser_run_scripts(inline_probe(page.body)))
+}

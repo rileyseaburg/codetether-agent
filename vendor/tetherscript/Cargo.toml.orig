@@ -1,0 +1,33 @@
+[package]
+name = "tetherscript"
+version = "0.1.0-alpha.16"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+edition = "2021"
+description = "A dynamically-typed scripting language with Rust-style ownership, implemented as a bytecode VM in Rust"
+license = "MIT"
+repository = "https://github.com/codetether/tetherscript"
+readme = "README.md"
+keywords = ["scripting", "embedded", "language", "vm", "sandbox"]
+categories = ["compilers", "parser-implementations", "embedded"]
+include = [
+    "/Cargo.lock",
+    "/Cargo.toml",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/check_file_limits.ps1",
+    "/check_file_limits.sh",
+    "/LICENSE-MIT",
+    "/README.md",
+    "/docs/**",
+    "/examples/**",
+    "/src/**",
+    "/tests/**",
+]
+
+[lib]
+name = "tetherscript"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tetherscript"
+path = "src/main.rs"

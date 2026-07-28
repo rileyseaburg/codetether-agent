@@ -1,0 +1,24 @@
+// Closures — functions are first-class values and capture their environment.
+
+fn make_counter() {
+    let mut n = 0
+    fn() {
+        n = n + 1
+        n
+    }
+}
+
+fn main() {
+    let tick = make_counter()
+    println(tick())  // 1
+    println(tick())  // 2
+    println(tick())  // 3
+
+    // Functions as values
+    let square = fn(x) { x * x }
+    println(square(7))  // 49
+
+    // Higher-order
+    let apply_twice = fn(f, x) { f(f(x)) }
+    println(apply_twice(square, 3))  // 81
+}

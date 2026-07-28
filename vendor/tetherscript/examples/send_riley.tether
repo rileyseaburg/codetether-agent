@@ -1,0 +1,12 @@
+fn main() {
+    let resp = smtp_send(
+        "142.251.116.27",
+        25,
+        "riley@rileyseaburg.com",
+        "riley@rileyseaburg.com",
+        "TetherScript-only SMTP test",
+        "This message was sent by TetherScript only. Fool\n"
+    )
+
+    println("queued:", resp.code, resp.message)
+}

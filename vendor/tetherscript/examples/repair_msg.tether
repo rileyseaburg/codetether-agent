@@ -1,0 +1,29 @@
+// repair_msg.tether — pure message transformation hook.
+//
+// Loaded as a plugin by the Rust host (examples/repair_host.rs).
+// The host handles all IO and iteration; this script only defines
+// the repair_msg(msg) -> msg transformation logic.
+//
+// Usage (from Rust host):
+//   cargo run --example repair_host messages.json repaired.json examples/repair_msg.tether
+
+fn repair_msg(msg) {
+    // Only transform string content fields.
+    let content = msg.content
+    if type_of(content) != "str" {
+        return msg
+    }
+
+    let mut repaired = content
+
+    // Strip leading/trailing whitespace
+    repaired = repaired.trim()
+
+    // Fix literal backslash-n and backslash-t from broken encoders
+    repaired = repaired.replace("\\n", "\n")
+    repaired = repaired.replace("\\t", "\t")
+
+    // Write back
+    msg.content = repaired
+    return msg
+}

@@ -19,7 +19,7 @@ pub(super) fn open(
 ) -> Result<(File, Child)> {
     let mut master = -1;
     let mut slave = -1;
-    let dimensions = libc::winsize {
+    let mut dimensions = libc::winsize {
         ws_row: size.rows,
         ws_col: size.columns,
         ws_xpixel: 0,
@@ -31,8 +31,8 @@ pub(super) fn open(
             &mut master,
             &mut slave,
             std::ptr::null_mut(),
-            std::ptr::null(),
-            &dimensions,
+            std::ptr::null_mut(),
+            &raw mut dimensions,
         )
     } == -1
     {

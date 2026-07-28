@@ -1,0 +1,12 @@
+fn main() {
+    let resp = smtp_send(
+        "127.0.0.1",
+        2525,
+        "tetherscript@example.test",
+        ["alice@example.test", "bob@example.test"],
+        "TetherScript SMTP smoke test",
+        "hello from tetherscript\nthis message is DKIM-signed by default"
+    )
+
+    println("queued:", resp.code, resp.message)
+}

@@ -1,0 +1,11 @@
+// This program SHOULD panic. It exists to verify the ownership check works.
+
+fn consume(xs) {
+    println("consuming: " + xs)
+}
+
+fn main() {
+    let xs = [1, 2, 3]
+    consume(move xs)
+    println(xs)  // <-- runtime error: use of moved value
+}

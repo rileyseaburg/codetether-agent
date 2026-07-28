@@ -1,0 +1,6 @@
+tethercstp browser react
+Hello React from tethercstp
+viewport 80x4
+  <main> @0,0 48x4
+    <h1> @1,1 46x2
+      "Hello React from tethercstp" @1,1 27x1

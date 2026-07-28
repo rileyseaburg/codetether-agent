@@ -1,0 +1,33 @@
+// Capability-scoped project policy example.
+//
+// Run from the repository root:
+//   tetherscript --grant-fs . examples/policy.tether
+//   tetherscript --vm --grant-fs . examples/policy.tether
+
+fn validate_project(project) {
+    let readme = project.read("README.md")?
+    if !readme.contains("TetherScript") {
+        return Err("README.md should name TetherScript")
+    }
+
+    let src = project.list("src")?
+    if !src.contains("main.rs") {
+        return Err("src/main.rs is missing")
+    }
+
+    let mut rust_modules = 0
+    for file in src {
+        if file.ends_with(".rs") {
+            rust_modules = rust_modules + 1
+        }
+    }
+
+    return Ok("project policy passed: " + str(rust_modules) + " Rust modules visible")
+}
+
+fn main() {
+    let params = map()
+    params.mode = "ro"
+    let project = fs.narrow(params)
+    println(validate_project(project)?)
+}

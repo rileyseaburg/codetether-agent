@@ -1,0 +1,31 @@
+// Provider streaming: receive tokens as they arrive via SSE.
+//
+// Run with (e.g. against local Ollama):
+//   tetherscript --grant-provider http://localhost:11434 examples/provider_stream.tether
+//
+// The stream() method calls a handler function for each token delta,
+// printing output in real-time as the model generates it.
+
+fn on_token(accumulated, delta) {
+    print(delta)
+}
+
+fn main() {
+    let messages = []
+    let user = map()
+    user.role = "user"
+    user.content = "Write a haiku about programming."
+    messages.push(user)
+
+    let opts = map()
+    opts.model = "llama3"
+
+    println("Streaming response:")
+    let result = provider.stream(messages, on_token, opts)
+    println("")
+    if result.ok {
+        println("(stream complete)")
+    } else {
+        println("Stream error: " + str(result))
+    }
+}

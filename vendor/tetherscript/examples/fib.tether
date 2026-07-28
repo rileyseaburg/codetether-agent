@@ -1,0 +1,13 @@
+// Classic fib — shows recursion, expression-oriented if, implicit returns.
+
+fn fib(n) {
+    if n < 2 { n } else { fib(n - 1) + fib(n - 2) }
+}
+
+fn main() {
+    let mut i = 0
+    while i < 10 {
+        println("fib(" + i + ") = " + fib(i))
+        i = i + 1
+    }
+}

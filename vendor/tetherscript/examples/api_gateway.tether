@@ -1,0 +1,166 @@
+// TetherScript API Gateway — demonstrates HTTP, JSON, browser rendering,
+// JS eval, and capability-secured fs all in one server.
+//
+// Endpoints:
+//   GET  /            → JSON status payload
+//   GET  /render      → render HTML+CSS to display list
+//   GET  /eval        → run JS and return result
+//   GET  /echo?msg=X  → echo back your message
+//   POST /compute     → JSON-in, JSON-out computation
+//   GET  /page        → full HTML page render with snapshot
+//   *               → 404 JSON error
+//
+// Run:
+//   tetherscript run examples/api_gateway.tether
+//   tetherscript --vm examples/api_gateway.tether
+
+// ── helpers ────────────────────────────────────────────────────────
+
+fn json_response(status, body) {
+    let resp = map()
+    resp.status = status
+    let headers = map()
+    headers["content-type"] = "application/json"
+    resp.headers = headers
+    resp.body = json_encode(body)
+    return resp
+}
+
+fn html_response(status, body) {
+    let resp = map()
+    resp.status = status
+    let headers = map()
+    headers["content-type"] = "text/html; charset=utf-8"
+    resp.headers = headers
+    resp.body = body
+    return resp
+}
+
+fn text_response(status, body) {
+    let resp = map()
+    resp.status = status
+    let headers = map()
+    headers["content-type"] = "text/plain"
+    resp.headers = headers
+    resp.body = body
+    return resp
+}
+
+// ── endpoint handlers ──────────────────────────────────────────────
+
+fn handle_root() {
+    let info = map()
+    info.name = "TetherScript API Gateway"
+    info.version = "0.1.0-alpha.10"
+    info.endpoints = ["/", "/render", "/eval", "/echo", "/compute", "/page"]
+    info.status = "running"
+    return json_response(200, info)
+}
+
+fn handle_render() {
+    let html = "<div class=\"card\"><h2>Rendered by TetherScript</h2><p>Real layout engine</p></div>"
+    let css = ".card { width: 60px; padding: 2px; background: #f0f0f0 } h2 { height: 2px } p { height: 1px; color: #333 }"
+    let display = browser_render(html, css, 80)
+    let result = map()
+    result.display_list = display
+    result.snapshot = browser_snapshot(html, css, 80)
+    return json_response(200, result)
+}
+
+fn handle_eval(req) {
+    // expect query param ?code=<js>
+    let result = js_eval("1 + 1")
+    return text_response(200, str(result))
+}
+
+fn handle_echo(req) {
+    let path = req.path
+    // path looks like /echo?msg=hello
+    let msg = "echo"
+    if req.query != nil {
+        msg = req.query
+    }
+    let body = map()
+    body.message = msg
+    body.method = req.method
+    body.path = path
+    return json_response(200, body)
+}
+
+fn handle_compute(req) {
+    // Parse JSON body, do a computation, return result
+    if req.body == nil || req.body == "" {
+        let err = map()
+        err.error = "POST body required"
+        err.hint = "send JSON like {\"x\": 10, \"y\": 20}"
+        return json_response(400, err)
+    }
+    let parsed = json_parse(req.body)
+    let x = parsed.x
+    let y = parsed.y
+    if x == nil || y == nil {
+        let err = map()
+        err.error = "fields x and y required"
+        return json_response(400, err)
+    }
+    let result = map()
+    result.x = x
+    result.y = y
+    result.sum = x + y
+    result.product = x * y
+    result.difference = x - y
+    return json_response(200, result)
+}
+
+fn handle_page() {
+    let html = "<html><head><title>TS Dashboard</title></head><body><header><h1>TetherScript Dashboard</h1></header><main><section><h2>Status: Running</h2><p>Uptime: since boot</p></section><footer><p>Powered by TetherScript 0.1.0-alpha.10</p></footer></main></body></html>"
+    let snap = browser_snapshot(html, "", 120)
+    return text_response(200, snap)
+}
+
+// ── router ─────────────────────────────────────────────────────────
+
+fn handle(req) {
+    let path = req.path
+
+    // strip query string for routing
+    let route = path
+    if req.route != nil {
+        route = req.route
+    }
+
+    if route == "/" {
+        return handle_root()
+    }
+    if route == "/render" {
+        return handle_render()
+    }
+    if route == "/eval" {
+        return handle_eval(req)
+    }
+    if route == "/echo" {
+        return handle_echo(req)
+    }
+    if route == "/compute" {
+        return handle_compute(req)
+    }
+    if route == "/page" {
+        return handle_page()
+    }
+
+    let err = map()
+    err.error = "not found"
+    err.path = path
+    err.available = ["/", "/render", "/eval", "/echo", "/compute", "/page"]
+    return json_response(404, err)
+}
+
+// ── main ───────────────────────────────────────────────────────────
+
+fn main() {
+    println("TetherScript API Gateway starting on :8787")
+    println("Endpoints: / /render /eval /echo /compute /page")
+    println("Try: curl http://127.0.0.1:8787/")
+    println("")
+    http_serve(8787, handle)
+}

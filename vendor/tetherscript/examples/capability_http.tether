@@ -1,0 +1,57 @@
+// HTTP capability demo — exercises both http and fs together.
+// This is the shape the source-emission experiment will ask models to produce.
+//
+// Run with:
+//     tetherscript --grant-fs ./examples/cap_workspace \
+//          --grant-http https://example.com \
+//          examples/capability_http.tether
+
+fn fetch_to_file(http_cap, fs_cap, url, path) {
+    let resp = http_cap.get(url)?
+    if resp.ok {
+        fs_cap.write(path, resp.body)?
+        Ok(resp.status)
+    } else {
+        Err("http: status " + resp.status)
+    }
+}
+
+fn main() {
+    println("== 1. HTTP describe ==")
+    println("  scope:", http.describe())
+
+    println("== 2. Out-of-scope origin rejected ==")
+    let bad = http.get("https://api.github.com/")
+    if bad.is_ok() {
+        println("  UNEXPECTED: got a response")
+    } else {
+        println("  correctly denied:", bad.err())
+    }
+
+    println("== 3. In-scope fetch + write via attenuated fs ==")
+    let scratch_params = map()
+    scratch_params["root"] = "."
+    let scratch = fs.narrow(scratch_params)
+    let r = fetch_to_file(http, scratch, "https://example.com/", "example.html")
+    if r.is_ok() {
+        println("  fetched, status:", r.unwrap())
+        println("  saved bytes:", fs.read("example.html").unwrap().len())
+    } else {
+        println("  failed:", r.err())
+    }
+
+    println("== 4. Narrow http to GET-only, try POST ==")
+    let get_only_params = map()
+    let methods = []
+    methods.push("GET")
+    get_only_params["methods"] = methods
+    let http_ro = http.narrow(get_only_params)
+    let denied = http_ro.post("https://example.com/", "payload")
+    if denied.is_err() {
+        println("  POST correctly denied on GET-only:", denied.err())
+    } else {
+        println("  UNEXPECTED: POST succeeded")
+    }
+
+    println("== done ==")
+}
