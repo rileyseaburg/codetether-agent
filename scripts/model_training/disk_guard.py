@@ -11,18 +11,18 @@ import shutil
 
 from pathlib import Path
 
-from .vram_plan import LARGE_MODEL
+from .constants import BASE_MODEL
 
 
-LARGE_MODEL_GB = 62.0
-SMALL_MODEL_GB = 9.0
+BASE_MODEL_GB = 20.0
+SMALL_MODEL_GB = 10.0
 HEADROOM_GB = 12.0
 """Checkpoints, the merged export, and the dataset also need room."""
 
 
 def required_gb(model: str) -> float:
     """Return the disk needed for a model plus working headroom."""
-    weights = LARGE_MODEL_GB if model == LARGE_MODEL else SMALL_MODEL_GB
+    weights = BASE_MODEL_GB if model == BASE_MODEL else SMALL_MODEL_GB
     return weights + HEADROOM_GB
 
 
@@ -30,7 +30,7 @@ def main() -> None:
     """Verify free disk and exit non-zero when it is insufficient."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', type=Path, default=Path('/content'))
-    parser.add_argument('--model', default=LARGE_MODEL)
+    parser.add_argument('--model', default=BASE_MODEL)
     values = parser.parse_args()
     usage = shutil.disk_usage(values.path)
     free = usage.free / 1e9

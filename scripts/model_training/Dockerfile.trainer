@@ -1,0 +1,30 @@
+# Training image for the qwen3_5 architecture.
+#
+# Vertex AI's newest prebuilt training image ships torch 2.4, but
+# `model_type: qwen3_5` used by Qwen3.6 and Qwen3.5 exists only in
+# transformers 5.x, and that release imports `DTensor` from
+# `torch.distributed.tensor`, which requires torch 2.5 or newer. Verified
+# absent from transformers 4.57.1, 4.58.0, 4.60.0, and 5.0.0.
+FROM pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel
+
+ENV PYTHONUNBUFFERED=1 \
+    TOKENIZERS_PARALLELISM=false \
+    PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git curl ca-certificates rsync \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cloud Storage mirroring of checkpoints and logs.
+RUN curl -sSL https://sdk.cloud.google.com | bash -s -- --disable-prompts \
+        --install-dir=/opt \
+    && ln -s /opt/google-cloud-sdk/bin/gsutil /usr/local/bin/gsutil
+
+COPY requirements-qwen35.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Fail the build rather than a training run if the architecture is missing.
+COPY arch_check.py /tmp/arch_check.py
+RUN python3 /tmp/arch_check.py
+
+WORKDIR /workspace

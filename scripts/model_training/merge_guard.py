@@ -9,18 +9,18 @@ import shutil
 
 from pathlib import Path
 
-from .vram_plan import LARGE_MODEL
+from .constants import BASE_MODEL
 
 
 BYTES_PER_PARAM = 2
-LARGE_PARAMS_B = 30.5
-SMALL_PARAMS_B = 4.0
+BASE_PARAMS_B = 9.7
+SMALL_PARAMS_B = 4.7
 OVERHEAD_GB = 6.0
 
 
 def required_ram_gb(model: str) -> float:
     """Return the RAM needed to dequantize and merge a model."""
-    params = LARGE_PARAMS_B if model == LARGE_MODEL else SMALL_PARAMS_B
+    params = BASE_PARAMS_B if model == BASE_MODEL else SMALL_PARAMS_B
     return params * BYTES_PER_PARAM + OVERHEAD_GB
 
 

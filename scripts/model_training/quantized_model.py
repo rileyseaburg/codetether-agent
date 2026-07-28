@@ -8,6 +8,8 @@ from transformers import (
     BitsAndBytesConfig,
 )
 
+from .attention import implementation
+from .distributed import local_rank
 from .model_target import resolve_target
 from .precision import compute_dtype
 
@@ -39,7 +41,8 @@ def load() -> tuple[object, object]:
         revision=revision,
         quantization_config=quantization,
         dtype=dtype,
-        device_map={'': 0},
+        device_map={'': local_rank()},
+        attn_implementation=implementation(),
     )
     model.config.use_cache = False
     return model, tokenizer

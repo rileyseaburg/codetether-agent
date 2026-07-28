@@ -10,11 +10,11 @@ import os
 import torch
 
 from .constants import BASE_MODEL, BASE_REVISION, SMALL_MODEL, SMALL_REVISION
-from .vram_plan import LARGE_MODEL, plan
+from .vram_plan import plan
 
 
 REVISIONS = {
-    LARGE_MODEL: BASE_REVISION,
+    BASE_MODEL: BASE_REVISION,
     SMALL_MODEL: SMALL_REVISION,
 }
 
