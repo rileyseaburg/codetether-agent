@@ -14,6 +14,7 @@ use super::{
 };
 
 pub(super) async fn init_worker(args: A2aArgs) -> Result<WorkerContext> {
+    worker_init_helpers::apply_auto_approve_access_mode(&args);
     let server = args.server.trim_end_matches('/').to_string();
     let name = worker_init_helpers::resolve_name(args.name.as_deref());
     let worker_id = resolve_worker_id();
