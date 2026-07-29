@@ -1,11 +1,14 @@
 //! Selection of the authoritative text candidate from Gemini wire frames.
 
+#[path = "capture.rs"]
+mod capture;
 #[path = "response_text/placeholder.rs"]
 pub mod placeholder;
 
 use serde_json::Value;
 
 pub(super) fn latest(raw: &str) -> String {
+    capture::record("stream", raw);
     let mut latest = String::new();
     for line in raw
         .lines()
