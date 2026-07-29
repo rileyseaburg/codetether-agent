@@ -1,0 +1,238 @@
+[
+  {
+    "variant": "baseline_current",
+    "model": "gpt-5.6-luna",
+    "sent": [
+      "version"
+    ],
+    "status": 200,
+    "resp_headers": {
+      "x-codex-active-limit": "premium",
+      "x-codex-plan-type": "business",
+      "x-codex-primary-used-percent": "0",
+      "x-codex-secondary-used-percent": "0",
+      "x-codex-primary-window-minutes": "0",
+      "x-codex-primary-over-secondary-limit-percent": "0",
+      "x-codex-secondary-window-minutes": "0",
+      "x-codex-primary-reset-after-seconds": "0",
+      "x-codex-secondary-reset-after-seconds": "0",
+      "x-codex-primary-reset-at": "",
+      "x-codex-secondary-reset-at": "",
+      "x-codex-credits-has-credits": "True",
+      "x-codex-credits-balance": "",
+      "x-codex-credits-unlimited": "True"
+    },
+    "usage": {
+      "input_tokens": 19,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 5,
+      "output_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "total_tokens": 24
+    },
+    "completed": true,
+    "text_deltas": 1
+  },
+  {
+    "variant": "bare",
+    "model": "gpt-5.6-luna",
+    "sent": [],
+    "status": 200,
+    "resp_headers": {
+      "x-codex-active-limit": "premium",
+      "x-codex-plan-type": "business",
+      "x-codex-primary-used-percent": "0",
+      "x-codex-secondary-used-percent": "0",
+      "x-codex-primary-window-minutes": "0",
+      "x-codex-primary-over-secondary-limit-percent": "0",
+      "x-codex-secondary-window-minutes": "0",
+      "x-codex-primary-reset-after-seconds": "0",
+      "x-codex-secondary-reset-after-seconds": "0",
+      "x-codex-primary-reset-at": "",
+      "x-codex-secondary-reset-at": "",
+      "x-codex-credits-has-credits": "True",
+      "x-codex-credits-balance": "",
+      "x-codex-credits-unlimited": "True"
+    },
+    "usage": {
+      "input_tokens": 19,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 5,
+      "output_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "total_tokens": 24
+    },
+    "completed": true,
+    "text_deltas": 1
+  },
+  {
+    "variant": "codetether_identity",
+    "model": "gpt-5.6-luna",
+    "sent": [
+      "User-Agent",
+      "originator"
+    ],
+    "status": 200,
+    "resp_headers": {
+      "x-codex-active-limit": "premium",
+      "x-codex-plan-type": "business",
+      "x-codex-primary-used-percent": "0",
+      "x-codex-secondary-used-percent": "0",
+      "x-codex-primary-window-minutes": "0",
+      "x-codex-primary-over-secondary-limit-percent": "0",
+      "x-codex-secondary-window-minutes": "0",
+      "x-codex-primary-reset-after-seconds": "0",
+      "x-codex-secondary-reset-after-seconds": "0",
+      "x-codex-primary-reset-at": "",
+      "x-codex-secondary-reset-at": "",
+      "x-codex-credits-has-credits": "True",
+      "x-codex-credits-balance": "",
+      "x-codex-credits-unlimited": "True"
+    },
+    "usage": {
+      "input_tokens": 19,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 5,
+      "output_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "total_tokens": 24
+    },
+    "completed": true,
+    "text_deltas": 1
+  },
+  {
+    "variant": "identity_plus_session",
+    "model": "gpt-5.6-luna",
+    "sent": [
+      "User-Agent",
+      "originator",
+      "session-id",
+      "thread-id",
+      "x-client-request-id",
+      "x-codex-window-id"
+    ],
+    "status": 200,
+    "resp_headers": {
+      "x-codex-active-limit": "premium",
+      "x-codex-plan-type": "business",
+      "x-codex-primary-used-percent": "0",
+      "x-codex-secondary-used-percent": "0",
+      "x-codex-primary-window-minutes": "0",
+      "x-codex-primary-over-secondary-limit-percent": "0",
+      "x-codex-secondary-window-minutes": "0",
+      "x-codex-primary-reset-after-seconds": "0",
+      "x-codex-secondary-reset-after-seconds": "0",
+      "x-codex-primary-reset-at": "",
+      "x-codex-secondary-reset-at": "",
+      "x-codex-credits-has-credits": "True",
+      "x-codex-credits-balance": "",
+      "x-codex-credits-unlimited": "True"
+    },
+    "usage": {
+      "input_tokens": 19,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 5,
+      "output_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "total_tokens": 24
+    },
+    "completed": true,
+    "text_deltas": 1
+  },
+  {
+    "variant": "timing_metrics",
+    "model": "gpt-5.6-luna",
+    "sent": [
+      "User-Agent",
+      "originator",
+      "x-responsesapi-include-timing-metrics"
+    ],
+    "status": 200,
+    "resp_headers": {
+      "x-codex-active-limit": "premium",
+      "x-codex-plan-type": "business",
+      "x-codex-primary-used-percent": "0",
+      "x-codex-secondary-used-percent": "0",
+      "x-codex-primary-window-minutes": "0",
+      "x-codex-primary-over-secondary-limit-percent": "0",
+      "x-codex-secondary-window-minutes": "0",
+      "x-codex-primary-reset-after-seconds": "0",
+      "x-codex-secondary-reset-after-seconds": "0",
+      "x-codex-primary-reset-at": "",
+      "x-codex-secondary-reset-at": "",
+      "x-codex-credits-has-credits": "True",
+      "x-codex-credits-balance": "",
+      "x-codex-credits-unlimited": "True"
+    },
+    "usage": {
+      "input_tokens": 19,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 5,
+      "output_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "total_tokens": 24
+    },
+    "completed": true,
+    "text_deltas": 1
+  },
+  {
+    "variant": "beta_features",
+    "model": "gpt-5.6-luna",
+    "sent": [
+      "User-Agent",
+      "originator",
+      "x-codex-beta-features"
+    ],
+    "status": 200,
+    "resp_headers": {
+      "x-codex-active-limit": "premium",
+      "x-codex-plan-type": "business",
+      "x-codex-primary-used-percent": "0",
+      "x-codex-secondary-used-percent": "0",
+      "x-codex-primary-window-minutes": "0",
+      "x-codex-primary-over-secondary-limit-percent": "0",
+      "x-codex-secondary-window-minutes": "0",
+      "x-codex-primary-reset-after-seconds": "0",
+      "x-codex-secondary-reset-after-seconds": "0",
+      "x-codex-primary-reset-at": "",
+      "x-codex-secondary-reset-at": "",
+      "x-codex-credits-has-credits": "True",
+      "x-codex-credits-balance": "",
+      "x-codex-credits-unlimited": "True"
+    },
+    "usage": {
+      "input_tokens": 19,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 5,
+      "output_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "total_tokens": 24
+    },
+    "completed": true,
+    "text_deltas": 1
+  }
+]

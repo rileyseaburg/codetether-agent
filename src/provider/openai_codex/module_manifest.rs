@@ -6,6 +6,8 @@ pub(crate) mod model_catalog;
 mod output_item;
 #[path = "reasoning_catalog.rs"]
 pub mod reasoning_catalog;
+#[path = "reasoning_request.rs"]
+mod reasoning_request;
 #[path = "runtime_config.rs"]
 pub mod runtime_config;
 #[path = "service_tier_catalog.rs"]

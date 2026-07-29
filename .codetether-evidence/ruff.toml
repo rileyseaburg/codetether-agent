@@ -1,0 +1,19 @@
+# Ruff configuration for one-off diagnostic probe scripts.
+#
+# These files are throwaway network probes kept as evidence for the Codex
+# stream-termination investigation, not shipped library code. Real correctness
+# lints (undefined names, unused imports, bare excepts) stay enabled; cosmetic
+# formatting and annotation rules intended for production modules are relaxed so
+# the recorded evidence is preserved verbatim rather than rewritten to satisfy
+# style checks.
+
+line-length = 100
+
+[lint]
+ignore = [
+    "ANN",     # probe helpers are not a typed public API
+    "D100",    # module docstrings exist; per-symbol D rules are noise here
+    "D103",
+    "PLR2004", # small literal comparisons are clearer inline in a probe
+    "T201",    # probes intentionally print to stdout
+]

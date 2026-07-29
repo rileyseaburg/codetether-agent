@@ -32,3 +32,5 @@ include!("tests_parts/uses_supplied_credentials_without_local_override.rs");
 include!("tests_parts/vault_credential_update.rs");
 include!("tests_parts/run_ws_server.rs");
 include!("tests_parts/ws_tool_request.rs");
+include!("tests_parts/reasoning_probe_request.rs");
+include!("tests_parts/reasoning_summary_request.rs");

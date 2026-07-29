@@ -1,0 +1,74 @@
+[
+  {
+    "model": "gpt-5.6-luna",
+    "summary": "auto",
+    "status": 200,
+    "terminal": "completed",
+    "first_visible_s": 5.65,
+    "total_s": 19.43,
+    "summary_events": 12
+  },
+  {
+    "model": "gpt-5.6-luna",
+    "summary": null,
+    "status": 200,
+    "terminal": "completed",
+    "first_visible_s": 8.24,
+    "total_s": 15.38,
+    "summary_events": 0
+  },
+  {
+    "model": "gpt-5.6-sol",
+    "summary": "auto",
+    "status": 200,
+    "terminal": "completed",
+    "first_visible_s": 13.43,
+    "total_s": 25.88,
+    "summary_events": 4
+  },
+  {
+    "model": "gpt-5.6-sol",
+    "summary": null,
+    "status": 200,
+    "terminal": "response.failed",
+    "first_visible_s": null,
+    "total_s": 0.76,
+    "summary_events": 0
+  },
+  {
+    "model": "gpt-5.6-terra",
+    "summary": "auto",
+    "status": 200,
+    "terminal": "completed",
+    "first_visible_s": 6.93,
+    "total_s": 14.71,
+    "summary_events": 4
+  },
+  {
+    "model": "gpt-5.6-terra",
+    "summary": null,
+    "status": 200,
+    "terminal": "completed",
+    "first_visible_s": 5.99,
+    "total_s": 14.87,
+    "summary_events": 0
+  },
+  {
+    "model": "gpt-5.5",
+    "summary": "auto",
+    "status": 200,
+    "terminal": "completed",
+    "first_visible_s": 6.45,
+    "total_s": 19.56,
+    "summary_events": 8
+  },
+  {
+    "model": "gpt-5.5",
+    "summary": null,
+    "status": 200,
+    "terminal": "completed",
+    "first_visible_s": 8.43,
+    "total_s": 17.55,
+    "summary_events": 0
+  }
+]

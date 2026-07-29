@@ -1,0 +1,172 @@
+[
+  {
+    "variant": "control_small",
+    "model": "gpt-5.6-luna",
+    "request_bytes": 196,
+    "tools": 0,
+    "status": 200,
+    "ttfb_s": 0.85,
+    "usage": {
+      "input_tokens": 17,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 5,
+      "output_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "total_tokens": 22
+    },
+    "duration_s": 1.23,
+    "max_event_gap_s": 0.24,
+    "event_counts": {
+      "response.created": 1,
+      "response.in_progress": 1,
+      "response.output_item.added": 1,
+      "response.content_part.added": 1,
+      "response.output_text.delta": 1,
+      "response.output_text.done": 1,
+      "response.content_part.done": 1,
+      "response.output_item.done": 1,
+      "response.completed": 1
+    },
+    "terminal": "completed"
+  },
+  {
+    "variant": "codetether_envelope",
+    "model": "gpt-5.6-luna",
+    "request_bytes": 4195,
+    "tools": 12,
+    "status": 200,
+    "ttfb_s": 0.61,
+    "usage": {
+      "input_tokens": 477,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 5,
+      "output_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "total_tokens": 482
+    },
+    "duration_s": 0.96,
+    "max_event_gap_s": 0.17,
+    "event_counts": {
+      "response.created": 1,
+      "response.in_progress": 1,
+      "response.output_item.added": 1,
+      "response.content_part.added": 1,
+      "response.output_text.delta": 1,
+      "response.output_text.done": 1,
+      "response.content_part.done": 1,
+      "response.output_item.done": 1,
+      "response.completed": 1
+    },
+    "terminal": "completed"
+  },
+  {
+    "variant": "long_stream",
+    "model": "gpt-5.6-luna",
+    "request_bytes": 487,
+    "tools": 0,
+    "status": 200,
+    "ttfb_s": 1.93,
+    "usage": {
+      "input_tokens": 56,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 2023,
+      "output_tokens_details": {
+        "reasoning_tokens": 224
+      },
+      "total_tokens": 2079
+    },
+    "duration_s": 38.63,
+    "max_event_gap_s": 4.08,
+    "event_counts": {
+      "response.created": 1,
+      "response.in_progress": 1,
+      "response.output_item.added": 2,
+      "response.output_item.done": 2,
+      "response.content_part.added": 1,
+      "response.output_text.delta": 1793,
+      "response.output_text.done": 1,
+      "response.content_part.done": 1,
+      "response.completed": 1
+    },
+    "terminal": "completed"
+  },
+  {
+    "variant": "long_stream_heavy",
+    "model": "gpt-5.6-luna",
+    "request_bytes": 13337,
+    "tools": 40,
+    "status": 200,
+    "ttfb_s": 0.91,
+    "usage": {
+      "input_tokens": 1552,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 1905,
+      "output_tokens_details": {
+        "reasoning_tokens": 516
+      },
+      "total_tokens": 3457
+    },
+    "duration_s": 38.43,
+    "max_event_gap_s": 9.32,
+    "event_counts": {
+      "response.created": 1,
+      "response.in_progress": 1,
+      "response.output_item.added": 2,
+      "response.output_item.done": 2,
+      "response.content_part.added": 1,
+      "response.output_text.delta": 1383,
+      "response.output_text.done": 1,
+      "response.content_part.done": 1,
+      "response.completed": 1
+    },
+    "terminal": "completed"
+  },
+  {
+    "variant": "long_stream_no_include",
+    "model": "gpt-5.6-luna",
+    "request_bytes": 13254,
+    "tools": 40,
+    "status": 200,
+    "ttfb_s": 0.66,
+    "usage": {
+      "input_tokens": 1552,
+      "input_tokens_details": {
+        "cache_write_tokens": 0,
+        "cached_tokens": 0
+      },
+      "output_tokens": 2489,
+      "output_tokens_details": {
+        "reasoning_tokens": 435
+      },
+      "total_tokens": 4041
+    },
+    "duration_s": 45.75,
+    "max_event_gap_s": 7.88,
+    "event_counts": {
+      "response.created": 1,
+      "response.in_progress": 1,
+      "response.output_item.added": 2,
+      "response.output_item.done": 2,
+      "response.content_part.added": 1,
+      "response.output_text.delta": 2048,
+      "response.output_text.done": 1,
+      "response.content_part.done": 1,
+      "response.completed": 1
+    },
+    "terminal": "completed"
+  }
+]

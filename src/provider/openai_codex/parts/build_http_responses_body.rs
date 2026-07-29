@@ -19,7 +19,7 @@ impl OpenAiCodexProvider {
             body["tools"] = json!(tools);
         }
         if let Some(level) = reasoning {
-            body["reasoning"] = json!({ "effort": level.as_wire_str() });
+            body["reasoning"] = reasoning_request::reasoning_object(level.as_wire_str());
         }
         Self::apply_service_tier(&mut body, service_tier);
         body

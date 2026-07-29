@@ -1,0 +1,38 @@
+[
+  {
+    "label": "effort=high summary=False",
+    "status": 200,
+    "terminal": "completed",
+    "total_s": 57.66,
+    "ttfb_s": 0.84,
+    "time_to_first_visible_s": 47.75,
+    "max_event_gap_s": 9.37,
+    "max_gap_after_event": "response.output_item.added",
+    "event_counts": {
+      "response.output_text.delta": 546,
+      "response.output_item.added": 6,
+      "response.output_item.done": 6,
+      "response.created": 1,
+      "response.in_progress": 1,
+      "response.content_part.added": 1
+    }
+  },
+  {
+    "label": "effort=high summary=True",
+    "status": 200,
+    "terminal": "completed",
+    "total_s": 105.64,
+    "ttfb_s": 0.53,
+    "time_to_first_visible_s": 3.94,
+    "max_event_gap_s": 7.17,
+    "max_gap_after_event": "response.reasoning_summary_text.delta",
+    "event_counts": {
+      "response.output_text.delta": 639,
+      "response.reasoning_summary_part.added": 25,
+      "response.reasoning_summary_text.delta": 25,
+      "response.reasoning_summary_text.done": 25,
+      "response.reasoning_summary_part.done": 25,
+      "response.output_item.added": 11
+    }
+  }
+]

@@ -24,7 +24,7 @@ impl OpenAiCodexProvider {
             event["tools"] = json!(tools);
         }
         if let Some(level) = reasoning_effort {
-            event["reasoning"] = json!({ "effort": level.as_wire_str() });
+            event["reasoning"] = reasoning_request::reasoning_object(level.as_wire_str());
         }
         Self::apply_service_tier(&mut event, service_tier);
         if backend == ResponsesWsBackend::OpenAi {
