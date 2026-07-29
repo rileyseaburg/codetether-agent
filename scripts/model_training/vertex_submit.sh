@@ -14,7 +14,12 @@ set -euo pipefail
 project=${CODETETHER_GCP_PROJECT:-$(gcloud config get-value project)}
 region=${CODETETHER_GCP_REGION:-us-central1}
 bucket=${CODETETHER_GCS_BUCKET:?CODETETHER_GCS_BUCKET is required}
-repo=${CODETETHER_HF_REPO:?CODETETHER_HF_REPO is required}
+
+# v4 pairs supervised prose only; tool calls appeared in 4,989 of 6,000
+# sampled prompts and 0 completions, and the resulting adapter scored 0.125
+# tool-call rate against 0.875 for the untuned base. v5 supervises emitted
+# calls in 82.1 percent of completions.
+repo=${CODETETHER_HF_REPO:-rileyseaburg/codetether-agent-traces-v5}
 
 # Verified to exist on 27 July 2026. The published name carries the Python
 # suffix: `pytorch-gpu.2-4` alone does not exist and a job submitted against
