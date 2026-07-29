@@ -640,7 +640,7 @@ pub fn get_linter_server_config(name: &str) -> Option<LspConfig> {
             file_extensions: vec!["css".to_string(), "scss".to_string(), "less".to_string()],
             ..Default::default()
         }),
-        _ => None,
+        _ => super::tetherscript::linter_config(name),
     }
 }
 
@@ -703,6 +703,6 @@ pub fn linter_extensions(name: &str) -> &'static [&'static str] {
         "biome" => &["js", "jsx", "ts", "tsx", "json", "css"],
         "ruff" => &["py", "pyi"],
         "stylelint" => &["css", "scss", "less"],
-        _ => &[],
+        _ => super::tetherscript::linter_extensions(name),
     }
 }

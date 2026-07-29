@@ -878,7 +878,7 @@ impl LspManager {
         } else {
             // Auto-detect: try known linters whose extensions match
             let mut names = Vec::new();
-            for candidate in &["eslint", "biome", "ruff", "stylelint"] {
+            for candidate in crate::lsp::tetherscript::LINTER_CANDIDATES {
                 if linter_extensions(candidate).contains(&ext) {
                     names.push((*candidate).to_string());
                 }

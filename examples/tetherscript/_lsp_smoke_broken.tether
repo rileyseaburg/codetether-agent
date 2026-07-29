@@ -1,0 +1,4 @@
+fn broken_plugin( {
+    let m = map()
+    return json_encode(m)
+}

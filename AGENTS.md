@@ -187,6 +187,24 @@ See `docs/plugin_pattern.md` for the full contract and testing patterns.
 Available builtins: `js_eval`, `browser_render`, `browser_eval_js`,
 `json_parse`, `json_encode`, `http_get`, `fs_read`, `sha256_hex`, etc.
 
+### TetherScript diagnostics
+
+`.tether` and `.kl` files are linted automatically by the `tetherscript`
+language server (`tetherscript lsp`), registered as a **linter** in
+`src/lsp/tetherscript.rs`. Lex/parse errors surface through the same post-edit
+verification hook that runs eslint/ruff/biome, so a syntax error is reported at
+edit time instead of at execution time.
+
+It is a diagnostics-only server: no go-to-definition, hover, or symbols. Disable
+or override it like any other linter:
+
+```toml
+[lsp.linters.tetherscript]
+enabled = false
+```
+
+If the `tetherscript` binary is not on `PATH` the linter is skipped silently.
+
 ## Adding a New Provider
 
 1. Create `src/provider/your_provider.rs` implementing `Provider` trait:
