@@ -11,12 +11,12 @@ fn verify_checkout(browser, base_url) {
     let report = browser.page_snapshot()?
     let component = browser."react.component_for_selector"("[data-testid='checkout-form']")?
 
-    return Ok(map() {
-        "ok": true,
-        "snapshot": report,
-        "component": component,
-        "trace": browser.trace()?
-    })
+    let m = map()
+    m["ok"] = true
+    m["snapshot"] = report
+    m["component"] = component
+    m["trace"] = browser.trace()?
+    return Ok(m)
 }
 
 fn main() {

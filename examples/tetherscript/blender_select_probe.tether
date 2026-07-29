@@ -27,9 +27,9 @@ fn python_script(name, output_path) {
         "            with bpy.context.temp_override(area=a,region=r):\n" +
         "                bpy.ops.view3d.view_selected(use_all_regions=False); framed=True\n" +
         "            break\n" +
-        "state={'available':True,'matched_names':[o.name for o in matches]," +
+        "state=\{'available':True,'matched_names':[o.name for o in matches]," +
         "'selected_object_names':[o.name for o in bpy.context.selected_objects]," +
         "'active_object_name':bpy.context.object.name if bpy.context.object else None," +
-        "'framed':framed,'selection_method':'tetherscript_python'}\n" +
+        "'framed':framed,'selection_method':'tetherscript_python'\}\n" +
         "pathlib.Path(" + qout + ").write_text(json.dumps(state))"
 }
