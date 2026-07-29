@@ -1,0 +1,53 @@
+// Live guard: how often does gemini-web emit a real tool call?
+//
+// Users reported non-stop tool failure on gemini-web models. Root cause: the
+// prompt listed prohibitions about <tool_call> blocks but never showed the JSON
+// shape the parser requires, so the model narrated tool use in prose
+// ("I am calling the list tool...") instead of emitting a call.
+//
+// Behavior is intermittent, so a single sample proves nothing. This runs N
+// trials and reports a rate. `outcome` is derived from the runtime's own log
+// line (`Tool execution completed`) on stderr, not from model prose.
+//
+// A launch failure (for example a stale `codetether (deleted)` path after
+// `install-dev.sh` replaces the binary) must never be reported as a model
+// failure, so the binary is resolved and verified before any trial runs.
+
+fn measure(binary, trials, timeout_ms) {
+    let ready = verify_binary(binary)?
+    if ready != "ok" {
+        return Err("binary not runnable: " + ready)
+    }
+    let mut executed = 0
+    let mut narrated = 0
+    let mut none = 0
+    let mut i = 0
+    while i < trials {
+        let verdict = one_trial(binary, timeout_ms)?
+        if verdict == "tool_executed" {
+            executed = executed + 1
+        } else {
+            if verdict == "narrated_only" {
+                narrated = narrated + 1
+            } else {
+                none = none + 1
+            }
+        }
+        i = i + 1
+    }
+    let m = map()
+    m["binary"] = binary
+    m["trials"] = trials
+    m["tool_executed"] = executed
+    m["narrated_only"] = narrated
+    m["no_tool_attempt"] = none
+    return Ok(json_encode(m))
+}
+
+fn verify_binary(binary) {
+    let res = process_run(binary, ["--version"], nil, 30000)?
+    if res["success"] {
+        return Ok("ok")
+    }
+    return Ok(str(res["stderr"]))
+}

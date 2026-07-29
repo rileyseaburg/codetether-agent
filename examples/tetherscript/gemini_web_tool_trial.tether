@@ -1,0 +1,35 @@
+// Trial execution and outcome classification for the gemini-web tool guard.
+//
+// Split from gemini_web_tool_guard.tether to keep each file focused: that file
+// owns measurement and binary verification, this one owns a single trial and how
+// its output is classified.
+
+fn one_trial(binary, timeout_ms) {
+    let task = "Call the list tool with path \".\" now."
+    let args = ["run", "--model", "gemini-web/gemini-web-fast", task]
+    let res = process_run(binary, args, nil, timeout_ms)?
+    // Runtime log lines go to stderr; model prose goes to stdout.
+    let out = str(res["stdout"]) + str(res["stderr"])
+    return Ok(outcome_for(out))
+}
+
+fn outcome_for(out) {
+    // Matches the runtime log line emitted by tool_exec_run on a real call.
+    if out.contains("Tool execution completed") {
+        return "tool_executed"
+    }
+    if out.contains("<tool_call>") {
+        return "emitted_raw_markup"
+    }
+    if is_narrating(out) {
+        return "narrated_only"
+    }
+    return "no_tool_attempt"
+}
+
+fn is_narrating(out) {
+    if out.contains("I am calling") || out.contains("I will use") {
+        return true
+    }
+    return out.contains("I will run") || out.contains("I will execute")
+}

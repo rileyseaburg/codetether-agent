@@ -14,9 +14,10 @@ fn surrounds_history_with_gemini_safety_rules() {
     assert!(rendered.starts_with("System: <gemini_web_tool_protocol>"));
     assert!(rendered.contains("Never invent, predict, or reuse a session ID"));
     assert!(rendered.contains("wrapper success does not mean"));
-    assert!(
-        rendered.ends_with("Do not predict tool results or emit dependent calls in one batch.")
-    );
+    assert!(rendered.contains("Do not predict tool results or emit dependent calls in one batch."));
+    // The reminder now closes by redirecting an announced call into a real one;
+    // users saw gemini-web narrate tool use instead of emitting a call block.
+    assert!(rendered.trim_end().ends_with("announcing it."));
 }
 
 #[test]

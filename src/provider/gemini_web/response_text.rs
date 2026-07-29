@@ -1,5 +1,8 @@
 //! Selection of the authoritative text candidate from Gemini wire frames.
 
+#[path = "response_text/placeholder.rs"]
+pub mod placeholder;
+
 use serde_json::Value;
 
 pub(super) fn latest(raw: &str) -> String {
@@ -18,6 +21,7 @@ pub(super) fn latest(raw: &str) -> String {
         for event in events {
             if let Some(text) = event_text(event)
                 && !text.is_empty()
+                && !placeholder::is_placeholder(&text)
             {
                 latest = text;
             }
@@ -44,3 +48,7 @@ fn event_text(event: &Value) -> Option<String> {
 #[cfg(test)]
 #[path = "response_text_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "response_text/placeholder_tests.rs"]
+mod placeholder_tests;
