@@ -10,11 +10,20 @@ pub struct PipeOutput {
     pub truncated: bool,
 }
 
-pub fn wrap(result: Result<Value, String>) -> Value {
-    Value::Result(Rc::new(match result {
-        Ok(value) => ResultValue::Ok(value),
-        Err(error) => ResultValue::Err(error),
-    }))
+/// Unwraps one TetherScript `Result` layer into a host `Result`.
+///
+/// `tetherscript::system::*` helpers return an already-wrapped
+/// `Value::Result`, but the authority contract expects a bare `Value` that the
+/// interpreter lifts into exactly one `Result`. Passing the wrapped value
+/// straight through would yield `Result<Result<..>>`.
+pub fn unwrap_result(value: Value) -> Result<Value, String> {
+    match value {
+        Value::Result(result) => match &*result {
+            ResultValue::Ok(inner) => Ok(inner.clone()),
+            ResultValue::Err(error) => Err(error.clone()),
+        },
+        other => Ok(other),
+    }
 }
 
 pub fn string(value: impl Into<String>) -> Value {

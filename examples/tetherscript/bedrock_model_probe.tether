@@ -34,7 +34,7 @@ fn probe_one(region, profile, model) {
     let msgs = messages_json()
     let cfg = config_json()
     let cmd = "aws bedrock-runtime converse --region " + region + " --profile " + profile + " --model-id '" + model + "' --messages '" + msgs + "' --inference-config '" + cfg + "' 2>&1"
-    let res = process_run("bash", ["-lc", cmd], nil, 60000)??
+    let res = process_run("bash", ["-lc", cmd], nil, 60000)?
     let out = str(res["stdout"]) + str(res["stderr"])
     let m = map()
     m["model"] = model
