@@ -14,3 +14,13 @@ nvcc -O3 -arch=sm_75 -std=c++17 \
     -o bench_exp_vs_mma bench_exp_vs_mma.cu
 
 ./bench_exp_vs_mma
+
+nvcc -O3 -arch=sm_75 -std=c++17 \
+    -o bench_smem bench_smem.cu
+
+./bench_smem
+
+nvcc -O3 -arch=sm_75 -std=c++17 \
+    -o bench_smem bench_smem.cu
+
+./bench_smem
