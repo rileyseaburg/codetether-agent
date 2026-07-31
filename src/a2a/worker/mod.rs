@@ -60,6 +60,7 @@ mod runtime_state;
 mod server_state;
 mod session_policy;
 mod session_registry;
+mod session_event;
 mod session_steps;
 mod swarm_event_output;
 mod swarm_model;
