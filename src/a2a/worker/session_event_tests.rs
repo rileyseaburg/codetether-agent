@@ -4,8 +4,7 @@ use super::*;
 
 #[test]
 fn tool_call_carries_name_and_arguments() {
-    let event =
-        tool_call_event("bash", &serde_json::json!({"command": "ls -la"}));
+    let event = tool_call_event("bash", &serde_json::json!({"command": "ls -la"}));
 
     assert_eq!(event["type"], serde_json::json!("tool.call"));
     assert_eq!(event["payload"]["name"], serde_json::json!("bash"));
@@ -23,7 +22,10 @@ fn tool_result_reports_success_and_status() {
     assert_eq!(event["payload"]["status"], serde_json::json!("ok"));
     assert_eq!(event["payload"]["success"], serde_json::json!(true));
     assert_eq!(event["payload"]["duration_ms"], serde_json::json!(42));
-    assert_eq!(event["payload"]["output_truncated"], serde_json::json!(false));
+    assert_eq!(
+        event["payload"]["output_truncated"],
+        serde_json::json!(false)
+    );
 }
 
 #[test]
@@ -40,7 +42,10 @@ fn long_output_is_truncated_explicitly() {
     let long = "x".repeat(MAX_OUTPUT_BYTES * 2);
     let event = tool_result_event("bash", true, &long, None);
 
-    assert_eq!(event["payload"]["output_truncated"], serde_json::json!(true));
+    assert_eq!(
+        event["payload"]["output_truncated"],
+        serde_json::json!(true)
+    );
     assert_eq!(
         event["payload"]["output_bytes"],
         serde_json::json!(long.len())
@@ -62,7 +67,10 @@ fn secret_arguments_are_redacted() {
     let arguments = &event["payload"]["arguments"];
 
     assert_eq!(arguments["GITHUB_TOKEN"], serde_json::json!("[redacted]"));
-    assert_eq!(arguments["nested"]["api_key"], serde_json::json!("[redacted]"));
+    assert_eq!(
+        arguments["nested"]["api_key"],
+        serde_json::json!("[redacted]")
+    );
     assert_eq!(arguments["command"], serde_json::json!("deploy"));
 }
 
@@ -117,5 +125,8 @@ fn multibyte_output_truncation_stays_valid() {
 
     // Serializing proves the carried string is still valid UTF-8.
     assert!(serde_json::to_string(&event).is_ok());
-    assert_eq!(event["payload"]["output_truncated"], serde_json::json!(true));
+    assert_eq!(
+        event["payload"]["output_truncated"],
+        serde_json::json!(true)
+    );
 }

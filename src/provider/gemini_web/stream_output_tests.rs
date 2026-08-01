@@ -30,7 +30,10 @@ fn converts_arguments_first_markup_into_stream_tool_events() {
             if arguments_delta == r#"{"cmd":"pwd"}"#
     ));
     assert!(matches!(&chunks[2], StreamChunk::ToolCallEnd { .. }));
-    assert!(matches!(&chunks[3], StreamChunk::Done { .. }));
+    assert!(matches!(
+        &chunks[3],
+        StreamChunk::Done { usage: Some(usage) } if usage.completion_tokens > 0
+    ));
 }
 
 #[test]
