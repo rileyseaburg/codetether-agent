@@ -6,7 +6,6 @@ use crate::cli::auth::{
 };
 use crate::cli::onboard::{DEFAULT_SERVER, prompt_line};
 use anyhow::{Context, Result};
-use reqwest::Client;
 use serde_json::json;
 
 pub async fn register_and_login() -> Result<Option<SavedCredentials>> {
@@ -24,7 +23,7 @@ pub async fn register_and_login() -> Result<Option<SavedCredentials>> {
     }
 
     println!("Creating your account...");
-    let client = Client::new();
+    let client = crate::provider::shared_http::shared_client().clone();
     let resp = client
         .post(format!("{DEFAULT_SERVER}/v1/users/register"))
         .header("Content-Type", "application/json")
