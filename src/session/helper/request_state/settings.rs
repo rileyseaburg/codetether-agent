@@ -16,8 +16,12 @@ pub(crate) fn temperature_for(model: &str) -> Option<f32> {
     }
 }
 
-pub(super) fn model_supports_tools(provider: &str) -> bool {
-    !matches!(provider, "local-cuda" | "local_cuda" | "localcuda")
+pub(super) fn model_supports_tools(provider: &str, model: &str) -> bool {
+    if matches!(provider, "local-cuda" | "local_cuda" | "localcuda") {
+        return false;
+    }
+    provider != "openrouter"
+        || crate::provider::openrouter::model_capabilities::supports_tools(model)
 }
 
 pub(super) fn system_prompt_for(

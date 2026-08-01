@@ -1,5 +1,19 @@
 //! Tool identifiers retained by compact runtime profiles.
 
+pub(super) const DISCOVERY: &[&str] = &[
+    "agent",
+    "apply_patch",
+    "codesearch",
+    "exec_command",
+    "glob",
+    "grep",
+    "list",
+    "lsp",
+    "read",
+    "session_task",
+    "write_stdin",
+];
+
 pub(super) const CODING: &[&str] = &[
     "agent",
     "apply_patch",

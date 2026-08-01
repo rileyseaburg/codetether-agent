@@ -5,6 +5,8 @@ mod build_exhaustion;
 pub(super) mod build_guard;
 mod flow;
 mod goal;
+#[path = "narration.rs"]
+pub mod narration;
 mod native_guard;
 pub(super) mod nudge;
 mod output;

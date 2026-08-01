@@ -21,11 +21,12 @@ mod response_text;
 mod stream_output;
 mod tool_calls;
 mod tool_validation;
+mod usage;
 
 use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
-    Role, StreamChunk, ToolDefinition, Usage,
+    Role, StreamChunk, ToolDefinition,
 };
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -402,6 +403,7 @@ impl GeminiWebProvider {
     /// Returns:
     /// - cleaned_text: original text with tool-call blocks removed
     /// - calls: parsed `(name, arguments_json_string)` tuples
+    #[cfg(test)]
     fn extract_tool_calls(text: &str) -> (String, Vec<(String, String)>) {
         tool_calls::extract(text)
     }
@@ -602,10 +604,8 @@ impl Provider for GeminiWebProvider {
             .ask_validated(&prompt, &request.model, &request.tools, &request.messages)
             .await
             .context("Gemini Web completion failed")?;
-        let mut content: Vec<ContentPart> = Vec::new();
-        if !cleaned_text.is_empty() {
-            content.push(ContentPart::Text { text: cleaned_text });
-        }
+        let usage = usage::estimate(&prompt, &cleaned_text, &parsed_tool_calls);
+        let mut content = response_text::content_parts(&cleaned_text);
 
         for (idx, (name, arguments)) in parsed_tool_calls.iter().enumerate() {
             let ts = SystemTime::now()
@@ -636,13 +636,7 @@ impl Provider for GeminiWebProvider {
                 role: Role::Assistant,
                 content,
             },
-            usage: Usage {
-                prompt_tokens: 0,
-                completion_tokens: 0,
-                total_tokens: 0,
-                cache_read_tokens: None,
-                cache_write_tokens: None,
-            },
+            usage,
             finish_reason,
         })
     }
@@ -657,7 +651,8 @@ impl Provider for GeminiWebProvider {
             .ask_validated(&prompt, &request.model, &request.tools, &request.messages)
             .await
             .context("Gemini Web streaming completion failed")?;
-        let chunks = stream_output::from_parts(cleaned, calls);
+        let usage = usage::estimate(&prompt, &cleaned, &calls);
+        let chunks = stream_output::from_parts(cleaned, calls, usage);
         Ok(futures::stream::iter(chunks).boxed())
     }
 }

@@ -9,24 +9,27 @@ fn is_dead_confirmation_tool(name: &str) -> bool {
 
 pub(super) fn active_tool_definitions(
     registry: &ToolRegistry,
-    selected_provider: &str,
+    _selected_provider: &str,
 ) -> Vec<ToolDefinition> {
-    let definitions = registry
+    registry
         .definitions()
         .into_iter()
         .filter(|tool| !is_interactive_tool(&tool.name))
         .filter(|tool| !is_dead_confirmation_tool(&tool.name))
-        .collect();
-    crate::tool::profile::apply_for_provider(definitions, selected_provider)
+        .collect()
 }
 
 pub(super) fn advertised_tools(
     model_supports_tools: bool,
     tools: &[ToolDefinition],
+    provider: &str,
 ) -> Vec<ToolDefinition> {
-    if model_supports_tools {
-        tools.to_vec()
-    } else {
-        vec![list_tools_bootstrap_definition()]
+    if !model_supports_tools {
+        return Vec::new();
     }
+    let mut advertised = crate::tool::profile::apply_for_provider(tools.to_vec(), provider);
+    if advertised.len() < tools.len() {
+        advertised.push(list_tools_bootstrap_definition());
+    }
+    advertised
 }

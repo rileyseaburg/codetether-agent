@@ -1,5 +1,10 @@
 //! Index resolution and argument-fragment helpers for Z.AI tool streaming.
 
+#[path = "zai_capture.rs"]
+pub mod capture;
+#[path = "zai_stream_delta.rs"]
+pub mod delta;
+
 use super::zai_stream_state::ZaiStreamToolState;
 use super::zai_stream_types::ZaiStreamToolCall;
 use serde_json::Value;

@@ -1,6 +1,8 @@
 //! Request-scoped validation of model-emitted tool calls.
 
 mod batch_guard;
+#[path = "tool_validation/mimicry.rs"]
+pub mod mimicry;
 mod schema;
 mod session_guard;
 
@@ -14,9 +16,11 @@ pub(super) fn extract(
     tools: &[ToolDefinition],
     messages: &[Message],
 ) -> Result<(String, Vec<(String, String)>)> {
-    if tool_calls::contains_result_markup(text) {
-        bail!("assistant response contains forged <tool_result> markup");
-    }
+    // A `<tool_result>` alongside a real `<tool_call>` is the model copying the
+    // transcript style we ourselves render. Strip it and proceed; only fabricated
+    // output with no accompanying call is a genuine forgery.
+    let text = mimicry::tolerate(text)?;
+    let text = text.as_str();
     let (cleaned, calls) = tool_calls::extract(text);
     if tool_calls::contains_unparsed_markup(&cleaned) {
         bail!("response contains incomplete or malformed <tool_call> markup");

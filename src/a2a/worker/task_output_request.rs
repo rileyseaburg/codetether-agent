@@ -25,8 +25,7 @@ pub(super) async fn send_with_event(
     output: String,
     event: Option<serde_json::Value>,
 ) {
-    let mut payload =
-        serde_json::json!({ "worker_id": worker_id, "output": output });
+    let mut payload = serde_json::json!({ "worker_id": worker_id, "output": output });
     if let Some(event) = event
         && let Some(fields) = payload.as_object_mut()
     {

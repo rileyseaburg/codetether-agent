@@ -14,6 +14,8 @@ mod location;
 mod paths;
 #[path = "save_guard.rs"]
 mod save_guard;
+#[path = "workspace_resolve.rs"]
+mod workspace_resolve;
 
 impl Session {
     /// Load an existing session by its UUID.

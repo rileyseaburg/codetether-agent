@@ -31,12 +31,7 @@ impl Call {
 pub(super) async fn run(runner: &mut Runner<'_>, step: usize, call: Call) -> Result<bool> {
     super::call_guard::publish_start(runner, &call).await;
     if call.name == "list_tools" {
-        let content = super::super::super::bootstrap::list_tools_bootstrap_output(
-            &runner.model.tools,
-            &call.input,
-        );
-        super::simple::record(runner, &call, content, true).await;
-        return Ok(false);
+        return super::discovery::run(runner, &call).await;
     }
     super::bus::request(runner, step, &call);
     if let Some(reason) = super::call_guard::blocked(runner, &call) {

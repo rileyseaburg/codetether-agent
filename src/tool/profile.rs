@@ -45,6 +45,9 @@ pub(crate) fn apply_for_provider(
     if selection::requested().is_mux_manager() {
         return catalog::sort(catalog::retain_mux_manager_tools(definitions));
     }
+    if selection::use_discovery_profile(provider) {
+        return catalog::sort(catalog::retain_discovery_tools(definitions));
+    }
     if selection::use_coding_profile(provider) {
         return catalog::sort(catalog::retain_coding_tools(definitions));
     }

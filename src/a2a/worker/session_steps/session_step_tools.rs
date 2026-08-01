@@ -17,7 +17,12 @@ pub(super) async fn execute_tool_call(
     cb: &Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
     (tool_id, tool_name, tool_input): ToolCall,
 ) {
-    if let Some(cb) = cb {
+    // Publish the invocation with its arguments when a worker sink is active so
+    // the transcript can render a real tool card; otherwise keep the historical
+    // text marker for the plain output stream.
+    if !super::super::session_event_sink::emit_tool_call_if_active(&tool_name, &tool_input)
+        && let Some(cb) = cb
+    {
         cb(format!("[tool:start:{}]", tool_name));
     }
     if !super::super::is_tool_allowed(&tool_name, auto_approve) {

@@ -6,6 +6,7 @@ mod kill;
 pub(in crate::mux) mod kill_all;
 mod list;
 mod new_session;
+mod resume;
 mod serve;
 mod shutdown;
 pub(in crate::mux) mod spawn;

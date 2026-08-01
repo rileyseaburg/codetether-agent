@@ -1,6 +1,9 @@
 //! Tool execution with timeout handling.
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 pub(super) async fn run_tool(
     registry: &crate::tool::ToolRegistry,
@@ -17,9 +20,20 @@ pub(super) async fn run_tool(
     }
     let timeout =
         super::super::super::env_u64("CODETETHER_WORKER_TOOL_TIMEOUT_SECS", 120).clamp(1, 3600);
+    let started = Instant::now();
     match tokio::time::timeout(Duration::from_secs(timeout), tool.execute(input)).await {
         Ok(Ok(result)) => {
-            if let Some(cb) = cb {
+            // Emit the typed event when a worker sink is installed; otherwise
+            // fall back to the historical text-only callback. Flattening the
+            // tool name, status, and output into one string is what previously
+            // made every transcript entry publish as `agent.message`.
+            let emitted = super::super::super::session_event_sink::emit_tool_result_if_active(
+                tool_name,
+                result.success,
+                &result.output,
+                Some(started.elapsed().as_millis()),
+            );
+            if !emitted && let Some(cb) = cb {
                 cb(format!("[tool:{}:{}] {}", tool_name, if result.success { "ok" } else { "err" }, crate::util::truncate_bytes_safe(&result.output, 500)));
             }
             result.output

@@ -3,6 +3,10 @@
 use crate::provider::ContentPart;
 use serde_json::{Value, json};
 
+#[cfg(test)]
+#[path = "part_tests.rs"]
+mod tests;
+
 /// Encode one history part without teaching the model fake transcript syntax.
 pub(super) fn render(part: &ContentPart) -> Option<String> {
     match part {
@@ -15,7 +19,11 @@ pub(super) fn render(part: &ContentPart) -> Option<String> {
             content,
         } => Some(render_result(tool_call_id, content)),
         ContentPart::Thinking { text, .. } => Some(format!("<thinking>{text}</thinking>")),
-        ContentPart::Image { .. } | ContentPart::File { .. } => None,
+        ContentPart::File { path, mime_type } => Some(format!(
+            "Attached file (use this exact path): {}",
+            safe_json(&json!({"path": path, "mime_type": mime_type}))
+        )),
+        ContentPart::Image { .. } => None,
     }
 }
 

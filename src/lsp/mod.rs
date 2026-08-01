@@ -15,6 +15,7 @@ pub mod tetherscript;
 pub mod transport;
 pub mod types;
 pub mod uri;
+pub mod workspace_folder;
 
 pub use client::LspManager;
 pub use types::*;
@@ -31,3 +32,7 @@ mod tetherscript_smoke_tests;
 #[cfg(test)]
 #[path = "tetherscript_config_tests.rs"]
 mod tetherscript_config_tests;
+
+#[cfg(test)]
+#[path = "workspace_folder_tests.rs"]
+mod workspace_folder_tests;

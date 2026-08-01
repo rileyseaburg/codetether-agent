@@ -12,6 +12,11 @@ pub(in crate::mux) async fn execute(command: MuxCommand) -> Result<()> {
             detached,
         } => super::new_session::run(session, directory, detached).await,
         MuxCommand::Attach { target } => super::attach::run(&target).await,
+        MuxCommand::Resume {
+            session,
+            name,
+            detached,
+        } => super::resume::run(session, name, detached).await,
         MuxCommand::List { json } => super::list::run(json).await,
         MuxCommand::Kill { target } => super::kill::run(&target).await,
         MuxCommand::KillAll => super::kill_all::run().await,

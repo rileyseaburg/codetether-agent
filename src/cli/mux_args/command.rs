@@ -37,6 +37,18 @@ pub enum MuxCommand {
         #[arg(value_name = "SESSION")]
         target: String,
     },
+    /// Resume a durable CodeTether session in a new mux session.
+    Resume {
+        /// Durable CodeTether session ID to resume.
+        #[arg(long, value_name = "SESSION_ID")]
+        session: String,
+        /// Mux session name to create; defaults to a name derived from the ID.
+        #[arg(long, value_name = "NAME")]
+        name: Option<String>,
+        /// Leave the server detached instead of opening its client.
+        #[arg(short = 'd', long)]
+        detached: bool,
+    },
     /// List persistent mux sessions.
     #[command(alias = "ls")]
     List {

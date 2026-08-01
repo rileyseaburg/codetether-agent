@@ -60,7 +60,10 @@ fn clamp(text: &str, limit: usize) -> (String, bool) {
     if text.len() <= limit {
         return (text.to_string(), false);
     }
-    (crate::util::truncate_bytes_safe(text, limit).to_string(), true)
+    (
+        crate::util::truncate_bytes_safe(text, limit).to_string(),
+        true,
+    )
 }
 
 /// Redacts secret-bearing values and bounds oversized ones.
@@ -84,9 +87,7 @@ pub fn redact_arguments(input: &Value) -> Value {
             }
             Value::Object(safe)
         }
-        Value::Array(items) => {
-            Value::Array(items.iter().map(redact_arguments).collect())
-        }
+        Value::Array(items) => Value::Array(items.iter().map(redact_arguments).collect()),
         Value::String(text) => {
             let (bounded, truncated) = clamp(text, MAX_ARG_BYTES);
             if truncated {

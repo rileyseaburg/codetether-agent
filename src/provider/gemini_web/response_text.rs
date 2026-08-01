@@ -2,50 +2,38 @@
 
 #[path = "capture.rs"]
 mod capture;
+#[path = "response_text/collect.rs"]
+pub mod collect;
+#[path = "response_text/consensus.rs"]
+pub mod consensus;
+#[path = "response_text/frame.rs"]
+pub mod frame;
+#[path = "response_text/parts.rs"]
+pub mod parts;
 #[path = "response_text/placeholder.rs"]
 pub mod placeholder;
+#[path = "response_text/reasoning.rs"]
+pub mod reasoning;
+#[path = "response_text/ui_markup.rs"]
+pub mod ui_markup;
 
-use serde_json::Value;
+pub use parts::content_parts;
+pub use reasoning::split_reasoning;
+pub use ui_markup::strip_ui_markup;
 
+/// Returns the agreed answer candidate from a StreamGenerate body.
+///
+/// Slot `[4][0][1][0]` also carries drafts, titles, and leaked reasoning, so
+/// position alone is not authoritative: a 40 KB tool-result turn was observed
+/// returning unrelated content as the final candidate. Selection is therefore by
+/// agreement across frames, not order. Card placeholders are skipped so an
+/// internal rendering URL never displaces real content.
+///
+/// Returns an empty string when no candidate repeats, so the caller can retry
+/// rather than surface a guess as the assistant's answer.
 pub(super) fn latest(raw: &str) -> String {
     capture::record("stream", raw);
-    let mut latest = String::new();
-    for line in raw
-        .lines()
-        .map(str::trim)
-        .filter(|line| line.starts_with('['))
-    {
-        let Ok(events) = serde_json::from_str::<Value>(line) else {
-            continue;
-        };
-        let Some(events) = events.as_array() else {
-            continue;
-        };
-        for event in events {
-            if let Some(text) = event_text(event)
-                && !text.is_empty()
-                && !placeholder::is_placeholder(&text)
-            {
-                latest = text;
-            }
-        }
-    }
-    latest
-}
-
-fn event_text(event: &Value) -> Option<String> {
-    let inner = event.get(2)?.as_str()?;
-    if !inner.starts_with('[') {
-        return None;
-    }
-    let value = serde_json::from_str::<Value>(inner).ok()?;
-    value
-        .get(4)?
-        .get(0)?
-        .get(1)?
-        .get(0)?
-        .as_str()
-        .map(str::to_string)
+    consensus::select(&collect::candidates(raw)).unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -55,3 +43,7 @@ mod tests;
 #[cfg(test)]
 #[path = "response_text/placeholder_tests.rs"]
 mod placeholder_tests;
+
+#[cfg(test)]
+#[path = "response_text/leak_tests.rs"]
+mod leak_tests;

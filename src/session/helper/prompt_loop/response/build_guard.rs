@@ -2,6 +2,7 @@
 
 use super::super::super::loop_constants as limits;
 use super::super::Runner;
+use crate::provider::{Message, Role};
 use anyhow::Result;
 
 /// Requests a retry when build mode answers without first using tools.
@@ -10,6 +11,9 @@ use anyhow::Result;
 ///
 /// Reserved for guard failures propagated by the shared response pipeline.
 pub(super) fn tool_first(runner: &mut Runner<'_>, text: &str, calls: bool) -> Result<bool> {
+    if tool_executed(&runner.session.messages) {
+        return Ok(false);
+    }
     let retry = super::super::super::build::should_force_build_tool_first_retry(
         &runner.session.agent,
         runner.progress.build_retries,
@@ -26,3 +30,15 @@ pub(super) fn tool_first(runner: &mut Runner<'_>, text: &str, calls: bool) -> Re
     }
     Ok(retry)
 }
+
+fn tool_executed(messages: &[Message]) -> bool {
+    messages
+        .iter()
+        .rev()
+        .take_while(|message| !matches!(message.role, Role::User))
+        .any(|message| matches!(message.role, Role::Tool))
+}
+
+#[cfg(test)]
+#[path = "build_guard_tests.rs"]
+mod tests;

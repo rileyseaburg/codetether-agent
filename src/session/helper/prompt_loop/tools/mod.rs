@@ -6,6 +6,7 @@ mod bus;
 mod call;
 mod call_guard;
 mod codesearch;
+mod discovery;
 mod dispatch;
 mod invoke;
 mod outcome;

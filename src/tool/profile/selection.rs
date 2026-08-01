@@ -1,5 +1,8 @@
 //! Profile selection from provider identity and environment configuration.
 
+#[path = "selection_provider.rs"]
+mod provider_rules;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum RequestedProfile {
     Automatic,
@@ -24,6 +27,10 @@ pub(super) fn requested() -> RequestedProfile {
     parse(value.as_deref())
 }
 
+pub(super) fn use_discovery_profile(provider: &str) -> bool {
+    provider_rules::resolve_discovery(requested(), provider)
+}
+
 pub(super) fn use_coding_profile(provider: &str) -> bool {
     resolve(requested(), provider)
 }
@@ -33,7 +40,7 @@ fn resolve(requested: RequestedProfile, provider: &str) -> bool {
         RequestedProfile::Coding => true,
         RequestedProfile::MuxManager => false,
         RequestedProfile::Full | RequestedProfile::Unknown => false,
-        RequestedProfile::Automatic => is_codex_provider(provider),
+        RequestedProfile::Automatic => provider_rules::prefers_coding(provider),
     }
 }
 
@@ -45,10 +52,6 @@ fn parse(value: Option<&str>) -> RequestedProfile {
         Some("mux-manager" | "mux_manager") => RequestedProfile::MuxManager,
         Some(_) => RequestedProfile::Unknown,
     }
-}
-
-fn is_codex_provider(provider: &str) -> bool {
-    matches!(provider, "openai-codex" | "codex" | "chatgpt")
 }
 
 #[cfg(test)]

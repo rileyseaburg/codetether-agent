@@ -5,6 +5,13 @@ use crate::provider::ToolDefinition;
 #[path = "catalog_ids.rs"]
 mod ids;
 
+pub(super) fn retain_discovery_tools(definitions: Vec<ToolDefinition>) -> Vec<ToolDefinition> {
+    definitions
+        .into_iter()
+        .filter(|tool| ids::DISCOVERY.contains(&tool.name.as_str()))
+        .collect()
+}
+
 pub(super) fn retain_coding_tools(definitions: Vec<ToolDefinition>) -> Vec<ToolDefinition> {
     definitions
         .into_iter()
@@ -31,3 +38,7 @@ fn is_mcp(name: &str) -> bool {
 #[cfg(test)]
 #[path = "catalog_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "catalog_discovery_tests.rs"]
+mod discovery_tests;

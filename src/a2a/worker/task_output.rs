@@ -13,8 +13,7 @@ use crate::bus::AgentBus;
 /// ```ignore
 /// emit(&sink, "[tool:bash:ok] done".into(), Some(event));
 /// ```
-pub(super) type EventSink =
-    Arc<dyn Fn(String, Option<serde_json::Value>) + Send + Sync + 'static>;
+pub(super) type EventSink = Arc<dyn Fn(String, Option<serde_json::Value>) + Send + Sync + 'static>;
 
 pub(super) fn build_output_callback(
     client: reqwest::Client,

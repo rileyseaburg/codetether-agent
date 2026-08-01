@@ -12,6 +12,15 @@ use super::{
 mod zai_stream_assembly;
 #[path = "zai_stream_index.rs"]
 mod zai_stream_index;
+// Re-exported so the documented paths `zai::capture` and `zai::delta` resolve;
+// the index module itself stays private.
+pub use zai_stream_index::{capture, delta};
+#[path = "zai_stream_done.rs"]
+mod stream_done;
+#[path = "zai_stream_output.rs"]
+pub mod stream_output;
+#[path = "zai_stream_request.rs"]
+pub mod stream_request;
 #[path = "zai_stream_state.rs"]
 mod zai_stream_state;
 #[path = "zai_stream_types.rs"]
@@ -779,28 +788,13 @@ impl Provider for ZaiProvider {
         // endpoint variants.
         let messages = Self::convert_messages(&request.messages, false);
         let tools = Self::convert_tools(&request.tools);
-
-        let temperature = request.temperature.unwrap_or(1.0);
-
-        let mut body = json!({
-            "model": request.model,
-            "messages": messages,
-            "temperature": temperature,
-            "stream": true,
-        });
-
-        body["thinking"] = thinking_config_for_request(&request);
-
-        if !tools.is_empty() {
-            body["tools"] = json!(tools);
-            if Self::model_supports_tool_stream(&request.model) {
-                // Enable streaming tool calls only on known-compatible models.
-                body["tool_stream"] = json!(true);
-            }
-        }
-        if let Some(max) = request.max_tokens {
-            body["max_tokens"] = json!(max);
-        }
+        let body = stream_request::build_body(
+            &request,
+            messages,
+            tools,
+            thinking_config_for_request(&request),
+            Self::model_supports_tool_stream(&request.model),
+        );
 
         tracing::debug!(model = %request.model, "Z.AI streaming request");
         let request_base_url = self.request_base_url(&request.model);
@@ -834,11 +828,7 @@ impl Provider for ZaiProvider {
                         Self::preview_text(&text, 200)
                     )
                 });
-            return Ok(futures::stream::iter(vec![
-                StreamChunk::Error(msg),
-                StreamChunk::Done { usage: None },
-            ])
-            .boxed());
+            return Ok(futures::stream::iter(stream_request::error_chunks(msg)).boxed());
         }
 
         let stream = response.bytes_stream();
@@ -846,10 +836,12 @@ impl Provider for ZaiProvider {
         let mut tool_states = HashMap::<usize, ZaiStreamToolState>::new();
         let mut next_fallback_tool_index = 0usize;
         let mut last_seen_tool_index = None;
-        // Track whether the stream produced usable content so a clean [DONE]
+        // Track whether the stream produced usable output so a clean [DONE]
         // with no deltas surfaces as an explicit error instead of an empty
-        // "completed" turn. `final_usage` captures the SSE usage block.
-        let mut produced_output = false;
+        // "completed" turn. Tool calls count as output: a tool-only turn is
+        // complete. `final_usage` captures the SSE usage block.
+        let mut seen = stream_output::OutputSeen::default();
+        let (mut frames_seen, mut last_finish) = (0usize, None::<String>);
         let mut final_usage: Option<Usage> = None;
 
         Ok(stream
@@ -858,7 +850,7 @@ impl Provider for ZaiProvider {
                 match chunk_result {
                     Ok(bytes) => {
                         let text = String::from_utf8_lossy(&bytes);
-                        buffer.push_str(&text);
+                        buffer.push_str(capture::record(&text));
 
                         let mut text_buf = String::new();
                         while let Some(line_end) = buffer.find('\n') {
@@ -866,26 +858,21 @@ impl Provider for ZaiProvider {
                             buffer = buffer[line_end + 1..].to_string();
 
                             if line == "data: [DONE]" {
-                                if !text_buf.is_empty() {
-                                    produced_output = true;
-                                    chunks.push(StreamChunk::Text(std::mem::take(&mut text_buf)));
-                                }
-                                // A clean [DONE] that produced no text and no
-                                // tool calls is a failed/empty provider stream,
-                                // not a successful turn. Surface it explicitly.
-                                if !produced_output {
-                                    chunks.push(StreamChunk::Error(
-                                        "Z.AI stream ended without producing any content (empty response)".to_string(),
-                                    ));
-                                }
-                                chunks.push(StreamChunk::Done {
-                                    usage: final_usage.take(),
-                                });
+                                stream_done::finish(
+                                    &mut chunks,
+                                    &mut text_buf,
+                                    &mut seen,
+                                    &mut tool_states,
+                                    frames_seen,
+                                    last_finish.as_deref(),
+                                    final_usage.take(),
+                                );
                                 continue;
                             }
                             if let Some(data) = line.strip_prefix("data: ")
                                 && let Ok(parsed) = serde_json::from_str::<ZaiStreamResponse>(data)
                             {
+                                frames_seen += 1;
                                 if let Some(ref u) = parsed.usage {
                                     final_usage = Some(Usage {
                                         prompt_tokens: u.prompt_tokens,
@@ -899,51 +886,60 @@ impl Provider for ZaiProvider {
                                     });
                                 }
                                 if let Some(choice) = parsed.choices.first() {
-                                // Reasoning content streamed as text (prefixed for TUI rendering)
-                                if let Some(ref reasoning) = choice.delta.reasoning_content
-                                    && !reasoning.is_empty()
-                                {
-                                    produced_output = true;
-                                    text_buf.push_str(reasoning);
-                                }
-                                if let Some(ref content) = choice.delta.content
-                                    && !content.is_empty()
-                                {
-                                    produced_output = true;
-                                    text_buf.push_str(content);
-                                }
-                                // Streaming tool calls
-                                if let Some(ref tool_calls) = choice.delta.tool_calls {
-                                    if !text_buf.is_empty() {
-                                        chunks
-                                            .push(StreamChunk::Text(std::mem::take(&mut text_buf)));
-                                    }
-                                    append_stream_tool_call_chunks(
-                                        &mut chunks,
-                                        tool_calls,
-                                        &mut tool_states,
-                                        &mut next_fallback_tool_index,
-                                        &mut last_seen_tool_index,
-                                    );
-                                }
-                                // finish_reason signals end of a tool call or completion
-                                if let Some(ref reason) = choice.finish_reason {
-                                    if !text_buf.is_empty() {
-                                        chunks
-                                            .push(StreamChunk::Text(std::mem::take(&mut text_buf)));
-                                    }
-                                    if reason == "tool_calls" {
-                                        finish_stream_tool_call_chunks(
+                                    if let Some(ref reasoning) = choice.delta.reasoning_content
+                                        && !reasoning.is_empty()
+                                    {
+                                        seen.text = true;
+                                        delta::push_reasoning(
                                             &mut chunks,
-                                            &mut tool_states,
+                                            &mut text_buf,
+                                            reasoning,
                                         );
                                     }
-                                }
+                                    if let Some(ref content) = choice.delta.content
+                                        && !content.is_empty()
+                                    {
+                                        seen.text = true;
+                                        text_buf.push_str(content);
+                                    }
+                                    // Streaming tool calls
+                                    if let Some(ref tool_calls) = choice.delta.tool_calls {
+                                        if !text_buf.is_empty() {
+                                            chunks.push(StreamChunk::Text(std::mem::take(
+                                                &mut text_buf,
+                                            )));
+                                        }
+                                        // A tool-call delta is real output; the
+                                        // turn is not empty.
+                                        seen.tool_calls = true;
+                                        append_stream_tool_call_chunks(
+                                            &mut chunks,
+                                            tool_calls,
+                                            &mut tool_states,
+                                            &mut next_fallback_tool_index,
+                                            &mut last_seen_tool_index,
+                                        );
+                                    }
+                                    // finish_reason signals end of a tool call or completion
+                                    if let Some(ref reason) = choice.finish_reason {
+                                        last_finish = Some(reason.clone());
+                                        if !text_buf.is_empty() {
+                                            chunks.push(StreamChunk::Text(std::mem::take(
+                                                &mut text_buf,
+                                            )));
+                                        }
+                                        if reason == "tool_calls" {
+                                            finish_stream_tool_call_chunks(
+                                                &mut chunks,
+                                                &mut tool_states,
+                                            );
+                                        }
+                                    }
                                 }
                             }
                         }
                         if !text_buf.is_empty() {
-                            produced_output = true;
+                            seen.text = true;
                             chunks.push(StreamChunk::Text(text_buf));
                         }
                     }

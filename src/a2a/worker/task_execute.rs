@@ -51,10 +51,22 @@ pub(super) async fn execute_claimed_task<'a>(
         task_id.to_string(),
         runtime.bus.clone(),
     );
+    // Publish the structured sink for this task so tool execution can emit
+    // typed `tool.call` / `tool.result` events instead of flattened text.
+    super::session_event_sink::install_sink(Some(super::task_output::build_event_sink(
+        runtime.client.clone(),
+        runtime.server.clone(),
+        runtime.token.clone(),
+        runtime.worker_id.clone(),
+        task_id.to_string(),
+        runtime.bus.clone(),
+    )));
     let (mut status, mut result, mut error, session_id) =
         execute_task_agent(&mut session, runtime, &context, &agent_type, output)
             .await
             .unwrap_or_else(|err| ("failed", None, Some(format!("Error: {err}")), None));
+    // Clear the sink so a later task cannot stream into this one's transcript.
+    super::session_event_sink::install_sink(None);
     timeline.checkpoint_with_detail(
         task_timeline::TaskCheckpoint::AgentDone,
         Some(format!("status={status}")),

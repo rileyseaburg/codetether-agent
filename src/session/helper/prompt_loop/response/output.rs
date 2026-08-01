@@ -24,7 +24,13 @@ pub(super) async fn emit(runner: &mut Runner<'_>, step: usize, response: &Comple
     }
     if !text.is_empty() {
         super::assistant_bus::text(runner, &text);
-        runner.progress.output.push_str(&format!("{text}\n"));
+        // Text accompanying a tool call is a preamble, not the answer. Keeping
+        // it produced answers made entirely of intent ("Now let me read...").
+        if super::narration::is_preamble(&response.message.content) {
+            tracing::debug!(step, "withholding pre-tool narration from final answer");
+        } else {
+            runner.progress.output.push_str(&format!("{text}\n"));
+        }
     }
 }
 

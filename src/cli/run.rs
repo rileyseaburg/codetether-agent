@@ -1,6 +1,7 @@
 //! Non-interactive run command
 
 mod events;
+mod files;
 mod jsonl;
 mod knowledge;
 mod run_execute;
@@ -20,8 +21,7 @@ use crate::rlm::{FinalPayload, RlmExecutor};
 use crate::session::{Session, import_codex_session_by_id};
 use anyhow::Result;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use std::collections::HashMap;
-use std::io::Write;
+use std::{collections::HashMap, io::Write};
 use uuid::Uuid;
 
 const AUTOCHAT_MAX_AGENTS: usize = crate::autochat::AUTOCHAT_MAX_AGENTS;
@@ -558,7 +558,7 @@ async fn decide_dynamic_spawn_with_registry(
 pub use run_execute::execute;
 
 pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
-    let message = args.message.trim();
+    let message = files::with_attachments(args.message.trim(), &args.file)?;
     let jsonl_output = jsonl::enabled(&args.format);
     super::run_checkpoint::validate_auto_continue(args.auto_continue_until)?;
 
@@ -574,7 +574,7 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
             args.strategies.clone(),
         );
         let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-        let specs = runner.build_branches(&cwd, message)?;
+        let specs = runner.build_branches(&cwd, &message)?;
         tracing::info!(branches = %runner.branch_count, "Many-worlds speculative mode enabled");
         for spec in &specs {
             tracing::info!(
@@ -600,8 +600,8 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
     // Protocol-first relay aliases in CLI:
     // - /go [count] <task>
     // - /autochat [count] <task>
-    let easy_go_requested = is_easy_go_command(message);
-    let normalized = normalize_cli_go_command(message);
+    let easy_go_requested = is_easy_go_command(&message);
+    let normalized = normalize_cli_go_command(&message);
     if let Some(rest) = command_with_optional_args(&normalized, "/autochat") {
         let Some(parsed) = crate::autochat::parse_autochat_request(
             rest,
@@ -885,11 +885,11 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
     crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
     session.bus = Some(bus);
 
-    let live_events = events::LiveEvents::start(&session.id, message, jsonl_output).await?;
+    let live_events = events::LiveEvents::start(&session.id, &message, jsonl_output).await?;
 
     let result = match super::run_loop::execute_prompt_with_resume_events(
         &mut session,
-        message,
+        &message,
         args.max_steps,
         args.auto_continue_until,
         &workspace_dir,

@@ -1,5 +1,7 @@
 //! Gemini Web conversation-history rendering.
 
+#[path = "capture.rs"]
+mod capture;
 mod catalog;
 mod dedupe;
 mod part;
@@ -16,7 +18,9 @@ pub(super) fn render(messages: &[Message], tools: &[ToolDefinition]) -> Result<S
     let overhead = protocol::overhead(catalog.len()) + retry::RESERVE_BYTES;
     let history_limit = window::MAX_BYTES.saturating_sub(overhead);
     let history = render_bounded(messages, history_limit);
-    Ok(protocol::wrap(&catalog, &history))
+    let rendered = protocol::wrap(&catalog, &history);
+    capture::record("prompt", &rendered);
+    Ok(rendered)
 }
 
 pub(super) fn retry(original: &str, error: &str) -> String {

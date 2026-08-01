@@ -69,7 +69,7 @@ impl LspClient {
             initialization_options: self.config.initialization_options.clone(),
             capabilities: ClientCapabilities::default(),
             trace: None,
-            workspace_folders: None,
+            workspace_folders: super::workspace_folder::derive(root_uri),
         };
 
         let response = self

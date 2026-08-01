@@ -10,6 +10,7 @@
 //! ```text
 //! codetether mux new work /path/to/project -d
 //! codetether mux attach work
+//! codetether mux resume --session <session-id>
 //! codetether mux list
 //! codetether mux kill work
 //! codetether mux kill-all
@@ -26,6 +27,7 @@ mod model;
 mod protocol;
 mod pty;
 mod registry;
+pub mod resume_name;
 mod server;
 mod token;
 
