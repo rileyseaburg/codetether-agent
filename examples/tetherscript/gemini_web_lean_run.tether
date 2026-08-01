@@ -1,0 +1,164 @@
+// Immediate Gemini Web reliability band-aid.
+//
+// Runs the installed CodeTether binary with its existing lean tool profile,
+// reducing prompt dilution without waiting for a Rust rebuild.
+//
+// Usage:
+//   tetherscript run scripts/gemini-web-lean-run.tether -- "your task"
+
+fn is_protocol_fault(stderr) {
+    let text = str(stderr)
+    if text.contains("Gemini Web tool protocol retry failed") {
+        return true
+    }
+    if text.contains("incomplete or malformed <tool_call>") {
+        return true
+    }
+    return text.contains("apply_patch cannot share a batch")
+}
+
+fn session_from(output) {
+    let parts = str(output).split("Created new session: ")
+    if parts.len() < 2 {
+        return ""
+    }
+    let tail = parts[parts.len() - 1].split("\n")
+    return str(tail[0]).trim()
+}
+
+fn has_session(args) {
+    for arg in args {
+        if arg == "--session" {
+            return true
+        }
+    }
+    return false
+}
+
+fn resume_args(args, session_id) {
+    let resumed = []
+    let mut inserted = false
+    for arg in args {
+        if !inserted && arg == "--" {
+            resumed.push("--session")
+            resumed.push(session_id)
+            inserted = true
+        }
+        resumed.push(arg)
+    }
+    if !inserted {
+        resumed.push("--session")
+        resumed.push(session_id)
+    }
+    return resumed
+}
+
+fn execute(args, binary, timeout_ms) {
+    let command_args = [
+        "CODETETHER_TOOL_PROFILE=lean",
+        binary
+    ]
+    for arg in args {
+        command_args.push(arg)
+    }
+    let mut result = process_run("env", command_args, nil, timeout_ms)?
+    let mut diagnostics = str(result["stderr"])
+    let mut protocol_retries = 0
+    let mut retry_args = command_args
+    if !has_session(retry_args) {
+        let session_id = session_from(diagnostics)
+        if session_id != "" {
+            retry_args = resume_args(retry_args, session_id)
+        }
+    }
+    while !result["success"] &&
+        protocol_retries < 2 &&
+        has_session(retry_args) &&
+        is_protocol_fault(result["stderr"]) {
+        protocol_retries = protocol_retries + 1
+        result = process_run("env", retry_args, nil, timeout_ms)?
+        diagnostics = diagnostics +
+            "\n[gemini-web protocol retry " + str(protocol_retries) + "]\n" +
+            str(result["stderr"])
+    }
+    let report = map()
+    report["success"] = result["success"]
+    report["exit_code"] = result["exit_code"]
+    report["stdout"] = str(result["stdout"])
+    report["stderr"] = diagnostics
+    report["protocol_retries"] = protocol_retries
+    return Ok(report)
+}
+
+fn main() {
+    let args = env_args()
+    if args.len() > 0 && args[0] == "--dump-args" {
+        println(json_encode(args))
+        return Ok(nil)
+    }
+    if args.len() == 2 && args[0] == "--classify-protocol" {
+        println(str(is_protocol_fault(args[1])))
+        return Ok(nil)
+    }
+    if args.len() == 2 && args[0] == "--extract-session" {
+        println(session_from(args[1]))
+        return Ok(nil)
+    }
+    if args.len() == 1 && args[0] == "--self-test-protocol" {
+        let command = [
+            "-c",
+            "echo 'Gemini Web tool protocol retry failed' >&2; exit 1",
+            "--session",
+            "self-test"
+        ]
+        let result = execute(command, "/bin/sh", 1000)?
+        if result["protocol_retries"] != 2 {
+            return Err("protocol retry self-test did not run twice")
+        }
+        println("protocol retry self-test passed")
+        return Ok(nil)
+    }
+    if args.len() > 1 && args[0] == "--capture-json" {
+        let forwarded = []
+        let mut i = 1
+        while i < args.len() {
+            forwarded.push(args[i])
+            i = i + 1
+        }
+        println(json_encode(execute(
+            forwarded,
+            "/home/riley/.cargo/bin/codetether",
+            300000
+        )?))
+        return Ok(nil)
+    }
+    if args.len() < 1 || args.len() > 2 {
+        return Err("usage: script -- <prompt> [model]")
+    }
+    let mut model = "gemini-web/gemini-web-fast"
+    if args.len() == 2 {
+        model = args[1]
+    }
+    let command_args = [
+        "run",
+        "--model",
+        model,
+        args[0]
+    ]
+    let result = execute(
+        command_args,
+        "/home/riley/.cargo/bin/codetether",
+        300000
+    )?
+    if !result["success"] {
+        return Err("CodeTether failed: " + str(result["stderr"]))
+    }
+    if result["protocol_retries"] > 0 {
+        println("[gemini-web-lean] recovered from protocol fault")
+    }
+    if str(result["stderr"]).contains("Tool execution completed") {
+        println("[gemini-web-lean] tool execution completed")
+    }
+    println(str(result["stdout"]))
+    return Ok(nil)
+}

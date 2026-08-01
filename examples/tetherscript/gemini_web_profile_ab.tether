@@ -1,0 +1,71 @@
+// Live A/B proof for the Gemini Web lean-profile band-aid.
+//
+// Runs the same task through the installed binary with `full` and `lean` tool
+// profiles. Classification uses CodeTether's tool-execution log plus the exact
+// requested final marker; model narration alone cannot count as success.
+
+fn trial(profile, timeout_ms) {
+    let marker = "PROFILE_TOOL_DONE"
+    let task = "Call the list tool with path \".\" exactly once, then reply exactly PROFILE_TOOL_DONE."
+    let args = [
+        "CODETETHER_TOOL_PROFILE=" + profile,
+        "/home/riley/.cargo/bin/codetether",
+        "run",
+        "--model",
+        "gemini-web/gemini-web-fast",
+        task
+    ]
+    let result = process_run("env", args, nil, timeout_ms)?
+    let stdout = str(result["stdout"])
+    let stderr = str(result["stderr"])
+    let verdict = map()
+    verdict["launched"] = result["success"]
+    verdict["tool_executed"] = stderr.contains("Tool execution completed tool=list success=true")
+    verdict["marker_returned"] = stdout.trim() == marker
+    verdict["both"] = verdict["tool_executed"] && verdict["marker_returned"]
+    return Ok(verdict)
+}
+
+fn measure(profile, trials, timeout_ms) {
+    let mut launched = 0
+    let mut tool_executed = 0
+    let mut marker_returned = 0
+    let mut both = 0
+    let mut i = 0
+    while i < trials {
+        let verdict = trial(profile, timeout_ms)?
+        if verdict["launched"] { launched = launched + 1 }
+        if verdict["tool_executed"] { tool_executed = tool_executed + 1 }
+        if verdict["marker_returned"] { marker_returned = marker_returned + 1 }
+        if verdict["both"] { both = both + 1 }
+        i = i + 1
+    }
+    let report = map()
+    report["profile"] = profile
+    report["trials"] = trials
+    report["launched"] = launched
+    report["tool_executed"] = tool_executed
+    report["marker_returned"] = marker_returned
+    report["both"] = both
+    return Ok(report)
+}
+
+fn compare(trials, timeout_ms) {
+    let report = map()
+    report["full"] = measure("full", trials, timeout_ms)?
+    report["lean"] = measure("lean", trials, timeout_ms)?
+    return Ok(json_encode(report))
+}
+
+fn main() {
+    let args = env_args()
+    let mut trials = 3
+    if args.len() == 1 {
+        trials = parse_int(args[0]).unwrap()
+    }
+    if args.len() > 1 {
+        return Err("usage: script -- [trials]")
+    }
+    println(compare(trials, 180000)?)
+    return Ok(nil)
+}
