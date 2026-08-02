@@ -12,9 +12,22 @@ pub struct ApprovalArgs {
 #[derive(Subcommand, Debug)]
 pub enum ApprovalCommand {
     /// List approval requests.
-    List,
+    List {
+        /// Emit JSON instead of the aligned text table.
+        ///
+        /// The text table pads and truncates fields, so a resource path holding a
+        /// space cannot be recovered by splitting columns. Scripts and agents
+        /// should use this flag rather than parsing the table.
+        #[arg(long)]
+        json: bool,
+    },
     /// Show one approval request and its decision.
-    Show { id: String },
+    Show {
+        id: String,
+        /// Emit JSON instead of `key: value` lines.
+        #[arg(long)]
+        json: bool,
+    },
     /// Approve a pending request.
     Approve(ApprovalDecisionArgs),
     /// Deny a pending request.

@@ -5,6 +5,7 @@ mod decisions;
 mod defaults;
 mod display;
 mod format;
+mod json;
 mod records;
 
 pub use args::{ApprovalArgs, ApprovalCommand};
@@ -25,8 +26,8 @@ pub fn execute(args: ApprovalArgs) -> Result<()> {
 
 fn execute_with_store(args: ApprovalArgs, store: &ApprovalStore) -> Result<()> {
     match args.command {
-        ApprovalCommand::List => display::list(store),
-        ApprovalCommand::Show { id } => display::show(store, &id),
+        ApprovalCommand::List { json } => display::list(store, json),
+        ApprovalCommand::Show { id, json } => display::show(store, &id, json),
         ApprovalCommand::Approve(args) => decisions::approve(store, args),
         ApprovalCommand::Deny(args) => decisions::deny(store, args),
     }

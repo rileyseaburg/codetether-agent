@@ -9,7 +9,7 @@ fn clap_accepts_operator_approval_shape() {
     .expect("parse approval args");
     match args.command {
         ApprovalCommand::Approve(args) => assert_eq!(args.id, "abc"),
-        ApprovalCommand::List | ApprovalCommand::Show { .. } | ApprovalCommand::Deny(_) => {
+        ApprovalCommand::List { .. } | ApprovalCommand::Show { .. } | ApprovalCommand::Deny(_) => {
             panic!("wrong subcommand")
         }
     }
