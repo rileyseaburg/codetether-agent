@@ -26,15 +26,7 @@ use crate::tui::ui::gradient::rgb_supported;
 /// # fn d(f:&mut ratatui::Frame,a:&codetether_agent::tui::app::state::App){ let p=codetether_agent::tui::color_palette::ColorPalette::marketing(); render_input(f,a,ratatui::layout::Rect::new(0,0,40,3),&p,""); }
 /// ```
 pub fn render_input(f: &mut Frame, app: &App, area: Rect, palette: &ColorPalette, suffix: &str) {
-    let title = if app.state.processing {
-        format!(" Message (Processing — Enter steers turn · Esc cancels){suffix}")
-    } else if matches!(app.state.input_mode, InputMode::Command) {
-        format!(" Command (/ for commands, Tab to autocomplete){suffix}")
-    } else {
-        format!(
-            " Message (Enter=send · Ctrl+V=paste · Ctrl+O=copy reply · Ctrl+⇧Y=copy all · Ctrl+R=voice){suffix}"
-        )
-    };
+    let title = super::input_title::build(app, suffix);
     let border_color = if app.state.processing {
         // Pulse with the live neon hue while the agent works.
         if rgb_supported() {

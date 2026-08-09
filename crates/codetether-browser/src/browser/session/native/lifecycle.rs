@@ -5,13 +5,20 @@ use serde_json::json;
 
 /// Start a native TetherScript browser session.
 ///
+/// Connection parameters such as `ws_url`, `executable_path`, and `headless`
+/// describe a real browser process. The native backend has none, so a request
+/// carrying them is rejected instead of silently returning a session that
+/// cannot execute page JavaScript.
+///
 /// # Errors
 ///
-/// This currently only returns errors for API compatibility.
+/// Returns [`BrowserError::Unsupported`] when the caller asked for a real
+/// browser process or a remote DevTools endpoint.
 pub(super) async fn start(
     session: &super::super::BrowserSession,
-    _request: StartRequest,
+    request: StartRequest,
 ) -> Result<BrowserOutput, BrowserError> {
+    super::start_guard::reject_real_browser_request(&request)?;
     *session.inner.native.lock().await = Some(super::NativeRuntime::new());
     Ok(ack())
 }
@@ -48,6 +55,8 @@ pub(super) async fn health(
         "ok": true,
         "alive": true,
         "backend": "tetherscript-native",
+        "executes_page_javascript": false,
+        "runtime_proof_capable": false,
         "current": runtime.current,
         "started": true,
         "tabs": runtime.pages.len()

@@ -21,3 +21,21 @@ fn live_request_carries_execpolicy_amendment() {
         matches!(decision, ReviewDecision::ApprovedExecpolicyAmendment { .. })
     }));
 }
+
+#[test]
+fn live_request_carries_full_approval_preview() {
+    let preview = "--- a/file\n+++ b/file\n-old\n+new";
+    let result = ToolResult::structured_error(
+        "TOOL_APPROVAL_REQUIRED",
+        "apply_patch",
+        "approval required",
+        None,
+        None,
+    )
+    .with_metadata("approval_request_id", json!("approval-1"))
+    .with_metadata("approval_preview", json!(preview));
+
+    let request = super::request::from_result(&result, "call-1", "apply_patch").unwrap();
+
+    assert_eq!(request.preview.as_deref(), Some(preview));
+}

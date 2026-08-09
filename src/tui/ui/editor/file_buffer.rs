@@ -12,9 +12,9 @@ use super::helix_backend::HelixBackend;
 /// A rope-backed document tied to a filesystem path.
 #[derive(Debug, Clone)]
 pub struct FileBuffer {
-    path: PathBuf,
-    backend: HelixBackend,
-    dirty: bool,
+    pub(super) path: PathBuf,
+    pub(super) backend: HelixBackend,
+    pub(super) dirty: bool,
 }
 
 impl FileBuffer {

@@ -13,3 +13,6 @@ mod no_first_token;
 
 #[path = "tests/rearm.rs"]
 mod rearm;
+
+#[path = "tests/approval_wait.rs"]
+mod approval_wait;

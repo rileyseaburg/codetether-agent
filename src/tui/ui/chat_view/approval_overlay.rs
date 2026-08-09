@@ -1,44 +1,41 @@
 //! Pending approval popup for the chat view.
 
-use ratatui::Frame;
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Clear};
+use ratatui::{
+    Frame,
+    layout::{Constraint, Layout, Rect},
+};
 
-use crate::tui::app::state::approval_queue;
+use crate::tui::app::state::{App, approval_queue};
 
-pub(crate) fn render(f: &mut Frame, area: Rect) {
+pub(crate) fn render(f: &mut Frame, app: &App, area: Rect) {
+    if approval_queue::feedback_input(&app.state.input) {
+        return;
+    }
     let Some(item) = approval_queue::active() else {
         return;
     };
-    let count = approval_queue::len();
-    let heading = format!("{} wants to {}", item.tool, item.action);
-    let reason = format!("→ {}", item.reason);
-    let id = item.id;
-    let popup = popup_area(area);
-    let text = vec![
-        Line::from(Span::styled(
-            heading,
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        )),
-        Line::from(reason),
-        Line::from(""),
-        Line::from("Ctrl+A approve | Ctrl+D deny | /approve session | /abort"),
-        Line::from(format!("id: {id} | queued: {count}")),
-    ];
+    let popup = super::approval_overlay_layout::popup(area);
     let block = Block::default().borders(Borders::ALL).title("Approval");
-    let para = Paragraph::new(text).block(block).wrap(Wrap { trim: true });
+    let inner = block.inner(popup);
+    let lsp_height = super::approval_overlay_lsp::height(&item.report);
+    let [header, preview, lsp, footer] = Layout::vertical([
+        Constraint::Length(2),
+        Constraint::Min(1),
+        Constraint::Length(lsp_height),
+        Constraint::Length(2),
+    ])
+    .areas(inner);
     f.render_widget(Clear, popup);
-    f.render_widget(para, popup);
-}
-
-fn popup_area(area: Rect) -> Rect {
-    let width = area.width.min(76).max(area.width.min(36));
-    let height = 7u16;
-    let x = area.x + (area.width.saturating_sub(width)) / 2;
-    let y = area.y + area.height.saturating_sub(height + 2);
-    Rect::new(x, y, width, height)
+    f.render_widget(block, popup);
+    super::approval_overlay_text::header(f, header, &item);
+    super::approval_overlay_preview::render(
+        f,
+        preview,
+        item.preview.as_deref(),
+        &item.resource,
+        app.state.approval_preview_scroll,
+    );
+    super::approval_overlay_lsp::render(f, lsp, &item.report);
+    super::approval_overlay_text::footer(f, footer, &item, approval_queue::len());
 }

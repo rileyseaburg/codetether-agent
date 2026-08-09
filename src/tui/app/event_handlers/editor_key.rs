@@ -6,6 +6,9 @@
 //! [`apply`](crate::tui::ui::editor::apply::apply)) instead of normal chat
 //! handling. On quit the editor buffer is dropped and the view returns to chat.
 
+#[path = "approval_editor/mod.rs"]
+mod approval_editor;
+
 use std::path::Path;
 
 use crossterm::event::KeyEvent;
@@ -22,8 +25,14 @@ pub(crate) fn handle_editor_key(app: &mut App, cwd: &Path, key: KeyEvent) -> boo
     let Some(action) = map_key(key) else {
         return true;
     };
+    if app.state.approval_edit.is_some() && approval_editor::handle(app, &action) {
+        return true;
+    }
     if action == EditorInput::OpenFinder {
         open_finder_from_editor(app, cwd);
+        return true;
+    }
+    if app.state.approval_edit.is_some() && approval_editor::handle(app, &action) {
         return true;
     }
     let Some(buf) = app.state.editor.as_mut() else {

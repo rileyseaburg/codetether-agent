@@ -10,9 +10,8 @@ use super::types::*;
 use super::uri::path_to_uri;
 use anyhow::Result;
 use lsp_types::{
-    ClientCapabilities, CompletionContext, CompletionParams, CompletionTriggerKind,
-    DocumentSymbolParams, HoverParams, Position, TextDocumentIdentifier, TextDocumentItem,
-    TextDocumentPositionParams,
+    CompletionContext, CompletionParams, CompletionTriggerKind, DocumentSymbolParams, HoverParams,
+    Position, TextDocumentIdentifier, TextDocumentItem, TextDocumentPositionParams,
 };
 use std::collections::HashMap;
 use std::path::Path;
@@ -22,11 +21,11 @@ use tracing::{debug, info, warn};
 
 /// LSP Client for a single language server
 pub struct LspClient {
-    transport: LspTransport,
+    pub(super) transport: LspTransport,
     config: LspConfig,
     server_capabilities: RwLock<Option<lsp_types::ServerCapabilities>>,
     /// Track open documents with their versions
-    open_documents: RwLock<HashMap<String, i32>>,
+    pub(super) open_documents: RwLock<HashMap<String, i32>>,
 }
 
 impl LspClient {
@@ -67,7 +66,7 @@ impl LspClient {
             root_path: None,
             root_uri: root_uri.clone(),
             initialization_options: self.config.initialization_options.clone(),
-            capabilities: ClientCapabilities::default(),
+            capabilities: super::client_capabilities::build(),
             trace: None,
             workspace_folders: super::workspace_folder::derive(root_uri),
         };
@@ -371,52 +370,6 @@ impl LspClient {
             .await?;
 
         parse_completion_response(response)
-    }
-
-    /// Return the most recent LSP diagnostics for a file after ensuring the document is open.
-    ///
-    /// This always syncs the current on-disk content to the server via a
-    /// `textDocument/didChange` (or `didOpen` the first time), then waits for
-    /// a fresh `publishDiagnostics` from the server. Without this, edits made
-    /// by file-writing tools would be invisible to the LSP's in-memory buffer
-    /// and callers would see stale pre-edit diagnostics.
-    pub async fn diagnostics(&self, path: &Path) -> Result<LspActionResult> {
-        let uri = path_to_uri(path);
-
-        // Always re-read the file from disk and push it into the LSP session
-        // so diagnostics reflect the latest contents, not the version the
-        // server cached when the doc was first opened.
-        let disk_content = tokio::fs::read_to_string(path).await.unwrap_or_default();
-        let already_open = self.open_documents.read().await.contains_key(&uri);
-
-        let baseline_seq = self.transport.diagnostics_publish_seq();
-        self.transport.invalidate_diagnostics(&uri).await;
-
-        if already_open {
-            if let Err(e) = self.change_document(path, &disk_content).await {
-                debug!(path = %path.display(), error = %e, "didChange failed; falling back to cached snapshot");
-            }
-        } else if let Err(e) = self.open_document(path, &disk_content).await {
-            debug!(path = %path.display(), error = %e, "didOpen failed; falling back to cached snapshot");
-        }
-
-        // Wait up to ~1.5s for a fresh publication. rust-analyzer/eslint
-        // typically republish within a few hundred ms of didChange.
-        let _ = self
-            .transport
-            .wait_for_publish_after(baseline_seq, std::time::Duration::from_millis(1500))
-            .await;
-
-        let snapshot = self.transport.diagnostics_snapshot().await;
-        let diagnostics = snapshot
-            .get(&uri)
-            .cloned()
-            .unwrap_or_default()
-            .into_iter()
-            .map(|diagnostic| DiagnosticInfo::from((uri.clone(), diagnostic)))
-            .collect();
-
-        Ok(LspActionResult::Diagnostics { diagnostics })
     }
 
     /// Ensure a document is open (open it if not already)

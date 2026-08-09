@@ -13,6 +13,7 @@ pub(crate) const VERSION_FLAG: u32 = 1;
 pub(crate) const RULE_PATH_BENEATH: u32 = 1;
 pub(crate) const READ_ACCESS: u64 = 1 | 4 | 8;
 pub(crate) const WRITE_ACCESS: u64 = 2 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096;
+pub(crate) const FILE_READ_WRITE_ACCESS: u64 = 2 | 4;
 pub(crate) const HANDLED_ACCESS: u64 = READ_ACCESS | WRITE_ACCESS;
 
 pub(crate) fn abi_version() -> i64 {

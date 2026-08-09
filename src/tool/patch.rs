@@ -24,6 +24,7 @@ mod parser;
 mod path_guard;
 #[path = "patch/pipeline.rs"]
 mod pipeline;
+pub(crate) mod proposed;
 #[path = "patch/result.rs"]
 mod result;
 #[path = "patch/schema.rs"]
@@ -44,14 +45,10 @@ pub fn approval_resource_from_patch(patch: &str) -> String {
 }
 
 #[cfg(test)]
-#[path = "patch/approval_tests.rs"]
 mod approval_tests;
 #[cfg(test)]
-#[path = "patch/approval_verify_tests.rs"]
 mod approval_verify_tests;
 #[cfg(test)]
-#[path = "patch/preview_tests.rs"]
 mod preview_tests;
 #[cfg(test)]
-#[path = "patch/test_support.rs"]
 mod test_support;

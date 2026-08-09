@@ -1,5 +1,6 @@
 //! Pending approval display snapshot.
 
+use super::ApprovalReport;
 use crate::approval::LiveApprovalRequest;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -9,6 +10,8 @@ pub(crate) struct ApprovalSnapshot {
     pub(crate) action: String,
     pub(crate) resource: String,
     pub(crate) reason: String,
+    pub(crate) preview: Option<String>,
+    pub(crate) report: ApprovalReport,
 }
 
 impl From<LiveApprovalRequest> for ApprovalSnapshot {
@@ -19,6 +22,8 @@ impl From<LiveApprovalRequest> for ApprovalSnapshot {
             action: request.action,
             resource: request.resource,
             reason: request.reason,
+            preview: request.preview,
+            report: ApprovalReport::default(),
         }
     }
 }

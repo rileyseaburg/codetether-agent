@@ -21,12 +21,12 @@ impl Default for super::AppState {
             chat_scroll: 0,
             chat_last_max_scroll: 0,
             chat_auto_follow: true,
-            history_page: Default::default(), tool_preview_scroll: 0,
+            history_page: Default::default(), approval_preview_scroll: 0, tool_preview_scroll: 0,
             tool_preview_last_max_scroll: 0,
             protocol_selected: 0,
             protocol_scroll: 0,
             status: "Ready — type a message and press Enter. Ctrl+C/Ctrl+Q quits.".to_string(),
-            processing: false,
+            processing: false, approval_waiting: false,
             session_id: None,
             sessions: vec![],
             selected_session: 0,
@@ -131,7 +131,7 @@ impl Default for super::AppState {
             forage: crate::tui::forage_run::ForageState::new(),
             needs_redraw: true,
             shell_rx: None,
-            shell_running: false, editor: None, editor_scroll: 0, editor_hscroll: 0, chat_hit: Default::default(), editor_lsp: Default::default(),
+            shell_running: false, editor: None, approval_edit: None, editor_scroll: 0, editor_hscroll: 0, chat_hit: Default::default(), editor_lsp: Default::default(),
             spawn_form: None, interlude: None,
         }
     }

@@ -4,6 +4,7 @@
 //! to the appropriate subsystem.
 
 pub(crate) mod approval_command;
+mod approval_feedback;
 mod backspace;
 mod base_branch;
 mod bus;
@@ -55,6 +56,5 @@ pub use bus::{handle_bus_c, handle_bus_g, handle_bus_slash};
 pub use char_input::handle_char;
 pub(crate) use enter::dispatch_enter as handle_enter;
 pub(crate) use image::attach_image_file;
-pub(crate) use image_data_paste::try_attach_data_url;
 pub use paste::{handle_paste, paste_into_chat};
 pub use sessions::handle_sessions_char;

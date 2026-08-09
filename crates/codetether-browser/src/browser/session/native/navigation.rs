@@ -1,5 +1,8 @@
 //! Page navigation operations for native sessions.
 
+#[path = "navigation_scripts.rs"]
+mod scripts;
+
 use crate::browser::{BrowserError, BrowserOutput, request::NavigationRequest};
 
 /// Navigate the current tab to a URL.
@@ -20,9 +23,9 @@ pub(super) async fn goto(
         .current_mut()?;
     let mut page = slot.page();
     page.goto_html(request.url, html);
-    let _ = page.run_scripts();
+    let report = scripts::run_and_report(&mut page);
     slot.replace(page);
-    Ok(super::lifecycle::ack())
+    Ok(BrowserOutput::Json(report))
 }
 
 /// Navigate backward in the current tab history.
@@ -58,7 +61,7 @@ pub(super) async fn reload(
         .current_mut()?;
     let mut page = slot.page();
     page.reload();
-    let _ = page.run_scripts();
+    let report = scripts::run_and_report(&mut page);
     slot.replace(page);
-    Ok(super::lifecycle::ack())
+    Ok(BrowserOutput::Json(report))
 }

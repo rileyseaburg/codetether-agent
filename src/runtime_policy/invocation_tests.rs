@@ -43,3 +43,11 @@ fn approved_invocation_id_does_not_override_disabled_profile() {
     let args = json!({"approval_id": "anything"});
     assert!(evaluate_tool_invocation_with_config(&config, "bash", &args).is_some());
 }
+
+#[test]
+fn read_only_compatibility_aliases_do_not_require_approval() {
+    let config = Config::default();
+    for tool in ["file_info", "head_tail"] {
+        assert!(evaluate_tool_invocation_with_config(&config, tool, &json!({})).is_none());
+    }
+}

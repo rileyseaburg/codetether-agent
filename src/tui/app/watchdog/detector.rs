@@ -32,7 +32,7 @@ use detector_first_token::{had_activity_since_start, restart_budget_exhausted};
 /// Returns `None` when the request is healthy, already being restarted, or has
 /// exhausted its retry budget.
 pub fn check_watchdog_stall(state: &AppState, timeout: Duration) -> Option<WatchdogNotification> {
-    if !state.processing || state.watchdog_notification.is_some() {
+    if !state.processing || state.watchdog_notification.is_some() || state.approval_waiting {
         return None;
     }
     if restart_budget_exhausted(state) {

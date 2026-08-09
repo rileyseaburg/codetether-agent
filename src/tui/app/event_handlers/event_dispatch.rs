@@ -19,7 +19,7 @@ pub(crate) async fn handle_event(
     runtime: &TuiSessionHandle,
     key: KeyEvent,
 ) -> anyhow::Result<bool> {
-    if !super::key_repeat::dispatchable(key) {
+    if !super::key_repeat::dispatchable(key) || super::approval_key::scroll(app, key) {
         return Ok(false);
     }
     if let Some(quit) = super::interrupt_key::handle(app, runtime, key) {

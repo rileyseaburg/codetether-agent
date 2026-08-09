@@ -44,7 +44,7 @@ use super::side_question::compose_side_question;
 /// ```
 pub(super) fn handle_ctrl_key(
     app: &mut App,
-    _cwd: &Path,
+    cwd: &Path,
     runtime: &TuiSessionHandle,
     key: KeyEvent,
 ) -> Option<anyhow::Result<bool>> {
@@ -55,8 +55,7 @@ pub(super) fn handle_ctrl_key(
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
 
     match key.code {
-        KeyCode::Char('a') if ctrl && approval_key::approve(app) => {}
-        KeyCode::Char('d') if ctrl && approval_key::deny(app) => {}
+        KeyCode::Char(character) if ctrl && approval_key::handle(app, character, cwd) => {}
         KeyCode::Char('c') if ctrl => return Some(Ok(handle_ctrl_c(app, runtime))),
         KeyCode::Char('q') if ctrl => return Some(Ok(true)),
         KeyCode::Char('t') if ctrl => {
@@ -124,7 +123,7 @@ pub(super) fn handle_ctrl_key(
         KeyCode::Char('x') if ctrl && app.state.watchdog_notification.is_some() => {
             crate::tui::app::watchdog::handle_watchdog_cancel(&mut app.state);
         }
-        _ => return super::shared_file_open::ctrl_key(app, _cwd, key, ctrl),
+        _ => return super::shared_file_open::ctrl_key(app, cwd, key, ctrl),
     }
     Some(Ok(false))
 }

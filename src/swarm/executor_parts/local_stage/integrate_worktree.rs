@@ -6,6 +6,7 @@ use crate::swarm::SubTaskResult;
 use crate::worktree::WorktreeInfo;
 
 pub(super) async fn apply(state: &State<'_>, result: &mut SubTaskResult, worktree: &WorktreeInfo) {
+    record_artifacts(result, worktree).await;
     if let Some(reason) = state.kill_reasons.get(&result.subtask_id) {
         return killed_worktree::apply(state, result, worktree, reason).await;
     }
@@ -19,7 +20,28 @@ pub(super) async fn apply(state: &State<'_>, result: &mut SubTaskResult, worktre
             merge_outcome::apply(result, manager, worktree, expects).await;
         }
     } else if !result.success {
-        tracing::info!(subtask_id = %result.subtask_id, path = %worktree.path.display(),
-            "Keeping failed subtask worktree for debugging");
+        report_unverified_work(result, worktree);
     }
+}
+
+/// Records files the sub-agent wrote, independent of its self-report.
+async fn record_artifacts(result: &mut SubTaskResult, worktree: &WorktreeInfo) {
+    if result.artifacts.is_empty() {
+        result.artifacts =
+            crate::swarm::worktree_commit::inventory::written_files(&worktree.path).await;
+    }
+}
+
+/// Surfaces work that exists on disk even though the agent reported failure.
+///
+/// A child that wrote files and then failed *verification* reports a blocker,
+/// so the orchestrator must see the artifact count to avoid discarding or
+/// rebuilding delivered work.
+fn report_unverified_work(result: &SubTaskResult, worktree: &WorktreeInfo) {
+    tracing::info!(
+        subtask_id = %result.subtask_id,
+        path = %worktree.path.display(),
+        files_written = result.artifacts.len(),
+        "Keeping failed subtask worktree; agent reported failure but wrote files"
+    );
 }

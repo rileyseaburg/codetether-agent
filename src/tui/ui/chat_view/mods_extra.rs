@@ -2,10 +2,23 @@
 // Included from `mod.rs` via `include!`.
 pub(crate) mod agent_lines;
 pub mod agent_tab_style;
+pub(crate) mod approval_diff;
+pub(crate) mod approval_diff_assets;
+pub(crate) mod approval_diff_line;
+pub(crate) mod approval_diff_syntax;
+#[cfg(test)]
+#[path = "approval_diff_tests.rs"]
+mod approval_diff_tests;
+pub(crate) mod approval_overlay_layout;
+pub(crate) mod approval_overlay_lsp;
+pub(crate) mod approval_overlay_preview;
+pub(crate) mod approval_overlay_text;
+pub(crate) mod approval_preview_scroll;
 pub mod bubble_assistant;
 pub mod bubble_mods;
 pub mod context_gauge_heat;
 pub(crate) mod focused_lines;
+pub(crate) mod input_title;
 pub mod kb_style;
 pub mod spinner_hue;
 pub mod suggestion_style;

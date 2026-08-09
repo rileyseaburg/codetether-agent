@@ -5,7 +5,15 @@ use std::sync::{Mutex, OnceLock};
 
 use crate::approval::LiveApprovalRequest;
 
+#[path = "approval_queue/edit_session.rs"]
+pub(crate) mod edit_session;
+#[path = "approval_queue/operations.rs"]
+mod operations;
+#[path = "approval_queue/report.rs"]
+mod report;
 mod snapshot;
+pub(crate) use operations::{feedback_input, set_report};
+pub(crate) use report::{ApprovalReport, ApprovalReportState};
 pub(crate) use snapshot::ApprovalSnapshot;
 
 static QUEUE: OnceLock<Mutex<VecDeque<ApprovalSnapshot>>> = OnceLock::new();

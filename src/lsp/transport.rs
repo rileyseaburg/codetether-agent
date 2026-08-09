@@ -17,6 +17,9 @@ use tokio::process::{Child, Command};
 use tokio::sync::{RwLock, mpsc, oneshot};
 use tracing::{debug, error, trace, warn};
 
+#[path = "transport_message.rs"]
+mod message;
+
 /// Maximum allowed value for the LSP `Content-Length` header.
 ///
 /// LSP messages are typically well under 1 MiB. A corrupted or buggy server
@@ -142,6 +145,7 @@ impl LspTransport {
         let pending_clone = Arc::clone(&pending);
         let diagnostics_clone = Arc::clone(&diagnostics);
         let diag_publish_seq_clone = Arc::clone(&diag_publish_seq);
+        let response_tx = write_tx.clone();
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout);
             let mut header_buf = String::new();
@@ -198,54 +202,14 @@ impl LspTransport {
                         let body = String::from_utf8_lossy(&body_buf);
                         trace!("LSP RX: {}", body);
 
-                        if let Ok(response) = serde_json::from_str::<JsonRpcResponse>(&body) {
-                            let mut pending_guard = pending_clone.write().await;
-                            if let Some(tx) = pending_guard.remove(&response.id) {
-                                let id = response.id;
-                                if tx.send(response).is_err() {
-                                    warn!("Request {} receiver dropped", id);
-                                }
-                            } else {
-                                debug!("Received response for unknown request {}", response.id);
-                            }
-                            continue;
-                        }
-
-                        match serde_json::from_str::<serde_json::Value>(&body) {
-                            Ok(value) => {
-                                if value.get("method").and_then(serde_json::Value::as_str)
-                                    == Some("textDocument/publishDiagnostics")
-                                {
-                                    if let Some(params) = value.get("params") {
-                                        let uri = params
-                                            .get("uri")
-                                            .and_then(serde_json::Value::as_str)
-                                            .unwrap_or_default()
-                                            .to_string();
-                                        let diagnostics = params
-                                            .get("diagnostics")
-                                            .cloned()
-                                            .and_then(|v| serde_json::from_value(v).ok())
-                                            .unwrap_or_default();
-                                        if !uri.is_empty() {
-                                            diagnostics_clone
-                                                .write()
-                                                .await
-                                                .insert(uri, diagnostics);
-                                            diag_publish_seq_clone.fetch_add(1, Ordering::SeqCst);
-                                        }
-                                    }
-                                } else {
-                                    debug!(
-                                        "Ignoring LSP notification/message without tracked handler: {}",
-                                        body
-                                    );
-                                }
-                            }
-                            Err(e) => {
-                                debug!("Failed to parse LSP message: {} - body: {}", e, body);
-                            }
-                        }
+                        message::dispatch(
+                            &body,
+                            &pending_clone,
+                            &diagnostics_clone,
+                            &diag_publish_seq_clone,
+                            &response_tx,
+                        )
+                        .await;
                     }
                     Err(e) => {
                         error!("Failed to read LSP message body: {}", e);

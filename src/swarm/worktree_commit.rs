@@ -1,5 +1,10 @@
 //! Commit dirty swarm worktree edits before branch integration.
 
+#[path = "worktree_inventory.rs"]
+pub(crate) mod inventory;
+#[path = "worktree_inventory_parse.rs"]
+mod inventory_parse;
+
 use crate::provenance::{ExecutionOrigin, ExecutionProvenance, git_commit_with_provenance};
 use crate::worktree::WorktreeInfo;
 use anyhow::{Context, Result, bail};

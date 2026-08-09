@@ -26,7 +26,7 @@ pub(super) async fn run(
     let mut terminal =
         super::terminal::ProxyTerminal::enter(alternate_screen, replay_until > offset)?;
     let mut stdin = tokio::io::stdin();
-    let mut input = [0_u8; 4096];
+    let mut input = [0_u8; 64 * 1024];
     let mut detector = detach::Detector::new();
     let output_connection = connection.secondary().await?;
     let mut output = output::start(output_connection, id, offset);

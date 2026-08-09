@@ -6,12 +6,15 @@ pub fn is_ssh_session() -> bool {
 }
 
 /// Check if the session is headless (no display server).
+#[cfg(target_os = "linux")]
 pub fn is_headless_session() -> bool {
-    std::env::var("TERM")
-        .ok()
-        .map_or(false, |t| t.starts_with("xterm"))
-        && std::env::var("DISPLAY").is_err()
-        && std::env::var("WAYLAND_DISPLAY").is_err()
+    std::env::var("DISPLAY").is_err() && std::env::var("WAYLAND_DISPLAY").is_err()
+}
+
+/// Non-Linux platforms can expose a native clipboard without display variables.
+#[cfg(not(target_os = "linux"))]
+pub fn is_headless_session() -> bool {
+    false
 }
 
 /// Check if clipboard access is unavailable (SSH or headless).
@@ -29,6 +32,12 @@ pub fn clipboard_unavailable_message() -> String {
          Or use /image <path> to attach a file from disk."
             .to_string()
     } else {
-        "Clipboard unavailable; use /image <path> to attach an image file.".to_string()
+        "System clipboard unavailable — use Ctrl+Shift+V or right-click paste for text, \
+         or /image <path> to attach an image file."
+            .to_string()
     }
 }
+
+#[cfg(test)]
+#[path = "clipboard_ssh_tests.rs"]
+mod tests;

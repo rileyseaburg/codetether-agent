@@ -40,7 +40,7 @@ pub fn render(f: &mut Frame, app: &mut App) -> bool {
         crate::tui::ui::chat_view::suggestions::render_suggestions(f, app, rect);
     }
     status::render_webview_status(f, app, main.status);
-    crate::tui::ui::chat_view::approval_overlay::render(f, area);
+    crate::tui::ui::chat_view::approval_overlay::render(f, app, area);
     crate::tui::help::render_help_overlay_if_needed(f, &mut app.state);
     true
 }

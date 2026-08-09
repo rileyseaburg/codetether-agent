@@ -1,3 +1,4 @@
+use std::path::Path;
 use tokio::sync::mpsc;
 
 use crate::approval::LiveApprovalDecision;
@@ -6,11 +7,15 @@ use crate::session::SessionEvent;
 use super::types::ApprovalGate;
 
 pub(in crate::session::helper) async fn gate(
+    workspace: &Path,
     event_tx: &mpsc::Sender<SessionEvent>,
     tool_call_id: &str,
     tool_name: &str,
     args: serde_json::Value,
 ) -> ApprovalGate {
+    if let Some(result) = super::preflight::blocked(workspace, tool_name, &args).await {
+        return ApprovalGate::Blocked(args, super::result::tuple(result));
+    }
     let Some(result) = crate::runtime_policy::evaluate_tool_invocation(tool_name, &args).await
     else {
         return ApprovalGate::Ready(args);
@@ -23,6 +28,10 @@ pub(in crate::session::helper) async fn gate(
         LiveApprovalDecision::Approved => {
             ApprovalGate::Ready(super::args::with_approval(args, &id))
         }
+        LiveApprovalDecision::Revised {
+            arguments,
+            approval_id,
+        } => ApprovalGate::Ready(super::args::revised(args, arguments, &approval_id)),
         LiveApprovalDecision::Denied { reason } => ApprovalGate::Blocked(
             args,
             super::result::denied(tool_name, &id, reason.as_deref()),

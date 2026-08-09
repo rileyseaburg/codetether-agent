@@ -55,8 +55,8 @@ pub struct App {
 #[rustfmt::skip]
 pub struct AppState {
     pub view_mode: ViewMode, pub input_mode: InputMode, pub messages: Vec<ChatMessage>, pub input: String, pub input_cursor: usize, pub input_scroll: usize,
-    pub chat_scroll: usize, pub chat_last_max_scroll: usize, pub chat_auto_follow: bool, pub(crate) history_page: super::history_page::HistoryPageState, pub tool_preview_scroll: usize, pub tool_preview_last_max_scroll: usize,
-    pub protocol_selected: usize, pub protocol_scroll: usize, pub status: String, pub processing: bool, pub session_id: Option<String>, pub sessions: Vec<SessionSummary>, pub selected_session: usize, pub session_filter: String, pub cwd_display: String,
+    pub chat_scroll: usize, pub chat_last_max_scroll: usize, pub chat_auto_follow: bool, pub(crate) history_page: super::history_page::HistoryPageState, pub approval_preview_scroll: u16, pub tool_preview_scroll: usize, pub tool_preview_last_max_scroll: usize,
+    pub protocol_selected: usize, pub protocol_scroll: usize, pub status: String, pub processing: bool, pub approval_waiting: bool, pub session_id: Option<String>, pub sessions: Vec<SessionSummary>, pub selected_session: usize, pub session_filter: String, pub cwd_display: String,
     pub bus_log: BusLogState, pub swarm: SwarmViewState, pub audit: AuditViewState, pub git: git_state::GitViewState, pub ralph: RalphViewState, pub audit_loop: crate::tui::audit_loop_view::audit_loop_state::AuditLoopState, pub symbol_search: SymbolSearchState,
     pub slash_suggestions: Vec<String>, pub selected_slash_suggestion: usize, pub command_history: Vec<String>, pub history_index: Option<usize>,
     pub worker_id: Option<String>, pub worker_name: Option<String>, pub a2a_connected: bool, pub peer_endpoint_ready: bool, pub recent_tasks: Vec<String>, pub worker_bridge_registered_agents: HashSet<String>, pub active_tasks: crate::tui::app::bus::active_tasks::ActiveTasks, pub tool_calls: crate::tui::app::bus::tool_calls::ToolCallTracker, pub bus_cursor: u64, pub worker_bridge_processing_state: Option<bool>, pub worker_task_queue: VecDeque<IncomingTask>, pub active_remote_task: Option<IncomingTask>,
@@ -71,7 +71,7 @@ pub struct AppState {
     pub autochat: crate::tui::app::autochat::state::AutochatState, pub file_picker: crate::tui::app::file_picker::FilePickerState, pub workspace: crate::tui::models::WorkspaceSnapshot, pub goal_prompt: Option<crate::tui::app::goal_prompt::GoalPromptState>, pub fuzzy_find: Option<crate::tui::app::fuzzy_find::FuzzyFindState>, pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
     pub recording_stop_flag: VoiceStopFlag, pub pending_voice_text: VoiceTextSlot, pub saved_chat_scroll: usize, pub saved_chat_auto_follow: bool, pub saved_tool_preview_scroll: usize, pub streaming_start: Option<Instant>, pub streaming_chars: usize, pub forage: crate::tui::forage_run::ForageState, pub needs_redraw: bool, pub shell_rx: ShellRx, pub shell_running: bool,
     /// Active in-TUI editor buffer, present only while in `ViewMode::Editor`.
-    pub editor: Option<crate::tui::ui::editor::FileBuffer>, pub editor_scroll: usize, pub editor_hscroll: usize, pub chat_hit: crate::tui::ui::chat_view::hit::ChatHit,
+    pub editor: Option<crate::tui::ui::editor::FileBuffer>, pub(crate) approval_edit: Option<crate::tui::app::state::approval_queue::edit_session::ApprovalEditSession>, pub editor_scroll: usize, pub editor_hscroll: usize, pub chat_hit: crate::tui::ui::chat_view::hit::ChatHit,
     /// Editor LSP state: shared manager and transient hover/JSDoc popup.
     pub editor_lsp: crate::tui::ui::editor::lsp_state::EditorLspState,
     pub spawn_form: Option<crate::tui::app::spawn_form::SpawnFormState>, pub(crate) interlude: Option<crate::tui::app::state::interlude::InterludeState>,

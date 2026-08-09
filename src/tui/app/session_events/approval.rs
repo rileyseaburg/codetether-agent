@@ -1,11 +1,17 @@
 //! Approval request event rendering.
 
+#[path = "approval_analysis.rs"]
+mod analysis;
+
 use crate::approval::LiveApprovalRequest;
 use crate::tui::app::state::{App, approval_queue};
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
 pub(super) fn request(app: &mut App, request: LiveApprovalRequest) {
+    app.state.approval_preview_scroll = 0;
+    app.state.approval_waiting = true;
     let pending = approval_queue::push(request);
+    analysis::start(app, &pending);
     let count = approval_queue::len();
     let guidance = crate::tui::ui::trust_status::approval_guidance();
     let text = format!(

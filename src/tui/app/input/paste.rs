@@ -66,14 +66,14 @@ fn paste_chars_no_newlines(text: &str, mut f: impl FnMut(char)) {
 /// path so both get identical image-data-URL extraction and sidecar
 /// summarisation behavior. Expects line endings already normalised.
 pub fn paste_into_chat(app: &mut App, normalized: &str) {
-    if super::try_attach_data_url(app, normalized) {
+    if super::image_data_paste::try_attach_data_url(app, normalized) {
         return;
     }
     // A data URL pasted alongside caption text (or by a terminal that mixes
     // it into the buffer) is extracted here so it is not diverted into the
     // large-paste text sidecar and lost as an image.
     if let Some(found) = super::image_data_paste::extract_image_data_url(normalized) {
-        if super::try_attach_data_url(app, &found.data_url) {
+        if super::image_data_paste::try_attach_data_url(app, &found.data_url) {
             if !found.remainder.is_empty() {
                 paste_into_chat(app, &found.remainder);
             }

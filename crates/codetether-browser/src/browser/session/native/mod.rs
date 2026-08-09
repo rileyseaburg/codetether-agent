@@ -13,6 +13,7 @@ mod lifecycle;
 mod navigation;
 mod net;
 mod screen;
+mod start_guard;
 mod state;
 mod tabs;
 mod wait;

@@ -17,9 +17,16 @@ impl LiveApprovalRequest {
             action,
             resource,
             reason,
+            preview: None,
             proposed_execpolicy_amendment: None,
             available_decisions: default_decisions(None),
         }
+    }
+
+    /// Attaches the full invocation detail for interactive review.
+    pub fn with_preview(mut self, preview: String) -> Self {
+        self.preview = Some(preview);
+        self
     }
 
     pub fn with_execpolicy_amendment(mut self, amendment: ExecPolicyAmendment) -> Self {

@@ -1,6 +1,6 @@
 //! Z.AI provider implementation (direct API)
 //!
-//! GLM-5.2, GLM-5.1, GLM-5, and GLM-4.x Z.AI foundation models via api.z.ai.
+//! GLM-5.3, GLM-5.2, GLM-5.1, GLM-5, and GLM-4.x Z.AI foundation models via api.z.ai.
 //! Z.AI (formerly ZhipuAI) offers OpenAI-compatible chat completions with
 //! reasoning/thinking support via the `reasoning_content` field.
 
@@ -195,7 +195,7 @@ impl ZaiProvider {
                     .unwrap_or(&id)
                     .to_string();
                 Some(ModelInfo {
-                    context_window: if id.contains("glm-5.2") {
+                    context_window: if id.contains("glm-5.3") || id.contains("glm-5.2") {
                         1_000_000
                     } else if id.contains("glm-5") {
                         200_000
@@ -502,6 +502,18 @@ impl Provider for ZaiProvider {
         // Static catalog used when the /models endpoint is unavailable
         // (e.g. network partition, auth failure, or non-standard deployments).
         Ok(vec![
+            ModelInfo {
+                id: "glm-5.3".to_string(),
+                name: "GLM-5.3".to_string(),
+                provider: "zai".to_string(),
+                context_window: 1_000_000,
+                max_output_tokens: Some(128_000),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: None,
+                output_cost_per_million: None,
+            },
             ModelInfo {
                 id: "glm-5.2".to_string(),
                 name: "GLM-5.2".to_string(),
@@ -1004,6 +1016,7 @@ mod tests {
 
     #[test]
     fn model_supports_tool_stream_matches_glm_5_family() {
+        assert!(ZaiProvider::model_supports_tool_stream("glm-5.3"));
         assert!(ZaiProvider::model_supports_tool_stream("glm-5.2"));
         assert!(ZaiProvider::model_supports_tool_stream("glm-5.1"));
         assert!(ZaiProvider::model_supports_tool_stream("glm-5-turbo"));

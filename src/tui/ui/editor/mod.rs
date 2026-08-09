@@ -33,6 +33,8 @@ pub mod edit;
 pub mod file_buffer;
 /// Cursor accessors for the file buffer (LSP navigation).
 mod file_buffer_cursor;
+#[path = "file_buffer_virtual.rs"]
+mod file_buffer_virtual;
 /// Helix-core (rope) powered editor backend.
 pub mod helix_backend;
 /// Cursor/char-index helpers for the rope backend.

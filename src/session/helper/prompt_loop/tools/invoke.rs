@@ -1,6 +1,7 @@
 //! Approval-aware execution of one normalized tool call.
 
 use super::{super::Runner, call::Call, outcome::Outcome};
+use crate::session::helper::tool_approval;
 
 /// Applies approval policy and executes a normalized tool call.
 pub(super) async fn execute(runner: &mut Runner<'_>, call: &Call) -> Outcome {
@@ -12,7 +13,7 @@ pub(super) async fn execute(runner: &mut Runner<'_>, call: &Call) -> Outcome {
     );
     let started = super::super::super::persist::before_tool(runner.session).await;
     let (input, blocked) = if let Some(events) = &runner.events {
-        super::super::super::tool_approval::gate(events, &call.id, &call.name, input)
+        tool_approval::gate(&runner.workspace.cwd, events, &call.id, &call.name, input)
             .await
             .into_parts()
     } else {

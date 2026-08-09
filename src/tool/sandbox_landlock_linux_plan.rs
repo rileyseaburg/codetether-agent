@@ -1,6 +1,8 @@
 use super::sys;
 #[path = "sandbox_landlock_linux_access.rs"]
 mod access;
+#[path = "sandbox_landlock_linux_devices.rs"]
+mod devices;
 #[path = "sandbox_landlock_linux_inactive.rs"]
 mod inactive;
 use crate::tool::sandbox::SandboxPolicy;
@@ -40,6 +42,7 @@ pub(crate) fn prepare(policy: &SandboxPolicy, work_dir: &Path) -> Prepared {
 
 fn rules(policy: &SandboxPolicy, work_dir: &Path) -> Result<Rules, &'static str> {
     let mut paths = vec![rule(Path::new("/"), sys::READ_ACCESS)?];
+    paths.extend(devices::rules()?);
     for path in &policy.allowed_paths {
         paths.push(rule(path, sys::READ_ACCESS | sys::WRITE_ACCESS)?);
     }

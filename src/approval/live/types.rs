@@ -17,6 +17,9 @@ pub struct LiveApprovalRequest {
     pub resource: String,
     /// Human-readable reason shown to the user.
     pub reason: String,
+    /// Full invocation detail shown in interactive approval clients.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview: Option<String>,
     /// Proposed exec-policy amendment that can allow similar commands.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub proposed_execpolicy_amendment: Option<ExecPolicyAmendment>,
@@ -33,6 +36,12 @@ pub enum LiveApprovalDecision {
     /// Return an approval-denied tool result, optionally carrying the
     /// user's reason so it reaches the agent as the tool result.
     Denied { reason: Option<String> },
+    /// Resume with a user-edited argument patch. The approval gate merges
+    /// these fields into the original tool arguments before execution.
+    Revised {
+        arguments: serde_json::Value,
+        approval_id: String,
+    },
 }
 
 impl LiveApprovalDecision {

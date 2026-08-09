@@ -10,6 +10,7 @@ pub(super) fn decided(
 ) {
     let live = crate::approval::live::decide(id, intent.live_decision_with_reason(reason));
     approval_queue::resolve(id);
+    app.state.approval_waiting = approval_queue::active().is_some();
     app.state.clear_input();
     push(app, text);
     app.state.status = if live {
