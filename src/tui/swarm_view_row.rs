@@ -33,13 +33,9 @@ pub(crate) fn task_line(task: &SubTaskInfo, show_divider: bool) -> Line<'static>
     if let Some(tool) = &task.current_tool {
         spans.push(Span::styled(
             format!(" [{tool}]"),
-<<<<<<< HEAD
             Style::default()
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::DIM),
-=======
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::DIM),
->>>>>>> codetether/swarm_635d8404f7a7485dbb88d0d449ebd665
         ));
     }
     if let Some(elapsed) = elapsed_label(task) {
