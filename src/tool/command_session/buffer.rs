@@ -13,6 +13,7 @@ pub(super) struct Buffer {
     pub(super) head_budget: usize,
     pub(super) tail_budget: usize,
     pub(super) omitted: usize,
+    pub(super) pushed: usize,
 }
 
 impl Buffer {
@@ -24,7 +25,13 @@ impl Buffer {
             head_budget,
             tail_budget: max_bytes.saturating_sub(head_budget),
             omitted: 0,
+            pushed: 0,
         }
+    }
+
+    /// Total bytes handed to this buffer, including bytes later omitted.
+    pub fn pushed(&self) -> usize {
+        self.pushed
     }
 
     pub fn push(&mut self, chunk: &[u8]) {

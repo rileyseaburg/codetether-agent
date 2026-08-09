@@ -7,7 +7,7 @@ pub(super) fn schema() -> Value {
         "type": "object",
         "properties": {
             "session_id": {"type": "integer", "description": "Identifier returned by exec_command."},
-            "chars": {"type": "string", "description": "Bytes to write; empty polls without writing."},
+            "chars": {"type": "string", "description": "Bytes to write; empty polls without writing. Each result reports elapsed time, bytes seen this poll, and how long the session has been silent."},
             "yield_time_ms": {"type": "integer", "description": "Wait before yielding recent output."},
             "max_output_tokens": {"type": "integer", "description": "Output token budget; defaults to 10000 and is policy-capped."}
         },

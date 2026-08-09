@@ -6,6 +6,8 @@ use tokio::time::{Duration, Instant, timeout};
 use super::buffer::Buffer;
 use super::{Poll, Running};
 
+#[path = "drain/build.rs"]
+mod build;
 #[path = "drain/finish.rs"]
 mod finish;
 
@@ -27,14 +29,7 @@ pub(super) async fn poll(command: &mut Running, wait_ms: u64, max: usize) -> Res
             output.push(&chunk);
         }
     }
-    let (output, omitted_bytes) = output.finish();
-    Ok(Poll {
-        output,
-        running: command.exit_code.is_none(),
-        exit_code: command.exit_code,
-        elapsed: command.started.elapsed(),
-        omitted_bytes,
-    })
+    Ok(build::build(command, output))
 }
 
 fn drain_ready(command: &mut Running, output: &mut Buffer) {

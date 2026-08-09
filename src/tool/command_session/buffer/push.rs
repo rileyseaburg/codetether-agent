@@ -6,6 +6,7 @@ pub(super) fn chunk(buffer: &mut Buffer, chunk: &[u8]) {
     if chunk.is_empty() {
         return;
     }
+    buffer.pushed = buffer.pushed.saturating_add(chunk.len());
     let head_len = buffer
         .head_budget
         .saturating_sub(buffer.head.len())

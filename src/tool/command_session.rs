@@ -1,5 +1,7 @@
 //! Shared lifecycle for long-running shell commands.
 
+#[path = "command_session/activity.rs"]
+mod activity;
 #[path = "command_session/buffer.rs"]
 mod buffer;
 #[path = "command_session/drain.rs"]
@@ -29,6 +31,9 @@ pub(crate) use types::{Poll, SpawnMetadata};
 #[cfg(test)]
 #[path = "command_session/tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "command_session/liveness_tests.rs"]
+mod liveness_tests;
 #[cfg(test)]
 #[path = "command_session/tool_tests.rs"]
 mod tool_tests;

@@ -10,6 +10,9 @@ use reqwest::StatusCode;
 /// Build a stream error message, appending refresh guidance on auth failures.
 pub(super) fn message(status: StatusCode, body: &str) -> String {
     let base = format!("Bedrock stream error ({status}): {body}");
+    if crate::provider::bedrock::body::audit::pairing_error::is_pairing_failure(body) {
+        return crate::provider::bedrock::body::audit::pairing_error::guidance(&base);
+    }
     if is_auth_failure(status) {
         format!(
             "{base}\n\

@@ -18,7 +18,7 @@ pub(super) fn new(
                 stdin: Some(stdin),
                 output,
                 exit_code: None,
-                started: tokio::time::Instant::now(),
+                activity: super::super::activity::Activity::new(),
                 metadata,
             })
         }

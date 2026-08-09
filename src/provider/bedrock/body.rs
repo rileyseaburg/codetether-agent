@@ -30,6 +30,15 @@ use {crate::provider::CompletionRequest, serde_json::Value, serde_json::json};
 
 pub(super) mod fields;
 
+#[path = "audit.rs"]
+pub(super) mod audit;
+#[path = "body/cache.rs"]
+mod cache;
+
+#[cfg(test)]
+#[path = "body/pairing_tests.rs"]
+mod pairing_tests;
+
 /// Build the JSON body for a Bedrock Converse API request.
 ///
 /// # Arguments
@@ -68,34 +77,9 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
     super::conversation::ensure_user_final_turn(&mut messages, model_id);
     let mut tools = convert_tools(&request.tools);
 
-    // Anthropic prompt caching on Bedrock uses `cachePoint` content blocks.
-    // We place breakpoints at the three stable-prefix boundaries that
-    // matter for agent loops so repeated turns get the 90% input discount:
-    //
-    //   1. End of `system` — caches the (large, static) system prompt.
-    //   2. End of `toolConfig.tools` — caches the tool schemas, which
-    //      dominate the non-message prefix and virtually never change.
-    //   3. End of the last message's content — caches the entire
-    //      conversation prefix up through the prior turn (a sliding
-    //      window; every new turn extends the cached range).
-    //
-    // Bedrock/Anthropic allow up to 4 cache breakpoints per request;
-    // three is well under the limit. Disable with
-    // `CODETETHER_BEDROCK_PROMPT_CACHE=0`.
-    let caching = prompt_cache_enabled() && supports_prompt_caching(model_id);
-    if caching && !system_parts.is_empty() {
-        system_parts.push(json!({"cachePoint": {"type": "default"}}));
-    }
-    if caching && !tools.is_empty() {
-        tools.push(json!({"cachePoint": {"type": "default"}}));
-    }
-    if caching
-        && let Some(last_msg) = messages.last_mut()
-        && let Some(arr) = last_msg.get_mut("content").and_then(|c| c.as_array_mut())
-        && !arr.is_empty()
-    {
-        arr.push(json!({"cachePoint": {"type": "default"}}));
-    }
+    // Anthropic prompt caching on Bedrock uses `cachePoint` content blocks;
+    // see [`cache`] for breakpoint placement and the opt-out env var.
+    cache::apply(model_id, &mut system_parts, &mut tools, &mut messages);
 
     let mut body = json!({"messages": messages});
 
@@ -130,23 +114,9 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
         body["toolConfig"] = json!({"tools": tools});
     }
 
+    // Final gate: never ship an assistant toolUse whose toolResult is
+    // missing. Bedrock answers that with a permanent 400, killing the turn.
+    audit::enforce(&mut body);
+
     body
-}
-
-/// Prompt caching is on by default; set `CODETETHER_BEDROCK_PROMPT_CACHE=0`
-/// to disable.
-fn prompt_cache_enabled() -> bool {
-    match std::env::var("CODETETHER_BEDROCK_PROMPT_CACHE") {
-        Ok(v) => !matches!(
-            v.trim().to_ascii_lowercase().as_str(),
-            "0" | "false" | "no" | "off"
-        ),
-        Err(_) => true,
-    }
-}
-
-/// Returns true for model families that honor the `cachePoint` content block.
-/// Currently: Anthropic Claude (3.5+, 4.x).
-fn supports_prompt_caching(model_id: &str) -> bool {
-    model_id.to_ascii_lowercase().contains("claude")
 }

@@ -38,7 +38,10 @@ impl BedrockProvider {
                 continue;
             }
             if let Ok(err) = serde_json::from_str::<BedrockError>(&text) {
-                anyhow::bail!("Bedrock API error ({}): {}", status, err.message);
+                let base = format!("Bedrock API error ({}): {}", status, err.message);
+                anyhow::bail!(
+                    crate::provider::bedrock::body::audit::pairing_error::annotate(&base, &text)
+                );
             }
             anyhow::bail!(
                 "Bedrock API error: {} {}",
