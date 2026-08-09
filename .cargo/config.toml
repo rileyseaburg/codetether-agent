@@ -29,3 +29,6 @@ verbose = false
 
 [cargo]
 workspaces = { start = "current" }
+
+[build]
+target-dir = "/home/riley/A2A-Server-MCP/codetether-agent/.codetether-worktrees/.targets/05464db9_9081_427f_9ae9_330725ec8023"
