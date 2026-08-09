@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::mux::model::MuxSnapshot;
+use crate::mux::{model::MuxSnapshot, protocol::AgentResponse};
 
 /// One mux control response.
 #[derive(Debug, Deserialize, Serialize)]
@@ -29,6 +29,9 @@ pub(in crate::mux) enum ServerResponse {
     },
     Coordination {
         reply: crate::mux::lease::CoordinationReply,
+    },
+    Agent {
+        response: AgentResponse,
     },
     Acknowledged,
     Detached,

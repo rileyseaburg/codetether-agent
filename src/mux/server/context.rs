@@ -16,6 +16,7 @@ pub(super) struct ServerContext {
     pub started_at: DateTime<Utc>,
     pub shutdown: Notify,
     pub programs: PtyRegistry,
+    pub tasks: crate::mux::agent_task::AgentTaskRegistry,
     pub leases: crate::mux::lease::LeaseRegistry,
     pub(super) persist_lock: Mutex<()>,
 }
@@ -29,6 +30,7 @@ impl ServerContext {
             started_at: Utc::now(),
             shutdown: Notify::new(),
             programs: PtyRegistry::new(),
+            tasks: crate::mux::agent_task::AgentTaskRegistry::new(),
             leases: crate::mux::lease::LeaseRegistry::new(),
             persist_lock: Mutex::new(()),
         })

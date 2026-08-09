@@ -11,6 +11,7 @@ mod program_wait;
 mod reader;
 mod registry;
 mod registry_io;
+mod registry_tail;
 mod resize;
 mod spawn;
 pub(super) mod terminal_mode;

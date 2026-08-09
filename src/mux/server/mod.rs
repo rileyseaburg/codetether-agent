@@ -1,5 +1,8 @@
 //! Authenticated TCP mux server.
 
+mod agent;
+mod agent_read;
+mod agent_start;
 mod connection;
 mod context;
 mod context_persist;
@@ -12,6 +15,7 @@ mod program;
 mod program_operations;
 mod program_request;
 mod program_start;
+mod program_tail;
 mod run;
 mod startup;
 
