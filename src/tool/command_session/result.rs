@@ -7,6 +7,8 @@ use crate::tool::ToolResult;
 mod redact;
 #[path = "result/metadata.rs"]
 mod result_metadata;
+#[path = "result/status.rs"]
+mod status;
 
 pub(crate) fn tool_result(poll: Poll, metadata: &SpawnMetadata, id: Option<u64>) -> ToolResult {
     let heading = match id {
@@ -17,6 +19,7 @@ pub(crate) fn tool_result(poll: Poll, metadata: &SpawnMetadata, id: Option<u64>)
         ),
         None => format!("Process exited with code {}", poll.exit_code.unwrap_or(-1)),
     };
+    let heading = format!("{heading}{}", status::suffix(&poll));
     let recent = redact::output(&poll.output, &metadata.redactions);
     let output = if recent.is_empty() {
         heading

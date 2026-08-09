@@ -1,7 +1,7 @@
 //! Build the native Anthropic Messages request body for InvokeModel.
 
 use crate::provider::CompletionRequest;
-use crate::provider::bedrock::invoke::{invoke_convert, invoke_msgconvert};
+use crate::provider::bedrock::invoke::{invoke_convert, invoke_msgconvert, native_audit};
 use serde_json::{Value, json};
 
 /// Translate a [`CompletionRequest`] into a native Anthropic Messages body.
@@ -54,5 +54,6 @@ pub(in crate::provider::bedrock) fn build_anthropic_messages_body(
             body[key] = value.clone();
         }
     }
+    native_audit::enforce_native(&mut body);
     body
 }

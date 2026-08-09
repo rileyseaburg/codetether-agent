@@ -29,5 +29,5 @@ pub(in crate::provider::bedrock) fn invoke_error(
     if super::retention::is_retention_denied(&detail) {
         return anyhow::anyhow!(super::retention::guidance(&base, model_id, region));
     }
-    anyhow::anyhow!(base)
+    anyhow::anyhow!(crate::provider::bedrock::body::audit::pairing_error::annotate(&base, &detail))
 }

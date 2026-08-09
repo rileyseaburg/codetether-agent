@@ -1,20 +1,22 @@
 //! Mutable process state retained between tool calls.
 
-use anyhow::{Context, Result};
-use tokio::io::AsyncWriteExt;
+use anyhow::Result;
 
+use super::activity::Activity;
 use super::types::CommandInput;
 use super::{Poll, SpawnMetadata};
 
 #[path = "running/attached.rs"]
 mod attached;
+#[path = "running/write.rs"]
+mod write;
 
 pub(crate) struct Running {
     pub(super) child: tokio::process::Child,
     pub(super) stdin: Option<CommandInput>,
     pub(super) output: tokio::sync::mpsc::Receiver<Vec<u8>>,
     pub(super) exit_code: Option<i32>,
-    pub(super) started: tokio::time::Instant,
+    pub(super) activity: Activity,
     pub metadata: SpawnMetadata,
 }
 
@@ -31,7 +33,7 @@ impl Running {
             stdin,
             output: super::readers::start(stdout, stderr),
             exit_code: None,
-            started: tokio::time::Instant::now(),
+            activity: Activity::new(),
             metadata,
         }
     }
@@ -45,12 +47,7 @@ impl Running {
     }
 
     pub(crate) async fn write(&mut self, chars: &str) -> Result<()> {
-        let stdin = self.stdin.as_mut().context(
-            "stdin is closed for this session; rerun exec_command with tty=true to keep stdin open",
-        )?;
-        stdin.as_mut().write_all(chars.as_bytes()).await?;
-        stdin.as_mut().flush().await?;
-        Ok(())
+        write::write(self, chars).await
     }
 
     pub(crate) async fn poll(&mut self, wait_ms: u64, max_bytes: usize) -> Result<Poll> {

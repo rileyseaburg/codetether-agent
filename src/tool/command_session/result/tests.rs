@@ -16,6 +16,9 @@ fn redacts_command_credentials_before_returning_output() {
         exit_code: Some(0),
         elapsed: std::time::Duration::ZERO,
         omitted_bytes: 0,
+        poll_bytes: 17,
+        silent_for: std::time::Duration::ZERO,
+        session_bytes: 17,
     };
     let result = tool_result(poll, &metadata, None);
     assert!(result.output.contains("[REDACTED]"));
