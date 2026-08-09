@@ -28,9 +28,15 @@ pub mod maintenance;
 mod manager;
 mod merge;
 mod merge_lookup;
+<<<<<<< HEAD
 #[cfg(test)]
 mod merge_staged_tests;
 mod node_dependencies;
+=======
+mod merge_staged;
+#[cfg(test)]
+mod merge_staged_tests;
+>>>>>>> codetether/swarm_635d8404f7a7485dbb88d0d449ebd665
 mod output;
 #[cfg(test)]
 mod output_tests;

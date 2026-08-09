@@ -17,7 +17,11 @@ use tokio::sync::mpsc;
 #[path = "swarm_view_detail.rs"]
 mod swarm_view_detail;
 #[path = "swarm_view_fmt.rs"]
+<<<<<<< HEAD
 pub(crate) mod swarm_view_fmt;
+=======
+mod swarm_view_fmt;
+>>>>>>> codetether/swarm_635d8404f7a7485dbb88d0d449ebd665
 #[path = "swarm_view_list.rs"]
 mod swarm_view_list;
 #[path = "swarm_view_row.rs"]
