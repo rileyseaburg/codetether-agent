@@ -10,6 +10,7 @@ pub(super) const DISCOVERY: &[&str] = &[
     "list",
     "lsp",
     "read",
+    "rg",
     "session_task",
     "write_stdin",
 ];
@@ -36,6 +37,7 @@ pub(super) const CODING: &[&str] = &[
     "mux_control",
     "read",
     "resume_agent",
+    "rg",
     "send_input",
     "send_message",
     "session_task",

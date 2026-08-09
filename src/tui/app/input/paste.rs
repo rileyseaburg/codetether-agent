@@ -10,7 +10,7 @@
 //! ```
 
 use crate::tui::app::state::App;
-use crate::tui::app::symbols::{refresh_symbol_search, symbol_search_active};
+use crate::tui::app::symbols::{schedule_refresh, symbol_search_active};
 use crate::tui::models::{InputMode, ViewMode};
 
 #[path = "paste_summarise.rs"]
@@ -32,7 +32,7 @@ pub async fn handle_paste(app: &mut App, text: &str) {
 
     if symbol_search_active(app) {
         paste_chars_no_newlines(&normalized, |ch| app.state.symbol_search.handle_char(ch));
-        refresh_symbol_search(app).await;
+        schedule_refresh(app);
         return;
     }
     if app.state.view_mode == ViewMode::Bus && app.state.bus_log.filter_input_mode {

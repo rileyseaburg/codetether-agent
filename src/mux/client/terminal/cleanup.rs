@@ -4,6 +4,7 @@ use std::io;
 
 use crossterm::{
     cursor::{MoveTo, Show},
+    event::DisableBracketedPaste,
     execute,
     terminal::{Clear, ClearType, LeaveAlternateScreen, disable_raw_mode},
 };
@@ -13,6 +14,7 @@ use super::ProxyTerminal;
 impl Drop for ProxyTerminal {
     fn drop(&mut self) {
         let _ = disable_raw_mode();
+        let _ = execute!(io::stdout(), DisableBracketedPaste);
         if self.mode.active() {
             let _ = execute!(io::stdout(), LeaveAlternateScreen);
         }

@@ -30,6 +30,7 @@ const READ_ONLY_TOOL_IDS: &[&str] = &[
     "head_tail",
     "diff",
     "grep",
+    "rg",
     "codesearch",
     "lsp",
     "webfetch",

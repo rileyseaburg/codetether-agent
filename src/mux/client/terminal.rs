@@ -8,6 +8,7 @@ use std::io;
 use anyhow::Result;
 use crossterm::{
     cursor::MoveTo,
+    event::EnableBracketedPaste,
     execute,
     terminal::{Clear, ClearType, EnterAlternateScreen, enable_raw_mode},
 };
@@ -25,6 +26,10 @@ pub(super) struct ProxyTerminal {
 impl ProxyTerminal {
     pub(super) fn enter(alternate_screen: bool, replaying: bool) -> Result<Self> {
         enable_raw_mode()?;
+        // Without this the terminal never emits \e[200~/\e[201~ markers, so a
+        // multi-line paste arrives as individual keys and every newline is
+        // read as Enter -- submitting one message per line.
+        execute!(io::stdout(), EnableBracketedPaste)?;
         if alternate_screen {
             execute!(io::stdout(), EnterAlternateScreen)?;
         }

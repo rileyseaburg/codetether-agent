@@ -6,7 +6,10 @@ use ratatui::{Terminal, backend::CrosstermBackend};
 
 use crate::tui::app::{session_runtime::SessionView, state::App};
 
-const STREAM_FRAME_INTERVAL: Duration = Duration::from_millis(33);
+// Fifteen streaming frames per second are enough for readable token flow.
+// Keyboard input bypasses this limiter, so halving background redraw frequency
+// cuts full-chat formatting work without making interaction feel delayed.
+const STREAM_FRAME_INTERVAL: Duration = Duration::from_millis(66);
 
 pub(super) fn draw_if_ready(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,

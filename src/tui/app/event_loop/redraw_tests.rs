@@ -16,7 +16,7 @@ fn first_and_idle_frames_are_immediate() {
 fn streaming_frame_is_ready_after_interval() {
     let mut app = App::default();
     app.state.processing = true;
-    let prior = Instant::now() - Duration::from_millis(34);
+    let prior = Instant::now() - Duration::from_millis(67);
     assert!(ready(&app, Some(prior)));
 }
 

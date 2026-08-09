@@ -13,7 +13,7 @@
 use crossterm::event::KeyModifiers;
 
 use crate::tui::app::state::App;
-use crate::tui::app::symbols::{refresh_symbol_search, symbol_search_active};
+use crate::tui::app::symbols::{schedule_refresh, symbol_search_active};
 use crate::tui::models::{InputMode, ViewMode};
 
 /// Route a printable character to the correct view handler.
@@ -32,8 +32,15 @@ pub async fn handle_char(app: &mut App, modifiers: KeyModifiers, c: char) {
         !modifiers.contains(KeyModifiers::CONTROL) && !modifiers.contains(KeyModifiers::ALT);
 
     if no_mods && symbol_search_active(app) {
+        // Whitespace ends the mention: the already-typed query stays in the
+        // chat buffer so nothing the user typed is silently discarded.
+        if c.is_whitespace() {
+            crate::tui::app::symbols::mention::dismiss(app);
+            app.state.insert_char(c);
+            return;
+        }
         app.state.symbol_search.handle_char(c);
-        refresh_symbol_search(app).await;
+        schedule_refresh(app);
     } else if app.state.view_mode == ViewMode::Bus && app.state.bus_log.filter_input_mode && no_mods
     {
         app.state.bus_log.push_filter_char(c);
@@ -44,6 +51,8 @@ pub async fn handle_char(app: &mut App, modifiers: KeyModifiers, c: char) {
         crate::tui::app::file_picker::file_picker_filter_push(app, c);
     } else if app.state.view_mode == ViewMode::Chat && no_mods {
         if c == '@' {
+            // open() inserts the '@' itself in both the mention and the
+            // literal case, so there is nothing further to insert here.
             crate::tui::app::symbols::mention::open(app);
             return;
         }

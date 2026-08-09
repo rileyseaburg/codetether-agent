@@ -11,7 +11,7 @@
 //! ```
 
 use crate::tui::app::state::App;
-use crate::tui::app::symbols::{refresh_symbol_search, symbol_search_active};
+use crate::tui::app::symbols::{schedule_refresh, symbol_search_active};
 use crate::tui::models::{InputMode, ViewMode};
 
 /// Delete the character before the cursor.
@@ -29,7 +29,7 @@ use crate::tui::models::{InputMode, ViewMode};
 pub async fn handle_backspace(app: &mut App) {
     if symbol_search_active(app) {
         app.state.symbol_search.handle_backspace();
-        refresh_symbol_search(app).await;
+        schedule_refresh(app);
     } else if app.state.view_mode == ViewMode::Bus && app.state.bus_log.filter_input_mode {
         app.state.bus_log.pop_filter_char();
         app.state.status = if app.state.bus_log.filter.is_empty() {
