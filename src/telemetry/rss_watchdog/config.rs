@@ -19,13 +19,28 @@ pub(super) struct Config {
     pub trim: Duration,
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            // Release large transient provider/render buffers well before the
+            // process reaches OOM territory. Environment overrides remain
+            // available for unusually memory-heavy worker deployments.
+            warn_mib: 256,
+            critical_mib: 1024,
+            sample: Duration::from_secs(2),
+            trim: Duration::from_secs(15),
+        }
+    }
+}
+
 impl Config {
     pub fn load() -> Self {
+        let defaults = Self::default();
         Self {
-            warn_mib: env(ENV_RSS_WARN_MIB, 1024),
-            critical_mib: env(ENV_RSS_CRITICAL_MIB, 3072),
-            sample: Duration::from_secs(env(ENV_RSS_SAMPLE_SECS, 2).max(1)),
-            trim: Duration::from_secs(env(ENV_RSS_TRIM_SECS, 30).max(1)),
+            warn_mib: env(ENV_RSS_WARN_MIB, defaults.warn_mib),
+            critical_mib: env(ENV_RSS_CRITICAL_MIB, defaults.critical_mib),
+            sample: Duration::from_secs(env(ENV_RSS_SAMPLE_SECS, defaults.sample.as_secs()).max(1)),
+            trim: Duration::from_secs(env(ENV_RSS_TRIM_SECS, defaults.trim.as_secs()).max(1)),
         }
     }
 }

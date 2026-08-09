@@ -4,6 +4,8 @@
 //! allocator to release unused arenas while memory remains elevated.
 
 mod config;
+#[cfg(test)]
+mod config_tests;
 mod reclaim;
 mod report;
 #[cfg(test)]

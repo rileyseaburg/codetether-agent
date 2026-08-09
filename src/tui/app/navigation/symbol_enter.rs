@@ -11,5 +11,6 @@ pub fn handle(app: &mut App) {
             .unwrap_or_default();
         app.state.status = format!("Selected symbol {} {location}", symbol.name);
     }
+    crate::tui::app::symbols::cancel_refresh();
     app.state.symbol_search.close();
 }

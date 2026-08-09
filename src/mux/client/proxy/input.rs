@@ -1,12 +1,16 @@
 //! PTY input request forwarding.
 
+#[path = "input/clipboard.rs"]
+mod clipboard;
+
 use anyhow::{Result, bail};
 
 use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
 use super::super::connection::MuxConnection;
 
-pub(super) async fn send(connection: &mut MuxConnection, id: u64, data: Vec<u8>) -> Result<()> {
+pub(super) async fn send(connection: &mut MuxConnection, id: u64, raw: Vec<u8>) -> Result<()> {
+    let data = clipboard::resolve(raw);
     match connection
         .request(ClientRequest::Program {
             request: ProgramRequest::Input {

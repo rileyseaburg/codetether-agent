@@ -54,7 +54,9 @@ pub mod question;
 pub mod ralph;
 pub mod readonly;
 mod register_media;
+mod register_search_tools;
 pub mod relay_autochat;
+pub mod ripgrep;
 pub mod rlm;
 pub mod sandbox;
 mod sandbox_limits;
@@ -285,7 +287,7 @@ impl ToolRegistry {
         registry.register(Arc::new(file_extras::HeadTailTool::new()));
         registry.register(Arc::new(file_extras::DiffTool::new()));
         registry.register(Arc::new(git::GitTool::new()));
-        registry.register(Arc::new(search::GrepTool::new()));
+        register_search_tools::register(&mut registry);
         registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
         registry.register(Arc::new(edit::EditTool::new()));
         command_session::register(&mut registry, None);
@@ -298,7 +300,6 @@ impl ToolRegistry {
         registry.register(Arc::new(multiedit::MultiEditTool::new()));
         registry.register(Arc::new(websearch::WebSearchTool::new()));
         registry.register(Arc::new(browserctl::BrowserCtlTool::new()));
-        registry.register(Arc::new(codesearch::CodeSearchTool::new()));
         registry.register(Arc::new(patch::ApplyPatchTool::new()));
         registry.register(Arc::new(todo::TodoReadTool::new()));
         registry.register(Arc::new(todo::TodoWriteTool::new()));
@@ -361,7 +362,7 @@ impl ToolRegistry {
         registry.register(Arc::new(file_extras::HeadTailTool::new()));
         registry.register(Arc::new(file_extras::DiffTool::new()));
         registry.register(Arc::new(git::GitTool::new()));
-        registry.register(Arc::new(search::GrepTool::new()));
+        register_search_tools::register(&mut registry);
         registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
         registry.register(Arc::new(edit::EditTool::new()));
         command_session::register(&mut registry, None);
@@ -374,7 +375,6 @@ impl ToolRegistry {
         registry.register(Arc::new(multiedit::MultiEditTool::new()));
         registry.register(Arc::new(websearch::WebSearchTool::new()));
         registry.register(Arc::new(browserctl::BrowserCtlTool::new()));
-        registry.register(Arc::new(codesearch::CodeSearchTool::new()));
         registry.register(Arc::new(patch::ApplyPatchTool::new()));
         registry.register(Arc::new(todo::TodoReadTool::new()));
         registry.register(Arc::new(todo::TodoWriteTool::new()));

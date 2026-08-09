@@ -1,5 +1,7 @@
 //! Change-driven semantic status reporting to an inherited mux server.
 
+mod snapshot;
+
 use crate::mux::MuxRuntimeStatus;
 use crate::tui::app::{session_runtime::SessionView, state::App};
 
@@ -14,24 +16,14 @@ impl Reporter {
         app: &App,
         session: &SessionView,
     ) {
-        let status = MuxRuntimeStatus {
-            session_id: session.id.clone(),
-            session_title: session
-                .title
-                .clone()
-                .unwrap_or_else(|| "Untitled session".into()),
-            processing: app.state.processing,
-            message_count: session.message_count,
-            current_tool: app.state.pending_tool_name.clone(),
-            needs_interaction: !app.state.input.trim().is_empty(),
-            lagging: app.state.watchdog_notification.is_some()
-                || (app.state.processing && app.state.main_watchdog_restart_count > 0)
-                || app.state.status.starts_with("Watchdog gave up"),
-            principal: session.principal.clone(),
-        };
-        if self.last.as_ref() == Some(&status) {
+        if self
+            .last
+            .as_ref()
+            .is_some_and(|last| snapshot::unchanged(last, app, session))
+        {
             return;
         }
+        let status = snapshot::build(app, session);
         self.last = Some(status.clone());
         if let Err(error) = crate::mux::control::report_runtime(Some(status)).await {
             tracing::debug!(%error, "Mux runtime status unavailable");

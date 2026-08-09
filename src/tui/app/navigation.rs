@@ -25,7 +25,7 @@ pub use jump::{handle_end, handle_home};
 
 pub fn handle_escape(app: &mut App) {
     if symbol_search_active(app) {
-        app.state.symbol_search.close();
+        crate::tui::app::symbols::close_search(app);
         app.state.status = "Closed symbol search".to_string();
     } else if app.state.show_help {
         app.state.show_help = false;
