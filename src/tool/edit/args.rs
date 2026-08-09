@@ -1,5 +1,7 @@
 use serde_json::{Value, json};
 
+use super::super::ToolResult;
+
 pub struct EditArgs<'a> {
     pub path: &'a str,
     pub old_string: Option<&'a str>,
@@ -10,10 +12,16 @@ pub struct EditArgs<'a> {
 }
 
 impl<'a> EditArgs<'a> {
-    pub fn parse(args: &'a Value) -> Result<Self, Value> {
-        let path = args["path"].as_str().ok_or_else(
-            || json!({"code":"INVALID_ARGUMENT","message":"path is required","field":"path"}),
-        )?;
+    pub fn parse(args: &'a Value) -> Result<Self, ToolResult> {
+        let Some(path) = args["path"].as_str() else {
+            return Err(ToolResult::structured_error(
+                "INVALID_ARGUMENT",
+                "edit",
+                "path is required",
+                Some(vec!["path"]),
+                Some(json!({"path":"src/main.rs","old_string":"old","new_string":"new"})),
+            ));
+        };
         Ok(Self {
             path,
             old_string: args["old_string"].as_str(),
@@ -23,8 +31,20 @@ impl<'a> EditArgs<'a> {
             replace_all: args["replace_all"].as_bool().unwrap_or(false),
         })
     }
+}
 
-    pub fn has_pair(&self) -> bool {
-        self.old_string.is_some() && self.new_string.is_some()
-    }
+pub fn required<'a>(
+    value: Option<&'a str>,
+    field: &str,
+    path: &str,
+) -> Result<&'a str, ToolResult> {
+    value.ok_or_else(|| {
+        ToolResult::structured_error(
+            "INVALID_ARGUMENT",
+            "edit",
+            &format!("{field} is required unless Morph backend is enabled and instruction/update are provided"),
+            Some(vec![field]),
+            Some(json!({"path": path, "old_string": "old text", "new_string": "new text"})),
+        )
+    })
 }

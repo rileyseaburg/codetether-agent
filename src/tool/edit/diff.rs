@@ -1,51 +1,43 @@
 use similar::{ChangeTag, TextDiff};
-use std::collections::HashMap;
 
-pub struct DiffSummary {
+pub struct DiffPreview {
     pub output: String,
     pub added: usize,
     pub removed: usize,
 }
 
-pub fn summarize(old: &str, new: &str) -> DiffSummary {
-    let diff = TextDiff::from_lines(old, new);
-    let mut output = String::new();
+pub fn preview(old: &str, new: &str) -> DiffPreview {
+    let mut out = String::new();
     let mut added = 0;
     let mut removed = 0;
-    for change in diff.iter_all_changes() {
-        let (sign, color) = match change.tag() {
+    for change in TextDiff::from_lines(old, new).iter_all_changes() {
+        let (sign, style) = match change.tag() {
             ChangeTag::Delete => {
                 removed += 1;
-                ("-", "31")
+                ("-", "red")
             }
             ChangeTag::Insert => {
                 added += 1;
-                ("+", "32")
+                ("+", "green")
             }
-            ChangeTag::Equal => (" ", "0"),
+            ChangeTag::Equal => (" ", "default"),
         };
-        push_line(&mut output, sign, color, change.to_string().trim_end());
+        push_line(&mut out, sign, style, &change.to_string());
     }
-    DiffSummary {
-        output,
+    DiffPreview {
+        output: out,
         added,
         removed,
     }
 }
 
-fn push_line(output: &mut String, sign: &str, color: &str, line: &str) {
-    if color == "0" {
-        output.push_str(&format!("{sign}{line}\n"));
-    } else {
-        output.push_str(&format!("\x1b[{color}m{sign}{line}\x1b[0m\n"));
+fn push_line(out: &mut String, sign: &str, style: &str, text: &str) {
+    let line = format!("{sign}{text}");
+    match style {
+        "red" => out.push_str(&format!("\x1b[31m{}\x1b[0m", line.trim_end())),
+        "green" => out.push_str(&format!("\x1b[32m{}\x1b[0m", line.trim_end())),
+        "default" => out.push_str(line.trim_end()),
+        _ => out.push_str(line.trim_end()),
     }
-}
-
-pub fn metadata(summary: &DiffSummary) -> HashMap<String, serde_json::Value> {
-    let mut metadata = HashMap::new();
-    metadata.insert("requires_confirmation".into(), serde_json::json!(true));
-    metadata.insert("diff".into(), serde_json::json!(summary.output.trim()));
-    metadata.insert("added_lines".into(), serde_json::json!(summary.added));
-    metadata.insert("removed_lines".into(), serde_json::json!(summary.removed));
-    metadata
+    out.push('\n');
 }
