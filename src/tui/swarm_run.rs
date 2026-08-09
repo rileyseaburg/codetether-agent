@@ -15,10 +15,6 @@ mod monitor;
 use control::{ControlAction, apply_control};
 pub use monitor::open_swarm_monitor;
 
-#[path = "swarm_run/monitor.rs"]
-mod monitor;
-
-pub use monitor::open_swarm_monitor;
 
 /// Handle `/swarm [task]`.
 ///
