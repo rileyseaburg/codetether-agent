@@ -3,7 +3,7 @@ use super::resampler::Resampler;
 fn config(rate: u32, channels: u16) -> cpal::StreamConfig {
     cpal::StreamConfig {
         channels,
-        sample_rate: cpal::SampleRate(rate),
+        sample_rate: rate,
         buffer_size: cpal::BufferSize::Default,
     }
 }
