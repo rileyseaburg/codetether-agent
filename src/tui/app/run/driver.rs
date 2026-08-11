@@ -8,10 +8,6 @@
 //! focused submodules.
 
 use crate::config::AccessMode;
-use crate::tui::app::safe_draw::draw_ui;
-use crate::tui::app::session_runtime::SessionView;
-use crate::tui::app::state::App;
-
 /// Starts and runs the interactive terminal UI until the user exits.
 ///
 /// The driver performs the full TUI lifecycle:
@@ -67,21 +63,17 @@ pub async fn run(
     super::project::enter(project, allow_network)?;
     let mut terminal_runtime = super::terminal::enter()?;
     let cwd = std::env::current_dir().unwrap_or_default();
+    let mut app = super::initial_frame::draw(&mut terminal_runtime.terminal, &cwd, allow_network)?;
     let bus = super::bus::start();
     let peer = super::peer::start(a2a_options, bus.clone()).await;
 
-    // Resolve session before first draw: load the prior session for this
-    // directory, or create a fresh one only when none exists. This prevents
-    // a blank placeholder from being allocated and then silently discarded.
+    // Resolve the durable session before hydrating the session-backed frame.
+    // This prevents a blank placeholder from being allocated and discarded.
     let mut startup = super::startup::load(&cwd, bus.clone(), session_id.as_deref()).await;
     let resolved = super::session_resolve::resolve(startup.session_load.take(), &bus).await?;
     let mut session = resolved.session;
-    let mut app = App::default();
 
     super::hydrate_initial::initial(&mut app, &cwd, allow_network, peer.ready, &session);
-    let view = SessionView::from_session(&session);
-    draw_ui(&mut terminal_runtime.terminal, &mut app, &view)?;
-
     super::config::apply_policies(&mut session, &mut startup, access_mode, yolo);
     super::hydrate::complete(
         &mut app,

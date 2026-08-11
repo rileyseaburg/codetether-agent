@@ -28,7 +28,7 @@ fn env_name() -> Option<String> {
 fn named(host: &cpal::Host, requested: &str) -> Result<cpal::Device> {
     let wanted = requested.to_lowercase();
     for device in host.input_devices()? {
-        let name = device.name().unwrap_or_default();
+        let name = device_name(device.clone());
         if name.to_lowercase().contains(&wanted) {
             return Ok(device);
         }
@@ -44,5 +44,8 @@ fn names(host: &cpal::Host) -> Result<Vec<String>> {
 }
 
 fn device_name(device: cpal::Device) -> String {
-    device.name().unwrap_or_else(|_| "<unknown>".into())
+    device
+        .description()
+        .map(|description| description.name().to_string())
+        .unwrap_or_else(|_| "<unknown>".into())
 }

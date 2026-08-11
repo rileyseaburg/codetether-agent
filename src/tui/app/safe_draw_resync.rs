@@ -15,7 +15,11 @@ pub(super) fn clear_and_retry(
     initial_error: anyhow::Error,
 ) {
     tracing::warn!(error = %initial_error, "terminal draw interrupted; resynchronizing");
-    if let Err(error) = terminal.clear() {
+    let reset = terminal
+        .size()
+        .map(Into::into)
+        .and_then(|area| terminal.resize(area));
+    if let Err(error) = reset {
         tracing::error!(%error, "terminal resynchronization clear failed");
         return;
     }

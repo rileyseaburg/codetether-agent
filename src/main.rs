@@ -498,7 +498,7 @@ async fn main() -> anyhow::Result<()> {
         let log_dir = config::Config::data_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("/tmp/codetether-agent"));
         let _ = std::fs::create_dir_all(&log_dir);
-        let log_file = std::fs::File::create(log_dir.join("tui.log")).ok();
+        let log_file = tui::app::run::open_tui_log(&log_dir);
 
         if let Some(file) = log_file {
             tracing_subscriber::registry()

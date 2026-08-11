@@ -15,7 +15,6 @@ mod monitor;
 use control::{ControlAction, apply_control};
 pub use monitor::open_swarm_monitor;
 
-
 /// Handle `/swarm [task]`.
 ///
 /// Returns `true` when a task was launched; `false` for the bare command so

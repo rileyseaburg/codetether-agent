@@ -10,6 +10,7 @@ mod driver;
 mod full_auto;
 mod hydrate;
 mod hydrate_initial;
+mod initial_frame;
 mod loop_run;
 mod network_env;
 mod peer;
@@ -27,6 +28,8 @@ mod session_start_tests;
 mod session_status;
 mod startup;
 mod terminal;
+mod tui_log;
+pub use tui_log::open as open_tui_log;
 mod worker_attach;
 mod workspace;
 

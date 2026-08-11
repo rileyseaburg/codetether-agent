@@ -15,7 +15,7 @@ impl Resampler {
         Self {
             samples: Vec::new(),
             channels: usize::from(config.channels),
-            source_rate: u64::from(config.sample_rate.0),
+            source_rate: u64::from(config.sample_rate),
             frame_index: 0,
             out_index: 0,
         }

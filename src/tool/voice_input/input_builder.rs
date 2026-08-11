@@ -13,7 +13,7 @@ where
     i16: cpal::FromSample<T>,
 {
     Ok(device.build_input_stream(
-        config,
+        config.clone(),
         move |data: &[T], _| push(data, &samples),
         |err| tracing::error!(error = %err, "Audio capture error"),
         None,

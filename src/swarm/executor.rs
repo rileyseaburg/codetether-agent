@@ -62,4 +62,3 @@ pub use agent_loop::run_agent_loop;
 pub use builder::SwarmExecutorBuilder;
 pub use exit::AgentLoopExit;
 pub use types::SwarmExecutor;
-

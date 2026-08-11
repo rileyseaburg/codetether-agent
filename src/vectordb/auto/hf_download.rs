@@ -2,7 +2,7 @@
 
 use super::catalog::ModelSpec;
 use anyhow::{Context, Result};
-use hf_hub::api::tokio::ApiBuilder;
+use hf_hub::{HFClient, split_id};
 use std::path::PathBuf;
 
 /// Local paths to a downloaded model's files.
@@ -20,24 +20,29 @@ pub struct ModelFiles {
 ///
 /// Files are cached by hf-hub under the standard HF cache dir; repeated calls
 /// resolve from disk without re-downloading. The catalog models are public and
-/// ungated (Apache-2.0), so no token is required; `from_env` still picks up
-/// `HF_TOKEN`/`HF_HOME` when present to avoid anonymous rate limits.
+/// ungated (Apache-2.0), so no token is required; `HFClient::new` still picks
+/// up `HF_TOKEN`/`HF_HOME` when present to avoid anonymous rate limits.
 pub async fn download(spec: &ModelSpec) -> Result<ModelFiles> {
-    let api = ApiBuilder::from_env()
-        .build()
-        .context("failed to initialize HuggingFace Hub client")?;
-    let repo = api.model(spec.repo.to_string());
+    let api = HFClient::new().context("failed to initialize HuggingFace Hub client")?;
+    let (owner, name) = split_id(spec.repo);
+    let repo = api.model(owner, name);
 
     let config = repo
-        .get("config.json")
+        .download_file()
+        .filename("config.json")
+        .send()
         .await
         .with_context(|| format!("download config.json for {}", spec.repo))?;
     let tokenizer = repo
-        .get("tokenizer.json")
+        .download_file()
+        .filename("tokenizer.json")
+        .send()
         .await
         .with_context(|| format!("download tokenizer.json for {}", spec.repo))?;
     let weights = repo
-        .get("model.safetensors")
+        .download_file()
+        .filename("model.safetensors")
+        .send()
         .await
         .with_context(|| format!("download model.safetensors for {}", spec.repo))?;
 

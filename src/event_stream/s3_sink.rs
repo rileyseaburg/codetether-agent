@@ -388,7 +388,7 @@ fn sha256_hex_bytes(data: &[u8]) -> String {
 
 /// Compute HMAC-SHA256
 fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
-    use hmac::{Hmac, Mac};
+    use hmac::{Hmac, KeyInit, Mac};
     type HmacSha256 = Hmac<sha2::Sha256>;
 
     let mut mac = HmacSha256::new_from_slice(key).expect("HMAC can take key of any size");

@@ -175,7 +175,7 @@ impl SigningKey {
 
     /// Sign a manifest payload: `id|version|content_hash`.
     pub fn sign(&self, id: &str, version: &str, content_hash: &str) -> String {
-        use hmac::{Hmac, Mac};
+        use hmac::{Hmac, KeyInit, Mac};
         type HmacSha256 = Hmac<Sha256>;
 
         let payload = format!("{}|{}|{}", id, version, content_hash);

@@ -1,7 +1,9 @@
+use std::io::{self, Write};
+
 use crossterm::{
     event::{KeyboardEnhancementFlags, PushKeyboardEnhancementFlags},
     execute,
-    terminal::enable_raw_mode,
+    terminal::{Clear, ClearType, enable_raw_mode},
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
 
@@ -22,17 +24,23 @@ pub(super) fn enter() -> anyhow::Result<Runtime> {
     let panic_guard = install_panic_cleanup_hook();
     let mut stdout = std::io::stdout();
     enter_display_mode(&mut stdout)?;
+    clear_screen(&mut stdout)?;
     let _ = execute!(
         stdout,
         PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
     );
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
-    if let Err(error) = terminal.clear() {
-        tracing::debug!(%error, "TUI startup clear skipped");
-    }
+    let terminal = Terminal::new(CrosstermBackend::new(stdout))?;
     Ok(Runtime {
         terminal,
         _terminal_guard: terminal_guard,
         _panic_guard: panic_guard,
     })
 }
+
+fn clear_screen(writer: &mut impl Write) -> io::Result<()> {
+    execute!(writer, Clear(ClearType::All))
+}
+
+#[cfg(test)]
+#[path = "terminal_tests.rs"]
+mod tests;

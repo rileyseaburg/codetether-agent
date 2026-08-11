@@ -23,7 +23,7 @@
 use super::BedrockProvider;
 use super::auth::BedrockAuth;
 use anyhow::{Context, Result};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use reqwest::Url;
 use sha2::{Digest, Sha256};
 
