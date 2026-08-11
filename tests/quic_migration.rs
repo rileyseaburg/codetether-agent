@@ -16,7 +16,8 @@ async fn quic_connection_survives_local_path_change() {
 
     let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
     let cert_der = rustls::pki_types::CertificateDer::from(cert.cert.der().to_vec());
-    let key_der = rustls::pki_types::PrivatePkcs8KeyDer::from(cert.key_pair.serialize_der()).into();
+    let key_der =
+        rustls::pki_types::PrivatePkcs8KeyDer::from(cert.signing_key.serialize_der()).into();
 
     let server = QuicStreamServer::bind(
         "127.0.0.1:0".parse().unwrap(),

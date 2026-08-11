@@ -4,6 +4,7 @@
 //! facts such as functions, structs, enums, impls, and error patterns.
 
 mod answer_names;
+mod capture;
 mod classify;
 mod compare;
 mod definitions;
@@ -11,6 +12,7 @@ mod enums;
 mod errors;
 mod extract;
 mod functions;
+mod highlight;
 mod impls;
 mod oracle;
 mod query;
@@ -21,6 +23,7 @@ mod verification;
 mod verify;
 mod verify_targets;
 
+pub use capture::AstCapture;
 pub use definitions::{
     EnumDefinition, ErrorPatternCounts, FunctionSignature, ImplDefinition, StructDefinition,
 };

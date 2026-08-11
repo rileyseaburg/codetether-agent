@@ -32,8 +32,8 @@ pub use model_select::{
     select_rlm_model_with_env,
 };
 pub use oracle::{
-    AstPayload, AstResult, FinalPayload, GeneratedQuery, GrepMatch, GrepOracle, GrepPayload,
-    GrepVerification, OracleResult, OracleTracePersistResult, OracleTraceRecord,
+    AstCapture, AstPayload, AstResult, FinalPayload, GeneratedQuery, GrepMatch, GrepOracle,
+    GrepPayload, GrepVerification, OracleResult, OracleTracePersistResult, OracleTraceRecord,
     OracleTraceStorage, OracleTraceSyncStats, QueryTemplate, SemanticPayload, TemplateKind,
     TraceStep, TraceValidator, TreeSitterOracle, TreeSitterVerification, ValidatedTrace,
     VerificationMethod,

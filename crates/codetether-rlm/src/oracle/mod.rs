@@ -53,7 +53,7 @@ pub use storage::{
 };
 pub use templates::{GeneratedQuery, QueryTemplate, TemplateKind};
 pub use trace_types::{OracleResult, ValidatedTrace};
-pub use tree_sitter_oracle::{TreeSitterOracle, TreeSitterVerification};
+pub use tree_sitter_oracle::{AstCapture, TreeSitterOracle, TreeSitterVerification};
 pub use types::{TraceStep, VerificationMethod};
 pub use validator::{BatchValidationStats, SplitWriteStats, TraceValidator};
 
