@@ -11,6 +11,8 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[path = "orchestrator/decomposition_prompt.rs"]
+mod decomposition_prompt;
 #[path = "orchestrator/decomposition_request.rs"]
 mod decomposition_request;
 #[path = "orchestrator/dependencies.rs"]
@@ -131,7 +133,14 @@ impl Orchestrator {
         }
 
         // Use AI to decompose the task
-        let decomposition_prompt = self.build_decomposition_prompt(task, strategy);
+        let parallel_required =
+            self.config.parallel_enabled && strategy != DecompositionStrategy::ByStage;
+        let decomposition_prompt = decomposition_prompt::build(
+            task,
+            strategy,
+            self.config.max_subagents,
+            parallel_required,
+        );
 
         let provider = self
             .providers
@@ -154,20 +163,15 @@ impl Orchestrator {
 
         tracing::debug!("Decomposition response: {}", text);
 
-        if text.trim().is_empty() {
-            // Fallback to single task if decomposition fails
-            tracing::warn!("Empty decomposition response, falling back to single task");
-            let subtask = SubTask::new("Main Task", task);
-            self.subtasks.insert(subtask.id.clone(), subtask.clone());
-            return Ok(vec![subtask]);
-        }
-
-        let parsed = self.parse_decomposition(&text).and_then(plan::validate);
+        let parsed = self
+            .parse_decomposition(&text)
+            .and_then(|tasks| plan::validate(tasks, parallel_required));
         self.subtasks = match parsed {
             Ok(plan) => plan,
             Err(error) => {
                 tracing::warn!(%error, response = %text, "Invalid swarm plan; requesting one repair");
-                let prompt = repair_prompt::build(task, &text, &error.to_string());
+                let prompt =
+                    repair_prompt::build(task, &text, &error.to_string(), parallel_required);
                 match decomposition_request::complete(
                     provider.as_ref(),
                     &self.model,
@@ -176,10 +180,15 @@ impl Orchestrator {
                 )
                 .await
                 .and_then(|text| self.parse_decomposition(&text))
-                .and_then(plan::validate)
+                .and_then(|tasks| plan::validate(tasks, parallel_required))
                 {
                     Ok(plan) => plan,
                     Err(repair_error) => {
+                        if parallel_required {
+                            return Err(repair_error.context(
+                                "Swarm decomposition did not produce concurrent root tasks",
+                            ));
+                        }
                         tracing::warn!(%repair_error, "Swarm plan repair failed; using one truthful task");
                         plan::single(task)
                     }
@@ -194,68 +203,6 @@ impl Orchestrator {
         );
 
         Ok(self.subtasks.values().cloned().collect())
-    }
-
-    /// Build the decomposition prompt
-    fn build_decomposition_prompt(&self, task: &str, strategy: DecompositionStrategy) -> String {
-        let strategy_instruction = match strategy {
-            DecompositionStrategy::Automatic => {
-                "Analyze the task and determine the optimal way to decompose it into parallel subtasks."
-            }
-            DecompositionStrategy::ByDomain => {
-                "Decompose the task by domain expertise (e.g., research, coding, analysis, verification)."
-            }
-            DecompositionStrategy::ByData => {
-                "Decompose the task by data partition (e.g., different files, sections, or datasets)."
-            }
-            DecompositionStrategy::ByStage => {
-                "Decompose the task by workflow stages (e.g., gather, process, synthesize)."
-            }
-            DecompositionStrategy::None => unreachable!(),
-        };
-
-        format!(
-            r#"You are a task orchestrator. Your job is to decompose complex tasks into parallelizable subtasks.
-
-TASK: {task}
-
-STRATEGY: {strategy_instruction}
-
-CONSTRAINTS:
-- Maximum {max_subtasks} subtasks
-- Each subtask should be independently executable
-- Identify dependencies between subtasks (which must complete before others can start)
-- Assign a specialty/role to each subtask
-
-OUTPUT FORMAT (JSON):
-```json
-{{
-  "subtasks": [
-    {{
-      "name": "Subtask Name",
-      "instruction": "Detailed instruction for this subtask",
-      "specialty": "Role/specialty (e.g., Researcher, Coder, Analyst)",
-      "dependencies": ["Exact Prior Subtask Name"],
-      "priority": 1,
-      "needs_worktree": false
-    }}
-  ]
-}}
-```
-
-Set `needs_worktree: true` only when the subtask will **edit or create \
-files** in the repository (implementation, refactor, patch). Set it to \
-`false` for read-only work (research, review, analysis, fact-check, \
-planning, summarisation). When in doubt, omit the field and the \
-executor will decide from heuristics.
-
-Dependency entries MUST exactly match earlier subtask `name` values. Do not invent IDs.
-
-Decompose the task now:"#,
-            task = task,
-            strategy_instruction = strategy_instruction,
-            max_subtasks = self.config.max_subagents,
-        )
     }
 
     /// Parse the decomposition response

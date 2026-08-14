@@ -3,7 +3,7 @@
 use crate::tui::models::ViewMode;
 
 impl super::AppState {
-    pub(crate) const SETTINGS_COUNT: usize = 8;
+    pub(crate) const SETTINGS_COUNT: usize = 9;
 
     pub fn settings_select_prev(&mut self) {
         if self.selected_settings_index > 0 {

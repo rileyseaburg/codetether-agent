@@ -14,6 +14,9 @@ pub async fn run(args: Value) -> Result<ToolResult> {
         Ok(parsed) => parsed,
         Err(error) => return Ok(error),
     };
+    if let Some(blocked) = crate::tool::temp_write_guard::denied_result("edit", args.path) {
+        return Ok(blocked);
+    }
     let content = fs::read_to_string(args.path).await?;
     if let Some(result) = morph_flow::try_apply(&args, &content).await {
         return Ok(result);

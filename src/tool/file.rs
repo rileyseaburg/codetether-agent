@@ -8,6 +8,9 @@ use std::path::PathBuf;
 use std::time::Instant;
 use tokio::fs;
 
+#[path = "file_write_args.rs"]
+mod file_write_args;
+
 use crate::telemetry::{FileChange, TOOL_EXECUTIONS, ToolExecution, record_persistent};
 
 /// Read file contents
@@ -185,31 +188,11 @@ impl Tool for WriteTool {
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let start = Instant::now();
 
-        let path = match args["path"].as_str() {
-            Some(p) => p,
-            None => {
-                return Ok(ToolResult::structured_error(
-                    "INVALID_ARGUMENT",
-                    "write",
-                    "path is required",
-                    Some(vec!["path"]),
-                    Some(json!({"path": "src/example.rs", "content": "// file content"})),
-                ));
-            }
+        let args = match file_write_args::WriteArgs::parse(&args) {
+            Ok(parsed) => parsed,
+            Err(error) => return Ok(error),
         };
-        let content = match args["content"].as_str() {
-            Some(c) => c,
-            None => {
-                return Ok(ToolResult::structured_error(
-                    "INVALID_ARGUMENT",
-                    "write",
-                    "content is required",
-                    Some(vec!["content"]),
-                    Some(json!({"path": path, "content": "// file content"})),
-                ));
-            }
-        };
-
+        let (path, content) = (args.path, args.content);
         // Create parent directories if needed
         if let Some(parent) = PathBuf::from(path).parent() {
             fs::create_dir_all(parent).await?;

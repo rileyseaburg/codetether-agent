@@ -53,6 +53,7 @@ mod tests {
         assert!(text.contains("Access mode"));
         assert!(text.contains("Bedrock thinking effort"));
         assert!(text.contains("OpenAI Codex thinking effort"));
+        assert!(text.contains("OpenRouter thinking effort"));
         assert!(text.contains("Up / Down selects a setting"));
     }
 }

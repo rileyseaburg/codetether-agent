@@ -6,7 +6,10 @@ use anyhow::Result;
 use anyhow::bail;
 use std::collections::{HashMap, HashSet};
 
-pub(super) fn validate(tasks: Vec<SubTask>) -> Result<HashMap<String, SubTask>> {
+pub(super) fn validate(
+    tasks: Vec<SubTask>,
+    parallel_required: bool,
+) -> Result<HashMap<String, SubTask>> {
     if tasks.is_empty() {
         bail!("Swarm plan has no subtasks");
     }
@@ -19,6 +22,9 @@ pub(super) fn validate(tasks: Vec<SubTask>) -> Result<HashMap<String, SubTask>> 
         .map(|task| (task.id.clone(), task))
         .collect::<HashMap<_, _>>();
     stages::assign(&mut plan)?;
+    if parallel_required && plan.values().filter(|task| task.stage == 0).count() < 2 {
+        bail!("Parallel swarm plans require at least two dependency-free root subtasks");
+    }
     Ok(plan)
 }
 

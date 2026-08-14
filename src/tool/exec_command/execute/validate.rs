@@ -16,7 +16,7 @@ pub(super) fn input(args: &Value) -> Result<Input, ToolResult> {
             "sandbox escalation requires an approved exec_command invocation",
         ));
     }
-    if let Some(blocked) = crate::tool::shell_command_guard::result("exec_command", &input.cmd) {
+    if let Some(blocked) = crate::tool::shell_command_guard::result_for_args("exec_command", args) {
         return Err(blocked);
     }
     Ok(input)

@@ -13,6 +13,7 @@ use super::bedrock::cycle_bedrock_service_tier;
 use super::bedrock_effort::cycle_bedrock_thinking_effort;
 use super::codex_effort::cycle_codex_thinking_effort;
 use super::network;
+use super::openrouter_effort::cycle_openrouter_thinking_effort;
 use super::{set_slash_autocomplete, set_use_worktree};
 
 /// Execute the action for the currently selected settings row.
@@ -26,6 +27,7 @@ pub async fn toggle_selected_setting(app: &mut App, session: &mut Session) {
         5 => cycle_bedrock_service_tier(app, session).await,
         6 => cycle_bedrock_thinking_effort(app, session).await,
         7 => cycle_codex_thinking_effort(app, session).await,
+        8 => cycle_openrouter_thinking_effort(app, session).await,
         _ => {}
     }
 }

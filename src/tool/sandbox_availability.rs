@@ -3,6 +3,9 @@
 pub fn unavailable_reason() -> Option<&'static str> {
     match super::sandbox_runner_select::selected_runner() {
         super::sandbox_runner_select::Runner::Bubblewrap(_) => None,
+        // Seatbelt (`sandbox-exec`) confines writes and network access on
+        // macOS, so the sandbox is usable there without bwrap.
+        super::sandbox_runner_select::Runner::Seatbelt(_) => None,
         // bwrap is unavailable, but Landlock can still confine a direct
         // process (no user namespace needed), so the sandbox is usable.
         super::sandbox_runner_select::Runner::Direct(_)

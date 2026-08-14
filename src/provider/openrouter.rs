@@ -18,6 +18,14 @@ use serde_json::{Value, json};
 mod error_detail;
 #[path = "openrouter/model_capabilities.rs"]
 pub mod model_capabilities;
+#[path = "openrouter/reasoning_levels.rs"]
+pub mod reasoning_levels;
+#[path = "openrouter/reasoning_request.rs"]
+mod reasoning_request;
+#[path = "openrouter/request_body.rs"]
+mod request_body;
+#[path = "openrouter/runtime_config.rs"]
+pub mod runtime_config;
 #[path = "openrouter/schema.rs"]
 mod schema;
 #[path = "openrouter/stream.rs"]
@@ -323,24 +331,12 @@ impl Provider for OpenRouterProvider {
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
-        let messages = Self::convert_messages(&request.messages);
-        let tools = Self::convert_tools(&request.tools);
-
-        // Build request body
-        let mut body = json!({
-            "model": request.model,
-            "messages": messages,
-        });
-
-        if !tools.is_empty() {
-            body["tools"] = json!(tools);
-        }
-        if let Some(temp) = request.temperature {
-            body["temperature"] = json!(temp);
-        }
-        if let Some(max) = request.max_tokens {
-            body["max_tokens"] = json!(max);
-        }
+        let body = request_body::build(
+            &request,
+            Self::convert_messages(&request.messages),
+            Self::convert_tools(&request.tools),
+            false,
+        );
 
         tracing::debug!(
             "OpenRouter request: {}",
@@ -423,6 +419,20 @@ impl Provider for OpenRouterProvider {
         let mut content = Vec::new();
         let mut has_tool_calls = false;
 
+        // Surface reasoning as thinking content so a non-streaming turn keeps
+        // the same shape as the streaming path, which emits StreamChunk::Thinking.
+        if let Some(reasoning) = choice
+            .message
+            .reasoning
+            .as_deref()
+            .filter(|s| !s.is_empty())
+        {
+            content.push(ContentPart::Thinking {
+                text: reasoning.to_string(),
+                signature: None,
+            });
+        }
+
         // Add text content if present
         if let Some(text) = &choice.message.content
             && !text.is_empty()
@@ -499,23 +509,12 @@ impl Provider for OpenRouterProvider {
         &self,
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
-        let messages = Self::convert_messages(&request.messages);
-        let tools = Self::convert_tools(&request.tools);
-
-        let mut body = json!({
-            "model": request.model,
-            "messages": messages,
-            "stream": true,
-        });
-        if !tools.is_empty() {
-            body["tools"] = json!(tools);
-        }
-        if let Some(temp) = request.temperature {
-            body["temperature"] = json!(temp);
-        }
-        if let Some(max) = request.max_tokens {
-            body["max_tokens"] = json!(max);
-        }
+        let body = request_body::build(
+            &request,
+            Self::convert_messages(&request.messages),
+            Self::convert_tools(&request.tools),
+            true,
+        );
 
         tracing::debug!(
             provider = "openrouter",

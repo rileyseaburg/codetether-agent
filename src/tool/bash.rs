@@ -189,7 +189,7 @@ impl Tool for BashTool {
         let timeout_secs = args["timeout"].as_u64().unwrap_or(self.timeout_secs);
         let wrapped_command = codetether_wrapped_command(command);
 
-        if let Some(blocked) = super::shell_command_guard::result("bash", command) {
+        if let Some(blocked) = super::shell_command_guard::result_for_args("bash", &args) {
             return Ok(blocked);
         }
 

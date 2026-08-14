@@ -27,5 +27,12 @@ pub(super) fn provider_lines(selected: usize) -> Vec<Line<'static>> {
         ),
         Line::from("  Cycles default -> none -> low -> medium -> high -> xhigh -> max."),
         Line::from(""),
+        value_line(
+            "OpenRouter thinking effort",
+            crate::tui::app::settings::openrouter_thinking_effort_label(),
+            selected == 8,
+        ),
+        Line::from("  Cycles default -> none -> minimal -> low -> medium -> high -> xhigh -> max."),
+        Line::from(""),
     ]
 }

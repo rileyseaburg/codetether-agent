@@ -38,6 +38,9 @@ impl Runner {
             Self::Bubblewrap(path) => {
                 super::sandbox_runner_bwrap::plan(path, command, args, policy, work_dir)
             }
+            Self::Seatbelt(path) => {
+                super::sandbox_runner_seatbelt::plan(path, command, args, policy, work_dir)
+            }
             Self::Direct(reason) => {
                 super::sandbox_runner_direct::plan(command, args, policy, work_dir, reason)
             }
