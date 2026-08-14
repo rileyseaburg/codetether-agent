@@ -5,6 +5,8 @@ use std::path::PathBuf;
 
 use clap::Subcommand;
 
+use super::MuxStartOptions;
+
 /// Operations supported by the network mux control plane.
 ///
 /// # Examples
@@ -27,9 +29,8 @@ pub enum MuxCommand {
         /// Initial window workspace supplied positionally.
         #[arg(value_name = "DIRECTORY")]
         directory: Option<PathBuf>,
-        /// Leave the server detached instead of opening its client.
-        #[arg(short = 'd', long)]
-        detached: bool,
+        #[command(flatten)]
+        start: MuxStartOptions,
     },
     /// Attach an interactive network client to a named session.
     Attach {
@@ -45,9 +46,8 @@ pub enum MuxCommand {
         /// Mux session name to create; defaults to a name derived from the ID.
         #[arg(long, value_name = "NAME")]
         name: Option<String>,
-        /// Leave the server detached instead of opening its client.
-        #[arg(short = 'd', long)]
-        detached: bool,
+        #[command(flatten)]
+        start: MuxStartOptions,
     },
     /// List persistent mux sessions.
     #[command(alias = "ls")]
@@ -77,5 +77,8 @@ pub enum MuxCommand {
         /// Loopback endpoint to bind.
         #[arg(long, default_value = "127.0.0.1:0")]
         bind: SocketAddr,
+        /// Reuse the requested directory for new windows instead of worktrees.
+        #[arg(long = "no-worktree")]
+        no_worktree: bool,
     },
 }

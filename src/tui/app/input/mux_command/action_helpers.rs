@@ -29,6 +29,22 @@ where
     Ok(make(name.into(), id))
 }
 
+/// Strip a `--no-worktree` flag from the operand list, preserving path spacing.
+pub(super) fn take_no_worktree(rest: &str) -> (String, bool) {
+    const FLAG: &str = "--no-worktree";
+    let trimmed = rest.trim();
+    if let Some(remainder) = trimmed.strip_suffix(FLAG) {
+        return (remainder.trim_end().into(), true);
+    }
+    match trimmed.split_once(FLAG) {
+        Some((before, after)) => (
+            format!("{} {}", before.trim(), after.trim()).trim().into(),
+            true,
+        ),
+        None => (trimmed.into(), false),
+    }
+}
+
 pub(super) fn split(value: &str) -> (&str, &str) {
     value
         .trim()

@@ -20,7 +20,11 @@ mod requests;
 async fn authenticated_client_reads_server_snapshot() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
-    let state = MuxSnapshot::new("network".into(), std::env::temp_dir());
+    let state = MuxSnapshot::new(
+        "network".into(),
+        std::env::temp_dir(),
+        crate::mux::isolation::Isolation::Worktree,
+    );
     let context = super::context::ServerContext::new(state.clone(), "secret".into(), address);
     let task = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();

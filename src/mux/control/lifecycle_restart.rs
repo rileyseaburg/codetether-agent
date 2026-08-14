@@ -14,10 +14,14 @@ pub(super) async fn wait_stopped(name: &str) -> Result<()> {
     bail!("mux session did not stop cleanly")
 }
 
-pub(super) async fn start_exact(name: &str, workspace: &Path) -> Result<()> {
+pub(super) async fn start_exact(
+    name: &str,
+    workspace: &Path,
+    isolation: crate::mux::isolation::Isolation,
+) -> Result<()> {
     crate::mux::registry::validate_name(name)?;
     let token = crate::mux::token::generate();
-    let mut process = crate::mux::command::spawn::command(name, workspace, &token)?;
+    let mut process = crate::mux::command::spawn::command(name, workspace, &token, isolation)?;
     let mut child = process.spawn().context("restart mux server")?;
     crate::mux::command::startup::wait_for_record(name, &mut child).await?;
     Ok(())

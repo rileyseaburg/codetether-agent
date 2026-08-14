@@ -12,9 +12,14 @@ pub(super) async fn start(args: &Args) -> Result<ToolResult> {
         .workspace
         .clone()
         .context("workspace required for start")?;
-    let session =
-        crate::mux::control::start_managed_session(name, workspace, args.session_id.as_deref())
-            .await?;
+    let isolation = crate::mux::isolation::Isolation::from_no_worktree(args.no_worktree);
+    let session = crate::mux::control::start_managed_session(
+        name,
+        workspace,
+        args.session_id.as_deref(),
+        isolation,
+    )
+    .await?;
     Ok(ToolResult::success(
         json!({"accepted":true,"name":session.name,"status":"idle"}).to_string(),
     ))

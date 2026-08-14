@@ -5,9 +5,12 @@
 
 #[path = "mux_args/command.rs"]
 mod mux_command;
+#[path = "mux_args/start_options.rs"]
+mod start_options;
 
 use clap::Parser;
 pub use mux_command::MuxCommand;
+pub use start_options::MuxStartOptions;
 
 /// Network mux lifecycle arguments.
 ///

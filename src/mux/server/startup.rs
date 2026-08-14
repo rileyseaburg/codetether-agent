@@ -15,10 +15,11 @@ pub(super) async fn initialize(
     name: &str,
     workspace: PathBuf,
     address: SocketAddr,
+    isolation: crate::mux::isolation::Isolation,
 ) -> Result<Arc<ServerContext>> {
     let token = std::env::var(crate::mux::token::BOOTSTRAP_ENV)
         .map_err(|_| anyhow::anyhow!("missing mux bootstrap token"))?;
-    let state = MuxSnapshot::new(name.into(), workspace.clone());
+    let state = MuxSnapshot::new(name.into(), workspace.clone(), isolation);
     let context = ServerContext::new(state, token, address);
     context.programs.start(
         0,

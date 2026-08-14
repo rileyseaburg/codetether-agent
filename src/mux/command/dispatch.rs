@@ -9,14 +9,14 @@ pub(in crate::mux) async fn execute(command: MuxCommand) -> Result<()> {
         MuxCommand::New {
             session,
             directory,
-            detached,
-        } => super::new_session::run(session, directory, detached).await,
+            start,
+        } => super::new_session::run(session, directory, start).await,
         MuxCommand::Attach { target } => super::attach::run(&target).await,
         MuxCommand::Resume {
             session,
             name,
-            detached,
-        } => super::resume::run(session, name, detached).await,
+            start,
+        } => super::resume::run(session, name, start).await,
         MuxCommand::List { json } => super::list::run(json).await,
         MuxCommand::Kill { target } => super::kill::run(&target).await,
         MuxCommand::KillAll => super::kill_all::run().await,
@@ -24,6 +24,7 @@ pub(in crate::mux) async fn execute(command: MuxCommand) -> Result<()> {
             session,
             directory,
             bind,
-        } => super::serve::run(session, directory, bind).await,
+            no_worktree,
+        } => super::serve::run(session, directory, bind, no_worktree).await,
     }
 }

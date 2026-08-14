@@ -13,12 +13,14 @@ pub(in crate::mux) async fn serve(
     name: String,
     workspace: PathBuf,
     bind: SocketAddr,
+    isolation: crate::mux::isolation::Isolation,
 ) -> Result<()> {
     if !bind.ip().is_loopback() {
         bail!("mux currently requires a loopback bind; use an SSH tunnel remotely");
     }
     let listener = TcpListener::bind(bind).await?;
-    let context = super::startup::initialize(&name, workspace, listener.local_addr()?).await?;
+    let context =
+        super::startup::initialize(&name, workspace, listener.local_addr()?, isolation).await?;
     tracing::info!(session = %name, address = %context.address, "Mux server listening");
     let mut clients = JoinSet::new();
     loop {

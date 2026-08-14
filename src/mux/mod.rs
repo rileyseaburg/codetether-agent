@@ -21,7 +21,7 @@ mod client;
 mod command;
 pub(crate) mod control;
 pub(crate) mod coordination;
-mod isolation;
+pub(crate) mod isolation;
 pub(crate) mod lease;
 mod model;
 mod protocol;

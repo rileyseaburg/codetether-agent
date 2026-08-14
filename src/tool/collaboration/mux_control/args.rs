@@ -11,6 +11,9 @@ pub(super) struct Args {
     pub timeout_ms: u64,
     #[serde(default)]
     pub force: bool,
+    /// Reuse the requested workspace instead of allocating a worktree.
+    #[serde(default)]
+    pub no_worktree: bool,
 }
 
 fn default_timeout() -> u64 {

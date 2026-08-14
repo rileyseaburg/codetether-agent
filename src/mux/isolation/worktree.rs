@@ -1,16 +1,13 @@
-//! Managed Git worktree allocation for mux agent windows.
+//! Managed Git worktree allocation for isolated mux windows.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::{Path, PathBuf};
 
-pub(in crate::mux) async fn workspace(
-    session: &str,
-    slot: u64,
-    requested: &Path,
-) -> Result<PathBuf> {
-    let requested = tokio::fs::canonicalize(requested)
-        .await
-        .context("resolve mux workspace")?;
+/// Create a managed worktree for `session`/`slot` mirroring `requested`.
+///
+/// Non-repository directories are returned unchanged because there is no
+/// repository to branch from.
+pub(super) async fn allocate(session: &str, slot: u64, requested: PathBuf) -> Result<PathBuf> {
     let Some(repo) = crate::provenance::repo_root(&requested)? else {
         return Ok(requested);
     };
@@ -23,7 +20,8 @@ pub(in crate::mux) async fn workspace(
     Ok(worktree.path.join(relative))
 }
 
-fn primary_checkout(repo: &Path) -> PathBuf {
+/// Resolve a managed worktree path back to the primary checkout.
+pub(super) fn primary_checkout(repo: &Path) -> PathBuf {
     for ancestor in repo.ancestors() {
         if ancestor
             .file_name()
@@ -34,7 +32,3 @@ fn primary_checkout(repo: &Path) -> PathBuf {
     }
     repo.to_path_buf()
 }
-
-#[cfg(test)]
-#[path = "isolation_tests.rs"]
-mod tests;

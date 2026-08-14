@@ -8,6 +8,7 @@ pub(in crate::mux) fn command(
     name: &str,
     workspace: &std::path::Path,
     token: &str,
+    isolation: crate::mux::isolation::Isolation,
 ) -> Result<Command> {
     let mut command = Command::new(std::env::current_exe()?);
     command
@@ -17,6 +18,9 @@ pub(in crate::mux) fn command(
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
+    if isolation.is_shared() {
+        command.arg("--no-worktree");
+    }
     isolate(&mut command);
     Ok(command)
 }

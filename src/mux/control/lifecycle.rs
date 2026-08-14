@@ -5,13 +5,15 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, bail};
 
 use super::MuxSessionSummary;
+use crate::mux::isolation::Isolation;
 
 pub(crate) async fn start_managed_session(
     name: &str,
     workspace: PathBuf,
     session_id: Option<&str>,
+    isolation: Isolation,
 ) -> Result<MuxSessionSummary> {
-    super::start_session(name, workspace).await?;
+    super::start_session(name, workspace, isolation).await?;
     launch(name, session_id).await
 }
 
@@ -27,6 +29,7 @@ pub(crate) async fn restart_session(
         bail!("refusing to roll a working mux session");
     }
     let session = supplied_session.or_else(|| runtime.map(|item| item.session_id.as_str()));
+    let isolation = record.state.isolation;
     let workspace = record
         .state
         .windows
@@ -36,7 +39,7 @@ pub(crate) async fn restart_session(
         .context("mux workspace not found")?;
     super::stop_session(name).await?;
     super::lifecycle_restart::wait_stopped(name).await?;
-    super::lifecycle_restart::start_exact(name, &workspace).await?;
+    super::lifecycle_restart::start_exact(name, &workspace, isolation).await?;
     launch(name, session).await
 }
 

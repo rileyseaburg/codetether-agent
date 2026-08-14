@@ -18,7 +18,7 @@ pub(super) async fn resolve(
 }
 
 async fn isolate(context: &ServerContext, requested: &std::path::Path) -> Result<PathBuf, String> {
-    let (session, slot) = {
+    let (session, slot, isolation) = {
         let state = context.state.read().await;
         let slot = state
             .windows
@@ -27,9 +27,9 @@ async fn isolate(context: &ServerContext, requested: &std::path::Path) -> Result
             .max()
             .unwrap_or(0)
             + 1;
-        (state.name.clone(), slot)
+        (state.name.clone(), slot, state.isolation)
     };
-    crate::mux::isolation::workspace(&session, slot, requested)
+    crate::mux::isolation::workspace(&session, slot, requested, isolation)
         .await
         .map_err(|error| error.to_string())
 }

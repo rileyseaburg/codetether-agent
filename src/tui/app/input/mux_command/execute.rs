@@ -10,8 +10,13 @@ pub(super) async fn run(action: Action) -> Result<String> {
         Action::List => Ok(super::format::sessions(
             crate::mux::control::list_sessions().await?,
         )),
-        Action::New { name, workspace } => {
-            let state = crate::mux::control::start_session(&name, workspace).await?;
+        Action::New {
+            name,
+            workspace,
+            no_worktree,
+        } => {
+            let isolation = crate::mux::isolation::Isolation::from_no_worktree(no_worktree);
+            let state = crate::mux::control::start_session(&name, workspace, isolation).await?;
             Ok(super::format::changed("Started", &state))
         }
         Action::Window { name, workspace } => {

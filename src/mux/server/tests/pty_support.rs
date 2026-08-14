@@ -16,7 +16,11 @@ pub(super) async fn server(
 ) -> (MuxRecord, Arc<ServerContext>, tokio::task::JoinHandle<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
-    let state = MuxSnapshot::new("pty-proof".into(), workspace);
+    let state = MuxSnapshot::new(
+        "pty-proof".into(),
+        workspace,
+        crate::mux::isolation::Isolation::Worktree,
+    );
     let context = ServerContext::new(state.clone(), "secret".into(), address);
     let server_context = context.clone();
     let task = tokio::spawn(async move {

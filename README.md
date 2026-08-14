@@ -95,7 +95,11 @@ The network mux keeps the server, windows, working directories, and child
 processes alive after the client disconnects. Each window can run a different
 shell or CodeTether TUI. Git-backed windows are automatically rooted in unique
 checkouts under `<repo>/.codetether-worktrees`; non-Git directories remain
-unchanged. New sessions immediately start the user's login shell (`$SHELL`,
+unchanged. Pass `--no-worktree` to `mux new` or `mux resume` to use the
+requested directory directly and skip `git worktree add` entirely, which is the
+dominant cost of session startup in large repositories. The choice is recorded
+in the session snapshot, so new windows and `mux roll` restarts keep it.
+New sessions immediately start the user's login shell (`$SHELL`,
 including zsh on macOS). Windows shell selection prefers PowerShell; interactive Windows
 mux sessions still require a future ConPTY backend.
 
@@ -105,6 +109,9 @@ codetether mux new backend /work/backend
 
 # Create one without attaching.
 codetether mux new frontend /work/frontend -d
+
+# Skip managed-worktree allocation and use the directory as-is (fastest start).
+codetether mux new frontend /work/frontend -d --no-worktree
 
 # List, reconnect, and stop sessions.
 codetether mux list

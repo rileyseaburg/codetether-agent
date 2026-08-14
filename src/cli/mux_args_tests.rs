@@ -1,7 +1,10 @@
 use clap::Parser;
 
-use crate::cli::command::mux_args::MuxCommand;
+use crate::cli::command::mux_args::{MuxCommand, MuxStartOptions};
 use crate::cli::{Cli, Command};
+
+#[path = "mux_args_new_tests.rs"]
+mod new_session;
 
 #[test]
 fn parses_detached_named_mux_session() {
@@ -12,7 +15,11 @@ fn parses_detached_named_mux_session() {
     };
     assert!(matches!(
         args.command,
-        MuxCommand::New { session, directory: Some(directory), detached: true }
+        MuxCommand::New {
+            session,
+            directory: Some(directory),
+            start: MuxStartOptions { detached: true, no_worktree: false },
+        }
             if session == "work" && directory == std::path::Path::new("/tmp")
     ));
 }

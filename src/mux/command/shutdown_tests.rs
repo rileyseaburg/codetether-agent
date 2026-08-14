@@ -32,7 +32,11 @@ async fn protocol_one_server_can_be_stopped() {
         token: "secret".into(),
         pid: 1,
         started_at: Utc::now(),
-        state: MuxSnapshot::new("legacy".into(), std::env::temp_dir()),
+        state: MuxSnapshot::new(
+            "legacy".into(),
+            std::env::temp_dir(),
+            crate::mux::isolation::Isolation::Worktree,
+        ),
     };
     let response = super::shutdown::request(&record).await.unwrap();
     assert!(matches!(response, ServerResponse::ShuttingDown));

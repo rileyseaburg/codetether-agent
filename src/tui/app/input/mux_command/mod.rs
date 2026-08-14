@@ -2,6 +2,7 @@
 
 mod action;
 mod action_helpers;
+mod action_parse;
 mod execute;
 mod format;
 mod output;
@@ -15,7 +16,7 @@ pub(super) async fn run(app: &mut App, cwd: &Path, prompt: &str) -> bool {
     let Some(arguments) = command_arguments(prompt) else {
         return false;
     };
-    let result = match action::parse(arguments, cwd) {
+    let result = match action_parse::parse(arguments, cwd) {
         Ok(action) => execute::run(action).await,
         Err(error) => Err(anyhow::Error::msg(error)),
     };

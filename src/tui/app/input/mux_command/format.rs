@@ -2,7 +2,7 @@
 
 use crate::mux::control::MuxSessionSummary;
 
-pub(super) const HELP: &str = "Mux commands:\n/mux ls\n/mux new NAME [DIRECTORY]\n/mux window NAME [DIRECTORY]\n/mux select NAME WINDOW_ID\n/mux close NAME WINDOW_ID\n/mux kill NAME";
+pub(super) const HELP: &str = "Mux commands:\n/mux ls\n/mux new NAME [DIRECTORY] [--no-worktree]\n/mux window NAME [DIRECTORY]\n/mux select NAME WINDOW_ID\n/mux close NAME WINDOW_ID\n/mux kill NAME";
 
 pub(super) fn sessions(items: Vec<MuxSessionSummary>) -> String {
     if items.is_empty() {
