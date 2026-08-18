@@ -21,6 +21,11 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc};
 
+#[path = "worker_bridge_sse.rs"]
+mod sse_buffer;
+#[path = "worker_bridge_sse_event.rs"]
+mod sse_event;
+
 /// Command sent to the worker bridge to register/deregister sub-agents
 #[derive(Debug, Clone)]
 pub enum WorkerBridgeCmd {
@@ -30,6 +35,8 @@ pub enum WorkerBridgeCmd {
     DeregisterAgent { name: String },
     /// Update the processing status (for heartbeat)
     SetProcessing(bool),
+    /// Stop the bridge and its heartbeat/SSE child tasks.
+    Shutdown,
 }
 
 /// Incoming task from the A2A server via SSE
@@ -185,69 +192,24 @@ impl TuiWorkerBridge {
                                 Ok(res) if res.status().is_success() => {
                                     tracing::info!("Connected to A2A task stream");
                                     let mut stream = res.bytes_stream();
-                                    let mut buffer = String::new();
+                                    let mut buffer = sse_buffer::SseBuffer::new();
 
                                     while let Some(chunk) = stream.next().await {
                                         match chunk {
                                             Ok(bytes) => {
-                                                buffer.push_str(&String::from_utf8_lossy(&bytes));
-
-                                                // Process SSE events
-                                                while let Some(pos) = buffer.find("\n\n") {
-                                                    let event_str = buffer[..pos].to_string();
-                                                    buffer = buffer[pos + 2..].to_string();
-
-                                                    if let Some(data_line) = event_str
-                                                        .lines()
-                                                        .find(|l| l.starts_with("data:"))
-                                                    {
-                                                        let data = data_line
-                                                            .trim_start_matches("data:")
-                                                            .trim();
-                                                        if data.is_empty() || data == "[DONE]" {
-                                                            continue;
-                                                        }
-
-                                                        // Try to parse as task
-                                                        if let Ok(task) = serde_json::from_str::<
-                                                            serde_json::Value,
-                                                        >(
-                                                            data
-                                                        ) {
-                                                            let task_id = task
-                                                                .get("task_id")
-                                                                .or_else(|| task.get("id"))
-                                                                .and_then(|v| v.as_str())
-                                                                .unwrap_or("unknown")
-                                                                .to_string();
-
-                                                            let message = task
-                                                                .get("message")
-                                                                .or_else(|| task.get("text"))
-                                                                .and_then(|v| v.as_str())
-                                                                .unwrap_or("")
-                                                                .to_string();
-
-                                                            let from_agent = task
-                                                                .get("from_agent")
-                                                                .or_else(|| task.get("agent"))
-                                                                .and_then(|v| v.as_str())
-                                                                .map(String::from);
-
-                                                            let incoming = IncomingTask {
-                                                                task_id,
-                                                                message,
-                                                                from_agent,
-                                                            };
-
-                                                            if task_tx.send(incoming).await.is_err()
-                                                            {
-                                                                tracing::warn!(
-                                                                    "Task receiver dropped, stopping SSE stream"
-                                                                );
-                                                                return;
-                                                            }
-                                                        }
+                                                let tasks = match buffer.push(&bytes) {
+                                                    Ok(tasks) => tasks,
+                                                    Err(error) => {
+                                                        tracing::warn!(%error, "Rejected A2A SSE frame");
+                                                        break;
+                                                    }
+                                                };
+                                                for incoming in tasks {
+                                                    if task_tx.send(incoming).await.is_err() {
+                                                        tracing::warn!(
+                                                            "Task receiver dropped, stopping SSE stream"
+                                                        );
+                                                        return;
                                                     }
                                                 }
                                             }
@@ -305,6 +267,7 @@ impl TuiWorkerBridge {
                                     };
                                     heartbeat_state.set_status(status).await;
                                 }
+                                WorkerBridgeCmd::Shutdown => break,
                             }
                         }
                         // Handle bus events - forward to server

@@ -6,8 +6,9 @@ use serde_json::Value;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use super::text_util::trim_for_storage;
 use super::thinker::ThinkerClient;
-use super::{ThoughtEvent, ThoughtEventType, trim_for_storage};
+use super::{ThoughtEvent, ThoughtEventType};
 use crate::tool::ToolRegistry;
 
 /// A short-lived capability granting tool access to a persona.

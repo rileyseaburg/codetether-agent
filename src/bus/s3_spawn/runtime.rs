@@ -32,12 +32,5 @@ fn parse(raw: Option<&str>) -> usize {
 }
 
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn thread_count_defaults_and_clamps() {
-        assert_eq!(super::parse(None), 2);
-        assert_eq!(super::parse(Some("0")), 1);
-        assert_eq!(super::parse(Some("99")), 8);
-        assert_eq!(super::parse(Some("invalid")), 2);
-    }
-}
+#[path = "runtime_tests.rs"]
+mod tests;

@@ -19,11 +19,10 @@ pub fn render_chat_message(
         MessageType::Assistant => ("assistant", "◆ "),
         MessageType::System => ("system", "⚙ "),
         MessageType::Error => ("error", "✖ "),
+        MessageType::Thinking(_) => ("system", "💭 "),
         MessageType::Image { .. } => return render_image(lines, message),
         MessageType::File { path, size } => return render_file(lines, message, path, *size),
-        MessageType::ToolCall { .. }
-        | MessageType::ToolResult { .. }
-        | MessageType::Thinking(_) => return,
+        MessageType::ToolCall { .. } | MessageType::ToolResult { .. } => return,
     };
     let color = palette.get_message_color(label);
     render_formatted_message(lines, message, formatter, label, icon, color);

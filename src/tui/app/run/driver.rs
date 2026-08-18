@@ -84,7 +84,7 @@ pub async fn run(
         startup.workspace,
     );
 
-    let mut bus_handle = bus.handle("tui");
+    let bus_recorder = std::sync::Arc::clone(&bus.recorder);
     let channels = super::channels::session();
     super::loop_run::run(
         &mut terminal_runtime.terminal,
@@ -92,7 +92,7 @@ pub async fn run(
         &cwd,
         startup.registry,
         session,
-        &mut bus_handle,
+        bus_recorder,
         startup.worker_bridge,
         channels,
     )

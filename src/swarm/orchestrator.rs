@@ -387,7 +387,7 @@ pub(crate) fn default_model_for_provider(provider: &str) -> String {
         "bedrock" => "us.anthropic.claude-sonnet-4-20250514-v1:0".to_string(),
         "openai" => "gpt-4o".to_string(),
         "google" => "gemini-2.5-pro".to_string(),
-        "zhipuai" | "zai" => "glm-5".to_string(),
+        "zhipuai" | "zai" => "glm-5.3".to_string(),
         "openrouter" => "z-ai/glm-5".to_string(),
         "novita" => "qwen/qwen3.5-35b-a3b".to_string(),
         "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),

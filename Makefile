@@ -30,21 +30,7 @@ build-windows:
 	./script/cargo-sccache.sh build --release --target x86_64-pc-windows-gnu
 
 build-windows-docker:
-	set -euo pipefail; \
-	mkdir -p dist .docker-cache; \
-	docker buildx build \
-		--platform linux/amd64 \
-		--file docker/release/windows.Dockerfile \
-		--target artifact \
-		--cache-from type=local,src=.docker-cache/windows \
-		--cache-to type=local,dest=.docker-cache/windows-new,mode=max \
-		--output type=local,dest=dist \
-		.; \
-	mkdir -p dist/windows; \
-	cp dist/codetether.exe dist/windows/codetether.exe; \
-	cp dist/codetether.exe dist/codetether-windows.exe; \
-	rm -rf .docker-cache/windows; \
-	mv .docker-cache/windows-new .docker-cache/windows
+	./script/build-windows-docker.sh
 
 sccache-stats:
 	sccache --show-stats

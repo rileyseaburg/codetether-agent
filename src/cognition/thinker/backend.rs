@@ -5,7 +5,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::cognition::thinker::ThinkerBackend;
+/// use codetether_agent::cognition::ThinkerBackend;
 /// assert_eq!(ThinkerBackend::from_env("registry"), ThinkerBackend::Registry);
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,7 +34,7 @@ impl ThinkerBackend {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_agent::cognition::thinker::ThinkerBackend;
+    /// use codetether_agent::cognition::ThinkerBackend;
     /// assert_eq!(ThinkerBackend::from_env("provider"), ThinkerBackend::Registry);
     /// ```
     pub fn from_env(value: &str) -> Self {

@@ -2,7 +2,7 @@
 
 use ratatui::{Terminal, backend::CrosstermBackend};
 
-use crate::bus::BusHandle;
+use crate::bus::recorder::BusRecorder;
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use crate::tui::app::event_loop::run_event_loop;
@@ -18,7 +18,7 @@ pub(super) async fn run(
     cwd: &std::path::Path,
     registry: Option<std::sync::Arc<ProviderRegistry>>,
     session: Session,
-    bus_handle: &mut BusHandle,
+    bus_recorder: std::sync::Arc<BusRecorder>,
     worker_bridge: Option<TuiWorkerBridge>,
     channels: SessionChannels,
 ) -> anyhow::Result<()> {
@@ -40,7 +40,7 @@ pub(super) async fn run(
         cwd,
         registry,
         &mut slot,
-        bus_handle,
+        bus_recorder,
         worker_bridge,
         channels.event_rx,
         runtime,

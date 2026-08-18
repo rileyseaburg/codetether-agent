@@ -10,10 +10,14 @@ use super::tail_load::TailLoad;
 use super::tail_seed::with_tail_cap;
 use super::types::Session;
 
+#[path = "persistence_history_upload.rs"]
+mod history_upload;
 mod location;
 mod paths;
 #[path = "save_guard.rs"]
 mod save_guard;
+#[path = "persistence_snapshot.rs"]
+mod snapshot;
 #[path = "workspace_resolve.rs"]
 mod workspace_resolve;
 
@@ -106,20 +110,13 @@ impl Session {
             fs::create_dir_all(parent).await?;
         }
         let tmp = path.with_extension("json.tmp");
-        // Clone-and-serialize off the reactor. The clone is a Vec-copy
-        // (~memcpy speed) which is always cheaper than the JSON
-        // formatting we are about to avoid blocking the reactor on.
-        let mut snapshot = self.clone();
-        snapshot.normalize_sidecars();
-        let sink_config = snapshot.metadata.history_sink.clone().or_else(|| {
+        let sink_config = self.metadata.history_sink.clone().or_else(|| {
             super::history_sink::HistorySinkConfig::from_env()
                 .ok()
                 .flatten()
         });
-        let session_id_for_journal = snapshot.id.clone();
-        let content = tokio::task::spawn_blocking(move || serde_json::to_vec(&snapshot))
-            .await
-            .map_err(|e| anyhow::anyhow!("session serialize task panicked: {e}"))??;
+        let session_id_for_journal = self.id.clone();
+        let content = snapshot::serialize(self)?;
         // Elide the write entirely when the serialized bytes match the last
         // successful save for this id — save() is called on hot paths and the
         // disk write + rename + journal + index upsert are pure overhead when
@@ -162,39 +159,7 @@ impl Session {
         // save loops (e.g. during long tool chains) from queueing
         // unbounded background uploads.
         if let Some(sink_config) = sink_config {
-            use std::collections::HashSet;
-            use std::sync::{Mutex, OnceLock};
-            static IN_FLIGHT: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
-            let in_flight = IN_FLIGHT.get_or_init(|| Mutex::new(HashSet::new()));
-
-            let inserted = in_flight
-                .lock()
-                .map(|mut s| s.insert(self.id.clone()))
-                .unwrap_or(false);
-
-            if inserted {
-                let session_id = self.id.clone();
-                let messages = self.messages.clone();
-                tokio::spawn(async move {
-                    if let Err(err) = super::history_sink::upload_full_history(
-                        &sink_config,
-                        &session_id,
-                        &messages,
-                    )
-                    .await
-                    {
-                        tracing::warn!(%err, %session_id, "history sink upload failed (non-fatal)");
-                    }
-                    if let Ok(mut s) = in_flight.lock() {
-                        s.remove(&session_id);
-                    }
-                });
-            } else {
-                tracing::debug!(
-                    session_id = %self.id,
-                    "history sink upload already in flight; skipping duplicate"
-                );
-            }
+            history_upload::spawn(self, sink_config);
         }
         Ok(())
     }

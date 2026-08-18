@@ -14,13 +14,14 @@ pub mod status_prefix;
 mod tests;
 pub mod workspace_panel;
 
-use ratatui::Frame;
+use ratatui::{Frame, widgets::Clear};
 
 use crate::tui::app::state::App;
 
 /// Render the full webview chat layout. Returns `false` if terminal too small.
 pub fn render(f: &mut Frame, app: &mut App) -> bool {
     let area = f.area();
+    f.render_widget(Clear, area);
     if chat::terminal_too_small(area) {
         status::render_too_small(f, area);
         return false;

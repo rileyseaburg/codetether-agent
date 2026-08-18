@@ -48,7 +48,7 @@ pub fn is_fault(finish_reason: Option<&str>) -> bool {
 /// ```
 pub fn message(frames: usize, finish_reason: Option<&str>) -> String {
     format!(
-        "Z.AI stream ended without producing any content (frames={frames}, \
+        "zai-retryable: Z.AI stream ended without producing any content (frames={frames}, \
          finish_reason={}). Set CODETETHER_ZAI_CAPTURE_DIR to capture raw SSE.",
         finish_reason.unwrap_or("none"),
     )

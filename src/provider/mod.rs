@@ -52,7 +52,6 @@ pub mod tetherscript_provider;
 pub mod vertex_anthropic;
 pub mod vertex_glm;
 pub mod zai;
-mod zai_merge;
 // ── Internal split modules ──────────────────────────────────────────
 
 mod init_dispatch;

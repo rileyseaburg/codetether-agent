@@ -14,6 +14,8 @@ mod load;
 mod render_anchor;
 #[path = "history_page/request.rs"]
 mod request;
+#[path = "history_page/reset.rs"]
+mod reset;
 #[path = "history_page/select.rs"]
 mod select;
 #[path = "history_page/types.rs"]

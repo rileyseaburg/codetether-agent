@@ -8,7 +8,7 @@ members = [
 
 [package]
 name = "codetether-agent"
-version = "4.7.5-dev.33"
+version = "4.7.5-dev.40"
 
 
 edition = "2024"
@@ -76,12 +76,20 @@ path = "src/main.rs"
 
 [features]
 default = ["tetherscript"]
-candle-cuda = ["candle-core/cuda", "candle-transformers/cuda"]
-candle-cudnn = ["candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
-candle-accelerate = ["candle-core/accelerate", "candle-transformers/accelerate"]
-candle-mkl = ["candle-core/mkl", "candle-transformers/mkl"]
 tetherscript = ["dep:tetherscript", "codetether-browser/tetherscript"]
-functiongemma = []
+# Local in-process inference via Candle. Off by default: the agent leads with
+# remote/HTTP providers unless a local model backend is explicitly requested.
+candle = [
+    "dep:candle-core",
+    "dep:candle-nn",
+    "dep:candle-transformers",
+    "dep:tokenizers",
+]
+candle-cuda = ["candle", "candle-core/cuda", "candle-transformers/cuda"]
+candle-cudnn = ["candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
+candle-accelerate = ["candle", "candle-core/accelerate", "candle-transformers/accelerate"]
+candle-mkl = ["candle", "candle-core/mkl", "candle-transformers/mkl"]
+functiongemma = ["candle"]
 # Opt-in QUIC worker transport (server listener + worker dial path). The QUIC
 # primitive stack always compiles; this gates the live wiring.
 quic-transport = []
@@ -93,7 +101,9 @@ codetether-browser = { path = "crates/codetether-browser", version = "0.1.1" }
 codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.1" }
 
 # Async runtime
-async-global-executor = "3.1.0"
+# Keep this on async-std's major version so the S3 executor cap configures the
+# same global pool used by MinIO instead of starting a second, unused pool.
+async-global-executor = "2.4.1"
 unicode-width = "0.2"
 tokio = { version = "1.53.1", features = ["full"] }
 tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-native-roots"] }
@@ -198,10 +208,10 @@ lsp-types = "0.97.0"
 syntect = { version = "5", default-features = false, features = ["default-syntaxes", "default-themes", "regex-fancy"] }
 open = "5.4.1"
 tempfile = "3.25.0"
-candle-core = "0.11.0"
-candle-transformers = "0.11.0"
-candle-nn = "0.11.0"
-tokenizers = "0.23.1"
+candle-core = { version = "0.11.0", optional = true }
+candle-transformers = { version = "0.11.0", optional = true }
+candle-nn = { version = "0.11.0", optional = true }
+tokenizers = { version = "0.23.1", optional = true }
 hf-hub = { version = "1.0.0", default-features = false, features = ["socks", "blocking", "rustls-tls"] }
 sysinfo = "0.39.6"
 
@@ -232,6 +242,7 @@ windows = { version = "0.62.2", features = [
 libc = "0.2.189"
 
 [dev-dependencies]
+async-std = "1.13.2"
 tokio-test = "0.4"
 tempfile = "3"
 insta = "1"

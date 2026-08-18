@@ -69,12 +69,13 @@ fn store_and_take(
     max_width: usize,
     frozen_len: usize,
 ) -> DrawnLines {
+    let cacheable = app.state.pending_tool_started_at.is_none();
     app.state
         .store_message_lines_with_frozen(lines, max_width, frozen_len);
-    match app.state.take_cached_if_valid(max_width) {
-        Some(taken) => DrawnLines::from_cache(taken),
-        // Cache predicate rejected reuse (e.g. pending tool timer); fall back
-        // to a clone so this frame still renders.
-        None => DrawnLines::from_rebuild(app.state.cached_message_lines.clone()),
+    let lines = app.state.take_cached_message_lines();
+    if cacheable {
+        DrawnLines::from_cache(lines)
+    } else {
+        DrawnLines::from_rebuild(lines)
     }
 }

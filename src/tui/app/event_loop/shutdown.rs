@@ -12,12 +12,12 @@
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 pub(super) async fn finish(
-    bridge: &Option<TuiWorkerBridge>,
+    bridge: Option<TuiWorkerBridge>,
     runtime: &crate::tui::app::session_runtime::TuiSessionHandle,
     mux_status: super::setup::mux_status::Reporter,
 ) {
     mux_status.clear().await;
-    deregister_bridge(bridge);
+    stop_bridge(bridge).await;
     runtime.shutdown().await;
 }
 
@@ -31,12 +31,28 @@ pub(super) async fn finish(
 /// ```ignore
 /// deregister_bridge(&bridge);
 /// ```
-pub(super) fn deregister_bridge(bridge: &Option<TuiWorkerBridge>) {
-    if let Some(b) = bridge.as_ref() {
-        let _ = b.cmd_tx.try_send(
+pub(super) async fn stop_bridge(bridge: Option<TuiWorkerBridge>) {
+    let Some(bridge) = bridge else {
+        return;
+    };
+    let _ = bridge
+        .cmd_tx
+        .send(
             crate::tui::worker_bridge::WorkerBridgeCmd::DeregisterAgent {
                 name: "tui".to_string(),
             },
-        );
+        )
+        .await;
+    let _ = bridge
+        .cmd_tx
+        .send(crate::tui::worker_bridge::WorkerBridgeCmd::Shutdown)
+        .await;
+    let mut handle = bridge.handle;
+    if tokio::time::timeout(std::time::Duration::from_secs(2), &mut handle)
+        .await
+        .is_err()
+    {
+        handle.abort();
+        let _ = handle.await;
     }
 }

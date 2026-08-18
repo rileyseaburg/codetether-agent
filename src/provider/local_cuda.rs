@@ -3,6 +3,8 @@
 //! This provider uses pure-Rust ML execution directly on NVIDIA hardware
 //! without needing C++ interop or external HTTP servers like Ollama.
 
+#![cfg(feature = "candle-cuda")]
+
 use crate::cognition::{CandleDevicePreference, ThinkerBackend, ThinkerClient, ThinkerConfig};
 use crate::provider::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
@@ -55,13 +57,6 @@ impl LocalCudaProvider {
 
     /// Create a new LocalCudaProvider
     pub fn new(model_name: String) -> Result<Self> {
-        if !cfg!(feature = "candle-cuda") {
-            return Err(anyhow!(
-                "Local CUDA provider requires a CUDA-enabled build. \
-                 Reinstall with: cargo install --path . --force --features candle-cuda"
-            ));
-        }
-
         let ordinal = parse_env_usize(&["LOCAL_CUDA_ORDINAL", "CODETETHER_LOCAL_CUDA_ORDINAL"], 0);
         let device = Device::new_cuda(ordinal).map_err(|e| {
             anyhow!(

@@ -70,8 +70,8 @@ impl BusLogEntry {
         let parts = super::entry_router::entry_parts(&env.message);
         Self {
             timestamp: env.timestamp.format("%H:%M:%S%.3f").to_string(),
-            topic: env.topic.clone(),
-            sender_id: env.sender_id.clone(),
+            topic: crate::tui::bus_log_payload::field(&env.topic),
+            sender_id: crate::tui::bus_log_payload::field(&env.sender_id),
             kind: parts.kind,
             summary: parts.summary,
             detail: parts.detail,

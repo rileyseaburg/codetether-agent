@@ -30,5 +30,6 @@ fn capable_host_supports_local_embedding() {
         cpu_count: 8,
         cuda_build: false,
     };
-    assert!(caps.supports_local_embedding());
+    // Local inference requires a compiled-in Candle backend.
+    assert_eq!(caps.supports_local_embedding(), cfg!(feature = "candle"));
 }

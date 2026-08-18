@@ -3,6 +3,9 @@
 //! The bus log module turns [`crate::bus::BusEnvelope`] values into
 //! render-ready rows, keeps scroll/filter state, and draws the protocol view.
 
+#[cfg(test)]
+#[path = "bus_log/budget_tests.rs"]
+mod budget_tests;
 mod entry;
 mod entry_agent;
 mod entry_agent_lifecycle;

@@ -11,12 +11,12 @@ use crate::provider::{Provider, ProviderRegistry};
 
 /// Default router model. Override with `--router-model` on the CLI or the
 /// `CODETETHER_SEARCH_ROUTER_MODEL` env var.
-pub const DEFAULT_ROUTER_MODEL: &str = "zai/glm-5.1";
+pub const DEFAULT_ROUTER_MODEL: &str = "zai/glm-5.3";
 
 /// Resolve a `provider/model` reference into `(provider, model_id)`.
 ///
 /// Falls back to the first registered provider when the reference has no
-/// `/`, which keeps the command usable when a user just types `glm-5.1`.
+/// `/`, which keeps the command usable when a user just types `glm-5.3`.
 ///
 /// # Errors
 ///

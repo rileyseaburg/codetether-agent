@@ -4,6 +4,8 @@ mod tests_done;
 mod tests_retry;
 #[path = "tests_text.rs"]
 mod tests_text;
+#[path = "tests_text_thinking.rs"]
+mod tests_text_thinking;
 #[path = "tests_tool.rs"]
 mod tests_tool;
 #[path = "tests_tool_status.rs"]

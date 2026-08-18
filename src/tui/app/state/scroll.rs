@@ -8,6 +8,9 @@
 /// Sentinel: tool panel auto-follows (scrolls to bottom of latest activity).
 pub const TOOL_PREVIEW_FOLLOW: usize = 1_000_000;
 
+#[path = "scroll_tool_preview.rs"]
+mod tool_preview;
+
 impl super::AppState {
     pub fn scroll_up(&mut self, amount: usize) {
         // Manual scroll-up disengages auto-follow so streaming output
@@ -16,7 +19,8 @@ impl super::AppState {
         let base = self.manual_chat_scroll();
         self.chat_scroll = base.saturating_sub(amount);
         if self.chat_scroll == 0 {
-            self.history_page.request_older(amount.saturating_sub(base));
+            self.history_page
+                .request_older(amount.saturating_sub(base), self.messages.len());
         }
     }
 
@@ -50,40 +54,6 @@ impl super::AppState {
             self.chat_scroll = 0;
         } else if self.chat_scroll < 1_000_000 {
             self.chat_scroll = self.chat_scroll.min(max_scroll);
-        }
-    }
-
-    pub fn scroll_tool_preview_up(&mut self, amount: usize) {
-        // Manual scroll cancels auto-follow.
-        let base = if self.tool_preview_scroll >= TOOL_PREVIEW_FOLLOW {
-            self.tool_preview_last_max_scroll
-        } else {
-            self.tool_preview_scroll
-        };
-        self.tool_preview_scroll = base.saturating_sub(amount);
-    }
-
-    pub fn scroll_tool_preview_down(&mut self, amount: usize) {
-        if self.tool_preview_scroll >= TOOL_PREVIEW_FOLLOW {
-            return;
-        }
-        let next = self.tool_preview_scroll.saturating_add(amount);
-        // Re-enable auto-follow when hitting bottom.
-        self.tool_preview_scroll = if next >= self.tool_preview_last_max_scroll {
-            TOOL_PREVIEW_FOLLOW
-        } else {
-            next
-        };
-    }
-
-    pub fn reset_tool_preview_scroll(&mut self) {
-        self.tool_preview_scroll = TOOL_PREVIEW_FOLLOW;
-    }
-
-    pub fn set_tool_preview_max_scroll(&mut self, max_scroll: usize) {
-        self.tool_preview_last_max_scroll = max_scroll;
-        if self.tool_preview_scroll < TOOL_PREVIEW_FOLLOW {
-            self.tool_preview_scroll = self.tool_preview_scroll.min(max_scroll);
         }
     }
 }

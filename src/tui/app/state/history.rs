@@ -4,14 +4,10 @@
 
 use crate::tui::models::InputMode;
 
-impl super::AppState {
-    pub fn push_history(&mut self, entry: String) {
-        if !entry.trim().is_empty() {
-            self.command_history.push(entry);
-            self.history_index = None;
-        }
-    }
+#[path = "history_push.rs"]
+mod history_push;
 
+impl super::AppState {
     pub fn history_prev(&mut self) -> bool {
         if self.command_history.is_empty() {
             return false;

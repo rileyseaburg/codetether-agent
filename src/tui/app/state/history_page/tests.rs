@@ -7,6 +7,9 @@ use super::select::Decision;
 use super::types::Request;
 use super::{anchor, select};
 
+#[path = "limit_tests.rs"]
+mod limit_tests;
+
 #[test]
 fn selects_preceding_messages_in_chronological_order() {
     let messages: Vec<_> = (0..300).map(message).collect();

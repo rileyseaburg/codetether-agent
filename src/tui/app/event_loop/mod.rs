@@ -29,7 +29,7 @@ use std::{path::Path, sync::Arc};
 use ratatui::{Terminal, backend::CrosstermBackend};
 use tokio::sync::mpsc;
 
-use crate::bus::BusHandle;
+use crate::bus::recorder::BusRecorder;
 use crate::provider::ProviderRegistry;
 use crate::session::SessionEvent;
 use crate::tui::app::session_runtime::{SessionNotice, SessionSlot, TuiSessionHandle};
@@ -43,7 +43,7 @@ pub(crate) async fn run_event_loop(
     cwd: &Path,
     registry: Option<Arc<ProviderRegistry>>,
     slot: &mut SessionSlot,
-    bus_handle: &mut BusHandle,
+    bus_recorder: Arc<BusRecorder>,
     mut worker_bridge: Option<TuiWorkerBridge>,
     mut event_rx: mpsc::Receiver<SessionEvent>,
     runtime: TuiSessionHandle,
@@ -66,13 +66,13 @@ pub(crate) async fn run_event_loop(
             runtime: &runtime,
             io: &mut io,
             timers: &mut setup.timers,
-            bus_handle,
+            bus_recorder: &bus_recorder,
         };
         if resilient::run_resilient(&mut args).await {
             break;
         }
     }
 
-    shutdown::finish(&worker_bridge, &runtime, setup.mux_status).await;
+    shutdown::finish(worker_bridge, &runtime, setup.mux_status).await;
     Ok(())
 }

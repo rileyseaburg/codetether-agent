@@ -48,7 +48,7 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
         app,
         args.cwd,
         slot,
-        args.bus_handle,
+        args.bus_recorder,
         bridge,
         args.io.event_rx,
         args.io.notice_rx,

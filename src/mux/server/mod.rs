@@ -3,6 +3,7 @@
 mod agent;
 mod agent_read;
 mod agent_start;
+mod client_tasks;
 mod connection;
 mod context;
 mod context_persist;

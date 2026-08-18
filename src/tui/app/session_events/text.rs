@@ -37,10 +37,9 @@ pub(super) fn thinking_complete(app: &mut App, text: String) {
         "Reasoning: {}",
         truncate_preview(&text.replace('\n', " "), 96)
     );
-    app.state.messages.push(ChatMessage::new(
-        MessageType::Thinking(text.clone()),
-        truncate_preview(&text, 600),
-    ));
+    app.state
+        .messages
+        .push(ChatMessage::new(MessageType::Thinking(text.clone()), text));
     if app.state.chat_auto_follow {
         app.state.scroll_to_bottom();
     }

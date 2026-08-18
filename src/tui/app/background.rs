@@ -2,7 +2,7 @@ use std::path::Path;
 
 use tokio::sync::mpsc;
 
-use crate::bus::BusHandle;
+use crate::bus::recorder::BusRecorder;
 use crate::session::SessionEvent;
 use crate::tui::app::session_runtime::{SessionNotice, SessionSlot};
 use crate::tui::app::state::App;
@@ -25,13 +25,13 @@ pub(crate) async fn drain_background_updates(
     app: &mut App,
     cwd: &Path,
     slot: &mut SessionSlot,
-    bus_handle: &mut BusHandle,
+    bus_recorder: &BusRecorder,
     worker_bridge: &mut Option<TuiWorkerBridge>,
     event_rx: &mut mpsc::Receiver<SessionEvent>,
     notice_rx: &mut mpsc::Receiver<SessionNotice>,
 ) {
     app.state.drain_model_refresh();
-    crate::tui::app::bus::ingest::drain(app, bus_handle);
+    crate::tui::app::bus::ingest::drain(app, bus_recorder);
     worker_tasks::queue_worker_tasks(app, worker_bridge);
     worker_tasks::display_next_worker_task(app);
     crate::tui::app::session_event_drain::drain_batch(app, slot, worker_bridge, event_rx).await;

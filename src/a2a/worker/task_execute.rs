@@ -4,12 +4,15 @@ use anyhow::Result;
 
 use crate::provenance::ClaimProvenance;
 
+use super::task_execute_sink::{clear_task_event_sink, install_task_event_sink};
+use super::task_execute_title::preseed_task_title;
 use super::{
     WorkerTaskRuntime, build_output_callback, build_task_context, execute_task_agent,
     finalize_task_result, prepare_task_session, sync_timeline_to_runtime, task_dispatch_special,
     task_timeline,
 };
 
+/// Run a claimed task end to end and return status, result, error, session ID.
 pub(super) async fn execute_claimed_task<'a>(
     runtime: &WorkerTaskRuntime,
     task: &'a serde_json::Value,
@@ -52,22 +55,12 @@ pub(super) async fn execute_claimed_task<'a>(
         task_id.to_string(),
         runtime.bus.clone(),
     );
-    // Publish the structured sink for this task so tool execution can emit
-    // typed `tool.call` / `tool.result` events instead of flattened text.
-    super::session_event_sink::install_sink(Some(super::task_output::build_event_sink(
-        runtime.client.clone(),
-        runtime.server.clone(),
-        runtime.token.clone(),
-        runtime.worker_id.clone(),
-        task_id.to_string(),
-        runtime.bus.clone(),
-    )));
+    install_task_event_sink(runtime, task_id);
     let (mut status, mut result, mut error, session_id) =
         execute_task_agent(&mut session, runtime, &context, &agent_type, output)
             .await
             .unwrap_or_else(|err| ("failed", None, Some(format!("Error: {err}")), None));
-    // Clear the sink so a later task cannot stream into this one's transcript.
-    super::session_event_sink::install_sink(None);
+    clear_task_event_sink();
     timeline.checkpoint_with_detail(
         task_timeline::TaskCheckpoint::AgentDone,
         Some(format!("status={status}")),
@@ -89,37 +82,4 @@ pub(super) async fn execute_claimed_task<'a>(
         error,
         Some(session_id.unwrap_or_else(|| session.id.clone())),
     ))
-}
-
-/// A2A tasks already have a human-readable title. Preseed it so worker
-/// execution does not block on the optional, provider-backed title call before
-/// the actual task model is invoked. Preserve titles on resumed sessions.
-fn preseed_task_title(session: &mut crate::session::Session, title: &str) {
-    if session.title.is_none() {
-        session.set_title(title.to_string());
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::preseed_task_title;
-
-    #[tokio::test]
-    async fn preseeds_missing_worker_session_title() {
-        let mut session = crate::session::Session::new().await.expect("session");
-
-        preseed_task_title(&mut session, "Forgejo PR review");
-
-        assert_eq!(session.title.as_deref(), Some("Forgejo PR review"));
-    }
-
-    #[tokio::test]
-    async fn preserves_resumed_session_title() {
-        let mut session = crate::session::Session::new().await.expect("session");
-        session.set_title("Existing session");
-
-        preseed_task_title(&mut session, "Replacement task title");
-
-        assert_eq!(session.title.as_deref(), Some("Existing session"));
-    }
 }

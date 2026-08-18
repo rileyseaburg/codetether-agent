@@ -33,6 +33,9 @@ pub(in crate::session::helper::prompt_loop) async fn handle(
         return Ok(StepFlow::Continue);
     }
     super::output::emit(runner, step, &response).await;
+    if super::thinking_only::continue_instead(runner, &response) {
+        return Ok(StepFlow::Continue);
+    }
     if calls.is_empty() && truncated.is_empty() {
         return super::terminal::finish_or_retry(runner, response).await;
     }

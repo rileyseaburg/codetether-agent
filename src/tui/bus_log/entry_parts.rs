@@ -16,10 +16,13 @@ impl EntryParts {
         detail: impl Into<String>,
         kind_color: Color,
     ) -> Self {
+        let kind = kind.into();
+        let summary = summary.into();
+        let detail = detail.into();
         Self {
-            kind: kind.into(),
-            summary: summary.into(),
-            detail: detail.into(),
+            kind: crate::tui::bus_log_payload::kind(&kind),
+            summary: crate::tui::bus_log_payload::summary(&summary),
+            detail: crate::tui::bus_log_payload::detail(&detail, "bus detail"),
             kind_color,
         }
     }

@@ -14,8 +14,9 @@ pub(super) fn user_prompt(
     session_id: &str,
 ) -> EntryParts {
     let preview = truncate(text, 80);
+    let retained = crate::tui::bus_log_payload::detail(text, "bus user prompt");
     let detail =
-        format!("agent: {agent_id}\nsession: {session_id}\nworkspace: {workspace}\n\n{text}");
+        format!("agent: {agent_id}\nsession: {session_id}\nworkspace: {workspace}\n\n{retained}");
     EntryParts::new(
         "USER",
         format!("{agent_id}: {preview}"),

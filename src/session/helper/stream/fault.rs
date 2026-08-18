@@ -20,6 +20,12 @@ pub(crate) fn is_transient(msg: &str) -> bool {
     if lower.starts_with("codex-permanent: ") {
         return false;
     }
+    if lower.starts_with("zai-retryable: ") {
+        return true;
+    }
+    if lower.starts_with("zai-permanent: ") {
+        return false;
+    }
     if markers::PERMANENT.iter().any(|m| lower.contains(m)) {
         return false;
     }
@@ -29,6 +35,8 @@ pub(crate) fn is_transient(msg: &str) -> bool {
 pub(crate) fn display_message(msg: &str) -> &str {
     msg.strip_prefix("codex-retryable: ")
         .or_else(|| msg.strip_prefix("codex-permanent: "))
+        .or_else(|| msg.strip_prefix("zai-retryable: "))
+        .or_else(|| msg.strip_prefix("zai-permanent: "))
         .unwrap_or(msg)
 }
 

@@ -12,6 +12,7 @@ pub(super) mod nudge;
 mod output;
 mod progress;
 mod terminal;
+mod thinking_only;
 mod truncation;
 mod usage;
 

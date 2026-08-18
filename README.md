@@ -78,8 +78,13 @@ irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install
 cargo install codetether-agent
 ```
 
-Optional acceleration features are `candle-accelerate`, `candle-mkl`, and
-`candle-cuda`.
+Optional local-inference acceleration is opt-in and off by default. Enable
+`candle` for CPU-only local models, or one of `candle-cuda`, `candle-mkl`, or
+`candle-accelerate` for hardware acceleration:
+
+```bash
+cargo install codetether-agent --features candle-cuda
+```
 
 ### From Source
 

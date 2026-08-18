@@ -27,10 +27,13 @@ impl SystemCapability {
 
     /// Whether the host can comfortably run a local transformer embedder.
     ///
-    /// Requires either a CUDA build or at least 4 GiB RAM and 4 CPUs.
+    /// Always false without the `candle` feature, since no local inference
+    /// backend is compiled in. Otherwise requires either a CUDA build or at
+    /// least 4 GiB RAM and 4 CPUs.
     pub fn supports_local_embedding(&self) -> bool {
         const MIN_RAM: u64 = 4 * 1024 * 1024 * 1024;
-        self.cuda_build || (self.total_memory_bytes >= MIN_RAM && self.cpu_count >= 4)
+        cfg!(feature = "candle")
+            && (self.cuda_build || (self.total_memory_bytes >= MIN_RAM && self.cpu_count >= 4))
     }
 }
 

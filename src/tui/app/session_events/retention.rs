@@ -1,17 +1,15 @@
 //! Retain only a bounded chat window in live TUI memory.
 
 use crate::tui::app::state::App;
-use crate::tui::retained_payload::CHAT_RETAINED_MAX_ITEMS;
+use crate::tui::retained_payload::{CHAT_EXPANDED_MAX_ITEMS, CHAT_RETAINED_MAX_ITEMS};
 
 pub(super) fn trim(app: &mut App) {
-    if app.state.history_page.expanded() {
-        return;
-    }
+    let max_items = retained_limit(app.state.history_page.expanded());
     let len = app.state.messages.len();
-    if len <= CHAT_RETAINED_MAX_ITEMS {
+    if len <= max_items {
         return;
     }
-    let overflow = len - CHAT_RETAINED_MAX_ITEMS;
+    let overflow = len - max_items;
     app.state.messages.drain(0..overflow);
     app.state.cached_message_lines.clear();
     app.state.cached_messages_len = 0;
@@ -24,3 +22,15 @@ pub(super) fn trim(app: &mut App) {
         app.state.chat_scroll = app.state.chat_scroll.saturating_sub(overflow);
     }
 }
+
+fn retained_limit(expanded: bool) -> usize {
+    if expanded {
+        CHAT_EXPANDED_MAX_ITEMS
+    } else {
+        CHAT_RETAINED_MAX_ITEMS
+    }
+}
+
+#[cfg(test)]
+#[path = "retention_tests.rs"]
+mod tests;

@@ -5,9 +5,10 @@ use std::path::PathBuf;
 
 use anyhow::{Result, bail};
 use tokio::net::TcpListener;
-use tokio::task::JoinSet;
 
 use crate::mux::registry;
+
+use super::client_tasks::ClientTasks;
 
 pub(in crate::mux) async fn serve(
     name: String,
@@ -22,7 +23,7 @@ pub(in crate::mux) async fn serve(
     let context =
         super::startup::initialize(&name, workspace, listener.local_addr()?, isolation).await?;
     tracing::info!(session = %name, address = %context.address, "Mux server listening");
-    let mut clients = JoinSet::new();
+    let mut clients = ClientTasks::new();
     loop {
         tokio::select! {
             accepted = listener.accept() => {
@@ -34,11 +35,11 @@ pub(in crate::mux) async fn serve(
                     }
                 });
             }
+            () = clients.reap() => {}
             () = context.shutdown.notified() => break,
         }
     }
-    clients.abort_all();
-    while clients.join_next().await.is_some() {}
+    clients.shutdown().await;
     context.tasks.cancel_all();
     context.programs.stop_all();
     registry::remove(&name).await?;

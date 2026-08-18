@@ -10,7 +10,7 @@ use crate::tui::chat::message::MessageType;
 ///
 /// # Returns
 ///
-/// `true` for tool calls, tool results, and thinking activity.
+/// `true` for tool calls and tool results.
 ///
 /// # Examples
 ///
@@ -18,11 +18,11 @@ use crate::tui::chat::message::MessageType;
 /// use codetether_agent::tui::chat::message::MessageType;
 /// use codetether_agent::tui::ui::tool_panel::is_tool_activity;
 ///
-/// assert!(is_tool_activity(&MessageType::Thinking("working".to_string())));
+/// assert!(!is_tool_activity(&MessageType::Thinking("working".to_string())));
 /// ```
 pub fn is_tool_activity(message_type: &MessageType) -> bool {
     matches!(
         message_type,
-        MessageType::ToolCall { .. } | MessageType::ToolResult { .. } | MessageType::Thinking(_)
+        MessageType::ToolCall { .. } | MessageType::ToolResult { .. }
     )
 }

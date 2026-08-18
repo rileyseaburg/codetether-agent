@@ -8,6 +8,8 @@ use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
 };
+#[path = "zai_catalog.rs"]
+mod zai_catalog;
 #[path = "zai_stream_assembly.rs"]
 mod zai_stream_assembly;
 #[path = "zai_stream_index.rs"]
@@ -17,6 +19,8 @@ mod zai_stream_index;
 pub use zai_stream_index::{capture, delta};
 #[path = "zai_stream_done.rs"]
 mod stream_done;
+#[path = "zai_stream_fault.rs"]
+mod stream_fault;
 #[path = "zai_stream_output.rs"]
 pub mod stream_output;
 #[path = "zai_stream_request.rs"]
@@ -493,136 +497,7 @@ impl Provider for ZaiProvider {
         // When the API is reachable, this returns the authoritative model
         // catalog including newly-released models without a code change.
         let discovered = self.discover_models_from_api().await;
-        if !discovered.is_empty() {
-            let mut models = discovered;
-            super::zai_merge::merge_special(&mut models);
-            return Ok(models);
-        }
-
-        // Static catalog used when the /models endpoint is unavailable
-        // (e.g. network partition, auth failure, or non-standard deployments).
-        Ok(vec![
-            ModelInfo {
-                id: "glm-5.3".to_string(),
-                name: "GLM-5.3".to_string(),
-                provider: "zai".to_string(),
-                context_window: 1_000_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: None,
-                output_cost_per_million: None,
-            },
-            ModelInfo {
-                id: "glm-5.2".to_string(),
-                name: "GLM-5.2".to_string(),
-                provider: "zai".to_string(),
-                context_window: 1_000_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: None,
-                output_cost_per_million: None,
-            },
-            ModelInfo {
-                id: "glm-5.1".to_string(),
-                name: "GLM-5.1".to_string(),
-                provider: "zai".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: None,
-                output_cost_per_million: None,
-            },
-            ModelInfo {
-                id: "glm-5".to_string(),
-                name: "GLM-5".to_string(),
-                provider: "zai".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: None,
-                output_cost_per_million: None,
-            },
-            ModelInfo {
-                id: "glm-4.7".to_string(),
-                name: "GLM-4.7".to_string(),
-                provider: "zai".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: None,
-                output_cost_per_million: None,
-            },
-            ModelInfo {
-                id: "glm-4.7-flash".to_string(),
-                name: "GLM-4.7 Flash".to_string(),
-                provider: "zai".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: None,
-                output_cost_per_million: None,
-            },
-            ModelInfo {
-                id: "glm-4.6".to_string(),
-                name: "GLM-4.6".to_string(),
-                provider: "zai".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: None,
-                output_cost_per_million: None,
-            },
-            ModelInfo {
-                id: "glm-4.5".to_string(),
-                name: "GLM-4.5".to_string(),
-                provider: "zai".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(96_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: None,
-                output_cost_per_million: None,
-            },
-            ModelInfo {
-                id: "glm-5-turbo".to_string(),
-                name: "GLM-5 Turbo".to_string(),
-                provider: "zai".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.96),
-                output_cost_per_million: Some(3.20),
-            },
-            ModelInfo {
-                id: PONY_ALPHA_2_MODEL.to_string(),
-                name: "Pony Alpha 2".to_string(),
-                provider: "zai".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(16_384),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: None,
-                output_cost_per_million: None,
-            },
-        ])
+        Ok(zai_catalog::merge_known(discovered))
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
@@ -955,7 +830,7 @@ impl Provider for ZaiProvider {
                             chunks.push(StreamChunk::Text(text_buf));
                         }
                     }
-                    Err(e) => chunks.push(StreamChunk::Error(e.to_string())),
+                    Err(e) => chunks.push(StreamChunk::Error(stream_fault::retryable(e))),
                 }
                 futures::stream::iter(chunks)
             })

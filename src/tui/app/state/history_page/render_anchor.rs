@@ -13,7 +13,8 @@ impl AppState {
         self.chat_auto_follow = false;
         let remaining = rewind.saturating_sub(anchored);
         if remaining > 0 {
-            self.history_page.request_older(remaining);
+            self.history_page
+                .request_older(remaining, self.messages.len());
         }
     }
 }

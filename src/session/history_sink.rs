@@ -62,7 +62,6 @@
 //! ```
 
 use anyhow::{Context, Result};
-use minio::s3::builders::ObjectContent;
 use minio::s3::client::{MinioClient, MinioClientBuilder};
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
@@ -72,6 +71,10 @@ use std::str::FromStr;
 
 use crate::provider::Message;
 use crate::session::faults::Fault;
+
+#[path = "history_sink_upload.rs"]
+mod upload;
+pub(crate) use upload::encoded as upload_encoded_history;
 
 /// Object-key suffix where the full transcript lives, relative to
 /// [`HistorySinkConfig::prefix`].
@@ -217,29 +220,12 @@ pub async fn upload_full_history(
     session_id: &str,
     messages: &[Message],
 ) -> Result<()> {
-    let body = encode_jsonl_delta(messages, 0)?;
-    let bytes = body.into_bytes();
-    let byte_len = bytes.len();
-    let client = build_client(config)?;
-    let key = config.object_key(session_id);
-    client
-        .put_object_content(&config.bucket, &key, ObjectContent::from(bytes))?
-        .build()
-        .send()
-        .await
-        .with_context(|| {
-            format!(
-                "failed to PUT s3://{}/{key} ({} bytes)",
-                config.bucket, byte_len
-            )
-        })?;
-    tracing::debug!(
-        bucket = %config.bucket,
-        key = %key,
-        bytes = byte_len,
-        "history sink upload complete"
-    );
-    Ok(())
+    upload::encoded(
+        config,
+        session_id,
+        encode_jsonl_delta(messages, 0)?.into_bytes(),
+    )
+    .await
 }
 
 /// Stable locator for a single `ResidencyLevel::Pointer` page's

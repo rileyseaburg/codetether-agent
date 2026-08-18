@@ -28,7 +28,7 @@ mod tests;
 const SUBSTITUTES: &[(&str, &str)] = &[
     ("openai-codex", "gpt-5.5"),
     ("cerebras", "qwen-3-32b"),
-    ("zai", "glm-5.1"),
+    ("zai", "glm-5.3"),
 ];
 
 /// Check whether `provider/model` has budget for this step.

@@ -9,7 +9,7 @@ pub(super) fn default_for(agent: &Agent) -> String {
         .model
         .clone()
         .unwrap_or_else(|| match agent.provider.name() {
-            "zhipuai" | "zai" => "glm-5".to_string(),
+            "zhipuai" | "zai" => "glm-5.3".to_string(),
             "openrouter" => "z-ai/glm-5".to_string(),
             _ => "glm-5".to_string(),
         })

@@ -8,7 +8,8 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use crate::bus::BusMessage;
+#[path = "tool_calls_observe.rs"]
+pub(super) mod observe;
 
 /// One in-flight tool call observed on the bus, attributed to its agent.
 #[derive(Debug, Clone)]
@@ -30,33 +31,6 @@ pub struct ToolCallTracker {
 }
 
 impl ToolCallTracker {
-    /// Update tracking from a bus message. No-op for unrelated kinds.
-    pub fn observe(&mut self, message: &BusMessage) {
-        match message {
-            BusMessage::ToolRequest {
-                request_id,
-                agent_id,
-                tool_name,
-                step,
-                ..
-            } => {
-                self.open.insert(
-                    request_id.clone(),
-                    OpenToolCall {
-                        agent_id: agent_id.clone(),
-                        tool_name: tool_name.clone(),
-                        step: *step,
-                        started_at: Instant::now(),
-                    },
-                );
-            }
-            BusMessage::ToolResponse { request_id, .. } => {
-                self.open.remove(request_id);
-            }
-            _ => {}
-        }
-    }
-
     /// Iterator over every open call (used by the per-agent query helpers).
     pub fn open_calls(&self) -> impl Iterator<Item = &OpenToolCall> {
         self.open.values()

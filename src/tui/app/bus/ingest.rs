@@ -1,4 +1,4 @@
-use crate::bus::BusHandle;
+use crate::bus::recorder::BusRecorder;
 use crate::tui::app::state::App;
 
 /// Drain new bus envelopes into the TUI views.
@@ -9,8 +9,7 @@ use crate::tui::app::state::App;
 /// them. On the first call the cursor jumps to the current tail (we only show
 /// activity from when the view started); thereafter every recorded envelope is
 /// delivered exactly once.
-pub fn drain(app: &mut App, bus_handle: &mut BusHandle) {
-    let recorder = bus_handle.recorder();
+pub fn drain(app: &mut App, recorder: &BusRecorder) {
     if app.state.bus_cursor == 0 {
         app.state.bus_cursor = recorder.cursor();
         return;
