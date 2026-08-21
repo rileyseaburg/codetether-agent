@@ -150,7 +150,7 @@ if ! bash -lc "$VERIFY_CMD"; then
     exit 1
 fi
 
-# Step 5: Commit the version bump
+"$SCRIPT_DIR/script/install-release-binary.sh" "$CARGO_CMD"
 git add Cargo.toml Cargo.lock
 git commit -m "chore: bump version to $new_version"
 git push origin "$CURRENT_BRANCH"
