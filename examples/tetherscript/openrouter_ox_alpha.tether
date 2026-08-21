@@ -1,0 +1,36 @@
+// Live Ox Alpha probe using CodeTether's Vault provider secret.
+
+fn request_body() {
+    let user = map()
+    user.role = "user"
+    user.content = "Reply with exactly OX_ALPHA_OK."
+    let body = map()
+    body.model = "stealth/ox-alpha"
+    body.messages = [user]
+    body.max_tokens = 32
+    return json_encode(body)
+}
+
+fn call() {
+    let command = "printf 'header = \"Authorization: Bearer %s\"\\n' \"$OPENROUTER_API_KEY\" | curl --config - --silent --show-error --header 'Content-Type: application/json' --data \"$1\" https://openrouter.ai/api/v1/chat/completions"
+    let response = process_run("bash", [
+        "-c",
+        command,
+        "openrouter-ox-alpha",
+        request_body(),
+    ], nil, 120000)?
+    if !response["success"] { return Err("curl failed: " + str(response["stderr"])) }
+    let raw = json_parse(response["stdout"])
+    if raw["error"] != nil { return Err("OpenRouter error: " + json_encode(raw["error"])) }
+    let result = map()
+    result.requested_model = "openrouter/stealth/ox-alpha"
+    result.response_model = raw["model"]
+    result.content = raw["choices"][0]["message"]["content"]
+    result.usage = raw["usage"]
+    return Ok(result)
+}
+
+fn main() {
+    println(json_encode(call()?))
+    return Ok(nil)
+}
