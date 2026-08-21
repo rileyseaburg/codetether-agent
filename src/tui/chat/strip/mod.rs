@@ -6,6 +6,8 @@
 //! and trailing whitespace padding. This module cleans that up so
 //! pasted-back content is the underlying plain text.
 
+#[cfg(test)]
+mod reflow_tests;
 mod strip_line;
 #[cfg(test)]
 mod tests;
@@ -15,8 +17,12 @@ use strip_line::{is_border_line, strip_line};
 /// Remove TUI box-drawing render artifacts from `text`.
 ///
 /// Drops pure border lines and strips leading/trailing border characters
-/// from content lines. Multiple consecutive blank lines are collapsed to one.
+/// from content lines. Adjacent visual rows are reflowed with spaces while
+/// blank rows preserve paragraph breaks.
 pub fn strip_tui_artifacts(text: &str) -> String {
+    if !has_tui_artifacts(text) {
+        return text.to_string();
+    }
     let mut out = String::with_capacity(text.len());
     let mut last_blank = false;
     for line in text.lines() {
@@ -30,13 +36,12 @@ pub fn strip_tui_artifacts(text: &str) -> String {
             }
             last_blank = true;
         } else {
+            if !out.is_empty() {
+                out.push(if last_blank { '\n' } else { ' ' });
+            }
             out.push_str(stripped);
-            out.push('\n');
             last_blank = false;
         }
-    }
-    if out.ends_with('\n') {
-        out.pop();
     }
     out
 }

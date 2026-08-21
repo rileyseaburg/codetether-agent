@@ -9,6 +9,8 @@ mod models_catalog;
 mod openai_stream;
 pub mod policy;
 mod policy_user;
+mod session_realtime;
+mod session_routes;
 mod tool_contract;
 mod version_info;
 mod worker_modules;
@@ -438,6 +440,11 @@ const POLICY_RULES: &[PolicyRule] = &[
         methods: Some(&["GET"]),
         permission: "sessions:read",
     },
+    PolicyRule {
+        pattern: "/api/realtime/session/",
+        methods: Some(&["GET"]),
+        permission: "agent:execute",
+    },
     // MCP compatibility alias
     PolicyRule {
         pattern: "/mcp/v1/tools",
@@ -756,9 +763,8 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         )
         // API routes
         .route("/api/version", get(version_info::get_version))
-        .route("/api/session", get(list_sessions).post(create_session))
-        .route("/api/session/{id}", get(get_session))
-        .route("/api/session/{id}/prompt", post(prompt_session))
+        .merge(session_routes::router())
+        .merge(session_realtime::router())
         .route("/api/config", get(config_status::get_config))
         .route(
             "/api/config/trust-status",
@@ -1098,107 +1104,6 @@ async fn receive_task_event(
 struct CloudEventResponse {
     status: String,
     event_id: String,
-}
-
-/// List sessions
-#[derive(Deserialize)]
-struct ListSessionsQuery {
-    limit: Option<usize>,
-    offset: Option<usize>,
-}
-
-async fn list_sessions(
-    Query(query): Query<ListSessionsQuery>,
-) -> Result<Json<Vec<crate::session::SessionSummary>>, (StatusCode, String)> {
-    let sessions = crate::session::list_sessions()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    let offset = query.offset.unwrap_or(0);
-    let limit = query.limit.unwrap_or(100);
-    Ok(Json(
-        sessions.into_iter().skip(offset).take(limit).collect(),
-    ))
-}
-
-/// Create a new session
-#[derive(Deserialize)]
-struct CreateSessionRequest {
-    title: Option<String>,
-    agent: Option<String>,
-}
-
-async fn create_session(
-    Json(req): Json<CreateSessionRequest>,
-) -> Result<Json<crate::session::Session>, (StatusCode, String)> {
-    let mut session = crate::session::Session::new()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    session.title = req.title;
-    if let Some(agent) = req.agent {
-        session.set_agent_name(agent);
-    }
-
-    session
-        .save()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    Ok(Json(session))
-}
-
-/// Get a session by ID
-async fn get_session(
-    axum::extract::Path(id): axum::extract::Path<String>,
-) -> Result<Json<crate::session::Session>, (StatusCode, String)> {
-    let session = crate::session::Session::load(&id)
-        .await
-        .map_err(|e| (StatusCode::NOT_FOUND, e.to_string()))?;
-
-    Ok(Json(session))
-}
-
-/// Prompt a session
-#[derive(Deserialize)]
-struct PromptRequest {
-    message: String,
-}
-
-async fn prompt_session(
-    axum::extract::Path(id): axum::extract::Path<String>,
-    Json(req): Json<PromptRequest>,
-) -> Result<Json<crate::session::SessionResult>, (StatusCode, String)> {
-    // Validate the message is not empty
-    if req.message.trim().is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Message cannot be empty".to_string(),
-        ));
-    }
-
-    // Log the prompt request (uses the message field)
-    tracing::info!(
-        session_id = %id,
-        message_len = req.message.len(),
-        "Received prompt request"
-    );
-
-    let mut session = crate::session::Session::load(&id)
-        .await
-        .map_err(|e| (StatusCode::NOT_FOUND, e.to_string()))?;
-
-    let result = session.prompt(&req.message).await.map_err(|e| {
-        tracing::error!(session_id = %id, error = %e, "Session prompt failed");
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
-
-    session.save().await.map_err(|e| {
-        tracing::error!(session_id = %id, error = %e, "Failed to save session after prompt");
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
-
-    Ok(Json(result))
 }
 
 /// List providers
@@ -3119,6 +3024,13 @@ mod tests {
     #[test]
     fn policy_prompt_session_requires_execute_permission() {
         let permission = match_policy_rule("/api/session/abc123/prompt", "POST");
+        assert_eq!(permission, Some("agent:execute"));
+    }
+
+    /// Verify realtime upgrades require the same execute capability.
+    #[test]
+    fn policy_realtime_session_requires_execute_permission() {
+        let permission = match_policy_rule("/api/realtime/session/abc123", "GET");
         assert_eq!(permission, Some("agent:execute"));
     }
 

@@ -4,6 +4,9 @@
 //! let the two paths drift — reasoning had to be added twice. One builder keeps
 //! streaming and non-streaming turns identical apart from the `stream` flag.
 
+#[path = "request_number.rs"]
+mod number;
+
 use super::reasoning_request;
 use super::runtime_config;
 use crate::provider::CompletionRequest;
@@ -31,7 +34,7 @@ pub(super) fn build(
         body["tools"] = json!(tools);
     }
     if let Some(temperature) = request.temperature {
-        body["temperature"] = json!(temperature);
+        body["temperature"] = json!(number::temperature(temperature));
     }
     if let Some(max_tokens) = request.max_tokens {
         body["max_tokens"] = json!(max_tokens);
