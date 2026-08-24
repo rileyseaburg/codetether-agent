@@ -17,6 +17,7 @@ pub(super) async fn persisted(owner: &str, workspace: PathBuf) -> String {
         "old/model",
         Some(workspace),
         true,
+        false,
     )
     .await
     .unwrap();

@@ -2,10 +2,7 @@ use crate::worktree::WorktreeManager;
 
 impl WorktreeManager {
     pub(crate) async fn abort_merge_state(&self) {
-        match tokio::process::Command::new("git")
-            .args(["merge", "--abort"])
-            .current_dir(&self.repo_path)
-            .output()
+        match crate::tool::git::process::output_refs(&self.repo_path, &["merge", "--abort"], true)
             .await
         {
             Ok(output) if output.status.success() => {}

@@ -9,7 +9,6 @@ use lsp_types::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::{info, warn};
 
 /// LSP client configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -486,99 +485,15 @@ fn rust_analyzer_args() -> Vec<String> {
         ]
     }
 }
-
-/// Returns the install command for a language server binary, if known.
-fn install_command_for(command: &str) -> Option<&'static [&'static str]> {
-    match command {
-        "rust-analyzer" => Some(&["rustup", "component", "add", "rust-analyzer"]),
-        "typescript-language-server" => Some(&[
-            "npm",
-            "install",
-            "-g",
-            "typescript-language-server",
-            "typescript",
-        ]),
-        "pylsp" => Some(&["pip", "install", "--user", "python-lsp-server"]),
-        "gopls" => Some(&["go", "install", "golang.org/x/tools/gopls@latest"]),
-        "clangd" => None, // system package manager varies
-        _ => None,
-    }
-}
-
-/// Ensure a language server binary is available, installing it if possible.
+/// Ensure a language server binary is already available.
 pub async fn ensure_server_installed(config: &LspConfig) -> Result<()> {
-    // Check if the binary is already on PATH.
     if which::which(&config.command).is_ok() {
         return Ok(());
     }
-
-    // rust-analyzer is commonly installed via rustup but may not be visible on PATH
-    // in the current process environment. Fall back to `rustup run <toolchain> rust-analyzer`.
-    if config.command == "rust-analyzer" {
-        let rustup_status = tokio::process::Command::new("rustup")
-            .args(["run", "stable", "rust-analyzer", "--version"])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .await;
-
-        if let Ok(status) = rustup_status
-            && status.success()
-        {
-            return Ok(());
-        }
-    }
-
-    let Some(install_args) = install_command_for(&config.command) else {
-        return Err(anyhow::anyhow!(
-            "Language server '{}' not found and no auto-install available. Install it manually.",
-            config.command,
-        ));
-    };
-
-    info!(command = %config.command, "Language server not found, installing...");
-
-    let output = tokio::process::Command::new(install_args[0])
-        .args(&install_args[1..])
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .output()
-        .await?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        return Err(anyhow::anyhow!(
-            "Failed to install '{}' (exit code {:?}). stdout: {} stderr: {}",
-            config.command,
-            output.status.code(),
-            stdout,
-            stderr,
-        ));
-    }
-
-    // Verify installation succeeded
-    if which::which(&config.command).is_err() {
-        if config.command == "rust-analyzer" {
-            let rustup_status = tokio::process::Command::new("rustup")
-                .args(["run", "stable", "rust-analyzer", "--version"])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status()
-                .await;
-            if let Ok(status) = rustup_status
-                && status.success()
-            {
-                info!(command = %config.command, "Language server installed and available via rustup run stable");
-                return Ok(());
-            }
-        }
-        warn!(command = %config.command, "Install succeeded but binary still not found on PATH");
-    } else {
-        info!(command = %config.command, "Language server installed successfully");
-    }
-
-    Ok(())
+    Err(anyhow::anyhow!(
+        "Language server '{}' is not installed; automatic installers are disabled for sandbox safety",
+        config.command,
+    ))
 }
 
 /// Detect language from file extension

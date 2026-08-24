@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 #[tokio::test]
 async fn exec_command_returns_completed_output_and_metadata() {
+    let _lock = crate::approval::test_env::lock_env();
     let directory = tempfile::tempdir().unwrap();
     let tool = ExecCommandTool::new(
         Arc::new(Registry::default()),
@@ -15,7 +16,7 @@ async fn exec_command_returns_completed_output_and_metadata() {
         .execute(json!({"cmd": "pwd -P", "yield_time_ms": 250}))
         .await
         .unwrap();
-    assert!(result.success);
+    assert!(result.success, "{}", result.output);
     assert!(result.output.contains(directory.path().to_str().unwrap()));
     assert_eq!(result.metadata["running"], json!(false));
     assert_eq!(result.metadata["exit_code"], json!(0));
@@ -23,6 +24,7 @@ async fn exec_command_returns_completed_output_and_metadata() {
 
 #[tokio::test]
 async fn exec_command_injects_session_runtime_context() {
+    let _lock = crate::approval::test_env::lock_env();
     let tool = ExecCommandTool::new(Arc::new(Registry::default()), None);
     let result = tool
         .execute(json!({
@@ -32,7 +34,7 @@ async fn exec_command_injects_session_runtime_context() {
         }))
         .await
         .unwrap();
-    assert!(result.success);
+    assert!(result.success, "{}", result.output);
     assert!(result.output.contains("session-context-test"));
 }
 

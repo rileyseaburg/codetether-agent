@@ -19,6 +19,7 @@ mod outcome;
 mod parse;
 mod process_args;
 mod process_authority;
+mod process_grant;
 mod process_io;
 mod process_output;
 mod process_prelude;
@@ -33,6 +34,7 @@ pub use browser::BrowserGrant;
 pub use computer::ComputerGrant;
 pub use dispatch::run;
 pub use outcome::TetherScriptOutcome;
+pub(crate) use process_grant::ProcessGrant;
 
 #[cfg(test)]
 #[path = "runner/process_arity_tests.rs"]

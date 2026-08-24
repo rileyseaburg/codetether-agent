@@ -9,7 +9,8 @@ pub(super) struct RunnerPlan {
     pub args: Vec<String>,
     pub unsafe_fallbacks: Vec<String>,
     pub network_isolated: bool,
-    pub _seccomp: Option<sandbox_seccomp::Program>,
+    pub seccomp: Option<sandbox_seccomp::Program>,
+    pub apply_seccomp: bool,
     pub landlock: Option<sandbox_landlock::Rules>,
 }
 

@@ -1,14 +1,9 @@
 use anyhow::{Result, bail};
-use std::{
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::path::{Path, PathBuf};
 
 pub(super) fn packages(source: &Path) -> Result<Vec<PathBuf>> {
-    let output = Command::new("git")
-        .current_dir(source)
-        .args(["ls-files", "-z", "--", "package.json", "**/package.json"])
-        .output()?;
+    let args = ["ls-files", "-z", "--", "package.json", "**/package.json"];
+    let output = crate::tool::git::process::output_blocking_refs(source, &args, false)?;
     if !output.status.success() {
         bail!("failed to discover tracked package.json files");
     }

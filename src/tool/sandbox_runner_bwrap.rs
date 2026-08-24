@@ -21,7 +21,8 @@ pub(super) fn plan(
         args: sandbox_bwrap_args::build(command, args, policy, work_dir, seccomp_fd),
         unsafe_fallbacks,
         network_isolated: !policy.allow_network,
-        _seccomp: seccomp,
+        seccomp,
+        apply_seccomp: false,
         landlock: landlock.rules,
     })
 }

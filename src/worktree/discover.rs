@@ -20,12 +20,13 @@ impl WorktreeManager {
     }
 
     pub(crate) async fn discover_worktrees(&self) -> Result<Vec<WorktreeInfo>> {
-        let output = tokio::process::Command::new("git")
-            .args(["worktree", "list", "--porcelain"])
-            .current_dir(&self.repo_path)
-            .output()
-            .await
-            .context("Failed to execute git worktree list --porcelain")?;
+        let output = crate::tool::git::process::output_refs(
+            &self.repo_path,
+            &["worktree", "list", "--porcelain"],
+            false,
+        )
+        .await
+        .context("Failed to execute git worktree list --porcelain")?;
         if !output.status.success() {
             return Ok(Vec::new());
         }

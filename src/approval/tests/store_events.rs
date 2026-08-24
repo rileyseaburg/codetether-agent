@@ -29,16 +29,12 @@ fn each_appended_event_occupies_exactly_one_line() {
     }
 }
 
-/// One corrupt line must not make the whole store unreadable.
-///
-/// Logs written before the atomic-append fix contain interleaved records. Failing
-/// the entire read would leave an operator unable to see or decide any pending
-/// request, which is a worse outcome than skipping the damaged line.
+/// A corrupt decision log must fail closed rather than resurrect an approval.
 #[test]
-fn a_corrupt_line_is_skipped_rather_than_failing_the_read() {
+fn a_corrupt_line_blocks_reads_and_decisions() {
     let dir = tempfile::tempdir().expect("tempdir");
     let store = ApprovalStore::open(dir.path()).expect("store");
-    let first = store
+    let request = store
         .create_request("bash", "execute", "before", "why")
         .expect("request");
 
@@ -51,15 +47,10 @@ fn a_corrupt_line_is_skipped_rather_than_failing_the_read() {
     writeln!(file, "{{{{\"\"eventevent\"\"::\"\"requestrequest\"\"}}}}").expect("write corruption");
     drop(file);
 
-    let second = store
-        .create_request("bash", "execute", "after", "why")
-        .expect("request");
-
-    let requests = store.events().expect("events must still be readable");
-    assert_eq!(requests.len(), 2, "both good records survive");
-
-    // And the records on either side of the damage are both intact.
-    let rendered = format!("{requests:?}");
-    assert!(rendered.contains(&first.id), "record before the damage");
-    assert!(rendered.contains(&second.id), "record after the damage");
+    assert!(store.events().is_err());
+    assert!(
+        store
+            .approve(&request.id, "test", "must fail closed")
+            .is_err()
+    );
 }

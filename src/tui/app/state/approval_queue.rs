@@ -9,6 +9,8 @@ use crate::approval::LiveApprovalRequest;
 pub(crate) mod edit_session;
 #[path = "approval_queue/operations.rs"]
 mod operations;
+#[path = "approval_queue/pending.rs"]
+mod pending;
 #[path = "approval_queue/report.rs"]
 mod report;
 mod snapshot;
@@ -31,11 +33,9 @@ pub(crate) fn push(request: LiveApprovalRequest) -> ApprovalSnapshot {
 }
 
 pub(crate) fn active() -> Option<ApprovalSnapshot> {
-    queue()
-        .lock()
-        .expect("approval queue lock")
-        .front()
-        .cloned()
+    let mut guard = queue().lock().expect("approval queue lock");
+    pending::retain(&mut guard);
+    guard.front().cloned()
 }
 
 pub(crate) fn active_id() -> Option<String> {
@@ -43,7 +43,9 @@ pub(crate) fn active_id() -> Option<String> {
 }
 
 pub(crate) fn len() -> usize {
-    queue().lock().expect("approval queue lock").len()
+    let mut guard = queue().lock().expect("approval queue lock");
+    pending::retain(&mut guard);
+    guard.len()
 }
 
 pub(crate) fn resolve(id: &str) {

@@ -6,7 +6,24 @@ pub(super) fn decide(
     tool_name: &str,
     args: &Value,
 ) -> ToolPolicyDecision {
-    if let Some(decision) = denied_command_rule(policy, tool_name, args) {
+    if let Some(decision) = super::policy_explicit::denial(policy, tool_name) {
+        return decision;
+    }
+    if let Some(decision) = super::batch::decision(tool_name, args) {
+        return decision;
+    }
+    if let Some(decision) = super::git::decision(policy, tool_name, args) {
+        return decision;
+    }
+    if let Some(decision) = super::network::decision(tool_name, args) {
+        return decision;
+    }
+    if let Some(decision) = super::command_rule::decision(policy, tool_name, args)
+        .filter(|decision| matches!(decision.outcome, ToolPolicyOutcome::Deny))
+    {
+        return decision;
+    }
+    if let Some(decision) = super::sandbox_preflight::escalation(policy, tool_name, args) {
         return decision;
     }
     if let Some(decision) = super::session_command::allow(tool_name, args) {
@@ -19,34 +36,14 @@ pub(super) fn decide(
             ToolKind::ReadOnly,
         );
     }
-    if let Some(decision) = command_rule(policy, tool_name, args) {
+    if let Some(decision) = super::command_rule::decision(policy, tool_name, args) {
         return decision;
     }
     if let Some(decision) = super::sandbox_preflight::decision(policy, tool_name, args) {
         return decision;
     }
+    if let Some(decision) = super::session_transport::decision(policy, tool_name, args) {
+        return decision;
+    }
     policy.decide_tool(tool_name)
-}
-
-fn denied_command_rule(
-    policy: &RuntimeToolPolicy,
-    tool_name: &str,
-    args: &Value,
-) -> Option<ToolPolicyDecision> {
-    command_rule(policy, tool_name, args)
-        .filter(|decision| matches!(decision.outcome, ToolPolicyOutcome::Deny))
-}
-
-fn command_rule(
-    policy: &RuntimeToolPolicy,
-    tool_name: &str,
-    args: &Value,
-) -> Option<ToolPolicyDecision> {
-    let command = super::command::value(tool_name, args)?;
-    let outcome = policy.command_rule(command)?;
-    Some(ToolPolicyDecision::new(
-        outcome,
-        DecisionReason::MutatingTool,
-        ToolKind::Mutating,
-    ))
 }

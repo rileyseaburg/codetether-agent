@@ -1,5 +1,10 @@
 //! LSP tool: Language Server Protocol operations
 
+#[path = "lsp_authorize.rs"]
+mod authorize;
+#[path = "lsp_default.rs"]
+mod default_impl;
+
 use crate::lsp::{LspActionResult, LspManager, detect_language_from_path};
 
 use super::{Tool, ToolResult};
@@ -228,12 +233,6 @@ impl LspTool {
     }
 }
 
-impl Default for LspTool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[async_trait]
 impl Tool for LspTool {
     fn id(&self) -> &str {
@@ -312,6 +311,7 @@ impl Tool for LspTool {
         let action_raw = resolve_action_raw(&args)?;
         let action = LspOperation::parse(&action_raw)
             .ok_or_else(|| anyhow::anyhow!("Unknown action: {}", action_raw))?;
+        authorize::guard!(&args);
 
         let manager = self.get_manager().await;
 

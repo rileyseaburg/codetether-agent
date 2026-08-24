@@ -1,4 +1,4 @@
-use super::{process_run, process_types};
+use super::{ProcessGrant, process_run};
 use std::any::Any;
 use std::rc::Rc;
 use tetherscript::capability::Authority;
@@ -6,17 +6,18 @@ use tetherscript::value::{Runtime, Value};
 
 pub struct ProcessAuthority {
     progress_id: Option<String>,
+    grant: ProcessGrant,
 }
 
 impl ProcessAuthority {
-    pub fn new(progress_id: Option<String>) -> Rc<dyn Authority> {
-        Rc::new(Self { progress_id })
+    pub fn new(progress_id: Option<String>, grant: ProcessGrant) -> Rc<dyn Authority> {
+        Rc::new(Self { progress_id, grant })
     }
 }
 
 impl Authority for ProcessAuthority {
     fn narrow(&self, _params: &Value) -> Result<Rc<dyn Authority>, String> {
-        Ok(Self::new(self.progress_id.clone()))
+        Ok(Self::new(self.progress_id.clone(), self.grant.clone()))
     }
 
     /// Dispatches an authority method.
@@ -27,7 +28,7 @@ impl Authority for ProcessAuthority {
     /// `Value::Result` here would therefore produce `Result<Result<map>>`.
     fn invoke(&self, _rt: &mut dyn Runtime, method: &str, args: &[Value]) -> Result<Value, String> {
         match method {
-            "run" => run(self.progress_id.as_deref(), args),
+            "run" => run(self.progress_id.as_deref(), &self.grant, args),
             _ => Err(format!("codetether_process: no method `{method}`")),
         }
     }
@@ -47,9 +48,6 @@ impl Authority for ProcessAuthority {
 /// `tetherscript run`. Plugins then needed `??` on one path and `?` on the
 /// other, and indexing the inner `Result` failed with
 /// "cannot index result with str".
-fn run(progress_id: Option<&str>, args: &[Value]) -> Result<Value, String> {
-    match progress_id {
-        Some(id) => process_run::run(id, args),
-        None => process_types::unwrap_result(tetherscript::system::process_run(args)),
-    }
+fn run(progress_id: Option<&str>, grant: &ProcessGrant, args: &[Value]) -> Result<Value, String> {
+    process_run::run(progress_id.unwrap_or("tetherscript_process"), grant, args)
 }

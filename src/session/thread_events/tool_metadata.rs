@@ -14,6 +14,9 @@ impl ThreadEventMapper {
         metadata: serde_json::Value,
     ) -> Vec<ThreadEvent> {
         let mut events = vec![self.tool_metadata(tool_call_id, name, metadata.clone())];
+        if let Some(decision) = self.approval_metadata(&metadata) {
+            events.push(decision);
+        }
         if name == "apply_patch" {
             events.extend(self.patch_metadata_events(tool_call_id, &metadata));
         }

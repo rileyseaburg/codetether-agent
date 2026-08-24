@@ -31,11 +31,8 @@ impl Default for VoiceTool {
 
 impl VoiceTool {
     pub fn new() -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(REQUEST_TIMEOUT)
-            .user_agent("CodeTether-Agent/1.0")
-            .build()
-            .expect("Failed to build HTTP client");
+        let client = super::network_access::no_redirect_client_with_timeout(REQUEST_TIMEOUT)
+            .expect("voice HTTP client");
         Self { client }
     }
 
@@ -291,7 +288,7 @@ impl Tool for VoiceTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: Params = serde_json::from_value(params).context("Invalid params")?;
+        let p: Params = crate::tool::network_access::args!("voice", params);
 
         match p.action.as_str() {
             "speak" => {

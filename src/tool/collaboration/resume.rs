@@ -32,8 +32,13 @@ impl Tool for ResumeAgentTool {
             "required":["id"]})
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
-        let args: Args = serde_json::from_value(input)?;
+        let args: Args = serde_json::from_value(input.clone())?;
+        let authority = match super::authority::claim("resume_agent", &input).await {
+            Ok(authority) => authority,
+            Err(blocked) => return Ok(blocked),
+        };
         legacy::execute(
+            &authority,
             &args.context,
             json!({"action":"resume", "name":args.id})
                 .as_object()

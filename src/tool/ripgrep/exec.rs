@@ -2,9 +2,7 @@
 
 use anyhow::{Context, Result};
 use std::path::Path;
-use std::process::Stdio;
 use std::time::Duration;
-use tokio::process::Command;
 
 /// Raw ripgrep outcome, before formatting.
 pub(super) struct Output {
@@ -20,14 +18,14 @@ pub(super) struct Output {
 ///
 /// Returns an error when the `rg` binary cannot be spawned.
 pub(super) async fn run(flags: &[String], cwd: &Path, timeout: Duration) -> Result<Output> {
-    let child = Command::new("rg")
-        .args(flags)
-        .current_dir(cwd)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()
-        .context("failed to spawn `rg`; is ripgrep installed and on PATH?")?;
+    let policy = crate::tool::sandbox::SandboxPolicy {
+        allow_exec: true,
+        allow_network: false,
+        ..Default::default()
+    };
+    let child = crate::tool::sandbox::sandbox_spawn_piped::spawn("rg", flags, &policy, cwd)
+        .await
+        .context("failed to spawn sandboxed `rg`; is ripgrep installed and on PATH?")?;
     match tokio::time::timeout(timeout, child.wait_with_output()).await {
         Ok(result) => {
             let output = result.context("failed to collect `rg` output")?;

@@ -2,10 +2,13 @@
 //! return its [`ToolResult`]. Each backend is invoked inline so the router
 //! does not require access to the full `ToolRegistry`.
 
+#[path = "dispatch_network_review.rs"]
+mod network_review;
+
 use anyhow::Result;
 use serde_json::{Value, json};
 
-use crate::tool::{Tool, ToolResult, file, memory, search, webfetch, websearch};
+use crate::tool::{Tool, ToolResult, file, memory, search};
 
 use super::types::{Backend, BackendChoice};
 
@@ -18,8 +21,8 @@ pub async fn run_choice(choice: &BackendChoice, query: &str) -> Result<ToolResul
     match choice.backend {
         Backend::Grep => search::GrepTool::new().execute(args).await,
         Backend::Glob => file::GlobTool::new().execute(args).await,
-        Backend::Websearch => websearch::WebSearchTool::new().execute(args).await,
-        Backend::Webfetch => webfetch::WebFetchTool::new().execute(args).await,
+        Backend::Websearch => Ok(network_review::required("websearch", args)),
+        Backend::Webfetch => Ok(network_review::required("webfetch", args)),
         Backend::Memory => memory::MemoryTool::new().execute(args).await,
         Backend::Rlm => Ok(ToolResult::error(
             "rlm backend requires a provider; wire RlmTool before requesting semantic search",

@@ -1,20 +1,36 @@
-//! Autonomous approval handling for spawned sub-agent runs.
+//! Fail-closed approval handling for unattended spawned sub-agent runs.
 //!
-//! Sub-agents run with no human attached to the event channel, so an
-//! [`crate::session::SessionEvent::ApprovalRequest`] would otherwise block the
-//! sub-agent's `live::request` oneshot forever. This module answers such
-//! requests immediately so autonomous writes/commands proceed.
+//! Unattended children cannot turn their own approval requests into authority.
 
 use crate::approval::LiveApprovalRequest;
 use crate::approval::live::{LiveApprovalDecision, decide};
 
-/// Auto-approve a tool invocation requested by a spawned sub-agent.
+/// Deny a tool invocation that cannot be reviewed by an attached human.
 ///
 /// # Examples
 ///
 /// ```ignore
-/// auto_approve(&request);
+/// deny_unattended(&request);
 /// ```
-pub(super) fn auto_approve(req: &LiveApprovalRequest) {
-    decide(&req.approval_id, LiveApprovalDecision::Approved);
+pub(super) fn deny_unattended(req: &LiveApprovalRequest) {
+    let decision = match crate::approval::ApprovalStore::open_default().and_then(|store| {
+        store
+            .deny(
+                &req.approval_id,
+                "spawned-sub-agent",
+                "unattended sub-agent cannot self-approve authority",
+            )
+            .map(|_| LiveApprovalDecision::denied_with("unattended sub-agent approval denied"))
+    }) {
+        Ok(decision) => decision,
+        Err(error) => {
+            tracing::warn!(approval_id = %req.approval_id, %error, "Sub-agent approval failed");
+            LiveApprovalDecision::denied_with("sub-agent approval could not be persisted")
+        }
+    };
+    decide(&req.approval_id, decision);
 }
+
+#[cfg(test)]
+#[path = "approve_tests.rs"]
+mod tests;

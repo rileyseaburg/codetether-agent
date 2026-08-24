@@ -12,7 +12,10 @@ pub(super) struct ImagesClient {
 impl ImagesClient {
     pub(super) fn new() -> Self {
         Self {
-            http: Client::new(),
+            http: Client::builder()
+                .redirect(reqwest::redirect::Policy::none())
+                .build()
+                .expect("image generation HTTP client"),
         }
     }
 

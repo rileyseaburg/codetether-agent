@@ -18,11 +18,17 @@ pub struct TetherScriptRun {
     pub computer_origin: Vec<String>,
     pub computer_scope: Vec<String>,
     pub progress_id: Option<String>,
+    pub process: crate::tool::tetherscript::runner::ProcessGrant,
 }
 
 impl TetherScriptRun {
     /// Build a run request from loaded source and parsed input.
-    pub fn new(source_name: String, source: String, input: TetherScriptPluginInput) -> Self {
+    pub fn new(
+        source_name: String,
+        source: String,
+        input: TetherScriptPluginInput,
+        process: crate::tool::tetherscript::runner::ProcessGrant,
+    ) -> Self {
         Self {
             source_name,
             source,
@@ -39,6 +45,7 @@ impl TetherScriptRun {
             computer_origin: input.computer_origin,
             computer_scope: input.computer_scope,
             progress_id: input.tool_call_id,
+            process,
         }
     }
 }

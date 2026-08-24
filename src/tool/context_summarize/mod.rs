@@ -1,5 +1,8 @@
 //! `context_summarize` module.
 
+#[cfg(test)]
+#[path = "approval_tests.rs"]
+mod approval_tests;
 mod execute;
 mod logic;
 mod parse;

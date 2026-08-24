@@ -13,6 +13,10 @@ pub(crate) fn apply(cmd: &mut tokio::process::Command, rules: Option<Rules>) {
     apply_impl::apply(cmd, rules);
 }
 
+pub(crate) fn apply_std(cmd: &mut std::process::Command, rules: Option<Rules>) {
+    apply_impl::apply_std(cmd, rules);
+}
+
 /// Landlock ABI version reported by the kernel (`<= 0` means unavailable).
 pub(crate) fn abi_version() -> i64 {
     sys::abi_version()

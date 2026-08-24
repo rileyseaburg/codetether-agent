@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use tokio::sync::oneshot;
-
 use super::LiveApprovalDecision;
 
-type Sender = oneshot::Sender<LiveApprovalDecision>;
+#[path = "state_entry.rs"]
+mod entry;
+pub(super) use entry::Pending;
 
 #[derive(Default)]
 struct State {
     latest: Option<String>,
-    pending: HashMap<String, Sender>,
+    pending: HashMap<String, Pending>,
 }
 
 static STATE: OnceLock<Mutex<State>> = OnceLock::new();
@@ -19,10 +19,10 @@ fn state() -> &'static Mutex<State> {
     STATE.get_or_init(|| Mutex::new(State::default()))
 }
 
-pub(super) fn insert(id: String, tx: Sender) {
+pub(super) fn insert(id: String, pending: Pending) {
     let mut guard = state().lock().expect("approval state lock");
     guard.latest = Some(id.clone());
-    guard.pending.insert(id, tx);
+    guard.pending.insert(id, pending);
 }
 
 pub(super) fn remove(id: &str) {
@@ -34,12 +34,12 @@ pub(super) fn remove(id: &str) {
 }
 
 pub fn decide(id: &str, decision: LiveApprovalDecision) -> bool {
-    let sender = state()
+    let pending = state()
         .lock()
         .expect("approval state lock")
         .pending
         .remove(id);
-    sender.is_some_and(|tx| tx.send(decision).is_ok())
+    pending.is_some_and(|pending| pending.finish(id, decision))
 }
 
 pub fn latest_id() -> Option<String> {

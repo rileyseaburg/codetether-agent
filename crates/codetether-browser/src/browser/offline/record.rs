@@ -19,7 +19,11 @@ pub struct Capture {
 }
 
 pub fn run(url: &str, out: &Path) -> Result<String> {
-    let resp = Client::builder().build()?.get(url).send()?;
+    let resp = Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?
+        .get(url)
+        .send()?;
     let status = resp.status().as_u16();
     let headers: BTreeMap<String, String> = resp
         .headers()

@@ -1,16 +1,5 @@
 //! Signed transport for streamed worker output.
 
-pub(super) async fn send(
-    client: reqwest::Client,
-    server: String,
-    token: Option<String>,
-    worker_id: String,
-    task_id: String,
-    output: String,
-) {
-    send_with_event(client, server, token, worker_id, task_id, output, None).await
-}
-
 /// Sends streamed output, optionally carrying one structured session event.
 ///
 /// The typed event travels beside the human-readable text on the same signed

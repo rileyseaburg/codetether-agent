@@ -8,16 +8,16 @@ use std::sync::Arc;
 use crate::tool::command_session::Registry;
 use crate::tool::{Tool, ToolResult};
 
-#[path = "exec_command/execute.rs"]
-mod execute;
 #[path = "exec_command/environment.rs"]
 mod environment;
+#[path = "exec_command/execute.rs"]
+mod execute;
 #[path = "exec_command/input.rs"]
 mod input;
 #[path = "exec_command/parameters.rs"]
 mod parameters;
 #[path = "exec_command/policy.rs"]
-mod policy;
+pub(crate) mod policy;
 #[path = "exec_command/shell.rs"]
 mod shell;
 

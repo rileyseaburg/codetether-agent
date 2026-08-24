@@ -12,6 +12,9 @@ pub(super) use edit_key::open as edit;
 pub(super) use scroll_key::handle as scroll;
 
 #[cfg(test)]
+#[path = "approval_deny_key_tests.rs"]
+mod deny_tests;
+#[cfg(test)]
 #[path = "approval_feedback_key_tests.rs"]
 mod feedback_tests;
 #[cfg(test)]

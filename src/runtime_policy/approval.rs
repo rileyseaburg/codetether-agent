@@ -1,45 +1,48 @@
-use crate::approval::{ApprovalStore, ExecPolicyAmendment};
-use crate::tool::ToolResult;
-use serde_json::Value;
-use serde_json::json;
+//! Approval request verification and atomic receipt claiming.
 
-pub(super) fn attach_request(
-    result: ToolResult,
-    tool_name: &str,
-    action: &str,
-    resource: &str,
-    amendment: Option<&ExecPolicyAmendment>,
-) -> ToolResult {
-    match ApprovalStore::open_default()
-        .and_then(|store| store.create_request(tool_name, action, resource, "runtime policy"))
-    {
-        Ok(request) => {
-            if let Some(prefix) = amendment.and_then(ExecPolicyAmendment::prefix_string) {
-                crate::approval::session_command_grants::remember_request(
-                    &request.id,
-                    vec![prefix],
-                );
-            }
-            let result =
-                super::approval_output::with_request(result, &request.id, action, resource)
-                    .with_metadata("approval_request_id", json!(request.id))
-                    .with_metadata("approval_action", json!(action))
-                    .with_metadata("approval_resource", json!(resource));
-            match amendment {
-                Some(value) => result.with_metadata("proposed_execpolicy_amendment", json!(value)),
-                None => result,
-            }
-        }
-        Err(error) => result.with_metadata("approval_request_error", json!(error.to_string())),
-    }
-}
+use crate::approval::ApprovalStore;
+use serde_json::Value;
+
+#[path = "approval/request.rs"]
+mod request;
+#[path = "approval/tools.rs"]
+mod tools;
+pub(super) use request::attach_request;
+pub(crate) use tools::self_verifying;
 
 pub(super) fn verified(args: &Value, tool_name: &str, action: &str, resource: &str) -> bool {
     let Some(approval_id) = approval_id(args) else {
         return false;
     };
+    let Ok(store) = ApprovalStore::open_default() else {
+        return false;
+    };
+    if self_verifying(tool_name) {
+        store
+            .verify(approval_id, tool_name, action, resource)
+            .is_ok()
+    } else {
+        store
+            .claim(approval_id, tool_name, action, resource, "runtime-policy")
+            .is_ok()
+    }
+}
+
+pub(super) fn inspected(args: &Value, tool_name: &str, action: &str, resource: &str) -> bool {
+    let Some(approval_id) = approval_id(args) else {
+        return false;
+    };
     ApprovalStore::open_default()
         .and_then(|store| store.verify(approval_id, tool_name, action, resource))
+        .is_ok()
+}
+
+pub(super) fn claim(args: &Value, tool_name: &str, action: &str, resource: &str) -> bool {
+    let Some(approval_id) = approval_id(args) else {
+        return false;
+    };
+    ApprovalStore::open_default()
+        .and_then(|store| store.claim(approval_id, tool_name, action, resource, "runtime-policy"))
         .is_ok()
 }
 

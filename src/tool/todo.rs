@@ -1,5 +1,8 @@
 //! Todo Tool - Read and write todo items for task tracking.
 
+#[path = "todo_default.rs"]
+mod default_impl;
+
 use super::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -48,18 +51,6 @@ pub struct TodoReadTool {
 
 pub struct TodoWriteTool {
     root: PathBuf,
-}
-
-impl Default for TodoReadTool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Default for TodoWriteTool {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl TodoReadTool {
@@ -252,7 +243,8 @@ impl Tool for TodoWriteTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: WriteParams = serde_json::from_value(params).context("Invalid params")?;
+        let p: WriteParams = serde_json::from_value(params.clone()).context("Invalid params")?;
+        crate::tool::orchestration_gate::guard!("todowrite", &params);
         let mut todos = self.load_todos()?;
 
         match p.action.as_str() {

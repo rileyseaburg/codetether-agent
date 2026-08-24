@@ -208,7 +208,7 @@ pub struct SseTransport {
 impl SseTransport {
     /// Create a new SSE transport connecting to the given endpoint
     pub async fn new(endpoint: String) -> Result<Self> {
-        let client = reqwest::Client::new();
+        let client = crate::tool::network_access::no_redirect_client()?;
         let (write_tx, _write_rx) = mpsc::channel::<String>(100);
         let (read_tx, read_rx) = mpsc::channel::<String>(100);
 
@@ -287,15 +287,14 @@ pub struct ProcessTransport {
 
 impl ProcessTransport {
     /// Spawn a subprocess and connect via stdio
-    pub async fn spawn(command: &str, args: &[&str]) -> Result<Self> {
-        use tokio::process::Command;
-
-        let mut child = Command::new(command)
-            .args(args)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()?;
+    pub(crate) async fn spawn(command: &str, args: &[&str], allow_network: bool) -> Result<Self> {
+        let (policy, cwd) = super::subprocess_policy::sandbox::policy(allow_network)?;
+        let args = args
+            .iter()
+            .map(|arg| (*arg).to_string())
+            .collect::<Vec<_>>();
+        let mut child =
+            crate::tool::sandbox::sandbox_spawn_piped::spawn(command, &args, &policy, &cwd).await?;
 
         let stdout = child
             .stdout

@@ -22,6 +22,9 @@ pub struct TetherScriptPluginInput {
     /// Allowed scopes for browser capability.
     #[serde(default)]
     pub browser_scope: Vec<String>,
+    /// Grant sandboxed subprocess execution to the plugin.
+    #[serde(default)]
+    pub grant_process: bool,
     /// Grant local computer_use as a TetherScript `computer` capability.
     #[serde(default)]
     pub grant_computer: bool,

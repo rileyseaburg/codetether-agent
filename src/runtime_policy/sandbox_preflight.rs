@@ -1,8 +1,11 @@
 //! Approval preflight for unavailable OS sandbox runners.
 
 use super::{DecisionReason, RuntimeToolPolicy, ToolKind, ToolPolicyDecision, ToolPolicyOutcome};
-use crate::config::{ApprovalPolicy, SandboxMode};
+use crate::config::ApprovalPolicy;
 use serde_json::Value;
+
+#[path = "sandbox_preflight/state.rs"]
+mod state;
 
 pub(super) fn decision(
     policy: &RuntimeToolPolicy,
@@ -13,7 +16,7 @@ pub(super) fn decision(
     if matches!(policy.approval_policy(), ApprovalPolicy::Never) {
         return None;
     }
-    decision_for_state(
+    state::for_sandbox(
         tool_name,
         command,
         policy.sandbox_mode(),
@@ -22,26 +25,24 @@ pub(super) fn decision(
     )
 }
 
-fn decision_for_state(
+pub(super) fn escalation(
+    policy: &RuntimeToolPolicy,
     tool_name: &str,
-    command: &str,
-    mode: SandboxMode,
-    unavailable: Option<&str>,
-    env_allows_direct: bool,
+    args: &Value,
 ) -> Option<ToolPolicyDecision> {
-    if !matches!(tool_name, "bash" | "exec_command")
-        || super::command::is_read_only_command(command)
-    {
+    let escalated = tool_name == "exec_command"
+        && args.get("sandbox_permissions").and_then(Value::as_str) == Some("require_escalated");
+    if !escalated {
         return None;
     }
-    if matches!(mode, SandboxMode::DangerFullAccess) || unavailable.is_none() || env_allows_direct {
-        return None;
-    }
-    Some(ToolPolicyDecision::new(
-        ToolPolicyOutcome::RequireApproval,
-        DecisionReason::SandboxUnavailable,
-        ToolKind::Mutating,
-    ))
+    let (outcome, reason) = match policy.approval_policy() {
+        ApprovalPolicy::Never => (ToolPolicyOutcome::Deny, DecisionReason::ApprovalUnavailable),
+        ApprovalPolicy::Untrusted | ApprovalPolicy::OnFailure | ApprovalPolicy::OnRequest => (
+            ToolPolicyOutcome::RequireApproval,
+            DecisionReason::SandboxEscalation,
+        ),
+    };
+    Some(ToolPolicyDecision::new(outcome, reason, ToolKind::Mutating))
 }
 
 #[cfg(test)]

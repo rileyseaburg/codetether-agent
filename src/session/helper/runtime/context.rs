@@ -34,6 +34,7 @@ pub fn enrich_tool_input_with_runtime_context(
 ) -> Value {
     let mut enriched = tool_input.clone();
     if let Value::Object(ref mut obj) = enriched {
+        obj.retain(|key, _| !key.starts_with("__ct_"));
         insert_field(obj, "__ct_current_model", current_model);
         obj.insert("__ct_session_id".to_string(), json!(session_id));
         obj.insert("__ct_agent_name".to_string(), json!(agent_name));
@@ -70,6 +71,6 @@ fn insert_parent_workspace(obj: &mut Map<String, Value>, parent_workspace: &Path
 /// ```
 pub fn insert_field(obj: &mut Map<String, Value>, key: &str, value: Option<&str>) {
     if let Some(value) = value {
-        obj.entry(key.to_string()).or_insert_with(|| json!(value));
+        obj.insert(key.to_string(), json!(value));
     }
 }

@@ -40,14 +40,13 @@ pub fn inject(worktree_path: &Path, artifact_base: &Path) -> Result<()> {
 }
 
 fn mark_skip_worktree(worktree_path: &Path, file: &str) {
-    let _ = std::process::Command::new("git")
-        .args(["add", "-N", file])
-        .current_dir(worktree_path)
-        .output();
-    let _ = std::process::Command::new("git")
-        .args(["update-index", "--skip-worktree", file])
-        .current_dir(worktree_path)
-        .output();
+    let _ =
+        crate::tool::git::process::output_blocking_refs(worktree_path, &["add", "-N", file], true);
+    let _ = crate::tool::git::process::output_blocking_refs(
+        worktree_path,
+        &["update-index", "--skip-worktree", file],
+        true,
+    );
 }
 
 #[cfg(test)]

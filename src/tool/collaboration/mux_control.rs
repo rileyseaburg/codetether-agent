@@ -12,6 +12,10 @@ mod lifecycle_safety;
 mod operations;
 #[path = "mux_control/schema.rs"]
 mod schema;
+#[path = "mux_control/workspace.rs"]
+mod workspace;
+#[path = "mux_control/unsafe_process_policy.rs"]
+mod unsafe_process_policy;
 
 use crate::tool::{Tool, ToolResult};
 use anyhow::Result;
@@ -34,8 +38,14 @@ impl Tool for MuxControlTool {
     fn parameters(&self) -> Value {
         schema::parameters()
     }
-    async fn execute(&self, input: Value) -> Result<ToolResult> {
-        execute::run(serde_json::from_value(input)?).await
+    async fn execute(&self, mut input: Value) -> Result<ToolResult> {
+        let mut args = serde_json::from_value(input.clone())?;
+        workspace::bind(&mut args, &mut input)?;
+        if let Some(blocked) = unsafe_process_policy::blocked(&args, &input).await {
+            return Ok(blocked);
+        }
+        crate::tool::network_access::guard!("mux_control", &input);
+        execute::run(args).await
     }
 }
 

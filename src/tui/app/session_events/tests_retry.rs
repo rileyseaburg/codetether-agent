@@ -18,5 +18,5 @@ async fn stream_retry_clears_failed_preview_and_reports_reconnect() {
     )
     .await;
     assert!(app.state.streaming_text.is_empty());
-    assert_eq!(app.state.status, "Reconnecting… 2/3");
+    assert_eq!(app.state.status, "Reconnecting… 2/3: connection reset");
 }

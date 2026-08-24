@@ -7,6 +7,8 @@ fn reads_reusable_a2a_context_from_task_metadata() {
         "metadata": {
             "context_id": "forgejo_pr_42_context",
             "resume_session_id": "author-session",
+            "protocol": "codetether.forgejo-author.v1",
+            "server_author_binding_verified": true,
             "provenance_verified": true,
             "preserve_session_workspace": true
         },

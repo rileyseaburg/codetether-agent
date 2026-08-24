@@ -9,7 +9,7 @@ pub struct RuntimeToolPolicy {
     approval_policy: ApprovalPolicy,
     permission_profile: PermissionProfile,
     sandbox_mode: SandboxMode,
-    permissions: PermissionConfig,
+    pub(super) permissions: PermissionConfig,
     project_trusted: bool,
 }
 
@@ -27,7 +27,10 @@ impl RuntimeToolPolicy {
 
     /// Decide how a requested tool invocation should be handled.
     pub fn decide_tool(&self, tool_name: &str) -> ToolPolicyDecision {
-        let tool_kind = ToolKind::for_name(tool_name);
+        self.decide_as(tool_name, ToolKind::for_name(tool_name))
+    }
+
+    pub(crate) fn decide_as(&self, tool_name: &str, tool_kind: ToolKind) -> ToolPolicyDecision {
         if let Some(outcome) = super::permissions::tool_outcome(&self.permissions, tool_name) {
             return ToolPolicyDecision::new(outcome, DecisionReason::MutatingTool, tool_kind);
         }

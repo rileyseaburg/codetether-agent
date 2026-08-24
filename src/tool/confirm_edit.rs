@@ -2,6 +2,9 @@
 //!
 //! Edit files with user confirmation via diff display
 
+#[path = "confirm_edit_default.rs"]
+mod default_impl;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -14,12 +17,6 @@ use super::{Tool, ToolResult};
 use crate::telemetry::{FileChange, TOOL_EXECUTIONS, ToolExecution, record_persistent};
 
 pub struct ConfirmEditTool;
-
-impl Default for ConfirmEditTool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl ConfirmEditTool {
     pub fn new() -> Self {
@@ -180,6 +177,7 @@ impl Tool for ConfirmEditTool {
             }
             diff_output.push('\n');
         }
+        crate::tool::orchestration_gate::guard!("confirm_edit", &input);
 
         // If no confirmation provided, return diff for review
         if confirm.is_none() {
@@ -211,7 +209,6 @@ impl Tool for ConfirmEditTool {
                 + 1;
             let end_line = start_line + lines_before.saturating_sub(1);
 
-            // Write the file
             fs::write(&path, &new_content).await?;
 
             let duration = start.elapsed();

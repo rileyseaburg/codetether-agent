@@ -24,3 +24,7 @@ pub fn is_read_only_command(command: &str) -> bool {
 #[cfg(test)]
 #[path = "command_exec_tests.rs"]
 mod exec_tests;
+
+#[cfg(test)]
+#[path = "command_bypass_tests.rs"]
+mod bypass_tests;

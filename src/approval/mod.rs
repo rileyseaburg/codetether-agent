@@ -12,13 +12,20 @@ mod receipt;
 mod request;
 pub mod session_command_grants;
 pub mod session_grants;
+pub(crate) mod session_settle;
 mod status;
 mod store;
+mod store_claim;
+mod store_consume;
 mod store_create;
 mod store_decide;
 mod store_events;
+mod store_lock;
 mod store_lookup;
+mod store_review;
 mod store_verify;
+mod store_verify_receipt;
+pub(crate) mod use_once;
 
 pub use decision::ApprovalDecision;
 pub use decision_kind::ApprovalDecisionKind;
@@ -33,5 +40,8 @@ pub use store::ApprovalStore;
 #[cfg(test)]
 pub(crate) mod test_env;
 
+#[cfg(test)]
+#[path = "store_claim_process_tests.rs"]
+mod store_claim_process_tests;
 #[cfg(test)]
 mod tests;

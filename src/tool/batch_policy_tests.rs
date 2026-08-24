@@ -5,7 +5,7 @@ use crate::tool::ToolRegistry;
 use serde_json::json;
 
 #[tokio::test(flavor = "current_thread")]
-async fn nested_mutating_tool_requires_policy_approval() {
+async fn nested_mutating_tool_is_rejected_before_dispatch() {
     let _guard = lock_env();
     let data = tempfile::tempdir().expect("data dir");
     let _env = ScopedEnv::data_dir_with_access(data.path(), AccessMode::Ask);
@@ -19,5 +19,5 @@ async fn nested_mutating_tool_requires_policy_approval() {
     .await;
     assert_eq!(tool_id, "bash");
     assert!(!result.success);
-    assert_eq!(result.metadata["policy_outcome"], "require_approval");
+    assert!(result.output.contains("only accepts read-only"));
 }

@@ -1,7 +1,14 @@
-use std::process::Command;
-
 pub(super) fn is_git_repo() -> bool {
     std::path::Path::new(".git").exists() || git_success(&["rev-parse", "--git-dir"])
+}
+
+fn git_output(args: &[&str]) -> anyhow::Result<std::process::Output> {
+    let cwd = std::env::current_dir()?;
+    let args = args
+        .iter()
+        .map(|arg| (*arg).to_string())
+        .collect::<Vec<_>>();
+    crate::tool::git::process::output_blocking(&cwd, &args, &[], false)
 }
 
 pub(super) fn current_branch() -> Option<String> {
@@ -17,17 +24,13 @@ pub(super) fn can_create_worktrees() -> bool {
 }
 
 fn git_success(args: &[&str]) -> bool {
-    Command::new("git")
-        .args(args)
-        .output()
+    git_output(args)
         .map(|output| output.status.success())
         .unwrap_or(false)
 }
 
 fn git_stdout(args: &[&str]) -> Option<String> {
-    Command::new("git")
-        .args(args)
-        .output()
+    git_output(args)
         .ok()
         .and_then(|output| String::from_utf8(output.stdout).ok())
 }

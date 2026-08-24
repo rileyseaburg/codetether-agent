@@ -13,6 +13,7 @@ pub(super) async fn run(tool: &SessionRecallTool, value: serde_json::Value) -> R
         Ok(args) => args,
         Err(error) => return Ok(ToolResult::error(error)),
     };
+    crate::tool::network_access::guard!("session_recall", &value);
     let workspace = std::env::current_dir()?;
     let hits = crate::session::index::recall::search::run(
         &workspace,

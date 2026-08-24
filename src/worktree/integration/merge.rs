@@ -22,6 +22,9 @@ pub(super) fn merge(repo: &Path, branch: &str) -> Result<Outcome> {
     }
     commit::create(repo, branch)?;
     let actual = delta::actual(repo)?;
+    if actual.is_empty() {
+        return Ok(Outcome::Merged(actual));
+    }
     if actual != expected {
         bail!("integration delta mismatch: expected {expected:?}, found {actual:?}");
     }

@@ -2,6 +2,9 @@
 //!
 //! Edit multiple files with user confirmation via diff display
 
+#[path = "confirm_multiedit_default.rs"]
+mod default_impl;
+
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -29,12 +32,6 @@ pub struct EditPreview {
 }
 
 pub struct ConfirmMultiEditTool;
-
-impl Default for ConfirmMultiEditTool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl ConfirmMultiEditTool {
     pub fn new() -> Self {
@@ -267,6 +264,7 @@ impl Tool for ConfirmMultiEditTool {
             total_added += added;
             total_removed += removed;
         }
+        crate::tool::orchestration_gate::guard!("confirm_multiedit", &input);
 
         // If no confirmation provided, return diffs for review
         if confirm.is_none() {
@@ -297,7 +295,6 @@ impl Tool for ConfirmMultiEditTool {
 
         // Handle confirmation
         if confirm == Some(true) {
-            // Apply all changes
             for (path, content, old_string, new_string) in file_contents {
                 let new_content = content.replacen(&old_string, &new_string, 1);
                 fs::write(&path, &new_content).await?;

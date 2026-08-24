@@ -5,10 +5,7 @@ pub(super) fn same_path(left: &Path, right: &Path) -> bool {
 }
 
 pub(super) async fn dirty(path: &Path) -> Result<bool, String> {
-    let output = tokio::process::Command::new("git")
-        .args(["status", "--porcelain"])
-        .current_dir(path)
-        .output()
+    let output = crate::tool::git::process::output_refs(path, &["status", "--porcelain"], false)
         .await
         .map_err(|error| error.to_string())?;
     if !output.status.success() {
@@ -18,13 +15,14 @@ pub(super) async fn dirty(path: &Path) -> Result<bool, String> {
 }
 
 pub(super) async fn merged(repo: &Path, head: &str, base: &str) -> Result<bool, String> {
-    let status = tokio::process::Command::new("git")
-        .args(["merge-base", "--is-ancestor", head, base])
-        .current_dir(repo)
-        .status()
-        .await
-        .map_err(|error| error.to_string())?;
-    match status.code() {
+    let status = crate::tool::git::process::output_refs(
+        repo,
+        &["merge-base", "--is-ancestor", head, base],
+        false,
+    )
+    .await
+    .map_err(|error| error.to_string())?;
+    match status.status.code() {
         Some(0) => Ok(true),
         Some(1) => Ok(false),
         _ => Err("git merge-base failed".into()),

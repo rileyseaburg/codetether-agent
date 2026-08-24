@@ -1073,6 +1073,7 @@ dependencies = [
  "dashmap",
  "directories 6.0.0",
  "dotenvy",
+ "fs2",
  "futures",
  "gethostname",
  "glob",

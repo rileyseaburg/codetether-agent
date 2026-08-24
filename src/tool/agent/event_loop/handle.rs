@@ -41,7 +41,7 @@ fn apply(event: SessionEvent, state: &mut EventLoopState) {
             state.response.push_str(&format!("\n[Error: {error}]"));
             state.error = Some(error);
         }
-        SessionEvent::ApprovalRequest(request) => super::approve::auto_approve(&request),
+        SessionEvent::ApprovalRequest(request) => super::approve::deny_unattended(&request),
         SessionEvent::Done => state.done = true,
         _ => {}
     }

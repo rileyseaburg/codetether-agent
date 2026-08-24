@@ -3,7 +3,11 @@ use serde_json::json;
 
 #[test]
 fn workspace_inherits_the_parent_directory() {
-    let params = json!({"__ct_parent_workspace": "/tmp/parent-worktree"});
+    let mut params = json!({
+        "__ct_parent_workspace": "/tmp/parent-worktree",
+        "__ct_session_id": "swarm-workspace-test",
+    });
+    crate::tool::network_access::bind_trusted(&mut params, false);
     assert_eq!(
         workspace(&params),
         std::path::Path::new("/tmp/parent-worktree")

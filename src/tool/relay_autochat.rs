@@ -4,6 +4,9 @@
 //! the protocol-first relay runtime. This tool allows LLMs to trigger
 //! agent handoffs and coordinate multi-agent workflows.
 
+#[path = "relay_autochat_args.rs"]
+mod args;
+
 use super::{Tool, ToolResult};
 use crate::bus::AgentBus;
 use crate::bus::relay::ProtocolRelayRuntime;
@@ -268,28 +271,13 @@ impl Tool for RelayAutoChatTool {
                 ));
             }
         };
-
-        let relay_id = params
-            .get("relay_id")
-            .and_then(|v| v.as_str())
-            .map(String::from);
-        let target_agent = params
-            .get("target_agent")
-            .and_then(|v| v.as_str())
-            .map(String::from);
-        let message = params
-            .get("message")
-            .and_then(|v| v.as_str())
-            .map(String::from);
+        crate::tool::network_access::guard!("relay_autochat", &params);
+        let relay_id = args::string(&params, "relay_id");
+        let target_agent = args::string(&params, "target_agent");
+        let message = args::string(&params, "message");
         let context = params.get("context").cloned();
-        let okr_id = params
-            .get("okr_id")
-            .and_then(|v| v.as_str())
-            .map(String::from);
-        let task = params
-            .get("task")
-            .and_then(|v| v.as_str())
-            .map(String::from);
+        let okr_id = args::string(&params, "okr_id");
+        let task = args::string(&params, "task");
 
         match action.as_str() {
             "init" => self.init_relay(relay_id, task, context, okr_id).await,

@@ -52,6 +52,7 @@ use system_message::build as build_system_message;
 /// * `model` — Provider model id, e.g. `"zai/glm-5.1"`.
 /// * `parent_workspace` — Workspace/worktree inherited from the parent session.
 /// * `prior_context_allowed` — Whether the parent permits memory/session/history access.
+/// * `network_allowed` — Signed effective network policy inherited from the parent.
 ///
 /// # Returns
 ///
@@ -87,6 +88,7 @@ pub(super) async fn create_agent_session(
     model: &str,
     parent_workspace: Option<PathBuf>,
     prior_context_allowed: bool,
+    network_allowed: bool,
 ) -> Result<Session> {
     let mut session = Session::new().await.context("Failed to create session")?;
     let workspace = parent_workspace.or_else(|| session.metadata.directory.clone());
@@ -95,6 +97,7 @@ pub(super) async fn create_agent_session(
     session.metadata.model = Some(model.to_string());
     session.metadata.directory = workspace.clone();
     session.metadata.inherited_prior_context_allowed = Some(prior_context_allowed);
+    session.metadata.allow_network = network_allowed;
     // Spawned sub-agents are autonomous and cannot interactively confirm edits,
     // so edit previews must be auto-applied or they spin re-issuing the same
     // pending edit forever (see issue #294).

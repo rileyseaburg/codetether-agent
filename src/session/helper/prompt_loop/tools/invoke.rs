@@ -7,6 +7,7 @@ use crate::session::helper::tool_approval;
 pub(super) async fn execute(runner: &mut Runner<'_>, call: &Call) -> Outcome {
     let input = super::super::super::runtime::enrich_tool_input_for_turn(
         &call.input,
+        &call.name,
         &runner.workspace.cwd,
         runner.session,
         &runner.lease_owner,
@@ -48,8 +49,6 @@ async fn approved(
         progress,
     )
     .await;
-    if let Some(heartbeat) = heartbeat {
-        heartbeat.abort();
-    }
+    drop(heartbeat);
     result
 }

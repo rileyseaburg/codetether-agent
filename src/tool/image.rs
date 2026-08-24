@@ -3,6 +3,13 @@
 //! This tool allows agents to load images from files or URLs and encode them
 //! as base64 data URLs for use with vision-capable models.
 
+#[path = "image_local.rs"]
+mod local;
+#[path = "image_remote.rs"]
+mod remote;
+
+#[path = "image_execute.rs"]
+mod execute;
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -20,6 +27,10 @@ pub struct ImageToolInput {
     pub detail: Option<String>,
 }
 
+#[cfg(test)]
+#[path = "image_approval_tests.rs"]
+mod approval_tests;
+
 /// Tool for loading images from files or URLs
 pub struct ImageTool;
 
@@ -29,7 +40,7 @@ impl ImageTool {
     }
 
     /// Detect MIME type from file extension
-    fn detect_mime_type(path: &str) -> &'static str {
+    pub(super) fn detect_mime_type(path: &str) -> &'static str {
         let lower = path.to_lowercase();
         if lower.ends_with(".png") {
             "image/png"
@@ -51,7 +62,7 @@ impl ImageTool {
     }
 
     /// Encode image data as base64 data URL
-    fn encode_as_data_url(data: &[u8], mime_type: &str) -> String {
+    pub(super) fn encode_as_data_url(data: &[u8], mime_type: &str) -> String {
         let base64 = STANDARD.encode(data);
         format!("data:{};base64,{}", mime_type, base64)
     }
@@ -92,51 +103,7 @@ impl Tool for ImageTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let input: ImageToolInput = serde_json::from_value(args)?;
-
-        let (data_url, mime_type, size_bytes, source) =
-            if input.path.starts_with("http://") || input.path.starts_with("https://") {
-                let response = reqwest::get(&input.path).await?;
-                if !response.status().is_success() {
-                    return Ok(ToolResult::error(format!(
-                        "Failed to fetch image from URL: HTTP {}",
-                        response.status()
-                    )));
-                }
-                let mt = response
-                    .headers()
-                    .get("content-type")
-                    .and_then(|v| v.to_str().ok())
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| Self::detect_mime_type(&input.path).to_string());
-                let bytes = response.bytes().await?;
-                let url = Self::encode_as_data_url(&bytes, &mt);
-                (url, mt, bytes.len(), input.path.clone())
-            } else {
-                let path = std::path::Path::new(&input.path);
-                if !path.exists() {
-                    return Ok(ToolResult::error(format!(
-                        "Image file not found: {}",
-                        input.path
-                    )));
-                }
-                let data = tokio::fs::read(path).await?;
-                let mt = Self::detect_mime_type(&input.path).to_string();
-                let url = Self::encode_as_data_url(&data, &mt);
-                (url, mt, data.len(), input.path.clone())
-            };
-
-        let detail = input.detail.unwrap_or_else(|| "auto".to_string());
-        let summary =
-            format!("Image loaded: {source} ({size_bytes} bytes, {mime_type}, detail={detail})");
-        Ok(ToolResult::success(summary).with_metadata(
-            "image_data_url",
-            serde_json::json!({
-                "data_url": data_url,
-                "mime_type": mime_type,
-                "detail": detail,
-            }),
-        ))
+        execute::run(args).await
     }
 }
 

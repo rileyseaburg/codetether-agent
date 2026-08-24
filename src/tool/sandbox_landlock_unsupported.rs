@@ -1,6 +1,8 @@
 use crate::tool::sandbox::SandboxPolicy;
 use std::path::Path;
 
+pub(crate) fn apply_std(_cmd: &mut std::process::Command, _rules: Option<Rules>) {}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Rules;
 

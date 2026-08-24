@@ -5,7 +5,8 @@ pub(super) struct PlanState {
     pub args: Vec<String>,
     pub unsafe_fallbacks: Vec<String>,
     pub landlock: Option<sandbox_landlock::Rules>,
-    pub _seccomp: Option<sandbox_seccomp::Program>,
+    pub seccomp: Option<sandbox_seccomp::Program>,
+    pub apply_seccomp: bool,
 }
 
 pub(super) fn from_plan(
@@ -17,7 +18,8 @@ pub(super) fn from_plan(
         args,
         unsafe_fallbacks,
         network_isolated,
-        _seccomp,
+        seccomp,
+        apply_seccomp,
         landlock,
     } = plan;
     PlanState {
@@ -25,7 +27,8 @@ pub(super) fn from_plan(
         args,
         unsafe_fallbacks: fallbacks(network_isolated, network_fallbacks, unsafe_fallbacks),
         landlock,
-        _seccomp,
+        seccomp,
+        apply_seccomp,
     }
 }
 

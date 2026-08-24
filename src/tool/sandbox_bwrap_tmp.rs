@@ -1,5 +1,4 @@
-use super::super::SandboxPolicy;
-use super::super::sandbox_bwrap_push::push_pair;
+use crate::tool::sandbox::{SandboxPolicy, sandbox_bwrap_push::push_pair};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 

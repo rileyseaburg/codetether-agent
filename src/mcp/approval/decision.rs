@@ -14,7 +14,7 @@ pub(super) fn handle(params: Option<Value>) -> Result<Value, JsonRpcError> {
         .map_err(|error| JsonRpcError::internal_error(error.to_string()))?;
     let receipt = if kind.approves() {
         let receipt = store
-            .approve(&params.approval_id, &actor, &reason)
+            .approve_review(&params.approval_id, &actor, &reason, kind)
             .map_err(|error| JsonRpcError::invalid_params(error.to_string()))?;
         kind.grant_session(&receipt);
         Some(receipt)
@@ -22,9 +22,10 @@ pub(super) fn handle(params: Option<Value>) -> Result<Value, JsonRpcError> {
         store
             .deny(&params.approval_id, &actor, &reason)
             .map_err(|error| JsonRpcError::invalid_params(error.to_string()))?;
+        kind.discard_pending(&params.approval_id);
         None
     };
-    let delivered = crate::approval::live::decide(&params.approval_id, kind.live());
+    let delivered = crate::approval::live::decide(&params.approval_id, kind.live(Some(&reason)));
     let decision = store
         .decision(&params.approval_id)
         .map_err(|error| JsonRpcError::internal_error(error.to_string()))?;

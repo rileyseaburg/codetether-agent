@@ -145,7 +145,7 @@ impl BusBridge {
 
     /// Single SSE connection attempt.  Reads until the stream closes or errors.
     async fn read_sse_stream(&self) -> anyhow::Result<()> {
-        let client = reqwest::Client::new();
+        let client = crate::tool::network_access::no_redirect_client()?;
         let mut req = client
             .get(&self.bus_url)
             .header("Accept", "text/event-stream");
@@ -247,7 +247,7 @@ pub async fn resolve_worker_bus_url(
         worker_id
     );
 
-    let client = reqwest::Client::new();
+    let client = crate::tool::network_access::no_redirect_client()?;
     let mut req = client.get(worker_url);
     if let Some(token) = token.filter(|value| !value.trim().is_empty()) {
         req = req.bearer_auth(token);
@@ -304,7 +304,7 @@ pub async fn resolve_worker_bus_url_for_workspace(
         urlencoding::encode(workspace_id)
     );
 
-    let client = reqwest::Client::new();
+    let client = crate::tool::network_access::no_redirect_client()?;
     let mut req = client.get(workspace_url);
     if let Some(token) = token.filter(|value| !value.trim().is_empty()) {
         req = req.bearer_auth(token);
@@ -338,7 +338,7 @@ pub async fn resolve_workspace_id_from_path(
         control_plane_url.trim_end_matches('/')
     );
 
-    let client = reqwest::Client::new();
+    let client = crate::tool::network_access::no_redirect_client()?;
     let mut req = client.get(workspaces_url);
     if let Some(token) = token.filter(|value| !value.trim().is_empty()) {
         req = req.bearer_auth(token);
@@ -359,7 +359,7 @@ pub async fn resolve_default_worker_bus_url(
         control_plane_url.trim_end_matches('/')
     );
 
-    let client = reqwest::Client::new();
+    let client = crate::tool::network_access::no_redirect_client()?;
     let mut req = client.get(workers_url);
     if let Some(token) = token.filter(|value| !value.trim().is_empty()) {
         req = req.bearer_auth(token);

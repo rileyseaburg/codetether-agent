@@ -3,7 +3,7 @@
 #[path = "receipt.rs"]
 mod receipt;
 
-use anyhow::{Result, ensure};
+use anyhow::{Result, bail};
 use serde_json::json;
 
 use crate::approval::{ApprovalStore, LiveApprovalDecision};
@@ -21,7 +21,10 @@ pub(super) fn apply(original_id: &str, patch: &str) -> Result<String> {
     };
     let delivered = crate::approval::live::decide(original_id, decision);
     approval_queue::resolve(original_id);
-    ensure!(delivered, "the waiting tool is no longer available");
+    if !delivered {
+        receipt::revoke(&revised_id)?;
+        bail!("the waiting tool is no longer available");
+    }
     Ok(format!(
         "Edited patch approved as `{revised_id}` and sent to the waiting tool"
     ))
@@ -34,6 +37,7 @@ fn reject_empty(id: &str) -> Result<String> {
         "tui-editor",
         "all proposed changes removed in code editor",
     )?;
+    crate::approval::session_settle::request(id, None);
     crate::approval::live::decide(
         id,
         LiveApprovalDecision::denied_with("all proposed changes removed in code editor"),

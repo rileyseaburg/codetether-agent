@@ -3,14 +3,18 @@
 //! Provides native desktop automation capabilities including app discovery,
 //! screen capture, and input simulation. Currently supports Windows only.
 
+#[path = "execute.rs"]
+mod execute;
 pub mod input;
 pub mod response;
 pub mod schema;
+#[path = "unsafe_process_policy.rs"]
+mod unsafe_process_policy;
 
 pub(crate) mod platform;
 
 use super::{Tool, ToolResult};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -47,9 +51,6 @@ impl Tool for ComputerUseTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let input: input::ComputerUseInput =
-            serde_json::from_value(args).context("Invalid computer_use args")?;
-
-        platform::dispatch(&input).await
+        execute::run(args).await
     }
 }

@@ -8,6 +8,8 @@ use super::sandbox_bwrap_probe::ProbeResult;
 mod platform;
 #[path = "sandbox_runner_select_seatbelt.rs"]
 mod seatbelt;
+#[path = "sandbox_bwrap_trusted.rs"]
+mod trusted_bwrap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Runner {
@@ -23,7 +25,7 @@ pub(super) fn selected_runner() -> Runner {
 
 #[cfg(target_os = "linux")]
 fn linux_runner() -> Runner {
-    let Ok(path) = which::which("bwrap") else {
+    let Some(path) = trusted_bwrap::find() else {
         return Runner::Direct("bwrap_not_found");
     };
     match super::sandbox_bwrap_probe::probe(&path) {

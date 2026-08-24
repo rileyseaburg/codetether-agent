@@ -168,7 +168,7 @@ impl Tool for K8sTool {
     }
 
     async fn execute(&self, input: Value) -> Result<ToolResult> {
-        let params: K8sInput = serde_json::from_value(input)?;
+        let params: K8sInput = crate::tool::network_access::args!("kubernetes", input);
         let manager = self.get_manager().await;
 
         if !manager.is_available() {

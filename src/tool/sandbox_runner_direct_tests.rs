@@ -20,6 +20,8 @@ fn direct_runner_records_explicit_unsafe_env_override() {
     assert_eq!(plan.program, "sh");
     assert_eq!(plan.args, args);
     assert!(!plan.network_isolated);
+    assert!(plan.seccomp.is_none());
+    assert!(!plan.apply_seccomp);
 }
 
 #[test]
@@ -31,7 +33,7 @@ fn confined_plan_uses_landlock_when_kernel_supports_it() {
         let plan = plan.expect("landlock-confined plan");
         assert_eq!(plan.program, "sh");
         assert!(plan.landlock.is_some());
-        assert!(!plan.network_isolated);
+        assert!(plan.network_isolated);
     } else {
         assert!(plan.is_none(), "no Landlock kernel => fail closed");
     }

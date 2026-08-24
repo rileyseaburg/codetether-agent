@@ -1,4 +1,6 @@
 use super::result;
+use crate::approval::{test_env::ScopedEnv, test_env::lock_env};
+use crate::config::AccessMode;
 use crate::tool::{Tool, bash::BashTool, exec_command::ExecCommandTool};
 use std::sync::Arc;
 
@@ -23,6 +25,8 @@ fn allows_managed_and_read_only_worktree_commands() {
 
 #[tokio::test]
 async fn bash_tool_enforces_worktree_guard() {
+    let _lock = lock_env();
+    let _env = ScopedEnv::access(AccessMode::Full);
     let blocked = BashTool::new()
         .execute(serde_json::json!({"command": "git worktree add /tmp/random"}))
         .await
@@ -33,6 +37,8 @@ async fn bash_tool_enforces_worktree_guard() {
 
 #[tokio::test]
 async fn exec_command_tool_enforces_worktree_guard() {
+    let _lock = lock_env();
+    let _env = ScopedEnv::access(AccessMode::Full);
     let sessions = Arc::new(crate::tool::command_session::Registry::default());
     let tool = ExecCommandTool::new(sessions, None);
     let blocked = tool

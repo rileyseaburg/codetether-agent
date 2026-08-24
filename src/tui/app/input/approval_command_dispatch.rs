@@ -33,10 +33,10 @@ fn run_with_store(app: &mut App, store: &ApprovalStore, action: super::parse::Ac
     true
 }
 
-fn target_id(id: Option<&str>) -> Option<String> {
+pub(super) fn target_id(id: Option<&str>) -> Option<String> {
     id.map(str::to_string)
-        .or_else(crate::approval::live::latest_id)
         .or_else(approval_queue::active_id)
+        .or_else(crate::approval::live::latest_id)
 }
 
 fn message(action: &super::parse::Action<'_>, stored: &super::store::StoredDecision) -> String {

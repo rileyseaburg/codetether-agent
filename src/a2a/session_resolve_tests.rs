@@ -6,6 +6,16 @@ fn accepts_uuid_like_ids() {
     assert!(usable_as_session_id("ctx_42-abc"));
 }
 
+#[tokio::test]
+async fn fresh_worker_session_inherits_explicit_process_network_policy() {
+    let _lock = crate::approval::test_env::lock_env();
+    let _network = crate::tool::network_access::test_env::Network::set("1");
+    let session = super::resolve_session(None)
+        .await
+        .expect("new worker session");
+    assert!(session.metadata.allow_network);
+}
+
 #[test]
 fn rejects_unsafe_ids() {
     assert!(!usable_as_session_id(""));

@@ -10,11 +10,13 @@ pub(super) async fn execute(
     args: Value,
     registry: Arc<ToolRegistry>,
 ) -> (usize, String, ToolResult) {
-    if tool_id == "batch" {
+    if !crate::tool::readonly::is_read_only(&tool_id) {
         return (
             index,
             tool_id,
-            ToolResult::error("Cannot call batch from within batch"),
+            ToolResult::error(
+                "Batch only accepts read-only nested tools; invoke mutating tools directly",
+            ),
         );
     }
     if let Some(blocked) = crate::runtime_policy::evaluate_tool_invocation(&tool_id, &args).await {

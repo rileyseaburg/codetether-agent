@@ -8,6 +8,20 @@ use serde_json::Value;
 
 use super::{Tool, ToolResult};
 
+tokio::task_local! {
+    static POLICY_ID: String;
+}
+
+pub(crate) fn policy_id(default: &str) -> String {
+    POLICY_ID
+        .try_with(Clone::clone)
+        .unwrap_or_else(|_| default.to_string())
+}
+
+pub(crate) async fn scoped<T>(id: &str, future: impl Future<Output = T>) -> T {
+    POLICY_ID.scope(id.to_string(), future).await
+}
+
 pub struct AliasTool {
     id: String,
     name: String,
@@ -43,6 +57,6 @@ impl Tool for AliasTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        self.inner.execute(args).await
+        scoped(&self.id, self.inner.execute(args)).await
     }
 }

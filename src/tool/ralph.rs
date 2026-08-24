@@ -2,12 +2,19 @@
 //!
 //! Exposes the Ralph loop as a tool for agents to invoke.
 
+#[path = "ralph_default.rs"]
+mod default_impl;
+#[path = "ralph_scope.rs"]
+pub(crate) mod scope;
+
+#[path = "ralph_branch.rs"]
+mod branch;
+
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::path::PathBuf;
-use std::process::Command;
 use std::sync::Arc;
 
 use super::{Tool, ToolResult};
@@ -19,12 +26,6 @@ use crate::worktree::WorktreeManager;
 pub struct RalphTool {
     provider: Option<Arc<dyn Provider>>,
     model: String,
-}
-
-impl Default for RalphTool {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl RalphTool {
@@ -128,8 +129,15 @@ Returns metadata: {all_passed, ready_to_merge, feature_branch, passed, total}
         })
     }
 
-    async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: Params = serde_json::from_value(params).context("Invalid params")?;
+    async fn execute(&self, mut params: Value) -> Result<ToolResult> {
+        let root = scope::bind(&mut params)?;
+        let p: Params = serde_json::from_value(params.clone()).context("Invalid params")?;
+        if let Some(blocked) = crate::tool::orchestration_gate::blocked("ralph", &params).await {
+            return Ok(blocked);
+        }
+        let _permit = (p.action == "run")
+            .then(|| crate::runtime_policy::orchestration_authority::issue(&root))
+            .transpose()?;
         let prd_path = PathBuf::from(p.prd_path.unwrap_or_else(|| "prd.json".to_string()));
 
         match p.action.as_str() {
@@ -140,8 +148,8 @@ Returns metadata: {all_passed, ready_to_merge, feature_branch, passed, total}
                     .ok_or_else(|| anyhow::anyhow!("No provider configured for Ralph"))?;
 
                 // Remember the starting branch so we can return to it
-                let cwd = std::env::current_dir().unwrap_or_default();
-                let starting_branch = get_current_branch(&cwd);
+                let cwd = root.clone();
+                let starting_branch = branch::current(&cwd);
 
                 let config = RalphConfig {
                     prd_path: prd_path.to_string_lossy().to_string(),
@@ -335,20 +343,4 @@ Returns metadata: {all_passed, ready_to_merge, feature_branch, passed, total}
             ))),
         }
     }
-}
-
-/// Get the current git branch name
-fn get_current_branch(dir: &std::path::Path) -> Option<String> {
-    Command::new("git")
-        .args(["rev-parse", "--abbrev-ref", "HEAD"])
-        .current_dir(dir)
-        .output()
-        .ok()
-        .and_then(|o| {
-            if o.status.success() {
-                Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
-            } else {
-                None
-            }
-        })
 }

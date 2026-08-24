@@ -22,7 +22,7 @@ pub(super) fn plan(
     if let Some(plan) = confined::confined_plan(command, args, policy, work_dir, reason) {
         return Ok(plan);
     }
-    plan_with_override(command, args, reason, env::allowed(ENV))
+    plan_with_override(command, args, reason, false)
 }
 
 pub(super) fn plan_with_override(
@@ -41,7 +41,8 @@ pub(super) fn plan_with_override(
         args: args.to_vec(),
         unsafe_fallbacks,
         network_isolated: false,
-        _seccomp: None,
+        seccomp: None,
+        apply_seccomp: false,
         landlock: None,
     })
 }

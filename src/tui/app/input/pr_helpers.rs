@@ -6,18 +6,19 @@
 use super::pr_command::create_pr_args;
 use super::pr_description::{collect_commit_log, format_commit_bullets};
 use crate::worktree::WorktreeInfo;
+#[path = "pr_process.rs"]
+mod process;
 
 /// Push the worktree branch to origin.
 ///
 /// Runs `git push -u origin <branch>` inside the worktree
 /// directory and returns an error if the push fails.
-pub(super) async fn push_branch(wt: &WorktreeInfo) -> anyhow::Result<()> {
-    let output = tokio::process::Command::new("git")
-        .args(["push", "-u", "origin", &wt.branch])
-        .current_dir(&wt.path)
-        .output()
+pub(super) async fn push_branch(wt: &WorktreeInfo, network_allowed: bool) -> anyhow::Result<()> {
+    process::require_network(network_allowed)?;
+    let args = ["push", "-u", "origin", &wt.branch].map(str::to_string);
+    let output = crate::tool::git::process::output_networked(&wt.path, &args, &[], true)
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to run git push: {e}"))?;
+        .map_err(|error| anyhow::anyhow!("Failed to run sandboxed git push: {error}"))?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(anyhow::anyhow!("git push failed: {stderr}"));
@@ -34,16 +35,13 @@ pub(super) async fn create_github_pr(
     wt: &WorktreeInfo,
     base_branch: Option<&str>,
     prompt: Option<&str>,
+    network_allowed: bool,
 ) -> anyhow::Result<String> {
     let commits = collect_commit_log(&wt.path, base_branch).await;
     let bullets = format_commit_bullets(&commits);
     let args = create_pr_args(wt, base_branch, prompt, &bullets, &commits);
-    let output = tokio::process::Command::new("gh")
-        .args(&args)
-        .current_dir(&wt.path)
-        .output()
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to run gh pr create: {e}"))?;
+    process::require_network(network_allowed)?;
+    let output = process::gh(&wt.path, &args).await?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(anyhow::anyhow!("gh pr create failed: {stderr}"));

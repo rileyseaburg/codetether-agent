@@ -19,6 +19,12 @@ pub(crate) fn usable_as_session_id(context_id: &str) -> bool {
         && !context_id.contains(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_')
 }
 
+async fn fresh() -> Result<Session> {
+    let mut session = Session::new().await?;
+    session.metadata.allow_network = crate::tool::network_access::allowed();
+    Ok(session)
+}
+
 /// Load the conversation for `context_id`, or start a fresh one.
 ///
 /// * `Some(id)` naming an existing on-disk session → loaded so prior turns
@@ -54,7 +60,7 @@ pub(crate) fn usable_as_session_id(context_id: &str) -> bool {
 /// ```
 pub async fn resolve_session(context_id: Option<&str>) -> Result<Session> {
     let Some(id) = context_id else {
-        return Session::new().await;
+        return fresh().await;
     };
     if !usable_as_session_id(id) {
         anyhow::bail!("A2A context_id must match [A-Za-z0-9_-] and be at most 128 bytes");
@@ -65,7 +71,7 @@ pub async fn resolve_session(context_id: Option<&str>) -> Result<Session> {
         return Ok(session);
     }
 
-    let mut session = Session::new().await?;
+    let mut session = fresh().await?;
     session.id = id.to_string();
     tracing::debug!(context_id = %id, "Started new A2A conversation session");
     Ok(session)

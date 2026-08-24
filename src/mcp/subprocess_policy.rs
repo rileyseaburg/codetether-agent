@@ -1,42 +1,55 @@
 //! Runtime policy gate for spawning external MCP server processes.
 
+#[path = "subprocess_policy_args.rs"]
+mod args;
+#[path = "subprocess_preflight.rs"]
+mod preflight;
+#[path = "subprocess_sandbox.rs"]
+pub(crate) mod sandbox;
+
 use anyhow::{Result, bail};
-use serde_json::json;
 
-pub(super) async fn guard(command: &str, args: &[&str], approval_id: Option<&str>) -> Result<()> {
-    let policy_args = policy_args(command, args, approval_id);
-    let Some(blocked) = crate::runtime_policy::evaluate_tool_invocation("mcp", &policy_args).await
-    else {
-        return Ok(());
-    };
-    if alias_approval_allows(&policy_args).await {
+pub(super) async fn guard_scoped(
+    command: &str,
+    args: &[&str],
+    approval_id: Option<&str>,
+    network_allowed: bool,
+    session_id: &str,
+) -> Result<()> {
+    if approval_id.is_some_and(|id| !id.trim().is_empty()) {
+        preflight::executable(command)?;
+        sandbox::preflight(command, args, network_allowed).await?;
+    }
+    let policy_args = args::scoped(command, args, approval_id, network_allowed, session_id);
+    if approval_allows(&policy_args).await {
         return Ok(());
     }
-    bail!(blocked.output)
-}
-
-fn policy_args(command: &str, args: &[&str], approval_id: Option<&str>) -> serde_json::Value {
-    let mut policy_args = json!({ "command": rendered(command, args) });
-    if let Some(approval_id) = approval_id.filter(|id| !id.trim().is_empty()) {
-        policy_args["approval_id"] = json!(approval_id);
+    match crate::runtime_policy::evaluate_tool_invocation("mcp", &policy_args).await {
+        Some(blocked) => bail!(blocked.output),
+        None => Ok(()),
     }
-    policy_args
 }
 
-fn rendered(command: &str, args: &[&str]) -> String {
-    std::iter::once(command)
-        .chain(args.iter().copied())
-        .collect::<Vec<_>>()
-        .join(" ")
+#[cfg(test)]
+async fn guard(command: &str, args: &[&str], approval_id: Option<&str>) -> Result<()> {
+    guard_scoped(
+        command,
+        args,
+        approval_id,
+        crate::tool::network_access::allowed(),
+        "mcp-test",
+    )
+    .await
 }
 
-async fn alias_approval_allows(args: &serde_json::Value) -> bool {
-    crate::runtime_policy::approved_invocation("mcp_bridge", args)
-        && crate::runtime_policy::evaluate_tool_invocation("mcp_bridge", args)
+async fn approval_allows(args: &serde_json::Value) -> bool {
+    crate::runtime_policy::invocation::evaluate_approved_tool_invocation("mcp", args).await
+        || crate::runtime_policy::invocation::evaluate_approved_tool_invocation("mcp_bridge", args)
             .await
-            .is_none()
 }
 
+#[cfg(test)]
+use args::policy_args;
 #[cfg(test)]
 #[path = "subprocess_policy_tests.rs"]
 mod tests;

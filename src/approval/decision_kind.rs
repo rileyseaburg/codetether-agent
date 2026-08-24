@@ -1,7 +1,12 @@
-use super::{ApprovalReceipt, ApprovalStatus, LiveApprovalDecision};
+#[path = "decision_kind_session.rs"]
+mod session;
+
+use super::{ApprovalStatus, LiveApprovalDecision};
+use serde::{Deserialize, Serialize};
 
 /// Parsed review decision accepted by approval clients.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum ApprovalDecisionKind {
     ApproveOnce,
     ApproveForSession,
@@ -23,11 +28,14 @@ impl ApprovalDecisionKind {
         }
     }
 
-    pub fn live(self) -> LiveApprovalDecision {
+    pub fn live(self, reason: Option<&str>) -> LiveApprovalDecision {
         if self.approves() {
             LiveApprovalDecision::Approved
         } else {
-            LiveApprovalDecision::denied()
+            reason.map_or_else(
+                LiveApprovalDecision::denied,
+                LiveApprovalDecision::denied_with,
+            )
         }
     }
 
@@ -42,12 +50,5 @@ impl ApprovalDecisionKind {
 
     pub fn approves(self) -> bool {
         !matches!(self, Self::Deny)
-    }
-
-    pub fn grant_session(self, receipt: &ApprovalReceipt) {
-        if matches!(self, Self::ApproveForSession | Self::ApproveWithAmendment) {
-            super::session_grants::grant(receipt);
-            super::session_command_grants::grant_for_request(&receipt.approval_id);
-        }
     }
 }

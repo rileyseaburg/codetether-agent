@@ -1,7 +1,7 @@
-use super::{process_args, process_spawn};
+use super::{ProcessGrant, process_args, process_spawn};
 use tetherscript::value::Value;
 
-pub fn run(progress_id: &str, args: &[Value]) -> Result<Value, String> {
+pub fn run(progress_id: &str, grant: &ProcessGrant, args: &[Value]) -> Result<Value, String> {
     if !(1..=4).contains(&args.len()) {
         return Err("process_run expects command[, args[, stdin[, timeout_ms]]]".into());
     }
@@ -11,7 +11,7 @@ pub fn run(progress_id: &str, args: &[Value]) -> Result<Value, String> {
     })?;
     let stdin = args.get(2).and_then(stdin_value).transpose()?;
     let timeout = process_args::timeout_arg(args.get(3).unwrap_or(&Value::Nil))?;
-    process_spawn::spawn(progress_id, command, command_args, stdin, timeout)
+    process_spawn::spawn(progress_id, grant, command, command_args, stdin, timeout)
 }
 
 fn stdin_value(value: &Value) -> Option<Result<String, String>> {

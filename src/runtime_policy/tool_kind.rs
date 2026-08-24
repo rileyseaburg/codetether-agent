@@ -25,9 +25,10 @@ pub enum ToolKind {
 impl ToolKind {
     /// Classify a tool name by its known side-effect behavior.
     pub fn for_name(tool_name: &str) -> Self {
-        if tool_name == "write_stdin" {
-            Self::SessionTransport
-        } else if matches!(tool_name, "bash" | "exec_command" | "apply_patch" | "patch") {
+        if matches!(
+            tool_name,
+            "bash" | "exec_command" | "write_stdin" | "apply_patch" | "patch"
+        ) {
             Self::Mutating
         } else if crate::tool::readonly::is_read_only(tool_name) {
             Self::ReadOnly

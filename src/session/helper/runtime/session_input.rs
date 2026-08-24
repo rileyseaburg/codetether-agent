@@ -12,6 +12,7 @@ pub(crate) fn enrich(input: &Value, cwd: &Path, session: &Session) -> Value {
 /// Enrich input and overwrite its prompt-run lease owner.
 pub(crate) fn enrich_for_turn(
     input: &Value,
+    tool: &str,
     cwd: &Path,
     session: &Session,
     lease_owner: &str,
@@ -20,7 +21,7 @@ pub(crate) fn enrich_for_turn(
     if let Value::Object(fields) = &mut enriched {
         fields.insert("__ct_lease_owner".into(), json!(lease_owner));
     }
-    enriched
+    super::tool_target::bind_workspace(tool, enriched, cwd)
 }
 
 /// Enrich session input while using a caller-resolved model selector.
@@ -44,5 +45,6 @@ pub(crate) fn enrich_with_model(
             json!(super::prior_context::allowed_for_session(session)),
         );
     }
+    crate::tool::network_access::bind_trusted(&mut enriched, session.metadata.allow_network);
     enriched
 }

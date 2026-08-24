@@ -2,7 +2,7 @@ use super::{create_agent_session, parent_prior_context_allowed};
 
 #[tokio::test]
 async fn child_session_inherits_denial_and_enables_auto_apply() {
-    let session = create_agent_session("child", "edit files", "example/model", None, false)
+    let session = create_agent_session("child", "edit files", "example/model", None, false, false)
         .await
         .expect("child session");
     assert!(session.metadata.auto_apply_edits);
@@ -10,6 +10,14 @@ async fn child_session_inherits_denial_and_enables_auto_apply() {
         session.metadata.inherited_prior_context_allowed,
         Some(false)
     );
+}
+
+#[tokio::test]
+async fn child_session_inherits_network_authority() {
+    let session = create_agent_session("child", "network task", "example/model", None, true, true)
+        .await
+        .expect("child session");
+    assert!(session.metadata.allow_network);
 }
 
 #[tokio::test]

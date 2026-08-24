@@ -1,8 +1,9 @@
-use std::path::Path;
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 #[path = "commands/goal/mod.rs"]
 mod goal;
+#[path = "commands/mcp_connect.rs"]
+mod mcp_connect;
 #[path = "commands/open_editor.rs"]
 mod open_editor;
 use open_editor::open_editor;
@@ -41,35 +42,12 @@ async fn handle_mcp_command(app: &mut App, raw: &str) {
     let rest = raw.trim();
     if rest.is_empty() {
         app.state.status =
-            "Usage: /mcp connect <name> <command...> | /mcp servers | /mcp tools [server] | /mcp call <server> <tool> [json]"
+            "Usage: /mcp connect <name> <command...> [--approval-id=ID] | /mcp servers | /mcp tools [server] | /mcp call <server> <tool> [json]"
                 .to_string();
         return;
     }
 
-    if let Some(value) = rest.strip_prefix("connect ") {
-        let mut parts = value.trim().splitn(2, char::is_whitespace);
-        let Some(name) = parts.next().filter(|part| !part.is_empty()) else {
-            app.state.status = "Usage: /mcp connect <name> <command...>".to_string();
-            return;
-        };
-        let Some(command) = parts.next().map(str::trim).filter(|part| !part.is_empty()) else {
-            app.state.status = "Usage: /mcp connect <name> <command...>".to_string();
-            return;
-        };
-
-        match app.state.mcp_registry.connect(name, command).await {
-            Ok(tool_count) => {
-                app.state.status = format!("Connected MCP server '{name}' ({tool_count} tools)");
-                push_system_message(
-                    app,
-                    format!("Connected MCP server `{name}` with {tool_count} tools."),
-                );
-            }
-            Err(error) => {
-                app.state.status = format!("MCP connect failed: {error}");
-                push_system_message(app, format!("MCP connect failed for `{name}`: {error}"));
-            }
-        }
+    if mcp_connect::handle(app, rest).await {
         return;
     }
 

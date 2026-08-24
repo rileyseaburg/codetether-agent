@@ -1,7 +1,7 @@
 //! Transcript shapes seen in real agent loops, checked against the pairing
 //! invariant Bedrock enforces server-side.
 
-use super::invariant::{call, result, text, violation};
+use super::invariant::violation;
 use crate::provider::bedrock::convert::convert_messages;
 use crate::provider::{ContentPart, Message, Role};
 

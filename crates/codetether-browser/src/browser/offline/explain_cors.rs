@@ -18,7 +18,9 @@ pub struct CorsExplanation {
 }
 
 pub fn run(url: &str, origin: &str, method: &str) -> Result<String> {
-    let client = Client::builder().build()?;
+    let client = Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?;
     let resp = client
         .request(reqwest::Method::OPTIONS, url)
         .header("origin", origin)

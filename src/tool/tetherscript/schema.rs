@@ -11,6 +11,7 @@ pub fn parameters() -> Value {
             "args": { "type": "array", "description": "JSON arguments converted to TetherScript values", "items": {} },
             "timeout_secs": { "type": "integer", "description": "Maximum wall-clock seconds to wait for the hook; capped at 60" },
             "grant_browser": { "type": "string", "description": "Browser bridge endpoint to grant browser capability (e.g. http://127.0.0.1:41707/browser)" },
+            "grant_process": { "type": "boolean", "description": "Grant subprocess execution confined to the plugin workspace and session network policy" },
             "browser_origin": { "type": "array", "items": { "type": "string" }, "description": "Allowed origins for browser capability (e.g. [\"http://localhost:5173\"])" },
             "browser_scope": { "type": "array", "items": { "type": "string" }, "description": "Allowed scopes for browser capability (e.g. [\"browser.navigate\", \"browser.interact\"]). Omit for default scopes." },
             "grant_computer": { "type": "boolean", "description": "Grant local computer_use as a TetherScript computer capability" },

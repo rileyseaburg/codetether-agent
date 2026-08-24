@@ -15,7 +15,8 @@ async fn reload_applies_and_persists_live_parent_config() {
         Some("live/model".into()),
         Some(new_workspace.clone()),
         Some(false),
-    );
+    )
+    .with_network(Some(true));
     let EnsureOpen::Ready { resumed: true, .. } = open(&id, Some(&owner), config).await.unwrap()
     else {
         panic!("closed child should reload")
@@ -26,6 +27,7 @@ async fn reload_applies_and_persists_live_parent_config() {
         loaded.session.metadata.directory,
         Some(new_workspace.clone())
     );
+    assert!(loaded.session.metadata.allow_network);
     assert_eq!(
         loaded.session.metadata.inherited_prior_context_allowed,
         Some(false)

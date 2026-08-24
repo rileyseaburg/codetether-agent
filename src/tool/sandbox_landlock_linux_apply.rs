@@ -11,6 +11,16 @@ pub(crate) fn apply(cmd: &mut tokio::process::Command, rules: Option<Rules>) {
     }
 }
 
+pub(crate) fn apply_std(cmd: &mut std::process::Command, rules: Option<Rules>) {
+    use std::os::unix::process::CommandExt;
+    let Some(rules) = rules else {
+        return;
+    };
+    unsafe {
+        cmd.pre_exec(move || install(&rules));
+    }
+}
+
 fn install(rules: &Rules) -> std::io::Result<()> {
     let attr = RulesetAttr {
         handled_access_fs: sys::HANDLED_ACCESS,

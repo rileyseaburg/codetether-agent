@@ -8,12 +8,16 @@ use regex::Regex;
 use serde_json::{Value, json};
 use std::time::Duration;
 
-#[allow(dead_code)]
 const MAX_CONTENT_LENGTH: usize = 10 * 1024 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 const DEFAULT_MAX_CHARS: usize = 200_000;
 
+#[cfg(test)]
+#[path = "webfetch_approval_http_tests.rs"]
+mod approval_http_tests;
+#[path = "webfetch_default.rs"]
+mod default_impl;
 #[path = "webfetch_github.rs"]
 mod github;
 #[path = "webfetch_params.rs"]
@@ -47,18 +51,12 @@ pub struct WebFetchTool {
     client: reqwest::Client,
 }
 
-impl Default for WebFetchTool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl WebFetchTool {
     pub fn new() -> Self {
         let client = reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
             .user_agent("CodeTether-Agent/1.0")
-            .redirect(reqwest::redirect::Policy::limited(5))
+            .redirect(reqwest::redirect::Policy::none())
             .build()
             .expect("Failed to build HTTP client");
         Self { client }
@@ -158,12 +156,13 @@ impl Tool for WebFetchTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: params::Params = serde_json::from_value(params).context("Invalid params")?;
+        let p: params::Params = serde_json::from_value(params.clone()).context("Invalid params")?;
         let url = p.url.parse::<reqwest::Url>().context("Invalid URL")?;
         if url.scheme() != "http" && url.scheme() != "https" {
             return Ok(ToolResult::error("Only HTTP/HTTPS supported"));
         }
 
+        super::network_access::guard!("webfetch", &params);
         crate::tls::ensure_rustls_crypto_provider();
 
         let github_auth = github::auth_for(&url, p.parent_workspace.as_deref()).await;

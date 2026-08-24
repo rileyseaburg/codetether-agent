@@ -1,6 +1,6 @@
 //! File tools: read, write, list, glob
 
-use super::{Tool, ToolResult};
+use super::{Tool, ToolResult, orchestration_gate};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -70,7 +70,6 @@ impl Tool for ReadTool {
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let start = Instant::now();
-
         let path = match args["path"].as_str() {
             Some(p) => p,
             None => {
@@ -186,13 +185,12 @@ impl Tool for WriteTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let start = Instant::now();
-
-        let args = match file_write_args::WriteArgs::parse(&args) {
-            Ok(parsed) => parsed,
-            Err(error) => return Ok(error),
-        };
-        let (path, content) = (args.path, args.content);
+        let file_write_args::WriteArgs { path, content } =
+            match file_write_args::WriteArgs::parse(&args) {
+                Ok(parsed) => parsed,
+                Err(error) => return Ok(error),
+            };
+        let start = orchestration_gate::guarded!("write", &args, Instant::now());
         // Create parent directories if needed
         if let Some(parent) = PathBuf::from(path).parent() {
             fs::create_dir_all(parent).await?;

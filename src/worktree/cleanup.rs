@@ -11,11 +11,24 @@ impl WorktreeManager {
         let Some(info) = self.get(name).await else {
             return Ok(());
         };
-        if self.remove_worktree(&info).await.removed() {
-            let _ = Self::delete_branch(&self.repo_path, &info.branch).await;
-            self.untrack(name).await;
-        }
+        self.cleanup_known(&info).await;
         Ok(())
+    }
+
+    /// Remove a worktree after verified integration and delete its integrated branch.
+    pub(crate) async fn cleanup_integrated(&self, info: &WorktreeInfo) {
+        if self.remove_worktree(info).await.removed() {
+            let _ = Self::delete_integrated_branch(&self.repo_path, &info.branch).await;
+            self.untrack(&info.name).await;
+        }
+    }
+
+    /// Clean up a known worktree even when discovery can no longer find it.
+    pub(crate) async fn cleanup_known(&self, info: &WorktreeInfo) {
+        if self.remove_worktree(info).await.removed() {
+            let _ = Self::delete_branch(&self.repo_path, &info.branch).await;
+            self.untrack(&info.name).await;
+        }
     }
 
     /// Clean up all tracked or Git-discovered CodeTether worktrees.

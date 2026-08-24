@@ -32,8 +32,13 @@ impl Tool for InterruptAgentTool {
             "required":["target"]})
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
-        let args: Args = serde_json::from_value(input)?;
+        let args: Args = serde_json::from_value(input.clone())?;
+        let authority = match super::authority::claim("interrupt_agent", &input).await {
+            Ok(authority) => authority,
+            Err(blocked) => return Ok(blocked),
+        };
         legacy::execute(
+            &authority,
             &args.context,
             json!({
                 "action":"interrupt", "name":args.target

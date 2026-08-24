@@ -14,7 +14,8 @@ pub async fn run(
     let dir = cwd
         .as_ref()
         .map_or_else(|| root.to_path_buf(), |c| root.join(c));
-    let args = json!({ "command": command, "cwd": dir.display().to_string() });
+    let mut args = json!({ "command": command, "cwd": dir.display().to_string() });
+    crate::runtime_policy::orchestration_authority::bind(&mut args, &dir)?;
     if let Some(blocked) = crate::runtime_policy::evaluate_tool_invocation("bash", &args).await {
         bail!("command `{command}` blocked by policy: {}", blocked.output);
     }

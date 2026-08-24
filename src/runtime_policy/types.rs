@@ -30,10 +30,14 @@ pub enum DecisionReason {
     SessionApproval,
     /// The invocation can mutate state and needs approval.
     MutatingTool,
+    /// The invocation explicitly requests execution outside sandbox restrictions.
+    SandboxEscalation,
     /// The OS sandbox runner is unavailable, so direct execution needs approval.
     SandboxUnavailable,
     /// Approval cannot be requested for an untrusted mutating invocation.
     ApprovalUnavailable,
+    /// The invocation requires network authority that this session disabled.
+    NetworkDisabled,
 }
 
 /// Structured decision returned by [`crate::runtime_policy::RuntimeToolPolicy`].

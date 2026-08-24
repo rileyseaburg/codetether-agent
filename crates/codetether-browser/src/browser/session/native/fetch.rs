@@ -30,7 +30,11 @@ pub(super) async fn html(url: &str) -> Result<String, BrowserError> {
 ///
 /// Returns [`BrowserError`] when the request or body read fails.
 pub(super) async fn http_get(url: &str) -> Result<String, BrowserError> {
-    let response = reqwest::get(url).await.map_err(map)?;
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(map)?;
+    let response = client.get(url).send().await.map_err(map)?;
     response.text().await.map_err(map)
 }
 

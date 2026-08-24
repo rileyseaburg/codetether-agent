@@ -10,17 +10,18 @@ pub(super) fn cwd(default: Option<&Path>, requested: Option<&str>) -> Result<Pat
         .map(Path::to_path_buf)
         .or_else(|| std::env::current_dir().ok())
         .unwrap_or_else(std::env::temp_dir);
+    let base = base.canonicalize().map_err(|error| anyhow!("invalid workspace: {error}"))?;
     let cwd = requested.map(PathBuf::from).unwrap_or_else(|| base.clone());
-    let resolved = if cwd.is_absolute() {
+    let requested = if cwd.is_absolute() {
         cwd
     } else {
-        base.join(cwd)
+        base.join(&cwd)
     };
-    if !resolved.is_dir() {
-        return Err(anyhow!(
-            "workdir is not a directory: {}",
-            resolved.display()
-        ));
+    let resolved = requested
+        .canonicalize()
+        .map_err(|error| anyhow!("invalid workdir {}: {error}", requested.display()))?;
+    if !resolved.starts_with(&base) {
+        return Err(anyhow!("workdir is outside workspace: {}", resolved.display()));
     }
     Ok(resolved)
 }

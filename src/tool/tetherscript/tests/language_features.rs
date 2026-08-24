@@ -1,19 +1,19 @@
 use serde_json::json;
 
-use crate::tool::Tool;
 use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
 async fn executes_current_language_feature_sampler() {
     let tool = TetherScriptPluginTool::new();
-    let result = tool
-        .execute(json!({
+    let result = super::support::execute(
+        &tool,
+        json!({
             "path": "examples/tetherscript/language_features.tether",
             "hook": "summarize",
             "args": ["codetether"]
-        }))
-        .await
-        .unwrap();
+        }),
+    )
+    .await;
 
     assert!(result.success);
     assert_eq!(

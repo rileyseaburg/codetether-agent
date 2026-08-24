@@ -6,4 +6,4 @@ mod imp;
 #[path = "sandbox_seccomp_unsupported.rs"]
 mod imp;
 
-pub(super) use imp::{Program, prepare};
+pub(super) use imp::{Program, apply, apply_std, prepare};

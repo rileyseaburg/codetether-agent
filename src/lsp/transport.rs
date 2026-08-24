@@ -7,13 +7,18 @@
 //! <JSON payload>
 //! ```
 
+#[path = "transport_spawn.rs"]
+mod transport_spawn;
+#[path = "transport_stdio.rs"]
+mod transport_stdio;
+
 use super::types::{JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, Command};
+use tokio::process::Child;
 use tokio::sync::{RwLock, mpsc, oneshot};
 use tracing::{debug, error, trace, warn};
 
@@ -56,27 +61,17 @@ pub struct LspTransport {
 
 impl LspTransport {
     /// Spawn a language server and create a transport
-    pub async fn spawn(command: &str, args: &[String], timeout_ms: u64) -> Result<Self> {
-        let mut child = Command::new(command)
-            .args(args)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()
+    pub async fn spawn(
+        command: &str,
+        args: &[String],
+        timeout_ms: u64,
+        workspace: &std::path::Path,
+    ) -> Result<Self> {
+        let mut child = transport_spawn::child(command, args, workspace)
+            .await
             .with_context(|| format!("Failed to spawn language server '{command}'"))?;
 
-        let stdout = child
-            .stdout
-            .take()
-            .ok_or_else(|| anyhow::anyhow!("No stdout"))?;
-        let stderr = child
-            .stderr
-            .take()
-            .ok_or_else(|| anyhow::anyhow!("No stderr"))?;
-        let mut stdin = child
-            .stdin
-            .take()
-            .ok_or_else(|| anyhow::anyhow!("No stdin"))?;
+        let (stdout, stderr, mut stdin) = transport_stdio::take(&mut child)?;
 
         let (write_tx, mut write_rx) = mpsc::channel::<String>(100);
         let pending: Arc<RwLock<HashMap<i64, oneshot::Sender<JsonRpcResponse>>>> =

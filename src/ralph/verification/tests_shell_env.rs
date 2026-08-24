@@ -12,7 +12,6 @@ impl TrustedShellProject {
         let data = tempdir().expect("data dir");
         unsafe {
             std::env::set_var("CODETETHER_DATA_DIR", data.path());
-            std::env::set_var("CODETETHER_UNSANDBOXED_BASH", "1");
         }
         let cwd = CwdGuard::enter(path);
         ProjectTrustStore::for_current_workspace()
@@ -31,7 +30,6 @@ impl Drop for TrustedShellProject {
     fn drop(&mut self) {
         unsafe {
             std::env::remove_var("CODETETHER_DATA_DIR");
-            std::env::remove_var("CODETETHER_UNSANDBOXED_BASH");
         }
     }
 }

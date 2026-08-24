@@ -7,7 +7,7 @@ mod actions;
 mod schema;
 
 use super::{Tool, ToolResult};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
@@ -25,11 +25,10 @@ impl Default for VoiceStreamTool {
 impl VoiceStreamTool {
     pub fn new() -> Self {
         Self {
-            client: reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(120))
-                .user_agent("CodeTether-Agent/1.0")
-                .build()
-                .expect("Failed to build HTTP client"),
+            client: super::network_access::no_redirect_client_with_timeout(
+                std::time::Duration::from_secs(120),
+            )
+            .expect("voice stream HTTP client"),
         }
     }
 }
@@ -70,7 +69,7 @@ impl Tool for VoiceStreamTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: Params = serde_json::from_value(params).context("Invalid voice_stream params")?;
+        let p: Params = crate::tool::network_access::args!("voice_stream", params);
         actions::dispatch(&self.client, &p).await
     }
 }

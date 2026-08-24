@@ -1,5 +1,4 @@
-use super::super::sandbox_bwrap_push::{push_pair, push_triple};
-use super::SandboxPolicy;
+use crate::tool::sandbox::{SandboxPolicy, sandbox_bwrap_push::{push_pair, push_triple}};
 
 const PROTECTED: &[&str] = &[".git", ".codetether", ".codex", ".agents"];
 

@@ -20,7 +20,13 @@ fn probe() {
 "#;
 
 async fn run_probe(source: &str) -> ToolResult {
+    let _lock = crate::approval::test_env::lock_env();
     let dir = tempfile::tempdir().expect("tempdir");
+    let _env = crate::approval::test_env::ScopedEnv::data_dir_with_access(
+        dir.path(),
+        crate::config::AccessMode::Full,
+    );
+    let _network = crate::tool::network_access::test_env::Network::set("1");
     let path = dir.path().join("arity_probe.tether");
     std::fs::write(&path, source).expect("write plugin");
     // `new()` pins the workspace root, and a tempdir path escapes it by design,
@@ -30,13 +36,16 @@ async fn run_probe(source: &str) -> ToolResult {
             "path": path.to_string_lossy(),
             "hook": "probe",
             "args": [],
+            "grant_process": true,
         }))
         .await
         .expect("plugin execution")
 }
 
 #[tokio::test]
+#[ignore = "requires enforced OS sandbox; run in the mandatory sandbox CI lane"]
 async fn process_run_exposes_exactly_one_result_layer() {
+    crate::tool::tetherscript::require_sandbox!();
     let result = run_probe(SINGLE_QUESTION).await;
     assert!(
         result.success,

@@ -33,10 +33,10 @@ async fn write_stdin_resumes_an_interactive_terminal_session() {
         .await
         .unwrap();
     let registry = std::sync::Arc::new(Registry::default());
-    let id = registry.insert(running).await.unwrap();
+    let id = registry.insert(running, "direct".to_string()).await.unwrap();
     let tool = WriteStdinTool::new(registry);
     let result = tool
-        .execute(serde_json::json!({"session_id": id, "chars": "hello\n"}))
+        .execute(serde_json::json!({"session_id": id, "chars": "hello\n", "__ct_session_id": "direct"}))
         .await
         .unwrap();
     assert!(result.success);

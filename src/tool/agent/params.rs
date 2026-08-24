@@ -60,6 +60,8 @@ pub(super) struct Params {
     pub parent_session_id: Option<String>,
     #[serde(default, rename = "__ct_prior_context_allowed")]
     pub parent_prior_context_allowed: Option<bool>,
+    #[serde(flatten)]
+    pub(super) parent_policy: super::params_policy::ParentPolicy,
 }
 
 impl Params {
@@ -70,13 +72,5 @@ impl Params {
 
     pub(super) fn detach_for_spawn(&self) -> bool {
         self.detach.unwrap_or(false)
-    }
-
-    pub(super) fn resume_config(&self) -> super::residency::ResumeConfig {
-        super::residency::ResumeConfig::new(
-            self._current_model.clone(),
-            self.parent_workspace.clone(),
-            self.parent_prior_context_allowed,
-        )
     }
 }

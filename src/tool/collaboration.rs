@@ -1,5 +1,7 @@
 //! Codex-compatible first-class collaboration tool registration.
 
+#[path = "collaboration/authority.rs"]
+mod authority;
 #[path = "collaboration/close.rs"]
 mod close;
 #[path = "collaboration/context.rs"]
@@ -46,5 +48,4 @@ pub fn register(registry: &mut ToolRegistry) {
 }
 
 #[cfg(test)]
-#[path = "collaboration/tests.rs"]
-mod tests;
+include!("collaboration_test_modules.rs");

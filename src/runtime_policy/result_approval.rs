@@ -18,7 +18,7 @@ pub fn blocking_result_with_approval_request(
         return Some(result);
     }
     Some(approval::attach_request(
-        result, tool_name, action, resource, None,
+        result, tool_name, action, resource, None, None,
     ))
 }
 
@@ -33,9 +33,15 @@ pub(in crate::runtime_policy) fn blocking_result_with_approval_request_for_args(
     if !matches!(decision.outcome, ToolPolicyOutcome::RequireApproval) {
         return Some(result);
     }
-    let amendment = approval_prefix::from_args(args);
-    let mut result =
-        approval::attach_request(result, tool_name, action, resource, amendment.as_ref());
+    let amendment = approval_prefix::from_args(tool_name, args);
+    let mut result = approval::attach_request(
+        result,
+        tool_name,
+        action,
+        resource,
+        amendment.as_ref(),
+        Some(args),
+    );
     if let Some(preview) = invocation_preview::summarize(tool_name, args) {
         result = result.with_metadata("policy_reason", serde_json::json!(preview));
     }

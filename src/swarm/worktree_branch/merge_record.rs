@@ -31,9 +31,7 @@ async fn success(
     result
         .result
         .push_str(&format!("\n\n--- Merge Result ---\n{}", merged.summary));
-    if let Err(error) = manager.cleanup(&worktree.name).await {
-        tracing::warn!(%error, "Failed to cleanup merged swarm worktree");
-    }
+    manager.cleanup_integrated(worktree).await;
 }
 
 #[cfg(test)]

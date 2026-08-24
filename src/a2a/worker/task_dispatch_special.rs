@@ -10,10 +10,10 @@ pub(super) async fn dispatch_special_task(
     title: &str,
     context: &TaskContext,
 ) -> Option<Result<(&'static str, Option<String>, Option<String>, Option<String>)>> {
-    let policy_args = super::task_policy_args::from_metadata(&context.metadata);
+    let policy_args = super::task_policy_args::from_context(task, title, context);
     if context.raw_agent.eq_ignore_ascii_case("clone_repo") {
         if let Some(blocked) =
-            crate::runtime_policy::evaluate_tool_invocation("bash", &policy_args).await
+            crate::runtime_policy::evaluate_tool_invocation("clone_repo", &policy_args).await
         {
             return Some(Ok(("failed", None, Some(blocked.output), None)));
         }

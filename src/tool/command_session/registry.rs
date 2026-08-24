@@ -10,14 +10,19 @@ use super::Running;
 
 const MAX_SESSIONS: usize = 64;
 
+struct Session {
+    owner: String,
+    command: Arc<Mutex<Running>>,
+}
+
 #[derive(Default)]
 pub(crate) struct Registry {
     next_id: AtomicU64,
-    sessions: Mutex<HashMap<u64, Arc<Mutex<Running>>>>,
+    sessions: Mutex<HashMap<u64, Session>>,
 }
 
 impl Registry {
-    pub(crate) async fn insert(&self, command: Running) -> Result<u64> {
+    pub(crate) async fn insert(&self, command: Running, owner: String) -> Result<u64> {
         let mut sessions = self.sessions.lock().await;
         if sessions.len() >= MAX_SESSIONS {
             return Err(anyhow!(
@@ -25,12 +30,16 @@ impl Registry {
             ));
         }
         let id = self.next_id.fetch_add(1, Ordering::Relaxed) + 1;
-        sessions.insert(id, Arc::new(Mutex::new(command)));
+        sessions.insert(id, Session { owner, command: Arc::new(Mutex::new(command)) });
         Ok(id)
     }
 
-    pub(crate) async fn get(&self, id: u64) -> Option<Arc<Mutex<Running>>> {
-        self.sessions.lock().await.get(&id).cloned()
+    pub(crate) async fn get(&self, id: u64, owner: &str) -> Option<Arc<Mutex<Running>>> {
+        self.sessions
+            .lock().await
+            .get(&id)
+            .filter(|session| session.owner == owner)
+            .map(|session| Arc::clone(&session.command))
     }
 
     pub(crate) async fn remove(&self, id: u64) {

@@ -32,14 +32,16 @@ pub async fn git_commit_with_provenance(
 ) -> Result<std::process::Output> {
     let enriched = enrich_repo_provenance(provenance, repo_path);
     let message = commit_message_with_provenance(commit_msg, enriched.as_ref());
-    let mut command = tokio::process::Command::new("git");
-    command
-        .args(commit_args_with_signature_policy())
-        .arg(&message)
-        .current_dir(repo_path);
-    apply_git_identity_env_tokio(&mut command, enriched.as_ref());
-    command
-        .output()
+    let mut args = commit_args_with_signature_policy()
+        .iter()
+        .map(|arg| (*arg).to_string())
+        .collect::<Vec<_>>();
+    args.push(message);
+    let environment = git_identity_env_vars(enriched.as_ref())
+        .into_iter()
+        .map(|(key, value)| (key.to_string(), value))
+        .collect::<Vec<_>>();
+    crate::tool::git::process::output(repo_path, &args, &environment, true)
         .await
         .context("Failed to execute git commit")
 }
@@ -51,13 +53,17 @@ pub fn git_commit_with_provenance_blocking(
 ) -> Result<std::process::Output> {
     let enriched = enrich_repo_provenance(provenance, repo_path);
     let message = commit_message_with_provenance(commit_msg, enriched.as_ref());
-    let mut command = std::process::Command::new("git");
-    command
-        .args(commit_args_with_signature_policy())
-        .arg(&message)
-        .current_dir(repo_path);
-    apply_git_identity_env_blocking(&mut command, enriched.as_ref());
-    command.output().context("Failed to execute git commit")
+    let mut args = commit_args_with_signature_policy()
+        .iter()
+        .map(|arg| (*arg).to_string())
+        .collect::<Vec<_>>();
+    args.push(message);
+    let environment = git_identity_env_vars(enriched.as_ref())
+        .into_iter()
+        .map(|(key, value)| (key.to_string(), value))
+        .collect::<Vec<_>>();
+    crate::tool::git::process::output_blocking(repo_path, &args, &environment, true)
+        .context("Failed to execute git commit")
 }
 
 fn enrich_repo_provenance(
@@ -75,24 +81,6 @@ fn build_trailers(
         .into_iter()
         .filter(|(label, _)| !commit_msg.contains(label))
         .collect()
-}
-
-fn apply_git_identity_env_tokio(
-    command: &mut tokio::process::Command,
-    provenance: Option<&ExecutionProvenance>,
-) {
-    for (key, value) in git_identity_env_vars(provenance) {
-        command.env(key, value);
-    }
-}
-
-fn apply_git_identity_env_blocking(
-    command: &mut std::process::Command,
-    provenance: Option<&ExecutionProvenance>,
-) {
-    for (key, value) in git_identity_env_vars(provenance) {
-        command.env(key, value);
-    }
 }
 
 #[cfg(test)]

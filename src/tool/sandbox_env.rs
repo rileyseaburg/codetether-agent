@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-pub(super) fn restricted() -> HashMap<String, String> {
+pub(crate) fn restricted() -> HashMap<String, String> {
     let mut env = HashMap::new();
     env.insert("PATH".to_string(), "/usr/bin:/bin".to_string());
     env.insert("HOME".to_string(), "/tmp".to_string());

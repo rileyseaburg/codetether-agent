@@ -9,16 +9,13 @@ impl WorktreeManager {
         path: &Path,
         create_branch: bool,
     ) -> Result<std::process::Output> {
-        let mut command = tokio::process::Command::new("git");
-        command.arg("worktree").arg("add");
+        let mut args = vec!["worktree".into(), "add".into()];
         if create_branch {
-            command.arg("-b").arg(branch).arg(path);
+            args.extend(["-b".into(), branch.into(), path.display().to_string()]);
         } else {
-            command.arg(path).arg(branch);
+            args.extend([path.display().to_string(), branch.into()]);
         }
-        command
-            .current_dir(&self.repo_path)
-            .output()
+        crate::tool::git::process::output(&self.repo_path, &args, &[], true)
             .await
             .context("Failed to execute git worktree add")
     }

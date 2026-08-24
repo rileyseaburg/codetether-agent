@@ -10,6 +10,7 @@ pub(crate) fn api_url() -> String {
 pub(crate) fn build_client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(120))
+        .redirect(reqwest::redirect::Policy::none())
         .user_agent("CodeTether-Agent/1.0")
         .build()
         .expect("Failed to build HTTP client")

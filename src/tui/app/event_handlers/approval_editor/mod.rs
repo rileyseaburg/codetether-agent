@@ -7,6 +7,9 @@ mod key;
 #[path = "key_tests.rs"]
 mod key_tests;
 #[cfg(test)]
+#[path = "orphan_tests.rs"]
+mod orphan_tests;
+#[cfg(test)]
 #[path = "finish_tests.rs"]
 mod tests;
 

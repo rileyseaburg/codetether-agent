@@ -6,8 +6,15 @@ use anyhow::{Result, anyhow};
 use serde_json::{Value, json};
 
 pub(super) async fn run(tool: &ApplicationMcpTool, input: Value) -> Result<ToolResult> {
+    let invocation = invocation::parse(input.clone())?;
+    if let Some(blocked) =
+        crate::runtime_policy::evaluate_tool_invocation(&tool.id, &input).await
+    {
+        return Ok(blocked);
+    }
+    crate::approval::use_once::claim(&tool.id, &input)
+        .map_err(|error| anyhow!("approval claim failed: {error}"))?;
     crate::tls::ensure_rustls_crypto_provider();
-    let invocation = invocation::parse(input)?;
     let payload = json!({
         "jsonrpc": "2.0",
         "id": uuid::Uuid::new_v4().to_string(),

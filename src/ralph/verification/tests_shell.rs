@@ -18,11 +18,8 @@ async fn shell_step_checks_output_and_artifacts() {
         expect_output_contains: vec!["ok".into()],
         expect_files_glob: vec!["out/*.txt".into()],
     };
-    assert!(
-        run_story_verification(dir.path(), &story(step))
-            .await
-            .is_ok()
-    );
+    let result = run_story_verification(dir.path(), &story(step)).await;
+    assert!(result.is_ok(), "{result:?}");
 }
 
 fn story(step: VerificationStep) -> UserStory {

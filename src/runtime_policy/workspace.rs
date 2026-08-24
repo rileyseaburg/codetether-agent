@@ -4,7 +4,8 @@ use serde_json::Value;
 use std::path::PathBuf;
 
 pub(super) fn from_args(args: &Value) -> Option<PathBuf> {
-    string_path(args, "__ct_parent_workspace")
+    crate::tool::network_access::trusted_workspace(args)
+        .map(PathBuf::from)
         .or_else(|| string_path(args, "cwd"))
         .or_else(|| path_parent(args))
 }

@@ -32,8 +32,13 @@ impl Tool for CloseAgentTool {
             "required":["target"]})
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
-        let args: Args = serde_json::from_value(input)?;
+        let args: Args = serde_json::from_value(input.clone())?;
+        let authority = match super::authority::claim("close_agent", &input).await {
+            Ok(authority) => authority,
+            Err(blocked) => return Ok(blocked),
+        };
         legacy::execute(
+            &authority,
             &args.context,
             json!({"action":"close", "name":args.target})
                 .as_object()

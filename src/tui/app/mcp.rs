@@ -8,6 +8,9 @@ use tokio::sync::RwLock;
 
 use crate::mcp::{McpClient, McpTool};
 
+#[path = "mcp_connect.rs"]
+mod connect;
+
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct TuiMcpServerSummary {
@@ -34,30 +37,6 @@ pub struct TuiMcpRegistry {
 impl TuiMcpRegistry {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub async fn connect(&self, name: &str, command: &str) -> Result<usize> {
-        let parts: Vec<&str> = command.split_whitespace().collect();
-        if parts.is_empty() {
-            return Err(anyhow!("Empty MCP command"));
-        }
-
-        let client = McpClient::connect_subprocess(parts[0], &parts[1..]).await?;
-        let tool_count = client.tools().await.len();
-
-        let mut connections = self.connections.write().await;
-        if let Some(existing) = connections.iter_mut().find(|conn| conn.name == name) {
-            existing.command = command.to_string();
-            existing.client = client;
-            return Ok(tool_count);
-        }
-
-        connections.push(TuiMcpConnection {
-            name: name.to_string(),
-            command: command.to_string(),
-            client,
-        });
-        Ok(tool_count)
     }
 
     pub async fn list_servers(&self) -> Vec<TuiMcpServerSummary> {

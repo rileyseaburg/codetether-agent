@@ -37,8 +37,12 @@ impl Tool for SendInputTool {
         schema::parameters()
     }
     async fn execute(&self, value: Value) -> Result<ToolResult> {
-        let args: args::Args = serde_json::from_value(value)?;
+        let args: args::Args = serde_json::from_value(value.clone())?;
         let prepared = input::prepare(args.message, args.items).await?;
-        dispatch::execute(args.context, args.target, prepared, args.interrupt).await
+        let authority = match super::authority::claim("send_input", &value).await {
+            Ok(authority) => authority,
+            Err(blocked) => return Ok(blocked),
+        };
+        dispatch::execute(authority, args.context, args.target, prepared, args.interrupt).await
     }
 }

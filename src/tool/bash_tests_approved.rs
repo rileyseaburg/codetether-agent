@@ -6,6 +6,9 @@ use crate::approval::{
 use crate::config::{AccessMode, Config};
 use serde_json::json;
 
+#[path = "bash_tests_approved_outcome.rs"]
+mod outcome;
+
 #[tokio::test]
 async fn approved_bash_keeps_sandbox_or_uses_approved_fallback() {
     let _lock = lock_env();
@@ -33,16 +36,7 @@ async fn approved_bash_keeps_sandbox_or_uses_approved_fallback() {
         sandboxed: true,
         default_cwd: None,
     };
+    let replay_args = args.clone();
     let result = tool.execute(args).await.unwrap();
-
-    if crate::tool::sandbox::unavailable_reason().is_some() {
-        assert!(result.success);
-        assert_eq!(result.metadata.get("sandboxed"), Some(&json!(false)));
-        assert_eq!(
-            result.metadata.get("unsafe_fallback_reason"),
-            Some(&json!("approved_os_sandbox_unavailable_fallback"))
-        );
-    } else {
-        assert_eq!(result.metadata.get("sandboxed"), Some(&json!(true)));
-    }
+    outcome::verify(&tool, replay_args, result).await;
 }

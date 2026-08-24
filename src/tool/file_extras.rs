@@ -1,5 +1,8 @@
 //! Additional file tools: tree, fileinfo, headtail, diff
 
+#[path = "file_extras_diff_process.rs"]
+mod diff_process;
+
 use super::{Tool, ToolResult};
 use crate::workspace_scan::is_pruned_workspace_dir;
 use anyhow::{Context, Result};
@@ -618,21 +621,15 @@ impl Tool for DiffTool {
         let context = args["context"].as_u64().unwrap_or(3);
 
         if git_mode {
-            // Git diff mode
-            let mut cmd = tokio::process::Command::new("git");
-            cmd.arg("diff");
-
+            let mut command = vec!["diff".to_string()];
             if staged {
-                cmd.arg("--staged");
+                command.push("--staged".into());
             }
-
-            cmd.arg(format!("-U{}", context));
-
+            command.push(format!("-U{context}"));
             if let Some(file) = args["file1"].as_str() {
-                cmd.arg("--").arg(file);
+                command.extend(["--".into(), file.into()]);
             }
-
-            let output = cmd.output().await?;
+            let output = diff_process::git(&args, command).await?;
 
             if output.status.success() {
                 let diff = String::from_utf8_lossy(&output.stdout);
@@ -672,15 +669,7 @@ impl Tool for DiffTool {
                 }
             };
 
-            // Use system diff command for better output
-            let output = tokio::process::Command::new("diff")
-                .arg("-u")
-                .arg(format!("--label={}", file1))
-                .arg(format!("--label={}", file2))
-                .arg(file1)
-                .arg(file2)
-                .output()
-                .await?;
+            let output = diff_process::files(&args, file1, file2).await?;
 
             let diff = String::from_utf8_lossy(&output.stdout);
             if diff.is_empty() && output.status.success() {

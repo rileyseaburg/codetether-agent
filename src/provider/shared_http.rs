@@ -42,7 +42,7 @@ static SHARED: Lazy<Client> = Lazy::new(|| {
             .pool_max_idle_per_host(8),
     )
     .build()
-    .unwrap_or_else(|_| Client::new())
+    .expect("provider HTTP client configuration must be valid")
 });
 
 /// Return a handle to the process-wide shared `reqwest::Client`.

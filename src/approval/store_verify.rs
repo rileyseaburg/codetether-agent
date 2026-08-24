@@ -30,24 +30,4 @@ impl ApprovalStore {
             ApprovalStatus::Pending => bail!("approval request is pending"),
         }
     }
-
-    /// Verify an approval receipt for a tool/action/resource tuple.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the receipt no longer matches the approved decision
-    /// or if [`Self::verify`] fails.
-    pub fn verify_receipt(
-        &self,
-        receipt: &ApprovalReceipt,
-        tool: &str,
-        action: &str,
-        resource: &str,
-    ) -> Result<ApprovalReceipt> {
-        let verified = self.verify(&receipt.approval_id, tool, action, resource)?;
-        if verified.decision_id != receipt.decision_id {
-            bail!("approval receipt decision mismatch");
-        }
-        Ok(verified)
-    }
 }

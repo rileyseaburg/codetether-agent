@@ -7,18 +7,18 @@
 //! trusting prose.
 
 use std::path::Path;
-use tokio::process::Command;
 
 /// Lists files the sub-agent created or modified in `worktree`.
 ///
 /// Returns paths relative to the worktree root, sorted and deduplicated.
 /// Returns an empty vector when git is unavailable or nothing changed.
 pub async fn written_files(worktree: &Path) -> Vec<String> {
-    let Ok(output) = Command::new("git")
-        .args(["status", "--porcelain", "--untracked-files=all"])
-        .current_dir(worktree)
-        .output()
-        .await
+    let Ok(output) = crate::tool::git::process::output_refs(
+        worktree,
+        &["status", "--porcelain", "--untracked-files=all"],
+        false,
+    )
+    .await
     else {
         return Vec::new();
     };

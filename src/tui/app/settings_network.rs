@@ -15,7 +15,7 @@ pub async fn set_network_access(app: &mut App, session: &mut Session, next: bool
     if next {
         unsafe { std::env::set_var("CODETETHER_SANDBOX_BASH_ALLOW_NETWORK", "1") }
     } else {
-        unsafe { std::env::remove_var("CODETETHER_SANDBOX_BASH_ALLOW_NETWORK") }
+        unsafe { std::env::set_var("CODETETHER_SANDBOX_BASH_ALLOW_NETWORK", "0") }
     }
     persist(app, session, network_access_status_message(next)).await;
 }

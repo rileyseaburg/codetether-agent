@@ -4,6 +4,8 @@ use anyhow::Result;
 use serde_json::Value;
 use std::sync::Arc;
 
+#[path = "tool_policy_args.rs"]
+mod arguments;
 #[path = "tool_policy_names.rs"]
 mod names;
 
@@ -12,6 +14,7 @@ pub(super) fn call_registered(
     tool: Arc<dyn Tool>,
     args: Value,
 ) -> Result<CallToolResult> {
+    let args = arguments::untrusted(args);
     let result = tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(async {
             if let Some(blocked) =
@@ -28,10 +31,11 @@ pub(super) fn call_registered(
 }
 
 pub(super) fn blocked(name: &str, args: &Value) -> Option<CallToolResult> {
+    let args = arguments::untrusted(args.clone());
     tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current()
             .block_on(async {
-                crate::runtime_policy::evaluate_tool_invocation(names::policy_name(name), args)
+                crate::runtime_policy::evaluate_tool_invocation(names::policy_name(name), &args)
                     .await
             })
             .map(from_tool_result)

@@ -4,6 +4,8 @@
 mod approval;
 #[path = "complete.rs"]
 mod complete;
+#[path = "metadata.rs"]
+mod metadata;
 #[path = "start.rs"]
 mod start;
 
@@ -33,6 +35,9 @@ pub(super) async fn handle_event(
             ..
         } => {
             complete(app, name, output, success, duration_ms);
+        }
+        SessionEvent::ToolCallMetadata { name, metadata, .. } => {
+            metadata::show(app, &name, &metadata);
         }
         SessionEvent::ApprovalRequest(request) => approval::request(app, request),
         SessionEvent::ToolHeartbeat {

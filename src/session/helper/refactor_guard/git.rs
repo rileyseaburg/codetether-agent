@@ -1,6 +1,5 @@
 use anyhow::Result;
 use std::path::{Path, PathBuf};
-use tokio::process::Command;
 
 pub fn relative(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
@@ -10,10 +9,8 @@ pub fn relative(root: &Path, path: &Path) -> String {
 }
 
 pub async fn head_text(root: &Path, rel: &str) -> Option<String> {
-    let output = Command::new("git")
-        .args(["show", &format!("HEAD:{rel}")])
-        .current_dir(root)
-        .output()
+    let args = vec!["show".into(), format!("HEAD:{rel}")];
+    let output = crate::tool::git::process::output(root, &args, &[], false)
         .await
         .ok()?;
     output.status.success().then(|| {

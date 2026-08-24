@@ -23,11 +23,7 @@ pub(super) fn path_scope(kind: &str, path: &Path) -> Option<String> {
 }
 
 fn git<const N: usize>(cwd: &Path, args: [&str; N]) -> Option<String> {
-    let out = std::process::Command::new("git")
-        .args(args)
-        .current_dir(cwd)
-        .output()
-        .ok()?;
+    let out = crate::tool::git::process::output_blocking_refs(cwd, &args, false).ok()?;
     out.status
         .success()
         .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())

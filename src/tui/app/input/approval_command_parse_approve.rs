@@ -9,8 +9,10 @@ pub(super) fn parse(prompt: &str) -> Option<Action<'_>> {
     let (intent, rest) = match first {
         "once" => (ApprovalIntent::ApproveOnce, more),
         "session" | "for-session" => (ApprovalIntent::ApproveForSession, more),
-        _ if matches!(rest, "once") => (ApprovalIntent::ApproveOnce, ""),
-        _ if matches!(rest, "session" | "for-session") => (ApprovalIntent::ApproveForSession, ""),
+        _ if more == "once" => (ApprovalIntent::ApproveOnce, first),
+        _ if matches!(more, "session" | "for-session") => {
+            (ApprovalIntent::ApproveForSession, first)
+        }
         _ => (ApprovalIntent::ApproveOnce, rest),
     };
     Some(action_from_rest(rest, intent))

@@ -15,13 +15,13 @@ impl WorktreeManager {
             );
             return RemoveOutcome::RefusedDirty;
         }
-        match tokio::process::Command::new("git")
-            .args(["worktree", "remove", "--force"])
-            .arg(&info.path)
-            .current_dir(&self.repo_path)
-            .output()
-            .await
-        {
+        let args = vec![
+            "worktree".into(),
+            "remove".into(),
+            "--force".into(),
+            info.path.display().to_string(),
+        ];
+        match crate::tool::git::process::output(&self.repo_path, &args, &[], true).await {
             Ok(output) if output.status.success() => {
                 tracing::info!(worktree = %info.name, "Removed git worktree");
             }

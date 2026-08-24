@@ -8,7 +8,7 @@
 //! When no sink is installed every helper degrades to a no-op, which keeps
 //! non-worker callers (the TUI, `codetether run`) unchanged.
 
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 
 use super::task_output::EventSink;
 

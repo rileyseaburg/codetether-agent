@@ -4,6 +4,9 @@ use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::path::PathBuf;
 
+#[path = "context_authority.rs"]
+mod authority;
+
 #[derive(Default, Deserialize)]
 pub(super) struct RuntimeContext {
     #[serde(default, rename = "__ct_current_model")]
@@ -14,6 +17,8 @@ pub(super) struct RuntimeContext {
     pub session_id: Option<String>,
     #[serde(default, rename = "__ct_prior_context_allowed")]
     prior_context_allowed: Option<bool>,
+    #[serde(flatten)]
+    authority: authority::RuntimeAuthority,
 }
 
 impl RuntimeContext {
@@ -23,6 +28,7 @@ impl RuntimeContext {
             self.workspace.clone(),
             self.prior_context_allowed,
         )
+        .with_network(self.network_allowed())
     }
 
     pub(super) fn inject(&self, payload: &mut Map<String, Value>) {
@@ -38,5 +44,10 @@ impl RuntimeContext {
         if let Some(value) = self.prior_context_allowed {
             payload.insert("__ct_prior_context_allowed".into(), json!(value));
         }
+        self.authority.inject(payload);
     }
 }
+
+#[cfg(test)]
+#[path = "context_tests.rs"]
+mod tests;

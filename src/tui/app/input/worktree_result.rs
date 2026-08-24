@@ -40,13 +40,16 @@ pub(crate) async fn handle_worktree_result(
     success: bool,
     worktree: Option<WorktreeState>,
     prompt: Option<&str>,
+    network_allowed: bool,
 ) {
     let Some((mgr, wt, base_branch)) = worktree else {
         return;
     };
     if success {
         match prompt.filter(|p| wants_pr(p)) {
-            Some(p) => push_or_merge(&mgr, &wt, base_branch.as_deref(), Some(p)).await,
+            Some(p) => {
+                push_or_merge(&mgr, &wt, base_branch.as_deref(), Some(p), network_allowed).await
+            }
             None => merge_locally(&mgr, &wt).await,
         }
     }

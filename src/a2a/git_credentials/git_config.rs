@@ -11,7 +11,6 @@
 
 use anyhow::{Result, anyhow};
 use std::path::Path;
-use std::process::Command;
 
 /// Runs a Git command inside a repository and surfaces stderr on failure.
 ///
@@ -23,10 +22,11 @@ use std::process::Command;
 /// run_git_command(repo_path, &["status", "--short"])?;
 /// ```
 pub(super) fn run_git_command(repo_path: &Path, args: &[&str]) -> Result<()> {
-    let output = Command::new("git")
-        .current_dir(repo_path)
-        .args(args)
-        .output()?;
+    let args = args
+        .iter()
+        .map(|arg| (*arg).to_string())
+        .collect::<Vec<_>>();
+    let output = crate::tool::git::process::output_blocking(repo_path, &args, &[], true)?;
     if output.status.success() {
         return Ok(());
     }

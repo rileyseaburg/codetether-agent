@@ -6,7 +6,17 @@ use crate::tool::agent::store::AgentEntry;
 pub(super) fn apply(entry: &mut AgentEntry, config: &ResumeConfig) -> bool {
     let model_changed = apply_model(entry, config.model.as_ref());
     let policy_changed = apply_policy(entry, config.prior_context_allowed);
-    model_changed || policy_changed
+    let network_changed = apply_network(entry, config.network_allowed);
+    model_changed || policy_changed || network_changed
+}
+
+fn apply_network(entry: &mut AgentEntry, allowed: Option<bool>) -> bool {
+    let Some(allowed) = allowed else { return false };
+    if entry.session.metadata.allow_network == allowed {
+        return false;
+    }
+    entry.session.metadata.allow_network = allowed;
+    true
 }
 
 fn apply_model(entry: &mut AgentEntry, model: Option<&String>) -> bool {

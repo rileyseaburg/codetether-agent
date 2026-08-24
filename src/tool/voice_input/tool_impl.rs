@@ -1,6 +1,6 @@
 use super::{actions, client, params, schema};
 use crate::tool::{Tool, ToolResult};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -39,8 +39,7 @@ impl Tool for VoiceInputTool {
         schema::json_schema()
     }
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: params::Params =
-            serde_json::from_value(params).context("Invalid voice_input params")?;
+        let p: params::Params = crate::tool::network_access::args!("voice_input", params);
         actions::dispatch(&self.client, &p).await
     }
 }

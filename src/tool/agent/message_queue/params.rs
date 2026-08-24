@@ -19,5 +19,6 @@ pub(super) fn queued(item: &Item) -> Params {
         parent_workspace: None,
         parent_session_id: item.parent_id.clone(),
         parent_prior_context_allowed: item.prior_context,
+        parent_policy: Default::default(),
     }
 }

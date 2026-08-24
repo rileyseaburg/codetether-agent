@@ -1,15 +1,20 @@
 //! Runtime visibility into OS sandbox availability.
 
 pub fn unavailable_reason() -> Option<&'static str> {
+    unavailable_reason_for(crate::tool::network_access::allowed())
+}
+
+pub(crate) fn unavailable_reason_for(allow_network: bool) -> Option<&'static str> {
     match super::sandbox_runner_select::selected_runner() {
         super::sandbox_runner_select::Runner::Bubblewrap(_) => None,
         // Seatbelt (`sandbox-exec`) confines writes and network access on
         // macOS, so the sandbox is usable there without bwrap.
         super::sandbox_runner_select::Runner::Seatbelt(_) => None,
-        // bwrap is unavailable, but Landlock can still confine a direct
-        // process (no user namespace needed), so the sandbox is usable.
+        // Landlock confines files while direct seccomp blocks privileged and
+        // networking syscalls without requiring a user namespace.
         super::sandbox_runner_select::Runner::Direct(_)
-            if super::sandbox_landlock::kernel_available() =>
+            if super::sandbox_landlock::kernel_available()
+                && super::sandbox_seccomp::prepare(allow_network).is_ok_and(|value| value.is_some()) =>
         {
             None
         }

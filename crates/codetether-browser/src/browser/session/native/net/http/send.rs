@@ -16,7 +16,11 @@ pub(in crate::browser::session::native) async fn send(
     headers: Option<HashMap<String, String>>,
     body: Option<String>,
 ) -> Result<BrowserOutput, BrowserError> {
-    let mut builder = reqwest::Client::new().request(parse_method(method)?, url);
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(super::super::super::fetch::map)?;
+    let mut builder = client.request(parse_method(method)?, url);
     for (key, value) in headers.unwrap_or_default() {
         builder = builder.header(key, value);
     }

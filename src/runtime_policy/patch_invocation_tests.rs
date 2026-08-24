@@ -24,8 +24,9 @@ fn patch_write_receipt_satisfies_runtime_gate() {
     let data = tempfile::tempdir().expect("tempdir");
     let _env = EnvGuard::data_dir(data.path());
     let store = ApprovalStore::open(data.path().join("approvals")).expect("store");
+    let resource = crate::tool::patch::approval_resource_from_patch(sample_patch());
     let request = store
-        .create_request("apply_patch", "write", "src/lib.rs", "patch write")
+        .create_request("apply_patch", "write", &resource, "patch write")
         .expect("request");
     store.approve(&request.id, "riley", "ok").expect("approve");
     let args = json!({"patch": sample_patch(), "approval_id": request.id});

@@ -19,7 +19,9 @@ pub(super) fn reason(reason: DecisionReason) -> &'static str {
         DecisionReason::ApprovalPolicyAllows => "approval_policy_allows",
         DecisionReason::SessionApproval => "session_approval",
         DecisionReason::MutatingTool => "mutating_tool",
+        DecisionReason::SandboxEscalation => "sandbox_escalation",
         DecisionReason::SandboxUnavailable => "sandbox_unavailable",
         DecisionReason::ApprovalUnavailable => "approval_unavailable",
+        DecisionReason::NetworkDisabled => "network_disabled",
     }
 }

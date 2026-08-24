@@ -1,12 +1,13 @@
 //! Interrupt and durable submission dispatch for `send_input`.
 
 use super::input::Prepared;
-use crate::tool::collaboration::{context::RuntimeContext, legacy};
-use crate::tool::{Tool, ToolResult, agent::AgentTool};
+use crate::tool::collaboration::{authority::Claimed, context::RuntimeContext, legacy};
+use crate::tool::ToolResult;
 use anyhow::Result;
 use serde_json::{Map, json};
 
 pub(super) async fn execute(
+    authority: Claimed,
     context: RuntimeContext,
     target: String,
     input: Prepared,
@@ -16,7 +17,7 @@ pub(super) async fn execute(
         return Ok(result);
     }
     if interrupt {
-        let result = action(&context, "interrupt", &target, None).await?;
+        let result = action(&authority, &context, "interrupt", &target, None).await?;
         if !result.success {
             return Ok(result);
         }
@@ -29,12 +30,12 @@ pub(super) async fn execute(
     .cloned()
     .expect("object payload");
     context.inject(&mut payload);
-    AgentTool::new()
-        .execute(serde_json::Value::Object(payload))
+    crate::tool::agent::AgentTool::execute_authorized(serde_json::Value::Object(payload))
         .await
 }
 
 async fn action(
+    authority: &Claimed,
     context: &RuntimeContext,
     action: &str,
     target: &str,
@@ -46,5 +47,5 @@ async fn action(
     .as_object()
     .cloned()
     .expect("object payload");
-    legacy::execute(context, payload).await
+    legacy::execute(authority, context, payload).await
 }

@@ -15,14 +15,17 @@ pub(super) async fn handle(
         .unwrap_or_else(|| format!("{} from server", body.decision));
     let store = ApprovalStore::open_default().map_err(error::map)?;
     let receipt = if kind.approves() {
-        let receipt = store.approve(&id, &actor, &reason).map_err(error::map)?;
+        let receipt = store
+            .approve_review(&id, &actor, &reason, kind)
+            .map_err(error::map)?;
         kind.grant_session(&receipt);
         Some(receipt)
     } else {
         store.deny(&id, &actor, &reason).map_err(error::map)?;
+        kind.discard_pending(&id);
         None
     };
-    let delivered = crate::approval::live::decide(&id, kind.live());
+    let delivered = crate::approval::live::decide(&id, kind.live(Some(&reason)));
     let decision = store.decision(&id).map_err(error::map)?;
     Ok(Json(response::decided(
         &id,

@@ -16,8 +16,9 @@ pub(super) async fn push_or_merge(
     wt: &WorktreeInfo,
     base_branch: Option<&str>,
     prompt: Option<&str>,
+    network_allowed: bool,
 ) {
-    match push_and_create_pr(wt, base_branch, prompt).await {
+    match push_and_create_pr(wt, base_branch, prompt, network_allowed).await {
         Ok(pr_url) => {
             tracing::info!(
                 worktree = %wt.name, branch = %wt.branch,

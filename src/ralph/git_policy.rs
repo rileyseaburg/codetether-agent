@@ -1,37 +1,27 @@
-//! Runtime policy guard for Ralph git mutations.
+//! Sandboxed Git process adapters for approved Ralph orchestration.
 
 use anyhow::{Result, bail};
-use serde_json::json;
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Output;
 
-pub(crate) fn guard(cwd: &Path, command: &str) -> Result<()> {
-    let args = json!({ "command": command, "cwd": cwd.display().to_string() });
-    let blocked = match tokio::runtime::Handle::try_current() {
-        Ok(handle) => tokio::task::block_in_place(|| handle.block_on(check(args))),
-        Err(_) => runtime_check(args),
-    };
-    if let Some(blocked) = blocked? {
-        bail!("git mutation blocked by policy: {}", blocked.output);
+pub(crate) fn prepare_commit(cwd: &Path) -> Result<()> {
+    let args = vec!["add".to_string(), "-A".to_string()];
+    let output = crate::tool::git::process::output_blocking(cwd, &args, &[], true)?;
+    if !output.status.success() {
+        bail!(
+            "git add failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
     Ok(())
 }
 
 pub(crate) fn checkout(cwd: &Path, branch: &str) -> Result<Output> {
-    guard(cwd, &format!("git checkout {branch}"))?;
-    Ok(Command::new("git")
-        .args(["checkout", branch])
-        .current_dir(cwd)
-        .output()?)
+    let args = vec!["checkout".to_string(), branch.to_string()];
+    crate::tool::git::process::output_blocking(cwd, &args, &[], true)
 }
 
-async fn check(args: serde_json::Value) -> Result<Option<crate::tool::ToolResult>> {
-    Ok(crate::runtime_policy::evaluate_tool_invocation("bash", &args).await)
-}
-
-fn runtime_check(args: serde_json::Value) -> Result<Option<crate::tool::ToolResult>> {
-    Ok(tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?
-        .block_on(check(args))?)
+pub(crate) fn checkout_new(cwd: &Path, branch: &str) -> Result<Output> {
+    let args = vec!["checkout".to_string(), "-b".to_string(), branch.to_string()];
+    crate::tool::git::process::output_blocking(cwd, &args, &[], true)
 }

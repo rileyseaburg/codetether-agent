@@ -17,33 +17,29 @@ pub(super) async fn push_and_create_pr(
     wt: &WorktreeInfo,
     base_branch: Option<&str>,
     prompt: Option<&str>,
+    network_allowed: bool,
 ) -> anyhow::Result<String> {
-    stage_and_commit(wt).await;
-    push_branch(wt).await?;
-    create_github_pr(wt, base_branch, prompt).await
+    stage_and_commit(wt).await?;
+    push_branch(wt, network_allowed).await?;
+    create_github_pr(wt, base_branch, prompt, network_allowed).await
 }
 
 /// Stage and commit any uncommitted changes.
-async fn stage_and_commit(wt: &WorktreeInfo) {
-    let diff_check = tokio::process::Command::new("git")
-        .args(["diff", "--quiet", "HEAD"])
-        .current_dir(&wt.path)
-        .status()
-        .await;
-    if diff_check.map(|s| !s.success()).unwrap_or(true) {
-        let _ = tokio::process::Command::new("git")
-            .args(["add", "-A"])
-            .current_dir(&wt.path)
-            .output()
-            .await;
-        let _ = tokio::process::Command::new("git")
-            .args([
-                "commit",
-                "-m",
-                &format!("codetether: TUI agent work ({})", wt.name),
-            ])
-            .current_dir(&wt.path)
-            .output()
-            .await;
+async fn stage_and_commit(wt: &WorktreeInfo) -> anyhow::Result<()> {
+    let diff = vec!["diff".into(), "--quiet".into(), "HEAD".into()];
+    let status = crate::tool::git::process::output(&wt.path, &diff, &[], false).await?;
+    if !status.status.success() {
+        let add = vec!["add".into(), "-A".into()];
+        crate::tool::git::process::output(&wt.path, &add, &[], true).await?;
+        let commit: Vec<String> = vec![
+            "commit",
+            "-m",
+            &format!("codetether: TUI agent work ({})", wt.name),
+        ]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+        crate::tool::git::process::output(&wt.path, &commit, &[], true).await?;
     }
+    Ok(())
 }

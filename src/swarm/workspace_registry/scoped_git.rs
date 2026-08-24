@@ -1,4 +1,6 @@
 //! Git adapter that roots operations and gates commits by capability.
+#[path = "scoped_git_args.rs"]
+mod scoped_args;
 
 use crate::tool::{Tool, ToolResult, git::GitTool};
 use anyhow::Result;
@@ -42,9 +44,7 @@ impl Tool for ScopedGitTool {
                 "git commit is unavailable for this swarm task",
             ));
         }
-        if let Some(fields) = args.as_object_mut() {
-            fields.insert("cwd".into(), Value::String(self.root.display().to_string()));
-        }
+        scoped_args::bind(&mut args, &self.root)?;
         self.inner.execute(args).await
     }
 }

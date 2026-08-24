@@ -1,13 +1,13 @@
 //! Web Search Tool - Search the web using DuckDuckGo or configurable search API.
 
+#[path = "websearch_client.rs"]
+mod client;
+
 use super::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::time::Duration;
-
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
 pub struct WebSearchTool {
     client: reqwest::Client,
@@ -21,11 +21,7 @@ impl Default for WebSearchTool {
 
 impl WebSearchTool {
     pub fn new() -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(REQUEST_TIMEOUT)
-            .user_agent("CodeTether-Agent/1.0")
-            .build()
-            .expect("Failed to build HTTP client");
+        let client = client::build();
         Self { client }
     }
 
@@ -118,12 +114,13 @@ impl Tool for WebSearchTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: Params = serde_json::from_value(params).context("Invalid params")?;
+        let p: Params = serde_json::from_value(params.clone()).context("Invalid params")?;
 
         if p.query.trim().is_empty() {
             return Ok(ToolResult::error("Query cannot be empty"));
         }
 
+        super::network_access::guard!("websearch", &params);
         let results = self.search_ddg(&p.query, p.max_results).await?;
 
         if results.is_empty() {

@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 use super::{ExecutionProvenance, commit_editmsg_path, enrich_from_repo, provenance_trailers};
 
@@ -22,20 +21,18 @@ pub fn ensure_provenance_trailers(
 
 fn add_trailer(repo_path: &Path, editmsg: &Path, label: &str, value: &str) -> Result<()> {
     let trailer = format!("{label}: {value}");
-    let status = Command::new("git")
-        .args([
-            "interpret-trailers",
-            "--in-place",
-            "--if-exists",
-            "doNothing",
-        ])
-        .arg("--trailer")
-        .arg(&trailer)
-        .arg(editmsg)
-        .current_dir(repo_path)
-        .status()
+    let args = vec![
+        "interpret-trailers".into(),
+        "--in-place".into(),
+        "--if-exists".into(),
+        "doNothing".into(),
+        "--trailer".into(),
+        trailer,
+        editmsg.display().to_string(),
+    ];
+    let output = crate::tool::git::process::output_blocking(repo_path, &args, &[], true)
         .with_context(|| format!("Failed to add provenance trailer {label}"))?;
-    if !status.success() {
+    if !output.status.success() {
         anyhow::bail!("git interpret-trailers failed while adding {label}");
     }
     Ok(())

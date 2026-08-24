@@ -1,20 +1,21 @@
-use super::from_metadata;
+use super::sanitized;
 use serde_json::json;
 
 #[test]
-fn extracts_top_level_approval_id() {
-    let metadata = json!({"approval_id": "approval-1"})
-        .as_object()
-        .cloned()
-        .expect("object");
-    assert_eq!(from_metadata(&metadata)["approval_id"], "approval-1");
-}
-
-#[test]
-fn extracts_nested_forage_approval_id() {
-    let metadata = json!({"forage": {"approval_id": "approval-2"}})
-        .as_object()
-        .cloned()
-        .expect("object");
-    assert_eq!(from_metadata(&metadata)["approval_id"], "approval-2");
+fn scope_sanitization_removes_only_approval_ids_recursively() {
+    let task = json!({
+        "id": "task-1",
+        "approval_id": "top",
+        "metadata": {
+            "approval_id": "nested",
+            "repository": "https://example.com/repo.git"
+        }
+    });
+    let value = sanitized(&task);
+    assert!(value.get("approval_id").is_none());
+    assert!(value["metadata"].get("approval_id").is_none());
+    assert_eq!(
+        value["metadata"]["repository"],
+        "https://example.com/repo.git"
+    );
 }

@@ -5,6 +5,8 @@ use anyhow::Result;
 use crate::session::Session;
 
 use super::task_timeline;
+#[path = "task_finalize_git.rs"]
+mod git;
 
 pub(super) async fn finalize_task_result(
     session: &mut Session,
@@ -28,14 +30,7 @@ pub(super) async fn finalize_task_result(
         && !is_virtual_task
         && let Some(directory) = session.metadata.directory.as_deref()
     {
-        match super::git_commit_push::run(
-            directory,
-            task_id,
-            session.metadata.provenance.as_ref(),
-            timeline,
-        )
-        .await
-        {
+        match git::run(directory, task_id, session, timeline).await {
             Ok(Some(summary)) => {
                 *result = Some(match result.take() {
                     Some(existing) if !existing.trim().is_empty() => {

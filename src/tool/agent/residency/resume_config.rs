@@ -8,6 +8,7 @@ pub(in crate::tool) struct ResumeConfig {
     pub(super) model: Option<String>,
     pub(super) workspace: Option<PathBuf>,
     pub(super) prior_context_allowed: Option<bool>,
+    pub(in crate::tool) network_allowed: Option<bool>,
 }
 
 impl ResumeConfig {
@@ -21,10 +22,19 @@ impl ResumeConfig {
             model,
             workspace,
             prior_context_allowed,
+            network_allowed: None,
         }
     }
 
+    pub(in crate::tool) fn with_network(mut self, allowed: Option<bool>) -> Self {
+        self.network_allowed = allowed;
+        self
+    }
+
     pub(super) fn is_empty(&self) -> bool {
-        self.model.is_none() && self.workspace.is_none() && self.prior_context_allowed.is_none()
+        self.model.is_none()
+            && self.workspace.is_none()
+            && self.prior_context_allowed.is_none()
+            && self.network_allowed.is_none()
     }
 }

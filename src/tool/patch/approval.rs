@@ -14,8 +14,9 @@ pub(super) fn required(mode: &PatchMode) -> bool {
 }
 
 pub(super) fn request(resource: &str) -> Option<ApprovalRequest> {
+    let tool = crate::tool::alias::policy_id(TOOL);
     ApprovalStore::open_default()
-        .and_then(|store| store.create_request(TOOL, ACTION, resource, "patch write"))
+        .and_then(|store| store.create_request(&tool, ACTION, resource, "patch write"))
         .ok()
 }
 
@@ -23,24 +24,27 @@ pub(super) fn verify(
     mode: &PatchMode,
     resource: &str,
 ) -> std::result::Result<Option<ApprovalReceipt>, ToolResult> {
-    if !gated(mode) {
-        return Ok(None);
-    }
     let Some(approval_id) = mode.approval_id.as_deref() else {
         return Ok(None);
     };
     ApprovalStore::open_default()
-        .and_then(|store| store.verify(approval_id, TOOL, ACTION, resource))
+        .and_then(|store| {
+            let request = store
+                .request(approval_id)?
+                .ok_or_else(|| anyhow::anyhow!("approval request not found"))?;
+            if !matches!(request.tool.as_str(), TOOL | "patch") {
+                anyhow::bail!("approval tool mismatch");
+            }
+            store.claim(
+                approval_id,
+                &request.tool,
+                ACTION,
+                resource,
+                "apply-patch-runtime",
+            )
+        })
         .map(Some)
         .map_err(|error| result::approval_invalid(error.to_string()))
-}
-
-pub(super) fn resource(files: &[String]) -> String {
-    match files {
-        [] => "workspace".to_string(),
-        [file] => file.clone(),
-        many => many.join(","),
-    }
 }
 
 fn gated(mode: &PatchMode) -> bool {

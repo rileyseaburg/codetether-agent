@@ -1,6 +1,6 @@
 use super::{SandboxPolicy, SandboxResult};
 use super::{
-    sandbox_command, sandbox_env, sandbox_plan_state, sandbox_process, sandbox_result_builder,
+    sandbox_env, sandbox_plan_command, sandbox_plan_state, sandbox_process, sandbox_result_builder,
     sandbox_runner,
 };
 use anyhow::{Result, anyhow};
@@ -18,6 +18,7 @@ pub async fn execute_sandboxed(
         return Err(anyhow!("Sandbox policy denies process execution"));
     }
     let mut env = sandbox_env::restricted();
+    env.extend(policy.environment.clone());
     let network_fallbacks = super::super::sandbox_network::validate(policy, command, args)?;
     if !policy.allow_network {
         env.insert("CODETETHER_SANDBOX_NO_NETWORK".to_string(), "1".to_string());
@@ -28,15 +29,10 @@ pub async fn execute_sandboxed(
     super::super::sandbox_paths::validate_working_dir(policy, &work_dir).await?;
     super::super::sandbox_paths::validate_command_args(args)?;
     let plan = sandbox_runner::plan(command, args, policy, &work_dir)?;
-    let state = sandbox_plan_state::from_plan(plan, network_fallbacks);
-    let (cmd, limit_fallbacks) = sandbox_command::build(
-        &state.program,
-        &state.args,
-        &work_dir,
-        &env,
-        state.landlock,
-        policy.max_memory_bytes,
-    );
+    super::sandbox_network_isolation::validate(policy, plan.network_isolated)?;
+    let mut state = sandbox_plan_state::from_plan(plan, network_fallbacks);
+    let (cmd, limit_fallbacks) =
+        sandbox_plan_command::build(&mut state, &work_dir, &env, policy.max_memory_bytes);
     let mut unsafe_fallbacks = state.unsafe_fallbacks;
     unsafe_fallbacks.extend(limit_fallbacks);
     let output = sandbox_process::wait(cmd, policy.timeout_secs, &mut violations).await?;

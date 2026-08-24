@@ -1,6 +1,5 @@
 use super::ExecutionProvenance;
 use std::path::Path;
-use std::process::Command;
 
 pub fn enrich_from_repo(provenance: &ExecutionProvenance, repo_path: &Path) -> ExecutionProvenance {
     let mut enriched = provenance.clone();
@@ -26,11 +25,8 @@ fn fill(slot: &mut Option<String>, value: Option<String>) {
 }
 
 fn git_config(repo_path: &Path, key: &str) -> Option<String> {
-    let output = Command::new("git")
-        .args(["config", "--local", "--get", key])
-        .current_dir(repo_path)
-        .output()
-        .ok()?;
+    let args = ["config", "--local", "--get", key];
+    let output = crate::tool::git::process::output_blocking_refs(repo_path, &args, false).ok()?;
     output
         .status
         .success()

@@ -31,11 +31,8 @@ impl Default for YouTubeTool {
 
 impl YouTubeTool {
     pub fn new() -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(REQUEST_TIMEOUT)
-            .user_agent("CodeTether-Agent/1.0")
-            .build()
-            .expect("Failed to build HTTP client");
+        let client = super::network_access::no_redirect_client_with_timeout(REQUEST_TIMEOUT)
+            .expect("youtube HTTP client");
         Self { client }
     }
 
@@ -321,7 +318,7 @@ impl Tool for YouTubeTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: Params = serde_json::from_value(params).context("Invalid params")?;
+        let p: Params = crate::tool::network_access::args!("youtube", params);
 
         match p.action.as_str() {
             "publish_episode" => {

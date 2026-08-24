@@ -25,13 +25,24 @@ pub(super) fn header(f: &mut Frame, area: Rect, item: &ApprovalSnapshot) {
     );
 }
 
+fn detail(item: &ApprovalSnapshot, count: usize) -> String {
+    match &item.amendment {
+        Some(amendment) => format!(
+            "session prefix: {} | id: {} | queued: {count}",
+            amendment.command().join(" "),
+            item.id
+        ),
+        None => format!("id: {} | queued: {count}", item.id),
+    }
+}
+
 pub(super) fn footer(f: &mut Frame, area: Rect, item: &ApprovalSnapshot, count: usize) {
     f.render_widget(
         Paragraph::new(vec![
             Line::from(
                 "Ctrl+E edit code · type feedback · Ctrl+Y copy · Ctrl+A approve · Ctrl+D deny",
             ),
-            Line::from(format!("id: {} | queued: {count}", item.id)),
+            Line::from(detail(item, count)),
         ]),
         area,
     );

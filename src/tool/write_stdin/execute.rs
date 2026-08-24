@@ -6,7 +6,7 @@ use super::{WriteStdinTool, input::Input};
 use crate::tool::{ToolResult, command_session};
 
 pub(super) async fn run(tool: &WriteStdinTool, args: serde_json::Value) -> Result<ToolResult> {
-    let input: Input = match serde_json::from_value(args) {
+    let input: Input = match serde_json::from_value(args.clone()) {
         Ok(input) => input,
         Err(error) => {
             return Ok(ToolResult::error(format!(
@@ -14,13 +14,23 @@ pub(super) async fn run(tool: &WriteStdinTool, args: serde_json::Value) -> Resul
             )));
         }
     };
-    let Some(command) = tool.sessions.get(input.session_id).await else {
+    let Some(owner) = crate::tool::command_owner::from_args(&args) else {
+        return Ok(ToolResult::error(
+            "persistent command sessions require a session or lease owner",
+        ));
+    };
+    let Some(command) = tool.sessions.get(input.session_id, &owner).await else {
         return Ok(ToolResult::error(format!(
             "unknown or completed command session {}",
             input.session_id
         )));
     };
     let mut command = command.lock().await;
+    if let Some(blocked) = crate::runtime_policy::evaluate_tool_invocation("write_stdin", &args).await {
+        return Ok(blocked);
+    }
+    crate::approval::use_once::claim("write_stdin", &args)
+        .map_err(|error| anyhow::anyhow!("approval claim failed: {error}"))?;
     if !input.chars.is_empty()
         && let Err(error) = command.write(&input.chars).await
     {

@@ -1,3 +1,5 @@
+#[path = "sandbox_preflight.rs"]
+pub(crate) mod sandbox_preflight;
 // Submodule wiring for the sandbox module, kept separate so `sandbox.rs`
 // stays focused on plugin verification and policy types.
 #[path = "sandbox_availability.rs"]
@@ -16,10 +18,16 @@ mod sandbox_command;
 mod sandbox_env;
 #[path = "sandbox_execute.rs"]
 mod sandbox_execute;
+#[path = "sandbox_output.rs"]
+pub(crate) mod sandbox_output;
 #[path = "sandbox_landlock.rs"]
 mod sandbox_landlock;
+#[path = "sandbox_network_isolation.rs"]
+mod sandbox_network_isolation;
 #[path = "sandbox_plan_state.rs"]
 mod sandbox_plan_state;
+#[path = "sandbox_plan_command.rs"]
+mod sandbox_plan_command;
 include!("sandbox_process_modules.rs");
 #[path = "sandbox_result_builder.rs"]
 mod sandbox_result_builder;
@@ -37,3 +45,5 @@ mod sandbox_runner_select;
 mod sandbox_seatbelt;
 #[path = "sandbox_seccomp.rs"]
 mod sandbox_seccomp;
+pub(crate) use sandbox_availability::unavailable_reason_for;
+pub(crate) use sandbox_env::restricted as restricted_env;

@@ -3,11 +3,12 @@ use std::path::{Path, PathBuf};
 
 pub(super) async fn verify_base(repo: &Path, base: &str) -> Result<()> {
     let reference = format!("{base}^{{commit}}");
-    let output = tokio::process::Command::new("git")
-        .args(["rev-parse", "--verify", "--quiet", &reference])
-        .current_dir(repo)
-        .output()
-        .await?;
+    let output = crate::tool::git::process::output_refs(
+        repo,
+        &["rev-parse", "--verify", "--quiet", &reference],
+        false,
+    )
+    .await?;
     if !output.status.success() {
         bail!("cleanup base '{base}' is not a commit");
     }
@@ -15,12 +16,10 @@ pub(super) async fn verify_base(repo: &Path, base: &str) -> Result<()> {
 }
 
 pub(super) async fn current(repo: &Path) -> Result<PathBuf> {
-    let output = tokio::process::Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(repo)
-        .output()
-        .await
-        .context("failed to locate current worktree")?;
+    let output =
+        crate::tool::git::process::output_refs(repo, &["rev-parse", "--show-toplevel"], false)
+            .await
+            .context("failed to locate current worktree")?;
     if !output.status.success() {
         bail!(
             "git rev-parse failed: {}",

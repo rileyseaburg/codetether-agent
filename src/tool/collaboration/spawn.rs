@@ -35,7 +35,12 @@ impl Tool for SpawnAgentTool {
         },"required":["task_name","message"]})
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
-        dispatch::execute(serde_json::from_value(input)?).await
+        let args = serde_json::from_value(input.clone())?;
+        let authority = match super::authority::claim("spawn_agent", &input).await {
+            Ok(authority) => authority,
+            Err(blocked) => return Ok(blocked),
+        };
+        dispatch::execute(args, authority).await
     }
 }
 

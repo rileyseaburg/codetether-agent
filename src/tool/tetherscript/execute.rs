@@ -32,6 +32,7 @@ impl Tool for TetherScriptPluginTool {
 }
 
 async fn execute_tetherscript(tool: &TetherScriptPluginTool, args: Value) -> Result<ToolResult> {
+    let raw = args.clone();
     let input: TetherScriptPluginInput = match serde_json::from_value(args) {
         Ok(input) => input,
         Err(error) => return Ok(errors::invalid_params(tool.id(), error)),
@@ -44,6 +45,13 @@ async fn execute_tetherscript(tool: &TetherScriptPluginTool, args: Value) -> Res
         Ok(source) => source,
         Err(error) => return Ok(ToolResult::error(error.to_string())),
     };
-    let request = task::TetherScriptRun::new(source_name, source, input);
+    let process =
+        match super::execute_policy::authorize(&raw, tool.root(), &source, input.grant_process)
+            .await
+        {
+            Ok(grant) => grant,
+            Err(blocked) => return Ok(blocked),
+        };
+    let request = task::TetherScriptRun::new(source_name, source, input, process);
     Ok(result::from_run(task::run(request).await?))
 }

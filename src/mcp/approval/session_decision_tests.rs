@@ -21,7 +21,12 @@ async fn mcp_execpolicy_decision_grants_session_prefix() {
     let request = store
         .create_request("bash", "execute", "bash:abc", "needs approval")
         .expect("request");
-    session_command_grants::remember_request(&request.id, vec!["cargo test".into()]);
+    session_command_grants::remember_scoped_request_in(
+        &request.id,
+        vec!["cargo test".into()],
+        Some("mcp-session"),
+        Some("mcp-workspace"),
+    );
 
     super::handle(
         "approvals/decision",
@@ -30,5 +35,9 @@ async fn mcp_execpolicy_decision_grants_session_prefix() {
     .await
     .expect("decision");
 
-    assert!(session_command_grants::allowed("cargo test --lib mcp"));
+    assert!(session_command_grants::allowed_scoped_in(
+        "cargo test --lib mcp",
+        Some("mcp-session"),
+        Some("mcp-workspace")
+    ));
 }

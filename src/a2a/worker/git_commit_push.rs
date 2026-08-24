@@ -9,7 +9,9 @@ pub(super) async fn run(
     task_id: &str,
     provenance: Option<&crate::provenance::ExecutionProvenance>,
     timeline: &mut task_timeline::TaskTimeline,
+    network_allowed: bool,
 ) -> Result<Option<String>> {
+    require_network(network_allowed)?;
     if !repo_path.join(".git").exists() || ops::status(repo_path).await?.trim().is_empty() {
         return Ok(None);
     }
@@ -35,3 +37,14 @@ pub(super) async fn run(
         branch.trim()
     )))
 }
+
+fn require_network(allowed: bool) -> Result<()> {
+    if !allowed {
+        anyhow::bail!("network access is disabled for A2A Git push");
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "git_commit_push_tests.rs"]
+mod tests;

@@ -28,6 +28,7 @@ impl SessionEvent {
                 | Self::ToolCallComplete { .. }
                 | Self::ToolCallMetadata { .. }
                 | Self::ApprovalRequest(_)
+                | Self::StreamRetry(_)
                 | Self::TextComplete(_)
                 | Self::ThinkingComplete(_)
                 | Self::UsageReport { .. }

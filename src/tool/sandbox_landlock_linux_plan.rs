@@ -5,6 +5,8 @@ mod access;
 mod devices;
 #[path = "sandbox_landlock_linux_inactive.rs"]
 mod inactive;
+#[path = "sandbox_landlock_linux_policy_paths.rs"]
+mod policy_paths;
 use crate::tool::sandbox::SandboxPolicy;
 use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
@@ -43,9 +45,7 @@ pub(crate) fn prepare(policy: &SandboxPolicy, work_dir: &Path) -> Prepared {
 fn rules(policy: &SandboxPolicy, work_dir: &Path) -> Result<Rules, &'static str> {
     let mut paths = vec![rule(Path::new("/"), sys::READ_ACCESS)?];
     paths.extend(devices::rules()?);
-    for path in &policy.allowed_paths {
-        paths.push(rule(path, sys::READ_ACCESS | sys::WRITE_ACCESS)?);
-    }
+    paths.extend(policy_paths::rules(policy)?);
     paths.push(rule(work_dir, access::work_dir(policy, work_dir))?);
     Ok(Rules { paths })
 }

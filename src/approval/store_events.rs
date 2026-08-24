@@ -24,20 +24,18 @@ impl ApprovalStore {
         let mut line = serde_json::to_vec(&event)?;
         line.push(b'\n');
         file.write_all(&line)?;
+        file.sync_all()?;
         Ok(())
     }
 
-    /// Read every event, skipping lines that cannot be parsed.
+    /// Read every event, failing closed when any line cannot be parsed.
     ///
-    /// A single corrupt line must not make the whole store unreadable. Logs
-    /// predating the atomic-append fix contain interleaved records, and failing
-    /// the entire read leaves an operator with no way to see or decide any
-    /// pending request. Unparseable lines are reported on stderr and skipped, so
-    /// the damage is visible without being fatal.
+    /// Skipping a corrupt decision could resurrect an earlier approval, so
+    /// operators must repair corrupted logs before authorization can resume.
     ///
     /// # Errors
     ///
-    /// Returns an error only when the log cannot be read at all.
+    /// Returns an error when the log cannot be read or any event is malformed.
     pub(crate) fn events(&self) -> Result<Vec<ApprovalEvent>> {
         let path = self.log_path();
         if !path.exists() {
@@ -45,18 +43,8 @@ impl ApprovalStore {
         }
         let file = std::fs::File::open(path)?;
         let mut events = Vec::new();
-        let mut skipped = 0usize;
         for line in BufReader::new(file).lines().filter_map(non_empty_line) {
-            match serde_json::from_str(&line?) {
-                Ok(event) => events.push(event),
-                Err(_) => skipped += 1,
-            }
-        }
-        if skipped > 0 {
-            eprintln!(
-                "warning: skipped {skipped} unreadable approval log line(s) in {}",
-                self.log_path().display()
-            );
+            events.push(serde_json::from_str(&line?)?);
         }
         Ok(events)
     }

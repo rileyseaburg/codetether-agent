@@ -7,6 +7,9 @@
 //! The `execute` action spawns the pipeline in a background task and returns
 //! immediately so the MCP client can monitor progress via `go_watch`.
 
+#[path = "go_execute.rs"]
+mod execute;
+
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -163,26 +166,7 @@ Required for watch/status: okr_id"#
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: GoParams = serde_json::from_value(params).context("Invalid params")?;
-
-        match p.action.as_str() {
-            "execute" => self.execute_go(p).await,
-            "watch" => self.watch_go(p).await,
-            "status" => self.check_status(p).await,
-            _ => Ok(ToolResult::structured_error(
-                "INVALID_ACTION",
-                "go",
-                &format!(
-                    "Unknown action: '{}'. Valid actions: execute, watch, status",
-                    p.action
-                ),
-                None,
-                Some(json!({
-                    "action": "execute",
-                    "task": "implement feature X with tests"
-                })),
-            )),
-        }
+        execute::run(self, params).await
     }
 }
 

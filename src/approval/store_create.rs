@@ -15,6 +15,7 @@ impl ApprovalStore {
         reason: &str,
     ) -> Result<ApprovalRequest> {
         let request = ApprovalRequest::new(tool, action, resource, reason);
+        let _lock = self.lock_decisions()?;
         self.append_event(ApprovalEvent::from(request.clone()))?;
         Ok(request)
     }

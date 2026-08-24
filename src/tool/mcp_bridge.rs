@@ -92,14 +92,14 @@ impl Tool for McpBridgeTool {
         }
 
         let (cmd, cmd_args) = (parts[0], parts[1..].to_vec());
-        let approval_id = args["approval_id"].as_str();
-        if let Some(blocked) = policy::blocked(cmd, &cmd_args, approval_id).await {
+        if let Some(blocked) = policy::blocked(&args, cmd, &cmd_args).await {
             return Ok(blocked);
         }
 
+        let allow_network = crate::tool::network_access::allowed_for(&args);
         match action {
             "list_tools" => {
-                let manager = connect::manager(cmd, &cmd_args, approval_id).await?;
+                let manager = connect::manager(cmd, &cmd_args, allow_network).await?;
                 let wrappers = manager.wrappers().await;
                 let result: Vec<Value> = wrappers
                     .iter()
@@ -118,11 +118,11 @@ impl Tool for McpBridgeTool {
                 let tool_name = args["tool_name"]
                     .as_str()
                     .ok_or_else(|| anyhow::anyhow!("Missing 'tool_name' for call_tool"))?;
-                let arguments = bridge_args::with_approval(args["arguments"].clone(), approval_id);
+                let arguments = bridge_args::normalized(args["arguments"].clone());
 
-                let manager = connect::manager(cmd, &cmd_args, approval_id).await?;
+                let manager = connect::manager(cmd, &cmd_args, allow_network).await?;
                 let client = manager.client();
-                let result = client.call_tool(tool_name, arguments).await?;
+                let result = client.call_tool_authorized(tool_name, arguments).await?;
                 client.close().await?;
 
                 let output: String = result
@@ -147,7 +147,7 @@ impl Tool for McpBridgeTool {
                 }
             }
             "list_resources" => {
-                let manager = connect::manager(cmd, &cmd_args, approval_id).await?;
+                let manager = connect::manager(cmd, &cmd_args, allow_network).await?;
                 let client = manager.client();
                 let resources = client.list_resources().await?;
                 let result: Vec<Value> = resources
@@ -169,7 +169,7 @@ impl Tool for McpBridgeTool {
                     .as_str()
                     .ok_or_else(|| anyhow::anyhow!("Missing 'resource_uri' for read_resource"))?;
 
-                let manager = connect::manager(cmd, &cmd_args, approval_id).await?;
+                let manager = connect::manager(cmd, &cmd_args, allow_network).await?;
                 let client = manager.client();
                 let result = client.read_resource(uri).await?;
                 client.close().await?;

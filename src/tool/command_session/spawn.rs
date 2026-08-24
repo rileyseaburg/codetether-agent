@@ -20,8 +20,15 @@ pub(crate) async fn command(
     if let Some(policy) = sandbox {
         return sandboxed::command(program, args, cwd, keep_stdin, environment, policy).await;
     }
+    if !cfg!(test) && !crate::tool::sandbox::direct_fallback_env_allowed() {
+        anyhow::bail!("direct command execution is disabled; configure an OS sandbox");
+    }
     let mut command = tokio::process::Command::new(program);
-    command.args(args).current_dir(cwd);
+    command
+        .args(args)
+        .current_dir(cwd)
+        .env_clear()
+        .envs(crate::tool::sandbox::restricted_env());
     crate::tool::bash_noninteractive::configure(&mut command);
     command.envs(environment.iter().cloned());
     let terminal = keep_stdin

@@ -6,12 +6,13 @@
 //! - kill low-coherence branches deterministically
 //! - promote one branch as the current integration candidate
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Result, anyhow};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::process::Command;
 use std::time::Instant;
 
+#[path = "collapse_changed.rs"]
+mod changed;
 #[path = "collapse_git_probe.rs"]
 mod collapse_git_probe;
 
@@ -150,8 +151,8 @@ impl CollapseController {
                     subtask_id,
                     branch: branch_name,
                     compile_ok: collapse_git_probe::static_clean(&worktree_path)?,
-                    changed_files: collect_changed_files(&worktree_path)?,
-                    changed_lines: collect_changed_lines(&worktree_path)?,
+                    changed_files: changed::files(&worktree_path)?,
+                    changed_lines: changed::lines(&worktree_path)?,
                     resource_health_score: 1.0,
                     infra_unhealthy_signals: 0,
                 })
@@ -393,53 +394,6 @@ impl CollapseController {
             promoted_subtask_id,
         }
     }
-}
-
-fn collect_changed_files(worktree_path: &PathBuf) -> Result<HashSet<String>> {
-    let output = Command::new("git")
-        .args(["diff", "--name-only"])
-        .current_dir(worktree_path)
-        .output()
-        .with_context(|| {
-            format!(
-                "Failed to collect changed files in {}",
-                worktree_path.display()
-            )
-        })?;
-    if !output.status.success() {
-        return Ok(HashSet::new());
-    }
-    Ok(String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(|line| line.to_string())
-        .collect())
-}
-
-fn collect_changed_lines(worktree_path: &PathBuf) -> Result<u32> {
-    let output = Command::new("git")
-        .args(["diff", "--numstat"])
-        .current_dir(worktree_path)
-        .output()
-        .with_context(|| {
-            format!(
-                "Failed to collect changed lines in {}",
-                worktree_path.display()
-            )
-        })?;
-    if !output.status.success() {
-        return Ok(0);
-    }
-    let mut total = 0u32;
-    for line in String::from_utf8_lossy(&output.stdout).lines() {
-        let parts: Vec<&str> = line.split('\t').collect();
-        if parts.len() < 2 {
-            continue;
-        }
-        total += parts[0].parse::<u32>().unwrap_or(0);
-        total += parts[1].parse::<u32>().unwrap_or(0);
-    }
-    Ok(total)
 }
 
 #[cfg(test)]

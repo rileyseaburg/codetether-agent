@@ -1,0 +1,199 @@
+ M Cargo.lock
+ M Cargo.toml
+ M src/a2a/worker/task_dispatch_special.rs
+ M src/a2a/worker/task_policy_args.rs
+ M src/a2a/worker/task_policy_args_tests.rs
+ M src/approval/decision_kind.rs
+ M src/approval/live.rs
+ M src/approval/live/request.rs
+ M src/approval/mod.rs
+ M src/approval/session_command_grants.rs
+ M src/approval/session_grants.rs
+ M src/approval/store_decide.rs
+ M src/approval/store_events.rs
+ M src/approval/store_lookup.rs
+ M src/approval/store_verify.rs
+ M src/approval/tests.rs
+ M src/approval/tests/store_events.rs
+ M src/cognition/executor.rs
+ M src/cognition/mod.rs
+ M src/mcp/approval/decision.rs
+ M src/mcp/approval/session_decision_tests.rs
+ M src/mcp/client_call_tool.rs
+ M src/mcp/client_subprocess.rs
+ M src/mcp/fallback_run_command.rs
+ M src/mcp/subprocess_policy.rs
+ M src/mcp/subprocess_policy_alias_tests.rs
+ M src/mcp/subprocess_policy_tests.rs
+ M src/mcp/tool_policy.rs
+ M src/runtime_policy/approval.rs
+ M src/runtime_policy/approval_gate.rs
+ M src/runtime_policy/approval_prefix.rs
+ M src/runtime_policy/code.rs
+ M src/runtime_policy/command.rs
+ M src/runtime_policy/command_prefix.rs
+ M src/runtime_policy/command_unsafe.rs
+ M src/runtime_policy/invocation.rs
+ M src/runtime_policy/invocation_configured.rs
+ M src/runtime_policy/invocation_decision.rs
+ M src/runtime_policy/invocation_scope.rs
+ M src/runtime_policy/mod.rs
+ M src/runtime_policy/patch_invocation_tests.rs
+ M src/runtime_policy/result_approval.rs
+ M src/runtime_policy/sandbox_preflight.rs
+ M src/runtime_policy/sandbox_preflight_policy_tests.rs
+ M src/runtime_policy/sandbox_preflight_tests.rs
+ M src/runtime_policy/session_command.rs
+ M src/runtime_policy/session_command_grants_tests.rs
+ M src/runtime_policy/session_grants_tests.rs
+ M src/runtime_policy/types.rs
+ M src/server/approval_routes/decision.rs
+ M src/server/approval_routes/session_decision_tests.rs
+ M src/session/helper/prompt_loop/tools/invoke.rs
+ M src/session/helper/runtime/mod.rs
+ M src/session/helper/runtime/session_input.rs
+ M src/session/helper/tool_approval/gate.rs
+ M src/session/helper/tool_approval/gate_preflight_tests.rs
+ M src/session/helper/tool_approval/mod.rs
+ M src/session/helper/tool_exec.rs
+ M src/session/helper/workspace_tools.rs
+ M src/session/thread_events/approval.rs
+ M src/session/thread_events/tests/approval.rs
+ M src/swarm/executor_parts/agent_loop/tool_input.rs
+ M src/tool/bash.rs
+ M src/tool/bash_output.rs
+ M src/tool/bash_sandbox_config.rs
+ M src/tool/bash_sandbox_config_state.rs
+ M src/tool/bash_sandbox_config_tests.rs
+ M src/tool/bash_sandbox_policy.rs
+ M src/tool/bash_tests_approved.rs
+ M src/tool/command_modules.rs
+ M src/tool/command_session.rs
+ M src/tool/command_session/escalation_tests.rs
+ M src/tool/command_session/sandbox_tests.rs
+ M src/tool/command_session/tool_tests.rs
+ M src/tool/exec_command.rs
+ M src/tool/exec_command/execute.rs
+ M src/tool/exec_command/execute/validate.rs
+ M src/tool/exec_command/policy.rs
+ M src/tool/exec_command/policy/env.rs
+ M src/tool/exec_command/policy/tests.rs
+ M src/tool/mcp_bridge.rs
+ M src/tool/mcp_bridge_args.rs
+ M src/tool/mcp_bridge_connect.rs
+ M src/tool/mcp_bridge_policy.rs
+ M src/tool/mcp_bridge_policy_tests.rs
+ M src/tool/mcp_tools.rs
+ M src/tool/mcp_tools_connect.rs
+ M src/tool/patch.rs
+ M src/tool/patch/approval.rs
+ M src/tool/patch/approval_flow.rs
+ M src/tool/patch/approval_verify_tests.rs
+ M src/tool/patch/pipeline.rs
+ M src/tool/readonly.rs
+ M src/tool/sandbox_availability.rs
+ M src/tool/sandbox_execute.rs
+ M src/tool/sandbox_modules.rs
+ M src/tool/sandbox_spawn.rs
+ M src/tool/undo_policy.rs
+ M src/tool/webfetch.rs
+ M src/tool/websearch.rs
+ M src/tui/app/commands.rs
+ M src/tui/app/event_handlers/approval_editor/finish.rs
+ M src/tui/app/event_handlers/approval_editor/finish_tests.rs
+ M src/tui/app/event_handlers/approval_editor/mod.rs
+ M src/tui/app/event_handlers/approval_editor/receipt.rs
+ M src/tui/app/input/approval_command.rs
+ M src/tui/app/input/approval_command_dispatch.rs
+ M src/tui/app/input/approval_command_queue_tests.rs
+ M src/tui/app/input/approval_command_store.rs
+ M src/tui/app/input/approval_command_test_support.rs
+ M src/tui/app/mcp.rs
+ M src/tui/app/run/network_env.rs
+ M src/tui/app/settings_network.rs
+ M src/tui/app/state/approval_queue.rs
+ M src/tui/app/state/approval_queue/snapshot.rs
+ M src/tui/app/watchdog/detector.rs
+ M src/tui/app/watchdog/tests/approval_wait.rs
+ M src/tui/ui/chat_view/approval_overlay_text.rs
+?? .codetether-status.txt
+?? src/approval/live/cancellation_tests.rs
+?? src/approval/live/external_tests.rs
+?? src/approval/live/pending.rs
+?? src/approval/live/poll.rs
+?? src/approval/session_command_grants/
+?? src/approval/session_grants/
+?? src/approval/session_settle.rs
+?? src/approval/store_claim.rs
+?? src/approval/store_consume.rs
+?? src/approval/store_lock.rs
+?? src/approval/store_verify_receipt.rs
+?? src/approval/tests/store_claim_concurrency.rs
+?? src/approval/tests/store_concurrency.rs
+?? src/approval/tests/store_consume.rs
+?? src/approval/use_once.rs
+?? src/cognition/private_modules.rs
+?? src/cognition/tool_gate.rs
+?? src/mcp/client_call_tool_args.rs
+?? src/mcp/subprocess_policy_approved_tests.rs
+?? src/mcp/subprocess_policy_preflight_tests.rs
+?? src/mcp/subprocess_policy_process_tests.rs
+?? src/mcp/subprocess_policy_scope_tests.rs
+?? src/mcp/subprocess_preflight.rs
+?? src/mcp/tool_policy_args.rs
+?? src/runtime_policy/approval/
+?? src/runtime_policy/approval_nested_tests.rs
+?? src/runtime_policy/approval_prefix_tests.rs
+?? src/runtime_policy/approval_progress_tests.rs
+?? src/runtime_policy/command_bypass_tests.rs
+?? src/runtime_policy/invocation_review.rs
+?? src/runtime_policy/invocation_scope_sanitize.rs
+?? src/runtime_policy/invocation_scope_state.rs
+?? src/runtime_policy/patch_mode_scope_tests.rs
+?? src/runtime_policy/sandbox_preflight/
+?? src/runtime_policy/session_command_deny_tests.rs
+?? src/runtime_policy/session_command_scope.rs
+?? src/runtime_policy/session_grant_claim_tests.rs
+?? src/runtime_policy/session_missing_command_scope_tests.rs
+?? src/runtime_policy/session_missing_scope_tests.rs
+?? src/runtime_policy/session_prefix_safety_tests.rs
+?? src/runtime_policy/session_prefix_scope_support.rs
+?? src/runtime_policy/session_prefix_scope_tests.rs
+?? src/runtime_policy/session_scope_tests.rs
+?? src/session/helper/runtime/tool_target.rs
+?? src/session/helper/tool_approval/gate_generic_retry_tests.rs
+?? src/session/helper/tool_approval/gate_generic_tool.rs
+?? src/session/helper/tool_approval/gate_preflight_support.rs
+?? src/session/helper/tool_approval/gate_retry_support.rs
+?? src/session/helper/tool_approval/gate_retry_tests.rs
+?? src/session/helper/tool_approval/review.rs
+?? src/tool/bash_modules.rs
+?? src/tool/bash_runtime_policy.rs
+?? src/tool/bash_tests_approved_outcome.rs
+?? src/tool/command_session/approval_once_tests.rs
+?? src/tool/command_session/default_cwd_scope_tests.rs
+?? src/tool/command_session/direct_policy_tests.rs
+?? src/tool/command_session/network_approval_tests.rs
+?? src/tool/command_session/network_env_support.rs
+?? src/tool/command_session/network_escalation_tests.rs
+?? src/tool/command_session/network_scope_tests.rs
+?? src/tool/command_session/network_session_scope_tests.rs
+?? src/tool/command_session/network_test_support.rs
+?? src/tool/command_session/test_modules.rs
+?? src/tool/exec_command/policy/approval.rs
+?? src/tool/mcp_bridge_policy_alias_tests.rs
+?? src/tool/mcp_tools_manager.rs
+?? src/tool/network_access.rs
+?? src/tool/patch/approval_content_tests.rs
+?? src/tool/patch/approval_scope.rs
+?? src/tool/patch/approval_scope_mode.rs
+?? src/tool/patch/approval_scope_path.rs
+?? src/tool/patch/approval_scope_tests.rs
+?? src/tool/patch/test_modules.rs
+?? src/tool/sandbox_network_isolation.rs
+?? src/tool/sandbox_preflight.rs
+?? src/tui/app/commands/mcp_connect.rs
+?? src/tui/app/event_handlers/approval_editor/orphan_tests.rs
+?? src/tui/app/input/approval_command_target_tests.rs
+?? src/tui/app/mcp_connect.rs
+?? src/tui/app/state/approval_queue/pending.rs

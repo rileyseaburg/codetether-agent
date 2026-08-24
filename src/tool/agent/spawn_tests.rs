@@ -1,11 +1,10 @@
-use super::tool_impl::AgentTool;
 use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
-use crate::tool::Tool;
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::stream::BoxStream;
-use serde_json::json;
-use std::sync::Arc;
+
+#[path = "spawn_persistence_tests.rs"]
+mod persistence;
 
 struct MockProvider;
 
@@ -40,24 +39,4 @@ impl Provider for MockProvider {
     ) -> Result<BoxStream<'static, StreamChunk>> {
         anyhow::bail!("unused")
     }
-}
-
-#[tokio::test]
-async fn durable_spawn_fails_when_session_store_is_unwritable() {
-    let (dir, _guard) = super::persistence::test_support::isolate();
-    std::fs::write(dir.path().join("sessions"), "not a directory").expect("blocker");
-    let mut registry = crate::provider::ProviderRegistry::new();
-    registry.register(Arc::new(MockProvider));
-    super::registry::set_registry_for_test(Arc::new(registry)).await;
-
-    let result = AgentTool::new()
-        .execute(json!({
-            "action": "spawn", "name": "persist_fail",
-            "instructions": "test", "model": "mock/paid:free"
-        }))
-        .await
-        .expect("tool result");
-
-    assert!(!result.success);
-    assert!(result.output.contains("child session persistence failed"));
 }

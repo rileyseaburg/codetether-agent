@@ -38,6 +38,7 @@ impl ApprovalStore {
         if matches!(decision.status, ApprovalStatus::Pending) {
             bail!("pending is not a decision");
         }
+        let _lock = self.lock_decisions()?;
         match self.request(&decision.request_id)? {
             Some(_) => {}
             None => bail!("approval request not found"),

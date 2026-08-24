@@ -1,6 +1,7 @@
 //! Trusted application MCP configuration sourced from process environment.
 
 use anyhow::{Result, anyhow};
+use sha2::{Digest, Sha256};
 
 pub(super) struct Config {
     pub(super) id: String,
@@ -29,8 +30,9 @@ pub(super) fn load() -> Result<Option<Config>> {
     if !matches!(endpoint.scheme(), "http" | "https") {
         return Err(anyhow!("application MCP endpoint must use HTTP or HTTPS"));
     }
+    let authority = hex::encode(Sha256::digest(endpoint.as_str().as_bytes()));
     Ok(Some(Config {
-        id,
+        id: format!("{id}__{}", &authority[..16]),
         name,
         endpoint,
         token,

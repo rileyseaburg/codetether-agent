@@ -1,42 +1,41 @@
 //! Runtime approval preflight for MCP subprocess spawning.
 
 use super::ToolResult;
-use serde_json::{Value, json};
+use serde_json::Value;
 
 pub(super) async fn blocked(
+    invocation: &Value,
     command: &str,
     args: &[&str],
-    approval_id: Option<&str>,
 ) -> Option<ToolResult> {
-    let args = policy_args(command, args, approval_id);
-    if alias_approval_allows(&args).await {
+    if which::which(command).is_err() {
+        return Some(ToolResult::error(format!("MCP executable not found: {command}")));
+    }
+    if invocation.get("approval_id").and_then(Value::as_str).is_some()
+        && let Err(error) = crate::mcp::subprocess_policy::sandbox::preflight(
+            command, args, crate::tool::network_access::allowed_for(invocation),
+        ).await
+    {
+        return Some(ToolResult::error(format!("MCP sandbox preflight failed: {error}")));
+    }
+    if approved(invocation).await {
         return None;
     }
-    crate::runtime_policy::evaluate_tool_invocation("mcp", &args).await
+    crate::runtime_policy::evaluate_tool_invocation("mcp", invocation).await
 }
 
-fn policy_args(command: &str, args: &[&str], approval_id: Option<&str>) -> Value {
-    let mut value = json!({ "command": rendered(command, args) });
-    if let Some(id) = approval_id.filter(|id| !id.trim().is_empty()) {
-        value["approval_id"] = json!(id);
-    }
-    value
+async fn approved(args: &Value) -> bool {
+    crate::runtime_policy::invocation::evaluate_approved_tool_invocation("mcp", args).await
+        || crate::runtime_policy::invocation::evaluate_approved_tool_invocation(
+            "mcp_bridge",
+            args,
+        )
+        .await
 }
 
-fn rendered(command: &str, args: &[&str]) -> String {
-    std::iter::once(command)
-        .chain(args.iter().copied())
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-async fn alias_approval_allows(args: &Value) -> bool {
-    crate::runtime_policy::approved_invocation("mcp_bridge", args)
-        && crate::runtime_policy::evaluate_tool_invocation("mcp_bridge", args)
-            .await
-            .is_none()
-}
-
+#[cfg(test)]
+#[path = "mcp_bridge_policy_test_env.rs"]
+mod test_env;
 #[cfg(test)]
 #[path = "mcp_bridge_policy_tests.rs"]
 mod tests;

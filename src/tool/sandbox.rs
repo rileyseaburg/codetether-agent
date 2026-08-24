@@ -12,12 +12,15 @@ use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, OnceLock};
 use tokio::sync::RwLock;
 
 include!("sandbox_modules.rs");
+#[path = "sandbox_policy.rs"]
+mod policy;
 
+pub use policy::SandboxPolicy;
 pub use sandbox_availability::{direct_fallback_env_allowed, unavailable_reason};
 pub use sandbox_execute::execute_sandboxed;
 
@@ -46,33 +49,6 @@ pub struct PluginManifest {
 
 fn default_timeout() -> u64 {
     30
-}
-
-/// Sandbox execution policy for a tool invocation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SandboxPolicy {
-    /// Whether filesystem access is allowed (and to which paths).
-    pub allowed_paths: Vec<PathBuf>,
-    /// Whether network access is allowed.
-    pub allow_network: bool,
-    /// Whether shell execution is allowed.
-    pub allow_exec: bool,
-    /// Maximum execution time in seconds.
-    pub timeout_secs: u64,
-    /// Maximum memory in bytes (0 = no limit).
-    pub max_memory_bytes: u64,
-}
-
-impl Default for SandboxPolicy {
-    fn default() -> Self {
-        Self {
-            allowed_paths: Vec::new(),
-            allow_network: false,
-            allow_exec: false,
-            timeout_secs: 30,
-            max_memory_bytes: 0,
-        }
-    }
 }
 
 /// Result of a sandboxed tool execution.

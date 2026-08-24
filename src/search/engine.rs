@@ -1,14 +1,14 @@
 //! End-to-end: resolve model → ask router → run chosen backends → collect.
 
-use anyhow::{Context, Result};
+#[path = "router_plan.rs"]
+mod router_plan;
+
+use anyhow::Result;
 use std::sync::Arc;
 
 use crate::provider::ProviderRegistry;
 
 use super::dispatch::run_choice;
-use super::model::resolve_router_model;
-use super::parse::parse_router_response;
-use super::request::build_router_request;
 use super::result::{BackendRun, RouterResult};
 
 /// Execute the full search pipeline.
@@ -21,14 +21,8 @@ pub async fn run_router_search(
     query: &str,
     top_n: usize,
 ) -> Result<RouterResult> {
-    let (provider, model_id) = resolve_router_model(&registry, router_model)?;
-    let request = build_router_request(&model_id, query, top_n.max(1));
-    let response = provider
-        .complete(request)
-        .await
-        .context("router model call failed")?;
-    let raw = collect_text(&response);
-    let plan = parse_router_response(&raw)?;
+    let (provider, model_id, plan) =
+        router_plan::resolve(&registry, router_model, query, top_n).await?;
     let mut runs = Vec::with_capacity(plan.choices.len().min(top_n.max(1)));
     for choice in plan.choices.into_iter().take(top_n.max(1)) {
         let tool_result = run_choice(&choice, query).await?;

@@ -16,6 +16,7 @@ pub async fn run(tool: &ContextSummarizeTool, args: Value) -> Result<ToolResult>
         Ok(parsed) => parsed,
         Err(message) => return Ok(ToolResult::error(message)),
     };
+    crate::tool::network_access::guard!("context_summarize", &args);
     let mut session = match load_latest_session().await? {
         Some(s) => s,
         None => return Ok(ToolResult::error("No active session.")),

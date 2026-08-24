@@ -11,6 +11,7 @@
 //! ```
 
 mod gh_cli;
+mod gh_process;
 mod gh_query;
 mod git_config;
 mod helper;

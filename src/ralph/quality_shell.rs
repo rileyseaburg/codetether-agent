@@ -11,10 +11,11 @@ pub(super) struct QualityShellOutput {
 }
 
 pub(super) async fn run(cwd: &Path, command: &str) -> Result<QualityShellOutput> {
-    let args = json!({
+    let mut args = json!({
         "command": command,
         "cwd": cwd.display().to_string(),
     });
+    crate::runtime_policy::orchestration_authority::bind(&mut args, cwd)?;
     if let Some(blocked) = crate::runtime_policy::evaluate_tool_invocation("bash", &args).await {
         return Ok(QualityShellOutput {
             success: false,

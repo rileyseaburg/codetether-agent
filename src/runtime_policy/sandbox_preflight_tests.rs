@@ -1,4 +1,4 @@
-use super::decision_for_state;
+use super::state::for_sandbox as decision_for_state;
 use crate::config::SandboxMode;
 use crate::runtime_policy::{DecisionReason, ToolPolicyOutcome};
 

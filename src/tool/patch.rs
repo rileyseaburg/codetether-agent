@@ -6,8 +6,14 @@ mod apply;
 mod approval;
 #[path = "patch/approval_flow.rs"]
 mod approval_flow;
+#[path = "patch/approval_scope.rs"]
+mod approval_scope;
+#[path = "patch/approval_scope_bind.rs"]
+mod approval_scope_bind;
 #[path = "patch/args.rs"]
 mod args;
+#[path = "patch/backend_policy.rs"]
+mod backend_policy;
 #[path = "patch/file_io.rs"]
 mod file_io;
 #[path = "patch/group.rs"]
@@ -38,17 +44,9 @@ mod types;
 
 pub use self::tool::ApplyPatchTool;
 
-/// Return the approval resource string for a unified diff patch.
-pub fn approval_resource_from_patch(patch: &str) -> String {
-    let hunks = parser::parse_patch(patch);
-    approval::resource(&group::files(&hunks))
-}
-
+pub use approval_scope::{
+    for_root as approval_resource_for_root, from_args as approval_resource_from_args,
+    from_patch as approval_resource_from_patch,
+};
 #[cfg(test)]
-mod approval_tests;
-#[cfg(test)]
-mod approval_verify_tests;
-#[cfg(test)]
-mod preview_tests;
-#[cfg(test)]
-mod test_support;
+include!("patch/test_modules.rs");

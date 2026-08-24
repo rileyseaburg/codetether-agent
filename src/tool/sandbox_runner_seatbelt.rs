@@ -25,7 +25,8 @@ pub(super) fn plan(
         args: exec_args(&profile_path, command, args),
         unsafe_fallbacks: sandbox_seatbelt::gaps(policy),
         network_isolated: !policy.allow_network,
-        _seccomp: None,
+        seccomp: None,
+        apply_seccomp: false,
         landlock: None,
     })
 }

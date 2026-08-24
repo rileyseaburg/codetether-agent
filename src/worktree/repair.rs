@@ -16,12 +16,7 @@ impl WorktreeManager {
 
     pub(crate) async fn run_repair_step<const N: usize>(&self, args: [&str; N]) {
         let command = format!("git {}", args.join(" "));
-        match tokio::process::Command::new("git")
-            .args(args)
-            .current_dir(&self.repo_path)
-            .output()
-            .await
-        {
+        match crate::tool::git::process::output_refs(&self.repo_path, &args, true).await {
             Ok(output) if output.status.success() => {
                 tracing::info!(
                     repo_path = %self.repo_path.display(),

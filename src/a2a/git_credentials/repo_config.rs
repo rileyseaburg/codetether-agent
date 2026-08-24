@@ -12,7 +12,6 @@
 use anyhow::{Context, Result, anyhow};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{Duration, SystemTime};
 
 use super::git_config::{run_git_command, set_local_config};
@@ -130,10 +129,8 @@ fn remove_stale_git_config_lock(repo_path: &Path, stale_after: Duration) -> Resu
 }
 
 fn repo_git_path(repo_path: &Path, path: &str) -> Result<PathBuf> {
-    let output = Command::new("git")
-        .current_dir(repo_path)
-        .args(["rev-parse", "--git-path", path])
-        .output()
+    let args = vec!["rev-parse".into(), "--git-path".into(), path.into()];
+    let output = crate::tool::git::process::output_blocking(repo_path, &args, &[], false)
         .with_context(|| format!("Failed to resolve Git path for {}", repo_path.display()))?;
     if !output.status.success() {
         return Err(anyhow!(

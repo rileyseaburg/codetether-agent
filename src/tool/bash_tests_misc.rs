@@ -1,4 +1,6 @@
 use super::super::{BashTool, Tool, interactive_auth_risk_reason, looks_like_auth_prompt};
+use crate::approval::{test_env::ScopedEnv, test_env::lock_env};
+use crate::config::AccessMode;
 use serde_json::json;
 
 #[tokio::test]
@@ -14,7 +16,9 @@ async fn bash_with_default_cwd_runs_there() {
 }
 
 #[tokio::test]
-async fn unsandboxed_bash_timeout_reports_unsafe_metadata() {
+async fn unsandboxed_bash_is_denied_before_timeout_execution() {
+    let _lock = lock_env();
+    let _env = ScopedEnv::access(AccessMode::Full);
     let tool = BashTool {
         timeout_secs: 1,
         sandboxed: false,
@@ -25,8 +29,8 @@ async fn unsandboxed_bash_timeout_reports_unsafe_metadata() {
         .await
         .unwrap();
     assert!(!result.success);
-    assert_eq!(result.metadata.get("sandboxed"), Some(&json!(false)));
-    assert_eq!(result.metadata.get("unsafe_execution"), Some(&json!(true)));
+    assert!(result.output.contains("explicit unsafe fallback"));
+    assert!(result.metadata.get("sandboxed").is_none());
 }
 
 #[test]

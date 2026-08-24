@@ -24,6 +24,7 @@ pub(super) struct RefreshArgs<'a> {
 pub(super) async fn refresh(args: RefreshArgs<'_>) -> Result<Exported> {
     let http = Client::builder()
         .user_agent("codetether-bedrock-auth")
+        .redirect(reqwest::redirect::Policy::none())
         .build()?;
     let token = refresh_access_token(
         &http,

@@ -1,6 +1,5 @@
 use serde_json::json;
 
-use crate::tool::Tool;
 use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
@@ -15,14 +14,15 @@ async fn executes_tetherscript_plugin_from_project_file() {
     .unwrap();
 
     let tool = TetherScriptPluginTool::with_root(dir.path().to_path_buf());
-    let result = tool
-        .execute(json!({
+    let result = super::support::execute(
+        &tool,
+        json!({
             "path": "feature.tether",
             "hook": "validate",
             "args": ["rust-project"]
-        }))
-        .await
-        .unwrap();
+        }),
+    )
+    .await;
 
     assert!(result.success);
     assert_eq!(
@@ -40,13 +40,14 @@ async fn accepts_legacy_kl_project_file_during_migration() {
         .unwrap();
 
     let tool = TetherScriptPluginTool::with_root(dir.path().to_path_buf());
-    let result = tool
-        .execute(json!({
+    let result = super::support::execute(
+        &tool,
+        json!({
             "path": "legacy.kl",
             "hook": "validate"
-        }))
-        .await
-        .unwrap();
+        }),
+    )
+    .await;
 
     assert!(result.success);
     assert_eq!(

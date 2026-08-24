@@ -5,6 +5,9 @@
 //! - Document synchronization
 //! - Code intelligence (definition, references, hover, etc.)
 
+#[path = "client_transport.rs"]
+mod client_transport;
+
 use super::transport::LspTransport;
 use super::types::*;
 use super::uri::path_to_uri;
@@ -31,10 +34,7 @@ pub struct LspClient {
 impl LspClient {
     /// Create a new LSP client with the given configuration
     pub async fn new(config: LspConfig) -> Result<Self> {
-        super::types::ensure_server_installed(&config).await?;
-
-        let transport =
-            LspTransport::spawn(&config.command, &config.args, config.timeout_ms).await?;
+        let transport = client_transport::spawn(&config).await?;
 
         Ok(Self {
             transport,

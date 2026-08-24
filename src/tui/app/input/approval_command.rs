@@ -11,12 +11,18 @@ mod intent;
 #[path = "approval_command_parse.rs"]
 mod parse;
 #[cfg(test)]
+#[path = "approval_command_parse_tests.rs"]
+mod parse_tests;
+#[cfg(test)]
 #[path = "approval_command_queue_tests.rs"]
 mod queue_tests;
 #[path = "approval_command_result.rs"]
 mod result;
 #[path = "approval_command_store.rs"]
 mod store;
+#[cfg(test)]
+#[path = "approval_command_target_tests.rs"]
+mod target_tests;
 #[cfg(test)]
 #[path = "approval_command_test_support.rs"]
 mod test_support;

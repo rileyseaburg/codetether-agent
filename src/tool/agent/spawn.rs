@@ -35,7 +35,8 @@ pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
         Err(result) => return Ok(result),
     };
     if request.ephemeral {
-        return ephemeral::run(&request, prepared.warning()).await;
+        let network_allowed = params.parent_network_allowed().unwrap_or(false);
+        return ephemeral::run(&request, prepared.warning(), network_allowed).await;
     }
     durable::run(params, &request, prepared).await
 }

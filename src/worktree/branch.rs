@@ -1,4 +1,6 @@
 use super::WorktreeManager;
+#[path = "branch_delete.rs"]
+mod delete;
 use anyhow::{Context, Result};
 
 #[cfg(test)]
@@ -6,15 +8,13 @@ mod tests;
 
 impl WorktreeManager {
     pub(crate) async fn codetether_branches(&self) -> Result<Vec<String>> {
-        let output = tokio::process::Command::new("git")
-            .args([
-                "branch",
-                "--list",
-                "codetether/*",
-                "--format=%(refname:short)",
-            ])
-            .current_dir(&self.repo_path)
-            .output()
+        let args = [
+            "branch",
+            "--list",
+            "codetether/*",
+            "--format=%(refname:short)",
+        ];
+        let output = crate::tool::git::process::output_refs(&self.repo_path, &args, false)
             .await
             .context("Failed to list CodeTether branches")?;
         Ok(String::from_utf8_lossy(&output.stdout)
@@ -26,25 +26,12 @@ impl WorktreeManager {
     }
 
     pub(crate) async fn delete_branch(repo_path: &std::path::Path, branch: &str) -> bool {
-        match tokio::process::Command::new("git")
-            .args(["branch", "-d", branch])
-            .current_dir(repo_path)
-            .output()
+        delete::run(repo_path, branch).await
+    }
+
+    pub(crate) async fn delete_integrated_branch(repo: &std::path::Path, branch: &str) -> bool {
+        crate::tool::git::process::output_refs(repo, &["branch", "-D", branch], true)
             .await
-        {
-            Ok(output) if output.status.success() => {
-                tracing::info!(branch, "Deleted merged worktree branch");
-                true
-            }
-            Ok(output) => {
-                tracing::warn!(branch, error = %String::from_utf8_lossy(&output.stderr),
-                    "Preserving unmerged worktree branch");
-                false
-            }
-            Err(error) => {
-                tracing::warn!(branch, error = %error, "Worktree branch delete failed");
-                false
-            }
-        }
+            .is_ok_and(|output| output.status.success())
     }
 }

@@ -9,10 +9,10 @@ use anyhow::Result;
 use serde_json::Value;
 
 pub(super) fn call(args: Value) -> Result<CallToolResult> {
-    if let Some(blocked) = super::tool_policy::blocked("run_command", &args) {
+    let bash_args = args::translate(&args)?;
+    if let Some(blocked) = super::tool_policy::blocked("run_command", &bash_args) {
         return Ok(blocked);
     }
-    let bash_args = args::translate(&args)?;
     let result = tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current()
             .block_on(async { BashTool::new().execute(bash_args).await })

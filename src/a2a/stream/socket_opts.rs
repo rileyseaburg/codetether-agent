@@ -42,6 +42,7 @@ pub fn apply_socket_opts(builder: ClientBuilder) -> ClientBuilder {
     apply_tcp_user_timeout(
         builder
             .tcp_nodelay(TCP_NODELAY)
+            .redirect(reqwest::redirect::Policy::none())
             .tcp_keepalive(KEEPALIVE_IDLE)
             .tcp_keepalive_interval(KEEPALIVE_INTERVAL)
             .tcp_keepalive_retries(KEEPALIVE_RETRIES),

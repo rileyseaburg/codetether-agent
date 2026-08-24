@@ -5,6 +5,8 @@
 
 mod actions;
 mod dispatch;
+#[path = "execute.rs"]
+mod execute;
 mod helpers;
 mod input;
 mod response;
@@ -12,7 +14,7 @@ mod schema;
 mod screenshot;
 
 use super::{Tool, ToolResult};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -48,23 +50,11 @@ impl Tool for BrowserCtlTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let input: input::BrowserCtlInput =
-            serde_json::from_value(args).context("Invalid browserctl args")?;
-        if matches!(&input.action, input::BrowserCtlAction::Detect) {
-            return Ok(detect_result());
-        }
-        let result = match dispatch::dispatch(&input).await {
-            Ok(output) => response::success_result(&input, output).await?,
-            Err(error) => response::error_result(error),
-        };
-        if matches!(&input.action, input::BrowserCtlAction::Stop) && result.success {
-            crate::browser::browser_service().clear();
-        }
-        Ok(result)
+        execute::run(args).await
     }
 }
 
-fn detect_result() -> ToolResult {
+pub(super) fn detect_result() -> ToolResult {
     match crate::browser::detect_browser() {
         Some(path) => {
             let output = serde_json::json!({

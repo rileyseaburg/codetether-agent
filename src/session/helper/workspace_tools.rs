@@ -4,7 +4,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::provider::{Provider, ProviderRegistry};
-use crate::tool::{ToolRegistry, application_mcp, batch, command_session, lsp, search_router};
+use crate::tool::{
+    ToolRegistry, application_mcp, batch, command_session, lsp, patch, search_router,
+};
 
 #[path = "workspace_tools/autonomous.rs"]
 mod autonomous;
@@ -25,6 +27,9 @@ pub(crate) fn registry_for_cwd(
     let mut registry = ToolRegistry::with_provider(Arc::clone(&provider), model.to_string());
     application_mcp::register(&mut registry);
     command_session::register(&mut registry, Some(cwd.to_path_buf()));
+    registry.register(Arc::new(patch::ApplyPatchTool::with_root(
+        cwd.to_path_buf(),
+    )));
     registry.register(Arc::new(lsp::LspTool::with_root(file_uri::build(cwd))));
     register_search(&mut registry, provider);
     if !prior_context_allowed {

@@ -5,6 +5,8 @@
 //! session, supports cooperative cancellation, converts success, error, or panic
 //! outcomes into a [`SessionNotice`], and reports prompt completion back to the
 //! runtime loop.
+#[path = "execute_finish.rs"]
+mod finish;
 
 use std::sync::Arc;
 
@@ -12,7 +14,7 @@ use futures::FutureExt;
 use tokio::sync::{Notify, mpsc};
 
 use crate::session::SessionEvent;
-use crate::tui::app::input::worktree_result::{handle_worktree_result, run_prompt};
+use crate::tui::app::input::worktree_result::run_prompt;
 
 use super::{PromptRequest, SessionNotice};
 
@@ -83,13 +85,7 @@ pub(super) async fn run(
     })
     .catch_unwind()
     .await;
-    let notice = super::prompt_result::notice(result, session);
-    handle_worktree_result(
-        matches!(notice, SessionNotice::Finished(_)),
-        worktree,
-        Some(&prompt_for_pr),
-    )
-    .await;
+    let notice = finish::notice(result, session, worktree, &prompt_for_pr).await;
     completion.clear();
     let _ = notice_tx.send(notice).await;
 }

@@ -3,6 +3,9 @@
 //! Apply multiple file edits atomically. Validates all edits first, then
 //! writes all changes only if every edit passes validation.
 
+#[path = "multiedit_input.rs"]
+mod input;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -10,7 +13,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
 
-use super::{Tool, ToolResult};
+use super::{Tool, ToolResult, orchestration_gate};
 
 pub struct MultiEditTool;
 
@@ -107,38 +110,9 @@ impl Tool for MultiEditTool {
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
         // ── Parse with detailed error messages ──────────────────────
-        let edits_val = match params.get("edits") {
-            Some(v) => v,
-            None => {
-                return Ok(ToolResult::structured_error(
-                    "INVALID_ARGUMENT",
-                    "multiedit",
-                    "Missing required field 'edits'. Provide an array of {file, old_string, new_string} objects.",
-                    Some(vec!["edits"]),
-                    Some(json!({
-                        "edits": [
-                            {"file": "src/main.rs", "old_string": "old code", "new_string": "new code"}
-                        ]
-                    })),
-                ));
-            }
-        };
-
-        let edits_arr = match edits_val.as_array() {
-            Some(a) => a,
-            None => {
-                return Ok(ToolResult::structured_error(
-                    "INVALID_ARGUMENT",
-                    "multiedit",
-                    "'edits' must be an array, not a single object.",
-                    Some(vec!["edits"]),
-                    Some(json!({
-                        "edits": [
-                            {"file": "src/main.rs", "old_string": "old code", "new_string": "new code"}
-                        ]
-                    })),
-                ));
-            }
+        let edits_arr = match input::edits(&params) {
+            Ok(edits) => edits,
+            Err(error) => return Ok(error),
         };
 
         if edits_arr.is_empty() {
@@ -219,6 +193,7 @@ impl Tool for MultiEditTool {
                 use_morph,
             });
         }
+        orchestration_gate::guard!("multiedit", &params);
 
         // ── Phase 1: Validate all edits (no writes yet) ────────────
         // Each validated edit becomes (path, original_content, new_content).

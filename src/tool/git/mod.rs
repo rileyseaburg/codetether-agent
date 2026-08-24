@@ -5,7 +5,10 @@
 //! and `commit`. Each operation lives in its own SRP module.
 
 mod commit;
+mod execute;
+mod execute_scope;
 mod ops;
+pub(crate) mod process;
 mod run;
 mod schema;
 #[cfg(test)]
@@ -53,11 +56,6 @@ impl Tool for GitTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let op = args.get("op").and_then(|v| v.as_str()).unwrap_or("");
-        if op == "commit" {
-            commit::run_commit(&args).await
-        } else {
-            ops::run_readonly(op, &args).await
-        }
+        execute::run(args).await
     }
 }

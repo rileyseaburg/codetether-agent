@@ -37,6 +37,7 @@ impl ApplicationMcpTool {
             token: config.token,
             client: reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(60))
+                .redirect(reqwest::redirect::Policy::none())
                 .build()?,
         })
     }

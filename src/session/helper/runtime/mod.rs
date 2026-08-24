@@ -5,6 +5,7 @@ mod prior_context;
 mod prompt;
 mod provenance;
 mod session_input;
+mod tool_target;
 
 #[cfg(test)]
 #[path = "light_prompt_tests.rs"]
@@ -35,3 +36,4 @@ pub use prompt::{
 pub(crate) use session_input::enrich as enrich_tool_input_for_session;
 pub(crate) use session_input::enrich_for_turn as enrich_tool_input_for_turn;
 pub(crate) use session_input::enrich_with_model as enrich_tool_input_for_session_model;
+pub(crate) use tool_target::bind_workspace;

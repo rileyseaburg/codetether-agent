@@ -20,7 +20,6 @@ use crate::worktree::WorktreeManager;
 use futures::stream::{self, StreamExt};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
@@ -2057,12 +2056,11 @@ Working directory: {}
 
     /// Commit changes in a specific directory
     fn commit_in_dir(&self, dir: &PathBuf, story: &UserStory) -> anyhow::Result<()> {
-        git_policy::guard(dir, "git add -A")?;
+        git_policy::prepare_commit(dir)?;
 
         // Commit with story reference
         let msg = format!("feat({}): {}", story.id.to_lowercase(), story.title);
         let provenance = self.commit_provenance();
-        git_policy::guard(dir, &format!("git commit -m {msg}"))?;
         let _ = git_commit_with_provenance_blocking(dir, &msg, Some(&provenance));
 
         Ok(())
@@ -2327,12 +2325,11 @@ Respond with the implementation and any shell commands needed.
     fn commit_story(&self, story: &UserStory) -> anyhow::Result<()> {
         info!("Committing changes for story: {}", story.id);
 
-        git_policy::guard(&self.state.working_dir, "git add -A")?;
+        git_policy::prepare_commit(&self.state.working_dir)?;
 
         // Commit with story reference
         let msg = format!("feat({}): {}", story.id.to_lowercase(), story.title);
         let provenance = self.commit_provenance();
-        git_policy::guard(&self.state.working_dir, &format!("git commit -m {msg}"))?;
         match git_commit_with_provenance_blocking(&self.state.working_dir, &msg, Some(&provenance))
         {
             Ok(output) if output.status.success() => {
@@ -2364,14 +2361,7 @@ Respond with the implementation and any shell commands needed.
         let output = git_policy::checkout(&self.state.working_dir, branch)?;
 
         if !output.status.success() {
-            git_policy::guard(
-                &self.state.working_dir,
-                &format!("git checkout -b {branch}"),
-            )?;
-            Command::new("git")
-                .args(["checkout", "-b", branch])
-                .current_dir(&self.state.working_dir)
-                .output()?;
+            git_policy::checkout_new(&self.state.working_dir, branch)?;
         }
 
         Ok(())

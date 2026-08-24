@@ -16,6 +16,7 @@ pub(super) async fn create(params: &Params, request: &SpawnRequest<'_>) -> Resul
         request.model,
         request.parent_workspace.clone(),
         allowed,
+        params.parent_network_allowed().unwrap_or(false),
     )
     .await?;
     super::super::collaboration_runtime::fork_context::inherit(

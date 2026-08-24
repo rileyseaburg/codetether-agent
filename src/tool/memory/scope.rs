@@ -21,8 +21,7 @@ fn explicit(args: &Value) -> Option<String> {
 }
 
 fn stable(args: &Value) -> Option<String> {
-    let cwd = args["__ct_parent_workspace"]
-        .as_str()
+    let cwd = crate::tool::network_access::trusted_workspace(args)
         .map(PathBuf::from)
         .or_else(|| std::env::current_dir().ok())?;
     super::git_scope::remote(&cwd)

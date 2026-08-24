@@ -35,6 +35,7 @@ async fn child_session_uses_parent_workspace_not_process_cwd() {
         "example/model",
         Some(parent_workspace.clone()),
         true,
+        false,
     )
     .await
     .unwrap();

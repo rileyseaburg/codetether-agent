@@ -31,12 +31,12 @@ pub(in crate::session::helper) async fn execute_tool(
     let Some(tool) = tool_registry.get(tool_name) else {
         return unknown_tool(tool_name, session_id).await;
     };
-    if let Some(blocked) = super::tool_policy::blocked(tool_name, exec_input).await {
-        return blocked;
-    }
     if let Some(blocked) =
         super::super::workspace_coordination::blocked(tool_name, exec_input).await
     {
+        return blocked;
+    }
+    if let Some(blocked) = super::tool_policy::blocked(tool_name, exec_input).await {
         return blocked;
     }
     let _guard = progress.map(|(tx, id)| crate::tool::progress::register(id, tool_name, tx));

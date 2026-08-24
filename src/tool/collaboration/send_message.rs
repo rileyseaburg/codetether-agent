@@ -34,10 +34,14 @@ impl Tool for SendMessageTool {
         },"required":["target","message"]})
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
-        let args: Args = serde_json::from_value(input)?;
+        let args: Args = serde_json::from_value(input.clone())?;
         if args.message.trim().is_empty() {
             bail!("Empty message can't be sent to an agent");
         }
+        let _authority = match super::authority::claim("send_message", &input).await {
+            Ok(authority) => authority,
+            Err(blocked) => return Ok(blocked),
+        };
         if let Some(result) = super::ensure::ready(&args.context, &args.target).await? {
             return Ok(result);
         }

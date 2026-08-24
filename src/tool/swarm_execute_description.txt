@@ -1,0 +1,1 @@
+Run independent tasks in parallel. Pass tasks as instruction strings, for example {"tasks":["Inspect the API","Run focused tests"]}. Use task objects only when names, IDs, or specialties are needed; orchestration settings are optional.

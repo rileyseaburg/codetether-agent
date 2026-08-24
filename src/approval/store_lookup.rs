@@ -31,4 +31,12 @@ impl ApprovalStore {
             });
         Ok(decision)
     }
+
+    /// Load one historical decision event by its immutable event id.
+    pub(crate) fn decision_by_id(&self, decision_id: &str) -> Result<Option<ApprovalDecision>> {
+        Ok(self.events()?.into_iter().find_map(|event| match event {
+            ApprovalEvent::Decision { decision } if decision.id == decision_id => Some(decision),
+            ApprovalEvent::Request { .. } | ApprovalEvent::Decision { .. } => None,
+        }))
+    }
 }

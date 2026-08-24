@@ -28,5 +28,5 @@ pub(super) fn apply(registry: &mut ToolRegistry, capability: Capability) {
 fn allowed(id: &str, capability: Capability) -> bool {
     let inspect = readonly::is_read_only(id)
         || matches!(id, "file_info" | "head_tail" | "todoread" | "todo_read");
-    inspect || (capability == Capability::Verification && matches!(id, "bash" | "git"))
+    inspect || (capability == Capability::Verification && matches!(id, "bash" | "git" | "lsp"))
 }

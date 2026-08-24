@@ -1,6 +1,6 @@
 //! Approval branching for the patch execution pipeline.
 
-use super::{approval, args::PatchMode, metadata, result};
+use super::{approval, approval_scope, args::PatchMode, metadata, result};
 use crate::approval::ApprovalReceipt;
 use crate::tool::ToolResult;
 
@@ -10,6 +10,7 @@ pub(super) fn required(mode: &PatchMode) -> bool {
 
 pub(super) fn pending(
     mode: &PatchMode,
+    root: &std::path::Path,
     files: &[String],
     hunks: usize,
     patch: &str,
@@ -17,7 +18,7 @@ pub(super) fn pending(
     if !approval::required(mode) {
         return None;
     }
-    let resource = approval::resource(files);
+    let resource = approval_scope::for_apply(root, files, patch);
     let request = approval::request(&resource);
     Some(metadata::attach(
         result::approval_required(request.as_ref()),
@@ -30,7 +31,10 @@ pub(super) fn pending(
 
 pub(super) fn verify(
     mode: &PatchMode,
+    root: &std::path::Path,
     files: &[String],
+    patch: &str,
 ) -> std::result::Result<Option<ApprovalReceipt>, ToolResult> {
-    approval::verify(mode, &approval::resource(files))
+    let resource = approval_scope::for_mode(root, files, patch, mode.dry_run);
+    approval::verify(mode, &resource)
 }

@@ -1,11 +1,15 @@
 //! Persistence-free, synchronous execution for ephemeral child agents.
 
 use super::super::{execution_state, spawn_request::SpawnRequest};
-use crate::swarm::executor::run_agent_loop;
+use crate::swarm::executor::{run_agent_loop, run_with_network};
 use crate::tool::ToolResult;
 use anyhow::Result;
 
-pub(super) async fn run(request: &SpawnRequest<'_>, warning: Option<&str>) -> Result<ToolResult> {
+pub(super) async fn run(
+    request: &SpawnRequest<'_>,
+    warning: Option<&str>,
+    network_allowed: bool,
+) -> Result<ToolResult> {
     if request.detach {
         return Ok(ToolResult::error(
             "ephemeral agents cannot detach; omit detach or set it to false",
@@ -19,19 +23,22 @@ pub(super) async fn run(request: &SpawnRequest<'_>, warning: Option<&str>) -> Re
         )));
     };
     let setup = super::ephemeral_setup::prepare(request).await?;
-    let outcome = run_agent_loop(
-        setup.provider,
-        &setup.model,
-        &setup.prompt,
-        request.instructions,
-        setup.registry.definitions(),
-        setup.registry,
-        crate::session::DEFAULT_MAX_STEPS,
-        300,
-        None,
-        runtime_id,
-        None,
-        Some(setup.workspace),
+    let outcome = run_with_network(
+        network_allowed,
+        run_agent_loop(
+            setup.provider,
+            &setup.model,
+            &setup.prompt,
+            request.instructions,
+            setup.registry.definitions(),
+            setup.registry,
+            crate::session::DEFAULT_MAX_STEPS,
+            300,
+            None,
+            runtime_id,
+            None,
+            Some(setup.workspace),
+        ),
     )
     .await;
     Ok(super::ephemeral_result::build(

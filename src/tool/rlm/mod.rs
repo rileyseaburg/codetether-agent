@@ -7,6 +7,7 @@ mod collect;
 mod ctx;
 mod execute;
 mod fallback;
+mod process;
 mod schema;
 
 use super::{Tool, ToolResult};

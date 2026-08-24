@@ -3,13 +3,24 @@
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-pub(super) struct InvocationScope {
-    pub action: &'static str,
-    pub resource: String,
+#[path = "invocation_scope_ralph.rs"]
+mod ralph;
+#[path = "invocation_scope_sanitize.rs"]
+mod sanitize;
+#[path = "invocation_scope_state.rs"]
+mod state;
+
+pub(crate) struct InvocationScope {
+    pub(crate) action: &'static str,
+    pub(crate) resource: String,
 }
 
-pub(super) fn for_tool(tool_name: &str, args: &Value) -> InvocationScope {
-    if tool_name == "apply_patch" {
+fn scoped_args(args: &Value) -> Value {
+    sanitize::value(args)
+}
+
+pub(crate) fn for_tool(tool_name: &str, args: &Value) -> InvocationScope {
+    if matches!(tool_name, "apply_patch" | "patch") {
         return patch_scope(args);
     }
     InvocationScope {
@@ -19,19 +30,24 @@ pub(super) fn for_tool(tool_name: &str, args: &Value) -> InvocationScope {
 }
 
 fn patch_scope(args: &Value) -> InvocationScope {
-    let patch = args.get("patch").and_then(Value::as_str).unwrap_or("");
     InvocationScope {
         action: "write",
-        resource: crate::tool::patch::approval_resource_from_patch(patch),
+        resource: crate::tool::patch::approval_resource_from_args(args),
     }
 }
 
 fn invocation_resource(tool_name: &str, args: &Value) -> String {
-    let mut scoped_args = args.clone();
-    if let Some(map) = scoped_args.as_object_mut() {
-        map.remove("approval_id");
-    }
+    let mut scoped_args = scoped_args(args);
+    ralph::bind(tool_name, &mut scoped_args);
+    state::bind(tool_name, &mut scoped_args, args);
     let encoded = serde_json::to_vec(&scoped_args).unwrap_or_default();
     let digest = Sha256::digest(&encoded);
     format!("{tool_name}:{}", hex::encode(digest))
 }
+
+#[cfg(test)]
+#[path = "approval_nested_tests.rs"]
+mod approval_nested_tests;
+#[cfg(test)]
+#[path = "approval_progress_tests.rs"]
+mod approval_progress_tests;

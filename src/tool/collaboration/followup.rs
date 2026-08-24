@@ -1,6 +1,9 @@
 //! Codex-compatible `followup_task` with same-turn steering.
 
-use super::{context::RuntimeContext, legacy};
+#[path = "followup_trigger.rs"]
+mod trigger;
+
+use super::context::RuntimeContext;
 use crate::tool::agent::communication::Route;
 use crate::tool::{Tool, ToolResult};
 use anyhow::{Result, bail};
@@ -11,11 +14,11 @@ use serde_json::{Value, json};
 pub(super) struct FollowupTaskTool;
 
 #[derive(Deserialize)]
-struct Args {
-    target: String,
-    message: String,
+pub(super) struct Args {
+    pub(super) target: String,
+    pub(super) message: String,
     #[serde(flatten)]
-    context: RuntimeContext,
+    pub(super) context: RuntimeContext,
 }
 
 #[async_trait]
@@ -35,10 +38,14 @@ impl Tool for FollowupTaskTool {
         },"required":["target","message"]})
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
-        let args: Args = serde_json::from_value(input)?;
+        let args: Args = serde_json::from_value(input.clone())?;
         if args.message.trim().is_empty() {
             bail!("Empty message can't be sent to an agent");
         }
+        let authority = match super::authority::claim("followup_task", &input).await {
+            Ok(authority) => authority,
+            Err(blocked) => return Ok(blocked),
+        };
         if let Some(result) = super::ensure::ready(&args.context, &args.target).await? {
             return Ok(result);
         }
@@ -50,29 +57,8 @@ impl Tool for FollowupTaskTool {
         .await
         {
             Route::Steered => Ok(ToolResult::success(String::new())),
-            Route::NotFound => Ok(ToolResult::error(format!(
-                "Agent {} not found",
-                args.target
-            ))),
-            Route::Idle => trigger(args).await,
+            Route::NotFound => Ok(ToolResult::error(format!("Agent {} not found", args.target))),
+            Route::Idle => trigger::run(args, authority).await,
         }
     }
-}
-
-async fn trigger(args: Args) -> Result<ToolResult> {
-    let mut result = legacy::execute(
-        &args.context,
-        json!({
-            "action":"message", "name":args.target,
-            "message":args.message, "detach":true
-        })
-        .as_object()
-        .cloned()
-        .expect("object payload"),
-    )
-    .await?;
-    if result.success {
-        result.output.clear();
-    }
-    Ok(result)
 }

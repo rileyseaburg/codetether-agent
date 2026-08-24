@@ -9,19 +9,27 @@ use anyhow::{Context, Result};
 ///
 /// Returns `Err` only if the `git` binary cannot be launched.
 pub(super) async fn run_git(cwd: &str, args: &[&str]) -> Result<(String, bool)> {
-    let output = tokio::process::Command::new("git")
-        .args(args)
-        .current_dir(cwd)
-        .output()
-        .await
-        .with_context(|| format!("Failed to launch git {args:?}"))?;
-    let mut text = String::from_utf8_lossy(&output.stdout).to_string();
-    if !output.status.success() {
-        let err = String::from_utf8_lossy(&output.stderr);
-        if !err.trim().is_empty() {
-            text = format!("{text}{err}");
-        }
-    }
+    let cwd = std::path::Path::new(cwd)
+        .canonicalize()
+        .with_context(|| format!("Invalid git cwd: {cwd}"))?;
+    let args = args
+        .iter()
+        .map(|arg| (*arg).to_string())
+        .collect::<Vec<_>>();
+    let output = super::process::output(
+        &cwd,
+        &args,
+        &[],
+        args.first()
+            .is_some_and(|arg| matches!(arg.as_str(), "add" | "commit")),
+    )
+    .await
+    .with_context(|| format!("Failed to launch git {args:?}"))?;
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok((text, output.status.success()))
 }
 

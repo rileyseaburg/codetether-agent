@@ -2,7 +2,6 @@
 
 use super::bash_github::load_github_command_auth;
 use super::bash_identity::git_identity_env_from_tool_args;
-use super::sandbox::execute_sandboxed;
 use super::{Tool, ToolResult};
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use anyhow::Result;
@@ -15,26 +14,7 @@ use tokio::process::Command;
 
 use crate::telemetry::{TOOL_EXECUTIONS, ToolExecution, record_persistent};
 
-#[path = "bash_auth_risk.rs"]
-mod bash_auth_risk;
-#[path = "bash_capture.rs"]
-mod bash_capture;
-#[path = "bash_interactive.rs"]
-mod bash_interactive;
-#[path = "bash_output.rs"]
-mod bash_output;
-#[path = "bash_sandbox_config.rs"]
-mod bash_sandbox_config;
-#[path = "bash_sandbox_error_metadata.rs"]
-mod bash_sandbox_error_metadata;
-#[path = "bash_sandbox_metadata.rs"]
-mod bash_sandbox_metadata;
-#[path = "bash_sandbox_mode.rs"]
-mod bash_sandbox_mode;
-#[path = "bash_sandbox_policy.rs"]
-mod bash_sandbox_policy;
-#[path = "bash_unsandboxed_metadata.rs"]
-mod bash_unsandboxed_metadata;
+include!("bash_modules.rs");
 
 /// Execute shell commands
 pub struct BashTool {
@@ -79,28 +59,8 @@ impl BashTool {
 }
 
 use bash_auth_risk::reason as interactive_auth_risk_reason;
-
-fn looks_like_auth_prompt(output: &str) -> bool {
-    let lower = output.to_ascii_lowercase();
-    [
-        "[sudo] password for",
-        "password:",
-        "passphrase",
-        "no tty present and no askpass program specified",
-        "a terminal is required to read the password",
-        "permission denied (publickey,password",
-    ]
-    .iter()
-    .any(|needle| lower.contains(needle))
-}
-fn redact_output(mut output: String, secrets: &[String]) -> String {
-    for secret in secrets {
-        if !secret.is_empty() {
-            output = output.replace(secret, "[REDACTED]");
-        }
-    }
-    output
-}
+#[cfg(test)]
+use bash_output::looks_like_auth_prompt;
 
 fn codetether_wrapped_command(command: &str) -> String {
     format!(
@@ -169,7 +129,8 @@ impl Tool for BashTool {
         })
     }
 
-    async fn execute(&self, args: Value) -> Result<ToolResult> {
+    async fn execute(&self, mut args: Value) -> Result<ToolResult> {
+        bash_runtime_policy::bind_authority(&mut args, self.default_cwd.as_deref());
         let exec_start = Instant::now();
 
         let command = match args["command"].as_str() {
@@ -189,7 +150,7 @@ impl Tool for BashTool {
         let timeout_secs = args["timeout"].as_u64().unwrap_or(self.timeout_secs);
         let wrapped_command = codetether_wrapped_command(command);
 
-        if let Some(blocked) = super::shell_command_guard::result_for_args("bash", &args) {
+        if let Some(blocked) = bash_runtime_policy::blocked(&args).await {
             return Ok(blocked);
         }
 
@@ -204,15 +165,17 @@ impl Tool for BashTool {
 
         // Sandboxed execution path: restricted env, resource limits, audit logged
         let sandboxed = bash_sandbox_config::enabled_for_args(self.sandboxed, command, &args).await;
+        if let Err(error) = bash_sandbox_policy::authorize(sandboxed, command, &args) {
+            return Ok(ToolResult::error(error.to_string()));
+        }
         if sandboxed {
             let sandbox_root = bash_sandbox_mode::root(effective_cwd.clone());
-            let policy = bash_sandbox_policy::policy(sandbox_root.clone(), timeout_secs).await;
+            let policy =
+                bash_sandbox_policy::policy(sandbox_root.clone(), timeout_secs, &args).await;
             let work_dir = sandbox_root.as_path();
-            let shell = super::bash_shell::resolve();
-            let mut sandbox_args: Vec<String> = shell.prefix_args.clone();
-            sandbox_args.push(wrapped_command.clone());
-            let sandbox_result =
-                execute_sandboxed(&shell.program, &sandbox_args, &policy, Some(work_dir)).await;
+            let sandbox_result = bash_sandbox_policy::execute(
+                &wrapped_command, &policy, work_dir, &args,
+            ).await;
 
             // Audit log the sandboxed execution
             if let Some(audit) = try_audit_log() {
@@ -300,6 +263,8 @@ impl Tool for BashTool {
         let shell = super::bash_shell::resolve();
         let mut cmd = Command::new(&shell.program);
         cmd.kill_on_drop(true);
+        cmd.env_clear()
+            .envs(crate::tool::sandbox::restricted_env());
         cmd.args(&shell.prefix_args).arg(&wrapped_command);
         super::bash_noninteractive::configure(&mut cmd);
         if let Some((codetether_bin, path)) = codetether_runtime_env() {
@@ -357,7 +322,7 @@ impl Tool for BashTool {
                 let exit_code = output.status.code().unwrap_or(-1);
 
                 let combined = bash_output::combine(&output.stdout.text, &output.stderr.text);
-                let combined = redact_output(
+                let combined = bash_output::redact(
                     combined,
                     github_auth
                         .as_ref()
@@ -366,7 +331,8 @@ impl Tool for BashTool {
                 );
 
                 let success = output.status.success();
-                let auth_prompt_blocked = !success && looks_like_auth_prompt(&combined);
+                let auth_prompt_blocked =
+                    !success && bash_output::looks_like_auth_prompt(&combined);
 
                 if auth_prompt_blocked {
                     tracing::warn!("Interactive auth prompt detected in output");

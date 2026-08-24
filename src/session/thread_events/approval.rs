@@ -18,6 +18,7 @@ impl ThreadEventMapper {
                 "action": request.action,
                 "resource": request.resource,
                 "reason": request.reason,
+                "preview": request.preview,
                 "proposed_execpolicy_amendment": &request.proposed_execpolicy_amendment,
                 "available_decisions": &request.available_decisions,
             }),

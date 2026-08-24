@@ -1,5 +1,5 @@
 use super::super::sandbox_runner::RunnerPlan;
-use super::super::{SandboxPolicy, sandbox_landlock};
+use super::super::{SandboxPolicy, sandbox_landlock, sandbox_seccomp};
 
 /// Direct execution confined by Landlock (a kernel LSM applied via
 /// `pre_exec`). Landlock needs no user namespace, so it enforces the
@@ -11,13 +11,17 @@ pub(super) fn confined_plan(
     args: &[String],
     policy: &SandboxPolicy,
     work_dir: &std::path::Path,
-    reason: &str,
+    _reason: &str,
 ) -> Option<RunnerPlan> {
     let rules = sandbox_landlock::prepare(policy, work_dir).rules?;
-    let base = super::plan_with_override(command, args, reason, true).ok()?;
+    let seccomp = sandbox_seccomp::prepare(policy.allow_network).ok().flatten()?;
     Some(RunnerPlan {
+        program: command.to_string(),
+        args: args.to_vec(),
+        unsafe_fallbacks: Vec::new(),
         landlock: Some(rules),
-        network_isolated: false,
-        ..base
+        network_isolated: !policy.allow_network,
+        seccomp: Some(seccomp),
+        apply_seccomp: true,
     })
 }

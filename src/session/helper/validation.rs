@@ -4,7 +4,6 @@ use anyhow::Result;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use tokio::process::Command;
 
 #[path = "validation_eslint.rs"]
 mod validation_eslint;
@@ -28,11 +27,11 @@ pub async fn capture_git_dirty_files(workspace_dir: &Path) -> HashSet<PathBuf> {
         &["diff", "--cached", "--name-only", "--relative", "--"][..],
         &["ls-files", "--others", "--exclude-standard"][..],
     ] {
-        let output = Command::new("git")
-            .args(args)
-            .current_dir(workspace_dir)
-            .output()
-            .await;
+        let args = args
+            .iter()
+            .map(|arg| (*arg).to_string())
+            .collect::<Vec<_>>();
+        let output = crate::tool::git::process::output(workspace_dir, &args, &[], false).await;
         let Ok(output) = output else {
             continue;
         };

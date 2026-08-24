@@ -9,7 +9,7 @@
 //! assert!(needs_github_auth("gh pr create"));
 //! ```
 
-use tokio::process::Command;
+use std::path::PathBuf;
 
 /// Runs a small git probe and returns trimmed stdout on success.
 ///
@@ -26,12 +26,12 @@ pub(super) async fn git_stdout<const N: usize>(
     cwd: Option<&str>,
     args: [&str; N],
 ) -> Option<String> {
-    let mut command = Command::new("git");
-    command.args(args);
-    if let Some(cwd) = cwd {
-        command.current_dir(cwd);
-    }
-    let output = command.output().await.ok()?;
+    let cwd = cwd
+        .map(PathBuf::from)
+        .or_else(|| std::env::current_dir().ok())?;
+    let output = crate::tool::git::process::output_refs(&cwd, &args, false)
+        .await
+        .ok()?;
     output
         .status
         .success()

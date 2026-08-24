@@ -8,10 +8,10 @@ pub(super) fn handle_event(app: &mut App, event: SessionEvent) -> Option<Session
         SessionEvent::StreamRetry(crate::session::StreamRetryEvent {
             attempt,
             max_restarts,
-            ..
+            reason,
         }) => {
             app.state.clear_streaming_text();
-            app.state.status = format!("Reconnecting… {attempt}/{max_restarts}");
+            app.state.status = format!("Reconnecting… {attempt}/{max_restarts}: {reason}");
             None
         }
         other => Some(other),

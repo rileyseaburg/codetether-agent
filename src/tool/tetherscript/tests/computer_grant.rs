@@ -2,7 +2,6 @@
 
 use serde_json::json;
 
-use crate::tool::Tool;
 use crate::tool::tetherscript::TetherScriptPluginTool;
 use crate::tool::tetherscript::input::TetherScriptPluginInput;
 
@@ -25,15 +24,16 @@ fn parses_computer_grant_fields() {
 #[tokio::test]
 async fn grant_computer_runs_status_from_tetherscript() {
     let tool = TetherScriptPluginTool::new();
-    let result = tool
-        .execute(json!({
+    let result = super::support::execute(
+        &tool,
+        json!({
             "source": "fn main() { return computer.status() }",
             "hook": "main",
             "grant_computer": true,
             "computer_scope": ["computer.inspect"]
-        }))
-        .await
-        .unwrap();
+        }),
+    )
+    .await;
 
     assert!(result.output.contains("success"), "{}", result.output);
 }

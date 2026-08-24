@@ -1,6 +1,6 @@
 //! Sandboxed child creation for persistent command sessions.
 
-use super::{SandboxPolicy, sandbox_command, sandbox_env, sandbox_plan_state, sandbox_runner};
+use super::{SandboxPolicy, sandbox_env, sandbox_plan_command, sandbox_plan_state, sandbox_runner};
 use anyhow::{Context, Result, anyhow};
 use std::path::Path;
 
@@ -24,6 +24,7 @@ pub(crate) async fn spawn(
         return Err(anyhow!("Sandbox policy denies process execution"));
     }
     let mut env = sandbox_env::restricted();
+    env.extend(policy.environment.clone());
     let network = super::super::sandbox_network::validate(policy, command, args)?;
     if !policy.allow_network {
         env.insert("CODETETHER_SANDBOX_NO_NETWORK".into(), "1".into());
@@ -32,15 +33,10 @@ pub(crate) async fn spawn(
     super::super::sandbox_paths::validate_working_dir(policy, working_dir).await?;
     super::super::sandbox_paths::validate_command_args(args)?;
     let plan = sandbox_runner::plan(command, args, policy, working_dir)?;
-    let state = sandbox_plan_state::from_plan(plan, network);
-    let (mut cmd, limits) = sandbox_command::build(
-        &state.program,
-        &state.args,
-        working_dir,
-        &env,
-        state.landlock,
-        policy.max_memory_bytes,
-    );
+    super::sandbox_network_isolation::validate(policy, plan.network_isolated)?;
+    let mut state = sandbox_plan_state::from_plan(plan, network);
+    let (mut cmd, limits) =
+        sandbox_plan_command::build(&mut state, working_dir, &env, policy.max_memory_bytes);
     let terminal = keep_stdin
         .then(|| crate::tool::command_pty::attach(&mut cmd))
         .transpose()?;

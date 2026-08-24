@@ -1,5 +1,8 @@
 use super::WorktreeManager;
-use anyhow::{Context, Result, anyhow};
+#[path = "integrity_fsck.rs"]
+mod fsck;
+
+use anyhow::{Result, anyhow};
 
 impl WorktreeManager {
     /// Verify repository object integrity before worktree operations.
@@ -41,14 +44,5 @@ impl WorktreeManager {
         self.ensure_repo_integrity().await?;
         *checked = true;
         Ok(())
-    }
-
-    pub(crate) async fn run_repo_fsck(&self) -> Result<std::process::Output> {
-        tokio::process::Command::new("git")
-            .args(["fsck", "--full", "--no-dangling"])
-            .current_dir(&self.repo_path)
-            .output()
-            .await
-            .context("Failed to execute git fsck --full --no-dangling")
     }
 }

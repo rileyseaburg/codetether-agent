@@ -19,8 +19,10 @@ pub(super) fn build(policy: &SandboxPolicy, work_dir: &Path, temp_dir: &Path) ->
     for root in writable_roots(policy, work_dir, temp_dir) {
         lines.push(write_rule("allow", &root));
     }
-    for denied in protected_paths(policy) {
-        lines.push(write_rule("deny", &denied));
+    if policy.protect_metadata {
+        for denied in protected_paths(policy) {
+            lines.push(write_rule("deny", &denied));
+        }
     }
     lines.join("\n")
 }

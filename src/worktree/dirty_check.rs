@@ -11,10 +11,7 @@ impl super::WorktreeManager {
     /// Returns `true` when the worktree has uncommitted changes, or when the
     /// dirty check could not be completed (fail-safe: never assume clean).
     pub(crate) async fn is_worktree_dirty(&self, info: &WorktreeInfo) -> bool {
-        match tokio::process::Command::new("git")
-            .args(["status", "--porcelain"])
-            .current_dir(&info.path)
-            .output()
+        match crate::tool::git::process::output_refs(&info.path, &["status", "--porcelain"], false)
             .await
         {
             Ok(o) if o.status.success() => !o.stdout.is_empty(),

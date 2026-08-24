@@ -1,40 +1,36 @@
 //! Process-local approval grants for the current interactive session.
 
-use std::collections::HashSet;
-use std::sync::{Mutex, OnceLock};
-
 use super::ApprovalReceipt;
 
-type Grant = (String, String, String);
+#[path = "session_grants/state.rs"]
+mod state;
 
-static GRANTS: OnceLock<Mutex<HashSet<Grant>>> = OnceLock::new();
+pub(crate) fn remember_request(id: &str, session_id: Option<&str>) {
+    state::remember(id, session_id);
+}
 
-fn grants() -> &'static Mutex<HashSet<Grant>> {
-    GRANTS.get_or_init(|| Mutex::new(HashSet::new()))
+pub(crate) fn discard_request(id: &str) {
+    state::discard(id);
 }
 
 pub fn grant(receipt: &ApprovalReceipt) {
-    grants()
-        .lock()
-        .expect("session approval grants lock")
-        .insert(tuple(&receipt.tool, &receipt.action, &receipt.resource));
+    state::grant(receipt);
 }
 
-pub fn allowed(tool: &str, action: &str, resource: &str) -> bool {
-    grants()
-        .lock()
-        .expect("session approval grants lock")
-        .contains(&tuple(tool, action, resource))
+pub(crate) fn allowed_scoped(
+    tool: &str,
+    action: &str,
+    resource: &str,
+    session_id: Option<&str>,
+) -> bool {
+    state::allowed(tool, action, resource, session_id)
 }
 
-fn tuple(tool: &str, action: &str, resource: &str) -> Grant {
-    (tool.to_string(), action.to_string(), resource.to_string())
+fn normalized_session(session: Option<&str>) -> Option<&str> {
+    session.map(str::trim).filter(|value| !value.is_empty())
 }
 
 #[cfg(test)]
 pub(crate) fn reset() {
-    grants()
-        .lock()
-        .expect("session approval grants lock")
-        .clear();
+    state::reset();
 }

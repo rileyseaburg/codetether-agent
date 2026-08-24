@@ -2,22 +2,15 @@
 //!
 //! Fetches model information from the "models" endpoint for each provider, including capabilities, costs, and limits. This is used to enrich our internal model information and provide better recommendations and cost estimates.
 //! The catalog is fetched on demand and cached in memory. It also integrates with the secrets manager to check which providers have API keys configured, allowing us to filter available models accordingly.
+#[path = "models_cost.rs"]
+mod cost;
+pub use cost::ModelCost;
 
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
-/// Model cost information (per million tokens)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelCost {
-    pub input: f64,
-    pub output: f64,
-    #[serde(default)]
-    pub cache_read: Option<f64>,
-    #[serde(default)]
-    pub cache_write: Option<f64>,
-    #[serde(default)]
-    pub reasoning: Option<f64>,
-}
+use super::shared_http::shared_client;
+use {
+    serde::{Deserialize, Serialize},
+    std::collections::HashMap,
+};
 
 /// Model limits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,7 +100,7 @@ impl ModelCatalog {
     pub async fn fetch() -> anyhow::Result<Self> {
         const MODELS_URL: &str = "https://models.dev/api.json";
         tracing::info!("Fetching models from {}", MODELS_URL);
-        let response = reqwest::get(MODELS_URL).await?;
+        let response = shared_client().get(MODELS_URL).send().await?;
         let providers: ModelsApiResponse = response.json().await?;
         tracing::info!("Loaded {} providers", providers.len());
         Ok(Self { providers })
@@ -116,7 +109,7 @@ impl ModelCatalog {
     /// Fetch models with a custom URL (for testing or alternate sources)
     #[allow(dead_code)]
     pub async fn fetch_from(url: &str) -> anyhow::Result<Self> {
-        let response = reqwest::get(url).await?;
+        let response = shared_client().get(url).send().await?;
         let providers: ModelsApiResponse = response.json().await?;
         Ok(Self { providers })
     }

@@ -14,10 +14,13 @@ pub(crate) fn open(job_id: &str, output_url: &str) -> Result<Launch> {
     let path = player_path(job_id);
     std::fs::write(&path, player_html(job_id, output_url))
         .context("Failed to write HTML player")?;
-    info!(job_id, output_url, "Opening voice audio player in browser");
+    info!(
+        job_id,
+        output_url, "Saved voice audio player for explicit opening"
+    );
     Ok(Launch {
         html_path: path,
-        browser_opened: open::that(player_path(job_id)).is_ok(),
+        browser_opened: false,
     })
 }
 

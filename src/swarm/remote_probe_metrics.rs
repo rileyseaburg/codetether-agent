@@ -1,7 +1,7 @@
 //! Static Git metrics for a Kubernetes branch-observation probe.
 
 use super::kubernetes_executor::RemoteBranchProbe;
-use std::process::{Command, Output};
+use std::process::Output;
 
 pub(super) fn snapshot(subtask_id: &str) -> RemoteBranchProbe {
     RemoteBranchProbe {
@@ -36,5 +36,6 @@ fn lines(args: &[&str]) -> Vec<String> {
 }
 
 fn git(args: &[&str]) -> Option<Output> {
-    Command::new("git").args(args).output().ok()
+    let cwd = std::env::current_dir().ok()?;
+    crate::tool::git::process::output_blocking_refs(&cwd, args, false).ok()
 }

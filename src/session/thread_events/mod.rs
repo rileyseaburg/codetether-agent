@@ -4,6 +4,7 @@
 //! [`ThreadEvent`](crate::session::thread_store::ThreadEvent) records.
 
 mod approval;
+mod approval_metadata;
 mod command;
 mod context;
 mod ids;

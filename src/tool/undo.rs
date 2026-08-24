@@ -3,8 +3,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::{collections::HashMap, process::Command};
+use std::collections::HashMap;
 
+#[path = "undo_git.rs"]
+mod undo_git;
 #[path = "undo_policy.rs"]
 mod undo_policy;
 
@@ -59,12 +61,12 @@ impl Tool for UndoTool {
 
         // Get current directory
         let cwd = std::env::current_dir()?;
+        if let Some(blocked) = undo_policy::blocked(&input, &cwd).await {
+            return Ok(blocked);
+        }
 
         // Check if we're in a git repository
-        let status = Command::new("git")
-            .args(["rev-parse", "--git-dir"])
-            .current_dir(&cwd)
-            .status()?;
+        let status = undo_git::repository(&cwd)?.status;
 
         if !status.success() {
             return Ok(ToolResult {
@@ -75,10 +77,7 @@ impl Tool for UndoTool {
         }
 
         // Get the last N commits
-        let log_output = Command::new("git")
-            .args(["log", "--oneline", "--max-count", &params.steps.to_string()])
-            .current_dir(&cwd)
-            .output()?;
+        let log_output = undo_git::log(&cwd, params.steps)?;
 
         if !log_output.status.success() {
             return Ok(ToolResult {
@@ -107,10 +106,7 @@ impl Tool for UndoTool {
             }
 
             // Show what files would be affected
-            let diff_output = Command::new("git")
-                .args(["diff", &format!("HEAD~{}", params.steps), "--name-only"])
-                .current_dir(&cwd)
-                .output()?;
+            let diff_output = undo_git::diff(&cwd, params.steps)?;
 
             if diff_output.status.success() {
                 let files = String::from_utf8_lossy(&diff_output.stdout);
@@ -127,10 +123,6 @@ impl Tool for UndoTool {
                 success: true,
                 metadata: HashMap::new(),
             });
-        }
-
-        if let Some(blocked) = undo_policy::blocked(&input).await {
-            return Ok(blocked);
         }
         let revert_output = undo_policy::reset(&cwd, params.steps)?;
 

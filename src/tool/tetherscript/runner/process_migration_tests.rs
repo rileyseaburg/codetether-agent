@@ -8,23 +8,10 @@
 //! this test accepted either outcome and therefore missed a real regression in
 //! two checked-in plugins; the failure surfaced only in the `bash_guard` suite.
 
-use crate::tool::tetherscript::TetherScriptPluginTool;
-use crate::tool::{Tool, ToolResult};
-use serde_json::json;
+#[path = "process_migration_test_run.rs"]
+mod run;
 
-async fn run_hook(source: &str, hook: &str, args: serde_json::Value) -> ToolResult {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("probe.tether");
-    std::fs::write(&path, source).expect("write plugin");
-    TetherScriptPluginTool::with_root(dir.path().to_path_buf())
-        .execute(json!({
-            "path": path.to_string_lossy(),
-            "hook": hook,
-            "args": args,
-        }))
-        .await
-        .expect("plugin execution")
-}
+use serde_json::json;
 
 /// Correct arity after the fix: one `?` yields the result map.
 const SINGLE: &str = r#"
@@ -43,15 +30,19 @@ fn probe(command) {
 "#;
 
 #[tokio::test]
+#[ignore = "requires enforced OS sandbox; run in the mandatory sandbox CI lane"]
 async fn single_unwrap_is_the_supported_arity() {
-    let result = run_hook(SINGLE, "probe", json!(["echo migrated"])).await;
+    crate::tool::tetherscript::require_sandbox!();
+    let result = run::hook(SINGLE, "probe", json!(["echo migrated"])).await;
     assert!(result.success, "one `?` must work: {}", result.output);
     assert!(result.output.contains("migrated"), "got {}", result.output);
 }
 
 #[tokio::test]
+#[ignore = "requires enforced OS sandbox; run in the mandatory sandbox CI lane"]
 async fn stale_double_unwrap_fails_loudly_instead_of_silently() {
-    let result = run_hook(DOUBLE, "probe", json!(["echo stale"])).await;
+    crate::tool::tetherscript::require_sandbox!();
+    let result = run::hook(DOUBLE, "probe", json!(["echo stale"])).await;
     assert!(
         !result.success,
         "`??` must not silently succeed after the arity fix: {}",

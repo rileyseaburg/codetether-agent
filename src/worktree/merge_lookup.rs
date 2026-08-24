@@ -13,12 +13,13 @@ impl WorktreeManager {
     }
 
     pub(crate) async fn merge_head_path(&self) -> Result<PathBuf> {
-        let output = tokio::process::Command::new("git")
-            .args(["rev-parse", "--git-path", "MERGE_HEAD"])
-            .current_dir(&self.repo_path)
-            .output()
-            .await
-            .context("Failed to determine git merge metadata path")?;
+        let output = crate::tool::git::process::output_refs(
+            &self.repo_path,
+            &["rev-parse", "--git-path", "MERGE_HEAD"],
+            false,
+        )
+        .await
+        .context("Failed to determine git merge metadata path")?;
         if !output.status.success() {
             return Err(anyhow!(
                 "Failed to resolve merge metadata path: {}",
@@ -38,12 +39,13 @@ impl WorktreeManager {
     }
 
     pub(crate) async fn count_merge_files_changed(&self) -> Result<usize> {
-        let output = tokio::process::Command::new("git")
-            .args(["diff", "--name-only", "HEAD~1", "HEAD"])
-            .current_dir(&self.repo_path)
-            .output()
-            .await
-            .context("Failed to count changed files")?;
+        let output = crate::tool::git::process::output_refs(
+            &self.repo_path,
+            &["diff", "--name-only", "HEAD~1", "HEAD"],
+            false,
+        )
+        .await
+        .context("Failed to count changed files")?;
         Ok(String::from_utf8_lossy(&output.stdout).lines().count())
     }
 }

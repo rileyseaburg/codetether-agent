@@ -25,7 +25,7 @@
 pub mod beliefs;
 pub mod executor;
 pub mod persistence;
-mod thinker;
+include!("private_modules.rs");
 
 // The real router needs the in-process Candle runtime, so it requires both
 // `functiongemma` and `candle`. Every other build gets the no-op stand-in.

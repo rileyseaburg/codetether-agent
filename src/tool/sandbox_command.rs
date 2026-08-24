@@ -1,4 +1,4 @@
-use super::sandbox_landlock;
+use super::{sandbox_landlock, sandbox_seccomp};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -9,11 +9,16 @@ pub(super) fn build(
     env: &HashMap<String, String>,
     landlock: Option<sandbox_landlock::Rules>,
     max_memory_bytes: u64,
+    seccomp: Option<&sandbox_seccomp::Program>,
+    apply_seccomp: bool,
 ) -> (tokio::process::Command, Vec<String>) {
     let mut cmd = tokio::process::Command::new(program);
     cmd.args(args).current_dir(work_dir).env_clear().envs(env);
     super::super::bash_noninteractive::configure(&mut cmd);
     sandbox_landlock::apply(&mut cmd, landlock);
+    if apply_seccomp && let Some(program) = seccomp {
+        sandbox_seccomp::apply(&mut cmd, program);
+    }
     let fallbacks = super::super::sandbox_limits::apply_memory_limit(&mut cmd, max_memory_bytes);
     (cmd, fallbacks)
 }

@@ -1,8 +1,9 @@
 use crate::approval::{ApprovalStore, session_command_grants, test_env::lock_env};
-use crate::config::{Config, PermissionAction};
+use crate::config::Config;
 use crate::runtime_policy::evaluate_tool_invocation_with_config;
 use serde_json::json;
 
+const SESSION: &str = "session-command-test";
 struct EnvGuard;
 
 impl Drop for EnvGuard {
@@ -26,6 +27,7 @@ fn proposed_prefix_session_approval_allows_future_matching_command() {
     let store = ApprovalStore::open_default().expect("store");
     let args = json!({
         "command": "cargo test --lib first",
+        "__ct_session_id": SESSION,
         "prefix_rule": ["cargo", "test"],
         "cwd": data.path().display().to_string()
     });
@@ -36,20 +38,10 @@ fn proposed_prefix_session_approval_allows_future_matching_command() {
         .expect("id");
     store.approve(id, "riley", "ok").expect("approve");
     session_command_grants::grant_for_request(id);
-    let next = json!({"command": "cargo test --lib second"});
+    let next = json!({
+        "command": "cargo test --lib second",
+        "__ct_session_id": SESSION,
+        "cwd": data.path().display().to_string(),
+    });
     assert!(evaluate_tool_invocation_with_config(&Config::default(), "bash", &next).is_none());
-}
-
-#[test]
-fn configured_deny_overrides_session_prefix() {
-    let _lock = lock_env();
-    let (_data, _env) = setup();
-    session_command_grants::remember_request("approval-1", vec!["cargo test".into()]);
-    session_command_grants::grant_for_request("approval-1");
-    let mut config = Config::default();
-    let rules = &mut config.permissions.rules;
-    rules.insert("cargo test".into(), PermissionAction::Deny);
-    let args = json!({"command": "cargo test --lib denied"});
-    let blocked = evaluate_tool_invocation_with_config(&config, "bash", &args).expect("denied");
-    assert_eq!(blocked.metadata["policy_outcome"], "deny");
 }

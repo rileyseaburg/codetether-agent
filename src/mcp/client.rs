@@ -20,6 +20,8 @@ use tracing::{debug, error, info, warn};
 
 #[path = "client_call_tool.rs"]
 mod call_tool;
+#[path = "client_identity.rs"]
+mod identity;
 #[path = "client_subprocess.rs"]
 mod subprocess;
 
@@ -35,6 +37,7 @@ pub struct McpClient {
     registry: Arc<McpRegistry>,
     /// Server name identifier for registry tracking
     server_name: RwLock<Option<String>>,
+    policy_identity: String,
 }
 
 impl McpClient {
@@ -54,6 +57,7 @@ impl McpClient {
             available_tools: RwLock::new(Vec::new()),
             registry: Arc::new(McpRegistry::new()),
             server_name: RwLock::new(None),
+            policy_identity: uuid::Uuid::new_v4().to_string(),
         }
     }
 
@@ -72,6 +76,7 @@ impl McpClient {
             available_tools: RwLock::new(Vec::new()),
             registry,
             server_name: RwLock::new(name),
+            policy_identity: uuid::Uuid::new_v4().to_string(),
         }
     }
 
@@ -126,16 +131,6 @@ impl McpClient {
     /// Get the registry associated with this client
     pub fn registry(&self) -> Arc<McpRegistry> {
         Arc::clone(&self.registry)
-    }
-
-    /// Get the server name if set
-    pub async fn server_name(&self) -> Option<String> {
-        self.server_name.read().await.clone()
-    }
-
-    /// Set the server name for registry tracking
-    pub async fn set_server_name(&self, name: String) {
-        *self.server_name.write().await = Some(name);
     }
 
     /// Check if the connected server has a specific capability
@@ -375,8 +370,8 @@ impl McpRegistry {
         command: &str,
         args: &[&str],
     ) -> Result<Arc<McpClient>> {
-        super::subprocess_policy::guard(command, args, None).await?;
-        let transport = Arc::new(ProcessTransport::spawn(command, args).await?);
+        super::subprocess_policy::guard_scoped(command, args, None, false, "mcp-registry").await?;
+        let transport = Arc::new(ProcessTransport::spawn(command, args, false).await?);
         let client = Arc::new(McpClient::with_registry(
             transport,
             Arc::new(McpRegistry::new()), // Each client gets its own registry for now

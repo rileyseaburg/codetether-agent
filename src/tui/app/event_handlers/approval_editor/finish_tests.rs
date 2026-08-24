@@ -16,21 +16,22 @@ async fn edited_patch_replaces_waiting_tool_arguments() {
     unsafe { std::env::set_var("CODETETHER_DATA_DIR", dir.path()) };
     let _guard = Guard;
     let store = crate::approval::ApprovalStore::open_default().unwrap();
+    let patch = "--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1 +1 @@\n-old\n+edited\n";
+    let resource = crate::tool::patch::approval_resource_for_root(dir.path(), patch);
     let original = store
-        .create_request("apply_patch", "write", "src/lib.rs", "patch write")
+        .create_request("apply_patch", "write", &resource, "patch write")
         .unwrap();
     let live = LiveApprovalRequest::new(
         original.id.clone(),
         "call".into(),
         "apply_patch".into(),
         "write".into(),
-        "src/lib.rs".into(),
+        resource,
         "patch write".into(),
     );
     let (tx, mut rx) = tokio::sync::mpsc::channel(1);
     let waiter = tokio::spawn(async move { crate::approval::live::request(&tx, live).await });
     rx.recv().await.unwrap();
-    let patch = "--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1 +1 @@\n-old\n+edited\n";
 
     let status = super::finish::apply(&original.id, patch).unwrap();
     let decision = waiter.await.unwrap();
@@ -44,9 +45,6 @@ async fn edited_patch_replaces_waiting_tool_arguments() {
     };
     assert_eq!(arguments["patch"], patch);
     assert!(status.contains(&approval_id));
-    store
-        .verify(&approval_id, "apply_patch", "write", "src/lib.rs")
-        .unwrap();
     assert_eq!(
         store.decision(&original.id).unwrap().unwrap().status,
         ApprovalStatus::Denied

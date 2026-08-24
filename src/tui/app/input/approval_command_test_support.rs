@@ -1,6 +1,8 @@
 use crate::approval::{ApprovalStatus, ApprovalStore, LiveApprovalRequest};
 use crate::tui::app::state::approval_queue;
 
+pub(super) const SESSION: &str = "approval-command-test";
+
 pub(super) struct EnvGuard;
 
 impl EnvGuard {
@@ -29,6 +31,7 @@ pub(super) fn setup() -> (tempfile::TempDir, EnvGuard, ApprovalStore, String) {
     let request = store
         .create_request("bash", "execute", "bash:abc", "runtime policy")
         .expect("request");
+    crate::approval::session_grants::remember_request(&request.id, Some(SESSION));
     queue(&request.id);
     (data, env, store, request.id)
 }

@@ -49,7 +49,7 @@ impl Tool for ImageGenerationTool {
         super::schema::parameters()
     }
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let args: ImagegenArgs = serde_json::from_value(args)?;
+        let args: ImagegenArgs = crate::tool::network_access::args!("image_gen", args);
         match self.generate(args).await {
             Ok(result) => Ok(result),
             Err(error) => Ok(ToolResult::error(error.to_string())),

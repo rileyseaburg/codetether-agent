@@ -11,7 +11,7 @@
 //! assert_eq!(tool.id(), "agent");
 //! ```
 
-mod actions;
+include!("authority_modules.rs");
 pub mod bridge;
 mod bus_publish;
 pub(crate) mod collaboration_runtime;

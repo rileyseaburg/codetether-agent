@@ -5,6 +5,9 @@
 //! what the tool will actually do so an approver can make an informed
 //! decision instead of approving a bare hash.
 
+#[path = "invocation_preview_command.rs"]
+mod command;
+
 use serde_json::Value;
 
 /// Build a short human-readable preview of a tool invocation.
@@ -13,8 +16,8 @@ use serde_json::Value;
 /// fall back to a generic reason in that case.
 pub(crate) fn summarize(tool_name: &str, args: &Value) -> Option<String> {
     match tool_name {
-        "bash" => field(args, "command").map(|cmd| format!("run: {}", clip(&cmd))),
-        "exec_command" => field(args, "cmd").map(|cmd| format!("run: {}", clip(&cmd))),
+        "bash" => command::render(args, "command"),
+        "exec_command" => command::render(args, "cmd"),
         "write" => field(args, "path").map(|p| format!("write file: {p}")),
         "edit" | "multiedit" => field(args, "path").map(|p| format!("edit file: {p}")),
         "apply_patch" | "patch" => Some("apply patch to workspace".to_string()),

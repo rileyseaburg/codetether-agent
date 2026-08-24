@@ -1,12 +1,9 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 pub fn repo_root(path: &Path) -> Result<Option<PathBuf>> {
-    let output = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(path)
-        .output()
+    let args = vec!["rev-parse".into(), "--show-toplevel".into()];
+    let output = crate::tool::git::process::output_blocking(path, &args, &[], false)
         .context("Failed to resolve git repo root")?;
     if !output.status.success() {
         return Ok(None);
@@ -16,10 +13,12 @@ pub fn repo_root(path: &Path) -> Result<Option<PathBuf>> {
 }
 
 pub fn commit_editmsg_path(repo_path: &Path) -> Result<PathBuf> {
-    let output = Command::new("git")
-        .args(["rev-parse", "--git-path", "COMMIT_EDITMSG"])
-        .current_dir(repo_path)
-        .output()
+    let args = vec![
+        "rev-parse".into(),
+        "--git-path".into(),
+        "COMMIT_EDITMSG".into(),
+    ];
+    let output = crate::tool::git::process::output_blocking(repo_path, &args, &[], false)
         .context("Failed to resolve COMMIT_EDITMSG path")?;
     if !output.status.success() {
         anyhow::bail!(

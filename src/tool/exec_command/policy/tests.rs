@@ -10,3 +10,14 @@ fn escalation_requires_policy_authority_before_skipping_sandbox() {
     assert!(enabled(&guarded, "cargo test", &args));
     assert!(unapproved_escalation(&args));
 }
+
+#[test]
+fn read_only_commands_remain_sandboxed() {
+    let mut guarded = Config::default();
+    guarded.sandbox_mode = Some(SandboxMode::WorkspaceWrite);
+    assert!(enabled(
+        &guarded,
+        "cat /etc/passwd",
+        &json!({"cmd": "cat /etc/passwd"})
+    ));
+}

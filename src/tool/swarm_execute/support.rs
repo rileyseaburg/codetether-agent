@@ -22,9 +22,7 @@ pub(crate) fn expects_changes(
 }
 
 pub(super) fn workspace(params: &serde_json::Value) -> PathBuf {
-    params
-        .get("__ct_parent_workspace")
-        .and_then(serde_json::Value::as_str)
+    crate::tool::network_access::trusted_workspace(params)
         .map(PathBuf::from)
         .or_else(|| std::env::current_dir().ok())
         .unwrap_or_else(|| PathBuf::from("."))

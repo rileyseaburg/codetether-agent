@@ -6,7 +6,10 @@ use serde_json::json;
 #[test]
 fn bash_preview_shows_command() {
     let p = summarize("bash", &json!({"command": "ls -la"})).unwrap();
-    assert_eq!(p, "run: ls -la");
+    assert_eq!(
+        p,
+        "run: ls -la; cwd: process workspace; network: isolated; authority: sandboxed"
+    );
 }
 
 #[test]

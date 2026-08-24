@@ -10,6 +10,7 @@ use super::metadata;
 use super::morph_flow;
 
 pub async fn run(args: Value) -> Result<ToolResult> {
+    let invocation = args.clone();
     let args = match EditArgs::parse(&args) {
         Ok(parsed) => parsed,
         Err(error) => return Ok(error),
@@ -18,6 +19,7 @@ pub async fn run(args: Value) -> Result<ToolResult> {
         return Ok(blocked);
     }
     let content = fs::read_to_string(args.path).await?;
+    crate::tool::orchestration_gate::guard!("edit", &invocation);
     if let Some(result) = morph_flow::try_apply(&args, &content).await {
         return Ok(result);
     }

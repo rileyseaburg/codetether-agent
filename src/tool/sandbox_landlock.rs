@@ -6,7 +6,7 @@ mod imp;
 #[path = "sandbox_landlock_unsupported.rs"]
 mod imp;
 
-pub(super) use imp::{Rules, apply, prepare};
+pub(super) use imp::{Rules, apply, apply_std, prepare};
 
 /// Returns `true` when the running kernel can enforce Landlock confinement.
 ///

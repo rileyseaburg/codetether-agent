@@ -10,8 +10,8 @@
 //! ```
 
 use anyhow::{Context, Result, anyhow};
-use reqwest::{Client, StatusCode};
-use serde::Serialize;
+use reqwest::StatusCode;
+use {serde::Serialize, std::time::Duration};
 
 use super::{GitCredentialMaterial, GitCredentialQuery};
 
@@ -40,10 +40,9 @@ pub async fn request_git_credentials(
     operation: &str,
     query: &GitCredentialQuery,
 ) -> Result<Option<GitCredentialMaterial>> {
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .unwrap_or_default();
+    crate::tool::network_access::require("a2a_git_credentials", &serde_json::Value::Null)?;
+    let client =
+        crate::tool::network_access::no_redirect_client_with_timeout(Duration::from_secs(30))?;
     let mut request = client.post(format!(
         "{}/v1/agent/workspaces/{workspace_id}/git/credentials",
         server.trim_end_matches('/')

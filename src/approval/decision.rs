@@ -18,12 +18,27 @@ pub struct ApprovalDecision {
     pub reason: String,
     /// UTC timestamp when the decision was recorded.
     pub decided_at: DateTime<Utc>,
+    /// Durable review semantics used by a worker in another process.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<super::ApprovalDecisionKind>,
 }
 
 impl ApprovalDecision {
     /// Create an approval decision.
     pub fn approve(request_id: &str, decided_by: &str, reason: &str) -> Self {
         Self::new(request_id, ApprovalStatus::Approved, decided_by, reason)
+    }
+
+    pub(crate) fn approve_kind(
+        request_id: &str,
+        decided_by: &str,
+        reason: &str,
+        kind: super::ApprovalDecisionKind,
+    ) -> Self {
+        Self {
+            kind: Some(kind),
+            ..Self::approve(request_id, decided_by, reason)
+        }
     }
 
     /// Create a denial decision.
@@ -39,6 +54,7 @@ impl ApprovalDecision {
             decided_by: decided_by.to_string(),
             reason: reason.to_string(),
             decided_at: Utc::now(),
+            kind: None,
         }
     }
 }

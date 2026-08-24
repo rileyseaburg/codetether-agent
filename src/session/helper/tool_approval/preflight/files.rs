@@ -1,5 +1,8 @@
 //! Reconstruct proposed file contents without mutating the workspace.
 
+#[path = "path.rs"]
+mod path;
+
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
@@ -29,7 +32,7 @@ fn write(workspace: &Path, args: &Value) -> Result<(PathBuf, String)> {
     } else {
         workspace.join(path)
     };
-    Ok((path, content.to_string()))
+    Ok((path::confined(workspace, path)?, content.to_string()))
 }
 
 fn patch(workspace: &Path, args: &Value) -> Result<Vec<(PathBuf, String)>> {

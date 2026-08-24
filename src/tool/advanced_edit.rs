@@ -1,5 +1,8 @@
 //! Advanced Edit Tool with multiple replacement strategies (advanced edit tool)
 
+#[path = "advanced_edit_default.rs"]
+mod default_impl;
+
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -8,12 +11,6 @@ use std::path::PathBuf;
 use tokio::fs;
 
 pub struct AdvancedEditTool;
-
-impl Default for AdvancedEditTool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl AdvancedEditTool {
     pub fn new() -> Self {
@@ -372,6 +369,7 @@ impl Tool for AdvancedEditTool {
         }
         // Creating new file
         if old_string.is_empty() {
+            crate::tool::orchestration_gate::guard!("edit", &params);
             fs::write(&path, &new_string).await?;
             return Ok(ToolResult::success(format!("Created file: {file_path}")));
         }
@@ -393,6 +391,7 @@ impl Tool for AdvancedEditTool {
                 ));
             }
         };
+        crate::tool::orchestration_gate::guard!("edit", &params);
         fs::write(&path, &new_content).await?;
         let old_lines = old_string.lines().count();
         let new_lines = new_string.lines().count();

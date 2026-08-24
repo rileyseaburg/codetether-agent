@@ -6,7 +6,7 @@ use anyhow::Result;
 pub(super) async fn manager(
     cmd: &str,
     cmd_args: &[&str],
-    approval_id: Option<&str>,
+    allow_network: bool,
 ) -> Result<McpToolManager> {
-    McpToolManager::connect_subprocess_with_approval(cmd, cmd_args, approval_id).await
+    McpToolManager::connect_subprocess_authorized(cmd, cmd_args, allow_network).await
 }

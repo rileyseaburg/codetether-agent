@@ -26,3 +26,26 @@ pub(super) fn truncate(
         true,
     )
 }
+
+pub(super) fn looks_like_auth_prompt(output: &str) -> bool {
+    let lower = output.to_ascii_lowercase();
+    [
+        "[sudo] password for",
+        "password:",
+        "passphrase",
+        "no tty present and no askpass program specified",
+        "a terminal is required to read the password",
+        "permission denied (publickey,password",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle))
+}
+
+pub(super) fn redact(mut output: String, secrets: &[String]) -> String {
+    for secret in secrets {
+        if !secret.is_empty() {
+            output = output.replace(secret, "[REDACTED]");
+        }
+    }
+    output
+}

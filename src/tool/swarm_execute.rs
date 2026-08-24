@@ -19,14 +19,8 @@ mod default_impl;
 mod execution_config;
 mod input;
 mod input_error;
-#[cfg(test)]
-#[path = "swarm_execute/input_tests.rs"]
-mod input_tests;
 mod model_request;
 mod model_selection;
-#[cfg(test)]
-#[path = "swarm_execute/model_selection_tests.rs"]
-mod model_selection_tests;
 mod provider_setup;
 mod schema;
 pub(crate) mod support;
@@ -34,8 +28,7 @@ mod support_task;
 mod task_input;
 mod task_result;
 #[cfg(test)]
-#[path = "swarm_execute/task_result_tests.rs"]
-mod task_result_tests;
+include!("swarm_execute_test_modules.rs");
 pub(crate) mod tui_bridge;
 mod worktree_specs;
 mod worktrees;
@@ -63,9 +56,7 @@ impl Tool for SwarmExecuteTool {
     }
 
     fn description(&self) -> &str {
-        "Run independent tasks in parallel. Pass tasks as instruction strings, for example \
-         {\"tasks\":[\"Inspect the API\",\"Run focused tests\"]}. Use task objects only when \
-         names, IDs, or specialties are needed; orchestration settings are optional."
+        include_str!("swarm_execute_description.txt")
     }
 
     fn parameters(&self) -> Value {
@@ -77,6 +68,11 @@ impl Tool for SwarmExecuteTool {
             Ok(tasks) => tasks,
             Err(error) => return Ok(error),
         };
+        if let Some(blocked) =
+            crate::tool::orchestration_gate::blocked("swarm_execute", &params).await
+        {
+            return Ok(blocked);
+        }
 
         let ExecutionConfig {
             concurrency,

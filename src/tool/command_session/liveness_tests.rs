@@ -17,10 +17,10 @@ async fn silent_poll_reports_the_silence_instead_of_bare_running_heading() {
         .await
         .unwrap();
     let registry = std::sync::Arc::new(Registry::default());
-    let id = registry.insert(running).await.unwrap();
+    let id = registry.insert(running, "direct".into()).await.unwrap();
     let tool = WriteStdinTool::new(registry);
     let result = tool
-        .execute(serde_json::json!({"session_id": id, "yield_time_ms": 5_000}))
+        .execute(serde_json::json!({"session_id": id, "yield_time_ms": 5_000, "__ct_session_id": "direct"}))
         .await
         .unwrap();
     assert!(result.output.contains(&format!("session ID {id}")));
@@ -37,10 +37,10 @@ async fn productive_poll_reports_bytes_seen_in_that_poll() {
         .await
         .unwrap();
     let registry = std::sync::Arc::new(Registry::default());
-    let id = registry.insert(running).await.unwrap();
+    let id = registry.insert(running, "direct".into()).await.unwrap();
     let tool = WriteStdinTool::new(registry);
     let result = tool
-        .execute(serde_json::json!({"session_id": id, "yield_time_ms": 5_000}))
+        .execute(serde_json::json!({"session_id": id, "yield_time_ms": 5_000, "__ct_session_id": "direct"}))
         .await
         .unwrap();
     assert!(result.output.contains("this poll"), "{}", result.output);

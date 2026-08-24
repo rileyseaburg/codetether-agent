@@ -4,6 +4,15 @@ use crate::config::{AccessMode, Config};
 
 #[path = "subprocess_policy_alias_tests.rs"]
 mod alias;
+#[path = "subprocess_policy_approved_tests.rs"]
+mod approved;
+#[path = "subprocess_policy_preflight_tests.rs"]
+mod preflight;
+#[cfg(unix)]
+#[path = "subprocess_policy_process_tests.rs"]
+mod process;
+#[path = "subprocess_policy_scope_tests.rs"]
+mod scope;
 
 struct EnvGuard;
 
@@ -28,22 +37,4 @@ async fn subprocess_spawn_requires_policy_approval() {
     let data = tempfile::tempdir().expect("tempdir");
     let _env = EnvGuard::data_dir(data.path());
     assert!(guard("npx", &["server"], None).await.is_err());
-}
-
-#[tokio::test]
-async fn approved_mcp_receipt_allows_subprocess_spawn_gate() {
-    let _lock = lock_env();
-    let data = tempfile::tempdir().expect("tempdir");
-    let _env = EnvGuard::data_dir(data.path());
-    let store = ApprovalStore::open(data.path().join("approvals")).expect("store");
-    let args = policy_args("npx", &["server"], None);
-    let blocked = crate::runtime_policy::evaluate_tool_invocation("mcp", &args)
-        .await
-        .expect("approval required");
-    let request_id = blocked.metadata["approval_request_id"]
-        .as_str()
-        .expect("request id")
-        .to_string();
-    store.approve(&request_id, "riley", "ok").expect("approve");
-    assert!(guard("npx", &["server"], Some(&request_id)).await.is_ok());
 }

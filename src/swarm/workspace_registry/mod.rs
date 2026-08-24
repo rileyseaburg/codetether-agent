@@ -32,7 +32,9 @@ pub(crate) fn with_provider(
 
 #[cfg(test)]
 pub(crate) fn with_defaults(root: &Path, capability: Capability) -> ToolRegistry {
-    finish(ToolRegistry::with_defaults(), root, capability)
+    let mut registry = ToolRegistry::with_defaults();
+    registry.register(Arc::new(crate::tool::lsp::LspTool::new()));
+    finish(registry, root, capability)
 }
 
 fn finish(mut registry: ToolRegistry, root: &Path, capability: Capability) -> ToolRegistry {

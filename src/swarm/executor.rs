@@ -58,7 +58,7 @@ pub use super::SwarmMessage;
 
 use super::subtask::SubTaskResult;
 pub(super) use super::{kubernetes_executor, tool_policy};
-pub use agent_loop::run_agent_loop;
+pub use agent_loop::{run_agent_loop, run_with_network};
 pub use builder::SwarmExecutorBuilder;
 pub use exit::AgentLoopExit;
 pub use types::SwarmExecutor;
