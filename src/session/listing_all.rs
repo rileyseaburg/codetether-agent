@@ -33,7 +33,14 @@ pub async fn list_all_sessions_for_directory(dir: &Path) -> Result<Vec<SessionSu
         merged.insert(session.id.clone(), session);
     }
 
-    let codex = match list_codex_sessions_for_directory(dir) {
+    // Codex discovery walks and reads every archive file synchronously; run it
+    // off the async executor so a TUI event loop awaiting this stays responsive.
+    let dir_owned = dir.to_path_buf();
+    let codex = tokio::task::spawn_blocking(move || list_codex_sessions_for_directory(&dir_owned))
+        .await
+        .map_err(anyhow::Error::from)
+        .and_then(|result| result);
+    let codex = match codex {
         Ok(c) => {
             tracing::info!(
                 codex_count = c.len(),
@@ -65,35 +72,5 @@ pub async fn list_all_sessions_for_directory(dir: &Path) -> Result<Vec<SessionSu
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::Path;
-
-    #[tokio::test]
-    async fn test_list_sessions_real_directory() {
-        let dir = Path::new("/home/riley/A2A-Server-MCP/codetether-agent");
-        let result = list_all_sessions_for_directory(dir).await;
-        match &result {
-            Ok(sessions) => eprintln!("Found {} sessions", sessions.len()),
-            Err(err) => eprintln!("Error: {err}"),
-        }
-        assert!(
-            result.is_ok(),
-            "list_all_sessions_for_directory should not error"
-        );
-    }
-
-    #[test]
-    fn test_list_codex_sessions_real_directory() {
-        let dir = Path::new("/home/riley/A2A-Server-MCP/codetether-agent");
-        let result = list_codex_sessions_for_directory(dir);
-        match &result {
-            Ok(sessions) => eprintln!("Found {} codex sessions", sessions.len()),
-            Err(err) => eprintln!("Codex error: {err}"),
-        }
-        assert!(
-            result.is_ok(),
-            "list_codex_sessions_for_directory should not error"
-        );
-    }
-}
+#[path = "listing_all_tests.rs"]
+mod tests;

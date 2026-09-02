@@ -1,11 +1,16 @@
 //! Apply a successfully finished session notice.
+//!
+//! The session list is updated in memory rather than rescanned from disk:
+//! a full [`refresh_sessions`] walks thousands of files and blocked the UI
+//! task for seconds after every reply on large workspaces.
 
 use std::path::Path;
 
 use crate::session::Session;
 use crate::tui::app::session_runtime::SessionSlot;
+use crate::tui::app::session_sync::{refresh_sessions, upsert_active_session};
+use crate::tui::app::state::App;
 use crate::tui::app::worker_bridge::handle_processing_stopped;
-use crate::tui::app::{session_sync::refresh_sessions, state::App};
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 pub(super) async fn apply(
@@ -34,5 +39,5 @@ pub(super) async fn apply(
     crate::tui::app::background::stream_reconnect_execute::on_success(app);
     app.state.session_id = Some(session.id.clone());
     let _ = session.save().await;
-    refresh_sessions(app, cwd).await;
+    upsert_active_session(app, session);
 }

@@ -3,8 +3,10 @@ use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 
 mod new_session;
+mod upsert;
 
 pub use new_session::create as create_new_session;
+pub use upsert::upsert_active_session;
 
 pub async fn refresh_sessions(app: &mut App, cwd: &std::path::Path) {
     tracing::info!(cwd = %cwd.display(), "refresh_sessions: starting");
