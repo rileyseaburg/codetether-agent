@@ -2,6 +2,8 @@
 
 #[path = "auth_bearer.rs"]
 mod auth_bearer;
+#[path = "auth_recover.rs"]
+pub(crate) mod auth_recover;
 
 pub use super::aliases::resolve_model_id;
 pub use super::auth::{AwsCredentials, BedrockAuth};

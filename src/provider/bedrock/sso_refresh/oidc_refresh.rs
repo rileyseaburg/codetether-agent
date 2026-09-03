@@ -22,6 +22,10 @@ pub(super) struct RefreshInputs<'a> {
 #[serde(rename_all = "camelCase")]
 pub(super) struct RefreshedToken {
     pub access_token: String,
+    /// Present when the IdP rotated the refresh token; must be persisted or
+    /// the next silent refresh fails once the old token is revoked.
+    #[serde(default)]
+    pub refresh_token: Option<String>,
 }
 
 /// Exchange a refresh token for a fresh SSO access token (no browser).

@@ -10,4 +10,6 @@ use chrono::{DateTime, Utc};
 pub(crate) struct Exported {
     pub creds: AwsCredentials,
     pub expiration: Option<DateTime<Utc>>,
+    /// New SSO refresh token when the IdP rotated it during this refresh.
+    pub rotated_refresh_token: Option<String>,
 }

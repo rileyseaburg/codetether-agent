@@ -31,5 +31,6 @@ pub(super) fn to_exported(rc: RoleCreds) -> Exported {
             session_token: Some(rc.session_token),
         },
         expiration,
+        rotated_refresh_token: None,
     }
 }

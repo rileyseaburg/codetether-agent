@@ -3,7 +3,7 @@
 use crate::provider::bedrock::invoke::body::build_anthropic_messages_body;
 use crate::provider::bedrock::invoke::error::invoke_error;
 use crate::provider::bedrock::invoke::response::parse_anthropic_messages_response;
-use crate::provider::bedrock::{BedrockProvider, retry};
+use crate::provider::bedrock::{BedrockProvider, auth_recover, retry};
 use crate::provider::{CompletionRequest, CompletionResponse};
 use anyhow::{Context, Result};
 
@@ -21,12 +21,21 @@ impl BedrockProvider {
         let body_bytes = serde_json::to_vec(&body)?;
         let url = format!("{}/model/{}/invoke", self.base_url(), model_id);
         let policy = retry::RetryPolicy::default();
+        let mut auth_recovered = false;
 
         for attempt in 1..=policy.max_attempts {
             let response = self
                 .send_request("POST", &url, Some(&body_bytes), "bedrock")
                 .await?;
             let status = response.status();
+            // Expired bearer key: swap in a fresh one and retry exactly once.
+            if auth_recover::is_auth_failure(status)
+                && !auth_recovered
+                && auth_recover::recover(self).await
+            {
+                auth_recovered = true;
+                continue;
+            }
             let text = response
                 .text()
                 .await

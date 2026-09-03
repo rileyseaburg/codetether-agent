@@ -35,12 +35,24 @@ pub(super) async fn refresh(args: RefreshArgs<'_>) -> Result<Exported> {
         },
     )
     .await?;
-    get_role_credentials(
+    let mut exported = get_role_credentials(
         &http,
         args.region,
         &token.access_token,
         args.account_id,
         args.role_name,
     )
-    .await
+    .await?;
+    exported.rotated_refresh_token = rotated_token(token.refresh_token, args.refresh_token);
+    Ok(exported)
 }
+
+/// Return the IdP-issued refresh token only when it differs from the one we
+/// sent; unchanged or absent tokens need no Vault write.
+fn rotated_token(returned: Option<String>, sent: &str) -> Option<String> {
+    returned.filter(|fresh| !fresh.is_empty() && fresh != sent)
+}
+
+#[cfg(test)]
+#[path = "refresh_flow_tests.rs"]
+mod tests;

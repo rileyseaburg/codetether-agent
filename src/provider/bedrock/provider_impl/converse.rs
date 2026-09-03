@@ -1,10 +1,12 @@
 //! Non-streaming Converse completion with retry handling.
 
 use crate::provider::bedrock::response::parse_converse_response;
-use crate::provider::bedrock::{BedrockError, BedrockProvider, retry};
+use crate::provider::bedrock::{BedrockProvider, auth_recover, retry};
 use crate::provider::{CompletionRequest, CompletionResponse};
-use crate::util;
 use anyhow::{Context, Result};
+
+#[path = "converse_error.rs"]
+mod converse_error;
 
 impl BedrockProvider {
     /// Send a Converse request, retrying transient failures per policy.
@@ -19,12 +21,21 @@ impl BedrockProvider {
         let url = self.runtime_model_url(model_id, "converse");
         let body_bytes = serde_json::to_vec(&body)?;
         let policy = retry::RetryPolicy::default();
+        let mut auth_recovered = false;
 
         for attempt in 1..=policy.max_attempts {
             let response = self
                 .send_request("POST", &url, Some(&body_bytes), "bedrock")
                 .await?;
             let status = response.status();
+            // Expired bearer key: swap in a fresh one and retry exactly once.
+            if auth_recover::is_auth_failure(status)
+                && !auth_recovered
+                && auth_recover::recover(self).await
+            {
+                auth_recovered = true;
+                continue;
+            }
             let text = response
                 .text()
                 .await
@@ -37,18 +48,8 @@ impl BedrockProvider {
                 tokio::time::sleep(policy.delay_for(attempt)).await;
                 continue;
             }
-            if let Ok(err) = serde_json::from_str::<BedrockError>(&text) {
-                let base = format!("Bedrock API error ({}): {}", status, err.message);
-                anyhow::bail!(
-                    crate::provider::bedrock::body::audit::pairing_error::annotate(&base, &text)
-                );
-            }
-            anyhow::bail!(
-                "Bedrock API error: {} {}",
-                status,
-                util::truncate_bytes_safe(&text, 500)
-            );
+            return Err(converse_error::map(status, &text));
         }
-        unreachable!("retry loop exits via return or bail!");
+        unreachable!("retry loop exits via return");
     }
 }
