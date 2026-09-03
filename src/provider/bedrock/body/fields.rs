@@ -20,7 +20,7 @@ pub(in crate::provider::bedrock) fn additional_model_request_fields(
         );
     }
     if is_bedrock_openai_gpt(model_id) {
-        // GPT-5.6 Sol/Terra/Luna (Codex rust-v0.143.0) support `max` effort.
+        // Bedrock-hosted OpenAI GPT families use the native reasoning field.
         fields.insert("reasoning_effort".into(), json!(configured_effort()));
     }
     (!fields.is_empty()).then(|| Value::Object(fields))
@@ -46,9 +46,9 @@ pub(super) fn uses_adaptive_thinking(model_id: &str) -> bool {
         || model_id.to_ascii_lowercase().contains("claude-mythos-5")
 }
 
-/// Bedrock-hosted OpenAI GPT models (`openai.gpt-5.4/5.5/5.6-sol/terra/luna`).
+/// Bedrock-hosted OpenAI GPT models (`openai.gpt-*`).
 pub(super) fn is_bedrock_openai_gpt(model_id: &str) -> bool {
-    model_id.to_ascii_lowercase().contains("openai.gpt-5")
+    model_id.to_ascii_lowercase().contains("openai.gpt-")
 }
 
 #[cfg(test)]

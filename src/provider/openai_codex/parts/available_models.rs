@@ -1,6 +1,8 @@
 impl OpenAiCodexProvider {
     fn available_models(&self) -> Vec<ModelInfo> {
         let mut models = vec![
+            astra_model::info("gpt-6-astra", "GPT-6 Astra"),
+            astra_model::info("gpt-6-astra-fast", "GPT-6 Astra Fast"),
             Self::model_info("gpt-5.5", "GPT-5.5", 272_000, 128_000, false),
             Self::model_info("gpt-5.5-fast", "GPT-5.5 Fast", 272_000, 128_000, false),
             Self::model_info("gpt-5.6-sol", "GPT-5.6 Sol", 272_000, 128_000, false),

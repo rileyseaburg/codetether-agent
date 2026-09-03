@@ -1,6 +1,10 @@
-//! Models supported by the ChatGPT-backed Codex provider.
+//! Models supported by or announced for the ChatGPT-backed Codex provider.
+//!
+//! Rollout-gated entries can be selected before an account receives access.
 
 const CHATGPT_MODELS: &[&str] = &[
+    "gpt-6-astra",
+    "gpt-6-astra-fast",
     "gpt-5.5",
     "gpt-5.5-fast",
     "gpt-5.6-sol",
@@ -12,7 +16,8 @@ const CHATGPT_MODELS: &[&str] = &[
     "codex-auto-review",
 ];
 
-/// Models accepted by the ChatGPT Codex backend, in fallback order.
+/// Models understood by CodeTether's ChatGPT Codex backend, in selector order.
+/// The upstream service remains authoritative for rollout-gated availability.
 ///
 /// # Returns
 ///

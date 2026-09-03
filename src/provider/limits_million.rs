@@ -21,10 +21,11 @@
 ///
 /// # Returns
 ///
-/// `true` for Claude Opus 5, Opus 4.7, and GLM 5.2 family IDs.
+/// `true` for GPT-6 Astra, Claude Opus 5/4.7, and GLM 5.2 family IDs.
 pub fn has_million_token_context(m: &str) -> bool {
     let m = m.to_ascii_lowercase();
-    m.contains("claude-opus-5")
+    m.contains("gpt-6-astra")
+        || m.contains("claude-opus-5")
         || m.contains("claude-opus-4-7")
         || m.contains("claude-opus-4.7")
         || m.contains("4.7-opus")

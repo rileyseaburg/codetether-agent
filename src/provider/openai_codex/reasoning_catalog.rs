@@ -19,7 +19,10 @@
 pub fn supported_levels(model: &str) -> &'static [&'static str] {
     let model = base_model(model);
     match model {
-        "gpt-5.6-sol" | "gpt-5.6-terra" => &["low", "medium", "high", "xhigh", "max", "ultra"],
+        "gpt-6-astra" => &["low", "medium", "high"],
+        "gpt-5.6-sol" | "gpt-5.6-terra" => {
+            &["low", "medium", "high", "xhigh", "max", "ultra"]
+        }
         "gpt-reserve" | "gpt-5.6-luna" | "codex-auto-review" => {
             &["low", "medium", "high", "xhigh", "max"]
         }
@@ -70,22 +73,5 @@ fn base_model(model: &str) -> &str {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{is_gpt_56, supported_levels};
-
-    #[test]
-    fn catalog_distinguishes_ultra_and_max_models() {
-        assert!(supported_levels("openai-codex/gpt-5.6-sol").contains(&"ultra"));
-        assert_eq!(supported_levels("gpt-reserve").last(), Some(&"max"));
-        assert_eq!(supported_levels("codex-auto-review").last(), Some(&"max"));
-        assert!(!supported_levels("gpt-5.6-luna").contains(&"ultra"));
-        assert_eq!(supported_levels("gpt-5.5").last(), Some(&"xhigh"));
-    }
-
-    #[test]
-    fn recognizes_codex_and_bedrock_gpt_56_names() {
-        assert!(is_gpt_56("openai-codex/gpt-5.6-sol-fast:max"));
-        assert!(is_gpt_56("bedrock/openai.gpt-5.6-terra"));
-        assert!(!is_gpt_56("openai-codex/gpt-5.5"));
-    }
-}
+#[path = "reasoning_catalog_tests.rs"]
+mod tests;

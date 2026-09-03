@@ -12,6 +12,7 @@ fn fable_fields_include_adaptive_thinking() {
 #[test]
 fn bedrock_openai_gpt_fields_include_reasoning_effort() {
     for id in [
+        "openai.gpt-6-astra",
         "openai.gpt-5.6-sol",
         "openai.gpt-5.6-terra",
         "openai.gpt-5.6-luna",

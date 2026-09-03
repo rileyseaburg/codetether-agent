@@ -2,7 +2,10 @@
 
 /// Models that always require HTTP Responses streaming.
 pub(super) fn requires_http(model: &str) -> bool {
-    matches!(model, "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna")
+    matches!(
+        model,
+        "gpt-6-astra" | "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna"
+    )
 }
 
 #[cfg(test)]
@@ -12,6 +15,7 @@ mod tests {
     #[test]
     fn classifies_chatgpt_transports() {
         assert!(!requires_http("gpt-5.5"));
+        assert!(requires_http("gpt-6-astra"));
         assert!(!requires_http("gpt-reserve"));
         assert!(!requires_http("codex-auto-review"));
         assert!(requires_http("gpt-5.6-sol"));

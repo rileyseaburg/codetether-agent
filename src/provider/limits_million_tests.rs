@@ -4,6 +4,17 @@ use super::super::context_window_for_model;
 use super::has_million_token_context;
 
 #[test]
+fn astra_has_million_token_context() {
+    assert!(has_million_token_context("gpt-6-astra"));
+    assert!(has_million_token_context("openai.gpt-6-astra"));
+    assert_eq!(context_window_for_model("gpt-6-astra"), 1_000_000);
+    assert_eq!(
+        context_window_for_model("bedrock/openai.gpt-6-astra"),
+        1_000_000
+    );
+}
+
+#[test]
 fn opus_5_has_million_token_context() {
     assert!(has_million_token_context("claude-opus-5"));
     assert!(has_million_token_context("global.anthropic.claude-opus-5"));

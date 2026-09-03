@@ -1,3 +1,5 @@
+#[path = "astra_model.rs"]
+mod astra_model;
 #[path = "event_error.rs"]
 mod event_error;
 #[path = "model_catalog.rs"]

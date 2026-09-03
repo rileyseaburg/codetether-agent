@@ -1,6 +1,7 @@
 //! OpenAI Codex models that expose the Fast service tier.
 
 const FAST_MODELS: &[&str] = &[
+    "gpt-6-astra",
     "gpt-reserve",
     "gpt-5.4",
     "gpt-5.5",
@@ -33,6 +34,7 @@ mod tests {
     #[test]
     fn recognizes_new_codex_fast_models() {
         assert_eq!(parse_fast_alias("gpt-5.6-sol-fast"), Some("gpt-5.6-sol"));
+        assert_eq!(parse_fast_alias("gpt-6-astra-fast"), Some("gpt-6-astra"));
         assert_eq!(parse_fast_alias("gpt-reserve-fast"), Some("gpt-reserve"));
         assert!(supports_fast("openai-codex/gpt-5.6-terra"));
         assert!(supports_fast("openai-codex/codex-auto-review"));
