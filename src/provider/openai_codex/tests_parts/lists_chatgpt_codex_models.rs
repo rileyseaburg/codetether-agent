@@ -11,4 +11,8 @@ async fn lists_chatgpt_codex_models() {
         .map(|model| model.id.as_str())
         .collect::<Vec<_>>();
     assert_eq!(ids, OpenAiCodexProvider::chatgpt_supported_models());
+    assert!(ids.contains(&"gpt-reserve"));
+    assert!(ids.contains(&"gpt-5.4"));
+    assert!(ids.contains(&"gpt-5.4-mini"));
+    assert!(ids.contains(&"codex-auto-review"));
 }

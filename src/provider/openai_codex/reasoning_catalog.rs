@@ -20,13 +20,14 @@ pub fn supported_levels(model: &str) -> &'static [&'static str] {
     let model = base_model(model);
     match model {
         "gpt-5.6-sol" | "gpt-5.6-terra" => &["low", "medium", "high", "xhigh", "max", "ultra"],
-        "gpt-5.6-luna" => &["low", "medium", "high", "xhigh", "max"],
+        "gpt-reserve" | "gpt-5.6-luna" | "codex-auto-review" => {
+            &["low", "medium", "high", "xhigh", "max"]
+        }
         "gpt-5.5"
         | "gpt-5.5-fast"
         | "gpt-5.4"
         | "gpt-5.4-mini"
-        | "gpt-5.3-codex-spark"
-        | "codex-auto-review" => &["low", "medium", "high", "xhigh"],
+        | "gpt-5.3-codex-spark" => &["low", "medium", "high", "xhigh"],
         _ => &[],
     }
 }
@@ -75,6 +76,8 @@ mod tests {
     #[test]
     fn catalog_distinguishes_ultra_and_max_models() {
         assert!(supported_levels("openai-codex/gpt-5.6-sol").contains(&"ultra"));
+        assert_eq!(supported_levels("gpt-reserve").last(), Some(&"max"));
+        assert_eq!(supported_levels("codex-auto-review").last(), Some(&"max"));
         assert!(!supported_levels("gpt-5.6-luna").contains(&"ultra"));
         assert_eq!(supported_levels("gpt-5.5").last(), Some(&"xhigh"));
     }

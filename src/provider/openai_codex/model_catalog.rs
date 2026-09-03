@@ -6,6 +6,10 @@ const CHATGPT_MODELS: &[&str] = &[
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
+    "gpt-reserve",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "codex-auto-review",
 ];
 
 /// Models accepted by the ChatGPT Codex backend, in fallback order.

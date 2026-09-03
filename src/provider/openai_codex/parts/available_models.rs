@@ -6,6 +6,16 @@ impl OpenAiCodexProvider {
             Self::model_info("gpt-5.6-sol", "GPT-5.6 Sol", 272_000, 128_000, false),
             Self::model_info("gpt-5.6-terra", "GPT-5.6 Terra", 272_000, 128_000, false),
             Self::model_info("gpt-5.6-luna", "GPT-5.6 Luna", 272_000, 128_000, false),
+            Self::model_info("gpt-reserve", "GPT-Reserve", 272_000, 128_000, false),
+            Self::model_info("gpt-5.4", "GPT-5.4", 272_000, 128_000, false),
+            Self::model_info("gpt-5.4-mini", "GPT-5.4 Mini", 272_000, 128_000, false),
+            Self::model_info(
+                "codex-auto-review",
+                "Codex Auto Review",
+                272_000,
+                128_000,
+                false,
+            ),
         ];
         if self.using_chatgpt_backend() {
             models.retain(|model| Self::chatgpt_supported_models().contains(&model.id.as_str()));

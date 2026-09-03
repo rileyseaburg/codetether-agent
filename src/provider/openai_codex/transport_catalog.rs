@@ -12,6 +12,8 @@ mod tests {
     #[test]
     fn classifies_chatgpt_transports() {
         assert!(!requires_http("gpt-5.5"));
+        assert!(!requires_http("gpt-reserve"));
+        assert!(!requires_http("codex-auto-review"));
         assert!(requires_http("gpt-5.6-sol"));
     }
 }
