@@ -3,6 +3,9 @@ use anyhow::Result;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
 
+#[path = "store_events_line.rs"]
+mod line;
+
 impl ApprovalStore {
     /// Append one event as a single line.
     ///
@@ -32,8 +35,8 @@ impl ApprovalStore {
     /// A single corrupt line must not make the whole store unreadable. Logs
     /// predating the atomic-append fix contain interleaved records, and failing
     /// the entire read leaves an operator with no way to see or decide any
-    /// pending request. Unparseable lines are reported on stderr and skipped, so
-    /// the damage is visible without being fatal.
+    /// pending request. Unparseable lines are reported through tracing and
+    /// skipped, so the damage is visible without corrupting interactive UIs.
     ///
     /// # Errors
     ///
@@ -43,28 +46,22 @@ impl ApprovalStore {
         if !path.exists() {
             return Ok(Vec::new());
         }
-        let file = std::fs::File::open(path)?;
+        let file = std::fs::File::open(&path)?;
         let mut events = Vec::new();
         let mut skipped = 0usize;
-        for line in BufReader::new(file).lines().filter_map(non_empty_line) {
+        for line in BufReader::new(file).lines().filter_map(line::non_empty) {
             match serde_json::from_str(&line?) {
                 Ok(event) => events.push(event),
                 Err(_) => skipped += 1,
             }
         }
         if skipped > 0 {
-            eprintln!(
-                "warning: skipped {skipped} unreadable approval log line(s) in {}",
-                self.log_path().display()
+            tracing::warn!(
+                skipped,
+                path = %path.display(),
+                "skipped unreadable approval log lines"
             );
         }
         Ok(events)
-    }
-}
-
-fn non_empty_line(line: std::io::Result<String>) -> Option<std::io::Result<String>> {
-    match line {
-        Ok(value) if value.trim().is_empty() => None,
-        other => Some(other),
     }
 }

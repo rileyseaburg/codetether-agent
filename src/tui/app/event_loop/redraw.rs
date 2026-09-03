@@ -20,10 +20,16 @@ pub(super) fn draw_if_ready(
     if !app.state.needs_redraw || !ready(app, *last_draw) {
         return Ok(());
     }
-    crate::tui::app::safe_draw::draw_ui(terminal, app, session)?;
-    app.state.needs_redraw = false;
-    *last_draw = Some(Instant::now());
+    let rendered = crate::tui::app::safe_draw::draw_ui(terminal, app, session)?;
+    finish(app, last_draw, rendered);
     Ok(())
+}
+
+fn finish(app: &mut App, last_draw: &mut Option<Instant>, rendered: bool) {
+    if rendered {
+        app.state.needs_redraw = false;
+        *last_draw = Some(Instant::now());
+    }
 }
 
 pub(super) fn ready(app: &App, last_draw: Option<Instant>) -> bool {

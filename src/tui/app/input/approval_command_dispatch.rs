@@ -26,7 +26,7 @@ fn run_with_store(app: &mut App, store: &ApprovalStore, action: super::parse::Ac
             &stored.id,
             action.intent,
             &action.reason,
-            message(&action, &stored),
+            super::message::text(&action, &stored),
         ),
         Err(error) => app.state.status = format!("Approval decision failed: {error}"),
     }
@@ -35,17 +35,6 @@ fn run_with_store(app: &mut App, store: &ApprovalStore, action: super::parse::Ac
 
 fn target_id(id: Option<&str>) -> Option<String> {
     id.map(str::to_string)
-        .or_else(crate::approval::live::latest_id)
         .or_else(approval_queue::active_id)
-}
-
-fn message(action: &super::parse::Action<'_>, stored: &super::store::StoredDecision) -> String {
-    match &stored.tool {
-        Some(tool) => format!("{} `{}` for `{tool}`.", action.intent.label(), stored.id),
-        None => format!(
-            "{} approval request `{}`.",
-            action.intent.label(),
-            stored.id
-        ),
-    }
+        .or_else(crate::approval::live::latest_id)
 }

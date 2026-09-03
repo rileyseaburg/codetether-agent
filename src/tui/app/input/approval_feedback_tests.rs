@@ -3,7 +3,10 @@ use crate::tui::app::state::{App, approval_queue};
 
 struct EnvGuard;
 impl Drop for EnvGuard {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+        approval_queue::reset();
+        unsafe { std::env::remove_var("CODETETHER_DATA_DIR") };
+    }
 }
 
 #[test]
@@ -28,11 +31,15 @@ fn direct_text_denies_with_revision_reason() {
     let mut app = App::default();
 
     app.state.input = "rename this before applying".into();
+    app.state.approval_waiting = true;
+    app.state.approval_preview_scroll = 8;
     assert!(super::submit(&mut app));
 
     let decision = store.decision(&request.id).unwrap().unwrap();
     assert_eq!(decision.status, ApprovalStatus::Denied);
     assert_eq!(decision.reason, "rename this before applying");
-    approval_queue::reset();
-    unsafe { std::env::remove_var("CODETETHER_DATA_DIR") };
+    assert!(approval_queue::active().is_none());
+    assert!(!app.state.approval_waiting);
+    assert_eq!(app.state.approval_preview_scroll, 0);
+    assert!(app.state.status.starts_with("Denied"));
 }

@@ -5,7 +5,8 @@ use crate::tui::chat::message::{ChatMessage, MessageType};
 use super::{parse, policy};
 
 pub(super) async fn push(app: &mut App, cwd: &std::path::Path, mode: AccessMode) {
-    let released = mode == AccessMode::Full && policy::release_active(app);
+    let released = (mode == AccessMode::Full)
+        .then(|| crate::tui::app::input::approval_command::release_all(app));
     let text = format!(
         "Access mode set to `{}`.\n{}",
         parse::label(mode),
@@ -20,10 +21,12 @@ pub(super) async fn push(app: &mut App, cwd: &std::path::Path, mode: AccessMode)
     app.state.clear_input();
 }
 
-fn with_release_note(text: String, released: bool) -> String {
-    if released {
-        format!("{text}\nApproved the active paused tool request.")
-    } else {
-        text
+fn with_release_note(text: String, released: Option<Result<usize, String>>) -> String {
+    match released {
+        Some(Ok(count)) if count > 0 => {
+            format!("{text}\nApproved {count} paused tool request(s).")
+        }
+        Some(Err(error)) => format!("{text}\nCould not release paused requests: {error}"),
+        Some(Ok(_)) | None => text,
     }
 }

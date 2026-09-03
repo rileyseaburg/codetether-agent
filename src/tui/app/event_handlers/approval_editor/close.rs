@@ -9,6 +9,7 @@ pub(super) fn close(app: &mut App, status: String) {
     app.state.editor_scroll = 0;
     app.state.editor_hscroll = 0;
     app.state.set_view_mode(ViewMode::Chat);
+    app.state.approval_preview_scroll = 0;
     app.state.approval_waiting = approval_queue::active().is_some();
     app.state.status = status;
 }

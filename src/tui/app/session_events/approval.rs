@@ -5,7 +5,6 @@ mod analysis;
 
 use crate::approval::LiveApprovalRequest;
 use crate::tui::app::state::{App, approval_queue};
-use crate::tui::chat::message::{ChatMessage, MessageType};
 
 pub(super) fn request(app: &mut App, request: LiveApprovalRequest) {
     app.state.approval_preview_scroll = 0;
@@ -18,9 +17,9 @@ pub(super) fn request(app: &mut App, request: LiveApprovalRequest) {
         "Approval pending ({count}): `{}` wants to {} — {}. (key `{}`) Ctrl+A approves, Ctrl+D denies. Slash: `/approve {}` or `/deny {}`. {guidance}",
         pending.tool, pending.action, pending.reason, pending.resource, pending.id, pending.id
     );
-    app.state.status = text.clone();
-    app.state
-        .messages
-        .push(ChatMessage::new(MessageType::System, text));
-    app.state.scroll_to_bottom();
+    app.state.status = text;
 }
+
+#[cfg(test)]
+#[path = "approval_tests.rs"]
+mod tests;

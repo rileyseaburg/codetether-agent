@@ -5,6 +5,7 @@ use crate::session::SessionEvent;
 
 #[tokio::test]
 async fn request_event_resumes_when_decided() {
+    let _lock = crate::approval::test_env::lock_env();
     let (tx, mut rx) = mpsc::channel(1);
     let id = uuid::Uuid::new_v4().to_string();
     let req = LiveApprovalRequest::new(

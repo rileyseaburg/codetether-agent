@@ -1,13 +1,19 @@
 use crate::tui::app::state::App;
-use crate::tui::worker_bridge::TuiWorkerBridge;
 
+#[path = "tick/approval.rs"]
+mod approval;
 #[path = "dirty.rs"]
 mod dirty;
 #[path = "tick/retry.rs"]
 mod retry;
 #[path = "tick_watchdog.rs"]
 mod tick_watchdog;
+#[path = "tick/worker_sync.rs"]
+mod worker_sync;
 
+pub(super) use worker_sync::before_draw;
+#[cfg(test)]
+use worker_sync::should_sync;
 pub(super) use {retry::check_and_retry, tick_watchdog::check};
 
 pub async fn refresh_audit(app: &mut App) {
@@ -26,29 +32,15 @@ pub async fn run(app: &mut App) {
     let shell_changed = crate::tui::app::input::shell_bg::drain_shell_events(app);
     let history_changed = crate::tui::app::state::history_page::drain(app);
     let symbols_changed = crate::tui::app::symbols::drain_refresh(app);
+    let approval_changed = approval::reconcile(app);
     app.state.needs_redraw |= ralph_changed
         || swarm_changed
         || forage_changed
         || shell_changed
         || history_changed
         || symbols_changed
+        || approval_changed
         || before.changed_since(app);
-}
-
-pub fn before_draw(
-    app: &mut App,
-    worker_bridge: &Option<TuiWorkerBridge>,
-    synced_cursor: &mut Option<u64>,
-) {
-    if !should_sync(*synced_cursor, app.state.bus_cursor) {
-        return;
-    }
-    *synced_cursor = Some(app.state.bus_cursor);
-    crate::tui::app::worker_bridge::sync_worker_bridge_agents(app, worker_bridge);
-}
-
-fn should_sync(synced: Option<u64>, current: u64) -> bool {
-    synced != Some(current)
 }
 
 #[cfg(test)]

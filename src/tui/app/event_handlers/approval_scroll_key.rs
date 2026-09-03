@@ -5,6 +5,12 @@ use crossterm::event::{KeyCode, KeyEvent};
 use crate::tui::app::state::{App, approval_queue};
 
 pub(in crate::tui::app::event_handlers) fn handle(app: &mut App, key: KeyEvent) -> bool {
+    if app.state.view_mode != crate::tui::models::ViewMode::Chat
+        || app.state.approval_edit.is_some()
+        || approval_queue::feedback_input(&app.state.input)
+    {
+        return false;
+    }
     let Some(item) = approval_queue::active() else {
         return false;
     };

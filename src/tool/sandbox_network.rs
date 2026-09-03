@@ -12,7 +12,7 @@ pub fn validate(policy: &SandboxPolicy, command: &str, args: &[String]) -> Resul
     }
     if mentions_network_tool(command, args) {
         return Err(anyhow!(
-            "Sandbox policy denies network access for this command"
+            "Sandbox denies network access; enable Network access in Settings, then retry"
         ));
     }
     Ok(vec!["network_marker_only".to_string()])

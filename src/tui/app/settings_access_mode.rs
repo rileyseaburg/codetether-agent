@@ -40,5 +40,12 @@ pub async fn cycle_access_mode(app: &mut App, session: &mut Session) {
         crate::tui::ui::trust_status::set_from_config(&cfg);
         session.apply_config(&cfg, None);
     }
-    app.state.status = format!("Access mode: {}", label(next));
+    app.state.status = if next == AccessMode::Full {
+        match crate::tui::app::input::approval_command::release_all(app) {
+            Ok(count) => format!("Access mode: full ({count} paused request(s) released)"),
+            Err(error) => format!("Access mode: full; paused request release failed: {error}"),
+        }
+    } else {
+        format!("Access mode: {}", label(next))
+    };
 }

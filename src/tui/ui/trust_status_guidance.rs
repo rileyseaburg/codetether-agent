@@ -1,6 +1,8 @@
 use super::labels;
 use crate::config::{ApprovalPolicy, TrustPolicyStatus};
 
+const CHANGE_HINT: &str = "Settings controls Access mode and Network access separately; approval does not override sandbox limits";
+
 pub(super) fn summary(status: &TrustPolicyStatus) -> String {
     format!(
         "Access: {} | Trust: {} | Approval: {} | Sandbox: {} | Profile: {}",
@@ -24,13 +26,13 @@ pub(super) fn badge(status: &TrustPolicyStatus) -> String {
 
 pub(super) fn approval(status: Option<TrustPolicyStatus>) -> String {
     let Some(status) = status else {
-        return format!("Policy status unavailable. {}", change_hint());
+        return format!("Policy status unavailable. {CHANGE_HINT}");
     };
     format!(
         "Policy: {}; {}. {}",
         summary(&status),
         behavior(status.approval_policy),
-        change_hint()
+        CHANGE_HINT
     )
 }
 
@@ -44,8 +46,4 @@ fn behavior(policy: ApprovalPolicy) -> &'static str {
         ApprovalPolicy::OnFailure => "tools run unless escalation is needed",
         ApprovalPolicy::Never => "approval prompts are disabled",
     }
-}
-
-fn change_hint() -> &'static str {
-    "Open the Settings panel and use ↑↓ + Enter on the Access mode row (approve = fewer prompts, full = none); Network access has its own row"
 }

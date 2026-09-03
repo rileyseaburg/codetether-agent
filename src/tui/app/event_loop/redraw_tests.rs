@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use super::ready;
+use super::{finish, ready};
 use crate::tui::app::state::App;
 
 #[test]
@@ -27,4 +27,17 @@ fn keyboard_input_bypasses_streaming_limit() {
     let prior = Instant::now();
     app.state.last_key_at = Some(prior + Duration::from_millis(1));
     assert!(ready(&app, Some(prior)));
+}
+
+#[test]
+fn skipped_frame_remains_dirty_for_retry() {
+    let mut app = App::default();
+    app.state.needs_redraw = true;
+    let prior = Instant::now();
+    let mut last_draw = Some(prior);
+
+    finish(&mut app, &mut last_draw, false);
+
+    assert!(app.state.needs_redraw);
+    assert_eq!(last_draw, Some(prior));
 }
