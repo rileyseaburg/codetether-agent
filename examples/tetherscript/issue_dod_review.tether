@@ -1,0 +1,54 @@
+// Reviewer guard for GitHub issue Definition-of-Done (DoD) checks.
+
+fn is_dod_line(line) {
+    let trimmed = line.trim()
+    return trimmed.starts_with("- [ ]") || trimmed.starts_with("- [x]") || trimmed.starts_with("-")
+}
+
+fn dod_item_text(line) {
+    let text = line.trim().lower()
+    let mut item = text
+    if text.starts_with("- [x]") || text.starts_with("- [ ]") {
+        item = text.replace("- [x]", "").replace("- [ ]", "")
+    } else if text.starts_with("-") {
+        item = text.replace("-", "")
+    }
+    return item.replace(".", "").trim()
+}
+
+fn all_dod_items_preserved(issue_body, review_output) {
+    let normalized = review_output.lower().replace(".", "")
+    let mut expected = 0
+    let mut preserved = 0
+    for line in issue_body.lines() {
+        if is_dod_line(line) {
+            expected = expected + 1
+            if normalized.contains(dod_item_text(line)) { preserved = preserved + 1 }
+        }
+    }
+    return expected > 0 && preserved == expected
+}
+
+fn validate(issue_body, review_output) {
+    let lower = review_output.lower()
+    let has_checklist = lower.contains("issue dod checklist") || lower.contains("issue definition of done")
+    let has_unproven = lower.contains("- [ ]") || lower.contains("missing") || lower.contains("unproven") || lower.contains("not proven") || lower.contains("not-run")
+    let approves = lower.contains("approved") || lower.contains("lgtm") || lower.contains("merge-ready")
+    let items_complete = all_dod_items_preserved(issue_body, review_output)
+    let result = map()
+    result["expected_dod_items"] = issue_body.lines().filter(is_dod_line).count()
+    result["actual_dod_items"] = review_output.lines().filter(is_dod_line).count()
+    result["has_issue_dod_checklist"] = has_checklist; result["has_missing_or_unproven_item"] = has_unproven
+    result["all_dod_items_present"] = items_complete; result["approved"] = approves
+    result["valid"] = has_checklist && items_complete && !(approves && has_unproven)
+    if !has_checklist { return reject(result, "review output must include an Issue DoD checklist") }
+    if !items_complete { return reject(result, "review output must preserve each source issue DoD item") }
+    if approves && has_unproven { return reject(result, "review must not approve when any Issue DoD item is missing or unproven") }
+    result["decision"] = "accept"; result["reason"] = "review output preserves the Issue DoD gate"
+    return Ok(result)
+}
+
+fn reject(result, reason) {
+    result["decision"] = "reject"; result["reason"] = reason
+    return Ok(result)
+}
