@@ -62,6 +62,7 @@ mod session_event;
 mod session_event_sink;
 mod session_policy;
 mod session_registry;
+mod session_step_budget;
 mod session_steps;
 mod swarm_event_output;
 mod swarm_model;

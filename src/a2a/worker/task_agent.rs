@@ -8,7 +8,7 @@ use crate::session::Session;
 
 use super::{
     TaskContext, WorkerTaskRuntime, execute_session_with_policy, execute_swarm_with_policy,
-    task_agent_swarm_result::map_swarm_result,
+    task_agent_swarm_result::{map_session_result, map_swarm_result},
 };
 
 pub(super) async fn execute_task_agent(
@@ -39,15 +39,16 @@ pub(super) async fn execute_task_agent(
         &context.prompt,
         runtime.auto_approve,
         context.model_tier.as_deref(),
+        &context.metadata,
         Some(output_callback),
     )
     .await
-    .map(|result| {
-        (
-            "completed",
-            Some(result.text),
-            None,
-            Some(result.session_id),
+    .map(|outcome| {
+        map_session_result(
+            outcome.result.text,
+            outcome.result.session_id,
+            outcome.budget_exhausted,
+            outcome.max_steps,
         )
     })
 }
