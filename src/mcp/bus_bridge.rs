@@ -44,6 +44,7 @@ pub struct BusBridge {
     auth_token: Option<String>,
     /// Max buffer capacity.
     capacity: usize,
+    client: reqwest::Client,
 }
 
 impl BusBridge {
@@ -61,6 +62,7 @@ impl BusBridge {
             bus_url,
             auth_token,
             capacity: DEFAULT_BUFFER_SIZE,
+            client: reqwest::Client::new(),
         }
     }
 
@@ -84,28 +86,16 @@ impl BusBridge {
         since: Option<DateTime<Utc>>,
     ) -> Vec<BusEnvelope> {
         let buf = self.buffer.read().await;
-        buf.iter()
+        let mut events = buf
+            .iter()
             .rev()
-            .filter(|env| {
-                if let Some(filter) = topic_filter {
-                    topic_matches(&env.topic, filter)
-                } else {
-                    true
-                }
-            })
-            .filter(|env| {
-                if let Some(ts) = since {
-                    env.timestamp >= ts
-                } else {
-                    true
-                }
-            })
+            .filter(|env| topic_filter.is_none_or(|filter| topic_matches(&env.topic, filter)))
+            .filter(|env| since.is_none_or(|ts| env.timestamp >= ts))
             .take(limit)
             .cloned()
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev() // restore chronological order
-            .collect()
+            .collect::<Vec<_>>();
+        events.reverse();
+        events
     }
 
     /// Current bridge status summary (JSON-friendly).
@@ -145,8 +135,8 @@ impl BusBridge {
 
     /// Single SSE connection attempt.  Reads until the stream closes or errors.
     async fn read_sse_stream(&self) -> anyhow::Result<()> {
-        let client = reqwest::Client::new();
-        let mut req = client
+        let mut req = self
+            .client
             .get(&self.bus_url)
             .header("Accept", "text/event-stream");
         if let Some(token) = self
