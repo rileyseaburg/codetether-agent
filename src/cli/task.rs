@@ -1,7 +1,6 @@
 use super::TaskArgs;
 use crate::cli::auth::load_saved_credentials;
 use anyhow::{Context, Result};
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -46,7 +45,7 @@ pub async fn execute(
     global_project: Option<PathBuf>,
 ) -> Result<()> {
     let (server, token) = resolve_server_and_token(default_server, default_token)?;
-    let client = Client::new();
+    let client = crate::provider::shared_http::shared_client().clone();
 
     let workspace_id = match args.workspace_id.clone() {
         Some(workspace_id) => workspace_id,
