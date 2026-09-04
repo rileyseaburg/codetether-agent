@@ -270,21 +270,5 @@ mod tests {
         assert_eq!(summary.loaded_providers, 1);
     }
 
-    #[tokio::test]
-    async fn refresh_includes_pre_5_6_codex_models() {
-        let mut registry = ProviderRegistry::new();
-        registry.register(Arc::new(StaticProvider {
-            name: "openai-codex",
-            models: vec![model("gpt-5.5", "openai-codex")],
-        }));
-        let registry = Arc::new(registry);
-        let mut state = super::super::AppState::default();
-
-        state
-            .refresh_available_models(Some(&registry))
-            .await
-            .expect("refresh should succeed");
-
-        assert_eq!(state.available_models, ["openai-codex/gpt-5.5"]);
-    }
+    include!("model_picker/codex_models_tests.rs");
 }

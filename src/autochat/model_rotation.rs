@@ -310,10 +310,7 @@ mod tests {
         assert_eq!(choose_copilot_model(&models).as_deref(), Some("gpt-5-mini"));
     }
 
-    #[test]
-    fn openai_codex_defaults_to_gpt_5_5() {
-        assert_eq!(default_model_for_provider("openai-codex"), Some("gpt-5.5"));
-    }
+    include!("model_rotation_defaults_tests.rs");
 
     fn model(id: &str) -> ModelInfo {
         ModelInfo {

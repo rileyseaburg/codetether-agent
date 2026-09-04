@@ -2,40 +2,10 @@
 
 use super::{BedrockProvider, CompletionRequest, parse_converse_response};
 
-#[test]
-fn resolve_speculative_claude_4_aliases_fall_back_to_stable_sonnet_4_profile() {
-    for alias in [
-        "claude-opus-4.7",
-        "claude-opus-4-7",
-        "claude-4.7-opus",
-        "us.anthropic.claude-opus-4-7",
-        "claude-opus-4.6",
-        "claude-opus-4-6",
-        "claude-4.6-opus",
-        "us.anthropic.claude-opus-4-6",
-        "us.anthropic.claude-opus-4-6-v1",
-        "us.anthropic.claude-opus-4-6-v1:0",
-        "claude-opus-4",
-        "claude-4-opus",
-        "us.anthropic.claude-opus-4",
-        "claude-sonnet-4.6",
-        "claude-sonnet-4-6",
-        "us.anthropic.claude-sonnet-4-6",
-        "us.anthropic.claude-sonnet-4-6-v1",
-        "us.anthropic.claude-sonnet-4-6-v1:0",
-        "claude-sonnet-4",
-        "claude-4-sonnet",
-        "us.anthropic.claude-sonnet-4",
-        "claude-haiku-4.5",
-        "us.anthropic.claude-haiku-4-5",
-    ] {
-        assert_eq!(
-            BedrockProvider::resolve_model_id(alias),
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "alias {alias} should not resolve to a speculative Bedrock model ID"
-        );
-    }
-}
+#[path = "opus_alias_resolution_tests.rs"]
+mod opus_alias_resolution;
+#[path = "sonnet_haiku_alias_resolution_tests.rs"]
+mod sonnet_haiku_alias_resolution;
 
 #[test]
 fn resolve_model_id_passes_through_full_id() {

@@ -14,19 +14,8 @@ mod session_response;
 mod session_step_tools;
 use session_failure::{record_loop_halt, step_or_record};
 use session_response::{ResponseContext, process_response};
-
-/// Outcome of a worker session's tool loop.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct SessionStepsOutcome {
-    /// Final assistant text (trimmed).
-    pub text: String,
-    /// `true` when the loop stopped because the step budget ran out before
-    /// the agent signalled completion. Callers must not report such a run as
-    /// completed work.
-    pub budget_exhausted: bool,
-    /// Step budget that applied to this run.
-    pub max_steps: usize,
-}
+mod session_outcome;
+pub(super) use session_outcome::SessionStepsOutcome;
 
 pub(super) async fn run_session_steps(
     provider: Arc<dyn Provider>,
@@ -74,7 +63,10 @@ pub(super) async fn run_session_steps(
         }
     }
     if !completed {
-        tracing::warn!(max_steps, "Worker session exhausted its step budget before completion");
+        tracing::warn!(
+            max_steps,
+            "Worker session exhausted its step budget before completion"
+        );
         record_loop_halt(
             session,
             &format!("step budget ({max_steps}) exhausted before completion"),

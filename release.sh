@@ -19,7 +19,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 CARGO_CMD="${CODETETHER_CARGO_CMD:-$SCRIPT_DIR/script/cargo-sccache.sh}"
-VERIFY_CMD="${CODETETHER_RELEASE_VERIFY_CMD:-$CARGO_CMD test --quiet --lib --tests}"
+# Tests share process-wide environment, approval stores, and session registries.
+# Keep every test in the release gate, but do not race those global resources.
+VERIFY_CMD="${CODETETHER_RELEASE_VERIFY_CMD:-$CARGO_CMD test --quiet --lib --tests -- --test-threads=1}"
 
 # Read current version from Cargo.toml
 CURRENT_VERSION="$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')"
@@ -231,20 +233,19 @@ publish_crate() {
         return 0
     fi
 
-    dry_run_output="$(mktemp)"
+    mkdir -p "$SCRIPT_DIR/artifacts/releases/v${new_version}"
+    dry_run_output="$SCRIPT_DIR/artifacts/releases/v${new_version}/${crate}-publish-dry-run-$(date +%s).log"
+    echo "==> Keeping publish verification output at $dry_run_output"
     if ! "$CARGO_CMD" publish --dry-run --no-verify -p "$crate" 2>&1 | tee "$dry_run_output"; then
         if grep -Eq "crate $crate@$version already exists" "$dry_run_output"; then
             echo "==> $crate v$version already exists on crates.io; skipping publish."
-            rm -f "$dry_run_output"
             return 0
         fi
 
-        rm -f "$dry_run_output"
         echo "Error: cargo publish --dry-run failed for $crate. Aborting publish."
         echo "Fix the errors above and re-run, or set CARGO_REGISTRY_TOKEN."
         return 1
     fi
-    rm -f "$dry_run_output"
 
     if ! "$CARGO_CMD" publish --no-verify -p "$crate" 2>&1; then
         if "$CARGO_CMD" search "$crate" --limit 1 | grep -q "^$crate ="; then

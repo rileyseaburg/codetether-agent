@@ -12,7 +12,9 @@ pub(super) fn write_commit(repo: &Path, content: &str, message: &str) {
 }
 
 pub(super) fn commit_all(repo: &Path, message: &str) {
-    run(repo, &["add", "--all"]);
+    // Only stage the fixture's payload. The main repository also contains the
+    // managed worktree directory, which `add --all` would record as a gitlink.
+    run(repo, &["add", "--", "file"]);
     run(repo, &["commit", "--no-gpg-sign", "-m", message]);
 }
 

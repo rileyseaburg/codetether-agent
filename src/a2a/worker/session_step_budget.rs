@@ -29,7 +29,10 @@ pub(super) const WORKER_MAX_STEPS_ENV: &str = "CODETETHER_WORKER_MAX_STEPS";
 /// assert!(budget >= 1);
 /// ```
 pub(super) fn resolve_step_budget(metadata: &serde_json::Map<String, serde_json::Value>) -> usize {
-    resolve_with_env(metadata, std::env::var(WORKER_MAX_STEPS_ENV).ok().as_deref())
+    resolve_with_env(
+        metadata,
+        std::env::var(WORKER_MAX_STEPS_ENV).ok().as_deref(),
+    )
 }
 
 fn resolve_with_env(
