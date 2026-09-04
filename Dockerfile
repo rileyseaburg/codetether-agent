@@ -4,7 +4,7 @@
 # - A2A protocol server
 # - Cognition engine
 
-FROM rust:1.89-slim AS builder
+FROM rust:1.95-slim-bookworm AS builder
 
 WORKDIR /build
 

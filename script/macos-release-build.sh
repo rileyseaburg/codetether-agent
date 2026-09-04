@@ -38,6 +38,9 @@ if [ "${MAC_RELEASE_PREFLIGHT_ONLY:-0}" = "1" ]; then
   exit 0
 fi
 
+# Keep native builds compatible with the lockfile (sysinfo requires Rust 1.95).
+rustup toolchain install 1.95.0 --profile minimal
+export RUSTUP_TOOLCHAIN=1.95.0
 rustup target add aarch64-apple-darwin x86_64-apple-darwin
 ./script/cargo-sccache.sh build --release --target aarch64-apple-darwin
 ./script/cargo-sccache.sh build --release --target x86_64-apple-darwin

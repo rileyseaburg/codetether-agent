@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM rust:1.89-slim AS builder
+FROM rust:1.95-slim-bookworm AS builder
 
 WORKDIR /build
 
