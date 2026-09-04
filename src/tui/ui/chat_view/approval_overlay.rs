@@ -20,7 +20,7 @@ pub(crate) fn render(f: &mut Frame, app: &App, area: Rect) {
     let inner = block.inner(popup);
     let lsp_height = super::approval_overlay_lsp::height(&item.report);
     let [header, preview, lsp, footer] = Layout::vertical([
-        Constraint::Length(2),
+        Constraint::Length(super::approval_overlay_text::header_height(&item)),
         Constraint::Min(1),
         Constraint::Length(lsp_height),
         Constraint::Length(2),

@@ -30,6 +30,7 @@ fn invocation_resource(tool_name: &str, args: &Value) -> String {
     let mut scoped_args = args.clone();
     if let Some(map) = scoped_args.as_object_mut() {
         map.remove("approval_id");
+        map.remove(super::justification::FIELD);
     }
     let encoded = serde_json::to_vec(&scoped_args).unwrap_or_default();
     let digest = Sha256::digest(&encoded);

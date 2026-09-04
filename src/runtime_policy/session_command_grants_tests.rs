@@ -27,7 +27,7 @@ fn proposed_prefix_session_approval_allows_future_matching_command() {
     let args = json!({
         "command": "cargo test --lib first",
         "prefix_rule": ["cargo", "test"],
-        "cwd": data.path().display().to_string()
+        "cwd": data.path(), "justification": "run"
     });
     let blocked = evaluate_tool_invocation_with_config(&Config::default(), "bash", &args)
         .expect("approval required");

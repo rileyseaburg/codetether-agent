@@ -18,6 +18,10 @@ pub(super) fn from_result(
         text(&result.metadata, "approval_resource").unwrap_or_else(|| tool.into()),
         text(&result.metadata, "policy_reason").unwrap_or_else(|| "runtime policy".into()),
     );
+    let request = match text(&result.metadata, "approval_justification") {
+        Some(justification) => request.with_justification(justification),
+        None => request,
+    };
     let request = match text(&result.metadata, "approval_preview") {
         Some(preview) => request.with_preview(preview),
         None => request,

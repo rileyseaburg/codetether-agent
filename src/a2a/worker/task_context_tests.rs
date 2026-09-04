@@ -5,6 +5,8 @@ use serde_json::json;
 fn reads_reusable_a2a_context_from_task_metadata() {
     let task = json!({
         "metadata": {
+            "protocol": "codetether.forgejo-author.v1",
+            "server_author_binding_verified": true,
             "context_id": "forgejo_pr_42_context",
             "resume_session_id": "author-session",
             "provenance_verified": true,

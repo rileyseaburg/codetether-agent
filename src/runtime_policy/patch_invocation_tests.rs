@@ -36,7 +36,7 @@ fn patch_write_receipt_satisfies_runtime_gate() {
 
 #[test]
 fn patch_approval_carries_full_diff_preview() {
-    let args = json!({"patch": sample_patch()});
+    let args = json!({"patch": sample_patch(), "justification": "fix lib"});
     let result = evaluate_tool_invocation_with_config(&Config::default(), "apply_patch", &args)
         .expect("approval required");
     assert_eq!(result.metadata["approval_preview"], sample_patch());

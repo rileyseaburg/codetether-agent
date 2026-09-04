@@ -13,7 +13,7 @@ pub(super) fn schema() -> Value {
             "max_output_tokens": {"type": "integer", "description": "Output token budget; defaults to 10000 and is policy-capped."},
             "shell": {"type": "string", "description": "Shell binary; defaults to the platform shell."},
             "login": {"type": "boolean", "description": "Use login-shell semantics."},
-            "justification": {"type": "string", "description": "Reason when approval is required."},
+            "justification": {"type": "string", "description": "Why this command is needed; required before an approval prompt in access mode `ask`."},
             "prefix_rule": {"type": "array", "items": {"type": "string"}},
             "sandbox_permissions": {"type": "string", "enum": ["use_default", "require_escalated"]}
         },

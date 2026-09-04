@@ -9,6 +9,8 @@ mod bwrap_protected_tests;
 mod bwrap_readonly_tests;
 #[path = "sandbox_runner_bwrap_tests.rs"]
 mod bwrap_tests;
+#[path = "sandbox_runner_bwrap_toolchain_tests.rs"]
+mod bwrap_toolchain_tests;
 
 fn policy(allow_network: bool) -> SandboxPolicy {
     SandboxPolicy {

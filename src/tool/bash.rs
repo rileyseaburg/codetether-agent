@@ -153,7 +153,7 @@ impl Tool for BashTool {
                 },
                 "justification": {
                     "type": "string",
-                    "description": "Why this command is needed when approval is required"
+                    "description": "Why this command is needed; required before an approval prompt in access mode `ask`"
                 },
                 "prefix_rule": {
                     "type": "array",

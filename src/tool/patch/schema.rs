@@ -24,6 +24,10 @@ pub(super) fn parameters() -> Value {
             "approval_id": {
                 "type": "string",
                 "description": "External approval token for required patch writes"
+            },
+            "justification": {
+                "type": "string",
+                "description": "Why this patch is needed; required before an approval prompt in access mode `ask`"
             }
         },
         "required": ["patch"]

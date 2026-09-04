@@ -29,6 +29,9 @@ impl Stream for SseChunkStream {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        if self.eof_reported {
+            return std::task::Poll::Ready(None);
+        }
         loop {
             if let Some(pos) = self.buffer.find('\n') {
                 let line = self.buffer[..pos].to_string();
@@ -54,6 +57,7 @@ impl Stream for SseChunkStream {
                     return std::task::Poll::Ready(None);
                 }
                 std::task::Poll::Ready(None) => {
+                    self.eof_reported = true;
                     // Byte stream closed before any Done: premature EOF.
                     return std::task::Poll::Ready(Some(StreamChunk::Error(
                         "Anthropic stream closed before message_stop (premature EOF)".into(),

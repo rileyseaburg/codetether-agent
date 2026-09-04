@@ -9,9 +9,10 @@ pub(super) fn attach_request(
     action: &str,
     resource: &str,
     amendment: Option<&ExecPolicyAmendment>,
+    reason: &str,
 ) -> ToolResult {
     match ApprovalStore::open_default()
-        .and_then(|store| store.create_request(tool_name, action, resource, "runtime policy"))
+        .and_then(|store| store.create_request(tool_name, action, resource, reason))
     {
         Ok(request) => {
             if let Some(prefix) = amendment.and_then(ExecPolicyAmendment::prefix_string) {

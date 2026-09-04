@@ -12,7 +12,7 @@
 use crate::agent::build_guidance::{BUILD_GITHUB_AUTH_GUIDANCE, WORKTREE_GUIDANCE};
 use std::path::Path;
 
-use super::agents_md::load_all_agents_md;
+use super::project_instructions::append_project_instructions;
 use super::prompts::{BUILD_MODE_GUARDRAIL, BUILD_SYSTEM_PROMPT, PLAN_SYSTEM_PROMPT};
 use super::vscode_lm_tools::render_section as render_vscode_lm_tools_section;
 
@@ -25,10 +25,10 @@ use super::vscode_lm_tools::render_section as render_vscode_lm_tools_section;
 /// ```
 pub fn build_system_prompt(cwd: &Path) -> String {
     let base_prompt = BUILD_SYSTEM_PROMPT.replace("{cwd}", &cwd.display().to_string());
-    let agents_section = render_agents_section(cwd);
+    let prompt = append_project_instructions(base_prompt, cwd);
     let lm_tools_section = render_vscode_lm_tools_section(cwd);
     format!(
-        "{base_prompt}{agents_section}{lm_tools_section}{BUILD_GITHUB_AUTH_GUIDANCE}{WORKTREE_GUIDANCE}{BUILD_MODE_GUARDRAIL}"
+        "{prompt}{lm_tools_section}{BUILD_GITHUB_AUTH_GUIDANCE}{WORKTREE_GUIDANCE}{BUILD_MODE_GUARDRAIL}"
     )
 }
 
@@ -42,23 +42,6 @@ pub fn build_system_prompt(cwd: &Path) -> String {
 #[allow(dead_code)]
 pub fn build_plan_system_prompt(cwd: &Path) -> String {
     let base_prompt = PLAN_SYSTEM_PROMPT.replace("{cwd}", &cwd.display().to_string());
-    format!(
-        "{base_prompt}{}{}",
-        render_agents_section(cwd),
-        render_vscode_lm_tools_section(cwd)
-    )
-}
-
-fn render_agents_section(cwd: &Path) -> String {
-    let agents_files = load_all_agents_md(cwd);
-    if agents_files.is_empty() {
-        return String::new();
-    }
-    let mut section = String::from(
-        "\n\n## Project Instructions (AGENTS.md)\n\nThe following instructions were loaded from AGENTS.md or AGENTS.override.md files in the project.\nFollow these project-specific guidelines when working on this codebase.\n\n",
-    );
-    for (content, path) in &agents_files {
-        section.push_str(&format!("### From {}\n\n{}\n\n", path.display(), content));
-    }
-    section
+    let prompt = append_project_instructions(base_prompt, cwd);
+    format!("{prompt}{}", render_vscode_lm_tools_section(cwd))
 }

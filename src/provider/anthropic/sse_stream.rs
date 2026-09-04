@@ -27,6 +27,8 @@ pub(crate) struct SseChunkStream {
     /// a `message_delta` SSE event. Used by the poll impl to distinguish a
     /// clean byte-stream close (after a real Done) from a premature EOF.
     pub(crate) saw_done: bool,
+    /// Prevents repeated premature-EOF errors after the inner stream closes.
+    pub(crate) eof_reported: bool,
 }
 
 impl SseChunkStream {
@@ -38,6 +40,7 @@ impl SseChunkStream {
             pending_event: None,
             blocks: BlockParser::new(),
             saw_done: false,
+            eof_reported: false,
         }
     }
 

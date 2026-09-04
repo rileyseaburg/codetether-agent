@@ -1,4 +1,4 @@
-use super::model_supports_tools;
+use super::{model_supports_tools, system_prompt_for};
 use crate::provider::ToolDefinition;
 
 fn tool(name: &str) -> ToolDefinition {
@@ -34,4 +34,18 @@ fn openrouter_safety_classifier_does_not_advertise_native_tools() {
     assert!(!model_supports_tools("openrouter", model));
     let tools = vec![tool("agent")];
     assert!(super::super::tools::advertised_tools(false, &tools, "openrouter").is_empty());
+}
+
+#[test]
+fn light_prompt_keeps_project_instructions() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    std::fs::create_dir(workspace.path().join(".git")).expect("git marker");
+    std::fs::write(
+        workspace.path().join("AGENTS.md"),
+        "LOCAL_PROMPT_PROJECT_RULE",
+    )
+    .expect("instructions");
+
+    let prompt = system_prompt_for("local_cuda", false, &[], workspace.path(), false);
+    assert!(prompt.contains("LOCAL_PROMPT_PROJECT_RULE"));
 }

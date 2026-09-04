@@ -37,3 +37,5 @@ mod sandbox_runner_select;
 mod sandbox_seatbelt;
 #[path = "sandbox_seccomp.rs"]
 mod sandbox_seccomp;
+#[path = "sandbox_toolchain.rs"]
+mod sandbox_toolchain;

@@ -21,6 +21,7 @@ fn stream_from_sse(lines: &[&str]) -> SseChunkStream {
         buffer: String::new(),
         pending_event: None,
         saw_done: false,
+        eof_reported: false,
         blocks: BlockParser::new(),
     }
 }

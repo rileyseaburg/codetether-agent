@@ -729,6 +729,23 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
 - `reconcile_loop()` runs every 30s in background
 - All ops use the `kube` crate with in-cluster config
 
+### Approval Justification (`src/runtime_policy/justification.rs`)
+- In access mode `ask`, mutating tools (`bash`, `exec_command`, `apply_patch`)
+  are blocked with `TOOL_JUSTIFICATION_REQUIRED` until the model supplies a
+  non-empty `justification` argument; only then is an approval request created
+- The justification becomes the stored `ApprovalRequest.reason`, is surfaced as
+  `approval_justification` metadata, and is shown in the TUI approval overlay
+- `justification` (like `approval_id`) is excluded from the grant key, so
+  rewording it on retry does not invalidate an approval
+- `approve` and `full` modes never demand a justification
+
+### Sandbox Toolchains (`src/tool/sandbox_toolchain.rs`)
+- The command sandbox resets `PATH` and only mounts system roots, so per-user
+  runtimes (nvm Node, pnpm, cargo, bun, ...) are exposed read-only from
+  well-known `$HOME` locations and their host `PATH` entries are kept in order
+- Add extra roots with `CODETETHER_SANDBOX_TOOLCHAIN_PATHS=/opt/tools:/srv/sdk`
+- Roots already inside a writable workspace bind are not re-mounted read-only
+
 ## Common Pitfalls
 
 1. **Tool results must use `Role::Tool`** - Using `Role::User` causes API errors with tool call validation

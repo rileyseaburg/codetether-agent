@@ -14,7 +14,7 @@ impl OpenAiCodexProvider {
             .header("Authorization", format!("Bearer {access_token}"))
             .header("chatgpt-account-id", account_id)
             .header("Content-Type", "application/json")
-            .header("version", "0.144.0")
+            .header("version", CHATGPT_CODEX_CLIENT_VERSION)
             .json(&body);
         if let Some(value) = self.turn_states.current(session_id).get() {
             builder = builder.header(X_CODEX_TURN_STATE_HEADER, value);

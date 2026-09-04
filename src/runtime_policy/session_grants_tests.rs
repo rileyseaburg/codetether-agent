@@ -22,7 +22,8 @@ fn session_grant_allows_future_matching_invocation() {
     let store = ApprovalStore::open(data.path().join("approvals")).expect("store");
     let args = json!({
         "command": "cargo test --lib session_grants",
-        "cwd": data.path().display().to_string()
+        "cwd": data.path().display().to_string(),
+        "justification": "run the suite"
     });
     let blocked = evaluate_tool_invocation_with_config(&Config::default(), "bash", &args)
         .expect("approval required");

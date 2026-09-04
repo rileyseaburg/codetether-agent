@@ -17,6 +17,9 @@ pub struct LiveApprovalRequest {
     pub resource: String,
     /// Human-readable reason shown to the user.
     pub reason: String,
+    /// Model-supplied justification explaining why the action is needed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub justification: Option<String>,
     /// Full invocation detail shown in interactive approval clients.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview: Option<String>,

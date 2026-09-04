@@ -12,6 +12,7 @@
 
 mod agents_md;
 mod definitions;
+mod project_instructions;
 mod prompts;
 mod system_prompt;
 mod vscode_lm_tools;
@@ -24,6 +25,7 @@ pub use agents_md::load_all_agents_md_with_byte_cap;
 #[allow(unused_imports)]
 pub use agents_md::{load_agents_md, load_all_agents_md};
 pub use definitions::{build_agent, explore_agent, plan_agent};
+pub(crate) use project_instructions::append_project_instructions;
 #[allow(unused_imports)]
 pub use prompts::{BUILD_SYSTEM_PROMPT, EXPLORE_SYSTEM_PROMPT, PLAN_SYSTEM_PROMPT};
 #[allow(unused_imports)]

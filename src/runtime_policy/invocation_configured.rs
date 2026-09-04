@@ -23,6 +23,12 @@ pub fn evaluate_tool_invocation_with_config(
     {
         return None;
     }
+    if matches!(decision.outcome, ToolPolicyOutcome::RequireApproval)
+        && let Some(blocked) =
+            super::super::justification::missing(config, tool_name, decision, args)
+    {
+        return Some(blocked);
+    }
     super::super::result::blocking_result_with_approval_request_for_args(
         tool_name,
         decision,

@@ -24,7 +24,7 @@ fn approved_invocation_id_allows_required_tool() {
     let data = tempfile::tempdir().expect("tempdir");
     let _env = EnvGuard::data_dir(data.path());
     let store = ApprovalStore::open(data.path().join("approvals")).expect("store");
-    let mut args = json!({"command": "cargo test", "cwd": data.path().display().to_string()});
+    let mut args = json!({"command": "cargo test", "cwd": data.path(), "justification": "run"});
     let blocked = evaluate_tool_invocation_with_config(&Config::default(), "bash", &args)
         .expect("approval required");
     let request_id = blocked.metadata["approval_request_id"]

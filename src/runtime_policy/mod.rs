@@ -16,6 +16,7 @@ mod command_unsafe;
 mod invocation;
 mod invocation_decision;
 mod invocation_scope;
+mod justification;
 mod permissions;
 mod policy;
 mod result;
@@ -37,21 +38,4 @@ pub use tool_kind::ToolKind;
 pub use types::{DecisionReason, ToolPolicyDecision, ToolPolicyOutcome};
 
 #[cfg(test)]
-#[path = "approval_tests.rs"]
-mod approval_tests;
-#[cfg(test)]
-#[path = "command_tests.rs"]
-mod command_tests;
-#[cfg(test)]
-#[path = "patch_invocation_tests.rs"]
-mod patch_invocation_tests;
-#[cfg(test)]
-#[path = "permission_tests.rs"]
-mod permission_tests;
-#[cfg(test)]
-#[path = "session_grants_tests.rs"]
-mod session_grants_tests;
-#[cfg(test)]
-mod tests;
-#[cfg(test)]
-mod workspace_tests;
+include!("test_modules.rs");

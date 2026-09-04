@@ -4,6 +4,7 @@ const OPENAI_API_URL: &str = "https://api.openai.com/v1";
 const CHATGPT_CODEX_API_URL: &str = "https://chatgpt.com/backend-api/codex";
 const OPENAI_RESPONSES_WS_URL: &str = "wss://api.openai.com/v1/responses";
 const CHATGPT_CODEX_RESPONSES_WS_URL: &str = "wss://chatgpt.com/backend-api/codex/responses";
+const CHATGPT_CODEX_CLIENT_VERSION: &str = "0.153.3";
 const AUTH_ISSUER: &str = "https://auth.openai.com";
 const AUTHORIZE_URL: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_URL: &str = "https://auth.openai.com/oauth/token";

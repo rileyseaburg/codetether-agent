@@ -32,7 +32,7 @@ pub(super) fn system_prompt_for(
     prior_context_allowed: bool,
 ) -> String {
     let prompt = if prefers_light_system_prompt(selected_provider) {
-        local_cuda_light_system_prompt()
+        crate::agent::builtin::append_project_instructions(local_cuda_light_system_prompt(), cwd)
     } else {
         crate::agent::builtin::build_system_prompt(cwd)
     };

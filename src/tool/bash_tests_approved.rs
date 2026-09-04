@@ -13,7 +13,8 @@ async fn approved_bash_keeps_sandbox_or_uses_approved_fallback() {
     let _env = ScopedEnv::data_dir_with_access(data.path(), AccessMode::Ask);
     let mut args = json!({
         "command": "printf ok > approved.txt",
-        "cwd": data.path().display().to_string()
+        "cwd": data.path().display().to_string(),
+        "justification": "write the approval marker"
     });
     let blocked = crate::runtime_policy::evaluate_tool_invocation_with_config(
         &Config::default(),

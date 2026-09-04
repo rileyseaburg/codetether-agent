@@ -17,10 +17,17 @@ impl LiveApprovalRequest {
             action,
             resource,
             reason,
+            justification: None,
             preview: None,
             proposed_execpolicy_amendment: None,
             available_decisions: default_decisions(None),
         }
+    }
+
+    /// Attaches the model's justification for requesting this action.
+    pub fn with_justification(mut self, justification: String) -> Self {
+        self.justification = Some(justification);
+        self
     }
 
     /// Attaches the full invocation detail for interactive review.

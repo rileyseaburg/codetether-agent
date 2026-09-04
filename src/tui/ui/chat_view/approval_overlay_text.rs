@@ -13,19 +13,24 @@ use crate::tui::app::state::approval_queue::ApprovalSnapshot;
 const DECISION_KEYS: &str =
     "Ctrl+E edit · feedback+Enter denies · Ctrl+Y copy · Ctrl+A approve · Ctrl+D deny";
 
+pub(super) fn header_height(item: &ApprovalSnapshot) -> u16 {
+    2 + u16::from(item.justification.is_some())
+}
+
 pub(super) fn header(f: &mut Frame, area: Rect, item: &ApprovalSnapshot) {
-    f.render_widget(
-        Paragraph::new(vec![
-            Line::from(Span::styled(
-                format!("{} wants to {}", item.tool, item.action),
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            )),
-            Line::from(format!("→ {}", item.reason)),
-        ]),
-        area,
-    );
+    let mut lines = vec![
+        Line::from(Span::styled(
+            format!("{} wants to {}", item.tool, item.action),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(format!("→ {}", item.reason)),
+    ];
+    if let Some(justification) = &item.justification {
+        lines.push(Line::from(format!("because: {justification}")));
+    }
+    f.render_widget(Paragraph::new(lines), area);
 }
 
 pub(super) fn footer(f: &mut Frame, area: Rect, item: &ApprovalSnapshot, count: usize) {
