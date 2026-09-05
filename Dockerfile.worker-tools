@@ -1,0 +1,73 @@
+# build green while still exercising the script parses.
+# Layer development tooling on top of an existing codetether-worker image so
+# the harvester agent can actually build repositories it is asked to work on.
+# Does NOT rebuild the codetether binary: base image provides it.
+#
+# Build (from codetether-agent/):
+#   docker build -f Dockerfile.worker-tools \
+#     --build-arg BASE=registry.quantum-forge.net/cluster-ci-cache/codetether-worker:4.7.5-dev.47-stepbudget-2accee44 \
+#     -t registry.quantum-forge.net/cluster-ci-cache/codetether-worker:<tag>-devtools .
+
+ARG BASE=registry.quantum-forge.net/cluster-ci-cache/codetether-worker:4.7.5-dev.47-stepbudget-2accee44
+FROM ${BASE}
+
+# Skip interactive prompts; keep layer small.
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Core CLI/build prerequisites the harvester needs for repo work:
+# curl/jq (Forgejo+Vault flows), perl (already present, keep), ripgrep,
+# build-essential (cc/make for native npm modules), python3 (scripts),
+# unzip/zip, openssl (s_client), sqlite3/psql clients, net tools for debug.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        jq \
+        ripgrep \
+        build-essential \
+        python3 \
+        unzip \
+        zip \
+        openssl \
+        sqlite3 \
+        postgresql-client \
+        netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js 25.8.0 (matches the workstation version agents develop against) and
+# pnpm 10.33.2 (matches packageManager in the target repo).
+ARG NODE_VERSION=25.8.0
+ARG PNPM_VERSION=10.33.2
+RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
+        -o /tmp/node.tar.xz \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
+    && rm /tmp/node.tar.xz \
+    && npm install -g "pnpm@${PNPM_VERSION}" \
+    && node --version && pnpm --version
+
+# Vault CLI 1.15.4 (matches workstation) from official release zip.
+ARG VAULT_VERSION=1.15.4
+RUN curl -fsSL "https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip" \
+        -o /tmp/vault.zip \
+    && unzip -o /tmp/vault.zip -d /usr/local/bin \
+    && rm /tmp/vault.zip \
+    && chmod +x /usr/local/bin/vault \
+    && vault version
+
+# Make the codetether-home local bin dir (where per-worker tools land at
+# runtime) appear on PATH ahead of system tools. HOME is overridden by k8s env;
+# the wrapper ensures availability in both login and exec shells.
+RUN printf '#!/bin/sh\nexec env PATH="/usr/local/bin:/var/lib/codetether/repos/.codetether-home/.local/bin:$PATH" "$@"\n' > /usr/local/bin/with-local-bin \
+    && chmod +x /usr/local/bin/with-local-bin
+
+
+# RustyRoad CLI (mandatory codegen for target repositories) and the approved
+# forgejo-cli wrapper. Binaries are supplied from the build context so this
+# Dockerfile never downloads from uncontrolled sources.
+COPY rustyroad-bin /usr/local/bin/rustyroad
+COPY forgejo-cli /usr/local/bin/forgejo-cli
+RUN chmod 0755 /usr/local/bin/rustyroad /usr/local/bin/forgejo-cli \
+    && rustyroad --help >/dev/null \
+    && forgejo-cli --help >/dev/null 2>&1 || true
+
+# NOTE: forgejo-cli --help exits 2 after printing usage; || true keeps the
+HEALTHCHECK --interval=60s --timeout=10s --start-period=15s \
+  CMD command -v git >/dev/null && command -v node >/dev/null && command -v vault >/dev/null || exit 1

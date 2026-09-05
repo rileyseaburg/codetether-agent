@@ -12,6 +12,8 @@ mod session_failure_tests;
 mod session_output;
 mod session_response;
 mod session_step_tools;
+mod session_wrap_up;
+use session_wrap_up::maybe_inject;
 use session_failure::{record_loop_halt, step_or_record};
 use session_response::{ResponseContext, process_response};
 mod session_outcome;
@@ -47,6 +49,7 @@ pub(super) async fn run_session_steps(
     tracing::info!(max_steps, model, "Worker session step budget");
     for step in 1..=max_steps {
         tracing::info!(step, max_steps, "Agent step starting");
+        maybe_inject(session, step, max_steps);
         let response = super::complete_worker_step_with_context_fallback(
             Arc::clone(&provider),
             session,
