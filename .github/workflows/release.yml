@@ -46,9 +46,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify:
+    uses: ./.github/workflows/release-verify.yml
+    with:
+      ref: ${{ inputs.attach_to_existing && format('refs/tags/{0}', startsWith(inputs.version_override, 'v') && inputs.version_override || format('v{0}', inputs.version_override)) || github.sha }}
   prepare:
     name: Prepare Version + Tag
-    runs-on: codetether-agent-k8s
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     outputs:
       version: ${{ steps.version.outputs.next }}
       tag: ${{ steps.version.outputs.tag }}
@@ -165,6 +171,9 @@ jobs:
     needs: prepare
     if: ${{ !inputs.dry_run }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: 2
     strategy:
       fail-fast: false
       matrix:
@@ -173,7 +182,15 @@ jobs:
             target: x86_64-unknown-linux-gnu
             binary: codetether
             archive: tar.gz
-          # macOS builds run on the local Mac Mini via Jenkins (see Jenkinsfile)
+          # Hosted macOS artifacts are unsigned; signing remains Jenkins-only.
+          - os: macos-14
+            target: aarch64-apple-darwin
+            binary: codetether
+            archive: tar.gz
+          - os: macos-14
+            target: x86_64-apple-darwin
+            binary: codetether
+            archive: tar.gz
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             binary: codetether.exe
@@ -188,6 +205,7 @@ jobs:
       - name: Setup Rust target
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: 1.95.0
           targets: ${{ matrix.target }}
 
       - name: Enable sccache
@@ -212,8 +230,12 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install protoc (macOS)
+        if: runner.os == 'macOS'
+        run: brew install protobuf
+
       - name: Build binary
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --locked --release --target ${{ matrix.target }}
 
       - name: Package Unix artifacts
         if: runner.os != 'Windows'
@@ -246,8 +268,9 @@ jobs:
   publish:
     name: Publish Crate + GitHub Release
     needs: [prepare, build]
-    if: ${{ !inputs.dry_run && !cancelled() }}
-    runs-on: codetether-agent-k8s
+    if: ${{ !inputs.dry_run && needs.prepare.result == 'success' && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout release commit
         uses: actions/checkout@v4

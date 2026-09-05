@@ -1,0 +1,48 @@
+name: Release Verification
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      RUSTFLAGS: -C link-arg=-fuse-ld=mold
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev libasound2-dev protobuf-compiler mold
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.95.0
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Formatting and release-script regressions
+        run: |
+          cargo fmt --check
+          bash script/tests/release-version.sh
+          bash script/tests/release-verification.sh
+      - name: Lint library
+        run: cargo clippy --locked --lib --no-deps
+      - name: Full serial release test gate
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/release-verification
+          cargo test --locked --lib --tests -- --test-threads=1 2>&1 | tee artifacts/release-verification/tests.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-evidence
+          path: artifacts/release-verification/
