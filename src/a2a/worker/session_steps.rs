@@ -13,9 +13,9 @@ mod session_output;
 mod session_response;
 mod session_step_tools;
 mod session_wrap_up;
-use session_wrap_up::maybe_inject;
 use session_failure::{record_loop_halt, step_or_record};
 use session_response::{ResponseContext, process_response};
+use session_wrap_up::maybe_inject;
 mod session_outcome;
 pub(super) use session_outcome::SessionStepsOutcome;
 

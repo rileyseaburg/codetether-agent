@@ -24,7 +24,9 @@ const WRAP_UP_MIN_STEPS: usize = 8;
 /// ```
 pub(super) fn wrap_up_step(max_steps: usize) -> usize {
     let reserve = ((max_steps as f64) * WRAP_UP_FRACTION).ceil() as usize;
-    let reserve = reserve.max(WRAP_UP_MIN_STEPS).min(max_steps.saturating_sub(1));
+    let reserve = reserve
+        .max(WRAP_UP_MIN_STEPS)
+        .min(max_steps.saturating_sub(1));
     max_steps.saturating_sub(reserve).max(1)
 }
 
@@ -35,7 +37,12 @@ pub(super) fn maybe_inject(session: &mut Session, step: usize, max_steps: usize)
         return false;
     }
     let remaining = max_steps.saturating_sub(step);
-    tracing::warn!(step, max_steps, remaining, "Injecting step-budget wrap-up nudge");
+    tracing::warn!(
+        step,
+        max_steps,
+        remaining,
+        "Injecting step-budget wrap-up nudge"
+    );
     session.add_message(Message {
         role: Role::User,
         content: vec![ContentPart::Text {
@@ -54,16 +61,5 @@ pub(super) fn maybe_inject(session: &mut Session, step: usize, max_steps: usize)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::wrap_up_step;
-
-    #[test]
-    fn wrap_up_reserves_fraction_with_floor() {
-        assert_eq!(wrap_up_step(200), 170);
-        assert_eq!(wrap_up_step(100), 85);
-        assert_eq!(wrap_up_step(20), 12);
-        assert_eq!(wrap_up_step(10), 2);
-        assert_eq!(wrap_up_step(2), 1);
-        assert_eq!(wrap_up_step(1), 1);
-    }
-}
+#[path = "session_wrap_up_tests.rs"]
+mod tests;
