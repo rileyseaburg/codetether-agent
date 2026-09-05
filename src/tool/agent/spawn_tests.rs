@@ -1,50 +1,20 @@
+//! Durable spawn persistence failures use disposable managed Git storage.
+
 use super::tool_impl::AgentTool;
-use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
 use crate::tool::Tool;
-use anyhow::Result;
-use async_trait::async_trait;
-use futures::stream::BoxStream;
 use serde_json::json;
 use std::sync::Arc;
 
-struct MockProvider;
-
-#[async_trait]
-impl Provider for MockProvider {
-    fn name(&self) -> &str {
-        "mock"
-    }
-
-    async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        Ok(vec![ModelInfo {
-            id: "paid".into(),
-            name: "paid".into(),
-            provider: "mock".into(),
-            context_window: 1,
-            max_output_tokens: None,
-            supports_vision: false,
-            supports_tools: true,
-            supports_streaming: false,
-            input_cost_per_million: Some(1.0),
-            output_cost_per_million: Some(1.0),
-        }])
-    }
-
-    async fn complete(&self, _: CompletionRequest) -> Result<CompletionResponse> {
-        anyhow::bail!("unused")
-    }
-
-    async fn complete_stream(
-        &self,
-        _: CompletionRequest,
-    ) -> Result<BoxStream<'static, StreamChunk>> {
-        anyhow::bail!("unused")
-    }
-}
+#[path = "spawn_git_fixture.rs"]
+mod git;
+#[path = "spawn_mock_provider.rs"]
+mod provider;
+use provider::MockProvider;
 
 #[tokio::test]
 async fn durable_spawn_fails_when_session_store_is_unwritable() {
     let (dir, _guard) = super::persistence::test_support::isolate();
+    let repo = git::fixture();
     std::fs::write(dir.path().join("sessions"), "not a directory").expect("blocker");
     let mut registry = crate::provider::ProviderRegistry::new();
     registry.register(Arc::new(MockProvider));
@@ -53,11 +23,16 @@ async fn durable_spawn_fails_when_session_store_is_unwritable() {
     let result = AgentTool::new()
         .execute(json!({
             "action": "spawn", "name": "persist_fail",
-            "instructions": "test", "model": "mock/paid:free"
+            "instructions": "test", "model": "mock/paid:free",
+            "__ct_parent_workspace": repo.path(), "__ct_prior_context_allowed": false
         }))
         .await
         .expect("tool result");
 
     assert!(!result.success);
     assert!(result.output.contains("child session persistence failed"));
+    let storage = repo.path().join(".codetether-worktrees");
+    let children: Vec<_> = std::fs::read_dir(&storage).unwrap().collect();
+    assert_eq!(children.len(), 1);
+    assert!(children[0].as_ref().unwrap().path().join(".git").is_file());
 }

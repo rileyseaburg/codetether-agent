@@ -1,9 +1,13 @@
 //! Workspace and task intent for one ephemeral agent invocation.
 
+use crate::tool::agent::spawn::workspace::Handoff;
 use crate::tool::agent::spawn_request::SpawnRequest;
+use anyhow::Result;
 use std::path::PathBuf;
 
-pub(super) fn policy(request: &SpawnRequest<'_>) -> (PathBuf, bool, bool) {
+pub(super) async fn policy(
+    request: &SpawnRequest<'_>,
+) -> Result<(PathBuf, bool, bool, Option<Handoff>)> {
     let workspace = request
         .parent_workspace
         .clone()
@@ -21,5 +25,17 @@ pub(super) fn policy(request: &SpawnRequest<'_>) -> (PathBuf, bool, bool) {
         None,
         None,
     );
-    (workspace, read_only, expects_changes)
+    let handoff = if read_only {
+        None
+    } else {
+        Some(crate::tool::agent::spawn::workspace::allocate(&workspace).await?)
+    };
+    let workspace = handoff
+        .as_ref()
+        .map_or(workspace, |value| value.workspace.clone());
+    Ok((workspace, read_only, expects_changes, handoff))
 }
+
+#[cfg(test)]
+#[path = "ephemeral_task_tests.rs"]
+mod tests;

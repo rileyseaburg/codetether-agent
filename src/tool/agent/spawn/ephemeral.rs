@@ -34,9 +34,9 @@ pub(super) async fn run(request: &SpawnRequest<'_>, warning: Option<&str>) -> Re
         Some(setup.workspace),
     )
     .await;
-    Ok(super::ephemeral_result::build(
-        request.name,
-        outcome,
-        warning,
-    ))
+    let result = super::ephemeral_result::build(request.name, outcome, warning);
+    Ok(match setup.handoff {
+        Some(handoff) => handoff.attach(result),
+        None => result,
+    })
 }

@@ -11,6 +11,10 @@ mod support;
 pub struct SessionMetadata {
     /// Workspace directory the session operates in.
     pub directory: Option<PathBuf>,
+    /// Keep a task-owned checkout when parent settings are refreshed on resume.
+    /// Spawned worktree children pin their directory for their entire lifetime.
+    #[serde(default)]
+    pub workspace_pinned: bool,
     /// Provider/model selector for the session.
     pub model: Option<String>,
     /// Optional snapshot of the workspace knowledge graph.

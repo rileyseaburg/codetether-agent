@@ -5,6 +5,10 @@ use std::path::{Path, PathBuf};
 #[path = "scope/root.rs"]
 mod root;
 
+#[cfg(test)]
+#[path = "scope/checkout_tests.rs"]
+mod checkout_tests;
+
 pub(super) struct MutationScope {
     pub workspace: PathBuf,
     pub paths: Vec<PathBuf>,

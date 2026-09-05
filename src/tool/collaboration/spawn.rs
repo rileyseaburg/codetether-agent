@@ -25,7 +25,7 @@ impl Tool for SpawnAgentTool {
         "Spawn Agent"
     }
     fn description(&self) -> &str {
-        "Spawn a named background sub-agent for one concrete, bounded task. The child inherits the workspace and parent context policy."
+        "Spawn a named background sub-agent in its own managed Git worktree at parent HEAD (uncommitted edits are not copied). Review/cherry-pick returned child commits explicitly; no auto-merge. The child inherits parent context policy."
     }
     fn parameters(&self) -> Value {
         json!({"type":"object","properties":{

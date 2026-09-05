@@ -11,7 +11,11 @@ pub(super) async fn closed(owner: &str, workspace: PathBuf) -> String {
 }
 
 pub(super) async fn persisted(owner: &str, workspace: PathBuf) -> String {
-    let session = session_factory::create_agent_session(
+    persisted_with_pin(owner, workspace, false).await
+}
+
+pub(super) async fn persisted_with_pin(owner: &str, workspace: PathBuf, pinned: bool) -> String {
+    let mut session = session_factory::create_agent_session(
         "worker",
         "test runtime overlay",
         "old/model",
@@ -20,6 +24,7 @@ pub(super) async fn persisted(owner: &str, workspace: PathBuf) -> String {
     )
     .await
     .unwrap();
+    session.metadata.workspace_pinned = pinned;
     session.save().await.unwrap();
     let id = session.id.clone();
     let entry = store::AgentEntry {

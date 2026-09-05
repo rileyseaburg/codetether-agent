@@ -11,7 +11,7 @@ pub(super) fn agent_tool_parameters() -> Value {
         "properties": {
             "action": { "type": "string", "enum": ["spawn", "message", "list", "read", "interact", "status", "interrupt", "close", "resume", "kill"], "description": "Agent-instance action. `list` shows spawned agent instances plus LAN and mux-backed agents, not available providers or models (use `codetether models --json`). `read` observes a mux session, `message` sends text, and `interact` submits input already waiting in its TUI." },
             "name": { "type": "string", "description": "Local agent name, mux session name, or durable child session ID" },
-            "instructions": { "type": "string", "description": "System instructions (spawn)" },
+            "instructions": { "type": "string", "description": "System instructions (spawn). Durable and writable ephemeral children get managed Git worktrees at parent HEAD, excluding uncommitted edits. Review/cherry-pick returned child commits explicitly; no auto-merge. Read-only ephemeral jobs share the workspace." },
             "message": { "type": "string", "description": "Message to send" },
             "context_id": { "type": "string", "maxLength": 128, "pattern": "^[A-Za-z0-9_-]+$", "description": "Stable A2A conversation ID for related remote-agent turns" },
             "model": { "type": "string", "description": "Model (spawn). Should be free/subscription-eligible; otherwise a cost warning is returned." },

@@ -26,6 +26,10 @@ mod identity;
 mod prepare;
 #[path = "spawn/session.rs"]
 mod session;
+#[path = "spawn/session_workspace.rs"]
+mod session_workspace;
+#[path = "spawn/workspace.rs"]
+mod workspace;
 
 /// Spawns a new sub-agent and auto-starts its first turn.
 pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
