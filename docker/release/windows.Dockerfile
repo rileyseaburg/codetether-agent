@@ -11,6 +11,7 @@ RUN sh /usr/local/share/codetether/apt-https.sh && apt-get update && apt-get ins
     libssl-dev \
     g++ \
     protobuf-compiler \
+    libprotobuf-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rustup target add x86_64-pc-windows-gnu

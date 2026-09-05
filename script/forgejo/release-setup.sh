@@ -10,12 +10,17 @@ case "$(uname -s)" in
     "${elevate[@]}" sh "$(dirname "$0")/apt-https.sh"
     "${elevate[@]}" apt-get update
     "${elevate[@]}" apt-get install -y --no-install-recommends \
-      build-essential pkg-config libssl-dev libasound2-dev protobuf-compiler \
+      build-essential pkg-config libssl-dev libasound2-dev protobuf-compiler libprotobuf-dev \
       mold curl ca-certificates git jq
+    test -f /usr/include/google/protobuf/struct.proto
+    printf '%s\n' PROTOC=/usr/bin/protoc PROTOC_INCLUDE=/usr/include \
+      >> "${GITHUB_ENV:-${FORGEJO_ENV:?}}"
     ;;
   Darwin)
     export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
     brew install protobuf
+    printf 'PROTOC=%s/bin/protoc\nPROTOC_INCLUDE=%s/include\n' "$(brew --prefix protobuf)" "$(brew --prefix protobuf)" \
+      >> "${GITHUB_ENV:-${FORGEJO_ENV:?}}"
     ;;
   *) echo 'Unsupported Unix runner' >&2; exit 1 ;;
 esac

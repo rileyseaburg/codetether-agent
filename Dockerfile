@@ -17,6 +17,7 @@ RUN sh /usr/local/share/codetether/apt-https.sh && apt-get update && apt-get ins
     libasound2-dev \
     g++ \
     protobuf-compiler \
+    libprotobuf-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy source, vendor directory, proto files, policies, and examples
