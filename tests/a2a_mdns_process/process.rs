@@ -25,7 +25,8 @@ impl PeerProcess {
     }
 
     pub fn log(&self) -> String {
-        std::fs::read_to_string(&self.log).unwrap_or_default()
+        // Keep the on-disk log unchanged for diagnostics and artifact upload.
+        super::log_text::plain(&std::fs::read_to_string(&self.log).unwrap_or_default())
     }
 
     pub fn id(&self) -> u32 {

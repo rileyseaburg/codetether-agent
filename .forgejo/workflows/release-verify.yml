@@ -32,6 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/forgejo-verification
+          export CODETETHER_MDNS_PROOF_DIR="$PWD/artifacts/forgejo-verification/mdns"
           cargo +1.95.0 fmt --check
           bash script/tests/release-version.sh
           bash script/tests/release-verification.sh
