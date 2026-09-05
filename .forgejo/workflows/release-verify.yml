@@ -1,0 +1,42 @@
+name: Release verification
+on:
+  workflow_call:
+    outputs:
+      version:
+        value: ${{ jobs.verify.outputs.version }}
+jobs:
+  verify:
+    runs-on: spotlessbinco-k8s
+    timeout-minutes: 90
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      RUSTFLAGS: -C link-arg=-fuse-ld=mold
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+        with:
+          github-server-url: https://forgejo.quantum-forge.io
+      - name: Prepare Rust and native dependencies
+        run: bash script/forgejo/release-setup.sh x86_64-unknown-linux-gnu
+      - id: version
+        run: |
+          version=$(cargo +1.95.0 metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="codetether-agent").version')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Full release gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/forgejo-verification
+          cargo +1.95.0 fmt --check
+          bash script/tests/release-version.sh
+          bash script/tests/release-verification.sh
+          cargo +1.95.0 clippy --locked --lib --no-deps
+          cargo +1.95.0 test --locked --lib --tests -- --test-threads=1 2>&1 | tee artifacts/forgejo-verification/tests.log
+      - uses: https://github.com/actions/upload-artifact@v3
+        if: always()
+        with:
+          name: verification-evidence
+          path: artifacts/forgejo-verification/

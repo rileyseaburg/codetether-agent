@@ -1,0 +1,46 @@
+name: Build Windows release
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+jobs:
+  build:
+    runs-on: [self-hosted, Windows]
+    timeout-minutes: 120
+    env:
+      CARGO_BUILD_JOBS: 2
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+        with:
+          github-server-url: https://forgejo.quantum-forge.io
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.95.0
+          targets: x86_64-pc-windows-msvc
+      - name: Install protoc
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'protoc'
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          Invoke-WebRequest 'https://github.com/protocolbuffers/protobuf/releases/download/v31.1/protoc-31.1-win64.zip' -OutFile "$dir/protoc.zip"
+          Expand-Archive "$dir/protoc.zip" $dir -Force
+          "$dir/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Build and package
+        shell: pwsh
+        run: |
+          cargo +1.95.0 build --locked --release --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & target/x86_64-pc-windows-msvc/release/codetether.exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $asset = "codetether-v$env:RELEASE_VERSION-x86_64-pc-windows-msvc"
+          Copy-Item target/x86_64-pc-windows-msvc/release/codetether.exe "dist/$asset.exe"
+          Compress-Archive "dist/$asset.exe" "dist/$asset.zip" -Force
+      - uses: https://github.com/actions/upload-artifact@v3
+        with:
+          name: release-x86_64-pc-windows-msvc
+          path: dist/*
+          if-no-files-found: error

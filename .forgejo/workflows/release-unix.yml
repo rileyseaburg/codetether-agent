@@ -1,0 +1,46 @@
+name: Build Unix release
+on:
+  workflow_call:
+    inputs:
+      runner:
+        required: true
+        type: string
+      target:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+jobs:
+  build:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+    env:
+      CARGO_BUILD_JOBS: 2
+      RELEASE_TARGET: ${{ inputs.target }}
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+        with:
+          github-server-url: https://forgejo.quantum-forge.io
+      - name: Prepare native dependencies
+        run: bash script/forgejo/release-setup.sh "$RELEASE_TARGET"
+      - name: Build locked release binary
+        run: cargo +1.95.0 build --locked --release --target "$RELEASE_TARGET"
+      - name: Smoke test native binaries
+        shell: bash
+        run: |
+          # Only execute binaries matching this runner's native architecture.
+          if [ "$RELEASE_TARGET" = "$(rustc +1.95.0 -vV | sed -n 's/^host: //p')" ]; then
+            "target/$RELEASE_TARGET/release/codetether" --version
+          fi
+      - name: Package unsigned artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          tar -C "target/$RELEASE_TARGET/release" -czf "dist/codetether-v$RELEASE_VERSION-$RELEASE_TARGET.tar.gz" codetether
+      - uses: https://github.com/actions/upload-artifact@v3
+        with:
+          name: release-${{ inputs.target }}
+          path: dist/*
+          if-no-files-found: error

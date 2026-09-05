@@ -1,0 +1,42 @@
+name: Publish Forgejo release
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: spotlessbinco-k8s
+    timeout-minutes: 15
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: https://github.com/actions/download-artifact@v3
+        with:
+          path: incoming
+      - name: Require all platforms and checksum artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find incoming -mindepth 2 -maxdepth 2 -type f -path 'incoming/release-*/*' -exec cp '{}' dist/ \;
+          for target in x86_64-unknown-linux-gnu aarch64-apple-darwin x86_64-apple-darwin; do
+            test -s "dist/codetether-v$RELEASE_VERSION-$target.tar.gz"
+          done
+          test -s "dist/codetether-v$RELEASE_VERSION-x86_64-pc-windows-msvc.zip"
+          cd dist
+          sha256sum * > "SHA256SUMS-v$RELEASE_VERSION.txt"
+      - uses: https://code.forgejo.org/actions/forgejo-release@v2
+        with:
+          url: https://forgejo.quantum-forge.io
+          repo: ${{ github.repository }}
+          token: ${{ github.token }}
+          sha: ${{ github.sha }}
+          tag: v${{ inputs.version }}
+          direction: upload
+          release-dir: dist
+          prerelease: 'true'
+          release-notes: CI-built Linux, Windows, and unsigned macOS binaries with SHA-256 checksums.

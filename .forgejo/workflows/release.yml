@@ -1,0 +1,41 @@
+name: Release
+on:
+  workflow_dispatch:
+  push:
+    branches: ['release/forgejo-*']
+permissions:
+  contents: write
+concurrency:
+  group: forgejo-release
+  cancel-in-progress: false
+jobs:
+  verify:
+    uses: ./.forgejo/workflows/release-verify.yml
+  linux:
+    needs: verify
+    uses: ./.forgejo/workflows/release-unix.yml
+    with:
+      runner: spotlessbinco-k8s
+      target: x86_64-unknown-linux-gnu
+      version: ${{ needs.verify.outputs.version }}
+  windows:
+    needs: verify
+    uses: ./.forgejo/workflows/release-windows.yml
+    with:
+      version: ${{ needs.verify.outputs.version }}
+  macos:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [aarch64-apple-darwin, x86_64-apple-darwin]
+    uses: ./.forgejo/workflows/release-unix.yml
+    with:
+      runner: macOS
+      target: ${{ matrix.target }}
+      version: ${{ needs.verify.outputs.version }}
+  publish:
+    needs: [verify, linux, windows, macos]
+    uses: ./.forgejo/workflows/release-publish.yml
+    with:
+      version: ${{ needs.verify.outputs.version }}
