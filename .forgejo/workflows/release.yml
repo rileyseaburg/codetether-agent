@@ -12,6 +12,8 @@ jobs:
   meta:
     uses: ./.forgejo/workflows/release-meta.yml
   verify:
+    # Establish the run with one task before fanning out across runners.
+    needs: meta
     uses: ./.forgejo/workflows/release-verify.yml
   linux:
     needs: meta

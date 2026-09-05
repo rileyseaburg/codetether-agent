@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 120
     env:
       RELEASE_VERSION: ${{ inputs.version }}
+      DOCKER_HOST: tcp://127.0.0.1:2375
     steps:
       - uses: https://github.com/actions/checkout@v4
         with:
@@ -30,6 +31,7 @@ jobs:
           set -euo pipefail
           if ! command -v zip >/dev/null 2>&1; then
             elevate=(); if [ "$(id -u)" -ne 0 ]; then elevate=(sudo); fi
+            "${elevate[@]}" sh script/forgejo/apt-https.sh
             "${elevate[@]}" apt-get update
             "${elevate[@]}" apt-get install -y --no-install-recommends zip
           fi

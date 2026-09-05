@@ -22,7 +22,7 @@ use tracing::{debug, info, warn};
 /// LSP Client for a single language server
 pub struct LspClient {
     pub(super) transport: LspTransport,
-    config: LspConfig,
+    pub(super) config: LspConfig,
     server_capabilities: RwLock<Option<lsp_types::ServerCapabilities>>,
     /// Track open documents with their versions
     pub(super) open_documents: RwLock<HashMap<String, i32>>,
