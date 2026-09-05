@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 120
     env:
       CARGO_BUILD_JOBS: 2
+      CARGO_TARGET_DIR: target
+      CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER: cc
       RELEASE_TARGET: ${{ inputs.target }}
       RELEASE_VERSION: ${{ inputs.version }}
     steps:
