@@ -25,7 +25,8 @@ configure_cache() {
 }
 
 publish_cache() {
-  if [ -d "$cache_next" ]; then
+  # A docker-driver build did not export this directory; it may be stale.
+  if [ "${#cache_args[@]}" -gt 0 ] && [ -d "$cache_next" ]; then
     rm -rf .docker-cache/windows
     mv "$cache_next" .docker-cache/windows
   fi

@@ -31,9 +31,10 @@ COPY proto ./proto
 COPY policies ./policies
 COPY examples ./examples
 
+# Host proc-macros must not come from another builder's incompatible libc.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/build/target \
+    --mount=type=cache,id=codetether-windows-bookworm-rust195,target=/build/target,sharing=locked \
     cargo build --locked --release --target x86_64-pc-windows-gnu --bin codetether && \
     mkdir -p /artifacts && \
     cp /build/target/x86_64-pc-windows-gnu/release/codetether.exe /artifacts/codetether.exe
