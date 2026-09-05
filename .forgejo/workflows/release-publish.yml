@@ -30,7 +30,8 @@ jobs:
           test -s "dist/codetether-v$RELEASE_VERSION-x86_64-pc-windows-gnu.zip"
           cd dist
           sha256sum * > "SHA256SUMS-v$RELEASE_VERSION.txt"
-      - uses: https://code.forgejo.org/actions/forgejo-release@v2
+      # v2.1.0 is composite/bash and uses github.*, compatible with runner v0.2.11.
+      - uses: https://code.forgejo.org/actions/forgejo-release@de47e391d31cd6dc81998dfbe4a96c0c9b3d18ac
         with:
           url: https://forgejo.quantum-forge.io
           repo: ${{ github.repository }}

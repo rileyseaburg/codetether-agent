@@ -46,6 +46,9 @@ forgejo-cli --base "$FORGEJO_API_BASE" post \
 - Forgejo-compatible v3 artifact actions transfer the outputs. Publication
   requires all four platform archives plus the GNU Windows executable and
   creates a SHA-256 manifest.
+- Publication pins `forgejo-release` v2.1.0 by commit SHA. The floating `v2`
+  branch requires newer `forge.*` context and Node 24 support that runner
+  v0.2.11 does not provide; do not float this pin without upgrading the runner.
 
 The Forgejo release is a prerelease at `v<Cargo.toml version>`. macOS artifacts
 are **unsigned**; this workflow does not claim Apple signing/notarization.
