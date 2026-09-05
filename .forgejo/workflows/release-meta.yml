@@ -6,7 +6,8 @@ on:
         value: ${{ jobs.meta.outputs.version }}
 jobs:
   meta:
-    runs-on: spotlessbinco-k8s-dind-privileged
+    # Keep version discovery off the saturated Linux compiler pool.
+    runs-on: macOS
     timeout-minutes: 10
     outputs:
       version: ${{ steps.version.outputs.version }}

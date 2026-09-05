@@ -18,8 +18,12 @@ case "$(uname -s)" in
     ;;
   Darwin)
     export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-    brew install protobuf
-    printf 'PROTOC=%s/bin/protoc\nPROTOC_INCLUDE=%s/include\n' "$(brew --prefix protobuf)" "$(brew --prefix protobuf)" \
+    export NONINTERACTIVE=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_UPGRADE=1
+    unset HOMEBREW_ASK
+    prefix=$(brew --prefix protobuf)
+    if [ ! -x "$prefix/bin/protoc" ]; then brew install protobuf; fi
+    test -f "$prefix/include/google/protobuf/struct.proto"
+    printf 'PROTOC=%s/bin/protoc\nPROTOC_INCLUDE=%s/include\n' "$prefix" "$prefix" \
       >> "${GITHUB_ENV:-${FORGEJO_ENV:?}}"
     ;;
   *) echo 'Unsupported Unix runner' >&2; exit 1 ;;
