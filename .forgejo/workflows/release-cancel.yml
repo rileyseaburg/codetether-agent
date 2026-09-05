@@ -10,7 +10,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   cancel:
-    runs-on: spotlessbinco-k8s-dind-privileged
+    # Recovery must not wait behind builds occupying the shared Linux pool.
+    runs-on: macOS
     timeout-minutes: 5
     steps:
       - run: echo 'Cancellation workflow activated; inspect repository run statuses before redispatching Release.'
