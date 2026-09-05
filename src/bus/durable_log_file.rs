@@ -48,6 +48,9 @@ impl DurableLog for FileDurableLog {
             .await
             .with_context(|| format!("open {}", path.display()))?;
         f.write_all(line.as_bytes()).await.context("append line")?;
+        // Tokio may return from write_all before its blocking write has finished.
+        // Complete it before a separate reader computes the committed offset.
+        f.flush().await.context("flush appended line")?;
         file_read::count_lines(&path).await
     }
 
