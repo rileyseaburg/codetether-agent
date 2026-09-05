@@ -7,6 +7,7 @@ case "$(uname -s)" in
   Linux)
     elevate=()
     if [ "$(id -u)" -ne 0 ]; then elevate=(sudo); fi
+    "${elevate[@]}" sh "$(dirname "$0")/apt-https.sh"
     "${elevate[@]}" apt-get update
     "${elevate[@]}" apt-get install -y --no-install-recommends \
       build-essential pkg-config libssl-dev libasound2-dev protobuf-compiler \

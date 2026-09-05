@@ -8,8 +8,10 @@ FROM rust:1.95-slim-bookworm AS builder
 
 WORKDIR /build
 
+COPY docker/release/apt-https.sh /usr/local/share/codetether/apt-https.sh
+
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN sh /usr/local/share/codetether/apt-https.sh && apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     libasound2-dev \
@@ -27,13 +29,17 @@ COPY policies ./policies
 COPY examples ./examples
 
 # Build release binary
-RUN cargo build --release --bin codetether
+RUN cargo build --locked --release --bin codetether
 
 # Final stage - minimal runtime
 FROM debian:bookworm-slim
 
+# Bootstrap HTTPS trust before the runtime installs its own CA package.
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY docker/release/apt-https.sh /usr/local/share/codetether/apt-https.sh
+
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN sh /usr/local/share/codetether/apt-https.sh && apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
     libasound2 \

@@ -3,7 +3,9 @@ FROM rust:1.95-slim-bookworm AS builder
 
 WORKDIR /build
 
-RUN apt-get update && apt-get install -y \
+COPY docker/release/apt-https.sh /usr/local/share/codetether/apt-https.sh
+
+RUN sh /usr/local/share/codetether/apt-https.sh && apt-get update && apt-get install -y \
     mingw-w64 \
     pkg-config \
     libssl-dev \
@@ -31,7 +33,7 @@ COPY examples ./examples
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/build/target \
-    cargo build --release --target x86_64-pc-windows-gnu --bin codetether && \
+    cargo build --locked --release --target x86_64-pc-windows-gnu --bin codetether && \
     mkdir -p /artifacts && \
     cp /build/target/x86_64-pc-windows-gnu/release/codetether.exe /artifacts/codetether.exe
 

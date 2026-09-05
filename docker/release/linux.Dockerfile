@@ -3,7 +3,9 @@ FROM rust:1.95-slim-bookworm AS builder
 
 WORKDIR /build
 
-RUN apt-get update && apt-get install -y \
+COPY docker/release/apt-https.sh /usr/local/share/codetether/apt-https.sh
+
+RUN sh /usr/local/share/codetether/apt-https.sh && apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     libasound2-dev \
@@ -27,7 +29,7 @@ COPY examples ./examples
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/build/target \
-    cargo build --release --bin codetether && \
+    cargo build --locked --release --bin codetether && \
     mkdir -p /out && \
     cp /build/target/release/codetether /out/codetether
 

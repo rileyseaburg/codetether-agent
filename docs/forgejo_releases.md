@@ -26,15 +26,19 @@ forgejo-cli --base "$FORGEJO_API_BASE" --token "$FORGEJO_API_KEY" post \
 ## Runners and gates
 
 - Linux verification/build/publication: `spotlessbinco-k8s`.
-- Windows MSVC: runner labels `self-hosted` and `Windows`.
+- Windows GNU (`x86_64-pc-windows-gnu`): cross-built with Docker Buildx on
+  `spotlessbinco-k8s-dind-privileged`, using `docker/release/windows.Dockerfile`.
+  The CI job requires the Dockerfile build to use `--locked` and publishes
+  both versioned `.exe` and `.zip` files. No native Windows runner or Windows
+  runtime smoke test is used by this cross-build.
 - Apple Silicon and Intel macOS: `macOS`.
-- Runner registration/visibility must include this repository. The Windows
-  and macOS labels match the existing platform workflow conventions; their
-  current availability must be checked before claiming a build has run.
+- Runner registration/visibility must include this repository. macOS runner
+  availability must be checked before claiming a build has run.
 - Rust 1.95 is selected explicitly. Verification includes formatting, release
   shell regressions, clippy, and the full serial library/integration test gate.
 - Forgejo-compatible v3 artifact actions transfer the outputs. Publication
-  requires all four platform archives and creates a SHA-256 manifest.
+  requires all four platform archives plus the GNU Windows executable and
+  creates a SHA-256 manifest.
 
 The Forgejo release is a prerelease at `v<Cargo.toml version>`. macOS artifacts
 are **unsigned**; this workflow does not claim Apple signing/notarization.
