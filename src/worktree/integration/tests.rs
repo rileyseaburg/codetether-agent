@@ -2,6 +2,7 @@ use super::{delta, merge, outcome::Outcome};
 use std::collections::BTreeSet;
 
 mod fixture;
+mod noop;
 use fixture::Fixture;
 
 #[test]

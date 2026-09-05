@@ -1,0 +1,22 @@
+name: Read release version
+on:
+  workflow_call:
+    outputs:
+      version:
+        value: ${{ jobs.meta.outputs.version }}
+jobs:
+  meta:
+    runs-on: spotlessbinco-k8s-dind-privileged
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+        with:
+          github-server-url: https://forgejo.quantum-forge.io
+      - id: version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"

@@ -9,22 +9,24 @@ concurrency:
   group: forgejo-release
   cancel-in-progress: false
 jobs:
+  meta:
+    uses: ./.forgejo/workflows/release-meta.yml
   verify:
     uses: ./.forgejo/workflows/release-verify.yml
   linux:
-    needs: verify
+    needs: meta
     uses: ./.forgejo/workflows/release-unix.yml
     with:
       runner: spotlessbinco-k8s-dind-privileged
       target: x86_64-unknown-linux-gnu
-      version: ${{ needs.verify.outputs.version }}
+      version: ${{ needs.meta.outputs.version }}
   windows:
-    needs: verify
+    needs: meta
     uses: ./.forgejo/workflows/release-windows.yml
     with:
-      version: ${{ needs.verify.outputs.version }}
+      version: ${{ needs.meta.outputs.version }}
   macos:
-    needs: verify
+    needs: meta
     strategy:
       fail-fast: false
       matrix:
@@ -33,9 +35,9 @@ jobs:
     with:
       runner: macOS
       target: ${{ matrix.target }}
-      version: ${{ needs.verify.outputs.version }}
+      version: ${{ needs.meta.outputs.version }}
   publish:
-    needs: [verify, linux, windows, macos]
+    needs: [meta, verify, linux, windows, macos]
     uses: ./.forgejo/workflows/release-publish.yml
     with:
-      version: ${{ needs.verify.outputs.version }}
+      version: ${{ needs.meta.outputs.version }}

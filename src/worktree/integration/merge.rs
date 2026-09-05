@@ -4,7 +4,12 @@ use std::path::Path;
 
 pub(super) fn merge(repo: &Path, branch: &str) -> Result<Outcome> {
     let expected = delta::expected(repo, branch)?;
-    if expected.is_empty() {
+    // Patch equivalence alone does not make the branch an ancestor of HEAD.
+    // Integrate divergent equivalent history so normal `branch -d` is safe.
+    if git::output(repo, &["merge-base", "--is-ancestor", branch, "HEAD"])?
+        .status
+        .success()
+    {
         return Ok(Outcome::Merged(expected));
     }
     let output = git::output(repo, &["merge", "--no-ff", "--no-commit", branch])?;

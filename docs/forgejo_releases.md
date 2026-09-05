@@ -38,6 +38,7 @@ forgejo-cli --base "$FORGEJO_API_BASE" --token "$FORGEJO_API_KEY" post \
   availability must be checked before claiming a build has run.
 - Rust 1.95 is selected explicitly. Verification includes formatting, release
   shell regressions, clippy, and the full serial library/integration test gate.
+  Platform builds run alongside verification; publication requires both.
 - Forgejo-compatible v3 artifact actions transfer the outputs. Publication
   requires all four platform archives plus the GNU Windows executable and
   creates a SHA-256 manifest.

@@ -17,13 +17,13 @@ impl WorktreeManager {
             Outcome::Merged(files) => files,
             Outcome::Conflicted(conflicts) => return Ok(result::conflict(conflicts)),
         };
-        if files.is_empty() {
-            return Ok(result::noop(branch));
-        }
         let commit = git::text(integration.path(), &["rev-parse", "HEAD"])?;
         apply::fast_forward(&self.repo_path, &commit)?;
         tracing::info!(worktree = %name, %branch, %commit, files = files.len(),
             "Verified integration merge fast-forwarded");
+        if files.is_empty() {
+            return Ok(result::noop(branch));
+        }
         Ok(result::success(branch, commit, files.len()))
     }
 }

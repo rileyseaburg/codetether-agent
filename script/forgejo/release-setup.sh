@@ -11,7 +11,7 @@ case "$(uname -s)" in
     "${elevate[@]}" apt-get update
     "${elevate[@]}" apt-get install -y --no-install-recommends \
       build-essential pkg-config libssl-dev libasound2-dev protobuf-compiler libprotobuf-dev \
-      mold curl ca-certificates git jq
+      mold curl ca-certificates git jq ripgrep
     test -f /usr/include/google/protobuf/struct.proto
     printf '%s\n' PROTOC=/usr/bin/protoc PROTOC_INCLUDE=/usr/include \
       >> "${GITHUB_ENV:-${FORGEJO_ENV:?}}"
@@ -33,5 +33,5 @@ echo "$HOME/.cargo/bin" >> "${GITHUB_PATH:-${FORGEJO_PATH:?}}"
 if [ "$(uname -s)" = Darwin ]; then
   printf '%s\n' /opt/homebrew/bin /usr/local/bin >> "${GITHUB_PATH:-${FORGEJO_PATH:?}}"
 fi
-rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy
+rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy --component rust-analyzer
 rustup target add --toolchain 1.95.0 "$target"
