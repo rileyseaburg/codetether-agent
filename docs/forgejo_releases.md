@@ -14,15 +14,19 @@ from `Cargo.toml`; the workflow does not modify it or publish to crates.io.
 For authenticated API access use `forgejo-cli`. The configured CI credential
 is Vault path `secret/forgejo/spotlessbinco-ci-secrets`, field `GITOPS_TOKEN`.
 The generic `kv/forgejo/*` bot tokens do not grant write access to this repo.
-Never print the credential or commit it:
+Never print, commit, or pass the credential in command arguments:
 
 ```bash
+(
 set +x
 FORGEJO_API_BASE=https://forgejo.quantum-forge.io/api/v1
-FORGEJO_API_KEY="$(vault kv get -field=GITOPS_TOKEN secret/forgejo/spotlessbinco-ci-secrets)"
-forgejo-cli --base "$FORGEJO_API_BASE" --token "$FORGEJO_API_KEY" post \
+FORGEJO_TOKEN="$(vault kv get -field=GITOPS_TOKEN secret/forgejo/spotlessbinco-ci-secrets)" || exit
+export FORGEJO_TOKEN
+trap 'unset FORGEJO_TOKEN' EXIT
+forgejo-cli --base "$FORGEJO_API_BASE" post \
   /repos/riley/codetether-agent/actions/workflows/release.yml/dispatches \
   '{"ref":"release/forgejo-v4.7.5-dev.49"}'
+)
 ```
 
 ## Runners and gates
