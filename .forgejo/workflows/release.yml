@@ -15,7 +15,7 @@ jobs:
     needs: verify
     uses: ./.forgejo/workflows/release-unix.yml
     with:
-      runner: spotlessbinco-k8s
+      runner: spotlessbinco-k8s-dind-privileged
       target: x86_64-unknown-linux-gnu
       version: ${{ needs.verify.outputs.version }}
   windows:

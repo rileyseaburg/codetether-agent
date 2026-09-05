@@ -3,6 +3,7 @@
 Release source: `https://forgejo.quantum-forge.io/riley/codetether-agent`.
 The `.forgejo/workflows/release.yml` entry point runs entirely in CI. Do not
 run local Cargo builds to substitute for this workflow.
+Use this workflow instead of local `release.sh`, which compiles and installs.
 
 ## Trigger
 
@@ -17,6 +18,7 @@ Never print the credential or commit it:
 
 ```bash
 set +x
+FORGEJO_API_BASE=https://forgejo.quantum-forge.io/api/v1
 FORGEJO_API_KEY="$(vault kv get -field=GITOPS_TOKEN secret/forgejo/spotlessbinco-ci-secrets)"
 forgejo-cli --base "$FORGEJO_API_BASE" --token "$FORGEJO_API_KEY" post \
   /repos/riley/codetether-agent/actions/workflows/release.yml/dispatches \
@@ -25,7 +27,7 @@ forgejo-cli --base "$FORGEJO_API_BASE" --token "$FORGEJO_API_KEY" post \
 
 ## Runners and gates
 
-- Linux verification/build/publication: `spotlessbinco-k8s`.
+- Linux verification/build/publication: `spotlessbinco-k8s-dind-privileged`.
 - Windows GNU (`x86_64-pc-windows-gnu`): cross-built with Docker Buildx on
   `spotlessbinco-k8s-dind-privileged`, using `docker/release/windows.Dockerfile`.
   The CI job requires the Dockerfile build to use `--locked` and publishes

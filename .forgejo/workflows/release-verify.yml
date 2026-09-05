@@ -6,7 +6,8 @@ on:
         value: ${{ jobs.verify.outputs.version }}
 jobs:
   verify:
-    runs-on: spotlessbinco-k8s
+    # Exclude the legacy LXC runner sharing the generic label.
+    runs-on: spotlessbinco-k8s-dind-privileged
     timeout-minutes: 90
     outputs:
       version: ${{ steps.version.outputs.version }}
