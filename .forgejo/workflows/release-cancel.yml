@@ -1,0 +1,16 @@
+# Manual recovery when the Forgejo REST API has no run-cancellation endpoint.
+# This shares Release's repository-scoped concurrency group; it never publishes.
+name: Cancel superseded release runs
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: forgejo-release
+  cancel-in-progress: true
+jobs:
+  cancel:
+    runs-on: spotlessbinco-k8s-dind-privileged
+    timeout-minutes: 5
+    steps:
+      - run: echo 'Cancellation workflow activated; inspect repository run statuses before redispatching Release.'
