@@ -1,10 +1,13 @@
+//! Mocked local matcher fixtures keep production temp-write guards enabled.
+
 use codetether_agent::tool::{Tool, edit::EditTool};
 use serde_json::json;
-use tempfile::NamedTempFile;
+#[path = "fixtures/workspace.rs"]
+mod workspace;
 
 #[tokio::test]
 async fn edit_replace_all_exact_matches() {
-    let file = NamedTempFile::new().unwrap();
+    let file = workspace::file().unwrap();
     tokio::fs::write(file.path(), "one\none\n").await.unwrap();
     let result = EditTool::new()
         .execute(json!({
@@ -12,13 +15,13 @@ async fn edit_replace_all_exact_matches() {
         }))
         .await
         .unwrap();
-    assert!(result.success);
+    assert!(result.success, "{}", result.output);
     assert_eq!(result.metadata["replacements"], json!(2));
 }
 
 #[tokio::test]
 async fn edit_uses_whitespace_tolerant_match() {
-    let file = NamedTempFile::new().unwrap();
+    let file = workspace::file().unwrap();
     tokio::fs::write(file.path(), "fn a() {\n    one();\n}\n")
         .await
         .unwrap();
@@ -28,13 +31,13 @@ async fn edit_uses_whitespace_tolerant_match() {
         }))
         .await
         .unwrap();
-    assert!(result.success);
+    assert!(result.success, "{}", result.output);
     assert_eq!(result.metadata["match_strategy"], json!("whitespace"));
 }
 
 #[tokio::test]
 async fn edit_not_found_shows_closest_candidate() {
-    let file = NamedTempFile::new().unwrap();
+    let file = workspace::file().unwrap();
     tokio::fs::write(file.path(), "fn close() {\n    call();\n}\n")
         .await
         .unwrap();

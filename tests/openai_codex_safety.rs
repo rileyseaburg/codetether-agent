@@ -1,52 +1,12 @@
+use codetether_agent::provider::Provider;
 use codetether_agent::provider::openai_codex::{OAuthCredentials, OpenAiCodexProvider};
-use codetether_agent::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
-use std::sync::OnceLock;
-use tokio::sync::Mutex;
 
-const OPT_IN_ENV: &str = "CODETETHER_OPENAI_CODEX_ALLOW_CHATGPT_BACKEND";
-
-fn env_lock() -> &'static Mutex<()> {
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
-}
-
-struct EnvGuard {
-    old_value: Option<String>,
-}
-
-impl EnvGuard {
-    fn without_opt_in() -> Self {
-        let old_value = std::env::var(OPT_IN_ENV).ok();
-        unsafe { std::env::remove_var(OPT_IN_ENV) };
-        Self { old_value }
-    }
-}
-
-impl Drop for EnvGuard {
-    fn drop(&mut self) {
-        match &self.old_value {
-            Some(value) => unsafe { std::env::set_var(OPT_IN_ENV, value) },
-            None => unsafe { std::env::remove_var(OPT_IN_ENV) },
-        }
-    }
-}
-
-fn request() -> CompletionRequest {
-    CompletionRequest {
-        messages: vec![Message {
-            role: Role::User,
-            content: vec![ContentPart::Text {
-                text: "hello".to_string(),
-            }],
-        }],
-        tools: vec![],
-        model: "gpt-5".to_string(),
-        temperature: None,
-        top_p: None,
-        max_tokens: None,
-        stop: vec![],
-    }
-}
+#[path = "codex_safety/environment.rs"]
+mod environment;
+#[path = "codex_safety/request.rs"]
+mod fixture;
+use environment::{EnvGuard, OPT_IN_ENV, env_lock};
+use fixture::request;
 
 #[tokio::test]
 async fn chatgpt_backend_requires_explicit_opt_in() {
@@ -60,11 +20,17 @@ async fn chatgpt_backend_requires_explicit_opt_in() {
         expires_at: u64::MAX,
     });
 
-    let err = provider
-        .complete(request())
+    let result = provider.complete(request()).await;
+    let err = result.expect_err("ChatGPT backend should require explicit opt-in");
+    let stream_err = provider
+        .complete_stream(request())
         .await
-        .expect_err("ChatGPT backend should require explicit opt-in");
-
-    assert!(err.to_string().contains("OPENAI_API_KEY"));
-    assert!(err.to_string().contains(OPT_IN_ENV));
+        .err()
+        .expect("Streaming must also require explicit opt-in");
+    for error in [err, stream_err] {
+        let message = error.to_string();
+        assert!(message.contains("backend is disabled"), "{error:#}");
+        assert!(message.contains("OPENAI_API_KEY"), "{error:#}");
+        assert!(message.contains(OPT_IN_ENV), "{error:#}");
+    }
 }

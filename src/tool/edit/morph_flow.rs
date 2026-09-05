@@ -1,3 +1,5 @@
+//! Morph-backed edit previews retain their backend identity for callers.
+
 use super::super::{ToolResult, morph_backend};
 use super::args::EditArgs;
 use super::diff;
@@ -34,4 +36,5 @@ fn preview(path: &str, content: &str, new_content: String) -> ToolResult {
     let preview = diff::preview(content, &new_content);
     let plan = MatchPlan::find(content, content, false).expect("content matches itself");
     metadata::confirmation(path, content, &new_content, &plan, preview)
+        .with_metadata("backend", serde_json::json!("morph"))
 }
