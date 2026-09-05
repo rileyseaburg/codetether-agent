@@ -10,10 +10,14 @@ Push a trusted candidate branch named `release/forgejo-*`, or dispatch
 `release.yml` on the desired ref through Forgejo Actions. The version comes
 from `Cargo.toml`; the workflow does not modify it or publish to crates.io.
 
-For authenticated API access use `forgejo-cli` with an already provisioned
-repository-scoped credential. Never print the credential or commit it:
+For authenticated API access use `forgejo-cli`. The configured CI credential
+is Vault path `secret/forgejo/spotlessbinco-ci-secrets`, field `GITOPS_TOKEN`.
+The generic `kv/forgejo/*` bot tokens do not grant write access to this repo.
+Never print the credential or commit it:
 
 ```bash
+set +x
+FORGEJO_API_KEY="$(vault kv get -field=GITOPS_TOKEN secret/forgejo/spotlessbinco-ci-secrets)"
 forgejo-cli --base "$FORGEJO_API_BASE" --token "$FORGEJO_API_KEY" post \
   /repos/riley/codetether-agent/actions/workflows/release.yml/dispatches \
   '{"ref":"release/forgejo-v4.7.5-dev.49"}'
