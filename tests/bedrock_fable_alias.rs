@@ -2,18 +2,18 @@ use codetether_agent::provider::{CompletionRequest, bedrock};
 
 #[test]
 fn resolves_fable_alias() {
-    assert_eq!(
-        bedrock::resolve_model_id("fable"),
-        "global.anthropic.claude-fable-5"
-    );
-    assert_eq!(
-        bedrock::resolve_model_id("claude-fable-5"),
-        "global.anthropic.claude-fable-5"
-    );
-    assert_eq!(
-        bedrock::resolve_model_id("us.anthropic.claude-fable-5"),
-        "global.anthropic.claude-fable-5"
-    );
+    for alias in [
+        "fable",
+        "claude-fable-5",
+        "us.anthropic.claude-fable-5",
+        "global.anthropic.claude-fable-5",
+    ] {
+        assert_eq!(
+            bedrock::resolve_model_id(alias),
+            "us.anthropic.claude-fable-5",
+            "alias: {alias}"
+        );
+    }
 }
 
 #[test]

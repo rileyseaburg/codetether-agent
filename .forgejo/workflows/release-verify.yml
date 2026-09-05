@@ -37,7 +37,7 @@ jobs:
           bash script/tests/release-version.sh
           bash script/tests/release-verification.sh
           cargo +1.95.0 clippy --locked --lib --no-deps
-          cargo +1.95.0 test --locked --lib --tests -- --test-threads=1 2>&1 | tee artifacts/forgejo-verification/tests.log
+          cargo +1.95.0 test --locked --lib --tests --no-fail-fast -- --test-threads=1 2>&1 | tee artifacts/forgejo-verification/tests.log
       - uses: https://github.com/actions/upload-artifact@v3
         if: always()
         with:
