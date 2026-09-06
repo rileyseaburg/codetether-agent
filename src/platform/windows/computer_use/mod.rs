@@ -6,7 +6,12 @@
 //! - Window/process enumeration via `EnumWindows` / `ToolHelp32`
 
 mod cursor;
+pub(crate) mod dpi;
 pub mod encode;
+mod gdi_bitmap;
+mod gdi_capture;
+mod gdi_dc;
+mod gdi_surface;
 pub mod input;
 pub mod process;
 mod screen_gdi;

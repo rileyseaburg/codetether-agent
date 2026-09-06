@@ -14,6 +14,7 @@ pub mod client;
 mod client_capabilities;
 #[path = "client_diagnostics.rs"]
 mod client_diagnostics;
+mod document_language;
 pub mod tetherscript;
 pub mod transport;
 pub mod types;
@@ -40,6 +41,8 @@ mod tetherscript_config_tests;
 #[path = "workspace_folder_tests.rs"]
 mod workspace_folder_tests;
 
+#[cfg(test)]
+mod jsx_diagnostics_tests;
 #[cfg(test)]
 #[path = "proposed_diagnostics_tests.rs"]
 mod proposed_diagnostics_tests;

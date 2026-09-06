@@ -50,4 +50,5 @@ docker buildx build \
   .
 
 copy_artifacts
+python3 script/package-windows-bundle.py
 publish_cache

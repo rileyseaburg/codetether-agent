@@ -11,8 +11,16 @@ pub fn bgra_to_encoded(
     mut pixels: Vec<u8>,
     fmt: image::ImageFormat,
 ) -> Result<Vec<u8>> {
+    let expected =
+        crate::tool::computer_use::capture_limits::pixel_bytes(i64::from(w), i64::from(h))?;
+    anyhow::ensure!(
+        pixels.len() == expected,
+        "Invalid BGRA capture buffer length"
+    );
     for chunk in pixels.chunks_exact_mut(4) {
         chunk.swap(0, 2);
+        // GDI's fourth channel is reserved, not usable alpha.
+        chunk[3] = 255;
     }
     let img = image::RgbaImage::from_raw(w, h, pixels)
         .ok_or_else(|| anyhow::anyhow!("failed to create image buffer"))?;

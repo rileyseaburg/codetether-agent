@@ -32,6 +32,11 @@ on:
         required: true
         default: false
         type: boolean
+      draft:
+        description: Prepare an unpublished draft release
+        required: true
+        default: false
+        type: boolean
       attach_to_existing:
         description: Attach binaries to an existing tag/release (skip bump, tag, crates.io publish). Requires version_override.
         required: true
@@ -255,8 +260,8 @@ jobs:
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           $asset = "codetether-v${{ needs.prepare.outputs.version }}-${{ matrix.target }}"
           Copy-Item "target\\${{ matrix.target }}\\release\\${{ matrix.binary }}" "dist\\$asset.exe"
-          Compress-Archive -Path "dist\\$asset.exe" -DestinationPath "dist\\$asset.zip" -Force
-          Get-ChildItem dist
+          python script/package-windows-bundle.py --binary "dist/$asset.exe" --archive "dist/$asset.zip" --staging build/windows-bundle
+          if ($LASTEXITCODE -ne 0) { throw 'Windows setup bundle creation failed' }
 
       - name: Upload platform artifacts
         uses: actions/upload-artifact@v4
@@ -265,9 +270,16 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  msi:
+    needs: [prepare, build]
+    if: ${{ !inputs.dry_run }}
+    uses: ./.github/workflows/release-msi.yml
+    with:
+      sha: ${{ needs.prepare.outputs.sha }}
+      version: ${{ needs.prepare.outputs.version }}
   publish:
     name: Publish Crate + GitHub Release
-    needs: [prepare, build]
+    needs: [prepare, build, msi]
     if: ${{ !inputs.dry_run && needs.prepare.result == 'success' && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -319,6 +331,7 @@ jobs:
           # When attaching to an existing release, preserve its curated notes.
           generate_release_notes: ${{ !inputs.attach_to_existing }}
           prerelease: ${{ inputs.prerelease }}
+          draft: ${{ inputs.draft }}
           fail_on_unmatched_files: true
           files: |
             dist/*

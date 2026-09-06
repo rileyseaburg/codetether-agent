@@ -1,6 +1,12 @@
 name: Release
 on:
   workflow_dispatch:
+    inputs:
+      draft:
+        description: Build assets only; retain the separately prepared draft release
+        type: boolean
+        required: false
+        default: false
   push:
     branches: ['release/forgejo-*']
 permissions:
@@ -40,6 +46,7 @@ jobs:
       target: ${{ matrix.target }}
       version: ${{ needs.meta.outputs.version }}
   publish:
+    if: ${{ github.event.inputs.draft != 'true' && github.event.inputs.draft != true }}
     needs: [meta, verify, linux, windows, macos]
     uses: ./.forgejo/workflows/release-publish.yml
     with:

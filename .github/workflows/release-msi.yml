@@ -1,0 +1,45 @@
+name: Package Windows MSI
+on:
+  workflow_call:
+    inputs:
+      sha:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-x86_64-pc-windows-msvc
+          path: incoming
+      - name: Install MSI authoring tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends wixl msitools python3
+      - name: Build and verify MSI
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp "incoming/codetether-v$RELEASE_VERSION-x86_64-pc-windows-msvc.exe" dist/codetether.exe
+          python3 script/build-windows-msi.py
+          cp dist/codetether-windows.msi "dist/codetether-v$RELEASE_VERSION-x86_64-pc-windows-msvc.msi"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-msi
+          path: dist/codetether-v*.msi
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-msi-evidence
+          path: artifacts/windows-msi/

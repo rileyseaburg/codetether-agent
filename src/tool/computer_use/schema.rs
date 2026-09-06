@@ -3,17 +3,20 @@
 use serde_json::{Value, json};
 
 mod schema_examples;
+#[cfg(test)]
+#[path = "schema_tests.rs"]
+mod tests;
 
 pub(super) fn parameters_schema() -> Value {
     json!({
         "type": "object",
-        "description": "Controls the real OS cursor/keyboard. Use snapshot metadata for physical screen pixel coordinates.",
+        "description": "Native Windows desktop control and OCR. Physical input is the default; shadow input queues HWND-targeted messages without moving the real cursor or changing focus.",
         "properties": {
             "action": {
                 "type": "string",
                 "enum": [
                     "status", "list_apps", "request_app",
-                    "snapshot", "window_snapshot",
+                    "snapshot", "window_snapshot", "ocr", "ocr_status",
                     "click", "right_click", "double_click", "drag",
                     "mouse_down", "mouse_move", "mouse_up",
                     "type_text", "press_key", "scroll",
@@ -23,7 +26,10 @@ pub(super) fn parameters_schema() -> Value {
                 "description": "Action to execute. Snapshot returns physical screen pixel bounds and real cursor position. Use bring_to_front before interacting."
             },
             "app": {"type": "string", "description": "App name for request_app."},
-            "hwnd": {"type": "integer", "description": "Window handle from list_apps. For mouse actions, x/y become window-relative when hwnd is provided."},
+            "input_mode": {"type": "string", "enum": ["physical", "shadow"], "default": "physical", "description": "Shadow requires hwnd, never falls back to physical input, and reports queued messages rather than confirmed application effects. Not all applications accept background messages."},
+            "path": {"type": "string", "description": "For ocr: local image path. Omit to capture hwnd or the desktop. No Python/Tesseract required."},
+            "language": {"type": "string", "description": "For ocr: optional installed Windows OCR language tag, e.g. en-US. Use ocr_status to inspect availability."},
+            "hwnd": {"type": "integer", "description": "Window handle from list_apps. Required for physical type_text/press_key and must already be foreground. Mouse x/y are window-relative with hwnd. For resized snapshot previews, apply the reported preview scales first."},
             "viewport_child_hwnd": {"type": "integer", "description": "Optional Blender viewport child HWND to focus before viewport helper actions."},
             "client_area": {"type": "boolean", "description": "With hwnd, interpret x/y relative to the window client area instead of the outer frame. Useful for Blender child viewports."},
             "text": {"type": "string", "description": "Text for type_text."},

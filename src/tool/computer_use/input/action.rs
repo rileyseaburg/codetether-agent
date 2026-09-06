@@ -1,6 +1,6 @@
 //! Computer use action names.
 
-#[derive(Copy, Clone, Debug, serde::Deserialize)]
+#[derive(Copy, Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ComputerUseAction {
     Status,
@@ -8,6 +8,8 @@ pub enum ComputerUseAction {
     RequestApp,
     Snapshot,
     WindowSnapshot,
+    Ocr,
+    OcrStatus,
     Click,
     RightClick,
     DoubleClick,

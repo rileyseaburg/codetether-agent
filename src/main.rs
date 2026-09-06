@@ -13,25 +13,20 @@
 use clap::Parser;
 use cli::{Cli, Command};
 use codetether_agent::{
-    a2a, benchmark, bus, cli, config, crash, forage, github_pr, indexer, mcp, moltbook, mux, okr,
+    a2a, benchmark, bus, cli, config, forage, github_pr, indexer, mcp, moltbook, mux, okr,
     provider, ralph, rlm, secrets, server, swarm, telemetry, tool, tui, worker_server,
 };
-use std::io::IsTerminal;
 use std::sync::Arc;
 use swarm::{DecompositionStrategy, ExecutionMode, SwarmExecutor};
 use telemetry::{TOKEN_USAGE, get_persistent_stats};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod cleanup_cli;
+mod startup_crash;
 mod worktree_cli;
 
-fn normalize_provider_alias(name: &str) -> &str {
-    match name {
-        "local-cuda" | "localcuda" => "local_cuda",
-        "zhipuai" => "zai",
-        other => other,
-    }
-}
+mod provider_cli_alias;
+use provider_cli_alias::normalize_provider_alias;
 
 fn local_cuda_runtime_configured() -> bool {
     let model_path = std::env::var("LOCAL_CUDA_MODEL_PATH")
@@ -472,6 +467,14 @@ async fn run_rlm_command(args: cli::RlmArgs) -> anyhow::Result<()> {
 
 #[tokio::main(worker_threads = 8)]
 async fn main() -> anyhow::Result<()> {
+    // Installer probes bypass dotenv and services; other commands keep dotenv-first parsing.
+    if std::env::args_os()
+        .nth(1)
+        .is_some_and(|arg| arg == "windows")
+        && let Some(Command::Windows(args)) = Cli::parse().command
+    {
+        return cli::windows::run(args).await;
+    }
     // Load local .env for developer workflows (e.g. `cargo run` without exported vars).
     // Existing process environment still takes precedence over .env values.
     let _ = dotenvy::dotenv();
@@ -485,8 +488,10 @@ async fn main() -> anyhow::Result<()> {
     // Both aws-lc-rs and ring are in the dependency tree, so rustls cannot auto-detect.
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
     let _ = jsonwebtoken::crypto::aws_lc::DEFAULT_PROVIDER.install_default();
-
     let cli = Cli::parse();
+    if let Some(Command::Windows(args)) = &cli.command {
+        return cli::windows::run(args.clone()).await;
+    }
 
     // Check if we're running TUI - if so, redirect logs to file instead of stdout
     // TUI is the default when no subcommand is given.
@@ -526,24 +531,14 @@ async fn main() -> anyhow::Result<()> {
             .init();
     }
 
-    let app_config = match config::Config::load().await {
-        Ok(cfg) => cfg,
-        Err(err) => {
-            tracing::warn!(
-                error = %err,
-                "Failed to load config for crash reporter; using defaults"
-            );
-            config::Config::default()
-        }
-    };
-    let allow_crash_prompt =
-        is_tui && std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
-    let app_config = crash::maybe_prompt_for_consent(&app_config, allow_crash_prompt).await;
-    crash::initialize(&app_config).await;
+    startup_crash::initialize(is_tui).await;
 
     let needs_vault = !is_tui
         && !is_git_credential_helper
-        && !matches!(&cli.command, Some(Command::Clipboard(_)));
+        && !matches!(
+            &cli.command,
+            Some(Command::Clipboard(_) | Command::Windows(_))
+        );
 
     if needs_vault {
         // Initialize HashiCorp Vault connection for secrets
@@ -566,6 +561,7 @@ async fn main() -> anyhow::Result<()> {
     let (mcp_project_root, mcp_project_was_explicit) = (cli.project.clone(), cli.project.is_some());
 
     match cli.command {
+        Some(Command::Windows(args)) => cli::windows::run(args).await,
         Some(Command::Tui(args)) => {
             let allow_network = args.allow_network;
             let access_mode = args.access_mode;

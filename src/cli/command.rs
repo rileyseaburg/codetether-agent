@@ -2,14 +2,7 @@
 //!
 //! Split out of [`super`] so the module table stays within the file budget.
 
-use super::{
-    A2aArgs, AuthArgs, BenchmarkArgs, CleanupArgs, ContextArgs, ForageArgs,
-    GitCredentialHelperArgs, IndexArgs, McpArgs, ModelsArgs, MoltbookArgs, OkrArgs, OracleArgs,
-    PrArgs, RalphArgs, RlmArgs, RunArgs, SearchArgs, ServeArgs, SpawnArgs, StatsArgs, SwarmArgs,
-    SwarmSubagentArgs, TuiArgs, WorktreeArgs, approval, browserctl, clipboard,
-    config_args::ConfigArgs, connect,
-};
-use clap::Subcommand;
+include!("command_imports.rs");
 
 #[path = "mux_args.rs"]
 pub mod mux_args;
@@ -19,6 +12,9 @@ use mux_args::MuxArgs;
 pub enum Command {
     /// Start interactive terminal UI
     Tui(TuiArgs),
+
+    /// Native Windows capability diagnostics (no model or Vault required).
+    Windows(super::windows::WindowsArgs),
 
     /// Manage persistent network mux sessions
     Mux(MuxArgs),

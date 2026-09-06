@@ -1,58 +1,42 @@
-//! Capture a specific window as PNG via Win32 PrintWindow/BitBlt.
+//! Full-resolution window capture via GDI BitBlt in physical pixels.
 
-use windows::Win32::Foundation::HWND;
-use windows::Win32::Graphics::Gdi::*;
+use super::super::{dpi::DpiContext, encode::bgra_to_png, gdi_capture::capture_pixels};
+use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
 
-/// Capture a window by HWND and encode as PNG.
+/// Capture a window by HWND and encode its original physical extent as PNG.
 ///
-/// Returns `(png_bytes, width, height)`.
+/// # Arguments
+///
+/// * `hwnd` — Native window handle to capture, including its non-client area.
+///
+/// # Returns
+///
+/// `(png_bytes, width, height)` without resizing.
+///
+/// # Errors
+///
+/// Returns an error for invalid/over-budget geometry, allocation, DPI, GDI,
+/// partial pixel extraction, or PNG encoding failures.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # fn main() -> anyhow::Result<()> {
+/// use codetether_agent::platform::windows::computer_use::capture_window_png;
+/// # let hwnd = 123_i64; // Replace with a real window handle.
+/// let (png, width, height) = capture_window_png(hwnd)?;
+/// assert!(!png.is_empty() && width > 0 && height > 0);
+/// # Ok(()) }
+/// ```
 pub fn capture_window_png(hwnd: i64) -> anyhow::Result<(Vec<u8>, u32, u32)> {
-    unsafe {
-        let hwnd = HWND(hwnd as *mut _);
-        let mut rect = std::mem::zeroed();
-        GetWindowRect(hwnd, &mut rect)?;
-        let w = (rect.right - rect.left).max(0) as u32;
-        let h = (rect.bottom - rect.top).max(0) as u32;
-        anyhow::ensure!(w > 0 && h > 0, "window has invalid dimensions ({w}x{h})");
-
-        let hdc = GetWindowDC(Some(hwnd));
-        anyhow::ensure!(!hdc.is_invalid(), "GetWindowDC failed");
-        let mem = CreateCompatibleDC(Some(hdc));
-        let bm = CreateCompatibleBitmap(hdc, w as i32, h as i32);
-        let old = SelectObject(mem, bm.into());
-        BitBlt(mem, 0, 0, w as i32, h as i32, Some(hdc), 0, 0, SRCCOPY);
-
-        let mut bmi = BITMAPINFO {
-            bmiHeader: BITMAPINFOHEADER {
-                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
-                biWidth: w as i32,
-                biHeight: -(h as i32),
-                biPlanes: 1,
-                biBitCount: 32,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-        let px_len = (w as usize * 4) * h as usize;
-        let mut px = vec![0u8; px_len];
-        let ok = GetDIBits(
-            mem,
-            bm,
-            0,
-            h,
-            Some(px.as_mut_ptr() as *mut _),
-            &mut bmi,
-            DIB_RGB_COLORS,
-        );
-
-        SelectObject(mem, old);
-        DeleteObject(bm.into());
-        DeleteDC(mem);
-        ReleaseDC(Some(hwnd), hdc);
-        anyhow::ensure!(ok != 0, "GetDIBits failed");
-
-        let png = super::super::encode::bgra_to_png(w, h, px)?;
-        Ok((png, w, h))
-    }
+    let _dpi = DpiContext::enter()?;
+    let hwnd = HWND(hwnd as *mut _);
+    let mut rect = RECT::default();
+    unsafe { GetWindowRect(hwnd, &mut rect)? };
+    let width = i64::from(rect.right) - i64::from(rect.left);
+    let height = i64::from(rect.bottom) - i64::from(rect.top);
+    let pixels = capture_pixels(width, height, Some(hwnd), 0, 0)?;
+    let png = bgra_to_png(width as u32, height as u32, pixels)?;
+    Ok((png, width as u32, height as u32))
 }

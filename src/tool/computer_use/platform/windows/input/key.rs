@@ -5,6 +5,7 @@ use crate::tool::computer_use::input::ComputerUseInput;
 
 /// Press a key using native Win32 SendInput with proper chord handling.
 pub async fn handle_press_key(input: &ComputerUseInput) -> anyhow::Result<crate::tool::ToolResult> {
+    super::keyboard_target::require(input)?;
     let key = input
         .key
         .as_deref()

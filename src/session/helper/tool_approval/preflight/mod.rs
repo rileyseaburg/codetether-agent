@@ -45,5 +45,11 @@ pub(super) async fn blocked(workspace: &Path, tool: &str, args: &Value) -> Optio
 }
 
 #[cfg(test)]
+mod jsx_fixture;
+#[cfg(test)]
+mod jsx_rejection_tests;
+#[cfg(test)]
+mod jsx_tests;
+#[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

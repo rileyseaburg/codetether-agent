@@ -2,18 +2,24 @@
 
 mod apps;
 mod input;
+mod ocr;
 mod request;
 mod snapshot;
+mod snapshot_desktop;
 mod snapshot_output;
+mod snapshot_window;
 mod status;
 
 use crate::tool::computer_use::{input::ComputerUseAction, input::ComputerUseInput, response};
 
 pub async fn dispatch(input: &ComputerUseInput) -> anyhow::Result<crate::tool::ToolResult> {
-    if gated_action(input) {
+    if crate::tool::computer_use::routing::app_gated(input) {
         return Ok(response::error_result(
             "request_app is advisory only; app-targeted actions are not enforced yet",
         ));
+    }
+    if crate::tool::computer_use::routing::shadow(input) {
+        return crate::tool::computer_use::shadow::dispatch(input).await;
     }
     match input.action {
         ComputerUseAction::Status => status::handle_status(),
@@ -21,6 +27,8 @@ pub async fn dispatch(input: &ComputerUseInput) -> anyhow::Result<crate::tool::T
         ComputerUseAction::RequestApp => request::handle_request_app(input),
         ComputerUseAction::Snapshot => snapshot::handle_snapshot(input).await,
         ComputerUseAction::WindowSnapshot => snapshot::handle_window_snapshot(input).await,
+        ComputerUseAction::Ocr => ocr::recognize(input).await,
+        ComputerUseAction::OcrStatus => ocr::status().await,
         ComputerUseAction::Click => input::handle_click(input).await,
         ComputerUseAction::ClickClient => input::handle_click_client(input).await,
         ComputerUseAction::RightClick => input::handle_right_click(input).await,
@@ -39,11 +47,4 @@ pub async fn dispatch(input: &ComputerUseInput) -> anyhow::Result<crate::tool::T
         ComputerUseAction::WaitMs => input::handle_wait_ms(input).await,
         ComputerUseAction::Stop => input::handle_stop(),
     }
-}
-
-fn gated_action(input: &ComputerUseInput) -> bool {
-    !matches!(
-        input.action,
-        ComputerUseAction::Status | ComputerUseAction::ListApps | ComputerUseAction::RequestApp
-    ) && (input.app.is_some() || input.window_title_contains.is_some())
 }

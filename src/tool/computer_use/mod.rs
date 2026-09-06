@@ -7,7 +7,7 @@ pub mod input;
 pub mod response;
 pub mod schema;
 
-pub(crate) mod platform;
+include!("platform_modules.rs");
 
 use super::{Tool, ToolResult};
 use anyhow::{Context, Result};
@@ -39,7 +39,7 @@ impl Tool for ComputerUseTool {
     }
 
     fn description(&self) -> &str {
-        "Native Windows desktop automation using the real OS cursor and keyboard. Start with snapshot or list_apps; snapshots return physical screen pixel bounds and cursor position. Use those coordinates for click, right_click, double_click, drag, and scroll. Use bring_to_front before interacting with a window."
+        "Native Windows desktop automation and WinRT OCR in an isolated worker. Start with snapshot/list_apps or ocr_status. Snapshots retain original pixels on disk and attach bounded previews: use preview scaling for coordinates. Physical keyboard input requires an explicit foreground hwnd. input_mode=shadow queues HWND messages without physical fallback. Worker failures are not retried because effects may be uncertain."
     }
 
     fn parameters(&self) -> Value {
@@ -50,6 +50,6 @@ impl Tool for ComputerUseTool {
         let input: input::ComputerUseInput =
             serde_json::from_value(args).context("Invalid computer_use args")?;
 
-        platform::dispatch(&input).await
+        execution::execute(input).await
     }
 }

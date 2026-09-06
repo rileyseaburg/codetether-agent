@@ -110,9 +110,7 @@ impl LspClient {
     /// Open a text document
     pub async fn open_document(&self, path: &Path, content: &str) -> Result<()> {
         let uri = path_to_uri(path);
-        let language_id = detect_language_from_path(path.to_string_lossy().as_ref())
-            .unwrap_or("plaintext")
-            .to_string();
+        let language_id = super::document_language::id(path).to_string();
 
         let text_document = TextDocumentItem {
             uri: parse_uri(&uri)?,

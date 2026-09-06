@@ -4,8 +4,6 @@ use std::path::PathBuf;
 
 use serde_json::{Value, json};
 
-const TMP: &str = "codetether_blender_select_frame.png";
-
 pub fn after_action(hwnd: Option<i64>) -> Value {
     match hwnd.and_then(|id| capture(id).ok()) {
         Some(evidence) => evidence,
@@ -23,9 +21,11 @@ fn capture(hwnd: i64) -> anyhow::Result<Value> {
         crate::platform::windows::computer_use::window::capture_window_png(hwnd)?;
     let path = path();
     std::fs::write(&path, &png)?;
+    let preview = crate::tool::computer_use::capture_preview::prepare(&png, width, height)?;
     Ok(json!({
         "captured": true,
-        "image_data_url": crate::tool::result_images::encoded(&png, "image/png"),
+        "image_data_url": preview.attachment,
+        "preview": preview.mapping,
         "mime_type": "image/png",
         "path": path.display().to_string(),
         "size_kb": png.len() / 1024,
@@ -37,5 +37,5 @@ fn capture(hwnd: i64) -> anyhow::Result<Value> {
 }
 
 fn path() -> PathBuf {
-    std::env::temp_dir().join(TMP)
+    std::env::temp_dir().join(format!("codetether-blender-{}.png", uuid::Uuid::new_v4()))
 }

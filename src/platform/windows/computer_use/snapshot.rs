@@ -1,69 +1,39 @@
-//! Native screen capture via GDI BitBlt — replaces PowerShell CopyFromScreen.
+//! Full-resolution virtual-desktop capture in physical pixels.
 
-use super::encode::bgra_to_png;
-use windows::Win32::Graphics::Gdi::*;
+use super::{dpi::DpiContext, encode::bgra_to_png, gdi_capture::capture_pixels};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-/// Captures the full virtual screen as PNG bytes.
+/// Captures the full virtual screen without resizing.
 ///
-/// Returns `(png_bytes, width, height, virtual_x, virtual_y)`.
+/// # Arguments
+///
+/// No arguments; captures the current virtual desktop.
+///
+/// # Returns
+///
+/// `(png_bytes, width, height, virtual_x, virtual_y)` in physical pixels.
 ///
 /// # Errors
 ///
-/// Returns an error if GDI bitmap creation or BitBlt fails.
+/// Returns an error for invalid/over-budget geometry, allocation, DPI, GDI,
+/// partial pixel extraction, or PNG encoding failures.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # fn main() -> anyhow::Result<()> {
+/// use codetether_agent::platform::windows::computer_use::capture_screenshot;
+/// let (png, width, height, _, _) = capture_screenshot()?;
+/// assert!(!png.is_empty() && width > 0 && height > 0);
+/// # Ok(()) }
+/// ```
 pub fn capture_screenshot() -> anyhow::Result<(Vec<u8>, u32, u32, i32, i32)> {
-    unsafe { capture_inner() }
-}
-
-unsafe fn capture_inner() -> anyhow::Result<(Vec<u8>, u32, u32, i32, i32)> {
-    let _ = SetProcessDPIAware();
-
-    let width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    let height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-    let x = GetSystemMetrics(SM_XVIRTUALSCREEN);
-    let y = GetSystemMetrics(SM_YVIRTUALSCREEN);
-
-    let hdc = GetDC(None);
-    anyhow::ensure!(!hdc.is_invalid(), "GetDC failed");
-
-    let mem = CreateCompatibleDC(Some(hdc));
-    let bm = CreateCompatibleBitmap(hdc, width, height);
-    let old_bm = SelectObject(mem, bm.into());
-    let ok = BitBlt(mem, 0, 0, width, height, Some(hdc), x, y, SRCCOPY);
-    if ok.is_err() {
-        let _ = SelectObject(mem, old_bm);
-        let _ = DeleteObject(bm.into());
-        let _ = DeleteDC(mem);
-        let _ = ReleaseDC(None, hdc);
-        anyhow::bail!("BitBlt failed");
-    }
-
-    let mut bmi = BITMAPINFO::default();
-    bmi.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
-    bmi.bmiHeader.biWidth = width;
-    bmi.bmiHeader.biHeight = -height;
-    bmi.bmiHeader.biPlanes = 1;
-    bmi.bmiHeader.biBitCount = 32;
-
-    let px_len = (width as usize * 4) * height as usize;
-    let mut px = vec![0u8; px_len];
-    let dib_ok = GetDIBits(
-        mem,
-        bm,
-        0,
-        height as u32,
-        Some(px.as_mut_ptr() as *mut _),
-        &mut bmi,
-        DIB_RGB_COLORS,
-    );
-
-    // Always restore and clean up GDI resources
-    let _ = SelectObject(mem, old_bm);
-    let _ = DeleteObject(bm.into());
-    let _ = DeleteDC(mem);
-    let _ = ReleaseDC(None, hdc);
-
-    anyhow::ensure!(dib_ok != 0, "GetDIBits failed");
-    let png = bgra_to_png(width as u32, height as u32, px)?;
+    let _dpi = DpiContext::enter()?;
+    let width = unsafe { GetSystemMetrics(SM_CXVIRTUALSCREEN) };
+    let height = unsafe { GetSystemMetrics(SM_CYVIRTUALSCREEN) };
+    let x = unsafe { GetSystemMetrics(SM_XVIRTUALSCREEN) };
+    let y = unsafe { GetSystemMetrics(SM_YVIRTUALSCREEN) };
+    let pixels = capture_pixels(i64::from(width), i64::from(height), None, x, y)?;
+    let png = bgra_to_png(width as u32, height as u32, pixels)?;
     Ok((png, width as u32, height as u32, x, y))
 }
