@@ -1,6 +1,6 @@
 //! Session recording for executed tool calls.
 
-use super::image_inject::tool_image;
+use super::image_inject::tool_images;
 use crate::agent::ToolUse;
 use crate::provider::{ContentPart, Message, Role};
 use crate::session::Session;
@@ -32,9 +32,7 @@ pub(super) fn record_results(
             tool_call_id: id,
             content: crate::tool::feedback::render(&name, result.success, &result.output),
         }];
-        if let Some(image) = tool_image(&result) {
-            content.push(image);
-        }
+        content.extend(tool_images(&result));
         session.add_message(Message {
             role: Role::Tool,
             content,

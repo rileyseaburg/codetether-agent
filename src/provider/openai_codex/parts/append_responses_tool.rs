@@ -4,7 +4,7 @@ impl OpenAiCodexProvider {
         input: &mut Vec<Value>,
         known_calls: &std::collections::HashSet<String>,
     ) {
-        for part in &message.content {
+        for (index, part) in message.content.iter().enumerate() {
             let ContentPart::ToolResult {
                 tool_call_id,
                 content,
@@ -13,7 +13,11 @@ impl OpenAiCodexProvider {
                 continue;
             };
             if known_calls.contains(tool_call_id) {
-                let output = Self::responses_tool_output(message, content);
+                let siblings = &message.content[index + 1..];
+                let end = siblings.iter().position(|part| {
+                    matches!(part, ContentPart::ToolResult { .. })
+                }).unwrap_or(siblings.len());
+                let output = Self::responses_tool_output(&siblings[..end], content);
                 input.push(json!({
                     "type": "function_call_output",
                     "call_id": tool_call_id,

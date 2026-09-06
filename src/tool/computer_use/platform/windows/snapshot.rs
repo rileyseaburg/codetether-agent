@@ -26,7 +26,11 @@ pub async fn handle_snapshot(
         "top": vy,
         "coordinate_space": "physical_screen_pixels",
         "cursor": cursor.map(|(x, y)| serde_json::json!({"x": x, "y": y}))
-    })))
+    }))
+    .with_metadata(
+        "image_data_url",
+        crate::tool::result_images::encoded(&png, "image/png"),
+    ))
 }
 
 /// Capture a specific window by HWND and save to a temp file.
@@ -43,6 +47,5 @@ pub async fn handle_window_snapshot(
     let cursor = cursor_position().ok();
     let path = std::env::temp_dir().join(WINDOW_SNAPSHOT_TMP);
     std::fs::write(&path, &png)?;
-    let size_kb = png.len() / 1024;
-    super::snapshot_output::window_result(hwnd, &path, size_kb, width, height, cursor)
+    super::snapshot_output::window_result(hwnd, &path, &png, width, height, cursor)
 }

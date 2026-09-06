@@ -3,6 +3,9 @@
 use super::ToolResult;
 use serde_json::json;
 
+#[path = "batch_summary_images.rs"]
+mod images;
+
 pub(super) fn build(results: Vec<(usize, String, ToolResult)>) -> ToolResult {
     let mut output_parts = Vec::new();
     let mut call_metadata = Vec::new();
@@ -38,15 +41,12 @@ pub(super) fn build(results: Vec<(usize, String, ToolResult)>) -> ToolResult {
         error_count,
         output_parts.join("\n\n")
     );
-    let mut result = if error_count == 0 {
+    let result = if error_count == 0 {
         ToolResult::success(summary).with_metadata("success_count", json!(success_count))
     } else {
         ToolResult::error(summary).with_metadata("error_count", json!(error_count))
     };
-    if !call_metadata.is_empty() {
-        result = result.with_metadata("calls", json!(call_metadata));
-    }
-    result
+    images::attach(result, call_metadata)
 }
 
 #[cfg(test)]

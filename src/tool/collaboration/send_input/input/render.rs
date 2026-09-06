@@ -2,19 +2,21 @@
 
 use super::{InputItem, Prepared, image};
 use anyhow::{Result, bail};
+use std::path::Path;
 
-pub(super) async fn items(items: Vec<InputItem>) -> Result<Prepared> {
+pub(super) async fn items(items: Vec<InputItem>, workspace: Option<&Path>) -> Result<Prepared> {
     let mut text = Vec::new();
     let mut images = Vec::new();
     for item in items {
         match item {
             InputItem::Text { text: value } => text.push(value),
             InputItem::Image { image_url } => {
-                images.push(image::data_url(&image_url)?);
+                images.push(image::normalize(&image_url)?);
                 text.push("[Image attached]".into());
             }
             InputItem::LocalImage { path } => {
-                images.push(image::local(&path).await?);
+                let resolved = workspace.map_or_else(|| path.clone(), |root| root.join(&path));
+                images.push(image::local(&resolved).await?);
                 text.push(format!("[Image attached: {}]", path.display()));
             }
             InputItem::Skill { name, path } => {

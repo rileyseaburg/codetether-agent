@@ -51,95 +51,92 @@ impl OpenRouterProvider {
         })
     }
 
-    fn convert_messages(messages: &[Message]) -> Vec<Value> {
-        messages
-            .iter()
-            .map(|msg| {
-                let role = match msg.role {
-                    Role::System | Role::Developer => "system",
-                    Role::User => "user",
-                    Role::Assistant => "assistant",
-                    Role::Tool => "tool",
-                };
+    pub(super) fn convert_messages(messages: &[Message]) -> Vec<Value> {
+        super::chat_images::convert(messages, |msg| {
+            let role = match msg.role {
+                Role::System | Role::Developer => "system",
+                Role::User => "user",
+                Role::Assistant => "assistant",
+                Role::Tool => "tool",
+            };
 
-                match msg.role {
-                    Role::Tool => {
-                        // Tool result message
-                        if let Some(ContentPart::ToolResult {
-                            tool_call_id,
-                            content,
-                        }) = msg.content.first()
-                        {
-                            json!({
-                                "role": "tool",
-                                "tool_call_id": tool_call_id,
-                                "content": content
-                            })
-                        } else {
-                            json!({"role": role, "content": ""})
-                        }
-                    }
-                    Role::Assistant => {
-                        // Assistant message - may have tool calls
-                        let text: String = msg
-                            .content
-                            .iter()
-                            .filter_map(|p| match p {
-                                ContentPart::Text { text } => Some(text.clone()),
-                                _ => None,
-                            })
-                            .collect::<Vec<_>>()
-                            .join("");
-
-                        let tool_calls: Vec<Value> = msg
-                            .content
-                            .iter()
-                            .filter_map(|p| match p {
-                                ContentPart::ToolCall {
-                                    id,
-                                    name,
-                                    arguments,
-                                    ..
-                                } => Some(json!({
-                                    "id": id,
-                                    "type": "function",
-                                    "function": {
-                                        "name": name,
-                                        "arguments": arguments
-                                    }
-                                })),
-                                _ => None,
-                            })
-                            .collect();
-
-                        if tool_calls.is_empty() {
-                            json!({"role": "assistant", "content": text})
-                        } else {
-                            // For assistant with tool calls, content should be empty string or the text
-                            json!({
-                                "role": "assistant",
-                                "content": if text.is_empty() { "".to_string() } else { text },
-                                "tool_calls": tool_calls
-                            })
-                        }
-                    }
-                    _ => {
-                        // System or User message
-                        let text: String = msg
-                            .content
-                            .iter()
-                            .filter_map(|p| match p {
-                                ContentPart::Text { text } => Some(text.clone()),
-                                _ => None,
-                            })
-                            .collect::<Vec<_>>()
-                            .join("\n");
-
-                        json!({"role": role, "content": text})
+            match msg.role {
+                Role::Tool => {
+                    // Tool result message
+                    if let Some(ContentPart::ToolResult {
+                        tool_call_id,
+                        content,
+                    }) = msg.content.first()
+                    {
+                        json!({
+                            "role": "tool",
+                            "tool_call_id": tool_call_id,
+                            "content": content
+                        })
+                    } else {
+                        json!({"role": role, "content": ""})
                     }
                 }
-            })
-            .collect()
+                Role::Assistant => {
+                    // Assistant message - may have tool calls
+                    let text: String = msg
+                        .content
+                        .iter()
+                        .filter_map(|p| match p {
+                            ContentPart::Text { text } => Some(text.clone()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join("");
+
+                    let tool_calls: Vec<Value> = msg
+                        .content
+                        .iter()
+                        .filter_map(|p| match p {
+                            ContentPart::ToolCall {
+                                id,
+                                name,
+                                arguments,
+                                ..
+                            } => Some(json!({
+                                "id": id,
+                                "type": "function",
+                                "function": {
+                                    "name": name,
+                                    "arguments": arguments
+                                }
+                            })),
+                            _ => None,
+                        })
+                        .collect();
+
+                    if tool_calls.is_empty() {
+                        json!({"role": "assistant", "content": text})
+                    } else {
+                        // For assistant with tool calls, content should be empty string or the text
+                        json!({
+                            "role": "assistant",
+                            "content": if text.is_empty() { "".to_string() } else { text },
+                            "tool_calls": tool_calls
+                        })
+                    }
+                }
+                _ => {
+                    // System or User message
+                    let text: String = msg
+                        .content
+                        .iter()
+                        .filter_map(|p| match p {
+                            ContentPart::Text { text } => Some(text.clone()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
+                    json!({"role": role, "content": text})
+                }
+            }
+        })
     }
 
     fn convert_tools(tools: &[ToolDefinition]) -> Vec<Value> {

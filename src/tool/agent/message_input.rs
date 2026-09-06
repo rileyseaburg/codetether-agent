@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 /// Image content retained in durable child mailboxes.
 #[derive(Clone, Deserialize, Serialize)]
 pub(crate) struct MessageImage {
-    /// Base64-encoded image data URL.
+    /// Image data URL or explicit HTTP(S) reference forwarded to the provider.
     pub(crate) data_url: String,
-    /// MIME type parsed from the data URL or local filename.
+    /// MIME type parsed locally; absent for references the provider will fetch.
     pub(crate) mime_type: Option<String>,
 }
 

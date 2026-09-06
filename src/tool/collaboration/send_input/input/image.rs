@@ -1,9 +1,20 @@
-//! Convert data URLs and local image files into durable attachments.
+//! Convert image references and local image files into durable attachments.
 
 use crate::tool::agent::collaboration_runtime::message_input::MessageImage;
 use anyhow::{Context, Result, bail};
 use base64::Engine;
 use std::path::Path;
+
+#[path = "image_reference.rs"]
+mod reference;
+
+pub(super) fn normalize(value: &str) -> Result<MessageImage> {
+    if value.trim().starts_with("data:") {
+        data_url(value)
+    } else {
+        reference::remote(value)
+    }
+}
 
 pub(super) fn data_url(value: &str) -> Result<MessageImage> {
     let image = crate::image_clipboard::attachment_from_data_url(value)

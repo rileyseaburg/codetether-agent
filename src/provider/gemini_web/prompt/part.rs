@@ -4,6 +4,9 @@ use crate::provider::ContentPart;
 use serde_json::{Value, json};
 
 #[cfg(test)]
+#[path = "image_notice_tests.rs"]
+mod image_notice_tests;
+#[cfg(test)]
 #[path = "part_tests.rs"]
 mod tests;
 
@@ -23,7 +26,9 @@ pub(super) fn render(part: &ContentPart) -> Option<String> {
             "Attached file (use this exact path): {}",
             safe_json(&json!({"path": path, "mime_type": mime_type}))
         )),
-        ContentPart::Image { .. } => None,
+        ContentPart::Image { .. } => Some(
+            "[Image unavailable: the Gemini Web transport does not support image inputs.]".into(),
+        ),
     }
 }
 

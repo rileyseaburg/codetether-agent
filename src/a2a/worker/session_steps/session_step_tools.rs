@@ -4,6 +4,12 @@ use crate::session::Session;
 
 #[path = "session_step_tools/collect.rs"]
 mod collect;
+#[cfg(test)]
+mod denied_tests;
+#[cfg(test)]
+mod image_fixture;
+#[cfg(test)]
+mod image_tests;
 mod tool_run;
 use super::session_output;
 pub(super) use collect::{ToolCall, collect_tool_calls};
@@ -29,10 +35,10 @@ pub(super) async fn execute_tool_call(
         session_output::add_tool_result(
             session,
             tool_id,
-            format!(
+            crate::tool::ToolResult::error(format!(
                 "Tool '{}' requires approval but auto-approve policy is {:?}",
                 tool_name, auto_approve
-            ),
+            )),
         );
         return;
     }

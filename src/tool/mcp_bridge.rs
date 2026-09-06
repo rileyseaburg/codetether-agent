@@ -125,26 +125,7 @@ impl Tool for McpBridgeTool {
                 let result = client.call_tool(tool_name, arguments).await?;
                 client.close().await?;
 
-                let output: String = result
-                    .content
-                    .iter()
-                    .map(|c| match c {
-                        crate::mcp::ToolContent::Text { text } => text.clone(),
-                        crate::mcp::ToolContent::Image { data, mime_type } => {
-                            format!("[image: {} ({} bytes)]", mime_type, data.len())
-                        }
-                        crate::mcp::ToolContent::Resource { resource } => {
-                            serde_json::to_string(resource).unwrap_or_default()
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n");
-
-                if result.is_error {
-                    Ok(ToolResult::error(output))
-                } else {
-                    Ok(ToolResult::success(output))
-                }
+                Ok(super::mcp_tools::convert::result(result))
             }
             "list_resources" => {
                 let manager = connect::manager(cmd, &cmd_args, approval_id).await?;

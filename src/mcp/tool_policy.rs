@@ -1,4 +1,4 @@
-use super::types::{CallToolResult, ToolContent};
+use super::types::CallToolResult;
 use crate::tool::{Tool, ToolResult};
 use anyhow::Result;
 use serde_json::Value;
@@ -39,10 +39,5 @@ pub(super) fn blocked(name: &str, args: &Value) -> Option<CallToolResult> {
 }
 
 fn from_tool_result(result: ToolResult) -> CallToolResult {
-    CallToolResult {
-        content: vec![ToolContent::Text {
-            text: result.output,
-        }],
-        is_error: !result.success,
-    }
+    super::tool_result::convert(result)
 }

@@ -273,13 +273,9 @@ pub struct CallToolResult {
     pub is_error: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ToolContent {
-    Text { text: String },
-    Image { data: String, mime_type: String },
-    Resource { resource: ResourceContents },
-}
+#[path = "tool_content.rs"]
+mod tool_content;
+pub use tool_content::ToolContent;
 
 // ===== MCP Resources =====
 

@@ -38,7 +38,8 @@ impl Tool for SendInputTool {
     }
     async fn execute(&self, value: Value) -> Result<ToolResult> {
         let args: args::Args = serde_json::from_value(value)?;
-        let prepared = input::prepare(args.message, args.items).await?;
+        let prepared =
+            input::prepare_in_workspace(args.message, args.items, args.context.workspace()).await?;
         dispatch::execute(args.context, args.target, prepared, args.interrupt).await
     }
 }

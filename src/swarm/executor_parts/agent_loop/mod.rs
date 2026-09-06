@@ -26,3 +26,12 @@ mod tool_raw_result;
 mod tools;
 mod turn;
 pub use api::run_agent_loop;
+
+#[cfg(test)]
+mod image_test_provider;
+#[cfg(test)]
+mod image_test_state;
+#[cfg(test)]
+mod image_test_tool;
+#[cfg(test)]
+mod image_tests;

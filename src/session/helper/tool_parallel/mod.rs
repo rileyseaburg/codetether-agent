@@ -1,6 +1,8 @@
 //! Parallel read-only tool execution for TUI turns.
 
 mod eligibility;
+#[cfg(test)]
+mod image_recording_tests;
 mod job;
 mod plan;
 #[cfg(test)]

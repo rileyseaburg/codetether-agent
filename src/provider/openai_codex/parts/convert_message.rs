@@ -13,7 +13,11 @@ impl OpenAiCodexProvider {
             }),
             Role::User => json!({
                 "role": "user",
-                "content": Self::message_text(message, "\n"),
+                "content": if Self::user_has_images(message) {
+                    json!(Self::user_image_content(message, UserImageFormat::Chat))
+                } else {
+                    json!(Self::message_text(message, "\n"))
+                },
             }),
         }
     }

@@ -25,6 +25,7 @@ fn capture(hwnd: i64) -> anyhow::Result<Value> {
     std::fs::write(&path, &png)?;
     Ok(json!({
         "captured": true,
+        "image_data_url": crate::tool::result_images::encoded(&png, "image/png"),
         "mime_type": "image/png",
         "path": path.display().to_string(),
         "size_kb": png.len() / 1024,

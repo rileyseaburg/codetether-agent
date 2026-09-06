@@ -38,10 +38,26 @@
 //! assert_eq!(converted[0]["toolSpec"]["name"], "echo");
 //! ```
 
-use crate::provider::{ContentPart, Message, Role, ToolDefinition};
-use serde_json::{Value, json};
+use crate::provider::{Message, Role};
+use serde_json::Value;
 
+mod assistant;
+mod image;
+#[cfg(test)]
+mod image_test_support;
+#[cfg(test)]
+mod image_tests;
+mod merge;
 mod repair;
+mod system;
+mod tool;
+mod tools;
+mod user;
+use assistant::append_assistant;
+use system::append_system;
+use tool::append_tool;
+pub use tools::convert_tools;
+use user::append_user;
 
 /// Convert generic [`Message`]s to Bedrock Converse API format.
 ///
@@ -91,162 +107,4 @@ pub fn convert_messages(messages: &[Message]) -> (Vec<Value>, Vec<Value>) {
 
     repair::tool_exchanges(&mut api_messages);
     (system_parts, api_messages)
-}
-
-/// Convert crate-internal [`ToolDefinition`]s into Bedrock `toolConfig.tools`
-/// entries.
-///
-/// # Examples
-///
-/// ```rust
-/// use codetether_agent::provider::bedrock::convert_tools;
-/// use codetether_agent::provider::ToolDefinition;
-/// use serde_json::json;
-///
-/// let t = vec![ToolDefinition {
-///     name: "ls".into(),
-///     description: "List files".into(),
-///     parameters: json!({"type":"object"}),
-/// }];
-/// let out = convert_tools(&t);
-/// assert_eq!(out[0]["toolSpec"]["description"], "List files");
-/// ```
-pub fn convert_tools(tools: &[ToolDefinition]) -> Vec<Value> {
-    tools
-        .iter()
-        .map(|t| {
-            json!({
-                "toolSpec": {
-                    "name": t.name,
-                    "description": t.description,
-                    "inputSchema": {
-                        "json": t.parameters
-                    }
-                }
-            })
-        })
-        .collect()
-}
-
-fn append_system(msg: &Message, system_parts: &mut Vec<Value>) {
-    let text: String = msg
-        .content
-        .iter()
-        .filter_map(|p| match p {
-            ContentPart::Text { text } => Some(text.clone()),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    if !text.trim().is_empty() {
-        system_parts.push(json!({"text": text}));
-    }
-}
-
-fn append_user(msg: &Message, api_messages: &mut Vec<Value>) {
-    let mut content_parts: Vec<Value> = Vec::new();
-    for part in &msg.content {
-        if let ContentPart::Text { text } = part
-            && !text.trim().is_empty()
-        {
-            content_parts.push(json!({"text": text}));
-        }
-    }
-    if content_parts.is_empty() {
-        return;
-    }
-    if let Some(last) = api_messages.last_mut()
-        && last.get("role").and_then(|r| r.as_str()) == Some("user")
-        && let Some(arr) = last.get_mut("content").and_then(|c| c.as_array_mut())
-    {
-        arr.extend(content_parts);
-        return;
-    }
-    api_messages.push(json!({
-        "role": "user",
-        "content": content_parts
-    }));
-}
-
-fn append_assistant(msg: &Message, api_messages: &mut Vec<Value>) {
-    let mut content_parts: Vec<Value> = Vec::new();
-    for part in &msg.content {
-        match part {
-            ContentPart::Text { text } => {
-                if !text.trim().is_empty() {
-                    content_parts.push(json!({"text": text}));
-                }
-            }
-            ContentPart::ToolCall {
-                id,
-                name,
-                arguments,
-                ..
-            } => {
-                let input: Value =
-                    serde_json::from_str(arguments).unwrap_or_else(|_| json!({"raw": arguments}));
-                content_parts.push(json!({
-                    "toolUse": {
-                        "toolUseId": id,
-                        "name": name,
-                        "input": input
-                    }
-                }));
-            }
-            _ => {}
-        }
-    }
-    // Bedrock rejects whitespace-only text blocks; drop empty assistant turns.
-    if content_parts.is_empty() {
-        return;
-    }
-    if let Some(last) = api_messages.last_mut()
-        && last.get("role").and_then(|r| r.as_str()) == Some("assistant")
-        && let Some(arr) = last.get_mut("content").and_then(|c| c.as_array_mut())
-    {
-        arr.extend(content_parts);
-        return;
-    }
-    api_messages.push(json!({
-        "role": "assistant",
-        "content": content_parts
-    }));
-}
-
-fn append_tool(msg: &Message, api_messages: &mut Vec<Value>) {
-    let mut content_parts: Vec<Value> = Vec::new();
-    for part in &msg.content {
-        if let ContentPart::ToolResult {
-            tool_call_id,
-            content,
-        } = part
-        {
-            let content = if content.trim().is_empty() {
-                "(empty tool result)".to_string()
-            } else {
-                content.clone()
-            };
-            content_parts.push(json!({
-                "toolResult": {
-                    "toolUseId": tool_call_id,
-                    "content": [{"text": content}],
-                    "status": "success"
-                }
-            }));
-        }
-    }
-    if content_parts.is_empty() {
-        return;
-    }
-    if let Some(last) = api_messages.last_mut()
-        && last.get("role").and_then(|r| r.as_str()) == Some("user")
-        && let Some(arr) = last.get_mut("content").and_then(|c| c.as_array_mut())
-    {
-        arr.extend(content_parts);
-        return;
-    }
-    api_messages.push(json!({
-        "role": "user",
-        "content": content_parts
-    }));
 }

@@ -524,7 +524,7 @@ impl McpServer {
         // - batch: needs weak registry reference, internal orchestration
         // - confirm_edit / confirm_multiedit: dead TUI confirmation tools
         // - plan_enter / plan_exit: session-state dependent TUI tools
-        // - voice / podcast / youtube / avatar / image: media generation tools
+        // - voice / podcast / youtube / avatar: media generation tools
         // - undo: git undo, dangerous without TUI context
         let skip_tools = [
             "question",
@@ -538,7 +538,6 @@ impl McpServer {
             "podcast",
             "youtube",
             "avatar",
-            "image",
             "undo",
         ];
 

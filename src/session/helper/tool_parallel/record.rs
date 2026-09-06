@@ -30,12 +30,14 @@ pub(crate) async fn try_execute(
     );
     for out in super::run::execute(jobs, registry, &session.id, event_tx).await {
         let content = super::route::route(session, model, Arc::clone(&provider), &out);
+        let mut parts = vec![ContentPart::ToolResult {
+            tool_call_id: out.tool_id,
+            content,
+        }];
+        parts.extend(out.images);
         session.add_message(Message {
             role: Role::Tool,
-            content: vec![ContentPart::ToolResult {
-                tool_call_id: out.tool_id,
-                content,
-            }],
+            content: parts,
         });
         if is_codesearch_no_match_output(&out.tool_name, out.success, &out.content) {
             *no_match_count += 1;

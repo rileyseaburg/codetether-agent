@@ -1,5 +1,8 @@
+pub(crate) use tool_modules::image_tool_message_for_test;
+
 // Unit-test module declarations for session helpers.
 
+mod image_recording_fixture;
 mod prompt_events_test_provider;
 mod prompt_events_tests;
 mod prompt_steering_test_provider;

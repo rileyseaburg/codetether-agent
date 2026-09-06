@@ -21,6 +21,12 @@ mod tool_extraction_tests;
 pub(in crate::session::helper) mod tool_metadata_event;
 #[path = "tool_output.rs"]
 pub(in crate::session::helper) mod tool_output;
+#[cfg(test)]
+pub(crate) use tool_output::tool_result_with_metadata as image_tool_message_for_test;
+#[cfg(test)]
+#[path = "tool_output_image_tests.rs"]
+mod tool_output_image_tests;
+
 #[path = "tool_parallel/mod.rs"]
 pub(in crate::session::helper) mod tool_parallel;
 #[path = "tool_policy.rs"]

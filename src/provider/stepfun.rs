@@ -55,19 +55,9 @@ impl StepFunProvider {
 
 // ============== Request Types ==============
 
-#[derive(Debug, Serialize)]
-struct ChatRequest {
-    model: String,
-    messages: Vec<ChatMessage>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tools: Option<Vec<ChatTool>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    temperature: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    max_tokens: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    stream: Option<bool>,
-}
+mod image_messages;
+mod request;
+use request::ChatRequest;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ChatMessage {
@@ -190,7 +180,7 @@ struct StreamToolFunction {
 }
 
 impl StepFunProvider {
-    fn convert_messages(&self, messages: &[Message]) -> Vec<ChatMessage> {
+    fn convert_text_messages(&self, messages: &[Message]) -> Vec<ChatMessage> {
         let mut result = Vec::new();
 
         for msg in messages {

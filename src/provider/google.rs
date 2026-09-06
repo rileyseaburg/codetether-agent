@@ -50,116 +50,113 @@ impl GoogleProvider {
         Ok(())
     }
 
-    fn convert_messages(messages: &[Message]) -> Vec<Value> {
-        messages
-            .iter()
-            .map(|msg| {
-                let role = match msg.role {
-                    Role::System | Role::Developer => "system",
-                    Role::User => "user",
-                    Role::Assistant => "assistant",
-                    Role::Tool => "tool",
-                };
+    pub(super) fn convert_messages(messages: &[Message]) -> Vec<Value> {
+        super::chat_images::convert(messages, |msg| {
+            let role = match msg.role {
+                Role::System | Role::Developer => "system",
+                Role::User => "user",
+                Role::Assistant => "assistant",
+                Role::Tool => "tool",
+            };
 
-                // For tool messages, we need to produce one message per tool result
-                if msg.role == Role::Tool {
-                    let mut content_parts: Vec<Value> = Vec::new();
-                    let mut tool_call_id = None;
-                    for part in &msg.content {
-                        match part {
-                            ContentPart::ToolResult {
-                                tool_call_id: id,
-                                content,
-                            } => {
-                                tool_call_id = Some(id.clone());
-                                content_parts.push(json!(content));
-                            }
-                            ContentPart::Text { text } => {
-                                content_parts.push(json!(text));
-                            }
-                            _ => {}
+            // For tool messages, we need to produce one message per tool result
+            if msg.role == Role::Tool {
+                let mut content_parts: Vec<Value> = Vec::new();
+                let mut tool_call_id = None;
+                for part in &msg.content {
+                    match part {
+                        ContentPart::ToolResult {
+                            tool_call_id: id,
+                            content,
+                        } => {
+                            tool_call_id = Some(id.clone());
+                            content_parts.push(json!(content));
                         }
-                    }
-                    let content_str = content_parts
-                        .iter()
-                        .filter_map(|v| v.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    let mut m = json!({
-                        "role": "tool",
-                        "content": content_str,
-                    });
-                    if let Some(id) = tool_call_id {
-                        m["tool_call_id"] = json!(id);
-                    }
-                    return m;
-                }
-
-                // For assistant messages with tool calls
-                if msg.role == Role::Assistant {
-                    let mut text_parts = Vec::new();
-                    let mut tool_calls = Vec::new();
-                    for part in &msg.content {
-                        match part {
-                            ContentPart::Text { text } => {
-                                if !text.is_empty() {
-                                    text_parts.push(text.clone());
-                                }
-                            }
-                            ContentPart::ToolCall {
-                                id,
-                                name,
-                                arguments,
-                                thought_signature,
-                            } => {
-                                let mut tc = json!({
-                                    "id": id,
-                                    "type": "function",
-                                    "function": {
-                                        "name": name,
-                                        "arguments": arguments
-                                    }
-                                });
-                                // Include thought signature for Gemini 3.x models
-                                if let Some(sig) = thought_signature {
-                                    tc["extra_content"] = json!({
-                                        "google": {
-                                            "thought_signature": sig
-                                        }
-                                    });
-                                }
-                                tool_calls.push(tc);
-                            }
-                            _ => {}
+                        ContentPart::Text { text } => {
+                            content_parts.push(json!(text));
                         }
+                        _ => {}
                     }
-                    let content = text_parts.join("\n");
-                    let mut m = json!({"role": "assistant"});
-                    if !content.is_empty() || tool_calls.is_empty() {
-                        m["content"] = json!(content);
-                    }
-                    if !tool_calls.is_empty() {
-                        m["tool_calls"] = json!(tool_calls);
-                    }
-                    return m;
                 }
-
-                let text: String = msg
-                    .content
+                let content_str = content_parts
                     .iter()
-                    .filter_map(|p| match p {
-                        ContentPart::Text { text } => Some(text.clone()),
-                        _ => None,
-                    })
+                    .filter_map(|v| v.as_str())
                     .collect::<Vec<_>>()
                     .join("\n");
+                let mut m = json!({
+                    "role": "tool",
+                    "content": content_str,
+                });
+                if let Some(id) = tool_call_id {
+                    m["tool_call_id"] = json!(id);
+                }
+                return m;
+            }
 
-                json!({
-                    "role": role,
-                    "content": text
+            // For assistant messages with tool calls
+            if msg.role == Role::Assistant {
+                let mut text_parts = Vec::new();
+                let mut tool_calls = Vec::new();
+                for part in &msg.content {
+                    match part {
+                        ContentPart::Text { text } => {
+                            if !text.is_empty() {
+                                text_parts.push(text.clone());
+                            }
+                        }
+                        ContentPart::ToolCall {
+                            id,
+                            name,
+                            arguments,
+                            thought_signature,
+                        } => {
+                            let mut tc = json!({
+                                "id": id,
+                                "type": "function",
+                                "function": {
+                                    "name": name,
+                                    "arguments": arguments
+                                }
+                            });
+                            // Include thought signature for Gemini 3.x models
+                            if let Some(sig) = thought_signature {
+                                tc["extra_content"] = json!({
+                                    "google": {
+                                        "thought_signature": sig
+                                    }
+                                });
+                            }
+                            tool_calls.push(tc);
+                        }
+                        _ => {}
+                    }
+                }
+                let content = text_parts.join("\n");
+                let mut m = json!({"role": "assistant"});
+                if !content.is_empty() || tool_calls.is_empty() {
+                    m["content"] = json!(content);
+                }
+                if !tool_calls.is_empty() {
+                    m["tool_calls"] = json!(tool_calls);
+                }
+                return m;
+            }
+
+            let text: String = msg
+                .content
+                .iter()
+                .filter_map(|p| match p {
+                    ContentPart::Text { text } => Some(text.clone()),
+                    _ => None,
                 })
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            json!({
+                "role": role,
+                "content": text
             })
-            .collect()
+        })
     }
 
     fn convert_tools(tools: &[ToolDefinition]) -> Vec<Value> {

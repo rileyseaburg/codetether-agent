@@ -8,6 +8,8 @@ mod call_guard;
 mod codesearch;
 mod discovery;
 mod dispatch;
+#[cfg(test)]
+mod image_recording_tests;
 mod invoke;
 mod outcome;
 mod outcome_detail;

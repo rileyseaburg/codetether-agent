@@ -11,6 +11,7 @@
 //! Reference: https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 
 use super::util;
+mod image_content;
 #[path = "vertex_anthropic_catalog.rs"]
 pub mod vertex_anthropic_catalog;
 #[path = "vertex_anthropic_model.rs"]
@@ -246,24 +247,7 @@ impl VertexAnthropicProvider {
                     }
                 }
                 Role::User => {
-                    let mut content_parts: Vec<Value> = Vec::new();
-                    for part in &msg.content {
-                        match part {
-                            ContentPart::Text { text } => {
-                                content_parts.push(json!({
-                                    "type": "text",
-                                    "text": text,
-                                }));
-                            }
-                            ContentPart::Thinking { text, .. } => {
-                                content_parts.push(json!({
-                                    "type": "thinking",
-                                    "thinking": text,
-                                }));
-                            }
-                            _ => {}
-                        }
-                    }
+                    let mut content_parts = image_content::user::parts(msg);
                     if content_parts.is_empty() {
                         content_parts.push(json!({"type": "text", "text": " "}));
                     }
@@ -318,20 +302,7 @@ impl VertexAnthropicProvider {
                     }));
                 }
                 Role::Tool => {
-                    let mut tool_results: Vec<Value> = Vec::new();
-                    for part in &msg.content {
-                        if let ContentPart::ToolResult {
-                            tool_call_id,
-                            content,
-                        } = part
-                        {
-                            tool_results.push(json!({
-                                "type": "tool_result",
-                                "tool_use_id": tool_call_id,
-                                "content": content
-                            }));
-                        }
-                    }
+                    let tool_results = image_content::tool::parts(msg);
                     if !tool_results.is_empty() {
                         api_messages.push(json!({
                             "role": "user",

@@ -51,5 +51,6 @@ pub(super) async fn run_one(
         tool_input: job.tool_input,
         content,
         success,
+        images: crate::tool::result_images::content(metadata.as_ref()),
     }
 }

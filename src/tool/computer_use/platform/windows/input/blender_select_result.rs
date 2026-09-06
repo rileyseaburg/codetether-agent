@@ -2,7 +2,12 @@
 
 use serde_json::{Value, json};
 
-pub fn build(name: &str, details: Value) -> crate::tool::ToolResult {
+pub fn build(name: &str, mut details: Value) -> crate::tool::ToolResult {
+    // Remove before either evidence copy is serialized into tool text.
+    let image = details
+        .get_mut("visual_evidence")
+        .and_then(Value::as_object_mut)
+        .and_then(|evidence| evidence.remove("image_data_url"));
     let confirmed = details["matched_requested_object"]
         .as_bool()
         .unwrap_or(false);
@@ -24,6 +29,9 @@ pub fn build(name: &str, details: Value) -> crate::tool::ToolResult {
         "note": note(confirmed, method.as_str())
     }));
     result.success = confirmed;
+    if let Some(image) = image {
+        result = result.with_metadata("image_data_url", image);
+    }
     result
 }
 

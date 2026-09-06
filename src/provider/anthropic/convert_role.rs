@@ -14,6 +14,13 @@
 //! are present.
 
 use serde_json::Value;
+pub(super) mod image;
+#[cfg(test)]
+mod image_test_support;
+#[cfg(test)]
+mod image_tests;
+mod tool;
+pub(crate) use tool::push_tool_results;
 
 use crate::provider::{ContentPart, Message};
 
@@ -50,7 +57,7 @@ pub(crate) fn push_system(system_blocks: &mut Vec<Value>, msg: &Message) {
 
 /// Convert user-message content into Anthropic content blocks.
 ///
-/// User messages can carry plain text and thinking blocks in this conversion
+/// User messages can carry images, plain text and thinking blocks in this conversion
 /// path. Tool results are intentionally excluded here because they are handled
 /// separately by [`push_tool_results`], which wraps them in a user-role message
 /// only when actual tool-result blocks are present.
@@ -69,6 +76,7 @@ pub(crate) fn user_parts(msg: &Message) -> Vec<Value> {
         .filter_map(|part| match part {
             ContentPart::Text { text } => Some(super::convert_parts::text(text)),
             ContentPart::Thinking { text, .. } => Some(super::convert_parts::thinking(text)),
+            ContentPart::Image { url, mime_type } => Some(image::block(url, mime_type.as_deref())),
             _ => None,
         })
         .collect()
@@ -94,38 +102,4 @@ pub(crate) fn assistant_parts(msg: &Message) -> Vec<Value> {
         .iter()
         .filter_map(super::convert_parts::assistant_part)
         .collect()
-}
-
-/// Append a user-role Anthropic message containing tool results, when present.
-///
-/// Anthropic represents tool execution results as `"tool_result"` content
-/// blocks inside a user message. This helper collects all tool-result parts from
-/// `msg` and appends a converted user message to `api_messages` only if at
-/// least one result exists.
-///
-/// # Arguments
-///
-/// * `api_messages` - Destination list of Anthropic API messages.
-/// * `msg` - The generic tool-role message whose content may contain tool
-///   results.
-///
-/// # Side Effects
-///
-/// Mutates `api_messages` by appending a `"role": "user"` message containing
-/// converted tool-result blocks. If `msg` has no tool-result parts, the vector
-/// is left unchanged.
-pub(crate) fn push_tool_results(
-    api_messages: &mut Vec<Value>,
-    msg: &Message,
-    known_tool_calls: &std::collections::HashSet<String>,
-) {
-    let results: Vec<Value> = msg
-        .content
-        .iter()
-        .filter(|part| super::sanitize::result_has_call(part, known_tool_calls))
-        .filter_map(super::convert_parts::tool_result)
-        .collect();
-    if !results.is_empty() {
-        super::convert::push_message(api_messages, "user", results);
-    }
 }

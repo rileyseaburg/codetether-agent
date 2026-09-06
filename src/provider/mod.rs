@@ -37,7 +37,7 @@ pub mod local_cuda;
 #[path = "local_cuda_nocuda.rs"]
 pub mod local_cuda;
 pub mod pricing;
-pub mod util;
+include!("image_modules.rs");
 
 pub mod metrics;
 pub mod models;
@@ -46,7 +46,6 @@ pub mod openai;
 pub mod openai_codex;
 pub mod openrouter;
 pub mod retry;
-pub mod shared_http;
 pub mod stepfun;
 pub mod tetherscript_provider;
 pub mod vertex_anthropic;

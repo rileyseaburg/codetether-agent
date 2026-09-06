@@ -17,6 +17,10 @@ pub(super) struct RuntimeContext {
 }
 
 impl RuntimeContext {
+    pub(super) fn workspace(&self) -> Option<&std::path::Path> {
+        self.workspace.as_deref()
+    }
+
     pub(super) fn resume_config(&self) -> crate::tool::agent::residency::ResumeConfig {
         crate::tool::agent::residency::ResumeConfig::new(
             self.model.clone(),

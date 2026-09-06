@@ -10,13 +10,13 @@ pub(super) async fn run_tool(
     tool_name: &str,
     input: serde_json::Value,
     cb: &Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
-) -> String {
+) -> crate::tool::ToolResult {
     let Some(tool) = registry.get(tool_name) else {
-        return format!("Error: Unknown tool '{}'", tool_name);
+        return crate::tool::ToolResult::error(format!("Error: Unknown tool '{tool_name}'"));
     };
     if let Some(blocked) = crate::runtime_policy::evaluate_tool_invocation(tool_name, &input).await
     {
-        return blocked.output;
+        return blocked;
     }
     let timeout =
         super::super::super::env_u64("CODETETHER_WORKER_TOOL_TIMEOUT_SECS", 120).clamp(1, 3600);
@@ -34,20 +34,24 @@ pub(super) async fn run_tool(
                 Some(started.elapsed().as_millis()),
             );
             if !emitted && let Some(cb) = cb {
-                cb(format!("[tool:{}:{}] {}", tool_name, if result.success { "ok" } else { "err" }, crate::util::truncate_bytes_safe(&result.output, 500)));
+                cb(format!(
+                    "[tool:{}:{}] {}",
+                    tool_name,
+                    if result.success { "ok" } else { "err" },
+                    crate::util::truncate_bytes_safe(&result.output, 500)
+                ));
             }
-            result.output
+            result
         }
-        Ok(Err(error)) => format!("Error: {}", error),
-        Err(_) => {
-            crate::tool::ToolResult::structured_error(
-                "TOOL_TIMEOUT",
-                tool_name,
-                &format!("tool timed out after {}s", timeout),
-                None,
-                Some(serde_json::json!({"hint": "Narrow the request, set a more specific path/include filter, or retry with smaller scope."})),
-            )
-            .output
-        }
+        Ok(Err(error)) => crate::tool::ToolResult::error(format!("Error: {error}")),
+        Err(_) => crate::tool::ToolResult::structured_error(
+            "TOOL_TIMEOUT",
+            tool_name,
+            &format!("tool timed out after {}s", timeout),
+            None,
+            Some(
+                serde_json::json!({"hint": "Narrow the request, set a more specific path/include filter, or retry with smaller scope."}),
+            ),
+        ),
     }
 }

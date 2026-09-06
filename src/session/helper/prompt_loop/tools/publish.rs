@@ -27,11 +27,12 @@ pub(super) async fn complete(runner: &mut Runner<'_>, step: usize, call: &Call, 
     let content = super::rlm::route(runner, call, &outcome.rendered);
     runner
         .session
-        .add_message(super::super::super::tool_output::tool_result_with_status(
+        .add_message(super::super::super::tool_output::tool_result_with_metadata(
             call.id.clone(),
             &call.name,
             outcome.success,
             content,
+            outcome.metadata.as_ref(),
         ));
     super::super::super::persist::after_tool(runner.session).await;
     super::codesearch::record(runner, outcome.codesearch_miss);

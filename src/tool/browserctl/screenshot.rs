@@ -6,6 +6,13 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+#[cfg(test)]
+mod blender_tests;
+#[cfg(test)]
+mod error_tests;
+#[cfg(test)]
+mod tests;
+
 /// Write screenshot bytes to disk and return the output path.
 ///
 /// # Errors
@@ -26,7 +33,11 @@ pub(super) async fn write(
     if let Some(parent) = path.parent().filter(|path| !path.as_os_str().is_empty()) {
         tokio::fs::create_dir_all(parent).await?;
     }
-    tokio::fs::write(&path, screenshot.bytes).await?;
+    tokio::fs::write(&path, &screenshot.bytes).await?;
+    metadata.insert(
+        "image_data_url".into(),
+        crate::tool::result_images::encoded(&screenshot.bytes, "image/png"),
+    );
     metadata.insert("path".into(), json!(path.display().to_string()));
     metadata.insert("file".into(), json!({ "path": path.display().to_string(), "exists": true, "absolute": path.is_absolute() }));
     Ok(json!({ "path": path.display().to_string() }))

@@ -1,3 +1,9 @@
+#[path = "test_support.rs"]
+mod support;
+#[path = "tool_image_tests.rs"]
+mod tool_images;
+#[path = "user_image_tests.rs"]
+mod user_images;
 use super::convert;
 use crate::provider::{ContentPart, Message, Role};
 use async_openai::types::chat::ChatCompletionRequestMessage;

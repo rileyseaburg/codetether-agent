@@ -31,6 +31,7 @@ mod fallback_search_files;
 mod server;
 mod subprocess_policy;
 mod tool_policy;
+mod tool_result;
 mod transport;
 mod types;
 
@@ -42,3 +43,5 @@ pub use types::*;
 
 #[cfg(test)]
 mod fallback_search_tests;
+#[cfg(test)]
+mod image_server_tests;

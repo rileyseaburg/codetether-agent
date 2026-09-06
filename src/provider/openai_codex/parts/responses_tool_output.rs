@@ -1,7 +1,6 @@
 impl OpenAiCodexProvider {
-    fn responses_tool_output(message: &Message, text: &str) -> Value {
-        let mut content = message
-            .content
+    fn responses_tool_output(parts: &[ContentPart], text: &str) -> Value {
+        let mut content = parts
             .iter()
             .filter_map(|part| match part {
                 ContentPart::Image { url, .. } => Some(json!({

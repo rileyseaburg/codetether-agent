@@ -18,6 +18,7 @@ mod constants;
 mod convert;
 mod convert_parts;
 mod convert_role;
+pub(crate) use convert_role::image::block as image_block;
 mod convert_tools;
 mod debug;
 mod error;

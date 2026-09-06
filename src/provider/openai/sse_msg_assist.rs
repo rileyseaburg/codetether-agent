@@ -1,4 +1,4 @@
-//! Assistant/tool message → JSON conversion helpers.
+//! Assistant message → JSON conversion.
 
 use serde_json::{Value, json};
 
@@ -30,21 +30,4 @@ pub(super) fn assistant_json(msg: &Message, text: String) -> Value {
         obj["tool_calls"] = Value::Array(calls);
     }
     obj
-}
-
-pub(super) fn tool_json(msg: &Message) -> Value {
-    for part in &msg.content {
-        if let ContentPart::ToolResult {
-            tool_call_id,
-            content,
-        } = part
-        {
-            return json!({
-                "role": "tool",
-                "tool_call_id": tool_call_id,
-                "content": content,
-            });
-        }
-    }
-    json!({ "role": "tool", "content": "" })
 }

@@ -7,7 +7,7 @@ use crate::tool::computer_use::response;
 pub(super) fn window_result(
     hwnd: i64,
     path: &Path,
-    size_kb: usize,
+    png: &[u8],
     width: u32,
     height: u32,
     cursor: Option<(i32, i32)>,
@@ -17,7 +17,7 @@ pub(super) fn window_result(
         "captured": true,
         "mime_type": "image/png",
         "path": path.display().to_string(),
-        "size_kb": size_kb,
+        "size_kb": png.len() / 1024,
         "width": width,
         "height": height,
         "hwnd": hwnd,
@@ -28,5 +28,6 @@ pub(super) fn window_result(
         "coordinate_space": "window_relative_pixels",
         "click_hint": "Use this hwnd with mouse actions; x/y are coordinates within this window snapshot.",
         "cursor": cursor.map(|(x, y)| serde_json::json!({"x": x, "y": y}))
-    })))
+    }))
+    .with_metadata("image_data_url", crate::tool::result_images::encoded(png, "image/png")))
 }
