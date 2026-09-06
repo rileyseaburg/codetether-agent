@@ -1,0 +1,83 @@
+#!/bin/sh
+set -eu
+
+base=''
+token=''
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --base) base=$2; shift 2 ;;
+    --token) token=$2; shift 2 ;;
+    -h|--help)
+      printf '%s\n' 'forgejo-cli --base <api-base> --token <token> {get|post} <path> [json-body]' >&2
+      exit 0
+      ;;
+    *) break ;;
+  esac
+done
+
+[ -n "$base" ] || { echo 'forgejo-cli: --base is required' >&2; exit 2; }
+[ -n "$token" ] || { echo 'forgejo-cli: --token is required' >&2; exit 2; }
+method=$1
+shift
+case "$method" in
+  get) [ "$#" -eq 1 ] || { echo 'forgejo-cli: get requires a path' >&2; exit 2; } ;;
+  post) [ "$#" -eq 2 ] || { echo 'forgejo-cli: post requires a path and JSON body' >&2; exit 2; } ;;
+  *) echo "forgejo-cli: unsupported operation: $method" >&2; exit 2 ;;
+esac
+
+path=$1
+body=${2-}
+base=${base%/}
+case "$path" in
+  /*) url_path="$path" ;;
+  *) url_path="/$path" ;;
+esac
+case "$base" in
+  https://*) authority=${base#https://} ;;
+  http://*) authority=${base#http://} ;;
+  *) echo 'forgejo-cli: only HTTP(S) API bases are supported' >&2; exit 2 ;;
+esac
+host=${authority%%/*}
+api_prefix=${authority#"$host"}
+[ "$api_prefix" != "$authority" ] || api_prefix=''
+request_file=$(mktemp)
+response_file=$(mktemp)
+cleanup() { rm -f "$request_file" "$response_file"; }
+trap cleanup EXIT HUP INT TERM
+
+if [ "$method" = post ]; then
+  length=$(printf '%s' "$body" | LC_ALL=C wc -c | tr -d ' ')
+  {
+    printf 'POST %s%s HTTP/1.1\r\n' "$api_prefix" "$url_path"
+    printf 'Host: %s\r\n' "$host"
+    printf 'Authorization: token %s\r\n' "$token"
+    printf 'Accept: application/json\r\nContent-Type: application/json\r\nContent-Length: %s\r\nConnection: close\r\n\r\n' "$length"
+    printf '%s' "$body"
+  } >"$request_file"
+else
+  {
+    printf 'GET %s%s HTTP/1.1\r\n' "$api_prefix" "$url_path"
+    printf 'Host: %s\r\nAuthorization: token %s\r\nAccept: application/json\r\nConnection: close\r\n\r\n' "$host" "$token"
+  } >"$request_file"
+fi
+
+openssl s_client -quiet -connect "$host:443" -servername "$host" <"$request_file" >"$response_file" 2>/dev/null
+exec perl -0777 -e '
+my $raw = <>;
+my ($headers, $body) = split(/\r?\n\r?\n/, $raw, 2);
+$body //= "";
+my ($status) = $headers =~ m{^HTTP/\S+\s+(\d+)}m;
+if (($headers // "") =~ /transfer-encoding:\s*chunked/i) {
+    my $decoded = "";
+    while (length $body) {
+        $body =~ s/^\s*([0-9A-Fa-f]+)\r?\n// or last;
+        my $size = hex($1);
+        last if $size == 0;
+        $decoded .= substr($body, 0, $size, "");
+        $body =~ s/^\r?\n//;
+    }
+    $body = $decoded;
+}
+print $body;
+exit 1 if defined($status) && ($status < 200 || $status >= 300);
+' "$response_file"
