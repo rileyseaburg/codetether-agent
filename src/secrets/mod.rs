@@ -1,6 +1,6 @@
 //! Secrets management via HashiCorp Vault
 //!
-//! This module only reads HashiCorp Vault. Provider initialization may add
+//! Provider secrets and authentication lease renewal use HashiCorp Vault. Initialization may add
 //! local-development env/AWS fallback credentials unless
 //! `CODETETHER_DISABLE_ENV_FALLBACK=1` is set.
 
@@ -13,6 +13,8 @@ use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
 use vaultrs::error::ClientError;
 use vaultrs::kv2;
 
+mod auth_refresh;
+mod renewal;
 mod retry;
 
 /// Vault-based secrets manager
@@ -24,6 +26,7 @@ pub struct SecretsManager {
     mount: String,
     path: String,
     k8s_auth: Option<Arc<KubernetesAuthConfig>>,
+    renewal: Arc<renewal::Monitor>,
 }
 
 #[derive(Clone, Debug)]
@@ -42,6 +45,7 @@ impl Default for SecretsManager {
             mount: "secret".to_string(),
             path: "codetether/providers".to_string(),
             k8s_auth: None,
+            renewal: Arc::default(),
         }
     }
 }
@@ -66,7 +70,9 @@ impl SecretsManager {
                 .clone()
                 .unwrap_or_else(|| "codetether/providers".to_string()),
             k8s_auth: None,
-        })
+            renewal: Arc::default(),
+        }
+        .with_renewal())
     }
 
     /// Authenticate to Vault using the pod's Kubernetes service account JWT.
@@ -100,7 +106,9 @@ impl SecretsManager {
             mount: kv_mount.unwrap_or("secret").to_string(),
             path: kv_path.unwrap_or("codetether/providers").to_string(),
             k8s_auth: Some(Arc::new(auth)),
-        })
+            renewal: Arc::default(),
+        }
+        .with_renewal())
     }
 
     async fn login_with_kubernetes(auth: &KubernetesAuthConfig) -> Result<Arc<VaultClient>> {
@@ -232,37 +240,9 @@ impl SecretsManager {
         self.client.read().clone()
     }
 
-    async fn refresh_kubernetes_auth(&self) -> Result<Option<Arc<VaultClient>>> {
-        let Some(auth) = self.k8s_auth.as_deref() else {
-            return Ok(self.client());
-        };
-
-        tracing::warn!("Vault token was rejected; refreshing Kubernetes auth token");
-        let client = Self::login_with_kubernetes(auth).await?;
-        {
-            let mut current = self.client.write();
-            *current = Some(client.clone());
-        }
-        self.clear_cache().await;
-        tracing::info!(
-            role = %auth.role,
-            mount = %auth.auth_mount,
-            "Refreshed Vault Kubernetes auth token"
-        );
-        Ok(Some(client))
-    }
-
-    fn should_refresh_vault_token(err: &ClientError) -> bool {
-        match err {
-            ClientError::APIError { code, errors } => {
-                *code == 403
-                    || errors.iter().any(|msg| {
-                        let msg = msg.to_ascii_lowercase();
-                        msg.contains("invalid token") || msg.contains("permission denied")
-                    })
-            }
-            _ => false,
-        }
+    fn with_renewal(self) -> Self {
+        self.renewal.start(Arc::downgrade(&self.client));
+        self
     }
 
     /// Get an API key for a provider from Vault
