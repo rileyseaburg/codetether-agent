@@ -12,10 +12,14 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.version }}
       DOCKER_HOST: tcp://127.0.0.1:2375
+      DOCKER_CONFIG: ${{ runner.temp }}/codetether-docker-config
+      BUILDX_CONFIG: ${{ runner.temp }}/codetether-buildx-config
     steps:
       - uses: https://github.com/actions/checkout@v4
         with:
           github-server-url: https://forgejo.quantum-forge.io
+      - name: Prepare writable Docker and Buildx directories
+        run: mkdir -p "$DOCKER_CONFIG" "$BUILDX_CONFIG"
       - uses: https://github.com/docker/setup-buildx-action@v3
       - name: Cross-build Windows GNU artifact
         shell: bash
@@ -26,24 +30,7 @@ jobs:
             --file docker/release/windows.Dockerfile --target artifact \
             --output type=local,dest=build/windows .
       - name: Package Windows executable and ZIP
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v python3 >/dev/null 2>&1 || ! command -v wixl >/dev/null 2>&1; then
-            elevate=(); if [ "$(id -u)" -ne 0 ]; then elevate=(sudo); fi
-            "${elevate[@]}" sh script/forgejo/apt-https.sh
-            "${elevate[@]}" apt-get update
-            "${elevate[@]}" apt-get install -y --no-install-recommends python3 wixl msitools
-          fi
-          asset="codetether-v$RELEASE_VERSION-x86_64-pc-windows-gnu"
-          mkdir -p dist
-          test -s build/windows/codetether.exe
-          cp build/windows/codetether.exe "dist/$asset.exe"
-          python3 script/package-windows-bundle.py --binary "dist/$asset.exe" \
-            --archive "dist/$asset.zip" --staging build/windows-bundle
-          cp "dist/$asset.exe" dist/codetether.exe
-          python3 script/build-windows-msi.py
-          cp dist/codetether-windows.msi "dist/$asset.msi"
+        run: bash script/forgejo/package-windows-release.sh
       - uses: https://github.com/actions/upload-artifact@v3
         with:
           name: release-x86_64-pc-windows-gnu
