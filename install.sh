@@ -584,51 +584,50 @@ main() {
         info "downloading ${tarball}..."
         download "$url" "${tmp_dir}/${tarball}"
 
-        if [ ! -f "${tmp_dir}/${tarball}" ]; then
-            error "download failed — no pre-built binary for ${platform}"
-            error "you can build from source: cargo install codetether-agent"
-            exit 1
-        fi
-
         # Extract
         info "extracting..."
         tar xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
 
-        if [ ! -f "${tmp_dir}/${artifact_name}" ]; then
+        local extracted_binary="${tmp_dir}/${artifact_name}"
+        if [ ! -f "$extracted_binary" ]; then
+            extracted_binary="${tmp_dir}/${BINARY_NAME}"
+        fi
+        if [ ! -f "$extracted_binary" ]; then
             error "expected binary not found in archive"
             exit 1
         fi
 
-        chmod +x "${tmp_dir}/${artifact_name}"
+        chmod +x "$extracted_binary"
 
         # Ensure install directory exists
         if [ "$USE_SUDO" = "true" ]; then
             sudo mkdir -p "$INSTALL_DIR"
-            sudo mv "${tmp_dir}/${artifact_name}" "${INSTALL_DIR}/${BINARY_NAME}"
-            sudo chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+            sudo mv "$extracted_binary" "$target_path"
         else
             mkdir -p "$INSTALL_DIR"
-            mv "${tmp_dir}/${artifact_name}" "${INSTALL_DIR}/${BINARY_NAME}"
-            chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+            mv "$extracted_binary" "$target_path"
         fi
 
         ok "installed ${BINARY_NAME} ${version} to ${INSTALL_DIR}/${BINARY_NAME}"
     fi
 
-    # Verify
-    if command -v "$BINARY_NAME" > /dev/null 2>&1; then
-        local installed_version
-        installed_version="$("$BINARY_NAME" --version 2>/dev/null || true)"
-        ok "${installed_version}"
-    else
+    # Verify the file just installed, not a stale executable earlier on PATH.
+    if [ "$skip_binary_install" = "true" ] && [ ! -x "$target_path" ]; then
+        target_path="$(command -v "$BINARY_NAME")"
+    fi
+    installed_version="$("$target_path" --version)"
+    ok "${installed_version}"
+    if ! command -v "$BINARY_NAME" > /dev/null 2>&1; then
         warn "${BINARY_NAME} is not in your PATH"
         if [ "$INSTALL_DIR" = "${HOME}/.local/bin" ]; then
             warn "add this to your shell profile:"
             printf "\n  export PATH=\"\$HOME/.local/bin:\$PATH\"\n\n"
         fi
+    elif [ "$(command -v "$BINARY_NAME")" != "$target_path" ]; then
+        warn "PATH resolves $(command -v "$BINARY_NAME"); use $target_path or update PATH"
     fi
 
-    configure_core_env "${INSTALL_DIR}/${BINARY_NAME}"
+    configure_core_env "$target_path"
 
     printf "\n${BOLD}Get started:${NC}\n"
     printf "  ${CYAN}codetether tui${NC}       — interactive TUI\n"
