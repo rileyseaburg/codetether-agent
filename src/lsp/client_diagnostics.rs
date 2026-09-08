@@ -34,6 +34,9 @@ impl LspClient {
         } else {
             self.open_document(path, content).await?;
         }
+        if let Some(result) = super::typescript_diagnostics::request(self, &uri).await? {
+            return Ok(result);
+        }
         let diagnostics = publication::wait(
             || self.transport.diagnostics_snapshot(),
             &uri,

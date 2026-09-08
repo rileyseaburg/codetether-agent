@@ -23,7 +23,7 @@ use tracing::{debug, info, warn};
 pub struct LspClient {
     pub(super) transport: LspTransport,
     pub(super) config: LspConfig,
-    server_capabilities: RwLock<Option<lsp_types::ServerCapabilities>>,
+    pub(super) server_capabilities: RwLock<Option<lsp_types::ServerCapabilities>>,
     /// Track open documents with their versions
     pub(super) open_documents: RwLock<HashMap<String, i32>>,
 }
@@ -624,7 +624,7 @@ fn parse_completion_response(response: JsonRpcResponse) -> Result<LspActionResul
 
 /// LSP Manager - manages multiple language server connections
 pub struct LspManager {
-    clients: RwLock<HashMap<String, Arc<LspClient>>>,
+    pub(super) clients: RwLock<HashMap<String, Arc<LspClient>>>,
     /// Linter clients keyed by linter name (e.g. "eslint", "ruff").
     /// These are only queried for diagnostics, not completions/definitions.
     linter_clients: RwLock<HashMap<String, Arc<LspClient>>>,

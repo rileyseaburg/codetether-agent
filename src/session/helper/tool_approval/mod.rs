@@ -7,8 +7,10 @@ mod preflight;
 mod request;
 mod result;
 mod types;
+mod warnings;
 
 pub(in crate::session::helper) use gate::gate;
+pub(in crate::session::helper) use warnings::annotate;
 
 #[cfg(test)]
 #[path = "args_tests.rs"]

@@ -14,10 +14,14 @@ pub mod client;
 mod client_capabilities;
 #[path = "client_diagnostics.rs"]
 mod client_diagnostics;
+mod client_recovery;
 mod document_language;
 pub mod tetherscript;
 pub mod transport;
 pub mod types;
+mod typescript_diagnostics;
+#[cfg(test)]
+mod typescript_repeated_tests;
 pub mod uri;
 pub mod workspace_folder;
 
