@@ -10,7 +10,7 @@ pub(super) struct ImageTool(pub ToolResult);
 #[async_trait]
 impl Tool for ImageTool {
     fn id(&self) -> &str {
-        "image_fixture"
+        "image"
     }
     fn name(&self) -> &str {
         self.id()

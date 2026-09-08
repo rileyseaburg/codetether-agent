@@ -21,6 +21,7 @@
 /// network-visible resources, or internal agent state.
 const READ_ONLY_TOOL_IDS: &[&str] = &[
     "read",
+    "image",
     "list",
     "glob",
     "tree",
@@ -50,3 +51,7 @@ const READ_ONLY_TOOL_IDS: &[&str] = &[
 pub fn is_read_only(tool_id: &str) -> bool {
     READ_ONLY_TOOL_IDS.contains(&tool_id)
 }
+
+#[cfg(test)]
+#[path = "readonly_tests.rs"]
+mod tests;

@@ -20,7 +20,7 @@ async fn swarm_tool_images_survive_success_failure_and_text_truncation() {
             let mut state = state(result);
             let call = ToolCall {
                 id: "original-call".into(),
-                name: "image_fixture".into(),
+                name: "image".into(),
                 arguments: "{}".into(),
             };
             assert!(!tools::execute(&mut state, vec![call]).await);
