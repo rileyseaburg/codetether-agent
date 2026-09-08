@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
-# Static regression: release setup must not write the runner's read-only Docker home.
+# Prove the setup overrides inherited /root paths and exports writable directories.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 workflow="$root/.forgejo/workflows/release-windows.yml"
-grep -Fq 'DOCKER_CONFIG: /tmp/codetether-docker-config' "$workflow"
-grep -Fq 'BUILDX_CONFIG: /tmp/codetether-buildx-config' "$workflow"
-grep -Fq 'run: mkdir -p "$DOCKER_CONFIG" "$BUILDX_CONFIG"' "$workflow"
+grep -Fq 'run: bash script/forgejo/prepare-windows-buildx.sh' "$workflow"
 grep -Fq 'run: bash script/forgejo/package-windows-release.sh' "$workflow"
 bash -n "$root/script/forgejo/package-windows-release.sh"
-printf 'Windows release config regression checks passed.\n'
+mkdir -p "$root/artifacts/release-verification"
+fixture=$(mktemp -d "$root/artifacts/release-verification/buildx-env-XXXXXX")
+export GITHUB_ENV="$fixture/github.env"
+export CODETETHER_BUILDX_STATE_ROOT="$fixture/state"
+export DOCKER_CONFIG=/root/.docker BUILDX_CONFIG=/root/.docker/buildx
+bash "$root/script/forgejo/prepare-windows-buildx.sh" > "$fixture/setup.log"
+grep -Fx "DOCKER_CONFIG=$fixture/state/codetether-docker-config" "$GITHUB_ENV"
+grep -Fx "BUILDX_CONFIG=$fixture/state/codetether-buildx-config" "$GITHUB_ENV"
+test -w "$fixture/state/codetether-docker-config"
+test -w "$fixture/state/codetether-buildx-config"
+printf 'mocked local: inherited-path regression passed; evidence: %s\n' "$fixture"

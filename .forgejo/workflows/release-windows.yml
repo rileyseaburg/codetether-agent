@@ -12,15 +12,12 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.version }}
       DOCKER_HOST: tcp://127.0.0.1:2375
-      # Forgejo runner.temp names the daemon's /root path, not the job container.
-      DOCKER_CONFIG: /tmp/codetether-docker-config
-      BUILDX_CONFIG: /tmp/codetether-buildx-config
     steps:
       - uses: https://github.com/actions/checkout@v4
         with:
           github-server-url: https://forgejo.quantum-forge.io
       - name: Prepare writable Docker and Buildx directories
-        run: mkdir -p "$DOCKER_CONFIG" "$BUILDX_CONFIG"
+        run: bash script/forgejo/prepare-windows-buildx.sh
       - uses: https://github.com/docker/setup-buildx-action@v3
       - name: Cross-build Windows GNU artifact
         shell: bash
