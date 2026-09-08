@@ -12,8 +12,9 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.version }}
       DOCKER_HOST: tcp://127.0.0.1:2375
-      DOCKER_CONFIG: ${{ runner.temp }}/codetether-docker-config
-      BUILDX_CONFIG: ${{ runner.temp }}/codetether-buildx-config
+      # Forgejo runner.temp names the daemon's /root path, not the job container.
+      DOCKER_CONFIG: /tmp/codetether-docker-config
+      BUILDX_CONFIG: /tmp/codetether-buildx-config
     steps:
       - uses: https://github.com/actions/checkout@v4
         with:
