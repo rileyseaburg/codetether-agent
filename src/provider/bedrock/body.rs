@@ -24,11 +24,11 @@
 //! ```
 
 use super::convert::{convert_messages, convert_tools};
-use super::output_budget::effective_max_tokens;
 use fields::additional_model_request_fields;
 use {crate::provider::CompletionRequest, serde_json::Value, serde_json::json};
 
 pub(super) mod fields;
+mod inference;
 
 #[path = "audit.rs"]
 pub(super) mod audit;
@@ -87,24 +87,7 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
         body["system"] = json!(system_parts);
     }
 
-    let mut inference_config = json!({});
-    inference_config["maxTokens"] = json!(effective_max_tokens(request.max_tokens, model_id));
-
-    if let Some(temp) = request.temperature {
-        if !super::output_budget::has_encrypted_reasoning(model_id) {
-            inference_config["temperature"] = json!(temp);
-        } else {
-            tracing::debug!(
-                provider = "bedrock",
-                model = %model_id,
-                "Skipping temperature parameter (deprecated for this model)"
-            );
-        }
-    }
-    if let Some(top_p) = request.top_p {
-        inference_config["topP"] = json!(top_p);
-    }
-    body["inferenceConfig"] = inference_config;
+    body["inferenceConfig"] = inference::build(request, model_id);
 
     if let Some(fields) = additional_model_request_fields(model_id) {
         body["additionalModelRequestFields"] = fields;
