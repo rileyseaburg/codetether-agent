@@ -40,4 +40,15 @@ mod tests {
         let model = "openrouter/openai/gpt-5.6-sol".to_string();
         assert_eq!(expand("openrouter", model.clone()), vec![model]);
     }
+
+    #[test]
+    fn astra_picker_exposes_catalog_levels_for_normal_and_fast() {
+        let variants = expand("openai-codex", "openai-codex/gpt-6-astra".into());
+        for suffix in ["", "-fast"] {
+            for level in ["low", "medium", "high", "xhigh", "max", "ultra"] {
+                assert!(variants.contains(&format!("openai-codex/gpt-6-astra{suffix}:{level}")));
+            }
+        }
+        assert_eq!(variants.len(), 14);
+    }
 }

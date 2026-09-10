@@ -18,9 +18,9 @@
 /// ```
 pub fn supported_levels(model: &str) -> &'static [&'static str] {
     let model = base_model(model);
+    let model = super::service_tier_catalog::parse_fast_alias(model).unwrap_or(model);
     match model {
-        "gpt-6-astra" => &["low", "medium", "high"],
-        "gpt-5.6-sol" | "gpt-5.6-terra" => {
+        "gpt-6-astra" | "gpt-5.6-sol" | "gpt-5.6-terra" => {
             &["low", "medium", "high", "xhigh", "max", "ultra"]
         }
         "gpt-reserve" | "gpt-5.6-luna" | "codex-auto-review" => {
