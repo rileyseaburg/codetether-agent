@@ -61,7 +61,6 @@
 
 use super::{Tool, ToolResult};
 use crate::session::Fault;
-use crate::session::Session;
 use crate::session::history_files::{materialize_session_history, render_turn};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -162,12 +161,12 @@ impl Tool for ContextBrowseTool {
             Ok(a) => a,
             Err(e) => return Ok(ToolResult::error(e)),
         };
-        let session = match latest_session_for_cwd().await {
+        let session = match super::context_helpers::load_calling_session(&args).await {
             Ok(Some(s)) => s,
             Ok(None) => {
                 return Ok(fault_result(
                     Fault::NoMatch,
-                    "No session found for the current workspace.",
+                    "No session found for this call.",
                 ));
             }
             Err(e) => {
@@ -222,42 +221,6 @@ fn fault_result(fault: Fault, output: impl Into<String>) -> ToolResult {
     ToolResult::error(output)
         .with_metadata("fault_code", json!(code))
         .with_metadata("fault_detail", json!(detail))
-}
-
-/// Resolve the session this tool should browse.
-///
-/// For Phase B v1 we browse the most recent session rooted at the
-/// current working directory — the same one `session_recall` uses.
-/// The agent-owning session is not yet threaded through the Tool
-/// trait; a future commit will switch to the in-memory live session
-/// once that signature lands.
-///
-/// Distinguishes "no sessions exist yet for this workspace" (returns
-/// `Ok(None)`) from real I/O or parse errors (returns `Err(...)`) so
-/// the caller can surface a `ToolResult::error` rather than silently
-/// masking a broken session store.
-async fn latest_session_for_cwd() -> Result<Option<Session>> {
-    let cwd = std::env::current_dir().ok();
-    let workspace = cwd.as_deref();
-    match Session::last_for_directory(workspace).await {
-        Ok(s) => Ok(Some(s)),
-        Err(err) => {
-            let msg = err.to_string().to_lowercase();
-            // `Session::last_for_directory` returns an error when no sessions
-            // exist for the workspace. Treat those as `Ok(None)` so the tool
-            // can report "no session found"; bubble everything else up.
-            if msg.contains("no session")
-                || msg.contains("not found")
-                || msg.contains("no such file")
-            {
-                tracing::debug!(%err, "context_browse: no session for workspace");
-                Ok(None)
-            } else {
-                tracing::warn!(%err, "context_browse: failed to load latest session");
-                Err(err)
-            }
-        }
-    }
 }
 
 #[cfg(test)]

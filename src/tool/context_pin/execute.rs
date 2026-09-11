@@ -1,6 +1,6 @@
 //! Tool trait implementation for `context_pin`.
 
-use super::super::context_helpers::load_latest_session;
+use super::super::context_helpers::load_calling_session;
 use super::super::{Tool, ToolResult};
 use super::logic::apply_pin;
 use anyhow::Result;
@@ -49,7 +49,7 @@ impl Tool for ContextPinTool {
                 ));
             }
         };
-        let mut session = match load_latest_session().await {
+        let mut session = match load_calling_session(&args).await {
             Ok(Some(s)) => s,
             Ok(None) => return Ok(ToolResult::error("No active session.")),
             Err(e) => return Ok(ToolResult::error(&format!("Load failed: {e}"))),

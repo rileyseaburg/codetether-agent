@@ -4,7 +4,7 @@
 //! and the session's bucket projection. No provider call needed —
 //! pure read from the session's summary index and page sidecar.
 
-use super::context_helpers::load_latest_session;
+use super::context_helpers::load_calling_session;
 use super::{Tool, ToolResult};
 use crate::session::pages::PageKind;
 use anyhow::Result;
@@ -35,8 +35,8 @@ impl Tool for ContextBudgetTool {
         json!({ "type": "object", "properties": {} })
     }
 
-    async fn execute(&self, _args: Value) -> Result<ToolResult> {
-        let session = match load_latest_session().await {
+    async fn execute(&self, args: Value) -> Result<ToolResult> {
+        let session = match load_calling_session(&args).await {
             Ok(Some(s)) => s,
             Ok(None) => return Ok(ToolResult::error("No active session found.")),
             Err(e) => return Ok(ToolResult::error(&format!("Failed to load session: {e}"))),

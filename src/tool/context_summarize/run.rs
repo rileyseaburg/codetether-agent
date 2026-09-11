@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use super::super::ToolResult;
-use super::super::context_helpers::load_latest_session;
+use super::super::context_helpers::load_calling_session;
 use super::logic::lookup_cached;
 use super::tool_struct::ContextSummarizeTool;
 use super::{parse, respond};
@@ -16,7 +16,7 @@ pub async fn run(tool: &ContextSummarizeTool, args: Value) -> Result<ToolResult>
         Ok(parsed) => parsed,
         Err(message) => return Ok(ToolResult::error(message)),
     };
-    let mut session = match load_latest_session().await? {
+    let mut session = match load_calling_session(&args).await? {
         Some(s) => s,
         None => return Ok(ToolResult::error("No active session.")),
     };
