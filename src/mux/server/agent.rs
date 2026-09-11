@@ -1,10 +1,14 @@
-//! Authenticated structured agent-turn request handling.
+//! Authenticated structured agent-turn request handling for one session.
 
 use crate::mux::protocol::{AgentRequest, AgentResponse, ServerResponse};
 
 use super::context::ServerContext;
 
-pub(super) async fn apply(context: &ServerContext, request: AgentRequest) -> ServerResponse {
+pub(super) async fn apply(
+    context: &ServerContext,
+    session: &str,
+    request: AgentRequest,
+) -> ServerResponse {
     let response = match request {
         AgentRequest::Start {
             task_id,
@@ -15,6 +19,7 @@ pub(super) async fn apply(context: &ServerContext, request: AgentRequest) -> Ser
         } => {
             super::agent_start::apply(
                 context,
+                session,
                 task_id,
                 prompt,
                 session_id,
@@ -24,11 +29,11 @@ pub(super) async fn apply(context: &ServerContext, request: AgentRequest) -> Ser
             .await
         }
         AgentRequest::Read { task_id, offset } => {
-            super::agent_read::apply(context, task_id, offset).await
+            super::agent_read::apply(context, session, task_id, offset).await
         }
         AgentRequest::Cancel { task_id } => context
             .tasks
-            .cancel(&task_id)
+            .cancel(session, &task_id)
             .map(|()| AgentResponse::Cancelled {
                 task_id: task_id.clone(),
             })

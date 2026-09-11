@@ -3,11 +3,11 @@
 use std::path::Path;
 use std::process::Stdio;
 
-use crate::mux::registry::MuxRecord;
+use crate::mux::registry::SessionTarget;
 
 pub(super) struct ProofProcess {
     pub child: tokio::process::Child,
-    pub record: MuxRecord,
+    pub target: SessionTarget,
 }
 
 pub(super) async fn start(name: &str, workspace: &Path, root: &Path) -> ProofProcess {
@@ -30,18 +30,15 @@ pub(super) async fn start(name: &str, workspace: &Path, root: &Path) -> ProofPro
         .kill_on_drop(true)
         .spawn()
         .unwrap();
-    let path = root.join("mux").join(format!("{name}.json"));
     for _ in 0..100 {
         assert!(
             child.try_wait().unwrap().is_none(),
             "proof daemon exited early"
         );
-        if let Ok(bytes) = tokio::fs::read(&path).await
-            && let Ok(record) = serde_json::from_slice(&bytes)
-        {
-            return ProofProcess { child, record };
+        if let Some(target) = super::registry::find_session(root, name).await {
+            return ProofProcess { child, target };
         }
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
-    panic!("proof daemon did not publish {}", path.display());
+    panic!("proof daemon did not publish session {name}");
 }

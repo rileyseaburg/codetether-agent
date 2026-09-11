@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 
 use super::MuxSessionSummary;
 use crate::mux::client::MuxConnection;
@@ -24,13 +24,15 @@ pub(crate) async fn close_window(name: &str, id: u64) -> Result<MuxSessionSummar
 }
 
 async fn request(name: &str, request: ClientRequest) -> Result<MuxSessionSummary> {
-    crate::mux::registry::validate_name(name)?;
-    let record = crate::mux::registry::load(name)
-        .await
-        .with_context(|| format!("mux session '{name}' was not found"))?;
-    let mut connection = MuxConnection::connect(&record).await?;
+    let target = crate::mux::registry::load(name).await?;
+    let mut connection = MuxConnection::connect(&target).await?;
     match connection.request(request).await? {
-        ServerResponse::Snapshot { state } => Ok(MuxSessionSummary::from_state(&record, &state)),
+        ServerResponse::Snapshot { state } => Ok(MuxSessionSummary::from_state(
+            &target.record,
+            &state,
+            name,
+            true,
+        )),
         ServerResponse::Error { message } => bail!(message),
         _ => bail!("mux server returned an invalid mutation response"),
     }

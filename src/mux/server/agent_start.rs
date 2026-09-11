@@ -1,4 +1,4 @@
-//! Start one structured agent turn in the mux workspace.
+//! Start one structured agent turn in a session's active workspace.
 
 use crate::mux::protocol::AgentResponse;
 
@@ -6,22 +6,25 @@ use super::context::ServerContext;
 
 pub(super) async fn apply(
     context: &ServerContext,
+    session: &str,
     task_id: String,
     prompt: String,
     session_id: Option<String>,
     max_steps: usize,
     tool_profile: Option<String>,
 ) -> AgentResponse {
-    let state = context.state.read().await;
-    let workspace = state
-        .windows
-        .iter()
-        .find(|window| window.id == state.active_window)
+    let workspace = context
+        .state
+        .read()
+        .await
+        .session(session)
+        .and_then(|item| item.active())
         .map(|window| window.workspace.clone());
-    let mux_name = state.name.clone();
-    drop(state);
     let Some(workspace) = workspace else {
-        return error(task_id, anyhow::anyhow!("mux has no active workspace"));
+        return error(
+            task_id,
+            anyhow::anyhow!("mux session has no active workspace"),
+        );
     };
     context
         .tasks
@@ -32,7 +35,7 @@ pub(super) async fn apply(
             max_steps,
             tool_profile.as_deref(),
             &workspace,
-            &mux_name,
+            session,
         )
         .map(|()| AgentResponse::Accepted {
             task_id: task_id.clone(),

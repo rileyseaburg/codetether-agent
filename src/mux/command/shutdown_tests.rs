@@ -15,7 +15,7 @@ async fn protocol_one_server_can_be_stopped() {
             read_frame(&mut stream).await.unwrap(),
             Some(ClientRequest::Authenticate { .. })
         ));
-        write_frame(&mut stream, &ServerResponse::Authenticated { version: 1 })
+        write_frame(&mut stream, &ServerResponse::Authenticated { version: 8 })
             .await
             .unwrap();
         assert!(matches!(
@@ -27,7 +27,7 @@ async fn protocol_one_server_can_be_stopped() {
             .unwrap();
     });
     let record = MuxRecord {
-        name: "legacy".into(),
+        key: "legacy".into(),
         address,
         token: "secret".into(),
         pid: 1,

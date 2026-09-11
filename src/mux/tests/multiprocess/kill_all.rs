@@ -7,7 +7,7 @@ async fn kill_all_stops_every_registered_server() {
     tokio::fs::create_dir(&workspace).await.unwrap();
     let mut alpha = super::process::start("kill-all-alpha", &workspace, root.path()).await;
     let mut beta = super::process::start("kill-all-beta", &workspace, root.path()).await;
-    let records = vec![alpha.record.clone(), beta.record.clone()];
+    let records = vec![alpha.target.record.clone(), beta.target.record.clone()];
 
     crate::mux::command::kill_all::run_records(records)
         .await

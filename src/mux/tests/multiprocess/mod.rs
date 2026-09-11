@@ -1,17 +1,19 @@
-//! Separate-process proof for concurrent named mux sessions.
+//! Separate-process proof for workspace-bound mux servers.
 
 mod child;
 mod initial_shell;
 mod kill_all;
 mod process;
 mod proof;
+mod registry;
+mod shared_workspace;
 mod verify;
 
 use crate::mux::client::MuxConnection;
 use crate::mux::protocol::ClientRequest;
 
 #[tokio::test]
-async fn multiple_named_servers_run_in_separate_processes() {
+async fn distinct_workspaces_run_in_separate_processes() {
     let root = tempfile::tempdir().unwrap().keep();
     let backend = root.join("backend");
     let frontend = root.join("frontend");
@@ -21,25 +23,26 @@ async fn multiple_named_servers_run_in_separate_processes() {
     }
     let mut alpha = process::start("alpha", &backend, &root).await;
     let mut beta = process::start("beta", &frontend, &root).await;
-    assert_ne!(alpha.record.pid, beta.record.pid);
+    assert_ne!(alpha.target.record.pid, beta.target.record.pid);
 
-    let mut alpha_client = MuxConnection::connect(&alpha.record).await.unwrap();
+    let mut alpha_client = MuxConnection::connect(&alpha.target).await.unwrap();
     let alpha_state = verify::state(
         alpha_client
             .request(ClientRequest::CreateWindow { workspace: shared })
             .await
             .unwrap(),
     );
-    let mut beta_client = MuxConnection::connect(&beta.record).await.unwrap();
+    let mut beta_client = MuxConnection::connect(&beta.target).await.unwrap();
     let beta_state = verify::state(beta_client.request(ClientRequest::Snapshot).await.unwrap());
-    assert_eq!(alpha_state.windows.len(), 2);
-    assert_eq!(beta_state.windows.len(), 1);
-    assert_eq!(beta_state.windows[0].workspace, frontend);
+    assert_eq!(alpha_state.session("alpha").unwrap().windows.len(), 2);
+    let beta_session = beta_state.session("beta").unwrap();
+    assert_eq!(beta_session.windows.len(), 1);
+    assert_eq!(beta_session.windows[0].workspace, frontend);
 
     let artifact = proof::write(
         &root,
-        &alpha.record,
-        &beta.record,
+        &alpha.target.record,
+        &beta.target.record,
         &alpha_state,
         &beta_state,
     )

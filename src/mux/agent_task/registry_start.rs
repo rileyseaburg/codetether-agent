@@ -21,7 +21,7 @@ impl AgentTaskRegistry {
         super::validation::request(task_id, prompt, session_id, max_steps)?;
         super::validation::tool_profile(tool_profile)?;
         let mut store = self.store.lock().unwrap();
-        store.prepare(task_id)?;
+        store.prepare(task_id, mux_name)?;
         let mut child = super::spawn::child(
             prompt,
             session_id,
@@ -39,7 +39,7 @@ impl AgentTaskRegistry {
             .stderr
             .take()
             .context("mux agent stderr unavailable")?;
-        let task = Arc::new(AgentTask::new(pid));
+        let task = Arc::new(AgentTask::new(pid, mux_name));
         store.insert(task_id.into(), task.clone());
         drop(store);
         let readers = vec![

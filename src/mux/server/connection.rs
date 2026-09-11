@@ -12,18 +12,22 @@ use super::context::ServerContext;
 
 pub(super) async fn handle(mut stream: TcpStream, context: Arc<ServerContext>) -> Result<()> {
     let request = tokio::time::timeout(Duration::from_secs(5), read_frame(&mut stream)).await??;
-    let Some(ClientRequest::Authenticate { token }) = request else {
+    let Some(ClientRequest::Authenticate { token, session }) = request else {
         bail!("authentication required");
     };
     if !crate::mux::token::matches(&token, &context.token) {
+        write_frame(&mut stream, &error("authentication failed")).await?;
+        bail!("authentication failed");
+    }
+    if let Some(name) = &session
+        && context.state.read().await.session(name).is_none()
+    {
         write_frame(
             &mut stream,
-            &ServerResponse::Error {
-                message: "authentication failed".into(),
-            },
+            &error(&format!("unknown mux session '{name}'")),
         )
         .await?;
-        bail!("authentication failed");
+        bail!("unknown mux session");
     }
     write_frame(
         &mut stream,
@@ -31,7 +35,7 @@ pub(super) async fn handle(mut stream: TcpStream, context: Arc<ServerContext>) -
     )
     .await?;
     while let Some(request) = read_frame(&mut stream).await? {
-        let (response, close) = super::dispatch::apply(&context, request).await;
+        let (response, close) = super::dispatch::apply(&context, session.as_deref(), request).await;
         write_frame(&mut stream, &response).await?;
         if matches!(response, ServerResponse::ShuttingDown) {
             context.shutdown.notify_one();
@@ -41,4 +45,10 @@ pub(super) async fn handle(mut stream: TcpStream, context: Arc<ServerContext>) -
         }
     }
     Ok(())
+}
+
+fn error(message: &str) -> ServerResponse {
+    ServerResponse::Error {
+        message: message.into(),
+    }
 }

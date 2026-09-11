@@ -9,8 +9,8 @@ use crate::mux::protocol::{ClientRequest, ProgramRequest};
 #[ignore = "manual performance benchmark"]
 async fn idle_read_requests_one_second() {
     let workspace = tempfile::tempdir().unwrap();
-    let (record, context, server) = super::pty_support::server(workspace.path().into()).await;
-    let mut client = MuxConnection::connect(&record).await.unwrap();
+    let (target, context, server) = super::pty_support::server(workspace.path().into()).await;
+    let mut client = MuxConnection::connect(&target).await.unwrap();
     client
         .request(ClientRequest::Program {
             request: ProgramRequest::Start {
@@ -42,7 +42,7 @@ async fn idle_read_requests_one_second() {
         started.elapsed().as_millis()
     );
     client.request(ClientRequest::Detach).await.unwrap();
-    let mut closer = MuxConnection::connect(&record).await.unwrap();
+    let mut closer = MuxConnection::connect(&target).await.unwrap();
     closer.request(ClientRequest::Detach).await.unwrap();
     context.programs.stop_all();
     server.await.unwrap();

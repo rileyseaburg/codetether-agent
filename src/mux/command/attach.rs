@@ -1,11 +1,8 @@
 //! Attach command implementation.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 pub(super) async fn run(target: &str) -> Result<()> {
-    crate::mux::registry::validate_name(target)?;
-    let record = crate::mux::registry::load(target)
-        .await
-        .with_context(|| format!("mux session '{target}' was not found"))?;
-    crate::mux::client::attach(&record).await
+    let target = crate::mux::registry::load(target).await?;
+    crate::mux::client::attach(&target).await
 }

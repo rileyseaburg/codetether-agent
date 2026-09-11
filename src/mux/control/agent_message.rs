@@ -12,17 +12,17 @@ mod delivery;
 ///
 /// Returns an error unless the owning TUI semantically accepts the message.
 pub(crate) async fn send_agent_message(name: &str, message: &str) -> Result<Option<String>> {
-    let Some(record) = super::agent_target::load(name).await? else {
+    let Some(target) = super::agent_target::load(name).await? else {
         return Ok(None);
     };
-    let Some(runtime) = record.state.runtime.clone() else {
+    let Some(runtime) = target.runtime().cloned() else {
         bail!("mux session '{name}' has not registered semantic TUI state");
     };
     let transport = if runtime.processing {
-        delivery::steer_active(&record, message).await?;
+        delivery::steer_active(&target, message).await?;
         "mux_steer"
     } else {
-        delivery::submit_idle(&record, message).await?;
+        delivery::submit_idle(&target, message).await?;
         "mux_tui"
     };
     Ok(Some(

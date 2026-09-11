@@ -4,6 +4,7 @@ mod attach;
 mod dispatch;
 mod kill;
 pub(in crate::mux) mod kill_all;
+mod kill_server;
 mod list;
 mod new_session;
 mod resume;

@@ -13,10 +13,12 @@ pub(super) struct AgentTask {
     running: AtomicBool,
     pub(super) exit_code: Mutex<Option<i32>>,
     pub(super) pid: u32,
+    /// Mux session that owns this turn; other sessions cannot observe it.
+    pub(super) session: String,
 }
 
 impl AgentTask {
-    pub(super) fn new(pid: u32) -> Self {
+    pub(super) fn new(pid: u32, session: &str) -> Self {
         let (changed, _) = tokio::sync::watch::channel(0);
         Self {
             output: Mutex::new(TaskBuffer::new()),
@@ -24,6 +26,7 @@ impl AgentTask {
             running: AtomicBool::new(true),
             exit_code: Mutex::new(None),
             pid,
+            session: session.to_string(),
         }
     }
 

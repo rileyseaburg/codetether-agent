@@ -1,4 +1,4 @@
-//! Backward-compatible shutdown request for current and legacy mux servers.
+//! Whole-server shutdown request, tolerant of pre-multi-session servers.
 
 use anyhow::{Context, Result, bail};
 
@@ -12,7 +12,7 @@ pub(super) async fn request(record: &MuxRecord) -> Result<ServerResponse> {
 }
 
 async fn exchange(record: &MuxRecord) -> Result<ServerResponse> {
-    let (mut stream, version) = crate::mux::client::handshake::connect(record).await?;
+    let (mut stream, version) = crate::mux::client::handshake::connect(record, None).await?;
     if !(1..=VERSION).contains(&version) {
         bail!("unsupported mux protocol version {version}");
     }

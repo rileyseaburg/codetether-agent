@@ -1,32 +1,44 @@
-//! Authenticated request/response mux connection.
+//! Authenticated request/response mux connection bound to one session.
 
 use anyhow::{Context, Result, bail};
 use tokio::net::TcpStream;
 
-use crate::mux::protocol::{ClientRequest, ServerResponse, VERSION, read_frame, write_frame};
-use crate::mux::registry::MuxRecord;
+use crate::mux::protocol::{ClientRequest, ServerResponse, read_frame, write_frame};
+use crate::mux::registry::{MuxRecord, SessionTarget};
 
 pub(in crate::mux) struct MuxConnection {
     stream: TcpStream,
     record: MuxRecord,
+    session: Option<String>,
     version: u16,
 }
 
 impl MuxConnection {
-    pub(in crate::mux) async fn connect(record: &MuxRecord) -> Result<Self> {
-        let (stream, version) = super::handshake::connect(record).await?;
-        if !supported_version(version) {
+    /// Connect for session-scoped operations on `target`.
+    pub(in crate::mux) async fn connect(target: &SessionTarget) -> Result<Self> {
+        Self::open(&target.record, Some(&target.session)).await
+    }
+
+    /// Connect for server-scoped operations (session lifecycle, coordination, shutdown).
+    pub(in crate::mux) async fn connect_server(record: &MuxRecord) -> Result<Self> {
+        Self::open(record, None).await
+    }
+
+    async fn open(record: &MuxRecord, session: Option<&str>) -> Result<Self> {
+        let (stream, version) = super::handshake::connect(record, session).await?;
+        if !super::connection_version::supported(version) {
             bail!("unsupported mux protocol version {version}");
         }
         Ok(Self {
             stream,
             record: record.clone(),
+            session: session.map(str::to_string),
             version,
         })
     }
 
     pub(super) async fn secondary(&self) -> Result<Self> {
-        Self::connect(&self.record).await
+        Self::open(&self.record, self.session.as_deref()).await
     }
 
     pub(in crate::mux) fn version(&self) -> u16 {
@@ -43,11 +55,3 @@ impl MuxConnection {
             .context("mux server closed the connection")
     }
 }
-
-fn supported_version(version: u16) -> bool {
-    (6..=VERSION).contains(&version)
-}
-
-#[cfg(test)]
-#[path = "connection_tests.rs"]
-mod tests;

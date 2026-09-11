@@ -8,15 +8,15 @@ use crate::mux::protocol::{ClientRequest, ServerResponse};
 #[tokio::test]
 async fn pending_output_read_wakes_after_control_connection_input() {
     let workspace = tempfile::tempdir().unwrap();
-    let (record, context, server) = super::pty_support::server(workspace.path().into()).await;
-    let mut control = MuxConnection::connect(&record).await.unwrap();
+    let (target, context, server) = super::pty_support::server(workspace.path().into()).await;
+    let mut control = MuxConnection::connect(&target).await.unwrap();
     control
         .request(super::requests::start(
             "stty -echo; read value; printf got:$value; sleep 1",
         ))
         .await
         .unwrap();
-    let mut output = MuxConnection::connect(&record).await.unwrap();
+    let mut output = MuxConnection::connect(&target).await.unwrap();
     let reader = tokio::spawn(async move {
         let response = output.request(super::requests::read(0)).await;
         output.request(ClientRequest::Detach).await.unwrap();

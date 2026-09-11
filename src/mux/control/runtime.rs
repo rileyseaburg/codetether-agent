@@ -14,8 +14,8 @@ pub(crate) async fn report_runtime(status: Option<MuxRuntimeStatus>) -> Result<b
     let name = name
         .into_string()
         .map_err(|_| anyhow::anyhow!("mux session name is not UTF-8"))?;
-    let record = crate::mux::registry::load(&name).await?;
-    let mut connection = MuxConnection::connect(&record).await?;
+    let target = crate::mux::registry::load(&name).await?;
+    let mut connection = MuxConnection::connect(&target).await?;
     match connection
         .request(ClientRequest::ReportRuntime { status })
         .await?

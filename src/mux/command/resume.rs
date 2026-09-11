@@ -30,6 +30,6 @@ pub(super) async fn run(
         println!("attach with: codetether mux attach {name}");
         return Ok(());
     }
-    let record = crate::mux::registry::load(&name).await?;
-    crate::mux::client::attach(&record).await
+    let target = crate::mux::registry::load(&name).await?;
+    crate::mux::client::attach(&target).await
 }

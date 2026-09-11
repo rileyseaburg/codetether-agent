@@ -8,7 +8,7 @@ async fn new_session_starts_with_persistent_shell() {
     let workspace = root.path().join("workspace");
     tokio::fs::create_dir(&workspace).await.unwrap();
     let mut server = super::process::start("initial-shell", &workspace, root.path()).await;
-    let mut client = crate::mux::client::MuxConnection::connect(&server.record)
+    let mut client = crate::mux::client::MuxConnection::connect(&server.target)
         .await
         .unwrap();
 

@@ -4,10 +4,15 @@ use crate::mux::protocol::AgentResponse;
 
 use super::context::ServerContext;
 
-pub(super) async fn apply(context: &ServerContext, task_id: String, offset: u64) -> AgentResponse {
+pub(super) async fn apply(
+    context: &ServerContext,
+    session: &str,
+    task_id: String,
+    offset: u64,
+) -> AgentResponse {
     context
         .tasks
-        .read(&task_id, offset)
+        .read(session, &task_id, offset)
         .await
         .map(
             |(data, next_offset, running, exit_code)| AgentResponse::Output {

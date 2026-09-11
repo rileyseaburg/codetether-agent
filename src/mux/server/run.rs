@@ -22,7 +22,8 @@ pub(in crate::mux) async fn serve(
     let listener = TcpListener::bind(bind).await?;
     let context =
         super::startup::initialize(&name, workspace, listener.local_addr()?, isolation).await?;
-    tracing::info!(session = %name, address = %context.address, "Mux server listening");
+    let key = context.key().await;
+    tracing::info!(session = %name, workspace = %key, address = %context.address, "Mux server listening");
     let mut clients = ClientTasks::new();
     loop {
         tokio::select! {
@@ -42,7 +43,7 @@ pub(in crate::mux) async fn serve(
     clients.shutdown().await;
     context.tasks.cancel_all();
     context.programs.stop_all();
-    registry::remove(&name).await?;
-    tracing::info!(session = %name, "Mux server stopped");
+    registry::remove_key(&key).await?;
+    tracing::info!(workspace = %key, "Mux server stopped");
     Ok(())
 }

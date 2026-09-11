@@ -1,20 +1,14 @@
-//! Window mutations for a mux session.
+//! Window mutations for one mux session.
 
 use std::path::PathBuf;
 
 use anyhow::{Result, bail};
 
-use super::{MuxSnapshot, MuxWindow};
+use super::{MuxSession, MuxWindow};
 
-impl MuxSnapshot {
-    pub(in crate::mux) fn create_window(&mut self, workspace: PathBuf) {
-        let id = self
-            .windows
-            .iter()
-            .map(|window| window.id)
-            .max()
-            .unwrap_or(0)
-            + 1;
+impl MuxSession {
+    /// Add a window with a server-allocated id and make it active.
+    pub(in crate::mux) fn create_window(&mut self, id: u64, workspace: PathBuf) {
         self.windows.push(MuxWindow::new(id, workspace));
         self.active_window = id;
     }

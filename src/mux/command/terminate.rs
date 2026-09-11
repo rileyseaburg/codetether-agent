@@ -19,11 +19,11 @@ fn terminate(record: &MuxRecord) -> Result<()> {
     let Some(process) = system.process(pid) else {
         return Ok(());
     };
-    if !super::terminate_identity::matches(process.cmd(), &record.name) {
+    if !super::terminate_identity::matches(process.cmd(), &record.state.workspace) {
         bail!(
-            "refusing to signal PID {}: it is not mux session '{}'",
+            "refusing to signal PID {}: it is not the mux server for '{}'",
             record.pid,
-            record.name
+            record.state.workspace.display()
         );
     }
     let _ = process.kill_with(Signal::Term);
@@ -37,10 +37,12 @@ fn terminate(record: &MuxRecord) -> Result<()> {
     let Some(process) = system.process(pid) else {
         return Ok(());
     };
-    if !super::terminate_identity::matches(process.cmd(), &record.name) || !process.kill() {
+    if !super::terminate_identity::matches(process.cmd(), &record.state.workspace)
+        || !process.kill()
+    {
         bail!(
-            "failed to terminate mux session '{}' (PID {})",
-            record.name,
+            "failed to terminate mux server for '{}' (PID {})",
+            record.state.workspace.display(),
             record.pid
         );
     }

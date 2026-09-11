@@ -13,7 +13,9 @@ pub(crate) fn subscribe_live_output() -> tokio::sync::mpsc::Receiver<MuxLiveOutp
             return;
         };
         for record in records {
-            tokio::spawn(session::follow(record.name, sender.clone()));
+            for session in record.session_names() {
+                tokio::spawn(session::follow(session.to_string(), sender.clone()));
+            }
         }
     });
     receiver

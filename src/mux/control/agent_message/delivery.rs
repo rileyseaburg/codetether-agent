@@ -1,26 +1,21 @@
-//! Verified idle-TUI submission through its mux-owned terminal.
+//! Verified TUI message delivery through a session's mux-owned terminal.
 
 use anyhow::{Result, bail};
 
 use crate::mux::client::MuxConnection;
 use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
-use crate::mux::registry::MuxRecord;
+use crate::mux::registry::SessionTarget;
 
-pub(super) async fn submit_idle(record: &MuxRecord, message: &str) -> Result<()> {
-    let mut connection = MuxConnection::connect(record).await?;
-    input(&mut connection, record, super::terminal_text(message)).await?;
+pub(super) async fn submit_idle(target: &SessionTarget, message: &str) -> Result<()> {
+    let mut connection = MuxConnection::connect(target).await?;
+    input(&mut connection, target, super::terminal_text(message)).await?;
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    input(&mut connection, record, super::terminal_submit()).await?;
+    input(&mut connection, target, super::terminal_submit()).await?;
     Ok(())
 }
 
-pub(super) async fn steer_active(record: &MuxRecord, message: &str) -> Result<()> {
-    let mut connection = MuxConnection::connect(record).await?;
-    if connection.version() < 7 {
-        input(&mut connection, record, super::terminal_text(message)).await?;
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        return input(&mut connection, record, super::terminal_submit()).await;
-    }
+pub(super) async fn steer_active(target: &SessionTarget, message: &str) -> Result<()> {
+    let mut connection = MuxConnection::connect(target).await?;
     let response = connection
         .request(ClientRequest::Program {
             request: ProgramRequest::Steer {
@@ -34,11 +29,15 @@ pub(super) async fn steer_active(record: &MuxRecord, message: &str) -> Result<()
     Ok(())
 }
 
-async fn input(connection: &mut MuxConnection, record: &MuxRecord, data: Vec<u8>) -> Result<()> {
+async fn input(
+    connection: &mut MuxConnection,
+    target: &SessionTarget,
+    data: Vec<u8>,
+) -> Result<()> {
     let response = connection
         .request(ClientRequest::Program {
             request: ProgramRequest::Input {
-                window_id: record.state.active_window,
+                window_id: target.active_window()?,
                 data,
             },
         })

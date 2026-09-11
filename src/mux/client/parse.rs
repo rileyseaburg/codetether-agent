@@ -8,6 +8,8 @@ pub(in crate::mux) enum ParsedCommand {
     Request(ClientRequest),
     Exec(String),
     Attach,
+    /// Close the attached session; the server exits with its last session.
+    Kill,
     Help,
     Invalid(String),
 }
@@ -25,7 +27,7 @@ pub(in crate::mux) fn parse(line: &str) -> ParsedCommand {
         "select" => with_id(argument, |id| ClientRequest::SelectWindow { id }),
         "close" => with_id(argument, |id| ClientRequest::CloseWindow { id }),
         "detach" | "quit" => ParsedCommand::Request(ClientRequest::Detach),
-        "kill" => ParsedCommand::Request(ClientRequest::Shutdown),
+        "kill" => ParsedCommand::Kill,
         "help" | "?" => ParsedCommand::Help,
         "attach" => ParsedCommand::Attach,
         "" => ParsedCommand::Request(ClientRequest::Snapshot),

@@ -1,14 +1,15 @@
-use chrono::Utc;
 use tokio::net::TcpListener;
 
 use crate::mux::client::MuxConnection;
 use crate::mux::model::MuxSnapshot;
 use crate::mux::protocol::{ClientRequest, ServerResponse};
-use crate::mux::registry::MuxRecord;
 
 mod coordination;
 mod coordination_identity;
+mod fixture;
 mod idle_benchmark;
+mod isolation;
+mod isolation_close;
 mod long_poll;
 mod pty;
 mod pty_io;
@@ -30,17 +31,13 @@ async fn authenticated_client_reads_server_snapshot() {
         let (stream, _) = listener.accept().await.unwrap();
         super::connection::handle(stream, context).await.unwrap();
     });
-    let record = MuxRecord {
-        name: "network".into(),
-        address,
-        token: "secret".into(),
-        pid: 1,
-        started_at: Utc::now(),
-        state,
-    };
-    let mut client = MuxConnection::connect(&record).await.unwrap();
+    let target = fixture::target(state, address, "network");
+    let mut client = MuxConnection::connect(&target).await.unwrap();
     let response = client.request(ClientRequest::Snapshot).await.unwrap();
-    assert!(matches!(response, ServerResponse::Snapshot { state } if state.name == "network"));
+    assert!(matches!(
+        response,
+        ServerResponse::Snapshot { state } if state.session("network").is_some()
+    ));
     client.request(ClientRequest::Detach).await.unwrap();
     task.await.unwrap();
 }

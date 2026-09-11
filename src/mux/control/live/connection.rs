@@ -8,9 +8,9 @@ use crate::mux::client::MuxConnection;
 use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
 pub(super) async fn run(name: &str, sender: &Sender<MuxLiveOutput>) -> Result<()> {
-    let record = crate::mux::registry::load(name).await?;
-    let window_id = record.state.active_window;
-    let mut connection = MuxConnection::connect(&record).await?;
+    let target = crate::mux::registry::load(name).await?;
+    let window_id = target.active_window()?;
+    let mut connection = MuxConnection::connect(&target).await?;
     let response = connection
         .request(ClientRequest::Program {
             request: ProgramRequest::Tail { window_id },

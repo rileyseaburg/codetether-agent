@@ -5,11 +5,11 @@ use serde_json::json;
 
 use crate::mux::client::MuxConnection;
 use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
-use crate::mux::registry::MuxRecord;
+use crate::mux::registry::SessionTarget;
 
-pub(super) async fn read(name: &str, record: &MuxRecord) -> Result<String> {
-    let window_id = record.state.active_window;
-    let mut connection = MuxConnection::connect(record).await?;
+pub(super) async fn read(name: &str, target: &SessionTarget) -> Result<String> {
+    let window_id = target.active_window()?;
+    let mut connection = MuxConnection::connect(target).await?;
     let tail = connection
         .request(ClientRequest::Program {
             request: ProgramRequest::Tail { window_id },

@@ -1,4 +1,4 @@
-//! Workspace validation and startup for one server-owned PTY program.
+//! Workspace validation and startup for one session-owned PTY program.
 
 use crate::mux::protocol::ServerResponse;
 use crate::mux::pty::TerminalSize;
@@ -7,22 +7,22 @@ use super::context::ServerContext;
 
 pub(super) async fn start(
     context: &ServerContext,
+    session: &str,
     id: u64,
     command: &str,
     size: TerminalSize,
 ) -> anyhow::Result<ServerResponse> {
-    let state = context.state.read().await;
-    let window = state
-        .windows
-        .iter()
-        .find(|window| window.id == id)
-        .ok_or_else(|| anyhow::anyhow!("window {id} does not exist"))?;
-    let workspace = window.workspace.clone();
-    let mux_session = state.name.clone();
-    drop(state);
+    let workspace = {
+        let state = context.state.read().await;
+        state
+            .session(session)
+            .and_then(|item| item.window(id))
+            .map(|window| window.workspace.clone())
+            .ok_or_else(|| anyhow::anyhow!("window {id} does not exist"))?
+    };
     let offset = context
         .programs
-        .start(id, command, &workspace, size, &mux_session)?;
+        .start(id, command, &workspace, size, session)?;
     Ok(ServerResponse::ProgramAttached {
         window_id: id,
         offset,

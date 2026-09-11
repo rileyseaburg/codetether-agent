@@ -13,16 +13,20 @@ pub(super) async fn tui(name: &str, session_id: Option<&str>) -> Result<()> {
     }) {
         bail!("invalid durable session id");
     }
-    let record = crate::mux::registry::load(name).await?;
+    let target = crate::mux::registry::load(name).await?;
+    let window = target
+        .session()
+        .map(|session| session.active_window)
+        .ok_or_else(|| anyhow::anyhow!("mux session '{name}' is unavailable"))?;
     let command = session_id.map_or_else(
         || "codetether tui --yolo\n".to_string(),
         |id| format!("codetether tui --session {id} --yolo\n"),
     );
-    let mut connection = MuxConnection::connect(&record).await?;
+    let mut connection = MuxConnection::connect(&target).await?;
     let response = connection
         .request(ClientRequest::Program {
             request: ProgramRequest::Input {
-                window_id: record.state.active_window,
+                window_id: window,
                 data: command.into_bytes(),
             },
         })

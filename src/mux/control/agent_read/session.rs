@@ -2,21 +2,16 @@
 
 use anyhow::Result;
 
-use crate::mux::registry::MuxRecord;
+use crate::mux::registry::SessionTarget;
 
 #[path = "session/projection.rs"]
 mod projection;
 
-pub(super) async fn read(record: &MuxRecord) -> Result<Option<String>> {
-    let Some(runtime) = record.state.runtime.as_ref() else {
+pub(super) async fn read(target: &SessionTarget) -> Result<Option<String>> {
+    let Some(runtime) = target.runtime() else {
         return Ok(None);
     };
-    let Some(window) = record
-        .state
-        .windows
-        .iter()
-        .find(|window| window.id == record.state.active_window)
-    else {
+    let Some(window) = target.active() else {
         return Ok(None);
     };
     let path = window

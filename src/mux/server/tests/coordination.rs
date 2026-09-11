@@ -7,9 +7,9 @@ use crate::mux::protocol::{ClientRequest, ServerResponse};
 #[tokio::test]
 async fn mux_server_blocks_overlapping_authenticated_claims() {
     let root = tempfile::tempdir().unwrap();
-    let (record, _, server) = super::pty_support::server(root.path().into()).await;
-    let mut first = MuxConnection::connect(&record).await.unwrap();
-    let mut second = MuxConnection::connect(&record).await.unwrap();
+    let (target, _, server) = super::pty_support::server(root.path().into()).await;
+    let mut first = MuxConnection::connect(&target).await.unwrap();
+    let mut second = MuxConnection::connect(&target).await.unwrap();
 
     let one = claim("one", "agent-one", root.path(), "src");
     let two = claim("two", "agent-two", root.path(), "src/lib.rs");

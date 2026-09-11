@@ -1,21 +1,20 @@
-//! Named mux server discovery for user interfaces.
+//! Mux session discovery across every workspace server.
 
 use anyhow::Result;
 
 use super::MuxSessionSummary;
-use crate::mux::client::MuxConnection;
 
-/// Return all registered mux servers with a bounded reachability check.
+/// Return every hosted session with a bounded per-server reachability check.
 pub(crate) async fn list_sessions() -> Result<Vec<MuxSessionSummary>> {
     let mut summaries = Vec::new();
     for record in crate::mux::registry::list().await? {
         let connected = tokio::time::timeout(
             std::time::Duration::from_millis(300),
-            MuxConnection::connect(&record),
+            crate::mux::client::probe(&record),
         )
         .await
         .is_ok_and(|result| result.is_ok());
-        summaries.push(MuxSessionSummary::from_record(&record, connected));
+        summaries.extend(MuxSessionSummary::from_record(&record, connected));
     }
     Ok(summaries)
 }

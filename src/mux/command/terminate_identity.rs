@@ -1,9 +1,13 @@
 //! Process identity verification for mux force termination.
 
 use std::ffi::OsString;
+use std::path::Path;
 
-/// Confirms a command belongs to the recorded named mux server.
-pub(super) fn matches(command: &[OsString], session: &str) -> bool {
+/// Confirms a command is the mux server bound to `workspace`.
+///
+/// The `--session` flag only names the first session a server hosted, so the
+/// workspace directory is the stable identity for the process's lifetime.
+pub(super) fn matches(command: &[OsString], workspace: &Path) -> bool {
     let args: Vec<_> = command
         .iter()
         .map(|value| value.to_string_lossy())
@@ -11,19 +15,29 @@ pub(super) fn matches(command: &[OsString], session: &str) -> bool {
     let serves_mux = args
         .windows(2)
         .any(|pair| pair[0] == "mux" && pair[1] == "serve");
-    let owns_session = args
+    let owns_workspace = args
         .windows(2)
-        .any(|pair| pair[0] == "--session" && pair[1] == session);
-    serves_mux && owns_session
+        .any(|pair| pair[0] == "--directory" && Path::new(pair[1].as_ref()) == workspace);
+    serves_mux && owns_workspace
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     #[test]
-    fn matches_only_the_named_mux_server() {
-        let args =
-            ["codetether", "mux", "serve", "--session", "work"].map(std::ffi::OsString::from);
-        assert!(super::matches(&args, "work"));
-        assert!(!super::matches(&args, "other"));
+    fn matches_only_the_server_for_the_workspace() {
+        let args = [
+            "codetether",
+            "mux",
+            "serve",
+            "--session",
+            "work",
+            "--directory",
+            "/repo",
+        ]
+        .map(std::ffi::OsString::from);
+        assert!(super::matches(&args, Path::new("/repo")));
+        assert!(!super::matches(&args, Path::new("/other")));
     }
 }

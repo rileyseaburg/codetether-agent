@@ -6,8 +6,8 @@ use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
 #[tokio::test]
 async fn reconnect_replays_only_the_latest_output_chunk() {
     let workspace = tempfile::tempdir().unwrap();
-    let (record, context, server) = super::pty_support::server(workspace.path().into()).await;
-    let mut first = MuxConnection::connect(&record).await.unwrap();
+    let (target, context, server) = super::pty_support::server(workspace.path().into()).await;
+    let mut first = MuxConnection::connect(&target).await.unwrap();
     first
         .request(ClientRequest::Program {
             request: ProgramRequest::Start {
@@ -22,7 +22,7 @@ async fn reconnect_replays_only_the_latest_output_chunk() {
     first.request(ClientRequest::Detach).await.unwrap();
     super::pty_io::wait_for_exit(&context).await;
 
-    let mut second = MuxConnection::connect(&record).await.unwrap();
+    let mut second = MuxConnection::connect(&target).await.unwrap();
     let attached = second
         .request(ClientRequest::Program {
             request: ProgramRequest::Attach {

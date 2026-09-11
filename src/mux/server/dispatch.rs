@@ -1,4 +1,8 @@
-//! Authenticated mux request mutation and response mapping.
+//! Authenticated mux request routing by scope.
+//!
+//! Server-scoped requests (snapshot, session lifecycle, coordination,
+//! shutdown) run on any connection. Session-scoped requests require the
+//! connection to have bound a session at authentication.
 
 use std::sync::Arc;
 
@@ -8,6 +12,7 @@ use super::context::ServerContext;
 
 pub(super) async fn apply(
     context: &Arc<ServerContext>,
+    session: Option<&str>,
     request: ClientRequest,
 ) -> (ServerResponse, bool) {
     match request {
@@ -18,27 +23,30 @@ pub(super) async fn apply(
         ClientRequest::Coordinate { request } => {
             (super::coordination::apply(context, request).await, false)
         }
-        ClientRequest::Agent { request } => (super::agent::apply(context, request).await, false),
-        ClientRequest::ReportRuntime { status } => {
-            (super::runtime::apply(context, status).await, false)
+        ClientRequest::CreateSession { name, workspace } => (
+            super::session_create::create(context, name, workspace).await,
+            false,
+        ),
+        ClientRequest::CloseSession { name } => super::session_close::close(context, &name).await,
+        request => {
+            let Some(session) = session else {
+                return (error("request requires a bound mux session"), false);
+            };
+            (
+                super::dispatch_session::apply(context, session, request).await,
+                false,
+            )
         }
-        request @ ClientRequest::Program { .. } => {
-            (super::program::apply(context, request).await, false)
-        }
-        request => match super::mutate::apply(context, request).await {
-            Ok(()) => (snapshot(context).await, false),
-            Err(message) => (error(&message), false),
-        },
     }
 }
 
-async fn snapshot(context: &ServerContext) -> ServerResponse {
+pub(super) async fn snapshot(context: &ServerContext) -> ServerResponse {
     ServerResponse::Snapshot {
         state: context.state.read().await.clone(),
     }
 }
 
-fn error(message: &str) -> ServerResponse {
+pub(super) fn error(message: &str) -> ServerResponse {
     ServerResponse::Error {
         message: message.into(),
     }

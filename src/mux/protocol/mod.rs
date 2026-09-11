@@ -14,4 +14,4 @@ pub(super) use program_request::ProgramRequest;
 pub(super) use request::ClientRequest;
 pub(super) use response::ServerResponse;
 
-pub(super) const VERSION: u16 = 7;
+pub(super) const VERSION: u16 = 8;

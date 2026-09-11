@@ -1,4 +1,4 @@
-//! Named mux session listing.
+//! Mux session listing across every workspace server.
 
 use anyhow::Result;
 use serde::Serialize;
@@ -6,6 +6,7 @@ use serde::Serialize;
 #[derive(Serialize)]
 struct ListedSession {
     name: String,
+    workspace: String,
     address: String,
     pid: u32,
     windows: usize,
@@ -22,14 +23,15 @@ pub(super) async fn run(json: bool) -> Result<()> {
         )
         .await
         .is_ok_and(|result| result.is_ok());
-        listed.push(ListedSession {
-            name: record.name,
+        listed.extend(record.state.sessions.iter().map(|session| ListedSession {
+            name: session.name.clone(),
+            workspace: record.state.workspace.display().to_string(),
             address: record.address.to_string(),
             pid: record.pid,
-            windows: record.state.windows.len(),
-            active: record.state.active_window,
+            windows: session.windows.len(),
+            active: session.active_window,
             reachable,
-        });
+        }));
     }
     if json {
         println!("{}", serde_json::to_string_pretty(&listed)?);
@@ -46,7 +48,7 @@ pub(super) async fn run(json: bool) -> Result<()> {
 fn print_item(item: &ListedSession) {
     let status = if item.reachable { "up" } else { "stale" };
     println!(
-        "{}: {} windows (active {}) [{}] pid={} {}",
-        item.name, item.windows, item.active, status, item.pid, item.address
+        "{}: {} windows (active {}) [{}] pid={} {} {}",
+        item.name, item.windows, item.active, status, item.pid, item.address, item.workspace
     );
 }

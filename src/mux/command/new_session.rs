@@ -1,4 +1,4 @@
-//! Spawn and discover a detached mux server process.
+//! Create a mux session, joining the workspace's server or starting one.
 
 use anyhow::Result;
 use std::path::PathBuf;
@@ -10,12 +10,15 @@ pub(super) async fn run(
 ) -> Result<()> {
     let workspace = directory.unwrap_or(std::env::current_dir()?);
     let isolation = crate::mux::isolation::Isolation::from_no_worktree(start.no_worktree);
-    let record = crate::mux::control::start_record(&name, workspace, isolation).await?;
+    let target = crate::mux::control::start_target(&name, workspace, isolation).await?;
     if start.detached {
-        println!("started mux session '{}' at {}", name, record.address);
+        println!(
+            "started mux session '{}' at {}",
+            name, target.record.address
+        );
         println!("attach with: codetether mux attach {name}");
         Ok(())
     } else {
-        crate::mux::client::attach(&record).await
+        crate::mux::client::attach(&target).await
     }
 }

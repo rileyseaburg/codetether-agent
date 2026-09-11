@@ -1,4 +1,4 @@
-//! Workspace validation and serialized mux state mutations.
+//! Workspace validation and serialized window mutations for one session.
 
 use std::sync::Arc;
 
@@ -8,21 +8,26 @@ use super::context::ServerContext;
 
 pub(super) async fn apply(
     context: &Arc<ServerContext>,
+    session: &str,
     request: ClientRequest,
 ) -> Result<(), String> {
-    let workspace = super::workspace::resolve(context, &request).await?;
+    let workspace = super::workspace::resolve(context, session, &request).await?;
     let mut state = context.state.write().await;
+    let next = state.next_window_id();
+    let item = state
+        .session_mut(session)
+        .ok_or_else(|| format!("unknown mux session '{session}'"))?;
     let mut closed = None;
     match request {
-        ClientRequest::CreateWindow { .. } => state.create_window(required(workspace)?),
+        ClientRequest::CreateWindow { .. } => item.create_window(next, required(workspace)?),
         ClientRequest::SelectWindow { id } => {
-            state.select_window(id).map_err(|error| error.to_string())?
+            item.select_window(id).map_err(|error| error.to_string())?
         }
         ClientRequest::CloseWindow { id } => {
-            state.close_window(id).map_err(|error| error.to_string())?;
+            item.close_window(id).map_err(|error| error.to_string())?;
             closed = Some(id);
         }
-        ClientRequest::ChangeDirectory { .. } => state.change_directory(required(workspace)?),
+        ClientRequest::ChangeDirectory { .. } => item.change_directory(required(workspace)?),
         _ => return Err("unsupported mutation".into()),
     }
     drop(state);

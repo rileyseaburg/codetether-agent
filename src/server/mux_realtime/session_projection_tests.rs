@@ -7,6 +7,7 @@ use crate::provenance::RuntimePrincipal;
 fn sessions_api_preserves_runtime_principal() {
     let session = MuxSessionSummary {
         name: "spotless-5".into(),
+        workspace: "/repo".into(),
         address: "127.0.0.1:9876".into(),
         pid: 42,
         active_window: 0,

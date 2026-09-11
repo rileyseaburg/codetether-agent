@@ -8,7 +8,7 @@ impl ServerContext {
         let _guard = self.persist_lock.lock().await;
         let state = self.state.read().await.clone();
         registry::store(&MuxRecord {
-            name: state.name.clone(),
+            key: registry::for_workspace(&state.workspace),
             address: self.address,
             token: self.token.clone(),
             pid: std::process::id(),
@@ -16,5 +16,10 @@ impl ServerContext {
             state,
         })
         .await
+    }
+
+    /// Registry key for the workspace this server owns.
+    pub(super) async fn key(&self) -> String {
+        registry::for_workspace(&self.state.read().await.workspace)
     }
 }

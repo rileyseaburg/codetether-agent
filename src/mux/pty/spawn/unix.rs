@@ -8,6 +8,7 @@ use anyhow::{Result, bail};
 
 use super::super::TerminalSize;
 
+mod cloexec;
 mod command;
 mod control;
 
@@ -41,6 +42,8 @@ pub(super) fn open(
     // SAFETY: successful openpty returned unique owned descriptors.
     let master = unsafe { File::from_raw_fd(master) };
     let slave = unsafe { File::from_raw_fd(slave) };
+    cloexec::set(&master)?;
+    cloexec::set(&slave)?;
     let mut process = command::configured(command, workspace, slave, mux_session)?;
     control::assign(&mut process);
     Ok((master, process.spawn()?))

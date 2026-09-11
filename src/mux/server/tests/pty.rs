@@ -7,8 +7,8 @@ use crate::mux::protocol::{ClientRequest, ServerResponse};
 async fn program_survives_detach_and_accepts_input_after_reconnect() {
     let workspace = tempfile::tempdir().unwrap();
     let proof = workspace.path().join("mux-proof.txt");
-    let (record, context, server) = super::pty_support::server(workspace.path().into()).await;
-    let mut first = MuxConnection::connect(&record).await.unwrap();
+    let (target, context, server) = super::pty_support::server(workspace.path().into()).await;
+    let mut first = MuxConnection::connect(&target).await.unwrap();
     let command = "read value; printf '%s' \"$value\" > mux-proof.txt; sleep 5";
     let started = first
         .request(super::requests::start(command))
@@ -20,7 +20,7 @@ async fn program_survives_detach_and_accepts_input_after_reconnect() {
     ));
     first.request(ClientRequest::Detach).await.unwrap();
 
-    let mut second = MuxConnection::connect(&record).await.unwrap();
+    let mut second = MuxConnection::connect(&target).await.unwrap();
     let attached = second
         .request(super::requests::attach(100, 30))
         .await

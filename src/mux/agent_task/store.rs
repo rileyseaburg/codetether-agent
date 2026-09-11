@@ -22,11 +22,16 @@ impl TaskStore {
         }
     }
 
-    pub(super) fn prepare(&mut self, task_id: &str) -> Result<()> {
+    /// Admit a new task for `session`; one turn runs per session at a time.
+    pub(super) fn prepare(&mut self, task_id: &str, session: &str) -> Result<()> {
         if self.tasks.contains_key(task_id) {
             bail!("agent task {task_id} already exists");
         }
-        if self.tasks.values().any(|task| task.running()) {
+        if self
+            .tasks
+            .values()
+            .any(|task| task.running() && task.session == session)
+        {
             bail!("mux agent is already working");
         }
         while self.tasks.len() >= TASK_LIMIT {

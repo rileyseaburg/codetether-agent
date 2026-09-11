@@ -6,7 +6,11 @@ use tokio::net::TcpStream;
 use crate::mux::protocol::{ClientRequest, ServerResponse, read_frame, write_frame};
 use crate::mux::registry::MuxRecord;
 
-pub(in crate::mux) async fn connect(record: &MuxRecord) -> Result<(TcpStream, u16)> {
+/// Authenticate against a server, optionally binding the connection to a session.
+pub(in crate::mux) async fn connect(
+    record: &MuxRecord,
+    session: Option<&str>,
+) -> Result<(TcpStream, u16)> {
     let mut stream = TcpStream::connect(record.address)
         .await
         .context("connect to mux server")?;
@@ -14,6 +18,7 @@ pub(in crate::mux) async fn connect(record: &MuxRecord) -> Result<(TcpStream, u1
         &mut stream,
         &ClientRequest::Authenticate {
             token: record.token.clone(),
+            session: session.map(str::to_string),
         },
     )
     .await?;
@@ -27,6 +32,7 @@ pub(in crate::mux) async fn connect(record: &MuxRecord) -> Result<(TcpStream, u1
     }
 }
 
+/// Server-scoped liveness probe.
 pub(in crate::mux) async fn probe(record: &MuxRecord) -> Result<u16> {
-    connect(record).await.map(|(_, version)| version)
+    connect(record, None).await.map(|(_, version)| version)
 }

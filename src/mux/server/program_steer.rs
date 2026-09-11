@@ -6,11 +6,15 @@ use crate::mux::protocol::ServerResponse;
 
 use super::context::ServerContext;
 
-pub(super) async fn apply(context: &ServerContext, text: &str) -> Result<ServerResponse> {
+pub(super) async fn apply(
+    context: &ServerContext,
+    session: &str,
+    text: &str,
+) -> Result<ServerResponse> {
     let state = context.state.read().await;
     let session_id = state
-        .runtime
-        .as_ref()
+        .session(session)
+        .and_then(|item| item.runtime.as_ref())
         .filter(|runtime| runtime.processing)
         .map(|runtime| runtime.session_id.clone());
     drop(state);

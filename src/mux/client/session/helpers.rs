@@ -2,9 +2,9 @@
 
 use anyhow::Result;
 
-use crate::mux::model::MuxSnapshot;
 use crate::mux::protocol::ClientRequest;
 
+use super::super::state::ClientState;
 use super::super::{connection::MuxConnection, proxy::Outcome};
 
 pub(super) async fn finish_program(connection: &mut MuxConnection, outcome: Outcome) -> bool {
@@ -23,10 +23,10 @@ pub(super) async fn detach(connection: &mut MuxConnection) {
 
 pub(super) async fn control(
     connection: &mut MuxConnection,
-    state: &mut Option<MuxSnapshot>,
+    state: &mut ClientState,
     request: ClientRequest,
 ) -> Result<bool> {
     let response = connection.request(request).await?;
-    super::super::state::update(state, &response);
-    Ok(super::super::render::response(&response))
+    state.update(&response);
+    Ok(super::super::render::response(&response, &state.session))
 }

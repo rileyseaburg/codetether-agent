@@ -7,14 +7,11 @@ mod prompt;
 use anyhow::Result;
 
 use super::connection::MuxConnection;
-use crate::mux::model::MuxSnapshot;
+use super::state::ClientState;
 
-pub(super) async fn run(
-    connection: &mut MuxConnection,
-    mut state: Option<MuxSnapshot>,
-) -> Result<()> {
+pub(super) async fn run(connection: &mut MuxConnection, mut state: ClientState) -> Result<()> {
     loop {
-        let workspace = super::state::active_workspace(&state)?;
+        let workspace = state.active_workspace()?;
         let Some(line) = prompt::read(workspace).await? else {
             break;
         };
