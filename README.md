@@ -97,13 +97,23 @@ cargo install --path .
 ## Persistent Mux Sessions
 
 The network mux keeps the server, windows, working directories, and child
-processes alive after the client disconnects. Each window can run a different
-shell or CodeTether TUI. Git-backed windows are automatically rooted in unique
-checkouts under `<repo>/.codetether-worktrees`; non-Git directories remain
-unchanged. Pass `--no-worktree` to `mux new` or `mux resume` to use the
-requested directory directly and skip `git worktree add` entirely, which is the
-dominant cost of session startup in large repositories. The choice is recorded
-in the session snapshot, so new windows and `mux roll` restarts keep it.
+processes alive after the client disconnects. **One mux server owns one
+workspace (checkout) and hosts any number of named sessions.** Each session is
+an isolated runtime: its own windows, login shell, TUI, durable CodeTether
+session, agent tasks, task list, and context tools. Sessions never share state
+with one another; the only thing they can share is the checkout on disk, and
+that checkout is guarded by the server's single lease table so overlapping
+edits from two sessions are serialized rather than racing.
+
+Git-backed sessions are automatically rooted in unique checkouts under
+`<repo>/.codetether-worktrees`, so each gets its own server. Pass
+`--no-worktree` to `mux new` or `mux resume` to use the requested directory
+directly and skip `git worktree add` entirely, which is the dominant cost of
+session startup in large repositories. `--no-worktree` shares the **checkout**,
+not the session: when a live server already owns that directory, the new
+session joins it and falls in line behind the same lease coordinator. The
+choice is recorded in the server snapshot, so new windows and `mux roll`
+restarts keep it.
 New sessions immediately start the user's login shell (`$SHELL`,
 including zsh on macOS). Windows shell selection prefers PowerShell; interactive Windows
 mux sessions still require a future ConPTY backend.
@@ -116,9 +126,12 @@ codetether mux new backend /work/backend
 codetether mux new frontend /work/frontend -d
 
 # Skip managed-worktree allocation and use the directory as-is (fastest start).
+# A second --no-worktree session on the same directory joins the same server.
 codetether mux new frontend /work/frontend -d --no-worktree
+codetether mux new frontend-tests /work/frontend -d --no-worktree
 
-# List, reconnect, and stop sessions.
+# List, reconnect, and stop sessions. kill closes one session; the server
+# exits on its own once its last session is closed.
 codetether mux list
 codetether mux attach backend
 codetether mux kill backend

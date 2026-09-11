@@ -1,7 +1,10 @@
 //! Persistent, authenticated network multiplexing for CodeTether workspaces.
 //!
-//! A mux server owns named window metadata independently of terminal clients.
-//! Clients can detach and reconnect over loopback TCP without relying on tmux.
+//! One mux server owns one workspace (checkout) and hosts many named sessions.
+//! Each session is an isolated runtime — its own windows, TUI status, and agent
+//! tasks — and sessions never share state. The checkout they share is guarded
+//! by the server's single lease table. Clients can detach and reconnect over
+//! loopback TCP without relying on tmux.
 //! [`execute`] dispatches the CLI lifecycle operations, while internal model,
 //! registry, protocol, client, and server modules each own one subsystem.
 //!

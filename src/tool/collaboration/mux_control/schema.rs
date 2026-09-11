@@ -11,7 +11,7 @@ pub(super) fn parameters() -> serde_json::Value {
             "session_id":{"type":"string","description":"Durable session to resume during start or roll"},
             "timeout_ms":{"type":"integer","minimum":250,"maximum":30000,"description":"Mux watch timeout"},
             "force":{"type":"boolean","description":"Permit stop or roll when semantic state is unavailable"},
-            "no_worktree":{"type":"boolean","description":"Start in the requested workspace instead of allocating a managed worktree"}
+            "no_worktree":{"type":"boolean","description":"Use the requested checkout instead of allocating a managed worktree; joins the server already bound to that checkout as an isolated session"}
         },
         "required":["action"]
     })

@@ -56,13 +56,13 @@ pub enum MuxCommand {
         #[arg(long)]
         json: bool,
     },
-    /// Stop a persistent mux session.
+    /// Close one mux session; its server exits once its last session closes.
     Kill {
         /// Mux session name.
         #[arg(value_name = "TARGET")]
         target: String,
     },
-    /// Stop every persistent mux session.
+    /// Stop every mux server and all of the sessions they host.
     #[command(name = "kill-all", alias = "kill-server")]
     KillAll,
     /// Internal network-server entry point.

@@ -5,6 +5,10 @@
 /// `Worktree` is the default and allocates a managed Git worktree under
 /// `.codetether-worktrees/`. `Shared` reuses the requested directory as-is,
 /// which removes `git worktree add` from the startup path.
+///
+/// This is a *checkout* policy only. Mux sessions are always isolated from
+/// one another; `Shared` means a session joins the server already bound to
+/// that checkout rather than starting a second one.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Isolation {
