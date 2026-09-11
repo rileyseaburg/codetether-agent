@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::path::PathBuf;
 
-const TODO_FILE: &str = ".codetether-todos.json";
+#[path = "todo_path.rs"]
+mod todo_path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TodoItem {
@@ -73,13 +74,8 @@ impl TodoReadTool {
         Self { root }
     }
 
-    fn load_todos(&self) -> Result<Vec<TodoItem>> {
-        let path = self.root.join(TODO_FILE);
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-        let content = std::fs::read_to_string(&path)?;
-        Ok(serde_json::from_str(&content)?)
+    fn load_todos(&self, params: &Value) -> Result<Vec<TodoItem>> {
+        todo_path::load(&self.root, params)
     }
 }
 
@@ -94,20 +90,12 @@ impl TodoWriteTool {
         Self { root }
     }
 
-    fn load_todos(&self) -> Result<Vec<TodoItem>> {
-        let path = self.root.join(TODO_FILE);
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-        let content = std::fs::read_to_string(&path)?;
-        Ok(serde_json::from_str(&content)?)
+    fn load_todos(&self, params: &Value) -> Result<Vec<TodoItem>> {
+        todo_path::load(&self.root, params)
     }
 
-    fn save_todos(&self, todos: &[TodoItem]) -> Result<()> {
-        let path = self.root.join(TODO_FILE);
-        let content = serde_json::to_string_pretty(todos)?;
-        std::fs::write(&path, content)?;
-        Ok(())
+    fn save_todos(&self, params: &Value, todos: &[TodoItem]) -> Result<()> {
+        todo_path::save(&self.root, params, todos)
     }
 
     fn generate_id(&self) -> String {
@@ -160,12 +148,12 @@ impl Tool for TodoReadTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: ReadParams = serde_json::from_value(params).unwrap_or(ReadParams {
+        let p: ReadParams = serde_json::from_value(params.clone()).unwrap_or(ReadParams {
             status: None,
             priority: None,
         });
 
-        let todos = self.load_todos()?;
+        let todos = self.load_todos(&params)?;
 
         let filtered: Vec<&TodoItem> = todos
             .iter()
@@ -252,8 +240,8 @@ impl Tool for TodoWriteTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: WriteParams = serde_json::from_value(params).context("Invalid params")?;
-        let mut todos = self.load_todos()?;
+        let p: WriteParams = serde_json::from_value(params.clone()).context("Invalid params")?;
+        let mut todos = self.load_todos(&params)?;
 
         match p.action.as_str() {
             "add" => {
@@ -287,7 +275,7 @@ impl Tool for TodoWriteTool {
                     priority,
                     created_at: Some(chrono::Utc::now().to_rfc3339()),
                 });
-                self.save_todos(&todos)?;
+                self.save_todos(&params, &todos)?;
                 Ok(ToolResult::success(format!("Added todo: {}", id)))
             }
             "update" => {
@@ -317,7 +305,7 @@ impl Tool for TodoWriteTool {
                         _ => Priority::Medium,
                     };
                 }
-                self.save_todos(&todos)?;
+                self.save_todos(&params, &todos)?;
                 Ok(ToolResult::success(format!("Updated todo: {}", id)))
             }
             "delete" => {
@@ -328,13 +316,13 @@ impl Tool for TodoWriteTool {
                 if todos.len() == len_before {
                     return Ok(ToolResult::error(format!("Todo not found: {}", id)));
                 }
-                self.save_todos(&todos)?;
+                self.save_todos(&params, &todos)?;
                 Ok(ToolResult::success(format!("Deleted todo: {}", id)))
             }
             "clear" => {
                 let count = todos.len();
                 todos.clear();
-                self.save_todos(&todos)?;
+                self.save_todos(&params, &todos)?;
                 Ok(ToolResult::success(format!("Cleared {} todos", count)))
             }
             _ => Ok(ToolResult::error(format!("Unknown action: {}", p.action))),
