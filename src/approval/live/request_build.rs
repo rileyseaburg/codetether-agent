@@ -19,6 +19,7 @@ impl LiveApprovalRequest {
             reason,
             justification: None,
             preview: None,
+            arguments: None,
             proposed_execpolicy_amendment: None,
             available_decisions: default_decisions(None),
         }

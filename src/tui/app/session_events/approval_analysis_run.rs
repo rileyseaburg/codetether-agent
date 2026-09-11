@@ -2,15 +2,18 @@
 
 use std::{path::PathBuf, sync::Arc};
 
+use serde_json::Value;
+
 use crate::lsp::{LspActionResult, LspManager};
 use crate::tui::app::state::approval_queue::{ApprovalReport, ApprovalReportState};
 
 pub(super) async fn inspect(
     manager: Arc<LspManager>,
     root: &PathBuf,
-    patch: &str,
+    tool: &str,
+    arguments: &Value,
 ) -> ApprovalReport {
-    let files = match crate::tool::patch::proposed::contents(root, patch) {
+    let files = match crate::tool::proposed_content::contents(root, tool, arguments) {
         Ok(files) => files,
         Err(error) => return unavailable(error.to_string()),
     };

@@ -12,6 +12,7 @@ pub(crate) struct ApprovalSnapshot {
     pub(crate) reason: String,
     pub(crate) justification: Option<String>,
     pub(crate) preview: Option<String>,
+    pub(crate) arguments: Option<serde_json::Value>,
     pub(crate) report: ApprovalReport,
 }
 
@@ -25,6 +26,7 @@ impl From<LiveApprovalRequest> for ApprovalSnapshot {
             reason: request.reason,
             justification: request.justification,
             preview: request.preview,
+            arguments: request.arguments,
             report: ApprovalReport::default(),
         }
     }

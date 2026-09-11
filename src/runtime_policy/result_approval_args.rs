@@ -24,5 +24,8 @@ pub(super) fn attach(mut result: ToolResult, tool_name: &str, args: &Value) -> T
     if let Some(detail) = invocation_detail::render(tool_name, args) {
         result = result.with_metadata("approval_preview", json!(detail));
     }
+    if crate::tool::proposed_content::supported(tool_name) {
+        result = result.with_metadata("approval_arguments", args.clone());
+    }
     result
 }

@@ -1,6 +1,7 @@
 //! Live in-process approval handoff for interactive sessions.
 
 mod request;
+mod request_arguments;
 mod request_build;
 mod state;
 #[path = "live/state_query.rs"]

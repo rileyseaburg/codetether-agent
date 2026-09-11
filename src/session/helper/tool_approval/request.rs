@@ -26,6 +26,10 @@ pub(super) fn from_result(
         Some(preview) => request.with_preview(preview),
         None => request,
     };
+    let request = match result.metadata.get("approval_arguments") {
+        Some(arguments) => request.with_arguments(arguments.clone()),
+        None => request,
+    };
     Some(match amendment(&result.metadata) {
         Some(value) => request.with_execpolicy_amendment(value),
         None => request,

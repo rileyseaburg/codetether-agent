@@ -23,6 +23,10 @@ pub struct LiveApprovalRequest {
     /// Full invocation detail shown in interactive approval clients.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview: Option<String>,
+    /// Raw tool arguments for file mutations so clients can run diagnostics
+    /// against the proposed content before deciding.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<serde_json::Value>,
     /// Proposed exec-policy amendment that can allow similar commands.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub proposed_execpolicy_amendment: Option<ExecPolicyAmendment>,

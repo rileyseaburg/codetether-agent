@@ -8,3 +8,5 @@ pub mod exec_command;
 pub(crate) mod shell_command_guard;
 pub mod temp_write_guard;
 pub mod write_stdin;
+// Approval-time reconstruction of files those tools would mutate.
+pub(crate) mod proposed_content;
