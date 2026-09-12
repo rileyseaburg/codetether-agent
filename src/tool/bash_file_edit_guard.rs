@@ -1,9 +1,11 @@
 //! Guard that blocks file-mutating shell commands.
 //!
-//! Editing files through `cat > file`, here-docs, `python -c`/`python -` with
-//! `open(..., "w")`, `tee`, or `sed -i` bypasses the structured edit tools and
-//! hides the actual change. This guard detects those patterns so the bash tool
-//! can steer the agent back to the `edit`/`multiedit` tools.
+//! Editing files through `cat > file`, here-docs, inline interpreter programs
+//! (`python3 -`, `python -c`, `perl -e`, ...), `tee`, or `sed -i` bypasses the
+//! structured edit tools and hides the actual change. This guard detects those
+//! patterns so the bash tool can steer the agent back to `edit`/`multiedit`.
+
+mod inline_script;
 
 /// Returns a rejection reason if `command` writes file contents inline.
 ///
@@ -28,6 +30,9 @@ pub fn file_edit_guard_reason(command: &str) -> Option<&'static str> {
     }
     if lower.contains("tee ") {
         return Some("`tee` file writes are blocked; use the edit or multiedit tool");
+    }
+    if let Some(reason) = inline_script::inline_script_reason(&lower) {
+        return Some(reason);
     }
     if (lower.contains("python") || lower.contains("python3"))
         && (lower.contains(".write(")

@@ -1497,7 +1497,7 @@ impl RalphLoop {
 
 ## VERIFICATION BY LANGUAGE:
 - **Rust**: `bash` with `cargo check 2>&1`
-- **Python**: `bash` with `python -c "import ast; ast.parse(open('FILE').read())"` for each changed file
+- **Python**: `bash` with `python -m py_compile FILE` for each changed file (inline `python -c` programs are blocked)
 - **TypeScript/JavaScript**: `bash` with `npx tsc --noEmit` (if tsconfig.json exists)
 - Choose the right check for the files you modified
 
