@@ -13,8 +13,12 @@ use crate::provider::{Message, Usage};
 use super::pages::{PageKind, classify, classify_all};
 use super::types::{Session, SessionMetadata};
 
+#[path = "lifecycle/default_model.rs"]
+mod default_model;
 #[path = "lifecycle/normalize.rs"]
 mod normalize;
+#[path = "lifecycle/subcall_model.rs"]
+mod subcall_model;
 
 impl Session {
     /// Create a new empty session rooted at the current working directory.
@@ -80,10 +84,12 @@ impl Session {
 
     /// Seed session metadata from a loaded [`crate::config::Config`].
     ///
-    /// Currently copies [`crate::config::Config::rlm`] into
-    /// [`SessionMetadata::rlm`] so RLM compaction and tool-output routing
-    /// honour user-configured thresholds, iteration limits, and model
-    /// selectors.
+    /// Copies [`crate::config::Config::rlm`] into [`SessionMetadata::rlm`] so
+    /// RLM compaction and tool-output routing honour user-configured
+    /// thresholds, iteration limits, and model selectors, and adopts
+    /// [`crate::config::Config::default_model`] when the session has no model
+    /// yet so the TUI honours `CODETETHER_DEFAULT_MODEL` / `default_model`
+    /// exactly like `codetether run`.
     ///
     /// Also attempts to resolve [`RlmConfig::subcall_model`] against the
     /// given provider registry. When resolution succeeds the resolved
@@ -113,65 +119,8 @@ impl Session {
         registry: Option<&crate::provider::ProviderRegistry>,
     ) {
         self.metadata.rlm = config.rlm.clone();
-
-        // Resolve subcall_model into a provider, if configured.
-        self.metadata.subcall_provider = None;
-        self.metadata.subcall_model_name = None;
-
-        if let Some(ref subcall_model_str) = config.rlm.subcall_model
-            && let Some(reg) = registry
-        {
-            match reg.resolve_model(subcall_model_str) {
-                Ok((provider, model_name)) => {
-                    self.metadata.subcall_provider = Some(provider);
-                    self.metadata.subcall_model_name = Some(model_name);
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        configured = %subcall_model_str,
-                        error = %e,
-                        "RLM subcall_model resolution failed; subcalls will use root model"
-                    );
-                }
-            }
-        }
-    }
-
-    /// Attempt to resolve [`RlmConfig::subcall_model`] against the given
-    /// provider registry, storing the result on metadata.
-    ///
-    /// Called by session helpers right before building an
-    /// [`AutoProcessContext`](crate::rlm::router::AutoProcessContext) if
-    /// `subcall_provider` is still `None` but `subcall_model` is configured.
-    /// This deferred resolution avoids requiring the registry at session
-    /// creation time.
-    ///
-    /// # Errors
-    ///
-    /// Does **not** return errors — resolution failure is logged.
-    pub fn resolve_subcall_provider(&mut self, registry: &crate::provider::ProviderRegistry) {
-        if self.metadata.subcall_provider.is_some() {
-            return; // Already resolved.
-        }
-        if let Some(ref subcall_model_str) = self.metadata.rlm.subcall_model {
-            match registry.resolve_model(subcall_model_str) {
-                Ok((provider, model_name)) => {
-                    tracing::debug!(
-                        subcall_model = %model_name,
-                        "RLM: resolved subcall provider"
-                    );
-                    self.metadata.subcall_provider = Some(provider);
-                    self.metadata.subcall_model_name = Some(model_name);
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        configured = %subcall_model_str,
-                        error = %e,
-                        "RLM subcall_model resolution failed; subcalls will use root model"
-                    );
-                }
-            }
-        }
+        self.seed_default_model(config);
+        self.apply_subcall_model(registry);
     }
 
     /// Set the agent persona owning this session. Also updates the
