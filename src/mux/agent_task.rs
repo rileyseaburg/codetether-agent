@@ -15,6 +15,8 @@ mod validation;
 mod waiter;
 
 #[cfg(test)]
+mod isolation_tests;
+#[cfg(test)]
 mod tests;
 
 pub(in crate::mux) use registry::AgentTaskRegistry;

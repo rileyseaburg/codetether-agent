@@ -3,6 +3,7 @@
 mod child;
 mod initial_shell;
 mod kill_all;
+mod kill_last;
 mod process;
 mod proof;
 mod registry;
