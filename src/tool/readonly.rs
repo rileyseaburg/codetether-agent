@@ -41,6 +41,10 @@ const READ_ONLY_TOOL_IDS: &[&str] = &[
     "get_goal",
     "list_agents",
     "wait_agent",
+    "skill",
+    "todoread",
+    "todo_read",
+    "bus_inspect",
 ];
 
 /// Returns `true` if `tool_id` identifies a known read-only tool that is
