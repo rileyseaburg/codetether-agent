@@ -4,6 +4,7 @@
 //! * [`shared`] — common builders and the timeout constant.
 //! * [`no_first_token`] — the start-clock clause and its suppression.
 //! * [`rearm`] — detector re-arming after a notification is cleared.
+//! * [`declared_budget`] — tools inside their requested runtime are not stalls.
 
 #[path = "tests/shared.rs"]
 mod shared;
@@ -16,3 +17,6 @@ mod rearm;
 
 #[path = "tests/approval_wait.rs"]
 mod approval_wait;
+
+#[path = "tests/declared_budget.rs"]
+mod declared_budget;

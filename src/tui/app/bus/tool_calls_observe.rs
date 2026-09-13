@@ -6,6 +6,10 @@ use crate::bus::BusMessage;
 
 use super::{OpenToolCall, ToolCallTracker};
 
+#[path = "tool_calls_timeout.rs"]
+mod timeout;
+use timeout::declared_timeout;
+
 pub(crate) const MAX_OPEN_CALLS: usize = 256;
 
 impl ToolCallTracker {
@@ -17,7 +21,7 @@ impl ToolCallTracker {
                 agent_id,
                 tool_name,
                 step,
-                ..
+                arguments,
             } => self.insert(
                 request_id,
                 OpenToolCall {
@@ -25,6 +29,7 @@ impl ToolCallTracker {
                     tool_name: tool_name.clone(),
                     step: *step,
                     started_at: Instant::now(),
+                    declared_timeout: declared_timeout(arguments),
                 },
             ),
             BusMessage::ToolResponse { request_id, .. } => {

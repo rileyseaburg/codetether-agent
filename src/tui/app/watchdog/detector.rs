@@ -56,6 +56,11 @@ pub fn check_watchdog_stall(state: &AppState, timeout: Duration) -> Option<Watch
     if !inactive && !no_first_token {
         return None;
     }
+    // A tool that is still inside the runtime it asked for is working, not
+    // stalled, even if it has been silent longer than the watchdog budget.
+    if state.tool_calls.within_declared_budget() {
+        return None;
+    }
     let secs = timeout.as_secs();
     // Prefer a precise per-agent tool-call alert when the bus shows an open
     // (un-answered) tool call that has exceeded the timeout.

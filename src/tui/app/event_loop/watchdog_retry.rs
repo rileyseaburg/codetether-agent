@@ -29,12 +29,11 @@ pub(super) async fn execute(
     let Some(registry) = registry.as_ref() else {
         return;
     };
-    let prompt = app
-        .state
-        .main_watchdog_root_prompt
-        .clone()
-        .or_else(|| app.state.main_inflight_prompt.clone());
-    let Some(prompt) = prompt else { return };
+    // Resubmit the turn that actually stalled. Never an older prompt: on a
+    // long-lived session that replays a stale instruction as if freshly typed.
+    let Some(prompt) = app.state.main_inflight_prompt.clone() else {
+        return;
+    };
     let Some(session) = slot.take_for_prompt() else {
         return;
     };

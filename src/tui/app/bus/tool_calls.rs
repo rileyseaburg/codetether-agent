@@ -22,6 +22,9 @@ pub struct OpenToolCall {
     pub step: usize,
     /// When the request was observed locally.
     pub started_at: Instant,
+    /// Runtime the caller asked for (`timeout` / `timeout_secs` argument).
+    /// A call is not stalled until it has outlived this budget too.
+    pub declared_timeout: Option<std::time::Duration>,
 }
 
 /// Tracks open tool calls keyed by `request_id`.

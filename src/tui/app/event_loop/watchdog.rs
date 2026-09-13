@@ -28,12 +28,7 @@ pub(super) async fn maybe_watchdog_restart(
         Some(n) => n,
         None => return,
     };
-    let prompt = app
-        .state
-        .main_watchdog_root_prompt
-        .clone()
-        .or_else(|| app.state.main_inflight_prompt.clone());
-    if prompt.is_none() {
+    if app.state.main_inflight_prompt.is_none() {
         return;
     }
     apply_watchdog_state(app, notif);

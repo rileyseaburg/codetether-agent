@@ -9,11 +9,26 @@ use std::time::{Duration, Instant};
 use super::tool_calls::{OpenToolCall, ToolCallTracker};
 
 impl ToolCallTracker {
-    /// Oldest open call exceeding `timeout`, if any (watchdog stall alert).
+    /// `true` while any open call is still inside the runtime it asked for
+    /// (`timeout` / `timeout_secs`). Such a call is working, not stalled.
+    pub fn within_declared_budget(&self) -> bool {
+        let now = Instant::now();
+        self.open_calls().any(|c| {
+            c.declared_timeout
+                .is_some_and(|budget| now.duration_since(c.started_at) < budget)
+        })
+    }
+
+    /// The oldest open call that has outlived both the watchdog `timeout` and
+    /// its own declared budget. A `bash` asked to run for 600 s is not stalled
+    /// at 240 s.
     pub fn stalled(&self, timeout: Duration) -> Option<&OpenToolCall> {
         let now = Instant::now();
         self.open_calls()
-            .filter(|c| now.duration_since(c.started_at) >= timeout)
+            .filter(|c| {
+                let budget = timeout.max(c.declared_timeout.unwrap_or(Duration::ZERO));
+                now.duration_since(c.started_at) >= budget
+            })
             .min_by_key(|c| c.started_at)
     }
 
