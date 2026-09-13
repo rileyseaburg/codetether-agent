@@ -9,25 +9,24 @@ if ($Help) {
     return
 }
 if ($env:OS -ne 'Windows_NT') { throw 'WINDOWS_REQUIRED: Run this installer on Windows.' }
-$repo = 'rileyseaburg/codetether-agent'
+$repo = 'riley/codetether-agent'
+$api = "https://forgejo.quantum-forge.io/api/v1/repos/$repo"
 $headers = @{ 'User-Agent' = 'codetether-installer' }
 $helperRoot = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'script\windows-install' } else { '' }
 if ($PSScriptRoot -and -not (Test-Path (Join-Path $helperRoot 'entry.ps1'))) { $helperRoot = Join-Path $PSScriptRoot 'windows-install' }
 if (-not $helperRoot -or -not (Test-Path (Join-Path $helperRoot 'entry.ps1'))) {
-    # Resolve once, then fetch only content-addressed Git blobs. Never execute main-branch helpers.
-    if (-not $Version) { $Version = (Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest" -Headers $headers).tag_name }
-    if ($Version -notmatch '^v?\d+\.\d+\.\d+[-.A-Za-z0-9]*$') { throw 'INVALID_RELEASE_TAG' }
-    $commit = (Invoke-RestMethod "https://api.github.com/repos/$repo/commits/$Version" -Headers $headers).sha
+    # Reviewed helper revision, independent of binary tags. Never execute floating main helpers.
+    $commit = 'a330da13b18b113164143a1fdbe2b22f8e66ddbd'
     if ($commit -notmatch '^[0-9a-f]{40}$') { throw 'INVALID_RELEASE_COMMIT' }
-    $tree = Invoke-RestMethod "https://api.github.com/repos/$repo/git/trees/${commit}?recursive=1" -Headers $headers
-    if ($tree.truncated) { throw 'INCOMPLETE_HELPER_TREE' }
+    # List only this directory; Forgejo recursive trees truncate large repositories.
+    $listing = Invoke-RestMethod "$api/contents/script/windows-install?ref=$commit" -Headers $headers
     $helperRoot = Join-Path $env:LOCALAPPDATA "codetether\install-evidence\helpers-$commit-$([guid]::NewGuid())"
     New-Item -ItemType Directory $helperRoot -Force | Out-Null
-    $files = @($tree.tree | Where-Object { $_.type -eq 'blob' -and $_.path -cmatch '^script/windows-install/[a-z0-9-]+\.ps1$' })
+    $files = @($listing | Where-Object { $_.type -eq 'file' -and $_.path -cmatch '^script/windows-install/[a-z0-9-]+\.ps1$' })
     if (-not $files.Count) { throw 'RELEASE_HAS_NO_WINDOWS_HELPERS: Use a bundled installer or checkout with -ExePath.' }
     foreach ($file in $files) {
         $path = Join-Path $helperRoot ([IO.Path]::GetFileName($file.path))
-        Invoke-WebRequest "https://raw.githubusercontent.com/$repo/$commit/$($file.path)" -OutFile $path -UseBasicParsing
+        Invoke-WebRequest "https://forgejo.quantum-forge.io/$repo/raw/commit/$commit/$($file.path)" -OutFile $path -UseBasicParsing
         $bytes = [IO.File]::ReadAllBytes($path)
         $prefix = [Text.Encoding]::UTF8.GetBytes("blob $($bytes.Length)`0")
         $hasher = [Security.Cryptography.SHA1]::Create()

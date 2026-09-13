@@ -1,6 +1,6 @@
 # Forgejo releases
 
-Release source: `https://forgejo.quantum-forge.io/riley/codetether-agent`.
+Release source: `https://forgejo.quantum-forge.io/riley/codetether-agent`; [GitHub is a code-only mirror](forgejo_mirror.md).
 The `.forgejo/workflows/release.yml` entry point runs entirely in CI. Do not
 run local Cargo builds to substitute for this workflow.
 Use this workflow instead of local `release.sh`, which compiles and installs.

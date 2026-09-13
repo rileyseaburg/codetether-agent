@@ -1,6 +1,6 @@
 #!/bin/sh
 # CodeTether Agent Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
+# Usage: curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
 #
 # Installs the latest release of codetether to /usr/local/bin (or ~/.local/bin if no sudo).
 # No Rust toolchain required.
@@ -12,7 +12,7 @@
 
 set -e
 
-REPO="rileyseaburg/codetether-agent"
+REPO="forgejo.quantum-forge.io/riley/codetether-agent"
 BINARY_NAME="codetether"
 INSTALL_DIR="/usr/local/bin"
 USE_SUDO="true"
@@ -60,7 +60,7 @@ detect_platform() {
     case "$os" in
         Linux)  os="unknown-linux-gnu" ;;
         Darwin) os="apple-darwin" ;;
-        MINGW*|MSYS*|CYGWIN*) os="pc-windows-msvc" ;;
+        MINGW*|MSYS*|CYGWIN*) error "use the PowerShell install.ps1 installer on Windows"; return 1 ;;
         *)
             error "unsupported OS: $os"
             exit 1
@@ -149,21 +149,16 @@ version_is_newer() {
 }
 
 get_latest_version() {
-    # Use GitHub API to get latest release tag
+    # Include prereleases: Forgejo /latest excludes our development releases.
+    local api="https://forgejo.quantum-forge.io/api/v1/repos/riley/codetether-agent/releases?draft=false&limit=1"
     if command -v curl > /dev/null 2>&1; then
-        curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-            | grep '"tag_name"' \
-            | head -1 \
-            | sed 's/.*"tag_name": *"//;s/".*//'
+        curl -fsSL "$api"
     elif command -v wget > /dev/null 2>&1; then
-        wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" \
-            | grep '"tag_name"' \
-            | head -1 \
-            | sed 's/.*"tag_name": *"//;s/".*//'
+        wget -qO- "$api"
     else
         error "need 'curl' or 'wget' to download"
-        exit 1
-    fi
+        return 1
+    fi | tr ',' '\n' | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -1
 }
 
 download() {
@@ -572,8 +567,8 @@ main() {
 
     # Build download URL
     local artifact_name="codetether-${version}-${platform}"
-    local tarball="${artifact_name}.tar.gz"
-    local url="https://github.com/${REPO}/releases/download/${version}/${tarball}"
+    local tarball="${artifact_name}.tar.gz" expected actual
+    local url="https://${REPO}/releases/download/${version}/${tarball}"
 
         # Create temp directory
         local tmp_dir
@@ -583,6 +578,11 @@ main() {
         # Download
         info "downloading ${tarball}..."
         download "$url" "${tmp_dir}/${tarball}"
+        download "https://${REPO}/releases/download/${version}/SHA256SUMS-${version}.txt" "${tmp_dir}/SHA256SUMS"
+        expected="$(awk -v name="$tarball" '$2 == name || $2 == "*"name {print $1; exit}' "${tmp_dir}/SHA256SUMS")"
+        if command -v sha256sum >/dev/null 2>&1; then actual="$(sha256sum "${tmp_dir}/${tarball}")"
+        else actual="$(shasum -a 256 "${tmp_dir}/${tarball}")"; fi
+        [ ${#expected} -eq 64 ] && [ "$expected" = "${actual%% *}" ] || { error "release checksum mismatch or missing manifest entry"; exit 1; }
 
         # Extract
         info "extracting..."

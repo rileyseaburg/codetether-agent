@@ -10,12 +10,12 @@ Assert-Throws { & "$Root/sdk.ps1" -Work $Work } 'SDK_UNAVAILABLE'
 $global:downloadFixture.Fail = $false
 Assert-Throws { & "$Root/sdk.ps1" -Work $Work } 'SDK_INTEGRITY_FAILED'
 Assert-Contract (-not $global:downloadFixture.Expanded) 'corrupted SDK never extracted'
-$asset = [pscustomobject]@{ name = 'codetether.exe'; browser_download_url = 'https://github.com/rileyseaburg/codetether-agent/releases/download/v1.0.0/codetether.exe' }
+$asset = [pscustomobject]@{ name = 'codetether.exe'; browser_download_url = 'https://forgejo.quantum-forge.io/riley/codetether-agent/releases/download/v1.0.0/codetether.exe' }
 Assert-Throws { & "$Root/download-asset.ps1" -Asset $asset -Work $Work } 'RELEASE_DIGEST_UNAVAILABLE'
-$asset | Add-Member -NotePropertyName digest -NotePropertyValue ('sha256:' + ('0' * 64))
-Assert-Throws { & "$Root/download-asset.ps1" -Asset $asset -Work $Work } 'RELEASE_INTEGRITY_FAILED'
+$release = [pscustomobject]@{ tag_name = 'v1.0.0'; assets = @() }
+Assert-Throws { & "$Root/download-asset.ps1" -Asset $asset -Release $release -Work $Work } 'RELEASE_DIGEST_UNAVAILABLE'
 $bootstrap = Get-Content (Join-Path (Split-Path (Split-Path $Root)) 'install.ps1') -Raw
-Assert-Contract ($bootstrap -match 'HELPER_INTEGRITY_FAILED' -and $bootstrap -match 'raw.githubusercontent.com/\$repo/\$commit/') 'helper download is commit-pinned and hash-checked'
+Assert-Contract ($bootstrap -match 'HELPER_INTEGRITY_FAILED' -and $bootstrap -match 'forgejo.quantum-forge.io/\$repo/raw/commit/\$commit/') 'helper download is commit-pinned and hash-checked'
 $pin = [regex]::Match((Get-Content "$Root/sdk.ps1" -Raw), "sha512 = '([0-9a-f]{128})'").Groups[1].Value
 $archive = Join-Path (Split-Path $Work) 'sdk.nupkg'
 if (Test-Path $archive) {

@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/codetether-agent.svg)](https://crates.io/crates/codetether-agent)
 [![npm](https://img.shields.io/npm/v/codetether.svg)](https://www.npmjs.com/package/codetether)
-[![GitHub Release](https://img.shields.io/github/v/release/rileyseaburg/codetether-agent)](https://github.com/rileyseaburg/codetether-agent/releases)
+[![Forgejo Releases](https://img.shields.io/badge/releases-Forgejo-orange)](https://forgejo.quantum-forge.io/riley/codetether-agent/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 CodeTether is a Rust-native coding agent for interactive terminal work,
@@ -38,7 +38,7 @@ npx codetether
 Or install the binary and start a session:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
+curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
 codetether auth codex
 codetether
 ```
@@ -57,19 +57,19 @@ reference.
 ### Linux and macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
+curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
 ```
 
 Add `--functiongemma` to install the optional local tool-routing model:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh -s -- --functiongemma
+curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh -s -- --functiongemma
 ```
 
 ### Windows
 
 ```powershell
-irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 | iex
+irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.ps1 | iex
 ```
 
 ### Cargo
