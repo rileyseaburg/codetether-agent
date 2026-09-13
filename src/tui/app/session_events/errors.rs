@@ -30,6 +30,7 @@ async fn handle(
     err: String,
 ) {
     handle_processing_stopped(app, worker_bridge).await;
+    crate::tui::app::inbox::live::settle(app, Err(err.clone()));
     app.state.clear_streaming_text();
     app.state.complete_request_timing();
     app.state.interlude = None;

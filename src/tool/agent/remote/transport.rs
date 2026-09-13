@@ -1,8 +1,7 @@
 //! Authenticated A2A transport for one discovered peer turn.
 
-use super::{payload, result};
+use super::{payload, reply::PeerReply};
 use crate::a2a::{client::A2AClient, peer_route::PeerRoute};
-use crate::tool::ToolResult;
 use anyhow::{Context, Result, anyhow};
 use std::time::Duration;
 
@@ -14,7 +13,7 @@ pub(super) async fn send(
     context_id: Option<&str>,
     owner: Option<&str>,
     route: PeerRoute,
-) -> Result<ToolResult> {
+) -> Result<PeerReply> {
     let mut client = A2AClient::new(&route.endpoint);
     let token = route
         .token
@@ -32,5 +31,5 @@ pub(super) async fn send(
     .with_context(|| format!("LAN peer {name} call failed at {}", route.endpoint))?;
     let response = super::poll::complete(name, owner, &client, response).await?;
     tracing::info!(peer_name = %name, endpoint = %route.endpoint, "LAN peer replied");
-    Ok(result::render(name, response))
+    Ok(PeerReply::from_response(&response))
 }

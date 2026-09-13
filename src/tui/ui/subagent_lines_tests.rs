@@ -36,11 +36,12 @@ fn tool_agents_and_swarm_workers_share_the_dashboard() {
         name: "planner".into(),
         instructions: "Plan work".into(),
         message_count: 3,
-        model_id: None,
-        parent: None,
         depth: 0,
         is_processing: true,
-        is_remote: false,
+        origin: crate::tool::agent::bridge::AgentOrigin::Local {
+            parent: None,
+            model_id: None,
+        },
         failed: false,
     };
     let text = fixture::text(&compose(&state, &[tool]));

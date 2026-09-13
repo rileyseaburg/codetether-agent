@@ -9,6 +9,8 @@
 use super::store;
 #[path = "bridge_live.rs"]
 mod live;
+#[path = "bridge_origin.rs"]
+mod origin;
 #[path = "bridge_snapshots.rs"]
 mod snapshots;
 #[cfg(test)]
@@ -17,6 +19,7 @@ mod test_fixture;
 #[path = "bridge_transcript.rs"]
 mod transcript;
 pub(crate) use live::{LiveTraceEntry, LiveTraceSnapshot, agent_tool_live_trace_for_parent};
+pub use origin::AgentOrigin;
 #[cfg(test)]
 pub(crate) use test_fixture::record_remote_turn;
 pub(crate) use transcript::agent_tool_transcript_for_parent;
@@ -28,12 +31,10 @@ pub struct AgentSnapshot {
     pub name: String,
     pub instructions: String,
     pub message_count: usize,
-    pub model_id: Option<String>,
-    pub parent: Option<String>,
     pub depth: u8,
     pub is_processing: bool,
-    /// Whether this entry represents a discovered A2A peer.
-    pub is_remote: bool,
+    /// Where the agent came from; determines which identity rows make sense.
+    pub origin: AgentOrigin,
     /// Whether the latest observed turn failed.
     pub failed: bool,
 }

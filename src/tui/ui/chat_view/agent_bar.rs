@@ -29,6 +29,7 @@ pub fn render_agent_bar(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         name: "main",
         model_id: model.as_deref(),
         session_id: app.state.session_id.as_deref(),
+        identity: None,
         indent: 0,
         selected: active.is_none(),
         processing: app.state.processing,

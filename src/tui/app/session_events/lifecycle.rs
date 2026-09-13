@@ -14,7 +14,7 @@ pub(super) async fn handle_event(
 ) -> Option<SessionEvent> {
     match evt {
         SessionEvent::Thinking => thinking(app, worker_bridge).await,
-        SessionEvent::Done => done(app, worker_bridge).await,
+        SessionEvent::Done => done(app, slot, worker_bridge).await,
         SessionEvent::SessionSync(updated) => sync(app, slot, updated),
         other => return Some(other),
     }
@@ -32,8 +32,9 @@ async fn thinking(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
     app.state.status = "Thinking…".to_string();
 }
 
-async fn done(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
+async fn done(app: &mut App, slot: &SessionSlot, worker_bridge: &Option<TuiWorkerBridge>) {
     handle_processing_stopped(app, worker_bridge).await;
+    crate::tui::app::inbox::live::settle_from_session(app, slot);
     app.state.clear_streaming_text();
     app.state.complete_turn_timing();
     app.state.streaming_start = None;

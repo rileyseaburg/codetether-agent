@@ -4,8 +4,9 @@ mod list;
 pub(in crate::tool::agent) mod observation;
 mod payload;
 mod poll;
+pub(in crate::tool::agent) mod reply;
 mod request;
-mod result;
+pub(in crate::tool::agent) mod result;
 #[cfg(test)]
 #[path = "remote_tests.rs"]
 mod tests;

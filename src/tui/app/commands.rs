@@ -1,10 +1,14 @@
 use std::path::Path;
 use std::sync::Arc;
 
+#[path = "commands/a2a.rs"]
+mod a2a;
 #[path = "commands/goal/mod.rs"]
 mod goal;
 #[path = "commands/open_editor.rs"]
 mod open_editor;
+#[path = "commands/session_ops.rs"]
+mod session_ops;
 use open_editor::open_editor;
 use serde_json::Value;
 
@@ -726,27 +730,7 @@ pub async fn handle_slash_command(
         return;
     }
     // `/forage [execute] [N]` launches an OKR-driven forage scan/execution.
-    if let Some(rest) = command_with_optional_args(&normalized, "/forage") {
-        crate::tui::forage_run::handle_forage_command(app, session, rest);
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/goal") {
-        goal::handle(app, session, rest).await;
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/undo") {
-        handle_undo_command(app, session, rest).await;
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/detach") {
-        crate::tui::app::detach::handle_detach_command(app, session, rest).await;
-        return;
-    }
-    if let Some(rest) = command_with_optional_args(&normalized, "/fork") {
-        handle_fork_command(app, cwd, session, rest).await;
+    if session_ops::dispatch(app, cwd, session, &normalized).await {
         return;
     }
 

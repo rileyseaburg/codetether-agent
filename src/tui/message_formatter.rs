@@ -399,7 +399,7 @@ impl MessageFormatter {
     ///
     /// Invoked via [`MessageFormatter::format_content`]; tested indirectly
     /// by the unit tests in this module.
-    pub(super) fn wrap_line(&self, spans: Vec<Span<'static>>, width: usize) -> Vec<Line<'static>> {
+    pub(crate) fn wrap_line(&self, spans: Vec<Span<'static>>, width: usize) -> Vec<Line<'static>> {
         if spans.is_empty() {
             return vec![Line::from("")];
         }

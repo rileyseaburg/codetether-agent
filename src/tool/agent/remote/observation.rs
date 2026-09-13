@@ -29,5 +29,8 @@ pub(in crate::tool::agent) use update::begin;
 #[path = "observation_activity_tests.rs"]
 mod activity_tests;
 #[cfg(test)]
+#[path = "observation_reply_tests.rs"]
+mod reply_tests;
+#[cfg(test)]
 #[path = "observation_tests.rs"]
 mod tests;

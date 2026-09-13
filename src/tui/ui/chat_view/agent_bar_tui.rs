@@ -14,6 +14,7 @@ pub fn push_tui_agents(spans: &mut Vec<Span<'static>>, app: &App, active: Option
                 name: &node.name,
                 model_id: agent.model_id.as_deref(),
                 session_id: Some(&agent.session.id),
+                identity: None,
                 indent: node.depth + 1,
                 selected: active == Some(node.name.as_str()),
                 processing: agent.is_processing,

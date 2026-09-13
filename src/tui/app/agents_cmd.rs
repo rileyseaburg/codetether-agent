@@ -38,10 +38,12 @@ fn collect_agent_tool_agents(app: &App, out: &mut Vec<String>) {
         if existing.contains(&snap.name) {
             continue;
         }
-        let model = snap.model_id.as_deref().unwrap_or("default");
         out.push(format!(
-            "  {} — {} messages — model: {} (agent-tool)",
-            snap.name, snap.message_count, model
+            "  {} — {} messages — {} ({})",
+            snap.name,
+            snap.message_count,
+            snap.origin.lineage(),
+            snap.origin.kind()
         ));
     }
 }

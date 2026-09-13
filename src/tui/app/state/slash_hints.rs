@@ -33,6 +33,7 @@ pub fn usage_hint(cmd: &str) -> Option<&'static str> {
         "/resume" => Some("/resume  - open the session picker"),
         "/continue" => Some("/continue  - resume a stalled or idle turn"),
         "/goal" => Some("/goal [set|edit|pause|resume|done|clear|show]  - manage persistent work"),
+        "/a2a" => Some("/a2a [accept|headless]  - route LAN peer turns into this session"),
         "/spawn" => Some("/spawn <name> [instructions]  — create a sub-agent"),
         "/kill" => Some("/kill <name>  — terminate a sub-agent"),
         "/detach" => Some("/detach  — continue this thread in a new terminal subprocess"),

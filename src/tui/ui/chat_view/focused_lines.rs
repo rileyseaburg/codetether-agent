@@ -12,5 +12,5 @@ pub(super) fn build(
     if let Some(lines) = super::swarm_lines::build(app, content_width, formatter, palette) {
         return Some(lines);
     }
-    super::agent_lines::build(app)
+    super::agent_lines::build(app, content_width, formatter)
 }

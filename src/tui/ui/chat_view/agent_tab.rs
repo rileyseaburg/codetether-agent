@@ -9,8 +9,12 @@ use agent_tab_style::tab_style;
 /// Data needed to render a compact agent tab.
 pub struct AgentTabMeta<'a> {
     pub name: &'a str,
+    /// Model label; `None` renders as `auto`.
     pub model_id: Option<&'a str>,
+    /// Session id, shortened; `None` renders as `new`.
     pub session_id: Option<&'a str>,
+    /// When set, replaces the model/session pair (LAN peers have neither).
+    pub identity: Option<&'a str>,
     pub indent: u8,
     pub selected: bool,
     pub processing: bool,
@@ -22,16 +26,22 @@ pub struct AgentTabMeta<'a> {
 /// tabs use it as the background, unselected tabs tint the label with it.
 pub fn agent_tab(meta: AgentTabMeta<'_>) -> Span<'static> {
     let dots = "·".repeat(meta.indent as usize);
-    let model = meta
-        .model_id
-        .map(compact_model)
-        .unwrap_or_else(|| "auto".into());
-    let session = meta
-        .session_id
-        .map(short_id)
-        .unwrap_or_else(|| "new".into());
+    let identity = match meta.identity {
+        Some(identity) => identity.to_string(),
+        None => {
+            let model = meta
+                .model_id
+                .map(compact_model)
+                .unwrap_or_else(|| "auto".into());
+            let session = meta
+                .session_id
+                .map(short_id)
+                .unwrap_or_else(|| "new".into());
+            format!("{model} {session}")
+        }
+    };
     let marker = if meta.processing { " ⋯" } else { "" };
-    let label = format!(" {dots}{} {model} {session}{marker} ", meta.name);
+    let label = format!(" {dots}{} {identity}{marker} ", meta.name);
     Span::styled(label, tab_style(meta.name, meta.selected))
 }
 

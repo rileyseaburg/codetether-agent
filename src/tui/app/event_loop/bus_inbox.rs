@@ -13,5 +13,6 @@ pub async fn trigger_next(
     worker_bridge: &Option<TuiWorkerBridge>,
     runtime: &TuiSessionHandle,
 ) {
+    crate::tui::app::inbox::live::admit(app);
     crate::tui::app::inbox::trigger_next(app, cwd, slot, registry, worker_bridge, runtime).await;
 }

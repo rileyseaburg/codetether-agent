@@ -1,6 +1,6 @@
 //! Terminal-state classification tests for remote polling.
 
-use super::finished;
+use super::finished::finished;
 use crate::a2a::types::TaskState;
 
 #[test]

@@ -1,4 +1,4 @@
-use crate::tool::ToolResult;
+use crate::tool::agent::message::remote::reply::PeerReply;
 
 #[test]
 fn remote_turn_is_visible_only_to_its_parent() {
@@ -12,7 +12,7 @@ fn remote_turn_is_visible_only_to_its_parent() {
     );
     assert!(super::snapshots(Some("parent-b")).is_empty());
 
-    turn.complete(&ToolResult::success("run failed in lint"));
+    turn.settle(&PeerReply::ok("run failed in lint"));
     let done = super::snapshots(Some("parent-a"));
     assert!(
         done.iter()

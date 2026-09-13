@@ -12,10 +12,7 @@ pub(super) fn build(text: &str, context_id: Option<&str>) -> MessageSendParams {
             }],
             context_id: context_id.map(ToString::to_string),
             task_id: None,
-            metadata: std::collections::HashMap::from([(
-                "codetether.transport".to_string(),
-                serde_json::Value::String("mdns".to_string()),
-            )]),
+            metadata: metadata(),
             extensions: vec![],
         },
         configuration: Some(MessageSendConfiguration {
@@ -30,3 +27,18 @@ pub(super) fn build(text: &str, context_id: Option<&str>) -> MessageSendParams {
 #[cfg(test)]
 #[path = "payload_tests.rs"]
 mod tests;
+
+/// Transport marker plus our own peer name so the receiver can say who asked.
+fn metadata() -> std::collections::HashMap<String, serde_json::Value> {
+    let mut map = std::collections::HashMap::from([(
+        "codetether.transport".to_string(),
+        serde_json::Value::String("mdns".to_string()),
+    )]);
+    if let Some(name) = crate::a2a::local_identity::current_name() {
+        map.insert(
+            "codetether.sender".to_string(),
+            serde_json::Value::String(name),
+        );
+    }
+    map
+}

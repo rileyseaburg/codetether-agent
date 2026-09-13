@@ -20,10 +20,18 @@ use uuid::Uuid;
 
 #[path = "server_intro.rs"]
 mod server_intro;
+#[path = "server_message_send.rs"]
+mod server_message_send;
 #[path = "server_session_event.rs"]
 mod server_session_event;
+#[path = "server_settle.rs"]
+mod server_settle;
+#[path = "server_settle_build.rs"]
+mod server_settle_build;
 #[path = "server_telemetry.rs"]
 mod server_telemetry;
+#[path = "server_turn.rs"]
+mod server_turn;
 use server_telemetry::record_a2a_message_telemetry;
 
 /// A2A Server state
@@ -193,7 +201,7 @@ async fn handle_rpc(
 ) -> Result<Json<JsonRpcResponse>, (StatusCode, Json<JsonRpcResponse>)> {
     let request_id = request.id.clone();
     let response = match request.method.as_str() {
-        "message/send" => handle_message_send(&server, request).await,
+        "message/send" => server_message_send::handle(&server, request).await,
         "message/stream" => handle_message_stream(&server, request).await,
         "tasks/get" => handle_tasks_get(&server, request).await,
         "tasks/cancel" => handle_tasks_cancel(&server, request).await,
@@ -217,292 +225,6 @@ async fn handle_rpc(
             }),
         )),
     }
-}
-
-async fn handle_message_send(
-    server: &A2AServer,
-    request: JsonRpcRequest,
-) -> Result<serde_json::Value, JsonRpcError> {
-    let params: MessageSendParams = serde_json::from_value(request.params)
-        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid parameters: {}", e)))?;
-
-    // Create a new task
-    let task_id = params
-        .message
-        .task_id
-        .clone()
-        .unwrap_or_else(|| Uuid::new_v4().to_string());
-
-    let task = Task {
-        id: task_id.clone(),
-        context_id: params.message.context_id.clone(),
-        status: TaskStatus {
-            state: TaskState::Working,
-            message: Some(params.message.clone()),
-            timestamp: Some(chrono::Utc::now().to_rfc3339()),
-        },
-        artifacts: vec![],
-        history: vec![params.message.clone()],
-        metadata: std::collections::HashMap::new(),
-    };
-
-    // Mesh introductions get a canned ack: no session, no LLM call.
-    if crate::a2a::intro::is_intro(&params.message) {
-        return server_intro::handle_intro(server, &task_id, &params.message, task);
-    }
-
-    server.tasks.insert(task_id.clone(), task.clone());
-    emit_a2a_inbound(server, &task_id, &params.message);
-
-    // Extract prompt text from message parts
-    let prompt: String = params
-        .message
-        .parts
-        .iter()
-        .filter_map(|p| match p {
-            Part::Text { text } => Some(text.as_str()),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    if prompt.is_empty() {
-        // Update task to failed
-        if let Some(mut t) = server.tasks.get_mut(&task_id) {
-            t.status.state = TaskState::Failed;
-            t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
-        }
-        return Err(JsonRpcError::invalid_params("No text content in message"));
-    }
-
-    // Determine if blocking (default true for message/send)
-    let blocking = params
-        .configuration
-        .as_ref()
-        .and_then(|c| c.blocking)
-        .unwrap_or(true);
-
-    if blocking {
-        let mut session =
-            crate::a2a::session_resolve::resolve_session(params.message.context_id.as_deref())
-                .await
-                .map_err(|e| {
-                    JsonRpcError::internal_error(format!("Failed to create session: {}", e))
-                })?;
-        crate::a2a::session_config::configure(&mut session).await;
-        let started_at = Instant::now();
-
-        match crate::a2a::prompt_runtime::run(&mut session, &prompt).await {
-            Ok(result) => {
-                let result_text = result.text;
-                crate::a2a::session_config::persist(&session).await;
-                let response_message = Message {
-                    message_id: Uuid::new_v4().to_string(),
-                    role: MessageRole::Agent,
-                    parts: vec![Part::Text {
-                        text: result_text.clone(),
-                    }],
-                    context_id: params.message.context_id.clone(),
-                    task_id: Some(task_id.clone()),
-                    metadata: std::collections::HashMap::new(),
-                    extensions: vec![],
-                };
-
-                let artifact = Artifact {
-                    artifact_id: Uuid::new_v4().to_string(),
-                    parts: vec![Part::Text {
-                        text: result_text.clone(),
-                    }],
-                    name: Some("response".to_string()),
-                    description: None,
-                    metadata: std::collections::HashMap::new(),
-                    extensions: vec![],
-                };
-
-                emit_a2a_outbound(server, &task_id, &response_message);
-
-                if let Some(mut t) = server.tasks.get_mut(&task_id) {
-                    t.status.state = TaskState::Completed;
-                    t.status.message = Some(response_message.clone());
-                    t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
-                    t.artifacts.push(artifact.clone());
-                    t.history.push(response_message);
-
-                    let status_event = TaskStatusUpdateEvent {
-                        id: task_id.clone(),
-                        status: t.status.clone(),
-                        is_final: true,
-                        metadata: std::collections::HashMap::new(),
-                    };
-                    let artifact_event = TaskArtifactUpdateEvent {
-                        id: task_id.clone(),
-                        artifact,
-                        metadata: std::collections::HashMap::new(),
-                    };
-                    tracing::debug!(
-                        task_id = %task_id,
-                        event = ?StreamEvent::StatusUpdate(status_event),
-                        "Task completed"
-                    );
-                    tracing::debug!(
-                        task_id = %task_id,
-                        event = ?StreamEvent::ArtifactUpdate(artifact_event),
-                        "Artifact produced"
-                    );
-                }
-
-                record_a2a_message_telemetry(
-                    "a2a_message_send",
-                    &task_id,
-                    true,
-                    &prompt,
-                    started_at.elapsed(),
-                    true,
-                    Some(result_text),
-                    None,
-                );
-            }
-            Err(e) => {
-                let error_message = Message {
-                    message_id: Uuid::new_v4().to_string(),
-                    role: MessageRole::Agent,
-                    parts: vec![Part::Text {
-                        text: format!("Error: {}", e),
-                    }],
-                    context_id: params.message.context_id.clone(),
-                    task_id: Some(task_id.clone()),
-                    metadata: std::collections::HashMap::new(),
-                    extensions: vec![],
-                };
-
-                emit_a2a_outbound(server, &task_id, &error_message);
-
-                if let Some(mut t) = server.tasks.get_mut(&task_id) {
-                    t.status.state = TaskState::Failed;
-                    t.status.message = Some(error_message);
-                    t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
-                }
-
-                record_a2a_message_telemetry(
-                    "a2a_message_send",
-                    &task_id,
-                    true,
-                    &prompt,
-                    started_at.elapsed(),
-                    false,
-                    None,
-                    Some(e.to_string()),
-                );
-            }
-        }
-    } else {
-        // Async execution: spawn background task, return immediately with Working state
-        let tasks = server.tasks.clone();
-        let context_id = params.message.context_id.clone();
-        let spawn_task_id = task_id.clone();
-
-        tokio::spawn(async move {
-            let task_id = spawn_task_id;
-            let started_at = Instant::now();
-            let mut session =
-                match crate::a2a::session_resolve::resolve_session(context_id.as_deref()).await {
-                    Ok(s) => s,
-                    Err(e) => {
-                        tracing::error!("Failed to create session for task {}: {}", task_id, e);
-                        if let Some(mut t) = tasks.get_mut(&task_id) {
-                            t.status.state = TaskState::Failed;
-                            t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
-                        }
-                        record_a2a_message_telemetry(
-                            "a2a_message_send",
-                            &task_id,
-                            false,
-                            &prompt,
-                            started_at.elapsed(),
-                            false,
-                            None,
-                            Some(e.to_string()),
-                        );
-                        return;
-                    }
-                };
-            crate::a2a::session_config::configure(&mut session).await;
-
-            match crate::a2a::prompt_runtime::run(&mut session, &prompt).await {
-                Ok(result) => {
-                    let result_text = result.text;
-                    crate::a2a::session_config::persist(&session).await;
-                    let response_message = Message {
-                        message_id: Uuid::new_v4().to_string(),
-                        role: MessageRole::Agent,
-                        parts: vec![Part::Text {
-                            text: result_text.clone(),
-                        }],
-                        context_id,
-                        task_id: Some(task_id.clone()),
-                        metadata: std::collections::HashMap::new(),
-                        extensions: vec![],
-                    };
-
-                    let artifact = Artifact {
-                        artifact_id: Uuid::new_v4().to_string(),
-                        parts: vec![Part::Text {
-                            text: result_text.clone(),
-                        }],
-                        name: Some("response".to_string()),
-                        description: None,
-                        metadata: std::collections::HashMap::new(),
-                        extensions: vec![],
-                    };
-
-                    if let Some(mut t) = tasks.get_mut(&task_id) {
-                        t.status.state = TaskState::Completed;
-                        t.status.message = Some(response_message.clone());
-                        t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
-                        t.artifacts.push(artifact);
-                        t.history.push(response_message);
-                    }
-
-                    record_a2a_message_telemetry(
-                        "a2a_message_send",
-                        &task_id,
-                        false,
-                        &prompt,
-                        started_at.elapsed(),
-                        true,
-                        Some(result_text),
-                        None,
-                    );
-                }
-                Err(e) => {
-                    tracing::error!("Task {} failed: {}", task_id, e);
-                    if let Some(mut t) = tasks.get_mut(&task_id) {
-                        t.status.state = TaskState::Failed;
-                        t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
-                    }
-                    record_a2a_message_telemetry(
-                        "a2a_message_send",
-                        &task_id,
-                        false,
-                        &prompt,
-                        started_at.elapsed(),
-                        false,
-                        None,
-                        Some(e.to_string()),
-                    );
-                }
-            }
-        });
-    }
-
-    // Return current task state wrapped in SendMessageResponse
-    let task = server
-        .tasks
-        .get(&task_id)
-        .ok_or_else(|| JsonRpcError::internal_error(format!("Task disappeared: {}", task_id)))?;
-    let response = SendMessageResponse::Task(task.value().clone());
-    serde_json::to_value(response)
-        .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
 }
 
 async fn handle_message_stream(

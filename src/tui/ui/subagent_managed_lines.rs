@@ -32,7 +32,7 @@ pub fn append(rows: &mut Vec<Line<'static>>, state: &AppState, tool_agents: &[Ag
         .iter()
         .filter(|agent| !managed.contains(agent.name.as_str()))
         .collect::<Vec<_>>();
-    tools.sort_by_key(|agent| (&agent.parent, agent.depth, &agent.name));
+    tools.sort_by_key(|agent| (agent.origin.parent(), agent.depth, &agent.name));
     rows.extend(tools.into_iter().map(|agent| {
         super::subagent_tool_row::line(
             agent,

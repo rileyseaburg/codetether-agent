@@ -1,6 +1,6 @@
 //! Unified local-child and remote-peer snapshots for TUI consumers.
 
-use super::{AgentSnapshot, store};
+use super::{AgentOrigin, AgentSnapshot, store};
 
 pub(super) fn all(parent_session_id: Option<&str>) -> Vec<AgentSnapshot> {
     let mut agents = local(parent_session_id);
@@ -16,11 +16,12 @@ fn local(parent_session_id: Option<&str>) -> Vec<AgentSnapshot> {
             name: entry.name,
             instructions: entry.instructions,
             message_count: entry.session.messages.len(),
-            model_id: entry.model_id,
-            parent: entry.parent,
             depth: entry.depth,
             is_processing: crate::tool::agent::execution_state::is_running(&entry.session.id),
-            is_remote: false,
+            origin: AgentOrigin::Local {
+                parent: entry.parent,
+                model_id: entry.model_id,
+            },
             failed: false,
         })
         .collect()
@@ -34,11 +35,9 @@ fn remote(parent_session_id: Option<&str>) -> Vec<AgentSnapshot> {
             name: peer.name,
             instructions: "Authenticated A2A LAN peer".to_string(),
             message_count: peer.message_count,
-            model_id: Some("a2a-mdns".to_string()),
-            parent: Some("main".to_string()),
             depth: 0,
             is_processing: peer.is_processing,
-            is_remote: true,
+            origin: AgentOrigin::lan_peer(),
             failed: peer.failed,
         })
         .collect()

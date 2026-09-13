@@ -1,5 +1,8 @@
 use std::{path::Path, sync::Arc};
 
+#[path = "inbox/live.rs"]
+pub(crate) mod live;
+
 use crate::provider::ProviderRegistry;
 use crate::tui::app::input::chat_submit_dispatch::dispatch_prompt;
 use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};

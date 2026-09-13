@@ -1,5 +1,5 @@
-use crate::tool::ToolResult;
 use crate::tool::agent::event_loop::live_trace::LiveTraceEntry;
+use crate::tool::agent::message::remote::reply::PeerReply;
 
 #[test]
 fn remote_activity_projects_into_the_live_tui_trace() {
@@ -24,5 +24,5 @@ fn remote_activity_projects_into_the_live_tui_trace() {
         trace.entries.first(),
         Some(LiveTraceEntry::ToolCall { name, .. }) if name == "read"
     ));
-    turn.complete(&ToolResult::success("done"));
+    turn.settle(&PeerReply::ok("done"));
 }

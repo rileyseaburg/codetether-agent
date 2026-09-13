@@ -15,22 +15,25 @@ pub(super) fn lines(state: &AppState, name: &str) -> Vec<Line<'static>> {
     };
     let messages = crate::tool::agent::bridge::agent_tool_transcript_for_parent(name, parent_id)
         .unwrap_or_default();
-    let parent = agent.parent.as_deref().unwrap_or("main");
-    let model = agent.model_id.as_deref().unwrap_or("default model");
     let status = match (agent.is_processing, agent.failed) {
         (true, _) => "working",
         (false, true) => "failed",
         (false, false) => "idle",
     };
-    let mut rows =
-        super::subagent_detail_metadata::lines(name, parent, status, model, &agent.instructions);
-    if agent.is_remote && agent.is_processing {
+    let remote = agent.origin.is_remote();
+    let mut rows = super::subagent_detail_metadata::lines_for_origin(
+        name,
+        status,
+        &agent.origin,
+        &agent.instructions,
+    );
+    if remote && agent.is_processing {
         rows.push(Line::from(
             "A2A request in flight; polling peer for completion…".yellow(),
         ));
         rows.push(Line::from(""));
     }
-    let source = super::subagent_message_lines::Source::for_remote(agent.is_remote);
+    let source = super::subagent_message_lines::Source::for_remote(remote);
     super::subagent_message_lines::append(&mut rows, &messages, source);
     if let Some(trace) =
         crate::tool::agent::bridge::agent_tool_live_trace_for_parent(name, parent_id)

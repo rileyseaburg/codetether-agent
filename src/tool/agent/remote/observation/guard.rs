@@ -2,17 +2,12 @@
 
 use super::finish::record;
 use super::types::RemoteTurnGuard;
-use crate::tool::ToolResult;
+use crate::tool::agent::message::remote::reply::PeerReply;
 
 impl RemoteTurnGuard {
-    /// Records a completed remote result and settles the turn.
-    pub(in crate::tool::agent) fn complete(mut self, result: &ToolResult) {
-        self.finish(&result.output, !result.success);
-    }
-
-    /// Records a transport failure and settles the turn.
-    pub(in crate::tool::agent) fn fail(mut self, error: &str) {
-        self.finish(&format!("Remote call failed: {error}"), true);
+    /// Records the peer's reply in the transcript and settles the turn.
+    pub(in crate::tool::agent) fn settle(mut self, reply: &PeerReply) {
+        self.finish(&reply.text, reply.failed);
     }
 
     fn finish(&mut self, output: &str, failed: bool) {

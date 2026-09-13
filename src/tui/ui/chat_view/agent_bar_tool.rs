@@ -24,10 +24,12 @@ pub fn push_tool_agents(
             continue;
         }
         spans.push(Span::raw(" "));
+        let identity = snap.origin.is_remote().then(|| snap.origin.lineage());
         spans.push(agent_tab(AgentTabMeta {
             name: &snap.name,
-            model_id: snap.model_id.as_deref(),
+            model_id: snap.origin.model_id(),
             session_id: None,
+            identity: identity.as_deref(),
             indent: snap.depth + 1,
             selected: active == Some(snap.name.as_str()),
             processing: snap.is_processing,
