@@ -9,7 +9,7 @@ const { downloadFile, downloadText, requestJson } = require('./http');
 const { tlsRemediationFor } = require('./tls_remediation');
 
 function repoFromEnv() {
-  return process.env.CODETETHER_GITHUB_REPO || 'rileyseaburg/codetether-agent';
+  return process.env.CODETETHER_FORGEJO_REPO || 'riley/codetether-agent';
 }
 
 function pkgRoot() {
@@ -181,15 +181,15 @@ function canExecute(p) {
 }
 
 async function getLatestReleaseTag(repo) {
-  const data = await requestJson(`https://api.github.com/repos/${repo}/releases/latest`);
+  const [data] = await requestJson(`https://forgejo.quantum-forge.io/api/v1/repos/${repo}/releases?draft=false&limit=1`);
   if (!data || !data.tag_name) {
-    throw new Error('GitHub API response missing tag_name');
+    throw new Error('Forgejo API response missing tag_name');
   }
   return data.tag_name;
 }
 
 async function getReleaseAssetNames(repo, tag) {
-  const data = await requestJson(`https://api.github.com/repos/${repo}/releases/tags/${encodeURIComponent(tag)}`);
+  const data = await requestJson(`https://forgejo.quantum-forge.io/api/v1/repos/${repo}/releases/tags/${encodeURIComponent(tag)}`);
   if (!data || !Array.isArray(data.assets)) {
     return [];
   }
@@ -288,7 +288,7 @@ async function verifyArchiveChecksum({ repo, tag, archiveName, archivePath }) {
   }
 
   const sumsName = `SHA256SUMS-${tag}.txt`;
-  const sumsUrl = `https://github.com/${repo}/releases/download/${tag}/${sumsName}`;
+  const sumsUrl = `https://forgejo.quantum-forge.io/${repo}/releases/download/${tag}/${sumsName}`;
 
   let sumsText;
   try {
@@ -372,7 +372,7 @@ async function installFromAssetCandidate({ repo, tag, candidate, destPath }) {
   try {
     const isWin = isWindows();
     const assetPath = path.join(tmpDir, candidate.name);
-    const url = `https://github.com/${repo}/releases/download/${tag}/${candidate.name}`;
+    const url = `https://forgejo.quantum-forge.io/${repo}/releases/download/${tag}/${candidate.name}`;
 
     await downloadFile(url, assetPath);
     await verifyArchiveChecksum({ repo, tag, archiveName: candidate.name, archivePath: assetPath });
@@ -523,13 +523,13 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
   }
 
   const help = [
-    'Failed to install codetether binary via GitHub Releases.',
+    'Failed to install codetether binary via Forgejo Releases.',
     `repo: ${repo}`,
     `platform: ${process.platform} (${process.arch}) => ${targetTriple}`,
     '',
     'You can still install via the official scripts:',
-    '  Linux/macOS: curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh',
-    '  Windows:     irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 | iex',
+    '  Linux/macOS: curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh',
+    '  Windows:     irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.ps1 | iex',
     '',
     'Or build from source:',
     '  cargo install codetether-agent',
