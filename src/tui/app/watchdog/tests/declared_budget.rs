@@ -39,8 +39,10 @@ fn a_tool_that_outlives_its_own_budget_still_trips() {
     let mut state = silent_for(TIMEOUT * 2);
     state.tool_calls.observe(&request("bash", 1));
     std::thread::sleep(Duration::from_millis(1100));
-    let notice = check_watchdog_stall(&state, TIMEOUT).expect("stall");
-    assert!(notice.message.contains("bash"), "{}", notice.message);
+    // Budget spent (1s < 1.1s): the gate no longer shields the call, so the
+    // generic inactivity stall fires. The per-tool label needs the call to
+    // also exceed the watchdog timeout, which is exercised in tool_calls_tests.
+    assert!(check_watchdog_stall(&state, TIMEOUT).is_some());
 }
 
 #[test]
