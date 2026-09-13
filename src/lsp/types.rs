@@ -463,7 +463,7 @@ pub fn get_language_server_config(language: &str) -> Option<LspConfig> {
             ],
             ..Default::default()
         }),
-        _ => None,
+        _ => super::tetherscript::language_server_config(language),
     }
 }
 
@@ -500,6 +500,7 @@ fn install_command_for(command: &str) -> Option<&'static [&'static str]> {
         ]),
         "pylsp" => Some(&["pip", "install", "--user", "python-lsp-server"]),
         "gopls" => Some(&["go", "install", "golang.org/x/tools/gopls@latest"]),
+        "tetherscript" => Some(&["cargo", "install", "tetherscript"]),
         "clangd" => None, // system package manager varies
         _ => None,
     }
@@ -581,22 +582,9 @@ pub async fn ensure_server_installed(config: &LspConfig) -> Result<()> {
     Ok(())
 }
 
-/// Detect language from file extension
-pub fn detect_language_from_path(path: &str) -> Option<&'static str> {
-    let ext = path.rsplit('.').next()?;
-    match ext {
-        "rs" => Some("rust"),
-        "ts" | "tsx" => Some("typescript"),
-        "js" | "jsx" => Some("javascript"),
-        "py" => Some("python"),
-        "go" => Some("go"),
-        "c" => Some("c"),
-        "cpp" | "cc" | "cxx" => Some("cpp"),
-        "h" => Some("c"),
-        "hpp" => Some("cpp"),
-        _ => None,
-    }
-}
+#[path = "detect_language.rs"]
+mod detect_language;
+pub use detect_language::detect_language_from_path;
 
 /// Built-in linter server configurations.
 /// Returns an `LspConfig` for well-known linter language servers.

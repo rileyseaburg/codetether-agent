@@ -2,6 +2,15 @@
 
 use crate::lsp::{LspActionResult, LspManager, detect_language_from_path};
 
+#[path = "lsp_capability_gate.rs"]
+mod capability_gate;
+#[cfg(test)]
+#[path = "lsp_capability_gate_tests.rs"]
+mod capability_gate_tests;
+#[path = "lsp_operation.rs"]
+mod operation;
+use operation::LspOperation;
+
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -17,64 +26,6 @@ static LSP_MANAGERS: std::sync::OnceLock<Arc<RwLock<HashMap<String, (u64, Arc<Ls
     std::sync::OnceLock::new();
 static LSP_MANAGER_ACCESS: AtomicU64 = AtomicU64::new(0);
 const MAX_LSP_MANAGERS: usize = 8;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum LspOperation {
-    GoToDefinition,
-    FindReferences,
-    Hover,
-    DocumentSymbol,
-    WorkspaceSymbol,
-    GoToImplementation,
-    Completion,
-    Diagnostics,
-}
-
-impl LspOperation {
-    fn parse(action: &str) -> Option<Self> {
-        match action {
-            "goToDefinition" | "go-to-definition" | "go_to_definition" => {
-                Some(Self::GoToDefinition)
-            }
-            "findReferences" | "find-references" | "find_references" => Some(Self::FindReferences),
-            "hover" => Some(Self::Hover),
-            "documentSymbol" | "document-symbol" | "document_symbol" => Some(Self::DocumentSymbol),
-            "workspaceSymbol" | "workspace-symbol" | "workspace_symbol" => {
-                Some(Self::WorkspaceSymbol)
-            }
-            "goToImplementation" | "go-to-implementation" | "go_to_implementation" => {
-                Some(Self::GoToImplementation)
-            }
-            "completion" => Some(Self::Completion),
-            "diagnostics" => Some(Self::Diagnostics),
-            _ => None,
-        }
-    }
-
-    fn requires_position(self) -> bool {
-        match self {
-            Self::GoToDefinition
-            | Self::FindReferences
-            | Self::Hover
-            | Self::GoToImplementation
-            | Self::Completion => true,
-            Self::DocumentSymbol | Self::WorkspaceSymbol | Self::Diagnostics => false,
-        }
-    }
-
-    fn canonical_name(self) -> &'static str {
-        match self {
-            Self::GoToDefinition => "goToDefinition",
-            Self::FindReferences => "findReferences",
-            Self::Hover => "hover",
-            Self::DocumentSymbol => "documentSymbol",
-            Self::WorkspaceSymbol => "workspaceSymbol",
-            Self::GoToImplementation => "goToImplementation",
-            Self::Completion => "completion",
-            Self::Diagnostics => "diagnostics",
-        }
-    }
-}
 
 fn get_file_path_arg(args: &Value) -> Option<&str> {
     args["file_path"].as_str().or_else(|| args["path"].as_str())
@@ -338,6 +289,9 @@ impl Tool for LspTool {
         let path = Path::new(file_path);
 
         let client = manager.get_client_for_file(path).await?;
+        if let Err(reason) = capability_gate::check(action, client.capabilities().await.as_ref()) {
+            return Ok(ToolResult::error(reason));
+        }
 
         let line = args["line"].as_u64().map(|l| l as u32);
         let column = args["column"].as_u64().map(|c| c as u32);

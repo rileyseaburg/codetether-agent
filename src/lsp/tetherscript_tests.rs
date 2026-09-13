@@ -1,4 +1,5 @@
-//! Registration tests: TetherScript is a linter, not a language server.
+//! Registration tests: TetherScript on the linter path. The language-server
+//! path (pre-approval preflight) is covered in `tetherscript_language_tests`.
 
 use super::tetherscript::{
     LINTER_CANDIDATES, TETHERSCRIPT_COMMAND, TETHERSCRIPT_EXTENSIONS, TETHERSCRIPT_LINTER,
@@ -40,12 +41,4 @@ fn tetherscript_is_probed_during_linter_auto_detect() {
             "auto-detect regressed for {existing}"
         );
     }
-}
-
-#[test]
-fn tetherscript_is_not_registered_as_a_general_language_server() {
-    // `tetherscript lsp` implements diagnostics only, so it must not be offered
-    // for go-to-definition or hover requests via the language-server path.
-    assert!(super::types::get_language_server_config(TETHERSCRIPT_LINTER).is_none());
-    assert!(super::types::detect_language_from_path("plugin.tether").is_none());
 }

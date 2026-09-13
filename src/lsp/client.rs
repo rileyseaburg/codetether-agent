@@ -381,7 +381,6 @@ impl LspClient {
     }
 
     /// Get the server capabilities
-    #[allow(dead_code)]
     pub async fn capabilities(&self) -> Option<lsp_types::ServerCapabilities> {
         self.server_capabilities.read().await.clone()
     }

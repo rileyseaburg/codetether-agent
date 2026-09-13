@@ -189,21 +189,28 @@ Available builtins: `js_eval`, `browser_render`, `browser_eval_js`,
 
 ### TetherScript diagnostics
 
-`.tether` and `.kl` files are linted automatically by the `tetherscript`
-language server (`tetherscript lsp`), registered as a **linter** in
-`src/lsp/tetherscript.rs`. Lex/parse errors surface through the same post-edit
-verification hook that runs eslint/ruff/biome, so a syntax error is reported at
-edit time instead of at execution time.
+`.tether` and `.kl` files are checked automatically by the `tetherscript`
+language server (`tetherscript lsp`), registered in `src/lsp/tetherscript.rs`
+on both resolution paths:
 
-It is a diagnostics-only server: no go-to-definition, hover, or symbols. Disable
-or override it like any other linter:
+- as a **linter** (`[lsp.linters.tetherscript]`), so edits flow through the
+  same post-edit verification hook that runs eslint/ruff/biome;
+- as the **language server** for the `tetherscript` language id, so `write`
+  and `apply_patch` of a `.tether` file hit the automatic pre-approval
+  diagnostics pass (that pass resolves servers by language, not linter name).
+
+Lex/parse errors are reported at edit time instead of at execution time. It is
+a diagnostics-only server: `lsp` actions other than `diagnostics` (hover,
+definition, symbols) are refused up front with a hint, based on the
+capabilities it advertises. Disable or override it like any other server:
 
 ```toml
 [lsp.linters.tetherscript]
 enabled = false
 ```
 
-If the `tetherscript` binary is not on `PATH` the linter is skipped silently.
+If the `tetherscript` binary is not on `PATH` it is skipped; the install hint is
+`cargo install tetherscript`.
 
 ## Adding a New Provider
 
