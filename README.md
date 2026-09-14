@@ -29,48 +29,50 @@ swarm execution, MCP, A2A, and a scriptable plugin runtime in one binary.
 
 ## Quick Start
 
-Try the TUI without installing Rust:
-
-```bash
-npx codetether
-```
-
-Or install the binary and start a session:
-
-```bash
-curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
-codetether auth codex
-codetether
-```
-
-Run one task without opening the TUI:
-
-```bash
-codetether run "explain this codebase"
-```
-
-Run `codetether --help` or `codetether <command> --help` for the complete CLI
-reference.
-
-## Install
-
-### Linux and macOS
-
-```bash
-curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
-```
-
-Add `--functiongemma` to install the optional local tool-routing model:
-
-```bash
-curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh -s -- --functiongemma
-```
+Follow the numbered steps for your operating system. No Rust toolchain is needed.
 
 ### Windows
+
+**1. Install or update.** Open **Windows PowerShell normally**, not as administrator, and paste:
 
 ```powershell
 irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.ps1 | iex
 ```
+
+Wait for setup to finish. Approve only its explained UAC requests; stop on a setup error.
+**2. Verify what this terminal launches.** Paste separately after installation:
+
+```powershell
+Get-Command codetether -All | Select-Object CommandType, Source
+codetether --version
+```
+
+Compare with the [Forgejo release](https://forgejo.quantum-forge.io/riley/codetether-agent/releases) (currently `4.7.6-dev.6`). Missing/wrong command? Follow [Windows registration and alias checks](docs/install_windows.md), not repeated restarts.
+
+### Linux and macOS
+
+**1. Install or update.** Open a terminal and paste:
+
+```sh
+curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
+```
+
+**2. Verify the command and version.** Paste separately after installation:
+
+```sh
+command -v codetether
+codetether --version
+```
+
+Compare with the Forgejo release above. See [Unix installation and PATH checks](docs/install_unix.md) if it differs.
+
+### All platforms: credentials and first launch
+
+**3. Configure credentials, then launch.** Use [Windows Vault setup](docs/install_windows_vault.md) or [Unix Vault setup](docs/install_unix_vault.md). These include hidden token entry, model discovery, and the commands to start CodeTether. Never paste tokens into chat.
+
+## Other installation methods
+
+Registry packages can lag Forgejo; use the official installers above for its current release.
 
 ### Cargo
 
@@ -89,7 +91,7 @@ cargo install codetether-agent --features candle-cuda
 ### From Source
 
 ```bash
-git clone https://github.com/rileyseaburg/codetether-agent.git
+git clone https://forgejo.quantum-forge.io/riley/codetether-agent.git
 cd codetether-agent
 cargo install --path .
 ```
@@ -97,13 +99,13 @@ cargo install --path .
 ## Persistent Mux Sessions
 
 The network mux keeps the server, windows, working directories, and child
-processes alive after the client disconnects. **One mux server owns one
-workspace (checkout) and hosts any number of named sessions.** Each session is
+processes alive after the client disconnects. **One mux server coordinates one
+checkout and hosts any number of named sessions; no session can lease the whole workspace.** Each session is
 an isolated runtime: its own windows, login shell, TUI, durable CodeTether
 session, agent tasks, task list, and context tools. Sessions never share state
 with one another; the only thing they can share is the checkout on disk, and
-that checkout is guarded by the server's single lease table so overlapping
-edits from two sessions are serialized rather than racing.
+only explicit file/subtree claims are coordinated by the server's lease table.
+Unscoped commands do not serialize the checkout; see [the lease policy](docs/mux_path_leases.md).
 
 Git-backed sessions are automatically rooted in unique checkouts under
 `<repo>/.codetether-worktrees`, so each gets its own server. Pass

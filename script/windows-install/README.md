@@ -1,4 +1,4 @@
-# Windows package-identity setup
+# Windows package-identity setup — [copy-and-paste user guide](https://forgejo.quantum-forge.io/riley/codetether-agent/src/branch/main/docs/install_windows.md)
 
 The native OCR probe is launched through `System.Diagnostics.Process` from the
 writable evidence directory. stdout and stderr are drained independently and
@@ -34,11 +34,11 @@ On the normal supported path, users run setup and approve its explained UAC requ
 
 ## Distribution contract
 
-Bundle `install.ps1` and `codetether.exe` beside each other in `dist/windows/`, plus **all top-level `script/windows-install/*.ps1` helpers** in either `dist/windows/script/windows-install/` (repository layout) or `dist/windows/windows-install/` (compact layout). Tests/evidence are not required in release archives. Without options, setup selects adjacent `codetether.msix` first, otherwise `codetether.exe`; it does not download helpers or discover a GitHub release. Explicit `-ExePath`, `-MsixPath`, or `-Version` override bundle selection. Local executable packaging automatically downloads the pinned SDK package. Docker/archive copying belongs to the parent integration, outside this scripts-only change.
+Bundle `install.ps1` and `codetether.exe` beside each other in `dist/windows/`, plus **all top-level `script/windows-install/*.ps1` helpers** in either `dist/windows/script/windows-install/` (repository layout) or `dist/windows/windows-install/` (compact layout). Tests/evidence are not required in release archives. Without options, setup selects adjacent `codetether.msix` first, otherwise `codetether.exe`; it does not download helpers or discover a release. Explicit `-ExePath`, `-MsixPath`, or `-Version` override bundle selection. Local executable packaging automatically downloads the pinned SDK package.
 
-For `irm .../install.ps1 | iex`, the bootstrap resolves the release tag once to its immutable Git commit, retrieves that helper tree, and checks each helper's Git blob hash. Helpers never come from mutable `main`. Releases predating them stop with `RELEASE_HAS_NO_WINDOWS_HELPERS`; a checkout/bundled installer plus local executable does not require a release. The initial bootstrap must itself come from a trusted source.
+For `irm .../install.ps1 | iex`, the trusted bootstrap contains a reviewed immutable helper commit, lists only its helper directory through Forgejo, and checks each downloaded helper's Git blob hash. It does not use the recursive tree endpoint (which truncates large repositories), or assume an older binary release contains current helpers. Helpers never come from floating `main`; the initial bootstrap must itself come from a trusted source.
 
-Recognized assets: `codetether-<tag>-<x86_64|aarch64>-pc-windows-<msvc|gnu>.<msix|zip|exe|tar.gz>`. MSIX wins when present; an invalid/untrusted MSIX is a hard failure. Release downloads require GitHub's SHA256 asset digest. Trusted local inputs bypass network discovery, not MSIX signature enforcement.
+Recognized assets: `codetether-<tag>-<x86_64|aarch64>-pc-windows-<msvc|gnu>.<msix|zip|exe|tar.gz>`. MSIX wins when present; an invalid/untrusted MSIX is a hard failure. Published prereleases are eligible. Forgejo downloads require the selected release's SHA256 manifest and a unique matching asset checksum. The current published Windows build is x64 GNU, not ARM64. Trusted local inputs bypass network discovery, not MSIX signature enforcement.
 
 Release MSIX must use identity `CodeTether.Agent`, application ID `CodeTether`, root executable `codetether.exe`, `Windows.FullTrustApplication`, `runFullTrust`, and the alias shown in `manifest.ps1`. Windows checks release signatures against existing trust; setup never auto-trusts a release-provided certificate. The executable must implement the parent's model/Vault-independent `windows ocr-status --require-ready` contract: JSON boolean `available`, nonzero unless actual process package identity, usable native OCR engine/language, and blank-image recognition are confirmed. These scripts do not implement or substitute for that native probe.
 
