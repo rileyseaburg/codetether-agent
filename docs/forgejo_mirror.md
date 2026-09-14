@@ -13,6 +13,11 @@ GitHub Actions stays disabled; publishing assets through its API does not requir
 The README on both sites intentionally uses GitHub install/download URLs because
 some user networks cannot access Forgejo. Git push mirrors alone do not copy releases.
 
+The [release-copy service](../script/release-mirror/README.md) checks the latest
+published Forgejo release every five minutes on the operator host. It requires
+matching Git refs and verified checksums, publishes only fully populated GitHub
+releases, and refuses same-name asset conflicts instead of overwriting them.
+
 ## Push mirror
 
 Forgejo repository settings contain an SSH push mirror to
