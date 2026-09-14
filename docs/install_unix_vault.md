@@ -1,6 +1,6 @@
-# Linux/macOS: Vault credentials and first launch
+# Linux/macOS: Vault login and manual fallback
 
-Use the executable path you verified in [the installation guide](install_unix.md). Obtain a valid Vault token through your administrator or approved login flow. Do not paste tokens into commands, shell history, screenshots, or chat.
+Prefer [OIDC login through the `spotlessbinco.com` realm](vault_oidc.md). The installer offers it and prints an explicit parent-shell activation command. The steps below are a **manual-token fallback**, not the default login flow. Use the verified executable path; never paste tokens into commands, history, screenshots, or chat.
 
 ## 1. Open Bash for the following examples
 

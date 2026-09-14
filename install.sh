@@ -173,155 +173,38 @@ download() {
 detect_shell_profile() {
     local shell_name="$(basename "${SHELL:-/bin/bash}")"
     case "$shell_name" in
-        zsh)  echo "$HOME/.zshrc" ;;
+        zsh) echo "$HOME/.zshrc" ;;
         fish) echo "$HOME/.config/fish/config.fish" ;;
-        *)    echo "$HOME/.bashrc" ;;
+        *) echo "$HOME/.bashrc" ;;
     esac
 }
 
-print_core_env_instructions() {
-    printf "\n${BOLD}Set required environment variables:${NC}\n"
-    printf "  export VAULT_ADDR=\"https://vault.example.com:8200\"\n"
-    printf "  export VAULT_TOKEN=\"hvs.your-token\"\n"
-    printf "  export CODETETHER_DEFAULT_MODEL=\"zai/glm-5\"\n"
-    printf "\n${BOLD}Optional (history persistence to S3/MinIO):${NC}\n"
-    printf "  export CODETETHER_HISTORY_S3_ENDPOINT=\"http://localhost:9000\"\n"
-    printf "  export CODETETHER_HISTORY_S3_BUCKET=\"codetether-history\"\n"
-    printf "  export CODETETHER_HISTORY_S3_ACCESS_KEY=\"minioadmin\"\n"
-    printf "  export CODETETHER_HISTORY_S3_SECRET_KEY=\"minioadmin\"\n"
-    printf "\n  Add them to your shell profile (for example ${CYAN}~/.bashrc${NC}) to persist.\n\n"
-}
-
-discover_default_model() {
-    local codetether_cmd="${1:-}"
-
-    if [ -z "$codetether_cmd" ] || [ ! -x "$codetether_cmd" ]; then
-        if command -v "$BINARY_NAME" > /dev/null 2>&1; then
-            codetether_cmd="$(command -v "$BINARY_NAME")"
-        else
+# Embedded in install.sh: all setup helpers are immutable and SHA256 checked.
+configure_core_env() {
+    local ct_target="$1" ct_hash ct_name ct_actual
+    CT_HELPERS=$(mktemp -d "${TMPDIR:-/tmp}/codetether-vault.XXXXXX") || return 1
+    while read -r ct_hash ct_name; do
+        download "https://${REPO}/raw/commit/53bf14390e5e206808687c27542f9c64bd263cac/script/unix-install/$ct_name" "$CT_HELPERS/$ct_name" || return 1
+        if command -v sha256sum >/dev/null 2>&1; then ct_actual=$(sha256sum "$CT_HELPERS/$ct_name")
+        else ct_actual=$(shasum -a 256 "$CT_HELPERS/$ct_name"); fi
+        if [ "$ct_hash" != "${ct_actual%% *}" ]; then
+            error 'Vault setup helper integrity check failed; no helper was executed.'
             return 1
         fi
-    fi
-
-    local models_json=""
-    models_json="$($codetether_cmd models --json 2>/dev/null || true)"
-    if [ -z "$models_json" ]; then
-        return 1
-    fi
-
-    local provider model_id
-    provider="$(printf "%s\n" "$models_json" | sed -n 's/.*"provider":[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
-    model_id="$(printf "%s\n" "$models_json" | sed -n 's/.*"id":[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
-
-    if [ -n "$provider" ] && [ -n "$model_id" ]; then
-        printf "%s/%s\n" "$provider" "$model_id"
-        return 0
-    fi
-
-    return 1
+    done <<'CODETETHER_HELPERS'
+afa582af19718b1dab0c21661df35f2b81aaa99808ad64d67b9f3f239449df4b activation.sh
+276d8bab0757bfe92ad6b6b6d3d915e577bc8bc80f0d60db9252c30283a822b7 config.sh
+61657a0ea400ee03edd581ea5d94d839afe60a2cde6cf00556e54dee0a5b2b37 configure.sh
+748200d49e93d757b808c4ed349c17ac5c196fd2f099c88bc7ecdae8bf0cb104 input.sh
+6ba05df251aa812f70ce91f78a97884ce99edaf18b054b5ebb2adde77acceb83 model.sh
+504908bb0ae53cb8271dec0f48569c6cc88de003a0a6e4cd94a300c49b89282e oidc.sh
+97c3d953ba4e6f332db017f6a3a698e698a9be4fef922969186709ce40c9ab9f profile.sh
+CODETETHER_HELPERS
+    for ct_name in input model oidc config profile configure; do
+        . "$CT_HELPERS/$ct_name.sh" || return 1
+    done
+    ct_configure_env "$ct_target"
 }
-
-configure_core_env() {
-    local codetether_cmd="${1:-}"
-    if [ -n "${VAULT_ADDR:-}" ] && [ -n "${VAULT_TOKEN:-}" ] && [ -n "${CODETETHER_DEFAULT_MODEL:-}" ]; then
-        ok "core environment variables already set in current session"
-        return 0
-    fi
-
-    printf "\n${BOLD}CodeTether Core Environment Setup${NC}\n\n"
-    info "Vault-backed providers require VAULT_ADDR and VAULT_TOKEN."
-    info "After Vault setup, the installer will try to auto-discover CODETETHER_DEFAULT_MODEL."
-
-    if [ ! -r /dev/tty ]; then
-        warn "non-interactive install detected; skipping prompts"
-        print_core_env_instructions
-        return 0
-    fi
-
-    printf "Configure these variables now and save to your shell profile? [Y/n]: "
-    local configure_choice=""
-    read -r configure_choice < /dev/tty
-    case "$configure_choice" in
-        n|N|no|NO)
-            print_core_env_instructions
-            return 0
-            ;;
-    esac
-
-    local vault_addr="${VAULT_ADDR:-https://vault.example.com:8200}"
-    local vault_token="${VAULT_TOKEN:-hvs.your-token}"
-    local default_model="${CODETETHER_DEFAULT_MODEL:-zai/glm-5}"
-    local input=""
-
-    printf "VAULT_ADDR [%s]: " "$vault_addr"
-    read -r input < /dev/tty
-    if [ -n "$input" ]; then
-        vault_addr="$input"
-    fi
-
-    local token_hint="hvs.your-token"
-    if [ -n "${VAULT_TOKEN:-}" ]; then
-        token_hint="current-session-token"
-    fi
-    printf "VAULT_TOKEN [%s]: " "$token_hint"
-    read -r input < /dev/tty
-    if [ -n "$input" ]; then
-        vault_token="$input"
-    fi
-
-    export VAULT_ADDR="$vault_addr"
-    export VAULT_TOKEN="$vault_token"
-
-    info "discovering default model from Vault-configured providers..."
-    local discovered_model=""
-    discovered_model="$(discover_default_model "$codetether_cmd" || true)"
-    if [ -n "$discovered_model" ]; then
-        default_model="$discovered_model"
-        ok "discovered default model: ${default_model}"
-    else
-        warn "could not auto-discover a model (no provider keys in Vault yet, or provider model listing failed)"
-        printf "CODETETHER_DEFAULT_MODEL [%s]: " "$default_model"
-        read -r input < /dev/tty
-        if [ -n "$input" ]; then
-            default_model="$input"
-        fi
-    fi
-
-    local shell_profile
-    shell_profile="$(detect_shell_profile)"
-
-    local config_marker="# CodeTether core configuration"
-    local config_block="${config_marker}
-export VAULT_ADDR=\"${vault_addr}\"
-export VAULT_TOKEN=\"${vault_token}\"
-export CODETETHER_DEFAULT_MODEL=\"${default_model}\"
-# Optional: history persistence to S3/MinIO
-# export CODETETHER_HISTORY_S3_ENDPOINT=\"http://localhost:9000\"
-# export CODETETHER_HISTORY_S3_BUCKET=\"codetether-history\"
-# export CODETETHER_HISTORY_S3_ACCESS_KEY=\"minioadmin\"
-# export CODETETHER_HISTORY_S3_SECRET_KEY=\"minioadmin\""
-
-
-    if [ -f "$shell_profile" ] && grep -qF "$config_marker" "$shell_profile" 2>/dev/null; then
-        local tmp_profile
-        tmp_profile="$(mktemp)"
-        sed "/${config_marker}/,/export CODETETHER_DEFAULT_MODEL=/d" "$shell_profile" > "$tmp_profile"
-        printf "\n%s\n" "$config_block" >> "$tmp_profile"
-        mv "$tmp_profile" "$shell_profile"
-        ok "updated core env config in ${shell_profile}"
-    else
-        printf "\n%s\n" "$config_block" >> "$shell_profile"
-        ok "added core env config to ${shell_profile}"
-    fi
-
-    export CODETETHER_DEFAULT_MODEL="$default_model"
-
-    ok "core environment variables exported for current session"
-    if [ "$vault_token" = "hvs.your-token" ]; then
-        warn "VAULT_TOKEN is still a placeholder. Update it before running provider-backed commands."
-    fi
-}
-
 install_functiongemma() {
     printf "\n${BOLD}FunctionGemma Model Setup${NC}\n\n"
     info "model directory: ${FUNCTIONGEMMA_MODEL_DIR}"

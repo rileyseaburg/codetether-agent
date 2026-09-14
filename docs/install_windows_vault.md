@@ -1,6 +1,6 @@
-## Recommended: update the saved token with one command
+## Preferred: OIDC login; manual-token fallback below
 
-In a normal, non-administrator PowerShell, paste:
+Prefer [Vault CLI OIDC login through the `spotlessbinco.com` realm](vault_oidc.md). If you must replace a manually issued token instead, use this command in a normal, non-administrator PowerShell:
 
 ```powershell
 irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/update-vault.ps1 | iex
