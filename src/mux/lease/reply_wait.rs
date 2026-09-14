@@ -5,6 +5,7 @@ use super::CoordinationReply;
 impl CoordinationReply {
     pub(super) fn with_waited(self, waited_ms: u64) -> Self {
         match self {
+            Self::WorkspaceScopeForbidden => Self::WorkspaceScopeForbidden,
             Self::Acquired { leases, .. } => Self::Acquired { leases, waited_ms },
             Self::Blocked {
                 conflicts,

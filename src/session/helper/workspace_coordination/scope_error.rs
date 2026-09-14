@@ -1,17 +1,10 @@
-//! Rejection of dangerous whole-filesystem and whole-home lease scopes.
+//! Rejection returned when a coordinator refuses a whole-workspace claim.
 
-use std::path::Path;
-
-pub(super) fn unsafe_workspace(workspace: &Path) -> bool {
-    workspace.parent().is_none()
-        || directories::BaseDirs::new().is_some_and(|dirs| workspace == dirs.home_dir())
-}
-
-pub(super) fn result(tool: &str, workspace: &Path) -> super::super::tool_policy::ToolTuple {
+pub(super) fn result(tool: &str) -> super::super::tool_policy::ToolTuple {
     super::gate_error::result(
-        "WORKTREE_SCOPE_REQUIRED",
+        "WORKSPACE_LEASE_FORBIDDEN",
         tool,
-        "Refusing to lease the filesystem or home directory. Set workdir/cwd to the exact repository and retry locally.",
-        serde_json::json!({ "workspace": workspace }),
+        "Mux sessions cannot own a workspace. Coordinate only explicit file or bounded subtree paths.",
+        serde_json::json!({}),
     )
 }

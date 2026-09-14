@@ -1,6 +1,5 @@
 //! Atomic multi-path acquisition for the mux lease table.
 
-use super::key::overlaps;
 use super::{CoordinationReply, LeaseRegistry, time};
 use std::path::{Path, PathBuf};
 
@@ -12,28 +11,16 @@ impl LeaseRegistry {
         workspace: &Path,
         paths: Vec<PathBuf>,
     ) -> CoordinationReply {
+        if paths
+            .iter()
+            .any(|path| super::workspace_claim(workspace, path))
+        {
+            return CoordinationReply::WorkspaceScopeForbidden;
+        }
         let mut entries = self.entries.lock().unwrap();
         entries.retain(|_, lease| lease.expires_at_ms > time::now_ms());
-        let conflicts = entries
-            .values()
-            .filter(|lease| {
-                lease.workspace == workspace
-                    && lease.owner != owner
-                    && paths.iter().any(|path| overlaps(&lease.path, path))
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-        if !conflicts.is_empty() {
-            let retry_after_ms = conflicts
-                .iter()
-                .map(|lease| time::remaining(lease.expires_at_ms))
-                .min()
-                .unwrap_or_default();
-            return CoordinationReply::Blocked {
-                conflicts,
-                waited_ms: 0,
-                retry_after_ms,
-            };
+        if let Some(reply) = super::conflict::blocked(&entries, owner, workspace, &paths) {
+            return reply;
         }
         let leases = paths
             .into_iter()

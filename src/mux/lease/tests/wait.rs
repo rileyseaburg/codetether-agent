@@ -1,3 +1,15 @@
+#[tokio::test]
+async fn forbidden_scope_does_not_wait_for_another_owner() {
+    let root = tempfile::tempdir().unwrap();
+    let registry = LeaseRegistry::new();
+    registry.acquire("one", "one", root.path(), vec!["a.rs".into()]);
+    let request = registry.acquire_wait("two", "two", root.path(), vec!["".into()], 60_000);
+    let reply = tokio::time::timeout(Duration::from_secs(1), request)
+        .await
+        .unwrap();
+    assert_eq!(reply, CoordinationReply::WorkspaceScopeForbidden);
+}
+
 use super::super::{CoordinationReply, LeaseRegistry};
 use std::sync::Arc;
 use std::time::Duration;

@@ -8,6 +8,7 @@ pub(super) fn classify(
     reply: CoordinationReply,
 ) -> Option<super::super::tool_policy::ToolTuple> {
     match reply {
+        CoordinationReply::WorkspaceScopeForbidden => Some(super::scope_error::result(tool)),
         CoordinationReply::Acquired { leases, waited_ms } => {
             tracing::info!(
                 agent = %agent,

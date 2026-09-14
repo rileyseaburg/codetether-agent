@@ -18,9 +18,7 @@ pub(in crate::session::helper) async fn blocked(
         Err(error) => return Some(super::gate_failure::unavailable(tool, &error)),
     };
     let scope = super::scope::resolve(&context.workspace, paths);
-    if super::scope::too_broad(&scope) {
-        return Some(super::scope_error::result(tool, &scope.workspace));
-    }
+    let scope = super::scope::scoped_only(scope)?;
     let reply = crate::mux::coordination::acquire(
         &context.owner,
         &context.agent,

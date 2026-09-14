@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub(crate) enum CoordinationReply {
+    /// Workspace ownership is forbidden; no paths from this request were leased.
+    WorkspaceScopeForbidden,
     Acquired {
         leases: Vec<WorktreeLease>,
         waited_ms: u64,

@@ -4,6 +4,8 @@
 mod acquire;
 #[path = "lease/claim.rs"]
 mod claim;
+#[path = "lease/conflict.rs"]
+mod conflict;
 #[path = "lease/key.rs"]
 mod key;
 #[path = "lease/lifecycle.rs"]
@@ -18,6 +20,8 @@ mod reply;
 mod reply_wait;
 #[path = "lease/request.rs"]
 mod request;
+#[path = "lease/scope.rs"]
+mod scope;
 #[path = "lease/signal.rs"]
 mod signal;
 #[path = "lease/time.rs"]
@@ -29,6 +33,7 @@ pub(crate) use record::WorktreeLease;
 pub(in crate::mux) use registry::LeaseRegistry;
 pub(crate) use reply::CoordinationReply;
 pub(in crate::mux) use request::CoordinationRequest;
+pub(crate) use scope::workspace_claim;
 pub(in crate::mux) const ACQUIRE_WAIT_MILLIS: u64 = 60_000;
 
 #[cfg(test)]

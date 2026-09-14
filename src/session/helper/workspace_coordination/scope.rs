@@ -2,12 +2,19 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "scope/filter.rs"]
+mod filter;
 #[path = "scope/root.rs"]
 mod root;
+
+pub(super) use filter::scoped_only;
 
 #[cfg(test)]
 #[path = "scope/checkout_tests.rs"]
 mod checkout_tests;
+#[cfg(test)]
+#[path = "scope/filter_tests.rs"]
+mod filter_tests;
 
 pub(super) struct MutationScope {
     pub workspace: PathBuf,
@@ -39,9 +46,4 @@ pub(super) fn resolve(parent: &Path, paths: Vec<PathBuf>) -> MutationScope {
         workspace: root,
         paths,
     }
-}
-
-pub(super) fn too_broad(scope: &MutationScope) -> bool {
-    let root_claim = scope.paths.iter().any(|path| path.as_os_str().is_empty());
-    root_claim && super::scope_error::unsafe_workspace(&scope.workspace)
 }

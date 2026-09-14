@@ -4,4 +4,5 @@ mod atomic;
 mod checkout;
 mod hierarchy;
 mod lifecycle;
+mod scope;
 mod wait;
