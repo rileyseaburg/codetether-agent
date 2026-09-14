@@ -1,8 +1,18 @@
+## Recommended: update the saved token with one command
+
+In a normal, non-administrator PowerShell, paste:
+
+```powershell
+irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/update-vault.ps1 | iex
+```
+
+Confirm the Vault address and enter the replacement token at the hidden prompt. This checks renewal/provider access before saving, then reloads the saved settings into **this PowerShell**. It does not reinstall CodeTether, register MSIX, or request UAC. Other running processes keep their old environment. Run `codetether models` here after success. See [updater requirements and limits](update_vault_windows.md).
+
 # Windows: Vault credentials and first launch
 
 Use the same normal PowerShell in which you verified the executable. Obtain a valid token from your Vault administrator or approved login flow. Never put a token in a command, screenshot, chat, or support log. There is no `codetether vault` command in this release.
 
-## 1. Choose ONE credential source
+## Alternative to the updater: choose ONE manual credential source
 
 **A — The installer/Windows User environment holds your latest token.** Load it explicitly; merely opening a terminal tab is not proof it was inherited. Do not use this block if your newer token exists only in the current `$env:VAULT_TOKEN`.
 

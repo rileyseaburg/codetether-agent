@@ -29,7 +29,6 @@ swarm execution, MCP, A2A, and a scriptable plugin runtime in one binary.
 
 ## Quick Start
 
-Follow the numbered steps for your operating system. No Rust toolchain is needed.
 
 ### Windows
 
@@ -48,6 +47,7 @@ codetether --version
 ```
 
 Compare with the [Forgejo release](https://forgejo.quantum-forge.io/riley/codetether-agent/releases) (currently `4.7.6-dev.6`). Missing/wrong command? Follow [Windows registration and alias checks](docs/install_windows.md), not repeated restarts.
+**Update an existing Vault token without reinstalling:** [one PowerShell command](docs/update_vault_windows.md).
 
 ### Linux and macOS
 
