@@ -1,5 +1,6 @@
 # Update Vault credentials without reinstalling CodeTether or registering MSIX.
 # Usage: irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/update-vault.ps1 | iex
+& {
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'WINDOWS_REQUIRED: Run this command in a normal Windows PowerShell.' }
 $blocked = @(Get-ExecutionPolicy -List | Where-Object { $_.ExecutionPolicy -eq 'AllSigned' -or ($_.Scope -in @('MachinePolicy','UserPolicy') -and $_.ExecutionPolicy -eq 'Restricted') })
@@ -40,3 +41,4 @@ $env:VAULT_ADDR = $address; $env:VAULT_TOKEN = $token
 Remove-Variable token, address
 Write-Host 'Verified Vault settings are saved for your Windows user and reloaded into THIS PowerShell.'
 Write-Host 'Run codetether models here. Other already-running terminals and CodeTether processes retain their old environment.'
+}
