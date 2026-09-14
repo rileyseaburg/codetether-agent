@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { checksums, digest } from './source.mjs';
 import { mirrorAssets } from './asset.mjs';
+import { publishedReleases } from './list.mjs';
 test('rejects partial source uploads and duplicate checksum names', async () => {
   const original = globalThis.fetch;
   const sha = '0'.repeat(64);
@@ -15,6 +16,17 @@ test('rejects partial source uploads and duplicate checksum names', async () => 
     await assert.rejects(checksums({ ...release, assets: release.assets.slice(0, 1) }), /incomplete/);
     globalThis.fetch = async () => new Response(`${sha}  app.exe\n${sha}  app.exe\n`);
     await assert.rejects(checksums(release), /Duplicate/);
+  } finally { globalThis.fetch = original; }
+});
+test('enumerates published releases across pages', async () => {
+  const original = globalThis.fetch; let calls = 0;
+  try {
+    globalThis.fetch = async () => new Response(JSON.stringify(
+      Array.from({ length: ++calls === 1 ? 50 : 1 }, (_, id) => ({ id, tag_name: `v1.0.${id}`, draft: false }))
+    ));
+    const releases = await publishedReleases();
+    assert.equal(releases.length, 51);
+    assert.equal(calls, 2);
   } finally { globalThis.fetch = original; }
 });
 test('does not overwrite same-name GitHub assets with a different digest', async () => {

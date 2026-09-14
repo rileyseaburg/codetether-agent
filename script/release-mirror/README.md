@@ -5,7 +5,7 @@ manifest to GitHub using the operator's already-provisioned `gh` authentication.
 It does not copy credentials into Forgejo CI, enable GitHub Actions, or build binaries.
 
 ```sh
-# Mirror the latest published release (or supply an explicit tag).
+# Reconcile all published releases (or supply an explicit tag).
 node script/release-mirror/run.mjs
 node script/release-mirror/run.mjs v4.7.6-dev.6
 ```

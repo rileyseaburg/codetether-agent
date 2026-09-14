@@ -3,13 +3,16 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { sourceRelease, checksums } from './source.mjs';
 import { matchingCommit } from './refs.mjs';
+import { publishedReleases } from './list.mjs';
 import { findRelease, createDraft, publish } from './github.mjs';
 import { mirrorAssets } from './asset.mjs';
 const base = process.env.CODETETHER_RELEASE_MIRROR_EVIDENCE || path.resolve('artifacts/release-mirror');
 mkdirSync(base, { recursive: true, mode: 0o700 });
-const evidence = mkdtempSync(path.join(base, 'run-'));
+let evidence = base;
 try {
-  const source = await sourceRelease(process.argv[2]);
+  const releases = process.argv[2] ? [await sourceRelease(process.argv[2])] : await publishedReleases();
+  for (const source of releases) {
+  evidence = mkdtempSync(path.join(base, 'run-'));
   const sha = matchingCommit(source.tag_name);
   const sums = await checksums(source);
   let target = findRelease(source.tag_name) || createDraft(source, sha);
@@ -22,6 +25,7 @@ try {
     buildsRun: false, result: 'success' };
   writeFileSync(path.join(evidence, 'proof.json'), JSON.stringify(proof, null, 2));
   console.log(JSON.stringify({ ...proof, evidence }));
+  }
 } catch (error) {
   writeFileSync(path.join(evidence, 'failure.txt'), String(error));
   console.error(`Release mirror failed; evidence retained at ${evidence}`);
