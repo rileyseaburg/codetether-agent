@@ -10,7 +10,7 @@ ct_profile_hook() (
     fi
     ct_pending=$(mktemp "${ct_profile}.codetether.XXXXXX")
     if [ -f "$ct_profile" ]; then
-        ct_backup="${ct_profile}.codetether-backup-$(date +%Y%m%d%H%M%S)-$$"
+        ct_backup=$(mktemp "${ct_profile}.codetether-backup-XXXXXX")
         cp "$ct_profile" "$ct_backup"; chmod 600 "$ct_backup"
         awk '
           /^# CodeTether core configuration$/ {

@@ -10,7 +10,8 @@ ct_save_config() (
         grep -q '^# CodeTether managed Vault activation$' "$ct_file" || {
             printf '%s\n' 'Existing vault-env.sh is not installer-managed; refusing to overwrite it.' >&2; exit 1;
         }
-        cp -p "$ct_file" "$ct_file.backup-$(date +%Y%m%d%H%M%S)-$$"
+        ct_backup=$(mktemp "$ct_file.backup-XXXXXX")
+        cp "$ct_file" "$ct_backup"; chmod 600 "$ct_backup"
     fi
     ct_pending=$(mktemp "$ct_directory/.vault-env.XXXXXX")
     {

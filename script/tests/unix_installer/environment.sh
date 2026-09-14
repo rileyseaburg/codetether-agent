@@ -23,6 +23,8 @@ grep -q 'export KEEP_ME=yes' "$HOME/.zshrc"
 [[ $(find "$HOME" -name '.zshrc.codetether-backup-*' | wc -l) -ge 1 ]]
 ct_profile_hook "$config"
 [[ $(grep -c '^# CodeTether Vault activation$' "$HOME/.zshrc") == 1 ]]
+[[ $(find "$HOME" -name '.zshrc.codetether-backup-*' | wc -l) -eq 2 ]]
+grep -l 'fixture-old' "$HOME"/.zshrc.codetether-backup-* >/dev/null
 quoted=$(ct_quote "apostrophe' and \$(touch nope)")
 eval "value=$quoted"
 [[ $value == "apostrophe' and \$(touch nope)" && ! -e nope ]]
