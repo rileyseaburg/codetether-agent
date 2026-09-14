@@ -1,6 +1,6 @@
 #!/bin/sh
 # CodeTether Agent Installer
-# Usage: curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 #
 # Installs the latest release of codetether to /usr/local/bin (or ~/.local/bin if no sudo).
 # No Rust toolchain required.
@@ -12,7 +12,7 @@
 
 set -e
 
-REPO="forgejo.quantum-forge.io/riley/codetether-agent"
+REPO="github.com/rileyseaburg/codetether-agent"
 BINARY_NAME="codetether"
 INSTALL_DIR="/usr/local/bin"
 USE_SUDO="true"
@@ -149,8 +149,8 @@ version_is_newer() {
 }
 
 get_latest_version() {
-    # Include prereleases: Forgejo /latest excludes our development releases.
-    local api="https://forgejo.quantum-forge.io/api/v1/repos/riley/codetether-agent/releases?draft=false&limit=1"
+    # Include prereleases: GitHub /latest excludes our development releases.
+    local api="https://api.github.com/repos/rileyseaburg/codetether-agent/releases?per_page=1"
     if command -v curl > /dev/null 2>&1; then
         curl -fsSL "$api"
     elif command -v wget > /dev/null 2>&1; then
@@ -184,7 +184,7 @@ configure_core_env() {
     local ct_target="$1" ct_hash ct_name ct_actual
     CT_HELPERS=$(mktemp -d "${TMPDIR:-/tmp}/codetether-vault.XXXXXX") || return 1
     while read -r ct_hash ct_name; do
-        download "https://${REPO}/raw/commit/53bf14390e5e206808687c27542f9c64bd263cac/script/unix-install/$ct_name" "$CT_HELPERS/$ct_name" || return 1
+        download "https://raw.githubusercontent.com/${REPO#*/}/53bf14390e5e206808687c27542f9c64bd263cac/script/unix-install/$ct_name" "$CT_HELPERS/$ct_name" || return 1
         if command -v sha256sum >/dev/null 2>&1; then ct_actual=$(sha256sum "$CT_HELPERS/$ct_name")
         else ct_actual=$(shasum -a 256 "$CT_HELPERS/$ct_name"); fi
         if [ "$ct_hash" != "${ct_actual%% *}" ]; then

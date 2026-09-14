@@ -10,7 +10,7 @@ source "$work/functions.sh"
 mode=good
 stty() { return 1; }
 download() {
-    [[ $1 == https://forgejo.quantum-forge.io/riley/codetether-agent/raw/commit/53bf14390e5e206808687c27542f9c64bd263cac/script/unix-install/* ]]
+    [[ $1 == https://raw.githubusercontent.com/rileyseaburg/codetether-agent/53bf14390e5e206808687c27542f9c64bd263cac/script/unix-install/* ]]
     cp "$root/script/unix-install/${1##*/}" "$2"
     if [[ $mode == corrupt && $1 == */profile.sh ]]; then printf 'echo unsafe\n' >> "$2"; fi
 }

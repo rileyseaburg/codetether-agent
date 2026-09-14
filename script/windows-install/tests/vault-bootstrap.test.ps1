@@ -8,7 +8,7 @@ Assert-Contract ($errors.Count -eq 0) 'Vault bootstrap parses'
 $count = @(Get-Content $file | Where-Object { $_.Trim() -and -not $_.TrimStart().StartsWith('#') }).Count
 Assert-Contract ($count -le 50) 'Vault bootstrap stays within its line budget'
 Assert-Contract ($text -match "\`$commit = '[0-9a-f]{40}'") 'helper commit is immutable'
-Assert-Contract ($text.Contains('/raw/commit/$commit/script/windows-install/$name')) 'only pinned helpers are fetched'
+Assert-Contract ($text.Contains('/$commit/script/windows-install/$name')) 'only pinned helpers are fetched'
 Assert-Contract ($text.IndexOf('UPDATER_INTEGRITY_FAILED') -lt $text.IndexOf('Unblock-File')) 'hash verified before trusting a file'
 Assert-Contract ($text.IndexOf('Unblock-File') -lt $text.IndexOf('& $powershell')) 'helpers verified before execution'
 Assert-Contract ($text.Contains('MachinePolicy') -and $text.Contains('UserPolicy') -and $text.Contains('AllSigned')) 'stronger policy is checked before child launch'

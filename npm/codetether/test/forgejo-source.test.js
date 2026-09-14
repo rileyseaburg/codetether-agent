@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createRequire } = require('node:module');
-test('uses Forgejo prereleases, explicit tags, and Forgejo repository default', async () => {
+test('uses GitHub prereleases, explicit tags, and GitHub repository default', async () => {
   const file = path.resolve(__dirname, '../lib/installer.js');
   const localRequire = createRequire(file);
   const calls = [];
@@ -22,11 +22,11 @@ test('uses Forgejo prereleases, explicit tags, and Forgejo repository default', 
   vm.runInNewContext(fs.readFileSync(file, 'utf8') +
     '\nmodule.exports = { repoFromEnv, getLatestReleaseTag, getReleaseAssetNames };', context);
   const api = context.module.exports;
-  assert.equal(api.repoFromEnv(), 'riley/codetether-agent');
+  assert.equal(api.repoFromEnv(), 'rileyseaburg/codetether-agent');
   assert.equal(await api.getLatestReleaseTag(api.repoFromEnv()), 'v4.7.6-dev.5');
   assert.equal((await api.getReleaseAssetNames(api.repoFromEnv(), 'v4.7.6-dev.5')).join(','), 'windows-gnu.zip');
   assert.deepEqual(calls, [
-    'https://forgejo.quantum-forge.io/api/v1/repos/riley/codetether-agent/releases?draft=false&limit=1',
-    'https://forgejo.quantum-forge.io/api/v1/repos/riley/codetether-agent/releases/tags/v4.7.6-dev.5',
+    'https://api.github.com/repos/rileyseaburg/codetether-agent/releases?per_page=1',
+    'https://api.github.com/repos/rileyseaburg/codetether-agent/releases/tags/v4.7.6-dev.5',
   ]);
 });

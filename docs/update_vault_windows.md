@@ -3,7 +3,7 @@
 Open PowerShell **normally**, not as administrator, and paste:
 
 ```powershell
-irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/update-vault.ps1 | iex
+irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/update-vault.ps1 | iex
 ```
 
 1. Confirm or change the Vault address. Check the displayed server before entering a token.

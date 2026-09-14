@@ -7,7 +7,7 @@ id() { printf '0\n'; }
 detect_platform() { printf '%s\n' "$INSTALL_TEST_PLATFORM"; }
 get_latest_version() { printf 'v4.7.5\n'; }
 download() {
-    base="https://forgejo.quantum-forge.io/riley/codetether-agent/releases/download/v4.7.5"
+    base="https://github.com/rileyseaburg/codetether-agent/releases/download/v4.7.5"
     name="codetether-v4.7.5-$INSTALL_TEST_PLATFORM.tar.gz"
     case "$1" in
         "$base/$name") cp "$INSTALL_TEST_ARCHIVE" "$2" ;;

@@ -7,10 +7,10 @@ Use Bash or zsh for these examples. Published targets are Linux x86-64, Apple Si
 Run as your normal user. The installer requests sudo only if needed for its chosen destination.
 
 ```sh
-curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 ```
 
-Wait for a successful install message. Downloads come from Forgejo and must match the release checksum manifest. Stop on checksum, extraction or permission errors.
+Wait for a successful install message. Downloads come from GitHub and must match the release checksum manifest. Stop on checksum, extraction or permission errors.
 
 ## 2. Verify the executable you will run
 
@@ -19,7 +19,7 @@ command -v codetether
 codetether --version
 ```
 
-Compare with [Forgejo releases](https://forgejo.quantum-forge.io/riley/codetether-agent/releases), currently `4.7.6-dev.6`. If missing or older, do not assume another terminal fixes it. Check the exact destination printed by the installer:
+Compare with [GitHub releases](https://github.com/rileyseaburg/codetether-agent/releases), currently `4.7.6-dev.6`. If missing or older, do not assume another terminal fixes it. Check the exact destination printed by the installer:
 
 ```sh
 if [ -x /usr/local/bin/codetether ]; then /usr/local/bin/codetether --version; fi

@@ -1,17 +1,17 @@
-# Forgejo is authoritative; GitHub is a code mirror
+# Build on Forgejo; distribute through GitHub
 
 Develop, review, and release at
 <https://forgejo.quantum-forge.io/riley/codetether-agent>.
 GitHub receives branches and tags from Forgejo, not the other way around.
-Do not make independent commits or releases on GitHub.
+Do not make independent code changes or rebuild releases on GitHub.
 
 ## One release pipeline
 
-Only `.forgejo/workflows/release.yml` builds and publishes releases.
-GitHub Actions is intentionally disabled in the GitHub repository's settings.
-Keep it disabled: mirrored refs must not start the legacy `.github/workflows`
-build, package, or release jobs. Existing GitHub releases are historical;
-code mirroring does not copy release objects or binary assets.
+Only `.forgejo/workflows/release.yml` builds the binaries. GitHub releases receive
+copies of the same metadata, assets and checksum manifest, not another build.
+GitHub Actions stays disabled; publishing assets through its API does not require it.
+The README on both sites intentionally uses GitHub install/download URLs because
+some user networks cannot access Forgejo. Git push mirrors alone do not copy releases.
 
 ## Push mirror
 
@@ -26,8 +26,8 @@ and error, then compare branch/tag hashes on both remotes.
 
 ## Installers
 
-`install.sh` (Linux/macOS) and `install.ps1` (Windows) download Forgejo releases,
-including published prereleases, and check the release's SHA256 manifest.
+`install.sh` (Linux/macOS) and `install.ps1` (Windows) download GitHub release mirrors,
+including published prereleases, and check the copied SHA256 manifest.
 Windows bootstrap helpers are pinned to a reviewed commit and Git-blob verified.
 When changing helpers, commit them first and update the bootstrap pin in a
 following commit. This allows current helpers to install older binary releases.

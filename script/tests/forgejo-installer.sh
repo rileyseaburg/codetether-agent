@@ -6,7 +6,7 @@ work=${1:?Provide a retained evidence directory}
 mkdir -p "$work"
 source <(sed '$d' "$root/install.sh")
 curl() {
-  [[ "$2" == 'https://forgejo.quantum-forge.io/api/v1/repos/riley/codetether-agent/releases?draft=false&limit=1' ]] || return 1
+  [[ "$2" == 'https://api.github.com/repos/rileyseaburg/codetether-agent/releases?per_page=1' ]] || return 1
   printf '[{"tag_name":"v4.7.6-dev.5","draft":false,"prerelease":true}]'
 }
 [[ $(get_latest_version) == v4.7.6-dev.5 ]]
@@ -29,10 +29,10 @@ printf '%064d  package.tar.gz\n' 0 > "$work/manifest-fixture"
 if ( verify_fixture ); then echo 'corrupt archive accepted' >&2; exit 1; fi
 printf '%s  different.tar.gz\n' "$hash" > "$work/manifest-fixture"
 if ( verify_fixture ); then echo 'missing checksum accepted' >&2; exit 1; fi
-if grep -Eq 'api.github.com|raw.githubusercontent.com|https://github.com/' "$root/install.sh" "$root/install.ps1"; then
-  echo 'installer still references GitHub' >&2; exit 1
+if grep -Eq 'forgejo.quantum-forge.io' "$root/install.sh" "$root/install.ps1"; then
+  echo 'installer still depends on Forgejo' >&2; exit 1
 fi
 bash -n "$root/install.sh"
 sh -n "$root/install.sh"
 echo 'mocked local: prerelease selection, Linux/macOS targets, good/corrupt/missing checksums'
-echo 'static/local: shell syntax and Forgejo-only installer endpoints'
+echo 'static/local: shell syntax and GitHub-only installer endpoints'

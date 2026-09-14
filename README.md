@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/codetether-agent.svg)](https://crates.io/crates/codetether-agent)
 [![npm](https://img.shields.io/npm/v/codetether.svg)](https://www.npmjs.com/package/codetether)
-[![Forgejo Releases](https://img.shields.io/badge/releases-Forgejo-orange)](https://forgejo.quantum-forge.io/riley/codetether-agent/releases)
+[![GitHub Releases](https://img.shields.io/badge/releases-GitHub-blue)](https://github.com/rileyseaburg/codetether-agent/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 CodeTether is a Rust-native coding agent for interactive terminal work,
@@ -35,7 +35,7 @@ swarm execution, MCP, A2A, and a scriptable plugin runtime in one binary.
 **1. Install or update.** Open **Windows PowerShell normally**, not as administrator, and paste:
 
 ```powershell
-irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 | iex
 ```
 
 Wait for setup to finish. Approve only its explained UAC requests; stop on a setup error.
@@ -46,7 +46,7 @@ Get-Command codetether -All | Select-Object CommandType, Source
 codetether --version
 ```
 
-Compare with the [Forgejo release](https://forgejo.quantum-forge.io/riley/codetether-agent/releases) (currently `4.7.6-dev.6`). Missing/wrong command? Follow [Windows registration and alias checks](docs/install_windows.md), not repeated restarts.
+Compare with the [GitHub release](https://github.com/rileyseaburg/codetether-agent/releases) (currently `4.7.6-dev.6`). Missing/wrong command? Follow [Windows registration and alias checks](docs/install_windows.md), not repeated restarts.
 **Update an existing Vault token without reinstalling:** [one PowerShell command](docs/update_vault_windows.md).
 
 ### Linux and macOS
@@ -54,7 +54,7 @@ Compare with the [Forgejo release](https://forgejo.quantum-forge.io/riley/codete
 **1. Install or update.** Open a terminal and paste:
 
 ```sh
-curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 ```
 
 **2. Verify the command and version.** Paste separately after installation:
@@ -64,7 +64,7 @@ command -v codetether
 codetether --version
 ```
 
-Compare with the Forgejo release above. See [Unix installation and PATH checks](docs/install_unix.md) if it differs.
+Compare with the GitHub release above. See [Unix installation and PATH checks](docs/install_unix.md) if it differs.
 
 ### All platforms: credentials and first launch
 
@@ -72,7 +72,7 @@ Compare with the Forgejo release above. See [Unix installation and PATH checks](
 
 ## Other installation methods
 
-Registry packages can lag Forgejo; use the official installers above for its current release.
+Registry packages can lag GitHub releases; use the official installers above for its current release.
 
 ### Cargo
 
@@ -91,7 +91,7 @@ cargo install codetether-agent --features candle-cuda
 ### From Source
 
 ```bash
-git clone https://forgejo.quantum-forge.io/riley/codetether-agent.git
+git clone https://github.com/rileyseaburg/codetether-agent.git
 cd codetether-agent
 cargo install --path .
 ```

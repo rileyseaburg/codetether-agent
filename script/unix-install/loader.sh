@@ -3,7 +3,7 @@ configure_core_env() {
     local ct_target="$1" ct_hash ct_name ct_actual
     CT_HELPERS=$(mktemp -d "${TMPDIR:-/tmp}/codetether-vault.XXXXXX") || return 1
     while read -r ct_hash ct_name; do
-        download "https://${REPO}/raw/commit/53bf14390e5e206808687c27542f9c64bd263cac/script/unix-install/$ct_name" "$CT_HELPERS/$ct_name" || return 1
+        download "https://raw.githubusercontent.com/${REPO#*/}/53bf14390e5e206808687c27542f9c64bd263cac/script/unix-install/$ct_name" "$CT_HELPERS/$ct_name" || return 1
         if command -v sha256sum >/dev/null 2>&1; then ct_actual=$(sha256sum "$CT_HELPERS/$ct_name")
         else ct_actual=$(shasum -a 256 "$CT_HELPERS/$ct_name"); fi
         if [ "$ct_hash" != "${ct_actual%% *}" ]; then

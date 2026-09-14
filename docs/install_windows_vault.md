@@ -3,7 +3,7 @@
 Prefer [Vault CLI OIDC login through the `spotlessbinco.com` realm](vault_oidc.md). If you must replace a manually issued token instead, use this command in a normal, non-administrator PowerShell:
 
 ```powershell
-irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/update-vault.ps1 | iex
+irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/update-vault.ps1 | iex
 ```
 
 Confirm the Vault address and enter the replacement token at the hidden prompt. This checks renewal/provider access before saving, then reloads the saved settings into **this PowerShell**. It does not reinstall CodeTether, register MSIX, or request UAC. Other running processes keep their old environment. Run `codetether models` here after success. See [updater requirements and limits](update_vault_windows.md).

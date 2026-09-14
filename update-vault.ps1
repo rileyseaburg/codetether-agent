@@ -1,5 +1,5 @@
 # Update Vault credentials without reinstalling CodeTether or registering MSIX.
-# Usage: irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/update-vault.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/update-vault.ps1 | iex
 & {
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'WINDOWS_REQUIRED: Run this command in a normal Windows PowerShell.' }
@@ -9,8 +9,8 @@ $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'PER_USER_REQUIRED: Open PowerShell normally, not as administrator.' }
 $commit = '30874824184bc783cb3e5980617cd8afaa4d23e7'
-$base = 'https://forgejo.quantum-forge.io/riley/codetether-agent'
-$api = 'https://forgejo.quantum-forge.io/api/v1/repos/riley/codetether-agent'
+$base = 'https://raw.githubusercontent.com/rileyseaburg/codetether-agent'
+$api = 'https://api.github.com/repos/rileyseaburg/codetether-agent'
 $headers = @{ 'User-Agent' = 'codetether-vault-updater' }
 if (-not $env:LOCALAPPDATA -or $env:LOCALAPPDATA -notmatch '^[A-Za-z]:\\' -or ([IO.DriveInfo]::new($env:LOCALAPPDATA)).DriveType -ne 'Fixed') { throw 'LOCAL_STAGE_REQUIRED: Updater helpers require a local fixed drive.' }
 $listing = Invoke-RestMethod "$api/contents/script/windows-install?ref=$commit" -Headers $headers
@@ -20,7 +20,7 @@ foreach ($name in @('repair-vault.ps1', 'verify-vault-token.ps1', 'save-vault.ps
     $entry = @($listing | Where-Object { $_.type -eq 'file' -and $_.path -ceq "script/windows-install/$name" })
     if ($entry.Count -ne 1 -or $entry[0].sha -notmatch '^[0-9a-f]{40}$') { throw 'UPDATER_SOURCE_INVALID' }
     $file = Join-Path $stage $name
-    Invoke-WebRequest "$base/raw/commit/$commit/script/windows-install/$name" -OutFile $file -UseBasicParsing
+    Invoke-WebRequest "$base/$commit/script/windows-install/$name" -OutFile $file -UseBasicParsing
     $bytes = [IO.File]::ReadAllBytes($file)
     $prefix = [Text.Encoding]::UTF8.GetBytes("blob $($bytes.Length)`0")
     $sha = [Security.Cryptography.SHA1]::Create()

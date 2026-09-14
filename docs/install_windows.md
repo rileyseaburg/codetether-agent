@@ -1,17 +1,17 @@
 # Windows: install, verify, then launch
 
-Use Windows 10 build 19041+ or Windows 11. The current Forgejo Windows release is **x64**; there is no native ARM64 release asset. Do not confuse installer support for a local ARM64 executable with a published ARM64 download.
+Use Windows 10 build 19041+ or Windows 11. The current GitHub Windows release is **x64**; there is no native ARM64 release asset. Do not confuse installer support for a local ARM64 executable with a published ARM64 download.
 
 ## 1. Install or update
 
 Save your work and close CodeTether before updating so Windows can replace its registered package. Open **64-bit Windows PowerShell normally**, not “Run as administrator”, then paste:
 
 ```powershell
-irm https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 | iex
 ```
 
 Wait for setup to finish. Approve only its explained UAC requests for prerequisites/certificate trust. Stop on registration, policy or readiness errors; do not disable organization policy or assume an MSI exit means package activation succeeded.
-The PowerShell command is the recommended install/update path. It downloads from Forgejo, verifies checksums and registers the per-user package. Downloading the EXE alone is not the package-identity installation.
+The PowerShell command is the recommended install/update path. It downloads from GitHub, verifies checksums and registers the per-user package. Downloading the EXE alone is not the package-identity installation.
 
 ## 2. Verify registration and command resolution
 

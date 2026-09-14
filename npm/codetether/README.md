@@ -12,8 +12,8 @@ npx codetether run "explain this codebase"
 
 ## How it works
 
-- On install (and again on first run if needed), it downloads the matching `codetether` binary from Forgejo Releases:
-  `https://forgejo.quantum-forge.io/riley/codetether-agent/releases`
+- On install (and again on first run if needed), it downloads the matching `codetether` binary from GitHub Releases:
+  `https://github.com/rileyseaburg/codetether-agent/releases`
 - It picks the correct asset for your OS/CPU.
 - It caches the binary in a per-user cache directory (so it still works when `node_modules/` is read-only).
 
@@ -26,7 +26,7 @@ Default cache locations:
 ### Overrides
 
 - `CODETETHER_TAG` / `CODETETHER_VERSION`: force a specific release tag/version (for example `v1.2.3`).
-- `CODETETHER_FORGEJO_REPO`: override the Forgejo repo (default: `riley/codetether-agent`).
+- `CODETETHER_GITHUB_REPO`: override the GitHub repo (default: `rileyseaburg/codetether-agent`).
 - `CODETETHER_NPX_CACHE_DIR`: override where the binary is cached.
 - `CODETETHER_NPX_SKIP_DOWNLOAD=1`: never download; only run if already cached.
 - `CODETETHER_NPX_NO_CHECKSUM=1`: skip SHA-256 verification (not recommended).
