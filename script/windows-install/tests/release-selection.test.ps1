@@ -6,7 +6,7 @@ function Invoke-RestMethod {
     param($Uri, $Headers)
     $global:selectedReleaseUri = $Uri
     $tag = $global:releaseTagFixture
-    $base = "https://forgejo.quantum-forge.io/riley/codetether-agent/releases/download/$tag"
+    $base = "https://github.com/rileyseaburg/codetether-agent/releases/download/$tag"
     [pscustomobject]@{ tag_name = $tag; prerelease = $true; assets = @(
         [pscustomobject]@{ name = "codetether-$tag-x86_64-pc-windows-gnu.exe"; browser_download_url = "$base/codetether-$tag-x86_64-pc-windows-gnu.exe" },
         [pscustomobject]@{ name = "SHA256SUMS-$tag.txt"; browser_download_url = "$base/SHA256SUMS-$tag.txt" }
@@ -23,7 +23,7 @@ try {
     $env:PROCESSOR_ARCHITECTURE = 'AMD64'; $env:PROCESSOR_ARCHITEW6432 = ''
     $result = & "$Root/release.ps1" -Work $Work
     Assert-Contract ($result.Exe.EndsWith('x86_64-pc-windows-gnu.exe')) 'GNU executable selected'
-    Assert-Contract ($global:selectedReleaseUri.EndsWith('/releases?draft=false&limit=1')) 'latest includes published prereleases'
+    Assert-Contract ($global:selectedReleaseUri.EndsWith('/releases?per_page=1')) 'latest includes published prereleases'
     $result = & "$Root/release.ps1" -Work $Work -Version 'v4.7.6-dev.5'
     Assert-Contract ($global:selectedReleaseUri.EndsWith('/releases/tags/v4.7.6-dev.5')) 'explicit version remains supported'
     Assert-Throws { & "$Root/release.ps1" -Work $Work -Version '../main' } 'INVALID_RELEASE_TAG'

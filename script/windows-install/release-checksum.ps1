@@ -5,7 +5,7 @@ if ($tag -notmatch '^v?\d+\.\d+\.\d+[-.A-Za-z0-9]*$') { throw 'INVALID_RELEASE_T
 $name = "SHA256SUMS-$tag.txt"
 $assets = @($Release.assets | Where-Object { $_.name -ceq $name })
 if ($assets.Count -ne 1) { throw 'RELEASE_DIGEST_UNAVAILABLE: Missing unique SHA256 manifest.' }
-$url = "https://forgejo.quantum-forge.io/riley/codetether-agent/releases/download/$tag/$name"
+$url = "https://github.com/rileyseaburg/codetether-agent/releases/download/$tag/$name"
 if ($assets[0].browser_download_url -cne $url) { throw 'UNEXPECTED_CHECKSUM_URL' }
 $path = Join-Path $Work $name
 Invoke-WebRequest $url -OutFile $path -UseBasicParsing

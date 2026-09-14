@@ -1,6 +1,6 @@
 # Mocked-local Forgejo manifest, origin and corrupt-download contracts.
 param([string]$Root, [string]$Work)
-$base = 'https://forgejo.quantum-forge.io/riley/codetether-agent/releases/download/v1.0.0'
+$base = 'https://github.com/rileyseaburg/codetether-agent/releases/download/v1.0.0'
 $asset = [pscustomobject]@{ name = 'codetether.exe'; browser_download_url = "$base/codetether.exe" }
 $manifest = [pscustomobject]@{ name = 'SHA256SUMS-v1.0.0.txt'; browser_download_url = "$base/SHA256SUMS-v1.0.0.txt" }
 $release = [pscustomobject]@{ tag_name = 'v1.0.0'; assets = @($asset, $manifest) }
@@ -22,7 +22,7 @@ $global:releaseManifest = "$expected  other.exe"
 Assert-Throws { & "$Root/download-asset.ps1" -Asset $asset -Release $release -Work $Work } 'RELEASE_DIGEST_UNAVAILABLE'
 $global:releaseManifest = "$expected  codetether.exe`n$expected  codetether.exe"
 Assert-Throws { & "$Root/download-asset.ps1" -Asset $asset -Release $release -Work $Work } 'RELEASE_DIGEST_UNAVAILABLE'
-$asset.browser_download_url = 'https://github.com/rileyseaburg/codetether-agent/releases/download/v1.0.0/codetether.exe'
+$asset.browser_download_url = 'https://untrusted.example.invalid/codetether.exe'
 Assert-Throws { & "$Root/download-asset.ps1" -Asset $asset -Release $release -Work $Work } 'UNEXPECTED_RELEASE_URL'
 $asset.browser_download_url = "$base/codetether.exe"
 $manifest.browser_download_url = 'https://example.com/checksums'

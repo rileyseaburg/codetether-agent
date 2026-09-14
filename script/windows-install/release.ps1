@@ -1,13 +1,13 @@
 # Prefer a signed release MSIX; only absent MSIX assets select executable packaging.
 param([string]$Version, [string]$Work)
-$repo = 'riley/codetether-agent'
+$repo = 'rileyseaburg/codetether-agent'
 $headers = @{ 'User-Agent' = 'codetether-installer' }
-$endpoint = '?draft=false&limit=1'
+$endpoint = '?per_page=1'
 if ($Version) {
     if ($Version -notmatch '^v?\d+\.\d+\.\d+[-.A-Za-z0-9]*$') { throw 'INVALID_RELEASE_TAG' }
     $endpoint = "/tags/$Version"
 }
-$release = @(Invoke-RestMethod "https://forgejo.quantum-forge.io/api/v1/repos/$repo/releases$endpoint" -Headers $headers)[0]
+$release = @(Invoke-RestMethod "https://api.github.com/repos/$repo/releases$endpoint" -Headers $headers)[0]
 if (-not $release) { throw 'RELEASE_UNAVAILABLE' }
 $tag = $release.tag_name
 if ($tag -notmatch '^v?\d+\.\d+\.\d+[-.A-Za-z0-9]*$') { throw 'INVALID_RELEASE_TAG' }
