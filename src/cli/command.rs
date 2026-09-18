@@ -31,6 +31,9 @@ pub enum Command {
     /// Authenticate provider credentials and store in Vault
     Auth(AuthArgs),
 
+    /// Configure the Vault URL and authenticate without starting a model.
+    Vault(super::vault::VaultArgs),
+
     /// SSH into an Ubuntu VM and run a device-code auth, opening the URL locally
     Connect(connect::ConnectArgs),
 

@@ -68,7 +68,7 @@ Compare with the GitHub release above. See [Unix installation and PATH checks](d
 
 ### All platforms: credentials and first launch
 
-**3. Configure credentials, then launch.** Use [Windows Vault setup](docs/install_windows_vault.md) or [Unix Vault setup](docs/install_unix_vault.md). These include hidden token entry, model discovery, and the commands to start CodeTether. Never paste tokens into chat.
+**3. Configure credentials, then launch.** New source builds offer [first-class `codetether vault` commands](docs/vault_cli.md); published dev.6 assets do not yet include them. Use [Windows Vault setup](docs/install_windows_vault.md) or [Unix Vault setup](docs/install_unix_vault.md). These include hidden token entry, model discovery, and the commands to start CodeTether. Never paste tokens into chat.
 
 ## Other installation methods
 

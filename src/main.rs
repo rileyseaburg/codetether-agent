@@ -14,7 +14,7 @@ use clap::Parser;
 use cli::{Cli, Command};
 use codetether_agent::{
     a2a, benchmark, bus, cli, config, forage, github_pr, indexer, mcp, moltbook, mux, okr,
-    provider, ralph, rlm, secrets, server, swarm, telemetry, tool, tui, worker_server,
+    provider, ralph, rlm, server, swarm, telemetry, tool, tui, worker_server,
 };
 use std::sync::Arc;
 use swarm::{DecompositionStrategy, ExecutionMode, SwarmExecutor};
@@ -23,6 +23,7 @@ use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitEx
 
 mod cleanup_cli;
 mod startup_crash;
+mod startup_vault;
 mod worktree_cli;
 
 mod provider_cli_alias;
@@ -533,28 +534,7 @@ async fn main() -> anyhow::Result<()> {
 
     startup_crash::initialize(is_tui).await;
 
-    let needs_vault = !is_tui
-        && !is_git_credential_helper
-        && !matches!(
-            &cli.command,
-            Some(Command::Clipboard(_) | Command::Windows(_))
-        );
-
-    if needs_vault {
-        // Initialize HashiCorp Vault connection for secrets
-        if let Ok(secrets_manager) = secrets::SecretsManager::from_env().await {
-            if secrets_manager.is_connected() {
-                tracing::info!("Connected to HashiCorp Vault for secrets management");
-            }
-            // Store in global
-            let _ = secrets::init_from_manager(secrets_manager);
-        } else {
-            tracing::warn!(
-                "HashiCorp Vault not configured - Vault provider API keys will be unavailable"
-            );
-            tracing::warn!("Set VAULT_ADDR and VAULT_TOKEN environment variables to connect");
-        }
-    }
+    startup_vault::initialize(&cli.command, is_tui, is_git_credential_helper).await;
 
     let mcp_control_plane_url = cli.server.clone();
     let mcp_control_plane_token = cli.token.clone();
@@ -613,6 +593,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Models(args)) => args.execute().await,
         Some(Command::Index(args)) => indexer::run(args).await,
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
+        Some(Command::Vault(args)) => cli::vault::execute(args).await,
         Some(Command::Connect(args)) => cli::connect::execute(args).await,
         Some(Command::Forage(args)) => forage::execute(args).await,
         Some(Command::Search(args)) => cli::search::execute(args).await,
