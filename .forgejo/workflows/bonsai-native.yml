@@ -22,7 +22,7 @@ jobs:
           curl -fsSL https://nodejs.org/dist/v20.19.5/node-v20.19.5-linux-x64.tar.gz -o /tmp/node.tgz
           echo '4eba5fbe1fb10753bc06e42f001a91c5cec16798b7764a3e9257adc59af47fe1  /tmp/node.tgz' | sha256sum -c -
           tar -xzf /tmp/node.tgz -C /usr/local --strip-components=1
-      - uses: https://github.com/actions/checkout@v4
+      - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           github-server-url: https://forgejo.quantum-forge.io
       - name: Prepare remote CUDA build environment
@@ -31,12 +31,12 @@ jobs:
         run: bash script/forgejo/bonsai-build.sh
       - name: Preserve compiler and test evidence
         if: always()
-        uses: https://github.com/actions/upload-artifact@v3
+        uses: https://code.forgejo.org/actions/upload-artifact@c24449f33cd45d4826c6702db7e49f7cdb9b551d
         with:
           name: bonsai-native-evidence
           path: bonsai-evidence/*
           if-no-files-found: warn
-      - uses: https://github.com/actions/upload-artifact@v3
+      - uses: https://code.forgejo.org/actions/upload-artifact@c24449f33cd45d4826c6702db7e49f7cdb9b551d
         with:
           name: bonsai-native-cuda75
           path: bonsai-dist/*
