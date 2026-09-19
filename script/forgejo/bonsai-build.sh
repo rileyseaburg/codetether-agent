@@ -8,8 +8,17 @@ export CARGO_PROFILE_CI_DEBUG=0 CARGO_PROFILE_CI_CODEGEN_UNITS=256
 export CUDA_ROOT=/usr/local/cuda CUDA_PATH=/usr/local/cuda CUDA_COMPUTE_CAP=75
 export LD_LIBRARY_PATH="/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 mkdir -p bonsai-evidence bonsai-dist
+report_failure() {
+  local code=$?
+  if (( code != 0 )) && [[ -f bonsai-evidence/test-compile.jsonl ]]; then
+    jq -r 'select(.reason=="compiler-message")|.message.rendered // empty' bonsai-evidence/test-compile.jsonl | tail -100
+  fi
+  return "$code"
+}
+trap report_failure EXIT
 cargo +1.95.0 test --locked --profile ci --features candle-cuda --lib --no-run \
-  --message-format=json > bonsai-evidence/test-compile.jsonl 2> bonsai-evidence/test-compile.stderr
+  --message-format=json > bonsai-evidence/test-compile.jsonl \
+  2> >(tee bonsai-evidence/test-compile.stderr >&2)
 test_binary=$(jq -r 'select(.reason=="compiler-artifact" and .profile.test==true and .target.name=="codetether_agent")|.executable // empty' bonsai-evidence/test-compile.jsonl | tail -1)
 test -x "$test_binary"
 # CPU reference tests never initialize CUDA, but the ELF loader needs libcuda's SONAME.

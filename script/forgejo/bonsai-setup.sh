@@ -14,6 +14,6 @@ export PATH="$HOME/.cargo/bin:/usr/local/cuda/bin:$PATH"
 printf '%s\n' "$HOME/.cargo/bin" /usr/local/cuda/bin >> "${GITHUB_PATH:-${FORGEJO_PATH:?}}"
 printf '%s\n' CUDA_ROOT=/usr/local/cuda CUDA_PATH=/usr/local/cuda \
   PROTOC=/usr/bin/protoc PROTOC_INCLUDE=/usr/include >> "${GITHUB_ENV:-${FORGEJO_ENV:?}}"
-rustc --version | tee bonsai-evidence/rust-version.txt
+rustc +1.95.0 --version | tee bonsai-evidence/rust-version.txt
 nvcc --version | tee bonsai-evidence/cuda-version.txt
 git rev-parse HEAD > bonsai-evidence/source-commit.txt
