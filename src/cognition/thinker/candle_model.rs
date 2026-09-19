@@ -10,6 +10,7 @@ use candle_transformers::models::{
 
 /// A loaded GGUF model, one variant per supported architecture.
 pub(super) enum CandleModel {
+    Bonsai(super::bonsai::Model),
     Llama(quantized_llama::ModelWeights),
     Qwen2(quantized_qwen2::ModelWeights),
     Qwen3(quantized_qwen3::ModelWeights),
@@ -23,6 +24,7 @@ impl CandleModel {
     /// Run one forward pass at absolute position `index_pos`.
     pub(super) fn forward(&mut self, x: &Tensor, index_pos: usize) -> Result<Tensor> {
         match self {
+            Self::Bonsai(model) => model.forward(x, index_pos),
             Self::Llama(model) => Ok(model.forward(x, index_pos)?),
             Self::Qwen2(model) => Ok(model.forward(x, index_pos)?),
             Self::Qwen3(model) => Ok(model.forward(x, index_pos)?),
@@ -49,6 +51,10 @@ impl CandleModel {
             Self::Qwen3Moe(_) => Err(anyhow!(
                 "qwen3_moe runtime cannot reset KV cache in this build; restart local runtime or use qwen3"
             )),
+            Self::Bonsai(model) => {
+                model.clear();
+                Ok(())
+            }
             Self::Llama(_) | Self::Qwen2(_) => Ok(()),
 
             #[cfg(feature = "functiongemma")]
@@ -58,6 +64,6 @@ impl CandleModel {
 
     /// Whether a cached prompt prefix can be extended instead of refilled.
     pub(super) fn can_extend_cached_prefix(&self) -> bool {
-        true
+        !matches!(self, Self::Bonsai(_))
     }
 }

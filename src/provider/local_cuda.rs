@@ -5,6 +5,9 @@
 
 #![cfg(feature = "candle-cuda")]
 
+#[path = "local_cuda_catalog.rs"]
+mod catalog;
+
 use crate::cognition::{CandleDevicePreference, ThinkerBackend, ThinkerClient, ThinkerConfig};
 use crate::provider::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
@@ -315,19 +318,7 @@ impl Provider for LocalCudaProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        // Note: streaming and tool support are planned features, currently unimplemented
-        Ok(vec![ModelInfo {
-            id: self.model_name.clone(),
-            name: self.model_name.clone(),
-            provider: "local_cuda".to_string(),
-            context_window: 8192,
-            max_output_tokens: Some(4096),
-            supports_vision: false,
-            supports_tools: false,             // TODO: implement tool calling
-            supports_streaming: false,         // TODO: implement streaming inference
-            input_cost_per_million: Some(0.0), // Free - local inference
-            output_cost_per_million: Some(0.0),
-        }])
+        self.model_catalog().await
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
@@ -485,6 +476,8 @@ impl Default for LocalCudaConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[path = "local_cuda_catalog.rs"]
+    mod catalog;
 
     #[test]
     fn test_strip_inline_think_blocks() {

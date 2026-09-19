@@ -4,6 +4,8 @@
 //! model dispatch in `candle_model`, and generation in `candle_prefill` and
 //! `candle_decode`.
 
+#[path = "bonsai/mod.rs"]
+mod bonsai;
 #[path = "candle_arch.rs"]
 mod candle_arch;
 #[path = "candle_decode.rs"]
@@ -24,6 +26,8 @@ mod candle_load;
 mod candle_model;
 #[path = "candle_new.rs"]
 mod candle_new;
+#[path = "candle_new_generic.rs"]
+mod candle_new_generic;
 #[path = "candle_output.rs"]
 mod candle_output;
 #[path = "candle_penalty.rs"]

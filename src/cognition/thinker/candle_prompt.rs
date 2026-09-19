@@ -13,6 +13,9 @@ pub(super) fn format_chat_prompt(
         "qwen2" | "qwen3" | "qwen3moe" | "qwen3_moe" => format!(
             "<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{user_prompt}<|im_end|>\n<|im_start|>assistant\n"
         ),
+        "qwen35" => format!(
+            "<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{user_prompt}<|im_end|>\n<|im_start|>assistant\n<think>\n</think>\n"
+        ),
         // Llama 3 instruct template
         "llama" => format!(
             "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{user_prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"

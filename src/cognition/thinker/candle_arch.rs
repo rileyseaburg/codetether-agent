@@ -18,6 +18,6 @@ pub(super) fn unsupported(other: &str) -> anyhow::Error {
         ""
     };
     anyhow!(
-        "unsupported candle architecture '{other}' (supported: llama, qwen2, qwen3, qwen3_moe{extra})"
+        "unsupported candle architecture '{other}' (supported: llama, qwen2, qwen3, qwen3_moe, qwen35 (Bonsai PQ2_0){extra})"
     )
 }
