@@ -25,18 +25,20 @@ jobs:
       - uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           github-server-url: https://forgejo.quantum-forge.io
+      - name: Prepare pinned Forgejo artifact action
+        run: bash script/forgejo/bonsai-artifact-action.sh
       - name: Prepare remote CUDA build environment
         run: bash script/forgejo/bonsai-setup.sh
       - name: Compile and exercise native CPU reference tests
         run: bash script/forgejo/bonsai-build.sh
       - name: Preserve compiler and test evidence
         if: always()
-        uses: https://code.forgejo.org/actions/upload-artifact@c24449f33cd45d4826c6702db7e49f7cdb9b551d
+        uses: ./.ci-actions/upload-artifact
         with:
           name: bonsai-native-evidence
           path: bonsai-evidence/*
           if-no-files-found: warn
-      - uses: https://code.forgejo.org/actions/upload-artifact@c24449f33cd45d4826c6702db7e49f7cdb9b551d
+      - uses: ./.ci-actions/upload-artifact
         with:
           name: bonsai-native-cuda75
           path: bonsai-dist/*
