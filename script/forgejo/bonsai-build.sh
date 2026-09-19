@@ -3,6 +3,8 @@
 set -euo pipefail
 [[ ${CI:-} == true ]] || { echo 'Forgejo CI execution required' >&2; exit 1; }
 export PATH="$HOME/.cargo/bin:/usr/local/cuda/bin:$PATH"
+export CARGO_BUILD_JOBS=1 CARGO_TARGET_DIR=/tmp/bonsai-target CARGO_INCREMENTAL=0
+export CARGO_PROFILE_CI_DEBUG=0 CARGO_PROFILE_CI_CODEGEN_UNITS=256
 export CUDA_ROOT=/usr/local/cuda CUDA_PATH=/usr/local/cuda CUDA_COMPUTE_CAP=75
 export LD_LIBRARY_PATH="/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 mkdir -p bonsai-evidence bonsai-dist

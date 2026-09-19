@@ -13,14 +13,15 @@ jobs:
     container:
       image: nvidia/cuda:12.8.1-devel-ubuntu22.04
       options: --cpus=2 --memory=10g --memory-swap=10g
-    env:
-      CARGO_BUILD_JOBS: 1
-      CARGO_TARGET_DIR: /tmp/bonsai-target
-      CUDA_COMPUTE_CAP: '75'
-      CARGO_PROFILE_CI_DEBUG: '0'
-      CARGO_PROFILE_CI_CODEGEN_UNITS: '256'
-      CARGO_INCREMENTAL: '0'
     steps:
+      - name: Bootstrap verified Node for action execution
+        run: |
+          set -e
+          find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i 's|http://|https://|g' {} +
+          apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+          curl -fsSL https://nodejs.org/dist/v20.19.5/node-v20.19.5-linux-x64.tar.gz -o /tmp/node.tgz
+          echo '4eba5fbe1fb10753bc06e42f001a91c5cec16798b7764a3e9257adc59af47fe1  /tmp/node.tgz' | sha256sum -c -
+          tar -xzf /tmp/node.tgz -C /usr/local --strip-components=1
       - uses: https://github.com/actions/checkout@v4
         with:
           github-server-url: https://forgejo.quantum-forge.io

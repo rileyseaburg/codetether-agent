@@ -22,3 +22,6 @@ mod cuda_rotation_tests;
 mod cuda_tests;
 
 mod contract_inverse;
+
+#[cfg(all(test, feature = "candle-cuda"))]
+mod full_model_tests;
