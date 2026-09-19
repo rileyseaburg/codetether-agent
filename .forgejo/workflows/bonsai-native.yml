@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: spotlessbinco-k8s-dind-privileged
+    runs-on: spotlessbinco-k8s-untrusted-dind
     timeout-minutes: 120
     container:
       image: nvidia/cuda:12.8.1-devel-ubuntu22.04
@@ -18,7 +18,7 @@ jobs:
         run: |
           set -e
           find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i 's|http://|https://|g' {} +
-          apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+          apt-get update && apt-get install -y --no-install-recommends curl ca-certificates git
           curl -fsSL https://nodejs.org/dist/v20.19.5/node-v20.19.5-linux-x64.tar.gz -o /tmp/node.tgz
           echo '4eba5fbe1fb10753bc06e42f001a91c5cec16798b7764a3e9257adc59af47fe1  /tmp/node.tgz' | sha256sum -c -
           tar -xzf /tmp/node.tgz -C /usr/local --strip-components=1
