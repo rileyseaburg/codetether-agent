@@ -11,9 +11,9 @@ jobs:
     runs-on: spotlessbinco-k8s-untrusted-dind
     timeout-minutes: 120
     container:
-      # Candle 0.11's pre-sm80 half shims collide with CUDA >=12.2 headers.
-      # Keep the locked Candle graph and target sm75 with its compatible toolkit.
-      image: nvidia/cuda:12.1.1-devel-ubuntu22.04
+      # Reuse the cached base image; setup installs the compatible CUDA 12.1 SDK.
+      # Avoid another full-image pull on disk-constrained runner hosts.
+      image: nvidia/cuda:12.8.1-devel-ubuntu22.04
       options: --cpus=2 --memory=10g --memory-swap=10g
     steps:
       - name: Bootstrap verified Node for action execution
