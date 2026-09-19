@@ -76,6 +76,24 @@ Scan text for obvious secrets:
 }
 ```
 
+## Issue DoD review guard
+
+Require reviewer output to carry forward the source issue Definition of Done and
+reject approvals when any Issue DoD item is missing or unproven:
+
+Focused validation: `cargo test --features tetherscript issue_dod_review`.
+
+```json
+{
+  "path": "examples/tetherscript/issue_dod_review.tether",
+  "hook": "validate",
+  "args": [
+    "## Acceptance criteria\n- Add regression coverage\n- Run validation",
+    "## Issue DoD checklist\n- [x] Add regression coverage\n- [ ] Run validation not-run\n\nApproved."
+  ]
+}
+```
+
 ## PR summary helpers
 
 ```json
