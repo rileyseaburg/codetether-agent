@@ -3,6 +3,13 @@
 set -euo pipefail
 [[ ${CI:-} == true ]] || { echo 'Forgejo CI execution required' >&2; exit 1; }
 mkdir -p bonsai-evidence
+df -h / /tmp | tee bonsai-evidence/disk-before.txt
+available_kib=$(df -Pk /tmp | awk 'NR==2 {print $4}')
+if (( available_kib < 20 * 1024 * 1024 )); then
+  echo 'CI_DISK_CAPACITY_REQUIRED: native CUDA validation needs at least 20 GiB free in the job filesystem.' >&2
+  echo 'Expand the Forgejo builder storage; this job will not prune shared runner caches.' >&2
+  exit 1
+fi
 export DEBIAN_FRONTEND=noninteractive
 bash script/forgejo/apt-https.sh
 apt-get update
