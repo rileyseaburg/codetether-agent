@@ -1,14 +1,13 @@
 name: Native Bonsai CUDA validation
 on:
+  # Large native builds require an explicitly provisioned non-Kubernetes runner.
   workflow_dispatch:
-  push:
-    branches: ['ci/bonsai-native']
 concurrency:
   group: bonsai-native-cuda75
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: spotlessbinco-k8s-untrusted-dind
+    runs-on: codetether-native-cuda-dedicated
     timeout-minutes: 120
     container:
       # Reuse the cached base image; setup installs the compatible CUDA 12.1 SDK.
