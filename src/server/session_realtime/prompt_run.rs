@@ -21,6 +21,12 @@ impl PromptRun {
         let task = tokio::spawn(execute(session_id, message, event_tx));
         Self { events, task }
     }
+
+    /// Aborts the prompt and waits until its owned resources are dropped.
+    pub(super) async fn cancel(&mut self) {
+        self.task.abort();
+        let _ = (&mut self.task).await;
+    }
 }
 
 /// Load, execute, and persist one session prompt.
@@ -42,3 +48,7 @@ async fn execute(
     session.save().await.map_err(|error| error.to_string())?;
     Ok(result)
 }
+
+#[cfg(test)]
+#[path = "prompt_run_tests.rs"]
+mod tests;

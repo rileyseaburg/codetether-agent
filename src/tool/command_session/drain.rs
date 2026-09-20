@@ -43,6 +43,7 @@ fn refresh_status(command: &mut Running) -> std::io::Result<bool> {
         && let Some(status) = command.child.try_wait()?
     {
         command.exit_code = Some(status.code().unwrap_or(-1));
+        command.process_tree.disarm();
         command.stdin = None;
     }
     Ok(command.exit_code.is_some())

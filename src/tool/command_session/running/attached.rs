@@ -14,6 +14,7 @@ pub(super) fn new(
         Some(crate::tool::command_pty::Attached::Pty(master)) => {
             let (stdin, output) = super::super::readers::terminal(master)?;
             Ok(Running {
+                process_tree: crate::tool::process_tree::Guard::attach(&child),
                 child,
                 stdin: Some(stdin),
                 output,

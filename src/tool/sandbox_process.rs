@@ -8,13 +8,18 @@ pub(super) async fn wait(
     violations: &mut Vec<String>,
 ) -> Result<Output> {
     let timeout = std::time::Duration::from_secs(timeout_secs);
-    cmd.kill_on_drop(true);
+    crate::tool::process_tree::configure(&mut cmd);
     let child = cmd.spawn().context("Failed to spawn sandboxed process")?;
-    tokio::time::timeout(timeout, child.wait_with_output())
-        .await
-        .map_err(|_| {
+    let mut process_tree = crate::tool::process_tree::Guard::attach(&child);
+    match tokio::time::timeout(timeout, child.wait_with_output()).await {
+        Ok(Ok(output)) => {
+            process_tree.disarm();
+            Ok(output)
+        }
+        Ok(Err(error)) => Err(error).context("Failed to wait for sandboxed process"),
+        Err(_) => {
             violations.push("timeout_exceeded".to_string());
-            anyhow!("Sandboxed process timed out after {timeout_secs}s")
-        })?
-        .context("Failed to wait for sandboxed process")
+            Err(anyhow!("Sandboxed process timed out after {timeout_secs}s"))
+        }
+    }
 }

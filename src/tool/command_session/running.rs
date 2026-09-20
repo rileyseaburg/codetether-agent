@@ -12,6 +12,7 @@ mod attached;
 mod write;
 
 pub(crate) struct Running {
+    pub(super) process_tree: crate::tool::process_tree::Guard,
     pub(super) child: tokio::process::Child,
     pub(super) stdin: Option<CommandInput>,
     pub(super) output: tokio::sync::mpsc::Receiver<Vec<u8>>,
@@ -29,6 +30,7 @@ impl Running {
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
         Self {
+            process_tree: crate::tool::process_tree::Guard::attach(&child),
             child,
             stdin,
             output: super::readers::start(stdout, stderr),

@@ -6,7 +6,7 @@ use tokio::process::Command;
 pub(super) fn configure(cmd: &mut Command) {
     configure_stdio(cmd);
     configure_auth_env(cmd);
-    detach_controlling_terminal(cmd);
+    super::process_tree::configure(cmd);
 }
 
 fn configure_stdio(cmd: &mut Command) {
@@ -24,22 +24,3 @@ fn configure_auth_env(cmd: &mut Command) {
         .env("SUDO_ASKPASS", "/bin/false")
         .env("SSH_ASKPASS", "/bin/false");
 }
-
-#[cfg(unix)]
-fn detach_controlling_terminal(cmd: &mut Command) {
-    // SAFETY: `pre_exec` runs after fork in the child. The closure only calls
-    // `setsid` and converts errno, which keeps it async-signal-safe enough for
-    // this child-process setup hook.
-    unsafe {
-        cmd.pre_exec(|| {
-            if libc::setsid() == -1 {
-                Err(std::io::Error::last_os_error())
-            } else {
-                Ok(())
-            }
-        });
-    }
-}
-
-#[cfg(not(unix))]
-fn detach_controlling_terminal(_cmd: &mut Command) {}

@@ -28,7 +28,7 @@ pub(super) async fn run(
         {
             turn_step::TurnStep::Continue => {}
             turn_step::TurnStep::Abort => {
-                run.task.abort();
+                run.cancel().await;
                 return;
             }
             turn_step::TurnStep::Finished(outcome) => {
