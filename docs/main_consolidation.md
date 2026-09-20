@@ -31,5 +31,7 @@ historical captures may contain private runtime data.
 ## Validation boundary
 
 Static/local formatting, whitespace, conflict-marker and file-limit checks
-cover the integrated source. Compilation, platform tests and full runtime
-regression coverage were not run as part of this consolidation.
+cover the integrated source. No compiled or platform-test outcome is claimed.
+The tool's automatic rust-analyzer preflight recreated a worktree cache; that
+session-owned analyzer and its matching compiler jobs were stopped and the
+cache removed. Full runtime regression coverage remains not-run.
