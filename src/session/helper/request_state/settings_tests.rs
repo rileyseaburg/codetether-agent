@@ -28,6 +28,9 @@ fn local_cuda_does_not_advertise_native_tools() {
     }
 }
 
+#[path = "settings_local_contract_tests.rs"]
+mod local_contract;
+
 #[test]
 fn openrouter_safety_classifier_does_not_advertise_native_tools() {
     let model = "nvidia/nemotron-3.5-content-safety:free";

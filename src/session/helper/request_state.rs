@@ -33,7 +33,9 @@ pub(crate) fn build_provider_step_state(
     let system_prompt = settings::system_prompt_for(
         selected_provider,
         model_supports_tools,
-        &advertised_tool_definitions,
+        // Textual-tool providers need the full definitions, not the
+        // advertised list, which is empty when native tools are off.
+        &tool_definitions,
         &cwd,
         prior_context_allowed,
     );

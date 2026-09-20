@@ -248,7 +248,7 @@ impl LocalCudaProvider {
         self.model_cache
             .as_ref()
             .and_then(|c| c.architecture.clone())
-            .or_else(|| first_env(&["LOCAL_CUDA_ARCH", "CODETETHER_LOCAL_CUDA_ARCH"]))
+            .or_else(|| crate::provider::local_catalog::arch_or_env(&self.model_name))
     }
 
     fn resolve_device_preference(&self) -> CandleDevicePreference {

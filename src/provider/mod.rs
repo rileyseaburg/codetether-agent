@@ -30,12 +30,7 @@ pub mod gemini_web;
 pub mod glm5;
 pub mod google;
 pub mod limits;
-#[cfg(feature = "candle-cuda")]
-pub mod local_cuda;
-#[cfg(not(feature = "candle-cuda"))]
-#[allow(dead_code)]
-#[path = "local_cuda_nocuda.rs"]
-pub mod local_cuda;
+include!("native_modules.rs");
 pub mod pricing;
 include!("image_modules.rs");
 

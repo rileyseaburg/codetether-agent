@@ -30,19 +30,20 @@ impl CandleThinker {
         }
         let prefill = &tokens[index_pos..];
 
-        let input = Tensor::new(prefill, &self.device)?
-            .unsqueeze(0)
-            .context("failed to create candle input tensor")?;
-        let logits = self
-            .model
-            .forward(&input, index_pos)
-            .context("candle model forward failed")?
+        let chunked = self.device.is_cuda()
+            && !matches!(&self.model, super::candle_model::CandleModel::Bonsai(_));
+        let device = self.device.clone();
+        let logits =
+            crate::cognition::prefill::run(prefill, &mut index_pos, chunked, |slice, pos| {
+                let input = Tensor::new(slice, &device)?.unsqueeze(0)?;
+                Ok(self.model.forward(&input, pos)?)
+            })?
             .squeeze(0)
             .context("failed to squeeze logits batch dimension")?;
 
         Ok(Prefill {
             logits,
-            index_pos: index_pos + prefill.len(),
+            index_pos,
             cache_write_tokens: prefill.len() as u32,
         })
     }

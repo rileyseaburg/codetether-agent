@@ -17,6 +17,9 @@ pub(crate) fn temperature_for(model: &str) -> Option<f32> {
 }
 
 pub(super) fn model_supports_tools(provider: &str, model: &str) -> bool {
+    // local_cuda has no native tool-call channel, so the caller injects a
+    // textual `<tool_call>` contract and parses it back via
+    // `markup::normalize_textual_tool_calls`.
     if matches!(provider, "local-cuda" | "local_cuda" | "localcuda") {
         return false;
     }

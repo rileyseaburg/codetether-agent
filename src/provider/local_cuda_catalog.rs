@@ -15,7 +15,7 @@ impl LocalCudaProvider {
             {
                 4096
             } else {
-                8192
+                crate::provider::local_catalog::context_window(&self.model_name)
             },
             max_output_tokens: Some(4096),
             supports_vision: false,

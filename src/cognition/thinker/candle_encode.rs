@@ -16,7 +16,7 @@ impl CandleThinker {
     pub(super) fn encode_prompt(&self, prompt: &str) -> Result<Vec<u32>> {
         let encoding = self
             .tokenizer
-            .encode(prompt, true)
+            .encode(prompt, false)
             .map_err(|e| anyhow!("tokenizer encode failed: {e}"))?;
         let mut tokens = encoding.get_ids().to_vec();
         if tokens.is_empty() {
