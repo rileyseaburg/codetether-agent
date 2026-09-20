@@ -30,7 +30,9 @@ pub(super) fn render(f: &mut Frame, area: Rect, review: Option<&Option<ReviewVer
         None => (
             "Reviewer · inspecting…".to_string(),
             Color::Yellow,
-            vec![Line::raw("reading touched files and running read-only checks")],
+            vec![Line::raw(
+                "reading touched files and running read-only checks",
+            )],
         ),
         Some(verdict) => (
             format!("Reviewer · {}", verdict.outcome.label()),
