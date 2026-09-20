@@ -43,3 +43,7 @@ mod help_tests;
 #[cfg(test)]
 #[path = "mux_args_resume_tests.rs"]
 mod resume_tests;
+
+#[cfg(test)]
+#[path = "mux_args_worktree_tests.rs"]
+mod worktree_tests;

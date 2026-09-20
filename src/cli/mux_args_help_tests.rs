@@ -20,6 +20,7 @@ fn help_advertises_positional_new_and_attach() {
         attach.contains("codetether mux attach [OPTIONS] <SESSION>"),
         "{attach}"
     );
+    assert!(new.contains("--no-worktree"), "{new}");
     assert!(!new.contains("--session"));
     assert!(!attach.contains("--target"));
 }

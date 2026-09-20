@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
 
 use super::state::State;
 
@@ -12,7 +12,7 @@ pub(super) fn read(workspace: &Path) -> Result<Option<String>> {
     let mut state = State::new();
     super::render::prompt(&state)?;
     loop {
-        let Event::Key(key) = event::read()? else {
+        let Some(key) = super::input_event::read(&mut state)? else {
             continue;
         };
         if key.kind != KeyEventKind::Press {

@@ -2,6 +2,8 @@
 
 mod completion;
 mod editor;
+mod input_event;
+mod paste;
 mod render;
 mod state;
 mod terminal;

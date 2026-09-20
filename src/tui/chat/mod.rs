@@ -1,3 +1,4 @@
+pub mod mermaid;
 pub mod message;
 pub mod payload;
 pub mod strip;

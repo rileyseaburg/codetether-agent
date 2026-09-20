@@ -4,30 +4,42 @@
 //! environment. Converting local Ctrl+V into a bracketed-paste payload keeps
 //! text sidecars and image attachments identical to a non-mux TUI.
 
-const CTRL_V: u8 = 0x16;
-const START: &[u8] = b"\x1b[200~";
-const END: &[u8] = b"\x1b[201~";
+#[path = "clipboard/stream.rs"]
+mod stream;
+pub(in crate::mux::client::proxy) use stream::Resolver;
 
-/// Replace a standalone Ctrl+V with local clipboard content when available.
-pub(super) fn resolve(data: Vec<u8>) -> Vec<u8> {
-    resolve_content(data, local_content())
-}
+const CTRL_V: u8 = 0x16;
+pub(super) const START: &[u8] = b"\x1b[200~";
+pub(super) const END: &[u8] = b"\x1b[201~";
 
 fn resolve_content(data: Vec<u8>, content: Option<String>) -> Vec<u8> {
-    if data.as_slice() != [CTRL_V] {
-        return data;
+    let Some(content) = content else {
+        return frame_unmarked_paste(data);
+    };
+    let mut resolved = Vec::with_capacity(data.len() + content.len());
+    for value in data {
+        if value == CTRL_V {
+            resolved.extend(frame(content.as_bytes()));
+        } else {
+            resolved.push(value);
+        }
     }
-    content.map_or(data, |value| frame(value.as_bytes()))
+    resolved
+}
+
+fn frame_unmarked_paste(data: Vec<u8>) -> Vec<u8> {
+    let split = data.iter().position(|value| matches!(value, b'\r' | b'\n'));
+    let multiline = split.is_some_and(|index| {
+        data[..index].iter().any(u8::is_ascii_graphic)
+            && data[index + 1..].iter().any(u8::is_ascii_graphic)
+    });
+    if multiline { frame(&data) } else { data }
 }
 
 fn local_content() -> Option<String> {
     crate::tui::clipboard::get_clipboard_text()
-        .map(normalize)
+        .map(|text| text.replace("\r\n", "\n").replace('\r', "\n"))
         .or_else(|| crate::tui::clipboard::get_clipboard_image().map(|image| image.data_url))
-}
-
-fn normalize(text: String) -> String {
-    text.replace("\r\n", "\n").replace('\r', "\n")
 }
 
 fn frame(content: &[u8]) -> Vec<u8> {
@@ -39,24 +51,5 @@ fn frame(content: &[u8]) -> Vec<u8> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{CTRL_V, frame, resolve, resolve_content};
-
-    #[test]
-    fn frames_content_as_one_terminal_paste() {
-        assert_eq!(frame(b"one\ntwo"), b"\x1b[200~one\ntwo\x1b[201~");
-    }
-
-    #[test]
-    fn leaves_non_shortcut_input_unchanged() {
-        assert_eq!(resolve(vec![CTRL_V, b'x']), vec![CTRL_V, b'x']);
-    }
-
-    #[test]
-    fn standalone_ctrl_v_uses_local_clipboard_content() {
-        assert_eq!(
-            resolve_content(vec![CTRL_V], Some("one\ntwo".into())),
-            b"\x1b[200~one\ntwo\x1b[201~"
-        );
-    }
-}
+#[path = "clipboard_tests.rs"]
+mod tests;

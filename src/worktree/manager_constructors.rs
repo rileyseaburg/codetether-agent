@@ -52,7 +52,6 @@ impl WorktreeManager {
             base_dir: storage::base_dir(&repo_path),
             repo_path,
             worktrees: Mutex::new(Vec::new()),
-            integrity_checked: Mutex::new(false),
             auto_open_vscode: true,
         }
     }

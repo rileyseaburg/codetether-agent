@@ -33,16 +33,6 @@ impl WorktreeManager {
         ))
     }
 
-    pub(crate) async fn ensure_repo_integrity_once(&self) -> Result<()> {
-        let mut checked = self.integrity_checked.lock().await;
-        if *checked {
-            return Ok(());
-        }
-        self.ensure_repo_integrity().await?;
-        *checked = true;
-        Ok(())
-    }
-
     pub(crate) async fn run_repo_fsck(&self) -> Result<std::process::Output> {
         tokio::process::Command::new("git")
             .args(["fsck", "--full", "--no-dangling"])

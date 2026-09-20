@@ -9,7 +9,6 @@ pub(super) async fn create(
     start_point: Option<&str>,
 ) -> Result<WorktreeInfo> {
     manager.validate_storage()?;
-    manager.ensure_repo_integrity_once().await?;
     WorktreeManager::validate_worktree_name(name)?;
     let commit = match start_point {
         Some(point) => Some(super::revision::resolve(manager, point).await?),
@@ -25,14 +24,9 @@ pub(super) async fn create(
                 manager.base_dir.display()
             )
         })?;
-    let mut output = manager
-        .add_worktree(&branch_name, &worktree_path, true, commit.as_deref())
+    let output = manager
+        .create_or_recover(&branch_name, &worktree_path, commit.as_deref())
         .await?;
-    if !output.status.success() && start_point.is_none() {
-        output = manager
-            .add_worktree(&branch_name, &worktree_path, false, None)
-            .await?;
-    }
     if !output.status.success() {
         anyhow::bail!(
             "Failed to create git worktree '{name}': {}",

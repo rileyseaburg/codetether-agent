@@ -23,7 +23,6 @@ pub struct WorktreeManager {
     pub(crate) base_dir: PathBuf,
     pub(crate) repo_path: PathBuf,
     pub(crate) worktrees: Mutex<Vec<WorktreeInfo>>,
-    pub(crate) integrity_checked: Mutex<bool>,
     /// Whether to attempt opening freshly created worktrees in VS Code.
     /// TUI callers disable this because the blocking prompt corrupts the
     /// raw-mode terminal and cannot open an editor over SSH.

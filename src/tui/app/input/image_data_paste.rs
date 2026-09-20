@@ -10,10 +10,26 @@ pub(crate) use extract::extract_image_data_url;
 #[path = "image_data_paste_tests.rs"]
 mod tests;
 
-/// Attach a pasted image data URL when the whole text is one.
+#[cfg(test)]
+#[path = "image_data_reject_tests.rs"]
+mod reject_tests;
+
+/// Handle a paste that is entirely one image data URL.
+///
+/// # Returns
+///
+/// `true` when the paste was consumed — either attached as an image, or
+/// recognised as an image that cannot be attached (for example a screenshot
+/// over the size cap) and reported to the user. Consuming a rejected image
+/// keeps megabytes of base64 out of the large-paste text sidecar, where the
+/// failure would otherwise be silent.
 pub(crate) fn try_attach_data_url(app: &mut App, text: &str) -> bool {
     let Some(image) = crate::image_clipboard::attachment_from_data_url(text) else {
-        return false;
+        let Some(reason) = crate::image_clipboard::reject_reason(text) else {
+            return false;
+        };
+        app.state.status = reason.message();
+        return true;
     };
     app.state.pending_images.push(image);
     let count = app.state.pending_images.len();

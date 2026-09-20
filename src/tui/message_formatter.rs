@@ -16,6 +16,9 @@ mod message_formatter_table;
 
 #[path = "message_formatter_code_render.rs"]
 pub mod message_formatter_code_render;
+
+#[path = "message_formatter_code_block.rs"]
+pub mod message_formatter_code_block;
 /// Enhanced message formatter with syntax highlighting and improved styling
 pub struct MessageFormatter {
     max_width: usize,
@@ -193,36 +196,7 @@ impl MessageFormatter {
 
     /// Render a code block with syntax highlighting and styling
     fn render_code_block(&self, lines: &[String], language: &str) -> Vec<Line<'static>> {
-        let mut result = Vec::new();
-        let block_width = self.max_width.saturating_sub(4);
-
-        // Header with language indicator
-        let header = if language.is_empty() {
-            "┌─ Code ─".to_string() + "─".repeat(block_width.saturating_sub(9)).as_str()
-        } else {
-            let lang_header = format!("┌─ {} Code ─", language);
-            let header_len = lang_header.len();
-            lang_header + "─".repeat(block_width.saturating_sub(header_len)).as_str()
-        };
-
-        result.push(Line::from(Span::styled(
-            header,
-            Style::default()
-                .fg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        )));
-
-        // Render body lines (diff-aware for diff/patch languages).
-        result.extend(message_formatter_code_render::render_code_body(
-            lines, language,
-        ));
-
-        result.push(Line::from(Span::styled(
-            "└".to_string() + "─".repeat(block_width.saturating_sub(1)).as_str(),
-            Style::default().fg(Color::DarkGray),
-        )));
-
-        result
+        message_formatter_code_block::render(lines, language, self.max_width.saturating_sub(4))
     }
 
     /// Render a LaTeX/math display block with a boxed border.

@@ -13,7 +13,11 @@ impl WorktreeManager {
         start_point: Option<&str>,
     ) -> Result<std::process::Output> {
         let mut command = tokio::process::Command::new("git");
-        command.arg("worktree").arg("add");
+        command
+            .args(["-c", "checkout.workers=0"])
+            .args(["-c", "checkout.thresholdForParallelism=100"])
+            .arg("worktree")
+            .arg("add");
         if create_branch {
             command.arg("-b").arg(branch).arg(path);
             if let Some(start_point) = start_point {

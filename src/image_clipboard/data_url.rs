@@ -5,7 +5,7 @@ use std::borrow::Cow;
 
 use crate::session::ImageAttachment;
 
-const MAX_IMAGE_DECODED_BYTES: usize = 10 * 1024 * 1024;
+pub(crate) const MAX_IMAGE_DECODED_BYTES: usize = 10 * 1024 * 1024;
 pub(crate) const MAX_BASE64_PAYLOAD_CHARS: usize = (MAX_IMAGE_DECODED_BYTES + 2) / 3 * 4;
 
 const IMAGE_MIME_TYPES: &[&str] = &[
@@ -16,6 +16,11 @@ const IMAGE_MIME_TYPES: &[&str] = &[
     "image/bmp",
     "image/svg+xml",
 ];
+
+/// True when `mime` is a supported image media type.
+pub(crate) fn is_image_mime(mime: &str) -> bool {
+    IMAGE_MIME_TYPES.contains(&mime)
+}
 
 /// Convert pasted image data URL text into an attachment.
 ///
