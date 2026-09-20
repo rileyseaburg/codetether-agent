@@ -2,6 +2,8 @@
 
 #[path = "approval_analysis.rs"]
 mod analysis;
+#[path = "approval_review.rs"]
+mod review;
 
 use crate::approval::LiveApprovalRequest;
 use crate::tui::app::state::{App, approval_queue};
@@ -11,6 +13,7 @@ pub(super) fn request(app: &mut App, request: LiveApprovalRequest) {
     app.state.approval_waiting = true;
     let pending = approval_queue::push(request);
     analysis::start(app, &pending);
+    review::start(app, &pending);
     let count = approval_queue::len();
     let guidance = crate::tui::ui::trust_status::approval_guidance();
     let because = pending

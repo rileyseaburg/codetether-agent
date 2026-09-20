@@ -10,6 +10,7 @@ pub use super::permission::{PermissionAction, PermissionConfig};
 pub use super::profile::{PermissionProfile, PermissionProfileConfig, PermissionProfileDetails};
 pub use super::provider::ProviderConfig;
 pub use super::requirements::PolicyRequirements;
+pub use super::review::{ReviewConfig, ReviewMode};
 pub use super::sandbox::SandboxMode;
 pub use super::session::SessionConfig;
 pub use super::telemetry::TelemetryConfig;

@@ -46,6 +46,7 @@ pub mod plugin_marketplace;
 pub mod provenance;
 pub mod provider;
 pub mod ralph;
+pub mod review;
 pub mod rlm;
 pub mod runtime_policy;
 pub mod search;

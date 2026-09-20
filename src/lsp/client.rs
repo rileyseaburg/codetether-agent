@@ -21,6 +21,7 @@ use tracing::{debug, info, warn};
 
 /// LSP Client for a single language server
 pub struct LspClient {
+    pub(super) last_used: std::sync::Mutex<std::time::Instant>,
     pub(super) transport: LspTransport,
     pub(super) config: LspConfig,
     pub(super) server_capabilities: RwLock<Option<lsp_types::ServerCapabilities>>,
@@ -37,6 +38,7 @@ impl LspClient {
             LspTransport::spawn(&config.command, &config.args, config.timeout_ms).await?;
 
         Ok(Self {
+            last_used: std::sync::Mutex::new(std::time::Instant::now()),
             transport,
             config,
             server_capabilities: RwLock::new(None),
@@ -623,10 +625,10 @@ fn parse_completion_response(response: JsonRpcResponse) -> Result<LspActionResul
 
 /// LSP Manager - manages multiple language server connections
 pub struct LspManager {
-    pub(super) clients: RwLock<HashMap<String, Arc<LspClient>>>,
+    pub(super) clients: super::client_cache::ClientCache,
     /// Linter clients keyed by linter name (e.g. "eslint", "ruff").
     /// These are only queried for diagnostics, not completions/definitions.
-    linter_clients: RwLock<HashMap<String, Arc<LspClient>>>,
+    linter_clients: super::client_cache::ClientCache,
     root_uri: Option<String>,
     /// User-supplied LSP settings from config.
     lsp_settings: Option<crate::config::LspSettings>,
@@ -636,8 +638,8 @@ impl LspManager {
     /// Create a new LSP manager
     pub fn new(root_uri: Option<String>) -> Self {
         Self {
-            clients: RwLock::new(HashMap::new()),
-            linter_clients: RwLock::new(HashMap::new()),
+            clients: super::client_cache::ClientCache::default(),
+            linter_clients: super::client_cache::ClientCache::default(),
             root_uri,
             lsp_settings: None,
         }
@@ -646,8 +648,8 @@ impl LspManager {
     /// Create a new LSP manager with config-driven settings.
     pub fn with_config(root_uri: Option<String>, settings: crate::config::LspSettings) -> Self {
         Self {
-            clients: RwLock::new(HashMap::new()),
-            linter_clients: RwLock::new(HashMap::new()),
+            clients: super::client_cache::ClientCache::default(),
+            linter_clients: super::client_cache::ClientCache::default(),
             root_uri,
             lsp_settings: Some(settings),
         }
@@ -655,11 +657,9 @@ impl LspManager {
 
     /// Get or create a client for the given language
     pub async fn get_client(&self, language: &str) -> Result<Arc<LspClient>> {
-        {
-            let clients = self.clients.read().await;
-            if let Some(client) = clients.get(language) {
-                return Ok(Arc::clone(client));
-            }
+        let mut clients = self.clients.write().await;
+        if let Some(client) = clients.get(language) {
+            return Ok(client.touch());
         }
 
         let client = if let Some(settings) = &self.lsp_settings {
@@ -675,10 +675,7 @@ impl LspManager {
         client.initialize().await?;
 
         let client = Arc::new(client);
-        self.clients
-            .write()
-            .await
-            .insert(language.to_string(), Arc::clone(&client));
+        clients.insert(language.to_string(), Arc::clone(&client));
 
         Ok(client)
     }
@@ -747,11 +744,9 @@ impl LspManager {
     /// Returns `None` if the linter is not configured or its binary is missing.
     pub async fn get_linter_client(&self, name: &str) -> Result<Option<Arc<LspClient>>> {
         // Already running?
-        {
-            let linters = self.linter_clients.read().await;
-            if let Some(client) = linters.get(name) {
-                return Ok(Some(Arc::clone(client)));
-            }
+        let mut linters = self.linter_clients.write().await;
+        if let Some(client) = linters.get(name) {
+            return Ok(Some(client.touch()));
         }
 
         // Resolve config
@@ -800,10 +795,7 @@ impl LspManager {
         }
 
         let client = Arc::new(client);
-        self.linter_clients
-            .write()
-            .await
-            .insert(name.to_string(), Arc::clone(&client));
+        linters.insert(name.to_string(), Arc::clone(&client));
         info!(linter = name, "Linter server started");
         Ok(Some(client))
     }

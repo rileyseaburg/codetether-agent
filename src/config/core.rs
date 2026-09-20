@@ -1,8 +1,8 @@
 use crate::config::guardrails::CostGuardrails;
 use crate::config::{
     A2aConfig, AccessMode, AgentsConfig, ApprovalPolicy, LspSettings, PermissionConfig,
-    PermissionProfileConfig, PolicyRequirements, ProjectTrustLevel, ProviderConfig, SandboxMode,
-    SessionConfig, TelemetryConfig, UiConfig,
+    PermissionProfileConfig, PolicyRequirements, ProjectTrustLevel, ProviderConfig, ReviewConfig,
+    SandboxMode, SessionConfig, TelemetryConfig, UiConfig,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -46,4 +46,6 @@ pub struct Config {
     pub lsp: LspSettings,
     #[serde(default)]
     pub rlm: crate::rlm::RlmConfig,
+    #[serde(default)]
+    pub review: ReviewConfig,
 }

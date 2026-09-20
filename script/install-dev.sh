@@ -51,16 +51,14 @@ if [ -f "$HOME/.bashrc" ]; then
   set -u
 fi
 
-if command -v sccache >/dev/null 2>&1; then
-  export RUSTC_WRAPPER="${RUSTC_WRAPPER:-sccache}"
-fi
+source ./script/install-dev-cache.sh
 
 # Reuse intermediate artifacts from previous builds
 export CARGO_BUILD_BUILD_DIR="$PWD/target"
 
 # Capture output so we can feed errors to the agent on failure
 tmp=$(mktemp)
-trap 'rm -f "$tmp"' EXIT
+trap 'printf "Build output retained: %s\n" "$tmp"' EXIT
 
 # Default to install --path . if no args given
 args=("$@")
@@ -102,7 +100,7 @@ while true; do
     exit 0
   fi
 
-  if ! command -v codetether >/dev/null 2>&1; then
+  if [ "${CODETETHER_INSTALL_AUTO_FIX:-1}" != 1 ] || ! command -v codetether >/dev/null 2>&1; then
     exit "$exit_code"
   fi
 

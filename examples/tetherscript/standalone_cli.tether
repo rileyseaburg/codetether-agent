@@ -1,0 +1,8 @@
+// Explicitly execute the installed TetherScript CLI instead of the embedded VM.
+// Arguments are an argv list, never shell text. Capabilities remain explicit in
+// that list; no full-access grant, credentials, or TLS bypass is added here.
+// The outer tetherscript_plugin timeout must exceed timeout_ms (maximum 60s).
+// Returns process_run's exit code, stdout, stderr, and timeout/truncation flags.
+fn run_cli(arguments, timeout_ms) {
+    return process_run("tetherscript", arguments, nil, timeout_ms)?
+}

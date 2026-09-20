@@ -2,6 +2,7 @@
 
 use super::ApprovalReport;
 use crate::approval::LiveApprovalRequest;
+use crate::review::ReviewVerdict;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ApprovalSnapshot {
@@ -14,6 +15,8 @@ pub(crate) struct ApprovalSnapshot {
     pub(crate) preview: Option<String>,
     pub(crate) arguments: Option<serde_json::Value>,
     pub(crate) report: ApprovalReport,
+    /// Reviewer state: `None` = not requested, `Some(None)` = running.
+    pub(crate) review: Option<Option<ReviewVerdict>>,
 }
 
 impl From<LiveApprovalRequest> for ApprovalSnapshot {
@@ -28,6 +31,7 @@ impl From<LiveApprovalRequest> for ApprovalSnapshot {
             preview: request.preview,
             arguments: request.arguments,
             report: ApprovalReport::default(),
+            review: None,
         }
     }
 }

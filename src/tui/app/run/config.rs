@@ -1,6 +1,7 @@
 use crate::config::{AccessMode, Config};
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
+use std::sync::Arc;
 
 pub(super) fn apply(
     session: &mut Session,
@@ -12,6 +13,9 @@ pub(super) fn apply(
         Config::apply_process_access_mode_override(access_mode);
         cfg.apply_access_mode_override(access_mode);
         crate::tui::ui::trust_status::set_from_config(cfg);
+        if let Some(registry) = registry {
+            crate::review::runtime::install(cfg.review.clone(), Arc::new(registry.clone()));
+        }
         session.apply_config(cfg, registry);
     }
 }

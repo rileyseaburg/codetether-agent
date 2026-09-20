@@ -9,11 +9,11 @@
 
 use super::types::{JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
 use anyhow::Result;
+use process::ServerProcess as Child;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
-use tokio::process::Child;
 use tokio::sync::{RwLock, mpsc, oneshot};
 use tracing::{debug, error, trace, warn};
 

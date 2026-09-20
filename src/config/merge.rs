@@ -1,5 +1,10 @@
 use crate::config::Config;
 
+#[path = "merge_policy.rs"]
+mod policy;
+#[path = "merge_sections.rs"]
+mod sections;
+
 impl Config {
     pub(super) fn merge(mut self, other: Self) -> Self {
         self.merge_defaults(&other);
@@ -22,6 +27,7 @@ impl Config {
         self.merge_permissions(other.permissions);
         self.merge_telemetry(other.telemetry);
         self.merge_lsp(other.lsp);
+        self.merge_review(other.review);
         self
     }
 

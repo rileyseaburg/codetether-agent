@@ -2,6 +2,12 @@
 
 Instructions for AI coding agents working on CodeTether Agent.
 
+## Runtime Tooling Restriction
+
+**Never execute Python.** This includes inline Python, helper scripts, and
+Python-based fallback automation. Use TetherScript or native tools instead.
+Do not delete earlier execution evidence to conceal a violation of this rule.
+
 ## Setup Commands
 
 ```bash

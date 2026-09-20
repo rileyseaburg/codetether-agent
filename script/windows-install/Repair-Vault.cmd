@@ -1,0 +1,10 @@
+@echo off
+setlocal DisableDelayedExpansion
+set "CODETETHER_VAULT_RECOVERY=%~dp0Vault-Recovery"
+set "CODETETHER_PARENT_EXECUTION_POLICY=%PSExecutionPolicyPreference%"
+cd /d "%SystemRoot%"
+echo Preparing a private local Vault credential prompt.
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy RemoteSigned -Command "$ErrorActionPreference='Stop'; try { $blocked=@(Get-ExecutionPolicy -List | Where-Object { $_.ExecutionPolicy -eq 'AllSigned' -or ($_.Scope -in @('MachinePolicy','UserPolicy') -and $_.ExecutionPolicy -eq 'Restricted') }); if($blocked.Count -or $env:CODETETHER_PARENT_EXECUTION_POLICY -eq 'AllSigned'){throw 'SIGNED_INSTALLER_REQUIRED: Signing policy is preserved.'}; $local=$env:LOCALAPPDATA; if(!$local -or $local -notmatch '^[A-Za-z]:\' -or ([IO.DriveInfo]::new($local)).DriveType -ne 'Fixed'){throw 'LOCAL_STAGE_REQUIRED'}; $stage=Join-Path $local ('codetether\vault-recovery\'+[guid]::NewGuid()); New-Item -ItemType Directory $stage -Force | Out-Null; foreach($name in @('repair-vault.ps1','verify-vault-token.ps1','save-vault.ps1','vault-token.ps1')){ $from=Join-Path $env:CODETETHER_VAULT_RECOVERY $name; $to=Join-Path $stage $name; $hash=(Get-FileHash -LiteralPath $from -Algorithm SHA256).Hash; Copy-Item -LiteralPath $from -Destination $to; if((Get-FileHash -LiteralPath $to -Algorithm SHA256).Hash -ne $hash){throw 'RECOVERY_INTEGRITY_FAILED'}; Unblock-File -LiteralPath $to }; Set-Location -LiteralPath $stage; & (Join-Path $stage 'repair-vault.ps1'); exit 0 } catch { Write-Host 'Vault recovery did not finish; saved credentials were not replaced by validation failures. Check that the new token is valid, renewable, and authorized for provider access.' -ForegroundColor Red; exit 1 }"
+set "RESULT=%ERRORLEVEL%"
+pause
+exit /b %RESULT%

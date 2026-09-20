@@ -11,6 +11,7 @@
 //! Supports language servers via stdio transport with JSON-RPC 2.0.
 
 pub mod client;
+mod client_cache;
 mod client_capabilities;
 #[path = "client_diagnostics.rs"]
 mod client_diagnostics;

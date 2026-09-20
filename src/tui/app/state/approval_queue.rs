@@ -14,7 +14,7 @@ mod reconcile;
 #[path = "approval_queue/report.rs"]
 mod report;
 mod snapshot;
-pub(crate) use operations::{feedback_input, set_report};
+pub(crate) use operations::{feedback_input, set_report, set_review};
 #[cfg(test)]
 pub(crate) use queue_access::reset;
 pub(crate) use queue_access::{active, active_id, len, push, resolve};

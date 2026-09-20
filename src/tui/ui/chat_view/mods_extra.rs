@@ -11,6 +11,7 @@ pub(crate) mod approval_diff_syntax;
 mod approval_diff_tests;
 pub(crate) mod approval_overlay_layout;
 pub(crate) mod approval_overlay_lsp;
+pub(crate) mod approval_overlay_review;
 pub(crate) mod approval_overlay_preview;
 pub(crate) mod approval_overlay_text;
 pub(crate) mod approval_preview_scroll;

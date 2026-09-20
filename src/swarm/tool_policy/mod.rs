@@ -1,3 +1,4 @@
+//! Shared swarm and reviewer tool restrictions, runtime gates and prompt contracts.
 mod capability_prompt;
 mod constraint_entry;
 mod constraint_extract;
@@ -10,7 +11,6 @@ mod prompt_input;
 mod prompt_sections;
 mod prompts;
 mod quality_contract;
-#[cfg(test)]
 mod registry;
 mod runtime_gate;
 mod source_metric_contract;
@@ -29,7 +29,6 @@ pub use definitions::is_read_only_task;
 pub(crate) use deliverable_status::error as deliverable_error;
 pub(crate) use prompt_input::SystemPromptInput;
 pub(crate) use prompts::system_prompt;
-#[cfg(test)]
 pub use registry::restrict_registry;
 pub use runtime_gate::runtime_denial;
 pub(crate) use verification_contract::VerificationContract;

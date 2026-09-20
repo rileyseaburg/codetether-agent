@@ -1,4 +1,4 @@
-use crate::config::{Config, LspSettings, PermissionConfig, TelemetryConfig};
+use crate::config::{Config, LspSettings, PermissionConfig, ReviewConfig, TelemetryConfig};
 
 impl Config {
     pub(super) fn merge_permissions(&mut self, other: PermissionConfig) {
@@ -24,6 +24,21 @@ impl Config {
         self.lsp.linters.extend(other.linters);
         if other.disable_builtin_linters {
             self.lsp.disable_builtin_linters = true;
+        }
+    }
+
+    pub(super) fn merge_review(&mut self, other: ReviewConfig) {
+        if other.mode != Default::default() {
+            self.review.mode = other.mode;
+        }
+        if other.model.is_some() {
+            self.review.model = other.model;
+        }
+        if other.max_steps.is_some() {
+            self.review.max_steps = other.max_steps;
+        }
+        if other.timeout_secs.is_some() {
+            self.review.timeout_secs = other.timeout_secs;
         }
     }
 }

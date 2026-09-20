@@ -26,6 +26,7 @@ impl Default for Config {
             guardrails: CostGuardrails::default(),
             lsp: LspSettings::default(),
             rlm: crate::rlm::RlmConfig::default(),
+            review: crate::config::ReviewConfig::default(),
         }
     }
 }

@@ -8,7 +8,7 @@ members = [
 
 [package]
 name = "codetether-agent"
-version = "4.7.6-dev.6"
+version = "4.7.6-dev.8"
 
 
 edition = "2024"
@@ -164,7 +164,7 @@ k8s-openapi = { version = "0.28.0", features = ["latest"] }
 
 # Plugin signing & sandboxing
 # See docs/tetherscript_dependency.md for the build requirement.
-tetherscript = { version = "0.1.0-alpha.30", features = ["tera"], optional = true }
+tetherscript = { version = "0.1.0-alpha.30", features = ["tera", "openssl-tls"], optional = true }
 sha2 = "0.11.0"
 hmac = "0.13.0"
 hex = "0.4"
