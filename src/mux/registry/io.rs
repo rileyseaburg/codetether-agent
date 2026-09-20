@@ -6,27 +6,19 @@ use super::MuxRecord;
 
 pub(in crate::mux) async fn store(record: &MuxRecord) -> Result<()> {
     let root = super::path::root()?;
-    tokio::fs::create_dir_all(&root)
-        .await
-        .context("create mux registry")?;
+    std::fs::create_dir_all(&root).context("create mux registry")?;
     super::permissions::owner_only_dir(&root)?;
     let path = super::path::record(&record.key)?;
     let temp = path.with_extension(format!("{}.tmp", std::process::id()));
     let bytes = serde_json::to_vec_pretty(record).context("encode mux record")?;
-    tokio::fs::write(&temp, bytes)
-        .await
-        .context("write mux record")?;
+    std::fs::write(&temp, bytes).context("write mux record")?;
     super::permissions::owner_only_file(&temp)?;
-    tokio::fs::rename(&temp, &path)
-        .await
-        .context("publish mux record")
+    std::fs::rename(&temp, &path).context("publish mux record")
 }
 
 /// Load the server record stored under `key`.
 pub(in crate::mux) async fn load_key(key: &str) -> Result<MuxRecord> {
-    let bytes = tokio::fs::read(super::path::record(key)?)
-        .await
-        .context("read mux record")?;
+    let bytes = std::fs::read(super::path::record(key)?).context("read mux record")?;
     decode(&bytes)
 }
 
@@ -44,7 +36,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<MuxRecord> {
 }
 
 pub(in crate::mux) async fn remove_key(key: &str) -> Result<()> {
-    match tokio::fs::remove_file(super::path::record(key)?).await {
+    match std::fs::remove_file(super::path::record(key)?) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(error).context("remove mux record"),

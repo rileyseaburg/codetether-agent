@@ -20,7 +20,8 @@ pub(in crate::mux) async fn wait_for_record(
     name: &str,
     child: &mut std::process::Child,
 ) -> Result<SessionTarget> {
-    for _ in 0..100 {
+    let mut backoff = crate::mux::backoff::Backoff::new();
+    while backoff.remaining() {
         if let Some(status) = child.try_wait()? {
             bail!("mux server exited during startup: {status}");
         }
@@ -31,7 +32,7 @@ pub(in crate::mux) async fn wait_for_record(
         {
             return Ok(target);
         }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        backoff.sleep().await;
     }
     let _ = child.kill();
     bail!("timed out waiting for mux server startup")

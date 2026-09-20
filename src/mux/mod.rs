@@ -20,6 +20,7 @@
 //! ```
 
 mod agent_task;
+mod backoff;
 mod client;
 mod command;
 pub(crate) mod control;

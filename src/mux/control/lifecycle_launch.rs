@@ -39,7 +39,10 @@ pub(super) async fn tui(name: &str, session_id: Option<&str>) -> Result<()> {
 }
 
 pub(super) async fn wait_runtime(name: &str) -> Result<MuxSessionSummary> {
-    for _ in 0..200 {
+    // Preserves the original 200 x 50ms budget while polling far more eagerly
+    // at the start, where the TUI usually registers within a few milliseconds.
+    let mut backoff = crate::mux::backoff::Backoff::with_budget(std::time::Duration::from_secs(10));
+    while backoff.remaining() {
         let sessions = super::list_sessions().await?;
         if let Some(session) = sessions
             .into_iter()
@@ -47,7 +50,7 @@ pub(super) async fn wait_runtime(name: &str) -> Result<MuxSessionSummary> {
         {
             return Ok(session);
         }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        backoff.sleep().await;
     }
     bail!("mux TUI did not register semantic state")
 }

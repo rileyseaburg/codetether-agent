@@ -6,11 +6,12 @@ use anyhow::{Result, bail};
 
 /// Wait until no live server hosts `name`.
 pub(super) async fn wait_stopped(name: &str) -> Result<()> {
-    for _ in 0..100 {
+    let mut backoff = crate::mux::backoff::Backoff::new();
+    while backoff.remaining() {
         if crate::mux::registry::find_session(name).await?.is_none() {
             return Ok(());
         }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        backoff.sleep().await;
     }
     bail!("mux session did not stop cleanly")
 }
