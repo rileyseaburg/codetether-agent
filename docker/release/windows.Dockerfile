@@ -9,12 +9,16 @@ RUN sh /usr/local/share/codetether/apt-https.sh && apt-get update && apt-get ins
     mingw-w64 \
     pkg-config \
     libssl-dev \
+    perl \
     g++ \
     protobuf-compiler \
     libprotobuf-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rustup target add x86_64-pc-windows-gnu
+
+# Vendored OpenSSL needs modules absent from Debian's minimal perl-base.
+RUN perl -MFindBin -MIPC::Cmd -e 1
 
 RUN cargo install sccache --locked
 ARG RUSTC_WRAPPER=sccache
