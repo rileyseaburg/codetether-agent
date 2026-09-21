@@ -1,27 +1,18 @@
-//! Native packed Bonsai inference in Candle. No subprocess, server or full FP16 weights.
-include!("modules_0.rs");
-include!("modules_1.rs");
-include!("modules_2.rs");
-include!("modules_3.rs");
-use contract::validate;
-use index::Index;
-pub(super) use model::Model;
+//! Compatibility bridge for existing thinker callers; native ownership lives in provider::bonsai.
+mod native_new;
+pub(super) use crate::provider::bonsai::native::Model;
 pub(super) fn try_load(
     config: &super::ThinkerConfig,
 ) -> anyhow::Result<Option<super::CandleThinker>> {
-    if detect::matches(config)? {
+    if crate::provider::bonsai::native::matches(
+        config.candle_model_path.as_deref(),
+        config.candle_arch.as_deref(),
+    )? {
         native_new::load(config).map(Some)
     } else {
         Ok(None)
     }
 }
-
-#[cfg(all(test, feature = "candle-cuda"))]
-mod cuda_rotation_tests;
-#[cfg(all(test, feature = "candle-cuda"))]
-mod cuda_tests;
-
-mod contract_inverse;
 
 #[cfg(all(test, feature = "candle-cuda"))]
 mod full_model_tests;

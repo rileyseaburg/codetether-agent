@@ -1,48 +1,34 @@
-// Dedicated Bonsai provider contract. This hook does not perform inference.
-// Native Candle binding owns weights, device lifetime, cancellation and token delivery.
+// Runnable front door to the dedicated in-process Bonsai provider.
+// Usage: tetherscript run examples/tetherscript/bonsai_provider.tether -- "Your prompt"
+// With no arguments, run a small native inference smoke request.
 fn name() { return "bonsai" }
 fn models() { return ["ternary-bonsai-2-27b-pq2"] }
-fn prepare(request) {
-    if request["model"] != "ternary-bonsai-2-27b-pq2" { return Err("unsupported Bonsai model") }
-    if request["messages"].len() == 0 { return Err("messages must not be empty") }
-    if request["max_tokens"] <= 0 { return Err("max_tokens must be positive") }
-    let out = map()
-    out["provider"] = name()
-    out["runtime"] = "native_candle"
-    out["model"] = request["model"]
-    out["messages"] = request["messages"]
-    out["tools"] = request["tools"]
-    out["temperature"] = request["temperature"]
-    out["top_p"] = request["top_p"]
-    out["max_tokens"] = request["max_tokens"]
-    out["stop"] = request["stop"]
-    return Ok(out)
+fn invocation(arguments) {
+    let mut prompt = "Reply with exactly BONSAI_NATIVE_OK and nothing else."
+    if arguments.len() > 0 { prompt = arguments.join(" ") }
+    return ["bonsai", "--max-tokens", "64", "--prompt", prompt]
 }
-// Decode rate excludes loading, prefill and the first token supplied by prefill.
-fn timings(measured) {
-    let out = map()
-    out["load_ms"] = measured["load_ms"]
-    out["prefill_ms"] = measured["prefill_ms"]
-    out["ttft_ms"] = measured["ttft_ms"]
-    out["decode_ms"] = measured["decode_ms"]
-    out["generated_tokens"] = measured["generated_tokens"]
-    out["decode_tps"] = nil
-    if measured["generated_tokens"] > 1 && measured["decode_ms"] > 0 {
-        out["decode_tps"] = (measured["generated_tokens"] - 1) * 1000.0 / measured["decode_ms"]
+fn run(arguments) {
+    let mut executable = env_get("CODETETHER_BIN")?
+    if executable == nil || executable == "" { executable = "codetether" }
+    let probe = process_run(executable, ["bonsai", "--help"], nil, 10000)?
+    if !probe["success"] {
+        return Err("Installed CodeTether has no native Bonsai command. Install this checkout with candle-cuda; no fallback provider was invoked.")
     }
-    out["end_to_end_tps"] = nil
-    if measured["total_ms"] > 0 { out["end_to_end_tps"] = measured["generated_tokens"] * 1000.0 / measured["total_ms"] }
-    return out
+    println("Running native Bonsai on CUDA; first use includes model loading and prompt prefill.")
+    let result = process_run(executable, invocation(arguments), nil, 300000)?
+    if result["stdout"] != "" { println(result["stdout"]) }
+    if result["stderr"] != "" { println(result["stderr"]) }
+    if result["timed_out"] { return Err("Native Bonsai request exceeded five minutes") }
+    if !result["success"] { return Err("Native Bonsai command exited with code " + str(result["code"])) }
+    return Ok(nil)
 }
-// A stream must preserve typed events rather than recast tool calls as text.
-fn event(kind, payload) {
-    if kind != "text" && kind != "thinking" && kind != "tool_call" && kind != "done" && kind != "error" {
-        return Err("unsupported native stream event")
+fn main() {
+    let arguments = env_args()
+    if arguments.len() == 1 && arguments[0] == "--help" {
+        println("Usage: tetherscript run examples/tetherscript/bonsai_provider.tether -- [prompt]")
+        println("Runs codetether bonsai, using native Candle/CUDA. No HTTP server or cloud provider.")
+        return Ok(nil)
     }
-    let out = map()
-    out["kind"] = kind
-    out["payload"] = payload
-    return Ok(out)
+    run(arguments).unwrap()
 }
-// No complete()/stream() shim: these require the actual bound native capability.
-// Do not register this as a working provider until that binding is exercised.

@@ -5,8 +5,7 @@
 //! `CODETETHER_DISABLE_ENV_FALLBACK=1`.
 
 use super::bedrock::{AwsCredentials, BedrockProvider, DEFAULT_REGION};
-use super::registry::ProviderRegistry;
-use crate::provider::traits::Provider;
+use super::{registry::ProviderRegistry, traits::Provider};
 use anyhow::Result;
 use std::sync::Arc;
 
@@ -76,6 +75,7 @@ pub fn register_env_fallbacks(registry: &mut ProviderRegistry) {
     register_huggingface(registry);
     register_glm5(registry);
     register_local_cuda(registry);
+    super::bonsai::registration::environment(registry);
 }
 
 fn usai_base_url_from_env() -> Option<String> {

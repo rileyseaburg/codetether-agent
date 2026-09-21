@@ -1,10 +1,33 @@
+## Observed dedicated-provider run (dev.11)
+
+- **Static/local, real CUDA:** the standalone `tetherscript run
+  examples/tetherscript/bonsai_provider.tether` command returned
+  `BONSAI_NATIVE_OK` with exit code 0 through `codetether bonsai`.
+- **Static/local, real CUDA:** two direct requests in one process returned the
+  same token; the second reported `load_ms: 0.0`, `prefill_ms: 5018.412587`,
+  `decode_ms: 1094.604129`, and six generated token IDs. The five post-first-token
+  intervals correspond to approximately **4.57 decode tokens/sec**. This small
+  smoke measurement is not a large-sample performance benchmark.
+- **Focused CI-like:** the three embedded TetherScript/protocol regressions ran
+  with zero failures. Nine provider/native CPU tests also passed. The two
+  explicitly enabled CUDA tests passed: PQ2 multiplication and Hadamard rotation
+  matched their CPU references. These checks do not establish full-model logit
+  parity against an independent implementation.
+
+The current validation transcript is retained outside the checkout at
+`~/.local/state/codetether/codetether-bonsai-validate-20260921T024555Z.log`.
+
 # Native Candle: Ternary Bonsai 2 27B PQ2
 
 ## Scope and current validation
 
-This is a **source implementation**, not a claim that the installed binary can run it. No Cargo compilation, Rust tests, GPU parity tests, or native full-model inference were run after the user's stop instruction. The earlier llama service was stopped and disabled; its smoke result is **not** evidence for Candle.
+The dedicated provider is implemented in `src/provider/bonsai/`; native checkpoint
+loading and CUDA execution are under `native/`. It does not construct a
+`ThinkerClient`, run an agent or RLM loop, or call an HTTP model endpoint.
 
-The native path uses CodeTether's existing `local_cuda` provider and Candle thinker. It never launches llama.cpp, Python, or an inference HTTP server. The built binary must include `candle-cuda`; the normal CPU-only release is not sufficient.
+The binary must include `candle-cuda` and `tetherscript` (the latter is a default
+feature). A CPU-only reinstall cannot execute Bonsai. The prior `dev.8` smoke
+used the older adapter; it does not validate the new dedicated provider.
 
 ## Installed model data
 
@@ -23,17 +46,23 @@ The native path uses CodeTether's existing `local_cuda` provider and Candle thin
 - The decoder implements the checkpoint's 64-layer text-only hybrid: 48 gated-delta recurrent layers and 16 full-attention layers, including the Prism grouped-value-head permutation.
 - KV/recurrent state is reset between unrelated requests. Prefix reuse is disabled initially.
 - Runtime context is deliberately **4096**, not the checkpoint's 262K training window. Prefill is sequential and correctness-first; performance is not yet established.
-- Image input, structured tool calling, and streaming are **not advertised** by this existing native provider. A general text-inference model is not yet a replacement for the tool-using build agent.
+- Direct text streaming emits decoded token deltas while generation runs. Image input and structured tool calling are not advertised.
+- Model weights persist across requests on one provider instance; sampling changes do not reload them. Load, prefill, TTFT, and warm decode timing are separate fields.
 
 ## Use only after the native build and parity gates succeed
 
 ```sh
 . script/bonsai-candle-env.sh
-codetether models --provider local_cuda
-codetether run --model local_cuda/ternary-bonsai-2-27b-pq2 --agent plan "Reply briefly."
+codetether models --provider bonsai
+codetether bonsai --prompt "Reply with exactly BONSAI_NATIVE_OK" --repeat 2
+# Runnable TetherScript entrypoint (not a hooks-only file):
+tetherscript run examples/tetherscript/bonsai_provider.tether -- "Say hello"
 ```
 
-The preset does not change your global default, start a server, or enable environment fallback in a Vault-only deployment. If `CODETETHER_DISABLE_ENV_FALLBACK=1` is set, an administrator must explicitly configure the existing native provider path; the preset does not bypass that policy.
+The direct command bypasses agent/session/Vault initialization and reads only the
+local checkpoint configuration. Registry discovery uses explicit environment
+opt-in, or a Vault `bonsai` entry with `model_path`, `tokenizer_path`, and optional
+`cuda_ordinal`. The preset does not bypass `CODETETHER_DISABLE_ENV_FALLBACK=1`.
 
 ## Required validation before enabling
 

@@ -16,6 +16,9 @@ pub enum Command {
     /// Native Windows capability diagnostics (no model or Vault required).
     Windows(super::windows::WindowsArgs),
 
+    /// Run the Bonsai LLM directly on CUDA, without agents, Vault or RLM.
+    Bonsai(super::bonsai::BonsaiArgs),
+
     /// Manage persistent network mux sessions
     Mux(MuxArgs),
 

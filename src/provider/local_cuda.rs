@@ -476,8 +476,6 @@ impl Default for LocalCudaConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[path = "local_cuda_catalog.rs"]
-    mod catalog;
 
     #[test]
     fn test_strip_inline_think_blocks() {

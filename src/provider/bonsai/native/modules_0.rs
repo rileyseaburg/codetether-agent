@@ -9,7 +9,6 @@ mod contract;
 mod contract_signs;
 mod contract_weights;
 mod data;
-mod detect;
 mod embedding;
 mod gdn;
 mod gdn_layout;

@@ -3,20 +3,26 @@ use super::model::Model;
 use anyhow::{Result, ensure};
 use candle_core::Tensor;
 impl Model {
-    pub fn forward(&mut self, input: &Tensor, pos: usize) -> Result<Tensor> {
-        let (batch, count) = input.dims2()?;
+    /// Direct host-token entry; no CPU -> GPU -> CPU token-ID round trip.
+    pub(crate) fn forward_tokens(
+        &mut self,
+        tokens: &[u32],
+        pos: usize,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<Tensor> {
+        let count = tokens.len();
         ensure!(
-            batch == 1 && count > 0 && pos == self.position,
-            "Bonsai requires a contiguous single-sequence request"
+            count > 0 && pos == self.position,
+            "Bonsai requires contiguous positions"
         );
         ensure!(
             pos.checked_add(count)
                 .is_some_and(|end| end <= self.config.context),
             "Bonsai runtime context exceeded"
         );
-        let tokens = input.to_vec2::<u32>()?;
         let mut last = None;
-        for token in &tokens[0] {
+        for token in tokens {
+            ensure!(!cancelled(), "Bonsai inference cancelled");
             let mut hidden = self.embedding.row(*token, &self.device)?;
             for layer in &mut self.layers {
                 hidden = layer.forward(&hidden, self.position, &self.config, &self.rope)?;
@@ -32,14 +38,5 @@ impl Model {
                 self.config.eps,
             )?)?
             .broadcast_add(&self.mask)?)
-    }
-    pub fn clear(&mut self) {
-        for layer in &mut self.layers {
-            layer.clear();
-        }
-        self.position = 0;
-    }
-    pub fn context(&self) -> usize {
-        self.config.context
     }
 }

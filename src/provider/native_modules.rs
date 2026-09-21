@@ -1,4 +1,6 @@
 // Native-provider catalog and feature-gated implementations.
+pub mod bonsai;
+mod init_dispatch_models;
 pub mod local_catalog;
 #[cfg(feature = "candle-cuda")]
 pub mod local_cuda;

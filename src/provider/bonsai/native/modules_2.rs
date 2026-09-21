@@ -10,7 +10,6 @@ mod matmul_tests;
 mod metadata;
 mod model;
 mod model_forward;
-mod native_new;
 mod norm_weight;
 mod output_mask;
 mod pq2;

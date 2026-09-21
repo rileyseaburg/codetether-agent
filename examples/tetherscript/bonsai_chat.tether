@@ -1,0 +1,22 @@
+// Bonsai ChatML rendering used by the dedicated native provider, not an HTTP shim.
+fn safe_text(value) { return value.replace("<|", "&lt;|").replace("|>", "|&gt;") }
+fn render(request) {
+    if request["messages"].len() == 0 { return Err("Bonsai messages are empty") }
+    if request["tools"].len() != 0 { return Err("Bonsai native tool protocol is not enabled yet") }
+    let mut out = ""
+    for message in request["messages"] {
+        let mut role = message["role"]
+        if role == "developer" { role = "system" }
+        if role != "system" && role != "user" && role != "assistant" { return Err("Unsupported Bonsai message role") }
+        out = out + "<|im_start|>" + role + "\n"
+        for part in message["content"] {
+            if part["type"] == "text" { out = out + safe_text(part["text"]) }
+            if part["type"] != "text" && part["type"] != "thinking" { return Err("Bonsai currently requires text content") }
+        }
+        out = out + "<|im_end|>\n"
+    }
+    return out + "<|im_start|>assistant\n<think>\n</think>\n"
+}
+fn main() {
+    println("Bonsai chat-template module. Run bonsai_provider.tether for native inference.")
+}

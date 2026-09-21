@@ -1,27 +1,19 @@
 //! Bind the packed native Bonsai decoder to the existing Candle generation harness.
 use super::super::{
-    ThinkerConfig, candle_device, candle_eos, candle_model::CandleModel, candle_resolve,
+    ThinkerConfig, candle_device, candle_model::CandleModel, candle_resolve,
     candle_runtime::CandleThinker,
 };
-use anyhow::{Context, Result};
-use std::{fs::File, io::BufReader};
+use anyhow::Result;
 pub(super) fn load(config: &ThinkerConfig) -> Result<CandleThinker> {
     let (path, tokenizer_path) = candle_resolve::paths(config)?;
     let (device, label) = candle_device::select_candle_device(config)?;
-    let mut reader = BufReader::new(File::open(path)?);
-    let index = super::Index::read(&mut reader)?;
-    super::validate(&index)?;
-    let tokenizer = tokenizers::Tokenizer::from_file(tokenizer_path)
-        .map_err(|_| anyhow::anyhow!("Cannot load Bonsai tokenizer"))?;
-    super::tokenizer::validate(&tokenizer, &index)?;
-    let eos = index
-        .metadata
-        .get("tokenizer.ggml.eos_token_id")
-        .and_then(serde_json::Value::as_u64)
-        .context("Missing Bonsai EOS token")?;
-    let eos_token_ids = candle_eos::collect_eos_token_ids(&tokenizer, &[u32::try_from(eos)?]);
-    let model = super::load::model(&index, &mut reader, &device)?;
-    let context_window = model.context();
+    let loaded = crate::provider::bonsai::native::open(
+        std::path::Path::new(path),
+        std::path::Path::new(tokenizer_path),
+        device.clone(),
+    )?;
+    let context_window = loaded.model.context();
+    let (model, tokenizer, eos_token_ids) = (loaded.model, loaded.tokenizer, loaded.eos);
     Ok(CandleThinker {
         model: CandleModel::Bonsai(model),
         tokenizer,

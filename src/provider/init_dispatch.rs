@@ -54,11 +54,8 @@ pub fn dispatch(provider_id: &str, secrets: &ProviderSecrets) -> Option<Arc<dyn 
     if provider_id == "gemini-web" {
         return super::init_dispatch_impl::dispatch_gemini_web(secrets);
     }
-    if matches!(provider_id, "local-cuda" | "local_cuda" | "localcuda") {
-        return super::init_dispatch_impl::dispatch_local_cuda(secrets);
-    }
-    if provider_id == "huggingface" {
-        return super::init_dispatch_impl::dispatch_huggingface(secrets);
+    if let Some(provider) = super::init_dispatch_models::dispatch(provider_id, secrets) {
+        return provider;
     }
 
     // ── Providers that require an api_key ──────────────────────────

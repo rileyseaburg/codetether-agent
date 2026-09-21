@@ -26,7 +26,7 @@ test -x "$test_binary"
 mkdir -p /tmp/bonsai-cuda-stubs
 ln -sf /usr/local/cuda-12.1/lib64/stubs/libcuda.so /tmp/bonsai-cuda-stubs/libcuda.so.1
 export LD_LIBRARY_PATH="/tmp/bonsai-cuda-stubs:$LD_LIBRARY_PATH"
-"$test_binary" cognition::thinker::candle::bonsai:: --test-threads=1 \
+"$test_binary" provider::bonsai::native:: --test-threads=1 \
   2>&1 | tee bonsai-evidence/cpu-reference-tests.txt
 cargo +1.95.0 build --locked --profile ci --features candle-cuda --bin codetether \
   2>&1 | tee bonsai-evidence/binary-build.txt

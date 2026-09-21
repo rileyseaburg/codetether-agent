@@ -26,6 +26,7 @@ mod startup_crash;
 mod startup_vault;
 mod worktree_cli;
 
+mod native_cli;
 mod provider_cli_alias;
 use provider_cli_alias::normalize_provider_alias;
 
@@ -468,13 +469,9 @@ async fn run_rlm_command(args: cli::RlmArgs) -> anyhow::Result<()> {
 
 #[tokio::main(worker_threads = 8)]
 async fn main() -> anyhow::Result<()> {
-    // Installer probes bypass dotenv and services; other commands keep dotenv-first parsing.
-    if std::env::args_os()
-        .nth(1)
-        .is_some_and(|arg| arg == "windows")
-        && let Some(Command::Windows(args)) = Cli::parse().command
-    {
-        return cli::windows::run(args).await;
+    // Native local commands bypass network credentials and agent startup.
+    if let Some(result) = native_cli::early().await {
+        return result;
     }
     // Load local .env for developer workflows (e.g. `cargo run` without exported vars).
     // Existing process environment still takes precedence over .env values.
@@ -490,8 +487,8 @@ async fn main() -> anyhow::Result<()> {
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
     let _ = jsonwebtoken::crypto::aws_lc::DEFAULT_PROVIDER.install_default();
     let cli = Cli::parse();
-    if let Some(Command::Windows(args)) = &cli.command {
-        return cli::windows::run(args.clone()).await;
+    if let Some(result) = native_cli::dispatch(&cli.command).await {
+        return result;
     }
 
     // Check if we're running TUI - if so, redirect logs to file instead of stdout
@@ -541,6 +538,7 @@ async fn main() -> anyhow::Result<()> {
     let (mcp_project_root, mcp_project_was_explicit) = (cli.project.clone(), cli.project.is_some());
 
     match cli.command {
+        Some(Command::Bonsai(args)) => cli::bonsai::run(args).await,
         Some(Command::Windows(args)) => cli::windows::run(args).await,
         Some(Command::Tui(args)) => {
             let allow_network = args.allow_network;
