@@ -5,6 +5,7 @@ pub(crate) mod command_pty;
 pub(crate) mod command_session;
 pub mod collaboration;
 pub mod exec_command;
+mod process_tree;
 pub(crate) mod shell_command_guard;
 pub mod temp_write_guard;
 pub mod write_stdin;
