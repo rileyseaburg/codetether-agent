@@ -1,475 +1,271 @@
 # CodeTether Agent
 
-[![Crates.io](https://img.shields.io/crates/v/codetether-agent.svg)](https://crates.io/crates/codetether-agent)
-[![npm](https://img.shields.io/npm/v/codetether.svg)](https://www.npmjs.com/package/codetether)
 [![GitHub Releases](https://img.shields.io/badge/releases-GitHub-blue)](https://github.com/rileyseaburg/codetether-agent/releases)
+[![Crates.io](https://img.shields.io/crates/v/codetether-agent.svg)](https://crates.io/crates/codetether-agent)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-CodeTether is a Rust-native coding agent for interactive terminal work,
-long-running autonomous tasks, and multi-agent coordination. It combines a
-rich TUI, persistent tmux-like sessions, local and remote model providers,
-swarm execution, MCP, A2A, and a scriptable plugin runtime in one binary.
+CodeTether Agent is an A2A-native AI coding agent for terminal-first software
+work. It ships as one Rust binary, `codetether`, and combines an interactive
+TUI, one-shot prompts, persistent mux sessions, managed Git worktrees,
+provider-backed model routing, MCP, A2A workers, swarm execution, and a
+TetherScript plugin runtime.
 
 ![CodeTether terminal interface](docs/tui-screenshot.png)
 
-## Why CodeTether
+## What it is
 
-- **Persistent workspaces** — detach from shells or agent TUIs and reconnect
-  later without wrapping CodeTether in tmux.
-- **Long-horizon memory** — full workspace recall with bounded retained memory,
-  even across thousands of sessions.
-- **One agent, many surfaces** — use the TUI, one-shot CLI, MCP server, A2A
-  worker, HTTP server, or autonomous loops.
-- **Parallel execution** — split complex work across local tasks, Git
-  worktrees, or Kubernetes pods.
-- **Extensible at runtime** — add TetherScript plugins without modifying or
-  rebuilding the Rust binary.
-- **Security by default** — mandatory API authentication, append-only auditing,
-  project trust boundaries, configurable tool policy, and Vault-first secrets.
+CodeTether is built for developers who want an agent that can stay close to the
+repository and keep working across longer tasks:
 
-## Quick Start
+- **Interactive by default**: running `codetether` starts the TUI.
+- **Scriptable when needed**: use `codetether run "..."` for one-shot work.
+- **Session-oriented**: mux sessions let you detach, reconnect, and steer work.
+- **Multi-agent capable**: swarm, Ralph, Forage, and A2A cover autonomous and
+  distributed workflows.
+- **Tool-aware**: native tools, browser control, Windows automation, MCP, and
+  TetherScript plugins run through the same agent runtime.
+- **Security-conscious**: Vault-first provider secrets, mandatory server auth,
+  audit logs, policy hooks, approvals, and managed worktree isolation are part
+  of the normal operating model.
 
+## Install
+
+The GitHub release installers are the preferred way to get the current binary.
+Registry packages can lag behind release assets.
 
 ### Windows
 
-**1. Install or update.** Open **Windows PowerShell normally**, not as administrator, and paste:
+Open PowerShell normally, not as Administrator:
 
 ```powershell
 irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 | iex
-```
-
-Wait for setup to finish. Approve only its explained UAC requests; stop on a setup error.
-**2. Verify what this terminal launches.** Paste separately after installation:
-
-```powershell
-Get-Command codetether -All | Select-Object CommandType, Source
 codetether --version
 ```
 
-Compare with the [GitHub release](https://github.com/rileyseaburg/codetether-agent/releases) (currently `4.7.6-dev.6`). Missing/wrong command? Follow [Windows registration and alias checks](docs/install_windows.md), not repeated restarts.
-**Update an existing Vault token without reinstalling:** [one PowerShell command](docs/update_vault_windows.md).
+If the command is not found or resolves to an old binary, use
+[Windows installation and PATH checks](docs/install_windows.md). To update only
+an existing Vault token, see [update Vault on Windows](docs/update_vault_windows.md).
 
 ### Linux and macOS
 
-**1. Install or update.** Open a terminal and paste:
-
 ```sh
 curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
-```
-
-**2. Verify the command and version.** Paste separately after installation:
-
-```sh
 command -v codetether
 codetether --version
 ```
 
-Compare with the GitHub release above. See [Unix installation and PATH checks](docs/install_unix.md) if it differs.
-
-### All platforms: credentials and first launch
-
-**3. Configure credentials, then launch.** New source builds offer [first-class `codetether vault` commands](docs/vault_cli.md); published dev.6 assets do not yet include them. Use [Windows Vault setup](docs/install_windows_vault.md) or [Unix Vault setup](docs/install_unix_vault.md). These include hidden token entry, model discovery, and the commands to start CodeTether. Never paste tokens into chat.
-
-## Other installation methods
-
-Registry packages can lag GitHub releases; use the official installers above for its current release.
+If the command is not found or resolves to an old binary, use
+[Unix installation and PATH checks](docs/install_unix.md).
 
 ### Cargo
 
-```bash
+```sh
 cargo install codetether-agent
 ```
 
-Optional local-inference acceleration is opt-in and off by default. Enable
-`candle` for CPU-only local models, or one of `candle-cuda`, `candle-mkl`, or
-`candle-accelerate` for hardware acceleration:
+From a checkout:
 
-```bash
-cargo install codetether-agent --features candle-cuda
-```
-
-### From Source
-
-```bash
+```sh
 git clone https://github.com/rileyseaburg/codetether-agent.git
 cd codetether-agent
 cargo install --path .
 ```
 
-## Persistent Mux Sessions
+Optional features are explicit. The default feature set includes TetherScript.
+Local model, QUIC, and FIPS builds opt in separately:
 
-The network mux keeps the server, windows, working directories, and child
-processes alive after the client disconnects. **One mux server coordinates one
-checkout and hosts any number of named sessions; no session can lease the whole workspace.** Each session is
-an isolated runtime: its own windows, login shell, TUI, durable CodeTether
-session, agent tasks, task list, and context tools. Sessions never share state
-with one another; the only thing they can share is the checkout on disk, and
-only explicit file/subtree claims are coordinated by the server's lease table.
-Unscoped commands do not serialize the checkout; see [the lease policy](docs/mux_path_leases.md).
-
-Git-backed sessions are automatically rooted in unique checkouts under
-`<repo>/.codetether-worktrees`, so each gets its own server. Pass
-`--no-worktree` to `mux new` or `mux resume` to use the requested directory
-directly and skip `git worktree add` entirely, which is the dominant cost of
-session startup in large repositories. `--no-worktree` shares the **checkout**,
-not the session: when a live server already owns that directory, the new
-session joins it and falls in line behind the same lease coordinator. The
-choice is recorded in the server snapshot, so new windows and `mux roll`
-restarts keep it.
-New sessions immediately start the user's login shell (`$SHELL`,
-including zsh on macOS). Windows shell selection prefers PowerShell; interactive Windows
-mux sessions still require a future ConPTY backend.
-
-```bash
-# Create and attach to a session in a project directory.
-codetether mux new backend /work/backend
-
-# Create one without attaching.
-codetether mux new frontend /work/frontend -d
-
-# Skip managed-worktree allocation and use the directory as-is (fastest start).
-# A second --no-worktree session on the same directory joins the same server.
-codetether mux new frontend /work/frontend -d --no-worktree
-codetether mux new frontend-tests /work/frontend -d --no-worktree
-
-# List, reconnect, and stop sessions. kill closes one session; the server
-# exits on its own once its last session is closed.
-codetether mux list
-codetether mux attach backend
-codetether mux kill backend
-codetether mux kill-all
+```sh
+cargo install --path . --features candle
+cargo install --path . --features candle-cuda
+cargo install --path . --features quic-transport
+cargo install --path . --features fips
 ```
 
-From the persistent shell, run `codetether tui --access-mode full` or any other
-normal shell command. Press `Ctrl+B`, then `D` to return to the shell that
-launched CodeTether while the mux shell and its children keep running.
+FIPS builds require CMake, Go, and a C compiler. See [FIPS](docs/fips.md).
 
-Every child process inherits the mux session identity. Before a mutating tool
-runs, the mux server atomically leases its target paths to that prompt. An
-overlapping edit waits inside the coordinator for up to 60 seconds and proceeds
-as soon as the owner releases it; agents never need to call `wait_agent`.
-Mux-managed prompts also cannot delegate blocked work to another agent.
-Mutating shell commands use their exact `workdir`/`cwd`, and lease paths are
-normalized to the containing Git worktree. An unscoped mutation cannot lease
-the filesystem root or home directory. Proven read-only commands remain
-concurrent. Mutations fail closed if the mux authority cannot be reached. A
-timed-out wait reports its duration plus the owning agent and path. Leases are
-renewed during the prompt, released on completion, or expired after 90 seconds
-if an agent disappears.
+## First run
 
-Closing a window or killing its mux session does not delete its worktree or
-`codetether/mux-*` branch. This preserves unmerged agent changes for explicit
-review and integration instead of silently discarding them.
+Configure credentials before asking the agent to call a model. CodeTether loads
+provider secrets from HashiCorp Vault first; local environment fallbacks are for
+development convenience and can be disabled.
 
-If the persistent shell exits, the `mux>` control prompt appears:
-
-- Enter the desired shell command to start another persistent program.
-- Use `new PATH`, `cd PATH`, `select ID`, and `close ID` to manage windows.
-- Press `Tab` after `new` or `cd` to complete folders.
-- Enter `detach` at `mux>` to disconnect while the session keeps running.
-
-The mux prompt is a control surface, not a shell parser. Launch `bash -l` when
-you want normal shell behavior such as pipelines, aliases, and shell built-ins.
-
-## Measured Long-Running Performance
-
-The current implementation is tested against real session and PTY workloads,
-not only synthetic unit fixtures.
-
-| Workload | Before | After | Change |
-|---|---:|---:|---:|
-| Recall retained RSS across 4,844 sessions | 749,128 KiB | 27,356 KiB | 96.3% less |
-| Idle mux reads in about one second | 57 | 1 | 98.2% fewer |
-| Mux replay-buffer RSS delta | 10,664 KiB | 6,668 KiB | 37.5% less |
-| Threads added by 24 live programs | 48 | 25 | 47.9% fewer |
-| Replay-buffer throughput | 15,369 MiB/s | 20,769 MiB/s | 35.1% faster |
-
-Recall streams every cataloged sidecar through a bounded top-K ranker instead
-of retaining a decoded workspace in every TUI. The mux uses event-driven
-output, shared child reaping, and a bounded 4 MiB replay buffer.
-
-Legacy recall backfill is disabled by default so opening a TUI never scans and
-deserializes an entire workspace's historical sessions. Set
-`CODETETHER_RECALL_BACKFILL=1` for a bounded migration of up to eight session
-files smaller than 8 MiB; ordinary session saves keep sidecars current.
-
-See the reproducible [recall memory benchmark](docs/benchmarks/recall-memory.md),
-[mux long-horizon benchmark](docs/benchmarks/mux-long-horizon.md), and
-[runtime memory controls](docs/runtime_memory.md) for methodology and
-correctness coverage.
-
-## Core Workflows
-
-| Goal | Command |
-|---|---|
-| Interactive agent | `codetether` |
-| One-shot task | `codetether run "task"` |
-| Parallel sub-agents | `codetether swarm "complex task"` |
-| PRD-driven loop | `codetether ralph run --prd prd.json` |
-| OKR opportunity loop | `codetether forage --loop --execute` |
-| Large-context analysis | `codetether rlm "question" -f path` |
-| Local code index | `codetether index --path src --json` |
-| A2A server | `codetether serve --port 4096` |
-| A2A worker | `codetether worker --server URL` |
-| MCP stdio server | `codetether mcp serve` |
-| Available models | `codetether models` |
-
-### Access Modes
-
-CodeTether exposes the same access policy in the TUI and one-shot runner:
-
-| Mode | Behavior |
-|---|---|
-| `ask` | Request approval for protected actions |
-| `approve` | Auto-approve safe actions and ask for higher-risk operations |
-| `full` | Allow full tool access without approval prompts |
-
-```bash
-codetether tui --access-mode approve
-codetether run "fix the failing test" --access-mode full
+```sh
+codetether vault --help
+codetether auth --help
+codetether models
 ```
 
-`--yolo` also enables full access and automatic edit application. Use it only
-in a workspace where that level of authority is intentional.
+Then start the interactive UI:
 
-### TUI Essentials
-
-Useful commands include:
-
-| Command | Purpose |
-|---|---|
-| `/help` | Open the complete command and key reference |
-| `/status` | Show session, model, context, and policy state |
-| `/access-mode MODE` | Change the live access policy |
-| `/model` | Select a provider and model |
-| `/file PATH` | Attach a file to the conversation |
-| `/mux` | Manage persistent sessions and workspace windows |
-| `/spawn NAME` | Start a named sub-agent |
-| `/agents` | Open the unified agent dashboard |
-| `/swarm TASK` | Run a task with parallel sub-agents |
-| `/undo [N]` | Remove recent turns from the current session |
-| `/fork [N]` | Fork the session from an earlier point |
-| `/audit` | Inspect the action trail |
-
-Press `?` in the TUI for current key bindings.
-
-## Capabilities
-
-### Sessions and Recall
-
-The canonical transcript stays append-only. Every provider turn receives a
-fresh derived context that can compress oversized history and repair tool-call
-pairs without rewriting the source session. Recall searches the canonical
-history, so older details remain available even after context compression.
-
-### Swarm, Ralph, and Forage
-
-- **Swarm** decomposes a task and runs sub-agents concurrently using local
-  tasks or isolated Kubernetes pods.
-- **Ralph** executes a PRD story by story and persists progress through the PRD,
-  `progress.txt`, and Git history.
-- **Forage** ranks work from active OKRs and can execute selected opportunities
-  in isolated worktrees.
-
-```bash
-codetether swarm "implement authentication with tests"
-codetether ralph create-prd --feature "User Auth" --project-name my-app
-codetether forage --top 5
+```sh
+codetether
+# or
+codetether tui
 ```
 
-### Recursive Language Model
+For a single prompt:
 
-RLM lets an agent explore content larger than its context window with
-structured head, tail, grep, count, slice, and recursive-query operations.
-
-```bash
-codetether rlm "What are the main components?" -f src/lib.rs
-cat service.log | codetether rlm "Summarize the failures" --content -
+```sh
+codetether run "inspect this repository and summarize the main entry points"
 ```
 
-### TetherScript Plugins
+For hardened deployments that must use Vault only:
 
-TetherScript is the runtime extension layer. Plugins can perform filesystem,
-HTTP, JSON, JavaScript, and browser operations without a Rust change or binary
-rebuild.
-
-```json
-{
-  "path": "examples/tetherscript/lmstudio_gemma.tether",
-  "hook": "chat",
-  "args": ["explain this codebase", "gemma"]
-}
-```
-
-See the [plugin contract and testing guide](docs/plugin_pattern.md) for the
-available built-ins and return-value conventions.
-
-## Providers and Credentials
-
-CodeTether supports hosted APIs, subscription OAuth, cloud platforms, and local
-models. Run `codetether models` to see what is available in the current
-environment.
-
-For subscription-backed OpenAI Codex access:
-
-```bash
-codetether auth codex
-```
-
-Provider secrets are loaded from HashiCorp Vault first. Local development can
-fall back to supported environment variables and local AWS credentials. Set
-`CODETETHER_DISABLE_ENV_FALLBACK=1` when Vault must be the only credential
-source.
-
-```bash
-export VAULT_ADDR="https://vault.example.com:8200"
-export VAULT_TOKEN="hvs.your-token"
-vault kv put secret/codetether/providers/openrouter api_key="..."
+```sh
 export CODETETHER_DISABLE_ENV_FALLBACK=1
+codetether serve
 ```
 
-Never commit credentials to `codetether.toml` or the repository.
+Credential guides:
 
-## MCP Integration
+- [Vault CLI](docs/vault_cli.md)
+- [Unix Vault setup](docs/install_unix_vault.md)
+- [Windows Vault setup](docs/install_windows_vault.md)
+- [Vault token renewal](docs/vault_token_renewal.md)
 
-CodeTether exposes its tool registry over MCP stdio. List the live registry
-instead of relying on a static tool count:
+## Common commands
 
-```bash
-codetether mcp list-tools
-codetether mcp serve
+```sh
+codetether                  # start the TUI
+codetether tui              # start the TUI explicitly
+codetether run "..."        # one-shot prompt
+codetether models           # list configured models
+codetether mux --help       # manage persistent mux sessions
+codetether worktree --help  # manage Git worktrees and editor integration
+codetether serve --help     # authenticated HTTP API server
+codetether worker --help    # A2A worker mode
+codetether mcp --help       # Model Context Protocol server/client
+codetether browserctl --help
+codetether windows --help
 ```
 
-Example client configuration:
+Autonomous and analysis commands:
 
-```json
-{
-  "mcpServers": {
-    "codetether": {
-      "command": "/absolute/path/to/codetether",
-      "args": ["mcp", "serve", "/absolute/path/to/workspace"],
-      "env": { "RUST_LOG": "error" }
-    }
-  }
-}
+```sh
+codetether swarm --help     # parallel sub-agent execution
+codetether ralph --help     # PRD-driven autonomous loop
+codetether forage --help    # OKR-guided opportunity scanner/executor
+codetether okr --help       # objectives and key results
+codetether rlm --help       # recursive large-content analysis
+codetether search --help    # routed grep/glob/web/memory/RLM search
+codetether benchmark --help
 ```
 
-For Codex CLI, use the equivalent TOML entry:
+Setup and operations commands:
 
-```toml
-[mcp_servers.codetether]
-command = "/absolute/path/to/codetether"
-args = ["mcp", "serve", "/absolute/path/to/workspace"]
+```sh
+codetether config --help
+codetether auth --help
+codetether vault --help
+codetether approval --help
+codetether connect --help
+codetether pr --help
+codetether cleanup --help
 ```
 
-## A2A and Agent Bus
+## Feature areas
 
-CodeTether can serve JSON-RPC and gRPC A2A transports while coordinating local
-agents through an in-process topic bus.
+### TUI and sessions
 
-```bash
-codetether serve --port 4096
-codetether worker --server https://api.example.com --codebases /work/project
-codetether spawn --name planner --peer http://localhost:4096/a2a
-```
+The TUI is the default front door for day-to-day work. Mux sessions make agent
+and shell work durable so you can disconnect, return, and steer later.
 
-See the [A2A multi-repository walkthrough](docs/a2a-spawn.md) and
-[public-agent guide](docs/a2a-public-agents.md) for discovery, agent cards, and
-transport details.
+Docs:
 
-## Security Model
+- [Mux agent tasks](docs/mux_agent_tasks.md)
+- [Worktree lifecycle](docs/worktree_lifecycle.md)
+- [Runtime memory](docs/runtime_memory.md)
 
-| Control | Behavior |
-|---|---|
-| API authentication | Bearer authentication is mandatory except for `/health` |
-| Audit trail | Actions are appended to a queryable JSON Lines log |
-| Project trust | Repository policy is ignored until its canonical path is trusted |
-| Tool policy | Access mode, approvals, sandboxing, and network access are explicit |
-| Plugin integrity | Tool manifests support Ed25519 signatures and SHA-256 checks |
-| Secrets | Vault is preferred; environment fallback can be disabled |
+### Agents, A2A, MCP, and autonomy
 
-Inspect or change project trust with:
+CodeTether can run as an interactive local agent, an A2A worker, an MCP
+server/client, or an autonomous loop. Ralph works from PRDs; Forage selects work
+from OKRs; Swarm splits tasks across isolated workers.
 
-```bash
-codetether config project status
-codetether config project trust
-codetether config project untrust
-```
+Docs:
 
-## Configuration
+- [A2A public agents](docs/a2a-public-agents.md)
+- [A2A spawn](docs/a2a-spawn.md)
+- [Collaboration tools](docs/collaboration-tools.md)
+- [PRD](docs/PRD.md)
 
-User configuration lives at `~/.config/codetether-agent/config.toml`.
-Project-local configuration lives in `codetether.toml` and is subject to the
-project trust boundary.
+### Tools and plugins
 
-```toml
-[default]
-provider = "anthropic"
-model = "claude-sonnet-4-20250514"
+Native tools cover files, shell commands, browser control, Windows desktop/OCR,
+Git, worktrees, search, model calls, and approvals. TetherScript plugins add
+repeatable tools without changing or rebuilding Rust code.
 
-[ui]
-theme = "marketing"
+Docs:
 
-[session]
-auto_save = true
+- [Plugin pattern](docs/plugin_pattern.md)
+- [Browser capability API](docs/browser-capability-api.md)
+- [Windows OCR and shadow input](docs/windows_ocr_shadow_input.md)
+- [Computer-use safety](docs/computer_use_safety.md)
 
-[lsp.linters]
-eslint = { enabled = true }
-ruff = { enabled = true }
-```
+### Local inference and specialized builds
 
-Important environment variables:
+Remote providers are the default path, but the crate also exposes opt-in local
+model features through Candle and Bonsai-oriented commands.
 
-| Variable | Purpose |
-|---|---|
-| `VAULT_ADDR`, `VAULT_TOKEN` | Vault connection and authentication |
-| `VAULT_MOUNT`, `VAULT_SECRETS_PATH` | Provider-secret location |
-| `CODETETHER_DISABLE_ENV_FALLBACK` | Require Vault-only provider credentials |
-| `CODETETHER_AUTH_TOKEN` | Override the generated API bearer token |
-| `CODETETHER_DATA_DIR` | Override the runtime data directory |
-| `CODETETHER_A2A_PEERS` | Seed A2A peer URLs |
-| `CODETETHER_MALLOC_ARENA_MAX` | Limit glibc allocator arenas |
-| `CODETETHER_MALLOC_TRIM_KIB` | Configure allocator trimming threshold |
+Docs:
 
-Runtime state is stored in `.codetether-agent`; isolated worktrees are stored
-in `.codetether-worktrees`. Preview cleanup before removing generated state:
+- [Native Bonsai](docs/native_bonsai.md)
+- [FIPS](docs/fips.md)
 
-```bash
-codetether cleanup --dry-run
-codetether cleanup --artifacts
-codetether worktree cleanup --base main --root ../project-worktrees
-```
+## Security model
 
-## Architecture
+CodeTether assumes credentials and tool execution need explicit boundaries:
 
-```text
-TUI / CLI / MCP / HTTP / A2A
-              │
-        Agent runtime
-     ┌────────┼─────────┐
- Providers   Tools    Sessions
-     │         │         │
-   Vault    Sandbox   Recall index
-              │
-      Bus / Swarm / Worktrees / Kubernetes
-```
+- Provider secrets are Vault-first.
+- HTTP server auth is mandatory except for `/health`.
+- Audit events are append-only JSON Lines records.
+- Policy checks can be enforced through OPA.
+- Tool execution supports approvals and runtime policy.
+- Agent work is isolated with managed worktrees where appropriate.
+- FIPS builds can require the AWS-LC FIPS module at startup.
 
-The library root is [src/lib.rs](src/lib.rs). Major subsystems live under
-`src/agent`, `src/provider`, `src/tool`, `src/session`, `src/tui`, `src/a2a`,
-`src/swarm`, and `src/server`.
+Start with [Vault CLI](docs/vault_cli.md), [FIPS](docs/fips.md), and
+[computer-use safety](docs/computer_use_safety.md) for operational details.
 
 ## Development
 
-```bash
-cargo test
-cargo clippy --all-features
-cargo fmt --check
+This repository is a Rust workspace. The main crate publishes the `codetether`
+binary and the `codetether_agent` library. Workspace crates include A2A worker
+core, browser support, and RLM support.
+
+Useful local checks:
+
+```sh
+cargo fmt
+cargo test --doc
+cargo test <focused_filter> --lib
 ./check_file_limits.sh
 ```
 
-Before contributing, read [AGENTS.md](AGENTS.md) for code style, documentation,
-testing, security, and file-size requirements.
+Avoid assuming all optional features work on every workstation. CUDA, local
+model, QUIC, and FIPS feature sets may require extra system toolchains.
+
+Repository shape:
+
+```text
+src/      main application, providers, tools, TUI, sessions, server, swarm
+crates/   workspace support crates
+docs/     installation, security, plugin, transport, and operations guides
+vendor/   vendored build dependencies used by selected workflows
+```
+
+## Documentation map
+
+- [Unix install](docs/install_unix.md)
+- [Windows install](docs/install_windows.md)
+- [Vault CLI](docs/vault_cli.md)
+- [Plugin pattern](docs/plugin_pattern.md)
+- [A2A public agents](docs/a2a-public-agents.md)
+- [Native Bonsai](docs/native_bonsai.md)
+- [FIPS](docs/fips.md)
+- [Worktree lifecycle](docs/worktree_lifecycle.md)
+- [TUI rendering performance](docs/tui_rendering_performance.md)
 
 ## License
 
-MIT
+MIT. See the package metadata in `Cargo.toml`.
