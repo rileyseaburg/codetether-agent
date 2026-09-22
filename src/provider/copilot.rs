@@ -2,14 +2,17 @@
 
 use super::util;
 use super::{
-    CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
-    Role, StreamChunk, ToolDefinition, Usage,
+    CompletionRequest, CompletionResponse, ContentPart, Message, ModelInfo, Provider, Role,
+    StreamChunk, ToolDefinition,
 };
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{Value, json};
+
+#[path = "copilot_response.rs"]
+mod copilot_response;
 
 const DEFAULT_BASE_URL: &str = "https://api.githubcopilot.com";
 const COPILOT_PROVIDER: &str = "github-copilot";
@@ -107,7 +110,7 @@ impl CopilotProvider {
                     } else {
                         json!({
                             "role": "assistant",
-                            "content": if text.is_empty() { "".to_string() } else { text },
+                            "content": if text.is_empty() { Value::Null } else { json!(text) },
                             "tool_calls": tool_calls
                         })
                     }
@@ -401,53 +404,6 @@ impl CopilotProvider {
 }
 
 #[derive(Debug, Deserialize)]
-struct CopilotResponse {
-    choices: Vec<CopilotChoice>,
-    #[serde(default)]
-    usage: Option<CopilotUsage>,
-}
-
-#[derive(Debug, Deserialize)]
-struct CopilotChoice {
-    message: CopilotMessage,
-    #[serde(default)]
-    finish_reason: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct CopilotMessage {
-    #[serde(default)]
-    content: Option<String>,
-    #[serde(default)]
-    tool_calls: Option<Vec<CopilotToolCall>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct CopilotToolCall {
-    id: String,
-    #[serde(rename = "type")]
-    #[allow(dead_code)]
-    call_type: String,
-    function: CopilotFunction,
-}
-
-#[derive(Debug, Deserialize)]
-struct CopilotFunction {
-    name: String,
-    arguments: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct CopilotUsage {
-    #[serde(default)]
-    prompt_tokens: usize,
-    #[serde(default)]
-    completion_tokens: usize,
-    #[serde(default)]
-    total_tokens: usize,
-}
-
-#[derive(Debug, Deserialize)]
 struct CopilotErrorResponse {
     error: Option<CopilotErrorDetail>,
     message: Option<String>,
@@ -622,70 +578,12 @@ impl Provider for CopilotProvider {
             anyhow::bail!("Copilot API error: {} {}", status, text);
         }
 
-        let response: CopilotResponse = serde_json::from_str(&text).context(format!(
-            "Failed to parse Copilot response: {}",
-            util::truncate_bytes_safe(&text, 200)
-        ))?;
-
-        let choice = response
-            .choices
-            .first()
-            .ok_or_else(|| anyhow::anyhow!("No choices"))?;
-
-        let mut content = Vec::new();
-        let mut has_tool_calls = false;
-
-        if let Some(text) = &choice.message.content
-            && !text.is_empty()
-        {
-            content.push(ContentPart::Text { text: text.clone() });
-        }
-
-        if let Some(tool_calls) = &choice.message.tool_calls {
-            has_tool_calls = !tool_calls.is_empty();
-            for tc in tool_calls {
-                content.push(ContentPart::ToolCall {
-                    id: tc.id.clone(),
-                    name: tc.function.name.clone(),
-                    arguments: tc.function.arguments.clone(),
-                    thought_signature: None,
-                });
-            }
-        }
-
-        let finish_reason = if has_tool_calls {
-            FinishReason::ToolCalls
-        } else {
-            match choice.finish_reason.as_deref() {
-                Some("stop") => FinishReason::Stop,
-                Some("length") => FinishReason::Length,
-                Some("tool_calls") => FinishReason::ToolCalls,
-                Some("content_filter") => FinishReason::ContentFilter,
-                _ => FinishReason::Stop,
-            }
-        };
-
-        Ok(CompletionResponse {
-            message: Message {
-                role: Role::Assistant,
-                content,
-            },
-            usage: Usage {
-                prompt_tokens: response
-                    .usage
-                    .as_ref()
-                    .map(|u| u.prompt_tokens)
-                    .unwrap_or(0),
-                completion_tokens: response
-                    .usage
-                    .as_ref()
-                    .map(|u| u.completion_tokens)
-                    .unwrap_or(0),
-                total_tokens: response.usage.as_ref().map(|u| u.total_tokens).unwrap_or(0),
-                ..Default::default()
-            },
-            finish_reason,
-        })
+        let response: copilot_response::CopilotResponse =
+            serde_json::from_str(&text).context(format!(
+                "Failed to parse Copilot response: {}",
+                util::truncate_bytes_safe(&text, 200)
+            ))?;
+        copilot_response::to_completion_response(response)
     }
 
     async fn complete_stream(

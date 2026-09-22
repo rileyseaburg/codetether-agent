@@ -1,25 +1,20 @@
 //! TLS / crypto provider initialization helpers.
 //!
 //! Rustls 0.23+ requires selecting a process-level `CryptoProvider` before
-//! performing TLS operations. In binaries this is typically done at startup,
-//! but our unit tests exercise code paths that create HTTPS clients directly.
+//! performing TLS operations. Every TLS path in CodeTether uses AWS-LC via
+//! `aws-lc-rs`; `ring` is deliberately excluded because it has no FIPS 140-3
+//! validation. Building with `--features fips` links the NIST-validated
+//! AWS-LC FIPS module and selects its FIPS-approved provider.
 //!
-//! This module provides a single, idempotent initializer.
+//! # Examples
+//!
+//! ```
+//! codetether_agent::tls::ensure_rustls_crypto_provider();
+//! assert!(rustls::crypto::CryptoProvider::get_default().is_some());
+//! ```
 
-use std::sync::OnceLock;
+mod fips;
+mod provider;
 
-static RUSTLS_PROVIDER_INSTALLED: OnceLock<()> = OnceLock::new();
-
-/// Ensure the rustls crypto provider is installed.
-///
-/// Safe to call multiple times.
-pub fn ensure_rustls_crypto_provider() {
-    RUSTLS_PROVIDER_INSTALLED.get_or_init(|| {
-        // We compile rustls with the `ring` provider.
-        if let Err(e) = rustls::crypto::ring::default_provider().install_default() {
-            // Ignore "already installed" style errors. Any other error is still
-            // non-fatal here; downstream TLS operations will surface failures.
-            tracing::debug!(error = ?e, "rustls crypto provider install_default() returned error");
-        }
-    });
-}
+pub use fips::{FipsStatus, fips_status, require_fips};
+pub use provider::ensure_rustls_crypto_provider;

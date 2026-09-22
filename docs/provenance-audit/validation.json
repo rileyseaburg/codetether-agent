@@ -1,0 +1,14 @@
+{
+  "level": "static/local",
+  "normalized_body_equal": true,
+  "source_characters": 21208,
+  "document_characters": 21208,
+  "first_difference": null,
+  "example_json_equal": true,
+  "reference_definitions": 21,
+  "missing_references": [],
+  "main_sections": 11,
+  "appendices": 3,
+  "code_fences": 6,
+  "ok": true
+}

@@ -1,0 +1,8 @@
+// Run from the repository root; see provenance-draft-maintenance.md.
+let source = fs_read("docs/provenance-audit/source.layout.txt").unwrap()
+let document = fs_read("docs/draft-seaburg-codetether-agent-provenance-00.md").unwrap()
+let script = fs_read("docs/provenance-audit/compare.js").unwrap()
+let inputs = "const source = " + json_encode(source) + "; const document = " + json_encode(document) + ";\n"
+let result = str(js_eval(inputs + script))
+println(result)
+fs_write("docs/provenance-audit/validation-tetherscript.json", result).unwrap()

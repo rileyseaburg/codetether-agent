@@ -84,3 +84,4 @@ state_v5.py
 /cookies.txt
 *.jsonl
 *.stderr
+.codetether-target/

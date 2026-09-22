@@ -482,10 +482,11 @@ async fn main() -> anyhow::Result<()> {
     // terminal (e.g. "Username for 'https://forgejo...':" freezing the TUI).
     codetether_agent::noninteractive_env::harden();
 
-    // Install process-wide crypto providers before any TLS/JWT usage.
-    // Both aws-lc-rs and ring are in the dependency tree, so rustls cannot auto-detect.
-    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    // Install process-wide crypto providers before any TLS/JWT usage, then
+    // fail closed if FIPS mode is required (fips build or env) but inactive.
+    codetether_agent::tls::ensure_rustls_crypto_provider();
     let _ = jsonwebtoken::crypto::aws_lc::DEFAULT_PROVIDER.install_default();
+    codetether_agent::tls::require_fips()?;
     let cli = Cli::parse();
     if let Some(result) = native_cli::dispatch(&cli.command).await {
         return result;
