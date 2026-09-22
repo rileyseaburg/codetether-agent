@@ -6,8 +6,8 @@ on:
         value: ${{ jobs.verify.outputs.version }}
 jobs:
   verify:
-    # Exclude the legacy LXC runner sharing the generic label.
-    runs-on: spotlessbinco-k8s-dind-privileged
+    # Exclusive label selects ephemeral Proxmox LXCs, not the shared Docker pool.
+    runs-on: codetether-release-proxmox
     timeout-minutes: 90
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -38,6 +38,7 @@ jobs:
           bash script/tests/release-verification.sh
           bash script/tests/windows-docker-cache.sh
           bash script/tests/windows-release-config.sh
+          bash script/tests/release-runner-routing.sh
           bash script/tests/unix_installer/native.sh "$PWD/artifacts/forgejo-verification/unix-installer"
           cargo +1.95.0 clippy --locked --lib --no-deps
           cargo +1.95.0 test --locked --lib --tests --no-fail-fast -- --test-threads=1 2>&1 | tee artifacts/forgejo-verification/tests.log

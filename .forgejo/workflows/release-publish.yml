@@ -9,7 +9,7 @@ permissions:
   contents: write
 jobs:
   publish:
-    runs-on: spotlessbinco-k8s-dind-privileged
+    runs-on: codetether-release-proxmox
     timeout-minutes: 15
     env:
       RELEASE_VERSION: ${{ inputs.version }}

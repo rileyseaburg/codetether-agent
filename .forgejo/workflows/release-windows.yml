@@ -7,11 +7,11 @@ on:
         type: string
 jobs:
   build:
-    runs-on: spotlessbinco-k8s-dind-privileged
+    runs-on: codetether-release-proxmox
     timeout-minutes: 120
     env:
       RELEASE_VERSION: ${{ inputs.version }}
-      DOCKER_HOST: tcp://127.0.0.1:2375
+      DOCKER_HOST: unix:///var/run/docker.sock
     steps:
       - uses: https://github.com/actions/checkout@v4
         with:

@@ -31,9 +31,17 @@ forgejo-cli --base "$FORGEJO_API_BASE" post \
 
 ## Runners and gates
 
-- Linux verification/build/publication: `spotlessbinco-k8s-dind-privileged`.
+- Linux verification/build/publication: `codetether-release-proxmox`.
+  This exclusive label belongs to global runner 174,
+  `proxmox-node-ephemeral-lxc`, backed by Proxmox LXC 300 (28 GiB RAM,
+  10 cores, capacity one). Jobs use `lxc://debian:bookworm:lxc docker`.
+  Do not substitute its generic labels: those also match Kubernetes runners.
+  The label is configured in `/etc/forgejo-runner/config.yml` inside LXC 300;
+  runner configuration changes require an idle-service restart. Existing labels
+  remain available to other projects. Capacity one serializes Linux-side jobs.
 - Windows GNU (`x86_64-pc-windows-gnu`): cross-built with Docker Buildx on
-  `spotlessbinco-k8s-dind-privileged`, using `docker/release/windows.Dockerfile`.
+  `codetether-release-proxmox`, using `docker/release/windows.Dockerfile` and
+  the ephemeral job's local Unix Docker socket, not the Kubernetes TCP daemon.
   The CI job requires the Dockerfile build to use `--locked` and publishes
   both versioned `.exe` and `.zip` files. No native Windows runner or Windows
   runtime smoke test is used by this cross-build.
