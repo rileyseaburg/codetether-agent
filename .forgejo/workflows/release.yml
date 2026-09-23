@@ -17,10 +17,6 @@ concurrency:
 jobs:
   meta:
     uses: ./.forgejo/workflows/release-meta.yml
-  verify:
-    # Establish the run with one task before fanning out across runners.
-    needs: meta
-    uses: ./.forgejo/workflows/release-verify.yml
   linux:
     needs: meta
     uses: ./.forgejo/workflows/release-unix.yml
@@ -45,6 +41,11 @@ jobs:
       runner: macOS
       target: ${{ matrix.target }}
       version: ${{ needs.meta.outputs.version }}
+  verify:
+    # Run the long serial gate after artifact builds so release artifacts are
+    # produced before the single Proxmox runner is held by verification.
+    needs: [linux, windows, macos]
+    uses: ./.forgejo/workflows/release-verify.yml
   publish:
     if: ${{ github.event.inputs.draft != 'true' && github.event.inputs.draft != true }}
     needs: [meta, verify, linux, windows, macos]
