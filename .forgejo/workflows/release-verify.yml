@@ -8,7 +8,7 @@ jobs:
   verify:
     # Exclusive label selects ephemeral Proxmox LXCs, not the shared Docker pool.
     runs-on: codetether-release-proxmox
-    timeout-minutes: 90
+    timeout-minutes: 180
     outputs:
       version: ${{ steps.version.outputs.version }}
     env:
