@@ -1,6 +1,6 @@
 //! Commit and push worker task changes.
 
-use super::{git_commit_push_ops as ops, task_timeline};
+use super::{git_commit_push_ops as ops, git_hook_gate, task_timeline};
 use anyhow::Result;
 use std::path::Path;
 
@@ -13,6 +13,8 @@ pub(super) async fn run(
     if !repo_path.join(".git").exists() || ops::status(repo_path).await?.trim().is_empty() {
         return Ok(None);
     }
+    // Never create a commit or push that skipped the repository's own hooks.
+    git_hook_gate::require_installed(repo_path).await?;
     timeline.checkpoint(task_timeline::TaskCheckpoint::CommitStaging);
     ops::git(repo_path, &["add", "--all"]).await?;
     if ops::status(repo_path).await?.trim().is_empty() {

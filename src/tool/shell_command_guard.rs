@@ -2,6 +2,8 @@
 
 use super::ToolResult;
 
+#[path = "shell_git_hooks.rs"]
+mod git_hooks;
 #[path = "shell_temp_write.rs"]
 mod temp_write;
 #[path = "shell_worktree_add.rs"]
@@ -16,6 +18,18 @@ pub(crate) fn result(tool: &str, command: &str) -> Option<ToolResult> {
     }
     if let Some(path) = temp_write::detected(command) {
         return super::temp_write_guard::denied_result(tool, &path);
+    }
+    if git_hooks::detected(command) {
+        return Some(ToolResult::structured_error(
+            "GIT_HOOK_BYPASS_BLOCKED",
+            tool,
+            "Commits and pushes must run the repository's hooks; `--no-verify` \
+             and hook-path overrides are blocked.",
+            None,
+            Some(serde_json::json!({
+                "fix": "Rerun without the bypass and address hook failures."
+            })),
+        ));
     }
     worktree_add::detected(command).then(|| {
         ToolResult::structured_error(

@@ -69,5 +69,23 @@ RUN chmod 0755 /usr/local/bin/rustyroad /usr/local/bin/forgejo-cli \
     && forgejo-cli --help >/dev/null 2>&1 || true
 
 # NOTE: forgejo-cli --help exits 2 after printing usage; || true keeps the
+
+# Repository hook tooling. Harvester pushes are refused unless each
+# repository's declared pre-commit/post-commit/pre-push hooks are installed
+# (see a2a/worker/git_hook_gate.rs), so these must be present, not optional.
+ARG PRE_COMMIT_VERSION=4.2.0
+ARG GITLEAKS_VERSION=8.28.0
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3-venv \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3 -m venv /opt/pre-commit \
+    && /opt/pre-commit/bin/pip install --no-cache-dir \
+        "pre-commit==${PRE_COMMIT_VERSION}" \
+    && ln -s /opt/pre-commit/bin/pre-commit /usr/local/bin/pre-commit \
+    && curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+        -o /tmp/gitleaks.tar.gz \
+    && tar -xzf /tmp/gitleaks.tar.gz -C /usr/local/bin gitleaks \
+    && rm /tmp/gitleaks.tar.gz \
+    && pre-commit --version && gitleaks version
 HEALTHCHECK --interval=60s --timeout=10s --start-period=15s \
-  CMD command -v git >/dev/null && command -v node >/dev/null && command -v vault >/dev/null || exit 1
+  CMD command -v git >/dev/null && command -v node >/dev/null && command -v vault >/dev/null && command -v pre-commit >/dev/null || exit 1
