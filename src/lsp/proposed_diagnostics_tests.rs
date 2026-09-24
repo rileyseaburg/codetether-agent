@@ -1,3 +1,6 @@
+#[path = "proposed_diagnostics_ready.rs"]
+mod ready;
+
 use super::{LspActionResult, client::LspClient, path_to_uri};
 
 #[tokio::test]
@@ -24,10 +27,7 @@ async fn proposed_content_uses_real_rust_analyzer() {
         .unwrap();
     client.initialize().await.unwrap();
 
-    let result = client
-        .diagnostics_for_content(&file, "pub fn broken( {\n")
-        .await
-        .unwrap();
+    let result = ready::broken_content(&client, &file).await;
 
     let LspActionResult::Diagnostics { diagnostics } = result else {
         panic!("wrong result")

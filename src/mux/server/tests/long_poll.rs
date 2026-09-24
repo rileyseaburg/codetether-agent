@@ -12,10 +12,11 @@ async fn pending_output_read_wakes_after_control_connection_input() {
     let mut control = MuxConnection::connect(&target).await.unwrap();
     control
         .request(super::requests::start(
-            "stty -echo; read value; printf got:$value; sleep 1",
+            "stty -echo && touch ready; read value; printf got:$value; sleep 1",
         ))
         .await
         .unwrap();
+    super::pty_io::wait_for(&workspace.path().join("ready")).await;
     let mut output = MuxConnection::connect(&target).await.unwrap();
     let reader = tokio::spawn(async move {
         let response = output.request(super::requests::read(0)).await;

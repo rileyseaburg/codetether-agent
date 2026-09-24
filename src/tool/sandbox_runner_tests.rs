@@ -30,22 +30,14 @@ fn bwrap_runner_records_kernel_fallbacks() {
     assert_eq!(plan.unsafe_fallbacks, expected_kernel_fallbacks());
 }
 
-#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 fn expected_kernel_fallbacks() -> Vec<String> {
-    if super::super::sandbox_landlock::prepare(&policy(false), "/workspace".as_ref())
-        .rules
-        .is_some()
-    {
-        Vec::new()
-    } else {
-        vec!["landlock_inactive:kernel_unavailable".to_string()]
+    let landlock = super::super::sandbox_landlock::prepare(&policy(false), "/workspace".as_ref());
+    let mut expected = Vec::new();
+    #[cfg(not(all(target_os = "linux", target_arch = "x86_64")))]
+    expected.push("seccomp_inactive:not_configured".to_string());
+    if landlock.rules.is_none() {
+        expected.push("landlock_inactive:not_configured".to_string());
     }
-}
-
-#[cfg(not(all(target_os = "linux", target_arch = "x86_64")))]
-fn expected_kernel_fallbacks() -> Vec<String> {
-    vec![
-        "seccomp_inactive:not_configured".to_string(),
-        "landlock_inactive:not_configured".to_string(),
-    ]
+    expected.extend(landlock.fallback);
+    expected
 }

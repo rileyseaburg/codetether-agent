@@ -4,6 +4,13 @@ use super::try_attach_data_url;
 use crate::tui::app::state::App;
 
 #[test]
+fn incomplete_image_chunk_is_retained_for_reassembly() {
+    let mut app = App::default();
+    assert!(!try_attach_data_url(&mut app, "data:image/png;base64,A"));
+    assert!(app.state.pending_images.is_empty());
+}
+
+#[test]
 fn oversized_image_paste_reports_error_and_is_consumed() {
     let mut app = App::default();
     // Over the 10 MB decoded cap: must not land in the text sidecar.
