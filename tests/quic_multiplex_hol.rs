@@ -11,7 +11,7 @@ use tokio::time::timeout;
 
 #[tokio::test]
 async fn quic_multiplex_has_no_head_of_line_blocking() {
-    let _ = rustls::crypto::ring::default_provider().install_default();
+    codetether_agent::tls::ensure_rustls_crypto_provider();
 
     // Self-signed loopback cert.
     let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
