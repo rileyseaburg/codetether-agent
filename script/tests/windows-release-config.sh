@@ -5,6 +5,7 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 workflow="$root/.forgejo/workflows/release-windows.yml"
 grep -Fq 'run: bash script/forgejo/prepare-windows-buildx.sh' "$workflow"
 grep -Fq 'endpoint: unix:///var/run/docker.sock' "$workflow"
+grep -Fq 'driver: docker' "$workflow"
 grep -Fq 'run: bash script/forgejo/package-windows-release.sh' "$workflow"
 bash -n "$root/script/forgejo/package-windows-release.sh"
 mkdir -p "$root/artifacts/release-verification"

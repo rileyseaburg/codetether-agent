@@ -18,7 +18,8 @@ jobs:
   meta:
     uses: ./.forgejo/workflows/release-meta.yml
   linux:
-    needs: meta
+    # Check the Windows cross-build before spending another Linux build.
+    needs: [meta, windows]
     uses: ./.forgejo/workflows/release-unix.yml
     with:
       runner: codetether-release-proxmox

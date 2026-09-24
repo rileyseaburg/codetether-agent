@@ -20,6 +20,7 @@ jobs:
         run: bash script/forgejo/prepare-windows-buildx.sh
       - uses: https://github.com/docker/setup-buildx-action@v3
         with:
+          driver: docker
           endpoint: unix:///var/run/docker.sock
       - name: Cross-build Windows GNU artifact
         shell: bash
