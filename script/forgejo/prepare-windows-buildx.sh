@@ -10,5 +10,7 @@ test -w "$DOCKER_CONFIG"
 test -w "$BUILDX_CONFIG"
 printf 'DOCKER_CONFIG=%s\nBUILDX_CONFIG=%s\n' \
   "$DOCKER_CONFIG" "$BUILDX_CONFIG" >> "$GITHUB_ENV"
+printf '%s\n' 'DOCKER_HOST=unix:///var/run/docker.sock' \
+  'DOCKER_CONTEXT=' 'DOCKER_TLS_VERIFY=' 'DOCKER_CERT_PATH=' >> "$GITHUB_ENV"
 printf 'Writable Docker config: %s\nWritable Buildx config: %s\n' \
   "$DOCKER_CONFIG" "$BUILDX_CONFIG"

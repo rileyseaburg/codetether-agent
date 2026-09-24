@@ -19,10 +19,15 @@ jobs:
       - name: Prepare writable Docker and Buildx directories
         run: bash script/forgejo/prepare-windows-buildx.sh
       - uses: https://github.com/docker/setup-buildx-action@v3
+        with:
+          endpoint: unix:///var/run/docker.sock
       - name: Cross-build Windows GNU artifact
         shell: bash
         run: |
           set -euo pipefail
+          unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH
+          export DOCKER_HOST=unix:///var/run/docker.sock
+          docker info
           grep -Eq 'cargo build .*--locked' docker/release/windows.Dockerfile
           docker buildx build --platform linux/amd64 \
             --file docker/release/windows.Dockerfile --target artifact \
