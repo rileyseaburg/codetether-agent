@@ -1095,7 +1095,7 @@ dependencies = [
 
 [[package]]
 name = "codetether-agent"
-version = "4.7.6-dev.11"
+version = "4.7.6-dev.12"
 dependencies = [
  "anyhow",
  "arboard",
