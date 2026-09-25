@@ -48,7 +48,7 @@ impl VerifierAgent for LlmVerifier {
         );
         let id = format!("goal-verifier-{}", uuid::Uuid::new_v4());
         tracing::info!(verifier = %id, model = %model, claimed = request.claimed.as_str(), "Starting goal verifier");
-        let system = prompt::system_prompt(&self.workspace, &model);
+        let system = prompt::system_prompt(&self.workspace, &model, request.claimed);
         let user = prompt::user_prompt(request);
         let run = run_agent_loop(
             provider,

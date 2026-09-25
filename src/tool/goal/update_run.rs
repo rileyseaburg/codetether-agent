@@ -45,5 +45,8 @@ fn workspace_default() -> std::path::PathBuf {
 }
 
 #[cfg(test)]
+#[path = "update_run_blocked_tests.rs"]
+mod blocked_tests;
+#[cfg(test)]
 #[path = "update_run_tests.rs"]
 mod tests;

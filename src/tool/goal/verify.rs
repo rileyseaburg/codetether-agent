@@ -45,6 +45,8 @@
 
 #[path = "verify_agent.rs"]
 mod agent;
+#[path = "verify_charter.rs"]
+mod charter;
 #[path = "verify_gate.rs"]
 mod gate;
 #[path = "verify_llm.rs"]
@@ -61,6 +63,7 @@ mod selection;
 mod verdict;
 
 pub use agent::VerifierAgent;
+pub use charter::charter;
 pub use gate::verify_transition;
 pub use llm::LlmVerifier;
 pub use model::{VERIFIER_MODEL_ENV, resolve_verifier_model, select_verifier_model};
