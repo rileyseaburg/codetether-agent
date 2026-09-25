@@ -13,3 +13,13 @@ fn parses_version_from_bwrap_output() {
 fn smoke_probe_does_not_require_network_namespace() {
     assert!(!SMOKE_ARGS.contains(&"--unshare-net"));
 }
+
+#[test]
+fn smoke_probe_includes_dynamic_loader_roots() {
+    for path in ["/lib", "/lib64"] {
+        assert!(
+            SMOKE_ARGS.windows(3).any(|args| args == ["--ro-bind-try", path, path]),
+            "missing read-only loader root {path}"
+        );
+    }
+}
