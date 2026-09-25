@@ -1,23 +1,28 @@
 //! Wait for a cold real rust-analyzer to analyze the proposed test document.
 
-use crate::lsp::{LspActionResult, client::LspClient};
+use crate::lsp::{DiagnosticInfo, LspActionResult, client::LspClient, path_to_uri};
 use std::path::Path;
 use tokio::time::{Duration, sleep, timeout};
 
 pub(super) async fn broken_content(client: &LspClient, file: &Path) -> LspActionResult {
     timeout(Duration::from_secs(15), async {
+        client
+            .diagnostics_for_content(file, "pub fn broken( {\n")
+            .await
+            .expect("rust-analyzer diagnostics request failed");
+        let uri = path_to_uri(file);
         loop {
-            let result = client
-                .diagnostics_for_content(file, "pub fn broken( {\n")
-                .await
-                .expect("rust-analyzer diagnostics request failed");
-            let LspActionResult::Diagnostics { diagnostics } = &result else {
-                panic!("wrong diagnostic response")
-            };
-            if !diagnostics.is_empty() {
-                return result;
+            let publications = client.transport.diagnostics_snapshot().await;
+            if let Some(diagnostics) = publications.get(&uri).filter(|items| !items.is_empty()) {
+                return LspActionResult::Diagnostics {
+                    diagnostics: diagnostics
+                        .iter()
+                        .cloned()
+                        .map(|value| DiagnosticInfo::from((uri.clone(), value)))
+                        .collect(),
+                };
             }
-            // Initialization can publish an empty list before workspace loading.
+            // Do not keep changing the version and cancelling in-flight analysis.
             sleep(Duration::from_millis(100)).await;
         }
     })
