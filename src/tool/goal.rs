@@ -16,8 +16,12 @@ mod response;
 mod session_task;
 #[path = "goal/update.rs"]
 mod update;
+#[path = "goal/update_reject.rs"]
+mod update_reject;
 #[path = "goal/update_run.rs"]
 mod update_run;
+#[path = "goal/verify.rs"]
+pub mod verify;
 
 use super::ToolRegistry;
 use std::sync::Arc;

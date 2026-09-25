@@ -60,7 +60,7 @@ impl Default for super::AppState {
             model_filter: String::new(),
             model_refresh_in_flight: false,
             model_refresh_rx: None,
-            model_picker_target_model: None,
+            model_picker_target_model: None, model_picker_for_verifier: false,
             streaming_text: String::new(),
             processing_started_at: None,
             current_request_first_token_ms: None,

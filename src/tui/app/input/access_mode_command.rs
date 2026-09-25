@@ -14,6 +14,8 @@ mod policy;
 mod result;
 #[path = "access_mode_session.rs"]
 mod session_config;
+#[path = "verifier_model_command.rs"]
+mod verifier_model;
 
 pub(super) async fn run(
     app: &mut App,
@@ -22,6 +24,9 @@ pub(super) async fn run(
     registry: Option<&Arc<ProviderRegistry>>,
     prompt: &str,
 ) -> bool {
+    if verifier_model::run(app, registry, prompt) {
+        return true;
+    }
     let Some((command, rest)) = parse::prompt(prompt) else {
         return false;
     };

@@ -21,6 +21,7 @@ impl super::AppState {
 
     pub fn close_model_picker(&mut self) {
         self.model_picker_active = false;
+        self.model_picker_for_verifier = false;
         self.model_filter.clear();
         self.selected_model_index = 0;
     }
