@@ -1,27 +1,9 @@
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-pub(super) const SMOKE_ARGS: &[&str] = &[
-    "--die-with-parent",
-    "--new-session",
-    "--unshare-user-try",
-    "--unshare-ipc",
-    "--unshare-pid",
-    "--ro-bind",
-    "/usr",
-    "/usr",
-    "--ro-bind-try",
-    "/bin",
-    "/bin",
-    "--proc",
-    "/proc",
-    "--dev",
-    "/dev",
-    "--tmpfs",
-    "/tmp",
-    "--",
-    "/usr/bin/true",
-];
+#[path = "sandbox_bwrap_smoke_args.rs"]
+mod smoke_args;
+pub(super) use smoke_args::SMOKE_ARGS;
 
 pub(super) fn version(path: &Path) -> Option<String> {
     let output = Command::new(path)

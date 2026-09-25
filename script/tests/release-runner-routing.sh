@@ -14,6 +14,14 @@ fi
 grep -Fxq '      DOCKER_HOST: unix:///var/run/docker.sock' "$workflows/release-windows.yml"
 grep -Fxq '      runner: macOS' "$workflows/release.yml"
 grep -Fxq '    runs-on: macOS' "$workflows/release-meta.yml"
+awk '/^  linux:/,/^  windows:/' "$workflows/release.yml" \
+  | grep -Fxq '    needs: [meta, verify, windows]'
+awk '/^  windows:/,/^  macos:/' "$workflows/release.yml" \
+  | grep -Fxq '    needs: [meta, verify]'
+awk '/^  macos:/,/^  verify:/' "$workflows/release.yml" \
+  | grep -Fxq '    needs: [meta, verify]'
+awk '/^  verify:/,/^  publish:/' "$workflows/release.yml" \
+  | grep -Fxq '    needs: meta'
 grep -Fxq '    needs: [meta, verify, linux, windows, macos]' "$workflows/release.yml"
 grep -Fq 'cargo +1.95.0 test --locked --lib --tests --no-fail-fast' "$workflows/release-verify.yml"
 grep -Fq 'bash script/tests/release-runner-routing.sh' "$workflows/release-verify.yml"

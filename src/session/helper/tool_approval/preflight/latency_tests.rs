@@ -8,7 +8,7 @@ use tokio::time::{Duration, Instant, timeout};
 async fn failed_language_server_is_evicted_and_backed_off() {
     let root = tempfile::tempdir().unwrap();
     let manager = latency_fixture::manager(root.path(), "silent");
-    let old_client = manager.get_client("typescript").await.unwrap();
+    let old_client = latency_fixture::initialized(&manager).await;
     let files = vec![
         (root.path().join("first.ts"), "export {};".into()),
         (root.path().join("second.ts"), "export {};".into()),
@@ -36,7 +36,7 @@ async fn failed_language_server_is_evicted_and_backed_off() {
             .iter()
             .all(|warning| warning.contains("backed off"))
     );
-    let replacement = manager.get_client("typescript").await.unwrap();
+    let replacement = latency_fixture::initialized(&manager).await;
     assert!(!Arc::ptr_eq(&old_client, &replacement));
     manager.shutdown_all().await;
 }

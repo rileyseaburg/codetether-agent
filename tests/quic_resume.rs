@@ -26,7 +26,7 @@ fn frame(seq: u64, data: &str) -> ParsedFrame {
 
 #[tokio::test]
 async fn quic_framed_session_resumes_past_cursor() {
-    let _ = rustls::crypto::ring::default_provider().install_default();
+    codetether_agent::tls::ensure_rustls_crypto_provider();
 
     let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
     let cert_der = rustls::pki_types::CertificateDer::from(cert.cert.der().to_vec());

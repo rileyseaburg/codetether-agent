@@ -5,13 +5,13 @@ use serde_json::json;
 use std::{path::Path, sync::Arc};
 
 pub(super) fn manager(root: &Path, mode: &str) -> Arc<LspManager> {
-    let script = root.join("lsp.py");
-    std::fs::write(&script, include_str!("fake_server.py")).unwrap();
-    let python = which::which("python3").expect("python3 is required for LSP process tests");
-    let timeout_ms = if mode == "silent" { 500 } else { 30000 };
+    let script = root.join("lsp.cjs");
+    std::fs::write(&script, include_str!("fake_server.cjs")).unwrap();
+    let node = which::which("node").expect("node is required for LSP process tests");
+    let timeout_ms = if mode == "silent" { 2000 } else { 30000 };
     let settings: LspSettings = serde_json::from_value(json!({
         "servers": {"typescript": {
-            "command": python, "args": [script, mode],
+            "command": node, "args": [script, mode],
             "file_extensions": ["ts"], "timeout_ms": timeout_ms
         }}, "disable_builtin_linters": true
     }))
@@ -20,6 +20,22 @@ pub(super) fn manager(root: &Path, mode: &str) -> Arc<LspManager> {
         Some(crate::lsp::path_to_uri(root)),
         settings,
     ))
+}
+
+/// Prepare the fixture outside the measured scan; retry only cold-start timeouts.
+pub(super) async fn initialized(manager: &LspManager) -> Arc<crate::lsp::client::LspClient> {
+    for attempt in 0..3 {
+        match manager.get_client("typescript").await {
+            Ok(client) => return client,
+            Err(error) => {
+                assert!(
+                    attempt < 2 && error.to_string().contains("timeout for method: initialize"),
+                    "fixture initialization failed: {error:#}"
+                );
+            }
+        }
+    }
+    unreachable!("the final failed attempt panics")
 }
 
 pub(super) async fn ready(root: &Path) {

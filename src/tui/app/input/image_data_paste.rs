@@ -28,6 +28,11 @@ pub(crate) fn try_attach_data_url(app: &mut App, text: &str) -> bool {
         let Some(reason) = crate::image_clipboard::reject_reason(text) else {
             return false;
         };
+        // A terminal may deliver the remaining base64 in later paste events.
+        // Preserve incomplete content for sidecar reassembly at submission.
+        if reason == crate::image_clipboard::RejectReason::MalformedBase64 {
+            return false;
+        }
         app.state.status = reason.message();
         return true;
     };

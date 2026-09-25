@@ -10,7 +10,8 @@ async fn sandboxed_interactive_command_keeps_its_pty() {
     let shell = bash_shell::resolve();
     let mut args = shell.prefix_args;
     args.push("test -t 0 && test -t 1 && printf sandbox-tty".into());
-    let cwd = std::env::current_dir().unwrap();
+    let workspace = tempfile::tempdir().unwrap();
+    let cwd = workspace.path().to_path_buf();
     let policy = SandboxPolicy {
         allowed_paths: vec![cwd.clone()],
         allow_exec: true,
@@ -34,7 +35,8 @@ async fn sandboxed_command_can_write_to_dev_null() {
     let shell = bash_shell::resolve();
     let mut args = shell.prefix_args;
     args.push("printf discarded >/dev/null && printf dev-null-ok".into());
-    let cwd = std::env::current_dir().unwrap();
+    let workspace = tempfile::tempdir().unwrap();
+    let cwd = workspace.path().to_path_buf();
     let policy = SandboxPolicy {
         allowed_paths: vec![cwd.clone()],
         allow_exec: true,

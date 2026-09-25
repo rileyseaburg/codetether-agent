@@ -18,19 +18,20 @@ jobs:
   meta:
     uses: ./.forgejo/workflows/release-meta.yml
   linux:
-    needs: meta
+    # Check the Windows cross-build before spending another Linux build.
+    needs: [meta, verify, windows]
     uses: ./.forgejo/workflows/release-unix.yml
     with:
       runner: codetether-release-proxmox
       target: x86_64-unknown-linux-gnu
       version: ${{ needs.meta.outputs.version }}
   windows:
-    needs: meta
+    needs: [meta, verify]
     uses: ./.forgejo/workflows/release-windows.yml
     with:
       version: ${{ needs.meta.outputs.version }}
   macos:
-    needs: meta
+    needs: [meta, verify]
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -42,9 +43,9 @@ jobs:
       target: ${{ matrix.target }}
       version: ${{ needs.meta.outputs.version }}
   verify:
-    # Run the long serial gate after artifact builds so release artifacts are
-    # produced before the single Proxmox runner is held by verification.
-    needs: [linux, windows, macos]
+    # Reject invalid candidates before repeating expensive platform builds.
+    # Nested job memory limits must accommodate the compiler and test harness.
+    needs: meta
     uses: ./.forgejo/workflows/release-verify.yml
   publish:
     if: ${{ github.event.inputs.draft != 'true' && github.event.inputs.draft != true }}
