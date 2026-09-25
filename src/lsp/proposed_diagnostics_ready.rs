@@ -5,7 +5,8 @@ use std::path::Path;
 use tokio::time::{Duration, sleep, timeout};
 
 pub(super) async fn broken_content(client: &LspClient, file: &Path) -> LspActionResult {
-    timeout(Duration::from_secs(15), async {
+    // Cold workspace loading uses the server's configured startup budget.
+    timeout(Duration::from_millis(client.config.timeout_ms), async {
         client
             .diagnostics_for_content(file, "pub fn broken( {\n")
             .await
