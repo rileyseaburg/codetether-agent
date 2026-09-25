@@ -5,8 +5,11 @@ if [ "${CI:-}" != true ]; then echo 'This setup is CI-only' >&2; exit 1; fi
 target=${1:?Rust target is required}
 case "$(uname -s)" in
   Linux)
+    # Never let apt or needrestart wait on a prompt: an interactive
+    # "Daemons using outdated libraries" menu hung run 85 until timeout.
+    export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a NEEDRESTART_SUSPEND=1
     elevate=()
-    if [ "$(id -u)" -ne 0 ]; then elevate=(sudo); fi
+    if [ "$(id -u)" -ne 0 ]; then elevate=(sudo --preserve-env=DEBIAN_FRONTEND,NEEDRESTART_MODE,NEEDRESTART_SUSPEND); fi
     "${elevate[@]}" sh "$(dirname "$0")/apt-https.sh"
     "${elevate[@]}" apt-get update
     "${elevate[@]}" apt-get install -y --no-install-recommends \
