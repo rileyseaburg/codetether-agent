@@ -46,7 +46,7 @@ pub(crate) async fn spawn(
         .transpose()?;
     let mut unsafe_fallbacks = state.unsafe_fallbacks;
     unsafe_fallbacks.extend(limits);
-    crate::tool::process_tree::configure(&mut cmd);
+    // sandbox_command::build already installed the process-group hook.
     let child = cmd.spawn().context("Failed to spawn sandboxed process")?;
     Ok(Spawned {
         child,
