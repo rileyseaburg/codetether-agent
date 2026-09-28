@@ -1,5 +1,6 @@
 //! Human-facing `/goal` command routing.
 
+mod auto;
 mod show;
 mod status;
 mod write;
@@ -14,6 +15,7 @@ pub(super) async fn handle(app: &mut App, session: &Session, raw: &str) {
         .map_or((raw, ""), |(verb, tail)| (verb, tail.trim()));
     let result = match verb {
         "" | "show" | "status" => show::run(&session.id).await,
+        "auto" => auto::run(tail),
         "set" => write::set(session, tail).await,
         "edit" => write::edit(&session.id, tail).await,
         "reaffirm" => write::reaffirm(&session.id, tail).await,
@@ -22,7 +24,7 @@ pub(super) async fn handle(app: &mut App, session: &Session, raw: &str) {
         "pause" => status::set(&session.id, "paused").await,
         "resume" => status::set(&session.id, "active").await,
         other => Err(anyhow::anyhow!(
-            "unknown /goal subcommand `{other}`; use set, edit, pause, resume, done, clear, or show"
+            "unknown /goal subcommand `{other}`; use set, auto, edit, pause, resume, done, clear, or show"
         )),
     };
     match result {

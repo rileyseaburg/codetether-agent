@@ -12,6 +12,9 @@ use super::chat_helpers::push_user_messages;
 use super::chat_submit_dispatch::dispatch_prompt;
 use super::pasted_text::expand_paste_placeholders;
 
+#[path = "chat_submit_goal.rs"]
+mod goal;
+
 /// Dispatch `prompt` plus any pending images/text-paste sidecars.
 pub(super) async fn finish_submit(
     app: &mut App,
@@ -30,6 +33,7 @@ pub(super) async fn finish_submit(
     // Chat history shows the compact placeholder; the agent receives the
     // expanded full paste content wrapped in delimiters.
     let agent_prompt = expand_paste_placeholders(prompt, &pending_text_pastes);
+    goal::adopt(app, slot, &agent_prompt).await;
     push_user_messages(app, prompt, &pending_images);
     dispatch_prompt(
         app,
