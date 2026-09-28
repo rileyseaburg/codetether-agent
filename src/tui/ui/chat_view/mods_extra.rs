@@ -20,8 +20,15 @@ pub mod bubble_mods;
 pub mod context_gauge_heat;
 pub(crate) mod focused_lines;
 pub(crate) mod input_title;
+#[cfg(test)]
+#[path = "input_title_tests.rs"]
+mod input_title_tests;
 pub mod kb_style;
 pub mod spinner_hue;
+pub mod status_glue;
+#[cfg(test)]
+#[path = "status_glue_tests.rs"]
+mod status_glue_tests;
 pub mod suggestion_style;
 pub mod suggestions;
 pub(crate) mod swarm_lines;

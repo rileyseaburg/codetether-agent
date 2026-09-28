@@ -27,7 +27,7 @@ pub(super) fn compute(area: Rect, app: &App) -> MainChunks {
     if suggestions_visible {
         constraints.push(Constraint::Length(5));
     }
-    constraints.push(Constraint::Length(1));
+    constraints.push(Constraint::Length(super::status::status_height(area.width)));
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(constraints)

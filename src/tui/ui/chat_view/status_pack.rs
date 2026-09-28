@@ -6,7 +6,6 @@
 //! so every badge stays visible without manual zoom-out.
 
 use ratatui::text::{Line, Span};
-use unicode_width::UnicodeWidthStr;
 
 /// Greedily pack `spans` into lines no wider than `width` columns.
 ///
@@ -29,14 +28,14 @@ pub fn pack_spans(spans: Vec<Span<'static>>, width: u16) -> Vec<Line<'static>> {
     let mut current: Vec<Span<'static>> = Vec::new();
     let mut used = 0usize;
 
-    for span in spans {
-        let w = span.content.width();
+    for unit in super::status_glue::units(spans) {
+        let w = super::status_glue::width(&unit);
         if used + w > width && !current.is_empty() {
             lines.push(Line::from(std::mem::take(&mut current)));
             used = 0;
         }
         used += w;
-        current.push(span);
+        current.extend(unit);
     }
     if !current.is_empty() {
         lines.push(Line::from(current));

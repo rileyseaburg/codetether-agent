@@ -25,8 +25,18 @@ pub fn render_webview_status(f: &mut Frame, app: &App, area: Rect) {
     prefix.push(Span::styled(model_status, Style::default().fg(Color::Cyan)));
     prefix.push(Span::styled("│ ", Style::default().fg(Color::DarkGray)));
     status_line.spans.splice(0..0, prefix);
-    let para = Paragraph::new(status_line);
-    f.render_widget(para, area);
+    let owned: Vec<Span<'static>> = status_line
+        .spans
+        .into_iter()
+        .map(|span| Span::styled(span.content.into_owned(), span.style))
+        .collect();
+    let lines = crate::tui::ui::chat_view::status_pack::pack_spans(owned, area.width);
+    f.render_widget(Paragraph::new(lines), area);
+}
+
+/// Rows the status bar needs at `width` (1 on wide terminals, 2 on phones).
+pub fn status_height(width: u16) -> u16 {
+    if width >= 140 { 1 } else { 2 }
 }
 
 /// Fallback message shown when terminal is too small for webview.

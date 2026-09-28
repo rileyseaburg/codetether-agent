@@ -29,12 +29,16 @@ pub fn render(f: &mut Frame, app: &mut App) -> bool {
     let show_inspector = layout::show_inspector(area);
     let main = main_chunks::compute(area, app);
     header::render_webview_header(f, app, main.header);
-    let body = layout::webview_body_chunks(main.body, show_inspector);
-    sidebar::render_webview_sidebar(f, app, body[0]);
-    let center_area = body.get(1).copied().unwrap_or(main.body);
-    if show_inspector && let Some(area) = body.get(2).copied() {
-        inspector::render_webview_inspector(f, app, area);
-    }
+    let center_area = if layout::show_sidebar(area) {
+        let body = layout::webview_body_chunks(main.body, show_inspector);
+        sidebar::render_webview_sidebar(f, app, body[0]);
+        if show_inspector && let Some(area) = body.get(2).copied() {
+            inspector::render_webview_inspector(f, app, area);
+        }
+        body.get(1).copied().unwrap_or(main.body)
+    } else {
+        main.body
+    };
     chat_lines::render_center(f, app, center_area);
     chat::render_webview_input(f, app, main.input);
     if let Some(rect) = main.suggestions {
