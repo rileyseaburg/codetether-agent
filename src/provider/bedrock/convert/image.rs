@@ -3,6 +3,10 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use serde_json::{Value, json};
 
 pub(super) fn block(url: &str, _mime_type: Option<&str>) -> Value {
+    // Claude rejects images over 2000 px on either edge; shrink them first so
+    // one oversized screenshot cannot fault the whole turn.
+    let fitted = crate::image_clipboard::fit::fit_data_url(url);
+    let url = fitted.as_deref().unwrap_or(url);
     if let Some((header, data)) = url.strip_prefix("data:").and_then(|s| s.split_once(','))
         && let Some(mime) = header.strip_suffix(";base64")
         && let Some(format) = mime.strip_prefix("image/")

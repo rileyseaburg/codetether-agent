@@ -5,6 +5,7 @@
 
 mod capture;
 mod data_url;
+pub mod fit;
 mod reject;
 
 #[cfg(test)]

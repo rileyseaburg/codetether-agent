@@ -7,6 +7,9 @@ pub(crate) fn block(url: &str, _mime_type: Option<&str>) -> Value {
     if url.starts_with("https://") || url.starts_with("http://") {
         return json!({"type": "image", "source": {"type": "url", "url": url}});
     }
+    // Claude rejects images over 2000 px on either edge; shrink them first.
+    let fitted = crate::image_clipboard::fit::fit_data_url(url);
+    let url = fitted.as_deref().unwrap_or(url);
     if let Some((header, data)) = url.strip_prefix("data:").and_then(|s| s.split_once(','))
         && let Some(mime) = header.strip_suffix(";base64")
         && matches!(

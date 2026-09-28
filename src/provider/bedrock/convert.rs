@@ -44,6 +44,8 @@ use serde_json::Value;
 mod assistant;
 mod image;
 #[cfg(test)]
+mod image_fit_tests;
+#[cfg(test)]
 mod image_test_support;
 #[cfg(test)]
 mod image_tests;
