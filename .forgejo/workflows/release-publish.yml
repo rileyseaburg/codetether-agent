@@ -14,6 +14,19 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.version }}
     steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          path: source
+      - id: notes
+        name: Per-platform install notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo 'body<<CODETETHER_NOTES_EOF'
+            bash source/script/forgejo/release-notes.sh "$RELEASE_VERSION"
+            echo 'CODETETHER_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
       - uses: https://code.forgejo.org/actions/download-artifact@v3
         with:
           path: incoming
@@ -42,4 +55,4 @@ jobs:
           direction: upload
           release-dir: dist
           prerelease: 'true'
-          release-notes: CI-built Linux, Windows, and unsigned macOS binaries with SHA-256 checksums.
+          release-notes: ${{ steps.notes.outputs.body }}
