@@ -1,0 +1,11 @@
+{
+  "role_type": "jwt",
+  "bound_audiences": ["codetether-cli"],
+  "user_claim": "preferred_username",
+  "groups_claim": "groups",
+  "bound_claims": {"groups": ["vault-admins"]},
+  "token_policies": ["codetether"],
+  "token_ttl": "8h",
+  "token_max_ttl": "24h",
+  "token_type": "service"
+}

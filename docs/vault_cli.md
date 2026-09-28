@@ -27,13 +27,24 @@ codetether vault login token
 
 The prompt hides input. Automation can use `codetether vault login token --stdin` with a secure pipe. Tokens are not accepted as command-line arguments. Authentication and administrator-capability checks run before the previous saved login is replaced.
 
-## Device-code login
+## Device-code login (recommended)
 
 ```sh
-codetether vault login device --issuer https://auth.quantum-forge.io/realms/spotlessbinco.com --client-id codetether-cli --mount oidc --role codetether-device --no-browser
+codetether vault login device
 ```
 
-The client ID and role above are example deployment configuration, not credentials or automatically provisioned resources. The IdP needs a **public** device-enabled client. Vault needs a **JWT-type** role trusting that issuer/audience and restricting the approved CodeTether group. CodeTether polls the IdP, exchanges its JWT for a Vault token, then validates it. This is not a fictional Vault device-authorization endpoint. Missing server/client configuration is an error, never an admin fallback.
+No Vault CLI and no pasted token. CodeTether prints a short code and opens the
+sign-in page (`--no-browser` prints the link instead, for SSH sessions or another
+device). Approve it as a member of the `vault-admins` Keycloak group; CodeTether
+exchanges the result for a read-only Vault token and saves it.
+
+Defaults: issuer `https://auth.quantum-forge.io/realms/spotlessbinco.com`, public
+client `codetether-cli`, Vault JWT mount `jwt`, role `codetether-device`. Override
+with `--issuer/--client-id/--mount/--role` or `CODETETHER_VAULT_DEVICE_ISSUER`,
+`CODETETHER_VAULT_DEVICE_CLIENT_ID`, `CODETETHER_VAULT_DEVICE_MOUNT`,
+`CODETETHER_VAULT_DEVICE_ROLE`. The Keycloak client, audience mapper and Vault role
+definitions live in `script/keycloak/`. Rejections now include Vault's reason
+(e.g. an audience or group mismatch) when it contains no credential.
 
 ## Start work or remove the local login
 

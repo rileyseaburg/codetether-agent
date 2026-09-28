@@ -1,0 +1,11 @@
+{
+  "name": "audience-codetether-cli",
+  "protocol": "openid-connect",
+  "protocolMapper": "oidc-audience-mapper",
+  "config": {
+    "included.client.audience": "codetether-cli",
+    "id.token.claim": "true",
+    "access.token.claim": "true",
+    "introspection.token.claim": "true"
+  }
+}

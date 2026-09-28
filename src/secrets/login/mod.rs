@@ -9,9 +9,11 @@ mod auth_path;
 mod capabilities;
 mod crypto;
 mod facts;
+mod guarded;
 pub(crate) mod http;
 mod paths;
 mod profile;
+mod rejection;
 mod resolve;
 mod save;
 mod storage;
@@ -26,6 +28,8 @@ mod tests;
 
 #[cfg(test)]
 mod http_fixture;
+#[cfg(test)]
+mod rejection_tests;
 #[cfg(test)]
 mod storage_tests;
 #[cfg(test)]

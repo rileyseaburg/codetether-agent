@@ -21,6 +21,7 @@ fn vault_management_commands_parse_without_secret_arguments() {
             "--client-id",
             "public-client",
         ],
+        vec!["codetether", "vault", "login", "device"],
         vec!["codetether", "vault", "logout"],
     ] {
         assert!(matches!(

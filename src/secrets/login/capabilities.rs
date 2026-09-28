@@ -10,11 +10,12 @@ const ADMIN_PATHS: [&str; 4] = [
 ];
 
 pub(super) async fn check(client: &reqwest::Client, address: &str, token: &str) -> Result<()> {
-    let capabilities: Envelope<HashMap<String, Vec<String>>> = super::http::json(
+    let capabilities: Envelope<HashMap<String, Vec<String>>> = super::http::json_with_token(
         client
             .post(format!("{address}/v1/sys/capabilities-self"))
             .header("X-Vault-Token", token)
             .json(&serde_json::json!({"paths": ADMIN_PATHS})),
+        token,
     )
     .await?;
     for path in ADMIN_PATHS {

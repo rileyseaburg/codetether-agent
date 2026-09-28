@@ -1,6 +1,6 @@
 //! Auth HTTP boundary: no redirects and no credential-bearing error bodies.
 
-use anyhow::{Result, ensure};
+use anyhow::Result;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
@@ -12,27 +12,29 @@ pub(crate) fn client() -> Result<reqwest::Client> {
 }
 
 pub(crate) async fn json<T: DeserializeOwned>(request: reqwest::RequestBuilder) -> Result<T> {
-    let response = request
-        .send()
-        .await
-        .map_err(|_| anyhow::anyhow!("Authentication request could not reach its endpoint"))?;
-    ensure!(
-        response.status().is_success(),
-        "Authentication request rejected (HTTP {})",
-        response.status().as_u16()
-    );
-    response
-        .json()
-        .await
-        .map_err(|_| anyhow::anyhow!("Authentication response is invalid"))
+    super::guarded::send(request, &[]).await
 }
 
+/// Like [`json`], but never surfaces a reason that echoes `token`.
+pub(crate) async fn json_with_token<T: DeserializeOwned>(
+    request: reqwest::RequestBuilder,
+    token: &str,
+) -> Result<T> {
+    super::guarded::send(request, &[token]).await
+}
+
+/// POST `body` to Vault; string fields (JWTs, roles) are treated as secrets.
 pub(crate) async fn post<T: DeserializeOwned>(
     address: &str,
     path: &str,
     body: &Value,
 ) -> Result<T> {
-    json(client()?.post(format!("{address}/v1/{path}")).json(body)).await
+    let secrets: Vec<&str> = body
+        .as_object()
+        .map(|map| map.values().filter_map(Value::as_str).collect())
+        .unwrap_or_default();
+    let request = client()?.post(format!("{address}/v1/{path}")).json(body);
+    super::guarded::send(request, &secrets).await
 }
 
 pub(crate) use super::auth_path::auth_path;
