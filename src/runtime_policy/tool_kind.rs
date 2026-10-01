@@ -27,7 +27,10 @@ impl ToolKind {
     pub fn for_name(tool_name: &str) -> Self {
         if tool_name == "write_stdin" {
             Self::SessionTransport
-        } else if matches!(tool_name, "bash" | "exec_command" | "apply_patch" | "patch") {
+        } else if matches!(
+            tool_name,
+            "bash" | "exec_command" | "apply_patch" | "patch" | "rustyroad"
+        ) {
             Self::Mutating
         } else if crate::tool::readonly::is_read_only(tool_name) {
             Self::ReadOnly

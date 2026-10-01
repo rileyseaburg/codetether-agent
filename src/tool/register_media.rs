@@ -20,6 +20,7 @@ pub(super) fn register(registry: &mut ToolRegistry) {
         image_generation,
     )));
     registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
+    registry.register(Arc::new(super::rustyroad::RustyRoadTool));
     registry.register(Arc::new(okr::OkrTool::new()));
     registry.register(Arc::new(bus_inspect::BusInspectTool));
 }

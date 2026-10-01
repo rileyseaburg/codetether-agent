@@ -2,6 +2,11 @@
 
 use super::ToolResult;
 
+mod args;
+mod python;
+mod worktree;
+pub(crate) use args::result_for_args;
+
 #[path = "shell_git_hooks.rs"]
 mod git_hooks;
 #[path = "shell_temp_write.rs"]
@@ -10,6 +15,9 @@ mod temp_write;
 mod worktree_add;
 
 pub(crate) fn result(tool: &str, command: &str) -> Option<ToolResult> {
+    if let Some(blocked) = python::result(tool, command) {
+        return Some(blocked);
+    }
     if let Some(mut blocked) = super::bash_file_edit_guard::file_edit_guard_result(command) {
         blocked
             .metadata
@@ -31,31 +39,7 @@ pub(crate) fn result(tool: &str, command: &str) -> Option<ToolResult> {
             })),
         ));
     }
-    worktree_add::detected(command).then(|| {
-        ToolResult::structured_error(
-            "DIRECT_WORKTREE_ADD_BLOCKED",
-            tool,
-            "Direct `git worktree add` is blocked; use CodeTether-managed worktree isolation.",
-            None,
-            Some(serde_json::json!({
-                "required_root": "<workspace-root>/.codetether-worktrees/"
-            })),
-        )
-    })
-}
-
-/// Guard over a full argument object, reading the tool's command field.
-///
-/// `cwd`/`workdir` are deliberately **not** treated as temp violations: the
-/// sandbox uses [`std::env::temp_dir`] as its own default working directory,
-/// so banning a temp cwd would break sandboxed execution and override
-/// explicitly approved invocations. Temp *paths* are still refused.
-pub(crate) fn result_for_args(tool: &str, args: &serde_json::Value) -> Option<ToolResult> {
-    let command = args["command"]
-        .as_str()
-        .or_else(|| args["cmd"].as_str())
-        .unwrap_or_default();
-    result(tool, command)
+    worktree::result(tool, command)
 }
 
 #[cfg(test)]

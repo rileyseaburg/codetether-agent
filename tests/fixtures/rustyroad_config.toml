@@ -1,0 +1,8 @@
+# No live database or secret is used by the local config smoke test.
+[database]
+database_name = "rustyroad_fixture"
+database_user = "fixture"
+database_password = ""
+database_host = "localhost"
+database_port = "5432"
+database_type = "postgres"

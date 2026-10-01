@@ -260,6 +260,7 @@ vendor/   vendored build dependencies used by selected workflows
 - [Windows install](docs/install_windows.md)
 - [Vault CLI](docs/vault_cli.md)
 - [Plugin pattern](docs/plugin_pattern.md)
+- [First-party RustyRoad tools](docs/rustyroad.md)
 - [A2A public agents](docs/a2a-public-agents.md)
 - [Native Bonsai](docs/native_bonsai.md)
 - [FIPS](docs/fips.md)
