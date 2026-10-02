@@ -12,9 +12,7 @@ pub(super) fn input(args: &Value) -> Result<Input, ToolResult> {
         return Err(ToolResult::error("cmd must not be empty"));
     }
     if super::super::policy::unapproved_escalation(args) {
-        return Err(ToolResult::error(
-            "sandbox escalation requires an approved exec_command invocation",
-        ));
+        return Err(super::super::diagnostics::escalation_error(args));
     }
     if let Some(blocked) = crate::tool::shell_command_guard::result_for_args("exec_command", args) {
         return Err(blocked);

@@ -17,6 +17,7 @@ pub(super) async fn run(tool: &ExecCommandTool, args: Value) -> Result<ToolResul
     let cwd = super::shell::cwd(tool.default_cwd.as_deref(), input.workdir.as_deref())?;
     let (program, command_args) = super::shell::invocation(&input);
     let policy = super::policy::resolve(&input.cmd, &args, &cwd).await;
+    let diagnostics = super::diagnostics::execution(&args, &cwd, policy.as_ref());
     let environment = super::environment::resolve(&input.cmd, &cwd, &args).await;
     let mut command = command_session::command(
         &program,
@@ -29,15 +30,16 @@ pub(super) async fn run(tool: &ExecCommandTool, args: Value) -> Result<ToolResul
     .await?;
     command.metadata.redactions = environment.redactions;
     let poll = command.poll(input.yield_ms(), input.max_bytes()).await?;
-    if poll.running {
+    let mut result = if poll.running {
         let id = tool.sessions.insert(command).await?;
         let running = tool.sessions.get(id).await.expect("inserted command");
         let command = running.lock().await;
-        return Ok(command_session::tool_result(
-            poll,
-            &command.metadata,
-            Some(id),
-        ));
-    }
-    Ok(command_session::tool_result(poll, &command.metadata, None))
+        command_session::tool_result(poll, &command.metadata, Some(id))
+    } else {
+        command_session::tool_result(poll, &command.metadata, None)
+    };
+    result
+        .metadata
+        .insert("execution_diagnostics".into(), diagnostics);
+    Ok(result)
 }

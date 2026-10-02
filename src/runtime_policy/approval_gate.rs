@@ -15,3 +15,9 @@ pub(super) fn allowed(tool_name: &str, args: &Value, action: &str, resource: &st
     crate::approval::session_grants::allowed(tool_name, action, resource)
         || super::approval::verified(args, tool_name, action, resource)
 }
+
+/// Return the canonical, credential-free approval tuple for execution diagnostics.
+pub(crate) fn approval_binding(tool_name: &str, args: &Value) -> (&'static str, String) {
+    let scope = super::invocation_scope::for_tool(tool_name, args);
+    (scope.action, scope.resource)
+}

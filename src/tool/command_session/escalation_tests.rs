@@ -1,6 +1,15 @@
+//! Escalation requires a real, exact approved decision before process spawn.
+
+#[path = "denied_execution_tests.rs"]
+mod denied;
+#[path = "approval_fixture.rs"]
+mod fixture;
+#[path = "approved_write_tests.rs"]
+mod writes;
+
 use super::Registry;
-use crate::tool::exec_command::ExecCommandTool;
 use crate::tool::Tool;
+use crate::tool::exec_command::ExecCommandTool;
 use serde_json::json;
 use std::sync::Arc;
 

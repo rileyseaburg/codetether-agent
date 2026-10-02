@@ -26,6 +26,7 @@ mod tool_kind;
 mod types;
 mod workspace;
 
+pub(crate) use approval_gate::approval_binding;
 pub use approval_gate::{approved_invocation, approved_or_session_command};
 pub use command::is_read_only_command;
 pub use invocation::{

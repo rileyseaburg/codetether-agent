@@ -3,6 +3,9 @@
 //! Skipped when no sandbox runner is available on the host, so CI without
 //! bubblewrap or Landlock still passes.
 
+#[path = "sandbox_rust_live_tests.rs"]
+mod rust;
+
 use super::super::{SandboxPolicy, execute_sandboxed};
 use super::ENV;
 
@@ -21,10 +24,9 @@ async fn sandboxed_command_resolves_configured_toolchain_binary() {
     std::os::unix::fs::PermissionsExt::set_mode(&mut perms, 0o755);
     std::fs::set_permissions(&tool, perms).expect("chmod");
     let host_path = std::env::var_os("PATH").unwrap_or_default();
-    let with_tool = std::env::join_paths(
-        std::iter::once(bin.clone()).chain(std::env::split_paths(&host_path)),
-    )
-    .expect("join");
+    let with_tool =
+        std::env::join_paths(std::iter::once(bin.clone()).chain(std::env::split_paths(&host_path)))
+            .expect("join");
     unsafe { std::env::set_var("PATH", &with_tool) };
     unsafe { std::env::set_var(ENV, toolchain.path()) };
     let workspace = tempfile::tempdir().expect("workspace");

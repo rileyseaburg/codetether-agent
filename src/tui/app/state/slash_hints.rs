@@ -27,7 +27,7 @@ pub fn usage_hint(cmd: &str) -> Option<&'static str> {
         "/access-mode" => Some("/access-mode <ask|approve|full>  - switch live tool policy"),
         "/sandbox-mode" => Some("/sandbox-mode <read-only|workspace-write|danger-full-access>"),
         "/diff" => Some("/diff  - show git status and diff stats"),
-        "/copy" => Some("/copy  - copy the latest assistant reply"),
+        "/copy" => Some("/copy [reply|tool|error]  - copy raw text without TUI chrome"),
         "/review" => Some("/review  - prepare a code-review prompt for current changes"),
         "/clear" => Some("/clear  - start a fresh chat session"),
         "/resume" => Some("/resume  - open the session picker"),

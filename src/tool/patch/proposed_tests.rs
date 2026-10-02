@@ -1,3 +1,8 @@
+//! Proposed-content reconstruction is read-only, including multi-file diffs.
+
+#[path = "proposed_multi_file_tests.rs"]
+mod multi_file;
+
 #[test]
 fn reconstructs_proposed_content_without_writing() {
     let dir = tempfile::tempdir().unwrap();

@@ -8,8 +8,8 @@ fn roots_include_existing_defaults_and_configured_paths_once() {
     let node = home.path().join(".nvm/versions/node");
     std::fs::create_dir_all(&node).expect("node dir");
     let extra = tempfile::tempdir().expect("extra");
-    let configured = std::env::join_paths([extra.path(), extra.path(), node.as_path()])
-        .expect("join");
+    let configured =
+        std::env::join_paths([extra.path(), extra.path(), node.as_path()]).expect("join");
 
     let roots = roots_from(Some(&configured), Some(home.path()));
 

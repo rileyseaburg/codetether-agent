@@ -3,6 +3,8 @@
 use super::{Poll, SpawnMetadata};
 use crate::tool::ToolResult;
 
+#[path = "result/cache_guidance.rs"]
+mod cache_guidance;
 #[path = "result/redact.rs"]
 mod redact;
 #[path = "result/metadata.rs"]
@@ -21,6 +23,7 @@ pub(crate) fn tool_result(poll: Poll, metadata: &SpawnMetadata, id: Option<u64>)
     };
     let heading = format!("{heading}{}", status::suffix(&poll));
     let recent = redact::output(&poll.output, &metadata.redactions);
+    let recent = cache_guidance::annotate(recent, metadata.sandboxed);
     let output = if recent.is_empty() {
         heading
     } else {

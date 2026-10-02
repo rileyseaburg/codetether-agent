@@ -12,6 +12,11 @@ use std::path::{Path, PathBuf};
 
 #[path = "sandbox_toolchain_defaults.rs"]
 mod defaults;
+#[path = "sandbox_toolchain_path.rs"]
+mod path;
+pub(super) use path::path_entries;
+#[cfg(test)]
+pub(super) use path::path_entries_from;
 
 /// Colon-separated extra toolchain roots to expose read-only.
 pub(super) const ENV: &str = "CODETETHER_SANDBOX_TOOLCHAIN_PATHS";
@@ -20,7 +25,13 @@ const SYSTEM: &[&str] = &["/usr", "/bin", "/sbin", "/lib", "/lib64"];
 /// Existing toolchain roots from the override env var and known defaults.
 pub(super) fn roots() -> Vec<PathBuf> {
     let home = std::env::var_os("HOME").map(PathBuf::from);
-    roots_from(std::env::var_os(ENV).as_deref(), home.as_deref())
+    let mut roots = roots_from(std::env::var_os(ENV).as_deref(), home.as_deref());
+    if let Some(rustup) = super::sandbox_env::rustup_home()
+        && !roots.contains(&rustup)
+    {
+        roots.push(rustup);
+    }
+    roots
 }
 
 pub(super) fn roots_from(configured: Option<&OsStr>, home: Option<&Path>) -> Vec<PathBuf> {
@@ -30,7 +41,11 @@ pub(super) fn roots_from(configured: Option<&OsStr>, home: Option<&Path>) -> Vec
         .flatten()
         .collect();
     if let Some(home) = home {
-        roots.extend(defaults::RELATIVE.iter().map(|relative| home.join(relative)));
+        roots.extend(
+            defaults::RELATIVE
+                .iter()
+                .map(|relative| home.join(relative)),
+        );
     }
     let mut unique = Vec::new();
     for root in roots {
@@ -39,23 +54,6 @@ pub(super) fn roots_from(configured: Option<&OsStr>, home: Option<&Path>) -> Vec
         }
     }
     unique
-}
-
-/// Host `PATH` entries that resolve inside a system or toolchain root.
-pub(super) fn path_entries(roots: &[PathBuf]) -> Vec<PathBuf> {
-    path_entries_from(&std::env::var_os("PATH").unwrap_or_default(), roots)
-}
-
-pub(super) fn path_entries_from(host: &OsStr, roots: &[PathBuf]) -> Vec<PathBuf> {
-    let mut entries = Vec::new();
-    for entry in std::env::split_paths(host) {
-        let visible = SYSTEM.iter().any(|system| entry.starts_with(system))
-            || roots.iter().any(|root| entry.starts_with(root));
-        if visible && !entries.contains(&entry) {
-            entries.push(entry);
-        }
-    }
-    entries
 }
 
 #[cfg(test)]

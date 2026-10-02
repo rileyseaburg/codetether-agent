@@ -20,6 +20,9 @@ pub(super) fn apply(content: &str, hunk: &PatchHunk) -> Result<String> {
 }
 
 fn find_match(lines: &[&str], hunk: &PatchHunk) -> Option<usize> {
+    if hunk.old_lines.is_empty() {
+        return (hunk.start_line <= lines.len()).then_some(hunk.start_line);
+    }
     let max_start = lines.len().saturating_sub(hunk.old_lines.len());
     (0..=max_start).find(|start| hunk_matches(lines, hunk, *start))
 }
@@ -34,3 +37,7 @@ fn hunk_matches(lines: &[&str], hunk: &PatchHunk, start: usize) -> bool {
 fn line_matches(lines: &[&str], index: usize, old_line: &str) -> bool {
     index < lines.len() && lines[index].trim() == old_line.trim()
 }
+
+#[cfg(test)]
+#[path = "hunk_apply_tests.rs"]
+mod tests;

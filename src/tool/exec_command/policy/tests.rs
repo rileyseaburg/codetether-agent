@@ -2,6 +2,9 @@ use super::{enabled, unapproved_escalation};
 use crate::config::{Config, SandboxMode};
 use serde_json::json;
 
+#[path = "approval_tests.rs"]
+mod approvals;
+
 #[test]
 fn escalation_requires_policy_authority_before_skipping_sandbox() {
     let args = json!({"cmd": "cargo test", "sandbox_permissions": "require_escalated"});

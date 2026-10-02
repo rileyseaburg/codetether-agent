@@ -33,7 +33,7 @@ pub(super) async fn run(
         "/status" => status::show(app, cwd, session, "Status").await,
         "/permissions" => status::show(app, cwd, session, "Permissions").await,
         "/diff" => diff::show(app, cwd),
-        "/copy" => copy::latest(app),
+        "/copy" => copy::run(app, prompt),
         "/review" => review::prepare(app),
         "/clear" => reroute(app, cwd, session, registry, "/new").await,
         "/resume" => reroute(app, cwd, session, registry, "/sessions").await,

@@ -2,36 +2,37 @@
 
 use super::types::PatchHunk;
 
+#[path = "hunk_body.rs"]
+mod body;
+#[path = "hunk_range.rs"]
+mod range;
+
 /// Incrementally collects old and new hunk lines.
 pub(super) struct HunkBuilder {
     start_line: usize,
+    counts: (usize, usize),
     old_lines: Vec<String>,
     new_lines: Vec<String>,
 }
 
 impl HunkBuilder {
     pub(super) fn from_header(line: &str) -> Option<Self> {
-        let old_range = line.split_whitespace().nth(1)?.strip_prefix('-')?;
-        let start_line = old_range
-            .split(',')
-            .next()
-            .and_then(|value| value.parse().ok())
-            .unwrap_or(1);
+        let (start_line, old_count) = range::parse(line.split_whitespace().nth(1)?, '-')?;
+        let (_, new_count) = range::parse(line.split_whitespace().nth(2)?, '+')?;
         Some(Self {
             start_line,
+            counts: (old_count, new_count),
             old_lines: Vec::new(),
             new_lines: Vec::new(),
         })
     }
 
     pub(super) fn absorb(&mut self, line: &str) {
-        if let Some(stripped) = line.strip_prefix('-') {
-            self.old_lines.push(stripped.to_string());
-        } else if let Some(stripped) = line.strip_prefix('+') {
-            self.new_lines.push(stripped.to_string());
-        } else if line.starts_with(' ') || line.is_empty() {
-            self.push_context(line);
-        }
+        body::absorb(&mut self.old_lines, &mut self.new_lines, line);
+    }
+
+    pub(super) fn complete(&self) -> bool {
+        self.counts == (self.old_lines.len(), self.new_lines.len())
     }
 
     pub(super) fn build(self, file: String) -> PatchHunk {
@@ -41,11 +42,5 @@ impl HunkBuilder {
             old_lines: self.old_lines,
             new_lines: self.new_lines,
         }
-    }
-
-    fn push_context(&mut self, line: &str) {
-        let content = if line.is_empty() { "" } else { &line[1..] };
-        self.old_lines.push(content.to_string());
-        self.new_lines.push(content.to_string());
     }
 }
