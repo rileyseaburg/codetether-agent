@@ -54,6 +54,9 @@ forgejo-cli --base "$FORGEJO_API_BASE" post \
   versioned `.exe`, `.zip`, and `.msi` files. No native Windows runner or Windows
   runtime smoke test is used by this cross-build.
 - Apple Silicon and Intel macOS: `macOS`.
+- Version discovery runs on `codetether-release-proxmox`, not macOS. The small
+  Cargo.toml read must not hold verification and every platform behind the
+  macOS runner queue; macOS outputs remain mandatory for publication.
 - Runner registration/visibility must include this repository. macOS runner
   availability must be checked before claiming a build has run.
 - Rust 1.95 is selected explicitly. Verification includes formatting, release

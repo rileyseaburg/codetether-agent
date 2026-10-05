@@ -6,8 +6,8 @@ on:
         value: ${{ jobs.meta.outputs.version }}
 jobs:
   meta:
-    # Keep version discovery off the saturated Linux compiler pool.
-    runs-on: macOS
+    # Reading Cargo.toml must not block every platform behind the macOS queue.
+    runs-on: codetether-release-proxmox
     timeout-minutes: 10
     outputs:
       version: ${{ steps.version.outputs.version }}

@@ -13,7 +13,7 @@ if grep -q 'spotlessbinco-k8s' "$workflows"/release*.yml; then
 fi
 grep -Fxq '      DOCKER_HOST: unix:///var/run/docker.sock' "$workflows/release-windows.yml"
 grep -Fxq '      runner: macOS' "$workflows/release.yml"
-grep -Fxq '    runs-on: macOS' "$workflows/release-meta.yml"
+grep -Fxq '    runs-on: codetether-release-proxmox' "$workflows/release-meta.yml"
 awk '/^  linux:/,/^  windows:/' "$workflows/release.yml" \
   | grep -Fxq '    needs: [meta, verify, windows]'
 awk '/^  windows:/,/^  macos:/' "$workflows/release.yml" \
