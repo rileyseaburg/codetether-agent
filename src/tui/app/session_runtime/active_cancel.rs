@@ -8,6 +8,9 @@ use tokio::sync::Notify;
 use super::active_turn::ActiveTurn;
 use crate::session::helper::steering::SteeringInput;
 
+#[path = "active_release.rs"]
+mod release;
+
 /// Synchronized control plane for cancellation and active-turn steering.
 #[derive(Clone, Default)]
 pub(super) struct ActiveCancel(Arc<Mutex<ActiveTurn>>);
@@ -31,14 +34,6 @@ impl ActiveCancel {
             crate::session::helper::steering::open(session_id);
         }
         attached
-    }
-
-    /// Clear active state and reject all later steering for that run.
-    pub(super) fn clear(&self) {
-        let mut active = self.0.lock();
-        if let Some(session_id) = active.clear() {
-            crate::session::helper::steering::clear(&session_id);
-        }
     }
 
     /// Notify the active executor, returning whether one was attached.

@@ -53,6 +53,7 @@ pub(super) async fn submit(
     notice_tx: &mpsc::Sender<SessionNotice>,
 ) -> bool {
     if crate::session::tasks::runtime::answer_review::held(&request.session.id) {
+        cancel.release_prepared(&request.session.id);
         let _ = notice_tx
             .send(SessionNotice::Failed {
                 session: request.session,
