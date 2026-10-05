@@ -4,7 +4,7 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 workflows="$root/.forgejo/workflows"
 grep -Fxq '      runner: codetether-release-proxmox' "$workflows/release.yml"
-for name in verify windows publish; do
+for name in verify windows publish cancel; do
   grep -Fxq '    runs-on: codetether-release-proxmox' "$workflows/release-$name.yml"
 done
 if grep -q 'spotlessbinco-k8s' "$workflows"/release*.yml; then

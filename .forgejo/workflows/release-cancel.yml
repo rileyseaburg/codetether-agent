@@ -10,8 +10,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   cancel:
-    # Recovery must not wait behind builds occupying the shared Linux pool.
-    runs-on: macOS
+    # Recovery must still run when an offline Mac blocks the release group.
+    # Cancellation releases the group's existing work before this job starts.
+    runs-on: codetether-release-proxmox
     timeout-minutes: 5
     steps:
       - run: echo 'Cancellation workflow activated; inspect repository run statuses before redispatching Release.'
