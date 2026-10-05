@@ -19,13 +19,13 @@ pub(super) fn capability(model: ModelInfo) -> ModelCapability {
 }
 
 fn aliases(provider: &str, model: &str) -> Vec<String> {
-    if provider == "openai-codex"
-        && crate::provider::openai_codex::service_tier_catalog::supports_fast(model)
-        && !model.ends_with("-fast")
-    {
-        return vec![format!("{provider}/{model}-fast")];
+    if provider != "openai-codex" {
+        return Vec::new();
     }
-    Vec::new()
+    crate::provider::openai_codex::service_tier_catalog::suffixes(model)
+        .iter()
+        .map(|suffix| format!("{provider}/{model}{suffix}"))
+        .collect()
 }
 
 fn qualifiers(provider: &str, model: &str) -> Vec<String> {

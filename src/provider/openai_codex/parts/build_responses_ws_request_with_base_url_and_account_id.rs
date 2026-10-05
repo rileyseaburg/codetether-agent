@@ -66,6 +66,11 @@ impl OpenAiCodexProvider {
                 HeaderValue::from_str(account_id)
                     .context("Failed to build ChatGPT account header")?,
             );
+            // The Codex backend gates models (e.g. gpt-6.1-sol) on the client version.
+            request.headers_mut().insert(
+                "version",
+                HeaderValue::from_static(CHATGPT_CODEX_CLIENT_VERSION),
+            );
         }
         Ok(request)
     }

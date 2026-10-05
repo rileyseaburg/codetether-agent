@@ -1,19 +1,37 @@
-//! Parse `message_delta` SSE events into [`StreamChunk::Done`].
-
-use serde_json::Value;
+//! Accumulate Anthropic SSE usage without losing prompt-cache accounting.
 
 use crate::provider::{StreamChunk, Usage};
+use serde_json::Value;
 
-/// Extract the done chunk from a `message_delta` event.
-///
-/// Maps `usage.output_tokens` into a provider-neutral [`Usage`] struct.
-pub(crate) fn parse(event: &Value) -> StreamChunk {
-    let usage = event.get("usage").map(|u| {
-        let out = u.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-        Usage {
-            completion_tokens: out as usize,
-            ..Default::default()
+/// Retain start-event input usage and merge cumulative delta counters.
+pub(crate) fn parse(event: &Value, accumulated: &mut Option<Usage>) -> Option<StreamChunk> {
+    let start = event["type"] == "message_start";
+    let wire = if start {
+        &event["message"]["usage"]
+    } else {
+        &event["usage"]
+    };
+    if wire.is_object() {
+        let usage = accumulated.get_or_insert_with(Usage::default);
+        if let Some(tokens) = wire["input_tokens"].as_u64() {
+            usage.prompt_tokens = tokens as usize;
         }
-    });
-    StreamChunk::Done { usage }
+        if let Some(tokens) = wire["output_tokens"].as_u64() {
+            usage.completion_tokens = tokens as usize;
+        }
+        if let Some(tokens) = wire["cache_read_input_tokens"].as_u64() {
+            usage.cache_read_tokens = Some(tokens as usize);
+        }
+        if let Some(tokens) = wire["cache_creation_input_tokens"].as_u64() {
+            usage.cache_write_tokens = Some(tokens as usize);
+        }
+        usage.total_tokens = usage
+            .prompt_tokens
+            .saturating_add(usage.completion_tokens)
+            .saturating_add(usage.cache_read_tokens.unwrap_or(0))
+            .saturating_add(usage.cache_write_tokens.unwrap_or(0));
+    }
+    (!start).then(|| StreamChunk::Done {
+        usage: accumulated.clone(),
+    })
 }

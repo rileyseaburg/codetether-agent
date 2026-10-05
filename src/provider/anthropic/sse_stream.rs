@@ -1,16 +1,16 @@
-//! Stateful SSE byte-stream to [`StreamChunk`] converter.
+//! Stateful SSE byte-stream to [`StreamChunk`](crate::provider::StreamChunk) converter.
 //!
 //! [`SseChunkStream`] holds buffering state needed to convert a raw SSE
-//! byte stream into provider-neutral [`StreamChunk`] values.
-//! The [`Stream`] impl is in [`sse_stream_poll`].
+//! byte stream into provider-neutral chunks.
+//! The [`Stream`](futures::Stream) impl is in the sibling polling module.
 
 use bytes::Bytes;
-use serde_json::Value;
 
-use crate::provider::StreamChunk;
+use crate::provider::Usage;
 
 use super::sse_block_parser::BlockParser;
-use super::sse_line;
+#[path = "sse_stream_line.rs"]
+mod line;
 
 /// Stateful converter from SSE HTTP bytes to provider stream chunks.
 pub(crate) struct SseChunkStream {
@@ -23,7 +23,9 @@ pub(crate) struct SseChunkStream {
     pub(crate) pending_event: Option<String>,
     /// Content-block parser with tool-call ID tracking.
     blocks: BlockParser,
-    /// Set to `true` once a real [`StreamChunk::Done`] has been yielded from
+    /// Usage accumulated from message-start and message-delta events.
+    usage: Option<Usage>,
+    /// Set to `true` once a real [`Done`](crate::provider::StreamChunk::Done) has been yielded from
     /// a `message_delta` SSE event. Used by the poll impl to distinguish a
     /// clean byte-stream close (after a real Done) from a premature EOF.
     pub(crate) saw_done: bool,
@@ -39,28 +41,9 @@ impl SseChunkStream {
             buffer: String::new(),
             pending_event: None,
             blocks: BlockParser::new(),
+            usage: None,
             saw_done: false,
             eof_reported: false,
-        }
-    }
-
-    /// Process one SSE line and return at most one chunk.
-    pub(crate) fn process_line(&mut self, line: &str) -> Option<StreamChunk> {
-        let (event_type, data) = sse_line::parse_sse_line(line)?;
-        if let Some(ev) = event_type {
-            self.pending_event = Some(ev);
-            return None;
-        }
-        let data_str = data?;
-        if data_str == "[DONE]" {
-            return Some(StreamChunk::Done { usage: None });
-        }
-        let event: Value = serde_json::from_str(&data_str).ok()?;
-        match event.get("type")?.as_str()? {
-            "content_block_start" => self.blocks.start(&event),
-            "content_block_delta" => self.blocks.delta(&event),
-            "message_delta" => Some(super::sse_message_delta::parse(&event)),
-            _ => None,
         }
     }
 }
@@ -72,3 +55,7 @@ mod tests;
 #[cfg(test)]
 #[path = "sse_stream_premature_eof_tests.rs"]
 mod premature_eof_tests;
+
+#[cfg(test)]
+#[path = "sse_usage_tests.rs"]
+mod usage_tests;

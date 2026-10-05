@@ -37,3 +37,14 @@ fn skips_reasoning_effort_for_non_reasoning_models() {
     assert_eq!(model, "gpt-4o");
     assert_eq!(level, None);
 }
+
+#[test]
+fn composes_ultrafast_tier_with_astra_effort() {
+    let (model, level, tier) =
+        OpenAiCodexProvider::resolve_model_and_reasoning_effort_and_service_tier(
+            "gpt-6-astra-ultrafast:high",
+        );
+    assert_eq!(model, "gpt-6-astra");
+    assert_eq!(level.map(ThinkingLevel::as_str), Some("high"));
+    assert_eq!(tier.map(CodexServiceTier::as_str), Some("ultrafast"));
+}

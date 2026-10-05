@@ -4,7 +4,11 @@ const OPENAI_API_URL: &str = "https://api.openai.com/v1";
 const CHATGPT_CODEX_API_URL: &str = "https://chatgpt.com/backend-api/codex";
 const OPENAI_RESPONSES_WS_URL: &str = "wss://api.openai.com/v1/responses";
 const CHATGPT_CODEX_RESPONSES_WS_URL: &str = "wss://chatgpt.com/backend-api/codex/responses";
-const CHATGPT_CODEX_CLIENT_VERSION: &str = "0.153.3";
+// Latest openai/codex release (rust-v0.159.1, 2026-09-29). The backend gates
+// both `/models` listings and `/responses` access on this version: with
+// 0.153.3, gpt-6.1-sol was hidden from `/models` and rejected by
+// `/responses`; with 0.159.1 it is listed and answers (verified live).
+const CHATGPT_CODEX_CLIENT_VERSION: &str = "0.159.1";
 const AUTH_ISSUER: &str = "https://auth.openai.com";
 const AUTHORIZE_URL: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_URL: &str = "https://auth.openai.com/oauth/token";

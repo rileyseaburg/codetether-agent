@@ -17,6 +17,8 @@
 //! assert_eq!(resolve_model_id("custom.model-id"), "custom.model-id");
 //! ```
 
+#[path = "aliases_claude_next.rs"]
+mod aliases_claude_next;
 #[path = "aliases_opus.rs"]
 pub mod aliases_opus;
 
@@ -58,10 +60,8 @@ pub mod aliases_opus;
 /// ```
 pub fn resolve_model_id(model: &str) -> &str {
     match model {
-        // --- Anthropic Claude (Opus family lives in `aliases_opus`) ---
-        m if aliases_opus::resolve_opus_alias(m).is_some() => {
-            aliases_opus::resolve_opus_alias(m).unwrap()
-        }
+        // --- Anthropic Claude (Opus / Sonnet 5.x live in `aliases_claude_next`) ---
+        m if aliases_claude_next::resolve(m).is_some() => aliases_claude_next::resolve(m).unwrap(),
         m if m == "fable" || m.ends_with("claude-fable-5") => "us.anthropic.claude-fable-5",
 
         "claude-sonnet-4.6" | "claude-4.6-sonnet" | "claude-sonnet-4-6" => {

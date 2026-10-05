@@ -7,12 +7,14 @@ enum ResponsesWsBackend {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CodexServiceTier {
     Priority,
+    Ultrafast,
 }
 
 impl CodexServiceTier {
     fn as_str(self) -> &'static str {
         match self {
             Self::Priority => "priority",
+            Self::Ultrafast => "ultrafast",
         }
     }
 }

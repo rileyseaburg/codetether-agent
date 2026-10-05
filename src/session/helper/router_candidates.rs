@@ -26,7 +26,7 @@ pub(in crate::session::helper) fn provider_failover_candidates(provider: &str) -
         "github-copilot" | "github-copilot-enterprise" => {
             vec![format!("{provider}/gpt-5-mini")]
         }
-        "openai-codex" => crate::provider::openai_codex::model_catalog::chatgpt_models()
+        "openai-codex" => crate::provider::openai_codex::model_catalog::current_models()
             .iter()
             .map(|model| format!("openai-codex/{model}"))
             .collect(),

@@ -1,3 +1,6 @@
+#[path = "../responses_pairing.rs"]
+mod responses_pairing;
+
 impl OpenAiCodexProvider {
     fn convert_messages_to_responses_input(messages: &[Message]) -> Vec<Value> {
         let mut input = Vec::new();
@@ -5,6 +8,6 @@ impl OpenAiCodexProvider {
         for message in messages {
             Self::append_responses_message(message, &mut input, &mut known_calls);
         }
-        stream_recovery::request_anchor::ensure(input)
+        stream_recovery::request_anchor::ensure(responses_pairing::repair(input))
     }
 }

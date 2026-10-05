@@ -12,13 +12,21 @@ fn fable_fields_include_adaptive_thinking() {
 #[test]
 fn bedrock_openai_gpt_fields_include_reasoning_effort() {
     for id in [
-        "openai.gpt-6-astra",
         "openai.gpt-5.6-sol",
         "openai.gpt-5.6-terra",
         "openai.gpt-5.6-luna",
     ] {
         let fields = additional_model_request_fields(id).unwrap();
         assert_eq!(fields["reasoning_effort"], "medium");
+    }
+}
+
+/// Bedrock rejects `reasoning_effort` for GPT-6.x (observed live).
+#[test]
+fn bedrock_gpt6_fields_omit_reasoning_effort() {
+    for id in ["us.openai.gpt-6-astra", "global.openai.gpt-6.1-sol"] {
+        let fields = additional_model_request_fields(id);
+        assert!(fields.is_none_or(|f| f.get("reasoning_effort").is_none()));
     }
 }
 

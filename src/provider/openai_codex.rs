@@ -18,6 +18,7 @@ include!("openai_codex/module_manifest.rs");
 include!("openai_codex/parts_manifest_a.rs");
 include!("openai_codex/parts_manifest_b.rs");
 include!("openai_codex/parts_manifest_c.rs");
+include!("openai_codex/parts_manifest_d.rs");
 
 #[cfg(test)]
 mod tests {

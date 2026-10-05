@@ -4,6 +4,8 @@ mod astra_model;
 mod event_error;
 #[path = "model_catalog.rs"]
 pub(crate) mod model_catalog;
+#[path = "model_discovery.rs"]
+pub(crate) mod model_discovery;
 #[path = "output_item.rs"]
 mod output_item;
 #[path = "reasoning_catalog.rs"]

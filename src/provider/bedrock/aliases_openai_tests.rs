@@ -42,3 +42,13 @@ fn non_openai_returns_none() {
     assert_eq!(resolve_openai_alias("claude-opus-4-7"), None);
     assert_eq!(resolve_openai_alias("nova-pro"), None);
 }
+
+#[test]
+fn gpt_6_1_sol_uses_global_profile() {
+    for alias in ["gpt-6.1-sol", "openai.gpt-6.1-sol", "us.openai.gpt-6.1-sol"] {
+        assert_eq!(
+            BedrockProvider::resolve_model_id(alias),
+            "global.openai.gpt-6.1-sol"
+        );
+    }
+}

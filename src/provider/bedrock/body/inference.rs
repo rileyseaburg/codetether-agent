@@ -22,6 +22,7 @@ pub(super) fn build(request: &CompletionRequest, model_id: &str) -> Value {
 }
 
 fn omits_temperature(model_id: &str) -> bool {
+    // Encrypted-reasoning models (incl. Sonnet 5.x) reject `temperature`.
     if super::super::output_budget::has_encrypted_reasoning(model_id) {
         return true;
     }
@@ -33,9 +34,15 @@ fn omits_temperature(model_id: &str) -> bool {
         .unwrap_or(id);
     let id = id.strip_prefix("openai.").unwrap_or(id);
     let id = id.split([':', '@']).next().unwrap_or(id);
-    matches!(id, "gpt-6-astra" | "gpt-6-astra-fast")
+    // Bedrock rejects `temperature` for the whole GPT-6.x family
+    // ("This model doesn't support the temperature field").
+    id.starts_with("gpt-6")
 }
 
 #[cfg(test)]
 #[path = "inference_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "inference_sonnet5_tests.rs"]
+mod sonnet5_tests;

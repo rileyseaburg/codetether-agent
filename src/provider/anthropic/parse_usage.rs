@@ -14,7 +14,8 @@ use super::response::AnthropicUsage;
 /// Anthropic-compatible providers may omit the `usage` object from some
 /// responses. When usage is absent, prompt, completion, and total token counts
 /// are reported as zero while cache-specific counts remain `None`. When usage
-/// is present, total tokens are computed as `input_tokens + output_tokens`.
+/// is present, total tokens include uncached input, cache reads/writes, and output.
+/// `prompt_tokens` remains uncached input for cache-aware cost accounting.
 ///
 /// # Parameters
 ///
@@ -33,8 +34,19 @@ pub(crate) fn usage(usage: Option<&AnthropicUsage>) -> Usage {
     Usage {
         prompt_tokens: usage.map(|u| u.input_tokens).unwrap_or(0),
         completion_tokens: usage.map(|u| u.output_tokens).unwrap_or(0),
-        total_tokens: usage.map(|u| u.input_tokens + u.output_tokens).unwrap_or(0),
+        total_tokens: usage
+            .map(|u| {
+                u.input_tokens
+                    .saturating_add(u.output_tokens)
+                    .saturating_add(u.cache_read_input_tokens.unwrap_or(0))
+                    .saturating_add(u.cache_creation_input_tokens.unwrap_or(0))
+            })
+            .unwrap_or(0),
         cache_read_tokens: usage.and_then(|u| u.cache_read_input_tokens),
         cache_write_tokens: usage.and_then(|u| u.cache_creation_input_tokens),
     }
 }
+
+#[cfg(test)]
+#[path = "parse_usage_tests.rs"]
+mod tests;

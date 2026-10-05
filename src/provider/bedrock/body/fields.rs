@@ -1,5 +1,8 @@
 use serde_json::{Map, Value, json};
 
+#[path = "fields_effort.rs"]
+mod effort;
+
 pub(in crate::provider::bedrock) fn additional_model_request_fields(
     model_id: &str,
 ) -> Option<Value> {
@@ -19,7 +22,7 @@ pub(in crate::provider::bedrock) fn additional_model_request_fields(
             json!({"effort": configured_effort()}),
         );
     }
-    if is_bedrock_openai_gpt(model_id) {
+    if effort::accepts_reasoning_effort(model_id) {
         // Bedrock-hosted OpenAI GPT families use the native reasoning field.
         fields.insert("reasoning_effort".into(), json!(configured_effort()));
     }
@@ -44,11 +47,6 @@ pub(super) fn configured_effort() -> &'static str {
 pub(super) fn uses_adaptive_thinking(model_id: &str) -> bool {
     super::super::output_budget::has_encrypted_reasoning(model_id)
         || model_id.to_ascii_lowercase().contains("claude-mythos-5")
-}
-
-/// Bedrock-hosted OpenAI GPT models (`openai.gpt-*`).
-pub(super) fn is_bedrock_openai_gpt(model_id: &str) -> bool {
-    model_id.to_ascii_lowercase().contains("openai.gpt-")
 }
 
 #[cfg(test)]

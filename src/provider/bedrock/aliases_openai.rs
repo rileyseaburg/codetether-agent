@@ -22,6 +22,12 @@
 pub fn resolve_openai_alias(model: &str) -> Option<&'static str> {
     match model {
         "gpt-6-astra" => Some("openai.gpt-6-astra"),
+        // GPT-6.1 Sol is only invokable through the global inference profile
+        // (observed live: `us.` is an invalid identifier, bare `openai.` needs
+        // a profile).
+        "gpt-6.1-sol" | "openai.gpt-6.1-sol" | "us.openai.gpt-6.1-sol" => {
+            Some("global.openai.gpt-6.1-sol")
+        }
         "gpt-5.6-sol" => Some("openai.gpt-5.6-sol"),
         "gpt-5.6-terra" => Some("openai.gpt-5.6-terra"),
         "gpt-5.6-luna" => Some("openai.gpt-5.6-luna"),

@@ -1,6 +1,12 @@
-//! Models supported by or announced for the ChatGPT-backed Codex provider.
+//! Offline seed catalog for the ChatGPT-backed Codex provider.
 //!
-//! Rollout-gated entries can be selected before an account receives access.
+//! Live discovery ([`super::model_discovery`]) is authoritative. This list is
+//! only used before the first successful `/models` query in a process, or
+//! when the account is not authenticated, so pickers and failover still have
+//! candidates.
+
+#[path = "model_catalog_live.rs"]
+mod live;
 
 const CHATGPT_MODELS: &[&str] = &[
     "gpt-6-astra",
@@ -16,12 +22,11 @@ const CHATGPT_MODELS: &[&str] = &[
     "codex-auto-review",
 ];
 
-/// Models understood by CodeTether's ChatGPT Codex backend, in selector order.
-/// The upstream service remains authoritative for rollout-gated availability.
+/// Offline seed models, in selector order.
 ///
 /// # Returns
 ///
-/// A stable ordered slice shared by provider validation and failover policy.
+/// A stable ordered slice used when no discovery has succeeded yet.
 ///
 /// # Examples
 ///
@@ -30,4 +35,10 @@ const CHATGPT_MODELS: &[&str] = &[
 /// ```
 pub(crate) fn chatgpt_models() -> &'static [&'static str] {
     CHATGPT_MODELS
+}
+
+/// Models for failover and routing: the latest live discovery when one has
+/// succeeded in this process, otherwise the offline seed.
+pub(crate) fn current_models() -> &'static [&'static str] {
+    live::current().unwrap_or(CHATGPT_MODELS)
 }

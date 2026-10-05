@@ -8,7 +8,7 @@ use crate::provider::StreamChunk;
 
 /// Build a minimal fake `SseChunkStream` by injecting a pre-built inner
 /// byte stream so we can exercise the poll impl without a real HTTP response.
-fn stream_from_sse(lines: &[&str]) -> SseChunkStream {
+pub(super) fn stream_from_sse(lines: &[&str]) -> SseChunkStream {
     use bytes::Bytes;
     let payload: String = lines.join("\n");
     let bytes_stream = futures::stream::iter(
@@ -25,6 +25,7 @@ fn stream_from_sse(lines: &[&str]) -> SseChunkStream {
         saw_done: false,
         eof_reported: false,
         blocks: BlockParser::new(),
+        usage: None,
     }
 }
 

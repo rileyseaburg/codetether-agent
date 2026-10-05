@@ -5,7 +5,7 @@ impl Provider for OpenAiCodexProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        Ok(self.available_models())
+        Ok(self.listed_models().await)
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
@@ -42,8 +42,8 @@ impl Provider for OpenAiCodexProvider {
     }
 
     fn try_stream_fallback(&self, request: &CompletionRequest, session_id: &str) -> bool {
-        let forced = self.using_chatgpt_backend()
-            && Self::needs_chatgpt_http_transport(&request.model);
+        let forced =
+            self.using_chatgpt_backend() && Self::needs_chatgpt_http_transport(&request.model);
         if forced || self.transport_health.requires_http(session_id) {
             return false;
         }

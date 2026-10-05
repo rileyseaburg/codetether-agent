@@ -78,3 +78,7 @@ fn last_content_part(message: &mut Value) -> Option<&mut Value> {
         .and_then(Value::as_array_mut)
         .and_then(|parts| parts.last_mut())
 }
+
+#[cfg(test)]
+#[path = "cache_prefix_tests.rs"]
+mod prefix_tests;

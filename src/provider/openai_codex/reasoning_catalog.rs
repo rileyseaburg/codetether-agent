@@ -1,5 +1,8 @@
 //! Reasoning levels reported by the authenticated Codex model catalog.
 
+#[path = "reasoning_catalog_seed.rs"]
+mod seed;
+
 /// Return supported wire-level efforts for a Codex model.
 ///
 /// # Arguments
@@ -8,7 +11,8 @@
 ///
 /// # Returns
 ///
-/// Returns an empty slice when the model has no catalog entry.
+/// Returns account-advertised efforts, or offline defaults before discovery.
+/// Unknown models return an empty vector.
 ///
 /// # Examples
 ///
@@ -16,23 +20,21 @@
 /// use codetether_agent::provider::openai_codex::reasoning_catalog::supported_levels;
 /// assert!(supported_levels("gpt-5.6-sol").contains(&"ultra"));
 /// ```
-pub fn supported_levels(model: &str) -> &'static [&'static str] {
+pub fn supported_levels(model: &str) -> Vec<&'static str> {
     let model = base_model(model);
-    let model = super::service_tier_catalog::parse_fast_alias(model).unwrap_or(model);
-    match model {
-        "gpt-6-astra" | "gpt-5.6-sol" | "gpt-5.6-terra" => {
-            &["low", "medium", "high", "xhigh", "max", "ultra"]
-        }
-        "gpt-reserve" | "gpt-5.6-luna" | "codex-auto-review" => {
-            &["low", "medium", "high", "xhigh", "max"]
-        }
-        "gpt-5.5"
-        | "gpt-5.5-fast"
-        | "gpt-5.4"
-        | "gpt-5.4-mini"
-        | "gpt-5.3-codex-spark" => &["low", "medium", "high", "xhigh"],
-        _ => &[],
+    let model = model
+        .strip_suffix("-ultrafast")
+        .or_else(|| model.strip_suffix("-fast"))
+        .unwrap_or(model);
+    if let Some(entry) = super::model_discovery::model(model) {
+        return entry
+            .supported_reasoning_levels
+            .iter()
+            .filter_map(|level| super::thinking_level::ThinkingLevel::parse(&level.effort))
+            .map(super::thinking_level::ThinkingLevel::as_str)
+            .collect();
     }
+    seed::levels(model).to_vec()
 }
 
 /// Report whether a model accepts a reasoning-effort wire value.
