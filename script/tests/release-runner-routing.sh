@@ -7,6 +7,7 @@ grep -Fxq '      runner: codetether-release-proxmox' "$workflows/release.yml"
 for name in verify windows publish cancel; do
   grep -Fxq '    runs-on: codetether-release-proxmox' "$workflows/release-$name.yml"
 done
+grep -Fxq '    timeout-minutes: 15' "$workflows/release-cancel.yml"
 if grep -q 'spotlessbinco-k8s' "$workflows"/release*.yml; then
   echo 'Release workflows must not select shared Kubernetes runners' >&2
   exit 1
