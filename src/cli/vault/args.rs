@@ -11,6 +11,7 @@ use clap::{Args, Subcommand};
 /// assert!(cli.is_ok());
 /// ```
 #[derive(Args, Debug, Clone)]
+#[command(after_help = super::help::WORKFLOW)]
 pub struct VaultArgs {
     #[command(subcommand)]
     pub(crate) action: Option<Action>,
@@ -23,6 +24,7 @@ pub(crate) enum Action {
     /// Set the active Vault URL, discarding credentials for the previous URL.
     Url { address: String },
     /// Authenticate and save a validated, non-administrator Vault credential.
+    #[command(after_help = super::help::WORKFLOW)]
     Login {
         #[command(subcommand)]
         method: Login,
@@ -34,6 +36,7 @@ pub(crate) enum Action {
 #[derive(Subcommand, Debug, Clone)]
 pub(crate) enum Login {
     /// Hidden token prompt, or read a token from stdin for automation.
+    #[command(after_help = super::help::WORKFLOW)]
     Token {
         #[arg(long)]
         stdin: bool,

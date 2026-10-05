@@ -15,7 +15,11 @@ pub(crate) async fn initialize(command: &Option<Command>, is_tui: bool, git_help
     match secrets::SecretsManager::from_env().await {
         Ok(manager) => {
             if manager.is_connected() {
-                tracing::info!(source = "configured", "Vault client configured");
+                tracing::info!(
+                    source = "configured",
+                    authenticated = "not_checked",
+                    "Vault client configured; authentication has not been verified"
+                );
             }
             let _ = secrets::init_from_manager(manager);
         }

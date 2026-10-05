@@ -12,10 +12,10 @@ pub(super) fn text(capabilities: &[ProviderCapability]) -> String {
         lines.push(format!(
             "{} [{}] source={}",
             provider.provider,
-            if provider.available {
-                "available"
-            } else {
-                "unavailable"
+            match (provider.available, provider.models.is_empty()) {
+                (false, _) => "unavailable",
+                (true, true) => "configured; no models discovered",
+                (true, false) => "available",
             },
             provider.source
         ));

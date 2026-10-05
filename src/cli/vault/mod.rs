@@ -6,6 +6,7 @@
 mod args;
 mod device;
 mod device_args;
+pub(crate) mod help;
 mod login;
 mod oidc;
 mod settings;
@@ -17,6 +18,8 @@ mod token_stdin;
 pub use args::VaultArgs;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod workflow_tests;
 
 /// Execute a Vault management command independently of normal provider startup.
 ///
@@ -33,10 +36,12 @@ mod tests;
 /// # }
 /// ```
 pub async fn execute(args: VaultArgs) -> anyhow::Result<()> {
-    match args.action.unwrap_or(args::Action::Status) {
+    use anyhow::Context;
+    let result = match args.action.unwrap_or(args::Action::Status) {
         args::Action::Status => status::status().await,
         args::Action::Url { address } => settings::url(&address),
         args::Action::Logout => settings::logout(),
         args::Action::Login { method } => login::run(method).await,
-    }
+    };
+    result.context(help::WORKFLOW)
 }

@@ -37,7 +37,7 @@ pub(super) async fn maintain(clients: Weak<Clients>) {
                 tracing::warn!(failure = ?error, "Vault token lease maintenance failed");
                 if error.terminal() {
                     tracing::warn!(
-                        "Vault renewal was rejected: token may be expired, revoked, at its maximum TTL, or lack renew-self permission; reauthenticate with a renewable token"
+                        "Vault renewal was rejected: token may be expired, revoked, at its maximum TTL, or lack renew-self permission; run codetether vault login token, then codetether vault status. -t/--token does not configure Vault."
                     );
                     return;
                 }

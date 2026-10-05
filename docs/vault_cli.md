@@ -2,6 +2,39 @@
 
 These commands are implemented in source and require a build containing this change. The already-published `v4.7.6-dev.6` binaries do not contain them. No model is started for Vault management.
 
+## Quick workflow: existing Vault token
+
+Run these commands in PowerShell, bash, or zsh:
+
+```text
+codetether vault url https://vault.spotlessbinco.com
+codetether vault login token
+codetether vault status
+codetether models
+```
+
+Use your own server URL if different. Enter the token at the login prompt.
+Check for `authenticated: true` from status, then a nonempty model list.
+
+**`-t` / `--token` authenticates the A2A/MCP control plane, not Vault.**
+Changing that argument does not replace the saved Vault login or `VAULT_TOKEN`.
+The same workflow is available in `codetether --help`, `codetether vault --help`,
+and `codetether vault login --help`.
+
+If status reports `403 invalid token`, run `codetether vault login token` again
+with the intended credential. A saved login normally takes precedence over
+`VAULT_TOKEN`; `CODETETHER_VAULT_SOURCE=env` bypasses it, and `VAULT_ROLE` selects
+workload authentication.
+
+If models reports `configured; no models discovered`, registration alone has
+not established usable model access. Check Vault provider permissions, or the
+AWS profile and region when intentionally using local AWS fallback.
+
+For an editor extension connected to a CodeTether server, configure Vault on
+the **server host, under the account running that server**. A local CLI login
+does not update a remote server or an already-running process. The extension's
+server-authentication token is separate from the server's Vault credential.
+
 ## Configure and inspect
 
 ```sh

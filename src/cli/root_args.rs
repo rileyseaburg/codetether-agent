@@ -26,6 +26,7 @@ mod tests;
 #[derive(Parser, Debug)]
 #[command(name = "codetether")]
 #[command(version, about, long_about = None)]
+#[command(after_help = super::vault::help::WORKFLOW)]
 pub struct Cli {
     /// Project directory to operate on.
     #[arg(global = true, last = true)]
@@ -42,8 +43,8 @@ pub struct Cli {
     /// A2A server URL.
     #[arg(short, long, env = "CODETETHER_SERVER")]
     pub server: Option<String>,
-    /// Authentication token.
-    #[arg(short, long, env = "CODETETHER_TOKEN")]
+    /// A2A/MCP control-plane token, NOT a Vault token. For Vault: codetether vault login token.
+    #[arg(short, long, env = "CODETETHER_TOKEN", hide_env_values = true)]
     pub token: Option<String>,
     /// Worker name.
     #[arg(short, long, env = "CODETETHER_WORKER_NAME")]

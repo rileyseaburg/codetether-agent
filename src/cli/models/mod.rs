@@ -2,6 +2,7 @@
 
 mod collect;
 mod enrich;
+mod guidance;
 mod render;
 mod types;
 
@@ -17,6 +18,9 @@ pub async fn execute(args: ModelsArgs) -> anyhow::Result<()> {
         render::text(&capabilities)
     };
     println!("{output}");
+    if let Some(hint) = guidance::empty_models(&capabilities) {
+        eprintln!("{hint}");
+    }
     Ok(())
 }
 
