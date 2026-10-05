@@ -23,7 +23,9 @@ pub(crate) async fn try_execute(
     let Some(jobs) = super::eligibility::prepare(calls, cwd, session) else {
         return false;
     };
-    let _ = session.save().await;
+    if session.save().await.is_err() {
+        return false;
+    }
     tracing::info!(
         count = jobs.len(),
         "Executing read-only tool batch in parallel"

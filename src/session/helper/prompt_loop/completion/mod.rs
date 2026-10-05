@@ -8,6 +8,7 @@ mod reasoning_context;
 mod recovery;
 mod request;
 mod retry_after;
+mod send;
 
 use super::Runner;
 use crate::provider::CompletionResponse;
@@ -24,15 +25,7 @@ pub(super) async fn complete(runner: &mut Runner<'_>, step: usize) -> Result<Com
     let started = std::time::Instant::now();
     loop {
         attempt.count += 1;
-        let request = request::build(runner, &mut attempt).await;
-        let result = super::super::prompt_call::complete_step(
-            &runner.model.provider,
-            request,
-            &runner.session.id,
-            runner.model.supports_tools,
-            runner.events.as_ref(),
-        )
-        .await;
+        let result = send::run(runner, &mut attempt).await;
         match result {
             Ok(response) => {
                 runner.session.metadata.delegation.update(

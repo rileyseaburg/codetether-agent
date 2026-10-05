@@ -824,9 +824,9 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
         import_codex_session_by_id(&codex_id).await?
     } else if let Some(session_id) = args.session.clone() {
         tracing::info!("Continuing session: {}", session_id);
-        Session::load(&session_id).await?
+        Session::resume(&session_id).await?
     } else if args.continue_session {
-        match Session::last_for_directory(Some(&workspace_dir)).await {
+        match Session::resume_last(Some(&workspace_dir)).await {
             Ok(s) => {
                 tracing::info!(
                     session_id = %s.id,

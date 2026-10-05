@@ -1,9 +1,16 @@
 //! Goal-specific state transition routing.
 
+#[path = "goal/edit.rs"]
+mod edit_goal;
 #[path = "goal/runtime.rs"]
 mod runtime_update;
 #[path = "goal/set.rs"]
 mod set_goal;
+
+/// Replay a user edit against its captured goal revision.
+pub(super) fn edit(state: &mut TaskState, edit: &crate::session::tasks::GoalEdited) {
+    edit_goal::apply(state, edit);
+}
 
 use super::TaskState;
 use crate::session::tasks::GoalRuntimeUpdate;

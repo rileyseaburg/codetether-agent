@@ -31,13 +31,13 @@ pub(super) async fn handle_enter_chat(
     worker_bridge: &Option<TuiWorkerBridge>,
     runtime: &TuiSessionHandle,
 ) {
+    if super::goal_answer::intercept(app, slot, runtime).await {
+        return;
+    }
     if super::approval_feedback::submit(app) {
         return;
     }
-    let prompt = app.state.input.trim().to_string();
-    if !prompt.is_empty() {
-        app.state.push_history(prompt.clone());
-    }
+    let prompt = super::chat_submit_history::capture(app);
     if crate::tui::app::managed_agent::chat::route(app, &prompt).await {
         return;
     }

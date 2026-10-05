@@ -13,4 +13,5 @@ fn is_metadata(name: Option<&str>) -> bool {
     name == Some(".listing_cache.json")
         || name == Some(INDEX_FILENAME)
         || name.is_some_and(|name| name.ends_with(".checkpoint.json"))
+        || name.is_some_and(|name| name.ends_with(".legacy.json"))
 }

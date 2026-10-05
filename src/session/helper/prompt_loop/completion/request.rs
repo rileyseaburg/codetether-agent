@@ -4,25 +4,26 @@ use super::{super::Runner, context::Attempt};
 use crate::provider::{CompletionRequest, ContentPart, Message, Role};
 
 /// Builds the provider request for the current completion attempt.
-pub(super) async fn build(runner: &mut Runner<'_>, attempt: &mut Attempt) -> CompletionRequest {
+pub(super) async fn build(
+    runner: &mut Runner<'_>,
+    attempt: &mut Attempt,
+) -> anyhow::Result<CompletionRequest> {
     let mut messages = vec![Message {
         role: Role::System,
         content: vec![ContentPart::Text {
             text: runner.model.system_prompt.clone(),
         }],
     }];
-    if let Some(message) = &attempt.proactive {
-        messages.push(message.clone());
-    }
+    let mut extras: Vec<Message> = attempt.proactive.iter().cloned().collect();
     super::super::super::step_model_restore::step_prepare::prepare_messages(
-        &mut messages,
+        &mut extras,
         runner.session,
         &mut attempt.derived.messages,
     )
     .await;
     messages.extend(attempt.derived.messages.clone());
     super::reasoning_context::sanitize(&mut messages, &runner.model.provider_name);
-    CompletionRequest {
+    let request = CompletionRequest {
         messages,
         tools: runner.model.advertised.clone(),
         model: runner.model.model_id.clone(),
@@ -30,5 +31,6 @@ pub(super) async fn build(runner: &mut Runner<'_>, attempt: &mut Attempt) -> Com
         top_p: None,
         max_tokens: Some(super::super::super::token::session_completion_max_tokens()),
         stop: Vec::new(),
-    }
+    };
+    crate::session::context::request_guard::finish(request, extras)
 }

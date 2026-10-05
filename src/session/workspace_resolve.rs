@@ -46,9 +46,12 @@ impl Session {
     /// cannot be parsed, or no directory can be determined.
     pub async fn recorded_workspace(id: &str) -> Result<PathBuf> {
         let path = Self::session_path(id)?;
-        let body = tokio::fs::read_to_string(&path)
-            .await
-            .with_context(|| format!("read session {id}"))?;
+        let body = match crate::session::store::header_read::body(&path).await? {
+            Some(header) => header,
+            None => tokio::fs::read_to_string(&path)
+                .await
+                .with_context(|| format!("read session {id}"))?,
+        };
         let projection: WorkspaceProjection =
             serde_json::from_str(&body).with_context(|| format!("parse session {id}"))?;
         if let Some(directory) = projection.metadata.directory.filter(|item| item.is_dir()) {

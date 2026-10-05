@@ -9,7 +9,7 @@ pub(crate) fn agent_tool_transcript_for_parent(
     parent_session_id: &str,
 ) -> Option<Vec<Message>> {
     store::get_for_parent(name, Some(parent_session_id))
-        .map(|entry| entry.session.messages)
+        .map(|entry| entry.session.messages.into_vec())
         .or_else(|| super::super::message::remote::observation::transcript(name, parent_session_id))
 }
 

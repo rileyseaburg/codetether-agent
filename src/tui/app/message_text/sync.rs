@@ -16,11 +16,14 @@ pub(crate) fn sync_messages_from_source(
 ) {
     let visible: Vec<_> = crate::tui::app::message_window::recent(session).collect();
     let boundary: Vec<Message> = visible.iter().take(3).map(|item| (*item).clone()).collect();
-    let has_older = source_has_older || session.history().len() > visible.len();
+    let has_older = source_has_older || session.message_count() > visible.len();
     app.state.messages = super::provider_messages_to_chat_messages(visible.iter().copied());
     app.state
         .history_page
         .reset(source_id.to_string(), &boundary, visible.len(), has_older);
+    app.state
+        .history_page
+        .set_before(session.message_count().saturating_sub(visible.len()));
     crate::tui::app::message_cache_invalidate::clear(&mut app.state);
     reset_metrics(app);
     app.state.reset_tool_preview_scroll();

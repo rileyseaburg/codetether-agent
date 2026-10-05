@@ -1,6 +1,8 @@
 //! Keyboard, mouse and paste event dispatch for the TUI.
 
 mod alt_scroll;
+mod answer_review_choice;
+mod answer_review_key;
 mod approval_key;
 #[cfg(test)]
 mod approval_key_tests;
@@ -18,6 +20,7 @@ mod editor_lsp_key;
 mod editor_lsp_nav;
 mod editor_lsp_retry;
 mod event_dispatch;
+mod event_priority;
 mod fuzzy_find_key;
 mod goal_prompt_key;
 mod interlude_key;
@@ -45,10 +48,6 @@ mod tab_keys;
 mod tests;
 pub(crate) mod voice;
 
-use keybinds::handle_unmodified_key;
-use keyboard::handle_ctrl_key;
-
-pub(crate) use event_dispatch::handle_event;
-pub use mouse::handle_mouse_event;
-pub use paste::handle_paste_event;
-pub(crate) use voice::drain_voice_transcription;
+mod exports;
+pub(crate) use exports::{drain_voice_transcription, handle_event};
+pub use exports::{handle_mouse_event, handle_paste_event};

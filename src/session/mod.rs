@@ -54,7 +54,7 @@ mod events;
 mod header;
 pub(crate) mod history_files;
 mod lifecycle;
-mod persistence;
+include!("storage_modules.rs");
 mod prompt_api;
 pub mod step_limit;
 mod tail_load;

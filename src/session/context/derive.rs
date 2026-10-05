@@ -47,7 +47,7 @@ pub async fn derive_context(
     force_keep_last: Option<usize>,
 ) -> Result<DerivedContext> {
     let origin_len = session.messages.len();
-    let mut messages = session.messages.clone();
+    let mut messages = session.messages.to_vec();
     let ctx = CompressContext::from_session(session);
 
     let step0 =

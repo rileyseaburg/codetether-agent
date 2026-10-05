@@ -7,6 +7,10 @@ use crate::session::tasks::GoalStatus;
 #[path = "update_run_fixtures.rs"]
 mod fixtures;
 use fixtures::{Scripted, args, seed, status};
+#[path = "update_race_tests.rs"]
+mod race;
+#[path = "update_unavailable_tests.rs"]
+mod unavailable;
 
 #[tokio::test]
 async fn rejected_claim_keeps_goal_active_and_returns_findings() {

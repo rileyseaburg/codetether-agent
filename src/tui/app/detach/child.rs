@@ -8,8 +8,9 @@ pub(super) async fn build_child(parent: &Session) -> anyhow::Result<Session> {
     child.messages = tail(
         parent,
         crate::tui::app::resume_window::session_resume_window(),
-    );
-    child.pages = crate::session::pages::classify_all(&child.messages);
+    )
+    .into();
+    child.pages = crate::session::pages::classify_all(&child.messages).into();
     child.metadata = parent.metadata.clone();
     child.agent = "detached".to_string();
     child.title = parent

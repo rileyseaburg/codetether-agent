@@ -225,7 +225,7 @@ impl WritebackJournal {
 /// `Session::save`. The journal remains append-only: callers hand us a
 /// pre-built ordered slice and we stream it as JSONL.
 pub async fn append_entries(session_id: &str, entries: &[JournalEntry]) -> anyhow::Result<()> {
-    let path = crate::session::Session::sessions_dir()?.join(format!("{session_id}.journal.jsonl"));
+    let path = crate::session::Session::session_path(session_id)?.with_extension("journal.jsonl");
     if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent).await?;
     }

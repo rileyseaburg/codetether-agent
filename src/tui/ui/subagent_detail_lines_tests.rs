@@ -23,7 +23,8 @@ fn managed_detail_keeps_full_tool_input_and_output() {
                 content: "complete file output".into(),
             }],
         },
-    ];
+    ]
+    .into();
     state.spawned_agents.insert(
         "observer".into(),
         SpawnedAgent {

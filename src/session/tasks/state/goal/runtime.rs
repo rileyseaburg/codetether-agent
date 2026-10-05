@@ -4,13 +4,16 @@ use super::super::TaskState;
 use crate::session::tasks::{GoalRuntimeUpdate, GoalStatus};
 
 pub(super) fn apply(state: &mut TaskState, update: &GoalRuntimeUpdate) {
+    let held_for_answer = state.answer_review.is_some();
     let Some(goal) = state.goal.as_mut().filter(|goal| goal.id == update.goal_id) else {
         return;
     };
     if let Some(objective) = &update.objective {
         goal.objective = objective.clone();
     }
-    if let Some(status) = update.status {
+    if let Some(status) = update.status
+        && !held_for_answer
+    {
         goal.status = status;
     }
     if let Some(budget) = update.token_budget {

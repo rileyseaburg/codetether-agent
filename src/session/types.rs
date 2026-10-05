@@ -47,7 +47,7 @@ pub struct ImageAttachment {
 /// A conversation session.
 ///
 /// See the [`session`](crate::session) module docs for a usage overview.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Session {
     /// UUID identifying this session on disk.
     pub id: String,
@@ -67,21 +67,21 @@ pub struct Session {
     /// Name of the agent persona that owns this session.
     pub agent: String,
     /// Ordered conversation transcript.
-    #[serde(deserialize_with = "crate::session::tail_seed::deserialize_tail_vec")]
-    pub messages: Vec<Message>,
+    #[serde(deserialize_with = "super::tracked::tail")]
+    pub messages: super::tracked::TrackedVec<Message>,
     /// Per-message page classification sidecar.
     ///
     /// Backfilled on load for legacy sessions that predate the
     /// history/context split.
     #[serde(default)]
-    pub pages: Vec<PageKind>,
+    pub pages: super::tracked::TrackedVec<PageKind>,
     /// Hierarchical summary cache used as the seed for proactive RLM
     /// preparation and invalidated on the [`Session::add_message`] hot path.
     #[serde(default)]
     pub summary_index: SummaryIndex,
     /// Per-tool-call audit records.
-    #[serde(deserialize_with = "crate::session::tail_seed::deserialize_tail_vec")]
-    pub tool_uses: Vec<ToolUse>,
+    #[serde(deserialize_with = "super::tracked::tail")]
+    pub tool_uses: super::tracked::TrackedVec<ToolUse>,
     /// Aggregate token usage across all completions in this session.
     pub usage: Usage,
     /// Maximum agentic loop steps. [`None`] allows the turn to continue until
@@ -91,4 +91,7 @@ pub struct Session {
     /// Optional bus for publishing agent thinking/reasoning.
     #[serde(skip)]
     pub bus: Option<Arc<crate::bus::AgentBus>>,
+    /// Optimistic revision and loaded-window offsets; omitted from JSON exports.
+    #[serde(skip)]
+    pub storage: super::store::State,
 }

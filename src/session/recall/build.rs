@@ -20,7 +20,13 @@ pub(super) fn session(session: &Session) -> Option<IndexedSession> {
         .chunks(CHUNK_MESSAGES)
         .enumerate()
         .skip(skip)
-        .map(|(index, messages)| document(index, messages, &engine))
+        .map(|(index, messages)| {
+            document(
+                index * CHUNK_MESSAGES + session.message_offset(),
+                messages,
+                &engine,
+            )
+        })
         .collect();
     Some(IndexedSession {
         schema_version: SCHEMA_VERSION,
@@ -28,17 +34,16 @@ pub(super) fn session(session: &Session) -> Option<IndexedSession> {
         title: session.title.clone(),
         workspace,
         updated_at: session.updated_at,
-        message_count: session.messages.len(),
+        message_count: session.message_count(),
         documents,
     })
 }
 
 fn document(
-    index: usize,
+    start: usize,
     messages: &[crate::provider::Message],
     engine: &LocalEmbeddingEngine,
 ) -> RecallDocument {
-    let start = index * CHUNK_MESSAGES;
     let excerpt = super::excerpt::render(messages, start);
     RecallDocument {
         start,

@@ -42,6 +42,6 @@ pub async fn produce_cached(
             )
         })
         .await?;
-    session.save().await?;
+    crate::session::store::summaries::put(session, range, &node).await?;
     Ok(node)
 }

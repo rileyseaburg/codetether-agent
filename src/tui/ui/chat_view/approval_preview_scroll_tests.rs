@@ -44,3 +44,15 @@ fn narrow_pane_wraps_more_aggressively() {
 
     assert!(narrow > wide);
 }
+
+#[test]
+fn wide_unicode_approval_commands_use_display_columns() {
+    assert_eq!(super::wrapped_rows("界界界界", 4), 2);
+    assert_eq!(super::wrapped_rows("e\u{301}e\u{301}e\u{301}", 3), 1);
+}
+
+#[test]
+fn approval_scroll_bounds_account_for_word_wrap_gaps() {
+    assert_eq!(super::wrapped_rows("1234 1234 1234", 8), 3);
+    assert_eq!(super::max_offset("1234 1234 1234", 8, 1), 2);
+}

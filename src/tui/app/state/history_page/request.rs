@@ -28,6 +28,7 @@ impl HistoryPageState {
             source_id,
             boundary: self.boundary.clone(),
             depth: self.depth,
+            before: self.before,
         };
         let tx = self.tx.clone();
         tokio::spawn(async move {

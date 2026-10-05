@@ -1,4 +1,5 @@
 pub mod agent_color;
+mod answer_review;
 pub mod banner;
 pub mod border_style;
 pub mod chat_view;
@@ -11,6 +12,7 @@ pub mod gradient_sweep;
 pub mod inspector;
 pub mod interlude;
 pub mod main;
+mod main_overlays;
 pub mod mode_accent;
 pub mod sessions;
 pub mod sessions_age_color;

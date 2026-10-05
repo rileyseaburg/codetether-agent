@@ -60,9 +60,13 @@ pub async fn resolve_session(context_id: Option<&str>) -> Result<Session> {
         anyhow::bail!("A2A context_id must match [A-Za-z0-9_-] and be at most 128 bytes");
     }
 
-    if let Ok(session) = Session::load(id).await {
-        tracing::debug!(context_id = %id, "Resumed A2A conversation session");
-        return Ok(session);
+    match Session::resume(id).await {
+        Ok(session) => {
+            tracing::debug!(context_id = %id, "Resumed A2A conversation session");
+            return Ok(session);
+        }
+        Err(error) if Session::session_path(id)?.exists() => return Err(error),
+        Err(_) => {}
     }
 
     let mut session = Session::new().await?;

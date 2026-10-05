@@ -1,4 +1,5 @@
 //! Background builder for coalesced recall snapshots.
+mod job;
 
 pub(super) fn spawn(session_id: String) {
     tokio::spawn(async move {
@@ -14,14 +15,8 @@ pub(super) fn spawn(session_id: String) {
     });
 }
 
-async fn process(session: crate::session::Session) {
-    let id = session.id.clone();
-    let indexed = tokio::task::spawn_blocking(move || super::build::session(&session)).await;
-    let Ok(Some(indexed)) = indexed else {
-        tracing::warn!(session_id = %id, "recall sidecar build task failed");
-        return;
-    };
-    if let Err(error) = super::store::upsert(indexed).await {
-        tracing::warn!(session_id = %id, %error, "recall sidecar persistence failed");
+async fn process(id: String) {
+    if let Err(error) = job::run(&id).await {
+        tracing::warn!(session_id = %id, %error, "incremental recall indexing failed");
     }
 }

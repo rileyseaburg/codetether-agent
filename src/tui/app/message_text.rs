@@ -194,7 +194,7 @@ mod tests {
         let now = Utc::now();
         session.created_at = now;
         session.updated_at = now;
-        session.messages = vec![
+        session.messages.extend([
             Message {
                 role: Role::User,
                 content: vec![ContentPart::Text {
@@ -223,7 +223,7 @@ mod tests {
                     text: "Read complete.".to_string(),
                 }],
             },
-        ];
+        ]);
 
         sync_messages_from_session(&mut app, &session);
 

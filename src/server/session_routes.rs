@@ -4,6 +4,11 @@
 mod create;
 #[path = "session_routes/get.rs"]
 mod get;
+#[path = "session_routes/goal.rs"]
+mod goal;
+#[cfg(test)]
+#[path = "session_routes/goal_tests.rs"]
+mod goal_tests;
 #[path = "session_routes/list.rs"]
 mod list;
 #[path = "session_routes/prompt.rs"]
@@ -16,5 +21,6 @@ pub(super) fn router() -> axum::Router<super::AppState> {
     axum::Router::new()
         .route("/api/session", get(list::list).post(create::create))
         .route("/api/session/{id}", get(get::get))
+        .route("/api/session/{id}/goal", get(goal::get).post(goal::post))
         .route("/api/session/{id}/prompt", post(prompt::prompt))
 }

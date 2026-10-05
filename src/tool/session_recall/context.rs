@@ -13,7 +13,7 @@ pub async fn build_recall_context(
     limit: usize,
 ) -> Result<(String, Vec<String>)> {
     let sessions = match session_id {
-        Some(id) => vec![Session::load(&id).await?],
+        Some(id) => vec![Session::resume(&id).await?],
         None => load_recent_for_cwd(limit).await?,
     };
 
@@ -42,7 +42,7 @@ async fn load_recent_for_cwd(limit: usize) -> Result<Vec<Session>> {
 
     let mut loaded = Vec::new();
     for s in summaries.into_iter().take(limit) {
-        match Session::load(&s.id).await {
+        match Session::resume(&s.id).await {
             Ok(sess) => loaded.push(sess),
             Err(e) => tracing::warn!(session_id = %s.id, error = %e, "session_recall: load failed"),
         }

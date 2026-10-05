@@ -34,7 +34,6 @@ pub(super) const CODING: &[&str] = &[
     "list",
     "list_agents",
     "lsp",
-    "mux_control",
     "read",
     "resume_agent",
     "rg",
@@ -50,4 +49,5 @@ pub(super) const CODING: &[&str] = &[
     "write_stdin",
 ];
 
-pub(super) const MUX_MANAGER: &[&str] = &["mux_control"];
+// Keep the legacy profile fail-closed: agents no longer control mux sessions.
+pub(super) const MUX_MANAGER: &[&str] = &[];

@@ -37,7 +37,7 @@ pub fn interleave(
     (messages, levels, origins)
 }
 
-fn summary_message(gap: &SummaryGap) -> Message {
+pub(super) fn summary_message(gap: &SummaryGap) -> Message {
     Message {
         role: Role::Assistant,
         content: vec![ContentPart::Text {

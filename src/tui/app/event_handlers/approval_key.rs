@@ -6,13 +6,25 @@ mod copy_key;
 mod edit_key;
 #[path = "approval_scroll_key.rs"]
 mod scroll_key;
+#[path = "approval_scroll_wheel.rs"]
+mod scroll_wheel;
 
-use crate::tui::app::input::approval_command;
-use crate::tui::app::state::{App, approval_queue};
+#[path = "approval_decision_key.rs"]
+mod decision_key;
+use crate::tui::app::state::App;
+use decision_key::decide;
 
 pub(super) use copy_key::copy_preview;
 pub(super) use edit_key::open as edit;
 pub(super) use scroll_key::handle as scroll;
+pub(super) use scroll_wheel::handle as wheel;
+
+#[cfg(test)]
+#[path = "approval_navigation_key_tests.rs"]
+mod navigation_tests;
+#[cfg(test)]
+#[path = "approval_scroll_limit_tests.rs"]
+mod scroll_limit_tests;
 
 #[cfg(test)]
 #[path = "approval_feedback_key_tests.rs"]
@@ -32,17 +44,4 @@ pub(super) fn handle(app: &mut App, character: char, cwd: &std::path::Path) -> b
         'y' => copy_preview(app),
         _ => false,
     }
-}
-
-fn decide(app: &mut App, command: &str) -> bool {
-    if !pending() {
-        return false;
-    }
-    approval_command::run(app, command)
-}
-
-fn pending() -> bool {
-    approval_queue::active_id()
-        .or_else(crate::approval::live::latest_id)
-        .is_some()
 }

@@ -117,7 +117,7 @@ impl Default for super::AppState {
             autochat: super::super::autochat::state::AutochatState::default(),
             file_picker: Default::default(),
             fuzzy_find: None,
-            workspace: crate::tui::models::WorkspaceSnapshot::default(), goal_prompt: None,
+            workspace: crate::tui::models::WorkspaceSnapshot::default(), goal_prompt: None, answer_review_yes: false,
             chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode::default(),
             last_key_at: None,
             recording_stop_flag: None,

@@ -14,8 +14,6 @@ mod interrupt;
 mod legacy;
 #[path = "collaboration/list.rs"]
 mod list;
-#[path = "collaboration/mux_control.rs"]
-mod mux_control;
 #[path = "collaboration/resume.rs"]
 mod resume;
 #[path = "collaboration/send_input.rs"]
@@ -36,7 +34,6 @@ pub fn register(registry: &mut ToolRegistry) {
     registry.register(Arc::new(spawn::SpawnAgentTool));
     registry.register(Arc::new(followup::FollowupTaskTool));
     registry.register(Arc::new(list::ListAgentsTool));
-    registry.register(Arc::new(mux_control::MuxControlTool));
     registry.register(Arc::new(wait::WaitAgentTool));
     registry.register(Arc::new(interrupt::InterruptAgentTool));
     registry.register(Arc::new(close::CloseAgentTool));

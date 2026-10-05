@@ -1,21 +1,24 @@
 //! On-disk persistence: save, load, delete, and directory lookup.
 
+#[cfg(test)]
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use tokio::fs;
 
+#[cfg(test)]
 use super::header::SessionHeader;
 use super::tail_load::TailLoad;
+#[cfg(test)]
 use super::tail_seed::with_tail_cap;
 use super::types::Session;
 
-#[path = "persistence_history_upload.rs"]
-mod history_upload;
+mod canonical_root;
 mod location;
 mod paths;
+#[cfg(test)]
 #[path = "save_guard.rs"]
 mod save_guard;
+#[cfg(test)]
 #[path = "persistence_snapshot.rs"]
 mod snapshot;
 #[path = "workspace_resolve.rs"]
@@ -30,8 +33,7 @@ impl Session {
     /// sanity size cap, or the JSON is malformed.
     pub async fn load(id: &str) -> Result<Self> {
         let path = Self::session_path(id)?;
-        super::helper::persistence_cap::ensure_session_file_size(&path).await?;
-        let mut session: Session = serde_json::from_str(&fs::read_to_string(&path).await?)?;
+        let mut session = super::store::load(&path, usize::MAX).await?.session;
         anyhow::ensure!(
             session.id == id,
             "Session file identity does not match requested ID"
@@ -61,10 +63,9 @@ impl Session {
     /// number of entries that were dropped. Use this when resuming very
     /// large sessions where the full transcript would exhaust memory.
     ///
-    /// Implementation: the entire scan runs on a single blocking thread.
-    /// For each candidate (newest-mtime first) we do a cheap
-    /// [`SessionHeader`] parse to compare `metadata.directory`; only the
-    /// matching file pays for a full tail parse.
+    /// Listing combines database headers with unmigrated legacy entries.
+    /// The selected session is resumed through the indexed store rather than
+    /// parsing the transcript to discard its prefix.
     pub async fn last_for_directory_tail(
         workspace: Option<&std::path::Path>,
         window: usize,
@@ -76,11 +77,14 @@ impl Session {
                 w.to_path_buf()
             })
         });
-        tokio::task::spawn_blocking(move || {
-            scan_with_index(&sessions_dir, canonical_workspace, window)
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("session scan task panicked: {e}"))?
+        let sessions = match canonical_workspace {
+            Some(workspace) => super::listing::list_sessions_for_directory(&workspace).await?,
+            None => super::list_sessions().await?,
+        };
+        let latest = sessions
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No sessions found"))?;
+        Self::load_tail(&latest.id, window).await
     }
 
     /// Load the most recent session globally (unscoped).
@@ -91,75 +95,31 @@ impl Session {
         Self::last_for_directory(None).await
     }
 
-    /// Persist the session to disk as JSON. Creates the sessions directory
-    /// on demand.
+    /// Atomically flush changed records and metadata to the indexed session store.
     ///
-    /// Performance:
-    /// - Serialization runs on the blocking thread pool so a large session
-    ///   doesn't stall the async reactor during `serde_json` formatting.
-    /// - Writes **compact** JSON (no pretty-printing): ~30% less CPU to
-    ///   serialize, ~30–40% smaller on disk, and correspondingly faster
-    ///   to load and mmap-scan on resume. Session files are machine-owned
-    ///   — humans never hand-edit them — so indentation is pure overhead.
-    /// - Write is atomic (tmp + rename) so a crash mid-save leaves the
-    ///   previous session intact, and the mmap prefilter in
-    ///   [`file_contains_finder`] cannot observe a torn buffer.
+    /// Unchanged sessions do not write to disk or enqueue background work. Changed
+    /// sessions encode only dirty suffixes; the transcript prefix is never cloned,
+    /// hashed, or rewritten. SQLite transactions run on a blocking worker.
+    ///
+    /// # Errors
+    /// Returns storage errors or `SESSION_REVISION_CONFLICT` for a stale writer.
+    /// Reload a conflicting session instead of silently replacing newer records.
+    /// A legacy JSON file must be imported through the load API before saving.
+    ///
+    /// For a full JSON snapshot use [`Self::export_json`] explicitly. Per-session
+    /// `.json` files are now small locators, not the canonical transcript.
+    ///
     pub async fn save(&self) -> Result<()> {
-        let path = Self::session_path(&self.id)?;
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).await?;
-        }
-        let tmp = path.with_extension("json.tmp");
-        let sink_config = self.metadata.history_sink.clone().or_else(|| {
-            super::history_sink::HistorySinkConfig::from_env()
-                .ok()
-                .flatten()
-        });
-        let session_id_for_journal = self.id.clone();
-        let content = snapshot::serialize(self)?;
-        // Elide the write entirely when the serialized bytes match the last
-        // successful save for this id — save() is called on hot paths and the
-        // disk write + rename + journal + index upsert are pure overhead when
-        // nothing changed.
-        if save_guard::notify::is_unchanged(self, &content, &path) {
-            tracing::trace!(session_id = %self.id, "session save elided (unchanged)");
-            return Ok(());
-        }
-        save_guard::atomic_write(&tmp, &path, &content).await?;
-        location::record(&self.id, &path);
-        save_guard::notify::record_saved(self, &content);
-        let mut journal = super::journal::WritebackJournal::new(&session_id_for_journal);
-        let tx = journal.stage(super::journal::Op::Save);
-        if let Err(reason) = journal.commit(tx) {
-            journal.reject(tx, reason);
-        }
-        if let Err(err) =
-            super::journal::append_entries(&session_id_for_journal, journal.entries()).await
-        {
-            tracing::warn!(%err, session_id = %session_id_for_journal, "save journal append failed (non-fatal)");
-        }
-        // Update the workspace index so the next resume is O(1). Best
-        // effort — a failed index write must not fail the session save.
-        if let Some(dir) = &self.metadata.directory {
-            let canonical = dir.canonicalize().unwrap_or_else(|_| dir.clone());
-            let session_id = self.id.clone();
-            tokio::task::spawn_blocking(move || {
-                if let Err(err) = super::workspace_index_io::upsert_sync(&canonical, &session_id) {
-                    tracing::debug!(%err, "workspace index upsert failed (non-fatal)");
-                }
-            });
-        }
-        // Phase A history sink: stream pure history to MinIO/S3.
-        // Env-gated, fire-and-forget — never blocks the save, never
-        // fails it. See [`super::history_sink`] for the env variables.
-        //
-        // Coalesce concurrent saves per session: if an upload for this
-        // session is already in flight, skip this spawn — the next
-        // save will pick up the latest history. This prevents bursty
-        // save loops (e.g. during long tool chains) from queueing
-        // unbounded background uploads.
-        if let Some(sink_config) = sink_config {
-            history_upload::spawn(self, sink_config);
+        let path = self
+            .storage
+            .path_for(&self.id)
+            .map(Ok)
+            .unwrap_or_else(|| Self::session_path(&self.id))?;
+        if super::store::save(self, &path).await? {
+            location::record(&self.id, &path);
+            super::index::recall::schedule(self);
+            super::index_produce::notify::saved(self);
+            super::store::archive::schedule(self);
         }
         Ok(())
     }
@@ -167,7 +127,9 @@ impl Session {
     /// Delete a session file by ID. No-op if the file does not exist.
     pub async fn delete(id: &str) -> Result<()> {
         let path = Self::session_path(id)?;
-        save_guard::notify::forget(id).await?;
+        super::index_produce::notify::removed(id).await;
+        super::index::recall::remove(id).await?;
+        super::store::delete::run(&path, id).await?;
         match tokio::fs::remove_file(&path).await {
             Ok(()) => {
                 location::forget(id);
@@ -185,6 +147,7 @@ impl Session {
 /// Index-first scan. Tries the O(1) workspace index; on miss or stale
 /// entry, falls back to the byte-prefiltered directory scan and repairs
 /// the index with the winner so the next launch is O(1).
+#[cfg(test)]
 fn scan_with_index(
     sessions_dir: &Path,
     canonical_workspace: Option<PathBuf>,
@@ -242,6 +205,7 @@ fn scan_with_index(
 }
 
 /// Tail-load a specific path synchronously (used by the index fast path).
+#[cfg(test)]
 fn tail_load_sync(path: &Path, window: usize) -> Result<TailLoad> {
     use std::fs;
     use std::io::BufReader;
@@ -268,6 +232,7 @@ fn tail_load_sync(path: &Path, window: usize) -> Result<TailLoad> {
 ///    `messages`/`tool_uses` in new files, this is O(header bytes); older
 ///    files still work but pay a lex-through cost.
 /// 4. On workspace match, re-open and do one tail-capped full parse.
+#[cfg(test)]
 fn scan_sync(
     sessions_dir: &Path,
     canonical_workspace: Option<PathBuf>,
@@ -457,6 +422,7 @@ fn scan_sync(
 ///
 /// Falls back to returning `false` on any I/O error — the caller's
 /// mtime loop will simply try the next candidate.
+#[cfg(test)]
 fn file_contains_finder(path: &Path, finder: &memchr::memmem::Finder<'_>) -> Result<bool> {
     use std::fs;
 

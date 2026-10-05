@@ -19,10 +19,10 @@ pub(crate) fn system_prompt(input: SystemPromptInput<'_>) -> String {
         input.instruction,
         input.context,
         &project.policy,
-        non_mutating,
+        super::constraint_ledger::Mode::from_flags(input.read_only, input.expects_changes),
     );
-    format!(
-        "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.\n\nWORKING DIRECTORY: {}\nAll file operations should be relative to this directory.{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\nWhen done, provide a brief evidence summary.\n\n{}",
+    let prompt = format!(
+        "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.\n\nWORKING DIRECTORY: {}\nAll file operations should be relative to this directory.{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}",
         input.specialty,
         input.subtask_id,
         input.working_dir,
@@ -36,8 +36,9 @@ pub(crate) fn system_prompt(input: SystemPromptInput<'_>) -> String {
         metrics,
         constraints,
         project.instructions,
-        deliverable,
-    )
+    );
+    let prompt = crate::session::tasks::turn_instructions::append(prompt);
+    format!("{prompt}\n\nWhen done, provide a brief evidence summary.\n\n{deliverable}")
 }
 
 #[cfg(test)]

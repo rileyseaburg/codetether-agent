@@ -42,6 +42,7 @@ pub(crate) struct HistoryPageState {
     generation: u64,
     boundary: Vec<Fingerprint>,
     depth: usize,
+    before: Option<usize>,
     loading: bool,
     exhausted: bool,
     expanded: bool,

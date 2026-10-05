@@ -10,7 +10,8 @@ async fn session_sync_clears_render_cache() {
     session.messages = vec![Message {
         role: Role::User,
         content: vec![ContentPart::Text { text: "old".into() }],
-    }];
+    }]
+    .into();
     app.state.cached_messages_len = 99;
     app.state.cached_frozen_len = 99;
     sync_messages_from_session(&mut app, &session);

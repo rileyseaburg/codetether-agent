@@ -21,7 +21,8 @@ pub(super) async fn scan(
     let resolved = resolve_all(paths, &cache).await;
 
     let mut next = ListingCache::default();
-    let mut summaries = Vec::with_capacity(resolved.len());
+    let mut summaries =
+        crate::session::store::listing::list(&sessions_dir, workspace.clone()).await?;
     for (key, entry) in resolved {
         if matches_workspace(entry.summary.directory.as_deref(), workspace.as_deref()) {
             summaries.push(entry.summary.clone());

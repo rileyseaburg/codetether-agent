@@ -1,22 +1,16 @@
 //! Validation, independent verification, and persistence for `update_goal`.
 
-use super::verify::{LlmVerifier, Verdict, VerificationRequest, VerifierAgent, verify_transition};
-use super::{context, response, update::Args};
+use super::verify::{VerificationRequest, VerifierAgent};
+use super::{context, update::Args};
 use crate::session::tasks::GoalStatus;
 use crate::tool::ToolResult;
 use anyhow::Result;
+#[path = "update_commit.rs"]
+mod commit;
 
-/// Run `update_goal` with the production LLM verifier.
-pub(super) async fn run(args: Args) -> Result<ToolResult> {
-    let verifier = LlmVerifier {
-        worker_model: args.current_model.clone(),
-        workspace: args
-            .workspace
-            .clone()
-            .map_or_else(workspace_default, Into::into),
-    };
-    run_with(args, &verifier).await
-}
+#[path = "update_start.rs"]
+mod start;
+pub(super) use start::run;
 
 /// Apply a terminal goal transition only after `verifier` passes it.
 pub(super) async fn run_with(args: Args, verifier: &dyn VerifierAgent) -> Result<ToolResult> {
@@ -31,22 +25,25 @@ pub(super) async fn run_with(args: Args, verifier: &dyn VerifierAgent) -> Result
         return Ok(ToolResult::error("cannot update goal: no goal exists"));
     };
     let request = VerificationRequest::from_goal(&goal, status, &args.evidence);
-    if let Verdict::Fail { findings } = verify_transition(verifier, &request).await {
-        tracing::info!(session_id = %session_id, claimed = status.as_str(), "Goal transition rejected by verifier");
-        return Ok(super::update_reject::result(&findings));
+    if goal.status == GoalStatus::Paused {
+        return Ok(ToolResult::error(
+            "Goal is paused; resume it explicitly before requesting verification.",
+        ));
     }
-    crate::session::tasks::runtime::set_status(&session_id, status).await?;
-    let (_, state) = crate::session::tasks::runtime::current(&session_id).await?;
-    Ok(response::result(&state))
-}
-
-fn workspace_default() -> std::path::PathBuf {
-    std::env::current_dir().unwrap_or_else(|_| ".".into())
+    if let Some(refused) = super::update_gate::check(&session_id, &goal, &request, verifier).await?
+    {
+        tracing::info!(session_id = %session_id, claimed = status.as_str(), "Goal transition not authorized");
+        return Ok(refused);
+    }
+    commit::run(&session_id, &goal, status).await
 }
 
 #[cfg(test)]
 #[path = "update_run_blocked_tests.rs"]
 mod blocked_tests;
+#[cfg(test)]
+#[path = "update_run_cap_tests.rs"]
+mod cap_tests;
 #[cfg(test)]
 #[path = "update_run_tests.rs"]
 mod tests;

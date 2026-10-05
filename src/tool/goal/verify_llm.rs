@@ -3,7 +3,7 @@
 use super::{VerificationRequest, VerifierAgent, prompt, resolve_verifier_model};
 use crate::swarm::executor::{AgentLoopExit, run_agent_loop};
 use async_trait::async_trait;
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 const MAX_STEPS: usize = 40;
 const TIMEOUT_SECS: u64 = 600;
@@ -39,13 +39,7 @@ impl VerifierAgent for LlmVerifier {
         let requested = resolve_verifier_model(self.worker_model.as_deref()).await?;
         let providers = crate::provider::ProviderRegistry::shared_from_vault().await?;
         let (provider, model) = providers.resolve_model(&requested)?;
-        let tools = crate::tool::swarm_execute::agent_registry::standard(
-            false,
-            true,
-            &self.workspace,
-            Arc::clone(&provider),
-            model.clone(),
-        );
+        let tools = self.verification_tools(&provider, &model);
         let id = format!("goal-verifier-{}", uuid::Uuid::new_v4());
         tracing::info!(verifier = %id, model = %model, claimed = request.claimed.as_str(), "Starting goal verifier");
         let system = prompt::system_prompt(&self.workspace, &model, request.claimed);
@@ -68,5 +62,9 @@ impl VerifierAgent for LlmVerifier {
             (report, _, _, AgentLoopExit::Completed) => Ok(report),
             (_, _, _, exit) => anyhow::bail!("verifier stopped before a verdict: {exit:?}"),
         }
+    }
+
+    async fn identity(&self) -> String {
+        self.verdict_identity().await
     }
 }

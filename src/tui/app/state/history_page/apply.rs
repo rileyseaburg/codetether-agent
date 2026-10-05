@@ -22,6 +22,7 @@ impl HistoryPageState {
         self.loading = false;
         self.exhausted = page.exhausted || page.messages.is_empty();
         self.depth = page.depth;
+        self.before = page.before;
         if !page.boundary.is_empty() {
             self.boundary.clone_from(&page.boundary);
         }

@@ -1,4 +1,6 @@
 //! Background loading and selection of the page before a known boundary.
+#[path = "load/indexed.rs"]
+mod indexed;
 
 use crate::session::Session;
 
@@ -13,6 +15,9 @@ pub(super) async fn run(request: Request) -> PageResult {
 }
 
 async fn run_page(request: Request) -> Result<super::Page, String> {
+    if let Some(before) = request.before {
+        return indexed::page(request, before).await;
+    }
     let mut cap = request
         .depth
         .saturating_add(super::select::PAGE_MESSAGES + SEARCH_MARGIN);

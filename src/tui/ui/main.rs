@@ -7,6 +7,7 @@
 
 use ratatui::Frame;
 
+use super::main_overlays::render as render_overlays;
 use crate::tui::app::{session_runtime::SessionView, state::App};
 use crate::tui::audit_view::render_audit_view;
 use crate::tui::bus_log::{ProtocolSummary, render_bus_log_with_summary};
@@ -17,7 +18,6 @@ use crate::tui::ralph_view::render_ralph_view;
 use crate::tui::rlm::render_rlm;
 use crate::tui::settings::render_settings;
 use crate::tui::swarm_view::render_swarm_view;
-use crate::tui::symbol_search::render_symbol_search;
 
 use super::chat_view::render_chat_view;
 use super::sessions::render_sessions_view;
@@ -108,15 +108,4 @@ fn render_bus_view(f: &mut Frame, app: &mut App) {
         peer_endpoint_ready: app.state.peer_endpoint_ready,
     };
     render_bus_log_with_summary(f, &mut app.state.bus_log, f.area(), Some(summary))
-}
-
-fn render_overlays(f: &mut Frame, app: &mut App) {
-    if app.state.symbol_search.active {
-        render_symbol_search(f, &mut app.state.symbol_search, f.area());
-    }
-
-    crate::tui::ui::goal_prompt_overlay::render_if_active(f, f.area(), &app.state.goal_prompt);
-    crate::tui::ui::fuzzy_find_overlay::render_if_active(f, f.area(), &app.state.fuzzy_find);
-    crate::tui::ui::interlude::render_if_active(f, f.area(), app);
-    crate::tui::app::watchdog::render_watchdog_notification(f, f.area(), &app.state);
 }

@@ -12,7 +12,7 @@ pub fn load_status_with_original(
     }
     let mb = file_bytes as f64 / (1024.0 * 1024.0);
     format!(
-        "Loaded large session {label}: showing last {} entries, dropped {dropped} ({mb:.1} MiB); original {} preserved",
+        "Loaded session {label}: showing last {} entries; {dropped} older entries remain on disk ({mb:.1} MiB locator); source {}",
         session.messages.len(),
         original_id.unwrap_or("unknown")
     )

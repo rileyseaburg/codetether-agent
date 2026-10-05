@@ -25,6 +25,9 @@ use crate::tui::app::state::App;
 /// * `registry` — provider registry. [`None`] ⇒ status-only error.
 /// * `question` — trimmed text after `/ask`. Empty ⇒ usage hint.
 ///
+/// # Returns
+/// `true` only when an answer was delivered; failures keep the goal held.
+///
 /// # Errors
 ///
 /// Provider errors are surfaced via `app.state.status`; this function
@@ -34,19 +37,19 @@ pub(super) async fn run_ask(
     session: &Session,
     registry: Option<&Arc<ProviderRegistry>>,
     question: &str,
-) {
+) -> bool {
     if question.is_empty() {
         app.state.status =
             "Usage: /ask <question> — ephemeral, full context, no tools, not saved.".to_string();
-        return;
+        return false;
     }
     let Some(registry) = registry else {
         app.state.status = "/ask: no provider configured".to_string();
-        return;
+        return false;
     };
     let Some((provider, request)) = build::build_request(session, registry, question) else {
         app.state.status = "/ask: cannot resolve provider".to_string();
-        return;
+        return false;
     };
-    execute::run(app, provider, request).await;
+    execute::run(app, provider, request).await
 }

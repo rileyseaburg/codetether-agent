@@ -16,7 +16,7 @@ pub(crate) async fn remove(session_id: &str) -> anyhow::Result<()> {
     super::store::remove(session_id).await
 }
 
-pub(super) fn take(session_id: &str) -> Option<Session> {
+pub(super) fn take(session_id: &str) -> Option<String> {
     super::queue_state::take(session_id)
 }
 

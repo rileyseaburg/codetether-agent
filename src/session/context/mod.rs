@@ -23,6 +23,7 @@ mod options;
 mod policy;
 mod policy_dispatch;
 mod request;
+pub(crate) mod request_guard;
 mod reset;
 mod reset_fallback;
 mod reset_helpers;

@@ -6,7 +6,6 @@ use anyhow::Result;
 use chrono::Utc;
 use uuid::Uuid;
 
-use crate::agent::ToolUse;
 use crate::provenance::{ClaimProvenance, ExecutionProvenance};
 use crate::provider::{Message, Usage};
 
@@ -52,10 +51,10 @@ impl Session {
             title: None,
             created_at: now,
             updated_at: now,
-            messages: Vec::new(),
-            pages: Vec::new(),
+            messages: Default::default(),
+            pages: Default::default(),
             summary_index: super::index::SummaryIndex::new(),
-            tool_uses: Vec::<ToolUse>::new(),
+            tool_uses: Default::default(),
             usage: Usage::default(),
             agent: "build".to_string(),
             metadata: SessionMetadata {
@@ -66,6 +65,7 @@ impl Session {
             },
             max_steps: None,
             bus: None,
+            storage: Default::default(),
         })
     }
 
@@ -152,7 +152,7 @@ impl Session {
     /// Append a message to the transcript and bump `updated_at`.
     pub fn add_message(&mut self, message: Message) {
         if self.pages.len() != self.messages.len() {
-            self.pages = classify_all(&self.messages);
+            self.pages = classify_all(&self.messages).into();
         }
         self.pages.push(classify(&message));
         super::index_produce::notify::appended(self, message);

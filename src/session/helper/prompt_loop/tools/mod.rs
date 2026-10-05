@@ -15,6 +15,7 @@ mod outcome;
 mod outcome_detail;
 mod parallel;
 mod publish;
+mod refresh;
 mod rlm;
 mod simple;
 

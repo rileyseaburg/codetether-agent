@@ -5,6 +5,9 @@ use anyhow::Result;
 use super::indexed_session::IndexedSession;
 
 pub(super) async fn read(session_id: &str) -> Option<IndexedSession> {
+    if let Ok(Some(view)) = crate::session::store::projection::read(session_id, "recall").await {
+        return serde_json::from_value(view).ok();
+    }
     let path = super::paths::session(session_id).ok()?;
     let indexed: IndexedSession = super::atomic::read(&path).await?;
     indexed.is_current_schema().then_some(indexed)

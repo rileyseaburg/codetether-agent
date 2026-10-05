@@ -6,6 +6,10 @@
 //! started, and spawns the executor task that will stream session events and
 //! completion notices.
 
+#[cfg(test)]
+#[path = "answer_review_submit_tests.rs"]
+mod tests;
+
 use std::sync::Arc;
 
 use tokio::sync::{Notify, mpsc};
@@ -48,6 +52,17 @@ pub(super) async fn submit(
     event_tx: &mpsc::Sender<SessionEvent>,
     notice_tx: &mpsc::Sender<SessionNotice>,
 ) -> bool {
+    if crate::session::tasks::runtime::answer_review::held(&request.session.id) {
+        let _ = notice_tx
+            .send(SessionNotice::Failed {
+                session: request.session,
+                error:
+                    "Goal paused: select Yes in the answer satisfaction prompt before continuing"
+                        .into(),
+            })
+            .await;
+        return false;
+    }
     let notify = Arc::new(Notify::new());
     if !cancel.set(&request.session.id, Arc::clone(&notify)) {
         let _ = notice_tx

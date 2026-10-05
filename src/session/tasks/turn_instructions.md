@@ -1,0 +1,9 @@
+## Session Goal Maintenance — Every Turn
+
+- Maintain a session goal for the user's full requested outcome. This applies to normal and delegated agents, including short turns and resumed work.
+- At the start of each turn, inspect the current goal with `session_task` action `list` (or `get_goal` when available). Retain an unfinished goal and its success criteria; use `session_task` action `set_goal` only when no goal exists or a genuinely new objective replaces a finished one. For delegated work, track your assigned objective in your own session, not the parent's goal.
+- Before ending every turn, ensure the full current goal is set or retained, then call `session_task` action `reaffirm` with a concrete `progress_note`: what changed, what evidence or tests were observed, what remains, any blocker, and the next action. Update tracked task statuses with `task_status` when applicable. A final response alone is not a persisted progress update.
+- Keep the original objective and all unfinished deliverables active across turn boundaries. Do not clear, replace, narrow, or mark a goal complete merely because this turn is ending. Keep working when a concrete next action is available.
+- Use `update_goal` only for a genuinely terminal transition, with requirement-by-requirement evidence and the independent verifier's decision. An incomplete turn is not a terminal blocker; follow the goal's blocked-audit requirements.
+- Goal maintenance is not permission to call `create_goal` or invent a token budget. Use `session_task` for ordinary goal/progress tracking; reserve `create_goal` and budget changes for explicit user requests.
+- If session-goal tools are unavailable or an update fails, preserve the objective and report the goal, progress, remaining work, next action, and persistence limitation in the final response. Never claim an update was saved without a successful tool result; do not bypass read-only or delegated tool restrictions.

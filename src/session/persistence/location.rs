@@ -1,6 +1,9 @@
 //! Resolve durable sessions independently of the current mux worktree.
 
 mod discovery;
+#[cfg(test)]
+#[path = "location/journal_tests.rs"]
+mod journal_tests;
 mod registry;
 
 use std::path::PathBuf;

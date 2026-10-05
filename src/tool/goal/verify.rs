@@ -51,6 +51,8 @@ mod charter;
 mod gate;
 #[path = "verify_llm.rs"]
 mod llm;
+#[path = "verify_llm_support.rs"]
+mod llm_support;
 #[path = "verify_model.rs"]
 mod model;
 #[path = "verify_prompt.rs"]
@@ -59,6 +61,8 @@ mod prompt;
 mod request;
 #[path = "verify_selection.rs"]
 mod selection;
+#[path = "verify_self_review.rs"]
+mod self_review;
 #[path = "verify_verdict.rs"]
 mod verdict;
 
@@ -70,4 +74,5 @@ pub use model::{VERIFIER_MODEL_ENV, resolve_verifier_model, select_verifier_mode
 pub use prompt::{system_prompt, user_prompt};
 pub use request::VerificationRequest;
 pub use selection::{selected_verifier_model, set_verifier_model};
+pub use self_review::{is_self_review, warn_if_self_review};
 pub use verdict::Verdict;

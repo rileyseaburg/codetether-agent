@@ -3,9 +3,25 @@
 use crate::session::tasks::{TaskLog, TaskState, governance_block};
 
 pub(crate) fn compose(base: &str, session_id: &str) -> String {
+    let base = super::super::turn_instructions::append(base.into());
     let Ok(log) = TaskLog::for_session(session_id) else {
-        return base.into();
+        return base;
     };
-    let state = TaskState::from_log(&log.read_all_blocking().unwrap_or_default());
-    governance_block(&state).map_or_else(|| base.into(), |block| format!("{base}\n\n{block}"))
+    from_log(base, &log)
 }
+
+fn from_log(base: String, log: &TaskLog) -> String {
+    let state = TaskState::from_log(&log.read_all_blocking().unwrap_or_default());
+    match governance_block(&state) {
+        Some(block) => format!("{base}\n\n{block}"),
+        None => base,
+    }
+}
+
+#[cfg(test)]
+#[path = "system_prompt_tests.rs"]
+mod tests;
+
+#[cfg(test)]
+#[path = "system_prompt_goal_tests.rs"]
+mod system_prompt_goal_tests;

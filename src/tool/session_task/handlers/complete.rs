@@ -11,8 +11,8 @@ pub(in crate::tool::goal::session_task) async fn complete_goal(
         status: "complete".to_string(),
         evidence: params.note.or(params.progress_note).unwrap_or_default(),
         session_id: params.ct_session_id,
-        current_model: None,
-        workspace: None,
+        current_model: params.ct_current_model,
+        workspace: params.ct_workspace,
     };
     crate::tool::goal::update_run::run(args).await
 }

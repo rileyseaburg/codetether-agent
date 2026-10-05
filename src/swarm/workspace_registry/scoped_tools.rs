@@ -8,7 +8,13 @@ use std::{path::Path, sync::Arc};
 
 pub(super) fn install(registry: &mut ToolRegistry, root: &Path, capability: Capability) {
     let path = root.to_path_buf();
-    registry.register(Arc::new(ScopedBashTool::new(path.clone())));
+    if capability == Capability::Verification {
+        registry.register(Arc::new(super::readonly_bash::ReadOnlyBashTool::new(
+            path.clone(),
+        )));
+    } else {
+        registry.register(Arc::new(ScopedBashTool::new(path.clone())));
+    }
     registry.register(Arc::new(ScopedGitTool::new(
         path.clone(),
         capability.allows_commit(),

@@ -10,7 +10,7 @@
 //! scroll_mouse_down(&mut app);
 //! ```
 
-use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+use crossterm::event::{KeyCode, MouseButton, MouseEvent, MouseEventKind};
 
 use std::path::Path;
 
@@ -40,7 +40,7 @@ pub(super) fn scroll_mouse_up(app: &mut App) {
         app.state.help_scroll.scroll_up(AMOUNT);
         return;
     }
-    if scroll_overlay_up(app, AMOUNT) {
+    if super::approval_key::wheel(app, KeyCode::Up, AMOUNT) || scroll_overlay_up(app, AMOUNT) {
         return;
     }
     scroll_up_by_mode(app, AMOUNT);
@@ -60,7 +60,7 @@ pub(super) fn scroll_mouse_down(app: &mut App) {
         app.state.help_scroll.scroll_down(AMOUNT, 200);
         return;
     }
-    if scroll_overlay_down(app, AMOUNT) {
+    if super::approval_key::wheel(app, KeyCode::Down, AMOUNT) || scroll_overlay_down(app, AMOUNT) {
         return;
     }
     scroll_down_by_mode(app, AMOUNT);

@@ -1,6 +1,6 @@
 //! One session on one server: the unit a client connects to.
 
-use crate::mux::model::{MuxSession, MuxWindow};
+use crate::mux::model::MuxSession;
 
 use super::MuxRecord;
 
@@ -20,13 +20,5 @@ impl SessionTarget {
         self.session()
             .map(|session| session.active_window)
             .ok_or_else(|| anyhow::anyhow!("mux session '{}' is unavailable", self.session))
-    }
-
-    pub(in crate::mux) fn active(&self) -> Option<&MuxWindow> {
-        self.session().and_then(MuxSession::active)
-    }
-
-    pub(in crate::mux) fn runtime(&self) -> Option<&crate::mux::model::MuxRuntimeStatus> {
-        self.session().and_then(|session| session.runtime.as_ref())
     }
 }

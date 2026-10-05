@@ -21,7 +21,7 @@ async fn load_ids(
     require_resume: bool,
 ) -> Result<Session> {
     if let Some(session_id) = resume_session_id {
-        match Session::load(session_id).await {
+        match Session::resume(session_id).await {
             Ok(session) => return Ok(session),
             Err(error) if require_resume => {
                 return Err(error).context("Verified author session is unavailable");

@@ -26,5 +26,5 @@ async fn loads_native_session_with_tail_window() {
     assert_eq!(loaded.session.messages.len(), 2);
     assert_eq!(loaded.dropped, 1);
     assert_eq!(original.as_deref(), Some("tail-native-session"));
-    assert_ne!(loaded.session.id, "tail-native-session");
+    assert_eq!(loaded.session.id, "tail-native-session");
 }

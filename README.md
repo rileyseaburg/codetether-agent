@@ -197,6 +197,7 @@ repeatable tools without changing or rebuilding Rust code.
 
 Docs:
 
+- [Answer review during goals](docs/answer_review.md)
 - [Plugin pattern](docs/plugin_pattern.md)
 - [Browser capability API](docs/browser-capability-api.md)
 - [Windows OCR and shadow input](docs/windows_ocr_shadow_input.md)

@@ -18,13 +18,13 @@ fn compress_context_from_session_snapshot_is_independent() {
         updated_at: chrono::Utc::now(),
         metadata: Default::default(),
         agent: "test".to_string(),
-        messages: Vec::new(),
-        pages: Vec::new(),
+        messages: Default::default(),
+        pages: Default::default(),
         summary_index: crate::session::index::SummaryIndex::new(),
-        tool_uses: Vec::new(),
+        tool_uses: Default::default(),
         usage: Default::default(),
         max_steps: None,
-        bus: None,
+        ..Default::default()
     };
     let snapshot = CompressContext::from_session(&session);
     assert_eq!(snapshot.session_id, "session-42");

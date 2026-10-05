@@ -23,12 +23,12 @@ fn session(pages: Vec<PageKind>) -> Session {
         metadata: Default::default(),
         agent: "t".into(),
         messages,
-        pages,
+        pages: pages.into(),
         summary_index: SummaryIndex::new(),
-        tool_uses: Vec::new(),
+        tool_uses: Default::default(),
         usage: Default::default(),
         max_steps: None,
-        bus: None,
+        ..Default::default()
     }
 }
 

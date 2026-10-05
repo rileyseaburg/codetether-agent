@@ -6,7 +6,7 @@ use std::sync::{Mutex, OnceLock};
 use crate::session::Session;
 
 struct State {
-    pending: Option<Session>,
+    pending: Option<String>,
     running: bool,
 }
 
@@ -16,7 +16,7 @@ pub(super) fn enqueue(session: &Session) -> bool {
             pending: None,
             running: false,
         });
-        state.pending = Some(session.clone());
+        state.pending = Some(session.id.clone());
         let spawn = !state.running;
         state.running = true;
         spawn
@@ -29,7 +29,7 @@ pub(super) fn remove(session_id: &str) {
     }
 }
 
-pub(super) fn take(session_id: &str) -> Option<Session> {
+pub(super) fn take(session_id: &str) -> Option<String> {
     states().lock().ok()?.get_mut(session_id)?.pending.take()
 }
 

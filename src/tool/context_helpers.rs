@@ -9,6 +9,8 @@
 use crate::session::Session;
 use anyhow::Result;
 use serde_json::Value;
+mod errors;
+use errors::classify;
 
 /// Injected field naming the durable session that issued the tool call.
 pub(super) const SESSION_ID_FIELD: &str = "__ct_session_id";
@@ -18,6 +20,11 @@ pub(super) const SESSION_ID_FIELD: &str = "__ct_session_id";
 /// Returns `Ok(None)` when no session exists, `Ok(Some(session))`
 /// on success, or `Err` on I/O/parse failures.
 pub async fn load_calling_session(args: &Value) -> Result<Option<Session>> {
+    load_calling_window(args, usize::MAX).await
+}
+
+/// Load only a bounded working window of the calling session.
+pub(super) async fn load_calling_window(args: &Value, window: usize) -> Result<Option<Session>> {
     let injected = args
         .get(SESSION_ID_FIELD)
         .and_then(Value::as_str)
@@ -26,8 +33,19 @@ pub async fn load_calling_session(args: &Value) -> Result<Option<Session>> {
         .map(String::from)
         .or_else(|| std::env::var("CODETETHER_SESSION_ID").ok());
     match injected {
-        Some(id) => classify(Session::load(&id).await),
-        None => load_latest_session().await,
+        Some(id) => classify(
+            Session::load_tail(&id, window)
+                .await
+                .map(|loaded| loaded.session),
+        ),
+        None => {
+            let cwd = std::env::current_dir().ok();
+            classify(
+                Session::last_for_directory_tail(cwd.as_deref(), window)
+                    .await
+                    .map(|loaded| loaded.session),
+            )
+        }
     }
 }
 
@@ -38,23 +56,6 @@ pub async fn load_calling_session(args: &Value) -> Result<Option<Session>> {
 pub async fn load_latest_session() -> Result<Option<Session>> {
     let cwd = std::env::current_dir().ok();
     classify(Session::last_for_directory(cwd.as_deref()).await)
-}
-
-fn classify(result: Result<Session>) -> Result<Option<Session>> {
-    match result {
-        Ok(s) => Ok(Some(s)),
-        Err(e) => {
-            let msg = e.to_string().to_lowercase();
-            if msg.contains("no session")
-                || msg.contains("not found")
-                || msg.contains("no such file")
-            {
-                Ok(None)
-            } else {
-                Err(e)
-            }
-        }
-    }
 }
 
 #[cfg(test)]

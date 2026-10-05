@@ -86,10 +86,10 @@ pub(crate) fn parse_codex_session_from_path(
         title,
         created_at: meta.timestamp,
         updated_at: updated_at.unwrap_or(meta.timestamp),
-        messages: messages.finish(path),
-        pages: Vec::new(),
+        messages: messages.finish(path).into(),
+        pages: Default::default(),
         summary_index: crate::session::index::SummaryIndex::new(),
-        tool_uses: Vec::new(),
+        tool_uses: Default::default(),
         usage,
         agent: "build".to_string(),
         metadata: SessionMetadata {
@@ -111,6 +111,6 @@ pub(crate) fn parse_codex_session_from_path(
             ..Default::default()
         },
         max_steps: None,
-        bus: None,
+        ..Default::default()
     })
 }

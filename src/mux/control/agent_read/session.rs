@@ -11,6 +11,9 @@ pub(super) async fn read(target: &SessionTarget) -> Result<Option<String>> {
     let Some(runtime) = target.runtime() else {
         return Ok(None);
     };
+    if let Some(indexed) = crate::session::store::projection::read(&runtime.session_id, "recall").await? {
+        return Ok(Some(projection::render(runtime, &indexed)));
+    }
     let Some(window) = target.active() else {
         return Ok(None);
     };

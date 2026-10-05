@@ -32,3 +32,7 @@ mod store;
 #[cfg(test)]
 #[path = "approval_command_test_support.rs"]
 mod test_support;
+
+#[cfg(test)]
+#[path = "approval_command_navigation_tests.rs"]
+mod navigation_tests;

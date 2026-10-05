@@ -10,6 +10,7 @@ impl Default for HistoryPageState {
             generation: 0,
             boundary: Vec::new(),
             depth: 0,
+            before: None,
             loading: false,
             exhausted: true,
             expanded: false,

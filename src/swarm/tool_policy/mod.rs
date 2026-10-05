@@ -3,6 +3,7 @@ mod capability_prompt;
 mod constraint_entry;
 mod constraint_extract;
 mod constraint_ledger;
+mod constraint_mode;
 mod definitions;
 mod deliverable_contract;
 mod deliverable_status;

@@ -1,6 +1,6 @@
 //! Goal reaffirmation and clearing persistence.
 
-use crate::session::tasks::{TaskEvent, TaskLog};
+use crate::session::tasks::{GoalReaffirmation, TaskEvent, TaskLog};
 use anyhow::{Result, anyhow};
 use chrono::Utc;
 
@@ -9,10 +9,10 @@ pub(super) async fn reaffirm(session_id: &str, note: &str) -> Result<String> {
         return Err(anyhow!("usage: /goal reaffirm <progress note>"));
     }
     TaskLog::for_session(session_id)?
-        .append(&TaskEvent::GoalReaffirmed {
+        .append(&TaskEvent::GoalReaffirmed(GoalReaffirmation {
             at: Utc::now(),
             progress_note: note.into(),
-        })
+        }))
         .await?;
     Ok(format!("Goal reaffirmed: {note}"))
 }

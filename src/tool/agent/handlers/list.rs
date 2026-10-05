@@ -16,10 +16,9 @@ pub(in crate::tool::agent) async fn handle(parent: Option<&str>) -> Result<ToolR
         })
         .collect::<Vec<_>>();
     agents.extend(super::super::message::remote::list());
-    agents.extend(crate::mux::control::agent_sessions().await?);
     if agents.is_empty() {
         return Ok(ToolResult::success(
-            "No local, LAN, or mux agents are available yet.",
+            "No local or LAN agents are available yet.",
         ));
     }
     Ok(ToolResult::success(

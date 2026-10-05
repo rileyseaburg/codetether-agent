@@ -8,8 +8,9 @@ pub const VERIFIER_MODEL_ENV: &str = "CODETETHER_GOAL_VERIFIER_MODEL";
 
 /// Pick the verifier model from the available candidates.
 ///
-/// Precedence: explicit override, then the worker's current model, then
-/// the configured default. Blank values are skipped.
+/// Precedence: explicit override, then the configured default when it
+/// differs from the worker, then the worker's current model as a last
+/// resort. Blank values are skipped.
 ///
 /// # Arguments
 ///
@@ -28,6 +29,7 @@ pub const VERIFIER_MODEL_ENV: &str = "CODETETHER_GOAL_VERIFIER_MODEL";
 ///
 /// assert_eq!(select_verifier_model(Some("b/m2"), Some("a/m1"), None), Some("b/m2".into()));
 /// assert_eq!(select_verifier_model(Some("  "), Some("a/m1"), None), Some("a/m1".into()));
+/// assert_eq!(select_verifier_model(None, Some("a/m1"), Some("c/m3")), Some("c/m3".into()));
 /// assert_eq!(select_verifier_model(None, None, Some("c/m3")), Some("c/m3".into()));
 /// assert_eq!(select_verifier_model(None, None, None), None);
 /// ```
@@ -36,7 +38,8 @@ pub fn select_verifier_model(
     current: Option<&str>,
     default: Option<&str>,
 ) -> Option<String> {
-    [override_model, current, default]
+    let independent_default = default.filter(|d| !super::is_self_review(d, current));
+    [override_model, independent_default, current, default]
         .into_iter()
         .flatten()
         .map(str::trim)
@@ -47,7 +50,8 @@ pub fn select_verifier_model(
 /// Resolve the verifier model from the TUI selection, environment, worker, and config.
 ///
 /// Precedence: TUI selection ([`set_verifier_model`](super::set_verifier_model)),
-/// then [`VERIFIER_MODEL_ENV`], then the worker model, then the configured default.
+/// then [`VERIFIER_MODEL_ENV`], then a configured default that differs from
+/// the worker, then the worker model. A self-review is logged as a warning.
 ///
 /// # Errors
 ///
@@ -67,12 +71,14 @@ pub async fn resolve_verifier_model(current: Option<&str>) -> anyhow::Result<Str
     let override_model =
         super::selected_verifier_model().or_else(|| std::env::var(VERIFIER_MODEL_ENV).ok());
     let config = crate::config::Config::load().await?;
-    select_verifier_model(
+    let model = select_verifier_model(
         override_model.as_deref(),
         current,
         config.default_model.as_deref(),
     )
     .ok_or_else(|| {
         anyhow::anyhow!("no model available for the goal verifier; set {VERIFIER_MODEL_ENV}")
-    })
+    })?;
+    super::warn_if_self_review(&model, current);
+    Ok(model)
 }

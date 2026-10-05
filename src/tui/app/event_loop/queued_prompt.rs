@@ -15,7 +15,11 @@ pub(super) async fn drain(
     worker_bridge: &Option<TuiWorkerBridge>,
     runtime: &TuiSessionHandle,
 ) {
-    if app.state.processing || !prompt_queue::has_pending() {
+    crate::tui::app::input::goal_answer::deliver(app, slot, registry).await;
+    if crate::session::tasks::runtime::answer_review::held(slot.view().id())
+        || app.state.processing
+        || !prompt_queue::has_pending()
+    {
         return;
     }
     let Some(prompt) = prompt_queue::take() else {

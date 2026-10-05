@@ -18,6 +18,7 @@ fn selects_preceding_messages_in_chronological_order() {
         source_id: "unused".into(),
         boundary: anchor::fingerprints(&messages[275..]),
         depth: 25,
+        before: None,
     };
     let Decision::Ready(page) = select::page(&messages, &request, 400) else {
         panic!()

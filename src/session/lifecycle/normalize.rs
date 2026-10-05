@@ -7,7 +7,7 @@ impl Session {
     pub(crate) fn normalize_sidecars(&mut self) {
         self.attach_global_bus_if_missing();
         if self.pages.len() != self.messages.len() {
-            self.pages = classify_all(&self.messages);
+            self.pages = classify_all(&self.messages).into();
         }
         if self.metadata.history_sink.is_none() {
             self.metadata.history_sink =

@@ -18,7 +18,7 @@ pub(super) async fn execute(state: &State) -> Result<Outcome> {
         model: state.model.clone(),
         temperature: state.temperature,
         top_p: None,
-        max_tokens: Some(8192),
+        max_tokens: Some(crate::session::helper::token::session_completion_max_tokens()),
         stop: Vec::new(),
     };
     let remaining = remaining(state.deadline, Instant::now());

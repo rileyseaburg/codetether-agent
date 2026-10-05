@@ -8,6 +8,7 @@ mod capability;
 mod file_uri;
 mod local;
 mod policy;
+mod readonly_bash;
 mod root;
 mod scoped_bash;
 mod scoped_git;

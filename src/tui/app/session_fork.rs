@@ -8,6 +8,9 @@ pub(super) async fn fork_if_truncated(
     if dropped == 0 {
         return Ok(None);
     }
+    if session.storage.is_persisted() {
+        return Ok(Some(session.id.clone()));
+    }
     let original = session.id.clone();
     let title = session
         .title

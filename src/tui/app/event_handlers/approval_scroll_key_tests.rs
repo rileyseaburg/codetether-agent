@@ -27,6 +27,7 @@ fn page_down_scrolls_full_approval_preview() {
         )
         .with_preview("line\n".repeat(30)),
     );
+    approval_queue::set_scroll_limit("approval-1", 25);
     let mut app = App::default();
 
     assert!(super::scroll(

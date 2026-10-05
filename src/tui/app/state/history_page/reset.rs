@@ -5,6 +5,10 @@ use crate::provider::Message;
 use super::{HistoryPageState, anchor};
 
 impl HistoryPageState {
+    /// Pin the viewport boundary to an absolute durable sequence.
+    pub(crate) fn set_before(&mut self, before: usize) {
+        self.before = Some(before);
+    }
     pub(crate) fn reset(
         &mut self,
         source_id: String,
@@ -16,6 +20,7 @@ impl HistoryPageState {
         self.source_id = Some(source_id);
         self.boundary = anchor::fingerprints(boundary_messages);
         self.depth = depth;
+        self.before = None;
         self.loading = false;
         self.exhausted = !has_older || self.boundary.is_empty();
         self.expanded = false;

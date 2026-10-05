@@ -61,7 +61,9 @@
 
 use super::{Tool, ToolResult};
 use crate::session::Fault;
+#[cfg(test)]
 use crate::session::history_files::{materialize_session_history, render_turn};
+mod indexed;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -161,7 +163,7 @@ impl Tool for ContextBrowseTool {
             Ok(a) => a,
             Err(e) => return Ok(ToolResult::error(e)),
         };
-        let session = match super::context_helpers::load_calling_session(&args).await {
+        let session = match super::context_helpers::load_calling_window(&args, 0).await {
             Ok(Some(s)) => s,
             Ok(None) => {
                 return Ok(fault_result(
@@ -178,40 +180,7 @@ impl Tool for ContextBrowseTool {
                 ));
             }
         };
-        let paths = match materialize_session_history(&session).await {
-            Ok(paths) => paths,
-            Err(err) => {
-                return Ok(fault_result(
-                    Fault::BackendError {
-                        reason: err.to_string(),
-                    },
-                    format!("failed to materialize history files: {err}"),
-                ));
-            }
-        };
-        let messages = session.history();
-        match action {
-            ContextBrowseAction::ListTurns => Ok(ToolResult::success(render_listing(&paths))
-                .with_metadata("session_id", json!(session.id))
-                .truncate_to(super::tool_output_budget())),
-            ContextBrowseAction::ShowTurn { turn } => match messages.get(turn) {
-                Some(msg) => Ok(ToolResult::success(render_turn(msg))
-                    .with_metadata(
-                        "path",
-                        json!(
-                            paths
-                                .get(turn)
-                                .map(|path| path.display().to_string())
-                                .unwrap_or_else(String::new)
-                        ),
-                    )
-                    .truncate_to(super::tool_output_budget())),
-                None => Ok(ToolResult::error(format!(
-                    "turn {turn} out of range (have {} entries)",
-                    messages.len()
-                ))),
-            },
-        }
+        indexed::run(&session, action, &args).await
     }
 }
 

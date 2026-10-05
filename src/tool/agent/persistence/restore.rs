@@ -29,7 +29,7 @@ pub(super) async fn load(manifest: &Manifest) -> Result<AgentEntry> {
             manifest.child_session_id
         );
     }
-    let session = crate::session::Session::load(&manifest.child_session_id).await?;
+    let session = crate::session::Session::resume(&manifest.child_session_id).await?;
     Ok(AgentEntry {
         name: manifest.name.clone(),
         instructions: manifest.instructions.clone(),

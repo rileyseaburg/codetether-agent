@@ -15,10 +15,7 @@ pub(super) async fn bounded(session_id: &str) -> Option<Session> {
         );
         return None;
     }
-    let bytes = tokio::fs::read(path).await.ok()?;
-    tokio::task::spawn_blocking(move || decode(&bytes))
-        .await
-        .ok()?
+    Some(Session::load_tail(session_id, 512).await.ok()?.session)
 }
 
 fn decode(bytes: &[u8]) -> Option<Session> {

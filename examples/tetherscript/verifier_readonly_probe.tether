@@ -1,0 +1,16 @@
+// Evidence check for the goal verifier's read-only sandbox proof.
+//
+// Inputs: whether the file the verifier tried to create exists after the run,
+// and the captured verifier bash output. A write is proven blocked only when
+// the output shows the write failed (non-zero exit plus a permission or
+// read-only error) and the file is absent on disk.
+
+fn readonly_probe(file_exists, output) {
+    let m = map()
+    let text = str(output)
+    m["file_exists_after_run"] = file_exists
+    m["nonzero_write_exit"] = text.contains("CACHE_WRITE_EXIT=") && !text.contains("CACHE_WRITE_EXIT=0")
+    m["denial_seen"] = text.contains("Permission denied") || text.contains("Read-only file system")
+    m["write_blocked"] = !file_exists && m["nonzero_write_exit"] && m["denial_seen"]
+    return json_encode(m)
+}

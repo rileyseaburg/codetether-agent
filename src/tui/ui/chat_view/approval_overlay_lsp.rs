@@ -1,49 +1,26 @@
-//! Real language-server diagnostics panel for proposed approval content.
-
-use ratatui::{
-    Frame,
-    layout::Rect,
-    style::{Color, Style},
-    text::Line,
-    widgets::{Block, Borders, Paragraph},
-};
+//! Complete language-server diagnostics for scrollable approval details.
 
 use crate::tui::app::state::approval_queue::{ApprovalReport, ApprovalReportState};
+use ratatui::{
+    style::Stylize,
+    text::{Line, Text},
+};
 
-pub(super) fn height(report: &ApprovalReport) -> u16 {
-    match report.state {
-        ApprovalReportState::NotRequested => 0,
-        ApprovalReportState::Issues => (report.messages.len() as u16 + 2).min(5),
-        ApprovalReportState::Checking
-        | ApprovalReportState::Clean
-        | ApprovalReportState::Unavailable => 3,
-    }
-}
-
-pub(super) fn render(f: &mut Frame, area: Rect, report: &ApprovalReport) {
-    if matches!(report.state, ApprovalReportState::NotRequested) {
-        return;
-    }
-    let (title, color) = match report.state {
-        ApprovalReportState::Checking => ("LSP · checking proposed content…", Color::Yellow),
-        ApprovalReportState::Clean => ("LSP · no diagnostics", Color::Green),
-        ApprovalReportState::Issues => ("LSP · proposed-content diagnostics", Color::Red),
-        ApprovalReportState::Unavailable => ("LSP · unavailable", Color::DarkGray),
-        ApprovalReportState::NotRequested => return,
+/// Keep all diagnostics rather than reserving a clipped, fixed-height panel.
+pub(super) fn lines(report: &ApprovalReport) -> Vec<Line<'static>> {
+    let title = match report.state {
+        ApprovalReportState::Checking => "LSP · checking proposed content…".yellow(),
+        ApprovalReportState::Clean => "LSP · no diagnostics".green(),
+        ApprovalReportState::Issues => "LSP · proposed-content diagnostics".red(),
+        ApprovalReportState::Unavailable => "LSP · unavailable".dim(),
+        ApprovalReportState::NotRequested => return Vec::new(),
     };
-    let lines = if report.messages.is_empty() {
-        vec![Line::raw(title)]
-    } else {
+    let mut lines = vec![Line::default(), Line::from(title.bold())];
+    lines.extend(
         report
             .messages
             .iter()
-            .map(|message| Line::raw(message.clone()))
-            .collect()
-    };
-    f.render_widget(
-        Paragraph::new(lines)
-            .style(Style::default().fg(color))
-            .block(Block::default().borders(Borders::ALL).title(title)),
-        area,
+            .flat_map(|message| Text::raw(message.clone()).lines),
     );
+    lines
 }

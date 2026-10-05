@@ -1,10 +1,14 @@
 //! Prepared-index validation and merge into an immutable session snapshot.
+mod incremental;
 
 use crate::session::Session;
 
 use super::{freshness, store};
 
 pub(crate) async fn prepared_index(session: &Session) -> crate::session::index::SummaryIndex {
+    if let Some(index) = incremental::read(session).await {
+        return index;
+    }
     let Some(prepared) = store::read(session).await else {
         return crate::session::index::SummaryIndex::new();
     };

@@ -10,7 +10,7 @@ pub(super) fn run(session: &Session) {
     }
     let spawn = registry::enqueue(&session.id, |runtime, generation| types::Snapshot {
         session_id: session.id.clone(),
-        messages: session.messages.clone(),
+        messages: Vec::new(),
         index: crate::session::index::SummaryIndex::new(),
         runtime,
         generation,

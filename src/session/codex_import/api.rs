@@ -30,7 +30,7 @@ pub async fn import_codex_session_path(path: &std::path::Path) -> Result<Session
             .map(String::as_str),
     )?;
     let _ = persist_imported_session(session, &native_sessions_dir()?).await?;
-    Session::load(&meta.id).await
+    Session::resume(&meta.id).await
 }
 
 pub async fn import_codex_sessions_for_directory(
@@ -48,7 +48,7 @@ pub async fn import_codex_sessions_for_directory(
 }
 
 pub async fn load_or_import_session(id: &str) -> Result<Session> {
-    let existing = Session::load(id).await.ok();
+    let existing = Session::resume(id).await.ok();
     if let Some(codex_home) = codex_home_dir()
         && let Some(path) = find_codex_session_path_by_id(&codex_home, id)?
     {

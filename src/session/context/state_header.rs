@@ -27,11 +27,16 @@ pub(super) fn prepend_state_header(session: &Session, messages: &mut Vec<Message
 }
 
 fn pinned_constraints(session: &Session) -> Vec<String> {
-    super::state_header_pins::pinned_indices(session)
+    crate::session::store::constraints::prefix(session)
         .into_iter()
-        .filter_map(|idx| {
-            first_text_excerpt(&session.messages[idx]).map(|s| format!("- turn {idx}: {s}"))
-        })
+        .chain(
+            super::state_header_pins::pinned_indices(session)
+                .into_iter()
+                .filter_map(|idx| {
+                    first_text_excerpt(&session.messages[idx])
+                        .map(|s| format!("- turn {}: {s}", session.message_offset() + idx))
+                }),
+        )
         .take(MAX_CONSTRAINTS)
         .collect()
 }

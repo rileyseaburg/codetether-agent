@@ -26,6 +26,7 @@ pub(super) fn page(messages: &[Message], request: &Request, cap: usize) -> Decis
         boundary: anchor::fingerprints(&selected),
         exhausted: start == 0 && full_history,
         depth: request.depth.saturating_add(selected.len()),
+        before: None,
         messages: selected,
     })
 }

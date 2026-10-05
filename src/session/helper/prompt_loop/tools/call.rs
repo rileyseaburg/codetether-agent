@@ -38,7 +38,8 @@ pub(super) async fn run(runner: &mut Runner<'_>, step: usize, call: Call) -> Res
         super::simple::record(runner, &call, format!("Error: {reason}"), false).await;
         return Ok(false);
     }
-    let outcome = super::invoke::execute(runner, &call).await;
-    super::publish::complete(runner, step, &call, outcome).await;
+    let outcome = super::invoke::execute(runner, &call).await?;
+    super::refresh::after(runner, &call, outcome.success).await?;
+    super::publish::complete(runner, step, &call, outcome).await?;
     Ok(super::codesearch::guard(runner, step))
 }

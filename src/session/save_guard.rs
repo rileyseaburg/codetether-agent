@@ -17,6 +17,9 @@ use std::sync::{Mutex, OnceLock};
 
 #[path = "persistence/notify.rs"]
 pub(super) mod notify;
+#[path = "persistence/atomic_write.rs"]
+mod write;
+pub(super) use write::atomic_write;
 
 fn store() -> &'static Mutex<HashMap<String, u64>> {
     static STORE: OnceLock<Mutex<HashMap<String, u64>>> = OnceLock::new();
@@ -40,10 +43,11 @@ pub(super) fn is_unchanged(id: &str, content: &[u8], path: &std::path::Path) -> 
         return false;
     }
     let hash = hash_content(content);
-    store()
+    let cached = store()
         .lock()
         .map(|guard| guard.get(id) == Some(&hash))
-        .unwrap_or(false)
+        .unwrap_or(false);
+    cached && std::fs::read(path).is_ok_and(|saved| saved == content)
 }
 
 /// Record the hash of a successful save so future identical saves elide.
@@ -62,25 +66,6 @@ pub(super) fn forget(id: &str) {
     }
 }
 
-/// Atomically write `content` to `path` via a `tmp` sidecar + rename.
-///
-/// On POSIX `rename` is atomic over an existing file; if it fails (e.g.
-/// Windows semantics) we retry once with remove-then-rename.
-///
-/// # Errors
-/// Returns an error only if both the initial rename and the retry fail.
-pub(super) async fn atomic_write(
-    tmp: &std::path::Path,
-    path: &std::path::Path,
-    content: &[u8],
-) -> anyhow::Result<()> {
-    tokio::fs::write(tmp, content).await?;
-    if let Err(primary) = tokio::fs::rename(tmp, path).await {
-        let _ = tokio::fs::remove_file(path).await;
-        if let Err(retry) = tokio::fs::rename(tmp, path).await {
-            let _ = tokio::fs::remove_file(tmp).await;
-            anyhow::bail!("session rename failed: {primary} (retry: {retry})");
-        }
-    }
-    Ok(())
-}
+#[cfg(test)]
+#[path = "persistence/save_guard_tests.rs"]
+mod tests;

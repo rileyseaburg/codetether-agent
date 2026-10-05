@@ -13,6 +13,8 @@ pub(crate) struct ApprovalSnapshot {
     pub(crate) reason: String,
     pub(crate) justification: Option<String>,
     pub(crate) preview: Option<String>,
+    /// Rendered-row limit measured at the current popup dimensions.
+    pub(crate) scroll_limit: u16,
     pub(crate) arguments: Option<serde_json::Value>,
     pub(crate) report: ApprovalReport,
     /// Reviewer state: `None` = not requested, `Some(None)` = running.
@@ -29,6 +31,7 @@ impl From<LiveApprovalRequest> for ApprovalSnapshot {
             reason: request.reason,
             justification: request.justification,
             preview: request.preview,
+            scroll_limit: u16::MAX,
             arguments: request.arguments,
             report: ApprovalReport::default(),
             review: None,

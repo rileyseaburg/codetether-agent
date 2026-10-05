@@ -5,6 +5,8 @@ use std::sync::{Mutex, OnceLock};
 
 #[path = "approval_queue/edit_session.rs"]
 pub(crate) mod edit_session;
+#[path = "approval_queue/navigation.rs"]
+mod navigation;
 #[path = "approval_queue/operations.rs"]
 mod operations;
 #[path = "approval_queue/queue_access.rs"]
@@ -14,6 +16,9 @@ mod reconcile;
 #[path = "approval_queue/report.rs"]
 mod report;
 mod snapshot;
+#[path = "approval_queue/viewport.rs"]
+mod viewport;
+pub(crate) use navigation::cycle;
 pub(crate) use operations::{feedback_input, set_report, set_review};
 #[cfg(test)]
 pub(crate) use queue_access::reset;
@@ -21,6 +26,7 @@ pub(crate) use queue_access::{active, active_id, len, push, resolve};
 pub(crate) use reconcile::remove_stale;
 pub(crate) use report::{ApprovalReport, ApprovalReportState};
 pub(crate) use snapshot::ApprovalSnapshot;
+pub(crate) use viewport::set_scroll_limit;
 
 static QUEUE: OnceLock<Mutex<VecDeque<ApprovalSnapshot>>> = OnceLock::new();
 

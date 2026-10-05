@@ -1,6 +1,6 @@
 //! Folded goal and task state.
 
-use super::{Goal, Task};
+use super::{AnswerReview, Goal, Task};
 use std::collections::BTreeMap;
 
 /// Folded view reconstructed by replaying the append-only session task log.
@@ -17,6 +17,8 @@ use std::collections::BTreeMap;
 pub struct TaskState {
     /// Current goal, if one has been set and not cleared.
     pub goal: Option<Goal>,
+    /// User-question hold; approval grants cannot release it.
+    pub answer_review: Option<AnswerReview>,
     /// Tasks indexed by stable task identifier.
     pub tasks: BTreeMap<String, Task>,
 }

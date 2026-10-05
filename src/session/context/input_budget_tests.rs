@@ -4,7 +4,7 @@ use super::{calculate, resolve, usable};
 
 #[test]
 fn calculation_scales_with_context_window() {
-    assert_eq!(calculate(32_000, 8_192), 19_756);
+    assert_eq!(calculate(32_000, 8_192), 19_584);
     assert_eq!(calculate(128_000, 8_192), 105_984);
     assert_eq!(calculate(256_000, 8_192), 221_184);
     assert_eq!(calculate(1_000_000, 8_192), 890_784);
@@ -15,6 +15,13 @@ fn zero_uses_selected_models_runtime_capacity() {
     assert_eq!(resolve("mistral", 0), usable("mistral"));
     assert_eq!(resolve("gpt-5.6-sol", 0), usable("gpt-5.6-sol"));
     assert!(usable("gpt-5.6-sol") > usable("mistral"));
+}
+
+#[test]
+fn reserves_the_actual_output_limit_even_above_a_quarter_window() {
+    assert_eq!(calculate(32_000, 16_000), 12_556);
+    assert_eq!(calculate(32_000, 32_000), 0);
+    assert_eq!(calculate(32_000, usize::MAX), 0);
 }
 
 #[test]

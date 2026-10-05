@@ -16,6 +16,9 @@ pub(super) fn read(id: &str) -> Result<Option<PathBuf>> {
 
 pub(super) fn write(id: &str, target: &Path) -> Result<()> {
     let entry = entry(id)?;
+    if std::fs::read_to_string(&entry).is_ok_and(|value| value == target.to_string_lossy()) {
+        return Ok(());
+    }
     if let Some(parent) = entry.parent() {
         std::fs::create_dir_all(parent).context("create session location directory")?;
     }

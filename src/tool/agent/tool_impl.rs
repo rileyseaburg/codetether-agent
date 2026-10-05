@@ -57,7 +57,7 @@ impl Tool for AgentTool {
     }
 
     fn description(&self) -> &str {
-        "First-party collaboration with local agents, authenticated LAN peers, and mux-backed TUI sessions. Actions include spawn, message, list, read, interact, status, interrupt, close, resume, and kill."
+        "First-party collaboration with local agents and authenticated LAN peers. Actions include spawn, message, list, status, interrupt, close, resume, and kill. Mux TUI sessions cannot be controlled through this tool."
     }
 
     fn parameters(&self) -> Value {

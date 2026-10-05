@@ -2,6 +2,7 @@
 
 mod account;
 mod adopt;
+pub(crate) mod answer_review;
 mod auto_goal;
 mod continuation;
 mod load;
@@ -9,6 +10,8 @@ mod prompt;
 mod resume;
 mod system_prompt;
 mod transition;
+mod transition_checked;
+pub(crate) use transition_checked::set_status_if_current;
 
 pub(crate) use account::record_usage;
 pub(crate) use adopt::adopt_prompt;

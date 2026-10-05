@@ -41,6 +41,11 @@ pub fn system_prompt(workspace: &Path, model: &str, claimed: GoalStatus) -> Stri
         false,
         false,
     );
+    let runtime_rule = base
+        .lines()
+        .find(|line| line.contains("[runtime "))
+        .unwrap_or("none");
+    tracing::info!(rule = %runtime_rule, "Goal verifier runtime constraint");
     format!("{base}\n\n{charter}")
 }
 

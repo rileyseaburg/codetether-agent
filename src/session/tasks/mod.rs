@@ -27,17 +27,25 @@
 //!
 //! [`Session`]: super::Session
 
+pub(crate) mod control;
 #[path = "event/mod.rs"]
 mod event;
 mod log;
 mod path;
 mod render;
 pub(crate) mod runtime;
+pub use event::{GoalEdit, GoalEditAction, GoalEdited, GoalStatusChecked};
 mod state;
+pub(crate) mod turn_instructions;
 
 #[allow(unused_imports)]
-pub use event::{GoalRuntimeUpdate, GoalSourceKind, GoalStatus, SessionTaskStatus, TaskEvent};
+pub use event::{
+    AnswerReviewAction, GoalRuntimeUpdate, GoalSourceKind, GoalStatus, SessionTaskStatus, TaskEvent,
+};
+pub use event::{AnswerReviewUpdate, GoalReaffirmation};
 pub use log::TaskLog;
 pub use path::task_log_path;
 pub use render::governance_block;
-pub use state::{Goal, Task, TaskState};
+#[cfg(test)]
+pub(crate) use state::answer_review_test_support;
+pub use state::{AnswerReview, Goal, Task, TaskState};

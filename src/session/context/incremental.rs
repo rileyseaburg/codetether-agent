@@ -14,16 +14,14 @@
 //!    * `+tool_overlap`.
 //!    * `+error_signal` (boundary boost).
 //!    * `+recency_decay`.
-//! 4. Greedy pack in score order until the per-message token estimate
-//!    drains the remaining budget.
-//! 5. Re-sort selected entries by original index (causal order).
-//! 6. Run [`pairing::repair_orphans`] as a final safety pass to ensure
-//!    every `ToolCall` keeps its matching `ToolResult` (the score-based
-//!    selection can otherwise split a pair).
+//! 4. Protect the recent window, pinned constraints, and active user instruction.
+//!    Budget prepared summaries (including their rendered headers) before
+//!    relevance-ranked raw history. Never include a range twice.
+//! 5. Interleave selected summaries and raw messages in causal order.
+//! 6. Repair tool-call/result pairing, then enforce the request budget.
 //!
-//! Step 18 will fill the gaps left by selection with cached summaries
-//! from [`SummaryIndex`]; step 14's index returns `None` for every
-//! lookup, so today the selected entries simply telescope.
+//! Prepared summaries come from the proactive index; cache misses fall back to
+//! raw selection without invoking request-time summarization.
 
 use std::sync::Arc;
 
@@ -35,8 +33,12 @@ use crate::session::helper::token::{estimate_request_tokens, estimate_tokens_for
 use crate::session::relevance::{RelevanceMeta, extract};
 use crate::session::{ResidencyLevel, Session, SessionEvent};
 
+#[path = "incremental_pack.rs"]
+mod pack;
 #[path = "prepared_gaps.rs"]
 mod prepared_gaps;
+#[path = "incremental_required.rs"]
+mod required;
 
 use super::helpers::DerivedContext;
 use super::incremental_clamp::clamp_and_recompute;
@@ -70,7 +72,7 @@ pub(super) async fn derive_incremental(
     _event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
     let origin_len = session.messages.len();
-    let mut clone = session.messages.clone();
+    let mut clone = session.messages.to_vec();
     if let Some(ctx) = super::incremental_below_budget::try_pass_through(
         &mut clone,
         system_prompt,
@@ -84,8 +86,7 @@ pub(super) async fn derive_incremental(
     let task = task_signature(&clone);
     let scores = score_messages(&clone, &task);
 
-    let recent_window = std::cmp::min(DEFAULT_RECENT_WINDOW, clone.len());
-    let recent_start = clone.len() - recent_window;
+    let recent_start = clone.len().saturating_sub(DEFAULT_RECENT_WINDOW);
 
     let header_cost = budget_tokens
         .saturating_sub(estimate_request_tokens(system_prompt, &[], tools))
@@ -100,7 +101,7 @@ pub(super) async fn derive_incremental(
 
     // Always-include set: recent-window entries + pinned constraints.
     let mut keep = vec![false; clone.len()];
-    super::state_header_pins::force_keep_base(
+    required::seed(
         session,
         &mut keep,
         &per_msg,
@@ -115,17 +116,9 @@ pub(super) async fn derive_incremental(
             .partial_cmp(&scores[*a])
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    for idx in order {
-        let cost = per_msg[idx];
-        if cost <= budget_for_messages {
-            keep[idx] = true;
-            budget_for_messages = budget_for_messages.saturating_sub(cost);
-        }
-    }
-
-    let dropped_ranges = collect_dropped_ranges(&keep);
     let prepared = crate::session::index_produce::proactive::prepared_index(session).await;
-    let gaps = prepared_gaps::select(&prepared, &dropped_ranges);
+    let gaps = pack::select(&prepared, &mut keep, &per_msg, order, budget_for_messages);
+    let dropped_ranges = collect_dropped_ranges(&keep);
     let (mut messages, _, mut origins) = interleave(&clone, &keep, &gaps);
     repair_with_origins(&mut messages, &mut origins);
     let mut resolutions: Vec<ResidencyLevel> = messages.iter().map(residency_for_message).collect();

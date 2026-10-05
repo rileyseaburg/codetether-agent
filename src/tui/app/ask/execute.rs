@@ -15,7 +15,11 @@ use crate::tui::chat::message::{ChatMessage, MessageType};
 /// On success appends a [`MessageType::System`] chat message of the
 /// form `"/ask → <reply>"`; on failure only `app.state.status` is
 /// updated. Never mutates session history.
-pub(super) async fn run(app: &mut App, provider: Arc<dyn Provider>, request: CompletionRequest) {
+pub(super) async fn run(
+    app: &mut App,
+    provider: Arc<dyn Provider>,
+    request: CompletionRequest,
+) -> bool {
     app.state.status = "/ask: asking…".to_string();
     match provider.complete(request).await {
         Ok(resp) => {
@@ -26,9 +30,11 @@ pub(super) async fn run(app: &mut App, provider: Arc<dyn Provider>, request: Com
             ));
             app.state.status = "/ask: answered".to_string();
             app.state.scroll_to_bottom();
+            true
         }
         Err(err) => {
             app.state.status = format!("/ask failed: {err}");
+            false
         }
     }
 }

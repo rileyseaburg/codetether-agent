@@ -1,12 +1,13 @@
 //! Provenance ledger for delegated execution constraints.
 
 use super::constraint_entry::ConstraintEntry;
+pub(crate) use super::constraint_mode::Mode;
 
 pub(super) fn render(
     instruction: &str,
     context: &str,
     repository_policy: &str,
-    read_only: bool,
+    mode: Mode,
 ) -> String {
     let mut entries =
         super::constraint_extract::from_text("delegated task instruction", instruction);
@@ -18,12 +19,7 @@ pub(super) fn render(
         "repository policy (AGENTS.md)",
         repository_policy,
     ));
-    if read_only {
-        entries.push(ConstraintEntry::new(
-            "runtime read-only mode",
-            "Do not run shell commands or mutate files.",
-        ));
-    }
+    entries.extend(mode.entry());
     render_entries(&entries)
 }
 

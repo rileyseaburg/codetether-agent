@@ -41,7 +41,7 @@ impl Agent {
             if tool_calls.is_empty() {
                 return Ok(AgentResponse {
                     text: response_text(&response.message),
-                    tool_uses: session.tool_uses.clone(),
+                    tool_uses: session.tool_uses.to_vec(),
                     usage: session.usage.clone(),
                 });
             }

@@ -322,11 +322,11 @@ async fn handle_fork_command(app: &mut App, _cwd: &Path, session: &mut Session, 
         tui_user_idxs[tui_user_idxs.len() - drop_last_n]
     };
 
-    child.messages = session.messages[..session_cut].to_vec();
+    child.messages = session.messages[..session_cut].to_vec().into();
     child.pages = if session.pages.len() >= session_cut {
-        session.pages[..session_cut].to_vec()
+        session.pages[..session_cut].to_vec().into()
     } else {
-        crate::session::pages::classify_all(&child.messages)
+        crate::session::pages::classify_all(&child.messages).into()
     };
     child.metadata.auto_apply_edits = session.metadata.auto_apply_edits;
     child.metadata.allow_network = session.metadata.allow_network;

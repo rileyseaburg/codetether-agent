@@ -1,14 +1,13 @@
 //! Pending approval popup for the chat view.
 
-use ratatui::widgets::{Block, Borders, Clear};
+use crate::tui::app::state::{App, approval_queue};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
+    widgets::{Block, Borders, Clear},
 };
 
-use crate::tui::app::state::{App, approval_queue};
-
-pub(crate) fn render(f: &mut Frame, app: &App, area: Rect) {
+pub(crate) fn render(f: &mut Frame, app: &mut App, area: Rect) {
     if approval_queue::feedback_input(&app.state.input) {
         return;
     }
@@ -16,29 +15,31 @@ pub(crate) fn render(f: &mut Frame, app: &App, area: Rect) {
         return;
     };
     let popup = super::approval_overlay_layout::popup(area);
-    let block = Block::default().borders(Borders::ALL).title("Approval");
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(format!("Approval · {} pending", approval_queue::len()));
     let inner = block.inner(popup);
-    let lsp_height = super::approval_overlay_lsp::height(&item.report);
-    let review_height = super::approval_overlay_review::height(item.review.as_ref());
-    let [header, preview, lsp, review, footer] = Layout::vertical([
-        Constraint::Length(super::approval_overlay_text::header_height(&item)),
-        Constraint::Min(1),
-        Constraint::Length(lsp_height),
-        Constraint::Length(review_height),
-        Constraint::Length(2),
-    ])
-    .areas(inner);
+    let footer_height =
+        super::approval_overlay_footer::height(inner.width).min(inner.height.saturating_sub(3));
+    let [preview, footer] =
+        Layout::vertical([Constraint::Min(3), Constraint::Length(footer_height)]).areas(inner);
     f.render_widget(Clear, popup);
     f.render_widget(block, popup);
-    super::approval_overlay_text::header(f, header, &item);
     super::approval_overlay_preview::render(
         f,
         preview,
-        item.preview.as_deref(),
-        &item.resource,
-        app.state.approval_preview_scroll,
+        &item,
+        &mut app.state.approval_preview_scroll,
     );
-    super::approval_overlay_lsp::render(f, lsp, &item.report);
-    super::approval_overlay_review::render(f, review, item.review.as_ref());
-    super::approval_overlay_text::footer(f, footer, &item, approval_queue::len());
+    super::approval_overlay_footer::render(f, footer);
 }
+
+#[cfg(test)]
+#[path = "approval_overlay/content_tests.rs"]
+mod content_tests;
+#[cfg(test)]
+#[path = "approval_overlay/render_tests.rs"]
+mod render_tests;
+#[cfg(test)]
+#[path = "approval_overlay/test_support.rs"]
+mod test_support;

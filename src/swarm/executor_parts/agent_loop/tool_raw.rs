@@ -20,10 +20,10 @@ pub(super) async fn execute(state: &State, name: &str, args: Value) -> Result {
     .await
     {
         Ok(Ok(result)) => {
-            if result.success {
-                tracing::info!(tool = %name, duration_ms = started.elapsed().as_millis() as u64,
-                    "Tool execution completed");
-            }
+            tracing::info!(tool = %name, success = result.success,
+                duration_ms = started.elapsed().as_millis() as u64,
+                output = %super::preview::text(&result.output, 400),
+                "Tool execution completed");
             Result::from_tool(result)
         }
         Ok(Err(error)) => Result::failure(format!("Tool execution failed: {error}"), false),

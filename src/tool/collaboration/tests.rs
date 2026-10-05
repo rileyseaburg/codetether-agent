@@ -20,3 +20,11 @@ fn registers_first_class_collaboration_tools() {
         assert!(registry.contains(id), "missing {id}");
     }
 }
+
+#[test]
+fn mux_control_is_not_registered_or_executable() {
+    let mut registry = ToolRegistry::new();
+    register(&mut registry);
+    assert!(!registry.contains("mux_control"));
+    assert!(registry.get("mux_control").is_none());
+}

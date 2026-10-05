@@ -1,5 +1,7 @@
 //! Serialized session task-log events.
 
+use super::{AnswerReviewUpdate, GoalReaffirmation};
+use super::{DriftDetected, GoalEdited};
 use super::{GoalRuntimeUpdate, GoalSourceKind, SessionTaskStatus};
 use chrono::{DateTime, Utc};
 /// A single durable event in the session task log.
@@ -76,18 +78,19 @@ pub enum TaskEvent {
     },
     /// Applies a lifecycle, accounting, or continuation update to the goal.
     GoalRuntime(GoalRuntimeUpdate),
+    /// Apply a delayed lifecycle decision only to its original goal revision.
+    GoalStatusChecked(super::GoalStatusChecked),
+    /// Revision-checked edits from a native user control.
+    GoalEdited(GoalEdited),
+    /// Holds goal execution until the user explicitly accepts the answer.
+    /// Stale decisions are rejected using the review and goal identities.
+    AnswerReview(AnswerReviewUpdate),
     /// Records that the agent reaffirmed alignment with the active goal.
     ///
     /// Reaffirmation does not change the objective. It stores a progress note so
     /// governance logic can reset drift counters and later explain why work
     /// continued.
-    GoalReaffirmed {
-        /// Time at which the reaffirmation was recorded.
-        at: DateTime<Utc>,
-        /// Concise statement of completed work, remaining work, or the current
-        /// blocker.
-        progress_note: String,
-    },
+    GoalReaffirmed(GoalReaffirmation),
     /// Clears the active session goal.
     ///
     /// Folding the log after this event leaves the session without an active
@@ -128,12 +131,5 @@ pub enum TaskEvent {
         note: Option<String>,
     },
     /// Records counters that triggered an alignment warning.
-    DriftDetected {
-        /// Time at which drift was detected.
-        at: DateTime<Utc>,
-        /// Tool calls made since the latest goal reaffirmation.
-        tool_calls_since_reaffirm: u32,
-        /// Errors observed since the latest goal reaffirmation.
-        errors_since_reaffirm: u32,
-    },
+    DriftDetected(DriftDetected),
 }

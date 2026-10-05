@@ -39,7 +39,5 @@ pub async fn list_sessions_paged(
 }
 
 fn sessions_dir() -> Result<PathBuf> {
-    crate::config::Config::data_dir()
-        .map(|dir| dir.join("sessions"))
-        .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))
+    crate::session::Session::sessions_dir()
 }

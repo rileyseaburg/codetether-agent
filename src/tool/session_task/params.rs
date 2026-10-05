@@ -28,4 +28,10 @@ pub(super) struct Params {
     /// Injected by `enrich_tool_input_with_runtime_context`.
     #[serde(default, rename = "__ct_session_id")]
     pub ct_session_id: Option<String>,
+    /// Injected worker model, forwarded to the goal verifier.
+    #[serde(default, rename = "__ct_current_model")]
+    pub ct_current_model: Option<String>,
+    /// Injected workspace root, forwarded to the goal verifier.
+    #[serde(default, rename = "__ct_parent_workspace")]
+    pub ct_workspace: Option<String>,
 }

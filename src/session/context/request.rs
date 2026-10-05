@@ -38,13 +38,14 @@ pub async fn build_request_with_context(
     )
     .await?;
     let prefetch = crate::session::index::recall::prefetch::message(session).await;
-    Ok(CompletionRequest {
-        messages: request_messages::build(system_prompt, prefetch, derived.messages),
+    let request = CompletionRequest {
+        messages: request_messages::build(system_prompt, derived.messages),
         tools: tools.to_vec(),
         model: model.to_string(),
         temperature: opts.temperature,
         top_p: opts.top_p,
         max_tokens: opts.max_tokens,
         stop: Vec::new(),
-    })
+    };
+    super::request_guard::finish(request, prefetch.into_iter().collect())
 }

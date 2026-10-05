@@ -5,8 +5,8 @@ use super::{Verdict, VerificationRequest, VerifierAgent};
 /// Ask `verifier` to judge `request` and return its decision.
 ///
 /// If the verifier errors (cannot start, times out, stops early), the
-/// result is [`Verdict::Fail`] carrying the error, so a broken verifier
-/// can never approve a transition.
+/// result is [`Verdict::Unavailable`] carrying the error. A broken verifier
+/// cannot approve a transition or consume the substantive rejection budget.
 ///
 /// # Arguments
 ///
@@ -40,7 +40,7 @@ use super::{Verdict, VerificationRequest, VerifierAgent};
 ///     claimed: GoalStatus::Complete, evidence: String::new(),
 /// };
 /// let verdict = verify_transition(&Crashing, &request).await;
-/// assert!(matches!(verdict, Verdict::Fail { findings } if findings.contains("provider unavailable")));
+/// assert!(matches!(verdict, Verdict::Unavailable { findings } if findings.contains("provider unavailable")));
 /// # });
 /// ```
 pub async fn verify_transition(
@@ -49,8 +49,8 @@ pub async fn verify_transition(
 ) -> Verdict {
     match verifier.review(request).await {
         Ok(report) => Verdict::parse(&report),
-        Err(error) => Verdict::Fail {
-            findings: format!("verifier could not reach a decision: {error}"),
+        Err(error) => Verdict::Unavailable {
+            findings: format!("verifier could not reach a decision: {error:#}"),
         },
     }
 }

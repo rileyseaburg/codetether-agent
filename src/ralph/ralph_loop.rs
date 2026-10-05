@@ -1497,7 +1497,7 @@ impl RalphLoop {
 
 ## VERIFICATION BY LANGUAGE:
 - **Rust**: `bash` with `cargo check 2>&1`
-- **Python**: `bash` with `python -m py_compile FILE` for each changed file (inline `python -c` programs are blocked)
+- **Python**: Interpreter execution, including `python3`, is blocked; use TetherScript or native tools instead.
 - **TypeScript/JavaScript**: `bash` with `npx tsc --noEmit` (if tsconfig.json exists)
 - Choose the right check for the files you modified
 

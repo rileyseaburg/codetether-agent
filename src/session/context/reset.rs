@@ -35,7 +35,7 @@ pub(super) async fn derive_reset(
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
     let origin_len = session.messages.len();
-    let mut messages = session.messages.clone();
+    let mut messages = session.messages.to_vec();
     let mut dropped_ranges = Vec::new();
     let mut provenance = Vec::new();
     let mut base_index = 0usize;

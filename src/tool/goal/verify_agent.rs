@@ -45,6 +45,11 @@ pub trait VerifierAgent: Send + Sync {
     /// # Errors
     ///
     /// Returns an error when the verifier cannot start or does not finish;
-    /// callers treat that as a failed verification.
+    /// callers treat that as unavailable verification, not a rejection.
     async fn review(&self, request: &VerificationRequest) -> anyhow::Result<String>;
+
+    /// Identity recorded in the verdict log, such as the verifier model.
+    async fn identity(&self) -> String {
+        "verifier".to_string()
+    }
 }

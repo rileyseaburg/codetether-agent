@@ -2,23 +2,23 @@
 
 use super::{TaskState, goal, task};
 use crate::session::tasks::TaskEvent;
+#[path = "goal_status_checked.rs"]
+mod checked;
+#[path = "goal_declaration.rs"]
+mod declaration;
 
 impl TaskState {
     pub(super) fn apply(&mut self, event: &TaskEvent) {
         match event {
-            TaskEvent::GoalSet {
-                at,
-                goal_id,
-                objective,
-                success_criteria,
-                forbidden,
-                ..
-            } => {
-                goal::set(self, *at, goal_id, objective, success_criteria, forbidden);
-            }
+            TaskEvent::GoalSet { .. } => declaration::apply(self, event),
             TaskEvent::GoalRuntime(update) => goal::runtime(self, update),
-            TaskEvent::GoalReaffirmed { at, .. } => goal::reaffirm(self, *at),
-            TaskEvent::GoalCleared { .. } => self.goal = None,
+            TaskEvent::GoalStatusChecked(update) => checked::apply(self, update),
+            TaskEvent::AnswerReview(update) => super::answer_review::apply(self, update),
+            TaskEvent::GoalReaffirmed(note) => goal::reaffirm(self, note.at),
+            TaskEvent::GoalCleared { .. } => {
+                self.goal = None;
+                self.answer_review = None;
+            }
             TaskEvent::TaskAdded {
                 id,
                 content,
@@ -32,7 +32,8 @@ impl TaskState {
             } => {
                 task::status(self, id, status, note);
             }
-            TaskEvent::DriftDetected { .. } => {}
+            TaskEvent::DriftDetected(_) => {}
+            TaskEvent::GoalEdited(edit) => goal::edit(self, edit),
         }
     }
 }

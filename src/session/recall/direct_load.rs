@@ -6,7 +6,10 @@ pub(super) async fn session(session_id: &str) -> Option<IndexedSession> {
     if let Some(indexed) = super::session_io::read(session_id).await {
         return Some(indexed);
     }
-    let session = crate::session::Session::load(session_id).await.ok()?;
+    let session = crate::session::Session::load_tail(session_id, 512)
+        .await
+        .ok()?
+        .session;
     let indexed = tokio::task::spawn_blocking(move || super::build::session(&session))
         .await
         .ok()??;

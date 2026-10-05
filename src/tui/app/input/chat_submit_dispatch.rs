@@ -28,6 +28,10 @@ pub(crate) async fn dispatch_prompt(
     pending_images: Vec<ImageAttachment>,
     runtime: &TuiSessionHandle,
 ) {
+    if crate::session::tasks::runtime::answer_review::held(slot.view().id()) {
+        app.state.status = "Goal paused — select Yes in the answer review before continuing".into();
+        return;
+    }
     app.state.clear_input();
     crate::tui::app::worker_bridge::handle_processing_started(app, worker_bridge).await;
     app.state.begin_request_timing();

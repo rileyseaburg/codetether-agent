@@ -5,8 +5,10 @@
 /// # Variants
 ///
 /// - `Pass` — the verifier confirmed the claim; the transition is applied.
-/// - `Fail` — the verifier rejected the claim or could not reach a decision;
-///   the goal stays active and `findings` go back to the worker.
+/// - `Fail` — the verifier explicitly rejected the claim; counts toward the cap.
+/// - `Unavailable` — runtime/protocol failure, not a rejection of the work.
+///
+/// Neither non-PASS outcome authorizes a lifecycle transition.
 ///
 /// # Examples
 ///
@@ -16,6 +18,7 @@
 /// match Verdict::parse("FAIL — tests — not run\nVERDICT: FAIL") {
 ///     Verdict::Pass => unreachable!(),
 ///     Verdict::Fail { findings } => assert!(findings.contains("not run")),
+///     Verdict::Unavailable { .. } => unreachable!(),
 /// }
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -27,14 +30,22 @@ pub enum Verdict {
         /// Verifier report describing the remaining work.
         findings: String,
     },
+    /// The verifier did not produce a usable decision; do not count a rejection.
+    Unavailable {
+        /// Runtime failure or malformed report; not a judgment of the work.
+        findings: String,
+    },
 }
 
 impl Verdict {
-    /// Read the decision from the last `VERDICT:` line of a report.
+    /// Read the decision from the final non-empty line of a report.
     ///
-    /// Only an exact `VERDICT: PASS` counts as a pass, with surrounding
-    /// markdown emphasis or backticks allowed. A qualified pass, a
-    /// `VERDICT: FAIL`, or no verdict line at all is a [`Verdict::Fail`].
+    /// Only an exact `VERDICT: PASS` on the last non-empty line counts as a
+    /// pass, with surrounding markdown emphasis or backticks allowed. A
+    /// trailing swarm deliverable footer (`STATUS: ...`, required of every
+    /// sub-agent) is skipped first. Only an exact `VERDICT: FAIL` is a
+    /// [`Verdict::Fail`]. Missing, qualified, or trailing-text verdicts are
+    /// [`Verdict::Unavailable`], not substantive rejections.
     ///
     /// # Arguments
     ///
@@ -42,29 +53,38 @@ impl Verdict {
     ///
     /// # Returns
     ///
-    /// [`Verdict::Pass`] or [`Verdict::Fail`] carrying the full report.
+    /// PASS, explicit FAIL, or an unavailable decision carrying the report.
     ///
     /// # Examples
     ///
     /// ```rust
     /// use codetether_agent::tool::goal::verify::Verdict;
     ///
-    /// assert_eq!(Verdict::parse("ok\n**VERDICT: PASS**"), Verdict::Pass);
+    /// assert_eq!(Verdict::parse("ok\n**VERDICT: PASS**\n"), Verdict::Pass);
+    /// assert_eq!(Verdict::parse("VERDICT: PASS\n\nSTATUS: completed"), Verdict::Pass);
     /// assert_ne!(Verdict::parse("VERDICT: PASS with gaps"), Verdict::Pass);
+    /// assert_ne!(Verdict::parse("VERDICT: PASS\nbut tests were skipped"), Verdict::Pass);
     /// assert_ne!(Verdict::parse("looks fine"), Verdict::Pass);
     /// ```
     pub fn parse(report: &str) -> Self {
         let decision = report
             .lines()
-            .rev()
             .map(|line| line.trim_matches(|c: char| c.is_whitespace() || c == '*' || c == '`'))
-            .find_map(|line| line.strip_prefix("VERDICT:"))
+            .rfind(|line| !line.is_empty() && !line.starts_with("STATUS:"))
+            .and_then(|line| line.strip_prefix("VERDICT:"))
             .map(str::trim);
         match decision {
             Some("PASS") => Self::Pass,
-            Some(_) | None => Self::Fail {
+            Some("FAIL") => Self::Fail {
+                findings: report.to_string(),
+            },
+            Some(_) | None => Self::Unavailable {
                 findings: report.to_string(),
             },
         }
     }
 }
+
+#[cfg(test)]
+#[path = "verify_verdict_tests.rs"]
+mod tests;

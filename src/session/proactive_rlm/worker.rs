@@ -1,4 +1,5 @@
 //! Coalescing proactive-RLM worker loop.
+mod incremental;
 
 use super::types::Snapshot;
 use super::{capacity, commit, inherit, ranges, registry, registry_status, summarize};
@@ -7,7 +8,7 @@ pub(super) fn spawn(session_id: String) {
     tokio::spawn(async move {
         loop {
             if let Some(snapshot) = registry::take(&session_id) {
-                process(snapshot).await;
+                incremental::run(snapshot).await;
                 continue;
             }
             if registry::settle(&session_id) {
@@ -17,7 +18,14 @@ pub(super) fn spawn(session_id: String) {
     });
 }
 
-async fn process(snapshot: Snapshot) {
+async fn process(mut snapshot: Snapshot) {
+    let Ok(loaded) =
+        crate::session::Session::load_tail(&snapshot.session_id, crate::session::store::WINDOW)
+            .await
+    else {
+        return;
+    };
+    snapshot.messages = loaded.session.messages.into_vec();
     let Some(_permit) = capacity::acquire().await else {
         return;
     };

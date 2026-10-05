@@ -1,49 +1,29 @@
-//! Reviewer verdict panel for the approval popup (advise mode).
+//! Complete reviewer findings for scrollable approval details.
 
 mod style;
-
-use ratatui::{
-    Frame,
-    layout::Rect,
-    style::{Color, Style},
-    text::Line,
-    widgets::{Block, Borders, Paragraph},
-};
-
 use crate::review::ReviewVerdict;
+use ratatui::{style::Stylize, text::Line};
 
-/// Rows needed: 0 when no review was requested, 3 while running, else
-/// reason + findings, bounded so the diff keeps most of the popup.
-pub(super) fn height(review: Option<&Option<ReviewVerdict>>) -> u16 {
+/// Include every finding without reducing the command viewport's height.
+pub(super) fn lines(review: Option<&Option<ReviewVerdict>>) -> Vec<Line<'static>> {
     match review {
-        None => 0,
-        Some(None) => 3,
-        Some(Some(verdict)) => (verdict.findings.len() as u16 + 3).min(7),
+        None => Vec::new(),
+        Some(None) => vec![
+            Line::default(),
+            Line::from("Reviewer · inspecting…".yellow().bold()),
+            Line::from("reading touched files and running read-only checks"),
+        ],
+        Some(Some(verdict)) => {
+            let mut lines = vec![
+                Line::default(),
+                Line::from(
+                    format!("Reviewer · {}", verdict.outcome.label())
+                        .fg(style::color_for(verdict.outcome))
+                        .bold(),
+                ),
+            ];
+            lines.extend(style::lines_for(verdict));
+            lines
+        }
     }
-}
-
-pub(super) fn render(f: &mut Frame, area: Rect, review: Option<&Option<ReviewVerdict>>) {
-    let Some(review) = review else {
-        return;
-    };
-    let (title, color, lines) = match review {
-        None => (
-            "Reviewer · inspecting…".to_string(),
-            Color::Yellow,
-            vec![Line::raw(
-                "reading touched files and running read-only checks",
-            )],
-        ),
-        Some(verdict) => (
-            format!("Reviewer · {}", verdict.outcome.label()),
-            style::color_for(verdict.outcome),
-            style::lines_for(verdict),
-        ),
-    };
-    f.render_widget(
-        Paragraph::new(lines)
-            .style(Style::default().fg(color))
-            .block(Block::default().borders(Borders::ALL).title(title)),
-        area,
-    );
 }

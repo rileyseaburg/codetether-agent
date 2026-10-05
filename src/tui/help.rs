@@ -1,3 +1,5 @@
+#[path = "help_copy_shortcuts.rs"]
+mod copy_shortcuts;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -277,11 +279,7 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(key_row("Esc", "Back / close overlay / exit detail"));
     lines.push(key_row("Ctrl+T", "Symbol search (workspace)"));
     lines.push(key_row("Ctrl+W", "Start a /ask side question in chat"));
-    lines.push(key_row("Ctrl+O/Ctrl+Y", "Copy reply; /copy tool or /copy error for raw diagnostics"));
-    lines.push(key_row(
-        "Ctrl+Shift+Y",
-        "Copy entire conversation transcript (clean plain text)",
-    ));
+    copy_shortcuts::append(&mut lines);
     lines.push(key_row("Ctrl+R", "Start/stop voice recording"));
     lines.push(key_row("Ctrl+V", "Paste from clipboard (or image)"));
     lines.push(key_row("Enter", "Send message or run slash command"));

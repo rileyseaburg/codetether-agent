@@ -7,6 +7,9 @@ use chrono::Utc;
 
 pub(crate) async fn set_status(session_id: &str, status: GoalStatus) -> Result<bool> {
     let (log, state) = current(session_id).await?;
+    if state.answer_review.is_some() {
+        return Ok(false);
+    }
     let Some(goal) = state.goal else {
         return Ok(false);
     };

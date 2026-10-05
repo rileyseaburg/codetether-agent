@@ -10,6 +10,8 @@ pub(crate) mod approval_diff_syntax;
 #[path = "approval_diff_tests.rs"]
 mod approval_diff_tests;
 pub(crate) mod approval_overlay_layout;
+pub(crate) mod approval_overlay_content;
+pub(crate) mod approval_overlay_footer;
 pub(crate) mod approval_overlay_lsp;
 pub(crate) mod approval_overlay_preview;
 pub(crate) mod approval_overlay_review;

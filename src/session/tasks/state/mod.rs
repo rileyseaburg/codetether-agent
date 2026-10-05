@@ -5,7 +5,11 @@ mod goal;
 mod task;
 mod types;
 
-pub use types::{Goal, Task, TaskState};
+pub use types::{AnswerReview, Goal, Task, TaskState};
+mod answer_review;
+mod answer_review_begin;
+mod answer_review_decision;
+mod answer_review_resume;
 
 use super::TaskEvent;
 
@@ -26,6 +30,8 @@ impl TaskState {
     }
 }
 
+#[cfg(test)]
+pub(crate) mod answer_review_test_support;
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

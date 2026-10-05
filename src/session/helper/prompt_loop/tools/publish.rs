@@ -3,7 +3,12 @@
 use super::{super::Runner, call::Call, outcome::Outcome};
 
 /// Publishes and records a completed executable tool result.
-pub(super) async fn complete(runner: &mut Runner<'_>, step: usize, call: &Call, outcome: Outcome) {
+pub(super) async fn complete(
+    runner: &mut Runner<'_>,
+    step: usize,
+    call: &Call,
+    outcome: Outcome,
+) -> anyhow::Result<()> {
     super::bus::response(runner, step, call, &outcome);
     super::archive::write(runner, call, &outcome);
     if let Some(tx) = &runner.events {
@@ -34,6 +39,7 @@ pub(super) async fn complete(runner: &mut Runner<'_>, step: usize, call: &Call, 
             content,
             outcome.metadata.as_ref(),
         ));
-    super::super::super::persist::after_tool(runner.session).await;
+    super::super::super::persist::after_tool(runner.session).await?;
     super::codesearch::record(runner, outcome.codesearch_miss);
+    Ok(())
 }

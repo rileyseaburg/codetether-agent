@@ -8,7 +8,7 @@ use crate::provider::ProviderRegistry;
 use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::{app::state::App, worker_bridge::TuiWorkerBridge};
 
-use super::{handle_ctrl_key, handle_unmodified_key};
+use super::{keybinds::handle_unmodified_key, keyboard::handle_ctrl_key};
 
 pub(crate) async fn handle_event(
     app: &mut App,
@@ -22,28 +22,22 @@ pub(crate) async fn handle_event(
     if !super::key_repeat::dispatchable(key) || super::approval_key::scroll(app, key) {
         return Ok(false);
     }
-    if let Some(quit) = super::interrupt_key::handle(app, runtime, key) {
+    if let Some(resume) = super::answer_review_key::handle(app, slot, key).await? {
+        if resume {
+            crate::tui::app::input::sessions::goal_autostart::resume(
+                app,
+                cwd,
+                slot,
+                registry,
+                worker_bridge,
+                runtime,
+            )
+            .await;
+        }
+        return Ok(false);
+    }
+    if let Some(quit) = super::event_priority::handle(app, cwd, slot, runtime, key).await {
         return Ok(quit);
-    }
-    if super::interlude_key::handle(app, key) {
-        return Ok(false);
-    }
-    if super::goal_prompt_key::handle_goal_prompt_key(app, key) {
-        return Ok(false);
-    }
-    if app.state.spawn_form.is_some()
-        && crate::tui::app::spawn_form::handle_spawn_form_key(app, cwd, slot, key).await
-    {
-        return Ok(false);
-    }
-    if super::fuzzy_find_key::handle_fuzzy_find_key(app, cwd, key) {
-        return Ok(false);
-    }
-    if super::editor_lsp_key::handle_editor_lsp_key(app, cwd, key).await {
-        return Ok(false);
-    }
-    if super::editor_key::handle_editor_key(app, cwd, key) {
-        return Ok(false);
     }
     if let Some(result) = handle_ctrl_key(app, cwd, runtime, key) {
         return result;

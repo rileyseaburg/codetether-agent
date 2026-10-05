@@ -53,7 +53,7 @@ impl super::AppState {
     /// cache before relying on it again.
     #[allow(dead_code)]
     pub(crate) fn take_cached_message_lines(&mut self) -> Vec<Line<'static>> {
-        self.cached_message_lines.drain(..).collect()
+        std::mem::take(&mut self.cached_message_lines)
     }
 
     /// Returns cloned cached lines when the full cache can be reused.

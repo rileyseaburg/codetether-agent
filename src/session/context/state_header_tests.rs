@@ -21,13 +21,13 @@ fn session_with_pin() -> Session {
         updated_at: chrono::Utc::now(),
         metadata: Default::default(),
         agent: "test".into(),
-        messages: vec![text("never delete artifacts")],
-        pages: vec![PageKind::Constraint],
+        messages: vec![text("never delete artifacts")].into(),
+        pages: vec![PageKind::Constraint].into(),
         summary_index: SummaryIndex::new(),
-        tool_uses: Vec::new(),
+        tool_uses: Default::default(),
         usage: Default::default(),
         max_steps: None,
-        bus: None,
+        ..Default::default()
     }
 }
 
@@ -46,7 +46,7 @@ fn prepends_pinned_constraint_header() {
 #[test]
 fn no_header_without_pins() {
     let mut session = session_with_pin();
-    session.pages = vec![PageKind::Conversation];
+    session.pages = vec![PageKind::Conversation].into();
     let mut messages = vec![text("continue")];
     prepend_state_header(&session, &mut messages);
     assert_eq!(messages.len(), 1);
