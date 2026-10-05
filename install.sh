@@ -91,7 +91,7 @@ semver_cmp() {
         if (!xn && yn) return 1
         return (x > y) ? 1 : -1
     }
-    function parse(v,    idx, base, pre, n, arr, i) {
+    function parse(v,    idx, base, n, arr, i) {
         sub(/^v/, "", v)
         idx = index(v, "-")
         if (idx > 0) {
