@@ -9,7 +9,7 @@
 //! # Examples
 //!
 //! ```
-//! codetether_agent::tls::ensure_rustls_crypto_provider();
+//! codetether_tls::ensure_rustls_crypto_provider();
 //! assert!(rustls::crypto::CryptoProvider::get_default().is_some());
 //! ```
 

@@ -12,6 +12,8 @@ mod support;
 mod checkpoint;
 #[path = "pairing_tests/checkpoint_shape.rs"]
 mod checkpoint_shape;
+#[path = "pairing_tests/tool_config.rs"]
+mod tool_config;
 
 use support::{call, request};
 

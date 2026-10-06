@@ -11,6 +11,7 @@ pub mod error;
 pub mod invoke_convert;
 pub mod invoke_msgconvert;
 mod native_audit;
+mod native_tools;
 pub mod response;
 pub(in crate::provider::bedrock) mod retention;
 pub mod stream;

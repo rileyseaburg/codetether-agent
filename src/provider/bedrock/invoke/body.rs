@@ -1,7 +1,7 @@
 //! Build the native Anthropic Messages request body for InvokeModel.
 
 use crate::provider::CompletionRequest;
-use crate::provider::bedrock::invoke::{invoke_convert, invoke_msgconvert, native_audit};
+use crate::provider::bedrock::invoke::{invoke_msgconvert, native_audit, native_tools};
 use serde_json::{Value, json};
 
 /// Translate a [`CompletionRequest`] into a native Anthropic Messages body.
@@ -37,10 +37,7 @@ pub(in crate::provider::bedrock) fn build_anthropic_messages_body(
         body["stop_sequences"] = json!(request.stop);
     }
 
-    let tools = invoke_convert::convert_tools_native(&request.tools);
-    if !tools.is_empty() {
-        body["tools"] = Value::Array(tools);
-    }
+    native_tools::apply(&mut body, &request.tools);
 
     if let Some(fields) = fields::additional_model_request_fields(model_id)
         && let Some(map) = fields.as_object()

@@ -1,5 +1,5 @@
-use super::fixtures::{artifact, envelope, update};
 use super::super::filter::matches_task;
+use super::fixtures::{artifact, envelope, update};
 use crate::bus::BusMessage;
 
 #[test]
@@ -25,9 +25,12 @@ fn requires_matching_payload_for_both_task_message_kinds() {
 
 #[test]
 fn rejects_non_task_messages_even_on_the_exact_topic() {
-    let message = envelope("task.abc", BusMessage::AgentShutdown {
-        agent_id: "abc".into(),
-    });
+    let message = envelope(
+        "task.abc",
+        BusMessage::AgentShutdown {
+            agent_id: "abc".into(),
+        },
+    );
     assert!(!matches_task(&message, "abc"));
     assert!(!matches_task(&update("agent.abc", "abc"), "abc"));
 }

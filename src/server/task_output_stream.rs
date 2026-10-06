@@ -21,9 +21,11 @@ pub(super) async fn handler(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
-    state.knative_tasks.get(&task_id).await.ok_or_else(|| {
-        (StatusCode::NOT_FOUND, format!("Task {task_id} not found"))
-    })?;
+    state
+        .knative_tasks
+        .get(&task_id)
+        .await
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {task_id} not found")))?;
     let rx = state.bus.handle("task-stream").into_receiver();
     Ok(Sse::new(service::events(rx, task_id)).keep_alive(KeepAlive::default()))
 }

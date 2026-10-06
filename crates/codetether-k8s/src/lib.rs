@@ -117,7 +117,7 @@ impl K8sManager {
         // rustls 0.23+ requires selecting a process-level crypto provider.
         // This path is exercised by unit tests (and library users) without
         // going through the binary's startup initialization.
-        crate::tls::ensure_rustls_crypto_provider();
+        codetether_tls::ensure_rustls_crypto_provider();
 
         let namespace = std::env::var("CODETETHER_K8S_NAMESPACE")
             .or_else(|_| Self::read_namespace_file())

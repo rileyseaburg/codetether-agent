@@ -1,0 +1,15 @@
+[package]
+name = "codetether-worktree-isolation"
+version = "0.1.0"
+edition = "2024"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+description = "Cargo workspace isolation for CodeTether-managed git worktrees"
+license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
+
+[dependencies]
+anyhow = "1.0.104"
+tracing = "0.1"
+
+[dev-dependencies]
+tempfile = "3.25.0"

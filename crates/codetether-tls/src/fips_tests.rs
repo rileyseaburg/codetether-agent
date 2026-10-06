@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn compiled_flag_matches_feature() {
-    crate::tls::ensure_rustls_crypto_provider();
+    crate::ensure_rustls_crypto_provider();
     assert_eq!(fips_status().compiled, cfg!(feature = "fips"));
 }
 
@@ -24,7 +24,7 @@ fn enforced_requires_every_layer() {
 #[cfg(not(feature = "fips"))]
 #[test]
 fn default_build_is_not_fips() {
-    crate::tls::ensure_rustls_crypto_provider();
+    crate::ensure_rustls_crypto_provider();
     let status = fips_status();
     assert!(!status.module_active);
     assert!(!status.enforced());
@@ -33,6 +33,6 @@ fn default_build_is_not_fips() {
 #[cfg(feature = "fips")]
 #[test]
 fn fips_build_is_enforced() {
-    crate::tls::ensure_rustls_crypto_provider();
+    crate::ensure_rustls_crypto_provider();
     assert!(require_fips().expect("FIPS active").enforced());
 }

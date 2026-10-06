@@ -26,7 +26,8 @@ fn build(secrets: &ProviderSecrets, vault_id: Option<&str>) -> Option<Arc<dyn Pr
     Some(Arc::new(provider))
 }
 
-fn credentials(secrets: &ProviderSecrets) -> Option<OAuthCredentials> {
+/// Parse Codex OAuth credentials from a provider secret record.
+pub(in crate::provider) fn credentials(secrets: &ProviderSecrets) -> Option<OAuthCredentials> {
     Some(OAuthCredentials {
         access_token: value(secrets, "access_token")?,
         refresh_token: value(secrets, "refresh_token")?,

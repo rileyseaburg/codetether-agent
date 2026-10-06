@@ -3,7 +3,10 @@
 use super::{GeminiWebProvider, MODELS};
 
 fn selected(model: &str) -> &'static (&'static str, &'static str, &'static str, usize) {
-    MODELS.iter().find(|(id, _, _, _)| *id == model).unwrap_or(&MODELS[0])
+    MODELS
+        .iter()
+        .find(|(id, _, _, _)| *id == model)
+        .unwrap_or(&MODELS[0])
 }
 
 impl GeminiWebProvider {
@@ -23,4 +26,10 @@ mod tests {
     fn routed_identity_matches_gemini_web_fallback_and_modes() {
         for model in MODELS.iter().map(|entry| entry.0).chain(["unknown", ""]) {
             let resolved = GeminiWebProvider::resolved_model(model);
-            assert_eq!(GeminiWebProvider::mode_id(model), GeminiWebProvider::mode_id(&resolved));
+            assert_eq!(
+                GeminiWebProvider::mode_id(model),
+                GeminiWebProvider::mode_id(&resolved)
+            );
+        }
+    }
+}

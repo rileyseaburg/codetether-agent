@@ -1095,7 +1095,7 @@ dependencies = [
 
 [[package]]
 name = "codetether-agent"
-version = "4.7.6-dev.24"
+version = "4.7.6-dev.25"
 dependencies = [
  "anyhow",
  "arboard",
@@ -1114,8 +1114,14 @@ dependencies = [
  "chrono",
  "clap",
  "codetether-a2a-worker-core",
+ "codetether-audit",
  "codetether-browser",
+ "codetether-event-stream",
+ "codetether-k8s",
  "codetether-rlm",
+ "codetether-tls",
+ "codetether-util",
+ "codetether-worktree-isolation",
  "config",
  "cpal",
  "crossterm",
@@ -1196,6 +1202,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-audit"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "codetether-browser"
 version = "0.1.1"
 dependencies = [
@@ -1210,6 +1228,45 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-event-stream"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "hex",
+ "hmac 0.13.0",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-k8s"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-tls",
+ "gethostname",
+ "hex",
+ "http",
+ "k8s-openapi",
+ "kube",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
+ "tokio",
+ "tower",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -1233,6 +1290,29 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-rust",
  "uuid",
+]
+
+[[package]]
+name = "codetether-tls"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "aws-lc-rs",
+ "rustls",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-util"
+version = "0.1.0"
+
+[[package]]
+name = "codetether-worktree-isolation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "tempfile",
+ "tracing",
 ]
 
 [[package]]

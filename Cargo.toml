@@ -2,13 +2,19 @@
 members = [
     ".",
     "crates/codetether-a2a-worker-core",
+    "crates/codetether-audit",
     "crates/codetether-browser",
+    "crates/codetether-event-stream",
+    "crates/codetether-k8s",
     "crates/codetether-rlm",
+    "crates/codetether-tls",
+    "crates/codetether-util",
+    "crates/codetether-worktree-isolation",
 ]
 
 [package]
 name = "codetether-agent"
-version = "4.7.6-dev.24"
+version = "4.7.6-dev.25"
 
 
 edition = "2024"
@@ -97,6 +103,7 @@ quic-transport = []
 # instead of stock AWS-LC, and refuse to start unless FIPS mode is active.
 # Requires CMake, Go, and a C compiler at build time.
 fips = [
+    "codetether-tls/fips",
     "rustls/fips",
     "aws-lc-rs/fips",
     "quinn/rustls-aws-lc-rs-fips",
@@ -106,8 +113,14 @@ fips = [
 rusqlite = { version = "0.32", features = ["bundled"] }
 # Workspace crates
 codetether-a2a-worker-core = { path = "crates/codetether-a2a-worker-core", version = "0.1.0" }
+codetether-audit = { path = "crates/codetether-audit", version = "0.1.0" }
 codetether-browser = { path = "crates/codetether-browser", version = "0.1.1" }
+codetether-event-stream = { path = "crates/codetether-event-stream", version = "0.1.0" }
+codetether-k8s = { path = "crates/codetether-k8s", version = "0.1.0" }
 codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.1" }
+codetether-tls = { path = "crates/codetether-tls", version = "0.1.0" }
+codetether-util = { path = "crates/codetether-util", version = "0.1.0" }
+codetether-worktree-isolation = { path = "crates/codetether-worktree-isolation", version = "0.1.0" }
 
 # Async runtime
 # Keep this on async-std's major version so the S3 executor cap configures the

@@ -10,10 +10,10 @@ mod openai_stream;
 pub mod policy;
 mod policy_user;
 mod session_realtime;
-mod session_routes;
 mod session_recovery;
-mod task_queue;
+mod session_routes;
 mod task_output_stream;
+mod task_queue;
 mod tool_contract;
 mod version_info;
 mod worker_modules;
@@ -2837,7 +2837,6 @@ async fn list_voices_rest() -> Json<serde_json::Value> {
 // ── Session resume ──────────────────────────────────────────────────────
 
 /// Resume a durable session without replacing its identity on a storage failure.
-
 
 fn internal_error(error: anyhow::Error) -> (StatusCode, String) {
     let message = error.to_string();

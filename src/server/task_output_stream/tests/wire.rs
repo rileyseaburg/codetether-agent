@@ -2,16 +2,21 @@ use super::fixtures::{artifact, render, update};
 
 #[tokio::test]
 async fn sse_emits_only_exact_task_updates_and_artifacts_in_order() {
-    let body = render(vec![
-        update("task.abc-2", "abc-2"),
-        update("task.abc", "other"),
-        update("task.abc", "abc"),
-        artifact("task.abc", "abc"),
-        artifact("task.abc.output", "abc"),
-        artifact("task.abc", "abc-2"),
-    ], 16).await;
+    let body = render(
+        vec![
+            update("task.abc-2", "abc-2"),
+            update("task.abc", "other"),
+            update("task.abc", "abc"),
+            artifact("task.abc", "abc"),
+            artifact("task.abc.output", "abc"),
+            artifact("task.abc", "abc-2"),
+        ],
+        16,
+    )
+    .await;
     assert_eq!(body.matches("event: output").count(), 2);
-    let payloads: Vec<serde_json::Value> = body.lines()
+    let payloads: Vec<serde_json::Value> = body
+        .lines()
         .filter_map(|line| line.strip_prefix("data: "))
         .map(|data| serde_json::from_str(data).unwrap())
         .collect();

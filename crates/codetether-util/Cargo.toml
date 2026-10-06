@@ -1,0 +1,10 @@
+[package]
+name = "codetether-util"
+version = "0.1.0"
+edition = "2024"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+description = "Small dependency-free helpers shared across CodeTether crates"
+license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
+
+[dependencies]

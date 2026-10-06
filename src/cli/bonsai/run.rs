@@ -17,9 +17,7 @@ use std::io::Write;
 /// ```
 pub async fn execute(args: super::BonsaiArgs) -> Result<()> {
     ensure!((1..=10).contains(&args.repeat), "repeat must be 1..=10");
-    let provider = crate::provider::MetricsProvider::wrap(std::sync::Arc::new(
-        BonsaiProvider::new(BonsaiConfig::from_environment()?)?,
-    ));
+    let provider = BonsaiProvider::new(BonsaiConfig::from_environment()?)?;
     for run in 1..=args.repeat {
         let request = super::request::from_args(&args);
         let mut stream = provider.complete_stream(request).await?;

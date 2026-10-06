@@ -14,8 +14,8 @@ static RUSTLS_PROVIDER_INSTALLED: OnceLock<()> = OnceLock::new();
 /// # Examples
 ///
 /// ```
-/// codetether_agent::tls::ensure_rustls_crypto_provider();
-/// codetether_agent::tls::ensure_rustls_crypto_provider();
+/// codetether_tls::ensure_rustls_crypto_provider();
+/// codetether_tls::ensure_rustls_crypto_provider();
 /// assert!(rustls::crypto::CryptoProvider::get_default().is_some());
 /// ```
 pub fn ensure_rustls_crypto_provider() {

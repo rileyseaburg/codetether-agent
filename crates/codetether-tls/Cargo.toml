@@ -1,0 +1,18 @@
+[package]
+name = "codetether-tls"
+version = "0.1.0"
+edition = "2024"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+description = "Rustls/AWS-LC crypto provider and FIPS helpers for CodeTether"
+license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
+
+[features]
+default = []
+fips = ["rustls/fips", "aws-lc-rs/fips"]
+
+[dependencies]
+anyhow = "1.0.104"
+aws-lc-rs = { version = "1.18.1", default-features = false, features = ["aws-lc-sys", "alloc", "prebuilt-nasm"] }
+rustls = { version = "0.23.43", default-features = false, features = ["aws_lc_rs", "std", "tls12", "logging"] }
+tracing = "0.1"

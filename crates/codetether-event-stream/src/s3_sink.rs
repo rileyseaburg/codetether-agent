@@ -9,7 +9,7 @@
 //! ## Usage
 //!
 //! ```rust,ignore
-//! use codetether_agent::event_stream::s3_sink::S3Sink;
+//! use codetether_event_stream::s3_sink::S3Sink;
 //!
 //! let sink = S3Sink::new(
 //!     "audit-logs-bucket".to_string(),

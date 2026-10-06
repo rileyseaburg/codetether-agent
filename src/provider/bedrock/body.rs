@@ -34,6 +34,8 @@ mod inference;
 pub(super) mod audit;
 #[path = "body/cache.rs"]
 mod cache;
+#[path = "body/history_tools.rs"]
+mod history_tools;
 
 #[cfg(test)]
 #[path = "body/pairing_tests.rs"]
@@ -100,6 +102,8 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
     // Final gate: never ship an assistant toolUse whose toolResult is
     // missing. Bedrock answers that with a permanent 400, killing the turn.
     audit::enforce(&mut body);
+    // Tool-less requests (e.g. `/ask`) replaying tool history need toolConfig.
+    history_tools::ensure(&mut body);
 
     body
 }

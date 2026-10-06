@@ -25,8 +25,8 @@ impl FipsStatus {
 /// # Examples
 ///
 /// ```
-/// codetether_agent::tls::ensure_rustls_crypto_provider();
-/// let status = codetether_agent::tls::fips_status();
+/// codetether_tls::ensure_rustls_crypto_provider();
+/// let status = codetether_tls::fips_status();
 /// assert_eq!(status.compiled, cfg!(feature = "fips"));
 /// ```
 pub fn fips_status() -> FipsStatus {

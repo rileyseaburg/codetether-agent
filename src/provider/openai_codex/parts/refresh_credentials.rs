@@ -1,4 +1,8 @@
 impl OpenAiCodexProvider {
+    /// Return usable credentials, rotating them at most once across processes.
+    ///
+    /// Vault-backed providers take a host-wide [`RefreshLock`], re-read Vault,
+    /// and only hit the token endpoint when no peer has already rotated.
     async fn refresh_credentials(&self, rejected: Option<&str>) -> Result<OAuthCredentials> {
         let slot = self
             .stored_credentials
@@ -6,30 +10,24 @@ impl OpenAiCodexProvider {
             .context("No OAuth credentials available. Run OAuth flow first.")?;
         let mut state = slot.write().await;
         self.persist_pending_credentials(&mut state).await?;
-        let now = Self::oauth_expiry(0)?;
-        if !refresh_required(&state.credentials, now, rejected) {
+        if !refresh_required(&state.credentials, Self::oauth_expiry(0)?, rejected) {
             return Ok(state.credentials.clone());
         }
-
-        let previous_refresh_token = state.credentials.refresh_token.clone();
-        let refreshed = self
-            .request_refreshed_credentials(&previous_refresh_token)
-            .await?;
-        let refreshed = merge_refreshed_credentials(&state.credentials, refreshed);
-        state.credentials = refreshed.clone();
-        state.pending_refresh_token = self.credential_store.as_ref().map(|_| previous_refresh_token);
-        self.persist_pending_credentials(&mut state).await?;
-        Ok(refreshed)
+        let Some(store) = self.credential_store.as_ref() else {
+            return self.rotate_credentials(&mut state).await;
+        };
+        let _lock = RefreshLock::acquire_for(&store.provider_id).await;
+        Self::sync_shared_credentials(store, &mut state).await;
+        if !refresh_required(&state.credentials, Self::oauth_expiry(0)?, rejected) {
+            return Ok(state.credentials.clone());
+        }
+        match self.rotate_credentials(&mut state).await {
+            Ok(credentials) => Ok(credentials),
+            Err(error) if Self::sync_shared_credentials(store, &mut state).await => {
+                tracing::warn!(%error, "Codex refresh lost a race; using peer-rotated credentials");
+                Ok(state.credentials.clone())
+            }
+            Err(error) => Err(error),
+        }
     }
-}
-
-fn merge_refreshed_credentials(
-    previous: &OAuthCredentials,
-    mut refreshed: OAuthCredentials,
-) -> OAuthCredentials {
-    refreshed.id_token = refreshed.id_token.or_else(|| previous.id_token.clone());
-    refreshed.chatgpt_account_id = refreshed
-        .chatgpt_account_id
-        .or_else(|| previous.chatgpt_account_id.clone());
-    refreshed
 }

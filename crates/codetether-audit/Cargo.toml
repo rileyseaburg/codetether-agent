@@ -1,0 +1,16 @@
+[package]
+name = "codetether-audit"
+version = "0.1.0"
+edition = "2024"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+description = "Append-only system audit trail for CodeTether"
+license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["full"] }
+tracing = "0.1"
+uuid = { version = "1.24.0", features = ["v4", "serde"] }
