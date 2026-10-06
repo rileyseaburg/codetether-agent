@@ -1,7 +1,7 @@
 //! Compatible worker progress request; identity authorization is separate.
 
 #[derive(serde::Deserialize)]
-pub(super) struct TaskOutputPayload {
+pub(in crate::server) struct TaskOutputPayload {
     /// Retained for compatibility, not an authenticated worker identity.
     #[allow(dead_code)]
     #[serde(default)]
