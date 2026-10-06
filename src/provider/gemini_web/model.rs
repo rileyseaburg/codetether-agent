@@ -24,6 +24,12 @@ mod tests {
     use super::*;
     #[test]
     fn routed_identity_matches_gemini_web_fallback_and_modes() {
+        for (id, _, _, _) in MODELS {
+            assert_eq!(GeminiWebProvider::resolved_model(id), *id);
+        }
+        for model in ["unknown", ""] {
+            assert_eq!(GeminiWebProvider::resolved_model(model), MODELS[0].0);
+        }
         for model in MODELS.iter().map(|entry| entry.0).chain(["unknown", ""]) {
             let resolved = GeminiWebProvider::resolved_model(model);
             assert_eq!(

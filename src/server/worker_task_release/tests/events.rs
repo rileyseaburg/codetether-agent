@@ -6,6 +6,22 @@ use crate::{
 };
 
 pub(super) fn assert_terminal_event(event: BusEnvelope, success: bool) {
+    assert_terminal_event_message(
+        event,
+        success,
+        Some(if success {
+            "partial work"
+        } else {
+            "Error: tool crashed"
+        }),
+    );
+}
+
+pub(super) fn assert_terminal_event_message(
+    event: BusEnvelope,
+    success: bool,
+    expected_message: Option<&str>,
+) {
     assert_eq!(event.topic, "task.task-1");
     assert_eq!(event.sender_id, "worker_task_release");
     match event.message {
@@ -23,14 +39,7 @@ pub(super) fn assert_terminal_event(event: BusEnvelope, success: bool) {
                     TaskState::Failed
                 }
             );
-            assert_eq!(
-                message.as_deref(),
-                Some(if success {
-                    "partial work"
-                } else {
-                    "Error: tool crashed"
-                })
-            );
+            assert_eq!(message.as_deref(), expected_message);
             assert!(state.is_terminal());
         }
         payload => panic!("unexpected event: {payload:?}"),

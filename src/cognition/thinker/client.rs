@@ -3,10 +3,12 @@
 use anyhow::Result;
 
 use super::client_backend::ThinkerClientBackend;
-use super::{
-    ThinkerConfig, ThinkerOutput, bedrock_backend, candle_dispatch, client_build, openai_backend,
-    provider,
-};
+use super::{ThinkerConfig, client_build};
+
+#[path = "client/dispatch.rs"]
+mod dispatch;
+#[path = "client/native.rs"]
+mod native;
 
 /// Client for thinker inference across multiple backends.
 ///
@@ -60,38 +62,5 @@ impl ThinkerClient {
     /// ```
     pub fn config(&self) -> &ThinkerConfig {
         &self.config
-    }
-
-    /// Generate a thinking completion using the configured backend.
-    ///
-    /// # Errors
-    ///
-    /// Propagates backend transport, decoding, and inference failures.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// # use codetether_agent::cognition::{ThinkerClient, ThinkerConfig};
-    /// # async fn demo() {
-    /// let client = ThinkerClient::new(ThinkerConfig::default()).unwrap();
-    /// let output = client.think("You are helpful.", "Explain Rust").await.unwrap();
-    /// assert!(!output.text.is_empty());
-    /// # }
-    /// ```
-    pub async fn think(&self, system_prompt: &str, user_prompt: &str) -> Result<ThinkerOutput> {
-        match &self.backend {
-            ThinkerClientBackend::OpenAICompat { http } => {
-                openai_backend::think(&self.config, http, system_prompt, user_prompt).await
-            }
-            ThinkerClientBackend::Registry => {
-                provider::think(&self.config, system_prompt, user_prompt).await
-            }
-            ThinkerClientBackend::Bedrock { provider } => {
-                bedrock_backend::think(&self.config, provider, system_prompt, user_prompt).await
-            }
-            ThinkerClientBackend::Candle { runtime } => {
-                candle_dispatch::think(runtime, system_prompt, user_prompt).await
-            }
-        }
     }
 }

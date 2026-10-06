@@ -2,8 +2,14 @@
 use super::inject;
 use crate::provider::{CompletionRequest, ContentPart, Message, Role};
 
+#[path = "tests/combined.rs"]
+mod combined;
 #[path = "tests/dispatch.rs"]
 mod dispatch;
+#[path = "lookalike_tests.rs"]
+mod lookalikes;
+#[path = "tests/marker_values.rs"]
+mod marker_values;
 #[path = "tests/preservation.rs"]
 mod preservation;
 #[path = "tests/switching.rs"]

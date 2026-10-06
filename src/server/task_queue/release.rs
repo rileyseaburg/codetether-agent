@@ -1,6 +1,6 @@
 //! Atomic active-to-terminal transitions, independent of HTTP transport.
 
-use super::{KnativeTask, KnativeTaskQueue};
+use super::{KnativeTask, KnativeTaskQueue, TaskCompletion};
 
 /// Reasons a worker release cannot change the queue.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
@@ -25,18 +25,21 @@ impl KnativeTaskQueue {
     /// # Errors
     /// Returns [`ReleaseError`] for missing/inactive tasks or invalid statuses.
     pub async fn release(&self, task_id: &str, status: &str) -> Result<KnativeTask, ReleaseError> {
-        if !matches!(status, "completed" | "failed") {
-            return Err(ReleaseError::InvalidStatus);
-        }
-        let mut tasks = self.tasks.lock().await;
-        let task = tasks
-            .iter_mut()
-            .find(|task| task.task_id == task_id)
-            .ok_or(ReleaseError::NotFound)?;
-        if !matches!(task.status.as_str(), "processing" | "working") {
-            return Err(ReleaseError::NotActive);
-        }
-        task.status = status.to_owned();
-        Ok(task.clone())
+        self.release_with_completion(task_id, status, TaskCompletion::default())
+            .await
+    }
+
+    /// Store the winning receipt and terminal status under the same lock.
+    ///
+    /// # Errors
+    /// Returns [`ReleaseError`] without changing either field on rejection.
+    pub async fn release_with_completion(
+        &self,
+        task_id: &str,
+        status: &str,
+        completion: TaskCompletion,
+    ) -> Result<KnativeTask, ReleaseError> {
+        self.release_and_notify(task_id, status, completion, |_| {})
+            .await
     }
 }

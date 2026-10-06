@@ -1,6 +1,6 @@
 //! GET /v1/worker/tasks/stream — SSE endpoint for workers.
 
-use crate::server::{AppState, KnativeTask};
+use crate::server::AppState;
 use axum::body::Body;
 use axum::extract::Request;
 use axum::extract::{Query, State};
@@ -37,18 +37,8 @@ pub async fn worker_task_stream(
     tracing::info!(worker_id, "Worker connected to task stream");
 
     let rx = state.bus.handle("worker_task_stream").into_receiver();
-    let pending = snapshot_pending(&state).await;
+    let pending = state.knative_tasks.snapshot_pending().await;
 
-    let event_stream = super::worker_stream::WorkerStream::new(pending, rx, worker_id);
+    let event_stream = super::worker_stream::WorkerStream::new(pending, rx, state.knative_tasks);
     Sse::new(event_stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15)))
-}
-
-async fn snapshot_pending(state: &AppState) -> Vec<KnativeTask> {
-    state
-        .knative_tasks
-        .list()
-        .await
-        .into_iter()
-        .filter(|t| t.status == "pending" || t.status == "queued")
-        .collect()
 }

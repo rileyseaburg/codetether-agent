@@ -1,64 +1,55 @@
 //! SSE stream state machine for [`worker_task_stream`](super::worker_task_stream).
 
+#[path = "worker_stream/delivery.rs"]
+mod delivery;
+#[cfg(test)]
+#[path = "worker_stream/tests.rs"]
+mod tests;
+
 use crate::bus::BusEnvelope;
-use crate::server::KnativeTask;
+use crate::server::{KnativeTask, KnativeTaskQueue};
 use axum::response::sse::Event;
-use futures::StreamExt;
 use std::convert::Infallible;
 use tokio::sync::broadcast;
-use tokio_stream::wrappers::BroadcastStream;
 
-/// Yields pending tasks then switches to bus-driven live events.
-pub(crate) struct WorkerStream {
-    pending: Vec<KnativeTask>,
-    rx: BroadcastStream<BusEnvelope>,
-    #[allow(dead_code)]
-    worker_id: String,
-}
+/// At-least-once task notifications; claiming remains a separate queue operation.
+/// Broadcast lag replays current queued work, not durable history or worker claims.
+pub(crate) struct WorkerStream;
 
 impl WorkerStream {
     pub fn new(
         pending: Vec<KnativeTask>,
         rx: broadcast::Receiver<BusEnvelope>,
-        worker_id: String,
-    ) -> Self {
-        Self {
-            pending,
-            rx: BroadcastStream::new(rx),
-            worker_id,
-        }
-    }
-}
-
-impl futures::Stream for WorkerStream {
-    type Item = Result<Event, Infallible>;
-
-    fn poll_next(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        // Drain buffered pending tasks first.
-        if let Some(task) = self.pending.pop() {
-            let payload = serde_json::to_string(&task).unwrap_or_default();
-            return std::task::Poll::Ready(Some(Ok(Event::default().event("task").data(payload))));
-        }
-
-        // Then wait for live bus events.
-        match self.rx.poll_next_unpin(cx) {
-            std::task::Poll::Ready(Some(Ok(envelope))) => {
-                let payload = serde_json::to_string(&envelope).unwrap_or_default();
-                std::task::Poll::Ready(Some(Ok(Event::default().event("task").data(payload))))
-            }
-            std::task::Poll::Ready(Some(Err(e))) => {
-                let msg = format!("{e}");
-                if msg.contains("Lagged") {
-                    std::task::Poll::Ready(Some(Ok(Event::default().event("lag").data(msg))))
-                } else {
-                    std::task::Poll::Ready(None)
+        queue: KnativeTaskQueue,
+    ) -> impl futures::Stream<Item = Result<Event, Infallible>> {
+        futures::stream::unfold(
+            (pending, rx, queue),
+            |(mut pending, mut rx, queue)| async move {
+                loop {
+                    if let Some(task) = pending.pop() {
+                        if let Some(event) = delivery::queued(&queue, &task.task_id).await {
+                            return Some((Ok(event), (pending, rx, queue)));
+                        }
+                        continue;
+                    }
+                    let event = match rx.recv().await {
+                        Ok(envelope) => delivery::live(&queue, envelope).await,
+                        Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                            // Recover lost notifications; delivery rechecks each task's state.
+                            pending = queue.snapshot_pending().await;
+                            Some(
+                                Event::default()
+                                    .event("lag")
+                                    .data(format!("{{\"skipped\":{skipped}}}")),
+                            )
+                        }
+                        Err(broadcast::error::RecvError::Closed) => return None,
+                    };
+                    if let Some(event) = event {
+                        return Some((Ok(event), (pending, rx, queue)));
+                    }
                 }
-            }
-            std::task::Poll::Ready(None) => std::task::Poll::Ready(None),
-            std::task::Poll::Pending => std::task::Poll::Pending,
-        }
+            },
+        )
     }
 }

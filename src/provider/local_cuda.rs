@@ -317,6 +317,10 @@ impl Provider for LocalCudaProvider {
         "local_cuda"
     }
 
+    fn resolved_model_identity(&self, _model: &str) -> String {
+        self.model_name.clone()
+    }
+
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         self.model_catalog().await
     }
@@ -325,7 +329,7 @@ impl Provider for LocalCudaProvider {
         let (system_prompt, user_prompt) = Self::to_prompts(&request.messages);
         let runtime = self.runtime(&request).await?;
         let output = runtime
-            .think(&system_prompt, &user_prompt)
+            .think_as_provider(self.name(), &system_prompt, &user_prompt)
             .await
             .with_context(|| {
                 format!("local_cuda inference failed for model {}", self.model_name)
@@ -366,27 +370,9 @@ impl Provider for LocalCudaProvider {
     }
 }
 
-fn first_env(keys: &[&str]) -> Option<String> {
-    keys.iter().find_map(|k| std::env::var(k).ok())
-}
-
-fn parse_env_f32(keys: &[&str], default: f32) -> f32 {
-    first_env(keys)
-        .and_then(|v| v.parse::<f32>().ok())
-        .unwrap_or(default)
-}
-
-fn parse_env_usize(keys: &[&str], default: usize) -> usize {
-    first_env(keys)
-        .and_then(|v| v.parse::<usize>().ok())
-        .unwrap_or(default)
-}
-
-fn parse_env_u64(keys: &[&str], default: u64) -> u64 {
-    first_env(keys)
-        .and_then(|v| v.parse::<u64>().ok())
-        .unwrap_or(default)
-}
+#[path = "local_cuda_env.rs"]
+mod env;
+use env::{first_env, parse_env_f32, parse_env_u64, parse_env_usize};
 
 impl LocalCudaProvider {
     /// Format messages into a prompt string

@@ -19,7 +19,11 @@ pub async fn execute(args: super::BonsaiArgs) -> Result<()> {
     ensure!((1..=10).contains(&args.repeat), "repeat must be 1..=10");
     let provider = BonsaiProvider::new(BonsaiConfig::from_environment()?)?;
     for run in 1..=args.repeat {
-        let request = super::request::from_args(&args);
+        let request = crate::provider::metrics::identity::inject(
+            super::request::from_args(&args),
+            provider.name(),
+            crate::provider::bonsai::MODEL,
+        );
         let mut stream = provider.complete_stream(request).await?;
         let mut done = false;
         while let Some(chunk) = stream.next().await {

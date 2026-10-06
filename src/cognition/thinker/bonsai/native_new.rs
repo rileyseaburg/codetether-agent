@@ -1,7 +1,9 @@
 //! Bind the packed native Bonsai decoder to the existing Candle generation harness.
 use super::super::{
-    ThinkerConfig, candle_device, candle_model::CandleModel, candle_resolve,
-    candle_runtime::CandleThinker,
+    ThinkerConfig, candle_device,
+    candle_model::CandleModel,
+    candle_resolve,
+    candle_runtime::{CandleThinker, NativeModelIdentity},
 };
 use anyhow::Result;
 pub(super) fn load(config: &ThinkerConfig) -> Result<CandleThinker> {
@@ -19,6 +21,7 @@ pub(super) fn load(config: &ThinkerConfig) -> Result<CandleThinker> {
         tokenizer,
         device,
         model_label: format!("candle:qwen35-pq2:{label}@{path}"),
+        identity: NativeModelIdentity::from_config(config),
         architecture: "qwen35".into(),
         context_window,
         temperature: config.temperature,

@@ -1,5 +1,11 @@
 //! Fresh, model-visible routing identity, independent of persisted session prompts.
 
+#[path = "identity/block.rs"]
+mod block;
+#[path = "identity/system.rs"]
+mod system;
+pub(crate) use system::{caller_prompt, system_prompt};
+
 use crate::provider::{CompletionRequest, ContentPart, Message, Role};
 
 const START: &str = "<codetether-harness-identity>\n";
@@ -40,7 +46,7 @@ pub(crate) fn prompt(provider: &str, model: &str) -> String {
 fn is_identity(message: &Message) -> bool {
     matches!(message.role, Role::System)
         && matches!(message.content.as_slice(), [ContentPart::Text { text }]
-            if text.starts_with(START) && text.ends_with(END))
+            if block::is_identity(text))
 }
 
 #[cfg(test)]

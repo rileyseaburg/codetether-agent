@@ -1,6 +1,6 @@
 //! Competing releases have one winner and one terminal notification.
 
-use super::{super::service, events::assert_terminal_event, queue, request};
+use super::{super::service, contender, queue, race_assertions};
 use crate::{bus::AgentBus, server::task_queue::ReleaseError};
 use std::sync::Arc;
 use tokio::{sync::Barrier, task::JoinSet};
@@ -17,30 +17,26 @@ async fn sixteen_competing_releases_emit_one_terminal_event() {
         let bus = bus.clone();
         let barrier = barrier.clone();
         releases.spawn(async move {
-            let mut req = request(if index % 2 == 0 {
-                "completed"
-            } else {
-                "failed"
-            });
-            req.result = Some("partial work".into());
-            req.error = Some("tool crashed".into());
+            let req = contender::receipt(index);
             barrier.wait().await;
-            service::release(&tasks, &bus, &req).await
+            service::release(&tasks, &bus, &req)
+                .await
+                .map(|status| (status, req))
         });
     }
     let mut winner = None;
     let mut conflicts = 0;
     while let Some(result) = releases.join_next().await {
         match result.unwrap() {
-            Ok(status) => assert!(winner.replace(status).is_none()),
+            Ok(receipt) => assert!(winner.replace(receipt).is_none()),
             Err(ReleaseError::NotActive) => conflicts += 1,
             Err(error) => panic!("unexpected release rejection: {error}"),
         }
     }
     assert_eq!(conflicts, 15);
-    let winner = winner.unwrap();
-    assert_eq!(tasks.get("task-1").await.unwrap().status, winner);
-    assert_terminal_event(observer.try_recv().unwrap(), winner == "completed");
+    let (winner, receipt) = winner.unwrap();
+    race_assertions::receipt_matches(tasks.get("task-1").await.unwrap(), &winner, &receipt);
+    race_assertions::event_matches(observer.try_recv().unwrap(), &winner, &receipt);
     assert!(observer.try_recv().is_none());
     assert_eq!(bus.recorder.recent(100, Some("task.task-1")).len(), 1);
 }

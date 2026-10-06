@@ -3,4 +3,5 @@
 mod fixtures;
 mod isolation;
 mod recovery;
+mod transport;
 mod wire;

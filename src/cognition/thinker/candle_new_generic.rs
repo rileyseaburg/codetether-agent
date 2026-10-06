@@ -7,7 +7,7 @@ use std::io::BufReader;
 use tokenizers::Tokenizer;
 
 use super::candle_resolve::{DEFAULT_CONTEXT_WINDOW, architecture, paths};
-use super::candle_runtime::CandleThinker;
+use super::candle_runtime::{CandleThinker, NativeModelIdentity};
 use super::{ThinkerConfig, candle_device, candle_eos, candle_gguf, candle_load};
 
 impl CandleThinker {
@@ -39,13 +39,12 @@ impl CandleThinker {
         if eos_token_ids.is_empty() {
             tracing::warn!("No EOS tokens in tokenizer; generation stops on max token limit");
         }
-        let model = candle_load::load(&arch, content, &mut reader, &device, model_path)?;
-
         Ok(Self {
-            model,
+            model: candle_load::load(&arch, content, &mut reader, &device, model_path)?,
             tokenizer,
             device,
             model_label: format!("candle:{arch}:{device_label}@{model_path}"),
+            identity: NativeModelIdentity::from_config(config),
             architecture: arch,
             context_window,
             temperature: config.temperature,

@@ -9,7 +9,10 @@ pub(super) fn body(
     user_prompt: &str,
 ) -> serde_json::Value {
     let mut body = serde_json::json!({
-        "system": [{"text": system_prompt}],
+        "system": [
+            {"text": crate::provider::metrics::identity::prompt("bedrock", &config.model)},
+            {"text": crate::provider::metrics::identity::caller_prompt(system_prompt)}
+        ],
         "messages": [{
             "role": "user",
             "content": [{"text": user_prompt}]
@@ -38,3 +41,7 @@ pub(super) fn url(config: &ThinkerConfig) -> String {
         config.bedrock_region, config.model
     )
 }
+
+#[cfg(test)]
+#[path = "bedrock_request_tests.rs"]
+mod tests;

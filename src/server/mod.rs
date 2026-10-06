@@ -12,6 +12,11 @@ mod policy_user;
 mod session_realtime;
 mod session_recovery;
 mod session_routes;
+mod task_dispatch;
+mod task_output_ingest;
+mod task_output_poll;
+use task_output_ingest::agent_task_output;
+use task_output_poll::get_agent_task_output;
 mod task_output_stream;
 mod task_queue;
 mod tool_contract;
@@ -56,6 +61,7 @@ use tonic_web::GrpcWebLayer;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
+use task_dispatch::dispatch_task;
 pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
 
 /// A registered tool with TTL tracking
@@ -998,9 +1004,16 @@ async fn receive_task_event(
                 title,
                 description,
                 agent_type,
+                model: event
+                    .data
+                    .get("model")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_owned),
+                metadata: event.data.get("metadata").cloned(),
                 priority,
                 received_at: chrono::Utc::now(),
                 status: "queued".to_string(),
+                completion: Default::default(),
             };
 
             state.knative_tasks.push(task).await;
@@ -2585,9 +2598,12 @@ async fn create_agent_task(
         title: req.title,
         description: req.description,
         agent_type: req.agent_type.unwrap_or_else(|| "build".to_string()),
+        model: req.model,
+        metadata: None,
         priority: req.priority.unwrap_or(0),
         received_at: chrono::Utc::now(),
         status: "pending".to_string(),
+        completion: Default::default(),
     };
     state.knative_tasks.push(task).await;
     Ok(Json(serde_json::json!({
@@ -2617,67 +2633,6 @@ async fn get_agent_task(
         .await
         .map(Json)
         .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))
-}
-
-/// Get task output (returns task details including result)
-async fn get_agent_task_output(
-    State(state): State<AppState>,
-    Path(task_id): Path<String>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let task = state
-        .knative_tasks
-        .get(&task_id)
-        .await
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))?;
-    Ok(Json(serde_json::json!({
-        "task_id": task.task_id,
-        "status": task.status,
-        "title": task.title,
-        "output": null,
-    })))
-}
-
-/// Receive task output from worker and broadcast via bus for SSE streaming
-#[derive(Deserialize)]
-struct TaskOutputPayload {
-    #[allow(dead_code)]
-    #[serde(default)]
-    worker_id: Option<String>,
-    #[serde(default)]
-    output: Option<String>,
-}
-
-async fn agent_task_output(
-    State(state): State<AppState>,
-    Path(task_id): Path<String>,
-    Json(payload): Json<TaskOutputPayload>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    // Verify task exists
-    let task_exists = state.knative_tasks.get(&task_id).await.is_some();
-    if !task_exists {
-        return Err((StatusCode::NOT_FOUND, format!("Task {} not found", task_id)));
-    }
-
-    // Update task status to Working if it's still pending
-    let _ = state.knative_tasks.update_status(&task_id, "working").await;
-
-    // Broadcast output via bus for SSE subscribers
-    if let Some(ref output) = payload.output {
-        let bus_handle = state.bus.handle("task-output");
-        let _ = bus_handle.send(
-            format!("task.{}", task_id),
-            crate::bus::BusMessage::TaskUpdate {
-                task_id: task_id.clone(),
-                state: crate::a2a::types::TaskState::Working,
-                message: Some(output.clone()),
-            },
-        );
-    }
-
-    Ok(Json(serde_json::json!({
-        "task_id": task_id,
-        "status": "received",
-    })))
 }
 
 /// Stream task output as SSE events
@@ -2710,55 +2665,6 @@ async fn list_connected_workers(
         })
         .collect();
     Ok(Json(serde_json::json!({ "workers": workers })))
-}
-
-// ── Task dispatch ───────────────────────────────────────────────────────
-
-/// Dispatch a task (creates a Knative task and returns immediately)
-async fn dispatch_task(
-    State(state): State<AppState>,
-    Json(req): Json<DispatchTaskRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let task_id = uuid::Uuid::new_v4().to_string();
-    let task = KnativeTask {
-        task_id: task_id.clone(),
-        title: req.title,
-        description: req.description,
-        agent_type: req.agent_type.unwrap_or_else(|| "build".to_string()),
-        priority: req.priority.unwrap_or(0),
-        received_at: chrono::Utc::now(),
-        status: "pending".to_string(),
-    };
-
-    // Publish task event to agent bus for connected workers
-    let handle = state.bus.handle("task-dispatch");
-    handle.send(
-        format!("task.{}", task_id),
-        crate::bus::BusMessage::TaskUpdate {
-            task_id: task_id.clone(),
-            state: crate::a2a::types::TaskState::Submitted,
-            message: Some(format!("Task dispatched: {}", task.title)),
-        },
-    );
-
-    state.knative_tasks.push(task).await;
-
-    Ok(Json(serde_json::json!({
-        "task_id": task_id,
-        "status": "pending",
-        "dispatched_via_knative": true,
-    })))
-}
-
-#[derive(Deserialize)]
-#[allow(dead_code)]
-struct DispatchTaskRequest {
-    title: String,
-    description: String,
-    agent_type: Option<String>,
-    model: Option<String>,
-    priority: Option<i32>,
-    metadata: Option<serde_json::Value>,
 }
 
 // ── Voice REST bridge ───────────────────────────────────────────────────

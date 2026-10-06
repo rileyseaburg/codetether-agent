@@ -14,7 +14,15 @@ pub(super) fn body(
         messages: vec![
             OpenAIMessage {
                 role: "system".to_string(),
-                content: system_prompt.to_string(),
+                content: crate::provider::metrics::identity::prompt(
+                    "openai-compatible",
+                    &config.model,
+                ),
+            },
+            OpenAIMessage {
+                role: "system".to_string(),
+                content: crate::provider::metrics::identity::caller_prompt(system_prompt)
+                    .to_string(),
             },
             OpenAIMessage {
                 role: "user".to_string(),
@@ -27,3 +35,7 @@ pub(super) fn body(
         stream: false,
     }
 }
+
+#[cfg(test)]
+#[path = "openai_backend_request_tests.rs"]
+mod tests;

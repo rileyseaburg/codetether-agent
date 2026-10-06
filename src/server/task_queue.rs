@@ -1,13 +1,19 @@
 //! In-process task storage; persistence and worker ownership are separate contracts.
 
 mod claim;
+mod completion;
 mod operations;
+mod output;
+mod pending;
 mod release;
+mod release_notification;
 mod task;
 #[cfg(test)]
 mod tests;
 
 pub use claim::ClaimError;
+pub use completion::TaskCompletion;
+pub use output::OutputError;
 pub use release::ReleaseError;
 use std::sync::Arc;
 pub use task::KnativeTask;

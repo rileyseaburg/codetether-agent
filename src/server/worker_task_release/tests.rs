@@ -1,7 +1,11 @@
 //! Shared fixtures for release outcome and queue/event regression coverage.
 
+#[path = "tests/contender.rs"]
+mod contender;
 #[path = "tests/events.rs"]
 mod events;
+#[path = "tests/fixtures.rs"]
+mod fixtures;
 #[path = "tests/guards.rs"]
 mod guards;
 #[path = "tests/http_error.rs"]
@@ -16,33 +20,9 @@ mod missing;
 mod normalization;
 #[path = "tests/race.rs"]
 mod race;
+#[path = "tests/race_assertions.rs"]
+mod race_assertions;
+#[path = "tests/receipts.rs"]
+mod receipts;
 
-use super::ReleaseRequest;
-use crate::server::{KnativeTask, KnativeTaskQueue};
-
-pub(super) fn request(status: &str) -> ReleaseRequest {
-    ReleaseRequest {
-        task_id: "task-1".into(),
-        status: status.into(),
-        result: None,
-        error: None,
-        session_id: None,
-        diagnostics: None,
-    }
-}
-
-pub(super) async fn queue() -> KnativeTaskQueue {
-    let tasks = KnativeTaskQueue::new();
-    tasks
-        .push(KnativeTask {
-            task_id: "task-1".into(),
-            title: "release regression".into(),
-            description: String::new(),
-            agent_type: "general".into(),
-            priority: 1,
-            received_at: chrono::Utc::now(),
-            status: "working".into(),
-        })
-        .await;
-    tasks
-}
+use fixtures::{queue, request};

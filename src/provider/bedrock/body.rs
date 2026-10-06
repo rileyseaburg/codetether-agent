@@ -103,7 +103,7 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
     // missing. Bedrock answers that with a permanent 400, killing the turn.
     audit::enforce(&mut body);
     // Tool-less requests (e.g. `/ask`) replaying tool history need toolConfig.
-    history_tools::ensure(&mut body);
+    // history_tools::ensure(&mut body);
 
     body
 }

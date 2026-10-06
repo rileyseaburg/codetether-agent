@@ -6,6 +6,10 @@ use tokenizers::Tokenizer;
 
 use super::candle_model::CandleModel;
 
+#[path = "candle_runtime/identity.rs"]
+mod identity;
+pub(super) use identity::NativeModelIdentity;
+
 /// A loaded Candle model plus its sampling and KV-cache state.
 ///
 /// Not `Sync`: callers serialize access behind a mutex.
@@ -14,6 +18,7 @@ pub(crate) struct CandleThinker {
     pub(super) tokenizer: Tokenizer,
     pub(super) device: Device,
     pub(super) model_label: String,
+    pub(crate) identity: NativeModelIdentity,
     pub(super) architecture: String,
     pub(super) context_window: usize,
     pub(super) temperature: f32,
