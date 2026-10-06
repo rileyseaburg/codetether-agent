@@ -38,11 +38,7 @@ impl ActiveCancel {
 
     /// Notify the active executor, returning whether one was attached.
     pub(super) fn notify(&self) -> bool {
-        if let Some(notify) = self.0.lock().cancel() {
-            notify.notify_one();
-            return true;
-        }
-        false
+        self.0.lock().request_cancel()
     }
 
     /// Atomically append input when the active session still accepts it.

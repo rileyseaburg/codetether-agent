@@ -1,12 +1,8 @@
 //! Production verifier: a separate LLM agent loop over the workspace.
 
-use super::{VerificationRequest, VerifierAgent, prompt, resolve_verifier_model};
-use crate::swarm::executor::{AgentLoopExit, run_agent_loop};
+use super::{ReviewExecution, VerificationRequest, VerifierAgent};
 use async_trait::async_trait;
 use std::path::PathBuf;
-
-const MAX_STEPS: usize = 40;
-const TIMEOUT_SECS: u64 = 600;
 
 /// Verifier that runs a second LLM in its own agent thread.
 ///
@@ -36,35 +32,20 @@ pub struct LlmVerifier {
 #[async_trait]
 impl VerifierAgent for LlmVerifier {
     async fn review(&self, request: &VerificationRequest) -> anyhow::Result<String> {
-        let requested = resolve_verifier_model(self.worker_model.as_deref()).await?;
-        let providers = crate::provider::ProviderRegistry::shared_from_vault().await?;
-        let (provider, model) = providers.resolve_model(&requested)?;
-        let tools = self.verification_tools(&provider, &model);
-        let id = format!("goal-verifier-{}", uuid::Uuid::new_v4());
-        tracing::info!(verifier = %id, model = %model, claimed = request.claimed.as_str(), "Starting goal verifier");
-        let system = prompt::system_prompt(&self.workspace, &model, request.claimed);
-        let user = prompt::user_prompt(request);
-        let run = run_agent_loop(
-            provider,
-            &model,
-            &system,
-            &user,
-            tools.definitions(),
-            tools,
-            MAX_STEPS,
-            TIMEOUT_SECS,
-            None,
-            id,
-            None,
-            Some(self.workspace.clone()),
-        );
-        match run.await? {
-            (report, _, _, AgentLoopExit::Completed) => Ok(report),
-            (_, _, _, exit) => anyhow::bail!("verifier stopped before a verdict: {exit:?}"),
+        self.review_with_identity(request).await.report
+    }
+
+    async fn review_with_identity(&self, request: &VerificationRequest) -> ReviewExecution {
+        let mut ticket = super::observation::shared_observations().start();
+        let report = super::llm_run::run(self, request, &mut ticket).await;
+        ticket.finish(&report);
+        ReviewExecution {
+            report,
+            identity: ticket.identity(),
         }
     }
 
     async fn identity(&self) -> String {
-        self.verdict_identity().await
+        "llm-verifier".into()
     }
 }

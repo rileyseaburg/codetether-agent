@@ -5,6 +5,12 @@ use crate::session::tasks::{GoalEdit, GoalEditAction, GoalStatus, TaskState};
 
 /// Check the displayed revision and reject completion or user-hold bypasses.
 pub(super) fn request(state: &TaskState, edit: &GoalEdit) -> Result<(), Error> {
+    if matches!(
+        edit.action,
+        GoalEditAction::Override | GoalEditAction::ForceComplete
+    ) {
+        return Err(Error::Invalid("override requires a user/admin control"));
+    }
     input::validate(edit)?;
     let goal = state.goal.as_ref().ok_or(Error::Conflict("no goal"))?;
     if goal.id != edit.goal_id || goal.last_updated_at != edit.updated_at {

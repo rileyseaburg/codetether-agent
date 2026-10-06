@@ -15,7 +15,10 @@ pub(crate) fn render(frame: &mut Frame, app: &App) {
     let Some(session) = app.state.session_id.as_deref() else {
         return;
     };
-    if !answer_review::ready(session) {
+    if !answer_review::ready(session)
+        || app.state.input.trim_start().starts_with('/')
+        || app.state.goal_editor.is_some()
+    {
         return;
     }
     let area = frame.area();

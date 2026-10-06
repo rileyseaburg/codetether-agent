@@ -1,0 +1,18 @@
+targets:
+  CodeTetherUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: CodeTether
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: CodeTether
+schemes:
+  CodeTetherLive:
+    build:
+      targets:
+        CodeTether: all
+    test:
+      targets: [CodeTetherUITests]

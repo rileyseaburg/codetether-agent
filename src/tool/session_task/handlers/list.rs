@@ -7,7 +7,6 @@ use anyhow::Result;
 pub async fn list(log: &TaskLog) -> Result<ToolResult> {
     let events = log.read_all().await?;
     let state = TaskState::from_log(&events);
-    let rendered = crate::session::tasks::governance_block(&state)
-        .unwrap_or_else(|| "No goal and no tasks.".to_string());
+    let rendered = crate::session::tasks::task_block(&state);
     Ok(ToolResult::success(rendered))
 }

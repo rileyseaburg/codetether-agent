@@ -27,6 +27,8 @@ pub(crate) async fn editor_click(app: &mut App, cwd: &Path, col: u16, row: u16) 
     if let Some(buf) = app.state.editor.as_mut() {
         buf.set_cursor(line, column);
     }
-    super::editor_lsp::goto_definition(app, cwd).await;
+    if app.state.goal_editor.is_none() {
+        super::editor_lsp::goto_definition(app, cwd).await;
+    }
     true
 }

@@ -76,7 +76,7 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &SessionView) {
             f.area(),
             &app.state.status,
         ),
-        ViewMode::Editor => crate::tui::ui::editor::draw::draw_active(f, app),
+        ViewMode::Editor => super::goal_editor::render(f, app),
     }
 }
 

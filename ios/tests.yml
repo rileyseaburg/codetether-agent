@@ -1,0 +1,17 @@
+targets:
+  CodeTetherTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: CodeTether
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  CodeTether:
+    build:
+      targets:
+        CodeTether: all
+    test:
+      targets: [CodeTetherTests]

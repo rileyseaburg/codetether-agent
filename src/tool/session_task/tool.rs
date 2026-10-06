@@ -27,16 +27,14 @@ impl Tool for SessionTaskTool {
         "session_task"
     }
     fn name(&self) -> &str {
-        "Session Task & Goal"
+        "Session Tasks"
     }
     fn description(&self) -> &str {
-        "Manage the session's goal and task list. Actions: \
-         `set_goal` (objective, success_criteria?, forbidden?), \
-         `reaffirm` (progress_note), \
-         `clear_goal` (reason?), \
+        "Manage work items, not the session goal. Use create_goal/get_goal/edit_goal/update_goal \
+         for the overall objective and completion criteria. Finishing tasks does not complete a goal. Actions: \
          `task_add` (content, id?, parent_id?), \
          `task_status` (id, status: pending|in_progress|done|blocked|cancelled, note?), \
-         `list`. Events are appended to the session's .tasks.jsonl."
+         `list` (tasks only). Events are appended to the session's .tasks.jsonl."
     }
     fn parameters(&self) -> Value {
         super::schema::value()

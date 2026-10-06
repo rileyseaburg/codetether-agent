@@ -27,6 +27,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
+#[path = "routing_identity.rs"]
+mod routing_identity;
+
 #[path = "traits/model_info.rs"]
 mod model_info;
 pub use model_info::ModelInfo;
@@ -38,6 +41,10 @@ use super::types::{
 /// Trait that all AI providers must implement.
 #[async_trait]
 pub trait Provider: Send + Sync {
+    /// Returns the model identifier selected by this adapter for a request.
+    fn resolved_model_identity(&self, model: &str) -> String {
+        routing_identity::resolve(self.name(), model)
+    }
     /// Provider identifier (e.g. `"openai"`, `"bedrock"`).
     ///
     /// # Examples

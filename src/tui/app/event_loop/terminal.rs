@@ -49,7 +49,9 @@ pub(super) async fn handle_terminal_event(
             handle_event(app, cwd, slot, registry, worker_bridge, runtime, key).await
         }
         Some(Ok(Event::Paste(text))) => {
-            handle_paste_event(app, &text).await;
+            if !crate::tui::app::input::goal_answer::editor::paste(app, &text) {
+                handle_paste_event(app, &text).await;
+            }
             Ok(false)
         }
         Some(Ok(Event::Mouse(mouse))) => {

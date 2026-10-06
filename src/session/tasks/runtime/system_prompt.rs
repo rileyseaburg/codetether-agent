@@ -1,6 +1,6 @@
 //! Injection of persisted goal governance into provider system prompts.
 
-use crate::session::tasks::{TaskLog, TaskState, governance_block};
+use crate::session::tasks::{TaskLog, governance_block, state_cache};
 
 pub(crate) fn compose(base: &str, session_id: &str) -> String {
     let base = super::super::turn_instructions::append(base.into());
@@ -11,7 +11,7 @@ pub(crate) fn compose(base: &str, session_id: &str) -> String {
 }
 
 fn from_log(base: String, log: &TaskLog) -> String {
-    let state = TaskState::from_log(&log.read_all_blocking().unwrap_or_default());
+    let state = state_cache::load(log).unwrap_or_default();
     match governance_block(&state) {
         Some(block) => format!("{base}\n\n{block}"),
         None => base,

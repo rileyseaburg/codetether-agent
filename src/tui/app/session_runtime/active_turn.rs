@@ -4,11 +4,15 @@ use std::sync::Arc;
 
 use tokio::sync::Notify;
 
+#[path = "active_turn_cancel.rs"]
+mod cancellation;
+
 /// Identity and cancellation notifier for one in-flight session turn.
 #[derive(Default)]
 pub(super) struct ActiveTurn {
     session_id: Option<String>,
     cancel: Option<Arc<Notify>>,
+    cancel_pending: bool,
 }
 
 impl ActiveTurn {
@@ -31,11 +35,13 @@ impl ActiveTurn {
             }
             (Some(_), None | Some(_)) | (None, Some(_)) => return false,
         }
+        self.deliver_pending_cancel();
         true
     }
 
     /// Reset the state and return the session whose inbox needs cleanup.
     pub(super) fn clear(&mut self) -> Option<String> {
+        self.cancel_pending = false;
         self.cancel = None;
         self.session_id.take()
     }

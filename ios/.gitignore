@@ -1,0 +1,7 @@
+*.xcodeproj/
+build/
+build-device/
+*.xcresult/
+*.p8
+*.p12
+bootstrap.json

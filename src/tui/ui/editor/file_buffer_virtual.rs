@@ -18,7 +18,14 @@ impl FileBuffer {
         }
     }
 
-    /// Returns the complete current document text.
+    /// Creates a clean in-memory draft; the caller owns persistence, not the file editor.
+    pub(crate) fn draft(label: &str, text: &str) -> Self {
+        let mut buffer = Self::proposed(label, text);
+        buffer.dirty = false;
+        buffer
+    }
+
+    /// Return the complete draft text without reading or writing a file.
     pub(crate) fn text(&self) -> String {
         self.backend.to_text()
     }

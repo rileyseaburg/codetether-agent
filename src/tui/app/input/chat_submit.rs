@@ -31,10 +31,10 @@ pub(super) async fn handle_enter_chat(
     worker_bridge: &Option<TuiWorkerBridge>,
     runtime: &TuiSessionHandle,
 ) {
-    if super::goal_answer::intercept(app, slot, runtime).await {
-        return;
-    }
-    if super::approval_feedback::submit(app) {
+    if super::goal_answer::commands::intercept(app, slot, runtime).await
+        || super::goal_answer::intercept(app, slot, runtime).await
+        || super::approval_feedback::submit(app)
+    {
         return;
     }
     let prompt = super::chat_submit_history::capture(app);

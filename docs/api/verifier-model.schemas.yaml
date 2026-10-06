@@ -1,0 +1,28 @@
+SetModel:
+  type: object
+  additionalProperties: false
+  required: [model]
+  properties:
+    model:
+      type: string
+      minLength: 1
+      description: Provider/model identifier; trimmed, at most 512 UTF-8 bytes; no internal whitespace/control characters. Access is not probed.
+Settings:
+  type: object
+  additionalProperties: false
+  required: [identity_source, scope, persisted, runtime_model, environment_model, default_model, worker_model_context, selected_model, source, latest_verification]
+  properties:
+    identity_source: {type: string, const: harness_configuration}
+    scope: {type: string, const: process}
+    persisted: {type: boolean, const: false}
+    runtime_model: {type: [string, 'null']}
+    environment_model: {type: [string, 'null']}
+    default_model: {type: [string, 'null']}
+    worker_model_context: {type: [string, 'null'], description: Caller-supplied preview context only.}
+    selected_model: {type: [string, 'null'], description: Selected configuration; not a claim of execution.}
+    source: {type: string, enum: [runtime, environment, default, worker, unconfigured]}
+    latest_verification:
+      oneOf:
+        - {type: 'null'}
+        - {$ref: 'verifier-model.observation.yaml'}
+

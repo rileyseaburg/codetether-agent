@@ -16,5 +16,9 @@ pub(super) fn value(session_id: &str, state: &TaskState) -> Value {
         })
     });
     json!({"sessionId": session_id, "state": "ready",
-        "goal": goal, "editable": true})
+        "kind": "session_goal", "tasksManagedSeparately": true,
+        "goal": goal, "editable": true,
+        "answerReviewPending": state.answer_review.is_some(),
+        "humanActions": ["edit", "pause", "resume", "clear", "override", "force_complete"]
+    })
 }

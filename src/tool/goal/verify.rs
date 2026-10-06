@@ -47,14 +47,20 @@
 mod agent;
 #[path = "verify_charter.rs"]
 mod charter;
+#[path = "verify_execution.rs"]
+mod execution;
 #[path = "verify_gate.rs"]
 mod gate;
 #[path = "verify_llm.rs"]
 mod llm;
+#[path = "verify_llm_run.rs"]
+mod llm_run;
 #[path = "verify_llm_support.rs"]
 mod llm_support;
 #[path = "verify_model.rs"]
 mod model;
+#[path = "verify_observation/mod.rs"]
+pub(crate) mod observation;
 #[path = "verify_prompt.rs"]
 mod prompt;
 #[path = "verify_request.rs"]
@@ -68,11 +74,14 @@ mod verdict;
 
 pub use agent::VerifierAgent;
 pub use charter::charter;
+pub use execution::ReviewExecution;
 pub use gate::verify_transition;
+pub(crate) use gate::verify_with_identity;
 pub use llm::LlmVerifier;
 pub use model::{VERIFIER_MODEL_ENV, resolve_verifier_model, select_verifier_model};
 pub use prompt::{system_prompt, user_prompt};
 pub use request::VerificationRequest;
+pub(crate) use selection::{VerifierSelection, shared_selection};
 pub use selection::{selected_verifier_model, set_verifier_model};
 pub use self_review::{is_self_review, warn_if_self_review};
 pub use verdict::Verdict;

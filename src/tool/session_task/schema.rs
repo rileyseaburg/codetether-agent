@@ -1,4 +1,4 @@
-//! JSON schema for the legacy session task surface.
+//! Task-only schema; goal control belongs to the dedicated goal tools.
 
 use serde_json::{Value, json};
 
@@ -7,14 +7,8 @@ pub(super) fn value() -> Value {
         "type": "object",
         "properties": {
             "action": {"type": "string", "enum": [
-                "set_goal", "reaffirm", "clear_goal",
                 "task_add", "task_status", "list"
             ]},
-            "objective": {"type": "string"},
-            "success_criteria": {"type": "array", "items": {"type": "string"}},
-            "forbidden": {"type": "array", "items": {"type": "string"}},
-            "progress_note": {"type": "string"},
-            "reason": {"type": "string"},
             "id": {"type": "string"},
             "content": {"type": "string"},
             "parent_id": {"type": "string"},
@@ -25,3 +19,7 @@ pub(super) fn value() -> Value {
         "required": ["action"]
     })
 }
+
+#[cfg(test)]
+#[path = "separation_tests.rs"]
+mod tests;

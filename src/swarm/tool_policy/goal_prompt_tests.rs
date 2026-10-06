@@ -17,7 +17,7 @@ fn delegated_prompts_require_goal_progress_without_relaxing_tool_restrictions() 
             expects_changes,
         });
         assert!(prompt.contains("Before ending every turn"));
-        assert!(prompt.contains("`session_task` action `reaffirm`"));
+        assert!(prompt.contains("`session_task` actions `task_add`, `task_status`, and `list`"));
         assert!(prompt.contains("in your own session, not the parent's goal"));
         assert!(prompt.contains("do not bypass read-only or delegated tool restrictions"));
         assert!(

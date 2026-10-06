@@ -5,6 +5,9 @@ macro_rules! delegate_metrics_provider_basics {
         fn name(&self) -> &str {
             self.inner.name()
         }
+        fn resolved_model_identity(&self, model: &str) -> String {
+            self.inner.resolved_model_identity(model)
+        }
 
         fn supports_structured_streaming(&self) -> bool {
             self.inner.supports_structured_streaming()

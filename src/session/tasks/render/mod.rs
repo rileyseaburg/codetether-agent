@@ -1,7 +1,9 @@
 //! System-prompt rendering for persisted goal governance.
 
 mod goal;
+mod listings;
 mod status;
+pub use listings::{goal_block, task_block};
 mod tasks;
 
 use super::TaskState;

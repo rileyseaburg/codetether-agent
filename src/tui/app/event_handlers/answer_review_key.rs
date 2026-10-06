@@ -3,7 +3,10 @@
 use crate::session::tasks::{AnswerReviewAction, runtime::answer_review};
 use crate::tui::app::{session_runtime::SessionSlot, state::App};
 use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::KeyEvent;
+
+#[path = "answer_review_passthrough.rs"]
+mod passthrough;
 
 pub(super) async fn handle(
     app: &mut App,
@@ -16,10 +19,7 @@ pub(super) async fn handle(
     else {
         return Ok(None);
     };
-    if matches!(key.code, KeyCode::PageUp | KeyCode::PageDown)
-        || (matches!(key.code, KeyCode::Char('c' | 'q'))
-            && key.modifiers.contains(KeyModifiers::CONTROL))
-    {
+    if passthrough::allowed(app, key) {
         return Ok(None);
     }
     let Some(yes) = super::answer_review_choice::choose(&mut app.state.answer_review_yes, key)

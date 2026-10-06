@@ -14,7 +14,7 @@ pub(super) fn lines(yes: bool) -> Vec<Line<'static>> {
             "    ".into(),
             choice("[ No ]", !yes),
         ]),
-        Line::from("←/→ or Tab to select · Enter to confirm · Y/N".dim()),
+        Line::from("←/→ or Tab · Enter to confirm · Y/N · / for goal/task commands".dim()),
     ]
 }
 

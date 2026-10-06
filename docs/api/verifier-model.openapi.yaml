@@ -1,0 +1,43 @@
+openapi: 3.1.0
+info: {title: CodeTether verifier model configuration, version: 1.0.0}
+servers: [{url: 'https://server.codetether.run'}]
+security: [{bearerAuth: []}]
+paths:
+  /api/config/verifier-model:
+    get:
+      operationId: getVerifierModel
+      summary: Read harness configuration and latest execution routing; requires agent:read.
+      parameters:
+        - name: worker_model
+          in: query
+          description: Optional fallback preview context, not observed worker identity.
+          schema: {type: string}
+      responses:
+        '200': {$ref: '#/components/responses/Settings'}
+        '400': {description: Invalid query context}
+        '401': {description: Missing or invalid bearer token}
+        '403': {description: Permission denied}
+        '500': {description: Configuration unavailable}
+    put:
+      operationId: setVerifierModel
+      summary: Select a process-local override; requires agent:write. Does not run a model.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: 'verifier-model.schemas.yaml#/SetModel'}}}
+      responses:
+        '200': {$ref: '#/components/responses/Settings'}
+        '400': {description: Invalid model identifier or JSON}
+        '422': {description: Missing/null model or unknown JSON fields}
+        '401': {description: Missing or invalid bearer token}
+        '403': {description: Permission denied}
+        '500': {description: Configuration unavailable}
+    delete:
+      operationId: clearVerifierModel
+      summary: Clear only the runtime override; requires agent:write.
+      responses: {'200': {$ref: '#/components/responses/Settings'}, '401': {description: Unauthorized}, '403': {description: Forbidden}, '500': {description: Configuration unavailable}}
+components:
+  securitySchemes: {bearerAuth: {type: http, scheme: bearer}}
+  responses:
+    Settings:
+      description: Harness-owned configuration and optional execution receipt.
+      content: {application/json: {schema: {$ref: 'verifier-model.schemas.yaml#/Settings'}}}

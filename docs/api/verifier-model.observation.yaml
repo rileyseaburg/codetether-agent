@@ -1,0 +1,23 @@
+type: object
+additionalProperties: false
+description: Harness receipt for the most recently started verification, not model self-identification.
+required: [verification_id, identity_source, requested_model, resolved_provider, resolved_model, state, started_at, finished_at]
+properties:
+  verification_id: {type: string}
+  identity_source: {type: string, const: harness_provider_resolution}
+  requested_model: {type: [string, 'null']}
+  resolved_provider: {type: [string, 'null']}
+  resolved_model:
+    type: [string, 'null']
+    description: Exact identifier passed to the provider adapter, not a claim about its internal upstream routing.
+  state: {type: string, enum: [resolving, running, pass, fail, unavailable]}
+  started_at: {type: string, format: date-time}
+  finished_at: {type: [string, 'null'], format: date-time}
+
+
+
+
+
+
+
+

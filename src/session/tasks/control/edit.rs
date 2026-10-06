@@ -13,24 +13,28 @@ static EDITS: Mutex<()> = Mutex::const_new(());
 /// # Errors
 /// Rejects stale goals, invalid input, held reviews, and storage failures.
 pub(super) async fn apply(log: &TaskLog, edit: GoalEdit) -> Result<TaskState, Error> {
+    apply_with(log, edit, validate::request).await
+}
+
+pub(super) async fn apply_user(log: &TaskLog, edit: GoalEdit) -> Result<TaskState, Error> {
+    apply_with(log, edit, super::user_validate::request).await
+}
+
+async fn apply_with(
+    log: &TaskLog,
+    edit: GoalEdit,
+    validate: fn(&TaskState, &GoalEdit) -> Result<(), Error>,
+) -> Result<TaskState, Error> {
     let _guard = EDITS.lock().await;
     let before = TaskState::from_log(&log.read_all().await?);
-    validate::request(&before, &edit)?;
+    validate(&before, &edit)?;
     let at = Utc::now();
     let event = GoalEdited { at, request: edit };
     let clearing = matches!(event.request.action, GoalEditAction::Clear);
     log.append(&TaskEvent::GoalEdited(event)).await?;
-    let after = TaskState::from_log(&log.read_all().await?);
-    let applied = if clearing {
-        after.goal.is_none()
-    } else {
-        after
-            .goal
-            .as_ref()
-            .is_some_and(|goal| goal.last_updated_at == at)
-    };
-    if !applied {
+    let events = log.read_all().await?;
+    if !super::accepted::edit(&events, at, clearing) {
         return Err(Error::Conflict("goal changed during save"));
     }
-    Ok(after)
+    Ok(TaskState::from_log(&events))
 }

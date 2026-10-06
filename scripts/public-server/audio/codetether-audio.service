@@ -1,0 +1,17 @@
+[Unit]
+Description=Authenticated CodeTether Kokoro audio bridge
+After=network-online.target kokoro-tts.service codetether-spotlessbinco-thinker.service
+Wants=kokoro-tts.service
+[Service]
+ExecStart=@NODE@ @ROOT@/server.mjs
+WorkingDirectory=@ROOT@
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+ReadWritePaths=%h/.local/share/codetether-mobile
+[Install]
+WantedBy=default.target

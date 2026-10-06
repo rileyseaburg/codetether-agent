@@ -7,6 +7,7 @@
 //!
 //! Reference: https://console.cloud.google.com/vertex-ai/publishers/zai/model-garden/glm-5
 
+pub(crate) mod model_id;
 use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
@@ -464,14 +465,7 @@ impl Provider for VertexGlmProvider {
         let tools = Self::convert_tools(&request.tools);
 
         // Resolve model ID to Vertex format
-        let model = if request.model.starts_with("zai-org/") {
-            request.model.clone()
-        } else {
-            format!(
-                "zai-org/{}-maas",
-                request.model.trim_start_matches("zai-org/")
-            )
-        };
+        let model = model_id::normalize(&request.model);
 
         // GLM-5 defaults to temperature 1.0 for best results
         let temperature = request.temperature.unwrap_or(1.0);
@@ -641,14 +635,7 @@ impl Provider for VertexGlmProvider {
         let tools = Self::convert_tools(&request.tools);
 
         // Resolve model ID to Vertex format
-        let model = if request.model.starts_with("zai-org") {
-            request.model.clone()
-        } else {
-            format!(
-                "zai-org/{}-maas",
-                request.model.trim_start_matches("zai-org/")
-            )
-        };
+        let model = model_id::normalize(&request.model);
 
         let temperature = request.temperature.unwrap_or(1.0);
 

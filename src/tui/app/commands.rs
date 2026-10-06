@@ -4,7 +4,7 @@ use std::sync::Arc;
 #[path = "commands/a2a.rs"]
 mod a2a;
 #[path = "commands/goal/mod.rs"]
-mod goal;
+pub(crate) mod goal;
 #[path = "commands/open_editor.rs"]
 mod open_editor;
 #[path = "commands/session_ops.rs"]

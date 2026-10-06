@@ -7,7 +7,7 @@
 
 use super::attempt_cap::{max_attempts, rejections_since_reset};
 use super::verdict_log::{self, VerdictRecord};
-use super::verify::{Verdict, VerificationRequest, VerifierAgent, verify_transition};
+use super::verify::{Verdict, VerificationRequest, VerifierAgent, verify_with_identity};
 use crate::session::tasks::Goal;
 use crate::tool::ToolResult;
 use anyhow::Result;
@@ -29,13 +29,12 @@ pub(super) async fn check(
         let refusal = super::update_escalate::escalate(session, goal, claimed, cap).await?;
         return Ok(Some(refusal));
     }
-    let verdict = verify_transition(verifier, request).await;
+    let (verdict, identity) = verify_with_identity(verifier, request).await;
     let (passed, report) = match &verdict {
         Verdict::Pass => (true, "VERDICT: PASS"),
         Verdict::Fail { findings } => (false, findings.as_str()),
         Verdict::Unavailable { findings } => (false, findings.as_str()),
     };
-    let identity = verifier.identity().await;
     let mut record = VerdictRecord::new(&goal.id, claimed, passed, &identity, report);
     record.unavailable = matches!(verdict, Verdict::Unavailable { .. });
     verdict_log::append(session, &record).await?;

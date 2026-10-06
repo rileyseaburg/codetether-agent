@@ -20,3 +20,5 @@ async fn answer_review_enter_defaults_to_no_and_keeps_hold() {
 
 #[path = "answer_review_accept_tests.rs"]
 mod accept;
+#[path = "answer_review_command_tests.rs"]
+mod commands;

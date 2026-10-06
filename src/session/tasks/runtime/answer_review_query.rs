@@ -1,12 +1,10 @@
 //! Read the durable answer hold, failing closed on unreadable task logs.
 
-use crate::session::tasks::{TaskLog, TaskState};
+use crate::session::tasks::{TaskLog, TaskState, state_cache};
 use anyhow::Result;
 
 pub(crate) fn read(session: &str) -> Result<TaskState> {
-    Ok(TaskState::from_log(
-        &TaskLog::for_session(session)?.read_all_blocking()?,
-    ))
+    state_cache::load(&TaskLog::for_session(session)?)
 }
 
 pub(crate) fn held(session: &str) -> bool {

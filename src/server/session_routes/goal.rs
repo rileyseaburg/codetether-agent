@@ -18,7 +18,10 @@ pub(super) async fn post(
     Json(edit): Json<GoalEdit>,
 ) -> Result<Json<Value>, HttpError> {
     session(&id).await?;
-    control::update(&id, edit).await.map(Json).map_err(error)
+    control::update_user(&id, edit)
+        .await
+        .map(Json)
+        .map_err(error)
 }
 
 /// Reject unsafe identifiers and unknown sessions before touching task logs.

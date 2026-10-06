@@ -11,6 +11,9 @@ pub mod policy;
 mod policy_user;
 mod session_realtime;
 mod session_routes;
+mod session_recovery;
+mod task_queue;
+mod task_output_stream;
 mod tool_contract;
 mod version_info;
 mod worker_modules;
@@ -53,70 +56,7 @@ use tonic_web::GrpcWebLayer;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
-/// Task received from Knative Eventing
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct KnativeTask {
-    pub task_id: String,
-    pub title: String,
-    pub description: String,
-    pub agent_type: String,
-    pub priority: i32,
-    pub received_at: chrono::DateTime<chrono::Utc>,
-    pub status: String,
-}
-
-/// Queue for Knative tasks waiting to be processed
-#[derive(Clone)]
-pub struct KnativeTaskQueue {
-    tasks: Arc<Mutex<Vec<KnativeTask>>>,
-}
-
-impl KnativeTaskQueue {
-    pub fn new() -> Self {
-        Self {
-            tasks: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-
-    pub async fn push(&self, task: KnativeTask) {
-        self.tasks.lock().await.push(task);
-    }
-
-    #[allow(dead_code)]
-    pub async fn pop(&self) -> Option<KnativeTask> {
-        self.tasks.lock().await.pop()
-    }
-
-    pub async fn list(&self) -> Vec<KnativeTask> {
-        self.tasks.lock().await.clone()
-    }
-
-    #[allow(dead_code)]
-    pub async fn get(&self, task_id: &str) -> Option<KnativeTask> {
-        self.tasks
-            .lock()
-            .await
-            .iter()
-            .find(|t| t.task_id == task_id)
-            .cloned()
-    }
-
-    pub async fn update_status(&self, task_id: &str, status: &str) -> bool {
-        let mut tasks = self.tasks.lock().await;
-        if let Some(task) = tasks.iter_mut().find(|t| t.task_id == task_id) {
-            task.status = status.to_string();
-            true
-        } else {
-            false
-        }
-    }
-}
-
-impl Default for KnativeTaskQueue {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
 
 /// A registered tool with TTL tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -519,6 +459,11 @@ const POLICY_RULES: &[PolicyRule] = &[
         permission: "agent:read",
     },
     PolicyRule {
+        pattern: "/api/config/verifier-model",
+        methods: Some(&["PUT", "DELETE"]),
+        permission: "agent:write",
+    },
+    PolicyRule {
         pattern: "/api/config",
         methods: None,
         permission: "agent:read",
@@ -762,14 +707,9 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
             post(complete_knative_task),
         )
         // API routes
-        .route("/api/version", get(version_info::get_version))
         .merge(session_routes::router())
         .merge(session_realtime::router())
-        .route("/api/config", get(config_status::get_config))
-        .route(
-            "/api/config/trust-status",
-            get(config_status::get_trust_status),
-        )
+        .merge(config_status::router())
         .route("/api/provider", get(list_providers))
         .route("/api/agent", get(list_agents))
         // OpenAI-compatible APIs
@@ -851,7 +791,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Session resume (dashboard uses this for codebase-scoped resume)
         .route(
             "/v1/agent/codebases/{codebase_id}/sessions/{session_id}/resume",
-            post(resume_codebase_session),
+            post(session_recovery::handle),
         )
         // Agent Bus — SSE stream + publish
         .route("/v1/bus/stream", get(stream_bus_events))
@@ -2745,35 +2685,7 @@ async fn stream_agent_task_output(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
 ) -> Result<Sse<impl stream::Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
-    // Verify task exists
-    state
-        .knative_tasks
-        .get(&task_id)
-        .await
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))?;
-
-    let bus_handle = state.bus.handle("task-stream");
-    let rx = bus_handle.into_receiver();
-    let topic_prefix = format!("task.{task_id}");
-
-    let stream = async_stream::try_stream! {
-        let mut rx = rx;
-        loop {
-            match rx.recv().await {
-                Ok(envelope) => {
-                    if !envelope.topic.starts_with(&topic_prefix) {
-                        continue;
-                    }
-                    let data = serde_json::to_string(&envelope.message).unwrap_or_default();
-                    yield Event::default().event("output").data(data);
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
-            }
-        }
-    };
-
-    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+    task_output_stream::handler(State(state), Path(task_id)).await
 }
 
 // ── Worker connectivity ─────────────────────────────────────────────────
@@ -2924,69 +2836,8 @@ async fn list_voices_rest() -> Json<serde_json::Value> {
 
 // ── Session resume ──────────────────────────────────────────────────────
 
-/// Resume a codebase-scoped session (what the dashboard session resume flow calls)
-async fn resume_codebase_session(
-    Path((_codebase_id, session_id)): Path<(String, String)>,
-    Json(req): Json<ResumeSessionRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    // Load the session if it exists, or create a new one
-    let mut session = match crate::session::Session::load(&session_id).await {
-        Ok(s) => s,
-        Err(_) => {
-            // Create a new session for this codebase
-            let mut s = crate::session::Session::new()
-                .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-            if let Some(agent) = &req.agent {
-                s.set_agent_name(agent.clone());
-            }
-            s.save()
-                .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-            s
-        }
-    };
+/// Resume a durable session without replacing its identity on a storage failure.
 
-    // If there's a prompt, execute it as a task
-    if let Some(prompt) = &req.prompt
-        && !prompt.is_empty()
-    {
-        match session.prompt(prompt).await {
-            Ok(result) => {
-                session.save().await.ok();
-                return Ok(Json(serde_json::json!({
-                    "session_id": session.id,
-                    "active_session_id": session.id,
-                    "status": "completed",
-                    "result": result.text,
-                })));
-            }
-            Err(e) => {
-                return Ok(Json(serde_json::json!({
-                    "session_id": session.id,
-                    "active_session_id": session.id,
-                    "status": "failed",
-                    "error": e.to_string(),
-                })));
-            }
-        }
-    }
-
-    // No prompt = just resume/check session
-    Ok(Json(serde_json::json!({
-        "session_id": session.id,
-        "active_session_id": session.id,
-        "status": "ready",
-    })))
-}
-
-#[derive(Deserialize)]
-#[allow(dead_code)]
-struct ResumeSessionRequest {
-    prompt: Option<String>,
-    agent: Option<String>,
-    model: Option<String>,
-}
 
 fn internal_error(error: anyhow::Error) -> (StatusCode, String) {
     let message = error.to_string();

@@ -41,26 +41,9 @@ pub struct GoalEdit {
     pub token_budget: Option<Option<i64>>,
 }
 
-/// Nonterminal controls available to an authenticated human-facing client.
-///
-/// # Examples
-/// ```
-/// use codetether_agent::session::tasks::GoalEditAction;
-/// let action = GoalEditAction::Pause;
-/// assert!(matches!(action, GoalEditAction::Pause));
-/// ```
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum GoalEditAction {
-    /// Replace explicit user-edited fields without resetting accounting.
-    Edit,
-    /// Stop automatic goal continuation.
-    Pause,
-    /// Re-enable continuation after native holds and budget checks.
-    Resume,
-    /// Remove the current goal while retaining its audit trail.
-    Clear,
-}
+#[path = "goal_edit_action.rs"]
+mod action;
+pub use action::GoalEditAction;
 
 /// One append-only edit, including the version the user actually inspected.
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -24,6 +24,8 @@ async fn run(
     request: CompletionRequest,
     session_id: Option<&str>,
 ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
+    let resolved = provider.inner.resolved_model_identity(&request.model);
+    let request = super::super::identity::inject(request, provider.inner.name(), &resolved);
     let model = request.model.clone();
     let name = provider.inner.name().to_string();
     let start = std::time::Instant::now();

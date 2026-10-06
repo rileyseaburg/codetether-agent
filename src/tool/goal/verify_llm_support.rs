@@ -20,25 +20,4 @@ impl LlmVerifier {
             model.to_string(),
         )
     }
-
-    /// Model recorded as the verifier in the verdict log.
-    ///
-    /// Uses the same precedence as
-    /// [`resolve_verifier_model`](super::resolve_verifier_model) (without
-    /// repeating its self-review warning), so the log names the model that
-    /// actually ran.
-    pub(super) async fn verdict_identity(&self) -> String {
-        let chosen = super::selected_verifier_model()
-            .or_else(|| std::env::var(super::VERIFIER_MODEL_ENV).ok());
-        let default = crate::config::Config::load()
-            .await
-            .ok()
-            .and_then(|config| config.default_model);
-        super::select_verifier_model(
-            chosen.as_deref(),
-            self.worker_model.as_deref(),
-            default.as_deref(),
-        )
-        .unwrap_or_else(|| "llm-verifier".into())
-    }
 }

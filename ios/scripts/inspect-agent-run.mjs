@@ -1,0 +1,11 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { collectTools } from './collect-agent-tools.mjs';
+const out = process.argv[2];
+const id = readFileSync(join(out, 'session-id.txt'), 'utf8').trim();
+if (!/^[a-f0-9-]+$/.test(id)) throw new Error('Invalid test session ID');
+const token = execFileSync('vault', ['kv', 'get', '-field=token', 'secret/codetether/endpoints/public-server'], { encoding: 'utf8' }).trim();
+await collectTools(id, { Authorization: `Bearer ${token}` }, out);
+const tools = JSON.parse(readFileSync(join(out, 'tools.json'), 'utf8'));
+console.log(JSON.stringify(tools.filter(tool => ['image', 'image_gen'].includes(tool.name)), null, 2));

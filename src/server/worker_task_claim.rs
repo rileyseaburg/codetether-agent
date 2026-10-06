@@ -20,24 +20,20 @@ pub async fn worker_task_claim(
     State(state): State<AppState>,
     axum::extract::Json(req): axum::extract::Json<ClaimRequest>,
 ) -> Result<Json<TaskClaimResponse>, (StatusCode, String)> {
-    let updated = state
+    let task = state
         .knative_tasks
-        .update_status(&req.task_id, "processing")
-        .await;
-
-    if !updated {
-        return Err((
-            StatusCode::NOT_FOUND,
-            format!("Task {} not found", req.task_id),
-        ));
-    }
-
-    let task = state.knative_tasks.get(&req.task_id).await.ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            format!("Task {} not found", req.task_id),
-        )
-    })?;
+        .claim(&req.task_id)
+        .await
+        .map_err(|reason| match reason {
+            crate::server::task_queue::ClaimError::NotFound => (
+                StatusCode::NOT_FOUND,
+                format!("Task {} not found", req.task_id),
+            ),
+            crate::server::task_queue::ClaimError::NotPending => (
+                StatusCode::CONFLICT,
+                format!("Task {} is not pending", req.task_id),
+            ),
+        })?;
 
     tracing::info!(task_id = %req.task_id, "Task claimed by worker");
 

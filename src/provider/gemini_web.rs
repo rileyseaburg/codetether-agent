@@ -14,6 +14,7 @@
 //!
 //! The model is selected via the `x-goog-ext-525001261-jspb` request header.
 
+mod model;
 mod prompt;
 #[cfg(test)]
 mod prompt_tests;
@@ -408,15 +409,6 @@ impl GeminiWebProvider {
         tool_calls::extract(text)
     }
 
-    /// Look up the `mode_id` string for a given model identifier.
-    fn mode_id(model: &str) -> &'static str {
-        MODELS
-            .iter()
-            .find(|(id, _, _, _)| *id == model)
-            .map(|(_, mid, _, _)| *mid)
-            .unwrap_or("fbb127bbb056c959")
-    }
-
     /// Build a `RequestBuilder` for the StreamGenerate endpoint.
     async fn build_request(&self, prompt: &str, model: &str) -> Result<reqwest::RequestBuilder> {
         let tokens = self
@@ -574,6 +566,9 @@ impl GeminiWebProvider {
 
 #[async_trait]
 impl Provider for GeminiWebProvider {
+    fn resolved_model_identity(&self, model: &str) -> String {
+        Self::resolved_model(model)
+    }
     fn name(&self) -> &str {
         "gemini-web"
     }

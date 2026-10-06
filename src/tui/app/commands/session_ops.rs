@@ -18,7 +18,7 @@ pub(super) async fn dispatch(
     if let Some(rest) = command_with_optional_args(normalized, "/forage") {
         crate::tui::forage_run::handle_forage_command(app, session, rest);
     } else if let Some(rest) = command_with_optional_args(normalized, "/goal") {
-        super::goal::handle(app, session, rest).await;
+        super::goal::handle(app, &session.id, rest).await;
     } else if let Some(rest) = command_with_optional_args(normalized, "/a2a") {
         super::a2a::handle(app, rest);
     } else if let Some(rest) = command_with_optional_args(normalized, "/undo") {

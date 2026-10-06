@@ -1,0 +1,12 @@
+{
+  "validation_level": "static/local",
+  "folder": "/Users/rileyseaburg/NAS/CodeTether-iOS-1.5.0-9",
+  "share": "smb://192.168.50.133/NAS",
+  "file_sha256": {
+    "CodeTether.ipa": "b5590ac5751a5c07b7f6d88ef2aac52051419ac17eca476a388500e8f663ec32",
+    "manifest.plist": "a3d5dd742d9d84734254bd7816f0d3a5ed48db0d79796ff6f2a5779a96ca27a3",
+    "index.html": "b42949a1df13e4e6c303e70d3f45df1edc8d50c6cee9a965dda6bb2ff1db1986",
+    "release.json": "bd9e988ebb046e01cc220c073e0d16731bb3797d24398169b8248e80b99ddca1",
+    "SHA256SUMS": "49a1a0525f791d29839178489bd3d847ddf47c1e159d90ee760a9cbf5a5a070f"
+  }
+}

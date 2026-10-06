@@ -17,6 +17,8 @@ pub(super) async fn complete_inner(
     request: CompletionRequest,
     session_id: Option<&str>,
 ) -> Result<CompletionResponse> {
+    let resolved = provider.inner.resolved_model_identity(&request.model);
+    let request = super::identity::inject(request, provider.inner.name(), &resolved);
     let model = request.model.clone();
     let start = std::time::Instant::now();
     let result = match session_id {

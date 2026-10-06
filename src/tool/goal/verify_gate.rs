@@ -47,10 +47,23 @@ pub async fn verify_transition(
     verifier: &dyn VerifierAgent,
     request: &VerificationRequest,
 ) -> Verdict {
-    match verifier.review(request).await {
+    verify_with_identity(verifier, request).await.0
+}
+
+pub(crate) async fn verify_with_identity(
+    verifier: &dyn VerifierAgent,
+    request: &VerificationRequest,
+) -> (Verdict, String) {
+    let execution = verifier.review_with_identity(request).await;
+    let verdict = match execution.report {
         Ok(report) => Verdict::parse(&report),
         Err(error) => Verdict::Unavailable {
             findings: format!("verifier could not reach a decision: {error:#}"),
         },
-    }
+    };
+    (verdict, execution.identity)
 }
+
+#[cfg(test)]
+#[path = "verify_identity_tests.rs"]
+mod identity_tests;

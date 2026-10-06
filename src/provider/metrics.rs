@@ -5,6 +5,8 @@ use std::sync::Arc;
 
 #[path = "metrics/calls.rs"]
 mod calls;
+#[path = "metrics/identity.rs"]
+pub(crate) mod identity;
 #[path = "metrics/provider_impl.rs"]
 mod provider_impl;
 #[path = "metrics/provider_impl_delegates.rs"]

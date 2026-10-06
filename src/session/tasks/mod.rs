@@ -36,6 +36,7 @@ mod render;
 pub(crate) mod runtime;
 pub use event::{GoalEdit, GoalEditAction, GoalEdited, GoalStatusChecked};
 mod state;
+pub(crate) mod state_cache;
 pub(crate) mod turn_instructions;
 
 #[allow(unused_imports)]
@@ -45,7 +46,7 @@ pub use event::{
 pub use event::{AnswerReviewUpdate, GoalReaffirmation};
 pub use log::TaskLog;
 pub use path::task_log_path;
-pub use render::governance_block;
+pub use render::{goal_block, governance_block, task_block};
 #[cfg(test)]
 pub(crate) use state::answer_review_test_support;
 pub use state::{AnswerReview, Goal, Task, TaskState};

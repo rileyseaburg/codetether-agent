@@ -19,7 +19,12 @@ pub(crate) async fn handle_event(
     runtime: &TuiSessionHandle,
     key: KeyEvent,
 ) -> anyhow::Result<bool> {
-    if !super::key_repeat::dispatchable(key) || super::approval_key::scroll(app, key) {
+    if !super::key_repeat::dispatchable(key) {
+        return Ok(false);
+    }
+    if crate::tui::app::input::goal_answer::editor::handle(app, slot, runtime, key).await
+        || super::approval_key::scroll(app, key)
+    {
         return Ok(false);
     }
     if let Some(resume) = super::answer_review_key::handle(app, slot, key).await? {

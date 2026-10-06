@@ -48,6 +48,15 @@ pub trait VerifierAgent: Send + Sync {
     /// callers treat that as unavailable verification, not a rejection.
     async fn review(&self, request: &VerificationRequest) -> anyhow::Result<String>;
 
+    /// Return the review with its execution identity; production overrides this
+    /// to capture provider routing before the model runs.
+    async fn review_with_identity(&self, request: &VerificationRequest) -> super::ReviewExecution {
+        super::ReviewExecution {
+            report: self.review(request).await,
+            identity: self.identity().await,
+        }
+    }
+
     /// Identity recorded in the verdict log, such as the verifier model.
     async fn identity(&self) -> String {
         "verifier".to_string()

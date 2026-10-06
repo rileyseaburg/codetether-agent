@@ -11,7 +11,8 @@ fn goal_less_session_gets_turn_instructions_without_creating_a_goal() {
     let prompt = compose("Normal agent instructions", &id);
     assert!(prompt.starts_with("Normal agent instructions"));
     assert!(prompt.contains("Before ending every turn"));
-    assert!(prompt.contains("`session_task` action `set_goal`"));
+    assert!(prompt.contains("inspect the objective with `get_goal`"));
+    assert!(!prompt.contains("`session_task` action `set_goal`"));
     assert!(
         !log.path().exists(),
         "prompt rendering must not create a goal"

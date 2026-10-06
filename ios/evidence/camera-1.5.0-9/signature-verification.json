@@ -1,0 +1,12 @@
+{
+  "validation_level": "static/local",
+  "sha256": "b5590ac5751a5c07b7f6d88ef2aac52051419ac17eca476a388500e8f663ec32",
+  "signature": "strict verification succeeded",
+  "bundle_id": "run.codetether.ios",
+  "version": "1.5.0",
+  "build": "9",
+  "iphone_in_profile": true,
+  "profile_uuid": "e8d37d31-323b-4c24-971f-13f6204eb02a",
+  "profile_expires": "2027-10-05T12:48:47Z",
+  "debug_entitlement": false
+}

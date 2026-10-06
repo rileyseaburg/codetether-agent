@@ -21,7 +21,7 @@ pub(super) fn validate(edit: &GoalEdit) -> Result<(), Error> {
             return Err(Error::Invalid("goal constraints exceed their limit"));
         }
     }
-    if !matches!(edit.action, GoalEditAction::Edit)
+    if !matches!(edit.action, GoalEditAction::Edit | GoalEditAction::Override)
         && (edit.objective.is_some()
             || edit.token_budget.is_some()
             || edit.success_criteria.is_some()

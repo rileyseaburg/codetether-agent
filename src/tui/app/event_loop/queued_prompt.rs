@@ -15,10 +15,20 @@ pub(super) async fn drain(
     worker_bridge: &Option<TuiWorkerBridge>,
     runtime: &TuiSessionHandle,
 ) {
+    crate::tui::app::input::goal_answer::commands::drain(
+        app,
+        cwd,
+        slot,
+        registry,
+        worker_bridge,
+        runtime,
+    )
+    .await;
     crate::tui::app::input::goal_answer::deliver(app, slot, registry).await;
-    if crate::session::tasks::runtime::answer_review::held(slot.view().id())
-        || app.state.processing
+    // Cheap in-memory checks first: `held` touches the task log on disk.
+    if app.state.processing
         || !prompt_queue::has_pending()
+        || crate::session::tasks::runtime::answer_review::held(slot.view().id())
     {
         return;
     }
