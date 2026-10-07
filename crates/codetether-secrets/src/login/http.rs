@@ -34,11 +34,7 @@ pub async fn json_with_token<T: DeserializeOwned>(
 }
 
 /// POST `body` to Vault; string fields (JWTs, roles) are treated as secrets.
-pub async fn post<T: DeserializeOwned>(
-    address: &str,
-    path: &str,
-    body: &Value,
-) -> Result<T> {
+pub async fn post<T: DeserializeOwned>(address: &str, path: &str, body: &Value) -> Result<T> {
     let secrets: Vec<&str> = body
         .as_object()
         .map(|map| map.values().filter_map(Value::as_str).collect())

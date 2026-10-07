@@ -4,7 +4,8 @@ static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Serialize tests that mutate `CODETETHER_VAULT_CONFIG_DIR`.
 pub(super) fn lock() -> std::sync::MutexGuard<'static, ()> {
-    LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    LOCK.lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 pub(super) struct Directory {
