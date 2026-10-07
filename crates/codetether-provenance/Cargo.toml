@@ -1,0 +1,23 @@
+[package]
+name = "codetether-provenance"
+version = "0.1.0"
+edition = "2024"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+description = "Execution provenance, signed git trailers, and runtime agent identity for CodeTether"
+license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
+
+[dependencies]
+anyhow = "1.0.104"
+chrono = { version = "0.4", features = ["serde"] }
+codetether-paths = { path = "../codetether-paths", version = "0.1.0" }
+hex = "0.4"
+hmac = "0.13.0"
+serde = { version = "1.0.229", features = ["derive"] }
+sha2 = "0.11.0"
+tokio = { version = "1.53.1", features = ["process"] }
+tracing = "0.1"
+uuid = { version = "1.24.0", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tempfile = "3.25.0"

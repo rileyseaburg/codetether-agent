@@ -24,7 +24,6 @@ mod load_workspace;
 mod lsp;
 mod merge;
 mod path;
-mod path_guard;
 mod permission;
 mod policy_accessors;
 mod policy_raw;

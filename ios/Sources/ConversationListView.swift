@@ -8,7 +8,9 @@ struct ConversationListView: View {
     var body: some View {
         NavigationStack {
             List {
-                Button("New conversation", systemImage: "square.and.pencil") { chat.clear(); dismiss() }
+                Button("New conversation", systemImage: "square.and.pencil") {
+                    Task { if await chat.newConversation() { dismiss() } }
+                }.disabled(chat.loading)
                 ForEach(list.conversations.filter { search.isEmpty || ($0.title ?? "").localizedCaseInsensitiveContains(search) }) { item in
                     Button {
                         Task { await chat.resume(item.id); dismiss() }

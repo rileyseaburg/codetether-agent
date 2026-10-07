@@ -21,7 +21,5 @@ final class VoiceInputLiveUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Listening — tap Stop mic, then Send"].exists)
         // Never send ambient microphone transcription during validation.
         app.buttons["new-chat"].tap()
-        let confirm = app.buttons["confirm-new-chat"].firstMatch
-        if confirm.waitForExistence(timeout: 5) { confirm.tap() }
     }
 }

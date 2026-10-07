@@ -27,7 +27,8 @@ pub(super) fn advertised_tools(
     if !model_supports_tools {
         return Vec::new();
     }
-    let mut advertised = crate::tool::profile::apply_for_provider(tools.to_vec(), provider);
+    let advertised = crate::tool::profile::apply_for_provider(tools.to_vec(), provider);
+    let mut advertised = crate::runtime_policy::require_justification_in_ask_mode(advertised);
     if advertised.len() < tools.len() {
         advertised.push(list_tools_bootstrap_definition());
     }

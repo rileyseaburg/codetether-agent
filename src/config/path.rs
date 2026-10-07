@@ -1,60 +1,20 @@
 use crate::config::Config;
-use directories::ProjectDirs;
 use std::path::{Path, PathBuf};
 
 impl Config {
     /// Get the global config file path.
     pub fn global_config_path() -> Option<PathBuf> {
-        ProjectDirs::from("ai", "codetether", "codetether-agent")
-            .map(|dirs| dirs.config_dir().join("config.toml"))
+        codetether_paths::project_dirs().map(|dirs| dirs.config_dir().join("config.toml"))
     }
 
-    /// Get the data directory path.
+    /// Get the data directory path. See [`codetether_paths::data_dir`].
     pub fn data_dir() -> Option<PathBuf> {
-        if let Ok(explicit) = std::env::var("CODETETHER_DATA_DIR") {
-            let explicit = explicit.trim();
-            if !explicit.is_empty() {
-                return Some(PathBuf::from(explicit));
-            }
-        }
-        workspace_data_dir().or_else(|| {
-            ProjectDirs::from("ai", "codetether", "codetether-agent")
-                .map(|dirs| dirs.data_dir().to_path_buf())
-        })
+        codetether_paths::data_dir()
     }
 
     pub(crate) fn data_dir_for_workspace(workspace: &Path) -> Option<PathBuf> {
-        if let Ok(explicit) = std::env::var("CODETETHER_DATA_DIR") {
-            let explicit = explicit.trim();
-            if !explicit.is_empty() {
-                return Some(PathBuf::from(explicit));
-            }
-        }
-        Some(workspace_data_dir_from(workspace))
+        codetether_paths::data_dir_for_workspace(workspace)
     }
 }
 
-fn workspace_data_dir() -> Option<PathBuf> {
-    let cwd = std::env::current_dir().ok()?;
-    Some(workspace_data_dir_from(&cwd))
-}
-
-pub(super) fn workspace_data_dir_from(start: &Path) -> PathBuf {
-    detect_workspace_root(start)
-        .unwrap_or_else(|| start.to_path_buf())
-        .join(".codetether-agent")
-}
-
-/// Find the nearest ancestor containing a `.git` marker.
-///
-/// Ancestors that are too broad to scope a workspace (the filesystem root or
-/// the user's home directory) are rejected, so a stray `.git` high in the tree
-/// cannot turn the entire machine into one workspace.
-pub(super) fn detect_workspace_root(start: &Path) -> Option<PathBuf> {
-    start
-        .ancestors()
-        .find(|path| {
-            !super::path_guard::is_unsafe_workspace_root(path) && path.join(".git").exists()
-        })
-        .map(Path::to_path_buf)
-}
+pub(super) use codetether_paths::detect_workspace_root;

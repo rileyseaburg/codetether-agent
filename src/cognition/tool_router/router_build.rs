@@ -3,9 +3,9 @@
 use anyhow::{Result, anyhow};
 use std::sync::{Arc, Mutex};
 
+use super::router_config::thinker_config;
 use super::{ToolCallRouter, ToolRouterConfig};
 use crate::cognition::thinker::CandleRuntime;
-use crate::cognition::{ThinkerBackend, ThinkerConfig};
 
 impl ToolCallRouter {
     /// Construct from a [`ToolRouterConfig`].
@@ -39,24 +39,5 @@ impl ToolCallRouter {
         Ok(Some(Self {
             runtime: Arc::new(Mutex::new(runtime)),
         }))
-    }
-}
-
-/// Build a Candle-backed thinker config for the FunctionGemma model.
-fn thinker_config(
-    config: &ToolRouterConfig,
-    model_path: &str,
-    tokenizer_path: &str,
-) -> ThinkerConfig {
-    ThinkerConfig {
-        enabled: true,
-        backend: ThinkerBackend::Candle,
-        candle_model_path: Some(model_path.to_string()),
-        candle_tokenizer_path: Some(tokenizer_path.to_string()),
-        candle_arch: Some(config.arch.clone()),
-        candle_device: config.device,
-        max_tokens: config.max_tokens,
-        temperature: config.temperature,
-        ..ThinkerConfig::default()
     }
 }

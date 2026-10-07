@@ -38,6 +38,8 @@ mod parsed_call;
 
 #[path = "tool_router/direct.rs"]
 mod direct;
+#[path = "tool_router/identity_prompt.rs"]
+mod identity_prompt;
 #[path = "tool_router/infer.rs"]
 mod infer;
 #[path = "tool_router/inspect.rs"]
@@ -52,6 +54,8 @@ mod rewrite;
 mod router;
 #[path = "tool_router/router_build.rs"]
 mod router_build;
+#[path = "tool_router/router_config.rs"]
+mod router_config;
 
 #[cfg(test)]
 #[path = "tool_router/config_tests.rs"]

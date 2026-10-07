@@ -11,11 +11,12 @@ pub(super) async fn start(
     sink: &mut SocketSink,
     session_id: &str,
     message: String,
+    model: Option<String>,
 ) -> Option<(ThreadEventMapper, PromptRun)> {
     let context = ThreadEventContext::for_session(session_id.to_string());
     let mut mapper = ThreadEventMapper::new(context);
     let started = mapper.turn_started(&message);
     event_forward::thread_event(sink, started).await.ok()?;
-    let run = PromptRun::start(session_id.to_string(), message);
+    let run = PromptRun::start(session_id.to_string(), message, model);
     Some((mapper, run))
 }

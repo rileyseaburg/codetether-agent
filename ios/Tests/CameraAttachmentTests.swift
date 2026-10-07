@@ -22,7 +22,7 @@ final class CameraAttachmentTests: XCTestCase {
     func testCancellationPreservesDraftAndAttachments() {
         let chat = ChatModel(client: stubClient())
         chat.draft = "Keep my message"
-        chat.addAttachment(UserImage(data: Data([1])))
+        chat.addAttachment(UserImage(data: Data([1]), kind: .image))
         chat.attachCapture(nil)
         XCTAssertEqual(chat.draft, "Keep my message")
         XCTAssertEqual(chat.attachments.count, 1)
@@ -32,11 +32,11 @@ final class CameraAttachmentTests: XCTestCase {
     func testBusyAndCapacityRejectFurtherAttachments() {
         let chat = ChatModel(client: stubClient())
         chat.busy = true
-        chat.addAttachment(UserImage(data: Data([1])))
+        chat.addAttachment(UserImage(data: Data([1]), kind: .image))
         chat.attachCapture(UIImage())
         XCTAssertTrue(chat.attachments.isEmpty)
         chat.busy = false
-        for _ in 0...UserImage.maximumAttachments { chat.addAttachment(UserImage(data: Data([1]))) }
+        for _ in 0...UserImage.maximumAttachments { chat.addAttachment(UserImage(data: Data([1]), kind: .image)) }
         chat.attachCapture(UIImage())
         XCTAssertEqual(chat.attachments.count, UserImage.maximumAttachments)
         XCTAssertNil(chat.error)

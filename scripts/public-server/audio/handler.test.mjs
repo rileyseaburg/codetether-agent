@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { unlink } from 'node:fs/promises';
 import { fixture } from './test-support.mjs';
 
 test('missing and invalid bearer never reach speech service', async t => {
@@ -19,6 +20,20 @@ test('media rejects unauthenticated uploads, invalid images and arbitrary file r
   assert.equal((await fetch(`${url}/mobile/image?path=${encodeURIComponent('/etc/passwd')}`, {
     headers: { Authorization: 'Bearer fixture' }
   })).status, 404);
+});
+test('media accepts PDFs under 12 MiB and rejects larger ones', async t => {
+  const { url } = await fixture(t);
+  const headers = { Authorization: 'Bearer fixture' };
+  const small = await fetch(`${url}/mobile/attachments`, { method: 'POST', headers,
+    body: JSON.stringify({ data: Buffer.from('%PDF-1.4 small').toString('base64') }) });
+  assert.equal(small.status, 200);
+  const { path } = await small.json();
+  assert.match(path, /\.pdf$/);
+  t.after(() => unlink(path).catch(() => {}));
+  const big = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(13 * 1024 * 1024)]);
+  const oversized = await fetch(`${url}/mobile/attachments`, { method: 'POST', headers,
+    body: JSON.stringify({ data: big.toString('base64') }) });
+  assert.equal(oversized.status, 400);
 });
 test('authenticated WAV streams without forwarding credentials to Kokoro', async t => {
   const { url } = await fixture(t);

@@ -1,5 +1,15 @@
 //! HTTP error and request compatibility contracts for worker progress.
 
+mod completion;
+mod event_assertions;
+mod fixtures;
+mod legacy;
+mod ordered;
+mod rejected;
+mod released;
+mod service;
+mod service_race;
+
 use super::{http_error, request::TaskOutputPayload};
 use crate::server::task_queue::OutputError;
 use axum::http::StatusCode;

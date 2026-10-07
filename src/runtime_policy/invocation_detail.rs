@@ -9,9 +9,18 @@ pub(super) fn render(tool: &str, args: &Value) -> Option<String> {
         "bash" => field(args, "command"),
         "exec_command" => field(args, "cmd"),
         "write" => write_detail(args),
-        _ => serde_json::to_string_pretty(args).ok(),
+        _ => serde_json::to_string_pretty(&visible(args)).ok(),
     }
     .filter(|detail| !detail.trim().is_empty())
+}
+
+/// Drop runtime-injected `__ct_*` / `_tool_call_id` keys the reviewer never set.
+fn visible(args: &Value) -> Value {
+    let mut shown = args.clone();
+    if let Some(map) = shown.as_object_mut() {
+        map.retain(|key, _| !key.starts_with("__ct_") && key != "_tool_call_id");
+    }
+    shown
 }
 
 fn write_detail(args: &Value) -> Option<String> {

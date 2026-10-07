@@ -4,9 +4,18 @@ members = [
     "crates/codetether-a2a-worker-core",
     "crates/codetether-audit",
     "crates/codetether-browser",
+    "crates/codetether-distill",
     "crates/codetether-event-stream",
     "crates/codetether-k8s",
+    "crates/codetether-knowledge-graph",
+    "crates/codetether-marketplace",
+    "crates/codetether-mesh",
+    "crates/codetether-okr",
+    "crates/codetether-paths",
+    "crates/codetether-plugin-marketplace",
+    "crates/codetether-provenance",
     "crates/codetether-rlm",
+    "crates/codetether-secrets",
     "crates/codetether-tls",
     "crates/codetether-util",
     "crates/codetether-worktree-isolation",
@@ -14,7 +23,7 @@ members = [
 
 [package]
 name = "codetether-agent"
-version = "4.7.6-dev.25"
+version = "4.7.6-dev.26"
 
 
 edition = "2024"
@@ -115,9 +124,18 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 codetether-a2a-worker-core = { path = "crates/codetether-a2a-worker-core", version = "0.1.0" }
 codetether-audit = { path = "crates/codetether-audit", version = "0.1.0" }
 codetether-browser = { path = "crates/codetether-browser", version = "0.1.1" }
+codetether-distill = { path = "crates/codetether-distill", version = "0.1.0" }
 codetether-event-stream = { path = "crates/codetether-event-stream", version = "0.1.0" }
 codetether-k8s = { path = "crates/codetether-k8s", version = "0.1.0" }
+codetether-knowledge-graph = { path = "crates/codetether-knowledge-graph", version = "0.1.0" }
+codetether-marketplace = { path = "crates/codetether-marketplace", version = "0.1.0" }
+codetether-mesh = { path = "crates/codetether-mesh", version = "0.1.0" }
+codetether-okr = { path = "crates/codetether-okr", version = "0.1.0" }
+codetether-paths = { path = "crates/codetether-paths", version = "0.1.0" }
+codetether-plugin-marketplace = { path = "crates/codetether-plugin-marketplace", version = "0.1.0" }
+codetether-provenance = { path = "crates/codetether-provenance", version = "0.1.0" }
 codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.1" }
+codetether-secrets = { path = "crates/codetether-secrets", version = "0.1.0" }
 codetether-tls = { path = "crates/codetether-tls", version = "0.1.0" }
 codetether-util = { path = "crates/codetether-util", version = "0.1.0" }
 codetether-worktree-isolation = { path = "crates/codetether-worktree-isolation", version = "0.1.0" }

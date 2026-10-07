@@ -21,6 +21,7 @@ struct AgentSession: Decodable {
 struct AgentReply: Decodable, Sendable { let text: String; let session_id: String }
 struct AgentFrame: Decodable, Sendable {
     let type: String
+    let model_selection: Bool?
     let result: AgentReply?
     let message: String?
     let event: Event?
@@ -33,5 +34,5 @@ struct AgentFrame: Decodable, Sendable {
 }
 
 @MainActor protocol AgentTransport {
-    func prompt(sessionID: String, message: String, status: @escaping (AgentFrame.Event) -> Void) async throws -> AgentReply
+    func prompt(sessionID: String, message: String, model: String, status: @escaping (AgentFrame.Event) -> Void) async throws -> AgentReply
 }

@@ -9,8 +9,8 @@ final class ChatLiveUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["CodeTether Chat"].waitForExistence(timeout: 60))
         XCTAssertTrue(app.staticTexts["agent-mode"].waitForExistence(timeout: 30))
         app.buttons["new-chat"].tap()
-        XCTAssertTrue(app.buttons["confirm-new-chat"].firstMatch.waitForExistence(timeout: 10))
-        app.buttons["confirm-new-chat"].firstMatch.tap()
+        let ready = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: app.buttons["new-chat"])
+        wait(for: [ready], timeout: 30)
         let readAloud = app.switches["read-aloud-toggle"]
         if readAloud.exists && readAloud.value as? String == "0" {
             readAloud.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5)).tap()
@@ -29,11 +29,10 @@ final class ChatLiveUITests: XCTestCase {
         XCTAssertFalse(reply.label.isEmpty)
         XCTAssertTrue(app.staticTexts["Kokoro playback finished"].waitForExistence(timeout: 180))
         if app.buttons["Stop response"].exists { app.buttons["Stop response"].tap() }
+        let sessionID = app.staticTexts["chat-session-id"].label.replacingOccurrences(of: "Session ", with: "")
         app.buttons["saved-chats"].tap()
         XCTAssertTrue(app.navigationBars["Saved chats"].waitForExistence(timeout: 20))
-        let search = app.searchFields.firstMatch
-        search.tap(); search.typeText(marker)
-        let saved = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", marker)).firstMatch
+        let saved = app.buttons["conversation-\(sessionID)"]
         XCTAssertTrue(saved.waitForExistence(timeout: 30))
         saved.tap()
         XCTAssertTrue(reply.waitForExistence(timeout: 30))

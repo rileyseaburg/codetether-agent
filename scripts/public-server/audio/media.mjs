@@ -11,7 +11,7 @@ export async function upload(request) {
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > 6 * 1024 * 1024) throw new HTTPError(413, 'Image is too large');
+    if (size > 20 * 1024 * 1024) throw new HTTPError(413, 'Upload is too large');
     chunks.push(chunk);
   }
   let payload;
@@ -21,9 +21,14 @@ export async function upload(request) {
   const bytes = Buffer.from(payload.data, 'base64');
   const png = bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   const jpeg = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
-  if ((!png && !jpeg) || bytes.length > 4 * 1024 * 1024) throw new HTTPError(400, 'A PNG or JPEG under 4 MiB is required');
+  const pdf = bytes.subarray(0, 5).toString('latin1') === '%PDF-';
+  const type = png && bytes.length <= 4 * 1024 * 1024 ? 'png'
+    : jpeg && bytes.length <= 4 * 1024 * 1024 ? 'jpg'
+    : pdf && bytes.length <= 12 * 1024 * 1024 ? 'pdf'
+    : null;
+  if (!type) throw new HTTPError(400, 'A PNG or JPEG under 4 MiB, or a PDF under 12 MiB, is required');
   await mkdir(uploads, { recursive: true, mode: 0o700 });
-  const path = join(uploads, `${randomUUID()}.${png ? 'png' : 'jpg'}`);
+  const path = join(uploads, `${randomUUID()}.${type}`);
   await writeFile(path, bytes, { mode: 0o600 });
   return { path };
 }

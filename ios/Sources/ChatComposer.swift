@@ -5,10 +5,15 @@ struct ChatComposer: View {
     var beforeSend: () -> Void = {}
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
-            TextField("Message CodeTether…", text: $chat.draft, axis: .vertical)
-                .lineLimit(1...6).padding(12)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
-                .accessibilityIdentifier("chat-input")
+            ImagePasteControl { image in
+                if let image { chat.attachCapture(image) }
+                else { chat.error = "Could not paste that image. Copy the screenshot again and retry." }
+            }
+            .frame(width: 44, height: 44)
+            .disabled(chat.busy || chat.attachments.count >= UserImage.maximumAttachments)
+            .accessibilityHint("Copy a screenshot, then tap to attach it")
+            PasteAwareTextField(text: $chat.draft, onImagePaste: { chat.attachCapture($0) },
+                                accessibilityIdentifier: "chat-input", placeholder: "Message CodeTether…")
             if chat.busy {
                 Button { chat.stop() } label: { Image(systemName: "stop.circle.fill").font(.title) }
                     .accessibilityLabel("Stop response")
@@ -18,6 +23,6 @@ struct ChatComposer: View {
                     .accessibilityLabel("Send message").accessibilityIdentifier("chat-send")
             }
         }
-        .padding().background(.bar)
+        .padding().background(.bar).disabled(chat.loading)
     }
 }

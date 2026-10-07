@@ -10,12 +10,19 @@ pub(super) fn tuple(result: ToolResult) -> ToolTuple {
 }
 
 pub(super) fn denied(tool: &str, approval_id: &str, reason: Option<&str>) -> ToolTuple {
-    let message = match reason {
-        Some(reason) => format!("Tool execution was denied by the user: {reason}"),
-        None => "Tool execution was denied by the user.".to_string(),
+    let feedback = reason.map(str::trim).filter(|text| !text.is_empty());
+    let message = match feedback {
+        Some(reason) => format!(
+            "Tool execution was denied by the user: {reason}. Nothing ran. \
+             Follow this feedback; do not resubmit the same call unchanged."
+        ),
+        None => "Tool execution was denied by the user. Nothing ran. Do not resubmit \
+                 the same call unchanged; choose a different approach or ask the user."
+            .to_string(),
     };
     let result = ToolResult::structured_error("TOOL_APPROVAL_DENIED", tool, &message, None, None)
-        .with_metadata("approval_request_id", json!(approval_id));
+        .with_metadata("approval_request_id", json!(approval_id))
+        .with_metadata("retry_same_call", json!(false));
     tuple(result)
 }
 

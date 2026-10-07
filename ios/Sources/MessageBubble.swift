@@ -18,6 +18,9 @@ struct MessageBubble: View {
             if message.content.count > 12000 && !expanded {
                 Button("Show full message") { expanded = true }
             }
+            ForEach(message.imagePaths, id: \.self) { path in
+                AgentImageView(path: path).accessibilityIdentifier("message-image-\(message.id)-\(path)")
+            }
             Button {
                 if active { voice.stop() }
                 else { beforeSpeak(); voice.speak(message.content, messageID: message.id) }
@@ -28,6 +31,7 @@ struct MessageBubble: View {
             .disabled(message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .accessibilityLabel(active ? "Stop reading this message" : "Read this message aloud with Kokoro")
             .accessibilityIdentifier("message-speaker-\(message.role)")
+            MessageCopyMenu(text: message.content)
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
         .background(message.role == "user" ? Color.accentColor.opacity(0.1) : Color(.secondarySystemBackground),

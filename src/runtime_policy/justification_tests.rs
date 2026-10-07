@@ -18,6 +18,9 @@ fn ask_mode_blocks_prompt_until_model_justifies_request() {
     assert_eq!(blocked.metadata["justification_required"], true);
     assert!(!blocked.metadata.contains_key("approval_request_id"));
     assert!(blocked.output.contains("\"justification\""));
+    let output: serde_json::Value = serde_json::from_str(&blocked.output).expect("json");
+    assert_eq!(output["error"]["example"]["command"], "cargo test");
+    assert!(output["error"]["message"].as_str().unwrap().contains("Nothing ran"));
 }
 
 #[test]

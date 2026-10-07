@@ -22,6 +22,18 @@ fn justification_edits_do_not_change_the_approval_resource() {
 }
 
 #[test]
+fn ask_mode_does_not_prompt_for_session_task_list() {
+    let _lock = lock_env();
+    let data = tempfile::tempdir().expect("tempdir");
+    let _env = ScopedEnv::data_dir_with_access(data.path(), AccessMode::Ask);
+    let list = json!({"action": "list", "__ct_session_id": "s1"});
+    let config = Config::default();
+    assert!(evaluate_tool_invocation_with_config(&config, "session_task", &list).is_none());
+    let delete = json!({"action": "delete", "id": "m1"});
+    assert!(evaluate_tool_invocation_with_config(&config, "memory", &delete).is_some());
+}
+
+#[test]
 fn approve_mode_does_not_demand_justification() {
     let _lock = lock_env();
     let data = tempfile::tempdir().expect("tempdir");

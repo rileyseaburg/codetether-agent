@@ -5,6 +5,9 @@ use crate::session::{Session, SessionEvent, SessionResult};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
+#[path = "prompt_model.rs"]
+mod prompt_model;
+
 /// Terminal join result produced by one prompt task.
 pub(super) type PromptOutcome = Result<Result<SessionResult, String>, tokio::task::JoinError>;
 
@@ -16,9 +19,9 @@ pub(super) struct PromptRun {
 
 impl PromptRun {
     /// Start a prompt without blocking WebSocket steering input.
-    pub(super) fn start(session_id: String, message: String) -> Self {
+    pub(super) fn start(session_id: String, message: String, model: Option<String>) -> Self {
         let (event_tx, events) = mpsc::channel(256);
-        let task = tokio::spawn(execute(session_id, message, event_tx));
+        let task = tokio::spawn(execute(session_id, message, model, event_tx));
         Self { events, task }
     }
 
@@ -33,11 +36,13 @@ impl PromptRun {
 async fn execute(
     session_id: String,
     message: String,
+    model: Option<String>,
     event_tx: mpsc::Sender<SessionEvent>,
 ) -> Result<SessionResult, String> {
     let mut session = Session::load(&session_id)
         .await
         .map_err(|error| error.to_string())?;
+    prompt_model::apply(&mut session.metadata, model);
     let registry = ProviderRegistry::shared_from_vault()
         .await
         .map_err(|error| error.to_string())?;

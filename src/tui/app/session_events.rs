@@ -11,6 +11,7 @@
 //! the newest message when auto-follow is enabled.
 
 mod approval_hint;
+mod block_hint;
 mod context;
 mod errors;
 mod flow;

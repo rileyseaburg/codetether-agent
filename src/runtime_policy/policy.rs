@@ -6,11 +6,11 @@ use crate::config::{ApprovalPolicy, Config, PermissionConfig, PermissionProfile,
 /// Reusable decision state derived from effective configuration.
 #[derive(Debug, Clone)]
 pub struct RuntimeToolPolicy {
-    approval_policy: ApprovalPolicy,
-    permission_profile: PermissionProfile,
-    sandbox_mode: SandboxMode,
-    permissions: PermissionConfig,
-    project_trusted: bool,
+    pub approval_policy: ApprovalPolicy,
+    pub permission_profile: PermissionProfile,
+    pub sandbox_mode: SandboxMode,
+    pub permissions: PermissionConfig,
+    pub project_trusted: bool,
 }
 
 impl RuntimeToolPolicy {

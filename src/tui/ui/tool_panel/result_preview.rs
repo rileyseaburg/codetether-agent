@@ -3,8 +3,12 @@
 use serde_json::Value;
 
 mod roster;
+mod structured_error;
 
 pub(super) fn format(name: &str, output: &str) -> String {
+    if let Some(summary) = structured_error::format(output) {
+        return summary;
+    }
     if name != "agent" {
         return output.to_string();
     }

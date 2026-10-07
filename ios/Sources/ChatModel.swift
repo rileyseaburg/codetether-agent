@@ -13,13 +13,18 @@ final class ChatModel: ObservableObject {
     @Published var error: String?
     @Published var agentStatus = ""
     @Published var replyForSpeech: String?
+    @Published var voiceModeActive = false
+    var replySpeechOwner: ReplySpeechOwner = .chat
     @Published var tools: [String] = []
     @Published var attachments: [UserImage] = []
     @Published var sessionID = UserDefaults.standard.string(forKey: "agent.session")
     var agent: AgentTransport = AgentSocket()
-    @Published var generatedImages: [String] = []
     let client: ServerClient
-    var requestTask: Task<Void, Never>?
+    var requestTask: Task<String?, Never>?
+    @Published var conversationID = UUID()
+    var activeTurnID: UUID?
+    var sessionCreation: Task<String, Error>?
+    var sessionCreationID: UUID?
     var activeAssistantItem: String?
     var completedItems: [String] = []
     var currentReplyID: UUID?

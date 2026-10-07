@@ -14,7 +14,7 @@ use std::sync::Arc;
 ///
 /// # Errors
 /// Returns a queue release error without publishing when the transition is rejected.
-pub(super) async fn release(
+pub(in crate::server) async fn release(
     tasks: &KnativeTaskQueue,
     bus: &Arc<AgentBus>,
     req: &ReleaseRequest,

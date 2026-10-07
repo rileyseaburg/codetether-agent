@@ -21,7 +21,7 @@ struct TranscriptScrollFixture: View {
                 Button("Busy") { busy.toggle() }.accessibilityIdentifier("fixture-busy")
             }.font(.caption)
             Text("Generation \(generation)").accessibilityIdentifier("fixture-generation")
-            ChatTranscript(messages: messages, busy: busy, images: [], voice: voice)
+            ChatTranscript(messages: messages, busy: busy, voice: voice)
         }
     }
 

@@ -1,0 +1,12 @@
+[package]
+name = "codetether-mesh"
+version = "0.1.0"
+edition = "2024"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+description = "Cross-machine swarm cost cards and peer scheduling for CodeTether"
+license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0.229", features = ["derive"] }

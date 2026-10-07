@@ -26,3 +26,6 @@ pub(super) fn router() -> axum::Router<super::AppState> {
 pub(super) use worker_task_claim::worker_task_claim;
 pub(super) use worker_task_release::worker_task_release;
 pub(super) use worker_task_stream::worker_task_stream;
+
+#[cfg(test)]
+pub(super) use worker_task_release::{ReleaseRequest, service as task_release_service};

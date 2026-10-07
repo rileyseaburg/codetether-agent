@@ -8,8 +8,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub(super) enum ClientFrame {
-    Prompt { message: String },
-    Steer { request_id: String, message: String },
+    Prompt {
+        message: String,
+        model: Option<String>,
+    },
+    Steer {
+        request_id: String,
+        message: String,
+    },
     Cancel,
 }
 
@@ -17,9 +23,21 @@ pub(super) enum ClientFrame {
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub(super) enum ServerFrame {
-    Ready { session_id: String },
-    Event { event: ThreadEvent },
-    Steering { request_id: String, accepted: bool },
-    Result { result: SessionResult },
-    Error { message: String },
+    Ready {
+        session_id: String,
+        model_selection: bool,
+    },
+    Event {
+        event: ThreadEvent,
+    },
+    Steering {
+        request_id: String,
+        accepted: bool,
+    },
+    Result {
+        result: SessionResult,
+    },
+    Error {
+        message: String,
+    },
 }

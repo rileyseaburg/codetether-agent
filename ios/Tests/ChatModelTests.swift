@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor private final class FakeAgent: AgentTransport {
     var fail = false
-    func prompt(sessionID: String, message: String, status: @escaping (AgentFrame.Event) -> Void) async throws -> AgentReply {
+    func prompt(sessionID: String, message: String, model: String, status: @escaping (AgentFrame.Event) -> Void) async throws -> AgentReply {
         if fail { throw ClientError.unauthorized }
         return AgentReply(text: "Hello Riley", session_id: sessionID)
     }
@@ -22,7 +22,7 @@ final class ChatModelTests: XCTestCase {
         chat.selectedModel = "agent"
         chat.draft = "Hi"
         chat.send()
-        await chat.requestTask?.value
+        _ = await chat.requestTask?.value
         XCTAssertEqual(chat.messages.map(\.content), ["Hi", "Hello Riley"])
         XCTAssertFalse(chat.busy)
         XCTAssertNil(chat.error)
@@ -40,7 +40,7 @@ final class ChatModelTests: XCTestCase {
         chat.selectedModel = "agent"
         chat.draft = "Keep this message"
         chat.send()
-        await chat.requestTask?.value
+        _ = await chat.requestTask?.value
         XCTAssertTrue(chat.messages.isEmpty)
         XCTAssertEqual(chat.draft, "Keep this message")
         XCTAssertNotNil(chat.error)

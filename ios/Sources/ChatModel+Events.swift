@@ -8,7 +8,7 @@ extension ChatModel {
         if event.kind == "item.completed", let id = event.payload?.item_id, id == activeAssistantItem,
            let text = event.payload?.text, !text.isEmpty, rememberCompletedItem(id) {
             upsertReply(TranscriptPresentation.displayText(text))
-            replyForSpeech = TranscriptPresentation.displayText(text)
+            publishReplySpeech(TranscriptPresentation.displayText(text))
         }
         if event.kind == "tool.started", agentStatus != "Working…" {
             agentStatus = "Working…"
@@ -17,7 +17,7 @@ extension ChatModel {
             if tools.count < 64 && !tools.contains(name) { tools.append(name) }
         }
         if event.kind == "tool.metadata", let path = event.payload?.metadata?.saved_path {
-            if !generatedImages.contains(path) { generatedImages.append(path) }
+            appendReplyImages(ImageReferencePaths.extract(path))
         }
     }
 }

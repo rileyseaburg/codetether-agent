@@ -8,6 +8,7 @@ pub(super) async fn load(args: &RunArgs) -> Config {
     let access_mode = effective_access_mode(args);
     Config::apply_process_access_mode_override(access_mode);
     config.apply_access_mode_override(access_mode);
+    crate::runtime_policy::note_access_mode(config.effective_access_mode());
     config
 }
 

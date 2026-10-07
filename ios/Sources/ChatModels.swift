@@ -4,6 +4,8 @@ struct ChatMessage: Identifiable, Codable {
     var id = UUID()
     let role: String
     let content: String
+    /// Presentation-only paths owned by this message; excluded from chat API payloads.
+    var imagePaths: [String] = []
     enum CodingKeys: String, CodingKey { case role, content }
 }
 

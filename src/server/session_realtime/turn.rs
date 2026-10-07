@@ -9,8 +9,10 @@ pub(super) async fn run(
     mut stream: SocketStream,
     session_id: String,
     message: String,
+    model: Option<String>,
 ) {
-    let Some((mut mapper, mut run)) = turn_start::start(&mut sink, &session_id, message).await
+    let Some((mut mapper, mut run)) =
+        turn_start::start(&mut sink, &session_id, message, model).await
     else {
         return;
     };

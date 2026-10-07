@@ -4,6 +4,7 @@ import UIKit
 @main
 struct CodeTetherApp: App {
     @StateObject private var connection = ConnectionModel()
+    @StateObject private var chat = ChatModel()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -14,6 +15,10 @@ struct CodeTetherApp: App {
 #if DEBUG && targetEnvironment(simulator)
             if CommandLine.arguments.contains("--transcript-scroll-fixture") {
                 TranscriptScrollFixture()
+            } else if CommandLine.arguments.contains("--voice-model-picker-fixture") {
+                VoiceModelPickerFixture()
+            } else if CommandLine.arguments.contains("--markdown-copy-fixture") {
+                MarkdownCopyFixture()
             } else { appContent }
 #else
             appContent
@@ -23,8 +28,10 @@ struct CodeTetherApp: App {
 
     private var appContent: some View {
         TabView {
-            ChatView(connection: connection)
+            ChatView(connection: connection, chat: chat)
                 .tabItem { Label("Chat", systemImage: "bubble.left.and.bubble.right") }
+            VoiceModeTab(chat: chat)
+                .tabItem { Label("Voice", systemImage: "waveform.circle") }
             DashboardView(model: connection)
                 .tabItem { Label("Server", systemImage: "server.rack") }
         }

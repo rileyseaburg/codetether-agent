@@ -38,9 +38,11 @@ pub(super) fn missing(
             "TOOL_JUSTIFICATION_REQUIRED",
             tool_name,
             "Access mode `ask` requires a justification before the user is prompted. \
-             Retry with a `justification` stating why this action is needed for the current request.",
+             Nothing ran. Retry the same call with identical arguments plus a one-sentence \
+             `justification` tied to the current request (see `example`). Do not change \
+             other arguments, or the request will need a fresh approval.",
             Some(vec![FIELD]),
-            Some(json!({ "justification": "<why this action is needed>" })),
+            Some(super::justification_example::retry(args)),
         )
         .with_metadata("policy_outcome", json!(code::outcome(decision.outcome)))
         .with_metadata("policy_reason", json!(code::reason(decision.reason)))

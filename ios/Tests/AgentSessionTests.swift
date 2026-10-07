@@ -23,7 +23,7 @@ final class AgentSessionTests: XCTestCase {
         let chat = ChatModel()
         let event = #"{"kind":"tool.metadata","payload":{"name":"image_gen","metadata":{"saved_path":"/home/riley/image.png"}}}"#
         chat.receive(try JSONDecoder().decode(AgentFrame.Event.self, from: Data(event.utf8)))
-        XCTAssertEqual(chat.generatedImages, ["/home/riley/image.png"])
+        XCTAssertEqual(chat.messages.last?.imagePaths, ["/home/riley/image.png"])
         let done = #"{"kind":"tool.completed","payload":{"name":"websearch","success":true}}"#
         chat.receive(try JSONDecoder().decode(AgentFrame.Event.self, from: Data(done.utf8)))
         XCTAssertEqual(chat.tools, ["websearch"])

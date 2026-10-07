@@ -1,5 +1,19 @@
 //! Wire contract tests for the realtime session adapter.
 
+/// Verify the chosen qualified model is not lost between client and turn runner.
+#[test]
+fn decodes_selected_model() {
+    let frame = wire::decode(r#"{"type":"prompt","message":"hello","model":"provider/chosen"}"#)
+        .expect("prompt with model");
+    assert_eq!(
+        frame,
+        ClientFrame::Prompt {
+            message: "hello".into(),
+            model: Some("provider/chosen".into()),
+        }
+    );
+}
+
 use super::frames::ClientFrame;
 use super::wire;
 
@@ -11,6 +25,7 @@ fn decodes_prompt_frame() {
         frame,
         ClientFrame::Prompt {
             message: "inspect now".into(),
+            model: None,
         }
     );
 }

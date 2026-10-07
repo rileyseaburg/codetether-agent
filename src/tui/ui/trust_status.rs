@@ -21,6 +21,7 @@ pub fn set_from_config(config: &Config) {
 
 /// Store an explicit trust policy status.
 pub fn set_status(status: TrustPolicyStatus) {
+    crate::runtime_policy::note_access_mode(status.access_mode);
     *STATUS.lock().expect("trust status mutex poisoned") = Some(status);
 }
 

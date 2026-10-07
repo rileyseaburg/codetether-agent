@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow};
 use std::sync::Arc;
 
 use super::parsed_call::ParsedToolCall;
-use super::{ToolCallRouter, parse, prioritize, prompt};
+use super::{ToolCallRouter, identity_prompt, parse, prioritize, prompt};
 use crate::provider::ToolDefinition;
 
 impl ToolCallRouter {
@@ -29,6 +29,7 @@ impl ToolCallRouter {
                 .lock()
                 .map_err(|_| anyhow!("FunctionGemma mutex poisoned"))?;
             // `think_raw` skips chat templating: the prompt is already formatted.
+            let prompt = identity_prompt::with_identity(&prompt, guard.identity.model());
             guard.think_raw(&prompt)
         })
         .await

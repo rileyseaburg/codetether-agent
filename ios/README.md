@@ -3,7 +3,8 @@
 Native SwiftUI client for `https://server.codetether.run` (iOS 17+).
 Opens to the actual CodeTether agent, with tools, streaming status and replies.
 Saved chats are persisted by the server; open the clock icon to browse and resume.
-Add image opens the photo picker with removable previews. Dictate transcribes
+Add image opens the photo picker with removable previews; pasting an image
+into the message field attaches it the same way. Dictate transcribes
 speech into an editable draft. Read aloud and Test speaker use server-side Kokoro.
 Server status remains a second tab. Settings manages the device-only bearer.
 See `AGENT-VOICE-VERIFICATION.md` for the current feature evidence.

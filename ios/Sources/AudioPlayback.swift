@@ -23,7 +23,10 @@ final class AudioPlayback: NSObject, AVAudioPlayerDelegate {
             Task { @MainActor in if self.player === active { self.stop() } }
         }
     }
-    func stop() { player?.stop(); finish(CancellationError()) }
+    func stop() {
+        guard player != nil else { return }
+        player?.stop(); finish(CancellationError())
+    }
     private func finish(_ error: Error? = nil) {
         if let error { completion?.resume(throwing: error) }
         else { completion?.resume() }

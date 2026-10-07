@@ -17,8 +17,11 @@ pub(super) fn lines(item: &ApprovalSnapshot) -> Vec<Line<'static>> {
         Line::from(format!("id: {}", item.id).dim()),
     ];
     lines.extend(Text::raw(format!("→ {}", item.reason)).lines);
-    if let Some(justification) = &item.justification {
-        lines.extend(Text::raw(format!("because: {justification}")).lines);
+    match &item.justification {
+        Some(justification) => {
+            lines.extend(Text::raw(format!("because: {justification}")).lines);
+        }
+        None => lines.push(Line::from("because: (no justification given)".red().dim())),
     }
     lines
 }

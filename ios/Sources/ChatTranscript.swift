@@ -3,7 +3,6 @@ import SwiftUI
 struct ChatTranscript: View {
     let messages: [ChatMessage]
     let busy: Bool
-    var images: [String] = []
     @ObservedObject var voice: VoiceOutput
     var beforeSpeak: () -> Void = {}
     @State private var visibleCount = 40
@@ -27,7 +26,6 @@ struct ChatTranscript: View {
                     ForEach(visible) { message in
                         MessageBubble(message: message, voice: voice, beforeSpeak: beforeSpeak)
                     }
-                    ForEach(images, id: \.self) { AgentImageView(path: $0) }
                     if busy { ProgressView("Working…").padding(.vertical).accessibilityIdentifier("chat-thinking") }
                     Color.clear.frame(height: 1).id("bottom")
 #if DEBUG && targetEnvironment(simulator)

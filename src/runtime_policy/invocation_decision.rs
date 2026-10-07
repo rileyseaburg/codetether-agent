@@ -25,7 +25,7 @@ pub(super) fn decide(
     if let Some(decision) = super::sandbox_preflight::decision(policy, tool_name, args) {
         return decision;
     }
-    policy.decide_tool(tool_name)
+    policy.decide_tool_action(tool_name, args)
 }
 
 fn denied_command_rule(

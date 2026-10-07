@@ -9,11 +9,21 @@ settings:
     SWIFT_VERSION: '5.9'
     DEVELOPMENT_TEAM: J9YRM3U37D
     CODE_SIGN_STYLE: Automatic
+packages:
+  MarkdownUI:
+    url: https://github.com/gonzalezreal/swift-markdown-ui.git
+    exactVersion: 2.4.1
 targets:
   CodeTether:
     type: application
     platform: iOS
-    sources: [Sources]
+    dependencies:
+      - package: MarkdownUI
+    sources:
+      - path: Sources
+      - path: Resources/SileroVAD.mlmodelc
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: run.codetether.ios
@@ -26,5 +36,5 @@ targets:
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: Transcribe your voice into a message you can review before sending.
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         TARGETED_DEVICE_FAMILY: '1'
-        MARKETING_VERSION: '1.5.0'
-        CURRENT_PROJECT_VERSION: '9'
+        MARKETING_VERSION: '1.5.1'
+        CURRENT_PROJECT_VERSION: '21'

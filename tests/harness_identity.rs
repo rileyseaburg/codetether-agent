@@ -13,11 +13,13 @@ pub(crate) mod provider {
 use codetether_agent::cognition::ThinkerConfig;
 
 pub(crate) mod cognition {
-    pub use codetether_agent::cognition::ThinkerConfig;
+    pub use codetether_agent::cognition::{CandleDevicePreference, ThinkerBackend, ThinkerConfig};
 }
 
 #[path = "../src/cognition/thinker/bedrock_request.rs"]
 mod bedrock_request;
+#[path = "harness_identity/functiongemma.rs"]
+mod functiongemma;
 #[path = "harness_identity/gemini.rs"]
 mod gemini;
 #[path = "../src/provider/metrics/identity.rs"]

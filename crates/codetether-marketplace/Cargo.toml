@@ -1,0 +1,11 @@
+[package]
+name = "codetether-marketplace"
+version = "0.1.0"
+edition = "2024"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+description = "OKR auction, bidding, and reputation types for the CodeTether agent marketplace"
+license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }

@@ -1095,7 +1095,7 @@ dependencies = [
 
 [[package]]
 name = "codetether-agent"
-version = "4.7.6-dev.25"
+version = "4.7.6-dev.26"
 dependencies = [
  "anyhow",
  "arboard",
@@ -1116,9 +1116,18 @@ dependencies = [
  "codetether-a2a-worker-core",
  "codetether-audit",
  "codetether-browser",
+ "codetether-distill",
  "codetether-event-stream",
  "codetether-k8s",
+ "codetether-knowledge-graph",
+ "codetether-marketplace",
+ "codetether-mesh",
+ "codetether-okr",
+ "codetether-paths",
+ "codetether-plugin-marketplace",
+ "codetether-provenance",
  "codetether-rlm",
+ "codetether-secrets",
  "codetether-tls",
  "codetether-util",
  "codetether-worktree-isolation",
@@ -1231,6 +1240,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-distill"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "codetether-event-stream"
 version = "0.1.0"
 dependencies = [
@@ -1270,6 +1289,81 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-knowledge-graph"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+]
+
+[[package]]
+name = "codetether-marketplace"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "codetether-mesh"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+]
+
+[[package]]
+name = "codetether-okr"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-paths",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "codetether-paths"
+version = "0.1.0"
+dependencies = [
+ "directories 6.0.0",
+ "tempfile",
+]
+
+[[package]]
+name = "codetether-plugin-marketplace"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "hex",
+ "libc",
+ "serde",
+ "sha2 0.11.0",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-provenance"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-paths",
+ "hex",
+ "hmac 0.13.0",
+ "serde",
+ "sha2 0.11.0",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "codetether-rlm"
 version = "0.1.1"
 dependencies = [
@@ -1290,6 +1384,24 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-rust",
  "uuid",
+]
+
+[[package]]
+name = "codetether-secrets"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "directories 6.0.0",
+ "parking_lot",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "vaultrs",
+ "windows",
 ]
 
 [[package]]

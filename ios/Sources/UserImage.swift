@@ -3,9 +3,15 @@ import UIKit
 struct UserImage: Identifiable {
     let id = UUID()
     let data: Data
+    let kind: AttachmentKind
     var serverPath: String?
     static let maximumAttachments = 3
+    static let maximumDocumentBytes = 12 * 1024 * 1024
     static func prepare(_ data: Data) throws -> UserImage {
+        if AttachmentKind.detect(data) == .document {
+            guard data.count <= maximumDocumentBytes else { throw ClientError.invalidResponse }
+            return UserImage(data: data, kind: .document)
+        }
         guard data.count < 25 * 1024 * 1024, let image = UIImage(data: data) else { throw ClientError.invalidResponse }
         return try prepare(image)
     }
@@ -21,7 +27,7 @@ struct UserImage: Identifiable {
         guard let encoded = resized.jpegData(compressionQuality: 0.75), encoded.count <= 4 * 1024 * 1024 else {
             throw ClientError.invalidResponse
         }
-        return UserImage(data: encoded)
+        return UserImage(data: encoded, kind: .image)
     }
 }
 

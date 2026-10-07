@@ -7,7 +7,7 @@ mod outcome;
 #[path = "worker_task_release/request.rs"]
 mod request;
 #[path = "worker_task_release/service.rs"]
-mod service;
+pub(in crate::server) mod service;
 #[cfg(test)]
 #[path = "worker_task_release/tests.rs"]
 mod tests;

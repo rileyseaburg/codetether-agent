@@ -14,4 +14,13 @@ extension ChatModel {
             self.error = "That photo could not be attached. Try another photo."
         }
     }
+
+    func attachDocument(_ data: Data) {
+        guard !busy, attachments.count < UserImage.maximumAttachments else { return }
+        do {
+            addAttachment(try UserImage.prepare(data))
+        } catch {
+            self.error = "That PDF could not be attached. Try a smaller file."
+        }
+    }
 }

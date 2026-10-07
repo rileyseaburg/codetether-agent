@@ -1,0 +1,14 @@
+[package]
+name = "codetether-paths"
+version = "0.1.0"
+edition = "2024"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+description = "Workspace root and data-directory resolution shared by CodeTether crates"
+license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
+
+[dependencies]
+directories = "6"
+
+[dev-dependencies]
+tempfile = "3.25.0"
