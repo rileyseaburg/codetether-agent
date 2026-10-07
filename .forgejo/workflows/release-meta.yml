@@ -8,7 +8,8 @@ jobs:
   meta:
     # Reading Cargo.toml must not block every platform behind the macOS queue.
     runs-on: codetether-release-proxmox
-    timeout-minutes: 10
+    # Cold LXC preparation consumed 9m44s of a 10-minute budget in run #101.
+    timeout-minutes: 15
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
