@@ -29,7 +29,8 @@ pub(crate) async fn dispatch_prompt(
     runtime: &TuiSessionHandle,
 ) {
     if crate::session::tasks::runtime::answer_review::held(slot.view().id()) {
-        app.state.status = "Goal paused — select Yes in the answer review before continuing".into();
+        app.state.status =
+            "Goal paused — select Yes in the answer review or submit /continue".into();
         return;
     }
     app.state.clear_input();

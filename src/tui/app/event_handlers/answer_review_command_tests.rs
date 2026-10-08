@@ -1,5 +1,8 @@
 //! Goal commands remain reachable while satisfaction or approval is pending.
 
+#[path = "answer_review_continue_tests.rs"]
+mod continuation;
+
 use crate::session::tasks::runtime::answer_review;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 

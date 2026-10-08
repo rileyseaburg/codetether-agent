@@ -2,6 +2,7 @@
 
 mod answer;
 pub(crate) mod commands;
+mod continuation;
 pub(crate) mod editor;
 mod submit;
 

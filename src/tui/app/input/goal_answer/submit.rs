@@ -11,6 +11,9 @@ pub(crate) async fn intercept(
     slot: &SessionSlot,
     runtime: &TuiSessionHandle,
 ) -> bool {
+    if super::continuation::intercept(app, slot, runtime).await {
+        return true;
+    }
     let input = app.state.input.trim();
     let question = if let Some(rest) = input.strip_prefix("/ask") {
         if !rest.starts_with(char::is_whitespace) {

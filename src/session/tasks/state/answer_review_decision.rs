@@ -25,11 +25,13 @@ pub(super) fn apply(state: &mut TaskState, update: &AnswerReviewUpdate) {
             review.question = None;
             review.ready = false;
         }
-        Action::Satisfied if review.ready => {
+        Action::Satisfied | Action::ResumeRequested
+            if review.ready || matches!(update.decision, Action::ResumeRequested) =>
+        {
             goal.status = super::answer_review_resume::status(goal, review.resume_status);
             goal.last_updated_at = update.at;
             state.answer_review = None;
         }
-        Action::Satisfied => {}
+        Action::Satisfied | Action::ResumeRequested => {}
     }
 }

@@ -17,7 +17,7 @@ async fn answer_review_intercepts_plain_and_ask_questions() {
         let (notice_tx, _notice_rx) = tokio::sync::mpsc::channel(4);
         let runtime = spawn(event_tx, notice_tx);
         app.state.input = "/continue".into();
-        assert!(!super::intercept(&mut app, &slot, &runtime).await);
+        assert!(super::intercept(&mut app, &slot, &runtime).await);
         assert!(!answer_review::held(slot.view().id()));
         app.state.input = question.into();
         assert!(super::intercept(&mut app, &slot, &runtime).await);

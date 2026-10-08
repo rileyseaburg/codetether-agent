@@ -28,6 +28,8 @@ fn answer_review_only_acceptance_of_a_delivered_answer_resumes() {
     assert!(state.answer_review.is_none());
 }
 
+#[path = "answer_review_continue_tests.rs"]
+mod continuation;
 #[path = "answer_review_persistence_tests.rs"]
 mod persistence;
 #[path = "answer_review_replacement_tests.rs"]

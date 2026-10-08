@@ -30,7 +30,9 @@ pub(super) fn build_request(
         role: Role::User,
         content: vec![ContentPart::Text {
             text: format!(
-                "[SIDE QUESTION — answer from context only, no tools, single reply]\n{question}"
+                "[SIDE QUESTION — answer from context only, no tools, single reply. \
+                 This reply cannot resume goal execution. Never claim work is resuming; \
+                 direct continuation requests to /continue.]\n{question}"
             ),
         }],
     });

@@ -1,6 +1,6 @@
 //! Durable user decisions for an answer that interrupted a goal.
 
-/// A user-question review transition; only `Satisfied` releases the hold.
+/// A user-question review transition; acceptance or explicit continuation releases the hold.
 ///
 /// # Examples
 /// ```rust
@@ -19,4 +19,6 @@ pub enum AnswerReviewAction {
     Unsatisfied,
     /// The user explicitly selected Yes; restore the prior goal status.
     Satisfied,
+    /// The user explicitly requested continuation, without rating the answer.
+    ResumeRequested,
 }

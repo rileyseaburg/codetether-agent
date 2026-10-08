@@ -58,7 +58,7 @@ pub(super) async fn submit(
             .send(SessionNotice::Failed {
                 session: request.session,
                 error:
-                    "Goal paused: select Yes in the answer satisfaction prompt before continuing"
+                    "Goal paused: select Yes in the answer satisfaction prompt or submit /continue"
                         .into(),
             })
             .await;
