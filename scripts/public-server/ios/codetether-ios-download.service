@@ -4,6 +4,7 @@ After=network.target
 
 [Service]
 ExecStart=@NODE@ @ROOT@/server.mjs
+Environment=CODETETHER_IOS_RELEASE=@RELEASE@
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

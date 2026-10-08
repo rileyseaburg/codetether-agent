@@ -14,10 +14,10 @@ extension ChatModel {
         return turn
     }
 
-    func executeTurn(_ turn: ChatTurn) async -> String? {
+    func executeTurn(_ turn: ChatTurn, prompt override: String? = nil) async -> String? {
         defer { finishTurn(turn.id) }
         do {
-            let prompt = turn.message.content.isEmpty ? "Describe the attached image." : turn.message.content
+            let prompt = override ?? (turn.message.content.isEmpty ? "Describe the attached image." : turn.message.content)
             let reply = try await runAgentTurn(prompt, turn: turn.id, model: turn.model)
             try requireTurn(turn.id)
             let text = TranscriptPresentation.displayText(reply.text)

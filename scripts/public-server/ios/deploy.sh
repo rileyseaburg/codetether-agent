@@ -24,6 +24,7 @@ for file in CodeTether.ipa manifest.plist index.html release.json SHA256SUMS; do
   install -m 644 "$ASSETS/$file" "$DEST/$file"
 done
 sed -e "s|@NODE@|$(command -v node)|g" -e "s|@ROOT@|$HERE|g" \
+  -e "s|@RELEASE@|$RELEASE|g" \
   "$HERE/codetether-ios-download.service" > "$HOME/.config/systemd/user/codetether-ios-download.service"
 systemctl --user daemon-reload
 systemctl --user restart codetether-ios-download.service

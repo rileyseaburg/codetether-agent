@@ -1,0 +1,41 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { fixture, request, token, input, image } from './fixture.ts';
+import { Registry } from '../registry.ts';
+import { commandSnapshot, requestCapture } from '../commands.ts';
+
+test('mocked local: owner questions require fresh matched screenshots with no iPhone connection', async t => {
+  let prompt = '';
+  const base = await fixture(t, async (analysis): Promise<void> => { prompt = analysis.prompt; analysis.delta('Visible editor'); });
+  const receipt = await (await request(base, '/sessions', input)).json() as { id: string; code: string };
+  const path = `/sessions/${receipt.id}`;
+  assert.equal((await request(base, `${path}/request`, { question: 'What is visible?' })).status, 409);
+  const pair = await (await request(base, '/pair', { code: receipt.code }, '')).json() as { device_token: string };
+  const device = pair.device_token;
+  assert.equal((await request(base, `${path}/request`, { question: 'What is visible?' }, device)).status, 401);
+  const queued = await request(base, `${path}/request`, { question: 'What is visible?' });
+  assert.equal(queued.status, 202);
+  const command = await (await request(base, `${path}/commands`, undefined, device, 'GET')).json() as { request_id: string };
+  assert.equal(typeof command.request_id, 'string');
+  const frame = { image: image(), captured_at: new Date().toISOString(), trigger: 'manual' };
+  assert.equal((await request(base, `${path}/frames`, frame, device)).status, 409);
+  assert.equal((await request(base, `${path}/frames`, { ...frame, request_id: command.request_id, captured_at: new Date(0).toISOString() }, device)).status, 400);
+  assert.equal((await request(base, `${path}/frames`, { ...frame, request_id: command.request_id }, device)).status, 202);
+  for (let i = 0; i < 50 && !prompt; i++) await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(prompt, 'What is visible?');
+  assert.equal((await request(base, `${path}/frames`, { ...frame, request_id: command.request_id }, device)).status, 409);
+  assert.equal((await request(base, path, undefined, token, 'DELETE')).status, 200);
+  assert.equal((await request(base, `${path}/commands`, undefined, device, 'GET')).status, 410);
+});
+test('static/local: unanswered requests expire without sending questions to Windows', () => {
+  const registry = new Registry(), created = registry.create(input, 1000);
+  registry.pair(created.code, 1000);
+  const session = registry.get(created.id, 1000);
+  const queued = requestCapture(session, { question: 'Describe visible applications' }, 2000);
+  assert.deepEqual(commandSnapshot(session, 2001), queued);
+  assert.throws(() => requestCapture(session, { question: 'Second' }, 2002));
+  assert.deepEqual(commandSnapshot(session, 62000), { request_id: null });
+  assert.equal(session.status, 'error');
+  assert.equal(session.pending, undefined);
+  assert.equal(session.text, '');
+});

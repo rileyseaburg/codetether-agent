@@ -2,6 +2,8 @@
 
 #[path = "session_routes/create.rs"]
 mod create;
+#[path = "session_routes/fork.rs"]
+mod fork;
 #[path = "session_routes/get.rs"]
 mod get;
 #[path = "session_routes/goal.rs"]
@@ -23,4 +25,5 @@ pub(super) fn router() -> axum::Router<super::AppState> {
         .route("/api/session/{id}", get(get::get))
         .route("/api/session/{id}/goal", get(goal::get).post(goal::post))
         .route("/api/session/{id}/prompt", post(prompt::prompt))
+        .route("/api/session/{id}/fork", post(fork::fork))
 }

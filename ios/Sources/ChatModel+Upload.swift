@@ -18,7 +18,7 @@ extension ChatModel {
                 if attachments[index].kind == .document { documentPaths.append(path) } else { imagePaths.append(path) }
             }
         }
-        if let index = messages.firstIndex(where: { $0.id == userID }) {
+        if !imagePaths.isEmpty, let index = messages.firstIndex(where: { $0.id == userID }) {
             messages[index].imagePaths = imagePaths
         }
         return try AttachmentPrompt.build(text, imagePaths: imagePaths, documentPaths: documentPaths)

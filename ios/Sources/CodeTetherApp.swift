@@ -5,6 +5,7 @@ import UIKit
 struct CodeTetherApp: App {
     @StateObject private var connection = ConnectionModel()
     @StateObject private var chat = ChatModel()
+    @StateObject private var screen = ScreenModel()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -32,6 +33,8 @@ struct CodeTetherApp: App {
                 .tabItem { Label("Chat", systemImage: "bubble.left.and.bubble.right") }
             VoiceModeTab(chat: chat)
                 .tabItem { Label("Voice", systemImage: "waveform.circle") }
+            ScreenView(model: screen, chat: chat)
+                .tabItem { Label("Screen", systemImage: "desktopcomputer") }
             DashboardView(model: connection)
                 .tabItem { Label("Server", systemImage: "server.rack") }
         }

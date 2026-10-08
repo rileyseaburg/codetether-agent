@@ -9,7 +9,8 @@ enum TranscriptPresentation {
     }
     static func displayText(_ text: String) -> String {
         let text = text.components(separatedBy: "\n\nUser attached image files:").first ?? text
-        let visible = text.components(separatedBy: "\n\nRuntime scope ledger:").first ?? text
+        let withoutDocuments = text.components(separatedBy: "\n\nUser attached PDF documents:").first ?? text
+        let visible = withoutDocuments.components(separatedBy: "\n\nRuntime scope ledger:").first ?? withoutDocuments
         return visible.isEmpty ? "Image attached" : visible
     }
 }

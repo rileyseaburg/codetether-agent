@@ -3,8 +3,9 @@ import SwiftUI
 struct ChatTranscript: View {
     let messages: [ChatMessage]
     let busy: Bool
-    @ObservedObject var voice: VoiceOutput
+    let voice: VoiceOutput
     var beforeSpeak: () -> Void = {}
+    var onEdit: ((ChatMessage) -> Void)?
     @State private var visibleCount = 40
     @StateObject private var scrolling = TranscriptScrollController()
     private var visible: ArraySlice<ChatMessage> { messages.suffix(visibleCount) }
@@ -16,26 +17,19 @@ struct ChatTranscript: View {
                         description: Text("Ask your CodeTether agent a question or attach an image."))
                         .padding(.top, 70)
                 }
-                LazyVStack(alignment: .leading, spacing: 18) {
-                    if messages.count > visibleCount {
-                        Button("Load earlier messages") {
-                            scrolling.following = false
-                            visibleCount += 40
-                        }
+                TranscriptWindow(messages: visible, hasEarlier: messages.count > visibleCount,
+                    busy: busy, voice: voice, beforeSpeak: beforeSpeak, onEdit: onEdit) {
+                        scrolling.following = false
+                        visibleCount += 40
                     }
-                    ForEach(visible) { message in
-                        MessageBubble(message: message, voice: voice, beforeSpeak: beforeSpeak)
-                    }
-                    if busy { ProgressView("Working…").padding(.vertical).accessibilityIdentifier("chat-thinking") }
-                    Color.clear.frame(height: 1).id("bottom")
-#if DEBUG && targetEnvironment(simulator)
-                    if CommandLine.arguments.contains("--transcript-scroll-fixture") {
-                        Text("Bottom of transcript").accessibilityIdentifier("fixture-bottom")
-                    }
-#endif
-                }.padding().background(TranscriptScrollProbe(controller: scrolling))
+                    .background(TranscriptScrollProbe(controller: scrolling))
             }
             .accessibilityIdentifier("chat-transcript")
+            .onChange(of: messages.count) { old, new in
+                if !scrolling.following, new > old {
+                    visibleCount += new - old
+                }
+            }
             .scrollDismissesKeyboard(.interactively)
             if !scrolling.following {
                 Button { scrolling.resume() } label: {

@@ -5,6 +5,9 @@ use crate::provider::bedrock::build_converse_body;
 mod fixture;
 use fixture::request;
 
+#[path = "inference_gpt6_tests.rs"]
+mod gpt6;
+
 #[test]
 fn astra_converse_omits_even_explicit_temperature() {
     for model in [
@@ -34,7 +37,6 @@ fn supported_models_keep_temperature_and_other_controls() {
         "openai.gpt-oss-120b",
         "amazon.nova-pro-v1:0",
         "us.anthropic.claude-sonnet-4-20250514-v1:0",
-        "openai.gpt-6-astral",
     ] {
         let mut request = request(model);
         request.top_p = Some(0.5);

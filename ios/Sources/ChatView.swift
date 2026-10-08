@@ -8,6 +8,7 @@ struct ChatView: View {
     @StateObject var voiceInput = VoiceInput()
     @StateObject var voiceOutput = VoiceOutput()
     @State var showHistory = false
+    @State private var editingMessage: ChatMessage?
 
     var body: some View {
         NavigationStack {
@@ -16,8 +17,9 @@ struct ChatView: View {
                     .font(.caption).padding(8).accessibilityIdentifier("agent-mode")
                 ChatSessionBadge(chat: chat)
                 ChatTranscript(messages: chat.messages, busy: chat.busy,
-                               voice: voiceOutput, beforeSpeak: { voiceInput.stop() })
-                    .id(chat.sessionID ?? "new-conversation")
+                               voice: voiceOutput, beforeSpeak: { voiceInput.stop() },
+                               onEdit: { voiceInput.stop(); voiceOutput.stop(); editingMessage = $0 })
+                    .id(chat.conversationID)
                 if let error = chat.error {
                     Text(error).font(.footnote).foregroundStyle(.red).padding(.horizontal)
                 }
@@ -29,6 +31,7 @@ struct ChatView: View {
             .navigationTitle("CodeTether Chat")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
+            .sheet(item: $editingMessage) { MessageEditSheet(chat: chat, message: $0) }
             .sheet(isPresented: $showHistory) { ConversationListView(chat: chat) }
             .sheet(isPresented: $showSettings, onDismiss: { Task { await chat.restoreSession() } }) {
                 SettingsView(model: connection)

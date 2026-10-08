@@ -2,10 +2,10 @@ import SwiftUI
 
 struct MessageBubble: View {
     let message: ChatMessage
-    @ObservedObject var voice: VoiceOutput
+    let voice: VoiceOutput
     var beforeSpeak: () -> Void = {}
+    var onEdit: ((ChatMessage) -> Void)?
     @State private var expanded = false
-    private var active: Bool { voice.activeMessageID == message.id && voice.speaking }
     private var displayedText: String {
         expanded ? message.content : String(message.content.prefix(12000))
     }
@@ -21,17 +21,7 @@ struct MessageBubble: View {
             ForEach(message.imagePaths, id: \.self) { path in
                 AgentImageView(path: path).accessibilityIdentifier("message-image-\(message.id)-\(path)")
             }
-            Button {
-                if active { voice.stop() }
-                else { beforeSpeak(); voice.speak(message.content, messageID: message.id) }
-            } label: {
-                Label(active ? "Stop reading" : "Read aloud", systemImage: active ? "stop.circle.fill" : "speaker.wave.2.fill")
-                    .font(.caption)
-            }
-            .disabled(message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .accessibilityLabel(active ? "Stop reading this message" : "Read this message aloud with Kokoro")
-            .accessibilityIdentifier("message-speaker-\(message.role)")
-            MessageCopyMenu(text: message.content)
+            MessageActions(message: message, voice: voice, beforeSpeak: beforeSpeak, onEdit: onEdit)
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
         .background(message.role == "user" ? Color.accentColor.opacity(0.1) : Color(.secondarySystemBackground),

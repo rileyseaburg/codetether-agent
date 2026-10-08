@@ -26,7 +26,9 @@ extension TranscriptScrollController {
     private func scrollToBottom(_ view: UIScrollView) {
         let target = TranscriptScrollGeometry.bottomOffset(view)
         guard abs(view.contentOffset.y - target) > 0.5 else { return }
-        view.setContentOffset(CGPoint(x: view.contentOffset.x, y: target), animated: false)
+        UIView.performWithoutAnimation {
+            view.setContentOffset(CGPoint(x: view.contentOffset.x, y: target), animated: false)
+        }
     }
 
     @objc func handlePan(_ gesture: UIPanGestureRecognizer) {

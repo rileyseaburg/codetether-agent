@@ -17,7 +17,7 @@ writeFileSync(join(out, 'manifest.plist'), `<?xml version="1.0" encoding="UTF-8"
 <key>assets</key><array><dict><key>kind</key><string>software-package</string>
 <key>url</key><string>${base}/CodeTether.ipa</string></dict></array>
 <key>metadata</key><dict><key>bundle-identifier</key><string>run.codetether.ios</string>
-<key>bundle-version</key><string>${version}</string><key>kind</key><string>software</string>
+<key>bundle-version</key><string>${build}</string><key>kind</key><string>software</string>
 <key>title</key><string>CodeTether</string></dict></dict></array></dict></plist>\n`);
 const install = `itms-services://?action=download-manifest&url=${encodeURIComponent(`${base}/manifest.plist`)}`;
 writeFileSync(join(out, 'index.html'), `<!doctype html>
@@ -26,7 +26,7 @@ writeFileSync(join(out, 'index.html'), `<!doctype html>
 <p>Open this page in Safari on Riley’s registered iPhone. iOS 17 or newer required.</p>
 <p><a href="${install.replaceAll('&', '&amp;')}">Install CodeTether</a></p>
 <p>This Ad Hoc build installs only on devices included in its Apple provisioning profile.</p>
-<p>Camera and photo attachments, per-message Kokoro playback, and bounded chat presentation. Existing Keychain login should be retained.</p>
+<p>Chat, voice mode, model selection, Markdown and copy controls. Existing Keychain login should be retained.</p>
 <p>Installation, physical-camera capture, and playback still require on-device confirmation.</p>
 <p><a href="CodeTether.ipa">Download IPA</a> · <a href="SHA256SUMS">Checksums</a></p>
 </body></html>\n`);
