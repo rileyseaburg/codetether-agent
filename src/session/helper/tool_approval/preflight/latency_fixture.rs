@@ -24,12 +24,14 @@ pub(super) fn manager(root: &Path, mode: &str) -> Arc<LspManager> {
 
 /// Prepare the fixture outside the measured scan; retry only cold-start timeouts.
 pub(super) async fn initialized(manager: &LspManager) -> Arc<crate::lsp::client::LspClient> {
-    for attempt in 0..3 {
+    // CI runs on a loaded 2-CPU LXC where node cold start can repeatedly exceed
+    // the 2s initialize window, so retry well past the usual 3 attempts.
+    for attempt in 0..8 {
         match manager.get_client("typescript").await {
             Ok(client) => return client,
             Err(error) => {
                 assert!(
-                    attempt < 2 && error.to_string().contains("timeout for method: initialize"),
+                    attempt < 7 && error.to_string().contains("timeout for method: initialize"),
                     "fixture initialization failed: {error:#}"
                 );
             }
@@ -39,7 +41,7 @@ pub(super) async fn initialized(manager: &LspManager) -> Arc<crate::lsp::client:
 }
 
 pub(super) async fn ready(root: &Path) {
-    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
         while super::cooldown::reason(root, "typescript").is_some() {
             tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         }
