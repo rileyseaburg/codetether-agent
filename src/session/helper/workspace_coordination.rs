@@ -6,8 +6,6 @@ mod batch;
 mod command_path;
 #[path = "workspace_coordination/context.rs"]
 mod context;
-#[path = "workspace_coordination/delegation.rs"]
-mod delegation;
 #[path = "workspace_coordination/gate.rs"]
 mod gate;
 #[path = "workspace_coordination/gate_error.rs"]
@@ -36,8 +34,6 @@ pub(super) use turn::LeaseTurn;
 
 #[cfg(test)]
 mod command_path_tests;
-#[cfg(test)]
-mod delegation_tests;
 #[cfg(test)]
 mod patch_tests;
 #[cfg(test)]

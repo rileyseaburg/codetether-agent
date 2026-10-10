@@ -56,9 +56,10 @@ allocator; read-only ephemeral jobs retain a read-only tool registry and may
 share the parent's checkout. Non-Git directories and ambiguous primary-checkout
 layouts fail closed for writable children; there is no shared-write fallback.
 
-This does not relax independent delegation policy. Mux-managed sessions can
-still reject the legacy `agent action=spawn` route with
-`MUX_AGENT_DELEGATION_FORBIDDEN` before allocation; that is not a lease conflict.
+Mux-managed sessions can use both `spawn_agent` and `agent action=spawn`; mux
+hosting does not itself forbid child creation or messaging. Access policy and
+child allocation checks still apply. Workspace mutation leases remain enforced
+at each session's tool boundary, including child turns.
 
 - Each child branches from its **immediate parent's committed HEAD**, resolved
   before allocation. A child of a child inherits that parent's commit, not the

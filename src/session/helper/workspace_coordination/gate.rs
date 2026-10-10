@@ -2,6 +2,10 @@
 
 use serde_json::Value;
 
+#[cfg(test)]
+#[path = "delegation_tests.rs"]
+mod tests;
+
 pub(in crate::session::helper) async fn blocked(
     tool: &str,
     input: &Value,
@@ -9,9 +13,10 @@ pub(in crate::session::helper) async fn blocked(
     if !crate::mux::coordination::active() {
         return None;
     }
-    if let Some(action) = super::delegation::work_action(tool, input) {
-        return Some(super::gate_error::delegation(tool, action));
-    }
+    blocked_in_mux(tool, input).await
+}
+
+async fn blocked_in_mux(tool: &str, input: &Value) -> Option<super::super::tool_policy::ToolTuple> {
     let paths = super::paths::mutation_paths(tool, input)?;
     let context = match super::context::RuntimeContext::from_input(input) {
         Ok(context) => context,

@@ -8,8 +8,9 @@ and the native `rg` tool. These are runtime/tooling defects, not hypotheses.
 - A parent waiting on a child retains the exclusive worktree write lease. A
   child sharing that workspace cannot edit, producing a parent/child deadlock.
 - The blocked lease is continuously renewed, so waiting does not recover.
-- `agent spawn` rejects delegation from mux sessions while `spawn_agent`
-  accepts it, exposing inconsistent collaboration policy.
+- Fixed in source: mux hosting no longer rejects `agent spawn`; both spawning
+  APIs use the existing child allocation and access checks. Workspace mutation
+  leases remain enforced. Live child dialogue is a separate runtime check.
 - A child can return its requested result but be marked failed solely because
   it omitted a harness-specific terminal status line.
 - `list_agents` can fail before execution because its empty argument object is

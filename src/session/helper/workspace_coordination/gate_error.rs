@@ -23,15 +23,6 @@ pub(super) fn conflict(
     )
 }
 
-pub(super) fn delegation(tool: &str, action: &str) -> super::super::tool_policy::ToolTuple {
-    result(
-        "MUX_AGENT_DELEGATION_FORBIDDEN",
-        tool,
-        "Mux-managed agents cannot create or delegate work to child agents. Continue locally or return control to the user. Steering an existing mux session with agent message remains available.",
-        serde_json::json!({ "action": action }),
-    )
-}
-
 pub(super) fn result(
     code: &str,
     tool: &str,
