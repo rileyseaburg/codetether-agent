@@ -19,6 +19,6 @@ fn denied_with_reason_forwards_reason_to_agent() {
 fn denied_blank_reason_and_retry_guidance() {
     let (output, _, meta) = denied("bash", "approval-1", Some("   "));
     assert!(!output.contains("denied by the user:"));
-    assert!(output.contains("resubmit the same call unchanged"));
+    assert!(output.contains("blocked for the rest of the current turn"));
     assert_eq!(meta.unwrap()["retry_same_call"], false);
 }

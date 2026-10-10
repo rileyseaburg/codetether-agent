@@ -14,10 +14,10 @@ pub(super) fn denied(tool: &str, approval_id: &str, reason: Option<&str>) -> Too
     let message = match feedback {
         Some(reason) => format!(
             "Tool execution was denied by the user: {reason}. Nothing ran. \
-             Follow this feedback; do not resubmit the same call unchanged."
+             Follow this feedback. This exact request is blocked for the rest of the current turn."
         ),
-        None => "Tool execution was denied by the user. Nothing ran. Do not resubmit \
-                 the same call unchanged; choose a different approach or ask the user."
+        None => "Tool execution was denied by the user. Nothing ran. This exact request is \
+                 blocked for the rest of the current turn; choose a different approach or ask the user."
             .to_string(),
     };
     let result = ToolResult::structured_error("TOOL_APPROVAL_DENIED", tool, &message, None, None)

@@ -23,5 +23,11 @@ pub(super) fn blocked(runner: &mut Runner<'_>, call: &Call) -> Option<String> {
         return Some("Interactive tool 'question' is disabled in this interface. Ask the user directly in assistant text.".into());
     }
     super::super::super::edit::detect_stub_in_tool_input(&call.name, &call.input)
+        .or_else(|| {
+            runner
+                .progress
+                .decline_guard
+                .blocked(&call.name, &call.input)
+        })
         .or_else(|| runner.progress.repeat_guard.check(&call.name, &call.input))
 }

@@ -1,6 +1,9 @@
 //! Shared agentic loop used by streaming and non-streaming prompts.
 
 mod completion;
+mod decline_guard;
+#[cfg(test)]
+mod decline_guard_tests;
 mod finish;
 mod goal_recovery;
 mod input;

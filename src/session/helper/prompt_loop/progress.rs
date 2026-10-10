@@ -24,6 +24,8 @@ pub(crate) struct LoopState {
     pub validation_retries: u8,
     /// Guard against repeated edit-family invocations.
     pub repeat_guard: super::super::repeat_guard::RepeatGuard,
+    /// Exact tool invocations declined by the user during this turn.
+    pub(super) decline_guard: super::decline_guard::DeclineGuard,
     /// Consecutive code-search calls returning no matches.
     pub codesearch_misses: u32,
     /// Build-mode retries waiting for an execution tool call.
@@ -50,6 +52,7 @@ impl LoopState {
             max_steps,
             validation_retries: 0,
             repeat_guard: Default::default(),
+            decline_guard: Default::default(),
             codesearch_misses: 0,
             build_retries: 0,
             native_retries: 0,

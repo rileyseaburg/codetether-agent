@@ -39,6 +39,10 @@ pub(super) async fn run(runner: &mut Runner<'_>, step: usize, call: Call) -> Res
         return Ok(false);
     }
     let outcome = super::invoke::execute(runner, &call).await?;
+    runner
+        .progress
+        .decline_guard
+        .record(&call.name, &call.input, outcome.metadata.as_ref());
     super::refresh::after(runner, &call, outcome.success).await?;
     super::publish::complete(runner, step, &call, outcome).await?;
     Ok(super::codesearch::guard(runner, step))
