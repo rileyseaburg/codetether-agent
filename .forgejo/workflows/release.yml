@@ -41,6 +41,7 @@ jobs:
     with:
       runner: macOS
       target: ${{ matrix.target }}
+      require-cache: "false"
       version: ${{ needs.meta.outputs.version }}
   verify:
     # Reject invalid candidates before repeating expensive platform builds.

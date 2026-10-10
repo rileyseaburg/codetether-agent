@@ -8,6 +8,12 @@ on:
       target:
         required: true
         type: string
+      # Whether the caller's runner has the ci-cache CLI baked in. macOS jobs
+      # pass "false" so a cache-less runner degrades instead of failing.
+      require-cache:
+        required: false
+        type: string
+        default: "true"
       version:
         required: true
         type: string
@@ -27,8 +33,21 @@ jobs:
           github-server-url: https://forgejo.quantum-forge.io
       - name: Prepare native dependencies
         run: bash script/forgejo/release-setup.sh "$RELEASE_TARGET"
+      - name: Set up CI cache
+        uses: ./.forgejo/actions/setup-ci-cache
+        with:
+          require: ${{ inputs.require-cache }}
+      - name: Restore cargo caches
+        run: |
+          bash scripts/ci/cargo-cache.sh restore cargo-home "cargo-home-v1-${{ hashFiles('Cargo.lock') }}"
+          bash scripts/ci/cargo-cache.sh restore target "cargo-target-${{ inputs.target }}-v1-${{ hashFiles('Cargo.lock') }}"
       - name: Build locked release binary
         run: cargo +1.95.0 build --locked --release --target "$RELEASE_TARGET"
+      - name: Save cargo caches
+        if: always()
+        run: |
+          bash scripts/ci/cargo-cache.sh save cargo-home "cargo-home-v1-${{ hashFiles('Cargo.lock') }}"
+          bash scripts/ci/cargo-cache.sh save target "cargo-target-${{ inputs.target }}-v1-${{ hashFiles('Cargo.lock') }}"
       - name: Smoke test native binaries
         shell: bash
         run: |

@@ -23,6 +23,12 @@ jobs:
           github-server-url: https://forgejo.quantum-forge.io
       - name: Prepare Rust and native dependencies
         run: bash script/forgejo/release-setup.sh x86_64-unknown-linux-gnu
+      - name: Set up CI cache
+        uses: ./.forgejo/actions/setup-ci-cache
+      - name: Restore cargo caches
+        run: |
+          bash scripts/ci/cargo-cache.sh restore cargo-home "cargo-home-v1-${{ hashFiles('Cargo.lock') }}"
+          bash scripts/ci/cargo-cache.sh restore target "cargo-target-verify-v1-${{ hashFiles('Cargo.lock') }}"
       - id: version
         run: |
           version=$(cargo +1.95.0 metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="codetether-agent").version')
@@ -42,6 +48,11 @@ jobs:
           bash script/tests/unix_installer/native.sh "$PWD/artifacts/forgejo-verification/unix-installer"
           cargo +1.95.0 clippy --locked --lib --no-deps
           cargo +1.95.0 test --locked --lib --tests --no-fail-fast -- --test-threads=1 2>&1 | tee artifacts/forgejo-verification/tests.log
+      - name: Save cargo caches
+        if: always()
+        run: |
+          bash scripts/ci/cargo-cache.sh save cargo-home "cargo-home-v1-${{ hashFiles('Cargo.lock') }}"
+          bash scripts/ci/cargo-cache.sh save target "cargo-target-verify-v1-${{ hashFiles('Cargo.lock') }}"
       - uses: https://code.forgejo.org/actions/upload-artifact@v3
         if: always()
         with:

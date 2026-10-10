@@ -1,0 +1,68 @@
+name: Set up CI cache
+description: >
+  Verify the runner-provided ci-cache CLI, select the fastest reachable
+  cluster-ci-cache service, and export CI_CACHE_* variables for later steps.
+  Restore/save is done by callers via `ci-cache restore` / `ci-cache save`
+  (see scripts/ci/cargo-cache.sh).
+
+inputs:
+  require:
+    description: >-
+      Fail when ci-cache is missing instead of degrading to a no-cache run.
+      Set "true" for jobs that must use the shared cache.
+    required: false
+    default: "true"
+
+outputs:
+  available:
+    description: "Whether ci-cache is usable for this job"
+    value: ${{ steps.verify.outputs.available }}
+
+runs:
+  using: composite
+  steps:
+    - name: Verify runner-provided ci-cache CLI
+      id: verify
+      shell: bash
+      env:
+        CI_CACHE_REQUIRE: ${{ inputs.require }}
+      run: |
+        set -euo pipefail
+        if ! command -v ci-cache >/dev/null 2>&1; then
+          if [ "${CI_CACHE_REQUIRE}" = "true" ]; then
+            echo "::error title=ci-cache missing::runner image lacks ci-cache; jobs on this runner cannot use the shared cache"
+            exit 1
+          fi
+          echo "::warning::ci-cache is missing from the runner; continuing without shared cache"
+          echo "available=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        version="$(ci-cache --version 2>/dev/null | awk '{ print $2 }')"
+        case "$version" in
+          0.1.[2-9] | 0.[2-9].* | [1-9].*) ;;
+          *)
+            echo "::error::ci-cache >= 0.1.2 is required for restore --paths; runner has ${version:-unknown}"
+            exit 1
+            ;;
+        esac
+        ci-cache --version
+
+        # Select the fastest reachable server: cluster DNS first, then LAN ingress.
+        server=""
+        for candidate in http://ci-cache-server.ci-cache.svc.cluster.local:8080 http://192.168.50.82/ci-cache; do
+          CI_CACHE_SERVER="$candidate" timeout 5 ci-cache health >/dev/null 2>&1 && server="$candidate" && break
+        done
+        if [ -z "$server" ]; then
+          if [ "${CI_CACHE_REQUIRE}" = "true" ]; then
+            echo "::error::no reachable ci-cache server (tried cluster DNS and LAN ingress)"
+            exit 1
+          fi
+          echo "::warning::no reachable ci-cache server; continuing without shared cache"
+          echo "available=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        {
+          echo "CI_CACHE_SERVER=$server"
+          echo "CI_CACHE_NAMESPACE=codetether-release-v1"
+        } >> "$GITHUB_ENV"
+        echo "available=true" >> "$GITHUB_OUTPUT"

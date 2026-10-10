@@ -36,10 +36,23 @@ jobs:
         run: |
           bash script/forgejo/release-setup.sh aarch64-apple-darwin
           bash script/forgejo/release-setup.sh x86_64-apple-darwin
+      - name: Set up CI cache
+        uses: ./.forgejo/actions/setup-ci-cache
+        with:
+          require: "false"
+      - name: Restore cargo caches
+        run: |
+          bash scripts/ci/cargo-cache.sh restore cargo-home "cargo-home-v1-${{ hashFiles('Cargo.lock') }}"
+          bash scripts/ci/cargo-cache.sh restore target "cargo-target-macos-v1-${{ hashFiles('Cargo.lock') }}"
       - name: Build aarch64-apple-darwin
         run: cargo +1.95.0 build --locked --release --target aarch64-apple-darwin
       - name: Build x86_64-apple-darwin
         run: cargo +1.95.0 build --locked --release --target x86_64-apple-darwin
+      - name: Save cargo caches
+        if: always()
+        run: |
+          bash scripts/ci/cargo-cache.sh save cargo-home "cargo-home-v1-${{ hashFiles('Cargo.lock') }}"
+          bash scripts/ci/cargo-cache.sh save target "cargo-target-macos-v1-${{ hashFiles('Cargo.lock') }}"
       - name: Smoke test and package
         shell: bash
         env:
