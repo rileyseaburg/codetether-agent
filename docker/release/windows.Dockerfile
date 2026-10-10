@@ -34,6 +34,8 @@ COPY vendor ./vendor
 COPY proto ./proto
 COPY policies ./policies
 COPY examples ./examples
+COPY windows/CodeTether.Companion/desktop-staging ./windows/CodeTether.Companion/desktop-staging
+COPY windows/CodeTether.Companion/rust-shell ./windows/CodeTether.Companion/rust-shell
 
 # Host proc-macros must not come from another builder's incompatible libc.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \

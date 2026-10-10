@@ -26,6 +26,8 @@ COPY vendor ./vendor
 COPY proto ./proto
 COPY policies ./policies
 COPY examples ./examples
+COPY windows/CodeTether.Companion/desktop-staging ./windows/CodeTether.Companion/desktop-staging
+COPY windows/CodeTether.Companion/rust-shell ./windows/CodeTether.Companion/rust-shell
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
