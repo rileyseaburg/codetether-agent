@@ -10,7 +10,10 @@ permissions:
 jobs:
   publish:
     runs-on: codetether-release-proxmox
-    timeout-minutes: 15
+    # 15 minutes was exceeded by release-asset upload through the tunnel on
+    # v4.7.6-dev.33 (run 11515): artifacts downloaded at :17, upload killed at
+    # the deadline. 60 gives headroom for larger binaries.
+    timeout-minutes: 60
     env:
       RELEASE_VERSION: ${{ inputs.version }}
     steps:
