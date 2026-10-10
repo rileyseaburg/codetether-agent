@@ -1,0 +1,23 @@
+use windows_sys::{Win32::UI::WindowsAndMessaging::WM_APP, core::PCWSTR};
+
+pub(super) const CLASS: PCWSTR = windows_sys::w!("CodeTether.ScreenCompanion.Window");
+pub(super) const PAIR: u16 = 100;
+pub(super) const START: u16 = 101;
+pub(super) const PAUSE: u16 = 102;
+pub(super) const STOP: u16 = 103;
+pub(super) const EXIT: u16 = 104;
+pub(super) const REFRESH: u16 = 105;
+pub(super) const PICKER: u16 = 106;
+pub(super) const CODE: u16 = 107;
+pub(super) const INTERVAL: u16 = 108;
+pub(super) const PERIODIC: u16 = 109;
+pub(super) const RIGHT_CLICK: u16 = 110;
+pub(super) const DOUBLE_CLICK: u16 = 111;
+pub(super) const OPEN: u16 = 112;
+pub(super) const STATUS: u16 = 113;
+pub(super) const BACKGROUND: u16 = 114;
+pub(super) const TRAY_MESSAGE: u32 = WM_APP + 1;
+pub(super) const RECHECK: u32 = WM_APP + 2;
+pub(super) const RELAYOUT: u32 = WM_APP + 3;
+pub(super) const PAIRED: u32 = WM_APP + 4;
+pub(super) const PULSE: usize = 1;

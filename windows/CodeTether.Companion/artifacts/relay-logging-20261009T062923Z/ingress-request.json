@@ -1,0 +1,40 @@
+{
+  "config": {
+    "ingress": [
+      {
+        "hostname": "server.codetether.run",
+        "path": "^/companion(?:/.*)?$",
+        "service": "http://127.0.0.1:4099"
+      },
+      {
+        "service": "http://127.0.0.1:4098",
+        "hostname": "ios.codetether.run"
+      },
+      {
+        "path": "^/(tts/(speak|voices|health)|mobile/(attachments|image))$",
+        "service": "http://127.0.0.1:4097",
+        "hostname": "server.codetether.run"
+      },
+      {
+        "path": "^/downloads/liquidssh(?:/.*)?$",
+        "service": "http://127.0.0.1:18773",
+        "hostname": "server.codetether.run"
+      },
+      {
+        "path": "^/downloads/a2amonitor/20261005(?:/.*)?$",
+        "service": "http://127.0.0.1:18772",
+        "hostname": "server.codetether.run"
+      },
+      {
+        "service": "http://127.0.0.1:4096",
+        "hostname": "server.codetether.run"
+      },
+      {
+        "service": "http_status:404"
+      }
+    ],
+    "warp-routing": {
+      "enabled": false
+    }
+  }
+}

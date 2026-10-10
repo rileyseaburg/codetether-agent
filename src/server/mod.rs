@@ -6,6 +6,7 @@ mod approval_routes;
 pub mod auth;
 mod config_status;
 mod models_catalog;
+mod openai_model_options;
 mod openai_stream;
 pub mod policy;
 mod policy_user;
@@ -1089,6 +1090,8 @@ struct OpenAiChatCompletionRequest {
     max_completion_tokens: Option<usize>,
     stop: Option<OpenAiStop>,
     stream: Option<bool>,
+    reasoning_effort: Option<String>,
+    service_tier: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1589,7 +1592,9 @@ async fn openai_chat_completions(
             "When multiple providers are configured, use `provider/model`. See GET /v1/models.",
         ));
     };
-
+    let (tier, effort) = (req.service_tier.as_deref(), req.reasoning_effort.as_deref());
+    let model_id = openai_model_options::apply(&selected_provider, &model_id, tier, effort)
+        .map_err(openai_bad_request)?;
     let provider = registry.get(&selected_provider).ok_or_else(|| {
         openai_internal_error(format!(
             "Provider `{selected_provider}` was available but could not be loaded"
@@ -1720,11 +1725,11 @@ async fn openai_chat_completions(
                         );
                         yield Ok(openai_stream_event(&tool_delta_chunk));
                     }
+                    Chunk::Thinking(text) if !text.is_empty() => yield Ok(openai_stream_event(&openai_stream_chunk(&stream_id, now, &stream_model, openai_stream::reasoning_delta(text), None))),
                     Chunk::KeepAlive
                     | Chunk::ToolCallEnd { .. }
                     | Chunk::OutputItemDone { .. }
-                    | Chunk::Done { .. }
-                    | Chunk::Thinking(_) => {}
+                    | Chunk::Done { .. } | Chunk::Thinking(_) => {}
                     Chunk::Error(error) => {
                         let error_chunk = openai_stream_chunk(
                             &stream_id,

@@ -1,0 +1,10 @@
+[package]
+name = "codetether-companion-capture"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Local-only scheduling policy for the Rust screen companion"
+license = "MIT"
+
+[dependencies]
+codetether-companion-protocol = { path = "../codetether-companion-protocol" }

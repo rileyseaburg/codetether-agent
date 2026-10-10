@@ -1,0 +1,11 @@
+# Reference-only companion subset. Cargo uses ../../Cargo.toml and ../../Cargo.lock.
+# Do not rename this file to Cargo.toml: that would create a nested workspace.
+[workspace]
+members = [
+    "../../crates/codetether-companion-protocol",
+    "../../crates/codetether-companion-core",
+    "../../crates/codetether-companion-capture",
+    "desktop-staging",
+    "rust-shell",
+]
+resolver = "3"

@@ -1,0 +1,25 @@
+{
+  "owner": "synthetic-owner-credential-not-a-real-secret",
+  "authorization": [
+    { "header": null, "status": 401 },
+    { "header": "", "status": 401 },
+    { "header": "bearer synthetic-owner-credential-not-a-real-secret", "status": 401 },
+    { "header": "Bearer wrong", "status": 401 },
+    { "header": "Bearer synthetic-owner-credential-not-a-real-secret ", "status": 401 },
+    { "header": "Bearer  synthetic-owner-credential-not-a-real-secret", "status": 401 },
+    { "header": "Bearer synthetic-owner-credential-not-a-real-secret\n", "status": 401 },
+    { "header": "Bearer synthetic-owner-credential-not-a-real-secret", "status": 200 }
+  ],
+  "allowed_origin": "https://example.test",
+  "origins": [
+    { "origin": null, "status": 200 },
+    { "origin": "", "status": 200 },
+    { "origin": "https://example.test", "status": 200 },
+    { "origin": "https://example.test/", "status": 403 },
+    { "origin": "https://evil.test", "status": 403 }
+  ],
+  "normalized_codes": [
+    { "input": "aa-bb cc\tdd\nee\rff", "output": "AABBCCDDEEFF" },
+    { "input": "\ufeffaabbccddeeff\u00a0", "output": "AABBCCDDEEFF" }
+  ]
+}

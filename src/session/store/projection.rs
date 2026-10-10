@@ -1,12 +1,13 @@
 //! Incremental materialized views commit with their consumer acknowledgements.
 use super::cursor::Ticket;
 use anyhow::Result;
-use rusqlite::{OptionalExtension, params};
+use rusqlite::{OptionalExtension, TransactionBehavior, params};
 use serde_json::Value;
 pub(crate) async fn commit(ticket: Ticket, mut view: Value) -> Result<bool> {
     tokio::task::spawn_blocking(move || {
-        let db = super::connection::open(&ticket.path)?;
-        let tx = db.unchecked_transaction()?;
+        let mut db = super::connection::open(&ticket.path)?;
+        // Reserve the writer before reading; deferred upgrades can bypass the busy timeout.
+        let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let (generation, position): (i64, usize) = tx.query_row("SELECT revision,seq FROM consumers WHERE session_id=?1 AND name=?2",
             params![ticket.id,ticket.name], |r| Ok((r.get(0)?, r.get(1)?)))?;
         if generation != ticket.generation || position > ticket.to { return Ok(false); }

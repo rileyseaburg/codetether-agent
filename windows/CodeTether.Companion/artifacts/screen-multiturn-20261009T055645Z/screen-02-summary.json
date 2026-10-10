@@ -1,0 +1,42 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "BCB7652D-32A7-4368-9A75-945A17957EB2",
+        "deviceName" : "CodeTether-Screen-20261009T051600Z",
+        "modelName" : "iPhone 16 Pro",
+        "osBuildNumber" : "22G86",
+        "osVersion" : "18.6",
+        "platform" : "iOS Simulator"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 0,
+      "passedTests" : 28,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "CodeTether · Built with macOS 15.3.1",
+  "expectedFailures" : 0,
+  "failedTests" : 0,
+  "finishTime" : 1791525556.179,
+  "passedTests" : 28,
+  "result" : "Passed",
+  "skippedTests" : 0,
+  "startTime" : 1791525540.41,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+
+  ],
+  "title" : "Test - CodeTether",
+  "topInsights" : [
+
+  ],
+  "totalTestCount" : 28
+}

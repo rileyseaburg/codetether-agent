@@ -1,0 +1,21 @@
+[package]
+name = "codetether-companion-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "In-memory authentication and session lifecycle for the screen companion"
+license = "MIT"
+
+[dependencies]
+base64 = "0.23.1"
+chrono = { version = "0.4.45", default-features = false, features = ["std"] }
+codetether-companion-protocol = { path = "../codetether-companion-protocol" }
+getrandom = "0.3.4"
+sha2 = "0.11.0"
+subtle = "2.6.1"
+thiserror = "2.0.20"
+uuid = "1.24.0"
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

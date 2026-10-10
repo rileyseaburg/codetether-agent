@@ -1,0 +1,160 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "info",
+      "files",
+      "--device",
+      "4745B27B-2B68-5164-A053-B869B07EE2CA",
+      "--domain-type",
+      "appDataContainer",
+      "--domain-identifier",
+      "run.codetether.ios",
+      "--subdirectory",
+      "Documents",
+      "--json-output",
+      "/Users/rileyseaburg/CodeTether-iOS-evidence/relaunch-20261009T060216Z/documents-before.json"
+    ],
+    "commandType" : "devicectl.device.info.files",
+    "environment" : {
+
+    },
+    "jsonVersion" : 2,
+    "outcome" : "success",
+    "version" : "443.24"
+  },
+  "result" : {
+    "deviceIdentifier" : "4745B27B-2B68-5164-A053-B869B07EE2CA",
+    "domain" : "appDataContainer",
+    "domainIdentifier" : "run.codetether.ios",
+    "files" : [
+      {
+        "metadata" : {
+          "extendedAttributes" : {
+            "com.apple.dataprotection.policy.exception-applied-by" : "com.apple.containermanagerd"
+          },
+          "lastModDate" : "2026-10-08T16:31:05.000Z",
+          "ownerGid" : 501,
+          "ownerUid" : 501,
+          "permissions" : 420,
+          "size" : 146
+        },
+        "name" : "agent-receipt.json",
+        "relativePath" : "agent-receipt.json",
+        "resources" : {
+          "isDirectory" : false,
+          "isHidden" : false,
+          "isReadable" : true,
+          "isSymbolicLink" : false,
+          "isWritable" : true
+        }
+      },
+      {
+        "metadata" : {
+          "extendedAttributes" : {
+            "com.apple.dataprotection.policy.exception-applied-by" : "com.apple.containermanagerd"
+          },
+          "lastModDate" : "2026-10-08T16:31:05.000Z",
+          "ownerGid" : 501,
+          "ownerUid" : 501,
+          "permissions" : 420,
+          "size" : 157
+        },
+        "name" : "chat-receipt.json",
+        "relativePath" : "chat-receipt.json",
+        "resources" : {
+          "isDirectory" : false,
+          "isHidden" : false,
+          "isReadable" : true,
+          "isSymbolicLink" : false,
+          "isWritable" : true
+        }
+      },
+      {
+        "metadata" : {
+          "extendedAttributes" : {
+            "com.apple.dataprotection.policy.exception-applied-by" : "com.apple.containermanagerd"
+          },
+          "lastModDate" : "2026-10-09T05:17:19.000Z",
+          "ownerGid" : 501,
+          "ownerUid" : 501,
+          "permissions" : 420,
+          "size" : 121
+        },
+        "name" : "connection-receipt.json",
+        "relativePath" : "connection-receipt.json",
+        "resources" : {
+          "isDirectory" : false,
+          "isHidden" : false,
+          "isReadable" : true,
+          "isSymbolicLink" : false,
+          "isWritable" : true
+        }
+      },
+      {
+        "metadata" : {
+          "extendedAttributes" : {
+            "com.apple.dataprotection.policy.exception-applied-by" : "com.apple.containermanagerd"
+          },
+          "lastModDate" : "2026-10-07T15:09:06.000Z",
+          "ownerGid" : 501,
+          "ownerUid" : 501,
+          "permissions" : 420,
+          "size" : 191
+        },
+        "name" : "kokoro-playback-finished.json",
+        "relativePath" : "kokoro-playback-finished.json",
+        "resources" : {
+          "isDirectory" : false,
+          "isHidden" : false,
+          "isReadable" : true,
+          "isSymbolicLink" : false,
+          "isWritable" : true
+        }
+      },
+      {
+        "metadata" : {
+          "extendedAttributes" : {
+            "com.apple.dataprotection.policy.exception-applied-by" : "com.apple.containermanagerd"
+          },
+          "lastModDate" : "2026-10-07T15:08:45.000Z",
+          "ownerGid" : 501,
+          "ownerUid" : 501,
+          "permissions" : 420,
+          "size" : 190
+        },
+        "name" : "kokoro-playback-started.json",
+        "relativePath" : "kokoro-playback-started.json",
+        "resources" : {
+          "isDirectory" : false,
+          "isHidden" : false,
+          "isReadable" : true,
+          "isSymbolicLink" : false,
+          "isWritable" : true
+        }
+      },
+      {
+        "metadata" : {
+          "extendedAttributes" : {
+            "com.apple.dataprotection.policy.exception-applied-by" : "com.apple.containermanagerd"
+          },
+          "lastModDate" : "2026-10-07T00:00:43.000Z",
+          "ownerGid" : 501,
+          "ownerUid" : 501,
+          "permissions" : 420,
+          "size" : 172
+        },
+        "name" : "kokoro-playback-voice-route.json",
+        "relativePath" : "kokoro-playback-voice-route.json",
+        "resources" : {
+          "isDirectory" : false,
+          "isHidden" : false,
+          "isReadable" : true,
+          "isSymbolicLink" : false,
+          "isWritable" : true
+        }
+      }
+    ]
+  }
+}

@@ -8,7 +8,6 @@ mod capability;
 mod claim;
 mod claim_note;
 mod core_memory;
-pub(super) mod digest;
 mod evidence_source;
 mod extract;
 mod extract_artifact;

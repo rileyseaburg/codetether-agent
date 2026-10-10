@@ -1,4 +1,4 @@
-//! Assert call-associated images survive the actual recording text digest.
+//! Assert routed text and call-associated images survive recording together.
 
 use crate::provider::{ContentPart, Role};
 use crate::session::Session;
@@ -25,8 +25,8 @@ pub(in crate::session::helper) fn assert_recorded(session: &Session) {
         assert_eq!(tool_call_id, id);
         assert!(content.contains(&format!("- status: {status}")));
         assert!(content.contains("image evidence"));
-        assert!(content.contains("runtime digest"));
-        assert!(content.len() < 5000, "long text must be compacted");
+        assert!(!content.contains("runtime digest"));
+        assert!(content.len() > 5000, "routed text must not be silently cut");
         assert!(!content.contains("base64"));
         for (part, (expected_url, expected_mime)) in
             [first, second].into_iter().zip(super::tool::IMAGES)

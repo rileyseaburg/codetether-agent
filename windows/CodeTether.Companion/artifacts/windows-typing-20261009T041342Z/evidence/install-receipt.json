@@ -1,0 +1,13 @@
+{
+    "installed":  "C:\\Users\\riley\\AppData\\Local\\Programs\\CodeTetherCompanion\\codetether-companion.exe",
+    "source":  "C:\\Users\\riley\\companion-build\\workspace-20261009T041342Z\\target\\debug\\codetether-companion.exe",
+    "sha256":  "7153C6617F87CECEFF0499C31A63234C0593822B1B55545B86A52E0D36A40D3E",
+    "bytes":  10193920,
+    "backup":  "C:\\Users\\riley\\companion-build\\workspace-20261009T041342Z\\install-backup-20261008T233324",
+    "shortcuts":  [
+                      "C:\\Users\\riley\\Desktop\\CodeTether Screen Companion.lnk",
+                      "C:\\Users\\riley\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\CodeTether Screen Companion.lnk"
+                  ],
+    "launched":  false,
+    "signed":  false
+}

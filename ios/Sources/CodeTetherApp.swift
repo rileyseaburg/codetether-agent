@@ -33,7 +33,7 @@ struct CodeTetherApp: App {
                 .tabItem { Label("Chat", systemImage: "bubble.left.and.bubble.right") }
             VoiceModeTab(chat: chat)
                 .tabItem { Label("Voice", systemImage: "waveform.circle") }
-            ScreenView(model: screen, chat: chat)
+            ScreenView(model: screen)
                 .tabItem { Label("Screen", systemImage: "desktopcomputer") }
             DashboardView(model: connection)
                 .tabItem { Label("Server", systemImage: "server.rack") }

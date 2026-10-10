@@ -1,0 +1,19 @@
+[Unit]
+Description=CodeTether opt-in screen analysis relay
+After=network-online.target codetether-spotlessbinco-thinker.service
+Wants=network-online.target
+[Service]
+ExecStart=/home/riley/.nvm/versions/node/v26.9.0/bin/node /home/riley/.local/lib/codetether-companion/server.ts
+WorkingDirectory=/home/riley/.local/lib/codetether-companion
+EnvironmentFile=%h/.config/codetether-public-server/origin.env
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+MemoryMax=256M
+LimitCORE=0
+[Install]
+WantedBy=default.target

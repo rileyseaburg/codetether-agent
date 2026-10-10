@@ -1,0 +1,32 @@
+[package]
+name = "codetether-companion-relay"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Loopback HTTP/SSE relay for the CodeTether screen companion"
+license = "MIT"
+
+[[bin]]
+name = "codetether-companion-relay"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+base64 = "0.23.1"
+bytes = "1.12.1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+codetether-companion-core = { path = "../codetether-companion-core" }
+codetether-companion-protocol = { path = "../codetether-companion-protocol" }
+futures-util = "0.3.34"
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "stream", "rustls"] }
+serde = "1"
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["full"] }
+tokio-util = "0.7.19"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+uuid = { version = "1.24.0", features = ["v4"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

@@ -29,7 +29,7 @@ fn session_tool_images_survive_compaction_and_failures() {
             panic!("missing tool result")
         };
         assert_eq!(tool_call_id, "image-call");
-        assert!(content.len() < 12_000);
+        assert!(content.contains(&"x".repeat(12_000)));
         assert!(!content.contains("base64"));
         assert!(matches!(&message.content[1], ContentPart::Image { url, .. }
             if url == "data:image/png;base64,AQID"));

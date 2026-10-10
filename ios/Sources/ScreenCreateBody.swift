@@ -7,11 +7,7 @@ struct ScreenCreateBody: Encodable {
     let interval_seconds: Int
 
     var valid: Bool {
-        let parts = model.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false)
-        return parts.count == 2 && parts.allSatisfy { !$0.isEmpty }
-            && !model.contains(where: { $0.isWhitespace || $0.isNewline })
-            && prompt.count <= 2000 && (15...300).contains(interval_seconds)
-            && !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        ScreenInput.model(model) && ScreenInput.text(prompt) && (15...300).contains(interval_seconds)
     }
 }
 

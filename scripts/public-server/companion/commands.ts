@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { publish } from './events.ts';
+import { pendingReply } from './replies.ts';
 import { HTTPError, record } from './types.ts';
 import type { ScreenSession } from './types.ts';
 
@@ -18,11 +19,14 @@ export function requestCapture(session: ScreenSession, value: unknown, now = Dat
 }
 
 /** Expire stale requests even while the iPhone is disconnected. */
-export function commandSnapshot(session: ScreenSession, now = Date.now()): { request_id: string | null } {
+export function commandSnapshot(session: ScreenSession, now = Date.now()): { request_id: string | null; reply?: { id: string; text: string } } {
   if (session.pending && now - session.pending.created >= 60000) {
     session.pending = undefined;
     session.status = 'error';
     publish(session, { type: 'error', status: 'error', text: 'Windows did not provide a fresh screenshot within 60 seconds.' });
   }
-  return { request_id: session.pending?.id ?? null };
+  const commands: { request_id: string | null; reply?: { id: string; text: string } } = { request_id: session.pending?.id ?? null };
+  const { reply } = pendingReply(session, now);
+  if (reply) commands.reply = reply;
+  return commands;
 }

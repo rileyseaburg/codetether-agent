@@ -1,5 +1,6 @@
 //! Core delta persistence and identity regressions.
 mod constraints;
+mod contention;
 mod consumers;
 mod events;
 mod eviction;
@@ -8,6 +9,7 @@ mod migration;
 mod recovery;
 mod replacement;
 mod scaling;
+mod summary_contention;
 mod upgrade;
 use crate::provider::{ContentPart, Message, Role};
 use crate::session::Session;

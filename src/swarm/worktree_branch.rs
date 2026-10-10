@@ -13,7 +13,7 @@ pub(crate) async fn has_net_changes(
 ) -> Result<bool> {
     let base = Command::new("git")
         .args(["merge-base", "HEAD", &worktree.branch])
-        .current_dir(&manager.repo_path)
+        .current_dir(manager.repo_path())
         .output()
         .await
         .context("failed to find swarm branch merge base")?;
@@ -26,7 +26,7 @@ pub(crate) async fn has_net_changes(
     let base = String::from_utf8_lossy(&base.stdout).trim().to_string();
     let status = Command::new("git")
         .args(["diff", "--quiet", &base, &worktree.branch, "--"])
-        .current_dir(&manager.repo_path)
+        .current_dir(manager.repo_path())
         .status()
         .await
         .context("failed to inspect swarm branch patch")?;

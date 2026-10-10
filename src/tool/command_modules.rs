@@ -9,5 +9,7 @@ mod process_tree;
 pub(crate) mod shell_command_guard;
 pub mod temp_write_guard;
 pub mod write_stdin;
+/// Estimates file token cost before the agent reads it.
+pub mod token_count;
 // Approval-time reconstruction of files those tools would mutate.
 pub(crate) mod proposed_content;

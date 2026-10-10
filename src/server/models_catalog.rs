@@ -4,6 +4,7 @@ mod collect;
 mod convert;
 mod error;
 mod ids;
+mod options;
 mod parameters;
 mod pricing;
 mod query;

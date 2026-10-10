@@ -17,6 +17,9 @@ pub(super) async fn start(options: Option<SpawnOptions>, bus: Arc<AgentBus>) -> 
     };
     match crate::a2a::spawn::start_a2a_in_background(options, bus).await {
         Ok(handle) => {
+            // Peer turns run in the visible session by default; `--no-a2a`
+            // skips this whole endpoint, `/a2a headless` opts out at runtime.
+            crate::a2a::live_inbox::attach();
             tracing::info!(
                 agent = %handle.agent_name,
                 bind_addr = %handle.bind_addr,

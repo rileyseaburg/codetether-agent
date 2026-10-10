@@ -1,0 +1,39 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "install",
+      "app",
+      "--device",
+      "4745B27B-2B68-5164-A053-B869B07EE2CA",
+      "/Users/rileyseaburg/CodeTether-iOS/build-device/Build/Products/Debug-iphoneos/CodeTether.app",
+      "--json-output",
+      "/Users/rileyseaburg/CodeTether-iOS-evidence/client-deploy-20261009T044654Z/install.json",
+      "--log-output",
+      "/Users/rileyseaburg/CodeTether-iOS-evidence/client-deploy-20261009T044654Z/install.log"
+    ],
+    "commandType" : "devicectl.device.install.app",
+    "environment" : {
+
+    },
+    "jsonVersion" : 2,
+    "outcome" : "success",
+    "version" : "443.24"
+  },
+  "result" : {
+    "deviceIdentifier" : "4745B27B-2B68-5164-A053-B869B07EE2CA",
+    "installedApplications" : [
+      {
+        "bundleID" : "run.codetether.ios",
+        "databaseSequenceNumber" : 16748,
+        "databaseUUID" : "EBC21B34-3CD5-41AA-AFA2-59362B923D63",
+        "installationURL" : "file:///private/var/containers/Bundle/Application/A318A745-00A9-4918-8867-DC2E810BEA53/CodeTether.app/",
+        "launchServicesIdentifier" : "unknown",
+        "options" : {
+
+        }
+      }
+    ]
+  }
+}

@@ -4,6 +4,10 @@ members = [
     "crates/codetether-a2a-worker-core",
     "crates/codetether-audit",
     "crates/codetether-browser",
+    "crates/codetether-companion-capture",
+    "crates/codetether-companion-core",
+    "crates/codetether-companion-protocol",
+    "crates/codetether-companion-relay",
     "crates/codetether-distill",
     "crates/codetether-event-stream",
     "crates/codetether-k8s",
@@ -18,12 +22,15 @@ members = [
     "crates/codetether-secrets",
     "crates/codetether-tls",
     "crates/codetether-util",
+    "crates/codetether-worktree",
     "crates/codetether-worktree-isolation",
+    "windows/CodeTether.Companion/desktop-staging",
+    "windows/CodeTether.Companion/rust-shell",
 ]
 
 [package]
 name = "codetether-agent"
-version = "4.7.6-dev.28"
+version = "4.7.6-dev.33"
 
 
 edition = "2024"
@@ -138,6 +145,7 @@ codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.1" }
 codetether-secrets = { path = "crates/codetether-secrets", version = "0.1.0" }
 codetether-tls = { path = "crates/codetether-tls", version = "0.1.0" }
 codetether-util = { path = "crates/codetether-util", version = "0.1.0" }
+codetether-worktree = { path = "crates/codetether-worktree", version = "0.1.0" }
 codetether-worktree-isolation = { path = "crates/codetether-worktree-isolation", version = "0.1.0" }
 
 # Async runtime

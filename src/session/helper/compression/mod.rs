@@ -57,12 +57,15 @@ mod shrink;
 mod shrink_caps;
 mod shrink_part;
 mod terminal;
+mod terminal_drop;
 mod terminal_marker;
 
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_context;
+#[cfg(test)]
+mod tests_drop;
 #[cfg(test)]
 mod tests_shrink;
 

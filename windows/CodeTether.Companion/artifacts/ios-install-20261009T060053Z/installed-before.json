@@ -1,0 +1,46 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "info",
+      "apps",
+      "--device",
+      "4745B27B-2B68-5164-A053-B869B07EE2CA",
+      "--bundle-id",
+      "run.codetether.ios",
+      "--json-output",
+      "/Users/rileyseaburg/CodeTether-iOSInstall-20261009T060053Z/installed-before.json"
+    ],
+    "commandType" : "devicectl.device.info.apps",
+    "environment" : {
+
+    },
+    "jsonVersion" : 2,
+    "outcome" : "success",
+    "version" : "443.24"
+  },
+  "result" : {
+    "apps" : [
+      {
+        "appClip" : false,
+        "builtByDeveloper" : true,
+        "bundleIdentifier" : "run.codetether.ios",
+        "bundleVersion" : "22",
+        "defaultApp" : false,
+        "hidden" : false,
+        "internalApp" : false,
+        "name" : "CodeTether",
+        "removable" : true,
+        "url" : "file:///private/var/containers/Bundle/Application/B86A020B-1858-4140-99DA-BD4B9747DF72/CodeTether.app/",
+        "version" : "1.5.1"
+      }
+    ],
+    "defaultAppsIncluded" : false,
+    "deviceIdentifier" : "4745B27B-2B68-5164-A053-B869B07EE2CA",
+    "hiddenAppsIncluded" : false,
+    "internalAppsIncluded" : false,
+    "matchingBundleIdentifier" : "run.codetether.ios",
+    "removableAppsIncluded" : true
+  }
+}

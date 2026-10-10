@@ -1,0 +1,84 @@
+name: Release macOS only
+# Builds both macOS targets on the Mac runner and publishes a Forgejo
+# prerelease containing only the macOS archives plus checksums. This skips
+# the Linux verify gate and the Linux/Windows builds; use release.yml for a
+# full release. Branch prefix deliberately does not match release.yml's
+# `release/forgejo-*` trigger.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['release-macos/**']
+permissions:
+  contents: write
+concurrency:
+  group: forgejo-release-macos
+  cancel-in-progress: false
+jobs:
+  macos:
+    runs-on: macOS
+    timeout-minutes: 240
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_TARGET_DIR: target
+      CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER: cc
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          github-server-url: https://forgejo.quantum-forge.io
+      - id: version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Prepare native dependencies
+        shell: bash
+        run: |
+          bash script/forgejo/release-setup.sh aarch64-apple-darwin
+          bash script/forgejo/release-setup.sh x86_64-apple-darwin
+      - name: Build aarch64-apple-darwin
+        run: cargo +1.95.0 build --locked --release --target aarch64-apple-darwin
+      - name: Build x86_64-apple-darwin
+        run: cargo +1.95.0 build --locked --release --target x86_64-apple-darwin
+      - name: Smoke test and package
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          host=$(rustc +1.95.0 -vV | sed -n 's/^host: //p')
+          "target/$host/release/codetether" --version
+          mkdir -p dist
+          for target in aarch64-apple-darwin x86_64-apple-darwin; do
+            tar -C "target/$target/release" -czf "dist/codetether-v$RELEASE_VERSION-$target.tar.gz" codetether
+          done
+          cd dist
+          shasum -a 256 * > "SHA256SUMS-v$RELEASE_VERSION.txt"
+          cat "SHA256SUMS-v$RELEASE_VERSION.txt"
+      - name: Publish Forgejo prerelease
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          API: https://forgejo.quantum-forge.io/api/v1/repos/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          command -v jq >/dev/null || HOMEBREW_NO_AUTO_UPDATE=1 brew install jq
+          tag="v$RELEASE_VERSION"
+          auth=(-H "Authorization: token $TOKEN")
+          id=$(curl -fsS "${auth[@]}" "$API/releases/tags/$tag" | jq -r '.id' || true)
+          if [ -z "$id" ] || [ "$id" = null ]; then
+            body=$(jq -n --arg tag "$tag" --arg sha "$SHA" '{
+              tag_name: $tag, target_commitish: $sha, name: ($tag + " (macOS only)"),
+              prerelease: true, draft: false,
+              body: "Unsigned macOS-only CI build (aarch64 + x86_64) with SHA-256 checksums. Linux/Windows assets and the Linux verify gate were not part of this run.\n\nIf macOS blocks the binary: `xattr -d com.apple.quarantine \"$(command -v codetether)\"`"}')
+            id=$(curl -fsS "${auth[@]}" -H 'Content-Type: application/json' \
+              -d "$body" "$API/releases" | jq -r '.id')
+          fi
+          test -n "$id" && test "$id" != null
+          for file in dist/*; do
+            curl -fsS "${auth[@]}" -F "attachment=@$file" \
+              "$API/releases/$id/assets?name=$(basename "$file")" | jq -r '.browser_download_url'
+          done

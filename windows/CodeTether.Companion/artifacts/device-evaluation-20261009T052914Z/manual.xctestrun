@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>TestConfigurations</key><array><dict>
+    <key>Name</key><string>Manual physical iPhone control</string>
+    <key>TestTargets</key><array><dict>
+      <key>BlueprintName</key><string>CodeTetherUITests</string>
+      <key>ProductModuleName</key><string>CodeTetherUITests</string>
+      <key>IsUITestBundle</key><true/>
+      <key>UseDestinationArtifacts</key><true/>
+      <key>TestHostBundleIdentifier</key><string>run.codetether.CodeTetherUITests.xctrunner</string>
+      <key>TestBundleDestinationRelativePath</key><string>__TESTHOST__/PlugIns/CodeTetherUITests.xctest</string>
+      <key>UITargetAppBundleIdentifier</key><string>com.apple.Preferences</string>
+      <key>OnlyTestIdentifiers</key><array><string>ManualBridge/testManualConnection</string></array>
+      <key>ParallelizationEnabled</key><false/>
+      <key>SystemAttachmentLifetime</key><string>keepNever</string>
+      <key>UserAttachmentLifetime</key><string>keepAlways</string>
+      <key>TestingEnvironmentVariables</key><dict>
+        <key>DYLD_FRAMEWORK_PATH</key><string>__TESTHOST__/Frameworks</string>
+        <key>DYLD_LIBRARY_PATH</key><string>__TESTHOST__/Frameworks</string>
+        <key>XCODE_DBG_XPC_EXCLUSIONS</key><string>com.apple.dt.xctestSymbolicator</string>
+      </dict>
+    </dict></array>
+  </dict></array>
+  <key>__xctestrun_metadata__</key><dict><key>FormatVersion</key><integer>2</integer></dict>
+</dict></plist>
+<!-- Uses existing artifacts only; never installs or launches the owner app.
+     The nominal target is Settings, not CodeTether. No default target is opened.
+     Commands attach by bundle ID after checking that CodeTether is running. -->

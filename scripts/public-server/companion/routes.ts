@@ -3,6 +3,7 @@ import { requireToken } from './auth.ts';
 import { captureInput } from './capture-input.ts';
 import { capture, pause } from './capture.ts';
 import { commandSnapshot, requestCapture } from './commands.ts';
+import { ackReply, queueReply } from './replies.ts';
 import { stop, subscribe } from './events.ts';
 import { json, readJSON } from './json.ts';
 import { Registry } from './registry.ts';
@@ -21,10 +22,10 @@ export async function route(request: IncomingMessage, response: ServerResponse, 
   if (path === '/companion/pair' && request.method === 'POST') {
     json(response, 200, registry.pair(pairCode(await readJSON(request)))); return;
   }
-  const match = /^\/companion\/sessions\/([a-f0-9-]{36})(?:\/(events|frames|pause|commands|request))?$/.exec(path);
+  const match = /^\/companion\/sessions\/([a-f0-9-]{36})(?:\/(events|frames|pause|commands|request|reply|typed))?$/.exec(path);
   if (!match) throw new HTTPError(404, 'Route not found');
   const [, id, action] = match;
-  const deviceRoute = (request.method === 'POST' && (action === 'frames' || action === 'pause'))
+  const deviceRoute = (request.method === 'POST' && (action === 'frames' || action === 'pause' || action === 'typed'))
     || (request.method === 'GET' && action === 'commands');
   if (!deviceRoute) requireToken(request, ownerHash);
   const session = registry.get(id);
@@ -33,6 +34,12 @@ export async function route(request: IncomingMessage, response: ServerResponse, 
   if (request.method === 'GET' && action === 'commands') { json(response, 200, commandSnapshot(session)); return; }
   if (request.method === 'POST' && action === 'request') {
     json(response, 202, requestCapture(session, await readJSON(request))); return;
+  }
+  if (request.method === 'POST' && action === 'reply') {
+    json(response, 202, queueReply(session, await readJSON(request))); return;
+  }
+  if (deviceRoute && action === 'typed') {
+    json(response, 200, ackReply(session, await readJSON(request))); return;
   }
   if (request.method === 'DELETE' && !action) { stop(session); json(response, 200, { stopped: true }); return; }
   if (deviceRoute && action === 'pause') { pause(session); json(response, 200, { paused: true }); return; }

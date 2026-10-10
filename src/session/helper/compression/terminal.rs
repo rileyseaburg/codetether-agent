@@ -3,7 +3,7 @@
 use crate::provider::{Message, ToolDefinition};
 use crate::session::helper::token::estimate_request_tokens;
 
-use super::shrink::shrink_retained_payloads_to_budget;
+use super::terminal_drop::fit_retained;
 use super::terminal_marker::truncation_marker;
 
 /// Drop everything older than the last `keep_last` messages in
@@ -49,16 +49,7 @@ pub(crate) fn terminal_truncate_messages(
     new_messages.extend(tail);
     *messages = new_messages;
 
-    let shrunk_parts =
-        shrink_retained_payloads_to_budget(messages, system_prompt, tools, target_tokens);
-    if shrunk_parts > 0 {
-        tracing::warn!(
-            shrunk_parts,
-            target_tokens,
-            after_tokens = estimate_request_tokens(system_prompt, messages, tools),
-            "Terminal truncation shortened retained message payloads"
-        );
-    }
+    fit_retained(messages, system_prompt, tools, target_tokens);
 
     let after = estimate_request_tokens(system_prompt, messages, tools);
     before.saturating_sub(after)

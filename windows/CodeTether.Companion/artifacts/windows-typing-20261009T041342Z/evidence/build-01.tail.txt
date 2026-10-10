@@ -1,0 +1,5 @@
+42 |     pub(crate) fn revoked(&self) -> bool {
+   |                   ^^^^^^^
+
+warning: `codetether-companion-shell` (bin "codetether-companion") generated 3 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8m 41s

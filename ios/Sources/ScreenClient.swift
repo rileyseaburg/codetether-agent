@@ -7,8 +7,10 @@ final class ScreenClient: ScreenNetworking {
     let rest: ServerClient
 
     init(configuration: URLSessionConfiguration = .ephemeral) {
-        self.configuration = ScreenHTTP.secure(configuration)
-        rest = ServerClient(configuration: configuration)
+        // REST sets shorter deadlines; never share its mutable configuration with SSE.
+        let secured = ScreenHTTP.secure(configuration.copy() as! URLSessionConfiguration)
+        self.configuration = secured
+        rest = ServerClient(configuration: secured.copy() as! URLSessionConfiguration)
     }
     func makeSession() -> URLSession {
         URLSession(configuration: configuration, delegate: RejectRedirects(), delegateQueue: nil)

@@ -15,12 +15,15 @@ final class ScreenModel: ObservableObject {
     @Published var error: String?
     @Published var notice = "Create a session to pair your Windows device."
     @Published var retryBlocked = false
+    let questions = ScreenQuestionState()
+    let replies = ScreenReplyState()
     let client: ScreenNetworking
     let token: ScreenToken
     let delay: ScreenDelay
     var active = false
     var generation = UUID()
     var streamTask: Task<Void, Never>?
+    var expiryTask: Task<Void, Never>?
 
     init(client: ScreenNetworking? = nil, token: @escaping ScreenToken = { try TokenStore.read() },
          delay: @escaping ScreenDelay = { try await Task.sleep(nanoseconds: $0) }) {
@@ -36,7 +39,9 @@ final class ScreenModel: ObservableObject {
     func invalidateStream() {
         generation = UUID()
         streamTask?.cancel()
+        questions.cancel()
+        replies.cancel()
         connected = false
     }
-    deinit { streamTask?.cancel() }
+    deinit { streamTask?.cancel(); expiryTask?.cancel() }
 }

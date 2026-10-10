@@ -6,6 +6,8 @@ type ModelInfo = crate::provider::ModelInfo;
 
 pub(crate) fn convert_model(provider: &str, model: ModelInfo, created: i64) -> types::Model {
     let id = ids::model_id(provider, &model.id);
+    let options = super::options::options(provider, &model.id);
+    let supported_parameters = super::parameters::with_options(&model, &options);
     types::Model {
         id: id.clone(),
         canonical_slug: id,
@@ -20,7 +22,8 @@ pub(crate) fn convert_model(provider: &str, model: ModelInfo, created: i64) -> t
         pricing: super::pricing::price(&model),
         top_provider: top_provider(&model),
         per_request_limits: None,
-        supported_parameters: super::parameters::supported_parameters(&model),
+        supported_parameters,
+        options,
     }
 }
 

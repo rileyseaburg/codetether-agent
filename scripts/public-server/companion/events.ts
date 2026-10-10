@@ -29,5 +29,5 @@ export function stop(session: ScreenSession): void {
   session.stopped = true; session.status = 'stopped'; session.code = ''; session.deviceHash = undefined;
   session.controller?.abort(); publish(session, { type: 'stopped', status: 'stopped' });
   for (const viewer of session.viewers) viewer.end();
-  session.viewers.clear(); session.text = ''; session.previous = ''; session.pending = undefined;
+  session.viewers.clear(); session.text = ''; session.previous = ''; session.pending = undefined; session.reply = undefined;
 }

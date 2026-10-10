@@ -1,8 +1,8 @@
 //! Whether an interactive session is accepting inbound peer turns.
 //!
-//! Opt-in per process: the TUI calls [`attach`] when the user enables
-//! `/a2a accept` (or config `[a2a] accept_inbound = true`) and [`detach`]
-//! on exit. While detached, the server keeps its headless behaviour, so a
+//! Per process: the TUI calls [`attach`] by default once its A2A peer
+//! endpoint is up (skipped entirely with `--no-a2a`), and [`detach`] on
+//! `/a2a headless`. While detached, the server keeps its headless behaviour, so a
 //! LAN peer can never inject a prompt into a session that did not ask.
 
 use std::sync::atomic::{AtomicBool, Ordering};

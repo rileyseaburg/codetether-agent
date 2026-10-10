@@ -13,6 +13,7 @@ export interface ScreenSession {
   seq: number; frames: number; lastAt: number; stopped: boolean;
   controller?: AbortController; viewers: Set<ServerResponse>;
   pending?: { id: string; question: string; created: number };
+  reply?: { id: string; text: string; created: number };
 }
 export interface Capture {
   image: string; captured_at: string;

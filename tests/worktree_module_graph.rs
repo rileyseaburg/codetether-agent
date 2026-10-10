@@ -27,6 +27,19 @@ fn worktree_uses_single_active_module_file() {
     );
 }
 
+#[test]
+fn worktree_implementation_lives_in_workspace_crate() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let facade = std::fs::read_to_string(root.join("src/worktree/mod.rs")).unwrap();
+    assert!(facade.contains("pub use codetether_worktree::*;"));
+    assert!(!facade.contains("mod manager;"));
+    assert!(root.join("crates/codetether-worktree/src/lib.rs").is_file());
+    assert!(
+        root.join("crates/codetether-worktree/src/manager.rs")
+            .is_file()
+    );
+}
+
 fn contains_rust_file(path: &Path) -> bool {
     let Ok(entries) = std::fs::read_dir(path) else {
         return false;

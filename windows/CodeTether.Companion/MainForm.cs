@@ -21,7 +21,7 @@ internal sealed partial class MainForm : Form
         FlowLayoutPanel layout = new() { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(20), AutoScroll = true };
         Controls.Add(layout);
         Label notice = new() { AutoSize = true, MaximumSize = new Size(510, 0), Text =
-            "Company screen monitoring. Start permits screenshots of the selected monitor for AI analysis, including iOS requests. The tray icon stays visible. Pause or Stop anytime. No audio, keyboard recording, or remote control." };
+            "Company screen monitoring. Start permits screenshots of the selected monitor for AI analysis, including iOS requests. The agent can type into chat boxes on your behalf when you request it. The tray icon stays visible. Pause or Stop anytime. No audio or keyboard recording." };
         layout.Controls.Add(notice); layout.Controls.Add(Row(Code, Pair));
         foreach (Screen screen in Screen.AllScreens) Monitor.Items.Add(new MonitorChoice(screen.DeviceName, screen.Bounds));
         Monitor.SelectedIndex = 0; layout.Controls.Add(Monitor);

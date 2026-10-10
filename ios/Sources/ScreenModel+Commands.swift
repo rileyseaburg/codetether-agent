@@ -12,12 +12,15 @@ extension ScreenModel {
         let ticket = generation
         do {
             let receipt = try await client.create(body, token: credential())
-            guard generation == ticket else { return }
+            guard generation == ticket else { creating = false; return }
             session = receipt
             activeModel = model
             response = ScreenResponse()
+            questions.cancel(clearDraft: true)
+            replies.cancel(clearDraft: true)
             retryBlocked = !receipt.valid
             if !receipt.valid { throw ScreenFailure.invalidResponse }
+            scheduleExpiry(for: receipt)
             notice = "Pair Windows using the one-use code below."
         } catch { self.error = ScreenFailure.message(error) }
         creating = false
@@ -29,19 +32,17 @@ extension ScreenModel {
         guard let owned = session, !stopping, !creating else { return }
         stopping = true
         invalidateStream()
-        let ticket = generation
         retryBlocked = true
         error = nil
         do {
             try await client.stop(owned.id, token: credential())
-            guard generation == ticket else { return }
-            session = nil
-            notice = "Stopped. Windows pairing and capture are revoked."
-            retryBlocked = false
+            stopping = false
+            guard session?.id == owned.id else { return }
+            finishSession("Stopped. Windows pairing and capture are revoked.")
         } catch {
+            stopping = false
             self.error = ScreenFailure.message(error)
-            notice = "Capture paused. Stop was not confirmed; retry Stop."
+            notice = "Stop was not confirmed. Pause on Windows, then retry Stop."
         }
-        stopping = false
     }
 }

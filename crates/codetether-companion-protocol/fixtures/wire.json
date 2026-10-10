@@ -1,0 +1,19 @@
+{
+  "session_input": {"model":"mock/vision","prompt":"Describe the screen","interval_seconds":30},
+  "session_receipt": {"id":"00000000-0000-4000-8000-000000000001","code":"AABBCCDDEEFF","pair_expires_at":"2026-01-01T00:05:00.000Z","expires_at":"2026-01-01T01:00:00.000Z","interval_seconds":30},
+  "pair_request": {"code":"AABBCCDDEEFF"},
+  "pair_receipt": {"id":"00000000-0000-4000-8000-000000000001","device_token":"TEST_ONLY_DEVICE_CAPABILITY_NOT_A_SECRET_000","interval_seconds":30,"expires_at":"2026-01-01T01:00:00.000Z"},
+  "capture_request": {"question":"What changed?"},
+  "request_receipt": {"request_id":"00000000-0000-4000-8000-000000000002"},
+  "command_idle": {"request_id":null},
+  "command_pending": {"request_id":"00000000-0000-4000-8000-000000000002"},
+  "frame_legacy": {"image":"/9j/wAARCAAQABAAAAAAAAAAAAAAAAAAAAAAAAAA/9k=","captured_at":"2026-01-01T00:00:00.000Z"},
+  "frames": [{"image":"/9j/wAARCAAQABAAAAAAAAAAAAAAAAAAAAAAAAAA/9k=","captured_at":"2026-01-01T00:00:00.000Z","trigger":"periodic"},{"image":"/9j/wAARCAAQABAAAAAAAAAAAAAAAAAAAAAAAAAA/9k=","captured_at":"2026-01-01T00:00:00.000Z","trigger":"right_click"},{"image":"/9j/wAARCAAQABAAAAAAAAAAAAAAAAAAAAAAAAAA/9k=","captured_at":"2026-01-01T00:00:00.000Z","trigger":"double_click"},{"image":"/9j/wAARCAAQABAAAAAAAAAAAAAAAAAAAAAAAAAA/9k=","captured_at":"2026-01-01T00:00:00.000Z","trigger":"manual","request_id":"00000000-0000-4000-8000-000000000002"}],
+  "accepted": {"accepted":true},
+  "paused": {"paused":true},
+  "stopped": {"stopped":true},
+  "error": {"error":"Screen session ended"},
+  "events": [{"type":"snapshot","seq":0,"text":"","status":"waiting"},{"type":"capture","seq":1,"status":"analyzing","captured_at":"2026-01-01T00:00:00.000Z"},{"type":"delta","seq":2,"text":"Visible editor"},{"type":"done","seq":3,"text":"Visible editor","status":"ready"},{"type":"error","seq":4,"text":"Analysis failed. Check the selected vision model and try again.","status":"error"},{"type":"stopped","seq":5,"status":"stopped"}],
+  "invalid_events": [{"type":"future","seq":0},{"type":"snapshot","seq":-1},{"type":"delta","seq":1.5},{"type":"done"},{"seq":1}],
+  "invalid_frames": [{"image":"/9j/wAARCAAQABAAAAAAAAAAAAAAAAAAAAAAAAAA/9k=","captured_at":"2026-01-01T00:00:00.000Z","trigger":null},{"image":"/9j/wAARCAAQABAAAAAAAAAAAAAAAAAAAAAAAAAA/9k=","captured_at":"2026-01-01T00:00:00.000Z","request_id":null},{"image":"/9j/wAARCAAQABAAAAAAAAAAAAAAAAAAAAAAAAAA/9k=","captured_at":"2026-01-01T00:00:00.000Z","trigger":"remote_desktop"},{"captured_at":"2026-01-01T00:00:00.000Z"}]
+}

@@ -1,0 +1,44 @@
+{
+  "level": "live relay, synthetic device",
+  "phase": "after",
+  "steps": [
+    {
+      "name": "create",
+      "status": 200
+    },
+    {
+      "name": "pair",
+      "status": 200
+    },
+    {
+      "name": "commands-before",
+      "status": 200
+    },
+    {
+      "name": "queue-reply",
+      "status": 202
+    },
+    {
+      "name": "poll-reply",
+      "status": 200
+    },
+    {
+      "name": "acknowledge-consumption",
+      "status": 200
+    },
+    {
+      "name": "poll-empty",
+      "status": 200
+    },
+    {
+      "name": "commands-still-valid",
+      "status": 200
+    },
+    {
+      "name": "stop-test-session",
+      "status": 200
+    }
+  ],
+  "sessionId": "d5e7c51c-216b-4a2c-bbc6-293110010e9b",
+  "success": true
+}

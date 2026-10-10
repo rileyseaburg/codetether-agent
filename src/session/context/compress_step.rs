@@ -26,7 +26,7 @@ pub(super) async fn run_compression_step(
     force_keep_last: Option<usize>,
 ) -> Result<bool> {
     let before = messages.len();
-    match force_keep_last {
+    let forced = match force_keep_last {
         Some(keep_last) => {
             compress_messages_keep_last(
                 messages,
@@ -36,20 +36,21 @@ pub(super) async fn run_compression_step(
                 keep_last,
                 "prompt_too_long_retry",
             )
-            .await
+            .await?
         }
-        None => {
-            enforce_on_messages(
-                messages,
-                ctx,
-                provider,
-                model,
-                system_prompt,
-                tools,
-                event_tx,
-            )
-            .await?;
-            Ok(messages_len_changed(before, messages))
-        }
-    }
+        None => false,
+    };
+    // A forced pass can leave a short-but-oversized history over budget,
+    // so the normal cascade + terminal truncation must always follow it.
+    enforce_on_messages(
+        messages,
+        ctx,
+        provider,
+        model,
+        system_prompt,
+        tools,
+        event_tx,
+    )
+    .await?;
+    Ok(forced || messages_len_changed(before, messages))
 }

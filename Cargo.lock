@@ -1095,7 +1095,7 @@ dependencies = [
 
 [[package]]
 name = "codetether-agent"
-version = "4.7.6-dev.28"
+version = "4.7.6-dev.33"
 dependencies = [
  "anyhow",
  "arboard",
@@ -1130,6 +1130,7 @@ dependencies = [
  "codetether-secrets",
  "codetether-tls",
  "codetether-util",
+ "codetether-worktree",
  "codetether-worktree-isolation",
  "config",
  "cpal",
@@ -1237,6 +1238,91 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-companion-capture"
+version = "0.1.0"
+dependencies = [
+ "codetether-companion-protocol",
+]
+
+[[package]]
+name = "codetether-companion-core"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "chrono",
+ "codetether-companion-protocol",
+ "getrandom 0.3.4",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "subtle",
+ "thiserror 2.0.20",
+ "uuid",
+]
+
+[[package]]
+name = "codetether-companion-desktop"
+version = "0.1.0"
+dependencies = [
+ "jpeg-encoder",
+ "windows",
+ "windows-sys 0.61.2",
+ "zeroize",
+]
+
+[[package]]
+name = "codetether-companion-protocol"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "codetether-companion-relay"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "base64 0.23.1",
+ "bytes",
+ "chrono",
+ "codetether-companion-core",
+ "codetether-companion-protocol",
+ "futures-util",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "codetether-companion-shell"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.23.1",
+ "bytes",
+ "chrono",
+ "codetether-companion-desktop",
+ "codetether-companion-protocol",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "ureq",
+ "uuid",
+ "windows-sys 0.61.2",
+ "zeroize",
 ]
 
 [[package]]
@@ -1417,6 +1503,21 @@ dependencies = [
 [[package]]
 name = "codetether-util"
 version = "0.1.0"
+
+[[package]]
+name = "codetether-worktree"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provenance",
+ "codetether-worktree-isolation",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "uuid",
+]
 
 [[package]]
 name = "codetether-worktree-isolation"
@@ -3934,6 +4035,12 @@ dependencies = [
  "getrandom 0.4.3",
  "libc",
 ]
+
+[[package]]
+name = "jpeg-encoder"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b454d911ac55068f53495488d8ccd0646eaa540c033a28ee15b07838afafb01f"
 
 [[package]]
 name = "js-sys"

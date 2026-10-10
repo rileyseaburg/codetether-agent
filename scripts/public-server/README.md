@@ -5,6 +5,9 @@ to the existing `codetether serve` service on ubuntu-dev, `127.0.0.1:4096`.
 The website and the separate `api.codetether.run` A2A service are unchanged.
 This is an authenticated API, not an anonymous web dashboard.
 
+See [companion server support](../../docs/companion-server-support.md) for the
+screen-analysis relay architecture, authentication boundaries, and migration gaps.
+
 ## Live deployment evidence (2026-10-04)
 
 - Tunnel: `codetether-server-ubuntu-dev`,

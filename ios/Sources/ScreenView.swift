@@ -1,33 +1,44 @@
 import SwiftUI
 
-/// Read-only Windows observation, separate from chat and its tool-capable session.
+/// Screen assistance and directly requested typing stay separate from agent chat.
 struct ScreenView: View {
     @ObservedObject var model: ScreenModel
-    @ObservedObject var chat: ChatModel
+    @StateObject private var selection = ScreenModelSelection()
     @Environment(\.scenePhase) private var scenePhase
     @State private var visible = false
+    @State private var confirmingStop = false
 
     var body: some View {
         NavigationStack {
             Form {
-                ScreenSetupView(model: model, chat: chat)
+                ScreenSetupView(model: model, selection: selection)
                 if let session = model.session {
                     ScreenPairingView(session: session, status: model.response.status)
-                    ScreenResponseView(model: model)
+                    ScreenStatusView(model: model)
+                    ScreenCaptureButton(model: model, questions: model.questions)
+                    ScreenAnalysisView(response: model.response)
+                    ScreenQuestionView(model: model, questions: model.questions)
                 }
                 if let error = model.error {
-                    Section("Connection") { Text(error).foregroundStyle(.red) }
+                    Section { Text(error).foregroundStyle(.red).accessibilityIdentifier("screen-error") }
                 }
-                Section {
-                    Text("Keep this Screen tab open to receive live analysis. Backgrounding or leaving this tab pauses uploads. Screenshots go to your selected AI provider; close private windows first.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                Section { Text(model.notice).font(.footnote).foregroundStyle(.secondary) }
+                if model.session != nil {
+                    Section {
+                        Button(model.stopping ? "Stopping…" : "Stop session", role: .destructive) {
+                            confirmingStop = true
+                        }.disabled(model.stopping).accessibilityIdentifier("screen-stop")
+                    }
                 }
             }
-            .navigationTitle("Windows Screen")
+            .navigationTitle("Screen")
+            .confirmationDialog("Stop sharing and revoke Windows access?", isPresented: $confirmingStop) {
+                Button("Stop session", role: .destructive) { Task { await model.stop() } }
+            }
+            .task { await selection.load() }
+            .onAppear { visible = true; model.setActive(scenePhase == .active) }
+            .onDisappear { visible = false; model.setActive(false) }
+            .onChange(of: scenePhase) { _, phase in model.setActive(visible && phase == .active) }
         }
-        .onAppear { visible = true; model.setActive(scenePhase == .active) }
-        .onDisappear { visible = false; model.setActive(false) }
-        .onChange(of: scenePhase) { _, phase in model.setActive(visible && phase == .active) }
-        .task { if chat.models.isEmpty { await chat.loadModels() } }
     }
 }

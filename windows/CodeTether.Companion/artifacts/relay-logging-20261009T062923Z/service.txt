@@ -1,0 +1,4 @@
+MainPID=986529
+Id=codetether-companion.service
+ActiveState=active
+SubState=running

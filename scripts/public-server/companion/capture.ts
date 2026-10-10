@@ -24,6 +24,6 @@ export function capture(session: ScreenSession, frame: Capture, analyze: Analyze
   runAnalysis(session, frame, analyze, controller, pending?.question ?? session.prompt);
 }
 export function pause(session: ScreenSession): void {
-  session.controller?.abort(); session.pending = undefined; session.status = 'paused';
+  session.controller?.abort(); session.pending = undefined; session.reply = undefined; session.status = 'paused';
   publish(session, { type: 'snapshot', status: 'paused', text: session.text, captured_at: session.capturedAt });
 }

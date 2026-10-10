@@ -4,13 +4,14 @@ use crate::session::{
     index::{SummaryIndex, SummaryNode, SummaryRange},
 };
 use anyhow::Result;
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, TransactionBehavior, params};
 pub(crate) async fn put(session: &Session, range: SummaryRange, node: &SummaryNode) -> Result<()> {
     let state = session.storage.0.lock().unwrap().clone();
     let body = serde_json::to_string(node)?;
     tokio::task::spawn_blocking(move || {
-        let db = super::connection::open(&state.path)?;
-        let tx = db.unchecked_transaction()?;
+        let mut db = super::connection::open(&state.path)?;
+        // Check the source revision only after obtaining SQLite's writer reservation.
+        let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let revision: i64 = tx.query_row("SELECT revision FROM sessions WHERE id=?1", [&state.id], |r| r.get(0))?;
         anyhow::ensure!(revision == state.revision, "SESSION_REVISION_CONFLICT: summary source changed");
         tx.execute("INSERT INTO projections VALUES (?1,'manual_summary',?2,?3,?4)

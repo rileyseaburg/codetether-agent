@@ -1,7 +1,7 @@
 //! `/a2a` — control whether LAN peers may address this live session.
 //!
-//! * `/a2a accept`   route inbound peer turns into this session (opt in)
-//! * `/a2a headless` answer peers from a headless session (default)
+//! * `/a2a accept`   route inbound peer turns into this session (default)
+//! * `/a2a headless` answer peers from a headless session (opt out)
 //! * `/a2a`          show the current mode
 
 use crate::a2a::live_inbox;
@@ -21,7 +21,7 @@ pub(super) fn handle(app: &mut App, rest: &str) {
             "A2A: inbound peer turns answered from a headless session.".to_string()
         }
         "" => format!(
-            "A2A inbound mode: {}\n  /a2a accept    route peer turns into this session\n  /a2a headless  answer peers headlessly (default)",
+            "A2A inbound mode: {}\n  /a2a accept    route peer turns into this session (default)\n  /a2a headless  answer peers headlessly",
             if live_inbox::is_attached() {
                 "accept (live session)"
             } else {

@@ -19,7 +19,10 @@ export async function readAnalysis(body: ReadableStream<Uint8Array>, delta: (tex
         const payload = data.join('\n'); data = [];
         if (payload === '[DONE]') return;
         const value: unknown = JSON.parse(payload);
-        if (!record(value) || value.error) throw new Error('Analysis provider error');
+        if (!record(value) || value.error) {
+          const detail = record(value) && record(value.error) ? String(value.error.message ?? value.error.code ?? '') : String(record(value) ? value.error : '');
+          throw new Error(`Analysis provider error: ${detail.slice(0, 160)}`);
+        }
         if (!Array.isArray(value.choices)) continue;
         for (const choice of value.choices as unknown[]) {
           if (!record(choice)) continue;

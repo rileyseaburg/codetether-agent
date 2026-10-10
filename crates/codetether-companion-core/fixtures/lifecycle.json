@@ -1,0 +1,17 @@
+{
+  "now": 1767225600000,
+  "input": { "model": "provider/vision", "prompt": "Describe the screen", "interval_seconds": 30 },
+  "pairing": [
+    { "age": 299999, "status": 200 },
+    { "age": 300000, "status": 401 },
+    { "age": 300001, "status": 401 }
+  ],
+  "session": [
+    { "age": 3599999, "status": 200 },
+    { "age": 3600000, "status": 410 },
+    { "age": 3600001, "status": 410 }
+  ],
+  "capacity": 4,
+  "attempts": 30,
+  "window_ms": 60000
+}

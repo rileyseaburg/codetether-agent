@@ -25,4 +25,6 @@ pub(crate) struct Model {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) per_request_limits: Option<serde_json::Value>,
     pub(crate) supported_parameters: Vec<String>,
+    #[serde(flatten)]
+    pub(crate) options: super::options::ModelOptions,
 }

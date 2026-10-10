@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::provider::Provider;
 use crate::session::Session;
-use crate::session::helper::{evidence::digest, rlm_background};
+use crate::session::helper::rlm_background;
 
 pub(super) fn route(
     session: &Session,
@@ -24,6 +24,5 @@ pub(super) fn route(
         &session.metadata.rlm,
         None,
     );
-    let output = digest::compact_output(&out.tool_name, &routed);
-    crate::tool::feedback::render(&out.tool_name, out.success, &output)
+    crate::tool::feedback::render(&out.tool_name, out.success, &routed)
 }

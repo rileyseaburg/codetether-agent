@@ -28,8 +28,8 @@ use super::helpers::{DerivedContext, messages_len_changed};
 /// * `system_prompt` — Included in token estimates.
 /// * `tools` — Tool definitions, included in token estimates.
 /// * `event_tx` — Optional channel for compaction lifecycle events.
-/// * `force_keep_last` — When `Some(n)`, skip the adaptive budget
-///   cascade and force a single [`compress_messages_keep_last`] call.
+/// * `force_keep_last` — When `Some(n)`, first force a single
+///   [`compress_messages_keep_last`] call, then still enforce the budget.
 ///
 /// # Errors
 ///
