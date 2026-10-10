@@ -50,15 +50,24 @@ jobs:
           test -s "dist/codetether-v$RELEASE_VERSION-x86_64-pc-windows-gnu.msi"
           cd dist
           sha256sum * > "SHA256SUMS-v$RELEASE_VERSION.txt"
-      # v2.1.0 is composite/bash and uses github.*, compatible with runner v0.2.11.
-      - uses: https://code.forgejo.org/actions/forgejo-release@de47e391d31cd6dc81998dfbe4a96c0c9b3d18ac
-        with:
-          url: http://192.168.50.80:3000
-          repo: ${{ github.repository }}
-          token: ${{ github.token }}
-          sha: ${{ github.sha }}
-          tag: v${{ inputs.version }}
-          direction: upload
-          release-dir: dist
-          prerelease: 'true'
-          release-notes: ${{ steps.notes.outputs.body }}
+      # Publish via the Forgejo API directly instead of forgejo-release@de47e39:
+      # that action's tea 0.9.0 writes all upload output to a temp file
+      # and the upload stalled for the full 60min deadline in runs
+      # 11515/11516/11517 (even after switching to the LAN URL). curl + API is
+      # the same path proven live (91MB -> HTTP 201 in <1s), and every step now
+      # logs progress, so a repeat of the silent stall cannot hide.
+      - name: Publish release assets via API
+        shell: bash
+        env:
+          RELEASE_URL: http://192.168.50.80:3000
+          TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          TAG: v${{ inputs.version }}
+          SHA: ${{ github.sha }}
+          VERSION: ${{ inputs.version }}
+          NOTES_BODY: ${{ steps.notes.outputs.body }}
+          NOTES_FILE: release-notes.md
+        run: |
+          set -euo pipefail
+          printf '%s' "$NOTES_BODY" > release-notes.md
+          bash source/script/forgejo/publish-release-assets.sh
