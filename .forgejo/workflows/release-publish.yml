@@ -10,9 +10,12 @@ permissions:
 jobs:
   publish:
     runs-on: codetether-release-proxmox
-    # 15 minutes was exceeded by release-asset upload through the tunnel on
-    # v4.7.6-dev.33 (run 11515): artifacts downloaded at :17, upload killed at
-    # the deadline. 60 gives headroom for larger binaries.
+    # Upload goes over the LAN: 192.168.50.80:3000 is the Forgejo container on
+    # VM 200 of the proxmox host (192.168.50.133). Uploading ~140 MB of assets
+    # through the Cloudflare tunnel stalled with zero output and hit the job
+    # deadline (runs 11515/11516 on v4.7.6-dev.33); the same upload from the
+    # runner takes ~1 ms per API round-trip over the LAN, and the job token
+    # authenticates against the LAN address.
     timeout-minutes: 60
     env:
       RELEASE_VERSION: ${{ inputs.version }}
@@ -50,7 +53,7 @@ jobs:
       # v2.1.0 is composite/bash and uses github.*, compatible with runner v0.2.11.
       - uses: https://code.forgejo.org/actions/forgejo-release@de47e391d31cd6dc81998dfbe4a96c0c9b3d18ac
         with:
-          url: https://forgejo.quantum-forge.io
+          url: http://192.168.50.80:3000
           repo: ${{ github.repository }}
           token: ${{ github.token }}
           sha: ${{ github.sha }}
