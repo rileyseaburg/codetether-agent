@@ -2,6 +2,8 @@
 
 #[path = "goal/attempt_cap.rs"]
 pub mod attempt_cap;
+#[path = "goal/budget_guard.rs"]
+pub(crate) mod budget_guard;
 #[path = "goal/context.rs"]
 mod context;
 #[path = "goal/create.rs"]

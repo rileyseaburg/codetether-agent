@@ -21,11 +21,11 @@ impl Tool for EditGoalTool {
     fn description(&self) -> &str {
         "Edit an existing goal only when the user explicitly requests it. \
          Read get_goal first and supply its goalId and updatedAt. \
-         Use tokenBudget:null to remove a cap without resetting usage. \
-         Resume is separate. Never clear a goal or raise/remove its budget \
-         to bypass a limit on your own. Completion still requires update_goal."
+         Budget controls are human-only and unavailable through model tools. \
+         Resume is separate. Never clear a goal to bypass a limit on your own. \
+         Completion still requires update_goal."
     }
-    /// Use the same native edit schema as the HTTP controller.
+    /// Expose revision-bound edits without human-only budget controls.
     fn parameters(&self) -> Value {
         super::edit_schema::parameters()
     }

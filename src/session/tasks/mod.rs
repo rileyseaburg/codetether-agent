@@ -28,14 +28,13 @@
 //! [`Session`]: super::Session
 
 pub(crate) mod control;
-#[path = "event/mod.rs"]
-mod event;
+pub use codetether_goal_core as event;
 mod log;
 mod path;
-mod render;
+pub use codetether_goal_core as render;
 pub(crate) mod runtime;
+pub use codetether_goal_core as state;
 pub use event::{GoalEdit, GoalEditAction, GoalEdited, GoalStatusChecked};
-mod state;
 pub(crate) mod state_cache;
 pub(crate) mod turn_instructions;
 
@@ -48,5 +47,5 @@ pub use log::TaskLog;
 pub use path::task_log_path;
 pub use render::{goal_block, governance_block, task_block};
 #[cfg(test)]
-pub(crate) use state::answer_review_test_support;
+pub(crate) mod answer_review_test_support;
 pub use state::{AnswerReview, Goal, Task, TaskState};

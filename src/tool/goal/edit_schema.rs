@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 
-/// Keep model tools and the authenticated UI on the same native controller.
+/// Expose revision-bound edits without human-only budget controls.
 pub(super) fn parameters() -> Value {
     json!({"type":"object","additionalProperties":false,"properties":{
         "goalId":{"type":"string","description":"Current get_goal ID"},
@@ -12,8 +12,6 @@ pub(super) fn parameters() -> Value {
         "successCriteria":{"type":"array","maxItems":100,
             "items":{"type":"string","maxLength":2000}},
         "forbidden":{"type":"array","maxItems":100,
-            "items":{"type":"string","maxLength":2000}},
-        "tokenBudget":{"type":["integer","null"],"minimum":1,
-            "description":"Omit to keep the cap; null explicitly removes it"}
+            "items":{"type":"string","maxLength":2000}}
     },"required":["goalId","updatedAt","action"]})
 }

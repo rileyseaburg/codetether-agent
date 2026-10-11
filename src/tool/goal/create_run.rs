@@ -37,7 +37,7 @@ pub(super) async fn run(mut args: Args) -> Result<ToolResult> {
         goal_id,
         objective: None,
         status: Some(GoalStatus::Active),
-        token_budget: args.token_budget,
+        token_budget: None,
         token_delta: 0,
         elapsed_seconds: 0,
         continuation_delta: 0,

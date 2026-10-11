@@ -14,16 +14,25 @@ fn incomplete_ephemeral_run_is_not_successful() {
 
 #[test]
 fn completed_ephemeral_run_returns_output() {
-    let result = build(
-        "once",
-        Ok((
-            "evidence\nSTATUS: completed".into(),
-            2,
-            1,
-            AgentLoopExit::Completed,
-        )),
-        None,
-    );
-    assert!(result.success);
-    assert!(result.output.contains("evidence"));
+    for output in ["evidence\nSTATUS: completed", "evidence: reviewed the diff"] {
+        let result = build(
+            "once",
+            Ok((output.into(), 2, 1, AgentLoopExit::Completed)),
+            None,
+        );
+        assert!(result.success);
+        assert!(result.output.contains("evidence"));
+    }
+}
+
+#[test]
+fn completed_loop_with_explicit_non_completion_is_not_successful() {
+    for output in ["STATUS: blocked", "STATUS: pending"] {
+        let result = build(
+            "once",
+            Ok((output.into(), 2, 1, AgentLoopExit::Completed)),
+            None,
+        );
+        assert!(!result.success);
+    }
 }

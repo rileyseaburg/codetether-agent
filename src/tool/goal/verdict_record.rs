@@ -35,6 +35,12 @@ pub struct VerdictRecord {
     /// Infrastructure/protocol failure, excluded from the rejection budget.
     #[serde(default)]
     pub unavailable: bool,
+    /// Recoverable non-passing feedback; absent in older verdict journals.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub findings: Option<String>,
+    /// Revision reviewed, preventing feedback from leaking into replacement scope.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal_updated_at: Option<DateTime<Utc>>,
 }
 
 impl VerdictRecord {
@@ -49,6 +55,8 @@ impl VerdictRecord {
             report_sha256: hex::encode(Sha256::digest(report.as_bytes())),
             escalated: false,
             unavailable: false,
+            findings: (!passed).then(|| report.to_string()),
+            goal_updated_at: None,
         }
     }
 }

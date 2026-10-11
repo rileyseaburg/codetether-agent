@@ -34,6 +34,7 @@ pub(crate) async fn handle(app: &mut App, session_id: &str, raw: &str) -> bool {
         "done" => status::set(session_id, "complete").await,
         "pause" => status::set(session_id, "paused").await,
         "resume" => status::set(session_id, "active").await,
+        "execute" => write::change(session_id, GoalEditAction::Execute, None, None).await,
         other => Err(anyhow::anyhow!(
             "unknown /goal subcommand `{other}`; use set, auto, edit, override, budget, pause, resume, done, clear, or show (/tasks lists work items)"
         )),

@@ -14,10 +14,11 @@ pub(super) async fn run(
     ticket.requested(requested.clone());
     let providers = crate::provider::ProviderRegistry::shared_from_vault().await?;
     let (provider, model) = providers.resolve_model(&requested)?;
-    ticket.resolved(provider.name(), &model);
+    let resolved = provider.resolved_model_identity(&model);
+    ticket.resolved(provider.name(), &resolved);
     let tools = verifier.verification_tools(&provider, &model);
     let id = ticket.id().to_string();
-    tracing::info!(verifier = %id, provider = %provider.name(), model = %model,
+    tracing::info!(verifier = %id, provider = %provider.name(), model = %resolved,
         requested_model = %requested, claimed = request.claimed.as_str(), "Starting goal verifier");
     let system = prompt::system_prompt(&verifier.workspace, &model, request.claimed);
     let user = prompt::user_prompt(request);

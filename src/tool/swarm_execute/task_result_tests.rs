@@ -5,9 +5,20 @@ use crate::swarm::executor::AgentLoopExit;
 #[test]
 fn only_completed_agent_loops_are_successful() {
     assert!(completed(AgentLoopExit::Completed, "STATUS: completed"));
+    assert!(completed(
+        AgentLoopExit::Completed,
+        "Review findings: two defects"
+    ));
     assert!(!completed(AgentLoopExit::Completed, "STATUS: blocked"));
+    assert!(!completed(AgentLoopExit::Completed, "STATUS: pending"));
+    assert!(!completed(AgentLoopExit::Completed, ""));
     assert!(!completed(AgentLoopExit::MaxStepsReached, ""));
     assert!(!completed(AgentLoopExit::TimedOut, ""));
+    assert!(!completed(
+        AgentLoopExit::MaxStepsReached,
+        "STATUS: completed"
+    ));
+    assert!(!completed(AgentLoopExit::TimedOut, "STATUS: completed"));
 }
 
 #[test]

@@ -10,6 +10,7 @@ members = [
     "crates/codetether-companion-relay",
     "crates/codetether-distill",
     "crates/codetether-event-stream",
+    "crates/codetether-goal-core",
     "crates/codetether-k8s",
     "crates/codetether-knowledge-graph",
     "crates/codetether-marketplace",
@@ -133,6 +134,7 @@ codetether-audit = { path = "crates/codetether-audit", version = "0.1.0" }
 codetether-browser = { path = "crates/codetether-browser", version = "0.1.1" }
 codetether-distill = { path = "crates/codetether-distill", version = "0.1.0" }
 codetether-event-stream = { path = "crates/codetether-event-stream", version = "0.1.0" }
+codetether-goal-core = { path = "crates/codetether-goal-core", version = "0.1.0" }
 codetether-k8s = { path = "crates/codetether-k8s", version = "0.1.0" }
 codetether-knowledge-graph = { path = "crates/codetether-knowledge-graph", version = "0.1.0" }
 codetether-marketplace = { path = "crates/codetether-marketplace", version = "0.1.0" }

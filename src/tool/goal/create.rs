@@ -11,8 +11,6 @@ pub(super) struct CreateGoalTool;
 #[derive(Deserialize)]
 pub(super) struct Args {
     pub objective: String,
-    #[serde(default)]
-    pub token_budget: Option<i64>,
     #[serde(default, rename = "__ct_session_id")]
     pub session_id: Option<String>,
 }
@@ -26,14 +24,17 @@ impl Tool for CreateGoalTool {
         "Create Goal"
     }
     fn description(&self) -> &str {
-        "Create a goal only when explicitly requested. Fails if an unfinished goal exists; use update_goal only for status. Set token_budget only when explicitly requested."
+        "Create an uncapped goal only when explicitly requested. Fails if an unfinished goal exists; use update_goal only for status. Budgets are controlled only by humans through TUI/authenticated API controls."
     }
     fn parameters(&self) -> Value {
         json!({"type":"object","properties":{
-        "objective":{"type":"string"}, "token_budget":{"type":"integer","minimum":1}
+        "objective":{"type":"string"}
     },"required":["objective"]})
     }
     async fn execute(&self, input: Value) -> Result<ToolResult> {
+        if let Some(refused) = super::budget_guard::refusal(&input) {
+            return Ok(refused);
+        }
         super::create_run::run(serde_json::from_value(input)?).await
     }
 }

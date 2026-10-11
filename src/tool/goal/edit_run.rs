@@ -8,6 +8,9 @@ use serde_json::Value;
 
 /// Apply only within the invoking session; no caller-supplied target is exposed.
 pub(super) async fn run(mut input: Value) -> Result<ToolResult> {
+    if let Some(refused) = super::budget_guard::refusal(&input) {
+        return Ok(refused);
+    }
     let object = input
         .as_object_mut()
         .ok_or_else(|| anyhow!("expected object"))?;

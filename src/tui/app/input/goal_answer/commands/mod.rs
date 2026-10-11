@@ -1,6 +1,8 @@
 //! Human goal/task commands that never borrow the in-flight session.
 
+mod execute;
 mod pending;
+mod restart_needed;
 mod resume;
 mod tasks;
 pub(crate) use resume::{drain, restart};
@@ -18,6 +20,10 @@ pub(crate) async fn intercept(
 ) -> bool {
     let input = app.state.input.trim().to_string();
     let normalized = normalize_slash_command(&input);
+    if command_with_optional_args(&normalized, "/go").is_some() {
+        execute::run(app, slot.view().id(), runtime, &normalized).await;
+        return true;
+    }
     if let Some(rest) = command_with_optional_args(&normalized, "/tasks") {
         tasks::show(app, slot.view().id(), rest).await;
         app.state.clear_input();
@@ -35,12 +41,7 @@ pub(crate) async fn intercept(
     let changed = crate::tui::app::commands::goal::handle(app, id, rest).await;
     app.state.push_history(input);
     app.state.clear_input();
-    if changed
-        && matches!(
-            verb,
-            "set" | "edit" | "override" | "budget" | "pause" | "resume" | "done" | "clear"
-        )
-    {
+    if changed && restart_needed::for_verb(verb) {
         restart(app, id, runtime);
     }
     app.state.needs_redraw = true;

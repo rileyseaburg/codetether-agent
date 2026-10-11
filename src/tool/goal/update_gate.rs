@@ -36,6 +36,7 @@ pub(super) async fn check(
         Verdict::Unavailable { findings } => (false, findings.as_str()),
     };
     let mut record = VerdictRecord::new(&goal.id, claimed, passed, &identity, report);
+    record.goal_updated_at = Some(goal.last_updated_at);
     record.unavailable = matches!(verdict, Verdict::Unavailable { .. });
     verdict_log::append(session, &record).await?;
     Ok(match verdict {

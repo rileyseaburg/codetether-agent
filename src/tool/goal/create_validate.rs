@@ -10,9 +10,7 @@ pub(super) fn apply(args: &mut Args) -> Option<ToolResult> {
             "objective must contain 1 to 4000 characters",
         ));
     }
-    args.token_budget
-        .is_some_and(|budget| budget <= 0)
-        .then(|| ToolResult::error("token_budget must be positive"))
+    None
 }
 
 #[cfg(test)]
@@ -23,7 +21,6 @@ mod tests {
     fn trims_valid_objective() {
         let mut args = Args {
             objective: "  ship parity  ".into(),
-            token_budget: Some(10),
             session_id: None,
         };
         assert!(super::apply(&mut args).is_none());

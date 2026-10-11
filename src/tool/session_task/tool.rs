@@ -41,6 +41,9 @@ impl Tool for SessionTaskTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
+        if let Some(refused) = crate::tool::goal::budget_guard::refusal(&params) {
+            return Ok(refused);
+        }
         let p: Params = serde_json::from_value(params)?;
         let sid = p
             .ct_session_id

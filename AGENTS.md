@@ -812,6 +812,83 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
 - If the CI failure is dependency-resolution related, prefer a lockfile or
   manifest fix only when it preserves the configured Docker Rust toolchain.
 
+## Forgejo CI Infrastructure Notes (reference only — do NOT manage the server)
+
+Learned 2026-10-10 while shipping v4.7.6-dev.33. The Forgejo **server** is
+off-limits for agent management unless explicitly requested: no restarts, no
+server-side patches, no config changes. Workflow-level fixes in this repo are
+fine.
+
+### Topology
+- Forgejo server: VM 200 (LAN `http://192.168.50.80:3000`, public
+  `https://forgejo.quantum-forge.io` via Cloudflare tunnel) on PVE host
+  `192.168.50.133`. Read-only diagnostics:
+  `ssh root@192.168.50.133` → `qm guest exec 200 -- /root/q.sh '<sql>'`
+  (Forgejo DB).
+- Linux/Windows runner: LXC 300 (`forgejo-lxc-runner-01`) on the same host.
+  Jobs are **hostexecutor** runs inside ephemeral LXCs cloned per job from the
+  template `lxc-helpers-bookworm-act`. Consequence: host-level env/config does
+  NOT reach job steps — bake tools into the template (the musl `ci-cache`
+  binary is already baked in) and pass configuration via workflow `env`.
+- macOS runner: Mac mini, reachable as `ssh mac` (192.168.50.249, arm64,
+  launchd-managed runner). The Vault entry pointing at 192.168.50.251 is
+  stale — that host is dead; do not trust it.
+- Job-LXC DNS: templates use the dnsmasq setup with an external resolver
+  (1.1.1.1). The 2026-10-10 LAN-wide router-DNS outage broke runners that had
+  cached dead resolvers (CT300 and the Mac both needed repointing); if runners
+  suddenly can't resolve `forgejo.quantum-forge.io`, check resolvers first.
+  **Fixes don't stick across restarts**: CT300's resolv.conf reverted to the
+  dead router (192.168.50.1) on container restart, and the template's
+  `wait-networking.sh` readiness probe then hung on DNS lookups — wedging
+  `forgejo-lxc-template.service`, blocking `forgejo-runner.service` behind it,
+  and leaving run 11518 with zero dispatched tasks (~25 min idle). Wedge
+  signature: runner unit inactive/"waiting" on template job, template service
+  "activating", newest run's jobs all waiting with `task_id=0` (no task rows =
+  no runner polling, not an emit-chain bug). CT300's resolv.conf is now pinned
+  to 1.1.1.1/8.8.8.8 with `chattr +i`.
+
+### Why internal networking for release uploads
+Bulk asset uploads (~140 MB incl. a 91 MB exe) repeatedly stalled through the
+Cloudflare tunnel (runs 11515/11516 died at their job timeouts with zero
+output), while identical uploads over the LAN complete in <1 s. Hence
+`release-publish.yml` pins `url: http://192.168.50.80:3000` on the
+`forgejo-release` step. Keep the public URL for checkout/artifact steps — those
+work fine through the tunnel. Caveat: run 11517 still failed its publish over
+the LAN, so internal networking is necessary but not proven sufficient.
+
+### Publish-stall state of knowledge
+- The pinned `forgejo-release@de47e39` action runs `tea 0.9.0` and redirects
+  all upload output to a temp file, so a publish job sitting at a ~110-byte
+  log is **normal** while tea works and proves nothing by itself.
+- Server, LAN, and tunnel were exonerated by direct curl probes (91 MB →
+  HTTP 201 in <1 s from both dev box and runner host). Remaining suspects:
+  the job's Actions `github.token` (never probed; all probes used a PAT) and
+  tea 0.9.0 itself (quirky flag parsing — `--draft` was observed consumed as
+  a title in one local repro).
+- v4.7.6-dev.33 was published **manually** (release id 219, assets
+  hash-verified against SHA256SUMS). Scripted evidence lives in
+  `artifacts/fj11516/`.
+- **Resolution (commit `e21cbed0`)**: `release-publish.yml` no longer uses
+  `forgejo-release`/tea at all — publishing goes through
+  `script/forgejo/publish-release-assets.sh` (curl + Forgejo API, idempotent
+  tag/release recreate, draft→false flip), the same path that published
+  release 219 manually. Run 11518 is the live validation of that script; if it
+  wedges again with zero upload output, escalate — server-side
+  (`ss`/logs on VM 200) whether requests arrive is still the first check.
+
+### Fork facts (reference only — not to be managed)
+- Source: `/home/riley/forgejo-upstream-15.0.5`; local branch
+  `feat/status-webhook-v15.0.5` = v15.0.5 + `c3ad687e21` (commit-status
+  webhooks).
+- **Branch mismatch:** the running binary reports `15.0.5-temporal.f534f779`,
+  which maps to the fork's other branch `feat/codetether-agent-api` (PR
+  auto-update/requeue-storm fixes). The two branches have diverged (~22
+  commits). Reconcile before any future server-side build.
+- Deployment: docker-compose on VM 200 pins the image **by digest** from
+  `registry.quantum-forge.net/cluster-ci-cache/forgejo-codetether-agent`;
+  upgrades mean build-on-fork → bump digest → restart. Slow by design — one
+  more reason to prefer workflow-level fixes.
+
 ## Debugging
 
 Enable detailed logging:
