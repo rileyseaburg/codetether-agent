@@ -30,7 +30,7 @@ members = [
 
 [package]
 name = "codetether-agent"
-version = "4.7.6-dev.33"
+version = "4.7.6-dev.34"
 
 
 edition = "2024"
