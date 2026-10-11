@@ -67,6 +67,7 @@ jobs:
           VERSION: ${{ inputs.version }}
           NOTES_BODY: ${{ steps.notes.outputs.body }}
           NOTES_FILE: release-notes.md
+          DIST_DIR: dist
         run: |
           set -euo pipefail
           printf '%s' "$NOTES_BODY" > release-notes.md
