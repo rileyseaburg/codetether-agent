@@ -29,5 +29,7 @@ grep -Fxq '    needs: [meta, verify, linux, windows, macos]' "$workflows/release
 grep -Fq 'cargo +1.95.0 test --locked --lib --tests --no-fail-fast' "$workflows/release-verify.yml"
 grep -Fq 'bash script/tests/release-runner-routing.sh' "$workflows/release-verify.yml"
 grep -Fxq '          DIST_DIR: dist' "$workflows/release-publish.yml"
+grep -Fq -- "-H 'Content-Type: application/json'" \
+  "$root/script/forgejo/publish-release-assets.sh"
 grep -Fq 'perl -MFindBin -MIPC::Cmd -e 1 && make --version' "$root/docker/release/windows.Dockerfile"
 printf '%s\n' 'static/local: release runner routing and publication gates passed'

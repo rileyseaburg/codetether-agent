@@ -18,7 +18,8 @@ fi
 api() {
     local method=$1 path=$2
     shift 2
-    curl --fail -sS -X "$method" -H "Authorization: token $TOKEN" "$@" \
+    curl --fail -sS -X "$method" -H "Authorization: token $TOKEN" \
+        -H 'Content-Type: application/json' "$@" \
         "$RELEASE_URL/api/v1/repos/$REPOSITORY/$path"
 }
 
