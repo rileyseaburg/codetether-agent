@@ -3,11 +3,9 @@
 use super::state::{SpawnField, SpawnFormState};
 
 #[test]
-fn next_field_cycles_through_all_fields() {
+fn next_field_cycles_through_supported_fields() {
     let mut form = SpawnFormState::default();
     assert_eq!(form.active, SpawnField::Name);
-    form.next_field();
-    assert_eq!(form.active, SpawnField::Parent);
     form.next_field();
     assert_eq!(form.active, SpawnField::Instructions);
     form.next_field();
@@ -21,13 +19,9 @@ fn to_args_requires_name() {
 }
 
 #[test]
-fn to_args_builds_name_parent_instructions() {
+fn to_args_builds_name_and_instructions() {
     let mut form = SpawnFormState::default();
     form.name = "reviewer".into();
-    form.parent = "build".into();
     form.instructions = "audit the PR".into();
-    assert_eq!(
-        form.to_args().unwrap(),
-        "reviewer --parent build audit the PR"
-    );
+    assert_eq!(form.to_args().unwrap(), "reviewer audit the PR");
 }

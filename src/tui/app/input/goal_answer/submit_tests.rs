@@ -31,3 +31,24 @@ async fn answer_review_intercepts_plain_and_ask_questions() {
         runtime.shutdown().await;
     }
 }
+
+#[tokio::test]
+async fn held_goal_routes_ask_to_agentic_continuation() {
+    let session = crate::session::tasks::answer_review_test_support::session().await;
+    let slot = SessionSlot::new(session);
+    let mut app = App::default();
+    app.state.processing = true;
+    let (event_tx, _event_rx) = tokio::sync::mpsc::channel(4);
+    let (notice_tx, _notice_rx) = tokio::sync::mpsc::channel(4);
+    let runtime = spawn(event_tx, notice_tx);
+    app.state.input = "/continue".into();
+    assert!(super::intercept(&mut app, &slot, &runtime).await);
+    app.state.input = "Why?".into();
+    assert!(super::intercept(&mut app, &slot, &runtime).await);
+
+    app.state.input = "/ask spawn subagents".into();
+    assert!(!super::intercept(&mut app, &slot, &runtime).await);
+    assert_eq!(app.state.input, "spawn subagents");
+    assert!(!answer_review::held(slot.view().id()));
+    runtime.shutdown().await;
+}

@@ -1095,7 +1095,7 @@ dependencies = [
 
 [[package]]
 name = "codetether-agent"
-version = "4.7.6-dev.34"
+version = "4.7.6-dev.35"
 dependencies = [
  "anyhow",
  "arboard",
@@ -1127,6 +1127,8 @@ dependencies = [
  "codetether-paths",
  "codetether-plugin-marketplace",
  "codetether-provenance",
+ "codetether-provider-core",
+ "codetether-provider-zai",
  "codetether-rlm",
  "codetether-secrets",
  "codetether-tls",
@@ -1461,6 +1463,39 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-provider-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "http",
+ "rand 0.10.2",
+ "regex",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-provider-zai"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-provider-core",
+ "futures",
+ "once_cell",
+ "regex",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

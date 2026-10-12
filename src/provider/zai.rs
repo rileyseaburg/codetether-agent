@@ -43,8 +43,6 @@ use zai_stream_state::ZaiStreamToolState;
 use zai_stream_types::ZaiStreamResponse;
 
 pub const DEFAULT_BASE_URL: &str = "https://api.z.ai/api/paas/v4";
-const CODING_BASE_URL: &str = "https://api.z.ai/api/coding/paas/v4";
-pub const PONY_ALPHA_2_MODEL: &str = "pony-alpha-2";
 
 pub struct ZaiProvider {
     client: Client,
@@ -116,14 +114,6 @@ impl ZaiProvider {
             api_key,
             base_url,
         })
-    }
-
-    fn request_base_url(&self, model: &str) -> &str {
-        if model.eq_ignore_ascii_case(PONY_ALPHA_2_MODEL) {
-            CODING_BASE_URL
-        } else {
-            &self.base_url
-        }
     }
 
     /// Fetch available models from the Z.AI /models endpoint.
@@ -402,10 +392,7 @@ impl ZaiProvider {
     }
 
     fn model_supports_tool_stream(model: &str) -> bool {
-        model.contains("glm-5")
-            || model.contains("glm-4.7")
-            || model.contains("glm-4.6")
-            || model.eq_ignore_ascii_case(PONY_ALPHA_2_MODEL)
+        model.contains("glm-5") || model.contains("glm-4.7") || model.contains("glm-4.6")
     }
 
     fn preview_text(text: &str, max_chars: usize) -> &str {
@@ -532,12 +519,11 @@ impl Provider for ZaiProvider {
 
         tracing::debug!(model = %request.model, "Z.AI request");
         tracing::trace!(body = %serde_json::to_string(&body).unwrap_or_default(), "Z.AI request body");
-        let request_base_url = self.request_base_url(&request.model);
 
         let (text, status) = super::retry::send_with_retry(|| async {
             let resp = self
                 .client
-                .post(format!("{}/chat/completions", request_base_url))
+                .post(format!("{}/chat/completions", self.base_url))
                 .header("Authorization", format!("Bearer {}", self.api_key))
                 .header("Content-Type", "application/json")
                 .json(&body)
@@ -684,11 +670,10 @@ impl Provider for ZaiProvider {
         );
 
         tracing::debug!(model = %request.model, "Z.AI streaming request");
-        let request_base_url = self.request_base_url(&request.model);
 
         let response = super::retry::send_response_with_retry(|| async {
             self.client
-                .post(format!("{}/chat/completions", request_base_url))
+                .post(format!("{}/chat/completions", self.base_url))
                 .header("Authorization", format!("Bearer {}", self.api_key))
                 .header("Content-Type", "application/json")
                 .json(&body)
@@ -844,16 +829,6 @@ mod tests {
     use crate::provider::Provider;
 
     #[tokio::test]
-    async fn list_models_includes_pony_alpha_2() {
-        let provider =
-            ZaiProvider::with_base_url("test-key".to_string(), DEFAULT_BASE_URL.to_string())
-                .expect("provider should construct");
-        let models = provider.list_models().await.expect("models should list");
-
-        assert!(models.iter().any(|model| model.id == PONY_ALPHA_2_MODEL));
-    }
-
-    #[tokio::test]
     async fn list_models_includes_glm_5_turbo() {
         let provider =
             ZaiProvider::with_base_url("test-key".to_string(), DEFAULT_BASE_URL.to_string())
@@ -896,19 +871,6 @@ mod tests {
         assert!(ZaiProvider::model_supports_tool_stream("glm-5.1"));
         assert!(ZaiProvider::model_supports_tool_stream("glm-5-turbo"));
         assert!(!ZaiProvider::model_supports_tool_stream("glm-4.5"));
-    }
-
-    #[test]
-    fn pony_alpha_2_routes_to_coding_endpoint() {
-        let provider =
-            ZaiProvider::with_base_url("test-key".to_string(), DEFAULT_BASE_URL.to_string())
-                .expect("provider should construct");
-
-        assert_eq!(
-            provider.request_base_url(PONY_ALPHA_2_MODEL),
-            CODING_BASE_URL
-        );
-        assert_eq!(provider.request_base_url("glm-5"), DEFAULT_BASE_URL);
     }
 
     #[test]

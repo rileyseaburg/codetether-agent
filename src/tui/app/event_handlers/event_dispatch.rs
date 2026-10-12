@@ -27,6 +27,9 @@ pub(crate) async fn handle_event(
     {
         return Ok(false);
     }
+    if super::okr::key::handle(app, key).await {
+        return Ok(false);
+    }
     if let Some(resume) = super::answer_review_key::handle(app, slot, key).await? {
         if resume {
             crate::tui::app::input::sessions::goal_autostart::resume(

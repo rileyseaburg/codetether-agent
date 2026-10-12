@@ -8,7 +8,7 @@ use super::ModelInfo;
 
 /// Push special models into `models` if not already present.
 pub fn merge_special(models: &mut Vec<ModelInfo>) {
-    let specials = [glm52(), glm47_flash(), pony_alpha_2()];
+    let specials = [glm52(), glm47_flash()];
     for info in specials {
         if !models.iter().any(|m| m.id == info.id) {
             models.push(info);
@@ -37,13 +37,4 @@ fn glm52() -> ModelInfo {
 
 fn glm47_flash() -> ModelInfo {
     info("glm-4.7-flash", "GLM-4.7 Flash", 128_000, 128_000)
-}
-
-fn pony_alpha_2() -> ModelInfo {
-    info(
-        super::zai::PONY_ALPHA_2_MODEL,
-        "Pony Alpha 2",
-        128_000,
-        16_384,
-    )
 }

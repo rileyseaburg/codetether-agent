@@ -9,6 +9,19 @@ fn merge_known_adds_glm_5_3_to_discovery() {
     assert_eq!(models.iter().filter(|model| model.id == "glm-5").count(), 1);
 }
 
+#[test]
+fn merge_known_excludes_deprecated_pony_alpha_2() {
+    for discovered in [vec![], vec![model("pony-alpha-2"), model("PONY-ALPHA-2")]] {
+        let models = merge_known(discovered);
+        assert!(
+            !models
+                .iter()
+                .any(|m| m.id.eq_ignore_ascii_case("pony-alpha-2"))
+        );
+        assert!(models.iter().any(|m| m.id == "glm-5.3"));
+    }
+}
+
 fn model(id: &str) -> ModelInfo {
     ModelInfo {
         id: id.to_string(),

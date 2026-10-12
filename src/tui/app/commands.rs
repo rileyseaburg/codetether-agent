@@ -939,7 +939,7 @@ async fn handle_go_command(
     rest: &str,
 ) {
     use crate::tui::app::okr_gate::{PendingOkrApproval, ensure_okr_repository, next_go_model};
-    use crate::tui::constants::AUTOCHAT_MAX_AGENTS;
+    use crate::tui::constants::AUTOCHAT_DEFAULT_AGENTS as GO_AGENT_COUNT;
 
     let task = rest.trim();
     if task.is_empty() {
@@ -959,7 +959,7 @@ async fn handle_go_command(
     ensure_okr_repository(&mut app.state.okr_repository).await;
 
     // Draft OKR and present for approval
-    let pending = PendingOkrApproval::propose(task.to_string(), AUTOCHAT_MAX_AGENTS, model).await;
+    let pending = PendingOkrApproval::propose(task.to_string(), GO_AGENT_COUNT, model).await;
 
     push_system_message(app, pending.approval_prompt());
 

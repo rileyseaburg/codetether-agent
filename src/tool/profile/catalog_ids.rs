@@ -1,5 +1,6 @@
 //! Tool identifiers retained by compact runtime profiles.
 
+#[path = "catalog_ids/discovery.rs"]
 mod discovery;
 pub(super) use discovery::DISCOVERY;
 

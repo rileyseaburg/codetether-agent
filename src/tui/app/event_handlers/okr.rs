@@ -5,6 +5,9 @@
 //! the approve or deny key binding. Saves the decision,
 //! updates chat state, and starts relay execution on approval.
 
+#[path = "okr_key.rs"]
+pub(super) mod key;
+
 use std::sync::Arc;
 
 use crate::okr::ApprovalDecision;
@@ -14,7 +17,6 @@ use crate::tui::chat::message::{ChatMessage, MessageType};
 
 use super::okr_save::spawn_okr_save;
 
-#[allow(dead_code)]
 pub(super) async fn handle_okr_approve(app: &mut App) {
     let Some(pending) = app.state.pending_okr_approval.take() else {
         return;
@@ -48,7 +50,6 @@ pub(super) async fn handle_okr_approve(app: &mut App) {
     app.state.status = format!("OKR approved (ID: {okr_id}). Relay started.");
 }
 
-#[allow(dead_code)]
 pub(super) async fn handle_okr_deny(app: &mut App) {
     let Some(mut pending) = app.state.pending_okr_approval.take() else {
         return;

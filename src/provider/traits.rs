@@ -30,9 +30,7 @@ use async_trait::async_trait;
 #[path = "routing_identity.rs"]
 mod routing_identity;
 
-#[path = "traits/model_info.rs"]
-mod model_info;
-pub use model_info::ModelInfo;
+pub use codetether_provider_core::ModelInfo;
 
 use super::types::{
     CompletionRequest, CompletionResponse, EmbeddingRequest, EmbeddingResponse, StreamChunk,

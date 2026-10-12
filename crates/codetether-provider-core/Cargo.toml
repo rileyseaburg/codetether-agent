@@ -1,0 +1,21 @@
+[package]
+name = "codetether-provider-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Provider-neutral conversation types and HTTP retry helpers for CodeTether"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+rand = "0.10.2"
+regex = "1.13.1"
+reqwest = { version = "0.13.2", default-features = false }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["time"] }
+tracing = "0.1"
+
+[dev-dependencies]
+http = "1"
+tokio = { version = "1.53.1", features = ["macros", "rt", "test-util"] }

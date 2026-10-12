@@ -19,6 +19,8 @@ members = [
     "crates/codetether-paths",
     "crates/codetether-plugin-marketplace",
     "crates/codetether-provenance",
+    "crates/codetether-provider-core",
+    "crates/codetether-provider-zai",
     "crates/codetether-rlm",
     "crates/codetether-secrets",
     "crates/codetether-tls",
@@ -31,7 +33,7 @@ members = [
 
 [package]
 name = "codetether-agent"
-version = "4.7.6-dev.34"
+version = "4.7.6-dev.35"
 
 
 edition = "2024"
@@ -143,6 +145,8 @@ codetether-okr = { path = "crates/codetether-okr", version = "0.1.0" }
 codetether-paths = { path = "crates/codetether-paths", version = "0.1.0" }
 codetether-plugin-marketplace = { path = "crates/codetether-plugin-marketplace", version = "0.1.0" }
 codetether-provenance = { path = "crates/codetether-provenance", version = "0.1.0" }
+codetether-provider-core = { path = "crates/codetether-provider-core", version = "0.1.0" }
+codetether-provider-zai = { path = "crates/codetether-provider-zai", version = "0.1.0" }
 codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.1" }
 codetether-secrets = { path = "crates/codetether-secrets", version = "0.1.0" }
 codetether-tls = { path = "crates/codetether-tls", version = "0.1.0" }

@@ -1,11 +1,14 @@
 //! Recognize explicit human continuation before treating input as a side question.
 
+#[path = "continuation_agentic.rs"]
+mod agentic;
 #[path = "continuation_release.rs"]
 mod release;
 use crate::tui::app::{
     session_runtime::{SessionSlot, TuiSessionHandle},
     state::App,
 };
+pub(super) use agentic::release_ask;
 use release::release;
 
 fn requested(input: &str) -> bool {

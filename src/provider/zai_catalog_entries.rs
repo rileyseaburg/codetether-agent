@@ -33,5 +33,4 @@ pub const KNOWN_MODELS: &[Entry] = &[
         Some(0.96),
         Some(3.20),
     ),
-    ("pony-alpha-2", "Pony Alpha 2", 128_000, 16_384, None, None),
 ];

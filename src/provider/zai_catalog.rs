@@ -11,6 +11,7 @@ use entries::{Entry, KNOWN_MODELS};
 mod tests;
 
 pub fn merge_known(mut models: Vec<ModelInfo>) -> Vec<ModelInfo> {
+    models.retain(|model| !model.id.eq_ignore_ascii_case("pony-alpha-2"));
     for entry in KNOWN_MODELS {
         if !models.iter().any(|model| model.id == entry.0) {
             models.push(info(entry));

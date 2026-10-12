@@ -94,27 +94,24 @@ mod tests {
     }
 
     #[test]
-    fn normalize_easy_command_maps_go_to_autochat() {
+    fn normalize_easy_command_preserves_okr_gated_go() {
         assert_eq!(
             normalize_easy_command("/go build a calculator"),
-            "/autochat 3 build a calculator"
+            "/go build a calculator"
         );
     }
 
     #[test]
-    fn normalize_easy_command_maps_go_count_and_task() {
+    fn normalize_easy_command_does_not_reinterpret_go_count() {
         assert_eq!(
             normalize_easy_command("/go 4 build a calculator"),
-            "/autochat 4 build a calculator"
+            "/go 4 build a calculator"
         );
     }
 
     #[test]
-    fn normalize_easy_command_maps_go_count_only_to_demo_task() {
-        assert_eq!(
-            normalize_easy_command("/go 4"),
-            format!("/autochat 4 {AUTOCHAT_QUICK_DEMO_TASK}")
-        );
+    fn normalize_easy_command_keeps_count_only_as_an_okr_task() {
+        assert_eq!(normalize_easy_command("/go 4"), "/go 4");
     }
 
     #[test]

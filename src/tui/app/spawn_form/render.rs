@@ -25,7 +25,7 @@ pub fn render_spawn_form_if_needed(f: &mut Frame, app_state: &mut AppState) {
 fn build_widget(form: &SpawnFormState) -> Paragraph<'static> {
     let area_split = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1); 5])
+        .constraints([Constraint::Length(1); 4])
         .split(Rect::ZERO);
     let _ = area_split; // layout used only for constraint count documentation
 
@@ -35,7 +35,6 @@ fn build_widget(form: &SpawnFormState) -> Paragraph<'static> {
             Style::default().fg(Color::DarkGray),
         )),
         field_row("Name", &form.name, form.active == SpawnField::Name),
-        field_row("Parent", &form.parent, form.active == SpawnField::Parent),
         field_row(
             "Instructions",
             &form.instructions,

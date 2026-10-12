@@ -30,7 +30,6 @@ pub(super) fn args(session: &str, status: &str) -> Args {
 pub(super) async fn seed(session: &str) {
     let create = crate::tool::goal::create::Args {
         objective: "Ship export".into(),
-        token_budget: None,
         session_id: Some(session.into()),
     };
     assert!(

@@ -14,6 +14,8 @@ use ratatui::{
 };
 use tokio::sync::mpsc;
 
+#[path = "swarm_view_attach.rs"]
+mod swarm_view_attach;
 #[path = "swarm_view_detail.rs"]
 mod swarm_view_detail;
 #[path = "swarm_view_fmt.rs"]
@@ -151,14 +153,6 @@ impl SwarmViewState {
             task: task.into(),
             total_subtasks: self.subtasks.len(),
         });
-    }
-
-    /// Attach an event receiver for live swarm updates.
-    pub fn attach_event_rx(&mut self, rx: mpsc::Receiver<SwarmEvent>) {
-        self.event_rx = Some(rx);
-        self.active = true;
-        self.complete = false;
-        self.error = None;
     }
 
     /// Drain pending swarm events without blocking.

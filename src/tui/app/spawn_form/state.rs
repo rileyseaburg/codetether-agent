@@ -6,16 +6,13 @@ pub enum SpawnField {
     /// Agent name (required).
     #[default]
     Name,
-    /// Optional parent agent name.
-    Parent,
     /// Free-text system instructions.
     Instructions,
 }
 
 /// Mutable state for the spawn form modal.
 ///
-/// Tracks three text fields and which one is active. Tab cycles
-/// `Name → Parent → Instructions → Name`.
+/// Tracks the agent name and instructions. Tab cycles between both fields.
 ///
 /// # Examples
 ///
@@ -30,8 +27,6 @@ pub enum SpawnField {
 pub struct SpawnFormState {
     /// Current text in the Name field.
     pub name: String,
-    /// Current text in the Parent field.
-    pub parent: String,
     /// Current text in the Instructions field.
     pub instructions: String,
     /// Which field has focus.
@@ -42,8 +37,7 @@ impl SpawnFormState {
     /// Advance focus to the next field (wraps around).
     pub fn next_field(&mut self) {
         self.active = match self.active {
-            SpawnField::Name => SpawnField::Parent,
-            SpawnField::Parent => SpawnField::Instructions,
+            SpawnField::Name => SpawnField::Instructions,
             SpawnField::Instructions => SpawnField::Name,
         };
     }
@@ -62,7 +56,6 @@ impl SpawnFormState {
     pub fn active_str(&self) -> &str {
         match self.active {
             SpawnField::Name => &self.name,
-            SpawnField::Parent => &self.parent,
             SpawnField::Instructions => &self.instructions,
         }
     }
@@ -70,7 +63,6 @@ impl SpawnFormState {
     fn active_mut(&mut self) -> &mut String {
         match self.active {
             SpawnField::Name => &mut self.name,
-            SpawnField::Parent => &mut self.parent,
             SpawnField::Instructions => &mut self.instructions,
         }
     }
@@ -84,10 +76,6 @@ impl SpawnFormState {
             return None;
         }
         let mut parts = vec![name.to_string()];
-        if !self.parent.trim().is_empty() {
-            parts.push("--parent".to_string());
-            parts.push(self.parent.trim().to_string());
-        }
         if !self.instructions.trim().is_empty() {
             parts.push(self.instructions.trim().to_string());
         }
