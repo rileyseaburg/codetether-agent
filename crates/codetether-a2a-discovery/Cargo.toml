@@ -7,6 +7,8 @@ license = "MIT"
 description = "A2A peer discovery, address ranking and liveness tracking"
 
 [dependencies]
+codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
+dashmap = "6"
 anyhow = "1.0.104"
 mdns-sd = "0.20.3"
 tokio = { version = "1.53.1", features = ["rt", "sync"] }

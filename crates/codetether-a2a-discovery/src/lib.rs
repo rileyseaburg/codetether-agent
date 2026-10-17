@@ -13,3 +13,6 @@
 pub mod address;
 pub mod liveness;
 pub mod mdns;
+
+/// Learned peer routes and stable identity aliases.
+pub mod routes;

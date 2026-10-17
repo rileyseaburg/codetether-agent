@@ -1095,6 +1095,8 @@ name = "codetether-a2a-discovery"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "codetether-a2a-core",
+ "dashmap",
  "mdns-sd",
  "tokio",
  "tracing",

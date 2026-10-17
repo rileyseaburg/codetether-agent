@@ -93,7 +93,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | Crate | Rust files | Workspace member | Missing declared root modules |
 | --- | ---: | --- | --- |
 | codetether-a2a-core | 48 | yes | none |
-| codetether-a2a-discovery | 19 | yes | none |
+| codetether-a2a-discovery | 23 | yes | codetether-a2a-core |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 44 | yes | codetether-a2a-core, codetether-provider-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
@@ -4927,3 +4927,20 @@ test. All 89 worker-core files and 311 A2A files are reachable with no missing
 orphaned modules. New files satisfy the code-line limit; file-budget and
 whitespace checks passed. Evidence: `artifacts/consolidation-worker-claim/`.
 Compilation and tests remain unrun; the broader consolidation goal is active.
+
+
+### Shared discovered-peer route registry
+
+The discovery crate now owns callable peer records, the route table, stable
+identity aliases, and register/get/list/remove operations. Record fields and
+operations have separate modules; the application path re-exports the API and
+retains its existing integration tests. Identity extraction uses the shared
+A2A-core extension helper. No process identity or authentication policy moved.
+
+Static comparison verifies route operations and records; alias code and both
+existing tests are byte-identical. All 23 discovery files and 310 application
+A2A files are reachable with no missing/orphaned modules. The two-crate local
+dependency closure is acyclic. New files satisfy the line budget; whitespace
+and file checks passed. Evidence is retained in
+`artifacts/consolidation-discovery-routes/`. Compilation and tests remain
+unrun; the broader consolidation goal stays active.
