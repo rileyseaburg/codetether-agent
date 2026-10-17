@@ -41,3 +41,6 @@ pub mod peer_probe;
 
 /// A2A peer bearer-token middleware.
 pub mod auth;
+
+/// Concurrent discovery intake, HTTP resolution and peer registration.
+pub mod peer_intake;

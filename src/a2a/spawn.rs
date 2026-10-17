@@ -62,21 +62,18 @@ use tokio::sync::mpsc;
 mod agent_card;
 #[path = "spawn/handle.rs"]
 mod handle;
-use codetether_a2a_http::peer_probe::{self as mdns_probe, try_fetch_agent_card};
+use codetether_a2a_http::peer_probe::try_fetch_agent_card;
 pub use handle::A2APeerHandle;
-mod accept_mdns;
 mod background;
 mod command;
-mod intake;
 mod options;
-use accept_mdns::handle_mdns_peer;
 pub use background::start_a2a_in_background;
 use codetether_a2a_discovery::endpoint::{
     collect_peers, concrete, first_lan_ipv4, normalize_base_url, peer_candidates,
 };
 pub use codetether_a2a_discovery::naming::auto_agent_name;
+use codetether_a2a_http::peer_intake::mdns_intake_loop;
 pub use command::run;
-use intake::mdns_intake_loop;
 pub use options::SpawnOptions;
 
 struct A2APreparation {
@@ -193,6 +190,7 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
                     public_url.clone(),
                     agent_name.clone(),
                     opts.auto_introduce,
+                    crate::a2a::intro::ledger::ledger_path,
                 ));
                 (Some(handle), Some(intake))
             }

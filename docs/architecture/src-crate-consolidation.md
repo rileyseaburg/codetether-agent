@@ -5806,3 +5806,21 @@ New files contain at most 23 code lines. File-budget and whitespace checks
 passed. Evidence: `artifacts/consolidation-discovery-bus/`. Compilation, tests,
 and live discovery remain unrun. No Cargo, rustc, or Python commands ran.
 The broader implementation migration remains active.
+
+### Shared HTTP peer discovery intake
+
+Moved `spawn/accept_mdns.rs` and `spawn/intake.rs` out of the application into
+`codetether-a2a-http::peer_intake`. The shared implementation now owns concurrent
+card resolution, refresh-window and in-flight deduplication, route registration,
+presence updates, and automatic introductions. Startup supplies the existing
+application ledger-path resolver; it still selects when to start discovery.
+The original implementation files are deleted, with no replacement facades.
+
+Static token comparison confirms both function bodies after explicit shared-path
+and ledger-callback substitutions, plus application wiring and ledger visibility.
+The scan reaches 249 application A2A files and 114 HTTP crate files with no
+missing/orphaned modules, and the HTTP dependency closure has no cycles. New
+files contain at most 48 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-peer-intake/`. Compilation, tests, and live
+network discovery remain unrun. No Cargo, rustc, or Python commands ran.
+The broader implementation migration remains active.

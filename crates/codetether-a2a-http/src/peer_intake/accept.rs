@@ -1,14 +1,15 @@
-//! Peer startup accept mdns.
+//! Resolve, register and introduce a discovered peer.
 use super::*;
 
 /// Resolve a discovered peer, then register and optionally introduce it.
 pub(super) async fn handle_mdns_peer(
     bus: Arc<AgentBus>,
-    liveness: Arc<Mutex<crate::a2a::peer_liveness::PeerLiveness>>,
+    liveness: Arc<Mutex<PeerLiveness>>,
     self_url: Arc<String>,
     agent_name: String,
     peer: DiscoveredPeer,
     auto_introduce: bool,
+    resolve_path: fn() -> Option<PathBuf>,
 ) {
     let Some((endpoint, card)) = mdns_probe::resolve(&peer, &self_url, &agent_name).await else {
         return;
@@ -20,12 +21,12 @@ pub(super) async fn handle_mdns_peer(
     };
 
     bus.registry.register(card.clone());
-    crate::a2a::peer_route::register(&card, &endpoint, peer.token.clone());
+    routes::register(&card, &endpoint, peer.token.clone());
 
     // Re-emit on every accepted resolution (not just first sight) so a peer
     // that was registered once but later dropped by a consumer reappears on
     // the next mDNS re-resolution instead of vanishing permanently.
-    crate::a2a::mdns_liveness::emit_discovered(&bus, &card.name, &endpoint);
+    presence::emit_discovered(&bus, &card.name, &endpoint);
 
     if is_new {
         tracing::info!(target: "codetether_agent::a2a::spawn",
@@ -42,6 +43,7 @@ pub(super) async fn handle_mdns_peer(
                 &agent_name,
                 self_url.as_str(),
                 peer.token.as_deref(),
+                resolve_path,
             )
             .await
         {

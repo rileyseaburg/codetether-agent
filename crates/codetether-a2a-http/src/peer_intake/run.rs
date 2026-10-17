@@ -1,4 +1,4 @@
-//! Peer startup intake.
+//! Concurrent intake and refresh of discovered peers.
 use super::*;
 
 /// Drain peers discovered over mDNS, fetch their cards, register them, and
@@ -13,23 +13,39 @@ use super::*;
 /// also pre-checked by mDNS instance name before any fetch is issued,
 /// which short-circuits the duplicate announcements that mdns-sd
 /// emits per interface.
-pub(super) async fn mdns_intake_loop(
+///
+/// # Arguments
+///
+/// Supply the bus, discovery receiver, local URL and name, introduction flag,
+/// and a function that resolves the current introduction-ledger path.
+///
+/// # Returns
+///
+/// Returns when all discovery senders have closed; the expiry guard then stops.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_a2a_http::peer_intake::mdns_intake_loop;
+/// let _intake = mdns_intake_loop;
+/// ```
+pub async fn mdns_intake_loop(
     bus: Arc<AgentBus>,
     mut peer_rx: mpsc::Receiver<DiscoveredPeer>,
     self_url: String,
     agent_name: String,
     auto_introduce: bool,
+    resolve_path: fn() -> Option<PathBuf>,
 ) {
     let self_url = Arc::new(self_url.trim_end_matches('/').to_string());
-    let liveness = Arc::new(Mutex::new(crate::a2a::peer_liveness::PeerLiveness::new()));
+    let liveness = Arc::new(Mutex::new(PeerLiveness::new()));
     let in_flight = Arc::new(Mutex::new(HashSet::<String>::new()));
 
     // Background sweep: age out peers that have stopped re-announcing so the
     // TUI registry / UI counts don't show ghosts. mDNS re-resolves live peers
     // periodically (refreshing their last-seen); a peer that goes away stops
     // refreshing and is expired after the TTL. The guard aborts the task on drop.
-    let _expire_guard =
-        crate::a2a::mdns_liveness::spawn_expire_loop(Arc::clone(&bus), Arc::clone(&liveness));
+    let _expire_guard = presence::spawn_expire_loop(Arc::clone(&bus), Arc::clone(&liveness));
 
     while let Some(peer) = peer_rx.recv().await {
         // Cheap pre-check by instance name: skip only the duplicate
@@ -37,10 +53,7 @@ pub(super) async fn mdns_intake_loop(
         // sightings fall through so the peer re-heartbeats.
         let recently_seen = {
             let l = liveness.lock().await;
-            l.recently_seen(
-                &peer.instance_name,
-                crate::a2a::mdns_liveness::MDNS_PEER_REFRESH_INTERVAL,
-            )
+            l.recently_seen(&peer.instance_name, presence::MDNS_PEER_REFRESH_INTERVAL)
         };
         if recently_seen {
             continue;
@@ -58,7 +71,16 @@ pub(super) async fn mdns_intake_loop(
         let agent_name = agent_name.clone();
         tokio::spawn(async move {
             let instance_name = peer.instance_name.clone();
-            handle_mdns_peer(bus, liveness, self_url, agent_name, peer, auto_introduce).await;
+            handle_mdns_peer(
+                bus,
+                liveness,
+                self_url,
+                agent_name,
+                peer,
+                auto_introduce,
+                resolve_path,
+            )
+            .await;
             in_flight.lock().await.remove(&instance_name);
         });
     }

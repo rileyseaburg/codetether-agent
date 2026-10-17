@@ -1,7 +1,7 @@
 //! Application path adapter for the shared introduction ledger.
 #[path = "ledger_path.rs"]
 mod ledger_path;
-pub(super) use ledger_path::ledger_path;
+pub(crate) use ledger_path::ledger_path;
 /// Load introduction identities from the configured data directory.
 ///
 /// # Errors
