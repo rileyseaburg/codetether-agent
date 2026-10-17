@@ -11,3 +11,6 @@ pub use default_seed::seed_default_okr_if_empty;
 pub use eligibility::{seed_moonshot_okr_if_empty, seed_moonshot_okr_if_no_opportunities};
 pub use initial::seed_initial_okr_if_empty;
 pub use moonshot::seed_moonshot_okr;
+
+mod clarified;
+pub use clarified::persist_clarified_goals;

@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 57 | 1409 | Shared domain services and application lifecycle phases consolidated; tests placed with owners; final clarification/persistence ownership review remains |
+| forage | 57 | 1400 | Ownership audited: shared selection, seeding, evidence and rubric services; application retains lifecycle, interactive/engine/policy adapters and reporting |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -122,7 +122,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-lsp-core | 95 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
-| codetether-forage-core | 43 | yes | none |
+| codetether-forage-core | 44 | yes | none |
 | codetether-okr | 72 | yes | none |
 | codetether-paths | 5 | yes | none |
 | codetether-platform | 56 | yes | none |
@@ -4168,3 +4168,29 @@ No Cargo, rustc, Python, fixture execution, Rust tests or doctests ran;
 compilation and runtime remain unverified. Evidence:
 artifacts/consolidation-forage-tests/. Clarification/persistence ownership
 review remains before the final forage audit; the full workspace goal is active.
+
+## Forage clarified goals and ownership review
+
+Forage-core::seed::persist_clarified_goals now owns objective construction and
+repository persistence for interactively supplied goals. Application code
+retains stdin/TTY behavior, quiet-mode handling and the success message after
+a successful write. Objective titles, status, key-result values and write
+ordering are unchanged by static source comparison. Existing clarification
+tests are unchanged and unrun.
+
+The ownership review classifies every remaining application forage file:
+startup and borrowed cycle lifecycle; provider/CLI/swarm execution; guarded
+shell and optional scoring adapters; bus/audit/terminal reporting; interactive
+input; and application integration tests. Reusable selection, seeding,
+progress persistence, evidence, quality workflow and rubric loading belong to
+forage-core. All 57 application files remain within 50 code lines. The detailed
+classification and source hashes are retained in the ownership evidence.
+
+Six static checks passed. Lexical scans found all 57 application and 44 core
+files reachable, without missing modules or a cycle in the three-crate local
+dependency closure. File-limit and whitespace checks passed; no manifests
+changed. Standalone rustfmt formatted the move. No Cargo, rustc, Python, goal
+input, persistence operation, Rust test or doctest ran. Compilation and runtime
+remain unverified. Evidence: artifacts/consolidation-forage-clarified/. This
+finishes the forage ownership review, not the whole-workspace objective, which
+remains active across the other pending source owners.

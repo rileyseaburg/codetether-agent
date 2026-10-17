@@ -4,7 +4,7 @@ use anyhow::Result;
 use std::io::{self, Write};
 
 use crate::forage_println;
-use crate::okr::{KeyResult, Okr, OkrRepository, OkrStatus};
+use crate::okr::OkrRepository;
 
 use super::EmptyReason;
 
@@ -39,16 +39,7 @@ pub(super) fn read_goals(reason: EmptyReason) -> Vec<String> {
 
 /// Build and persist an OKR capturing the user's stated goals.
 pub(super) async fn persist_goals(repo: &OkrRepository, goals: &[String]) -> Result<()> {
-    let mut okr = Okr::new(
-        "User-Clarified Goals",
-        "Goals captured interactively when forage found no opportunities.",
-    );
-    okr.status = OkrStatus::Active;
-    let okr_id = okr.id;
-    for goal in goals {
-        okr.add_key_result(KeyResult::new(okr_id, goal.clone(), 100.0, "%"));
-    }
-    repo.create_okr(okr).await?;
+    codetether_forage_core::seed::persist_clarified_goals(repo, goals).await?;
     forage_println!("Saved {} goal(s) as an active OKR.", goals.len());
     Ok(())
 }
