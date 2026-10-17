@@ -3,6 +3,7 @@ members = [
     ".",
     "crates/codetether-a2a-core",
     "crates/codetether-a2a-discovery",
+    "crates/codetether-a2a-grpc",
     "crates/codetether-a2a-http",
     "crates/codetether-a2a-stream",
     "crates/codetether-a2a-worker-core",
@@ -208,6 +209,7 @@ codetether-worker-http = { path = "crates/codetether-worker-http", version = "0.
 codetether-bus-core = { path = "crates/codetether-bus-core", version = "0.1.0" }
 codetether-a2a-http = { path = "crates/codetether-a2a-http", version = "0.1.0" }
 codetether-a2a-core = { path = "crates/codetether-a2a-core", version = "0.1.0" }
+codetether-a2a-grpc = { path = "crates/codetether-a2a-grpc", version = "0.1.0" }
 codetether-a2a-discovery = { path = "crates/codetether-a2a-discovery", version = "0.1.0" }
 codetether-a2a-stream = { path = "crates/codetether-a2a-stream", version = "0.1.0" }
 codetether-swarm-core = { path = "crates/codetether-swarm-core", version = "0.1.0" }
@@ -446,9 +448,6 @@ tokio-test = "0.4"
 tempfile = "3"
 insta = "1"
 rcgen = { version = "0.14.9", default-features = false, features = ["crypto", "pem", "aws_lc_rs"] }
-
-[build-dependencies]
-tonic-prost-build = "0.14.3"
 
 [profile.release]
 lto = "thin"

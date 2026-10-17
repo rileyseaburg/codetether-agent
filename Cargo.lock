@@ -1101,6 +1101,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-a2a-grpc"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "codetether-a2a-core",
+ "prost",
+ "prost-types",
+ "serde_json",
+ "tonic",
+ "tonic-prost",
+ "tonic-prost-build",
+]
+
+[[package]]
 name = "codetether-a2a-http"
 version = "0.1.0"
 dependencies = [
@@ -1158,6 +1172,7 @@ dependencies = [
  "clap",
  "codetether-a2a-core",
  "codetether-a2a-discovery",
+ "codetether-a2a-grpc",
  "codetether-a2a-http",
  "codetether-a2a-stream",
  "codetether-a2a-worker-core",
@@ -1304,7 +1319,6 @@ dependencies = [
  "toml 1.1.5+spec-1.1.0",
  "tonic",
  "tonic-prost",
- "tonic-prost-build",
  "tonic-web",
  "tower",
  "tower-http 0.7.1",

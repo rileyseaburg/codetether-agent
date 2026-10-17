@@ -500,7 +500,7 @@ Each step composes with the prior; nothing built today is wasted.
 - **Reference verifier (Python)**: [`a2a_server/provenance.py`](https://github.com/rileyseaburg/codetether/blob/main/a2a_server/provenance.py).
 - **Reference policy (OPA/Rego)**: [`policies/provenance.rego`](https://github.com/rileyseaburg/codetether/blob/main/policies/provenance.rego).
 - **Glue**: [`a2a_server/policy.py`](https://github.com/rileyseaburg/codetether/blob/main/a2a_server/policy.py).
-- **A2A protocol**: in-tree protobuf at `proto/a2a/v1/a2a.proto`; upstream
+- **A2A protocol**: in-tree protobuf at `crates/codetether-a2a-grpc/proto/a2a/v1/a2a.proto`; upstream
   JSON spec [`specification/json/a2a.json`](https://github.com/rileyseaburg/codetether/blob/main/specification/json/a2a.json) is what this repo's wire format tracks.
 - **CodeTether A2A surfaces**:
   - [docs/a2a-spawn.md](a2a-spawn.md) — current peer transport + the

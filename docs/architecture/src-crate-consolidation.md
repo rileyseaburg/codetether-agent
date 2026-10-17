@@ -27,7 +27,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | tui | 1208 | 42457 | Pending cohesion and dependency audit |
 | session | 916 | 27990 | Partial extraction; inspect remaining implementation |
 | provider | 141 | 3096 | Shared contracts/HTTP/images/context limits, Codex OAuth/lifecycle/request, message and response protocol/HTTP and WebSocket transport, and Google/Bedrock auth, transcript conversion, body policy, native requests, responses, streaming, and Bedrock execution/discovery/refresh and OpenAI/DeepSeek/Z.AI/Anthropic/Moonshot/Google/StepFun/OpenRouter/Vertex Anthropic/Vertex GLM/GLM-5/Copilot implementations extracted; other adapters/registry pending |
-| a2a | 355 | 12904 | Wire contracts, HTTP client, stream/QUIC, discovery and task scope extracted; gRPC, server and remaining worker ownership remain pending |
+| a2a | 355 | 12904 | Wire contracts, HTTP client, stream/QUIC, discovery and task scope extracted; gRPC contracts/conversions also extracted; service/store, server and remaining worker ownership remain pending |
 | cli | 198 | 10322 | Pending cohesion and dependency audit |
 | swarm | 228 | 5643 | Shared runtime/domain/prompt policy extracted; application supplies session, provider, tools, worktrees and pod operations; remaining ownership audit ongoing |
 | server | 213 | 8264 | Pending cohesion and dependency audit |
@@ -94,6 +94,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | --- | ---: | --- | --- |
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-discovery | 19 | yes | none |
+| codetether-a2a-grpc | 23 | yes | codetether-a2a-core |
 | codetether-a2a-http | 6 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 36 | yes | none |
@@ -4547,3 +4548,25 @@ lines. The only lockfile additions are the local crate and its application
 dependency. Evidence is retained in `artifacts/consolidation-a2a-discovery/`.
 Compilation, tests, doctests, and live discovery were not run. The wider
 consolidation goal remains active.
+
+
+### Shared A2A protobuf contracts and conversions
+
+`codetether-a2a-grpc` owns the unchanged protobuf schema, Buf generation
+configuration, Rust generation script, generated tonic contracts, and all
+16 wire-conversion functions. Conversion modules separate messages, parts,
+tasks, states, artifacts, cards, and JSON values. Four card-field helpers
+keep the original field evaluation order while satisfying the file budget.
+The crate depends only on a2a-core among workspace crates. The application
+keeps compatibility re-exports for `a2a::proto` and `a2a::bridge`; its service
+and task store remain the next boundary to extract.
+
+Schema references and Docker copy instructions now point to the crate-owned
+files. The Docker toolchain and runtime stages are unchanged. Static checks
+compare all conversion tokens (expanding the four helpers), schema bytes,
+generator tokens, and the local-package/build-dependency lockfile delta.
+All 23 source modules are reachable and all new Rust files, including the
+generation script, remain below 50 code lines. File-budget and whitespace
+checks passed. Evidence: `artifacts/consolidation-a2a-grpc-contracts/`.
+Protobuf generation, compilation, tests, doctests, and Docker builds were not
+run. The broader consolidation goal remains active.

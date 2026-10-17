@@ -20,12 +20,11 @@ RUN sh /usr/local/share/codetether/apt-https.sh && apt-get update && apt-get ins
     libprotobuf-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy source, vendor directory, proto files, policies, and examples
-COPY Cargo.toml Cargo.lock build.rs ./
+# Copy source, workspace crates (including protobuf schema), policies, and examples
+COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY crates ./crates
 COPY vendor ./vendor
-COPY proto ./proto
 COPY policies ./policies
 COPY examples ./examples
 

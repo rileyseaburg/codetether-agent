@@ -5,7 +5,7 @@
 //!
 //! ## Transports
 //! - **JSON-RPC** (default) — `server.rs` / `client.rs`
-//! - **gRPC** — `grpc.rs` (tonic-based, compiled from `proto/a2a/v1/a2a.proto`)
+//! - **gRPC** — `grpc.rs` (tonic-based, compiled from `crates/codetether-a2a-grpc/proto/a2a/v1/a2a.proto`)
 
 pub(crate) mod agent_identity;
 pub mod bridge;
@@ -42,7 +42,7 @@ pub mod worker_tool_registry;
 pub mod worker_workspace_context;
 pub mod worker_workspace_record;
 
-/// Generated protobuf/tonic types from `proto/a2a/v1/a2a.proto`.
+/// Generated protobuf/tonic types from `crates/codetether-a2a-grpc/proto/a2a/v1/a2a.proto`.
 pub mod proto;
 
 // Re-export commonly used types
