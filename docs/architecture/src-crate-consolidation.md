@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 35 | 2499 | Contracts, transports, request IDs/correlation and result conversion extracted; client/server policy, identity and registry integration remain |
+| mcp | 35 | 2457 | Shared contracts, transports, RPC and remote protocol operations; application retains server/registry, caches, identity and policy adapters |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -171,7 +171,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-bonsai | 80 | yes | none |
 | codetether-moltbook | 36 | yes | none |
 | codetether-mcp-core | 53 | yes | none |
-| codetether-mcp-transport | 21 | yes | none |
+| codetether-mcp-transport | 26 | yes | none |
 | codetether-model-catalog | 30 | yes | none |
 | codetether-util | 3 | yes | none |
 | codetether-vectordb | 14 | yes | none |
@@ -3811,3 +3811,21 @@ feature is now explicit. New files have at most 29 code lines. Formatting,
 file-limit and whitespace checks passed; no connection, request, subprocess,
 Cargo, rustc, Python or tests ran. Compilation and tests remain unverified.
 Evidence: artifacts/consolidation-mcp-rpc/. The workspace goal remains active.
+
+## Shared MCP remote protocol operations
+
+RpcConnection now owns request construction and response decoding for
+initialization, tool discovery/invocation, resources and prompts. The application
+still supplies its package version, updates cached metadata, sends initialized
+notifications, logs connection/tool discovery and refreshes tools in the original
+order. Remote tool calls remain gated before approval metadata is stripped and
+the shared request is invoked. No authorization moved out of the host.
+
+Twelve static comparisons cover request bodies/decoding and the complete client
+adaptation, including initialization completion, registry behavior and tool
+policy ordering. Lexical graphs cover 26 transport and 35 application
+files with no missing/unreferenced modules. New modules have at most 24 code
+lines. No dependencies changed. Formatting, source limits and staged whitespace
+checks were used. No requests, transports, Cargo, rustc, Python or tests ran;
+compilation and tests remain unverified. Evidence resides in
+artifacts/consolidation-mcp-operations/. The workspace goal remains active.

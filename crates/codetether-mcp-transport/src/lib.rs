@@ -24,3 +24,6 @@ pub use stdio::StdioTransport;
 
 /// Request IDs, pending response channels and JSON-RPC transactions.
 pub mod rpc;
+
+/// Remote MCP initialization, tool, resource and prompt operations.
+pub mod remote;

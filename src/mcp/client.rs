@@ -68,23 +68,10 @@ impl McpClient {
 
     /// Initialize the connection with the server
     pub async fn initialize(&self) -> Result<InitializeResult> {
-        let params = InitializeParams {
-            protocol_version: PROTOCOL_VERSION.to_string(),
-            capabilities: ClientCapabilities {
-                roots: Some(RootsCapability { list_changed: true }),
-                sampling: Some(SamplingCapability {}),
-                experimental: None,
-            },
-            client_info: ClientInfo {
-                name: "codetether".to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-            },
-        };
-
-        let response = self
-            .request("initialize", Some(serde_json::to_value(&params)?))
+        let result = self
+            .connection
+            .initialize(env!("CARGO_PKG_VERSION"))
             .await?;
-        let result: InitializeResult = serde_json::from_value(response)?;
 
         // Store server info
         *self.server_info.write().await = Some(result.server_info.clone());
@@ -161,14 +148,13 @@ impl McpClient {
 
     /// Refresh the list of available tools
     pub async fn refresh_tools(&self) -> Result<Vec<McpTool>> {
-        let response = self.request("tools/list", None).await?;
-        let result: ListToolsResult = serde_json::from_value(response)?;
+        let tools = self.connection.list_tools().await?;
 
-        *self.available_tools.write().await = result.tools.clone();
+        *self.available_tools.write().await = tools.clone();
 
-        info!("Loaded {} tools from MCP server", result.tools.len());
+        info!("Loaded {} tools from MCP server", tools.len());
 
-        Ok(result.tools)
+        Ok(tools)
     }
 
     /// Get available tools
@@ -180,47 +166,21 @@ impl McpClient {
     pub async fn call_tool(&self, name: &str, arguments: Value) -> Result<CallToolResult> {
         self.call_tool_checked(name, arguments).await
     }
-
-    /// List available resources
+    /// List remote resources.
     pub async fn list_resources(&self) -> Result<Vec<McpResource>> {
-        let response = self.request("resources/list", None).await?;
-        let result: ListResourcesResult = serde_json::from_value(response)?;
-        Ok(result.resources)
+        self.connection.list_resources().await
     }
-
-    /// Read a resource
+    /// Read one remote resource.
     pub async fn read_resource(&self, uri: &str) -> Result<ReadResourceResult> {
-        let params = ReadResourceParams {
-            uri: uri.to_string(),
-        };
-        let response = self
-            .request("resources/read", Some(serde_json::to_value(&params)?))
-            .await?;
-        let result: ReadResourceResult = serde_json::from_value(response)?;
-        Ok(result)
+        self.connection.read_resource(uri).await
     }
-
-    /// List available prompts
+    /// List remote prompt templates.
     pub async fn list_prompts(&self) -> Result<Vec<McpPrompt>> {
-        let response = self.request("prompts/list", None).await?;
-        let result: ListPromptsResult = serde_json::from_value(response)?;
-        Ok(result.prompts)
+        self.connection.list_prompts().await
     }
-
-    /// Get a prompt
+    /// Retrieve a prompt template with arguments.
     pub async fn get_prompt(&self, name: &str, arguments: Value) -> Result<GetPromptResult> {
-        let params = GetPromptParams {
-            name: name.to_string(),
-            arguments,
-        };
-        let response = self
-            .request("prompts/get", Some(serde_json::to_value(&params)?))
-            .await?;
-        let result: GetPromptResult = serde_json::from_value(response)?;
-        Ok(result)
-    }
-    async fn request(&self, method: &str, params: Option<Value>) -> Result<Value> {
-        self.connection.request(method, params).await
+        self.connection.get_prompt(name, arguments).await
     }
     async fn notify(&self, method: &str, params: Option<Value>) -> Result<()> {
         self.connection.notify(method, params).await

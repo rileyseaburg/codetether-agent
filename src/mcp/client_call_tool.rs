@@ -1,6 +1,6 @@
 //! Runtime-policy guard for remote MCP tool calls.
 
-use super::{CallToolParams, CallToolResult, McpClient, ToolContent};
+use super::{CallToolResult, McpClient, ToolContent};
 use anyhow::Result;
 use serde_json::Value;
 
@@ -14,14 +14,7 @@ impl McpClient {
             return Ok(blocked);
         }
         let arguments = strip_approval_id(arguments);
-        let params = CallToolParams {
-            name: name.to_string(),
-            arguments,
-        };
-        let response = self
-            .request("tools/call", Some(serde_json::to_value(&params)?))
-            .await?;
-        Ok(serde_json::from_value(response)?)
+        self.connection.call_tool(name, arguments).await
     }
 }
 
