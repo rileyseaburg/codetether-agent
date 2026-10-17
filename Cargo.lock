@@ -2333,6 +2333,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "codetether-agent-core",
+ "codetether-bus-core",
  "codetether-context-policy",
  "codetether-swarm-core",
  "glob",

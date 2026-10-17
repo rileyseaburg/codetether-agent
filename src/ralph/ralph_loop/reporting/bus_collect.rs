@@ -6,32 +6,6 @@ impl RalphLoop {
         let Some(ref bus) = self.bus else {
             return Vec::new();
         };
-        let prd_id = &self.state.prd.project;
-        let mut handle = bus.handle("ralph-collector");
-        let envelopes = handle.drain_ralph_learnings(prd_id);
-        let mut learnings = Vec::new();
-        for env in envelopes {
-            match env.message {
-                crate::bus::BusMessage::RalphLearning {
-                    story_id,
-                    iteration,
-                    learnings: items,
-                    ..
-                } => {
-                    for l in items {
-                        learnings.push(format!("[{story_id} iter {iteration}] {l}"));
-                    }
-                }
-                crate::bus::BusMessage::RalphHandoff {
-                    from_story,
-                    progress_summary,
-                    ..
-                } => {
-                    learnings.push(format!("[handoff from {from_story}] {progress_summary}"));
-                }
-                _ => {}
-            }
-        }
-        learnings
+        codetether_ralph_core::bus::collect(bus, &self.state.prd.project)
     }
 }

@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 108 | 2703 | Shared services, event projections and relay convergence extracted; grouped application hosts remain under final ownership review |
+| ralph | 108 | 2652 | Shared scheduling, persistence, relay and bus protocol extracted; final host ownership review continues |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -152,7 +152,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-openai | 72 | yes | none |
 | codetether-provider-zai | 120 | yes | none |
 | codetether-question | 30 | yes | none |
-| codetether-ralph-core | 141 | yes | none |
+| codetether-ralph-core | 144 | yes | none |
 | codetether-rlm | 448 | yes | none |
 | codetether-runtime-policy | 37 | yes | none |
 | codetether-search | 18 | yes | none |
@@ -4427,3 +4427,22 @@ File-limit and whitespace checks passed; standalone rustfmt was used. No
 Cargo, rustc, Python, relay session, Rust test or doctest ran. Compilation and
 runtime remain unverified. Evidence: artifacts/consolidation-ralph-relay-policy/.
 Remaining host ownership review and the full workspace goal remain active.
+
+## Ralph bus learning and result protocol
+
+Ralph-core::bus owns learning collection and story-result publication through
+a caller-provided shared bus. The application retains its optional-bus guard
+and passes existing Arc references. Collector identity, drain order, learning
+format, handoff conditions and learning/handoff/progress publication order are
+unchanged. No extra bus clones were introduced.
+
+Seven static comparisons passed, including complete helper bodies, guarded
+application forwarding and the Arc receiver required by AgentBus::handle.
+Three new modules are at most 43 code lines. Lexical scans cover 144 core and
+108 application files without missing modules or a cycle in the nine-crate
+local dependency closure. The manifest/lockfile add the existing bus-core
+dependency only; no resolution ran. File-limit and whitespace checks passed.
+Standalone rustfmt was used. No Cargo, rustc, Python, bus publication or drain,
+Rust test or doctest ran. Compilation and runtime remain unverified. Evidence:
+artifacts/consolidation-ralph-bus/. Remaining Ralph host ownership review and
+the full workspace goal stay active.

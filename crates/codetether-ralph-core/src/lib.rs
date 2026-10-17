@@ -37,3 +37,6 @@ pub mod delegation;
 
 /// Relay predecessor selection and convergence state.
 pub mod relay;
+
+/// Learning and result publication on a caller-provided agent bus.
+pub mod bus;
