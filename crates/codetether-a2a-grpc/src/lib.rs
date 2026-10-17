@@ -14,3 +14,6 @@ pub mod proto;
 
 /// Task storage, update subscriptions and tonic service implementation.
 pub mod server;
+
+/// Bus-backed voice service and streaming event transport.
+pub mod voice;

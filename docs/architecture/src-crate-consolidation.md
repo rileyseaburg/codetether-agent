@@ -94,7 +94,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | --- | ---: | --- | --- |
 | codetether-a2a-core | 48 | yes | none |
 | codetether-a2a-discovery | 23 | yes | codetether-a2a-core |
-| codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
+| codetether-a2a-grpc | 58 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 48 | yes | codetether-a2a-core, codetether-provider-core |
 | codetether-a2a-stream | 35 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 89 | yes | codetether-agent-core, codetether-provider-core, codetether-provenance |
@@ -4993,3 +4993,19 @@ HTTP-crate files and 310 A2A files are reachable with no missing/orphaned
 modules. New files meet the line budget; file and whitespace checks passed.
 Evidence: `artifacts/consolidation-worker-heartbeat/`. Compilation, tests, and
 live heartbeats remain unrun; the broader goal stays active.
+
+
+### Shared gRPC voice service
+
+The gRPC crate now owns `VoiceServiceImpl`, its five RPC handlers, built-in
+voice profiles, and bus-to-protobuf event streaming. Construction, handlers,
+profiles, event projections, and the receive loop have separate modules. The
+application path remains a re-export, so server assembly keeps the same API.
+No dependencies or authentication settings changed.
+
+Static comparison verifies all handlers, service construction, profile values,
+event timestamps and mappings, topic filtering, and receive/termination order.
+All 58 gRPC files and 310 A2A files are reachable without missing/orphaned
+modules. Every new file meets the 50-code-line limit; file-budget and whitespace
+checks passed. Evidence: `artifacts/consolidation-voice-grpc/`. Compilation,
+tests, and live voice transport were not run. The wider goal remains active.
