@@ -1,3 +1,4 @@
+//! record workspace operations.
 use serde::Deserialize;
 
 /// Remote workspace metadata returned by the A2A server.
@@ -5,7 +6,7 @@ use serde::Deserialize;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::worker_workspace_record::RegisteredWorkspaceRecord;
+/// use codetether_a2a_http::workspace::RegisteredWorkspaceRecord;
 ///
 /// let record: RegisteredWorkspaceRecord = serde_json::from_value(serde_json::json!({
 ///     "id": "workspace-1",

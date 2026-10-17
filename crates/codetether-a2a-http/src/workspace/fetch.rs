@@ -1,3 +1,4 @@
+//! fetch workspace operations.
 use super::RegisteredWorkspaceRecord;
 use anyhow::{Context, Result};
 use reqwest::Client;
@@ -9,7 +10,7 @@ use reqwest::Client;
 /// ```rust
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
 /// use axum::{Json, Router, routing::get};
-/// use codetether_agent::a2a::worker_workspace_record::fetch_workspace_record;
+/// use codetether_a2a_http::workspace::fetch_workspace_record;
 /// use reqwest::Client;
 /// use serde_json::json;
 /// use tokio::net::TcpListener;

@@ -95,7 +95,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-discovery | 19 | yes | none |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
-| codetether-a2a-http | 24 | yes | codetether-a2a-core |
+| codetether-a2a-http | 29 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 36 | yes | none |
 | codetether-agent-core | 44 | yes | none |
@@ -4652,3 +4652,26 @@ finding prevents treating the A2A inventory as complete. File-budget and
 whitespace checks passed. Evidence is retained in
 `artifacts/consolidation-a2a-server-modules/`. Compilation, tests and runtime
 behavior remain unverified; the broader consolidation goal remains active.
+
+
+### Shared worker workspace lookup and clone paths
+
+`codetether-a2a-http::workspace` owns control-plane workspace records, fetching,
+optional workspace resolution, clone-root selection, and legacy-path
+normalization. The two prior clone-policy implementations are token-identical
+after visibility normalization and now share one implementation. Application
+record/context modules and the worker clone-location module retain re-exports.
+The context facade also exports `git_clone_base_dir`, matching its existing
+documented usage. Serde is a direct dependency; Tokio is a dev dependency for
+the relocated existing documentation examples.
+
+The older `worker/workspace_directory.rs` resolver was unreachable in the
+module graph and had no consumers; it was removed without activating its
+different filesystem/error behavior. This resolves the orphan recorded in
+the preceding server module review. Static comparison covers four moved files
+and both duplicate functions. All 332 A2A files and 29 HTTP-crate files are
+reachable with no missing modules or orphaned source files. New files satisfy
+the 50-code-line limit, and whitespace/file-budget checks passed. Evidence is
+retained in `artifacts/consolidation-a2a-workspace/`. Compilation, doctests,
+and live workspace resolution remain unverified. The broader ownership
+review and consolidation goal remain active.

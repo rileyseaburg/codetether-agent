@@ -23,3 +23,6 @@ pub mod task_state;
 
 /// HTTP routing over host-provided task state and execution hooks.
 pub mod server;
+
+/// Workspace metadata and clone-directory resolution for worker tasks.
+pub mod workspace;

@@ -1,5 +1,6 @@
+//! resolve workspace operations.
+use super::fetch_workspace_record;
 use super::resolve_workspace_clone_path;
-use crate::a2a::worker_workspace_record::fetch_workspace_record;
 use anyhow::Result;
 use reqwest::Client;
 use std::path::PathBuf;
@@ -11,7 +12,7 @@ use std::path::PathBuf;
 /// ```rust
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
 /// use axum::{Json, Router, routing::get};
-/// use codetether_agent::a2a::worker_workspace_context::resolve_task_workspace_dir;
+/// use codetether_a2a_http::workspace::resolve_task_workspace_dir;
 /// use reqwest::Client;
 /// use serde_json::json;
 /// use tokio::net::TcpListener;

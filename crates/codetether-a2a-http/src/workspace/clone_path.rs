@@ -1,3 +1,4 @@
+//! clone path workspace operations.
 use std::path::{Path, PathBuf};
 
 /// Resolve the base directory used for worker-managed clone checkouts.
@@ -5,7 +6,7 @@ use std::path::{Path, PathBuf};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::worker_workspace_context::git_clone_base_dir;
+/// use codetether_a2a_http::workspace::git_clone_base_dir;
 ///
 /// let root = git_clone_base_dir();
 /// assert!(!root.as_os_str().is_empty());
@@ -29,7 +30,7 @@ pub fn git_clone_base_dir() -> PathBuf {
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::worker_workspace_context::resolve_workspace_clone_path;
+/// use codetether_a2a_http::workspace::resolve_workspace_clone_path;
 ///
 /// let path = resolve_workspace_clone_path("ws-1", "");
 /// assert!(path.ends_with("ws-1"));
