@@ -8188,3 +8188,23 @@ files contain at most 37 code lines. Evidence is in
 `artifacts/consolidation-agent-spawn/`. Compilation and runtime tests were not
 run. No Cargo, rustc or Python commands ran. The full consolidation goal remains
 active.
+
+### Shared isolated-session assembly and durable registration
+
+Moved isolated child-session assembly and checkout binding into
+`codetether-agent-session`, and session/manifest/live-store registration ordering
+into `codetether-agent-spawn`. Four added core modules separate workspace binding,
+setup, registration and native store contracts. Native adapters retain tracked
+first-message access, workspace flag mutation and the existing storage calls.
+The unused application workspace-binding module and prompt shim are removed.
+
+Twenty-eight static preservation checks cover parent policy, session creation,
+checkout allocation, prompt-before-history ordering, post-history guidance,
+retained-checkout errors, session and manifest save ordering, lineage, reserved
+insertion and final status initialization. Existing isolated-session, pinned
+workspace and durable persistence integration tests remain unchanged.
+Module/dependency, file-budget and whitespace checks passed; new core modules
+contain at most 39 code lines. Evidence is in
+`artifacts/consolidation-spawn-setup/`. Compilation, runtime tests and checkout
+allocation were not executed. No Cargo, rustc or Python commands ran. The full
+consolidation goal remains active.

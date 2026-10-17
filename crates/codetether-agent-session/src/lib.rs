@@ -17,3 +17,7 @@ pub use overlay::apply as apply_overlay;
 pub use parent_policy::resolve as parent_prior_context_allowed;
 pub use session::ChildSession;
 pub use settings::Settings;
+
+mod isolated;
+mod workspace_binding;
+pub use isolated::create_isolated;

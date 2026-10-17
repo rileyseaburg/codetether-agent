@@ -16,3 +16,8 @@ pub use construction::Construction;
 pub use dispatch::handle_spawn;
 pub use ephemeral_result::build as ephemeral_result;
 pub use host::Host;
+
+mod registration;
+mod registration_host;
+pub use registration::persist_spawned_agent;
+pub use registration_host::Registration;

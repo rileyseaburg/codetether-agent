@@ -15,6 +15,12 @@ impl SessionAccess for Session {
     fn messages_mut(&mut self) -> std::slice::IterMut<'_, Message> {
         self.messages.iter_mut()
     }
+    fn first_message_mut(&mut self) -> Option<&mut Message> {
+        self.messages.first_mut()
+    }
+    fn set_workspace_pinned(&mut self, pinned: bool) {
+        self.metadata.workspace_pinned = pinned;
+    }
     fn reset_summary_index(&mut self) {
         self.summary_index = crate::session::index::SummaryIndex::new();
     }

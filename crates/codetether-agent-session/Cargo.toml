@@ -7,6 +7,9 @@ license = "MIT"
 description = "Managed child session initialization and live-parent resume overlays"
 
 [dependencies]
+codetether-agent-input = { path = "../codetether-agent-input", version = "0.1.0" }
+codetether-child-workspace = { path = "../codetether-child-workspace", version = "0.1.0" }
+codetether-collaboration-history = { path = "../codetether-collaboration-history", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 codetether-agent-lifecycle = { path = "../codetether-agent-lifecycle", version = "0.1.0" }

@@ -7,6 +7,7 @@ license = "MIT"
 description = "Managed agent spawn orchestration and result contracts"
 
 [dependencies]
+codetether-agent-registry = { path = "../codetether-agent-registry", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 codetether-agent-input = { path = "../codetether-agent-input", version = "0.1.0" }

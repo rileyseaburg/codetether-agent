@@ -2457,6 +2457,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "codetether-agent-input",
+ "codetether-agent-registry",
  "codetether-child-workspace",
  "codetether-collaboration-history",
  "codetether-collaboration-state",
@@ -2487,6 +2488,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "codetether-agent-input",
+ "codetether-child-workspace",
+ "codetether-collaboration-history",
  "codetether-agent-lifecycle",
  "codetether-agent-messages",
  "codetether-agent-registry",

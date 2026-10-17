@@ -21,8 +21,6 @@ mod host;
 mod identity;
 #[path = "spawn/session.rs"]
 mod session;
-#[path = "spawn/session_workspace.rs"]
-mod session_workspace;
 #[path = "spawn/workspace.rs"]
 mod workspace;
 /// Spawn through shared orchestration using native runtime services.

@@ -3,10 +3,8 @@ use crate::session::Session;
 use std::path::PathBuf;
 #[path = "session_factory/binding.rs"]
 mod binding;
-#[path = "session_factory/system_message.rs"]
-pub(super) mod system_message;
 #[cfg(test)]
-use system_message::build as build_system_message;
+use codetether_agent_messages::system_message as build_system_message;
 pub(super) async fn create_agent_session(
     name: &str,
     instructions: &str,
