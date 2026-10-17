@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 25 | 1347 | Shared selection/evidence/rubric services extracted; engine and event adapters modularized; main loop and residual tests remain for cohesion audit |
+| forage | 37 | 1468 | Shared domain services extracted; engine and lifecycle reporting adapters modularized; loop orchestration and residual tests remain for cohesion audit |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -4085,3 +4085,24 @@ No Cargo, rustc, Python, provider resolution, Vault access, Ralph execution,
 Rust test or doctest ran; compilation and runtime behavior remain unverified.
 Evidence: artifacts/consolidation-forage-go/. The main forage loop and its
 remaining cohesion work are still part of the active workspace objective.
+
+## Forage lifecycle reporting cohesion
+
+The application events module now owns startup, scan, selection, console/JSON
+presentation, cycle audit, execution start/success/failure, sleep and shutdown
+reporting. Its RunEvents adapter borrows existing arguments, rubric and bus
+handle. The loop retains original counters, selection, execution, progress
+persistence, fail-fast decisions and sleep operations. No shared owner or
+additional bus handle was introduced.
+
+All 32 static comparisons passed, covering complete reporting blocks and the
+loop with only equivalent method calls substituted, plus unchanged functions
+and test source. The verifier accounts for cloning a borrowed selection slice
+and omitting redundant references when forwarding borrowed strings/slices.
+All 12 new files are at most 36 code lines. Lexical scans cover 37 application
+and 34 core files without missing modules; dependency closure remains unchanged.
+File-limit and whitespace checks passed. Standalone rustfmt was used.
+No Cargo, rustc, Python, event emission, audit write, engine, Rust test or doctest
+ran; compilation and runtime remain unverified. Evidence is retained in
+artifacts/consolidation-forage-events/. Loop orchestration and the residual
+test module remain pending within the active whole-workspace objective.

@@ -26,6 +26,7 @@ mod progress_adapter;
 use progress_adapter::record_execution_success_to_okr;
 mod go_exec;
 use go_exec::execute_opportunity_with_go;
+mod events;
 mod execution;
 use execution::execute_opportunity;
 mod swarm_execution;
@@ -86,38 +87,12 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
     let forage_id = "forage-runtime";
     let bus_handle = bus.handle(forage_id);
     let mut observer = bus.handle("forage-observer");
-    let _ = bus_handle.announce_ready(vec![
-        "okr-governance".to_string(),
-        "business-prioritization".to_string(),
-        "autonomous-forage".to_string(),
-    ]);
-
-    log_audit(
-        AuditCategory::Cognition,
-        "forage.start",
-        AuditOutcome::Success,
-        Some(json!({
-            "top": args.top,
-            "loop_mode": args.loop_mode,
-            "interval_secs": args.interval_secs,
-            "max_cycles": args.max_cycles,
-            "execute": args.execute,
-            "execution_engine": args.execution_engine,
-            "run_timeout_secs": args.run_timeout_secs,
-            "fail_fast": args.fail_fast,
-            "swarm_strategy": args.swarm_strategy,
-            "swarm_max_subagents": args.swarm_max_subagents,
-            "swarm_max_steps": args.swarm_max_steps,
-            "swarm_subagent_timeout_secs": args.swarm_subagent_timeout_secs,
-            "model": args.model,
-            "moonshot_goals": moonshot_rubric.goals.clone(),
-            "moonshot_required": moonshot_rubric.required,
-            "moonshot_min_alignment": moonshot_rubric.min_alignment,
-        })),
-        None,
-        None,
-    )
-    .await;
+    let events = events::RunEvents {
+        args: &args,
+        moonshot_rubric: &moonshot_rubric,
+        bus_handle: &bus_handle,
+    };
+    events.start().await;
 
     let top = args.top.clamp(1, 50);
     let interval_secs = args.interval_secs.clamp(5, 86_400);
@@ -139,11 +114,7 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
         }
         cycle = cycle.saturating_add(1);
         let cycle_task_id = format!("forage-cycle-{cycle}");
-        let _ = bus_handle.send_task_update(
-            &cycle_task_id,
-            TaskState::Working,
-            Some("scanning OKR opportunities".to_string()),
-        );
+        events.scan(&cycle_task_id);
         let mut opportunities = build_opportunities(&repo, &moonshot_rubric).await?;
         if opportunities.is_empty() {
             // First try the moonshot seed (execute mode only), then fall back to
@@ -167,83 +138,18 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
             }
         }
         let selected: Vec<ForageOpportunity> = opportunities.into_iter().take(top).collect();
-        let _ = bus_handle.send(
-            format!("forage.{cycle_task_id}.summary"),
-            BusMessage::SharedResult {
-                key: format!("forage/cycle/{cycle}/summary"),
-                value: json!({
-                    "cycle": cycle,
-                    "selected": selected.len(),
-                    "top": top,
-                }),
-                tags: vec![
-                    "forage".to_string(),
-                    "okr".to_string(),
-                    "summary".to_string(),
-                ],
-            },
-        );
-        let _ = bus_handle.send_to_agent(
-            "user",
-            vec![Part::Text {
-                text: format!(
-                    "Forage cycle {cycle}: selected {} opportunities from OKR governance queue.",
-                    selected.len()
-                ),
-            }],
-        );
+        events.selected(&cycle_task_id, cycle, top, &selected);
 
-        if args.json {
-            #[derive(Serialize)]
-            struct CycleOutput {
-                cycle: usize,
-                selected: Vec<ForageOpportunity>,
-            }
-            let payload = CycleOutput {
-                cycle,
-                selected: selected.clone(),
-            };
-            println!("{}", serde_json::to_string_pretty(&payload)?);
-        } else {
-            console::print_cycle(cycle, &selected, !moonshot_rubric.goals.is_empty());
-        }
+        events.present(cycle, &selected)?;
         summary.cycles_completed = cycle;
         summary.total_selected = summary.total_selected.saturating_add(selected.len());
         summary.last_cycle_selected = ForageRunSummary::summarize_selection(&selected);
-        log_audit(
-            AuditCategory::Cognition,
-            "forage.cycle",
-            AuditOutcome::Success,
-            Some(json!({
-                "cycle": cycle,
-                "selected": selected.len(),
-                "top": top,
-            })),
-            None,
-            None,
-        )
-        .await;
+        events.cycle(cycle, top, &selected).await;
         flush_bus_observer(&mut observer, cycle, args.json);
 
         if args.execute && !selected.is_empty() {
             for item in &selected {
-                tracing::info!(
-                    okr_id = %item.okr_id,
-                    key_result_id = %item.key_result_id,
-                    engine = %args.execution_engine,
-                    score = item.score,
-                    "Executing forage opportunity"
-                );
-
-                let exec_task_id = format!("forage-okr-{}-kr-{}", item.okr_id, item.key_result_id);
-                let _ = bus_handle.send_task_update(
-                    &exec_task_id,
-                    TaskState::Working,
-                    Some(format!(
-                        "executing ({}) opportunity '{}' for KR '{}'",
-                        args.execution_engine, item.okr_title, item.key_result_title
-                    )),
-                );
+                let exec_task_id = events.executing(item);
                 summary.total_executed = summary.total_executed.saturating_add(1);
                 match execute_opportunity(item, &args).await {
                     Ok(execution_outcome) => {
@@ -263,52 +169,12 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
                                 "Failed to persist forage execution progress to OKR"
                             );
                         }
-                        let _ = bus_handle.send_task_update(
-                            &exec_task_id,
-                            TaskState::Completed,
-                            Some(execution_outcome.detail.clone()),
-                        );
-                        log_audit(
-                            AuditCategory::Cognition,
-                            "forage.execute",
-                            AuditOutcome::Success,
-                            Some(json!({
-                                "engine": args.execution_engine,
-                                "score": item.score,
-                                "okr_title": item.okr_title,
-                                "key_result_title": item.key_result_title,
-                                "detail": execution_outcome.detail,
-                                "changed_files": execution_outcome.changed_files,
-                            })),
-                            Some(item.okr_id),
-                            None,
-                        )
-                        .await;
+                        events.success(item, &exec_task_id, execution_outcome).await;
                     }
                     Err(err) => {
                         summary.total_execution_failures =
                             summary.total_execution_failures.saturating_add(1);
-                        let error_message = format!("{err:#}");
-                        let _ = bus_handle.send_task_update(
-                            &exec_task_id,
-                            TaskState::Failed,
-                            Some(format!("execution failed: {error_message}")),
-                        );
-                        log_audit(
-                            AuditCategory::Cognition,
-                            "forage.execute",
-                            AuditOutcome::Failure,
-                            Some(json!({
-                                "engine": args.execution_engine,
-                                "score": item.score,
-                                "okr_title": item.okr_title,
-                                "key_result_title": item.key_result_title,
-                                "error": error_message,
-                            })),
-                            Some(item.okr_id),
-                            None,
-                        )
-                        .await;
+                        events.failure(item, &exec_task_id, &err).await;
                         if args.fail_fast {
                             return Err(err);
                         }
@@ -318,38 +184,16 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
         }
 
         let keep_running = args.loop_mode && (args.max_cycles == 0 || cycle < args.max_cycles);
-        let _ = bus_handle.send_task_update(
-            &cycle_task_id,
-            TaskState::Completed,
-            Some(format!("cycle complete (keep_running={keep_running})")),
-        );
+        events.complete(&cycle_task_id, keep_running);
 
         if !keep_running {
             break;
         }
 
-        tracing::info!(
-            cycle,
-            interval_secs,
-            "Forage loop sleeping before next cycle"
-        );
-        let _ = bus_handle.send_task_update(
-            &cycle_task_id,
-            TaskState::Submitted,
-            Some(format!("sleeping {interval_secs}s before next cycle")),
-        );
+        events.sleeping(cycle, interval_secs, &cycle_task_id);
         tokio::time::sleep(Duration::from_secs(interval_secs)).await;
     }
-    let _ = bus_handle.announce_shutdown();
-    log_audit(
-        AuditCategory::Cognition,
-        "forage.stop",
-        AuditOutcome::Success,
-        Some(json!({ "cycles": cycle })),
-        None,
-        None,
-    )
-    .await;
+    events.stop(cycle).await;
 
     Ok(summary)
 }
