@@ -3,7 +3,6 @@
 pub(super) use super::{
     a2a_peer::maybe_start_worker_a2a_peer,
     auto_approve::parse_auto_approve,
-    clone_location::{git_clone_base_dir, resolve_workspace_clone_path},
     clone_target::prepare_clone_target,
     completion_retry::complete_worker_step_with_context_fallback,
     extended_heartbeat::send_extended_task_heartbeat,

@@ -47,12 +47,5 @@ pub(super) async fn enqueue_post_clone_task(
         .send()
         .await
         .context("Failed to enqueue post-clone task")?;
-    if response.status().is_success() {
-        return Ok(());
-    }
-    anyhow::bail!(
-        "Failed to enqueue post-clone task ({}): {}",
-        response.status(),
-        response.text().await.unwrap_or_default()
-    )
+    super::enqueue_response::require_success(response).await
 }

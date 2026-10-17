@@ -4,7 +4,7 @@ use std::path::Path;
 
 use reqwest::Client;
 
-use crate::a2a::worker_workspace_record::RegisteredWorkspaceRecord;
+use codetether_a2a_http::workspace::RegisteredWorkspaceRecord;
 
 pub(super) struct CloneRepoTask<'a> {
     pub(super) client: &'a Client,

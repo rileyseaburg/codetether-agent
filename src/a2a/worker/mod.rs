@@ -3,18 +3,8 @@
 #[rustfmt::skip]
 mod a2a_peer;mod a2a_peer_config;
 mod auto_approve;
-mod clone_enqueue;
-mod clone_git;
-mod clone_git_cmd;
-mod clone_location;
-mod clone_lock;
-mod clone_lock_release;
-mod clone_register;
-mod clone_repo_exec;
 mod clone_target;
 mod clone_task;
-mod clone_task_data;
-mod clone_task_result;
 mod completion_retry;
 mod extended_heartbeat;
 mod forage_args;
@@ -36,7 +26,6 @@ mod metadata_strings;
 mod model_defaults;
 mod model_preferences;
 mod pending_tasks;
-mod post_clone_task;
 mod provider_models;
 mod public_api;
 mod reconnect_lifecycle;
@@ -94,8 +83,6 @@ pub(crate) mod task_timeline;
 mod task_timeout;
 #[rustfmt::skip]
 #[cfg(test)] mod test_forage;
-#[cfg(test)]
-mod test_post_clone;
 #[cfg(test)]
 mod test_public;
 #[cfg(test)]

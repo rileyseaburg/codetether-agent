@@ -1,0 +1,17 @@
+[package]
+name = "codetether-a2a-worker-clone"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Workspace clone task orchestration for CodeTether A2A workers"
+
+[dependencies]
+anyhow = "1.0.104"
+codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }
+codetether-a2a-worker-core = { path = "../codetether-a2a-worker-core", version = "0.1.0" }
+codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }
+serde_json = "1"
+tokio = { version = "1.53.1", features = ["fs", "time"] }

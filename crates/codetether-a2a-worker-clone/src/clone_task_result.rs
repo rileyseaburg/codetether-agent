@@ -1,15 +1,5 @@
-//! Clone-repo task: execute result (git operations and registration).
-
-use anyhow::Result;
-
-use super::clone_enqueue::enqueue_post_clone_task;
-use super::clone_git::refresh_existing_clone;
-use super::clone_repo_exec;
-use super::clone_task_data::CloneRepoTask;
-use super::{
-    configure_repo_git_auth, configure_repo_git_github_app_from_agent_config,
-    install_commit_msg_hook, register_cloned_workspace, worker_should_enqueue_post_clone_task,
-};
+//! Clone or refresh a checkout, then register it and enqueue follow-up work.
+use super::*;
 
 pub(super) async fn handle_clone_repo_task_result(task: CloneRepoTask<'_>) -> Result<String> {
     let agent_config = serde_json::Value::Object(task.workspace.agent_config.clone());

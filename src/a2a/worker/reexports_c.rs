@@ -1,7 +1,6 @@
 //! Worker helper re-exports, group C.
 
 pub(super) use super::{
-    post_clone_task::worker_should_enqueue_post_clone_task,
     task_agent::execute_task_agent,
     task_context::{TaskContext, build_task_context},
     task_data::{task_metadata, task_str, task_value},

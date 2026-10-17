@@ -1,8 +1,2 @@
-//! Small worker environment and string helpers.
-
-pub(super) fn env_u64(name: &str, default: u64) -> u64 {
-    std::env::var(name)
-        .ok()
-        .and_then(|value| value.parse::<u64>().ok())
-        .unwrap_or(default)
-}
+//! Shared worker environment-number parsing.
+pub(super) use codetether_a2a_worker_core::env_u64;

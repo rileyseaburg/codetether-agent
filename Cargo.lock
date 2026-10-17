@@ -1174,6 +1174,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-a2a-worker-clone"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-a2a-http",
+ "codetether-a2a-worker-core",
+ "codetether-provenance",
+ "codetether-worktree",
+ "reqwest 0.13.4",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "codetether-a2a-worker-core"
 version = "0.1.0"
 dependencies = [
@@ -1217,6 +1231,7 @@ dependencies = [
  "codetether-a2a-http",
  "codetether-a2a-stream",
  "codetether-a2a-worker-core",
+ "codetether-a2a-worker-clone",
  "codetether-agent-core",
  "codetether-approval-core",
  "codetether-audit",

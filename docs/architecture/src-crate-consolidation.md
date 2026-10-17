@@ -5524,3 +5524,25 @@ most 35 code lines. File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-session-preparation/`. Compilation, tests, workspace
 requests, and Git setup remain unrun. No Cargo, rustc, or Python commands ran.
 The broader implementation migration remains active.
+
+### Dedicated A2A worker clone crate
+
+Created `crates/codetether-a2a-worker-clone` to own the complete workspace clone
+workflow: metadata resolution, temporary credential-helper lifecycle, exclusive
+clone locking, clone/refresh execution, repository configuration, control-plane
+registration, and optional post-clone task enqueueing. The main worker now
+re-exports the crate's entry point. Twelve obsolete worker files were removed.
+Shared Git primitives remain in worktree and control-plane primitives remain
+in HTTP. Environment-number parsing moved to worker-core so cloning and normal
+worker execution use the same implementation.
+
+Static comparison verifies nine moved functions, unchanged borrowed clone-task
+fields, both existing post-clone tests, and the enqueue response helper expanded
+back into its original function. Workspace membership, root dependency, and
+lockfile entries are present. The lexical graph reaches all 11 clone-crate
+files and 254 application A2A files without missing/orphaned modules, and the
+clone dependency closure remains acyclic. New clone files contain at most
+48 code lines. File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-worker-clone/`. Compilation, tests, Git execution,
+and control-plane requests remain unrun. No Cargo, rustc, or Python commands
+ran. The broader implementation migration remains active.

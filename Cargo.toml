@@ -7,6 +7,7 @@ members = [
     "crates/codetether-a2a-http",
     "crates/codetether-a2a-stream",
     "crates/codetether-a2a-worker-core",
+    "crates/codetether-a2a-worker-clone",
     "crates/codetether-agent-core",
     "crates/codetether-approval-core",
     "crates/codetether-audit",
@@ -198,6 +199,7 @@ fips = [
 ]
 
 [dependencies]
+codetether-a2a-worker-clone = { path = "crates/codetether-a2a-worker-clone", version = "0.1.0" }
 codetether-cognition-native = { path = "crates/codetether-cognition-native", version = "0.1.0" }
 codetether-cognition-core = { path = "crates/codetether-cognition-core", version = "0.1.0" }
 codetether-voice-core = { path = "crates/codetether-voice-core", version = "0.1.0" }
