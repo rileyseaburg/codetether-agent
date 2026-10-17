@@ -53,3 +53,6 @@ pub mod peer_startup;
 
 /// Inbound interactive handoff and headless turn selection.
 pub mod inbound_turn;
+
+/// Shared message admission over application execution hooks.
+pub mod admission;

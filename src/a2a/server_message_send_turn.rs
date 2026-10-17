@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::a2a::types::MessageSendParams;
 
-use super::super::{A2AServer, emit_a2a_outbound, server_turn};
+use super::{A2AServer, emit_a2a_outbound, server_turn};
 use codetether_a2a_http::task_state::settlement::Settle;
 
 pub(super) async fn run(
@@ -16,7 +16,7 @@ pub(super) async fn run(
 ) {
     let started_at = Instant::now();
     let context_id = params.message.context_id.as_deref();
-    let from = super::parse::sender_of(&params);
+    let from = codetether_a2a_http::task_state::sender_of(&params);
     let outcome =
         server_turn::execute_turn(&server.tasks, &task_id, context_id, &from, &prompt).await;
     let settle = Settle {

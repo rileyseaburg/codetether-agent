@@ -12,7 +12,7 @@ impl codetether_a2a_http::server::ServerHost for A2AServer {
         &self,
         request: JsonRpcRequest,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        server_message_send::handle(self, request).await
+        codetether_a2a_http::admission::send(self, request).await
     }
     async fn stream_message(
         &self,

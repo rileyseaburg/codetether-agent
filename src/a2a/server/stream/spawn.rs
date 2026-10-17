@@ -1,6 +1,6 @@
 //! Clone execution state and schedule one stream task.
 use super::*;
-pub(super) fn spawn(server: &A2AServer, params: &MessageSendParams, task_id: &str, prompt: String) {
+pub(in crate::a2a::server) fn spawn(server: &A2AServer, params: &MessageSendParams, task_id: &str, prompt: String) {
     // Spawn async processing with event streaming
     let tasks = server.tasks.clone();
     let context_id = params.message.context_id.clone();

@@ -5996,3 +5996,22 @@ the application host contains 48. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-stream-driver/`. Compilation, tests and live
 execution remain unrun. No Cargo, rustc or Python commands ran. The broader
 migration remains active.
+
+### Shared message admission
+
+Moved message/send and message/stream admission into
+`codetether-a2a-http::admission`. The shared handlers own parameter decoding,
+introduction detection, task registration, prompt validation, execution dispatch
+and JSON-RPC task serialization. A typed host supplies the application task
+store, intro acknowledgement, inbound bus notification and execution hooks.
+The old handlers and obsolete parser/task-record facades are removed.
+
+Static comparison verifies both handlers after explicit host-call substitutions,
+including their distinct task cloning and blocking behavior. It checks all five
+host adapters, HTTP route wiring, relocated turn imports and server-only stream
+spawn visibility. The module scan reaches 233 application A2A files, 164 HTTP
+files and 63 telemetry files without missing/orphaned modules; the dependency
+closure is acyclic. New files contain at most 32 code lines. File-budget and
+whitespace checks passed. Evidence: `artifacts/consolidation-message-admission/`.
+Compilation, tests and live request handling remain unrun. No Cargo, rustc or
+Python commands ran. The broader migration remains active.
