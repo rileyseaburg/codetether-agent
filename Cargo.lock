@@ -1318,6 +1318,7 @@ dependencies = [
  "codetether-grep-tool",
  "codetether-image",
  "codetether-go-monitor",
+ "codetether-go-prd",
  "codetether-go-tool",
  "codetether-image-generation",
  "codetether-indexer",
@@ -2418,6 +2419,19 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-go-prd"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-okr",
+ "codetether-provider-core",
+ "codetether-ralph-core",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

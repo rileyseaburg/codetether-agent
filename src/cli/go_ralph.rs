@@ -11,13 +11,14 @@ use anyhow::{Context, Result};
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tracing::{info, warn};
 
 use crate::bus::AgentBus;
 use crate::okr::{KrOutcome, KrOutcomeType, Okr, OkrRun, OkrRunStatus};
-use crate::provider::{CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role};
+use crate::provider::{Provider, ProviderRegistry};
+#[cfg(test)]
+use crate::ralph::QualityChecks;
 use crate::ralph::store_http::HttpStore;
-use crate::ralph::{Prd, QualityChecks, RalphConfig, RalphLoop, RalphStatus};
+use crate::ralph::{Prd, RalphConfig, RalphLoop, RalphStatus};
 
 /// Result of a `/go` execution via Ralph.
 #[derive(Debug, Clone)]
@@ -40,233 +41,28 @@ pub struct StoryResult {
     pub passed: bool,
 }
 
-/// Generate a PRD from a task description and OKR key results using an LLM.
-pub async fn generate_prd_from_task(
-    task: &str,
-    okr: &Okr,
-    provider: &dyn Provider,
-    model: &str,
-) -> Result<Prd> {
-    let kr_descriptions: Vec<String> = okr
-        .key_results
-        .iter()
-        .enumerate()
-        .map(|(i, kr)| {
-            format!(
-                "KR-{}: {} (target: {} {})",
-                i + 1,
-                kr.title,
-                kr.target_value,
-                kr.unit
-            )
-        })
-        .collect();
-
-    let prompt = format!(
-        r#"You are a PRD generator. Given a task and key results, produce a JSON PRD with concrete user stories.
-
-Task: {task}
-
-Key Results:
-{krs}
-
-Generate a PRD JSON with this exact structure (no markdown, no commentary, ONLY valid JSON):
-{{
-  "project": "<short project name>",
-  "feature": "<feature name>",
-  "branch_name": "feature/<kebab-case-name>",
-  "version": "1.0",
-  "user_stories": [
-    {{
-      "id": "US-001",
-      "title": "<concise title>",
-      "description": "<what to implement>",
-      "acceptance_criteria": ["<criterion 1>", "<criterion 2>"],
-      "passes": false,
-      "priority": 1,
-      "depends_on": [],
-      "complexity": 3
-    }}
-  ],
-  "technical_requirements": ["<requirement>"],
-  "quality_checks": {{
-        "typecheck": null,
-        "test": null,
-        "lint": null,
-        "build": null
-  }}
-}}
-
-Rules:
-- Each key result should map to at least one user story
-- Stories should be concrete, implementable, and testable
-- Use priority 1 for critical stories, 2 for important, 3 for nice-to-have
-- Set depends_on when stories have real dependencies
-- Complexity: 1=trivial, 2=simple, 3=moderate, 4=complex, 5=very complex
-- quality_checks should match the project's toolchain.
-    - If you can confidently infer the toolchain, fill in commands.
-    - If unsure, set fields to null (do NOT guess) and we will auto-detect.
-- Output ONLY the JSON object, nothing else"#,
-        krs = kr_descriptions.join("\n"),
-    );
-
-    let request = CompletionRequest {
-        messages: vec![Message {
-            role: Role::User,
-            content: vec![ContentPart::Text {
-                text: prompt.clone(),
-            }],
-        }],
-        tools: vec![],
-        model: model.to_string(),
-        temperature: Some(0.3),
-        top_p: None,
-        max_tokens: Some(4096),
-        stop: vec![],
-    };
-
-    // Attempt up to 3 times: initial request + 2 repair attempts
-    let mut last_text = String::new();
-    let mut last_error = String::new();
-
-    for attempt in 0..3 {
-        let req = if attempt == 0 {
-            request.clone()
-        } else {
-            // Repair prompt: show the LLM its broken output and ask for clean JSON
-            tracing::warn!(
-                attempt,
-                error = %last_error,
-                "PRD JSON extraction failed, retrying with repair prompt"
-            );
-            let repair = format!(
-                "Your previous response was not valid JSON. Here is the error:\n{err}\n\n\
-                 Here is what you returned:\n```\n{text}\n```\n\n\
-                 Please output ONLY the corrected JSON object — no markdown fences, \
-                 no commentary, no trailing commas, no comments. Start with {{ and end with }}.",
-                err = last_error,
-                text = if last_text.len() > 2000 {
-                    &last_text[..2000]
-                } else {
-                    &last_text
-                },
-            );
-            CompletionRequest {
-                messages: vec![
-                    Message {
-                        role: Role::User,
-                        content: vec![ContentPart::Text {
-                            text: prompt.clone(),
-                        }],
-                    },
-                    Message {
-                        role: Role::Assistant,
-                        content: vec![ContentPart::Text {
-                            text: last_text.clone(),
-                        }],
-                    },
-                    Message {
-                        role: Role::User,
-                        content: vec![ContentPart::Text { text: repair }],
-                    },
-                ],
-                tools: vec![],
-                model: model.to_string(),
-                temperature: Some(0.1),
-                top_p: None,
-                max_tokens: Some(4096),
-                stop: vec![],
-            }
-        };
-
-        let response = provider
-            .complete(req)
-            .await
-            .context("Failed to generate PRD from LLM")?;
-
-        last_text = response
-            .message
-            .content
-            .iter()
-            .filter_map(|part| match part {
-                ContentPart::Text { text } => Some(text.as_str()),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("");
-
-        // Extract and parse JSON
-        match extract_json(&last_text) {
-            Some(json_str) => match serde_json::from_str::<Prd>(&json_str) {
-                Ok(prd) => {
-                    if attempt > 0 {
-                        tracing::info!(attempt, "PRD JSON repair succeeded");
-                    }
-                    // Jump to the timestamp/quality-check block below
-                    let mut prd = prd;
-                    let now = chrono::Utc::now().to_rfc3339();
-                    prd.created_at = now.clone();
-                    prd.updated_at = now;
-
-                    // Normalize quality checks:
-                    // - If the model left them null, detect from the current directory.
-                    // - If the model guessed a toolchain that doesn't match the repo,
-                    //   override with detected checks (prevents cargo in Node/Go/Python repos).
-                    let cwd = std::env::current_dir().unwrap_or_default();
-                    let detected = detect_quality_checks();
-                    let looks_like_cargo = prd
-                        .quality_checks
-                        .typecheck
-                        .as_deref()
-                        .map(|c| c.to_ascii_lowercase().contains("cargo"))
-                        .unwrap_or(false);
-                    let looks_like_npm = prd
-                        .quality_checks
-                        .typecheck
-                        .as_deref()
-                        .map(|c| {
-                            let c = c.to_ascii_lowercase();
-                            c.contains("npm")
-                                || c.contains("pnpm")
-                                || c.contains("yarn")
-                                || c.contains("npx")
-                        })
-                        .unwrap_or(false);
-                    let looks_like_go = prd
-                        .quality_checks
-                        .typecheck
-                        .as_deref()
-                        .map(|c| c.to_ascii_lowercase().contains("go vet"))
-                        .unwrap_or(false);
-
-                    // Override if: no typecheck set, OR guessed tool doesn't match project files
-                    let needs_override = prd.quality_checks.typecheck.is_none()
-                        || (looks_like_cargo && !cwd.join("Cargo.toml").exists())
-                        || (looks_like_npm && !cwd.join("package.json").exists())
-                        || (looks_like_go && !cwd.join("go.mod").exists());
-
-                    if needs_override {
-                        prd.quality_checks = detected;
-                    }
-
-                    return Ok(prd);
-                }
-                Err(e) => {
-                    last_error = format!("JSON parses but doesn't match PRD schema: {e}");
-                }
-            },
-            None => {
-                last_error = "Response contains no valid JSON object".to_string();
-            }
-        }
-    }
-
-    anyhow::bail!("Failed to extract valid PRD JSON after 3 attempts. Last error: {last_error}");
-}
-
-/// Generate a PRD with automatic model retry on failure.
-/// Tries the primary model first, then attempts alternative models if it fails.
-/// This makes autonomous execution more robust against transient provider issues.
+pub use codetether_go_prd::generate_prd_from_task;
+mod registry;
+/// Generate a PRD with the application's configured provider registry.
+///
+/// # Arguments
+/// * `task` — Task description.
+/// * `okr` — Objective whose key results inform the PRD.
+/// * `primary_provider` — Provider used for the first and final attempts.
+/// * `primary_model` — Caller-selected model name.
+/// * `registry` — Optional configured registry for alternative model attempts.
+///
+/// # Returns
+/// The first successfully generated PRD.
+///
+/// # Errors
+/// Returns the final generation error when all attempts fail.
+///
+/// # Panics
+/// Preserves the generator's byte-based repair excerpt behavior.
+///
+/// # Examples
+/// See [codetether_go_prd::generate_prd_with_model_retry] for a generation example.
 pub async fn generate_prd_with_model_retry(
     task: &str,
     okr: &Okr,
@@ -274,80 +70,17 @@ pub async fn generate_prd_with_model_retry(
     primary_model: &str,
     registry: Option<&ProviderRegistry>,
 ) -> Result<Prd> {
-    // Try primary model first
-    match generate_prd_from_task(task, okr, primary_provider.as_ref(), primary_model).await {
-        Ok(prd) => {
-            info!(model = %primary_model, "PRD generated with primary model");
-            return Ok(prd);
-        }
-        Err(e) => {
-            warn!(model = %primary_model, error = %e, "Primary model failed, trying alternatives");
-        }
-    }
-
-    // If registry provided, try alternative models
-    if let Some(reg) = registry {
-        let alternatives = get_model_alternatives(primary_model, reg);
-
-        for (provider_name, alt_model) in alternatives {
-            if let Some(provider) = reg.get(provider_name) {
-                info!(model = %alt_model, provider = %provider_name, "Trying alternative model");
-                match generate_prd_from_task(task, okr, provider.as_ref(), &alt_model).await {
-                    Ok(prd) => {
-                        info!(model = %alt_model, "PRD generated with alternative model");
-                        return Ok(prd);
-                    }
-                    Err(e) => {
-                        warn!(model = %alt_model, error = %e, "Alternative model failed");
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-
-    // If we get here, all models failed - return original error
-    generate_prd_from_task(task, okr, primary_provider.as_ref(), primary_model).await
+    codetether_go_prd::generate_prd_with_model_retry(
+        task,
+        okr,
+        primary_provider,
+        primary_model,
+        registry.map(|r| r as &dyn codetether_go_prd::Registry),
+    )
+    .await
 }
 
-/// Get ordered list of alternative models for PRD generation.
-/// Excludes the primary model to avoid redundant attempts.
-fn get_model_alternatives<'a>(
-    primary_model: &'a str,
-    registry: &'a ProviderRegistry,
-) -> Vec<(&'a str, String)> {
-    let mut alternatives = Vec::new();
-
-    // Known good models for PRD generation (reasoning-capable models work best)
-    // Ordered by preference - most capable first
-    let model_preferences = [
-        ("openai", "gpt-4o"),
-        ("openai", "gpt-4o-mini"),
-        ("anthropic", "claude-sonnet-4-20250514"),
-        ("anthropic", "claude-3-5-sonnet-20241022"),
-        ("google", "gemini-2.0-flash"),
-        ("openrouter", "openai/gpt-4o"),
-        ("openrouter", "anthropic/claude-3.5-sonnet"),
-        ("zai", "glm-5"),
-    ];
-
-    for (provider, model) in model_preferences {
-        // Skip if this is the primary model
-        let model_string = format!("{}/{}", provider, model);
-        if model_string == primary_model || model == primary_model {
-            continue;
-        }
-
-        // Only add if provider is available in registry
-        if registry.get(provider).is_some() {
-            alternatives.push((provider, model_string));
-        }
-    }
-
-    alternatives
-}
-
-/// Run Ralph loop for a `/go` task, mapping results back to OKR.
+/// Run Ralph loop for a /go task, mapping results back to OKR.
 pub async fn execute_go_ralph(
     task: &str,
     okr: &mut Okr,
@@ -649,322 +382,12 @@ pub fn format_go_ralph_result(result: &GoRalphResult, task: &str) -> String {
     )
 }
 
-/// Extract JSON object from text that may be wrapped in markdown code blocks.
-fn extract_json(text: &str) -> Option<String> {
-    // Try each extraction strategy, applying sanitization if raw parse fails
-    let candidates = gather_json_candidates(text);
-    for candidate in candidates {
-        // Try raw first
-        if serde_json::from_str::<serde_json::Value>(&candidate).is_ok() {
-            return Some(candidate);
-        }
-        // Try after sanitizing common LLM quirks
-        let sanitized = sanitize_json(&candidate);
-        if serde_json::from_str::<serde_json::Value>(&sanitized).is_ok() {
-            return Some(sanitized);
-        }
-    }
-    None
-}
-
-/// Gather candidate JSON strings from LLM output, ordered by likelihood.
-fn gather_json_candidates(text: &str) -> Vec<String> {
-    let mut candidates = Vec::new();
-    let trimmed = text.trim();
-
-    // 1. Direct: entire response is JSON
-    candidates.push(trimmed.to_string());
-
-    // 2. Inside ```json ... ``` fences
-    let mut search = text;
-    while let Some(start) = search.find("```json") {
-        let after = &search[start + 7..];
-        if let Some(end) = after.find("```") {
-            candidates.push(after[..end].trim().to_string());
-        }
-        search = &search[start + 7..];
-    }
-
-    // 3. Inside ``` ... ``` fences (any language tag)
-    search = text;
-    while let Some(start) = search.find("```") {
-        let after = &search[start + 3..];
-        let content_start = after.find('\n').unwrap_or(0);
-        let after_tag = &after[content_start..];
-        if let Some(end) = after_tag.find("```") {
-            candidates.push(after_tag[..end].trim().to_string());
-        }
-        // Advance past this fence pair
-        let skip = start + 3 + content_start + after_tag.find("```").unwrap_or(after_tag.len()) + 3;
-        if skip >= search.len() {
-            break;
-        }
-        search = &search[skip..];
-    }
-
-    // 4. First `{` to last `}` (greedy brace match)
-    if let (Some(start), Some(end)) = (text.find('{'), text.rfind('}'))
-        && start < end
-    {
-        candidates.push(text[start..=end].to_string());
-    }
-
-    // 5. Balanced brace extraction starting from first `{`
-    if let Some(balanced) = extract_balanced_braces(text) {
-        candidates.push(balanced);
-    }
-
-    candidates
-}
-
-/// Extract the first balanced `{...}` block from text.
-fn extract_balanced_braces(text: &str) -> Option<String> {
-    let start = text.find('{')?;
-    let mut depth = 0i32;
-    let mut in_string = false;
-    let mut escape_next = false;
-    let bytes = text.as_bytes();
-
-    for i in start..bytes.len() {
-        let ch = bytes[i] as char;
-        if escape_next {
-            escape_next = false;
-            continue;
-        }
-        if ch == '\\' && in_string {
-            escape_next = true;
-            continue;
-        }
-        if ch == '"' {
-            in_string = !in_string;
-            continue;
-        }
-        if in_string {
-            continue;
-        }
-        match ch {
-            '{' => depth += 1,
-            '}' => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(text[start..=i].to_string());
-                }
-            }
-            _ => {}
-        }
-    }
-    None
-}
-
-/// Sanitize common LLM JSON mistakes.
-fn sanitize_json(text: &str) -> String {
-    let mut s = text.to_string();
-
-    // Replace unicode curly quotes with straight quotes
-    s = s
-        .replace(['\u{201c}', '\u{201d}'], "\"") // right double
-        .replace(['\u{2018}', '\u{2019}'], "'"); // right single
-
-    // Remove single-line // comments (outside strings)
-    s = remove_line_comments(&s);
-
-    // Remove trailing commas before } or ]
-    s = remove_trailing_commas(&s);
-
-    s
-}
-
-/// Remove `//` line comments that aren't inside JSON strings.
-fn remove_line_comments(text: &str) -> String {
-    let mut result = String::with_capacity(text.len());
-    let mut in_string = false;
-    let mut escape_next = false;
-    let chars: Vec<char> = text.chars().collect();
-    let mut i = 0;
-
-    while i < chars.len() {
-        if escape_next {
-            result.push(chars[i]);
-            escape_next = false;
-            i += 1;
-            continue;
-        }
-        if chars[i] == '\\' && in_string {
-            result.push(chars[i]);
-            escape_next = true;
-            i += 1;
-            continue;
-        }
-        if chars[i] == '"' {
-            in_string = !in_string;
-            result.push(chars[i]);
-            i += 1;
-            continue;
-        }
-        if !in_string && i + 1 < chars.len() && chars[i] == '/' && chars[i + 1] == '/' {
-            // Skip to end of line
-            while i < chars.len() && chars[i] != '\n' {
-                i += 1;
-            }
-            continue;
-        }
-        result.push(chars[i]);
-        i += 1;
-    }
-    result
-}
-
-/// Remove trailing commas before `}` or `]`.
-fn remove_trailing_commas(text: &str) -> String {
-    let mut result = String::with_capacity(text.len());
-    let mut in_string = false;
-    let mut escape_next = false;
-    let chars: Vec<char> = text.chars().collect();
-    let mut i = 0;
-
-    while i < chars.len() {
-        if escape_next {
-            result.push(chars[i]);
-            escape_next = false;
-            i += 1;
-            continue;
-        }
-        if chars[i] == '\\' && in_string {
-            result.push(chars[i]);
-            escape_next = true;
-            i += 1;
-            continue;
-        }
-        if chars[i] == '"' {
-            in_string = !in_string;
-            result.push(chars[i]);
-            i += 1;
-            continue;
-        }
-        if !in_string && chars[i] == ',' {
-            // Look ahead past whitespace for } or ]
-            let mut j = i + 1;
-            while j < chars.len() && chars[j].is_whitespace() {
-                j += 1;
-            }
-            if j < chars.len() && (chars[j] == '}' || chars[j] == ']') {
-                // Skip the trailing comma
-                i += 1;
-                continue;
-            }
-        }
-        result.push(chars[i]);
-        i += 1;
-    }
-    result
-}
-
-/// Auto-detect quality checks from the working directory.
-fn detect_quality_checks() -> QualityChecks {
-    let cwd = std::env::current_dir().unwrap_or_default();
-
-    if cwd.join("Cargo.toml").exists() {
-        QualityChecks {
-            typecheck: Some("cargo check".to_string()),
-            test: Some("cargo test".to_string()),
-            lint: Some("cargo clippy --all-features".to_string()),
-            build: Some("cargo build".to_string()),
-        }
-    } else if cwd.join("package.json").exists() {
-        QualityChecks {
-            typecheck: Some("npx tsc --noEmit".to_string()),
-            test: Some("npm test".to_string()),
-            lint: Some("npm run lint".to_string()),
-            build: Some("npm run build".to_string()),
-        }
-    } else if cwd.join("go.mod").exists() {
-        QualityChecks {
-            typecheck: Some("go vet ./...".to_string()),
-            test: Some("go test ./...".to_string()),
-            lint: Some("golangci-lint run".to_string()),
-            build: Some("go build ./...".to_string()),
-        }
-    } else if cwd.join("requirements.txt").exists() || cwd.join("pyproject.toml").exists() {
-        QualityChecks {
-            typecheck: Some("mypy .".to_string()),
-            test: Some("pytest".to_string()),
-            lint: Some("ruff check .".to_string()),
-            build: None,
-        }
-    } else {
-        QualityChecks::default()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::okr::KeyResult;
     use crate::ralph::UserStory;
     use uuid::Uuid;
-
-    #[test]
-    fn extract_json_handles_raw_json() {
-        let raw = r#"{"project": "test", "feature": "foo"}"#;
-        assert!(extract_json(raw).is_some());
-    }
-
-    #[test]
-    fn extract_json_handles_markdown_wrapped() {
-        let wrapped = "Here is the PRD:\n```json\n{\"project\": \"test\"}\n```\nDone.";
-        let result = extract_json(wrapped).unwrap();
-        assert!(result.contains("test"));
-    }
-
-    #[test]
-    fn extract_json_handles_bare_braces() {
-        let text = "The result is: {\"project\": \"test\"} and that's it.";
-        let result = extract_json(text).unwrap();
-        assert!(result.contains("test"));
-    }
-
-    #[test]
-    fn extract_json_returns_none_for_no_json() {
-        assert!(extract_json("no json here").is_none());
-    }
-
-    #[test]
-    fn extract_json_handles_trailing_commas() {
-        let text = r#"{"project": "test", "feature": "foo",}"#;
-        let result = extract_json(text).unwrap();
-        assert!(result.contains("test"));
-        // Verify it actually parses
-        serde_json::from_str::<serde_json::Value>(&result).unwrap();
-    }
-
-    #[test]
-    fn extract_json_handles_line_comments() {
-        let text = "{\n  \"project\": \"test\", // this is the project\n  \"feature\": \"foo\"\n}";
-        let result = extract_json(text).unwrap();
-        serde_json::from_str::<serde_json::Value>(&result).unwrap();
-    }
-
-    #[test]
-    fn extract_json_handles_curly_quotes() {
-        let text = "\u{201c}project\u{201d}: \u{201c}test\u{201d}";
-        let full = format!("{{{text}}}");
-        let result = extract_json(&full).unwrap();
-        serde_json::from_str::<serde_json::Value>(&result).unwrap();
-    }
-
-    #[test]
-    fn extract_json_handles_prose_wrapper() {
-        let text = "Sure! Here is the PRD:\n\n{\"project\": \"x\", \"feature\": \"y\"}\n\nLet me know if you need changes.";
-        let result = extract_json(text).unwrap();
-        assert!(result.contains("\"project\""));
-    }
-
-    #[test]
-    fn detect_quality_checks_returns_defaults_for_unknown() {
-        // This tests that default is returned when no project file is found
-        // (may detect Cargo.toml in workspace — that's fine, we just test no panic)
-        let _checks = detect_quality_checks();
-    }
 
     #[test]
     fn map_stories_creates_outcomes_for_each_kr() {

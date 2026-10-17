@@ -1,0 +1,11 @@
+//! Existing regression coverage for PRD JSON recovery and quality detection.
+
+mod detect_quality_checks_returns_defaults_for_unknown;
+mod extract_json_handles_bare_braces;
+mod extract_json_handles_curly_quotes;
+mod extract_json_handles_line_comments;
+mod extract_json_handles_markdown_wrapped;
+mod extract_json_handles_prose_wrapper;
+mod extract_json_handles_raw_json;
+mod extract_json_handles_trailing_commas;
+mod extract_json_returns_none_for_no_json;

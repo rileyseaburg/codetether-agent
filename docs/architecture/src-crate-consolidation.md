@@ -7665,3 +7665,23 @@ ratchet. Whitespace checks passed. Evidence lives in
 repository persistence, runtime test, Cargo, rustc or Python command was run.
 Compilation remains unverified; moving the application Ralph implementation and
 other remaining `src/` implementations is still part of the active goal.
+
+### Dedicated PRD generation and recovery
+
+Moved task-to-PRD generation, initial/repair request construction, response text
+collection, JSON candidate recovery and sanitization, timestamps, quality-check
+defaults, and alternative-model retry selection into `crates/codetether-go-prd`.
+Thirty Rust modules include nine relocated regression tests. The application
+retains its specialized registry adapter and the remaining Ralph execution,
+outcome mapping and result formatting. Shared provider, OKR and Ralph contracts
+are used directly. The change removes 577 lines from `src/cli/go_ralph.rs`.
+
+Thirty-eight static preservation checks cover prompts, roles and request limits,
+three-attempt repair composition, alternate model ordering, JSON algorithms,
+quality detection/normalization, relocated tests, and unchanged remaining
+execution/reporting code. Module reachability, local dependency cycles, file
+budgets and whitespace checks passed. New Rust modules contain at most 43 code
+lines. Evidence is in `artifacts/consolidation-go-prd/`. The nine moved and two
+remaining application tests were not run. No provider calls, quality commands,
+Cargo, rustc or Python commands were executed. Compilation remains unverified;
+the complete source-to-crates consolidation goal remains active.
