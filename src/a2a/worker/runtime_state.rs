@@ -8,14 +8,7 @@ use tokio::sync::Mutex;
 use crate::bus::AgentBus;
 
 use super::{AutoApprove, task_timeline};
-
-/// Result of attempting to reserve a task-processing slot.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum TaskReservation {
-    Reserved,
-    AlreadyProcessing,
-    AtCapacity,
-}
+pub(super) use codetether_a2a_worker_core::dispatch::TaskReservation;
 
 /// Shared dependencies and mutable state reused across task handlers.
 #[derive(Clone)]

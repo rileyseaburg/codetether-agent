@@ -5327,3 +5327,23 @@ lines; file-budget and whitespace checks passed. Evidence is retained in
 `artifacts/consolidation-worker-requests/`. Compilation, tests and network
 requests remain unrun. No Cargo, rustc, or Python commands ran. The broader
 migration of implementation into crates remains active.
+
+### Shared worker dispatch policies
+
+Worker-core now owns explicit task targeting, concurrency slot reservation,
+reservation outcomes, and task execution timeout wrapping. Approval argument
+extraction moved beside the existing task metadata readers. Application files
+re-export those policies; the runtime's remaining fields are unchanged.
+Targeting, timeout, and approval tests moved with the implementation, and the
+application's existing capacity test still exercises the re-exported API.
+
+Static comparison verifies five moved functions, the reservation enum, all
+seven moved test bodies, and unchanged runtime state fields and capacity-test
+source. The module scan reaches all 98 worker-core files and 287 application
+A2A files without missing or orphaned modules; the worker-core dependency
+closure is acyclic. New files contain at most 23 code lines. Worker-core now
+explicitly enables Tokio test macros/runtime through a development dependency;
+no package version or lockfile entry changed. File-budget and whitespace
+checks passed. Evidence: `artifacts/consolidation-worker-dispatch/`.
+Compilation, tests, and runtime execution remain unrun. No Cargo, rustc,
+or Python commands ran. The broader migration goal remains active.

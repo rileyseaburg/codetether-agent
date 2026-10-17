@@ -40,3 +40,6 @@ pub mod registration;
 
 /// Task-claim wire fields and provenance mapping.
 pub mod claim;
+
+/// Task targeting, capacity reservations and execution deadlines.
+pub mod dispatch;

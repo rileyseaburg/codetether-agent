@@ -2,7 +2,7 @@
 
 use serde_json::json;
 
-use super::task_targeting::explicitly_targets_agent;
+use super::explicitly_targets_agent;
 
 #[test]
 fn targeted_only_accepts_matching_metadata_target() {

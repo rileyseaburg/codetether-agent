@@ -2,7 +2,7 @@
 
 use std::{future::pending, time::Duration};
 
-use super::task_handler_timeout::execute_with_timeout;
+use super::execute_with_timeout;
 
 #[tokio::test]
 async fn returns_completed_execution_result() {
