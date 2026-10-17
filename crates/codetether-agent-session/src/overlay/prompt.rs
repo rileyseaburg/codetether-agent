@@ -1,13 +1,14 @@
 //! Workspace-bearing child system-message refresh.
 
-use crate::provider::{ContentPart, Message, Role};
-use crate::tool::agent::store::AgentEntry;
+use crate::ChildSession;
+use codetether_agent_registry::AgentEntry;
+use codetether_provider_core::{ContentPart, Message, Role};
 
-pub(super) fn refresh(entry: &mut AgentEntry) {
-    let text = super::super::super::session_factory::system_message::build(
+pub(super) fn refresh<S: ChildSession>(entry: &mut AgentEntry<S>) {
+    let text = codetether_agent_messages::system_message(
         &entry.name,
         &entry.instructions,
-        entry.session.metadata.directory.clone(),
+        entry.session.settings().directory.clone(),
     );
     let message = Message {
         role: Role::System,
@@ -15,12 +16,11 @@ pub(super) fn refresh(entry: &mut AgentEntry) {
     };
     if let Some(current) = entry
         .session
-        .messages
-        .iter_mut()
+        .messages_mut()
         .find(|message| message.role == Role::System)
     {
         *current = message;
-        entry.session.summary_index = crate::session::index::SummaryIndex::new();
+        entry.session.reset_summary_index();
     } else {
         entry.session.add_message(message);
     }

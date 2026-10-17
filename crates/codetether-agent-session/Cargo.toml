@@ -1,0 +1,16 @@
+[package]
+name = "codetether-agent-session"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Managed child session initialization and live-parent resume overlays"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-agent-lifecycle = { path = "../codetether-agent-lifecycle", version = "0.1.0" }
+codetether-agent-messages = { path = "../codetether-agent-messages", version = "0.1.0" }
+codetether-agent-registry = { path = "../codetether-agent-registry", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+tracing = "0.1"

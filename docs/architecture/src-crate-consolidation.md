@@ -8128,3 +8128,24 @@ contain at most 43 code lines. Evidence is in
 `artifacts/consolidation-agent-input/`. Compilation and runtime tests were not
 run. No Cargo, rustc or Python commands ran. The full consolidation goal remains
 active.
+
+### Dedicated managed-child session rules
+
+Moved child initialization, inherited parent access-policy resolution, model and
+access-policy overlays, pinned-workspace handling, prompt replacement and
+save-on-change decisions into `crates/codetether-agent-session`. Ten Rust modules
+separate construction, settings access, policy resolution and overlay concerns.
+Application adapters supply references to native settings, the existing tracked
+message iterator, ordinary message insertion, summary invalidation, persistence
+and the process-global bus. These operations retain their native ownership and
+ordering; the crate owns the initialization and update rules.
+
+Thirty-four static preservation checks cover creation defaults, live-policy
+precedence, fail-closed loading, exact field access, update detection, native
+message tracking, timestamp/save ordering, prompt replacement and unchanged
+integration callers/tests. Existing creation, policy, pinned-workspace and
+restored-overlay tests remain unchanged. Module/dependency, file-budget and
+whitespace checks passed; new crate modules contain at most 28 code lines.
+Evidence is in `artifacts/consolidation-agent-session/`. Compilation and runtime
+tests were not run. No Cargo, rustc or Python commands ran. The full consolidation
+goal remains active.
