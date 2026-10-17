@@ -95,7 +95,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-discovery | 19 | yes | none |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
-| codetether-a2a-http | 29 | yes | codetether-a2a-core |
+| codetether-a2a-http | 35 | yes | codetether-a2a-core, codetether-provider-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 85 | yes | codetether-agent-core, codetether-provider-core |
 | codetether-agent-core | 44 | yes | none |
@@ -4843,3 +4843,21 @@ orphaned modules. New files meet the 50-code-line limit; file-budget and
 whitespace checks passed. Evidence: `artifacts/consolidation-worker-proof/`.
 Compilation, tests, and live signed requests remain unverified. The broader
 consolidation goal remains active.
+
+
+### Shared worker HTTP transport helpers
+
+`codetether-a2a-http::worker` owns worker-client construction, registration
+response handling, bounded response summaries, release wire payloads, and
+sending prepared release requests. The worker retains release request
+construction, token selection, body binding, and proof attachment. Duplicate
+claim/registration response summarizers were token-identical and now share
+one implementation. Original registration log targets remain explicit.
+
+Static comparison confirms unchanged client options, response errors, release
+payload serialization, signed request construction, and claim flow. All 35
+HTTP-crate files and 314 A2A files are reachable without missing/orphaned
+modules; the three-crate dependency closure is acyclic. New files satisfy the
+50-code-line limit; file-budget and whitespace checks passed. Evidence is in
+`artifacts/consolidation-worker-http/`. Compilation, tests, and live HTTP calls
+were not run. The broader consolidation remains active.

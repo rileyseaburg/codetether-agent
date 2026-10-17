@@ -7,6 +7,8 @@ license = "MIT"
 description = "HTTP client and JSON-RPC task-state operations for CodeTether A2A"
 
 [dependencies]
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+tracing = "0.1"
 async-trait = "0.1.92"
 axum = "0.8"
 chrono = { version = "0.4", features = ["serde"] }

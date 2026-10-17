@@ -26,3 +26,6 @@ pub mod server;
 
 /// Workspace metadata and clone-directory resolution for worker tasks.
 pub mod workspace;
+
+/// Worker HTTP client and response handling.
+pub mod worker;

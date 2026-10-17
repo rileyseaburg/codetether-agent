@@ -1,9 +1,8 @@
 //! Worker task release client.
 
 pub(super) use super::release_payload::Payload;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use reqwest::Client;
-
 pub(super) async fn send(
     client: &Client,
     server: &str,
@@ -11,16 +10,8 @@ pub(super) async fn send(
     worker_id: &str,
     payload: Payload<'_>,
 ) -> Result<()> {
-    let response = request(client, server, token, worker_id, payload)?
-        .send()
+    codetether_a2a_http::worker::send_release(request(client, server, token, worker_id, payload)?)
         .await
-        .context("Failed to send task release request")?;
-    let status = response.status();
-    if status.is_success() {
-        return Ok(());
-    }
-    let body = response.text().await.unwrap_or_default();
-    anyhow::bail!("Task release failed with HTTP {status}: {body}")
 }
 
 fn request(
