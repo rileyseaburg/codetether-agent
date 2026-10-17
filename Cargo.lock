@@ -1097,6 +1097,7 @@ dependencies = [
  "anyhow",
  "codetether-a2a-core",
  "dashmap",
+ "if-addrs",
  "mdns-sd",
  "reqwest 0.13.4",
  "serde",

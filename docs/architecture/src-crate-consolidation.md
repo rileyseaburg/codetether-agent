@@ -5076,3 +5076,25 @@ meet the 50-code-line limit; source comparisons, file-budget, and whitespace
 checks passed. Evidence: `artifacts/consolidation-peer-startup/`. Compilation
 and runtime tests remain unrun. The unrelated heartbeat documentation edit
 was not included. The wider consolidation goal remains active.
+
+### Discovery endpoint ownership
+
+Moved peer URL normalization and candidate expansion, wildcard-listener LAN
+address selection, and mDNS publication address selection from
+`src/a2a/spawn/` into `crates/codetether-a2a-discovery/src/endpoint/`.
+Startup and mDNS probing import the shared operations directly; the five
+original implementation/test files were removed from `src/`. The discovery
+crate declares the already-locked `if-addrs` dependency used for interface
+enumeration. Application startup still owns listener and bus orchestration
+in this increment; moving that remaining implementation is outstanding.
+
+Static token comparison verifies eight moved functions and unchanged startup
+bodies after import qualification and one formatter-only match-arm change.
+All six existing test bodies are preserved. The lexical module scan finds
+305 reachable A2A files and 35 discovery files without missing/orphaned modules;
+the discovery dependency closure remains acyclic. New files contain at most
+34 code lines. File-budget and whitespace checks passed. Evidence lives in
+`artifacts/consolidation-discovery-endpoints/`. Compilation, unit tests,
+doctests, and interface enumeration were not run. No Cargo, rustc, or Python
+commands were executed. The broader objective of moving implementation into
+workspace crates remains active.

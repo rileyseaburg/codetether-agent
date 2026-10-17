@@ -19,3 +19,6 @@ pub mod routes;
 
 /// UDP broadcast fallback for local peer discovery.
 pub mod lan;
+
+/// Configured peer URLs and advertised interface selection.
+pub mod endpoint;

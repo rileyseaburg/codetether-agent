@@ -1,7 +1,8 @@
 //! Readiness-tolerant probing for peers resolved through mDNS.
 
-use super::{peer_probe::try_fetch_agent_card, peer_url::peer_candidates};
+use super::peer_probe::try_fetch_agent_card;
 use crate::a2a::{mdns::DiscoveredPeer, types::AgentCard};
+use codetether_a2a_discovery::endpoint::peer_candidates;
 use std::time::Duration;
 
 const ATTEMPTS: u32 = 5;

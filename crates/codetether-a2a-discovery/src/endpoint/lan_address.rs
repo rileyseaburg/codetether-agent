@@ -2,7 +2,21 @@
 
 use std::net::{IpAddr, Ipv4Addr};
 
-pub(super) fn first_lan_ipv4() -> Option<String> {
+/// Select a concrete IPv4 address to advertise for a wildcard listener.
+///
+/// # Arguments
+/// Takes no arguments; reads the host's available network interfaces.
+/// # Returns
+/// The preferred address, or `None` when enumeration fails or none qualify.
+/// Container interfaces are deprioritized before applying reachability rank.
+/// # Examples
+/// ```rust,no_run
+/// use codetether_a2a_discovery::endpoint::first_lan_ipv4;
+/// if let Some(address) = first_lan_ipv4() {
+///     assert!(address.parse::<std::net::Ipv4Addr>().is_ok());
+/// }
+/// ```
+pub fn first_lan_ipv4() -> Option<String> {
     if_addrs::get_if_addrs()
         .ok()?
         .into_iter()
@@ -13,7 +27,7 @@ pub(super) fn first_lan_ipv4() -> Option<String> {
         .min_by_key(|(name, address)| {
             (
                 is_container_interface(name),
-                crate::a2a::mdns_addr::reachability_rank(*address),
+                crate::address::reachability_rank(*address),
             )
         })
         .map(|(_, address)| address.to_string())

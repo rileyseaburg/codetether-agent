@@ -64,17 +64,11 @@ mod agent_card;
 mod card_description;
 #[path = "spawn/handle.rs"]
 mod handle;
-#[path = "spawn/lan_address.rs"]
-mod lan_address;
 pub use handle::A2APeerHandle;
-#[path = "spawn/mdns_addresses.rs"]
-mod mdns_addresses;
 #[path = "spawn/mdns_probe.rs"]
 mod mdns_probe;
 #[path = "spawn/peer_probe.rs"]
 mod peer_probe;
-#[path = "spawn/peer_url.rs"]
-mod peer_url;
 use peer_probe::try_fetch_agent_card;
 mod accept_mdns;
 mod background;
@@ -84,11 +78,13 @@ mod naming;
 mod options;
 use accept_mdns::handle_mdns_peer;
 pub use background::start_a2a_in_background;
+use codetether_a2a_discovery::endpoint::{
+    collect_peers, concrete, first_lan_ipv4, normalize_base_url, peer_candidates,
+};
 pub use command::run;
 use intake::mdns_intake_loop;
 pub use naming::auto_agent_name;
 pub use options::SpawnOptions;
-use peer_url::{collect_peers, normalize_base_url, peer_candidates};
 
 struct A2APreparation {
     listener: tokio::net::TcpListener,
@@ -132,9 +128,7 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     //    first non-loopback IPv4 address on a real interface so the card
     //    advertises something callers can actually reach.
     let public_host = match opts.hostname.as_str() {
-        "0.0.0.0" | "::" | "[::]" => {
-            lan_address::first_lan_ipv4().unwrap_or_else(|| "127.0.0.1".to_string())
-        }
+        "0.0.0.0" | "::" | "[::]" => first_lan_ipv4().unwrap_or_else(|| "127.0.0.1".to_string()),
         other => other.to_string(),
     };
     let public_url = opts
@@ -176,7 +170,7 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     // Advertise the single concrete address used in the agent card. Auto
     // detection can publish every container bridge on busy hosts, causing
     // peers to waste time probing endpoints that were never externally useful.
-    let mdns_bind_addrs = mdns_addresses::concrete(&public_host, local_addr.ip());
+    let mdns_bind_addrs = concrete(&public_host, local_addr.ip());
     let mut lan_tasks = Vec::new();
     let (mdns_handle, mdns_intake_task) = if opts.mdns && !mdns_bind_addrs.is_empty() {
         let collaboration_token = crate::a2a::collaboration_token::local().to_string();
