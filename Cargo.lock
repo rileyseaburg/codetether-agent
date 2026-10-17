@@ -1278,6 +1278,7 @@ dependencies = [
  "codetether-crash",
  "codetether-distill",
  "codetether-event-stream",
+ "codetether-exec-command",
  "codetether-file-diff",
  "codetether-file-inspect",
  "codetether-file-tools",
@@ -1949,6 +1950,26 @@ dependencies = [
  "sha2 0.11.0",
  "thiserror 2.0.20",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-exec-command"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-command-environment",
+ "codetether-command-guard",
+ "codetether-command-session",
+ "codetether-command-shell",
+ "codetether-config",
+ "codetether-runtime-policy",
+ "codetether-sandbox-policy",
+ "codetether-sandbox-runtime",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
  "tracing",
 ]
 

@@ -30,7 +30,7 @@ pub(super) fn invocation(input: &Input) -> (String, Vec<String>) {
         let flag = if input.login { "-lc" } else { "-c" };
         return (program.clone(), vec![flag.into(), input.cmd.clone()]);
     }
-    let shell = crate::tool::bash_shell::resolve();
+    let shell = codetether_command_shell::resolve();
     let mut args = shell.prefix_args;
     if input.login && args.last().is_some_and(|arg| arg == "-c") {
         *args.last_mut().expect("shell has a command flag") = "-lc".into();

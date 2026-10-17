@@ -2444,6 +2444,25 @@ file-budget and whitespace checks passed. Evidence:
 commands launched or runtime tests executed. Cargo, rustc and Python were not
 run. Compilation remains unverified; the full migration remains active.
 
+### Dedicated persistent command tool
+
+Moved `ExecCommandTool` and its input, schema, shell/workspace resolution,
+guard validation, policy decisions, diagnostics and execution pipeline into
+`crates/codetether-exec-command`. Twelve modules use the existing shared
+configuration, runtime authority, command guard/environment/session and
+sandbox crates. Application approval regression tests remain unchanged and
+exercise the extracted policy through a compatibility test adapter.
+
+Static comparisons verify the complete tool pipeline, authority decisions,
+diagnostics and moved diagnostic tests after shared-import substitutions.
+The original diagnostic logging target is preserved. Module reachability
+covers the new crate and remaining application approval-test tree.
+Dependency-cycle, file-budget and whitespace checks passed; new modules
+contain at most 45 code lines. Evidence:
+`artifacts/consolidation-exec-command/`. No commands, approval operations,
+runtime tests, Cargo, rustc or Python ran. Compilation remains unverified;
+the full workspace consolidation is active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

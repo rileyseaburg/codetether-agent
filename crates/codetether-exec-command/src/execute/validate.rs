@@ -3,7 +3,7 @@
 use serde_json::Value;
 
 use super::super::input::Input;
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 pub(super) fn input(args: &Value) -> Result<Input, ToolResult> {
     let input: Input = serde_json::from_value(args.clone())
@@ -14,7 +14,7 @@ pub(super) fn input(args: &Value) -> Result<Input, ToolResult> {
     if super::super::policy::unapproved_escalation(args) {
         return Err(super::super::diagnostics::escalation_error(args));
     }
-    if let Some(blocked) = crate::tool::shell_command_guard::result_for_args("exec_command", args) {
+    if let Some(blocked) = codetether_command_guard::result_for_args("exec_command", args) {
         return Err(blocked);
     }
     Ok(input)

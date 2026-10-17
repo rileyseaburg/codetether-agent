@@ -1,11 +1,13 @@
 //! Credential-free approval correlation and effective isolation diagnostics.
 
-use crate::tool::{ToolResult, sandbox::SandboxPolicy};
+use codetether_sandbox_policy::SandboxPolicy;
+use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
 use std::path::Path;
 
 fn fields(args: &Value, mode: &str) -> Value {
-    let (action, resource) = crate::runtime_policy::approval_binding("exec_command", args);
+    let (action, resource) =
+        codetether_runtime_policy::approval_gate::approval_binding("exec_command", args);
     json!({"approval_id": args.get("approval_id").and_then(Value::as_str),
         "approval_action": action, "approval_resource": resource,
         "effective_sandbox_mode": mode,
@@ -38,7 +40,7 @@ pub(super) fn execution(args: &Value, cwd: &Path, policy: Option<&SandboxPolicy>
         None => "unsandboxed",
     };
     let diagnostics = fields(args, mode);
-    tracing::info!(tool = "exec_command", approval_id = ?diagnostics["approval_id"],
+    tracing::info!(target: "codetether_agent::tool::exec_command::diagnostics",tool = "exec_command", approval_id = ?diagnostics["approval_id"],
         approval_resource = %diagnostics["approval_resource"], effective_sandbox_mode = mode,
         cwd = %cwd.display(), "Resolved command execution authority");
     diagnostics

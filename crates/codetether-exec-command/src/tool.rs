@@ -1,9 +1,9 @@
 //! Tool-registry interface for persistent command execution.
 
 use super::{ExecCommandTool, execute, parameters};
-use crate::tool::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_tool_core::{Tool, ToolResult};
 
 #[async_trait]
 impl Tool for ExecCommandTool {

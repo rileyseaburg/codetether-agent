@@ -24,7 +24,7 @@ fn escalation_error_has_safe_copyable_binding_diagnostics() {
 #[test]
 fn effective_isolation_mode_is_reported_without_raw_arguments() {
     let args = json!({"cmd": "secret-test-sentinel"});
-    let policy = crate::tool::sandbox::SandboxPolicy::default();
+    let policy = codetether_sandbox_policy::SandboxPolicy::default();
     let details = super::execution(&args, std::path::Path::new("/workspace"), Some(&policy));
     assert_eq!(details["effective_sandbox_mode"], "read-only");
     assert!(!details.to_string().contains("secret-test-sentinel"));

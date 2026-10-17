@@ -4,7 +4,8 @@ use anyhow::Result;
 use serde_json::Value;
 
 use super::{ExecCommandTool, input::Input};
-use crate::tool::{ToolResult, command_session};
+use codetether_command_session as command_session;
+use codetether_tool_core::ToolResult;
 
 #[path = "execute/validate.rs"]
 mod validate;
@@ -19,7 +20,7 @@ pub(super) async fn run(tool: &ExecCommandTool, args: Value) -> Result<ToolResul
     let policy = super::policy::resolve(&input.cmd, &args, &cwd).await;
     let diagnostics = super::diagnostics::execution(&args, &cwd, policy.as_ref());
     let environment = super::environment::resolve(&input.cmd, &cwd, &args).await;
-    let mut command = command_session::command(
+    let mut command = command_session::spawn(
         &program,
         &command_args,
         &cwd,
