@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 13 | 1297 | Selection, seeding, progress, Git snapshots, quality workflow, execution evidence and rubric loading extracted; application execution loop and engine/event adapters remain |
+| forage | 21 | 1323 | Shared selection/evidence/rubric services extracted; application adapters modularized; main loop, Go-engine preparation and residual tests remain for cohesion audit |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -4043,3 +4043,24 @@ Standalone rustfmt was used. No Cargo, rustc, Python, execution engine, quality
 command, rubric file read, Rust test or doctest ran; compilation and runtime
 remain unverified. Evidence: artifacts/consolidation-forage-evidence/. The
 whole-workspace goal remains active, including the forage application loop.
+
+## Forage application adapter modules
+
+Eight focused application modules now own S3 task health, progress translation,
+engine dispatch and evidence collection, swarm execution, swarm configuration,
+audit initialization/publication, bus observation and opportunity assembly.
+Their application service dependencies remain in src; the existing shared
+forage-core owns domain selection, evidence and rubric logic. The root retains
+the main loop and Go engine, which still need their own cohesion work.
+
+All 27 static comparisons passed, including each complete relocated function
+and the unchanged loop, Go engine and test-module bodies. Each relocated
+function has one implementation and preserves its signature except parent-only
+visibility. Original tracing targets are explicit. The eight modules are at
+most 42 code lines. Lexical scans cover all 21 application and 34 core files
+without missing modules; the three-crate dependency closure is unchanged.
+File-limit and whitespace checks passed. Standalone rustfmt was used.
+No Cargo, rustc, Python, engine, S3 task, audit initialization, bus drain, Rust
+test or doctest was executed. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-forage-adapters/. The broader
+workspace goal remains active.

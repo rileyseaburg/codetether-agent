@@ -21,6 +21,24 @@ use crate::okr::{Okr, OkrRepository, OkrRun, OkrRunStatus};
 use crate::provider::ProviderRegistry;
 use crate::swarm::{DecompositionStrategy, ExecutionMode, SwarmConfig, SwarmExecutor};
 use run_exec::execute_opportunity_with_run;
+mod s3_health;
+use s3_health::ensure_s3_sync_alive;
+mod progress_adapter;
+use progress_adapter::record_execution_success_to_okr;
+mod execution;
+use execution::execute_opportunity;
+mod swarm_execution;
+use swarm_execution::execute_opportunity_with_swarm;
+mod swarm_config;
+use swarm_config::{build_swarm_config, parse_swarm_strategy};
+mod audit_adapter;
+use audit_adapter::{ensure_audit_log_initialized, log_audit};
+mod observer;
+use observer::flush_bus_observer;
+mod opportunities;
+use opportunities::{build_opportunities, load_moonshot_rubric};
+#[cfg(test)]
+use opportunities::{collect_opportunities, collect_opportunities_with_rubric};
 mod clarify;
 pub mod console;
 mod console_entry;
@@ -335,122 +353,6 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
     Ok(summary)
 }
 
-async fn ensure_s3_sync_alive(
-    handle: &mut Option<tokio::task::JoinHandle<Result<()>>>,
-) -> Result<()> {
-    let Some(inner) = handle.as_ref() else {
-        anyhow::bail!("S3 sync task missing");
-    };
-    if !inner.is_finished() {
-        return Ok(());
-    }
-
-    let finished = handle.take().expect("checked is_some");
-    match finished.await {
-        Ok(Ok(())) => {
-            anyhow::bail!("S3 sync task exited unexpectedly");
-        }
-        Ok(Err(err)) => Err(anyhow::anyhow!("S3 sync task failed: {err:#}")),
-        Err(join_err) => Err(anyhow::anyhow!("S3 sync task join failure: {join_err}")),
-    }
-}
-async fn record_execution_success_to_okr(
-    repo: &OkrRepository,
-    item: &ForageOpportunity,
-    args: &ForageArgs,
-    execution_outcome: &ExecutionOutcome,
-    cycle: usize,
-) -> Result<()> {
-    let evidence = codetether_forage_core::progress::ExecutionEvidence {
-        engine: &args.execution_engine,
-        model: args.model.as_deref(),
-        detail: &execution_outcome.detail,
-        changed_files: &execution_outcome.changed_files,
-        quality_gates_passed: execution_outcome.quality_gates_passed,
-    };
-    codetether_forage_core::progress::record(repo, item, &evidence, cycle).await
-}
-
-async fn execute_opportunity(
-    item: &ForageOpportunity,
-    args: &ForageArgs,
-) -> Result<ExecutionOutcome> {
-    let before = snapshot_git_changed_files();
-    let detail = match args.execution_engine.as_str() {
-        "swarm" => execute_opportunity_with_swarm(item, args).await?,
-        "go" => execute_opportunity_with_go(item, args).await?,
-        _ => execute_opportunity_with_run(item, args).await?,
-    };
-    let after = snapshot_git_changed_files();
-    let changed_files = codetether_forage_core::execution::changed_files(before, after);
-
-    // Run quality gates to verify the changes work
-    let quality_result = run_quality_gates(&changed_files).await;
-
-    Ok(codetether_forage_core::execution::with_quality(
-        detail,
-        changed_files,
-        quality_result,
-    ))
-}
-async fn run_quality_gates(changed_files: &[String]) -> Result<(String, bool)> {
-    codetether_forage_core::quality::run(changed_files, quality_shell::run).await
-}
-
-async fn execute_opportunity_with_swarm(
-    item: &ForageOpportunity,
-    args: &ForageArgs,
-) -> Result<String> {
-    let timeout_secs = args.run_timeout_secs.clamp(30, 86_400);
-    let swarm_config = build_swarm_config(args);
-    let executor = SwarmExecutor::new(swarm_config);
-    let strategy = parse_swarm_strategy(&args.swarm_strategy);
-
-    match tokio::time::timeout(
-        Duration::from_secs(timeout_secs),
-        executor.execute(&item.prompt, strategy),
-    )
-    .await
-    {
-        Ok(Ok(result)) => {
-            if result.success {
-                Ok(format!(
-                    "swarm execution completed (subagents_spawned={}, completed={}, failed={}, retries={})",
-                    result.stats.subagents_spawned,
-                    result.stats.subagents_completed,
-                    result.stats.subagents_failed,
-                    result
-                        .subtask_results
-                        .iter()
-                        .map(|r| r.retry_count)
-                        .sum::<u32>() as usize
-                ))
-            } else {
-                let error = result.error.unwrap_or_else(|| {
-                    format!(
-                        "swarm reported failure (failed_subtasks={}, total_subtasks={})",
-                        result.stats.subagents_failed, result.stats.subagents_spawned
-                    )
-                });
-                anyhow::bail!(error);
-            }
-        }
-        Ok(Err(err)) => Err(err),
-        Err(_) => anyhow::bail!("swarm execution timed out after {timeout_secs}s"),
-    }
-}
-
-fn build_swarm_config(args: &ForageArgs) -> SwarmConfig {
-    SwarmConfig {
-        max_subagents: args.swarm_max_subagents.max(1),
-        max_steps_per_subagent: args.swarm_max_steps.max(1),
-        subagent_timeout_secs: args.swarm_subagent_timeout_secs.clamp(30, 86_400),
-        model: args.model.clone(),
-        execution_mode: ExecutionMode::LocalThread,
-        ..Default::default()
-    }
-}
-
 /// Execute opportunity using the Ralph PRD-driven autonomous loop (go engine)
 async fn execute_opportunity_with_go(
     item: &ForageOpportunity,
@@ -540,110 +442,6 @@ async fn execute_opportunity_with_go(
         }
         Err(_) => anyhow::bail!("go execution timed out after {timeout_secs}s"),
     }
-}
-
-fn parse_swarm_strategy(value: &str) -> DecompositionStrategy {
-    match value {
-        "domain" => DecompositionStrategy::ByDomain,
-        "data" => DecompositionStrategy::ByData,
-        "stage" => DecompositionStrategy::ByStage,
-        "none" => DecompositionStrategy::None,
-        _ => DecompositionStrategy::Automatic,
-    }
-}
-
-async fn ensure_audit_log_initialized() {
-    if audit::try_audit_log().is_some() {
-        return;
-    }
-
-    let default_sink = crate::config::Config::data_dir()
-        .map(|base| base.join("audit"))
-        .map(|audit_dir| {
-            let _ = std::fs::create_dir_all(&audit_dir);
-            audit_dir.join("forage_audit.jsonl")
-        });
-    let log = if std::env::var("CODETETHER_AUDIT_LOG_PATH").is_ok() {
-        AuditLog::from_env()
-    } else {
-        AuditLog::new(10_000, default_sink)
-    };
-    let _ = audit::init_audit_log(log);
-}
-
-async fn log_audit(
-    category: AuditCategory,
-    action: &str,
-    outcome: AuditOutcome,
-    detail: Option<serde_json::Value>,
-    okr_id: Option<Uuid>,
-    session_id: Option<String>,
-) {
-    if let Some(audit_log) = audit::try_audit_log() {
-        audit_log
-            .log_with_correlation(
-                category,
-                action,
-                outcome,
-                Some("forage-runtime".to_string()),
-                detail,
-                okr_id.map(|id| id.to_string()),
-                None,
-                None,
-                session_id,
-            )
-            .await;
-    }
-}
-
-fn flush_bus_observer(observer: &mut BusHandle, cycle: usize, json_mode: bool) {
-    if json_mode {
-        return;
-    }
-
-    let mut shown = 0usize;
-    while let Some(env) = observer.try_recv() {
-        if shown >= 12 {
-            break;
-        }
-        let label = match &env.message {
-            BusMessage::AgentReady { .. } => "agent_ready",
-            BusMessage::AgentShutdown { .. } => "agent_shutdown",
-            BusMessage::TaskUpdate { .. } => "task_update",
-            BusMessage::SharedResult { .. } => "shared_result",
-            BusMessage::AgentMessage { .. } => "agent_message",
-            _ => "other",
-        };
-        forage_println!(
-            "   [bus cycle {cycle}] {} :: topic={} sender={}",
-            label,
-            env.topic,
-            env.sender_id
-        );
-        shown = shown.saturating_add(1);
-    }
-}
-async fn load_moonshot_rubric(args: &ForageArgs) -> Result<MoonshotRubric> {
-    codetether_forage_core::rubric_load::load(
-        &args.moonshots,
-        args.moonshot_file.as_deref(),
-        args.moonshot_required,
-        args.moonshot_min_alignment,
-    )
-    .await
-}
-
-async fn build_opportunities(
-    repo: &OkrRepository,
-    moonshots: &MoonshotRubric,
-) -> Result<Vec<ForageOpportunity>> {
-    let okrs = repo.list_okrs().await?;
-    Ok(collect_opportunities_with_rubric(&okrs, moonshots))
-}
-
-#[cfg(test)]
-fn collect_opportunities(okrs: &[Okr]) -> Vec<ForageOpportunity> {
-    collect_opportunities_with_rubric(okrs, &MoonshotRubric::default())
 }
 
 #[cfg(test)]
@@ -1077,15 +875,4 @@ mod tests {
             "should not duplicate active moonshot seed"
         );
     }
-}
-
-fn collect_opportunities_with_rubric(
-    okrs: &[Okr],
-    moonshots: &MoonshotRubric,
-) -> Vec<ForageOpportunity> {
-    codetether_forage_core::collect_opportunities_with_rubric(
-        okrs,
-        moonshots,
-        &mut tetherscript_score::apply,
-    )
 }
