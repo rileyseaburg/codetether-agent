@@ -5959,3 +5959,20 @@ File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-stream-forwarding/`. Compilation, tests and live event
 forwarding remain unrun. No Cargo, rustc or Python commands ran. The broader
 migration remains active.
+
+### Shared inbound-turn routing and interactive liveness
+
+Moved the live/headless decision, interactive pending-reply loop, twenty-second
+heartbeat and task timestamp refresh into `codetether-a2a-http::inbound_turn`.
+The HTTP crate now explicitly depends on the existing inbox crate. The
+application supplies its headless session future, which remains unpolled when
+the interactive inbox is attached; headless session implementation is unchanged.
+
+Static comparison verifies the heartbeat constant, live loop, timestamp update,
+error mapping, explicit lazy-future substitution and application wiring. The
+module scan reaches 235 application A2A files, 157 HTTP files and 63 telemetry
+files without missing/orphaned modules; the dependency closure is acyclic. New
+files contain at most 23 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-inbound-turn/`. Compilation, tests and live
+handoff remain unrun. No Cargo, rustc or Python commands ran. The broader
+migration remains active.

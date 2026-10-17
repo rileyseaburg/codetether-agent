@@ -7,6 +7,7 @@ license = "MIT"
 description = "HTTP client and JSON-RPC task-state operations for CodeTether A2A"
 
 [dependencies]
+codetether-a2a-inbox = { path = "../codetether-a2a-inbox", version = "0.1.0" }
 codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
 codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
 codetether-a2a-worker-core = { path = "../codetether-a2a-worker-core", version = "0.1.0" }
