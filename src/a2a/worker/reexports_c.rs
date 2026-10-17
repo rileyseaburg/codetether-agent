@@ -9,7 +9,6 @@ pub(super) use super::{
     task_finalize::finalize_task_result,
     task_handler::handle_task,
     task_output::build_output_callback,
-    task_release::release_task_result,
     task_session::prepare_task_session,
     task_slot::reserve_task_slot,
     task_stream::connect_stream,

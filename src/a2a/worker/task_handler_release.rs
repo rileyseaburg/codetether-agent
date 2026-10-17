@@ -1,33 +1,24 @@
-//! Final release step for claimed task handling.
-
+//! Adapt the worker runtime to shared task release handling.
+use super::{WorkerTaskRuntime, task_timeline};
 use anyhow::Result;
-
-use super::{WorkerTaskRuntime, release_task_result, task_timeline};
-
+use codetether_a2a_http::worker::completion::{self, ReleaseTarget};
 pub(super) async fn release_handled_task(
     runtime: &WorkerTaskRuntime,
     task_id: &str,
     outcome: super::task_outcome::TaskOutcome,
     timeline: &mut task_timeline::TaskTimeline,
 ) -> Result<()> {
-    timeline.emit_diagnostics();
-    let diagnostics = timeline.diagnostics_json();
-    timeline.checkpoint(task_timeline::TaskCheckpoint::Releasing);
-    release_task_result(
-        &runtime.client,
-        &runtime.server,
-        &runtime.token,
-        &runtime.worker_id,
+    completion::release_handled_task(
+        ReleaseTarget {
+            client: &runtime.client,
+            server: &runtime.server,
+            token: &runtime.token,
+            worker_id: &runtime.worker_id,
+        },
         task_id,
-        outcome.status,
-        outcome.result,
-        outcome.error,
-        outcome.session_id,
-        Some(diagnostics),
+        outcome,
+        timeline,
+        &runtime.task_progress,
     )
-    .await?;
-    timeline.checkpoint(task_timeline::TaskCheckpoint::Released);
-    runtime.task_progress.lock().await.clear();
-    tracing::info!(task_id, status = outcome.status, "Task released");
-    Ok(())
+    .await
 }

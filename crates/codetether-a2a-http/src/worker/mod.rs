@@ -50,3 +50,6 @@ pub use heartbeat_loop::start_heartbeat;
 
 /// Claim response handling and progress transitions.
 pub mod claim;
+
+/// Task outcome release and active-progress cleanup.
+pub mod completion;

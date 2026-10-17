@@ -5449,3 +5449,22 @@ files contain at most 39 code lines. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-task-transitions/`. Compilation, tests, and
 live task claiming remain unrun. No Cargo, rustc, or Python commands ran.
 The broader migration remains active.
+
+### Shared task release lifecycle
+
+The HTTP completion module now owns diagnostic capture, release checkpoints,
+outcome-to-payload mapping, signed submission, and successful-release progress
+cleanup. A borrowed `ReleaseTarget` carries the client, server, token, and
+worker ID; the application adapter supplies it from runtime state. Removed
+three redundant application release/payload forwarding files.
+
+Static comparison verifies the payload mapping and the original sequence,
+including diagnostics before the releasing checkpoint and progress clearing
+only after submission succeeds. The two removed forwarding layers were
+checked against their shared replacements. The module scan reaches all 107
+HTTP files and 269 application A2A files with no missing/orphaned modules and
+an acyclic dependency closure. New files contain at most 31 code lines.
+File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-task-release/`. Compilation, tests, and release
+requests remain unrun. No Cargo, rustc, or Python commands ran. The broader
+migration goal remains active.
