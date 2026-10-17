@@ -1316,6 +1316,7 @@ dependencies = [
  "codetether-provider-zai",
  "codetether-question",
  "codetether-ralph-core",
+ "codetether-ripgrep-tool",
  "codetether-rlm",
  "codetether-runtime-policy",
  "codetether-search",
@@ -2524,6 +2525,19 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-ripgrep-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

@@ -6221,3 +6221,20 @@ modules, and the dependency closure is acyclic. Moved files contain at most 48
 code lines. File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-tool-profile/`. No Cargo, rustc, Python or runtime tests
 ran. The broader migration remains active.
+
+### Dedicated ripgrep tool crate
+
+Created `crates/codetether-ripgrep-tool` and moved the full ripgrep adapter,
+arguments, command construction, process execution, rendering, schemas and tests
+out of the application. The old module re-exports `RipgrepTool` and its schema.
+The live-search regression test now anchors its existing `src/mux` fixture to
+the workspace root instead of the relocated crate working directory.
+
+Static comparison verifies all 13 moved files after explicit import and fixture
+path substitutions. Flag ordering, timeout and line limits, process cleanup,
+exit-code handling and output formatting are unchanged. Eight tests are
+preserved but unrun. All files are reachable without missing/orphaned modules;
+the dependency closure is acyclic. Moved files contain at most 44 code lines.
+Workspace/lockfile wiring, file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-ripgrep-tool/`. No tool runtime, Cargo, rustc or Python
+was executed. The broader migration remains active.

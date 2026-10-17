@@ -1,7 +1,7 @@
 //! Flag-building tests: [`RgArgs`] to ripgrep argument vector.
 
 use super::helpers::args;
-use crate::tool::ripgrep::command;
+use crate::command;
 
 #[test]
 fn pattern_is_placed_after_double_dash() {
@@ -38,10 +38,7 @@ fn explicit_paths_replace_the_default() {
 fn limits_are_clamped_to_ceilings() {
     let mut input = args("x");
     input.limit = Some(usize::MAX);
-    assert_eq!(input.limit(), crate::tool::ripgrep::args::MAX_LIMIT);
+    assert_eq!(input.limit(), crate::args::MAX_LIMIT);
     input.timeout_secs = Some(u64::MAX);
-    assert_eq!(
-        input.timeout().as_secs(),
-        crate::tool::ripgrep::args::MAX_TIMEOUT_SECS
-    );
+    assert_eq!(input.timeout().as_secs(), crate::args::MAX_TIMEOUT_SECS);
 }

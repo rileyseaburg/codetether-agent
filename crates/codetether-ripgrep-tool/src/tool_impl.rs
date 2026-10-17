@@ -1,9 +1,9 @@
 //! `Tool` trait implementation for [`RipgrepTool`].
 
 use super::{RgArgs, RipgrepTool, command, exec, render, schema};
-use crate::tool::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::{Value, json};
 
 #[async_trait]

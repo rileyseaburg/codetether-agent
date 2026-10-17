@@ -1,21 +1,22 @@
 //! End-to-end tests that actually invoke the `rg` binary.
 
-use crate::tool::Tool;
-use crate::tool::ripgrep::RipgrepTool;
+use crate::RipgrepTool;
+use codetether_tool_core::Tool;
 use serde_json::json;
 
 /// The defect that motivated this tool: `grep` escapes its pattern unless
 /// `is_regex` is set, so alternation silently finds nothing. `rg` must not.
 #[tokio::test]
 async fn alternation_matches_without_an_opt_in_flag() {
-    let result = RipgrepTool::new()
-        .execute(json!({
-            "pattern": "start_session|start_record",
-            "paths": ["src/mux"],
-            "files_with_matches": true
-        }))
-        .await
-        .expect("rg runs");
+    let result =
+        RipgrepTool::with_root(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+            .execute(json!({
+                "pattern": "start_session|start_record",
+                "paths": ["src/mux"],
+                "files_with_matches": true
+            }))
+            .await
+            .expect("rg runs");
     assert!(result.success, "output: {}", result.output);
     assert!(
         result.output.contains("start.rs"),
