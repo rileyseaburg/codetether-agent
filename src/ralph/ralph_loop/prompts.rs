@@ -16,11 +16,6 @@ impl RalphLoop {
         codetether_ralph_core::presentation::build_prompt(story, &self.state.prd, progress)
     }
 
-    /// Extract learnings (static version)
-    pub(super) fn extract_learnings_static(response: &str) -> Vec<String> {
-        codetether_ralph_core::presentation::extract_learnings_static(response)
-    }
-
     /// Extract learnings from response
     pub(super) fn extract_learnings(&self, response: &str) -> Vec<String> {
         codetether_ralph_core::presentation::extract_learnings(response)

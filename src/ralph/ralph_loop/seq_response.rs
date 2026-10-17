@@ -7,14 +7,12 @@ impl RalphLoop {
         response: &str,
     ) -> anyhow::Result<()> {
         // Log progress
-        let entry = ProgressEntry {
-            story_id: story.id.clone(),
-            iteration: self.state.current_iteration,
-            status: "completed".to_string(),
-            learnings: self.extract_learnings(response),
-            files_changed: Vec::new(),
-            timestamp: chrono::Utc::now().to_rfc3339(),
-        };
+        let entry = codetether_ralph_core::progress::completed_entry(
+            story,
+            self.state.current_iteration,
+            response,
+            |text| self.extract_learnings(text),
+        );
         self.append_progress(&entry, response)?;
         let entry_learnings = entry.learnings.clone();
         self.state.progress_log.push(entry);
