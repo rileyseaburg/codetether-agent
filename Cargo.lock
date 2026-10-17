@@ -1316,6 +1316,7 @@ dependencies = [
  "codetether-mesh",
  "codetether-model-catalog",
  "codetether-moltbook",
+ "codetether-morph-backend",
  "codetether-okr",
  "codetether-okr-tool",
  "codetether-paths",
@@ -2343,6 +2344,18 @@ dependencies = [
  "serde_json",
  "tracing",
  "urlencoding",
+]
+
+[[package]]
+name = "codetether-morph-backend"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

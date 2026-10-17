@@ -6924,3 +6924,21 @@ file-budget and whitespace checks passed; new Rust files contain at most 47
 code lines. Evidence: `artifacts/consolidation-advanced-edit/`. Compilation
 and runtime tests remain unverified; no Cargo, rustc or Python commands ran.
 The full workspace consolidation goal remains active.
+
+### Dedicated Morph editing backend
+
+Moved Morph opt-in configuration, model normalization, prompt construction,
+provider completion requests and responses, and direct OpenRouter HTTP handling
+into `crates/codetether-morph-backend`. Nine modules separate these responsibilities.
+The application retains its existing entry point as a small provider-resolution
+adapter; the cached application registry remains the credential owner. The new
+crate accepts a resolver per call and does not create another provider cache.
+
+Eleven static preservation checks reconstruct both original transport paths,
+including request bodies, error messages, response extraction, and direct-path
+precedence over provider resolution. Five integration tests and their fixtures
+remain unchanged and unrun. Module reachability, dependency-cycle, file-budget
+and whitespace checks passed; new Rust files contain at most 33 code lines.
+Evidence: `artifacts/consolidation-morph-backend/`. No network requests, runtime
+tests, Cargo, rustc or Python commands ran. Compilation remains unverified;
+the full consolidation goal remains active.

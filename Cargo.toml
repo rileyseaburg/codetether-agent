@@ -125,6 +125,7 @@ members = [
     "crates/codetether-bash-policy",
     "crates/codetether-bash-tool",
     "crates/codetether-advanced-edit",
+    "crates/codetether-morph-backend",
     "crates/codetether-tool-core",
     "crates/codetether-todo",
     "crates/codetether-mcp-core",
@@ -364,6 +365,7 @@ codetether-sandbox-runner = { path = "crates/codetether-sandbox-runner", version
 codetether-sandbox-runtime = { path = "crates/codetether-sandbox-runtime", version = "0.1.0" }
 codetether-sandbox-seccomp = { path = "crates/codetether-sandbox-seccomp", version = "0.1.0" }
 codetether-sandbox-seatbelt = { path = "crates/codetether-sandbox-seatbelt", version = "0.1.0" }
+codetether-morph-backend = { path = "crates/codetether-morph-backend", version = "0.1.0" }
 codetether-advanced-edit = { path = "crates/codetether-advanced-edit", version = "0.1.0" }
 codetether-bash-tool = { path = "crates/codetether-bash-tool", version = "0.1.0" }
 codetether-bash-policy = { path = "crates/codetether-bash-policy", version = "0.1.0" }
