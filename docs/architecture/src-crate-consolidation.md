@@ -7481,3 +7481,19 @@ new Rust files contain at most 23 code lines. Evidence lives in
 `artifacts/consolidation-context-loader/`. No sessions were loaded, runtime
 tests, Cargo, rustc or Python commands run. Compilation remains unverified;
 the full consolidation goal remains active.
+
+### Dedicated context-reset tool
+
+Moved context-reset validation, schema, marker rendering and audit recording
+into `crates/codetether-context-reset`. Seven modules include the three original
+regression tests. The application is now a compatibility export; CLI marker
+formatting and tool registration retain their existing imports. The new crate
+uses the same shared audit singleton and preserves the original tracing target.
+
+Fourteen static preservation checks compare marker text, summary validation,
+audit fields/order, metadata, schema and all moved tests. Module reachability,
+dependency cycles, file budgets and whitespace checks passed; new Rust files
+contain at most 31 code lines. Evidence lives in
+`artifacts/consolidation-context-reset/`. No reset operations, runtime tests,
+Cargo, rustc or Python commands ran. Compilation remains unverified; the full
+consolidation goal remains active.

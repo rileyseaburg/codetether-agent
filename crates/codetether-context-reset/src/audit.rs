@@ -4,13 +4,13 @@ use serde_json::json;
 
 /// Record an accepted context reset summary.
 pub async fn log(bytes: usize) {
-    tracing::info!(bytes, "context_reset: agent-authored summary accepted");
-    if let Some(audit) = crate::audit::try_audit_log() {
+    tracing::info!(target: "codetether_agent::tool::context_reset::audit",bytes, "context_reset: agent-authored summary accepted");
+    if let Some(audit) = codetether_audit::try_audit_log() {
         audit
             .log(
-                crate::audit::AuditCategory::ToolExecution,
+                codetether_audit::AuditCategory::ToolExecution,
                 "tool:context_reset",
-                crate::audit::AuditOutcome::Success,
+                codetether_audit::AuditOutcome::Success,
                 None,
                 Some(json!({ "bytes": bytes })),
             )

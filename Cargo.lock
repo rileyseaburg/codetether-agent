@@ -1296,6 +1296,7 @@ dependencies = [
  "codetether-confirm-multiedit",
  "codetether-context-loader",
  "codetether-context-policy",
+ "codetether-context-reset",
  "codetether-crash",
  "codetether-distill",
  "codetether-edit",
@@ -2072,6 +2073,19 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tokio",
+]
+
+[[package]]
+name = "codetether-context-reset"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-audit",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
