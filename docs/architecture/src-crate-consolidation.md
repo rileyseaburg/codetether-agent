@@ -5659,3 +5659,22 @@ and whitespace checks passed. Evidence:
 `artifacts/consolidation-worker-tool-execution/`. Compilation, tests and live
 tool invocation remain unrun. No Cargo, rustc, or Python commands ran. The
 broader migration remains active.
+
+### Shared worker tool-call coordination and approval policy
+
+Moved tool-call event/approval/execution/result ordering into worker-core
+behind `ToolCallHost`. Application methods still enrich inputs, execute through
+the concrete registry, and append results to the session. Moved the exact
+worker safe-tool list and auto-approval decision into the same shared execution
+policy layer; the original public application policy path re-exports it.
+
+Static comparison verifies both approval functions, the tool-call coordinator,
+and all three host effects. Invocation events remain before approval checking;
+denied calls still record a Tool-role result without enrichment or execution.
+All three image/denial test and fixture files are byte-identical. The lexical
+module scan covers 167 worker-core files and 255 application A2A files without
+missing/orphaned modules or dependency cycles. New files contain at most 32
+code lines. File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-tool-coordination/`. Compilation, tests and tool
+execution remain unrun. No Cargo, rustc, or Python commands ran. The broader
+implementation migration remains active.

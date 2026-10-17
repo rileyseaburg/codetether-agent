@@ -4,6 +4,7 @@ use crate::session::Session;
 
 #[cfg(test)]
 mod denied_tests;
+mod host;
 #[cfg(test)]
 mod image_fixture;
 #[cfg(test)]
@@ -21,31 +22,17 @@ pub(super) async fn execute_tool_call(
     cb: &Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
     (tool_id, tool_name, tool_input): ToolCall,
 ) {
-    // Publish the invocation with its arguments when a worker sink is active so
-    // the transcript can render a real tool card; otherwise keep the historical
-    // text marker for the plain output stream.
-    if !super::super::session_event_sink::emit_tool_call_if_active(&tool_name, &tool_input)
-        && let Some(cb) = cb
-    {
-        cb(format!("[tool:start:{}]", tool_name));
-    }
-    if !super::super::is_tool_allowed(&tool_name, auto_approve) {
-        session_output::add_tool_result(
+    codetether_a2a_worker_core::session_protocol::tool_call::execute_tool_call(
+        &mut host::ApplicationHost {
             session,
-            tool_id,
-            crate::tool::ToolResult::error(format!(
-                "Tool '{}' requires approval but auto-approve policy is {:?}",
-                tool_name, auto_approve
-            )),
-        );
-        return;
-    }
-    let input = super::super::enrich_tool_input_for_session_model(
-        &tool_input,
-        workspace_dir,
-        session,
-        Some(model),
-    );
-    let output = tool_run::run_tool(registry, &tool_name, input, cb).await;
-    session_output::add_tool_result(session, tool_id, output);
+            registry,
+            workspace_dir,
+            model,
+            cb,
+        },
+        auto_approve,
+        cb,
+        (tool_id, tool_name, tool_input),
+    )
+    .await;
 }

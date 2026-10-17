@@ -24,3 +24,6 @@ pub mod response;
 
 /// Host-authorized tool invocation and result emission.
 pub mod tool_execution;
+
+/// Approval and host-effect ordering for worker tool calls.
+pub mod tool_call;

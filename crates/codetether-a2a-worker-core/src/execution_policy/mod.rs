@@ -21,3 +21,6 @@ pub use task_agent_swarm_result::{map_session_result, map_swarm_result};
 
 /// Availability validation and effective provider/model selection.
 pub mod model_selection;
+
+mod tool_approval;
+pub use tool_approval::{is_safe_tool, is_tool_allowed};
