@@ -6963,3 +6963,26 @@ file-budget and whitespace checks passed; new tool modules contain at most
 42 code lines. Evidence: `artifacts/consolidation-multiedit/`. No edit requests,
 network operations, runtime tests, Cargo, rustc or Python commands ran.
 Compilation remains unverified; the full consolidation goal remains active.
+
+### Dedicated regular edit previews and proposed contents
+
+Moved the active `src/tool/edit` implementation into `crates/codetether-edit`.
+Seventeen modules own borrowed arguments, matching plans and candidate scoring,
+colored diffs, confirmation metadata, optional Morph previews and proposed file
+contents. The application now uses a concrete `EditTool` type alias bound to
+its existing Morph editor, plus a proposed-content re-export. Shared path and
+text argument helpers moved into `codetether-tool-core::proposed`.
+
+Twenty static preservation checks compare complete active module contents,
+allowing dependency paths, editor injection, export visibility and documentation
+changes. Twelve existing matcher, Morph and proposed-content tests remain
+unchanged and unrun. Three undeclared legacy files (`match_candidate.rs`,
+`matcher_tests.rs`, `result.rs`) referenced obsolete APIs and were removed after
+confirming no module declarations or live references; their originals remain
+in the extraction evidence.
+
+Module reachability, dependency-cycle, file-budget and whitespace checks passed.
+New Rust files contain at most 46 code lines. Evidence is retained under
+`artifacts/consolidation-edit/`. No file-edit requests, runtime tests, Cargo,
+rustc or Python commands ran. Compilation remains unverified; the full
+workspace consolidation goal remains active.

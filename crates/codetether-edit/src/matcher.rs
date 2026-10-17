@@ -1,3 +1,5 @@
+//! Exact and whitespace-tolerant matching plans.
+
 mod build;
 mod candidates;
 mod error;

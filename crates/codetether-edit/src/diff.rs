@@ -1,3 +1,5 @@
+//! Colored diff previews and line counts.
+
 use similar::{ChangeTag, TextDiff};
 
 pub struct DiffPreview {

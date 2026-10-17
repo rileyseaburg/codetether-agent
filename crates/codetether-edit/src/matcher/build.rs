@@ -1,6 +1,8 @@
+//! Build unambiguous matching plans.
+
 use serde_json::json;
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 use super::candidates::whitespace_match;
 use super::error::not_found;

@@ -1,3 +1,5 @@
+//! Line normalization and similarity scoring.
+
 pub fn line_key(text: &str) -> String {
     text.lines().map(str::trim).collect::<Vec<_>>().join("\n")
 }

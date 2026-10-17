@@ -1,4 +1,6 @@
 //! In-memory proposed content for `edit` and `multiedit` approvals.
+//!
+//! [single] reconstructs one edit; [many] chains edits by path without writing.
 
 use std::path::{Path, PathBuf};
 
@@ -6,10 +8,27 @@ use anyhow::{Context, Result, bail};
 use serde_json::Value;
 
 use super::matcher::MatchPlan;
-use crate::tool::proposed_content::{resolve, text};
+use codetether_tool_core::proposed::{resolve, text};
 
 /// Proposed content for one `edit` call.
-pub(crate) fn single(root: &Path, args: &Value) -> Result<Vec<(PathBuf, String)>> {
+///
+/// # Arguments
+/// * `root` - Directory used to resolve relative paths.
+/// * `args` - The path, old_string, new_string and optional replace_all fields.
+/// # Returns
+/// The target path and proposed text, without writing it.
+/// # Errors
+/// Returns errors for invalid arguments, unreadable files or failed matching.
+/// # Examples
+/// ```rust,no_run
+/// # fn example() -> anyhow::Result<()> {
+/// let files = codetether_edit::proposed::single(std::path::Path::new("."),
+///     &serde_json::json!({"path":"file.txt","old_string":"old","new_string":"new"}))?;
+/// assert_eq!(files.len(), 1);
+/// # Ok(())
+/// # }
+/// ```
+pub fn single(root: &Path, args: &Value) -> Result<Vec<(PathBuf, String)>> {
     let path = resolve(root, text(args, "path")?);
     let content = read(&path)?;
     let replace_all = args["replace_all"].as_bool().unwrap_or(false);
@@ -18,7 +37,21 @@ pub(crate) fn single(root: &Path, args: &Value) -> Result<Vec<(PathBuf, String)>
 }
 
 /// Proposed content for every file touched by one `multiedit` call.
-pub(crate) fn many(root: &Path, args: &Value) -> Result<Vec<(PathBuf, String)>> {
+///
+/// # Arguments
+/// * `root` - Directory used to resolve relative paths.
+/// * `args` - An edits array with file, old_string and new_string fields.
+/// # Returns
+/// One final proposed text per target path.
+/// # Errors
+/// Returns errors for invalid arguments, unreadable files or failed matching.
+/// # Examples
+/// ```rust
+/// let files = codetether_edit::proposed::many(std::path::Path::new("."),
+///     &serde_json::json!({"edits":[]})).unwrap();
+/// assert!(files.is_empty());
+/// ```
+pub fn many(root: &Path, args: &Value) -> Result<Vec<(PathBuf, String)>> {
     let edits = args["edits"].as_array().context("missing `edits` array")?;
     let mut files: Vec<(PathBuf, String)> = Vec::new();
     for edit in edits {

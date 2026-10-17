@@ -1,10 +1,12 @@
+//! Confirmation metadata shared by exact and Morph previews.
+
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::super::ToolResult;
 use super::diff::DiffPreview;
 use super::matcher::MatchPlan;
+use codetether_tool_core::ToolResult;
 
 pub fn confirmation(
     path: &str,

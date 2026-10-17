@@ -1,3 +1,5 @@
+//! Matching plan records and replacement behavior.
+
 pub struct MatchPlan {
     pub target: String,
     pub count: usize,

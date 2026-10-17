@@ -1291,6 +1291,7 @@ dependencies = [
  "codetether-context-policy",
  "codetether-crash",
  "codetether-distill",
+ "codetether-edit",
  "codetether-event-stream",
  "codetether-exec-command",
  "codetether-file-diff",
@@ -1983,6 +1984,20 @@ dependencies = [
  "anyhow",
  "serde",
  "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-edit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-morph-backend",
+ "codetether-tool-core",
+ "serde_json",
+ "similar 3.2.0",
+ "tokio",
  "tracing",
 ]
 

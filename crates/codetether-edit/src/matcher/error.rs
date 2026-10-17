@@ -1,6 +1,8 @@
+//! Structured errors for missing matches.
+
 use serde_json::json;
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 use super::candidates;
 

@@ -1,3 +1,5 @@
+//! Edit tool argument schema.
+
 use serde_json::{Value, json};
 
 pub fn parameters() -> Value {

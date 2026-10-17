@@ -1,3 +1,5 @@
+//! Whitespace matching windows and nearest-candidate diagnostics.
+
 use super::normalize;
 
 pub fn whitespace_match(content: &str, old: &str) -> Option<String> {

@@ -1,24 +1,27 @@
+//! Read content and prepare confirmation previews without writing.
+
 use anyhow::Result;
 use serde_json::Value;
 use tokio::fs;
 
-use super::super::ToolResult;
 use super::args::{EditArgs, required};
 use super::diff;
 use super::matcher::MatchPlan;
 use super::metadata;
 use super::morph_flow;
+use codetether_tool_core::ToolResult;
 
-pub async fn run(args: Value) -> Result<ToolResult> {
+pub async fn run(args: Value, editor: &dyn codetether_morph_backend::Editor) -> Result<ToolResult> {
     let args = match EditArgs::parse(&args) {
         Ok(parsed) => parsed,
         Err(error) => return Ok(error),
     };
-    if let Some(blocked) = crate::tool::temp_write_guard::denied_result("edit", args.path) {
+    if let Some(blocked) = codetether_tool_core::temp_write_guard::denied_result("edit", args.path)
+    {
         return Ok(blocked);
     }
     let content = fs::read_to_string(args.path).await?;
-    if let Some(result) = morph_flow::try_apply(&args, &content).await {
+    if let Some(result) = morph_flow::try_apply(&args, &content, editor).await {
         return Ok(result);
     }
     Ok(preview_replacement(&args, &content))

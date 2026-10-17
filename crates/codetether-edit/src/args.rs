@@ -1,6 +1,8 @@
+//! Borrowed edit arguments and required-field errors.
+
 use serde_json::{Value, json};
 
-use super::super::ToolResult;
+use codetether_tool_core::ToolResult;
 
 pub struct EditArgs<'a> {
     pub path: &'a str,

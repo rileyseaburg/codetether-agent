@@ -1,14 +1,9 @@
-//! Edit tool: replace strings in files.
-
-mod args;
-mod diff;
-mod execute;
-mod matcher;
-mod metadata;
-mod morph;
-mod morph_flow;
-pub(crate) mod proposed;
-mod schema;
-mod tool_struct;
-
-pub use tool_struct::EditTool;
+//! Edit preview tool bound to the application-owned Morph backend.
+/// Edit preview tool using the shared application provider registry.
+///
+/// # Examples
+/// ```rust
+/// let _tool = codetether_agent::tool::edit::EditTool::new();
+/// ```
+pub type EditTool = codetether_edit::EditTool<super::morph_backend::ApplicationEditor>;
+pub(crate) use codetether_edit::proposed;

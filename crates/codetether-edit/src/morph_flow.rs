@@ -1,13 +1,18 @@
 //! Morph-backed edit previews retain their backend identity for callers.
 
-use super::super::{ToolResult, morph_backend};
 use super::args::EditArgs;
 use super::diff;
 use super::matcher::MatchPlan;
 use super::metadata;
 use super::morph;
+use codetether_morph_backend as morph_backend;
+use codetether_tool_core::ToolResult;
 
-pub async fn try_apply(args: &EditArgs<'_>, content: &str) -> Option<ToolResult> {
+pub async fn try_apply(
+    args: &EditArgs<'_>,
+    content: &str,
+    editor: &dyn codetether_morph_backend::Editor,
+) -> Option<ToolResult> {
     if !should_use_morph(args) {
         return None;
     }
@@ -18,6 +23,7 @@ pub async fn try_apply(args: &EditArgs<'_>, content: &str) -> Option<ToolResult>
         args.new_string,
         args.instruction,
         args.update,
+        editor,
     )
     .await;
     match result {

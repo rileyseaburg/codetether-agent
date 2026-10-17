@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
 pub(crate) use codetether_tool_core::proposed::supported;
+pub(super) use codetether_tool_core::proposed::{resolve, text};
 use serde_json::Value;
 
 /// Reconstruct the post-mutation content of every file a tool call touches.
@@ -30,21 +31,6 @@ pub(crate) fn contents(root: &Path, tool: &str, args: &Value) -> Result<Vec<(Pat
         "multiedit" => super::edit::proposed::many(root, args),
         other => bail!("{other} does not mutate files"),
     }
-}
-
-pub(super) fn resolve(root: &Path, path: &str) -> PathBuf {
-    let path = Path::new(path);
-    if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        root.join(path)
-    }
-}
-
-pub(super) fn text<'a>(args: &'a Value, key: &str) -> Result<&'a str> {
-    args.get(key)
-        .and_then(Value::as_str)
-        .ok_or_else(|| anyhow::anyhow!("missing `{key}` argument"))
 }
 
 #[cfg(test)]
