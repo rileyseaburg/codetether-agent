@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 37 | 1468 | Shared domain services extracted; engine and lifecycle reporting adapters modularized; loop orchestration and residual tests remain for cohesion audit |
+| forage | 40 | 1509 | Shared domain services extracted; discovery, execution and reporting phases modularized; lifecycle assembly and residual tests remain for cohesion audit |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -4106,3 +4106,22 @@ No Cargo, rustc, Python, event emission, audit write, engine, Rust test or docte
 ran; compilation and runtime remain unverified. Evidence is retained in
 artifacts/consolidation-forage-events/. Loop orchestration and the residual
 test module remain pending within the active whole-workspace objective.
+
+## Forage discovery and execution phases
+
+The application loop now delegates work discovery, selected-item execution
+and successful-evidence persistence to dedicated modules. Discovery retains
+empty-queue seeding, interactive clarification, rebuilding and top-N selection.
+Execution retains the execute flag, item order, counters and fail-fast behavior.
+Success handling retains nonfatal progress-write errors before completion
+reporting. Startup, cycle boundaries and sleeping remain in lifecycle assembly.
+
+All 24 static comparisons passed, including full extracted blocks, their
+ordered call sites and unchanged functions/test module. New files are at most
+39 code lines. Lexical scans found all 40 application and 34 core modules
+reachable without missing paths or dependency-cycle changes. File-limit and
+whitespace checks passed; standalone rustfmt was used. No Cargo, rustc, Python,
+queue scan, clarification, execution engine, progress write, Rust test or
+doctest ran. Compilation and runtime remain unverified. Evidence:
+artifacts/consolidation-forage-phases/. Lifecycle assembly and the residual
+test module still need work under the active whole-workspace objective.

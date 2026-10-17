@@ -26,8 +26,11 @@ mod progress_adapter;
 use progress_adapter::record_execution_success_to_okr;
 mod go_exec;
 use go_exec::execute_opportunity_with_go;
+mod discover;
 mod events;
+mod execute_selected;
 mod execution;
+mod execution_success;
 use execution::execute_opportunity;
 mod swarm_execution;
 use swarm_execution::execute_opportunity_with_swarm;
@@ -115,29 +118,7 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
         cycle = cycle.saturating_add(1);
         let cycle_task_id = format!("forage-cycle-{cycle}");
         events.scan(&cycle_task_id);
-        let mut opportunities = build_opportunities(&repo, &moonshot_rubric).await?;
-        if opportunities.is_empty() {
-            // First try the moonshot seed (execute mode only), then fall back to
-            // interactive goal clarification so forage never silently dead-ends.
-            if args.execute
-                && let Some(seed_okr_id) =
-                    seed_moonshot_okr_if_no_opportunities(&repo, &moonshot_rubric).await?
-            {
-                tracing::info!(
-                    okr_id = %seed_okr_id,
-                    moonshot_count = moonshot_rubric.goals.len(),
-                    "Seeded moonshot-derived OKR because forage found no opportunities"
-                );
-                opportunities = build_opportunities(&repo, &moonshot_rubric).await?;
-            }
-            if opportunities.is_empty() {
-                let okr_count = repo.list_okrs().await?.len();
-                if clarify::clarify_and_persist(&repo, okr_count).await? {
-                    opportunities = build_opportunities(&repo, &moonshot_rubric).await?;
-                }
-            }
-        }
-        let selected: Vec<ForageOpportunity> = opportunities.into_iter().take(top).collect();
+        let selected = discover::discover(&repo, &moonshot_rubric, args.execute, top).await?;
         events.selected(&cycle_task_id, cycle, top, &selected);
 
         events.present(cycle, &selected)?;
@@ -147,41 +128,8 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
         events.cycle(cycle, top, &selected).await;
         flush_bus_observer(&mut observer, cycle, args.json);
 
-        if args.execute && !selected.is_empty() {
-            for item in &selected {
-                let exec_task_id = events.executing(item);
-                summary.total_executed = summary.total_executed.saturating_add(1);
-                match execute_opportunity(item, &args).await {
-                    Ok(execution_outcome) => {
-                        if let Err(err) = record_execution_success_to_okr(
-                            &repo,
-                            item,
-                            &args,
-                            &execution_outcome,
-                            cycle,
-                        )
-                        .await
-                        {
-                            tracing::warn!(
-                                okr_id = %item.okr_id,
-                                key_result_id = %item.key_result_id,
-                                error = %err,
-                                "Failed to persist forage execution progress to OKR"
-                            );
-                        }
-                        events.success(item, &exec_task_id, execution_outcome).await;
-                    }
-                    Err(err) => {
-                        summary.total_execution_failures =
-                            summary.total_execution_failures.saturating_add(1);
-                        events.failure(item, &exec_task_id, &err).await;
-                        if args.fail_fast {
-                            return Err(err);
-                        }
-                    }
-                }
-            }
-        }
+        execute_selected::execute_selected(&args, &repo, &events, &selected, &mut summary, cycle)
+            .await?;
 
         let keep_running = args.loop_mode && (args.max_cycles == 0 || cycle < args.max_cycles);
         events.complete(&cycle_task_id, keep_running);
