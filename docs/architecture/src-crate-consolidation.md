@@ -7641,3 +7641,27 @@ budgets and whitespace checks passed. New Rust modules contain at most 39
 code lines. Evidence is in `artifacts/consolidation-go-monitor/`. No pipeline,
 file-reading monitor, runtime test, Cargo, rustc or Python command was executed.
 Compilation remains unverified; the full consolidation goal remains active.
+
+### Dedicated autonomous task tool
+
+Moved the remaining `src/tool/go.rs` implementation into
+`crates/codetether-go-tool`. Twenty-six Rust modules separate request/schema
+handling, provider selection, default objective setup, initial persistence,
+background execution, terminal persistence and notifications, launch responses,
+and persisted status reporting. The application retains a type alias and three
+small adapter modules for its provider registry, existing Ralph executor and
+native result conversion. The monitor crate continues to own the single active
+run registry. The existing automatic approval, provider fallback order, default
+limits, bus archival, callback messages and launch/status metadata are preserved.
+
+Twenty-eight static preservation checks cover the original implementation and
+its new composition, including ordering of initial/final persistence, phase
+updates, terminal callbacks, provider discovery/forwarding, and exact response
+templates. Lexical module reachability includes the new crate and application
+adapters; the local dependency graph remains acyclic. New crate modules contain
+at most 50 code lines, and the changed application files meet the file-budget
+ratchet. Whitespace checks passed. Evidence lives in
+`artifacts/consolidation-go-tool/`. No autonomous pipeline, provider discovery,
+repository persistence, runtime test, Cargo, rustc or Python command was run.
+Compilation remains unverified; moving the application Ralph implementation and
+other remaining `src/` implementations is still part of the active goal.

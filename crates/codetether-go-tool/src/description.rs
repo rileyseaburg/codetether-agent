@@ -1,0 +1,20 @@
+//! Exact tool description, including its original line spacing.
+pub(crate) const DESCRIPTION: &str = concat!(
+    "Autonomous task execution pipeline. Creates an OKR, generates a PRD from the task \n",
+    "description using an LLM, runs the Ralph autonomous agent loop to implement all user stories, \n",
+    "and maps results back to OKR outcomes.\n",
+    "\n",
+    "This is the programmatic equivalent of the `/go` TUI command. OKR approval is automatic \n",
+    "(no interactive gate) since this is called by MCP clients.\n",
+    "\n",
+    "The pipeline runs in the background. Use action \"watch\" to monitor progress.\n",
+    "\n",
+    "Actions:\n",
+    "- execute: Launch the autonomous pipeline (OKR → PRD → Ralph → results). Returns immediately.\n",
+    "- watch: Watch a running pipeline's progress by okr_id. Shows PRD status, progress notes, and phase.\n",
+    "- status: Check final status of an OKR run by okr_id\n",
+    "\n",
+    "Required for execute: task\n",
+    "Optional for execute: max_iterations (default 10), max_concurrent_stories (default 3), model\n",
+    "Required for watch/status: okr_id",
+);
