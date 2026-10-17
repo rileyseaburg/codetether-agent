@@ -16,7 +16,3 @@ mod overlay_tests;
 mod restore_overlay_tests;
 #[path = "singleflight_open_tests.rs"]
 mod singleflight_open_tests;
-#[path = "singleflight_tests.rs"]
-mod singleflight_tests;
-#[path = "slot_tests.rs"]
-mod slot_tests;

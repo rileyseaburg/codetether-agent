@@ -12,3 +12,6 @@ pub use thread_status::ThreadStatus;
 pub mod execution;
 /// Completion notifications shared by execution and lifecycle waiters.
 pub mod execution_notify;
+
+/// Shared resident accounting and per-child activation synchronization.
+pub mod residency;

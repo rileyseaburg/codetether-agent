@@ -22,8 +22,6 @@ mod singleflight;
 mod slot;
 #[path = "residency/stale.rs"]
 mod stale;
-#[path = "residency/state.rs"]
-mod state;
 
 pub(in crate::tool::agent) use capacity::reserve;
 pub(in crate::tool) use ensure::open;

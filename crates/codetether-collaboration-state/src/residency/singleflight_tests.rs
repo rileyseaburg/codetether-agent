@@ -1,3 +1,4 @@
+//! Existing residency concurrency regression tests.
 use super::singleflight::LoadLocks;
 use std::time::Duration;
 

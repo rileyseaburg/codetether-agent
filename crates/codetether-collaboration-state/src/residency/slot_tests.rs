@@ -1,3 +1,4 @@
+//! Existing residency concurrency regression tests.
 use super::{slot::Slot, state::ResidencyState};
 use std::sync::Arc;
 use tokio::sync::Barrier;

@@ -7954,3 +7954,21 @@ modules contain at most 37 code lines. Evidence is in
 `artifacts/consolidation-agent-storage/`. No sidecars were written, manifests
 discovered, runtime tests executed, or Cargo, rustc or Python commands run.
 Compilation remains unverified; the full consolidation goal remains active.
+
+### Shared residency accounting and activation locks
+
+Moved resident LRU ordering, pending-slot accounting, reservation commit/drop,
+per-child activation locks and one-time overlay markers into the existing
+`codetether-collaboration-state` crate. Ten added Rust modules include three
+existing concurrency/guard tests. Application eviction policy and session
+activation continue to use the same operations through compatibility exports.
+The state ledger, activation lock registry and stale marker set each have one
+shared owner.
+
+Twenty-two static preservation checks cover synchronization, slot accounting,
+LRU/protected-candidate selection, weak-lock cleanup, markers, moved tests and
+unchanged eviction/activation integration. Module/dependency checks, file
+budgets and whitespace checks passed; added Rust modules contain at most 38 code
+lines. Evidence is in `artifacts/consolidation-residency-state/`. No residency
+operations or runtime tests were performed. No Cargo, rustc or Python commands
+ran. Compilation remains unverified; the full consolidation goal remains active.

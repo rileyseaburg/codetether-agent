@@ -3,24 +3,21 @@
 use super::ResidencyState;
 
 impl ResidencyState {
-    pub(in crate::tool::agent::residency) fn touch(&self, agent_id: &str) {
+    pub(in crate::residency) fn touch(&self, agent_id: &str) {
         let mut state = self.lock();
         state.residents.retain(|id| id != agent_id);
         state.residents.push_back(agent_id.into());
     }
 
-    pub(in crate::tool::agent::residency) fn forget(&self, agent_id: &str) {
+    pub(in crate::residency) fn forget(&self, agent_id: &str) {
         self.lock().residents.retain(|id| id != agent_id);
     }
 
-    pub(in crate::tool::agent::residency) fn resident_count(&self) -> usize {
+    pub(in crate::residency) fn resident_count(&self) -> usize {
         self.lock().residents.len()
     }
 
-    pub(in crate::tool::agent::residency) fn pop_candidate(
-        &self,
-        protected: Option<&str>,
-    ) -> Option<String> {
+    pub(in crate::residency) fn pop_candidate(&self, protected: Option<&str>) -> Option<String> {
         let mut state = self.lock();
         let count = state.residents.len();
         for _ in 0..count {
