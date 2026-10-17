@@ -49,3 +49,6 @@ pub mod events;
 
 /// Claimed-task execution outcome normalization.
 pub mod outcome;
+
+/// Post-agent result finalization and repository publication.
+pub mod finalization;

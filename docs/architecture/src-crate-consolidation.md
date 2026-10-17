@@ -5468,3 +5468,21 @@ File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-task-release/`. Compilation, tests, and release
 requests remain unrun. No Cargo, rustc, or Python commands ran. The broader
 migration goal remains active.
+
+### Shared post-agent finalization
+
+Moved task finalization and repository-publication timeline mapping into
+worker-core. A borrowed `FinalizationWorkspace` carries only the session's
+repository directory and provenance; the application retains a small adapter.
+Removed the redundant application Git-publication adapter. Worker-core now
+directly depends on worktree for the existing publication API, without a cycle.
+
+Static comparison verifies both moved functions and the session metadata
+mapping. Near-deadline warnings, virtual-task exclusions, publication success
+summaries, failure status/error updates, checkpoint mapping, and final progress
+synchronization are unchanged. The module scan reaches all 142 worker-core
+files and 268 application A2A files without missing/orphaned modules. New
+files contain at most 45 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-task-finalization/`. Compilation, tests,
+and repository publication remain unrun. No Cargo, rustc, or Python commands
+ran. The broader implementation migration remains active.

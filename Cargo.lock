@@ -1183,6 +1183,7 @@ dependencies = [
  "codetether-provenance",
  "codetether-provider-core",
  "codetether-util",
+ "codetether-worktree",
  "rand 0.10.2",
  "serde",
  "serde_json",

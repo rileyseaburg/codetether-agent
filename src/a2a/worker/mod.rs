@@ -24,7 +24,7 @@ mod git_branch;
 #[cfg(test)]
 mod git_branch_tests;
 #[rustfmt::skip]
-mod git_commit_push;mod connection_setup;
+mod connection_setup;
 mod frame_handler;
 mod git_hook_gate;
 mod git_refspec;
