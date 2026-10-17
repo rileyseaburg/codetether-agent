@@ -5307,3 +5307,23 @@ have at most 43 code lines. File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-worker-signed-http/`. Compilation, tests, credential
 lookup, and network requests were not executed. No Cargo, rustc, or Python
 commands ran. The wider implementation migration remains active.
+
+### Shared worker request construction
+
+Moved claim and release request builders plus signed registration submission
+into the HTTP worker module. Moved SSE request construction into the stream
+crate beside cursor resumption. Worker adapters pass explicit client, server,
+identity, token and path inputs, while registration still collects application
+provider and workspace metadata before calling shared transport. The stream
+crate directly declares the existing URL-encoding dependency.
+
+Static comparison verifies all four moved request bodies and unchanged
+registration metadata collection. Proof inputs and call order, bearer ordering,
+release-body attachment, request paths, stream headers and resume handling are
+preserved. The module scan reaches all 83 HTTP files, 36 stream files, and 290
+application A2A files without missing/orphaned modules. Both destination
+crate dependency closures remain acyclic. New files contain at most 29 code
+lines; file-budget and whitespace checks passed. Evidence is retained in
+`artifacts/consolidation-worker-requests/`. Compilation, tests and network
+requests remain unrun. No Cargo, rustc, or Python commands ran. The broader
+migration of implementation into crates remains active.

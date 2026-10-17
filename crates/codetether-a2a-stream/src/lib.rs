@@ -35,3 +35,6 @@ pub mod staging;
 pub mod ingest;
 /// Reconnect outcome policy and backoff progression.
 pub mod reconnect;
+
+/// Resumable worker SSE request construction.
+pub mod worker_request;

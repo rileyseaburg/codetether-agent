@@ -25,13 +25,8 @@ pub async fn register_worker(
         "k8s_node_name": k8s_node_name, "models": registration_data::build_models_array(&models), "workspaces": codebases,
         "workspace_ids": workspace_ids, "interfaces": advertised_interfaces(public_url), "agents": registration_data::builtin_agent_defs(),
     });
-    let resource = super::worker_mutation_resource::for_json(worker_id, &payload)?;
-    let request = client.post(format!("{server}/v1/agent/workers/register"));
-    let mut request =
-        super::worker_identity_proof::apply(request, "register", worker_id, name, &resource)?;
-    if let Some(token) = token {
-        request = request.bearer_auth(token);
-    }
-    let response = request.json(&payload).send().await?;
-    super::worker_registration_response::require_success(response).await
+    codetether_a2a_http::worker::register_worker_payload(
+        client, server, token, worker_id, name, &payload,
+    )
+    .await
 }
