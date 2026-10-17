@@ -3,7 +3,8 @@
 use anyhow::Result;
 
 use super::{WriteStdinTool, input::Input};
-use crate::tool::{ToolResult, command_session};
+use codetether_command_session as command_session;
+use codetether_tool_core::ToolResult;
 
 pub(super) async fn run(tool: &WriteStdinTool, args: serde_json::Value) -> Result<ToolResult> {
     let input: Input = match serde_json::from_value(args) {

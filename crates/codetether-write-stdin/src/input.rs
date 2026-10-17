@@ -28,6 +28,6 @@ impl Input {
             .unwrap_or(10_000)
             .saturating_mul(4)
             .max(4)
-            .min(crate::tool::tool_output_budget())
+            .min(codetether_tool_core::tool_output_budget())
     }
 }

@@ -2185,6 +2185,21 @@ wiring checks passed. Files contain at most 49 code lines. Evidence:
 Cargo, rustc or Python ran. Compilation and runtime behavior remain unverified;
 the full workspace goal remains active.
 
+### Dedicated command input and polling tool
+
+Moved `src/tool/write_stdin.rs` and its three support modules into
+`crates/codetether-write-stdin`. The tool depends directly on shared command
+sessions and tool contracts/output-budget resolution. The application retains
+a compatibility export; existing registry registration is unchanged.
+
+Static comparisons verify construction, schema, deserialization, separate
+write/poll wait bounds, output caps, session locking and completed-session
+cleanup. Module reachability, dependency-cycle, workspace wiring, file-budget
+and whitespace checks passed. Four files contain at most 37 code lines.
+Evidence: `artifacts/consolidation-write-stdin/`. No session operations,
+runtime tests, Cargo, rustc or Python ran. Compilation remains unverified;
+the full workspace consolidation remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict
