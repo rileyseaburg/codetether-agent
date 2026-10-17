@@ -1330,6 +1330,7 @@ dependencies = [
  "codetether-secrets",
  "codetether-session-runtime",
  "codetether-swarm-core",
+ "codetether-swarm-share",
  "codetether-telemetry",
  "codetether-tetherscript-values",
  "codetether-theme",
@@ -2736,6 +2737,18 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-swarm-share"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-swarm-core",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

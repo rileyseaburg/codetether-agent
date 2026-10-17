@@ -6413,3 +6413,20 @@ whitespace checks. Changed crate files contain at most 50 code lines. Evidence:
 `artifacts/consolidation-bus-tool/`. No bus operations, runtime tests, Cargo,
 rustc or Python ran. Compilation remains unverified. The broader migration
 remains active.
+
+### Dedicated swarm result-sharing tool
+
+Moved `src/tool/swarm_share.rs` into `crates/codetether-swarm-share`. Eleven
+modules separate construction, schema, parameters, dispatch and the five
+publish/get/query/list actions. The crate depends directly on the existing
+`codetether-swarm-core` result store and shared tool contracts. The application
+keeps a compatibility export.
+
+Static token comparison verifies the original fields, constructors, complete
+schema, parameters, dispatch and all five action bodies. Producer identity,
+store ownership, query order, output formatting and fallback behavior are
+preserved. Module reachability and dependency-cycle checks passed, as did
+file-budget and whitespace checks. New files contain at most 34 code lines.
+Evidence: `artifacts/consolidation-swarm-share/`. No store operations, runtime
+tests, Cargo, rustc or Python ran. Compilation remains unverified; the broader
+migration remains active.
