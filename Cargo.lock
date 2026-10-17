@@ -1315,6 +1315,7 @@ dependencies = [
  "codetether-goal-core",
  "codetether-google-auth",
  "codetether-grep-tool",
+ "codetether-history-files",
  "codetether-image",
  "codetether-indexer",
  "codetether-image-tool",
@@ -2357,6 +2358,16 @@ dependencies = [
  "regex",
  "serde_json",
  "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-history-files"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-config",
+ "codetether-provider-core",
  "tokio",
 ]
 

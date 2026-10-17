@@ -7547,3 +7547,19 @@ most 37 code lines. Evidence lives in `artifacts/consolidation-context-summarize
 No summaries were generated, sessions written, runtime tests, Cargo, rustc or
 Python commands run. Compilation remains unverified; the full consolidation
 goal remains active.
+
+### Dedicated materialized history files
+
+Moved turn rendering, role labels, history-directory selection, canonical paths,
+unchanged-file detection and stale-file pruning into `crates/codetether-history-files`.
+Seven modules separate rendering, paths, materialization, writing and cleanup.
+The application retains wrappers passing the same session ID, workspace and
+canonical history slice; context browsing keeps its existing imports.
+
+Fourteen static preservation checks compare complete rendering, environment
+and workspace precedence, filenames, file I/O and cleanup ordering, and session
+adapter arguments. Module reachability, dependency cycles, file budgets and
+whitespace checks passed; new Rust files contain at most 36 code lines. Evidence
+lives in `artifacts/consolidation-history-files/`. No history files were read,
+written or pruned, runtime tests, Cargo, rustc or Python commands run.
+Compilation remains unverified; the full consolidation goal remains active.
