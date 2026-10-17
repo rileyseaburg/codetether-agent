@@ -5,6 +5,7 @@ members = [
     "crates/codetether-a2a-discovery",
     "crates/codetether-a2a-grpc",
     "crates/codetether-a2a-http",
+    "crates/codetether-a2a-inbox",
     "crates/codetether-a2a-stream",
     "crates/codetether-a2a-worker-core",
     "crates/codetether-a2a-worker-clone",
@@ -199,6 +200,7 @@ fips = [
 ]
 
 [dependencies]
+codetether-a2a-inbox = { path = "crates/codetether-a2a-inbox", version = "0.1.0" }
 codetether-a2a-worker-clone = { path = "crates/codetether-a2a-worker-clone", version = "0.1.0" }
 codetether-cognition-native = { path = "crates/codetether-cognition-native", version = "0.1.0" }
 codetether-cognition-core = { path = "crates/codetether-cognition-core", version = "0.1.0" }

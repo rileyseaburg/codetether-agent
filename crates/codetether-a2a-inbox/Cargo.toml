@@ -1,0 +1,14 @@
+[package]
+name = "codetether-a2a-inbox"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Process-local A2A turn handoff and interactive reply slots"
+
+[dependencies]
+tokio = { version = "1.53.1", features = ["sync"] }
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt"] }

@@ -1157,6 +1157,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-a2a-inbox"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "codetether-a2a-stream"
 version = "0.1.0"
 dependencies = [
@@ -1235,6 +1243,7 @@ dependencies = [
  "codetether-a2a-discovery",
  "codetether-a2a-grpc",
  "codetether-a2a-http",
+ "codetether-a2a-inbox",
  "codetether-a2a-stream",
  "codetether-a2a-worker-core",
  "codetether-a2a-worker-clone",

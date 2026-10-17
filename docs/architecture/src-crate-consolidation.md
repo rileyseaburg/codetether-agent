@@ -5769,3 +5769,22 @@ File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-worker-swarm-setup/`. Compilation, tests, provider
 loading and swarm execution remain unrun. No Cargo, rustc, or Python commands
 ran. The broader migration remains active.
+
+### Dedicated interactive A2A inbox crate
+
+Created `crates/codetether-a2a-inbox` and moved the complete process-local
+interactive handoff queue, attachment registry, one-shot pending/reply handles,
+and existing tests into it. The application module is a compatibility
+re-export, so server and TUI callers share the same queue and attachment flag.
+The crate depends only on Tokio synchronization and tracing.
+
+Static comparison verifies fourteen definitions, including both global states,
+queue order, pending-future behavior, responder completion, and original log
+targets. All three existing test bodies remain byte-identical. Workspace and
+lockfile entries are present. The module scan reaches all five inbox files
+and 251 application A2A files without missing/orphaned modules; the inbox has
+no local crate dependency cycle. New files contain at most 30 code lines.
+File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-live-inbox/`. Compilation, tests, and live handoff
+remain unrun. No Cargo, rustc, or Python commands ran. The broader migration
+remains active.
