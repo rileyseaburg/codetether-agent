@@ -2436,6 +2436,7 @@ dependencies = [
  "codetether-tool-core",
  "serde",
  "serde_json",
+ "tracing",
  "uuid",
 ]
 

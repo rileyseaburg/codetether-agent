@@ -7807,3 +7807,23 @@ New Rust modules contain at most 43 code lines. Evidence is in
 messaged, lifecycle actions performed, or runtime tests executed. No Cargo,
 rustc or Python commands ran. Compilation remains unverified; the full
 consolidation goal remains active.
+
+### Collaboration messaging and residency-result handling
+
+Moved follow-up, queue-only message and agent-list tools into the existing
+`codetether-collaboration-tools` crate. The crate now has thirty Rust modules,
+including shared immediate-delivery and durable-residency outcome types. Child
+readiness result handling, validation, idle-turn triggering and list response
+rendering live in the crate; opening children, active steering, queue insertion
+and live-tree snapshots remain bound to their existing application owners.
+The other collaboration operations reuse the extracted readiness function.
+
+Thirty-five static preservation checks cover schemas, arguments, empty-message
+validation, readiness/steering/idle ordering, detached payloads, silent success,
+state outcome variants, snapshot serialization, and unchanged runtime owners.
+The two existing list-tool integration tests remain unchanged. Module and
+dependency checks, file budgets and whitespace checks passed; crate modules
+contain at most 47 code lines. Evidence is in
+`artifacts/consolidation-collaboration-messaging/`. No children were loaded,
+agents messaged, runtime tests executed, or Cargo, rustc or Python commands run.
+Compilation remains unverified; the full consolidation goal remains active.
