@@ -86,6 +86,7 @@ members = [
     "crates/codetether-util",
     "crates/codetether-voice-core",
     "crates/codetether-vectordb",
+    "crates/codetether-worker-http",
     "crates/codetether-worktree",
     "crates/codetether-worktree-isolation",
     "windows/CodeTether.Companion/desktop-staging",
@@ -199,6 +200,7 @@ codetether-context-policy = { path = "crates/codetether-context-policy", version
 codetether-autochat-core = { path = "crates/codetether-autochat-core", version = "0.1.0" }
 codetether-bus-s3 = { path = "crates/codetether-bus-s3", version = "0.1.0" }
 codetether-bus-http = { path = "crates/codetether-bus-http", version = "0.1.0" }
+codetether-worker-http = { path = "crates/codetether-worker-http", version = "0.1.0" }
 codetether-bus-core = { path = "crates/codetether-bus-core", version = "0.1.0" }
 codetether-a2a-core = { path = "crates/codetether-a2a-core", version = "0.1.0" }
 codetether-swarm-core = { path = "crates/codetether-swarm-core", version = "0.1.0" }

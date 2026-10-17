@@ -1199,6 +1199,7 @@ dependencies = [
  "codetether-util",
  "codetether-vectordb",
  "codetether-voice-core",
+ "codetether-worker-http",
  "codetether-worktree",
  "codetether-worktree-isolation",
  "config",
@@ -2514,6 +2515,21 @@ name = "codetether-voice-core"
 version = "0.1.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "codetether-worker-http"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "codetether-a2a-worker-core",
+ "codetether-bus-core",
+ "futures",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

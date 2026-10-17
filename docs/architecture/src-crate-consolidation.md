@@ -55,7 +55,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | moltbook | 1 | 1 | Client, wire types, HTTP helpers, credentials and content helpers extracted; compatibility facade retained |
 | review | 11 | 200 | Review contracts, prompt construction, and parsing moved to approval-core; runtime state, runner, and tool-policy adapters retained |
 | actor | 14 | 352 | Inactive tracked subtree: no application-root declaration or explicit external callers; retained for separate disposition, not migrated |
-| worker_server | 1 | 295 | Pending cohesion and dependency audit |
+| worker_server | 1 | 9 | Ownership audited: state, endpoints and serving in worker-http; application adapts CLI address arguments |
 | search | 9 | 92 | Shared planning/execution pipeline and contracts extracted; model registry resolution and concrete tool dispatch retained as host adapters |
 | image_clipboard | 2 | 33 | Portable image operations extracted; native clipboard access remains an application adapter |
 | voice | 6 | 20 | Ownership audited: commands, routing policy, SSH detection and speech catalog extracted; only compatibility exports, live transport selection and native CPAL probing remain |
@@ -177,6 +177,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-util | 3 | yes | none |
 | codetether-vectordb | 14 | yes | none |
 | codetether-voice-core | 12 | yes | none |
+| codetether-worker-http | 18 | yes | none |
 | codetether-worktree | 105 | yes | none |
 | codetether-worktree-isolation | 4 | yes | none |
 
@@ -3995,3 +3996,27 @@ resolution ran. File-limit and whitespace checks passed. Standalone rustfmt
 was used. No Cargo, rustc, Python, native search execution or Rust tests ran;
 compilation and runtime remain unverified. Evidence is retained in
 artifacts/consolidation-native-search/. The whole-workspace goal remains active.
+
+## Worker HTTP service ownership
+
+Codetether-worker-http owns WorkerServerState and the HTTP service: health and
+readiness probes, worker status, task CloudEvent ingress, bus publish and SSE
+subscription. Its 18 modules separate state construction, task notification,
+heartbeat and identity updates, routing, payloads and endpoint behavior. The
+application worker_server API remains compatible and only adapts CLI hostname
+and port to the shared serve function. Shared bus and worker-core types remain
+the same underlying types through the existing application re-exports.
+
+All 31 static comparisons passed, including state methods, state/wire layouts,
+route setup, response codes, task-channel readiness, CloudEvent header parsing,
+SSE filtering, keepalive and lag records, and explicit original logging targets.
+Every new file is at most 46 code lines. Lexical scans found all 18 modules
+reachable and no missing files or dependency cycle in the six-crate local
+closure. The lockfile adds only the local worker-http package and its application
+reference; dependency resolution was not run. Changed-source line limits and
+whitespace checks passed; standalone rustfmt formatted the extraction.
+
+No Cargo, rustc, Python, listener, HTTP request, task delivery, Rust test or
+doctest ran. Compilation and runtime behavior remain unverified. Evidence is
+retained in artifacts/consolidation-worker-http/. The complete workspace
+consolidation goal remains active.
