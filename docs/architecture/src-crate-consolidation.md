@@ -6051,3 +6051,23 @@ acyclic. The shared file contains 23 code lines. File-budget and whitespace
 checks passed. Evidence: `artifacts/consolidation-server-bus/`. Compilation,
 tests and live bus delivery remain unrun. No Cargo, rustc or Python commands
 ran. The broader migration remains active.
+
+### Shared observer JSON payload builders
+
+Moved twelve observer payload builders into
+`codetether-a2a-core::observer_payloads`, grouped by tool calls, tool progress,
+text, usage and status markers. Application match arms still select which
+session events are exposed, but their JSON construction now belongs to the
+protocol crate. Tool completion output retains its 500-character limit.
+
+Static comparison verifies every builder expression and expands both application
+mappers back to the original JSON expressions. It accounts for primitive values
+borrowed from enum matches and optional commas on block-shaped match arms.
+A generated namespace error was corrected during source review before committing.
+The scan reaches 232 application A2A files, 165 HTTP files, 63 telemetry files,
+136 bus-core files and 56 A2A core files without missing/orphaned modules; the
+dependency closure is acyclic. New files contain at most 13 code lines.
+File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-observer-payloads/`. Compilation, tests and live event
+rendering remain unrun. No Cargo, rustc or Python commands ran. The broader
+migration remains active.

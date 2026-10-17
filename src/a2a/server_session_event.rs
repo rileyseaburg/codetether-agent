@@ -1,57 +1,35 @@
 //! A2A JSON payloads for selected session events.
 
 use crate::session::SessionEvent;
-use serde_json::{Value, json};
+use codetether_a2a_core::observer_payloads as payload;
+use serde_json::Value;
 
 pub(super) fn data(event: &SessionEvent) -> Value {
     match event {
-        SessionEvent::Thinking => json!({ "type": "thinking" }),
+        SessionEvent::Thinking => payload::thinking(),
         SessionEvent::ToolCallStart {
             tool_call_id,
             name,
             arguments,
-        } => json!({
-            "type": "tool_call_start",
-            "tool_call_id": tool_call_id,
-            "name": name,
-            "arguments": arguments
-        }),
+        } => payload::tool_call_start(tool_call_id, name, arguments),
         SessionEvent::ToolCallComplete {
             tool_call_id,
             name,
             output,
             success,
             duration_ms,
-        } => json!({
-            "type": "tool_call_complete",
-            "tool_call_id": tool_call_id,
-            "name": name,
-            "output": output.chars().take(500).collect::<String>(),
-            "success": success,
-            "duration_ms": duration_ms
-        }),
+        } => payload::tool_call_complete(tool_call_id, name, output, *success, *duration_ms),
         SessionEvent::ToolHeartbeat {
             tool_call_id,
             name,
             elapsed_secs,
-        } => json!({
-            "type": "tool_heartbeat",
-            "tool_call_id": tool_call_id,
-            "name": name,
-            "elapsed_secs": elapsed_secs
-        }),
+        } => payload::tool_heartbeat(tool_call_id, name, *elapsed_secs),
         SessionEvent::ToolOutputChunk {
             tool_call_id,
             name,
             stream,
             chunk,
-        } => json!({
-            "type": "tool_output_chunk",
-            "tool_call_id": tool_call_id,
-            "name": name,
-            "stream": stream,
-            "chunk": chunk
-        }),
-        _ => json!({ "type": "ignored" }),
+        } => payload::tool_output_chunk(tool_call_id, name, stream, chunk),
+        _ => payload::ignored(),
     }
 }

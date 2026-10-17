@@ -24,3 +24,6 @@ pub mod identity_extension;
 
 /// Default CodeTether card metadata and coding skills.
 pub mod application_card;
+
+/// JSON event payloads for A2A task observers.
+pub mod observer_payloads;
