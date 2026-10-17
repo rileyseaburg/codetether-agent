@@ -10,7 +10,7 @@ mod entry;
 mod record;
 mod request;
 mod roots;
-use entries::workspace_entries;
+pub(super) use entries::workspace_entries;
 use entry::resolve_entry;
 pub use record::ResolvedWorkspace;
 pub use request::resolve_workspace_ids;

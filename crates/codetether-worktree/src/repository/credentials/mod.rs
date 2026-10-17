@@ -37,3 +37,8 @@ mod mark_executable;
 use mark_executable::mark_executable;
 mod shell_single_quote;
 use shell_single_quote::shell_single_quote;
+
+mod workspace_entry;
+pub use workspace_entry::maybe_configure_repo_git_auth_from_entry;
+mod agent_config;
+pub use agent_config::configure_repo_git_github_app_from_agent_config;

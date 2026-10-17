@@ -5266,3 +5266,24 @@ orphaned modules and an acyclic dependency closure. New files have at most
 `artifacts/consolidation-workspace-catalog/`. Compilation, tests, doctests,
 and control-plane requests remain unrun. No Cargo, rustc, or Python commands
 ran. The broader implementation migration remains active.
+
+### Shared workspace synchronization and repository setup
+
+Moved workspace-catalog synchronization into the HTTP workspace module and
+entry-driven Git credential/GitHub App configuration into the worktree
+credential module. The worker now connects these through a callback. This
+keeps HTTP synchronization independent of Git execution and avoids adding a
+cross-crate dependency between HTTP and worktree. Synchronization reuses the
+existing catalog response parser instead of retaining a second copy. The
+HTTP manifest now explicitly enables Tokio's sync feature for its mutex API.
+
+Static comparisons verify all three moved function bodies, expanding the
+shared parser and callback substitution. Entry setup remains before path
+filtering; status behavior, list locking, existing-path checks, duplicate
+handling, credential error handling, and log targets are unchanged. The
+module scan covers all 75 HTTP files, 147 worktree files, and 291 A2A files
+without missing or orphaned modules; dependency checks remain acyclic. New
+files contain at most 48 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-workspace-sync/`. Compilation, tests,
+network synchronization and Git configuration were not run. No Cargo, rustc,
+or Python commands ran. The broader consolidation goal remains active.
