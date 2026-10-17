@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 35 | 2457 | Shared contracts, transports, RPC and remote protocol operations; application retains server/registry, caches, identity and policy adapters |
+| mcp | 37 | 2359 | Shared registry/index, protocol and transports extracted; application retains client identity/state, authorized connection and server integration |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -170,7 +170,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-metrics | 16 | yes | none |
 | codetether-provider-bonsai | 80 | yes | none |
 | codetether-moltbook | 36 | yes | none |
-| codetether-mcp-core | 53 | yes | none |
+| codetether-mcp-core | 64 | yes | none |
 | codetether-mcp-transport | 26 | yes | none |
 | codetether-model-catalog | 30 | yes | none |
 | codetether-util | 3 | yes | none |
@@ -3829,3 +3829,21 @@ lines. No dependencies changed. Formatting, source limits and staged whitespace
 checks were used. No requests, transports, Cargo, rustc, Python or tests ran;
 compilation and tests remain unverified. Evidence resides in
 artifacts/consolidation-mcp-operations/. The workspace goal remains active.
+
+## MCP registry and tool routing
+
+MCP-core::registry owns generic client storage, capability metadata, cached
+tool lookup, fallback search, refresh, dispatch and disconnect sequencing.
+The application registry wraps it for subprocess authorization and connection
+startup. RegistryClient delegates tool calls to the existing policy-aware
+application client, preserving authorization before remote requests.
+
+Twenty static comparisons cover all registry methods, field shapes, the
+unchanged application client methods, connection order and factory delegation.
+Lock order and logging targets are preserved. Lexical graphs cover 64 shared
+core and 37 application files without missing/unreferenced modules.
+New files have at most 32 code lines. Only existing Tokio/tracing dependencies
+were added. Formatting, file limits and whitespace checks were used. No
+registry, subprocess, request, Cargo, rustc, Python or tests ran. Compilation
+and tests remain unverified. Evidence: artifacts/consolidation-mcp-registry/.
+The full workspace consolidation goal remains active.

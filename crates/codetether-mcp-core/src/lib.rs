@@ -12,3 +12,6 @@ mod message;
 pub mod tool_result;
 pub mod types;
 pub use message::McpMessage;
+
+/// Client-generic registry with capability metadata and remote tool routing.
+pub mod registry;

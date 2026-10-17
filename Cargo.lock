@@ -1860,6 +1860,8 @@ dependencies = [
  "codetether-tool-core",
  "serde",
  "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
