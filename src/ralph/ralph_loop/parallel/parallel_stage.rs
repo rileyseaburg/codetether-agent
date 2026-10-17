@@ -1,14 +1,14 @@
 //! Stop completed/exhausted runs before announcing the next stage.
 use super::*;
 impl RalphLoop {
-    pub(super) fn begin_parallel_stage(
+    pub(in crate::ralph::ralph_loop) fn begin_parallel_stage(
         &mut self,
         stage_idx: usize,
         total_stages: usize,
         stage_stories: &[UserStory],
     ) -> bool {
         if self.state.prd.is_complete() {
-            info!("All stories complete!");
+            info!(target: "codetether_agent::ralph::ralph_loop::parallel_stage", "All stories complete!");
             self.state.status = RalphStatus::Completed;
             return false;
         }
@@ -18,7 +18,7 @@ impl RalphLoop {
         }
 
         let story_count = stage_stories.len();
-        info!(
+        info!(target: "codetether_agent::ralph::ralph_loop::parallel_stage",
             "=== Stage {}/{}: {} stories in parallel ===",
             stage_idx + 1,
             total_stages,

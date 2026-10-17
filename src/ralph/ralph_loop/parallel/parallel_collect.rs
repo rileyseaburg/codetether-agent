@@ -2,7 +2,7 @@
 use super::parallel_result_types::ParallelStoryResult;
 use super::*;
 impl RalphLoop {
-    pub(super) async fn collect_parallel_results(
+    pub(in crate::ralph::ralph_loop) async fn collect_parallel_results(
         &mut self,
         handles: Vec<tokio::task::JoinHandle<ParallelStoryResult>>,
         provider: &Arc<dyn Provider>,
@@ -18,7 +18,7 @@ impl RalphLoop {
                         .await
                 }
                 Err(e) => {
-                    warn!("Story execution task failed: {}", e);
+                    warn!(target: "codetether_agent::ralph::ralph_loop::parallel_collect", "Story execution task failed: {}", e);
                 }
             }
         }

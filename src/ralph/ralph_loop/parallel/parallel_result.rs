@@ -1,7 +1,7 @@
 //! Build task progress entries and preserve the worktree-local response write.
 use super::*;
 impl RalphLoop {
-    pub(super) fn parallel_progress_entry(
+    pub(in crate::ralph::ralph_loop) fn parallel_progress_entry(
         story: &UserStory,
         final_result: &anyhow::Result<String>,
         story_working_dir: &Path,

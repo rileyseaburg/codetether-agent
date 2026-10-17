@@ -1,7 +1,7 @@
 //! Launch one targeted repair attempt using the original reduced step limit.
 use super::*;
 impl RalphLoop {
-    pub(super) async fn repair_parallel_story(
+    pub(in crate::ralph::ralph_loop) async fn repair_parallel_story(
         provider: &Arc<dyn Provider>,
         model: &str,
         story: &UserStory,
@@ -13,7 +13,7 @@ impl RalphLoop {
         error_output: &str,
     ) -> anyhow::Result<String> {
         // Feed errors back to agent for self-repair
-        warn!(
+        warn!(target: "codetether_agent::ralph::ralph_loop::parallel_repair",
             story_id = %story.id,
             attempt = qg_attempt + 1,
             max_retries = max_quality_retries,

@@ -2,7 +2,7 @@
 use super::parallel_execution_context::ParallelExecutionContext;
 use super::*;
 impl ParallelExecutionContext<'_> {
-    pub(super) async fn finish_quality(
+    pub(in crate::ralph::ralph_loop) async fn finish_quality(
         &self,
         call_result: anyhow::Result<String>,
         quality_checks_enabled: bool,

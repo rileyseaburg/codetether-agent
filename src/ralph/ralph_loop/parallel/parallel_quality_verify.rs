@@ -3,7 +3,7 @@ use super::parallel_execution_context::ParallelExecutionContext;
 use super::parallel_quality_state::QualityProgress;
 use super::*;
 impl ParallelExecutionContext<'_> {
-    pub(super) async fn verify_quality_attempt(
+    pub(in crate::ralph::ralph_loop) async fn verify_quality_attempt(
         &self,
         state: &mut QualityProgress,
         error_output: &mut String,
@@ -14,7 +14,7 @@ impl ParallelExecutionContext<'_> {
             error_output,
             run_story_verification(self.working_dir, self.story),
             || {
-                info!(
+                info!(target: "codetether_agent::ralph::ralph_loop::parallel_quality_verify",
                     story_id = %self.story.id,
                     attempt = qg_attempt + 1,
                     "Quality gates and verification passed"
@@ -23,7 +23,10 @@ impl ParallelExecutionContext<'_> {
         )
         .await
     }
-    pub(super) async fn verify_without_quality(&self, state: &mut QualityProgress) {
+    pub(in crate::ralph::ralph_loop) async fn verify_without_quality(
+        &self,
+        state: &mut QualityProgress,
+    ) {
         codetether_ralph_core::quality_repair::verify_without_checks(
             state,
             run_story_verification(self.working_dir, self.story),

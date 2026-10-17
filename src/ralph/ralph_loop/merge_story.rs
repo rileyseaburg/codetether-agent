@@ -1,5 +1,5 @@
 //! Commit a successful task and merge its isolated workspace if present.
-use super::parallel_result_types::MergeContext;
+use super::parallel::parallel_result_types::MergeContext;
 use super::*;
 impl RalphLoop {
     pub(super) async fn merge_parallel_story(

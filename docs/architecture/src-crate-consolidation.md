@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 104 | 2760 | Shared initial state, schedulers, quality, progress, persistence and delegation policy extracted; host ownership review continues |
+| ralph | 105 | 2772 | Shared services extracted; parallel host grouped cohesively; relay/lifecycle layout and final host ownership review continue |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -4333,3 +4333,22 @@ No Cargo, rustc, Python, PRD file read, Rust test or doctest ran. Compilation
 and runtime remain unverified. Evidence:
 artifacts/consolidation-ralph-initial-state/. Remaining host ownership and the
 full workspace goal remain active.
+
+## Ralph parallel host module cohesion
+
+The parallel host now groups its driver, stage planning, worktree preparation,
+task context, quality callbacks, result collection and scheduler adapter under
+ralph_loop::parallel. Thirty-one existing files moved beneath this owner. Only
+merge callers outside the module access its result-context module; their two
+paths were updated. Inherent method/type/field visibility retains the original
+ralph_loop scope, and relocated log calls have explicit original module targets.
+
+All 36 static comparisons passed, covering every relocated file, the two merge
+imports, unchanged parent state and remaining declarations. All new module files
+are at most 47 code lines. Lexical scans cover 105 application and 136 core files
+without missing or orphaned modules; the six-crate dependency closure is
+unchanged and acyclic. No manifests changed. File-limit and whitespace checks
+passed; standalone rustfmt was used. No Cargo, rustc, Python, parallel task,
+worktree operation, Rust test or doctest ran. Compilation and runtime remain
+unverified. Evidence: artifacts/consolidation-ralph-parallel-modules/. Relay and
+lifecycle layout still need review under the active whole-workspace objective.

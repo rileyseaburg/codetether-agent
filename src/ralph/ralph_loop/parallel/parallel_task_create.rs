@@ -2,7 +2,7 @@
 use super::parallel_task::ParallelTask;
 use super::*;
 impl RalphLoop {
-    pub(super) fn prepare_parallel_task(
+    pub(in crate::ralph::ralph_loop) fn prepare_parallel_task(
         &self,
         semaphore: &Arc<tokio::sync::Semaphore>,
         provider: &Arc<dyn Provider>,

@@ -2,7 +2,7 @@
 use super::parallel_stage_state::ParallelStage;
 use super::*;
 impl RalphLoop {
-    pub(super) fn spawn_parallel_stage(
+    pub(in crate::ralph::ralph_loop) fn spawn_parallel_stage(
         &self,
         stories: Vec<UserStory>,
         worktree_mgr: &Option<Arc<WorktreeManager>>,

@@ -1,7 +1,7 @@
 //! Report a failed parallel task and retain its worktree for debugging.
 use super::*;
 impl RalphLoop {
-    pub(super) fn report_failed_parallel_story(
+    pub(in crate::ralph::ralph_loop) fn report_failed_parallel_story(
         &self,
         story: &UserStory,
         success: bool,
@@ -22,7 +22,7 @@ impl RalphLoop {
         });
         self.record_story_result(story, false, Some(error));
         if let Some(wt) = worktree_info {
-            info!(
+            info!(target: "codetether_agent::ralph::ralph_loop::parallel_failure",
                 story_id = %story.id,
                 worktree_path = %wt.path.display(),
                 "Keeping worktree for debugging (story failed)"

@@ -3,7 +3,7 @@ use super::parallel_execution_context::ParallelExecutionContext;
 use super::parallel_task::ParallelTask;
 use super::*;
 impl ParallelTask {
-    pub(super) fn execution_context<'a>(
+    pub(in crate::ralph::ralph_loop) fn execution_context<'a>(
         &'a self,
         story_working_dir: &'a PathBuf,
         bridge_tx: &'a Option<mpsc::Sender<SwarmEvent>>,

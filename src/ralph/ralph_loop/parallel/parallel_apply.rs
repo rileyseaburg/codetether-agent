@@ -2,7 +2,7 @@
 use super::parallel_result_types::ParallelStoryResult;
 use super::*;
 impl RalphLoop {
-    pub(super) async fn apply_parallel_result(
+    pub(in crate::ralph::ralph_loop) async fn apply_parallel_result(
         &mut self,
         result: ParallelStoryResult,
         provider: &Arc<dyn Provider>,

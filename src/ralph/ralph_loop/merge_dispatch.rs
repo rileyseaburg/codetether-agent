@@ -1,5 +1,5 @@
 //! Route a worktree merge result to success, conflict or failure handlers.
-use super::parallel_result_types::MergeContext;
+use super::parallel::parallel_result_types::MergeContext;
 use super::*;
 impl RalphLoop {
     pub(super) async fn apply_worktree_merge(

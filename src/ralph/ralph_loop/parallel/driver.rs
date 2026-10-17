@@ -2,7 +2,7 @@
 use super::*;
 impl RalphLoop {
     /// Run stories in parallel by stage with worktree isolation
-    pub(super) async fn run_parallel(&mut self) -> anyhow::Result<()> {
+    pub(in crate::ralph::ralph_loop) async fn run_parallel(&mut self) -> anyhow::Result<()> {
         codetether_ralph_core::scheduling::run_parallel(self).await
     }
 }

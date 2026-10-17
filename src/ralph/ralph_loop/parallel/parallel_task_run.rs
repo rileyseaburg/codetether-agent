@@ -3,7 +3,7 @@ use super::parallel_result_types::ParallelStoryResult;
 use super::parallel_task::ParallelTask;
 use super::*;
 impl ParallelTask {
-    pub(super) async fn run(mut self) -> ParallelStoryResult {
+    pub(in crate::ralph::ralph_loop) async fn run(mut self) -> ParallelStoryResult {
         let _permit = self.sem.acquire().await.expect("semaphore closed");
         let (story_working_dir, worktree_info) = if let Some(wt) = self.prebuilt_worktree.take() {
             (wt.path.clone(), Some(wt))

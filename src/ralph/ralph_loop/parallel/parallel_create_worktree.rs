@@ -1,7 +1,7 @@
 //! Create and isolate one story worktree, retaining fallback errors.
 use super::*;
 impl RalphLoop {
-    pub(super) async fn create_story_worktree(
+    pub(in crate::ralph::ralph_loop) async fn create_story_worktree(
         mgr: Arc<WorktreeManager>,
         story_id: String,
     ) -> (String, Option<crate::worktree::WorktreeInfo>) {
@@ -9,13 +9,13 @@ impl RalphLoop {
         match mgr.create(&slug).await {
             Ok(wt) => {
                 if let Err(e) = mgr.inject_workspace_stub(&wt.path) {
-                    warn!(
+                    warn!(target: "codetether_agent::ralph::ralph_loop::parallel_create_worktree",
                         story_id = %story_id,
                         error = %e,
                         "Failed to inject workspace stub"
                     );
                 }
-                info!(
+                info!(target: "codetether_agent::ralph::ralph_loop::parallel_create_worktree",
                     story_id = %story_id,
                     worktree_path = %wt.path.display(),
                     "Pre-created worktree for story"
@@ -23,7 +23,7 @@ impl RalphLoop {
                 (story_id, Some(wt))
             }
             Err(e) => {
-                warn!(
+                warn!(target: "codetether_agent::ralph::ralph_loop::parallel_create_worktree",
                     story_id = %story_id,
                     error = %e,
                     "Failed to pre-create worktree, will use main directory"

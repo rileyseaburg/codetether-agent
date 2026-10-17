@@ -2,7 +2,10 @@
 use super::parallel_execution_context::ParallelExecutionContext;
 use super::*;
 impl ParallelExecutionContext<'_> {
-    pub(super) async fn call_direct(&self, prompt: &str) -> anyhow::Result<String> {
+    pub(in crate::ralph::ralph_loop) async fn call_direct(
+        &self,
+        prompt: &str,
+    ) -> anyhow::Result<String> {
         RalphLoop::call_llm_static(
             self.provider,
             self.model,

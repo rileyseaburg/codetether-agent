@@ -2,7 +2,7 @@
 use super::parallel_task::ParallelTask;
 use super::*;
 impl ParallelTask {
-    pub(super) fn event_bridge(
+    pub(in crate::ralph::ralph_loop) fn event_bridge(
         &self,
     ) -> (
         Option<mpsc::Sender<SwarmEvent>>,

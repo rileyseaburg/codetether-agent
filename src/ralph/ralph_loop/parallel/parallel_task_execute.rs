@@ -3,7 +3,7 @@ use super::parallel_execution_context::ParallelExecutionContext;
 use super::parallel_task::ParallelTask;
 use super::*;
 impl ParallelTask {
-    pub(super) async fn execute(
+    pub(in crate::ralph::ralph_loop) async fn execute(
         &self,
         execution: &ParallelExecutionContext<'_>,
         prompt: &str,

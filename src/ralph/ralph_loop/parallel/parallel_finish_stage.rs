@@ -1,7 +1,9 @@
 //! Increment once, publish stage learnings, and persist the updated PRD.
 use super::*;
 impl RalphLoop {
-    pub(super) async fn finish_parallel_stage(&mut self) -> anyhow::Result<()> {
+    pub(in crate::ralph::ralph_loop) async fn finish_parallel_stage(
+        &mut self,
+    ) -> anyhow::Result<()> {
         // Increment iteration once per stage, not per story
         self.state.current_iteration += 1;
 

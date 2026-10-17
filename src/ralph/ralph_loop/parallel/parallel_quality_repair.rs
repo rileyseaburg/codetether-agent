@@ -3,7 +3,7 @@ use super::parallel_execution_context::ParallelExecutionContext;
 use super::parallel_quality_state::QualityProgress;
 use super::*;
 impl ParallelExecutionContext<'_> {
-    pub(super) async fn run_quality_repair(
+    pub(in crate::ralph::ralph_loop) async fn run_quality_repair(
         &self,
         state: &mut QualityProgress,
         error_output: &str,
@@ -28,7 +28,7 @@ impl ParallelExecutionContext<'_> {
                 state.append_repair(repair_output, qg_attempt);
             }
             Err(e) => {
-                warn!(
+                warn!(target: "codetether_agent::ralph::ralph_loop::parallel_quality_repair",
                     story_id = %self.story.id,
                     error = %e,
                     "Repair agent failed"

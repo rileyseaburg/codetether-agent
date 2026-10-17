@@ -1,7 +1,7 @@
 //! Pre-create stage worktrees with the original bounded concurrency.
 use super::*;
 impl RalphLoop {
-    pub(super) async fn precreate_stage_worktrees(
+    pub(in crate::ralph::ralph_loop) async fn precreate_stage_worktrees(
         worktree_mgr: Option<&Arc<WorktreeManager>>,
         stories: &[UserStory],
     ) -> HashMap<String, crate::worktree::WorktreeInfo> {
