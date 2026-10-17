@@ -1,3 +1,13 @@
+//! Application execution and event adapters for forage work selection.
+
+use codetether_forage_core::{
+    ForageOpportunity, MoonshotRubric, normalize_prompt_field, truncate_chars_with_suffix,
+    truncate_goal,
+};
+pub use codetether_forage_core::{ForageRunSummary, ForageSelectionSummary};
+#[cfg(test)]
+use codetether_forage_core::{status_weight, urgency_bonus};
+
 use crate::a2a::types::{Part, TaskState};
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
 use crate::bus::{AgentBus, BusHandle, BusMessage};
@@ -17,121 +27,19 @@ mod s3_optional;
 mod tetherscript_score;
 use crate::forage_println;
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::Serialize;
 use serde_json::json;
-use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashSet};
 use std::process::Command;
 use std::time::Duration;
 use uuid::Uuid;
-
-#[derive(Debug, Clone, Serialize)]
-struct ForageOpportunity {
-    score: f64,
-    okr_id: Uuid,
-    okr_title: String,
-    okr_status: OkrStatus,
-    key_result_id: Uuid,
-    key_result_title: String,
-    progress: f64,
-    remaining: f64,
-    target_date: Option<DateTime<Utc>>,
-    moonshot_alignment: f64,
-    moonshot_hits: Vec<String>,
-    prompt: String,
-}
-
-#[derive(Debug, Clone, Default)]
-struct MoonshotRubric {
-    goals: Vec<String>,
-    required: bool,
-    min_alignment: f64,
-}
 
 #[derive(Debug, Clone)]
 struct ExecutionOutcome {
     detail: String,
     changed_files: Vec<String>,
     quality_gates_passed: bool,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct ForageSelectionSummary {
-    pub okr_title: String,
-    pub key_result_title: String,
-    pub score: f64,
-    pub progress: f64,
-    pub remaining: f64,
-    pub moonshot_alignment: f64,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct ForageRunSummary {
-    pub cycles_completed: usize,
-    pub execute_requested: bool,
-    pub execution_engine: String,
-    pub total_selected: usize,
-    pub total_executed: usize,
-    pub total_execution_failures: usize,
-    pub last_cycle_selected: Vec<ForageSelectionSummary>,
-}
-
-impl ForageRunSummary {
-    fn summarize_selection(selected: &[ForageOpportunity]) -> Vec<ForageSelectionSummary> {
-        selected
-            .iter()
-            .map(|item| ForageSelectionSummary {
-                okr_title: item.okr_title.clone(),
-                key_result_title: item.key_result_title.clone(),
-                score: item.score,
-                progress: item.progress,
-                remaining: item.remaining,
-                moonshot_alignment: item.moonshot_alignment,
-            })
-            .collect()
-    }
-
-    pub fn render_text(&self) -> String {
-        let mut lines = vec![format!(
-            "Forage completed {} cycle(s); selected {} opportunity(s) total.",
-            self.cycles_completed, self.total_selected
-        )];
-
-        if self.last_cycle_selected.is_empty() {
-            lines.push("No forage opportunities were selected in the final cycle.".to_string());
-        } else {
-            lines.push(format!(
-                "Final cycle selected {} opportunity(s):",
-                self.last_cycle_selected.len()
-            ));
-            for (idx, item) in self.last_cycle_selected.iter().take(5).enumerate() {
-                lines.push(format!(
-                    "{}. {} -> {} (score {:.3}, remaining {:.1}%)",
-                    idx + 1,
-                    item.okr_title,
-                    item.key_result_title,
-                    item.score,
-                    item.remaining * 100.0
-                ));
-            }
-            if self.last_cycle_selected.len() > 5 {
-                lines.push(format!(
-                    "... and {} more final-cycle opportunities",
-                    self.last_cycle_selected.len() - 5
-                ));
-            }
-        }
-
-        if self.execute_requested {
-            lines.push(format!(
-                "Execution engine: {}. Attempted {} execution(s) with {} failure(s).",
-                self.execution_engine, self.total_executed, self.total_execution_failures
-            ));
-        }
-
-        lines.join("\n")
-    }
 }
 
 pub async fn execute(args: ForageArgs) -> Result<()> {
@@ -544,24 +452,6 @@ async fn seed_moonshot_okr(repo: &OkrRepository, moonshots: &MoonshotRubric) -> 
         "Seeded moonshot-derived OKR for forage execution"
     );
     Ok(okr_id)
-}
-
-fn truncate_goal(goal: &str, max_chars: usize) -> String {
-    let trimmed = goal.trim();
-    if trimmed.chars().count() <= max_chars {
-        return trimmed.to_string();
-    }
-    truncate_chars_with_suffix(trimmed, max_chars, "...")
-}
-
-fn truncate_chars_with_suffix(value: &str, max_chars: usize, suffix: &str) -> String {
-    if value.chars().count() <= max_chars {
-        return value.to_string();
-    }
-
-    let mut out = value.chars().take(max_chars).collect::<String>();
-    out.push_str(suffix);
-    out
 }
 
 async fn ensure_s3_sync_alive(
@@ -1118,235 +1008,6 @@ fn collect_opportunities(okrs: &[Okr]) -> Vec<ForageOpportunity> {
     collect_opportunities_with_rubric(okrs, &MoonshotRubric::default())
 }
 
-fn collect_opportunities_with_rubric(
-    okrs: &[Okr],
-    moonshots: &MoonshotRubric,
-) -> Vec<ForageOpportunity> {
-    let now = Utc::now();
-    let mut items = Vec::new();
-
-    for okr in okrs {
-        let status_weight = status_weight(okr.status);
-        if status_weight <= 0.0 {
-            continue;
-        }
-
-        for kr in &okr.key_results {
-            let progress = kr.progress().clamp(0.0, 1.0);
-            if progress >= 1.0 {
-                continue;
-            }
-            let remaining = (1.0 - progress).clamp(0.0, 1.0);
-            let urgency_bonus = urgency_bonus(okr.target_date, now);
-            let alignment_context = format!(
-                "{} {} {} {}",
-                okr.title, okr.description, kr.title, kr.description
-            );
-            let moonshot_alignment = moonshot_alignment_score(&alignment_context, &moonshots.goals);
-            if moonshots.required && moonshot_alignment < moonshots.min_alignment {
-                continue;
-            }
-            let moonshot_hits = matching_moonshots(&alignment_context, &moonshots.goals);
-            let moonshot_bonus = if moonshots.goals.is_empty() {
-                0.0
-            } else {
-                (moonshot_alignment * 0.5).min(0.5)
-            };
-            let score = tetherscript_score::apply(
-                okr,
-                kr,
-                (remaining * status_weight) + urgency_bonus + moonshot_bonus,
-                remaining,
-                moonshot_alignment,
-            );
-            let prompt = build_execution_prompt(okr, kr, moonshots, moonshot_alignment);
-
-            items.push(ForageOpportunity {
-                score,
-                okr_id: okr.id,
-                okr_title: okr.title.clone(),
-                okr_status: okr.status,
-                key_result_id: kr.id,
-                key_result_title: kr.title.clone(),
-                progress,
-                remaining,
-                target_date: okr.target_date,
-                moonshot_alignment,
-                moonshot_hits,
-                prompt,
-            });
-        }
-    }
-
-    items.sort_by(
-        |a, b| match b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal) {
-            Ordering::Equal => b
-                .remaining
-                .partial_cmp(&a.remaining)
-                .unwrap_or(Ordering::Equal),
-            other => other,
-        },
-    );
-    items
-}
-
-fn tokenize_for_alignment(value: &str) -> HashSet<String> {
-    value
-        .split(|c: char| !c.is_ascii_alphanumeric())
-        .map(|s| s.trim().to_ascii_lowercase())
-        .filter(|s| s.len() >= 4)
-        .collect()
-}
-
-fn moonshot_alignment_score(context: &str, goals: &[String]) -> f64 {
-    if goals.is_empty() {
-        return 0.0;
-    }
-
-    let context_tokens = tokenize_for_alignment(context);
-    if context_tokens.is_empty() {
-        return 0.0;
-    }
-
-    goals
-        .iter()
-        .map(|goal| {
-            let goal_tokens = tokenize_for_alignment(goal);
-            if goal_tokens.is_empty() {
-                return 0.0;
-            }
-            let overlap = goal_tokens.intersection(&context_tokens).count() as f64;
-            overlap / goal_tokens.len() as f64
-        })
-        .fold(0.0, f64::max)
-}
-
-fn matching_moonshots(context: &str, goals: &[String]) -> Vec<String> {
-    if goals.is_empty() {
-        return Vec::new();
-    }
-    let context_tokens = tokenize_for_alignment(context);
-    let mut hits = goals
-        .iter()
-        .filter_map(|goal| {
-            let goal_tokens = tokenize_for_alignment(goal);
-            if goal_tokens.is_empty() {
-                return None;
-            }
-            let overlap = goal_tokens.intersection(&context_tokens).count();
-            if overlap == 0 {
-                None
-            } else {
-                Some((overlap, goal.clone()))
-            }
-        })
-        .collect::<Vec<_>>();
-    hits.sort_by(|a, b| b.0.cmp(&a.0));
-    hits.into_iter().take(3).map(|(_, goal)| goal).collect()
-}
-
-fn status_weight(status: OkrStatus) -> f64 {
-    match status {
-        OkrStatus::Active => 1.0,
-        OkrStatus::Draft => 0.65,
-        OkrStatus::OnHold => 0.35,
-        OkrStatus::Completed | OkrStatus::Cancelled => 0.0,
-    }
-}
-
-fn urgency_bonus(target_date: Option<DateTime<Utc>>, now: DateTime<Utc>) -> f64 {
-    let Some(target_date) = target_date else {
-        return 0.0;
-    };
-
-    if target_date <= now {
-        return 0.35;
-    }
-
-    let days = (target_date - now).num_days();
-    if days <= 7 {
-        0.25
-    } else if days <= 30 {
-        0.1
-    } else {
-        0.0
-    }
-}
-
-const MAX_PROMPT_FIELD_CHARS: usize = 1_200;
-
-fn normalize_prompt_field(value: &str, max_chars: usize) -> String {
-    let compact = value.split_whitespace().collect::<Vec<_>>().join(" ");
-    let normalized_max = max_chars.max(32);
-    if compact.chars().count() <= normalized_max {
-        return compact;
-    }
-
-    let mut truncated = compact.chars().take(normalized_max).collect::<String>();
-    truncated.push_str(" ...(truncated)");
-    truncated
-}
-
-fn build_execution_prompt(
-    okr: &Okr,
-    kr: &KeyResult,
-    moonshots: &MoonshotRubric,
-    moonshot_alignment: f64,
-) -> String {
-    let objective = normalize_prompt_field(&okr.title, MAX_PROMPT_FIELD_CHARS);
-    let objective_description = normalize_prompt_field(&okr.description, MAX_PROMPT_FIELD_CHARS);
-    let key_result = normalize_prompt_field(&kr.title, MAX_PROMPT_FIELD_CHARS);
-    let key_result_description = normalize_prompt_field(&kr.description, MAX_PROMPT_FIELD_CHARS);
-    let moonshot_section = if moonshots.goals.is_empty() {
-        String::new()
-    } else {
-        format!(
-            "\nMoonshot Rubric (strategy filter):\n- {}\nCurrent alignment score: {:.1}%\nDecision rule: prioritize changes that clearly advance one or more moonshots and explain which mission the change moves.",
-            moonshots
-                .goals
-                .iter()
-                .map(|g| normalize_prompt_field(g, 160))
-                .collect::<Vec<_>>()
-                .join("\n- "),
-            moonshot_alignment * 100.0
-        )
-    };
-
-    format!(
-        "Business-goal execution task.\n\
-Objective: {}\n\
-Objective Description: {}\n\
-Key Result: {}\n\
-KR Description: {}\n\
-Current: {:.3} {} | Target: {:.3} {}\n\n\
-Execute one concrete, behavior-preserving code change that measurably advances this key result. \
-Use tools, validate the change, and report exact evidence tied to the KR.\n\
-Focus on local repository changes first; do not do broad web research unless required by the KR.\n\
-Return exact changed file paths and at least one verification command result.{}",
-        objective,
-        objective_description,
-        key_result,
-        key_result_description,
-        kr.current_value,
-        kr.unit,
-        kr.target_value,
-        kr.unit,
-        moonshot_section
-    )
-}
-
-impl ForageOpportunity {
-    fn okr_status_label(&self) -> &'static str {
-        match self.okr_status {
-            OkrStatus::Draft => "draft",
-            OkrStatus::Active => "active",
-            OkrStatus::Completed => "completed",
-            OkrStatus::Cancelled => "cancelled",
-            OkrStatus::OnHold => "on_hold",
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
@@ -1778,4 +1439,15 @@ mod tests {
             "should not duplicate active moonshot seed"
         );
     }
+}
+
+fn collect_opportunities_with_rubric(
+    okrs: &[Okr],
+    moonshots: &MoonshotRubric,
+) -> Vec<ForageOpportunity> {
+    codetether_forage_core::collect_opportunities_with_rubric(
+        okrs,
+        moonshots,
+        &mut tetherscript_score::apply,
+    )
 }

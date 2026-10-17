@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 13 | 1918 | Pending cohesion and dependency audit |
+| forage | 13 | 1616 | Opportunity contracts, scoring, prompts and summaries extracted; execution, seeding, persistence, CLI and event adapters remain |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -121,6 +121,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-lsp-core | 95 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
+| codetether-forage-core | 15 | yes | none |
 | codetether-okr | 72 | yes | none |
 | codetether-paths | 5 | yes | none |
 | codetether-platform | 56 | yes | none |
@@ -3692,3 +3693,26 @@ modules have at most 45 code lines. Standalone formatting, file-limit and
 whitespace checks are recorded in artifacts/consolidation-lsp-manager/. No
 dependencies changed. No Cargo, rustc or Python ran. Compilation and tests
 remain unverified. The entire workspace goal remains active.
+
+## Forage selection and presentation ownership
+
+The new forage-core crate owns opportunity/rubric/summary records, status and
+deadline weighting, alignment tokenization and matching, prompt construction,
+text normalization and summary rendering. Selection uses one timestamp per
+collection, the original score and remaining-work sort order, and a supplied
+scoring callback. The application supplies its existing optional TetherScript
+scorer at the same point in each candidate's evaluation.
+
+Shared types retain their inherent methods. The console entry printer becomes
+a free application function to keep console effects out of the shared crate.
+Root forage tests remain unchanged; execution, audit, persistence, CLI arguments
+and bus integration remain in the application for further consolidation.
+
+Twenty-four static comparisons cover original fields, algorithms, prompts,
+summary methods, per-candidate ordering, sorting, console output and manifest
+changes. Lexical graphs cover 15 shared and 13 application files with
+no missing/unreferenced modules. New Rust files have at most 50 code lines.
+Formatting, source limits and staged whitespace checks are the permitted
+validation. No Cargo, rustc, Python, scoring hook or forage execution ran.
+Compilation and tests remain unverified. Evidence: artifacts/consolidation-forage-core/.
+The full workspace consolidation goal remains active.

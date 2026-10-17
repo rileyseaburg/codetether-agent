@@ -44,6 +44,7 @@ members = [
     "crates/codetether-model-catalog",
     "crates/codetether-moltbook",
     "crates/codetether-okr",
+    "crates/codetether-forage-core",
     "crates/codetether-paths",
     "crates/codetether-platform",
     "crates/codetether-plugin-marketplace",
@@ -230,6 +231,7 @@ codetether-lsp-core = { path = "crates/codetether-lsp-core", version = "0.1.0" }
 codetether-marketplace = { path = "crates/codetether-marketplace", version = "0.1.0" }
 codetether-mesh = { path = "crates/codetether-mesh", version = "0.1.0" }
 codetether-model-catalog = { path = "crates/codetether-model-catalog", version = "0.1.0" }
+codetether-forage-core = { path = "crates/codetether-forage-core", version = "0.1.0" }
 codetether-okr = { path = "crates/codetether-okr", version = "0.1.0" }
 codetether-paths = { path = "crates/codetether-paths", version = "0.1.0" }
 codetether-platform = { path = "crates/codetether-platform", version = "0.1.0" }

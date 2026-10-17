@@ -1143,6 +1143,7 @@ dependencies = [
  "codetether-crash",
  "codetether-distill",
  "codetether-event-stream",
+ "codetether-forage-core",
  "codetether-github-pr",
  "codetether-goal-core",
  "codetether-google-auth",
@@ -1688,6 +1689,16 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-forage-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-okr",
+ "serde",
+ "uuid",
 ]
 
 [[package]]

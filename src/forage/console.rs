@@ -44,6 +44,6 @@ pub(super) fn print_cycle(cycle: usize, selected: &[ForageOpportunity], show_moo
         return;
     }
     for (idx, item) in selected.iter().enumerate() {
-        item.print_cycle_entry(idx + 1, show_moonshot);
+        super::console_entry::print_cycle_entry(item, idx + 1, show_moonshot);
     }
 }
