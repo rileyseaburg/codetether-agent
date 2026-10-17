@@ -14,8 +14,8 @@ macro_rules! bus_variants_5 {
                 success: bool,
                 step: usize,
             },
-            
-            
+
+
             /// Internal reasoning / chain-of-thought from an agent step.
             /// Published so the training pipeline captures the model's
             /// thinking process alongside its actions.
@@ -24,8 +24,8 @@ macro_rules! bus_variants_5 {
                 thinking: String,
                 step: usize,
             },
-            
-            
+
+
             /// User prompt that initiated an agent turn (SFT training trace).
             UserPrompt {
                 agent_id: String,

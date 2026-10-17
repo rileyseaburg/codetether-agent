@@ -14,8 +14,8 @@ macro_rules! bus_variants_4 {
                 learnings: Vec<String>,
                 context: serde_json::Value,
             },
-            
-            
+
+
             /// Context handoff between sequential Ralph stories.  The finishing
             /// story publishes what the *next* story should know.
             RalphHandoff {
@@ -25,8 +25,8 @@ macro_rules! bus_variants_4 {
                 context: serde_json::Value,
                 progress_summary: String,
             },
-            
-            
+
+
             /// PRD-level progress update (aggregated across all stories).
             RalphProgress {
                 prd_id: String,

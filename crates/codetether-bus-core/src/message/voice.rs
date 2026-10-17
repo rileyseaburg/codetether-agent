@@ -10,8 +10,8 @@ macro_rules! bus_variants_6 {
                 agent_id: String,
                 voice_id: String,
             },
-            
-            
+
+
             /// A transcript fragment from a voice session.
             VoiceTranscript {
                 room_name: String,
@@ -20,12 +20,12 @@ macro_rules! bus_variants_6 {
                 role: String,
                 is_final: bool,
             },
-            
-            
+
+
             /// The voice agent's state changed (e.g. listening, thinking, speaking).
             VoiceAgentStateChanged { room_name: String, state: String },
-            
-            
+
+
             /// A voice session has ended.
             VoiceSessionEnded { room_name: String, reason: String },
 

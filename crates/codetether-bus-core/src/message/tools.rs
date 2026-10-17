@@ -11,7 +11,7 @@ macro_rules! bus_variants_2 {
                 arguments: serde_json::Value,
                 step: usize,
             },
-            
+
             /// Tool execution response
             ToolResponse {
                 request_id: String,

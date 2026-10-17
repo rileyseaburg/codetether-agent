@@ -5,8 +5,8 @@ macro_rules! bus_variants_3 {
             $($prefix)*
             /// Heartbeat (keep-alive / health signal)
             Heartbeat { agent_id: String, status: String },
-            
-            
+
+
             /// A directed speech act between agents — the unit of the agent
             /// communication language (see [`speech`](crate::speech)).
             ///

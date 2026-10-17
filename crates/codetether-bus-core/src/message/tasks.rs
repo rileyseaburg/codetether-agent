@@ -9,17 +9,17 @@ macro_rules! bus_variants_1 {
                 to: String,
                 parts: Vec<Part>,
             },
-            
+
             /// Task status changed
             TaskUpdate {
                 task_id: String,
                 state: TaskState,
                 message: Option<String>,
             },
-            
+
             /// A new artifact was produced for a task
             ArtifactUpdate { task_id: String, artifact: Artifact },
-            
+
             /// A sub-agent published a shared result (replaces raw `ResultStore` publish)
             SharedResult {
                 key: String,
