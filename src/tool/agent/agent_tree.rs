@@ -1,19 +1,18 @@
-//! Canonical live-agent tree queries for MultiAgentV2 tools.
-
-#[path = "agent_tree/path.rs"]
-mod path;
-#[path = "agent_tree/prefix.rs"]
-mod prefix;
+//! Application snapshots for shared root-scoped agent-tree queries.
+#[path = "agent_tree/host.rs"]
+mod host;
 #[path = "agent_tree/query.rs"]
 mod query;
-#[path = "agent_tree/status.rs"]
-mod status;
-#[path = "agent_tree/target.rs"]
-mod target;
-
-pub(crate) use query::list;
-pub(crate) use target::{canonical, resolve};
-
+pub(crate) use query::ListedAgent;
+pub(crate) fn list(current: &str, path_prefix: Option<&str>) -> anyhow::Result<Vec<ListedAgent>> {
+    codetether_agent_tree::list::<host::ApplicationHost>(current, path_prefix)
+}
+pub(crate) fn resolve(current: &str, target: &str) -> anyhow::Result<Option<String>> {
+    codetether_agent_tree::resolve::<host::ApplicationHost>(current, target)
+}
+pub(crate) fn canonical(current: &str, target: &str) -> anyhow::Result<Option<String>> {
+    codetether_agent_tree::canonical::<host::ApplicationHost>(current, target)
+}
 #[cfg(test)]
 #[path = "agent_tree/test_support.rs"]
 mod test_support;

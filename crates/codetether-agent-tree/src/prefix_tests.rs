@@ -1,3 +1,4 @@
+//! Existing relative-prefix and malformed-path regression tests.
 use super::{matches, resolve};
 
 #[test]

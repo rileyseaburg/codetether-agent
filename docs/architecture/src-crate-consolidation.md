@@ -7972,3 +7972,20 @@ budgets and whitespace checks passed; added Rust modules contain at most 38 code
 lines. Evidence is in `artifacts/consolidation-residency-state/`. No residency
 operations or runtime tests were performed. No Cargo, rustc or Python commands
 ran. Compilation remains unverified; the full consolidation goal remains active.
+
+### Dedicated live-agent tree queries
+
+Moved root discovery, canonical path construction, relative-prefix handling,
+scoped target resolution, status fallback and sorted live-agent listing into
+`crates/codetether-agent-tree`. Nine Rust modules include two existing prefix
+regression tests. The application supplies owned wrappers over its existing
+registry snapshots, preserving the two snapshots used during canonical lookup.
+Its live-store integration test remains unchanged.
+
+Twenty-two static preservation checks cover field access, snapshot timing,
+root/path rules, prefix boundaries, status fallback, sorting, serde output and
+application adapters/callers. Module/dependency checks, file budgets and
+whitespace checks passed; new Rust modules contain at most 40 code lines.
+Evidence is in `artifacts/consolidation-agent-tree/`. No live-tree queries or
+runtime tests were executed. No Cargo, rustc or Python commands ran. Compilation
+remains unverified; the full consolidation goal remains active.

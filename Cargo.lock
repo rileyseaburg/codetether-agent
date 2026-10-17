@@ -1325,6 +1325,7 @@ dependencies = [
  "codetether-session-task",
  "codetether-collaboration-input",
  "codetether-agent-storage",
+ "codetether-agent-tree",
  "codetether-child-mailbox",
  "codetether-collaboration-history",
  "codetether-collaboration-state",
@@ -2429,6 +2430,15 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-agent-tree"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-collaboration-state",
+ "serde",
 ]
 
 [[package]]

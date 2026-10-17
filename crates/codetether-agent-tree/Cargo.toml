@@ -1,0 +1,12 @@
+[package]
+name = "codetether-agent-tree"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Root-scoped live-agent path lookup and status projection"
+
+[dependencies]
+anyhow = "1"
+codetether-collaboration-state = { path = "../codetether-collaboration-state", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
