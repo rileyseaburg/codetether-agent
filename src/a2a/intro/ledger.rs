@@ -1,6 +1,7 @@
 //! Application path adapter for the shared introduction ledger.
 #[path = "ledger_path.rs"]
 mod ledger_path;
+pub(super) use ledger_path::ledger_path;
 /// Load introduction identities from the configured data directory.
 ///
 /// # Errors
@@ -14,7 +15,5 @@ pub fn record(identity: &str) {
 }
 /// Whether `identity` was already introduced (normalized, no trailing `/`).
 pub fn contains(identity: &str) -> bool {
-    load()
-        .unwrap_or_default()
-        .contains(identity.trim_end_matches('/'))
+    codetether_a2a_http::intro::ledger::contains(identity, ledger_path())
 }

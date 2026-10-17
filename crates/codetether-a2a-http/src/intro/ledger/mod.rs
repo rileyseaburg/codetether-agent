@@ -7,3 +7,6 @@ mod load;
 mod record;
 pub use load::load;
 pub use record::record;
+
+mod contains;
+pub use contains::contains;

@@ -7,7 +7,7 @@ pub(super) fn key(endpoint: &str, peer_token: Option<&str>) -> String {
     match peer_token {
         Some(token) => format!(
             "{endpoint}#{}:{}",
-            digest(crate::a2a::collaboration_token::local()),
+            digest(codetether_a2a_discovery::collaboration_token::local()),
             digest(token)
         ),
         None => endpoint.to_string(),

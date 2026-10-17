@@ -5142,3 +5142,25 @@ contain at most 28 code lines, and file-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-peer-auth/`. Compilation, tests, doctests,
 and runtime requests remain unrun. No Cargo, rustc, or Python commands were
 executed. The wider migration goal remains active.
+
+### Shared introduction orchestration
+
+The HTTP introduction module now owns capability-qualified identity keys,
+ledger membership checks, authentication selection, delivery, and post-send
+recording. Its send API accepts a ledger-path resolver so application data
+configuration stays outside the crate. The application's four-argument
+send API forwards to it, and its ledger wrappers remain compatible. Removed
+the private application identity module and two unused protocol forwarding
+files. The HTTP crate directly declares the already-locked SHA-256 and hex
+packages used by the moved identity implementation.
+
+Static source comparison verifies four moved function bodies, including
+ledger lookup timing, token fallback order, payload construction, and record
+only after successful delivery. Five existing identity/ledger test bodies
+are preserved; none were executed. The module graph has 298 reachable A2A
+application files, 66 HTTP crate files, and 38 discovery files, with no missing
+or orphaned modules and no dependency cycle. New files have at most 25 code
+lines. File-budget and whitespace checks passed. Evidence is retained in
+`artifacts/consolidation-intro-orchestration/`. Compilation, tests, doctests,
+and live delivery remain unrun; no Cargo, rustc, or Python commands ran.
+Moving all remaining application implementation into crates is still pending.

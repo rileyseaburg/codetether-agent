@@ -1,8 +1,5 @@
-//! Outbound mesh introduction: one-shot, tagged, ledger-deduplicated.
-
+//! Application configuration adapter for shared introduction delivery.
 use anyhow::Result;
-
-use super::ledger;
 
 /// Send a non-blocking intro `message/send` to `endpoint`, unless the
 /// persistent ledger says we already introduced ourselves there.
@@ -47,18 +44,12 @@ pub async fn send_intro(
     self_url: &str,
     peer_token: Option<&str>,
 ) -> Result<()> {
-    let identity = super::identity::key(endpoint, peer_token);
-    if ledger::contains(&identity) {
-        tracing::debug!(peer = %endpoint, "Skipping intro: already in ledger");
-        return Ok(());
-    }
-
-    let token = peer_token
-        .map(ToString::to_string)
-        .or_else(|| std::env::var("CODETETHER_AUTH_TOKEN").ok());
-    let payload = super::payload::build(agent_name, self_url);
-    super::deliver::send(endpoint, token.as_deref(), payload).await?;
-    ledger::record(&identity);
-    tracing::info!(peer = %endpoint, "Auto-intro message sent");
-    Ok(())
+    codetether_a2a_http::intro::send::send_intro(
+        endpoint,
+        agent_name,
+        self_url,
+        peer_token,
+        super::ledger::ledger_path,
+    )
+    .await
 }
