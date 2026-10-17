@@ -1,21 +1,24 @@
+//! Capability field access and script value construction.
+use crate::Host;
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use tetherscript::{capability::Authority, value::Value};
 
 use super::computer::ComputerAuthority;
 
-pub fn clone_with(origins: Vec<String>, scopes: Vec<String>) -> Rc<dyn Authority> {
+pub fn clone_with<H: Host>(origins: Vec<String>, scopes: Vec<String>) -> Rc<dyn Authority> {
     Rc::new(ComputerAuthority {
+        host: std::marker::PhantomData::<H>,
         origins,
         scopes: scopes.into_iter().collect(),
     })
 }
 
-pub fn origins(auth: &ComputerAuthority) -> &[String] {
+pub fn origins<H: Host>(auth: &ComputerAuthority<H>) -> &[String] {
     &auth.origins
 }
 
-pub fn scopes(auth: &ComputerAuthority) -> &HashSet<String> {
+pub fn scopes<H: Host>(auth: &ComputerAuthority<H>) -> &HashSet<String> {
     &auth.scopes
 }
 

@@ -1,3 +1,4 @@
+//! Map script methods to computer-use action payloads.
 use tetherscript::value::Value;
 
 use super::{computer_scopes, computer_value};

@@ -1,3 +1,4 @@
+//! Supported computer actions and their required capability scopes.
 /// Return every scope understood by the v1 computer capability.
 pub fn all() -> Vec<String> {
     [

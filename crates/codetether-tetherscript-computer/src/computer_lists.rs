@@ -1,3 +1,4 @@
+//! Decode origin and scope lists for capability narrowing.
 use tetherscript::value::Value;
 
 /// Read a string list from computer narrowing params.

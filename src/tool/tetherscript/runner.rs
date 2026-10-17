@@ -2,14 +2,6 @@
 
 mod browser;
 mod computer;
-mod computer_invoke;
-mod computer_lists;
-mod computer_narrow;
-mod computer_origin;
-mod computer_payload;
-mod computer_policy;
-mod computer_scopes;
-mod computer_value;
 mod dispatch;
 mod finish;
 mod host;

@@ -1,9 +1,15 @@
+//! Validate requested origins against the granted authority.
+use crate::Host;
 use tetherscript::value::Value;
 
 use super::computer::ComputerAuthority;
 
 /// Ensure a computer action payload is allowed by the authority origins.
-pub fn require(auth: &ComputerAuthority, method: &str, payload: &Value) -> Result<(), String> {
+pub fn require<H: Host>(
+    auth: &ComputerAuthority<H>,
+    method: &str,
+    payload: &Value,
+) -> Result<(), String> {
     if auth.origins.is_empty() {
         return Ok(());
     }
