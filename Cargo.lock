@@ -1277,6 +1277,7 @@ dependencies = [
  "codetether-github-pr",
  "codetether-goal-core",
  "codetether-google-auth",
+ "codetether-grep-tool",
  "codetether-image",
  "codetether-indexer",
  "codetether-k8s",
@@ -1945,6 +1946,21 @@ dependencies = [
  "tokio",
  "tracing",
  "urlencoding",
+]
+
+[[package]]
+name = "codetether-grep-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "glob",
+ "ignore",
+ "regex",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

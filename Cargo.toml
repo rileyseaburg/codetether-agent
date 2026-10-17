@@ -37,6 +37,7 @@ members = [
     "crates/codetether-distill",
     "crates/codetether-event-stream",
     "crates/codetether-goal-core",
+    "crates/codetether-grep-tool",
     "crates/codetether-github-pr",
     "crates/codetether-google-auth",
     "crates/codetether-gemini-web-protocol",
@@ -294,6 +295,7 @@ codetether-file-diff = { path = "crates/codetether-file-diff", version = "0.1.0"
 codetether-file-inspect = { path = "crates/codetether-file-inspect", version = "0.1.0" }
 codetether-k8s-tool = { path = "crates/codetether-k8s-tool", version = "0.1.0" }
 codetether-ripgrep-tool = { path = "crates/codetether-ripgrep-tool", version = "0.1.0" }
+codetether-grep-tool = { path = "crates/codetether-grep-tool", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }

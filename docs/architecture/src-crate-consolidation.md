@@ -6238,3 +6238,23 @@ the dependency closure is acyclic. Moved files contain at most 44 code lines.
 Workspace/lockfile wiring, file-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-ripgrep-tool/`. No tool runtime, Cargo, rustc or Python
 was executed. The broader migration remains active.
+
+### Dedicated bounded grep tool crate
+
+Created `crates/codetether-grep-tool` and moved the grep implementation from
+`src/tool/search.rs`. Eighteen modules separate contracts, option parsing,
+traversal, per-file reads, line matching, scan state and output rendering, plus
+the existing regression tests. Application registration keeps its original
+`search::GrepTool` path through a compatibility export.
+
+Static comparison verifies the schemas, constructors, all original constants,
+environment parsing, literal/regex selection, directory filtering, deadline and
+scan-limit checks, unreadable/oversized-file handling, result matching and output
+metadata. The scan-state extraction preserves counter and stop transitions;
+read failures continue or stop in the same cases. Both existing test bodies are
+preserved apart from module indentation and remain unrun. All 18 files are
+reachable with no missing/orphaned modules; the dependency closure is acyclic.
+New files contain at most 44 code lines. Workspace/lockfile wiring, file-budget
+and whitespace checks passed. Evidence: `artifacts/consolidation-grep-tool/`.
+No tool runtime, Cargo, rustc or Python was executed. The broader migration
+remains active.
