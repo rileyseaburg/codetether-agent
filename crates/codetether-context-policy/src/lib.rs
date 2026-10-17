@@ -37,3 +37,6 @@ pub mod transcript;
 
 /// Emergency history and payload compression policy.
 pub mod compression;
+
+/// Stable observable faults from context construction and recall.
+pub mod fault;

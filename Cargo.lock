@@ -1294,6 +1294,7 @@ dependencies = [
  "codetether-config",
  "codetether-confirm-edit",
  "codetether-confirm-multiedit",
+ "codetether-context-browse",
  "codetether-context-budget",
  "codetether-context-loader",
  "codetether-context-pin",
@@ -1315,7 +1316,6 @@ dependencies = [
  "codetether-goal-core",
  "codetether-google-auth",
  "codetether-grep-tool",
- "codetether-history-files",
  "codetether-image",
  "codetether-indexer",
  "codetether-image-tool",
@@ -2057,6 +2057,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-context-browse"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-context-loader",
+ "codetether-context-policy",
+ "codetether-history-files",
+ "codetether-provider-core",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "codetether-context-budget"
 version = "0.1.0"
 dependencies = [
@@ -2100,6 +2115,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "thiserror 2.0.20",
  "tokio",
 ]
 

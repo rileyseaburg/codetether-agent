@@ -1,11 +1,12 @@
 //! Bounded history browsing: page listings or fetch one absolute sequence.
 use super::ContextBrowseAction;
-use crate::session::{Session, history_files};
-use crate::tool::ToolResult;
+use crate::BrowseSource;
 use anyhow::Result;
+use codetether_history_files as history_files;
+use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
-pub(super) async fn run(
-    session: &Session,
+pub(super) async fn run<S: BrowseSource>(
+    session: &S,
     action: ContextBrowseAction,
     args: &Value,
 ) -> Result<ToolResult> {
@@ -16,8 +17,8 @@ pub(super) async fn run(
             args["limit"].as_u64().unwrap_or(100).clamp(1, 512) as usize,
         ),
     };
-    let messages = Session::read_messages(&session.id, start, limit).await?;
-    let dir = history_files::history_dir_for_session(session)?;
+    let messages = S::read_messages(session.id(), start, limit).await?;
+    let dir = history_files::history_dir(session.id(), session.workspace())?;
     tokio::fs::create_dir_all(&dir).await?;
     let mut paths = Vec::new();
     for (index, message) in messages.iter().enumerate() {
@@ -30,9 +31,11 @@ pub(super) async fn run(
         paths.push(path);
     }
     let result = match action {
-        ContextBrowseAction::ListTurns => ToolResult::success(super::render_listing(&paths))
-            .with_metadata("next_offset", json!(start + messages.len()))
-            .with_metadata("total", json!(session.message_count())),
+        ContextBrowseAction::ListTurns => {
+            ToolResult::success(crate::listing::render_listing(&paths))
+                .with_metadata("next_offset", json!(start + messages.len()))
+                .with_metadata("total", json!(session.message_count()))
+        }
         ContextBrowseAction::ShowTurn { turn } => match messages.first() {
             Some(message) => ToolResult::success(history_files::render_turn(message))
                 .with_metadata("path", json!(paths[0].display().to_string())),
@@ -43,6 +46,6 @@ pub(super) async fn run(
         },
     };
     Ok(result
-        .with_metadata("session_id", json!(session.id))
-        .truncate_to(crate::tool::tool_output_budget()))
+        .with_metadata("session_id", json!(session.id()))
+        .truncate_to(codetether_tool_core::tool_output_budget()))
 }

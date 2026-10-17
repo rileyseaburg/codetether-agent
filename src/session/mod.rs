@@ -52,7 +52,6 @@ mod event_rlm;
 mod event_token;
 mod events;
 mod header;
-pub(crate) mod history_files;
 mod lifecycle;
 include!("storage_modules.rs");
 mod prompt_api;

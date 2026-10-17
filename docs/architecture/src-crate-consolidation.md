@@ -7563,3 +7563,22 @@ whitespace checks passed; new Rust files contain at most 36 code lines. Evidence
 lives in `artifacts/consolidation-history-files/`. No history files were read,
 written or pruned, runtime tests, Cargo, rustc or Python commands run.
 Compilation remains unverified; the full consolidation goal remains active.
+
+### Dedicated bounded context browser and shared faults
+
+Moved context browsing into `crates/codetether-context-browse` with eleven
+modules for action parsing, metadata, errors, indexed reads and turn-file
+materialization. The session adapter preserves existing IDs, workspaces,
+message counts and indexed reads. Moved the shared Fault enum, methods and four
+tests into `codetether-context-policy::fault`; session exports keep the same
+type identity across callers. Five browse tests moved into the browser crate.
+
+Removed the now-unused session history-file wrapper and application's direct
+history-files dependency after its final caller moved. Twenty-eight static
+preservation checks compare pagination, limits, metadata, rendering, fault
+codes/display/serialization, adapters and all nine moved tests. Module
+reachability, dependency cycles, file budgets and whitespace checks passed;
+new Rust files contain at most 50 code lines. Evidence lives in
+`artifacts/consolidation-context-browse/`. No history was browsed or materialized,
+runtime tests, Cargo, rustc or Python commands run. Compilation remains
+unverified; the full consolidation goal remains active.

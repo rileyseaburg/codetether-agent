@@ -1,0 +1,18 @@
+[package]
+name = "codetether-context-browse"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bounded indexed session history browsing with materialized turn files"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-context-loader = { path = "../codetether-context-loader", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-history-files = { path = "../codetether-history-files", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
+tokio = { version = "1", features = ["fs"] }
