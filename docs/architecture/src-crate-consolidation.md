@@ -7685,3 +7685,23 @@ lines. Evidence is in `artifacts/consolidation-go-prd/`. The nine moved and two
 remaining application tests were not run. No provider calls, quality commands,
 Cargo, rustc or Python commands were executed. Compilation remains unverified;
 the complete source-to-crates consolidation goal remains active.
+
+### Dedicated approved-task Ralph pipeline
+
+Moved the remaining approved-task pipeline, result contracts, audit events,
+Ralph configuration, story-to-key-result mapping and presentation from
+`src/cli/go_ralph.rs` into `crates/codetether-go-ralph`. Twenty-six Rust modules
+include the two existing regression tests and their separated fixtures. The
+application root shrinks from 516 lines to 10 and keeps four adapter modules:
+Ralph-loop execution, pipeline specialization, PRD generation specialization
+and provider lookup. Audit and Ralph/OKR data owners are used directly.
+
+Twenty-seven static preservation checks cover PRD persistence, audit metadata
+and correlations, start/terminal transitions, configuration defaults, story
+evidence, per-key-result updates, callback-facing results, presentation, runtime
+forwarding and the original test fixtures/assertions. Module reachability,
+local dependency cycles, file budgets and whitespace checks passed. New crate
+modules contain at most 50 code lines. Evidence lives in
+`artifacts/consolidation-go-ralph/`. No pipeline, runtime tests, Cargo, rustc or
+Python commands ran. Compilation remains unverified; the full source-to-crates
+consolidation goal remains active.

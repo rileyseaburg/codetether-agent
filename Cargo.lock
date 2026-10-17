@@ -1319,6 +1319,7 @@ dependencies = [
  "codetether-image",
  "codetether-go-monitor",
  "codetether-go-prd",
+ "codetether-go-ralph",
  "codetether-go-tool",
  "codetether-image-generation",
  "codetether-indexer",
@@ -2419,6 +2420,23 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-go-ralph"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-audit",
+ "codetether-bus-core",
+ "codetether-go-prd",
+ "codetether-okr",
+ "codetether-provider-core",
+ "codetether-ralph-core",
+ "serde_json",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

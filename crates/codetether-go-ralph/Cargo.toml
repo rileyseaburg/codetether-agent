@@ -1,0 +1,22 @@
+[package]
+name = "codetether-go-ralph"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Approved task-to-Ralph pipeline orchestration and objective outcomes"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-audit = { path = "../codetether-audit", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-go-prd = { path = "../codetether-go-prd", version = "0.1.0" }
+codetether-okr = { path = "../codetether-okr", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }
+serde_json = "1"
+tracing = "0.1"
+
+[dev-dependencies]
+uuid = { version = "1", features = ["v4"] }
