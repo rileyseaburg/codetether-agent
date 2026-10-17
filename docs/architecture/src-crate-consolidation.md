@@ -7463,3 +7463,21 @@ whitespace checks passed; new Rust files contain at most 46 code lines. Evidence
 lives in `artifacts/consolidation-tetherscript-tool/`. No plugin execution,
 runtime tests, Cargo, rustc or Python commands ran. Compilation remains
 unverified; the full consolidation goal remains active.
+
+### Dedicated calling-session context loader
+
+Moved calling-session identity selection, bounded/unbounded lookup and missing
+session classification into `crates/codetether-context-loader`. Five modules
+separate lookup policy, latest-session lookup, errors and the persistence
+contract. The application binds its existing `Session` methods through a small
+adapter and retains the public helper signatures. Unknown injected IDs do not
+fall back to a different session.
+
+Fifteen static preservation checks compare identity precedence, storage calls,
+window arguments, error classification and compatibility forwarding. The two
+session-identity tests and context-tool callers remain unchanged. Module
+reachability, dependency cycles, file budgets and whitespace checks passed;
+new Rust files contain at most 23 code lines. Evidence lives in
+`artifacts/consolidation-context-loader/`. No sessions were loaded, runtime
+tests, Cargo, rustc or Python commands run. Compilation remains unverified;
+the full consolidation goal remains active.

@@ -1,7 +1,6 @@
 //! Missing-session classification shared by full and bounded context readers.
-use crate::session::Session;
 use anyhow::Result;
-pub(super) fn classify(result: Result<Session>) -> Result<Option<Session>> {
+pub(super) fn classify<S>(result: Result<S>) -> Result<Option<S>> {
     match result {
         Ok(session) => Ok(Some(session)),
         Err(error) => {
