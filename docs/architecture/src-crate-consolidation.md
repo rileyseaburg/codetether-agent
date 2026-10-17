@@ -6347,3 +6347,19 @@ dependency closure is acyclic. New files contain at most 45 code lines.
 Workspace/lockfile wiring, file-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-websearch/`. No searches, HTTP requests, runtime tests,
 Cargo, rustc or Python were executed. The broader migration remains active.
+
+### Dedicated workspace code-search crate
+
+Created `crates/codetether-code-search` and moved `CodeSearchTool` out of the
+application. Eleven focused modules separate construction, filters, per-file
+matching, traversal, records, schema and formatting. The application path
+re-exports the tool, using the existing shared workspace-pruning policy.
+
+Static comparison verifies all contracts, constructors, constants, regex
+configuration, filters, context extraction, traversal and result formatting.
+The existing context and result-limit semantics are unchanged. All 11 files
+are reachable without missing/orphaned modules, and the dependency closure is
+acyclic. New files contain at most 39 code lines. Workspace/lockfile wiring,
+file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-code-search/`. No search execution, runtime tests,
+Cargo, rustc or Python ran. The broader migration remains active.

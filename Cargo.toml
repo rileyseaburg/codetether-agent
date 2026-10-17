@@ -31,6 +31,7 @@ members = [
     "crates/codetether-cognition-core",
     "crates/codetether-cognition-native",
     "crates/codetether-crash",
+    "crates/codetether-code-search",
     "crates/codetether-codex-auth",
     "crates/codetether-codex-protocol",
     "crates/codetether-codex-transport",
@@ -304,6 +305,7 @@ codetether-file-tools = { path = "crates/codetether-file-tools", version = "0.1.
 codetether-github-auth = { path = "crates/codetether-github-auth", version = "0.1.0" }
 codetether-webfetch = { path = "crates/codetether-webfetch", version = "0.1.0" }
 codetether-websearch = { path = "crates/codetether-websearch", version = "0.1.0" }
+codetether-code-search = { path = "crates/codetether-code-search", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }
