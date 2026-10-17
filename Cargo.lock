@@ -1157,6 +1157,7 @@ dependencies = [
 name = "codetether-a2a-worker-core"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
  "codetether-agent-core",
  "codetether-provider-core",

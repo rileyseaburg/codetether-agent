@@ -97,7 +97,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 29 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
-| codetether-a2a-worker-core | 81 | yes | codetether-agent-core, codetether-provider-core |
+| codetether-a2a-worker-core | 85 | yes | codetether-agent-core, codetether-provider-core |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
 | codetether-audit | 1 | yes | none |
@@ -4808,3 +4808,21 @@ modules; the five-crate dependency closure is acyclic. New files meet the
 50-code-line limit. File-budget and whitespace checks passed. Evidence is in
 `artifacts/consolidation-worker-registration/`. Compilation, tests, and live
 registration were not run. The broader consolidation goal remains active.
+
+
+### Shared worker model selection
+
+Worker-core execution policy now owns the model selection record, provider
+availability check, provider/model parsing, and effective selection. The
+application session-policy module re-exports this API and still owns provider
+initialization and execution. Parser ownership is explicit through the
+existing provider-core routing module.
+
+Static comparison covers the record and all three functions, preserving
+explicit-provider errors, alias normalization, environment-derived error
+context, and default selection order. All 85 worker-core files and 316 A2A
+files are reachable, with an acyclic five-crate dependency closure. New files
+meet the 50-code-line limit; file-budget and whitespace checks passed. The
+only new direct external dependency is already-locked anyhow. Evidence is
+retained in `artifacts/consolidation-worker-model-selection/`. Compilation
+and tests remain unrun; the broader consolidation goal remains active.
