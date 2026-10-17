@@ -1274,6 +1274,7 @@ dependencies = [
  "codetether-bedrock-refresh",
  "codetether-benchmark",
  "codetether-browser",
+ "codetether-browser-tool",
  "codetether-bus-core",
  "codetether-bus-http",
  "codetether-bus-s3",
@@ -1652,6 +1653,21 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-browser-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.23.1",
+ "codetether-browser",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

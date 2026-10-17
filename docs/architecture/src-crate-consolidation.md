@@ -7119,3 +7119,23 @@ whitespace checks passed; new Rust files contain at most 48 code lines.
 Evidence: `artifacts/consolidation-batch-tool/`. No batch calls, nested tools,
 runtime tests, Cargo, rustc or Python commands ran. Compilation remains
 unverified; the full workspace consolidation goal remains active.
+
+### Dedicated browser control tool
+
+Moved browserctl input parsing, action adapters, dispatch, response formatting,
+screenshot writing and detection into `crates/codetether-browser-tool`.
+Thirty-four modules use the existing `codetether-browser` service and command
+contracts; the application retains a tool export. Successful stop requests
+still clear the same shared service. The Blender result regression tests stay
+in the application because they exercise application computer-use code.
+
+Thirty-five static module/implementation comparisons allow only shared import
+paths, crate-local visibility, extraction boundaries and documentation. All
+action requests and defaults, screenshot bytes and metadata, result formatting
+and control flow remain preserved. Three screenshot tests moved; two Blender
+tests remain byte-identical in the application. Module reachability,
+dependency-cycle, file-budget and whitespace checks passed. New Rust files
+contain at most 46 code lines. Evidence: `artifacts/consolidation-browser-tool/`.
+No browser operations, screenshot captures, runtime tests, Cargo, rustc or
+Python commands ran. Compilation remains unverified; the full consolidation
+goal remains active.
