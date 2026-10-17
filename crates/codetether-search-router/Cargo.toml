@@ -1,0 +1,21 @@
+[package]
+name = "codetether-search-router"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Concrete search routing with caller-owned providers and memory embeddings"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-file-tools = { path = "../codetether-file-tools", version = "0.1.0" }
+codetether-grep-tool = { path = "../codetether-grep-tool", version = "0.1.0" }
+codetether-memory-tool = { path = "../codetether-memory-tool", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-search = { path = "../codetether-search", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-webfetch = { path = "../codetether-webfetch", version = "0.1.0" }
+codetether-websearch = { path = "../codetether-websearch", version = "0.1.0" }
+serde_json = "1"
+tracing = "0.1"

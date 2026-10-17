@@ -1375,6 +1375,7 @@ dependencies = [
  "codetether-sandbox-seatbelt",
  "codetether-sandbox-seccomp",
  "codetether-search",
+ "codetether-search-router",
  "codetether-secrets",
  "codetether-session-runtime",
  "codetether-skill-tool",
@@ -3200,6 +3201,24 @@ dependencies = [
  "serde_json",
  "tempfile",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-search-router"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-file-tools",
+ "codetether-grep-tool",
+ "codetether-memory-tool",
+ "codetether-provider-core",
+ "codetether-search",
+ "codetether-tool-core",
+ "codetether-webfetch",
+ "codetether-websearch",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

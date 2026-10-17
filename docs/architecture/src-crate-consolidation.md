@@ -7282,3 +7282,22 @@ passed; new Rust files contain at most 38 code lines. Evidence lives in
 `artifacts/consolidation-undo-tool/`. No undo/reset operation, runtime tests,
 Cargo, rustc or Python commands ran. Compilation remains unverified; the full
 workspace consolidation goal remains active.
+
+### Dedicated concrete search router
+
+Moved the remaining search model resolution, concrete backend dispatch, planner
+adapter and `SearchTool` implementation into `crates/codetether-search-router`.
+Eight modules separate provider access, model selection, backend execution,
+orchestration, schema, tool metadata and output conversion. The application
+keeps thin registry and embedding-factory bindings so CLI and tool callers retain
+their existing APIs and the same automatic memory embedding selection.
+
+Twenty-one static preservation checks compare model fallback order, all six
+backend branches, planner invocation, defaults, full schema, result formatting
+and the application bindings. Shared planning still lives in `codetether-search`;
+provider discovery and memory factory ownership remain unchanged. Module
+reachability, dependency cycles, file budgets and whitespace checks passed;
+new Rust files contain at most 37 code lines. Evidence lives in
+`artifacts/consolidation-search-router/`. No provider calls, backend execution,
+runtime tests, Cargo, rustc or Python commands ran. Compilation remains
+unverified; the full workspace consolidation goal remains active.
