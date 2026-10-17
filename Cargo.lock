@@ -1141,6 +1141,7 @@ dependencies = [
  "codetether-a2a-core",
  "codetether-a2a-discovery",
  "codetether-a2a-worker-core",
+ "codetether-bus-core",
  "codetether-provenance",
  "codetether-provider-core",
  "dashmap",

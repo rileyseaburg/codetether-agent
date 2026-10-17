@@ -5564,3 +5564,20 @@ lines. File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-worker-domain-helpers/`. Compilation and tests remain
 unrun. No Cargo, rustc, or Python commands ran. The broader migration remains
 active.
+
+### Shared bus-to-HTTP worker output callbacks
+
+Moved plain-text and structured worker output callback construction into the
+HTTP worker module. The application re-exports the callbacks and still owns
+runtime-specific installation. The callback continues to notify the shared
+bus before spawning its signed HTTP request. HTTP now directly declares its
+shared bus-core dependency; no application bus type is required.
+
+Static comparison verifies both moved functions and their clone/publication
+ordering. The module scan reaches 111 HTTP files and 254 application A2A
+files without missing/orphaned modules, and the dependency closure is acyclic.
+The new file contains 42 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-worker-output/`. Compilation, tests, bus
+emission, and HTTP submission remain unrun. No Cargo, rustc, or Python commands
+ran. The unrelated lockfile ordering and heartbeat edits remain unstaged;
+the broader implementation migration remains active.

@@ -53,3 +53,6 @@ pub mod claim;
 
 /// Task outcome release and active-progress cleanup.
 pub mod completion;
+
+/// Bus-aware callbacks feeding signed worker output requests.
+pub mod output_callback;
