@@ -67,3 +67,6 @@ pub mod task_driver;
 
 /// Worker forage task metadata and execution options.
 pub mod forage;
+
+/// Worker swarm limits, strategy and model configuration.
+pub mod swarm_setup;

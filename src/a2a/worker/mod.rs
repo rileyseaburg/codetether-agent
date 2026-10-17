@@ -8,7 +8,6 @@ mod clone_task;
 mod completion_retry;
 mod extended_heartbeat;
 mod forage_args;
-mod forage_settings;
 mod forage_task;
 #[cfg(test)]
 mod git_branch_tests;

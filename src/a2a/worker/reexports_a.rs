@@ -7,7 +7,6 @@ pub(super) use super::{
     completion_retry::complete_worker_step_with_context_fallback,
     extended_heartbeat::send_extended_task_heartbeat,
     forage_args::build_forage_args,
-    forage_settings::parse_swarm_strategy,
     forage_task::handle_forage_task,
     http_client::build_worker_http_client,
     metadata_flags::metadata_bool,

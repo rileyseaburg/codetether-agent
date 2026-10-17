@@ -5751,3 +5751,21 @@ whitespace checks passed. Evidence:
 `artifacts/consolidation-forage-task-options/`. Compilation, tests and forage
 execution remain unrun. No Cargo, rustc, or Python commands ran. The broader
 migration remains active.
+
+### Shared worker swarm configuration
+
+Moved task metadata parsing, swarm resource limits/defaults, strategy lookup,
+and the resulting setup record into worker-core. The application supplies an
+unevaluated model-resolution future and retains the session model assignment.
+The future is awaited in the same configuration-field order as before. Removed
+the now-unused worker strategy forwarding module. Worker-core directly depends
+on the existing swarm-core configuration types.
+
+Static comparison verifies the metadata builder, strategy lookup and record,
+model future placement, and unchanged session update. The module scan reaches
+185 worker-core files and 255 A2A application files without missing/orphaned
+modules or dependency cycles. New files contain at most 38 code lines.
+File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-worker-swarm-setup/`. Compilation, tests, provider
+loading and swarm execution remain unrun. No Cargo, rustc, or Python commands
+ran. The broader migration remains active.

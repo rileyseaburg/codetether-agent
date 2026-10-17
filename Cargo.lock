@@ -1200,6 +1200,7 @@ dependencies = [
  "codetether-forage-core",
  "codetether-provenance",
  "codetether-provider-core",
+ "codetether-swarm-core",
  "codetether-tool-core",
  "codetether-util",
  "codetether-worktree",
