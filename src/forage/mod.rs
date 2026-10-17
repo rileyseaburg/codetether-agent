@@ -31,6 +31,10 @@ mod events;
 mod execute_selected;
 mod execution;
 mod execution_success;
+mod startup;
+pub use startup::{execute, execute_with_summary};
+mod runtime;
+mod start_sink;
 use execution::execute_opportunity;
 mod swarm_execution;
 use swarm_execution::execute_opportunity_with_swarm;
@@ -59,92 +63,6 @@ use serde::Serialize;
 use serde_json::json;
 use std::time::Duration;
 use uuid::Uuid;
-
-pub async fn execute(args: ForageArgs) -> Result<()> {
-    execute_with_summary(args).await.map(|_| ())
-}
-
-pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> {
-    ensure_audit_log_initialized().await;
-    let repo = OkrRepository::from_config().await?;
-    let moonshot_rubric = load_moonshot_rubric(&args).await?;
-    if args.execute {
-        seed_initial_okr_if_empty(&repo, &moonshot_rubric).await?;
-    }
-    let bus = AgentBus::new().into_arc();
-    // Make forage observable to other in-process agents/tools: install this
-    // bus as the process-global one when none has been set yet (first writer
-    // wins, so this is a no-op if an entrypoint already installed a bus).
-    crate::bus::set_global(bus.clone());
-    // S3 archival is best-effort: forage always runs, even without MinIO/S3.
-    // `--no-s3` skips the attempt entirely; otherwise we try and degrade to
-    // local-only mode (with a warning) when no configuration is present.
-    let mut s3_sync_handle = if args.no_s3 {
-        tracing::info!("S3 archival disabled (--no-s3); running forage in local-only mode");
-        None
-    } else {
-        s3_optional::try_start_bus_s3_sink(bus.clone()).await
-    };
-    // Only police S3 liveness if a sink actually started.
-    let require_s3 = s3_sync_handle.is_some();
-    let forage_id = "forage-runtime";
-    let bus_handle = bus.handle(forage_id);
-    let mut observer = bus.handle("forage-observer");
-    let events = events::RunEvents {
-        args: &args,
-        moonshot_rubric: &moonshot_rubric,
-        bus_handle: &bus_handle,
-    };
-    events.start().await;
-
-    let top = args.top.clamp(1, 50);
-    let interval_secs = args.interval_secs.clamp(5, 86_400);
-    let mut cycle: usize = 0;
-    let mut summary = ForageRunSummary {
-        cycles_completed: 0,
-        execute_requested: args.execute,
-        execution_engine: args.execution_engine.clone(),
-        total_selected: 0,
-        total_executed: 0,
-        total_execution_failures: 0,
-        last_cycle_selected: Vec::new(),
-    };
-
-    loop {
-        // Only check S3 health if S3 is required
-        if require_s3 {
-            ensure_s3_sync_alive(&mut s3_sync_handle).await?;
-        }
-        cycle = cycle.saturating_add(1);
-        let cycle_task_id = format!("forage-cycle-{cycle}");
-        events.scan(&cycle_task_id);
-        let selected = discover::discover(&repo, &moonshot_rubric, args.execute, top).await?;
-        events.selected(&cycle_task_id, cycle, top, &selected);
-
-        events.present(cycle, &selected)?;
-        summary.cycles_completed = cycle;
-        summary.total_selected = summary.total_selected.saturating_add(selected.len());
-        summary.last_cycle_selected = ForageRunSummary::summarize_selection(&selected);
-        events.cycle(cycle, top, &selected).await;
-        flush_bus_observer(&mut observer, cycle, args.json);
-
-        execute_selected::execute_selected(&args, &repo, &events, &selected, &mut summary, cycle)
-            .await?;
-
-        let keep_running = args.loop_mode && (args.max_cycles == 0 || cycle < args.max_cycles);
-        events.complete(&cycle_task_id, keep_running);
-
-        if !keep_running {
-            break;
-        }
-
-        events.sleeping(cycle, interval_secs, &cycle_task_id);
-        tokio::time::sleep(Duration::from_secs(interval_secs)).await;
-    }
-    events.stop(cycle).await;
-
-    Ok(summary)
-}
 
 #[cfg(test)]
 mod tests {

@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 40 | 1509 | Shared domain services extracted; discovery, execution and reporting phases modularized; lifecycle assembly and residual tests remain for cohesion audit |
+| forage | 46 | 1576 | Shared domain services and application lifecycle phases consolidated; residual test-module cohesion and final ownership audit remain |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -4125,3 +4125,23 @@ queue scan, clarification, execution engine, progress write, Rust test or
 doctest ran. Compilation and runtime remain unverified. Evidence:
 artifacts/consolidation-forage-phases/. Lifecycle assembly and the residual
 test module still need work under the active whole-workspace objective.
+
+## Forage lifecycle assembly
+
+The application startup module owns repository/rubric loading, seeding, global
+bus setup and service handles. The runtime module borrows these owners and
+separates initial counters, per-cycle work and loop control. Optional S3 startup
+has its own adapter. No extra bus/owner clones or ownership transfers were
+introduced; original owners stay alive around the awaited loop.
+
+All 29 static comparisons passed, including startup ordering, the borrowed
+context fields, per-cycle operations, S3 health timing, cycle bounds, sleeping,
+normal shutdown and unchanged test module. All six new lifecycle files are at
+most 36 code lines. Lexical scans found all 46 application and 34 core modules
+reachable. The three-crate dependency closure is unchanged and acyclic.
+File-limit and whitespace checks passed; standalone rustfmt was used.
+
+No Cargo, rustc, Python, service startup, cycle execution, Rust test or doctest
+ran. Compilation and runtime remain unverified. Evidence is retained in
+artifacts/consolidation-forage-runtime/. Residual test-module cohesion and a
+final forage ownership audit remain within the active whole-workspace goal.
