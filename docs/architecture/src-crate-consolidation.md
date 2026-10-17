@@ -7725,3 +7725,23 @@ Evidence is in `artifacts/consolidation-rlm-tool/`. No input files were processe
 provider calls or runtime tests performed, or Cargo, rustc or Python commands
 executed. Compilation remains unverified; the full source-to-crates goal remains
 active.
+
+### Dedicated Ralph lifecycle tool
+
+Moved the Ralph tool's schema, provider configuration, run dispatch, PRD
+creation/status, execution configuration, branch lookup, worktree cleanup,
+branch-restoration decisions, result rendering and merge-readiness metadata to
+`crates/codetether-ralph-tool`. Seventeen Rust modules replace the 355-line
+application implementation. The application keeps its type alias and one host
+adapter for the existing Ralph loop and policy-checked checkout. Worktree
+cleanup uses the existing shared worktree owner, and checkout still goes
+through `src/ralph/git_policy.rs`.
+
+Twenty-six static preservation checks cover construction, schema, defaults,
+full execution/cleanup ordering, policy forwarding, branch decisions, result
+strings, metadata and PRD actions. Module reachability, local dependency cycles,
+file budgets and whitespace checks passed; new crate modules contain at most
+50 code lines. Evidence is in `artifacts/consolidation-ralph-tool/`. No Ralph
+execution, worktree cleanup, branch checkout, runtime tests, Cargo, rustc or
+Python commands ran. Compilation remains unverified; the full consolidation
+goal remains active.
