@@ -7,3 +7,6 @@ mod record;
 pub use record::TaskClaimResponse;
 #[cfg(test)]
 mod tests;
+
+mod claimed;
+pub use claimed::ClaimedTaskData;

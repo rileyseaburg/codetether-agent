@@ -5698,3 +5698,21 @@ whitespace checks passed. Evidence:
 requests remain unrun. No Cargo, rustc, or Python commands ran. The unrelated
 lockfile ordering and heartbeat edits remain uncommitted. The broader
 migration remains active.
+
+### Shared claimed-task lifecycle driver
+
+Moved task-envelope parsing, timeline initialization, claim-adjusted execution
+timeout, outcome normalization, and release sequencing into worker-core's
+`task_driver`. The application host retains progress synchronization and
+transport/execution effects. Claim-result data now belongs to worker-core;
+the existing HTTP claim path re-exports that same type.
+
+Static comparison verifies the lifecycle body, timeout helper, all four host
+methods, and unchanged claim-result fields. Execution still uses the remaining
+claim-adjusted budget, bounded below by 0.001 seconds, and release follows
+outcome normalization. The module scan reaches 174 worker-core files and 256
+application A2A files without missing/orphaned modules or dependency cycles.
+New files contain at most 42 code lines. File-budget and whitespace checks
+passed. Evidence: `artifacts/consolidation-task-driver/`. Compilation, tests,
+and task execution remain unrun. No Cargo, rustc, or Python commands ran.
+The broader implementation migration remains active.

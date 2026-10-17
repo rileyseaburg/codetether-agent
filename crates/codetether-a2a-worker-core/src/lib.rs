@@ -61,3 +61,6 @@ pub use env_number::env_u64;
 
 /// Provider-response extraction and worker step-budget protocol.
 pub mod session_protocol;
+
+/// Host-driven task claim, execution budget and release lifecycle.
+pub mod task_driver;
