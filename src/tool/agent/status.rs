@@ -3,7 +3,7 @@ use super::{bus_publish::lifecycle, store};
 use crate::tool::ToolResult;
 use codetether_agent_status::{AgentView, Host};
 use std::collections::HashMap;
-struct ApplicationHost;
+pub(super) struct ApplicationHost;
 impl Host for ApplicationHost {
     fn agents(parent: Option<&str>) -> Vec<AgentView> {
         store::entries_for_parent(parent)

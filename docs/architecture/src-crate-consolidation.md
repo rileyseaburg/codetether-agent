@@ -8283,3 +8283,21 @@ at most 39 code lines. Evidence is in `artifacts/consolidation-agent-status/`.
 Compilation and runtime tests were not run, and no live status query was
 executed. No Cargo, rustc or Python commands ran. The full consolidation goal
 remains active.
+
+### Shared lifecycle event publication
+
+Moved session-unique task IDs, owned task mapping, bounded terminal summaries,
+parent result messages and working/done/result bus publication into the existing
+`codetether-agent-status` crate. Eight added Rust modules separate identity,
+message formatting, publication and tests. Application bindings supply the
+current live child publication fields and reuse the existing status snapshot
+source. The shared process bus remains the owner of delivery and history.
+
+Twenty-one static preservation checks cover task identity, payload bounds,
+state mapping, publication order, missing bus/child/owner behavior, native
+snapshots and unchanged finalization callers. Four existing lifecycle tests
+moved with the implementation. Module/dependency, file-budget and whitespace
+checks passed; added crate modules contain at most 28 code lines. Evidence is in
+`artifacts/consolidation-agent-lifecycle-events/`. No bus publications or runtime
+tests were executed. Compilation was not run. No Cargo, rustc or Python commands
+ran. The full consolidation goal remains active.

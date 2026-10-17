@@ -19,3 +19,11 @@ pub use report::handle_status as report;
 mod row;
 #[cfg(test)]
 mod status_liveness_tests;
+
+pub mod publish;
+mod publish_host;
+mod task_identity;
+mod terminal_messages;
+pub use publish_host::{PublishHost, PublishedAgent};
+pub use task_identity::{task_id, task_to_agent};
+pub use terminal_messages::{result_message, terminal_summary};
