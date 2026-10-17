@@ -12,3 +12,6 @@ mod host;
 mod run;
 pub use host::TaskHandlerHost;
 pub use run::handle_task;
+
+/// Policy-gated dispatch for clone and forage tasks.
+pub mod special;

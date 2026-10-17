@@ -1,53 +1,41 @@
-//! Non-agent task dispatching (clone_repo, forage).
-
-use anyhow::Result;
-
+//! Application host for shared special-task dispatch.
 use super::{TaskContext, WorkerTaskRuntime, handle_clone_repo_task, handle_forage_task};
-
+use anyhow::Result;
+use async_trait::async_trait;
+use codetether_a2a_worker_core::task_driver::special::{self, SpecialTaskHost};
+use serde_json::{Map, Value};
+struct Host<'a>(&'a WorkerTaskRuntime);
+#[async_trait]
+impl SpecialTaskHost for Host<'_> {
+    async fn evaluate(&self, tool: &str, args: &Value) -> Option<crate::tool::ToolResult> {
+        crate::runtime_policy::evaluate_tool_invocation(tool, args).await
+    }
+    async fn clone_repo(&self, task: &Value, metadata: &Map<String, Value>) -> Result<String> {
+        handle_clone_repo_task(
+            &self.0.client,
+            &self.0.server,
+            &self.0.token,
+            &self.0.worker_id,
+            task,
+            metadata,
+        )
+        .await
+    }
+    async fn forage(
+        &self,
+        title: &str,
+        prompt: &str,
+        metadata: &Map<String, Value>,
+        selected_model: Option<String>,
+    ) -> Result<String> {
+        handle_forage_task(title, prompt, metadata, selected_model).await
+    }
+}
 pub(super) async fn dispatch_special_task(
     runtime: &WorkerTaskRuntime,
-    task: &serde_json::Value,
+    task: &Value,
     title: &str,
     context: &TaskContext,
-) -> Option<Result<(&'static str, Option<String>, Option<String>, Option<String>)>> {
-    let policy_args = super::task_policy_args::from_metadata(&context.metadata);
-    if context.raw_agent.eq_ignore_ascii_case("clone_repo") {
-        if let Some(blocked) =
-            crate::runtime_policy::evaluate_tool_invocation("bash", &policy_args).await
-        {
-            return Some(Ok(("failed", None, Some(blocked.output), None)));
-        }
-        return Some(
-            handle_clone_repo_task(
-                &runtime.client,
-                &runtime.server,
-                &runtime.token,
-                &runtime.worker_id,
-                task,
-                &context.metadata,
-            )
-            .await
-            .map(|msg| ("completed", Some(msg), None, None))
-            .or_else(|err| Ok(("failed", None, Some(format!("Error: {err}")), None))),
-        );
-    }
-    if super::is_forage_agent(&context.raw_agent) {
-        if let Some(blocked) =
-            crate::runtime_policy::evaluate_tool_invocation("forage", &policy_args).await
-        {
-            return Some(Ok(("failed", None, Some(blocked.output), None)));
-        }
-        return Some(
-            handle_forage_task(
-                title,
-                &context.prompt,
-                &context.metadata,
-                context.selected_model.clone(),
-            )
-            .await
-            .map(|msg| ("completed", Some(msg), None, None))
-            .or_else(|err| Ok(("failed", None, Some(format!("Error: {err}")), None))),
-        );
-    }
-    None
+) -> Option<codetether_a2a_worker_core::outcome::TaskInner> {
+    special::dispatch_special_task(&Host(runtime), task, title, context).await
 }

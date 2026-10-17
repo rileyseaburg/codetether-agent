@@ -5716,3 +5716,20 @@ New files contain at most 42 code lines. File-budget and whitespace checks
 passed. Evidence: `artifacts/consolidation-task-driver/`. Compilation, tests,
 and task execution remain unrun. No Cargo, rustc, or Python commands ran.
 The broader implementation migration remains active.
+
+### Shared special-task dispatch
+
+Moved clone/forage special-task routing into worker-core behind
+`SpecialTaskHost`. The application host retains runtime policy evaluation,
+clone execution and forage execution. The driver owns task-kind selection,
+approval argument extraction and completed/failed result mapping.
+
+Static comparison verifies the dispatcher and all three host methods. Clone
+still uses the bash policy gate, forage still uses the forage gate, and both
+retain the original failure text and short-circuit behavior. Existing forage
+test source is byte-identical. The module scan reaches 177 worker-core files
+and 256 application A2A files without missing/orphaned modules or dependency
+cycles. New files contain at most 40 code lines. File-budget and whitespace
+checks passed. Evidence: `artifacts/consolidation-special-task-driver/`.
+Compilation, tests, clone execution and forage execution remain unrun. No
+Cargo, rustc, or Python commands ran. The broader migration remains active.
