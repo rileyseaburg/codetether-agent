@@ -32,7 +32,6 @@ mod registry;
 pub(crate) mod residency;
 mod session_factory;
 mod spawn;
-mod spawn_messages;
 mod spawn_request;
 mod spawn_run;
 mod spawn_store;

@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-agent-spawn",
  "codetether-child-workspace",
  "codetether-agent-session",
  "codetether-agent-input",
@@ -2447,6 +2448,23 @@ dependencies = [
  "anyhow",
  "codetether-collaboration-state",
  "serde",
+]
+
+[[package]]
+name = "codetether-agent-spawn"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-agent-input",
+ "codetether-child-workspace",
+ "codetether-collaboration-history",
+ "codetether-collaboration-state",
+ "codetether-spawn-policy",
+ "codetether-swarm-core",
+ "codetether-tool-core",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

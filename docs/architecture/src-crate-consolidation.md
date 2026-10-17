@@ -8168,3 +8168,23 @@ Module/dependency, file-budget and whitespace checks passed; crate files contain
 at most 34 code lines. Evidence is in `artifacts/consolidation-child-workspace/`.
 No checkout allocations or runtime tests were executed. Compilation was not run.
 No Cargo, rustc or Python commands ran. The full consolidation goal remains active.
+
+### Dedicated managed-agent spawn orchestration
+
+Moved spawn request dispatch, validation/identity preparation, durable capacity
+and identity handoff sequencing, first-turn result handling, spawn messages and
+ephemeral outcome formatting into `crates/codetether-agent-spawn`. Eleven Rust
+modules separate construction and execution contracts from orchestration and
+presentation. Native adapters retain session creation, persistence and execution
+operations. Pending identity and capacity guards retain their original lifetime;
+commit and first-turn dispatch still follow successful persistence.
+
+Thirty-five static preservation checks cover dispatch branches, validation
+ordering, guard handoff, persistence errors, first-turn failures, sync/detached
+results, warning text, one-shot completion and native adapters. Four result tests
+moved; existing session, identity and durable persistence integration tests remain
+unchanged. Module/dependency, file-budget and whitespace checks passed; crate
+files contain at most 37 code lines. Evidence is in
+`artifacts/consolidation-agent-spawn/`. Compilation and runtime tests were not
+run. No Cargo, rustc or Python commands ran. The full consolidation goal remains
+active.

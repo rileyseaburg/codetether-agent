@@ -2,7 +2,7 @@
 //!
 //! Keeps user-facing spawn strings out of the orchestration module.
 
-use super::spawn_request::SpawnRequest;
+use codetether_agent_input::SpawnRequest;
 use serde_json::json;
 
 /// Appends an optional warning line to a spawn result message.

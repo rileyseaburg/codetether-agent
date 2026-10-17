@@ -1,5 +1,5 @@
 use super::build;
-use crate::swarm::executor::AgentLoopExit;
+use codetether_swarm_core::agent_retry::AgentLoopExit;
 
 #[test]
 fn incomplete_ephemeral_run_is_not_successful() {

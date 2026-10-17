@@ -1,7 +1,6 @@
 use super::detached_message;
-use crate::tool::agent::{
-    collaboration_runtime::fork_turns::ForkTurns, spawn_request::SpawnRequest,
-};
+use codetether_agent_input::SpawnRequest;
+use codetether_collaboration_history::ForkTurns;
 
 #[test]
 fn detached_spawn_returns_the_canonical_agent_id() {

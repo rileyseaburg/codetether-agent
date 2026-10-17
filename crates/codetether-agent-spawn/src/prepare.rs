@@ -1,12 +1,13 @@
 //! Spawn validation and owner-scoped identity preparation.
 
-use super::super::spawn_request::SpawnRequest;
-use crate::tool::ToolResult;
+use crate::Host;
+use codetether_agent_input::SpawnRequest;
+use codetether_tool_core::ToolResult;
 
 /// Validated spawn inputs held together with their pending identity claim.
 pub(super) struct Prepared {
     warning: Option<String>,
-    identity: super::identity::Reservation,
+    identity: codetether_spawn_policy::Reservation,
 }
 
 impl Prepared {
@@ -23,11 +24,11 @@ impl Prepared {
 }
 
 /// Validate a request and reserve its owner-scoped display name.
-pub(super) async fn run(request: &SpawnRequest<'_>) -> Result<Prepared, ToolResult> {
-    let warning = super::super::spawn_validation::validate_spawn_request(request).await?;
+pub(super) async fn run<H: Host>(request: &SpawnRequest<'_>) -> Result<Prepared, ToolResult> {
+    let warning = H::validate(request).await?;
     if let Some(text) = &warning {
-        tracing::warn!(agent = %request.name, model = %request.model, "{text}");
+        tracing::warn!(target: "codetether_agent::tool::agent::spawn::prepare", agent = %request.name, model = %request.model, "{text}");
     }
-    let identity = super::identity::reserve(request.name, request.parent_session_id).await?;
+    let identity = H::reserve_identity(request.name, request.parent_session_id).await?;
     Ok(Prepared { warning, identity })
 }
