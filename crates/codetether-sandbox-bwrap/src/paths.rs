@@ -1,14 +1,15 @@
+//! paths for bubblewrap argument and mount planning.
 use super::SandboxPolicy;
-use super::sandbox_bwrap_push::{push_pair, push_triple};
-#[path = "sandbox_bwrap_absolute.rs"]
+use super::push::{push_pair, push_triple};
+#[path = "absolute.rs"]
 mod absolute;
-#[path = "sandbox_bwrap_protected.rs"]
+#[path = "protected.rs"]
 mod protected;
-#[path = "sandbox_bwrap_specs.rs"]
+#[path = "specs.rs"]
 mod specs;
-#[path = "sandbox_bwrap_tmp.rs"]
+#[path = "tmp.rs"]
 mod tmp;
-#[path = "sandbox_bwrap_writable.rs"]
+#[path = "writable.rs"]
 mod writable;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};

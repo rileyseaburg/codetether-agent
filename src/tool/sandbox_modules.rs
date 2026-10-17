@@ -4,12 +4,8 @@
 mod sandbox_availability;
 #[path = "sandbox_bwrap_args.rs"]
 mod sandbox_bwrap_args;
-#[path = "sandbox_bwrap_paths.rs"]
-mod sandbox_bwrap_paths;
 #[path = "sandbox_bwrap_probe.rs"]
 mod sandbox_bwrap_probe;
-#[path = "sandbox_bwrap_push.rs"]
-mod sandbox_bwrap_push;
 #[path = "sandbox_command.rs"]
 mod sandbox_command;
 #[path = "sandbox_env.rs"]

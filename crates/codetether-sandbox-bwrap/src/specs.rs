@@ -12,7 +12,7 @@ pub(super) fn mount_specs(policy: &SandboxPolicy, work_dir: &Path) -> Vec<(&'sta
     for path in &policy.allowed_paths {
         absolute::push(&mut specs, "--bind", path);
     }
-    for root in super::super::sandbox_toolchain::roots() {
+    for root in codetether_sandbox_environment::roots() {
         if !writable::covered(policy, &root) {
             absolute::push(&mut specs, "--ro-bind", &root);
         }

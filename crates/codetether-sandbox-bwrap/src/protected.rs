@@ -1,4 +1,5 @@
-use super::super::sandbox_bwrap_push::{push_pair, push_triple};
+//! protected for bubblewrap argument and mount planning.
+use super::super::push::{push_pair, push_triple};
 use super::SandboxPolicy;
 
 const PROTECTED: &[&str] = &[".git", ".codetether", ".codex", ".agents"];

@@ -1,3 +1,4 @@
+//! absolute for bubblewrap argument and mount planning.
 use std::path::Path;
 
 pub(super) fn push(specs: &mut Vec<(&'static str, String)>, op: &'static str, path: &Path) {

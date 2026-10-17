@@ -2331,6 +2331,23 @@ whitespace checks passed. Files contain at most 50 code lines. Evidence:
 runtime tests, Cargo, rustc or Python ran. Compilation and kernel behavior
 remain unverified; the full workspace migration remains active.
 
+### Dedicated bubblewrap invocation planning
+
+Moved bubblewrap arguments, runtime mounts, writable/read-only root selection,
+parent directory creation, protected metadata mounts and temporary working
+directory setup into `crates/codetether-sandbox-bwrap`. Eight implementation
+modules and a library entry point use shared sandbox policy and environment
+discovery. The application retains an argument-builder compatibility export;
+its runner and filter ownership are unchanged.
+
+Static comparisons verify every moved implementation after namespace changes,
+including argument order and deduplication. Obsolete helper declarations and
+references were removed. Module reachability, dependency-cycle, workspace
+wiring, file-budget and whitespace checks passed; files contain at most 46
+code lines. Evidence: `artifacts/consolidation-sandbox-bwrap/`. No plans were
+built, processes launched or runtime tests executed. Cargo, rustc and Python
+were not run. Compilation remains unverified; the full migration is active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

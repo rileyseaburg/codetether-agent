@@ -1,0 +1,11 @@
+[package]
+name = "codetether-sandbox-bwrap"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bubblewrap invocation and mount planning"
+
+[dependencies]
+codetether-sandbox-environment = { path = "../codetether-sandbox-environment", version = "0.1.0" }
+codetether-sandbox-policy = { path = "../codetether-sandbox-policy", version = "0.1.0" }
