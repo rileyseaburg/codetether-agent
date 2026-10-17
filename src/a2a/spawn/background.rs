@@ -27,14 +27,14 @@ pub async fn start_a2a_in_background(
             tracing::error!(target: "codetether_agent::a2a::spawn", error = %e, "A2A peer server task exited with error");
         }
     });
-    Ok(A2APeerHandle {
+    Ok(A2APeerHandle::new(
         agent_name,
         bind_addr,
         public_url,
         server_task,
-        discovery_task: prep.discovery_task,
-        mdns_intake_task: prep.mdns_intake_task,
-        lan_tasks: prep.lan_tasks,
-        _mdns_handle: prep.mdns_handle,
-    })
+        prep.discovery_task,
+        prep.mdns_intake_task,
+        prep.lan_tasks,
+        prep.mdns_handle,
+    ))
 }

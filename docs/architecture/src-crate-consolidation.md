@@ -5842,3 +5842,21 @@ is acyclic. New files contain at most 40 code lines. File-budget and whitespace
 checks passed. Evidence: `artifacts/consolidation-seed-discovery/`. Compilation,
 tests, and live discovery remain unrun; no Cargo, rustc, or Python commands ran.
 The broader migration remains active.
+
+### Shared background peer lifecycle handle
+
+Moved `A2APeerHandle` from `src/a2a/spawn/handle.rs` into the HTTP crate's
+`peer_handle` module. The shared type owns the server, seed polling, intake and
+LAN tasks plus mDNS advertisement, with the same public identity fields and
+abort-on-drop behavior. Background startup transfers ownership through a
+constructor; the application continues activating the local identity first.
+The previous application implementation file is deleted.
+
+Static comparison verifies identical record fields, abort method and Drop
+implementation, and checks each constructor assignment plus startup wiring.
+The module scan reaches 248 application A2A files and 122 HTTP crate files
+without missing/orphaned modules; the dependency closure is acyclic. New files
+contain at most 24 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-peer-handle/`. Compilation, tests, and live
+shutdown remain unrun. No Cargo, rustc, or Python commands ran. The broader
+migration remains active.

@@ -57,9 +57,7 @@ use tokio::sync::mpsc;
 
 #[path = "spawn/agent_card.rs"]
 mod agent_card;
-#[path = "spawn/handle.rs"]
-mod handle;
-pub use handle::A2APeerHandle;
+pub use codetether_a2a_http::peer_handle::A2APeerHandle;
 mod background;
 mod command;
 mod options;

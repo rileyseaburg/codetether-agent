@@ -44,3 +44,6 @@ pub mod auth;
 
 /// Concurrent discovery intake, HTTP resolution and peer registration.
 pub mod peer_intake;
+
+/// Task ownership and shutdown for background peer endpoints.
+pub mod peer_handle;
