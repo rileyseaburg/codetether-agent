@@ -5788,3 +5788,21 @@ File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-live-inbox/`. Compilation, tests, and live handoff
 remain unrun. No Cargo, rustc, or Python commands ran. The broader migration
 remains active.
+
+### Shared discovery presence and peer bus publication
+
+Moved peer refresh/expiry timing, discovery heartbeats, expiry sweeps and the
+abort-on-drop guard into the discovery crate. Correlated A2A peer message
+publication moved into bus-core. Application files re-export those operations.
+Discovery directly depends on the shared bus contracts, without application
+runtime dependencies.
+
+Static comparison verifies eight presence definitions and the peer publication
+function. Timing constants, route removal/registry deregistration/shutdown
+ordering, task correlations, and original log target are preserved. The module
+scan reaches 47 discovery files, 135 bus-core files, and 251 application A2A
+files without missing/orphaned modules; both dependency closures are acyclic.
+New files contain at most 23 code lines. File-budget and whitespace checks
+passed. Evidence: `artifacts/consolidation-discovery-bus/`. Compilation, tests,
+and live discovery remain unrun. No Cargo, rustc, or Python commands ran.
+The broader implementation migration remains active.

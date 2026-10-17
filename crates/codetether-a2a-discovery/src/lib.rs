@@ -37,3 +37,6 @@ pub mod naming;
 
 /// Workspace-aware peer descriptions.
 pub mod description;
+
+/// Bus notifications and expiry lifecycle for discovered peers.
+pub mod presence;

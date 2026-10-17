@@ -1096,6 +1096,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-a2a-core",
+ "codetether-bus-core",
  "dashmap",
  "gethostname",
  "if-addrs",

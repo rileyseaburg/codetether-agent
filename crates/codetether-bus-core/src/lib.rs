@@ -31,3 +31,6 @@ pub mod relay;
 
 /// Training-record projection and batch serialization independent of storage.
 pub mod training;
+
+/// Correlated peer-message publication.
+pub mod peer_messages;
