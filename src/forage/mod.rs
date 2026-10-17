@@ -31,18 +31,11 @@ mod tetherscript_score;
 use crate::forage_println;
 use anyhow::{Context, Result};
 use chrono::Utc;
+use codetether_forage_core::execution::ExecutionOutcome;
 use serde::Serialize;
 use serde_json::json;
-use std::collections::HashSet;
 use std::time::Duration;
 use uuid::Uuid;
-
-#[derive(Debug, Clone)]
-struct ExecutionOutcome {
-    detail: String,
-    changed_files: Vec<String>,
-    quality_gates_passed: bool,
-}
 
 pub async fn execute(args: ForageArgs) -> Result<()> {
     execute_with_summary(args).await.map(|_| ())
@@ -389,28 +382,16 @@ async fn execute_opportunity(
         _ => execute_opportunity_with_run(item, args).await?,
     };
     let after = snapshot_git_changed_files();
-    let changed_files = match (before, after) {
-        (Some(before_set), Some(after_set)) => after_set.difference(&before_set).cloned().collect(),
-        (_, Some(after_set)) => after_set.into_iter().collect(),
-        _ => Vec::new(),
-    };
+    let changed_files = codetether_forage_core::execution::changed_files(before, after);
 
     // Run quality gates to verify the changes work
     let quality_result = run_quality_gates(&changed_files).await;
 
-    let (final_detail, quality_passed) = match quality_result {
-        Ok((qr, passed)) => (format!("{}\n\nQuality gates: {}", detail, qr), passed),
-        Err(e) => {
-            tracing::warn!(error = %e, "Quality gates failed to run");
-            (detail, false) // Treat execution errors as quality failure
-        }
-    };
-
-    Ok(ExecutionOutcome {
-        detail: final_detail,
+    Ok(codetether_forage_core::execution::with_quality(
+        detail,
         changed_files,
-        quality_gates_passed: quality_passed,
-    })
+        quality_result,
+    ))
 }
 async fn run_quality_gates(changed_files: &[String]) -> Result<(String, bool)> {
     codetether_forage_core::quality::run(changed_files, quality_shell::run).await
@@ -642,53 +623,14 @@ fn flush_bus_observer(observer: &mut BusHandle, cycle: usize, json_mode: bool) {
         shown = shown.saturating_add(1);
     }
 }
-
 async fn load_moonshot_rubric(args: &ForageArgs) -> Result<MoonshotRubric> {
-    let mut goals = args
-        .moonshots
-        .iter()
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .map(ToString::to_string)
-        .collect::<Vec<_>>();
-
-    if let Some(path) = &args.moonshot_file {
-        let content = tokio::fs::read_to_string(path)
-            .await
-            .with_context(|| format!("Failed to read moonshot file: {}", path.display()))?;
-
-        if let Ok(json_list) = serde_json::from_str::<Vec<String>>(&content) {
-            goals.extend(
-                json_list
-                    .into_iter()
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty()),
-            );
-        } else {
-            goals.extend(
-                content
-                    .lines()
-                    .map(str::trim)
-                    .filter(|line| !line.is_empty() && !line.starts_with('#'))
-                    .map(ToString::to_string),
-            );
-        }
-    }
-
-    let mut deduped = Vec::new();
-    let mut seen = HashSet::new();
-    for goal in goals {
-        let key = goal.to_ascii_lowercase();
-        if seen.insert(key) {
-            deduped.push(goal);
-        }
-    }
-
-    Ok(MoonshotRubric {
-        goals: deduped,
-        required: args.moonshot_required,
-        min_alignment: args.moonshot_min_alignment.clamp(0.0, 1.0),
-    })
+    codetether_forage_core::rubric_load::load(
+        &args.moonshots,
+        args.moonshot_file.as_deref(),
+        args.moonshot_required,
+        args.moonshot_min_alignment,
+    )
+    .await
 }
 
 async fn build_opportunities(

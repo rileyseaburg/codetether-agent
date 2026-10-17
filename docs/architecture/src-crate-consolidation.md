@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 13 | 1348 | Selection, seeding, progress, Git snapshots and quality workflow extracted; application retains policy-gated shell, execution, CLI and event adapters |
+| forage | 13 | 1297 | Selection, seeding, progress, Git snapshots, quality workflow, execution evidence and rubric loading extracted; application execution loop and engine/event adapters remain |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -122,7 +122,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-lsp-core | 95 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
-| codetether-forage-core | 29 | yes | none |
+| codetether-forage-core | 34 | yes | none |
 | codetether-okr | 72 | yes | none |
 | codetether-paths | 5 | yes | none |
 | codetether-platform | 56 | yes | none |
@@ -4020,3 +4020,26 @@ No Cargo, rustc, Python, listener, HTTP request, task delivery, Rust test or
 doctest ran. Compilation and runtime behavior remain unverified. Evidence is
 retained in artifacts/consolidation-worker-http/. The complete workspace
 consolidation goal remains active.
+
+## Forage execution evidence and rubric loading
+
+Forage-core::execution owns the execution outcome record, sorted Git-snapshot
+comparison and quality-result formatting. Application execution preserves the
+snapshot-before-engine, snapshot-after-engine and policy-gated quality call
+order. The shared helper accepts BTreeSet snapshots, matching the existing Git
+snapshot API. Forage-core::rubric_load owns optional file reading, JSON/list
+normalization, first-seen case-insensitive deduplication and alignment clamping.
+The CLI wrapper passes explicit goals, file path, required flag and threshold.
+
+All 32 static comparisons passed, including complete unchanged application
+functions and test bodies, loader logic, evidence construction, ordering and
+error text. All five new files are at most 50 code lines. Lexical scans found
+all 34 shared-core and 13 application files reachable, without missing modules
+or a cycle in the three-crate local dependency closure. Manifest/lock changes
+add already-locked serde_json and Tokio filesystem support; no dependency
+resolution ran. File-limit and whitespace checks passed.
+
+Standalone rustfmt was used. No Cargo, rustc, Python, execution engine, quality
+command, rubric file read, Rust test or doctest ran; compilation and runtime
+remain unverified. Evidence: artifacts/consolidation-forage-evidence/. The
+whole-workspace goal remains active, including the forage application loop.

@@ -34,3 +34,8 @@ pub mod seed;
 pub mod changes;
 /// Quality workflow with host-supplied command execution.
 pub mod quality;
+
+/// Execution evidence independent of engine dispatch.
+pub mod execution;
+/// Moonshot file loading and normalization.
+pub mod rubric_load;
