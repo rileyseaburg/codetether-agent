@@ -7513,3 +7513,19 @@ passed; new Rust files contain at most 27 code lines. Evidence lives in
 `artifacts/consolidation-context-budget/`. No sessions were loaded, runtime
 tests, Cargo, rustc or Python commands run. Compilation remains unverified;
 the full consolidation goal remains active.
+
+### Dedicated context pinning tool
+
+Moved context pinning request handling, schema, validation, page selection and
+persistence orchestration into `crates/codetether-context-pin`. Six modules
+separate the tool contract from its storage interface. The application adapter
+performs the same indexed tracked-page assignment and calls `Session::save`;
+existing registration retains its unit-like construction.
+
+Fourteen static preservation checks compare argument normalization, calling
+session loading, index/action errors, page-kind changes, save ordering and
+result text. Module reachability, dependency cycles, file budgets and whitespace
+checks passed; new Rust files contain at most 26 code lines. Evidence lives in
+`artifacts/consolidation-context-pin/`. No sessions were modified, runtime tests,
+Cargo, rustc or Python commands run. Compilation remains unverified; the full
+consolidation goal remains active.

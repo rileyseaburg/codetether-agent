@@ -1296,6 +1296,7 @@ dependencies = [
  "codetether-confirm-multiedit",
  "codetether-context-budget",
  "codetether-context-loader",
+ "codetether-context-pin",
  "codetether-context-policy",
  "codetether-context-reset",
  "codetether-crash",
@@ -2071,6 +2072,18 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "serde_json",
+]
+
+[[package]]
+name = "codetether-context-pin"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-context-loader",
+ "codetether-context-policy",
+ "codetether-tool-core",
  "serde_json",
 ]
 
