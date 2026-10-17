@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 111 | 2777 | Shared services and event projections extracted; grouped application hosts remain under final ownership review |
+| ralph | 108 | 2703 | Shared services, event projections and relay convergence extracted; grouped application hosts remain under final ownership review |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -152,7 +152,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-openai | 72 | yes | none |
 | codetether-provider-zai | 120 | yes | none |
 | codetether-question | 30 | yes | none |
-| codetether-ralph-core | 138 | yes | none |
+| codetether-ralph-core | 141 | yes | none |
 | codetether-rlm | 448 | yes | none |
 | codetether-runtime-policy | 37 | yes | none |
 | codetether-search | 18 | yes | none |
@@ -4410,3 +4410,20 @@ No Cargo, rustc, Python, channel execution, Rust test or doctest ran; compilatio
 and runtime remain unverified. Evidence:
 artifacts/consolidation-ralph-event-mapping/. The final Ralph ownership review
 and full workspace objective remain active.
+
+## Ralph relay convergence and predecessor policy
+
+Ralph-core::relay now owns relay progress, repeated-output convergence,
+terminal-marker handling, handoff composition and predecessor selection.
+The host still owns ordered sessions, event forwarding, turns and shutdown.
+Unused application text wrappers were removed; shared presentation helpers
+continue to provide the same normalization and handoff text.
+
+Eight static comparisons passed, including state layout, complete observation
+logic, predecessor indexing, unchanged round execution and shutdown. The three
+new files are at most 25 code lines. Lexical scans found 141 core and 108
+application files reachable without missing modules or dependency changes.
+File-limit and whitespace checks passed; standalone rustfmt was used. No
+Cargo, rustc, Python, relay session, Rust test or doctest ran. Compilation and
+runtime remain unverified. Evidence: artifacts/consolidation-ralph-relay-policy/.
+Remaining host ownership review and the full workspace goal remain active.

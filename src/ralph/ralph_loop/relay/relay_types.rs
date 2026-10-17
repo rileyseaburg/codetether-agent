@@ -5,12 +5,7 @@ pub(in crate::ralph::ralph_loop) struct PreparedRelayTeam {
     pub(in crate::ralph::ralph_loop) ordered_agents: Vec<String>,
     pub(in crate::ralph::ralph_loop) _relay_profiles: Vec<RelayAgentProfile>,
 }
-pub(in crate::ralph::ralph_loop) struct RelayProgress {
-    pub(in crate::ralph::ralph_loop) baton: String,
-    pub(in crate::ralph::ralph_loop) previous_normalized: Option<String>,
-    pub(in crate::ralph::ralph_loop) convergence_hits: usize,
-    pub(in crate::ralph::ralph_loop) turns: usize,
-}
+pub(in crate::ralph::ralph_loop) use codetether_ralph_core::relay::RelayProgress;
 pub(in crate::ralph::ralph_loop) struct RelayRoundContext<'a> {
     pub(in crate::ralph::ralph_loop) registry: &'a Arc<ProviderRegistry>,
     pub(in crate::ralph::ralph_loop) team: &'a mut PreparedRelayTeam,

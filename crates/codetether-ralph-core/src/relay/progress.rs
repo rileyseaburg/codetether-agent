@@ -1,16 +1,19 @@
-//! Track relay output convergence and terminal markers.
-use super::relay_types::RelayProgress;
-use super::*;
+//! Relay convergence, terminal markers and handoff state.
+use super::RelayProgress;
+use tracing::info;
+
 impl RelayProgress {
-    pub(in crate::ralph::ralph_loop) fn observe(
-        &mut self,
-        output: String,
-        to: &str,
-        prompt: &str,
-        story_id: &str,
-    ) -> bool {
+    /// Observe one output and return whether relay execution should stop.
+    ///
+    /// # Examples
+    /// ```
+    /// use codetether_ralph_core::relay::RelayProgress;
+    /// let mut progress = RelayProgress { baton: String::new(), previous_normalized: None, convergence_hits: 0, turns: 1 };
+    /// assert!(progress.observe("STORY_COMPLETE".into(), "coder", "task", "story"));
+    /// ```
+    pub fn observe(&mut self, output: String, to: &str, prompt: &str, story_id: &str) -> bool {
         // Convergence detection
-        let normalized = RalphLoop::normalize_for_relay(&output);
+        let normalized = crate::presentation::normalize_for_relay(&output);
         if self.previous_normalized.as_deref() == Some(normalized.as_str()) {
             self.convergence_hits += 1;
         } else {
@@ -32,7 +35,7 @@ impl RelayProgress {
         }
 
         // Prepare handoff for next agent
-        self.baton = RalphLoop::prepare_relay_handoff(&to, &output, prompt);
+        self.baton = crate::presentation::prepare_relay_handoff(&to, &output, prompt);
         false
     }
 }

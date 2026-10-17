@@ -34,3 +34,6 @@ pub mod scheduling;
 
 /// Relay role mapping and calibrated provider ranking.
 pub mod delegation;
+
+/// Relay predecessor selection and convergence state.
+pub mod relay;

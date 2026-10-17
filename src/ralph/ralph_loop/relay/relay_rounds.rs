@@ -14,7 +14,8 @@ impl RalphLoop {
         'relay_loop: for round in 1..=ctx.max_rounds {
             for idx in 0..ctx.team.ordered_agents.len() {
                 let to = ctx.team.ordered_agents[idx].clone();
-                let from = Self::relay_sender(&ctx.team.ordered_agents, idx, round);
+                let from =
+                    codetether_ralph_core::relay::sender(&ctx.team.ordered_agents, idx, round);
                 progress.turns += 1;
                 Self::announce_relay_turn(
                     ctx.relay,
