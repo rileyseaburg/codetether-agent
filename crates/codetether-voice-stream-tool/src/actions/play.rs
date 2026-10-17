@@ -1,8 +1,8 @@
 //! play action — replay a previously generated TTS job in the browser.
 
 use super::super::{Params, voice_api_url};
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 pub(crate) async fn run(client: &reqwest::Client, params: &Params) -> Result<ToolResult> {

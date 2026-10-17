@@ -1,7 +1,7 @@
 //! TTS success/error formatting for voice stream.
 
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 #[allow(dead_code)]

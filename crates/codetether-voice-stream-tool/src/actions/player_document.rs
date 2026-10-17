@@ -1,31 +1,12 @@
-//! HTML audio player helper — temp file + browser launch.
-
-use anyhow::{Context, Result, bail};
+//! Safe HTML rendering, audio URL validation and temporary player paths.
+use anyhow::{Result, bail};
 use std::path::PathBuf;
-use tracing::info;
 
-pub(crate) struct Launch {
-    pub(crate) html_path: PathBuf,
-    pub(crate) browser_opened: bool,
-}
-
-pub(crate) fn open(job_id: &str, output_url: &str) -> Result<Launch> {
-    let output_url = validate_url(output_url)?;
-    let path = player_path(job_id);
-    std::fs::write(&path, player_html(job_id, output_url))
-        .context("Failed to write HTML player")?;
-    info!(job_id, output_url, "Opening voice audio player in browser");
-    Ok(Launch {
-        html_path: path,
-        browser_opened: open::that(player_path(job_id)).is_ok(),
-    })
-}
-
-fn player_path(job_id: &str) -> PathBuf {
+pub(super) fn player_path(job_id: &str) -> PathBuf {
     std::env::temp_dir().join(format!("voice_{}.html", safe_name(job_id)))
 }
 
-fn player_html(job_id: &str, output_url: &str) -> String {
+pub(super) fn player_html(job_id: &str, output_url: &str) -> String {
     let title = escape_html(job_id);
     let source = escape_html(output_url);
     format!(
@@ -33,7 +14,7 @@ fn player_html(job_id: &str, output_url: &str) -> String {
     )
 }
 
-fn validate_url(url: &str) -> Result<&str> {
+pub(super) fn validate_url(url: &str) -> Result<&str> {
     if url.starts_with("https://") || url.starts_with("http://") {
         return Ok(url);
     }

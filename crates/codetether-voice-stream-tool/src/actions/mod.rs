@@ -2,6 +2,7 @@
 
 mod audio_player;
 mod play;
+mod player_document;
 mod speak_stream;
 mod tts_request;
 mod tts_result;

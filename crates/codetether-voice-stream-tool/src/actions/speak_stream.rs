@@ -1,8 +1,8 @@
 //! speak_stream action — POST /tts/speak, open browser player.
 
 use super::super::{Params, voice_api_url};
-use crate::tool::ToolResult;
 use anyhow::{Context, Result};
+use codetether_tool_core::ToolResult;
 
 pub(crate) async fn run(client: &reqwest::Client, params: &Params) -> Result<ToolResult> {
     let Some(text) = params.text.as_ref().filter(|t| !t.trim().is_empty()) else {

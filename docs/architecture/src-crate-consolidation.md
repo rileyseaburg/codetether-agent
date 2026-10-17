@@ -7228,3 +7228,20 @@ files contain at most 34 code lines. Evidence lives in
 network requests, runtime tests, Cargo, rustc or Python commands ran. Compilation
 and runtime behavior remain unverified. The full consolidation goal remains
 active.
+
+### Dedicated voice-stream and playback tool
+
+Moved `VoiceStreamTool`, its public input record, schema and action modules from
+`src/tool/voice_stream*` into `crates/codetether-voice-stream-tool`. Twelve modules
+separate client setup, input, dispatch, TTS requests/results, replay validation,
+browser launch and safe HTML/path construction. The old module is now only a
+compatibility export; the old implementation directory has been removed.
+
+Twenty-three static preservation checks compare the existing flows, input
+fields, defaults, schema, HTML escaping, URL validation and browser launch. The
+existing integration test is byte-for-byte unchanged and remains unrun. Module
+reachability, dependency cycles, file budgets and whitespace checks passed; new
+Rust files contain at most 44 code lines. Evidence lives in
+`artifacts/consolidation-voice-stream-tool/`. No requests, audio playback,
+browser launches, runtime tests, Cargo, rustc or Python commands ran. Compilation
+remains unverified, and the full workspace consolidation goal remains active.
