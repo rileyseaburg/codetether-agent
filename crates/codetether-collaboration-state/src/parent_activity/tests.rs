@@ -1,3 +1,4 @@
+//! Existing parent-notification ordering and wake-up regression tests.
 use super::{Activity, mailbox, registry, steered, until};
 use std::time::Duration;
 

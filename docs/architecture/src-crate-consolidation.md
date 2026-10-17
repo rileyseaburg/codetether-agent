@@ -7864,3 +7864,21 @@ modules contain at most 47 code lines. Evidence is in
 `artifacts/consolidation-collaboration-wait/`. No wait was started, runtime tests
 executed, or Cargo, rustc or Python commands run. Compilation remains unverified;
 the full source-to-crates consolidation goal remains active.
+
+### Dedicated collaboration state ownership
+
+Moved parent mailbox/steering notification queues and child lifecycle watch
+channels into `crates/codetether-collaboration-state`. Thirteen Rust modules own
+the existing process-global registries, their shared Activity/ThreadStatus
+values, bounded FIFO behavior, race-free waiting, terminal-state protection and
+named transitions. The application and collaboration tools re-export the same
+state owner; no parallel registry was introduced. Seven existing notification
+and status regression tests moved with the implementation.
+
+Twenty static preservation checks compare the original registry, channel,
+notification, transition and serialization code, plus tests and unchanged
+runtime callers. Module/dependency checks, file budgets and whitespace checks
+passed; new Rust modules contain at most 42 code lines. Evidence is in
+`artifacts/consolidation-collaboration-state/`. No collaboration state operations
+or runtime tests were executed. No Cargo, rustc or Python commands ran.
+Compilation remains unverified; the full consolidation goal remains active.

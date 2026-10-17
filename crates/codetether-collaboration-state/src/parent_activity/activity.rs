@@ -5,8 +5,8 @@
 ///
 /// # Examples
 /// ```
-/// let activity=codetether_collaboration_tools::Activity::Mailbox;
-/// assert_eq!(activity,codetether_collaboration_tools::Activity::Mailbox);
+/// let activity=codetether_collaboration_state::Activity::Mailbox;
+/// assert_eq!(activity,codetether_collaboration_state::Activity::Mailbox);
 /// ```
 pub enum Activity {
     /// A child mailbox has an update.

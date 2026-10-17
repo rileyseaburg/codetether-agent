@@ -38,13 +38,10 @@ pub use send_message::SendMessageTool;
 mod send_input;
 pub use send_input::{SendInputArgs, SendInputTool};
 
-mod activity;
-mod thread_status;
 mod wait;
 mod wait_host;
 mod wait_public;
-pub use activity::Activity;
-pub use thread_status::ThreadStatus;
+pub use codetether_collaboration_state::{Activity, ThreadStatus};
 pub use wait::{WaitAgentTool, WaitArgs};
 pub use wait_host::{WaitAgent, WaitHost};
 pub use wait_public::execute_wait;

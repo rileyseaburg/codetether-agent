@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use tokio::sync::Notify;
 
 const MAX_PENDING: usize = 256;
-pub(crate) use codetether_collaboration_tools::Activity;
+use super::Activity;
 
 #[derive(Default)]
 pub(super) struct Channel {

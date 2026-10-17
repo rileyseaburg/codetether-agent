@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// # Examples
 /// ```
-/// let status=codetether_collaboration_tools::ThreadStatus::Completed(None);
+/// let status=codetether_collaboration_state::ThreadStatus::Completed(None);
 /// assert!(status.is_final());
 /// ```
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]

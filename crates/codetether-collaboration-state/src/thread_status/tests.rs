@@ -1,3 +1,4 @@
+//! Existing status publication, serialization and cancellation regression tests.
 use super::{ThreadStatus, get, initialize, remove, set, subscribe};
 
 #[test]
