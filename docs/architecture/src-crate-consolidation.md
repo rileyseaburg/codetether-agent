@@ -7139,3 +7139,22 @@ contain at most 46 code lines. Evidence: `artifacts/consolidation-browser-tool/`
 No browser operations, screenshot captures, runtime tests, Cargo, rustc or
 Python commands ran. Compilation remains unverified; the full consolidation
 goal remains active.
+
+### Dedicated LSP tool and workspace manager cache
+
+Moved LSP action parsing, capability gating, schema, workspace manager caching,
+request dispatch and result formatting into `crates/codetether-lsp-tool`.
+Forty modules separate per-operation requests/results from manager creation,
+cache selection and shutdown. The application retains an alias and host adapter
+that supplies the original LSP client wrapper and one static state object;
+client initialization identity remains in its existing owner.
+
+Thirty-nine static preservation checks cover aliases, schema, configuration
+selection, double-checked manager insertion, the eight-manager eviction limit,
+last-owner shutdown, all request branches, diagnostic merging and all result
+formats. Four action/argument tests and three capability tests moved with their
+bodies preserved. Module reachability, dependency-cycle, file-budget and
+whitespace checks passed; new Rust files contain at most 50 code lines.
+Evidence: `artifacts/consolidation-lsp-tool/`. No language servers, LSP requests,
+runtime tests, Cargo, rustc or Python commands ran. Compilation remains
+unverified; the full workspace consolidation goal remains active.

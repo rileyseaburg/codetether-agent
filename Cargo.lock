@@ -1315,6 +1315,7 @@ dependencies = [
  "codetether-k8s-tool",
  "codetether-knowledge-graph",
  "codetether-lsp-core",
+ "codetether-lsp-tool",
  "codetether-marketplace",
  "codetether-mcp-core",
  "codetether-mcp-transport",
@@ -2354,6 +2355,20 @@ dependencies = [
  "tokio",
  "tracing",
  "which 8.0.6",
+]
+
+[[package]]
+name = "codetether-lsp-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-config",
+ "codetether-lsp-core",
+ "codetether-tool-core",
+ "lsp-types",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
