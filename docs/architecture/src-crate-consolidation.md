@@ -7158,3 +7158,20 @@ whitespace checks passed; new Rust files contain at most 50 code lines.
 Evidence: `artifacts/consolidation-lsp-tool/`. No language servers, LSP requests,
 runtime tests, Cargo, rustc or Python commands ran. Compilation remains
 unverified; the full workspace consolidation goal remains active.
+
+### Dedicated voice-service tool
+
+Moved `VoiceTool` into `crates/codetether-voice-tool`. Fourteen modules separate
+client construction, action arguments, request/schema handling, speech response
+saving, transcription responses, voice-list formatting and health reporting.
+The application keeps a compatibility export. Endpoint overrides, default
+voice and language, request timeouts and saved WAV naming retain their behavior.
+
+Fifteen static preservation checks reconstruct the complete action dispatcher
+and request/response flows, including multipart fields, errors, file writes and
+metadata. The existing end-to-end voice stub test remains unchanged and unrun.
+Module reachability, dependency-cycle, file-budget and whitespace checks passed;
+new Rust files contain at most 37 code lines. Evidence:
+`artifacts/consolidation-voice-tool/`. No voice service calls, audio generation,
+runtime tests, Cargo, rustc or Python commands ran. Compilation remains
+unverified; the full workspace consolidation goal remains active.

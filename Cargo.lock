@@ -1389,6 +1389,7 @@ dependencies = [
  "codetether-util",
  "codetether-vectordb",
  "codetether-voice-core",
+ "codetether-voice-tool",
  "codetether-webfetch",
  "codetether-websearch",
  "codetether-worker-http",
@@ -3355,6 +3356,19 @@ name = "codetether-voice-core"
 version = "0.1.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "codetether-voice-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
