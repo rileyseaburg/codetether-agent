@@ -7,3 +7,8 @@ pub mod parent_activity;
 pub mod thread_status;
 pub use parent_activity::Activity;
 pub use thread_status::ThreadStatus;
+
+/// Per-agent execution guards, abort handles and closed-state registry.
+pub mod execution;
+/// Completion notifications shared by execution and lifecycle waiters.
+pub mod execution_notify;

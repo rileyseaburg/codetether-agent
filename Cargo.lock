@@ -2432,6 +2432,7 @@ dependencies = [
 name = "codetether-collaboration-state"
 version = "0.1.0"
 dependencies = [
+ "lazy_static",
  "serde",
  "serde_json",
  "tokio",

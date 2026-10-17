@@ -7882,3 +7882,20 @@ passed; new Rust modules contain at most 42 code lines. Evidence is in
 `artifacts/consolidation-collaboration-state/`. No collaboration state operations
 or runtime tests were executed. No Cargo, rustc or Python commands ran.
 Compilation remains unverified; the full consolidation goal remains active.
+
+### Shared child execution bookkeeping
+
+Moved the per-agent running/closed registry, abort-handle management, RAII run
+guard and completion-notifier registry into `codetether-collaboration-state`.
+Six added Rust modules bring the state crate to nineteen modules. The
+application re-exports the same operations and guard type. The existing
+cancellation regression test moved with the implementation; shutdown waits and
+message execution callers remain unchanged.
+
+Fourteen static preservation checks cover registration, cancellation, closed
+state, guard drop, notifier creation/wake order, the moved test and unchanged
+callers. Module/dependency checks, file budgets and whitespace checks passed;
+state-crate modules contain at most 46 code lines. Evidence is in
+`artifacts/consolidation-execution-state/`. No tasks were started or cancelled,
+runtime tests executed, or Cargo, rustc or Python commands run. Compilation
+remains unverified; the full consolidation goal remains active.

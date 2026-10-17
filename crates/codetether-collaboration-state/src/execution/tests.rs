@@ -1,3 +1,4 @@
+//! Existing execution cancellation and guard-cleanup regression test.
 use super::{abort, is_running, register, try_start};
 
 #[tokio::test]
