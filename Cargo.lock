@@ -1337,6 +1337,7 @@ dependencies = [
  "codetether-rlm",
  "codetether-runtime-policy",
  "codetether-sandbox-environment",
+ "codetether-sandbox-landlock",
  "codetether-sandbox-policy",
  "codetether-sandbox-seatbelt",
  "codetether-sandbox-seccomp",
@@ -2819,6 +2820,15 @@ version = "0.1.0"
 dependencies = [
  "codetether-sandbox-policy",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-sandbox-landlock"
+version = "0.1.0"
+dependencies = [
+ "codetether-sandbox-policy",
+ "libc",
+ "tokio",
 ]
 
 [[package]]

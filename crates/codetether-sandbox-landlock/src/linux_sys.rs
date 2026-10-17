@@ -1,3 +1,4 @@
+//! linux sys for Landlock confinement.
 #[repr(C)]
 pub(crate) struct RulesetAttr {
     pub handled_access_fs: u64,

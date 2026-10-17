@@ -1,3 +1,4 @@
+//! linux inactive for Landlock confinement.
 use super::Prepared;
 
 pub(super) fn prepared(reason: &'static str) -> Prepared {

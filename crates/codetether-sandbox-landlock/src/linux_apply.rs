@@ -1,3 +1,4 @@
+//! linux apply for Landlock confinement.
 use super::plan::Rules;
 use super::restrict::{close_with_error, restrict};
 use super::sys::{self, PathBeneathAttr, RulesetAttr};

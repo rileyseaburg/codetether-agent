@@ -1,3 +1,4 @@
+//! linux restrict for Landlock confinement.
 pub(crate) fn restrict(fd: i32) -> std::io::Result<()> {
     let prctl = unsafe { libc::prctl(libc::PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) };
     let restricted = unsafe { libc::syscall(libc::SYS_landlock_restrict_self, fd, 0u32) };

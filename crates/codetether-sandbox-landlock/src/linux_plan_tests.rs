@@ -1,13 +1,14 @@
+//! linux plan tests for Landlock confinement.
 use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 
-use crate::tool::sandbox::SandboxPolicy;
+use codetether_sandbox_policy::SandboxPolicy;
 
 #[test]
 fn read_only_plan_keeps_temporary_storage_writable() {
-    let rules = super::rules(&SandboxPolicy::default(), Path::new("/workspace"), 3)
-        .expect("sandbox rules");
+    let rules =
+        super::rules(&SandboxPolicy::default(), Path::new("/workspace"), 3).expect("sandbox rules");
     let temp = CString::new(std::env::temp_dir().as_os_str().as_bytes()).expect("temp path");
     let rule = rules
         .paths

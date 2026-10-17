@@ -112,6 +112,7 @@ members = [
     "crates/codetether-write-stdin",
     "crates/codetether-plugin-verification",
     "crates/codetether-sandbox-environment",
+    "crates/codetether-sandbox-landlock",
     "crates/codetether-sandbox-policy",
     "crates/codetether-sandbox-seccomp",
     "crates/codetether-sandbox-seatbelt",
@@ -345,6 +346,7 @@ codetether-command-shell = { path = "crates/codetether-command-shell", version =
 codetether-write-stdin = { path = "crates/codetether-write-stdin", version = "0.1.0" }
 codetether-plugin-verification = { path = "crates/codetether-plugin-verification", version = "0.1.0" }
 codetether-sandbox-environment = { path = "crates/codetether-sandbox-environment", version = "0.1.0" }
+codetether-sandbox-landlock = { path = "crates/codetether-sandbox-landlock", version = "0.1.0" }
 codetether-sandbox-policy = { path = "crates/codetether-sandbox-policy", version = "0.1.0" }
 codetether-sandbox-seccomp = { path = "crates/codetether-sandbox-seccomp", version = "0.1.0" }
 codetether-sandbox-seatbelt = { path = "crates/codetether-sandbox-seatbelt", version = "0.1.0" }

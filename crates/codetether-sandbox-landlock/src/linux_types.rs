@@ -3,19 +3,22 @@
 use std::ffi::CString;
 
 #[derive(Debug, Clone)]
-pub(crate) struct Rules {
+/// Owned path rules to install when the child is spawned.
+pub struct Rules {
     pub paths: Vec<PathRule>,
     pub handled_access: u64,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct PathRule {
+/// A NUL-terminated path and its allowed filesystem access mask.
+pub struct PathRule {
     pub path: CString,
     pub access: u64,
 }
 
 #[derive(Debug)]
-pub(crate) struct Prepared {
+/// Rule preparation outcome and optional confinement fallback reason.
+pub struct Prepared {
     pub rules: Option<Rules>,
     pub fallback: Option<String>,
 }

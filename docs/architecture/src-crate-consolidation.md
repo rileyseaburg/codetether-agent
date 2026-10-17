@@ -2315,6 +2315,22 @@ and whitespace checks passed; files contain at most 41 code lines. Evidence:
 and no runtime tests, Cargo, rustc or Python were executed. Compilation and
 kernel enforcement remain unverified. The full workspace goal remains active.
 
+### Dedicated Linux Landlock confinement
+
+Moved Landlock rule planning, ABI-dependent access masks, writable runtime
+paths, syscall wrappers and pre-exec enforcement into
+`crates/codetether-sandbox-landlock`. Twelve files include two existing rule
+planning tests and the unsupported-platform fallback. The application keeps
+the existing `Rules`, `prepare`, `apply` and availability API through exports.
+
+Static comparisons verify every moved file after visibility and import-path
+changes, including rule order, descriptor cleanup and fallback strings.
+Module reachability, dependency-cycle, workspace wiring, file-budget and
+whitespace checks passed. Files contain at most 50 code lines. Evidence:
+`artifacts/consolidation-sandbox-landlock/`. No kernel probes, restrictions,
+runtime tests, Cargo, rustc or Python ran. Compilation and kernel behavior
+remain unverified; the full workspace migration remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

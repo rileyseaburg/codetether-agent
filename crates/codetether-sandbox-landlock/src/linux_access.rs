@@ -1,7 +1,8 @@
+//! linux access for Landlock confinement.
 use std::path::Path;
 
 use super::sys;
-use crate::tool::sandbox::SandboxPolicy;
+use codetether_sandbox_policy::SandboxPolicy;
 
 pub(super) fn handled(abi: i64) -> u64 {
     sys::READ_ACCESS | writable(abi)

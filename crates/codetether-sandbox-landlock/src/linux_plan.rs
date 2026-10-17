@@ -1,19 +1,21 @@
+//! linux plan for Landlock confinement.
 use super::sys;
-#[path = "sandbox_landlock_linux_access.rs"]
+#[path = "linux_access.rs"]
 mod access;
-#[path = "sandbox_landlock_linux_devices.rs"]
+#[path = "linux_devices.rs"]
 mod devices;
-#[path = "sandbox_landlock_linux_inactive.rs"]
+#[path = "linux_inactive.rs"]
 mod inactive;
-#[path = "sandbox_landlock_linux_types.rs"]
+#[path = "linux_types.rs"]
 mod types;
-use crate::tool::sandbox::SandboxPolicy;
+use codetether_sandbox_policy::SandboxPolicy;
 use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
-pub(crate) use types::{PathRule, Prepared, Rules};
+pub use types::{PathRule, Prepared, Rules};
 
-pub(crate) fn prepare(policy: &SandboxPolicy, work_dir: &Path) -> Prepared {
+/// Build path rules and report a fallback reason when unavailable.
+pub fn prepare(policy: &SandboxPolicy, work_dir: &Path) -> Prepared {
     let abi = sys::abi_version();
     if abi <= 0 {
         return inactive::prepared("kernel_unavailable");
@@ -50,5 +52,5 @@ fn rule(path: &Path, access: u64) -> Result<PathRule, &'static str> {
 }
 
 #[cfg(test)]
-#[path = "sandbox_landlock_linux_plan_tests.rs"]
+#[path = "linux_plan_tests.rs"]
 mod tests;
