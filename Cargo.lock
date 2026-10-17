@@ -1743,6 +1743,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-command-pty",
+ "codetether-command-shell",
  "codetether-process-tree",
  "codetether-tool-core",
  "serde_json",

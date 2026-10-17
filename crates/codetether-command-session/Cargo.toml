@@ -7,6 +7,7 @@ license = "MIT"
 description = "Persistent subprocess sessions with bounded output and liveness"
 
 [dependencies]
+codetether-command-shell = { path = "../codetether-command-shell", version = "0.1.0" }
 anyhow = "1"
 codetether-command-pty = { path = "../codetether-command-pty", version = "0.1.0" }
 codetether-process-tree = { path = "../codetether-process-tree", version = "0.1.0" }

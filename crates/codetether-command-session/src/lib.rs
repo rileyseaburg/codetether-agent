@@ -15,3 +15,6 @@ pub use registry::Registry;
 pub use result::tool_result;
 pub use running::Running;
 pub use types::{Poll, SpawnMetadata};
+
+mod spawn;
+pub use spawn::spawn_direct;

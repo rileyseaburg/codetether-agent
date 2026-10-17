@@ -2216,6 +2216,21 @@ whitespace checks passed. New files contain at most 48 code lines. Evidence:
 runtime tests, Cargo, rustc or Python ran. Compilation and platform behavior
 remain unverified. The full workspace migration remains active.
 
+### Shared direct command-session spawning
+
+Moved direct child creation from the application command-session adapter to
+`codetether-command-session::spawn_direct`. The shared crate now owns shell
+preparation, environment overrides, optional terminal attachment, spawning
+and initial session metadata. The application still selects the sandbox
+branch first; that adapter remains byte-identical.
+
+Static comparisons verify the complete direct branch and sandbox-first
+dispatch order. Module reachability, dependency-cycle, file-budget and
+whitespace checks passed. The new module contains 30 code lines. Evidence:
+`artifacts/consolidation-command-spawn/`. No commands, runtime tests, Cargo,
+rustc or Python ran. Compilation and runtime behavior remain unverified;
+the full workspace migration remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict
