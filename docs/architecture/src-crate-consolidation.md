@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 47 | 2211 | Shared catalog/registry, server responses, protocol and transports extracted; bus adapters modularized; server dispatch, fallback registration and client identity adapters remain |
+| mcp | 68 | 2320 | Shared catalog/registry, server responses, protocol and transports extracted; server host and fallback adapters modularized; client and bridge ownership audit remains |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -3904,3 +3904,26 @@ The changed-source file-limit ratchet and diff whitespace checks passed.
 No Cargo, rustc, Python, bus handlers, application runtime or Rust tests ran;
 compilation and runtime behavior remain unverified. Evidence is retained in
 artifacts/consolidation-mcp-bus-modules/. The workspace goal remains active.
+
+## MCP server host and fallback module cohesion
+
+The application server root now holds only state and module declarations
+(34 code lines). Construction, attachment, tool/resource/prompt catalog
+facades, transport loop, setup selection, application registry adaptation,
+request dispatch, shared protocol forwarding and tool invocation have distinct
+modules. Every server file, including bus adapters, is at most 47 code lines.
+Fallback registration has one module per schema plus separate read-file,
+write-file and directory-list handlers. Existing command/search handlers
+remain at their application policy boundaries.
+
+All 39 static comparisons passed. They account for every original method,
+public signature, state field, relocated path and log target; reconstruct all
+six fallback registrations and complete handler bodies; and check registration
+order and file-size limits. Internal methods use parent-visible access to
+preserve calls across their new sibling modules. Lexical scans found all 68
+application MCP files and 81 shared-core files reachable without missing
+modules. The changed-source line ratchet and whitespace checks passed.
+Standalone rustfmt was used. No Cargo, rustc, Python, filesystem tool handler,
+application runtime, Rust test or doctest ran. Compilation and runtime remain
+unverified. Evidence: artifacts/consolidation-mcp-server-modules/. The broader
+workspace objective remains active; client and bridge ownership still need audit.
