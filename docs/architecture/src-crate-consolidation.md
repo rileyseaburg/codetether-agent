@@ -6469,3 +6469,19 @@ file-budget and whitespace checks passed. New files contain at most 32
 code lines. Evidence: `artifacts/consolidation-question-token-tools/`.
 No interactive requests, tool execution, runtime tests, Cargo, rustc or
 Python ran. Compilation remains unverified; the broader migration is active.
+
+### Dedicated image-loading tool
+
+Moved `src/tool/image.rs` into `crates/codetether-image-tool`. Eight modules
+separate the public input record, construction, MIME detection, base64
+encoding, schema, execution and tool contract. The application path re-exports
+both public types.
+
+Static comparisons verify the original input, constructor/default, MIME
+fallbacks, encoding, schema and complete local-file/URL execution body.
+Headers, error responses and image attachment metadata remain unchanged.
+Module reachability and dependency-cycle checks passed, as did file-budget
+and whitespace checks. New files contain at most 48 code lines. Evidence:
+`artifacts/consolidation-image-tool/`. No images, URLs or tools were opened
+or executed; no runtime tests, Cargo, rustc or Python ran. Compilation remains
+unverified. The full workspace consolidation remains active.

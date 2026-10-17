@@ -1285,6 +1285,7 @@ dependencies = [
  "codetether-grep-tool",
  "codetether-image",
  "codetether-indexer",
+ "codetether-image-tool",
  "codetether-k8s",
  "codetether-k8s-tool",
  "codetether-knowledge-graph",
@@ -2064,6 +2065,20 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-image-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64",
+ "codetether-tool-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
