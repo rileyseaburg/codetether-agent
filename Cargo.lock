@@ -1197,6 +1197,7 @@ dependencies = [
  "chrono",
  "codetether-agent-core",
  "codetether-context-policy",
+ "codetether-forage-core",
  "codetether-provenance",
  "codetether-provider-core",
  "codetether-tool-core",

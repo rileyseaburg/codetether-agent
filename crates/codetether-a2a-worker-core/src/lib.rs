@@ -64,3 +64,6 @@ pub mod session_protocol;
 
 /// Host-driven task claim, execution budget and release lifecycle.
 pub mod task_driver;
+
+/// Worker forage task metadata and execution options.
+pub mod forage;

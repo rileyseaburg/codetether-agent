@@ -5733,3 +5733,21 @@ cycles. New files contain at most 40 code lines. File-budget and whitespace
 checks passed. Evidence: `artifacts/consolidation-special-task-driver/`.
 Compilation, tests, clone execution and forage execution remain unrun. No
 Cargo, rustc, or Python commands ran. The broader migration remains active.
+
+### Shared forage task options
+
+Moved forage task metadata parsing, defaults, and nonempty mission fallback
+into worker-core with a typed `ForageTaskOptions` record. The application now
+only maps the nineteen fields into its existing clap argument type. The
+shared builder reuses forage-core normalization through a direct dependency;
+no command-line parser dependency was introduced into worker-core.
+
+Static comparison verifies the builder, fallback trait/implementation, all
+nineteen option field types and adapter mappings. Existing forage tests are
+byte-identical. The module scan reaches 181 worker-core files and 256 A2A
+application files without missing/orphaned modules; the new dependency closure
+remains acyclic. New files contain at most 44 code lines. File-budget and
+whitespace checks passed. Evidence:
+`artifacts/consolidation-forage-task-options/`. Compilation, tests and forage
+execution remain unrun. No Cargo, rustc, or Python commands ran. The broader
+migration remains active.
