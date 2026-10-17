@@ -1,33 +1,22 @@
-//! MCP tool wrappers for exposing external MCP tools through the local Tool trait.
-
-use std::sync::Arc;
-
-#[path = "mcp_tools_connect.rs"]
-mod connect;
-#[path = "mcp_tools_convert.rs"]
-pub(super) mod convert;
-#[path = "mcp_tools_wrapper.rs"]
-mod wrapper;
-pub use wrapper::McpToolWrapper;
-
-/// Manages a connection to an MCP server and produces local tool wrappers.
-pub struct McpToolManager {
-    client: Arc<crate::mcp::McpClient>,
-}
-
-impl McpToolManager {
-    /// Build local wrappers for every tool currently advertised by the MCP server.
-    pub async fn wrappers(&self) -> Vec<McpToolWrapper> {
-        self.client
-            .tools()
-            .await
-            .into_iter()
-            .map(|tool| McpToolWrapper::new(Arc::clone(&self.client), tool))
-            .collect()
-    }
-
-    /// Return the underlying MCP client.
-    pub fn client(&self) -> Arc<crate::mcp::McpClient> {
-        Arc::clone(&self.client)
-    }
-}
+//! MCP wrappers bound to the application's existing authorized client.
+#[path = "mcp_tools_client.rs"]
+mod client;
+pub(super) use codetether_mcp_tools::convert;
+/// Remote tool wrapper using the application's policy-aware MCP client.
+///
+/// # Examples
+/// ```rust,no_run
+/// # fn example(client: std::sync::Arc<codetether_agent::mcp::McpClient>, tool: codetether_agent::mcp::McpTool) {
+/// let _wrapper = codetether_agent::tool::McpToolWrapper::new(client, tool);
+/// # }
+/// ```
+pub type McpToolWrapper = codetether_mcp_tools::McpToolWrapper<crate::mcp::McpClient>;
+/// Connection manager using the application's policy-aware MCP client.
+///
+/// # Examples
+/// ```rust,no_run
+/// # async fn example(manager: codetether_agent::tool::McpToolManager) {
+/// let _wrappers = manager.wrappers().await;
+/// # }
+/// ```
+pub type McpToolManager = codetether_mcp_tools::McpToolManager<crate::mcp::McpClient>;

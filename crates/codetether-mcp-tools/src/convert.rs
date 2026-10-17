@@ -1,11 +1,25 @@
 //! Converts MCP results into text output and separate image metadata.
 
-use crate::mcp::{CallToolResult, ToolContent};
-use crate::tool::ToolResult;
+use codetether_mcp_core::types::{CallToolResult, ToolContent};
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 /// Preserve MCP error status, textual resources, and already-base64 image data.
-pub(in crate::tool) fn result(result: CallToolResult) -> ToolResult {
+///
+/// # Arguments
+/// * `result` - Remote response, including its error flag and ordered content.
+/// # Returns
+/// Joined text with image metadata suitable for local tool consumers.
+/// # Examples
+/// ```rust
+/// use codetether_mcp_core::types::{CallToolResult,ToolContent};
+/// let converted=codetether_mcp_tools::convert::result(CallToolResult{
+///     content:vec![ToolContent::Text{text:"hello".into()}],is_error:false,
+/// });
+/// assert_eq!(converted.output,"hello");
+/// assert!(converted.success);
+/// ```
+pub fn result(result: CallToolResult) -> ToolResult {
     let mut text = Vec::new();
     let mut images = Vec::new();
     for item in result.content {

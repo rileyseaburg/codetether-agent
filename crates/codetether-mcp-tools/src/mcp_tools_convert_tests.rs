@@ -1,7 +1,7 @@
 //! Mocked MCP response tests for image preservation on success and error.
 
 use super::result;
-use crate::mcp::CallToolResult;
+use codetether_mcp_core::types::CallToolResult;
 use serde_json::json;
 
 #[test]

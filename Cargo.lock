@@ -1319,6 +1319,7 @@ dependencies = [
  "codetether-lsp-tool",
  "codetether-marketplace",
  "codetether-mcp-core",
+ "codetether-mcp-tools",
  "codetether-mcp-transport",
  "codetether-memory-core",
  "codetether-memory-tool",
@@ -2410,6 +2411,17 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-mcp-tools"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-mcp-core",
+ "codetether-tool-core",
+ "serde_json",
 ]
 
 [[package]]

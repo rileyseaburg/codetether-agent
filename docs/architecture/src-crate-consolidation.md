@@ -7301,3 +7301,20 @@ new Rust files contain at most 37 code lines. Evidence lives in
 `artifacts/consolidation-search-router/`. No provider calls, backend execution,
 runtime tests, Cargo, rustc or Python commands ran. Compilation remains
 unverified; the full workspace consolidation goal remains active.
+
+### Dedicated MCP tool wrappers
+
+Moved MCP tool management, wrapper construction/execution and result conversion
+into `crates/codetether-mcp-tools`. Eleven modules separate the client contract,
+connection setup, wrapper identity, Tool implementation, cloning, conversion
+and the three existing conversion test modules. The application retains type
+aliases and a client adapter; its existing connection and invocation policy
+checks remain authoritative. The MCP bridge reuses the same conversion export.
+
+Twenty static preservation checks compare connection and call forwarding,
+wrapper metadata, identity and cloning, complete text/resource/image conversion,
+and all three moved tests. Module reachability, dependency cycles, file budgets
+and whitespace checks passed; new Rust files contain at most 39 code lines.
+Evidence lives in `artifacts/consolidation-mcp-tools/`. No subprocess connection,
+remote invocation, runtime tests, Cargo, rustc or Python commands ran.
+Compilation remains unverified; the full consolidation goal remains active.

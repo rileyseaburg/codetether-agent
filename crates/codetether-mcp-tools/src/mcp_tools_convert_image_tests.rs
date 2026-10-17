@@ -1,7 +1,7 @@
 //! Mocked image-only MCP result regression.
 
 use super::result;
-use crate::mcp::{CallToolResult, ToolContent};
+use codetether_mcp_core::types::{CallToolResult, ToolContent};
 
 #[test]
 fn mcp_image_only_has_no_text_placeholder() {
