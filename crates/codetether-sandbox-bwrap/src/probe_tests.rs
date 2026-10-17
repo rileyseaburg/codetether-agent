@@ -1,3 +1,4 @@
+//! probe tests for bubblewrap capability detection.
 use super::command::SMOKE_ARGS;
 use super::command::parse_version;
 
@@ -18,7 +19,9 @@ fn smoke_probe_does_not_require_network_namespace() {
 fn smoke_probe_includes_dynamic_loader_roots() {
     for path in ["/lib", "/lib64"] {
         assert!(
-            SMOKE_ARGS.windows(3).any(|args| args == ["--ro-bind-try", path, path]),
+            SMOKE_ARGS
+                .windows(3)
+                .any(|args| args == ["--ro-bind-try", path, path]),
             "missing read-only loader root {path}"
         );
     }

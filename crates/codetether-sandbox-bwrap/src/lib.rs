@@ -7,3 +7,6 @@ mod args;
 mod paths;
 mod push;
 pub use args::build;
+
+mod probe;
+pub use probe::{ProbeResult, direct_fallbacks, kernel_fallbacks, probe};

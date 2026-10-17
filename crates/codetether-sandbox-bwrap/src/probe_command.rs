@@ -1,7 +1,8 @@
+//! probe command for bubblewrap capability detection.
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-#[path = "sandbox_bwrap_smoke_args.rs"]
+#[path = "smoke_args.rs"]
 mod smoke_args;
 pub(super) use smoke_args::SMOKE_ARGS;
 

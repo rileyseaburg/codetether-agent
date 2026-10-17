@@ -2348,6 +2348,20 @@ code lines. Evidence: `artifacts/consolidation-sandbox-bwrap/`. No plans were
 built, processes launched or runtime tests executed. Cargo, rustc and Python
 were not run. Compilation remains unverified; the full migration is active.
 
+### Shared bubblewrap capability detection
+
+Moved cached bubblewrap probing, version parsing, minimal smoke-test arguments
+and confinement fallback labels into `codetether-sandbox-bwrap`. Four files
+and three existing tests moved; the application probe module now re-exports
+the shared API. The first-probe process cache retains its original semantics.
+
+Static comparisons verify all moved source and tests, including exact probe
+commands and fallback-label order. Module reachability, dependency-cycle,
+file-budget and whitespace checks passed. New files contain at most 44 code
+lines. Evidence: `artifacts/consolidation-bwrap-probe/`. No capability probes,
+commands, runtime tests, Cargo, rustc or Python were executed. Compilation
+and runtime capability remain unverified; the full migration is active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict
