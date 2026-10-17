@@ -2631,6 +2631,7 @@ name = "codetether-worktree"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "codetether-provenance",
  "codetether-worktree-isolation",
  "serde",

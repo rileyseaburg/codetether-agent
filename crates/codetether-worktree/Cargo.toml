@@ -9,6 +9,7 @@ license = "MIT"
 repository = "https://github.com/rileyseaburg/codetether-agent"
 
 [dependencies]
+chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1.0.104"
 codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
 codetether-worktree-isolation = { path = "../codetether-worktree-isolation", version = "0.1.0" }

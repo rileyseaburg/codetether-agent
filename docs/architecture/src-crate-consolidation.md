@@ -5186,3 +5186,24 @@ its existing gethostname dependency. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-peer-presentation/`. Compilation, tests,
 doctests, and runtime behavior remain unverified; no Cargo, rustc, or Python
 commands were executed. The broader migration goal remains active.
+
+### Shared repository Git preparation
+
+The worktree crate now owns worker Git command execution, refresh and dirty
+stash handling, requested branch checkout, and authenticated single-branch
+clone invocation. These live in focused `repository/git/` modules. Worker
+modules re-export shared operations or translate `CloneRepoTask` fields into
+repository inputs; task dispatch and server metadata stay outside the crate.
+The worktree manifest directly declares the already-locked chrono dependency
+used to timestamp automatic stashes.
+
+Static source comparison verifies seven moved functions. Command arguments,
+error strings, optional working-directory behavior, output trimming, the
+fetch/stash/checkout/reset/clean sequence, and per-command credential-helper
+options are unchanged. Existing branch test source is byte-identical. The
+module scan reaches all 132 worktree files and 294 A2A files with no missing
+or orphaned modules; the worktree dependency closure remains acyclic. New
+files contain at most 27 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-repository-git/`. No moved Git operations,
+compilation, tests, Cargo, rustc, or Python were executed. The wider goal of
+moving all implementation into cohesive crates remains active.

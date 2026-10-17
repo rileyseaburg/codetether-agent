@@ -11,3 +11,6 @@ pub use hooks::require_installed;
 
 /// Repository-local credential helper scripts and Git configuration.
 pub mod credentials;
+
+/// Git command execution and repository preparation.
+pub mod git;
