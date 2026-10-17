@@ -15,3 +15,10 @@ pub use summary::summarize_response_body;
 
 mod pending;
 pub use pending::pending_tasks;
+
+mod heartbeat_payload;
+mod heartbeat_response;
+mod stream_error;
+pub use heartbeat_payload::prepare_extended_heartbeat;
+pub use heartbeat_response::check_extended_heartbeat;
+pub use stream_error::connect_error;

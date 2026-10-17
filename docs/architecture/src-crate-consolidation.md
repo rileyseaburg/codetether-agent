@@ -95,7 +95,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-core | 48 | yes | none |
 | codetether-a2a-discovery | 23 | yes | codetether-a2a-core |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
-| codetether-a2a-http | 45 | yes | codetether-a2a-core, codetether-provider-core |
+| codetether-a2a-http | 48 | yes | codetether-a2a-core, codetether-provider-core |
 | codetether-a2a-stream | 35 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 89 | yes | codetether-agent-core, codetether-provider-core, codetether-provenance |
 | codetether-agent-core | 44 | yes | none |
@@ -4978,3 +4978,18 @@ file-budget and whitespace checks passed. Existing async-trait/tracing
 dependencies and Tokio time are enabled in the stream crate. Evidence:
 `artifacts/consolidation-worker-stream/`. Compilation and runtime tests remain
 unrun; the broader consolidation goal remains active.
+
+
+### Shared extended-heartbeat protocol handling
+
+HTTP worker helpers now own extended-heartbeat payload preparation, response
+validation, and task-stream connection-error formatting. The worker retains
+the signed-request adapter, and its call order is unchanged. Stream errors
+reuse the identical shared response-summary helper. No dependencies changed.
+
+Static comparisons verify payload fields, sequence fallback, status/body
+handling, error strings, logging target, and request sequencing. All 48
+HTTP-crate files and 310 A2A files are reachable with no missing/orphaned
+modules. New files meet the line budget; file and whitespace checks passed.
+Evidence: `artifacts/consolidation-worker-heartbeat/`. Compilation, tests, and
+live heartbeats remain unrun; the broader goal stays active.
