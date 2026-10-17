@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-child-mailbox",
  "codetether-collaboration-history",
  "codetether-collaboration-state",
  "codetether-collaboration-tools",
@@ -2427,6 +2428,22 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-child-mailbox"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-collaboration-input",
+ "codetether-collaboration-state",
+ "codetether-tool-core",
+ "lazy_static",
+ "serde",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

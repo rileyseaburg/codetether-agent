@@ -1,34 +1,15 @@
-//! Durable FIFO mailbox for follow-ups sent while a child agent is busy.
-
-#[path = "message_queue/claim.rs"]
-mod claim;
-#[path = "message_queue/completion.rs"]
-mod completion;
+//! Application ownership and runtime bindings for the shared durable mailbox.
 #[path = "message_queue/disk.rs"]
 mod disk;
-#[path = "message_queue/dispatcher.rs"]
-mod dispatcher;
+#[path = "message_queue/host.rs"]
+mod host;
 #[path = "message_queue/item.rs"]
 mod item;
 #[path = "message_queue/params.rs"]
 mod params;
-#[path = "message_queue/receipt.rs"]
-mod receipt;
-#[path = "message_queue/snapshot.rs"]
-mod snapshot;
-#[path = "message_queue/store.rs"]
-mod store;
-#[path = "message_queue/store_lifecycle.rs"]
-mod store_lifecycle;
-#[path = "message_queue/submission.rs"]
-mod submission;
 
-pub(in crate::tool::agent) use completion::finished;
-pub(crate) use dispatcher::next as dispatch_next;
-pub(crate) use store_lifecycle::reparent_owner;
-pub(crate) use store_lifecycle::{clear, hydrate, pending};
-pub(crate) use submission::Submission;
-
+pub(crate) use codetether_child_mailbox::{Submission, pending};
+use host::ApplicationHost as H;
 pub(in crate::tool::agent) async fn enqueue(
     agent_id: &str,
     message: String,
@@ -36,22 +17,24 @@ pub(in crate::tool::agent) async fn enqueue(
 ) -> anyhow::Result<Submission> {
     super::super::store::get_for_parent(agent_id, input.parent_session_id.as_deref())
         .ok_or_else(|| anyhow::anyhow!("Agent {agent_id} not found"))?;
-    store::enqueue(agent_id, message, input).await
+    codetether_child_mailbox::enqueue::<H>(
+        agent_id,
+        message,
+        codetether_child_mailbox::EnqueueInput {
+            images: &input.message_images,
+            parent_id: input.parent_session_id.as_deref(),
+            prior_context: input.parent_prior_context_allowed,
+        },
+    )
+    .await
 }
 
+#[path = "message_queue/api.rs"]
+mod api;
+pub(in crate::tool::agent) use api::finished;
+pub(crate) use api::{clear, dispatch_next, hydrate, reparent_owner};
 #[cfg(test)]
-pub(crate) async fn claim_for_test(agent_id: &str) -> anyhow::Result<Option<(String, String)>> {
-    Ok(claim::next(agent_id)
-        .await?
-        .map(|item| (item.id, item.message)))
-}
-
+#[path = "message_queue/test_api.rs"]
+mod test_api;
 #[cfg(test)]
-pub(crate) async fn reset_for_test() {
-    store::QUEUES.lock().await.clear();
-}
-
-#[cfg(test)]
-pub(crate) async fn ack_for_test(agent_id: &str, id: &str) -> anyhow::Result<()> {
-    receipt::ack(agent_id, id).await
-}
+pub(crate) use test_api::{ack_for_test, claim_for_test, reset_for_test};

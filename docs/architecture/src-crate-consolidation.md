@@ -7916,3 +7916,23 @@ modules contain at most 35 code lines. Evidence is in
 `artifacts/consolidation-collaboration-history/`. No sessions were loaded,
 transcripts mutated, runtime tests executed, or Cargo, rustc or Python commands
 run. Compilation remains unverified; the full consolidation goal remains active.
+
+### Dedicated durable child mailbox
+
+Moved FIFO mailbox snapshots, pending/running delivery transitions, crash
+recovery, enqueue/claim/acknowledgement rollback, reparenting, dispatch and
+settlement into `crates/codetether-child-mailbox`. Thirteen Rust modules include
+the existing crash-recovery test. The application retains owner validation,
+canonical atomic-storage bindings, queued agent-parameter reconstruction and
+its child-turn executor. Restart and close-receipt integration tests remain
+unchanged. Completion notification and execution guards use the existing shared
+collaboration-state owner.
+
+Twenty-eight static preservation checks cover durable data shapes, lock/write
+ordering, rollback paths, close/release behavior, dispatch, receipt forwarding,
+notifiers and unchanged storage/runtime callers. Module/dependency checks,
+file budgets and whitespace checks passed; new crate modules contain at most
+48 code lines. Evidence is in `artifacts/consolidation-child-mailbox/`. No
+mailboxes were written, agents dispatched, runtime tests executed, or Cargo,
+rustc or Python commands run. Compilation remains unverified; the full
+consolidation goal remains active.

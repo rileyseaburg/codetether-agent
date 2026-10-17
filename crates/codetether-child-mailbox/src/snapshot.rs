@@ -4,15 +4,26 @@ use super::item::{DeliveryState, Item};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
+/// Versioned durable queue for one child.
+///
+/// # Examples
+/// ```
+/// let snapshot=codetether_child_mailbox::Snapshot::new("child");
+/// assert!(snapshot.items.is_empty());
+/// ```
 #[derive(Clone, Deserialize, Serialize)]
-pub(super) struct Snapshot {
-    pub(super) version: u8,
-    pub(super) child_session_id: String,
-    pub(super) items: VecDeque<Item>,
+pub struct Snapshot {
+    /// Persistence format version.
+    pub version: u8,
+    /// Owning durable child identity.
+    pub child_session_id: String,
+    /// FIFO deliveries including any claimed front item.
+    pub items: VecDeque<Item>,
 }
 
 impl Snapshot {
-    pub(super) fn new(child_session_id: &str) -> Self {
+    /// Construct an empty version-one snapshot.
+    pub fn new(child_session_id: &str) -> Self {
         Self {
             version: 1,
             child_session_id: child_session_id.into(),
@@ -20,7 +31,8 @@ impl Snapshot {
         }
     }
 
-    pub(super) fn recover(&mut self) -> bool {
+    /// Reset claimed deliveries to pending after process restart.
+    pub fn recover(&mut self) -> bool {
         let mut changed = self.version != 1;
         self.version = 1;
         for item in &mut self.items {

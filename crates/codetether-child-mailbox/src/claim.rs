@@ -1,13 +1,22 @@
 //! Durable transition from pending to running delivery.
 
 use super::{
-    disk,
     item::{DeliveryState, Item},
     store::QUEUES,
 };
+use crate::Host;
 use anyhow::Result;
 
-pub(super) async fn next(agent_id: &str) -> Result<Option<Item>> {
+/// Claim the pending front delivery and persist its running state.
+/// # Arguments
+/// * `agent_id` — Durable child identity.
+/// # Returns
+/// A cloned front item, or none when absent or already running.
+/// # Errors
+/// Returns persistence errors after reverting the claimed item to pending.
+/// # Examples
+/// Implement [crate::Host] to provide the existing persistence and child runtime.
+pub async fn next<H: Host>(agent_id: &str) -> Result<Option<Item>> {
     let mut queues = QUEUES.lock().await;
     let Some(snapshot) = queues.get_mut(agent_id) else {
         return Ok(None);
@@ -19,7 +28,7 @@ pub(super) async fn next(agent_id: &str) -> Result<Option<Item>> {
         return Ok(None);
     }
     item.state = DeliveryState::Running;
-    if let Err(error) = disk::save(snapshot).await {
+    if let Err(error) = H::save(snapshot).await {
         snapshot.items.front_mut().expect("claimed item").state = DeliveryState::Pending;
         return Err(error);
     }

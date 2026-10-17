@@ -1,5 +1,6 @@
+//! Existing crash-recovery regression test.
 use super::Snapshot;
-use crate::tool::agent::collaboration_runtime::message_queue::item::{DeliveryState, Item};
+use crate::item::{DeliveryState, Item};
 
 #[test]
 fn crash_recovery_requeues_running_delivery() {

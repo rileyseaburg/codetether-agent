@@ -1,0 +1,19 @@
+[package]
+name = "codetether-child-mailbox"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Durable FIFO child-agent mailboxes and acknowledgement recovery"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-collaboration-input = { path = "../codetether-collaboration-input", version = "0.1.0" }
+codetether-collaboration-state = { path = "../codetether-collaboration-state", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+lazy_static = "1"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["rt", "sync"] }
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }
