@@ -17,3 +17,6 @@ pub use backend::BackendExecutor;
 pub use engine::run_router_search;
 pub use result::{BackendRun, RouterResult};
 pub use types::{Backend, BackendChoice};
+
+/// Native filename and content search backends.
+pub mod native;

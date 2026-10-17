@@ -1,4 +1,4 @@
-//! File collection for native fallback grep.
+//! File collection for native content search.
 
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;

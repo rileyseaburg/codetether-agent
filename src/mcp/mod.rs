@@ -24,7 +24,6 @@ pub mod bus_bridge;
 mod bus_payload;
 mod client;
 mod fallback_grep;
-mod fallback_grep_paths;
 mod fallback_run_command;
 mod fallback_search;
 mod fallback_search_files;
@@ -41,7 +40,5 @@ pub use server::McpServer;
 pub use transport::{NullTransport, SseTransport, StdioTransport, Transport};
 pub use types::*;
 
-#[cfg(test)]
-mod fallback_search_tests;
 #[cfg(test)]
 mod image_server_tests;

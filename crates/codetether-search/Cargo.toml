@@ -3,7 +3,7 @@ name = "codetether-search"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
-description = "Search planning and backend-neutral orchestration for CodeTether"
+description = "Search planning, orchestration and native backends for CodeTether"
 license = "MIT"
 
 [dependencies]
@@ -13,3 +13,9 @@ codetether-provider-core = { path = "../codetether-provider-core", version = "0.
 codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+glob = "0.3"
+regex = "1"
+walkdir = "2"
+
+[dev-dependencies]
+tempfile = "3.25.0"

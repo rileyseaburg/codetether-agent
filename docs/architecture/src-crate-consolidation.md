@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 73 | 1825 | Shared protocol, transport, remote client state, catalogs and HTTP bus bridge extracted; application retains policy, registry wiring and server tool adapters |
+| mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -155,7 +155,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-ralph-core | 106 | yes | none |
 | codetether-rlm | 448 | yes | none |
 | codetether-runtime-policy | 37 | yes | none |
-| codetether-search | 11 | yes | none |
+| codetether-search | 18 | yes | none |
 | codetether-secrets | 81 | yes | none |
 | codetether-session-runtime | 20 | yes | none |
 | codetether-swarm-core | 276 | yes | none |
@@ -3975,3 +3975,23 @@ File-limit and whitespace checks passed. Standalone rustfmt formatted the Rust.
 No Cargo, rustc, Python, subprocess, peer connection, Rust test or doctest ran;
 compilation and runtime remain unverified. Evidence is retained in
 artifacts/consolidation-mcp-remote-client/. The full workspace goal remains active.
+
+## Native search backend ownership
+
+Codetether-search::native owns filename glob matching, content-query regex
+construction, path collection and matching-line rendering. The seven new
+modules include the two pre-existing regression tests. MCP keeps borrowed-JSON
+compatibility entrypoints and wire-response construction. The native backend
+has no MCP dependency and can be reused independently of MCP registration.
+
+All 10 static comparisons passed: complete original search/matcher/traversal
+function bodies, unchanged output and error behavior, compatibility forwarding,
+and the two tests with only their call paths changed. New modules are at most
+30 code lines. Lexical scans cover all 18 search-crate and 71 application MCP
+files with no missing or orphaned modules and no cycle in the four-crate local
+dependency closure. The manifest and lockfile add already-locked glob, regex,
+walkdir and the tempfile dev dependency to the search crate; no dependency
+resolution ran. File-limit and whitespace checks passed. Standalone rustfmt
+was used. No Cargo, rustc, Python, native search execution or Rust tests ran;
+compilation and runtime remain unverified. Evidence is retained in
+artifacts/consolidation-native-search/. The whole-workspace goal remains active.
