@@ -1,6 +1,16 @@
 //! Detection of subprocess commands that may block on authentication.
 
-pub(super) fn reason(command: &str) -> Option<&'static str> {
+/// Detect commands that may require an interactive password.
+///
+/// # Arguments
+/// `command` is the shell text to inspect.
+/// # Returns
+/// A reason when authentication may block without a terminal.
+/// # Examples
+/// ```rust
+/// assert!(codetether_bash_tool::interactive_auth_risk_reason("sudo id").is_some());
+/// ```
+pub fn reason(command: &str) -> Option<&'static str> {
     let lower = command.to_ascii_lowercase();
     let sudo = lower.starts_with("sudo ")
         || lower.contains(";sudo ")

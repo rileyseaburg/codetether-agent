@@ -19,7 +19,7 @@ pub(super) fn truncate(
     if combined.len() <= max_len && !already_truncated {
         return (combined, false);
     }
-    let shown = crate::util::truncate_bytes_safe(&combined, max_len);
+    let shown = codetether_util::truncate_bytes_safe(&combined, max_len);
     let total = source_bytes.max(combined.len());
     (
         format!("{shown}...\n[Output truncated, {total} bytes total]"),

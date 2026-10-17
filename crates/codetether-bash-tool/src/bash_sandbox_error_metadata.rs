@@ -1,5 +1,5 @@
-use crate::tool::ToolResult;
-use crate::tool::sandbox::SandboxPolicy;
+use codetether_sandbox_policy::SandboxPolicy;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 use std::path::Path;
 

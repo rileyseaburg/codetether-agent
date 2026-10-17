@@ -15,11 +15,7 @@ async fn bash_with_default_cwd_runs_there() {
 
 #[tokio::test]
 async fn unsandboxed_bash_timeout_reports_unsafe_metadata() {
-    let tool = BashTool {
-        timeout_secs: 1,
-        sandboxed: false,
-        default_cwd: None,
-    };
+    let tool = BashTool::configured(1, false, None);
     let result = tool
         .execute(json!({ "command": "sleep 30" }))
         .await

@@ -1255,6 +1255,7 @@ dependencies = [
  "codetether-audit",
  "codetether-autochat-core",
  "codetether-bash-policy",
+ "codetether-bash-tool",
  "codetether-bedrock-auth",
  "codetether-bedrock-protocol",
  "codetether-bedrock-refresh",
@@ -1512,6 +1513,29 @@ dependencies = [
  "codetether-sandbox-policy",
  "codetether-sandbox-runtime",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-bash-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-audit",
+ "codetether-bash-policy",
+ "codetether-command-environment",
+ "codetether-command-guard",
+ "codetether-command-shell",
+ "codetether-github-auth",
+ "codetether-process-capture",
+ "codetether-sandbox-policy",
+ "codetether-sandbox-runtime",
+ "codetether-telemetry",
+ "codetether-tool-core",
+ "codetether-util",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

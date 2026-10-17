@@ -6885,3 +6885,25 @@ file-budget check and whitespace checks passed. Evidence is retained under
 `artifacts/consolidation-bash-policy/`. Runtime tests and compilation remain
 unverified; no Cargo, rustc or Python commands ran. The full consolidation goal
 remains active.
+
+### Dedicated bash execution tool
+
+Moved `BashTool` from `src/tool/bash.rs` into `crates/codetether-bash-tool`.
+Twenty-nine modules separate constructors, schema, call state, admission checks,
+command preparation, identity and credentials, sandbox execution, bounded
+capture, output redaction, audit records, telemetry and result metadata. Shared
+command and sandbox crates retain their existing responsibilities. Application
+code now re-exports the tool instead of implementing its execution paths.
+
+Application approval tests remain with their existing fixtures. Six private
+struct literals now use an explicit constructor with identical timeout,
+sandbox flag and working directory values. The three interactive tests moved
+with the implementation; thirteen existing tests remain present overall.
+
+Thirty-seven static preservation checks cover the moved code fragments,
+constructors, schema, helper functions, metadata, telemetry and execution
+ordering. Lexical module reachability, dependency-cycle, file-budget and
+whitespace checks passed. New Rust files contain at most 47 code lines.
+Evidence: `artifacts/consolidation-bash-tool/`. Compilation and runtime tests
+remain unverified. No Cargo, rustc or Python commands ran; the full workspace
+consolidation goal remains active.

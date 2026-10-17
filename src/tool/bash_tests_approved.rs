@@ -29,11 +29,7 @@ async fn approved_bash_keeps_sandbox_or_uses_approved_fallback() {
         .unwrap();
     args["approval_id"] = json!(id);
 
-    let tool = BashTool {
-        timeout_secs: 10,
-        sandboxed: true,
-        default_cwd: None,
-    };
+    let tool = BashTool::configured(10, true, None);
     let result = tool.execute(args).await.unwrap();
 
     if crate::tool::sandbox::unavailable_reason().is_some() {

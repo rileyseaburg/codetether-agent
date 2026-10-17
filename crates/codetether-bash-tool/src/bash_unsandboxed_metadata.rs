@@ -1,4 +1,4 @@
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
 use std::path::Path;
 
