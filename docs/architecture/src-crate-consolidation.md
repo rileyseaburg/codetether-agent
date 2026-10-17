@@ -97,7 +97,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 29 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
-| codetether-a2a-worker-core | 52 | yes | none |
+| codetether-a2a-worker-core | 58 | yes | none |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
 | codetether-audit | 1 | yes | none |
@@ -4694,3 +4694,20 @@ and whitespace checks passed. Evidence is retained in
 `artifacts/consolidation-worker-task-config/`. Compilation, tests, and runtime
 configuration behavior remain unverified. Worker execution and the broader
 workspace consolidation still require continued ownership review.
+
+
+### Shared worker execution policy
+
+`codetether-a2a-worker-core::execution_policy` owns the automatic-approval
+enum/parser, provider preference order, default model IDs, and session/swarm
+result classification. The worker retains compatibility re-exports and its
+existing session-based temperature-policy adapter. Provider initialization,
+credential access, and execution remain application responsibilities.
+
+Static comparisons confirm unchanged enum/parser definitions, all preference
+arrays, model defaults, result mapping, and three existing test bodies. No
+dependencies were added. All 58 worker-core files and 331 A2A files are
+reachable without missing or orphaned modules. New files satisfy the
+50-code-line limit; whitespace/file-budget checks passed. Evidence is in
+`artifacts/consolidation-worker-execution-policy/`. Compilation and tests were
+not run. The broader workspace consolidation goal remains active.

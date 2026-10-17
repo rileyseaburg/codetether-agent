@@ -28,3 +28,6 @@ pub mod task_scope;
 
 /// Task-envelope parsing and worker configuration policies.
 pub mod task_config;
+
+/// Worker approval, model defaults and result classification.
+pub mod execution_policy;
