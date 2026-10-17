@@ -40,3 +40,6 @@ pub mod relay;
 
 /// Learning and result publication on a caller-provided agent bus.
 pub mod bus;
+
+/// Story failure and conflict-resolution outcome interpretation.
+pub mod outcome;

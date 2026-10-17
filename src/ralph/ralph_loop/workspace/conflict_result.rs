@@ -6,8 +6,7 @@ impl RalphLoop {
         output: &str,
     ) -> anyhow::Result<bool> {
         // Check if resolution was successful
-        let resolved = output.contains("CONFLICTS_RESOLVED")
-            || (output.contains("resolved") && !output.contains("UNRESOLVED"));
+        let resolved = codetether_ralph_core::outcome::conflict_resolved(output);
 
         if resolved {
             info!(target: "codetether_agent::ralph::ralph_loop::conflict_result", story_id = %story.id, "Conflicts resolved successfully");

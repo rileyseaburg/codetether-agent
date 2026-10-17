@@ -13,3 +13,6 @@ pub use parallel::run_parallel;
 pub use parallel_host::ParallelHost;
 pub use sequential::run_sequential;
 pub use sequential_host::SequentialHost;
+
+mod stages;
+pub use stages::owned_stages;

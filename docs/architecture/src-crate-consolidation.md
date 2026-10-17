@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 108 | 2652 | Shared scheduling, persistence, relay and bus protocol extracted; final host ownership review continues |
+| ralph | 108 | 2639 | Ownership audited: shared scheduling, state/persistence, quality/relay/outcome policy and bus protocol; application retains live provider/session/tool/worktree/event adapters |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -152,7 +152,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-openai | 72 | yes | none |
 | codetether-provider-zai | 120 | yes | none |
 | codetether-question | 30 | yes | none |
-| codetether-ralph-core | 144 | yes | none |
+| codetether-ralph-core | 148 | yes | none |
 | codetether-rlm | 448 | yes | none |
 | codetether-runtime-policy | 37 | yes | none |
 | codetether-search | 18 | yes | none |
@@ -4446,3 +4446,28 @@ Standalone rustfmt was used. No Cargo, rustc, Python, bus publication or drain,
 Rust test or doctest ran. Compilation and runtime remain unverified. Evidence:
 artifacts/consolidation-ralph-bus/. Remaining Ralph host ownership review and
 the full workspace goal stay active.
+
+## Ralph outcome policy and source ownership review
+
+Shared outcome helpers now own conflict success-marker interpretation and
+parallel-story fallback failure text. Shared scheduling supplies owned PRD
+stages. The application retains logging, event publication, worktree retention
+and stage execution. Static comparisons preserve the original predicates,
+explicit-reason precedence, stage order and surrounding host operations.
+
+The source ownership review accounts for all 108 remaining application files:
+compatibility exports; lifecycle/dependency assembly; provider and tool calls;
+relay sessions; parallel/sequential host callbacks; policy-gated verification
+and Git operations; live reporting; and runtime integration tests. All are at
+most 49 code lines. The per-file classification and hashes are retained in the
+ownership evidence. Shared policy and persistence responsibilities are in
+ralph-core rather than duplicated in these adapters.
+
+Eight static checks passed. Lexical scans cover all 148 core and 108 application
+files without missing modules or cycles in the nine-crate local dependency
+closure. No dependencies changed. File-limit and whitespace checks passed;
+standalone rustfmt was used. No Cargo, rustc, Python, conflict handling, stage
+execution, Rust test or doctest ran; compilation and runtime remain unverified.
+Evidence: artifacts/consolidation-ralph-outcome-policy/. This completes Ralph
+source-ownership review, not the full goal: tools, TUI, session, A2A, CLI, HTTP
+server, mux and other pending owners still require workspace consolidation.

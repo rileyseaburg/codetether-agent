@@ -9,13 +9,7 @@ impl RalphLoop {
         worktree_info: Option<&crate::worktree::WorktreeInfo>,
     ) {
         // Failed - cleanup worktree without merging (keep for debugging)
-        let error = failure_reason.unwrap_or_else(|| {
-            if success {
-                "Quality or verification checks failed".to_string()
-            } else {
-                "LLM call failed".to_string()
-            }
-        });
+        let error = codetether_ralph_core::outcome::story_failure(success, failure_reason);
         self.try_send_event(RalphEvent::StoryError {
             story_id: story.id.clone(),
             error: error.clone(),

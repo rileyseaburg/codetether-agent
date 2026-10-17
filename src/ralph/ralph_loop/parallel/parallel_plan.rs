@@ -3,13 +3,7 @@ use super::*;
 impl RalphLoop {
     pub(in crate::ralph::ralph_loop) fn parallel_stages(&self) -> Vec<Vec<UserStory>> {
         // Clone stages upfront to avoid borrow issues
-        let stages: Vec<Vec<UserStory>> = self
-            .state
-            .prd
-            .stages()
-            .into_iter()
-            .map(|stage| stage.into_iter().cloned().collect())
-            .collect();
+        let stages = codetether_ralph_core::scheduling::owned_stages(&self.state.prd);
         let total_stages = stages.len();
 
         info!(target: "codetether_agent::ralph::ralph_loop::parallel_plan",
