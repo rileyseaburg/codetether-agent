@@ -2,7 +2,7 @@
 
 use super::*;
 
-impl LspManager {
+impl<C: ManagedClient> LspManager<C> {
     /// Check if any registered client handles the given file.
     #[allow(dead_code)]
     pub async fn handles_file(&self, path: &Path) -> bool {

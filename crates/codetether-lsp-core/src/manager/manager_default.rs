@@ -2,7 +2,7 @@
 
 use super::*;
 
-impl Default for LspManager {
+impl<C: ManagedClient> Default for LspManager<C> {
     fn default() -> Self {
         Self::new(None)
     }

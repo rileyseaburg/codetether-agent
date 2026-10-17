@@ -2,7 +2,7 @@
 
 use super::*;
 
-impl LspManager {
+impl<C: ManagedClient> LspManager<C> {
     /// Close a document across all relevant clients.
     #[allow(dead_code)]
     pub async fn close_document(&self, path: &Path) -> Result<()> {

@@ -36,7 +36,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mcp | 36 | 3340 | Pending cohesion and dependency audit |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
-| lsp | 21 | 502 | Shared client and generic idle cache extracted; application identity wrapper and multi-server manager routing remain |
+| lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
 | forage | 13 | 1918 | Pending cohesion and dependency audit |
@@ -118,7 +118,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-indexer | 101 | yes | none |
 | codetether-k8s | 80 | yes | none |
 | codetether-knowledge-graph | 11 | yes | none |
-| codetether-lsp-core | 84 | yes | none |
+| codetether-lsp-core | 95 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
 | codetether-okr | 72 | yes | none |
@@ -3669,3 +3669,26 @@ file, standalone formatting, file-limit and whitespace checks are recorded in
 artifacts/consolidation-lsp-cache/. No Cargo, rustc, Python, language server or
 eviction task ran. Compilation and tests remain unverified. The full workspace
 consolidation goal remains active.
+
+## LSP manager ownership audit
+
+LSP-core::manager now owns primary-server and linter selection, configuration
+precedence, connection creation and initialization order, cache lookups,
+capability/document forwarding, recovery and shutdown. Its ManagedClient
+contract accepts the existing application identity wrapper. The public
+application LspManager name aliases this generic manager with the same wrapper,
+so returned Arc clients preserve identity and ownership. All moved logging
+retains explicit original application targets.
+
+The remaining 13 application LSP files (280 code lines) contain
+identity constructors/initialization, cache and manager trait adapters,
+compatibility exports, or real-server integration tests and their helpers.
+This completes the LSP ownership audit. No server or integration test ran.
+
+Fourteen static checks cover original method bodies, generic state, factory
+delegation and alias compatibility. Lexical graphs cover 95 shared LSP files
+and 13 application files with no missing/unreferenced modules. New
+modules have at most 45 code lines. Standalone formatting, file-limit and
+whitespace checks are recorded in artifacts/consolidation-lsp-manager/. No
+dependencies changed. No Cargo, rustc or Python ran. Compilation and tests
+remain unverified. The entire workspace goal remains active.

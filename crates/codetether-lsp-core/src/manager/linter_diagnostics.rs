@@ -2,7 +2,7 @@
 
 use super::*;
 
-impl LspManager {
+impl<C: ManagedClient> LspManager<C> {
     /// Collect diagnostics from all applicable linter servers for a file.
     /// Returns an empty vec if no linters match the file extension.
     pub async fn linter_diagnostics(&self, path: &Path) -> Vec<DiagnosticInfo> {
@@ -23,7 +23,7 @@ impl LspManager {
         } else {
             // Auto-detect: try known linters whose extensions match
             let mut names = Vec::new();
-            for candidate in crate::lsp::tetherscript::LINTER_CANDIDATES {
+            for candidate in crate::tetherscript::LINTER_CANDIDATES {
                 if linter_extensions(candidate).contains(&ext) {
                     names.push((*candidate).to_string());
                 }
@@ -40,12 +40,12 @@ impl LspManager {
                     }
                     Ok(_) => {}
                     Err(e) => {
-                        debug!(linter = %name, error = %e, "Linter diagnostics failed");
+                        debug!(target: "codetether_agent::lsp::client::linter_diagnostics", linter = %name, error = %e, "Linter diagnostics failed");
                     }
                 },
                 Ok(None) => {}
                 Err(e) => {
-                    debug!(linter = %name, error = %e, "Failed to get linter client");
+                    debug!(target: "codetether_agent::lsp::client::linter_diagnostics", linter = %name, error = %e, "Failed to get linter client");
                 }
             }
         }

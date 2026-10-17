@@ -2,7 +2,7 @@
 
 use super::*;
 
-impl LspManager {
+impl<C: ManagedClient> LspManager<C> {
     pub(super) fn resolve_linter_config(&self, name: &str) -> Option<LspConfig> {
         // Resolve config
         let config = if let Some(settings) = &self.lsp_settings {

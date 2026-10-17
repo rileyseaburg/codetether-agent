@@ -12,7 +12,6 @@
 
 pub mod client;
 mod client_cache;
-mod client_recovery;
 #[cfg(test)]
 mod typescript_repeated_tests;
 

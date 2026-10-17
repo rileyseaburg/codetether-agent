@@ -2,23 +2,23 @@
 
 use super::*;
 
-impl LspManager {
+impl<C: ManagedClient> LspManager<C> {
     /// Get or create a client for the given language
-    pub async fn get_client(&self, language: &str) -> Result<Arc<LspClient>> {
+    pub async fn get_client(&self, language: &str) -> Result<Arc<C>> {
         let mut clients = self.clients.write().await;
         if let Some(client) = clients.get(language) {
-            return Ok(client.touch());
+            return Ok(crate::client_cache::touch(client));
         }
 
         let client = if let Some(settings) = &self.lsp_settings {
             if let Some(entry) = settings.servers.get(language) {
                 let config = LspConfig::from_server_entry(entry, self.root_uri.clone());
-                LspClient::new(config).await?
+                C::new(config).await?
             } else {
-                LspClient::for_language(language, self.root_uri.clone()).await?
+                C::for_language(language, self.root_uri.clone()).await?
             }
         } else {
-            LspClient::for_language(language, self.root_uri.clone()).await?
+            C::for_language(language, self.root_uri.clone()).await?
         };
         client.initialize().await?;
 
@@ -29,7 +29,7 @@ impl LspManager {
     }
 
     /// Get a client for a file path (detects language from extension)
-    pub async fn get_client_for_file(&self, path: &Path) -> Result<Arc<LspClient>> {
+    pub async fn get_client_for_file(&self, path: &Path) -> Result<Arc<C>> {
         let language = detect_language_from_path(path.to_string_lossy().as_ref())
             .ok_or_else(|| anyhow::anyhow!("Unknown language for file: {}", path.display()))?;
         self.get_client(language).await

@@ -2,7 +2,7 @@
 
 use super::*;
 
-impl LspManager {
+impl<C: ManagedClient> LspManager<C> {
     /// Create a new LSP manager
     pub fn new(root_uri: Option<String>) -> Self {
         Self {
@@ -14,7 +14,7 @@ impl LspManager {
     }
 
     /// Create a new LSP manager with config-driven settings.
-    pub fn with_config(root_uri: Option<String>, settings: crate::config::LspSettings) -> Self {
+    pub fn with_config(root_uri: Option<String>, settings: codetether_config::LspSettings) -> Self {
         Self {
             clients: super::super::client_cache::ClientCache::default(),
             linter_clients: super::super::client_cache::ClientCache::default(),
@@ -29,13 +29,13 @@ impl LspManager {
         let clients = self.clients.read().await;
         for (lang, client) in clients.iter() {
             if let Err(e) = client.shutdown().await {
-                warn!("Failed to shutdown {} language server: {}", lang, e);
+                warn!(target: "codetether_agent::lsp::client::manager_lifecycle", "Failed to shutdown {} language server: {}", lang, e);
             }
         }
         let linters = self.linter_clients.read().await;
         for (name, client) in linters.iter() {
             if let Err(e) = client.shutdown().await {
-                warn!("Failed to shutdown {} linter server: {}", name, e);
+                warn!(target: "codetether_agent::lsp::client::manager_lifecycle", "Failed to shutdown {} linter server: {}", name, e);
             }
         }
     }

@@ -1,8 +1,8 @@
 //! Protocol data, server configuration, and stdio transport for LSP clients.
 //!
 //! Use [`LspConfig`] to select a server and [`transport::LspTransport`] to
-//! exchange framed JSON-RPC messages. Applications own initialization identity,
-//! connection caches, and user-facing policy.
+//! exchange framed JSON-RPC messages. Shared clients and managers own server
+//! state, caches and routing; applications supply initialization identity.
 //!
 //! ```
 //! use codetether_lsp_core::get_language_server_config;
@@ -45,3 +45,6 @@ pub use client::LspClient;
 
 /// Manager-local caches with activity tracking and idle eviction.
 pub mod client_cache;
+
+/// Client-generic server and linter management with host initialization identity.
+pub mod manager;
