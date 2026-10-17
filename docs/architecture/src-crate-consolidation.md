@@ -5287,3 +5287,23 @@ files contain at most 48 code lines. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-workspace-sync/`. Compilation, tests,
 network synchronization and Git configuration were not run. No Cargo, rustc,
 or Python commands ran. The broader consolidation goal remains active.
+
+### Shared signed worker HTTP transport
+
+Moved canonical worker proof-header construction and configured runtime-principal
+selection into the HTTP worker proof module. Signed task output and extended
+heartbeat transport now use those shared helpers. Application proof and
+heartbeat request files are re-exports; output callbacks import the shared
+transport directly. The separate in-progress heartbeat documentation edit
+was not changed. HTTP now declares its direct dependency on the existing
+provenance crate; cryptographic signing and runtime identity remain owned there.
+
+Static comparison verifies all five moved functions, including canonical-name
+checks, credential lookup order, timestamps, signature inputs, payload binding,
+header ordering, and error handling. Output warning logs preserve their original
+target. The module graph has 80 reachable HTTP files and 290 A2A application
+files with no missing or orphaned modules and no dependency cycle. New files
+have at most 43 code lines. File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-worker-signed-http/`. Compilation, tests, credential
+lookup, and network requests were not executed. No Cargo, rustc, or Python
+commands ran. The wider implementation migration remains active.

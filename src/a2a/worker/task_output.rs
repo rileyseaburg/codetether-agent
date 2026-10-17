@@ -1,6 +1,5 @@
 //! Output streaming callback for active tasks.
-#[path = "task_output_request.rs"]
-mod request;
+use codetether_a2a_http::worker::output as request;
 
 use std::sync::Arc;
 

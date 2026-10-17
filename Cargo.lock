@@ -1140,6 +1140,7 @@ dependencies = [
  "chrono",
  "codetether-a2a-core",
  "codetether-a2a-discovery",
+ "codetether-provenance",
  "codetether-provider-core",
  "dashmap",
  "hex",
