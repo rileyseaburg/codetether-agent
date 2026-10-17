@@ -7101,3 +7101,21 @@ file-budget and whitespace checks passed. Twenty-seven Rust modules contain at
 most 48 code lines. Evidence: `artifacts/consolidation-memory-tool/`.
 No memory operations, provider calls, runtime tests, Cargo, rustc or Python
 commands ran. The full workspace consolidation goal remains active.
+
+### Dedicated batch execution tool
+
+Moved batch execution, nested-call dispatch, parameter records, schema and
+result/image aggregation into `crates/codetether-batch-tool`. Twelve modules
+use an injected registry interface; the application's existing registry
+implements lookup, listing and the unchanged runtime-policy call. A concrete
+type alias preserves `BatchTool::new()` and weak registry binding.
+
+Fifteen static preservation checks compare constructors, schema, argument
+aliases, ordered concurrent execution, policy-before-lookup ordering, nested
+batch rejection, invalid-tool feedback and metadata/image aggregation. Four
+unit tests moved with their bodies preserved; the application approval test
+remains byte-identical. Module reachability, dependency-cycle, file-budget and
+whitespace checks passed; new Rust files contain at most 48 code lines.
+Evidence: `artifacts/consolidation-batch-tool/`. No batch calls, nested tools,
+runtime tests, Cargo, rustc or Python commands ran. Compilation remains
+unverified; the full workspace consolidation goal remains active.

@@ -1,10 +1,9 @@
 //! Batch result aggregation and metadata preservation.
 
-use super::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
-#[path = "batch_summary_images.rs"]
-mod images;
+use super::summary_images as images;
 
 pub(super) fn build(results: Vec<(usize, String, ToolResult)>) -> ToolResult {
     let mut output_parts = Vec::new();
@@ -50,5 +49,5 @@ pub(super) fn build(results: Vec<(usize, String, ToolResult)>) -> ToolResult {
 }
 
 #[cfg(test)]
-#[path = "batch_summary_tests.rs"]
+#[path = "summary_tests.rs"]
 mod tests;

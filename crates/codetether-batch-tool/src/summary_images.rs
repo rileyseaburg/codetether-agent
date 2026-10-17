@@ -1,6 +1,6 @@
 //! Promote nested batch image metadata to the batch call's own attachments.
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
 
 pub(super) fn attach(mut result: ToolResult, calls: Vec<Value>) -> ToolResult {
@@ -36,7 +36,7 @@ mod tests {
             "image_data_url",
             json!([{"data_url":"data:image/png;base64,BAUG"}]),
         );
-        let result = super::super::build(vec![
+        let result = super::super::summary::build(vec![
             (0, "image".into(), first),
             (1, "image".into(), second),
         ]);

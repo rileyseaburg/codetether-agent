@@ -1268,6 +1268,7 @@ dependencies = [
  "codetether-autochat-core",
  "codetether-bash-policy",
  "codetether-bash-tool",
+ "codetether-batch-tool",
  "codetether-bedrock-auth",
  "codetether-bedrock-protocol",
  "codetether-bedrock-refresh",
@@ -1557,6 +1558,18 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-batch-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "futures",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

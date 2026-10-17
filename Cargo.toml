@@ -134,6 +134,7 @@ members = [
     "crates/codetether-skill-tool",
     "crates/codetether-memory-core",
     "crates/codetether-memory-tool",
+    "crates/codetether-batch-tool",
     "crates/codetether-tool-core",
     "crates/codetether-todo",
     "crates/codetether-mcp-core",
@@ -373,6 +374,7 @@ codetether-sandbox-runner = { path = "crates/codetether-sandbox-runner", version
 codetether-sandbox-runtime = { path = "crates/codetether-sandbox-runtime", version = "0.1.0" }
 codetether-sandbox-seccomp = { path = "crates/codetether-sandbox-seccomp", version = "0.1.0" }
 codetether-sandbox-seatbelt = { path = "crates/codetether-sandbox-seatbelt", version = "0.1.0" }
+codetether-batch-tool = { path = "crates/codetether-batch-tool", version = "0.1.0" }
 codetether-memory-tool = { path = "crates/codetether-memory-tool", version = "0.1.0" }
 codetether-memory-core = { path = "crates/codetether-memory-core", version = "0.1.0" }
 codetether-skill-tool = { path = "crates/codetether-skill-tool", version = "0.1.0" }
