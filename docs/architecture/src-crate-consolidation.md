@@ -5061,3 +5061,18 @@ without missing/orphaned modules. New files meet the line budget; file-budget
 and whitespace checks passed. Evidence: `artifacts/consolidation-credential-broker/`.
 Compilation, tests, and live broker requests remain unrun. The wider
 consolidation goal remains active.
+
+
+### Peer startup module cohesion
+
+Application peer startup now separates options, automatic naming, mDNS
+intake, discovered-peer acceptance, background serving, and CLI lifecycle.
+Nine definitions moved unchanged except visibility and explicit preservation
+of the original log target. Listener preparation and explicit-seed discovery
+remain in the root for the next decomposition step.
+
+All 310 A2A files remain reachable with no missing/orphaned modules. New files
+meet the 50-code-line limit; source comparisons, file-budget, and whitespace
+checks passed. Evidence: `artifacts/consolidation-peer-startup/`. Compilation
+and runtime tests remain unrun. The unrelated heartbeat documentation edit
+was not included. The wider consolidation goal remains active.
