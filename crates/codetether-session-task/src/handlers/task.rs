@@ -2,10 +2,10 @@
 
 use super::super::params::Params;
 use super::status_parse::parse_status;
-use crate::session::tasks::{TaskEvent, TaskLog};
-use crate::tool::ToolResult;
 use anyhow::{Result, anyhow};
 use chrono::Utc;
+use codetether_goal_core::{TaskEvent, TaskLog};
+use codetether_tool_core::ToolResult;
 
 pub async fn task_add(log: &TaskLog, p: Params) -> Result<ToolResult> {
     let content = p.content.ok_or_else(|| anyhow!("`content` is required"))?;

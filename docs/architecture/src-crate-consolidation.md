@@ -7745,3 +7745,22 @@ file budgets and whitespace checks passed; new crate modules contain at most
 execution, worktree cleanup, branch checkout, runtime tests, Cargo, rustc or
 Python commands ran. Compilation remains unverified; the full consolidation
 goal remains active.
+
+### Dedicated session work-item tool
+
+Moved session-task schema/decoding, event dispatch, task and compatibility goal
+handlers, clear/replacement guards and budget-authority validation into
+`crates/codetether-session-task`. Twenty Rust modules own this behavior and two
+existing pure regression tests. The application retains canonical journal-path
+resolution and the independent goal-verifier adapter. Three existing journal
+integration tests remain in the application through small dispatch/list/schema
+adapters. Native goal tools reuse the same extracted budget guard.
+
+Thirty-five static preservation checks cover event payloads, task status aliases,
+goal guards, parsing and validation order, canonical storage paths, independent
+completion verification, schema, and relocated/retained regression tests. Module
+reachability, local dependency cycles, file budgets and whitespace checks passed;
+new crate modules contain at most 38 code lines. Evidence is in
+`artifacts/consolidation-session-task/`. No journal mutations, goal verification,
+runtime tests, Cargo, rustc or Python commands ran. Compilation remains unverified;
+the full source-to-crates consolidation goal remains active.

@@ -1,28 +1,13 @@
-//! `session_task` [`Tool`] implementation — the agent-facing entrypoint.
-
-use super::params::Params;
-use crate::session::tasks::TaskLog;
-use crate::tool::{Tool, ToolResult};
+//! Session task tool identity, schema and journal dispatch.
+use crate::{Host, SessionTaskTool, params::Params};
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
+use codetether_goal_core::TaskLog;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 
-pub struct SessionTaskTool;
-
-impl Default for SessionTaskTool {
-    fn default() -> Self {
-        Self
-    }
-}
-
-impl SessionTaskTool {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
 #[async_trait]
-impl Tool for SessionTaskTool {
+impl<H: Host> Tool for SessionTaskTool<H> {
     fn id(&self) -> &str {
         "session_task"
     }
@@ -37,11 +22,11 @@ impl Tool for SessionTaskTool {
          `list` (tasks only). Events are appended to the session's .tasks.jsonl."
     }
     fn parameters(&self) -> Value {
-        super::schema::value()
+        crate::schema::value()
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        if let Some(refused) = crate::tool::goal::budget_guard::refusal(&params) {
+        if let Some(refused) = crate::budget_refusal(&params) {
             return Ok(refused);
         }
         let p: Params = serde_json::from_value(params)?;
@@ -50,7 +35,7 @@ impl Tool for SessionTaskTool {
             .clone()
             .or_else(|| std::env::var("CODETETHER_SESSION_ID").ok())
             .ok_or_else(|| anyhow!("session id not available; cannot locate task log"))?;
-        let log = TaskLog::for_session(&sid)?;
-        super::dispatch::run(&log, p).await
+        let log = TaskLog::at(H::log_path(&sid)?);
+        crate::dispatch::run::<H>(&log, p).await
     }
 }

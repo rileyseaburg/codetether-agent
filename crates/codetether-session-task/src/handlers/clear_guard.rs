@@ -6,9 +6,9 @@
 //! paused, or limit-stopped goal can only be discarded by the user via
 //! `/goal clear`.
 
-use crate::session::tasks::{GoalStatus, TaskLog, TaskState};
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_goal_core::{GoalStatus, TaskLog, TaskState};
+use codetether_tool_core::ToolResult;
 
 /// Return a refusal unless the current goal is absent or verifier-approved.
 ///

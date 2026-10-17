@@ -1,10 +1,10 @@
 //! Goal event handlers for the `session_task` tool.
 
 use super::super::params::Params;
-use crate::session::tasks::{GoalReaffirmation, TaskEvent, TaskLog};
-use crate::tool::ToolResult;
 use anyhow::{Result, anyhow};
 use chrono::Utc;
+use codetether_goal_core::{GoalReaffirmation, TaskEvent, TaskLog};
+use codetether_tool_core::ToolResult;
 
 pub async fn reaffirm(log: &TaskLog, p: Params) -> Result<ToolResult> {
     let note = p

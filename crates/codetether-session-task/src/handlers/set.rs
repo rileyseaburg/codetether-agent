@@ -1,10 +1,10 @@
 //! Model-facing goal creation and replacement event handler.
 
 use super::super::params::Params;
-use crate::session::tasks::{TaskEvent, TaskLog};
-use crate::tool::ToolResult;
 use anyhow::{Result, anyhow};
 use chrono::Utc;
+use codetether_goal_core::{TaskEvent, TaskLog};
+use codetether_tool_core::ToolResult;
 
 /// Validate replacement eligibility, then append the model's goal event.
 pub(crate) async fn set_goal(log: &TaskLog, p: Params) -> Result<ToolResult> {

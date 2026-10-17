@@ -1,8 +1,8 @@
 //! Refuse model-driven goal replacement during answer review.
 
-use crate::session::tasks::{TaskLog, TaskState};
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_goal_core::{TaskLog, TaskState};
+use codetether_tool_core::ToolResult;
 
 /// Return a refusal when a persisted satisfaction hold still exists.
 ///

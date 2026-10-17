@@ -3,16 +3,6 @@
 use crate::session::tasks::{TaskLog, TaskState, goal_block, task_block};
 use serde_json::json;
 
-#[test]
-fn session_tasks_schema_advertises_only_work_item_operations() {
-    let schema = super::value();
-    assert_eq!(
-        schema["properties"]["action"]["enum"],
-        json!(["task_add", "task_status", "list"])
-    );
-    assert!(schema["properties"].get("objective").is_none());
-}
-
 #[tokio::test]
 async fn session_tasks_completion_and_listing_do_not_complete_goal() {
     let dir = tempfile::tempdir().unwrap();

@@ -169,6 +169,7 @@ members = [
     "crates/codetether-go-ralph",
     "crates/codetether-rlm-tool",
     "crates/codetether-ralph-tool",
+    "crates/codetether-session-task",
     "crates/codetether-tool-core",
     "crates/codetether-todo",
     "crates/codetether-mcp-core",
@@ -412,6 +413,7 @@ codetether-avatar-tool = { path = "crates/codetether-avatar-tool", version = "0.
 codetether-podcast-tool = { path = "crates/codetether-podcast-tool", version = "0.1.0" }
 codetether-youtube-tool = { path = "crates/codetether-youtube-tool", version = "0.1.0" }
 codetether-tetherscript-computer = { path = "crates/codetether-tetherscript-computer", version = "0.1.0", optional = true }
+codetether-session-task = { path = "crates/codetether-session-task", version = "0.1.0" }
 codetether-ralph-tool = { path = "crates/codetether-ralph-tool", version = "0.1.0" }
 codetether-rlm-tool = { path = "crates/codetether-rlm-tool", version = "0.1.0" }
 codetether-go-ralph = { path = "crates/codetether-go-ralph", version = "0.1.0" }

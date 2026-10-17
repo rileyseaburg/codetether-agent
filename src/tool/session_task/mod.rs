@@ -1,16 +1,10 @@
-//! Agent-facing tool for managing the session's goal and task log.
-//!
-//! Writes append-only events to
-//! `<sessions_dir>/<CODETETHER_SESSION_ID>.tasks.jsonl` via
-//! [`crate::session::tasks::TaskLog`]. The session id is supplied via
-//! the `CODETETHER_SESSION_ID` environment variable which the agent
-//! runtime already sets for every turn (see `bash.rs`).
-
+//! Application binding for session work-item and legacy goal actions.
+#[cfg(test)]
 mod dispatch;
+#[cfg(test)]
 mod handlers;
-mod params;
+mod host;
+#[cfg(test)]
 mod schema;
-mod tool;
-
-#[allow(unused_imports)]
-pub use tool::SessionTaskTool;
+/// Session task tool using the application journal path and goal verifier.
+pub type SessionTaskTool = codetether_session_task::SessionTaskTool<host::ApplicationHost>;

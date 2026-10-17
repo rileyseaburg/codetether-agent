@@ -1,7 +1,7 @@
 //! Status parser for the `session_task` tool.
 
-use crate::session::tasks::SessionTaskStatus;
 use anyhow::{Result, anyhow};
+use codetether_goal_core::SessionTaskStatus;
 
 pub(super) fn parse_status(s: &str) -> Result<SessionTaskStatus> {
     Ok(match s {

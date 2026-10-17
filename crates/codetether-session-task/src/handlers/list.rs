@@ -1,12 +1,12 @@
 //! List handler for the `session_task` tool.
 
-use crate::session::tasks::{TaskLog, TaskState};
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_goal_core::{TaskLog, TaskState};
+use codetether_tool_core::ToolResult;
 
 pub async fn list(log: &TaskLog) -> Result<ToolResult> {
     let events = log.read_all().await?;
     let state = TaskState::from_log(&events);
-    let rendered = crate::session::tasks::task_block(&state);
+    let rendered = codetether_goal_core::task_block(&state);
     Ok(ToolResult::success(rendered))
 }
