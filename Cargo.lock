@@ -1273,6 +1273,7 @@ dependencies = [
  "codetether-event-stream",
  "codetether-file-diff",
  "codetether-file-inspect",
+ "codetether-file-tools",
  "codetether-forage-core",
  "codetether-github-pr",
  "codetether-goal-core",
@@ -1867,6 +1868,20 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-file-tools"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-telemetry",
+ "codetether-tool-core",
+ "glob",
+ "ignore",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

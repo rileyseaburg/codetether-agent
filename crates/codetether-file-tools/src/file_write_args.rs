@@ -1,6 +1,6 @@
 //! Argument validation for the `write` tool, including the temp-path ban.
 
-use super::super::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
 
 /// A validated `write` request.
@@ -20,7 +20,8 @@ impl<'a> WriteArgs<'a> {
     pub(super) fn parse(args: &'a Value) -> Result<Self, ToolResult> {
         let path = required(args, "path")?;
         let content = required(args, "content")?;
-        if let Some(blocked) = crate::tool::temp_write_guard::denied_result("write", path) {
+        if let Some(blocked) = codetether_tool_core::temp_write_guard::denied_result("write", path)
+        {
             return Err(blocked);
         }
         Ok(Self { path, content })

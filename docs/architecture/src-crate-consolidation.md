@@ -6275,3 +6275,22 @@ dependency closure is acyclic. Moved files contain at most 44 code lines.
 File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-temp-write-guard/`. No tests, file-write tools, Cargo,
 rustc or Python were executed. The broader migration remains active.
+
+### Dedicated core file-tools crate
+
+Created `crates/codetether-file-tools` and moved read, write, list and glob
+implementations out of `src/tool/file.rs`. Twenty-three focused files separate
+contracts, schemas, read/write telemetry, validated write arguments, glob pattern
+resolution and traversal. The application now re-exports the four tools.
+Shared temporary-path validation and telemetry preserve their existing owners.
+
+Static comparison verifies all four tool contracts, constructors, schemas,
+complete read/write/list behavior, telemetry blocks, glob pattern/traversal
+helpers and write validation. Read truncation, telemetry order, write refusal,
+symlink/depth limits and output metadata are unchanged. The three existing
+argument-validation test bodies moved unchanged and remain unrun. All 23 files
+are reachable with no missing/orphaned modules; the dependency closure is
+acyclic. New files contain at most 40 code lines. Workspace/lockfile wiring,
+file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-file-tools/`. No file tools, Cargo, rustc, Python or
+runtime tests were executed. The broader migration remains active.
