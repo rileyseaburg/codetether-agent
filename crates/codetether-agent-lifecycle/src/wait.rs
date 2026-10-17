@@ -1,6 +1,6 @@
 //! Notification-driven wait for a closing child turn to settle.
 
-use super::super::{collaboration_runtime::execution_notify, execution_state};
+use codetether_collaboration_state::{execution as execution_state, execution_notify};
 use std::time::Duration;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);

@@ -8009,3 +8009,24 @@ checks passed; new Rust modules contain at most 34 code lines. Evidence is in
 `artifacts/consolidation-agent-registry/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The full consolidation goal
 remains active.
+
+### Dedicated durable-child lifecycle orchestration
+
+Moved explicit subtree close, root-only resume, resident descendant traversal,
+notification-driven shutdown waits, transition result formatting and live-parent
+resume configuration into `crates/codetether-agent-lifecycle`. Nine Rust modules
+include the existing shutdown-deadline test. Application bindings provide durable
+lookup, entry loading, lifecycle persistence, activation and live-entry removal.
+The existing shared execution/status registries and activation locks remain the
+same owners; descendant traversal retains every acquired transition guard until
+completion. Timeout still leaves the runtime resident, and close still preserves
+descendant durable edge states.
+
+Thirty-six static preservation checks cover orchestration sequencing, errors,
+result JSON, the deadline and lost-wakeup avoidance, traversal and guard lifetime,
+configuration, adapters and unchanged integration tests/callers. The three subtree
+integration tests remain unchanged in the application. Module/dependency checks,
+file-budget checks and whitespace checks passed; crate files contain at most 37
+code lines. Evidence is in `artifacts/consolidation-agent-lifecycle/`. Compilation
+and runtime tests were not run. No Cargo, rustc or Python commands ran. The full
+consolidation goal remains active.

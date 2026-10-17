@@ -1,0 +1,22 @@
+[package]
+name = "codetether-agent-lifecycle"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Durable child close/resume and resident subtree shutdown orchestration"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-agent-registry = { path = "../codetether-agent-registry", version = "0.1.0" }
+codetether-collaboration-state = { path = "../codetether-collaboration-state", version = "0.1.0" }
+codetether-collaboration-tools = { path = "../codetether-collaboration-tools", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
+tokio = { version = "1", features = ["time", "sync"] }
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+uuid = { version = "1", features = ["v4"] }
