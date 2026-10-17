@@ -126,7 +126,7 @@ impl MoltbookClient {
     /// Build a client from a known API key.
     pub fn new(api_key: String) -> Self {
         Self {
-            http: reqwest::Client::new(),
+            http: crate::provider::shared_http::shared_client().clone(),
             api_key,
         }
     }
@@ -183,7 +183,7 @@ impl MoltbookClient {
     pub async fn register(name: &str, extra_description: Option<&str>) -> Result<RegisterResponse> {
         let description = build_codetether_description(name, extra_description);
 
-        let http = reqwest::Client::new();
+        let http = crate::provider::shared_http::shared_client();
         let resp = http
             .post(format!("{}/agents/register", API_BASE))
             .header("Content-Type", "application/json")
