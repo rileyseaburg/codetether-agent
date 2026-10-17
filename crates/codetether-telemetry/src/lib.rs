@@ -116,3 +116,6 @@ pub mod tcp_info;
 #[cfg(test)]
 #[global_allocator]
 static TEST_ALLOCATOR: alloc_guard::GuardAlloc = alloc_guard::GuardAlloc;
+
+/// Best-effort recording of completed A2A message exchanges.
+pub mod a2a_recording;

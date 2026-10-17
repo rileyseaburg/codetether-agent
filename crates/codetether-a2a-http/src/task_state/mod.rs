@@ -35,3 +35,6 @@ pub use handle_tasks_get::handle_tasks_get;
 mod handle_tasks_cancel;
 pub use handle_tasks_cancel::handle_tasks_cancel;
 pub mod activity;
+
+/// Terminal message settlement with best-effort telemetry.
+pub mod settlement;

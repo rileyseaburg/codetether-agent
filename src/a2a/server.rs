@@ -18,15 +18,11 @@ mod server_intro;
 mod server_message_send;
 #[path = "server_session_event.rs"]
 mod server_session_event;
-#[path = "server_settle.rs"]
-mod server_settle;
 #[path = "server_settle_build.rs"]
 mod server_settle_build;
-#[path = "server_telemetry.rs"]
-mod server_telemetry;
 #[path = "server_turn.rs"]
 mod server_turn;
-use server_telemetry::record_a2a_message_telemetry;
+use codetether_telemetry::a2a_recording::record_a2a_message_telemetry;
 #[path = "server_http_host.rs"]
 mod http_host;
 

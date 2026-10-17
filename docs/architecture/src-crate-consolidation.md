@@ -5901,3 +5901,23 @@ contain at most 32 code lines. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-peer-serving/`. Compilation, tests and live
 serving/shutdown remain unrun. No Cargo, rustc or Python commands ran. The
 broader implementation migration remains active.
+
+### Shared inbound task settlement and A2A telemetry recording
+
+Moved inbound message settlement into `codetether-a2a-http::task_state::settlement`
+and A2A message observation persistence into
+`codetether-telemetry::a2a_recording`. The HTTP crate now explicitly depends on
+telemetry. Application callers import the shared implementations; the former
+settlement, outcome-facade and telemetry implementation files are deleted.
+
+Static comparison verifies the settlement fields and all three methods,
+including update-before-telemetry order, response text/error handling and the
+original error-log target. Telemetry serialization, elapsed-time conversion,
+timestamp generation and ignored persistence errors are unchanged. Caller
+wiring matches the explicit import substitutions. The module scan reaches 245
+application A2A files, 142 HTTP files and 63 telemetry files with no missing or
+orphaned modules; the dependency closure is acyclic. New files contain at most
+29 code lines. File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-a2a-settlement/`. Compilation, tests and live persistence
+remain unrun. No Cargo, rustc or Python commands ran. The broader migration
+remains active.

@@ -1145,6 +1145,7 @@ dependencies = [
  "codetether-bus-core",
  "codetether-provenance",
  "codetether-provider-core",
+ "codetether-telemetry",
  "dashmap",
  "hex",
  "reqwest 0.13.4",
