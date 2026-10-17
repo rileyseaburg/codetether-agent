@@ -14,7 +14,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::mdns::sanitize_hostname;
+/// use codetether_a2a_discovery::mdns::sanitize_hostname;
 ///
 /// assert_eq!(sanitize_hostname("My Agent_1"), "my-agent-1");
 /// ```
@@ -33,21 +33,6 @@ pub fn sanitize_hostname(input: &str) -> String {
         value => value.to_string(),
     }
 }
-
 #[cfg(test)]
-mod tests {
-    use super::sanitize_hostname;
-
-    #[test]
-    fn normalizes_dns_labels() {
-        assert_eq!(sanitize_hostname("my.Host_name"), "my-host-name");
-        assert_eq!(sanitize_hostname("---bob---"), "bob");
-        assert_eq!(sanitize_hostname("..."), "agent");
-    }
-
-    #[test]
-    fn caps_labels_at_sixty_three_bytes() {
-        let output = sanitize_hostname(&"a".repeat(100));
-        assert_eq!(output.len(), 63);
-    }
-}
+#[path = "hostname_tests.rs"]
+mod tests;

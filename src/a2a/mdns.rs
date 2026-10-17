@@ -1,47 +1,53 @@
-//! mDNS discovery for peer-to-peer A2A services.
-//!
-//! This module advertises the local A2A endpoint and emits other resolved
-//! endpoints as [`DiscoveredPeer`] values. [`MdnsHandle`] owns the registration
-//! lifecycle, while [`announce_and_browse`] starts advertisement and discovery.
-//!
-//! # Usage
-//!
-//! ```rust,no_run
-//! use codetether_agent::a2a::mdns::announce_and_browse;
-//! use std::net::{IpAddr, Ipv4Addr};
-//!
-//! let (peer_tx, _peer_rx) = tokio::sync::mpsc::channel(8);
-//! let address = IpAddr::V4(Ipv4Addr::LOCALHOST);
-//! let handle = announce_and_browse("local-agent", 8000, vec![address], "token", peer_tx)?;
-//! handle.shutdown();
-//! # Ok::<(), anyhow::Error>(())
-//! ```
+//! Application-version adapter for shared local A2A discovery.
+use anyhow::Result;
+pub use codetether_a2a_discovery::mdns::{
+    DiscoveredPeer, MdnsHandle, SERVICE_TYPE, sanitize_hostname,
+};
+use std::net::IpAddr;
+use tokio::sync::mpsc;
 
-#[path = "mdns_announcement.rs"]
-mod announcement;
-#[path = "mdns_browser.rs"]
-mod browser;
-#[path = "mdns_event.rs"]
-mod event;
-#[path = "mdns_handle.rs"]
-mod handle;
-#[path = "mdns_hostname.rs"]
-mod hostname;
-#[path = "mdns_peer.rs"]
-mod peer;
-#[path = "mdns_resolved.rs"]
-mod resolved;
-#[path = "mdns_resolved_addresses.rs"]
-mod resolved_addresses;
-#[path = "mdns_scope.rs"]
-mod scope;
-#[path = "mdns_service.rs"]
-mod service;
-
-pub use announcement::announce_and_browse;
-pub use handle::MdnsHandle;
-pub use hostname::sanitize_hostname;
-pub use peer::DiscoveredPeer;
-
-/// DNS-SD service type shared by all CodeTether A2A peers.
-pub const SERVICE_TYPE: &str = "_codetether-a2a._tcp.local.";
+/// Advertises the local endpoint and starts browsing for A2A peers.
+///
+/// # Arguments
+///
+/// * `instance_name` - Unique service instance name.
+/// * `bind_port` - Local A2A HTTP port.
+/// * `bound_addrs` - Concrete listener interface addresses.
+/// * `collaboration_token` - Bearer capability advertised in the TXT record.
+/// * `peer_tx` - Channel that receives resolved peers.
+///
+/// # Returns
+///
+/// A handle that keeps the mDNS daemon and service registration alive.
+///
+/// # Errors
+///
+/// Returns an error when daemon startup, registration, or browsing fails.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use codetether_agent::a2a::mdns::announce_and_browse;
+/// use std::net::{IpAddr, Ipv4Addr};
+/// let (tx, _rx) = tokio::sync::mpsc::channel(8);
+/// let address = IpAddr::V4(Ipv4Addr::LOCALHOST);
+/// let handle = announce_and_browse("agent", 8000, vec![address], "token", tx)?;
+/// handle.shutdown();
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+pub fn announce_and_browse(
+    instance_name: &str,
+    bind_port: u16,
+    bound_addrs: Vec<IpAddr>,
+    collaboration_token: &str,
+    peer_tx: mpsc::Sender<DiscoveredPeer>,
+) -> Result<MdnsHandle> {
+    codetether_a2a_discovery::mdns::announce_and_browse(
+        instance_name,
+        bind_port,
+        bound_addrs,
+        collaboration_token,
+        peer_tx,
+        env!("CARGO_PKG_VERSION"),
+    )
+}

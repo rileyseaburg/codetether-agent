@@ -15,6 +15,7 @@ use tokio::sync::mpsc;
 /// * `bound_addrs` - Concrete listener interface addresses.
 /// * `collaboration_token` - Bearer capability advertised in the TXT record.
 /// * `peer_tx` - Channel that receives resolved peers.
+/// * `application_version` - Host application version advertised in the TXT record.
 ///
 /// # Returns
 ///
@@ -27,11 +28,11 @@ use tokio::sync::mpsc;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use codetether_agent::a2a::mdns::announce_and_browse;
+/// use codetether_a2a_discovery::mdns::announce_and_browse;
 /// use std::net::{IpAddr, Ipv4Addr};
 /// let (tx, _rx) = tokio::sync::mpsc::channel(8);
 /// let address = IpAddr::V4(Ipv4Addr::LOCALHOST);
-/// let handle = announce_and_browse("agent", 8000, vec![address], "token", tx)?;
+/// let handle = announce_and_browse("agent", 8000, vec![address], "token", tx, "1.0.0")?;
 /// handle.shutdown();
 /// # Ok::<(), anyhow::Error>(())
 /// ```
@@ -41,16 +42,22 @@ pub fn announce_and_browse(
     bound_addrs: Vec<IpAddr>,
     collaboration_token: &str,
     peer_tx: mpsc::Sender<DiscoveredPeer>,
+    application_version: &str,
 ) -> Result<MdnsHandle> {
     let bound_addrs = scope::bounded(bound_addrs)?;
     let daemon = Arc::new(start_daemon(&bound_addrs)?);
-    let service =
-        service::description(instance_name, bind_port, &bound_addrs, collaboration_token)?;
+    let service = service::description(
+        instance_name,
+        bind_port,
+        &bound_addrs,
+        collaboration_token,
+        application_version,
+    )?;
     let fullname = service.get_fullname().to_string();
     daemon
         .register(service)
         .context("Failed to register mDNS service")?;
-    tracing::info!(instance = %instance_name, port = bind_port, "Announced A2A peer over mDNS");
+    tracing::info!(target: "codetether_agent::a2a::mdns::announcement", instance = %instance_name, port = bind_port, "Announced A2A peer over mDNS");
     browser::start(&daemon, fullname.clone(), bind_port, peer_tx)?;
     Ok(MdnsHandle::new(daemon, fullname))
 }

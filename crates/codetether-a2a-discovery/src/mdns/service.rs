@@ -10,6 +10,7 @@ pub(super) fn description(
     bind_port: u16,
     bound_addrs: &[IpAddr],
     collaboration_token: &str,
+    application_version: &str,
 ) -> Result<ServiceInfo> {
     let hostname = format!("{}.local.", sanitize_hostname(instance_name));
     ServiceInfo::new(
@@ -18,17 +19,25 @@ pub(super) fn description(
         &hostname,
         bound_addrs,
         bind_port,
-        Some(properties(instance_name, collaboration_token)),
+        Some(properties(
+            instance_name,
+            collaboration_token,
+            application_version,
+        )),
     )
     .context("Failed to construct mDNS ServiceInfo")
 }
 
-fn properties(instance_name: &str, collaboration_token: &str) -> HashMap<String, String> {
+fn properties(
+    instance_name: &str,
+    collaboration_token: &str,
+    application_version: &str,
+) -> HashMap<String, String> {
     HashMap::from([
         ("name".to_string(), instance_name.to_string()),
         ("path".to_string(), "/".to_string()),
         ("protocol".to_string(), "a2a-jsonrpc".to_string()),
-        ("version".to_string(), env!("CARGO_PKG_VERSION").to_string()),
+        ("version".to_string(), application_version.to_string()),
         ("auth".to_string(), collaboration_token.to_string()),
     ])
 }

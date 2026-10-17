@@ -1,6 +1,6 @@
 //! IPv4 endpoint extraction from scoped mDNS addresses.
 
-use crate::a2a::mdns_addr::order_by_reachability;
+use crate::address::order_by_reachability;
 use mdns_sd::ScopedIp;
 use std::{collections::HashSet, net::Ipv4Addr};
 
@@ -24,5 +24,5 @@ fn ipv4(address: &ScopedIp) -> Option<Ipv4Addr> {
 }
 
 #[cfg(test)]
-#[path = "mdns_resolved_addresses_tests.rs"]
+#[path = "resolved_addresses_tests.rs"]
 mod tests;

@@ -1,0 +1,13 @@
+[package]
+name = "codetether-a2a-discovery"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "A2A peer discovery, address ranking and liveness tracking"
+
+[dependencies]
+anyhow = "1.0.104"
+mdns-sd = "0.20.3"
+tokio = { version = "1.53.1", features = ["rt", "sync"] }
+tracing = "0.1"

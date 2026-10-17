@@ -27,7 +27,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | tui | 1208 | 42457 | Pending cohesion and dependency audit |
 | session | 916 | 27990 | Partial extraction; inspect remaining implementation |
 | provider | 141 | 3096 | Shared contracts/HTTP/images/context limits, Codex OAuth/lifecycle/request, message and response protocol/HTTP and WebSocket transport, and Google/Bedrock auth, transcript conversion, body policy, native requests, responses, streaming, and Bedrock execution/discovery/refresh and OpenAI/DeepSeek/Z.AI/Anthropic/Moonshot/Google/StepFun/OpenRouter/Vertex Anthropic/Vertex GLM/GLM-5/Copilot implementations extracted; other adapters/registry pending |
-| a2a | 355 | 12904 | Wire contracts, HTTP client, resumable stream/QUIC and task scope extracted; gRPC, server and remaining worker ownership remain pending |
+| a2a | 355 | 12904 | Wire contracts, HTTP client, stream/QUIC, discovery and task scope extracted; gRPC, server and remaining worker ownership remain pending |
 | cli | 198 | 10322 | Pending cohesion and dependency audit |
 | swarm | 228 | 5643 | Shared runtime/domain/prompt policy extracted; application supplies session, provider, tools, worktrees and pod operations; remaining ownership audit ongoing |
 | server | 213 | 8264 | Pending cohesion and dependency audit |
@@ -93,6 +93,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | Crate | Rust files | Workspace member | Missing declared root modules |
 | --- | ---: | --- | --- |
 | codetether-a2a-core | 47 | yes | none |
+| codetether-a2a-discovery | 19 | yes | none |
 | codetether-a2a-http | 6 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 36 | yes | none |
@@ -4527,3 +4528,22 @@ local dependency graph is acyclic. Every new source file stays below 50 code
 lines. Evidence is retained in `artifacts/consolidation-a2a-stream/`.
 Compilation, tests, doctests, and transport behavior remain unverified under
 the Cargo/rustc restriction. The broader consolidation remains active.
+
+
+### Shared A2A peer discovery
+
+`codetether-a2a-discovery` owns mDNS advertisement and browsing, resolved peer
+records, interface bounds, hostname normalization, address ranking, and peer
+sighting/expiry state. These responsibilities are organized into `mdns`,
+`address`, and `liveness` modules. It has no workspace-crate dependencies.
+The application retains bus/route expiry orchestration and forwards its
+package version through the existing five-argument announcement API so the
+TXT record still identifies the application version. Original log targets
+are explicit in relocated code. Existing public paths remain available.
+
+Static comparison covers 17 relocated source files and 13 unchanged test
+functions. All 19 crate files are reachable, and each stays below 50 code
+lines. The only lockfile additions are the local crate and its application
+dependency. Evidence is retained in `artifacts/consolidation-a2a-discovery/`.
+Compilation, tests, doctests, and live discovery were not run. The wider
+consolidation goal remains active.

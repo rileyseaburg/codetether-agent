@@ -8,7 +8,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::mdns::DiscoveredPeer;
+/// use codetether_a2a_discovery::mdns::DiscoveredPeer;
 /// let peer = DiscoveredPeer {
 ///     urls: vec!["http://192.168.1.10:8000".to_string()],
 ///     instance_name: "agent".to_string(),

@@ -9,7 +9,7 @@ pub(super) fn peer(
     self_port: u16,
 ) -> Option<DiscoveredPeer> {
     let fullname = info.get_fullname();
-    tracing::debug!(
+    tracing::debug!(target: "codetether_agent::a2a::mdns::resolved",
         %fullname,
         port = info.get_port(),
         addrs = ?info.get_addresses(),

@@ -21,5 +21,5 @@ pub(super) fn bounded(mut addresses: Vec<IpAddr>) -> Result<Vec<IpAddr>> {
 }
 
 #[cfg(test)]
-#[path = "mdns_scope_tests.rs"]
+#[path = "scope_tests.rs"]
 mod tests;

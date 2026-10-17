@@ -10,7 +10,7 @@ use std::sync::Arc;
 /// # Examples
 ///
 /// ```rust,no_run
-/// # use codetether_agent::a2a::mdns::announce_and_browse;
+/// # use codetether_a2a_discovery::mdns::announce_and_browse;
 /// # use std::net::{IpAddr, Ipv4Addr};
 /// # let (tx, _) = tokio::sync::mpsc::channel(8);
 /// let handle = announce_and_browse(
@@ -19,6 +19,7 @@ use std::sync::Arc;
 ///     vec![IpAddr::V4(Ipv4Addr::LOCALHOST)],
 ///     "token",
 ///     tx,
+///     "1.0.0",
 /// )?;
 /// handle.shutdown();
 /// # Ok::<(), anyhow::Error>(())
