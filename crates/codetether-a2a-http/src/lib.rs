@@ -20,3 +20,6 @@ pub struct A2AClient {
 
 /// Request readers, task records and table transitions for HTTP servers.
 pub mod task_state;
+
+/// HTTP routing over host-provided task state and execution hooks.
+pub mod server;

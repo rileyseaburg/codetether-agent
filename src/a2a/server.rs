@@ -3,13 +3,7 @@
 use super::{server_task_activity, types::*};
 use crate::session::SessionEvent;
 use anyhow::Result;
-use axum::{
-    Router,
-    extract::State,
-    http::StatusCode,
-    response::Json,
-    routing::{get, post},
-};
+use axum::Router;
 use dashmap::DashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -33,6 +27,8 @@ mod server_telemetry;
 #[path = "server_turn.rs"]
 mod server_turn;
 use server_telemetry::record_a2a_message_telemetry;
+#[path = "server_http_host.rs"]
+mod http_host;
 
 /// A2A Server state
 #[derive(Clone)]
@@ -67,10 +63,7 @@ impl A2AServer {
     /// RPC calls require a Bearer token when `CODETETHER_AUTH_TOKEN` is
     /// set; agent-card discovery paths stay public.
     pub fn router(self) -> Router {
-        Router::new()
-            .route("/.well-known/agent.json", get(get_agent_card))
-            .route("/.well-known/agent-card.json", get(get_agent_card))
-            .route("/", post(handle_rpc))
+        codetether_a2a_http::server::routes::<Self>()
             .layer(axum::middleware::from_fn(
                 crate::a2a::server_auth::require_a2a_auth,
             ))
@@ -153,11 +146,6 @@ impl A2AServer {
     }
 }
 
-/// Get agent card handler
-async fn get_agent_card(State(server): State<A2AServer>) -> Json<AgentCard> {
-    Json(server.agent_card.clone())
-}
-
 fn emit_a2a_inbound(server: &A2AServer, task_id: &str, message: &Message) {
     emit_a2a_message(
         server,
@@ -192,43 +180,6 @@ fn emit_a2a_message(server: &A2AServer, task_id: &str, from: &str, to: &str, mes
         },
         Some(task_id.to_string()),
     );
-}
-
-/// Handle JSON-RPC requests
-async fn handle_rpc(
-    State(server): State<A2AServer>,
-    Json(request): Json<JsonRpcRequest>,
-) -> Result<Json<JsonRpcResponse>, (StatusCode, Json<JsonRpcResponse>)> {
-    let request_id = request.id.clone();
-    let response = match request.method.as_str() {
-        "message/send" => server_message_send::handle(&server, request).await,
-        "message/stream" => handle_message_stream(&server, request).await,
-        "tasks/get" => {
-            codetether_a2a_http::task_state::handle_tasks_get(&server.tasks, request).await
-        }
-        "tasks/cancel" => {
-            codetether_a2a_http::task_state::handle_tasks_cancel(&server.tasks, request).await
-        }
-        _ => Err(JsonRpcError::method_not_found(&request.method)),
-    };
-
-    match response {
-        Ok(result) => Ok(Json(JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
-            id: request_id.clone(),
-            result: Some(result),
-            error: None,
-        })),
-        Err(error) => Err((
-            StatusCode::OK,
-            Json(JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                id: request_id,
-                result: None,
-                error: Some(error),
-            }),
-        )),
-    }
 }
 
 async fn handle_message_stream(

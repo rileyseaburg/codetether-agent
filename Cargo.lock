@@ -1126,6 +1126,8 @@ name = "codetether-a2a-http"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "axum",
  "chrono",
  "codetether-a2a-core",
  "dashmap",

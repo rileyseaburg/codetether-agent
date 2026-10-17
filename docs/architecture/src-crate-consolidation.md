@@ -95,7 +95,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-discovery | 19 | yes | none |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
-| codetether-a2a-http | 20 | yes | codetether-a2a-core |
+| codetether-a2a-http | 24 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 36 | yes | none |
 | codetether-agent-core | 44 | yes | none |
@@ -4609,3 +4609,22 @@ local dependency graph remains acyclic. All 14 new source files are under
 adds already-locked chrono, dashmap, and uuid dependencies to this crate.
 Evidence: `artifacts/consolidation-a2a-http-state/`. Compilation, tests, and
 runtime behavior remain unverified; the wider goal remains active.
+
+
+### Shared A2A HTTP routing
+
+`codetether-a2a-http::server` owns the two agent-card discovery routes, root
+JSON-RPC route, method dispatch, and response envelopes. Its `ServerHost`
+trait borrows the application card/task table and delegates message execution.
+The application retains authentication middleware and binds state after
+applying the middleware, in the original order. Task state, HTTP status codes,
+request IDs, method names, and response serialization are unchanged.
+
+Static comparison verifies both moved handlers, all route registrations, the
+application wrapper, and its remaining source. All 24 HTTP-crate modules are
+reachable; new files meet the 50-code-line limit. The lockfile adds only the
+already-locked async-trait and axum dependencies to this crate. Evidence is
+retained in `artifacts/consolidation-a2a-http-router/`. Compilation, tests, and
+live requests remain unverified. Session execution, authentication policy,
+and the remaining worker/application responsibilities still require review;
+the overall consolidation goal remains active.
