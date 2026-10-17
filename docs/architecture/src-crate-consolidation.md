@@ -6090,3 +6090,19 @@ is acyclic. New files contain at most 25 code lines. File-budget and whitespace
 checks passed. Evidence: `artifacts/consolidation-conversation-resolution/`.
 Compilation, tests and live session persistence remain unrun. No Cargo, rustc
 or Python commands ran. The broader migration remains active.
+
+### Shared A2A model-selection configuration
+
+Moved A2A model selection into `codetether-config::a2a_runtime`. The config crate
+now owns the environment override, lazy configuration fallback and failure log;
+the application retains only session model assignment and persistence.
+
+Static comparison verifies all three model-resolution functions after explicit
+visibility, config-path and log-target substitutions. Environment trimming,
+empty-value handling, config whitespace preservation and fallback timing remain
+unchanged. The module scan includes 74 configuration files, with no missing or
+orphaned modules in the inspected roots and no dependency cycles. New files
+contain at most 11 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-a2a-model-config/`. Compilation, tests and
+live configuration loading remain unrun. No Cargo, rustc or Python commands
+ran. The broader migration remains active.

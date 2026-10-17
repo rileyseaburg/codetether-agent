@@ -4,34 +4,8 @@ use crate::session::Session;
 
 /// Apply the configured default model to an A2A session.
 pub async fn configure(session: &mut Session) {
-    if let Some(model) = configured_model().await {
+    if let Some(model) = codetether_config::a2a_runtime::configured_model().await {
         session.metadata.model = Some(model);
-    }
-}
-
-async fn configured_model() -> Option<String> {
-    match model_from_env() {
-        Some(model) => Some(model),
-        None => async_load_config_model().await,
-    }
-}
-
-fn model_from_env() -> Option<String> {
-    std::env::var("CODETETHER_DEFAULT_MODEL")
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-}
-
-async fn async_load_config_model() -> Option<String> {
-    match crate::config::Config::load().await {
-        Ok(config) => config
-            .default_model
-            .filter(|value| !value.trim().is_empty()),
-        Err(e) => {
-            tracing::debug!(error = %e, "Failed to load config for A2A session model");
-            None
-        }
     }
 }
 
