@@ -1323,6 +1323,7 @@ dependencies = [
  "codetether-rlm-tool",
  "codetether-ralph-tool",
  "codetether-session-task",
+ "codetether-collaboration-input",
  "codetether-go-tool",
  "codetether-image-generation",
  "codetether-indexer",
@@ -2423,6 +2424,19 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-collaboration-input"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.23.1",
+ "codetether-image",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

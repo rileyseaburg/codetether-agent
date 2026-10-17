@@ -16,10 +16,6 @@ mod item;
 #[path = "send_input/schema.rs"]
 mod schema;
 
-#[cfg(test)]
-#[path = "send_input_tests.rs"]
-mod tests;
-
 pub(super) struct SendInputTool;
 
 #[async_trait]

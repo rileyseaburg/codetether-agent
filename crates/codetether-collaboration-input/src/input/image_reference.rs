@@ -1,6 +1,6 @@
 //! Validate remote image references without network access or URL rewriting.
 
-use crate::tool::agent::collaboration_runtime::message_input::MessageImage;
+use crate::MessageImage;
 use anyhow::{Context, Result, ensure};
 
 #[cfg(test)]

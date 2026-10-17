@@ -1,6 +1,6 @@
 //! Convert image references and local image files into durable attachments.
 
-use crate::tool::agent::collaboration_runtime::message_input::MessageImage;
+use crate::MessageImage;
 use anyhow::{Context, Result, bail};
 use base64::Engine;
 use std::path::Path;
@@ -17,7 +17,7 @@ pub(super) fn normalize(value: &str) -> Result<MessageImage> {
 }
 
 pub(super) fn data_url(value: &str) -> Result<MessageImage> {
-    let image = crate::image_clipboard::attachment_from_data_url(value)
+    let image = codetether_image::attachment_from_data_url(value)
         .context("image_url must be a base64 image data URL")?;
     Ok(MessageImage {
         data_url: image.data_url,

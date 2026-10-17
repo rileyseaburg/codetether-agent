@@ -7764,3 +7764,24 @@ new crate modules contain at most 38 code lines. Evidence is in
 `artifacts/consolidation-session-task/`. No journal mutations, goal verification,
 runtime tests, Cargo, rustc or Python commands ran. Compilation remains unverified;
 the full source-to-crates consolidation goal remains active.
+
+### Dedicated collaboration input preparation
+
+Moved structured child input variants, prompt rendering, image URL validation,
+local-image conversion, input schema and durable image serialization into
+`crates/codetether-collaboration-input`. Fourteen Rust modules include ten
+relocated regression tests. The application retains two local-workspace
+integration tests and delegates input preparation through compatibility exports.
+Agent submission, interruption, ownership checks and scheduling remain with
+the existing runtime. The durable image type and its conversion to the shared
+image attachment have one crate owner.
+
+Twenty-five static preservation checks cover serde contracts, input validation,
+rendering, image normalization and MIME handling, unchanged remote references,
+schema, moved tests and unchanged application submission/workspace paths.
+Module reachability, dependency cycles, file budgets and whitespace checks
+passed; new Rust modules contain at most 47 code lines. Evidence is in
+`artifacts/consolidation-collaboration-input/`. No images were read, remote URLs
+fetched, agent messages submitted or runtime tests executed. No Cargo, rustc or
+Python commands ran. Compilation remains unverified; the full consolidation
+goal remains active.
