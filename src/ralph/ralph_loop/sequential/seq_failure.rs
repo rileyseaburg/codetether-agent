@@ -1,8 +1,12 @@
 //! Sequential Ralph failure handling.
 use super::*;
 impl RalphLoop {
-    pub(super) fn record_quality_failure(&self, story: &UserStory, entry_learnings: &[String]) {
-        warn!("Story {} failed quality checks", story.id);
+    pub(in crate::ralph::ralph_loop) fn record_quality_failure(
+        &self,
+        story: &UserStory,
+        entry_learnings: &[String],
+    ) {
+        warn!(target: "codetether_agent::ralph::ralph_loop::seq_failure", "Story {} failed quality checks", story.id);
 
         // Record failed story result in store
         self.record_story_result(story, false, Some("Quality checks failed".to_string()));

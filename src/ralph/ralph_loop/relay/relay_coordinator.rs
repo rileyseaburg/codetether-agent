@@ -8,7 +8,7 @@ impl RalphLoop {
     /// each with its own Session and full tool access, and runs them in a
     /// baton-passing relay loop. Each agent operates autonomously within its
     /// turn, using tools to read/write code and run commands.
-    pub(super) async fn call_relay_static(
+    pub(in crate::ralph::ralph_loop) async fn call_relay_static(
         registry: &Arc<ProviderRegistry>,
         model: &str,
         prompt: &str,

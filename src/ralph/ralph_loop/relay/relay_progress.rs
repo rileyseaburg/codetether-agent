@@ -2,7 +2,7 @@
 use super::relay_types::RelayProgress;
 use super::*;
 impl RelayProgress {
-    pub(super) fn observe(
+    pub(in crate::ralph::ralph_loop) fn observe(
         &mut self,
         output: String,
         to: &str,
@@ -19,14 +19,14 @@ impl RelayProgress {
         self.previous_normalized = Some(normalized);
 
         if self.convergence_hits >= 2 {
-            info!(story_id = %story_id, turns = self.turns, "Relay converged");
+            info!(target: "codetether_agent::ralph::ralph_loop::relay_progress", story_id = %story_id, turns = self.turns, "Relay converged");
             self.baton = output;
             return true;
         }
 
         // Check if story reached terminal state
         if output.contains("STORY_COMPLETE") || output.contains("STORY_BLOCKED") {
-            info!(story_id = %story_id, turns = self.turns, "Story reached terminal state via relay");
+            info!(target: "codetether_agent::ralph::ralph_loop::relay_progress", story_id = %story_id, turns = self.turns, "Story reached terminal state via relay");
             self.baton = output;
             return true;
         }

@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 105 | 2772 | Shared services extracted; parallel host grouped cohesively; relay/lifecycle layout and final host ownership review continue |
+| ralph | 107 | 2791 | Shared services extracted; parallel, relay and sequential hosts grouped; lifecycle/merge layout and final ownership review continue |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -4352,3 +4352,22 @@ passed; standalone rustfmt was used. No Cargo, rustc, Python, parallel task,
 worktree operation, Rust test or doctest ran. Compilation and runtime remain
 unverified. Evidence: artifacts/consolidation-ralph-parallel-modules/. Relay and
 lifecycle layout still need review under the active whole-workspace objective.
+
+## Ralph relay and sequential host cohesion
+
+Twenty-two existing implementation files now sit under dedicated relay and
+sequential modules. Relay owns team/session preparation, baton turns, event
+forwarding, convergence and finishing. Sequential owns iteration selection,
+prompting, response/error handling and its shared-scheduler adapter. Existing
+inherent visibility remains restricted to the original ralph_loop scope, and
+all relocated logging retains its original target.
+
+All 25 static comparisons passed, covering every moved file and the parent
+state/declarations. All grouped files are at most 47 code lines. Lexical scans
+cover 107 application and 136 core files without missing or orphaned modules.
+The six-crate dependency closure is unchanged and acyclic. No dependencies
+changed. File-limit and whitespace checks passed; standalone rustfmt was used.
+No Cargo, rustc, Python, relay session, sequential agent, Rust test or doctest
+ran. Compilation and runtime remain unverified. Evidence:
+artifacts/consolidation-ralph-relay-sequential/. Lifecycle/merge layout and final
+Ralph ownership review remain part of the active whole-workspace objective.

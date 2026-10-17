@@ -2,7 +2,7 @@
 use super::*;
 impl RalphLoop {
     /// Build default relay profiles for code implementation tasks.
-    pub(super) fn build_implementation_relay_profiles(
+    pub(in crate::ralph::ralph_loop) fn build_implementation_relay_profiles(
         max_agents: usize,
         working_dir: &std::path::Path,
     ) -> Vec<(String, String, Vec<String>)> {

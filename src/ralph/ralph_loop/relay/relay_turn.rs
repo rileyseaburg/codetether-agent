@@ -1,7 +1,7 @@
 //! Execute one relay agent and restore its session before propagating errors.
 use super::*;
 impl RalphLoop {
-    pub(super) async fn run_relay_turn(
+    pub(in crate::ralph::ralph_loop) async fn run_relay_turn(
         registry: &Arc<ProviderRegistry>,
         sessions: &mut HashMap<String, Session>,
         baton: &str,

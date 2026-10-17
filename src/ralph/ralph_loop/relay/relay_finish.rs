@@ -2,7 +2,7 @@
 use super::relay_types::RelayProgress;
 use super::*;
 impl RalphLoop {
-    pub(super) fn finish_relay(
+    pub(in crate::ralph::ralph_loop) fn finish_relay(
         relay: &ProtocolRelayRuntime,
         ordered_agents: &[String],
         progress: RelayProgress,
@@ -16,7 +16,7 @@ impl RalphLoop {
         } = progress;
         relay.shutdown_agents(ordered_agents);
 
-        info!(
+        info!(target: "codetether_agent::ralph::ralph_loop::relay_finish",
             story_id = %story_id,
             turns,
             convergence_hits,

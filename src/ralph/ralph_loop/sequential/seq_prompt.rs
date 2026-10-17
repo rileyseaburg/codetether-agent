@@ -1,7 +1,7 @@
 //! Sequential Ralph prompt handling.
 use super::*;
 impl RalphLoop {
-    pub(super) fn sequential_prompt(&self, story: &UserStory) -> String {
+    pub(in crate::ralph::ralph_loop) fn sequential_prompt(&self, story: &UserStory) -> String {
         // Collect accumulated bus learnings for prompt injection
         let bus_learnings = self.bus_collect_learnings();
 

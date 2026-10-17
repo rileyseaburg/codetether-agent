@@ -1,7 +1,7 @@
 //! Select a provider and initialize one named relay session.
 use super::*;
 impl RalphLoop {
-    pub(super) async fn create_relay_session(
+    pub(in crate::ralph::ralph_loop) async fn create_relay_session(
         registry: &Arc<ProviderRegistry>,
         model: &str,
         name: &str,

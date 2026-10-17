@@ -2,7 +2,7 @@
 use super::relay_types::PreparedRelayTeam;
 use super::*;
 impl RalphLoop {
-    pub(super) async fn prepare_relay_team(
+    pub(in crate::ralph::ralph_loop) async fn prepare_relay_team(
         registry: &Arc<ProviderRegistry>,
         model: &str,
         profiles: &[(String, String, Vec<String>)],
@@ -37,7 +37,7 @@ impl RalphLoop {
 
         relay.register_agents(&relay_profiles);
 
-        info!(
+        info!(target: "codetether_agent::ralph::ralph_loop::relay_prepare",
             story_id = %story_id,
             agents = ordered_agents.len(),
             rounds = max_rounds,

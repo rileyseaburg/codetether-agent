@@ -2,7 +2,7 @@
 use super::relay_types::{RelayProgress, RelayRoundContext};
 use super::*;
 impl RalphLoop {
-    pub(super) async fn run_relay_rounds(
+    pub(in crate::ralph::ralph_loop) async fn run_relay_rounds(
         ctx: RelayRoundContext<'_>,
     ) -> anyhow::Result<RelayProgress> {
         let mut progress = RelayProgress {

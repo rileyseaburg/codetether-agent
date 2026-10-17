@@ -1,7 +1,7 @@
 //! Sequential Ralph response handling.
 use super::*;
 impl RalphLoop {
-    pub(super) async fn handle_sequential_response(
+    pub(in crate::ralph::ralph_loop) async fn handle_sequential_response(
         &mut self,
         story: &UserStory,
         response: &str,

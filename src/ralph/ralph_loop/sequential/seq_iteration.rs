@@ -1,7 +1,7 @@
 //! Sequential Ralph iteration handling.
 use super::*;
 impl RalphLoop {
-    pub(super) fn begin_sequential_iteration(&mut self) -> Option<UserStory> {
+    pub(in crate::ralph::ralph_loop) fn begin_sequential_iteration(&mut self) -> Option<UserStory> {
         self.state.current_iteration += 1;
 
         // Persist iteration update
@@ -11,7 +11,7 @@ impl RalphLoop {
             &self.state,
         );
 
-        info!(
+        info!(target: "codetether_agent::ralph::ralph_loop::seq_iteration",
             "=== Ralph iteration {} of {} ===",
             self.state.current_iteration, self.state.max_iterations
         );
@@ -24,7 +24,7 @@ impl RalphLoop {
 
         // Check if all stories are complete
         if self.state.prd.is_complete() {
-            info!("All stories complete!");
+            info!(target: "codetether_agent::ralph::ralph_loop::seq_iteration", "All stories complete!");
             self.state.status = RalphStatus::Completed;
             return None;
         }
@@ -33,12 +33,12 @@ impl RalphLoop {
         let story = match self.state.prd.next_story() {
             Some(s) => s.clone(),
             None => {
-                warn!("No available stories (dependencies not met)");
+                warn!(target: "codetether_agent::ralph::ralph_loop::seq_iteration", "No available stories (dependencies not met)");
                 return None;
             }
         };
 
-        info!("Working on story: {} - {}", story.id, story.title);
+        info!(target: "codetether_agent::ralph::ralph_loop::seq_iteration", "Working on story: {} - {}", story.id, story.title);
 
         // Emit StoryStarted event
         self.try_send_event(RalphEvent::StoryStarted {

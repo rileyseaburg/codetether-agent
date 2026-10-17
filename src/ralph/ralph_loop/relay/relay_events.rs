@@ -1,7 +1,7 @@
 //! Forward live tool-call events while a relay session task is running.
 use super::*;
 impl RalphLoop {
-    pub(super) async fn forward_relay_events<T: Send>(
+    pub(in crate::ralph::ralph_loop) async fn forward_relay_events<T: Send>(
         join: &tokio::task::JoinHandle<T>,
         event_rx: &mut mpsc::Receiver<SessionEvent>,
         ralph_tx: &Option<mpsc::Sender<RalphEvent>>,

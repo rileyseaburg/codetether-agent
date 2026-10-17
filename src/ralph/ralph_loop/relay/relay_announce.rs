@@ -1,7 +1,7 @@
 //! Publish one handoff and its matching UI notification.
 use super::*;
 impl RalphLoop {
-    pub(super) async fn announce_relay_turn(
+    pub(in crate::ralph::ralph_loop) async fn announce_relay_turn(
         relay: &ProtocolRelayRuntime,
         from: &str,
         to: &str,
