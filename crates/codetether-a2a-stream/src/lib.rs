@@ -30,3 +30,8 @@ pub mod quic;
 pub mod resume_request;
 pub mod resync;
 pub mod staging;
+
+/// Bounded frame ingestion and caller-side frame handling.
+pub mod ingest;
+/// Reconnect outcome policy and backoff progression.
+pub mod reconnect;

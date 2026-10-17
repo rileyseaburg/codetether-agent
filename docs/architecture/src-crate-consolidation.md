@@ -96,7 +96,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-discovery | 23 | yes | codetether-a2a-core |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 45 | yes | codetether-a2a-core, codetether-provider-core |
-| codetether-a2a-stream | 33 | yes | codetether-telemetry |
+| codetether-a2a-stream | 35 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 89 | yes | codetether-agent-core, codetether-provider-core, codetether-provenance |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
@@ -4960,3 +4960,21 @@ reachable without missing/orphaned modules. The new file has 37 code lines;
 file-budget and whitespace checks passed. The manifest adds already-locked
 urlencoding. Evidence: `artifacts/consolidation-pending-task-client/`.
 Compilation, tests, and live polling remain unrun; the broader goal is active.
+
+
+### Shared worker stream ingestion and reconnection
+
+The stream crate now owns disconnect reasons, the staging cap, complete-frame
+ingestion, and reconnect outcome/backoff policy. A `FrameConsumer` interface
+keeps worker dispatch and cursor mutation in the application adapter. The
+application also retains cursor-path selection and overall connection loops.
+Original reconnect log targets are explicit.
+
+Static comparison confirms unchanged buffer extension/draining, UTF-8/frame
+filtering, sequential handling, disconnect values, retry state transitions,
+and delay calculation. All 35 stream-crate files and 310 A2A files are
+reachable without missing/orphaned modules. New files meet the line limit;
+file-budget and whitespace checks passed. Existing async-trait/tracing
+dependencies and Tokio time are enabled in the stream crate. Evidence:
+`artifacts/consolidation-worker-stream/`. Compilation and runtime tests remain
+unrun; the broader consolidation goal remains active.
