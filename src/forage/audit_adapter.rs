@@ -1,5 +1,7 @@
 //! Initialize the application audit sink and publish correlated forage events.
 use super::*;
+use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
+use uuid::Uuid;
 
 pub(super) async fn ensure_audit_log_initialized() {
     if audit::try_audit_log().is_some() {

@@ -1,5 +1,7 @@
 //! Forage present reporting.
 use super::*;
+use serde::Serialize;
+
 impl RunEvents<'_> {
     pub(in crate::forage) fn present(
         &self,

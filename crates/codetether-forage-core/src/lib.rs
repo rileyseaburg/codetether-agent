@@ -39,3 +39,6 @@ pub mod quality;
 pub mod execution;
 /// Moonshot file loading and normalization.
 pub mod rubric_load;
+
+#[cfg(test)]
+mod tests;

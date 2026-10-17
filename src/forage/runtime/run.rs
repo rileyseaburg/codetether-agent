@@ -1,5 +1,7 @@
 //! Bound cycle execution, sleep and normal shutdown reporting.
 use super::*;
+use std::time::Duration;
+
 impl RunLoop<'_> {
     pub(in crate::forage) async fn run(mut self) -> Result<ForageRunSummary> {
         let top = self.args.top.clamp(1, 50);

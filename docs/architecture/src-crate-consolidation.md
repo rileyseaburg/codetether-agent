@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 46 | 1576 | Shared domain services and application lifecycle phases consolidated; residual test-module cohesion and final ownership audit remain |
+| forage | 57 | 1409 | Shared domain services and application lifecycle phases consolidated; tests placed with owners; final clarification/persistence ownership review remains |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -122,7 +122,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-lsp-core | 95 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
-| codetether-forage-core | 34 | yes | none |
+| codetether-forage-core | 43 | yes | none |
 | codetether-okr | 72 | yes | none |
 | codetether-paths | 5 | yes | none |
 | codetether-platform | 56 | yes | none |
@@ -4145,3 +4145,26 @@ No Cargo, rustc, Python, service startup, cycle execution, Rust test or doctest
 ran. Compilation and runtime remain unverified. Evidence is retained in
 artifacts/consolidation-forage-runtime/. Residual test-module cohesion and a
 final forage ownership audit remain within the active whole-workspace goal.
+
+## Forage test ownership and fixture consolidation
+
+Eight existing scoring, prompt normalization, progress-ratio and seeding tests
+now reside with forage-core. Eight application selection/configuration/progress
+adapter tests remain in focused application modules. Repeated CLI argument
+and opportunity construction is captured in two test fixtures. Runtime imports
+now live with their using modules. The application forage root is 48 code lines;
+every forage source file is within the 50-code-line limit.
+
+All 34 static comparisons passed, including the original sixteen test bodies
+with fixture calls expanded, fixture field values, and unchanged operational
+code after import relocation. No assertions were removed and no test ran.
+Lexical scans cover all 57 application and 43 core files without missing or
+orphaned modules; the three-crate dependency closure remains acyclic. The
+manifest adds existing tempfile as a dev dependency and Tokio test runtime
+features; the lockfile only adds tempfile to forage-core. No resolution ran.
+Changed-file limits and whitespace checks passed; standalone rustfmt was used.
+
+No Cargo, rustc, Python, fixture execution, Rust tests or doctests ran;
+compilation and runtime remain unverified. Evidence:
+artifacts/consolidation-forage-tests/. Clarification/persistence ownership
+review remains before the final forage audit; the full workspace goal is active.

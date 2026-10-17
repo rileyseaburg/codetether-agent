@@ -1,5 +1,7 @@
 //! Execute one opportunity with the application swarm service.
 use super::*;
+use crate::swarm::SwarmExecutor;
+use std::time::Duration;
 
 pub(super) async fn execute_opportunity_with_swarm(
     item: &ForageOpportunity,

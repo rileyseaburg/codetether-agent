@@ -3,6 +3,8 @@
 //! The executor retains provider and repository ownership across Ralph
 //! execution; helper modules prepare those dependencies and render results.
 use super::*;
+use std::time::Duration;
+
 use crate::okr::{OkrRun, OkrRunStatus};
 use crate::provider::ProviderRegistry;
 use anyhow::Context;

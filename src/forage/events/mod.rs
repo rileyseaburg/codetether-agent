@@ -3,6 +3,10 @@
 //! [RunEvents] references the run's existing arguments, rubric and bus handle.
 //! Its methods report lifecycle events; execution and loop state stay with callers.
 use super::*;
+use crate::a2a::types::{Part, TaskState};
+use crate::audit::{AuditCategory, AuditOutcome};
+use serde_json::json;
+
 mod complete;
 mod cycle;
 mod executing;

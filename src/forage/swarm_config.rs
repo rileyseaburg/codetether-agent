@@ -1,5 +1,6 @@
 //! Map CLI options to application swarm configuration and strategy.
 use super::*;
+use crate::swarm::{DecompositionStrategy, ExecutionMode, SwarmConfig};
 
 pub(super) fn build_swarm_config(args: &ForageArgs) -> SwarmConfig {
     SwarmConfig {

@@ -1,5 +1,6 @@
 //! Drain a bounded number of bus observations to the forage console.
 use super::*;
+use crate::forage_println;
 
 pub(super) fn flush_bus_observer(observer: &mut BusHandle, cycle: usize, json_mode: bool) {
     if json_mode {

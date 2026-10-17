@@ -1,5 +1,6 @@
 //! Dispatch application engines and collect their execution evidence.
 use super::*;
+use codetether_forage_core::changes::snapshot_git_changed_files;
 
 pub(super) async fn execute_opportunity(
     item: &ForageOpportunity,
