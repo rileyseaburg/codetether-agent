@@ -5884,3 +5884,20 @@ Tokio's net feature for its moved listener ownership. Evidence:
 `artifacts/consolidation-peer-startup/`. Compilation, tests and live startup
 remain unrun. No Cargo, rustc or Python commands ran. The broader migration
 remains active.
+
+### Shared foreground and background peer serving
+
+Moved background server-task creation, local-identity activation, lifecycle
+handle construction, foreground serving and discovery cleanup into the HTTP
+crate's `peer_startup` module. Application wrappers still create the configured
+bus/S3 sink, prepare the application router and supply the Ctrl-C future.
+
+Static comparison verifies both serving bodies after the explicit preparation
+and shutdown-future substitutions. Identity activation, log targets, error
+propagation and cleanup order are preserved. Application signal handling is
+unchanged. The module scan reaches 248 application A2A files and 138 HTTP files
+without missing/orphaned modules; the dependency closure is acyclic. New files
+contain at most 32 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-peer-serving/`. Compilation, tests and live
+serving/shutdown remain unrun. No Cargo, rustc or Python commands ran. The
+broader implementation migration remains active.

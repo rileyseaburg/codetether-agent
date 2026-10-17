@@ -30,3 +30,10 @@ pub use hooks::StartupHooks;
 pub use options::SpawnOptions;
 pub use prepare::prepare_a2a;
 pub use record::A2APreparation;
+
+mod background;
+mod foreground;
+/// Start background serving of a prepared endpoint.
+pub use background::start_background;
+/// Serve a prepared endpoint until the supplied shutdown signal.
+pub use foreground::serve_foreground;

@@ -44,11 +44,10 @@
 //! HTTP/JSON-RPC API, curl recipes, cross-host setup, troubleshooting,
 //! source map).
 
-use crate::a2a::local_identity;
 use crate::a2a::server::A2AServer;
 use crate::bus::AgentBus;
 use crate::cli::SpawnArgs;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::sync::Arc;
 
 #[path = "spawn/agent_card.rs"]
