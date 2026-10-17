@@ -6187,3 +6187,20 @@ the dependency closure is acyclic. New files contain at most 49 code lines.
 Workspace/lockfile wiring, file-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-file-inspect/`. No tool runtime, filesystem tests,
 Cargo, rustc or Python ran. The broader migration remains active.
+
+### Dedicated Kubernetes tool adapter crate
+
+Created `crates/codetether-k8s-tool` and moved the Kubernetes tool adapter out of
+`src/tool/k8s_tool.rs`. Fifteen files separate input contracts, shared manager
+construction, schema composition and the nine actions. The existing Kubernetes
+manager stays in its own crate; application registration uses a compatibility
+export of the tool type.
+
+Static comparison verifies input/default shapes, lazy/preinitialized manager
+construction, complete schema expansion, dispatch and all nine handler bodies.
+Namespace/deployment scoping, argument requirements and result payloads are
+unchanged. All 15 files are reachable with no missing/orphaned modules, and the
+dependency closure is acyclic. New files contain at most 49 code lines.
+Workspace/lockfile wiring, file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-k8s-tool/`. No Kubernetes operations, runtime tests,
+Cargo, rustc or Python were executed. The broader migration remains active.

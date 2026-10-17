@@ -44,6 +44,7 @@ members = [
     "crates/codetether-image",
     "crates/codetether-indexer",
     "crates/codetether-k8s",
+    "crates/codetether-k8s-tool",
     "crates/codetether-knowledge-graph",
     "crates/codetether-lsp-core",
     "crates/codetether-marketplace",
@@ -290,6 +291,7 @@ codetether-mcp-core = { path = "crates/codetether-mcp-core", version = "0.1.0" }
 codetether-plan = { path = "crates/codetether-plan", version = "0.1.0" }
 codetether-file-diff = { path = "crates/codetether-file-diff", version = "0.1.0" }
 codetether-file-inspect = { path = "crates/codetether-file-inspect", version = "0.1.0" }
+codetether-k8s-tool = { path = "crates/codetether-k8s-tool", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }

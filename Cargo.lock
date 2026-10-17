@@ -1280,6 +1280,7 @@ dependencies = [
  "codetether-image",
  "codetether-indexer",
  "codetether-k8s",
+ "codetether-k8s-tool",
  "codetether-knowledge-graph",
  "codetether-lsp-core",
  "codetether-marketplace",
@@ -1994,6 +1995,19 @@ dependencies = [
  "tower",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-k8s-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-k8s",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
