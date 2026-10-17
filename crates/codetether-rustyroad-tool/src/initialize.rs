@@ -1,17 +1,17 @@
 //! RustyRoad MCP handshake and server identity check.
 
 use super::rpc::Rpc;
-use crate::mcp::{InitializeResult, ServerInfo};
 use anyhow::{Result, bail};
+use codetether_mcp_core::types::{InitializeResult, ServerInfo};
 use serde_json::json;
 
-pub(super) async fn run(rpc: &mut Rpc) -> Result<ServerInfo> {
+pub(super) async fn run(rpc: &mut Rpc, client_version: &str) -> Result<ServerInfo> {
     let result: InitializeResult = serde_json::from_value(
         rpc.request(
             "initialize",
             json!({
                 "protocolVersion": "2024-11-05", "capabilities": {},
-                "clientInfo": {"name": "codetether-rustyroad", "version": env!("CARGO_PKG_VERSION")}
+                "clientInfo": {"name": "codetether-rustyroad", "version": client_version}
             }),
         )
         .await?,

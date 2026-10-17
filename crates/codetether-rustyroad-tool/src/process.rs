@@ -1,8 +1,8 @@
 //! Owned, isolated RustyRoad process and pipe lifecycle.
 
 use super::{command::command, rpc::Rpc};
-use crate::tool::process_tree;
 use anyhow::{Context, Result};
+use codetether_process_tree as process_tree;
 use std::{path::Path, process::Stdio};
 use tokio::{
     io::BufReader,

@@ -1,23 +1,21 @@
-//! First-party RustyRoad access through its published MCP executable.
-//!
-//! Each invocation owns an isolated, short-lived subprocess. Install the
-//! backend with `cargo install rustyroad --locked --bin rustyroad-mcp`.
-
-mod command;
-mod environment;
-mod initialize;
-mod invocation;
-mod params;
-mod process;
-mod response;
-mod rpc;
-mod run;
-mod schema;
-mod session;
-mod tool_impl;
-
+//! Bind RustyRoad to the application's workspace policy and handshake identity.
+/// RustyRoad adapter using the application's existing authorization hook.
+pub(crate) type RustyRoadTool = codetether_rustyroad_tool::RustyRoadTool<ApplicationHost>;
+/// Preserve the existing unit-like tool construction used by the registries.
+#[allow(non_upper_case_globals)]
+pub(crate) const RustyRoadTool: RustyRoadTool = codetether_rustyroad_tool::RustyRoadTool::new();
+/// Workspace authorization and application package identity.
+pub(crate) struct ApplicationHost;
+#[async_trait::async_trait]
+impl codetether_rustyroad_tool::Host for ApplicationHost {
+    const CLIENT_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+    async fn evaluate_tool_invocation_for_workspace(
+        tool: &str,
+        input: &serde_json::Value,
+        cwd: &std::path::Path,
+    ) -> Option<crate::tool::ToolResult> {
+        crate::runtime_policy::evaluate_tool_invocation_for_workspace(tool, input, cwd).await
+    }
+}
 #[cfg(test)]
 mod tests;
-
-/// Built-in adapter for the `rustyroad-mcp` executable on PATH.
-pub(crate) struct RustyRoadTool;

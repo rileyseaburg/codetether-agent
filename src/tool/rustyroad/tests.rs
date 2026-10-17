@@ -1,10 +1,4 @@
-//! Regression coverage grouped by first-party adapter responsibility.
-
-mod command;
-mod inputs;
+//! Application policy, registration and installed-backend coverage.
 mod installed;
-mod lifetime;
 mod policy;
-mod process;
-mod responses;
 mod smoke_helpers;

@@ -1,7 +1,6 @@
 //! MCP wrappers bound to the application's existing authorized client.
 #[path = "mcp_tools_client.rs"]
 mod client;
-pub(super) use codetether_mcp_tools::convert;
 /// Remote tool wrapper using the application's policy-aware MCP client.
 ///
 /// # Examples

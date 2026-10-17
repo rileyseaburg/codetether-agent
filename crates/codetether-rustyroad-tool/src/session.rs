@@ -5,15 +5,17 @@ use super::{
     params::{Action, Params},
     rpc::Rpc,
 };
-use crate::{
-    mcp::{CallToolResult, ListToolsResult},
-    tool::ToolResult,
-};
 use anyhow::{Result, bail};
+use codetether_mcp_core::types::{CallToolResult, ListToolsResult};
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
-pub(super) async fn execute(rpc: &mut Rpc, params: &Params) -> Result<ToolResult> {
-    let server = initialize::run(rpc).await?;
+pub(super) async fn execute(
+    rpc: &mut Rpc,
+    params: &Params,
+    client_version: &str,
+) -> Result<ToolResult> {
+    let server = initialize::run(rpc, client_version).await?;
     let tools: ListToolsResult =
         serde_json::from_value(rpc.request("tools/list", json!({})).await?)?;
     let result = match params.action {
@@ -32,7 +34,7 @@ pub(super) async fn execute(rpc: &mut Rpc, params: &Params) -> Result<ToolResult
                 )
                 .await?,
             )?;
-            crate::tool::mcp_tools::convert::result(result)
+            codetether_mcp_tools::convert::result(result)
         }
     };
     Ok(result.with_metadata("rustyroad_version", json!(server.version)))

@@ -1,13 +1,13 @@
 //! Model-facing RustyRoad tool implementation.
 
-use super::{RustyRoadTool, run, schema};
-use crate::tool::{Tool, ToolResult};
+use super::{Host, RustyRoadTool, run, schema};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 
 #[async_trait]
-impl Tool for RustyRoadTool {
+impl<H: Host> Tool for RustyRoadTool<H> {
     fn id(&self) -> &str {
         "rustyroad"
     }
@@ -25,6 +25,6 @@ impl Tool for RustyRoadTool {
         schema::parameters()
     }
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        run::execute(args).await
+        run::execute::<H>(args).await
     }
 }

@@ -1368,6 +1368,7 @@ dependencies = [
  "codetether-ripgrep-tool",
  "codetether-rlm",
  "codetether-runtime-policy",
+ "codetether-rustyroad-tool",
  "codetether-sandbox-bwrap",
  "codetether-sandbox-environment",
  "codetether-sandbox-landlock",
@@ -3122,6 +3123,22 @@ dependencies = [
  "hex",
  "serde_json",
  "sha2 0.11.0",
+]
+
+[[package]]
+name = "codetether-rustyroad-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-mcp-core",
+ "codetether-mcp-tools",
+ "codetether-process-tree",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

@@ -7336,3 +7336,22 @@ lines. Evidence lives in `artifacts/consolidation-mcp-bridge/`. No external MCP
 connections, remote calls, runtime tests, Cargo, rustc or Python commands ran.
 Compilation remains unverified; the full workspace consolidation goal remains
 active.
+
+### Dedicated RustyRoad tool
+
+Moved RustyRoad command construction, environment selection, validation,
+process ownership, JSON-RPC transport, handshake, discovery and tool execution
+into `crates/codetether-rustyroad-tool`. Twenty modules include nine relocated
+regression tests. The application retains only its workspace authorization and
+package-version adapter plus four application-specific tests. The now-unused
+application MCP conversion re-export was removed after its last caller moved.
+
+Twenty-five static preservation checks compare the relocated implementation,
+including timeout/cleanup ordering, child-only environment settings, response
+limits, fixtures, version propagation and all moved test bodies. Application
+approval/registration/smoke tests and fixture contents remain unchanged. Module
+reachability, dependency cycles, file budgets and whitespace checks passed;
+new Rust files contain at most 48 code lines. Evidence lives in
+`artifacts/consolidation-rustyroad-tool/`. No RustyRoad subprocess, runtime tests,
+Cargo, rustc or Python commands ran. Compilation remains unverified; the full
+workspace consolidation goal remains active.
