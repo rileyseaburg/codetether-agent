@@ -10,7 +10,6 @@
 //! ```
 
 use super::ChildTask;
-use crate::session::Session;
 
 /// Resolves the background task handle after streaming has finished.
 ///
@@ -19,11 +18,11 @@ use crate::session::Session;
 /// ```ignore
 /// let session = finish_handle(handle, false, &mut error).await;
 /// ```
-pub(super) async fn finish_handle(
-    handle: ChildTask,
+pub(super) async fn finish_handle<S>(
+    handle: ChildTask<S>,
     timed_out: bool,
     error: &mut Option<String>,
-) -> Option<Session> {
+) -> Option<S> {
     if timed_out {
         handle.abort();
         let _ = handle.join().await;

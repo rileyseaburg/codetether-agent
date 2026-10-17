@@ -8227,3 +8227,22 @@ checks passed; added crate modules contain at most 37 code lines. Evidence is in
 `artifacts/consolidation-ephemeral-spawn/`. Compilation and runtime tests were
 not run; no ephemeral agents or workspaces were created. No Cargo, rustc or
 Python commands ran. The full consolidation goal remains active.
+
+### Dedicated child-event collection and task ownership
+
+Moved child-output accumulation, inactivity timeout handling, task joining,
+abort-on-drop ownership and character-safe output previews into
+`crates/codetether-child-events`. Eleven Rust modules separate native event
+projection, collection, reduction, state, task lifetime and finalization.
+Application bindings preserve native trace observation before reduction and
+continue using the existing approval handler. All previously ignored events
+still count as activity, and the five-minute inactivity error remains unchanged.
+
+Twenty-eight static preservation checks cover native event mapping, output and
+error accumulation, observation ordering, preview formatting, timeout/join
+handling, cancellation and unchanged runtime callers. The cancellation test
+moved with the generic task owner; two native inactivity tests remain unchanged.
+Module/dependency, file-budget and whitespace checks passed; crate files contain
+at most 40 code lines. Evidence is in `artifacts/consolidation-child-events/`.
+Compilation and runtime tests were not run. No Cargo, rustc or Python commands
+ran. The full consolidation goal remains active.

@@ -20,11 +20,11 @@ use serde_json::Value;
 /// let state = EventLoopState::default();
 /// ```
 #[derive(Default)]
-pub(super) struct EventLoopState {
-    pub(super) response: String,
-    pub(super) thinking: String,
-    pub(super) tools: Vec<Value>,
-    pub(super) error: Option<String>,
-    pub(super) done: bool,
-    pub(super) timed_out: bool,
+pub struct EventLoopState {
+    pub response: String,
+    pub thinking: String,
+    pub tools: Vec<Value>,
+    pub error: Option<String>,
+    pub done: bool,
+    pub timed_out: bool,
 }

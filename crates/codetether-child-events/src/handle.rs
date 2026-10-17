@@ -1,7 +1,7 @@
 //! Interpretation of session events emitted by a sub-agent turn.
 
 use super::state::EventLoopState;
-use crate::session::SessionEvent;
+use crate::{Event, Host};
 use serde_json::json;
 
 /// Apply one channel result to the event-loop accumulator.
@@ -14,20 +14,20 @@ use serde_json::json;
 /// # Examples
 ///
 /// ```ignore
-/// recv_result(Some(SessionEvent::Done), &mut state);
+/// recv_result(Some(Event::Done), &mut state);
 /// ```
-pub(super) fn recv_result(result: Option<SessionEvent>, state: &mut EventLoopState) {
+pub(super) fn recv_result<H: Host>(result: Option<Event<H::Approval>>, state: &mut EventLoopState) {
     match result {
-        Some(event) => apply(event, state),
+        Some(event) => apply::<H>(event, state),
         None => state.done = true,
     }
 }
 
-fn apply(event: SessionEvent, state: &mut EventLoopState) {
+fn apply<H: Host>(event: Event<H::Approval>, state: &mut EventLoopState) {
     match event {
-        SessionEvent::TextComplete(text) => state.response.push_str(&text),
-        SessionEvent::ThinkingComplete(text) => state.thinking.push_str(&text),
-        SessionEvent::ToolCallComplete {
+        Event::TextComplete(text) => state.response.push_str(&text),
+        Event::ThinkingComplete(text) => state.thinking.push_str(&text),
+        Event::ToolCallComplete {
             name,
             output,
             success,
@@ -35,14 +35,14 @@ fn apply(event: SessionEvent, state: &mut EventLoopState) {
         } => state.tools.push(json!({
             "tool": name,
             "success": success,
-            "output_preview": crate::tool::agent::text::truncate_preview(&output, 200),
+            "output_preview": super::text::truncate_preview(&output, 200),
         })),
-        SessionEvent::Error(error) => {
+        Event::Error(error) => {
             state.response.push_str(&format!("\n[Error: {error}]"));
             state.error = Some(error);
         }
-        SessionEvent::ApprovalRequest(request) => super::approve::auto_approve(&request),
-        SessionEvent::Done => state.done = true,
-        _ => {}
+        Event::ApprovalRequest(request) => H::approve(&request),
+        Event::Done => state.done = true,
+        Event::Ignored => {}
     }
 }
