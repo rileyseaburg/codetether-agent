@@ -1,7 +1,5 @@
 //! Tool result and text output helpers for session steps.
 
-use std::sync::Arc;
-
 use crate::provider::{ContentPart, Message, Role};
 use crate::session::Session;
 
@@ -20,21 +18,4 @@ pub(super) fn add_tool_result(
         content,
     });
 }
-
-pub(super) fn append_text_output(
-    parts: &[ContentPart],
-    out: &mut String,
-    cb: &Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
-) {
-    for part in parts {
-        if let ContentPart::Text { text } = part
-            && !text.is_empty()
-        {
-            out.push_str(text);
-            out.push('\n');
-            if let Some(cb) = cb {
-                cb(text.clone());
-            }
-        }
-    }
-}
+pub(super) use codetether_a2a_worker_core::session_protocol::append_text_output;

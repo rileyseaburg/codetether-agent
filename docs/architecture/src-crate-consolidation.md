@@ -5581,3 +5581,21 @@ Evidence: `artifacts/consolidation-worker-output/`. Compilation, tests, bus
 emission, and HTTP submission remain unrun. No Cargo, rustc, or Python commands
 ran. The unrelated lockfile ordering and heartbeat edits remain unstaged;
 the broader implementation migration remains active.
+
+### Shared worker session-response protocol
+
+Worker-core now owns provider tool-call extraction, ordered text-output
+appending, step-loop outcome data, and wrap-up budget/message policy. The
+application retains session mutation and persistence. The shared wrap-up
+function returns the existing user-role message; the application appends it
+and preserves the original boolean result.
+
+Static comparison verifies eight definitions, including invalid-JSON fallback,
+text/callback ordering, budget constants, and unchanged wrap-up message text.
+The existing budget-boundary test moved byte-for-byte. All 153 worker-core
+files and 253 application A2A files remain reachable without missing/orphaned
+modules; the dependency closure remains acyclic. New files have at most 28
+code lines. File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-session-protocol/`. Compilation, tests and runtime
+execution remain unrun. No Cargo, rustc, or Python commands ran. The broader
+migration remains active.
