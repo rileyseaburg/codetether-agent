@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 104 | 2851 | Shared schedulers, quality state/retries, progress and contracts extracted; host task/worktree/persistence ownership audit continues |
+| ralph | 104 | 2813 | Shared schedulers, quality, progress and background store updates extracted; application execution/host ownership audit continues |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -152,7 +152,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-openai | 72 | yes | none |
 | codetether-provider-zai | 120 | yes | none |
 | codetether-question | 30 | yes | none |
-| codetether-ralph-core | 122 | yes | none |
+| codetether-ralph-core | 129 | yes | none |
 | codetether-rlm | 448 | yes | none |
 | codetether-runtime-policy | 37 | yes | none |
 | codetether-search | 18 | yes | none |
@@ -4276,3 +4276,22 @@ No Cargo, rustc, Python, scheduler run, model call, worktree operation, Rust tes
 or doctest ran. Compilation and runtime remain unverified. Evidence:
 artifacts/consolidation-ralph-scheduling/. The broader goal and remaining Ralph
 host ownership audit stay active.
+
+## Ralph background store update ownership
+
+Ralph-core::state_store::updates owns optional-store checks, snapshot capture
+and nonblocking initial-run, story-result, iteration, checkpoint and completion
+updates. Application lifecycle methods select when each update is scheduled.
+All captured values retain the original clone and timestamp order, and the
+background error log uses the original persistence-module target.
+
+All 14 static comparisons passed, including all five store blocks, their
+application call positions, background task behavior and declared Tokio runtime
+support. The seven new files are at most 27 code lines. Lexical scans found all
+129 core and 104 application files reachable with no dependency-cycle changes.
+The existing Tokio dependency now explicitly enables rt for shared spawning;
+no packages or lockfile entries changed. File-limit and whitespace checks
+passed; standalone rustfmt was used. No Cargo, rustc, Python, background task,
+store write, Rust test or doctest ran; compilation and runtime remain unverified.
+Evidence: artifacts/consolidation-ralph-store-updates/. The broader workspace
+goal and remaining Ralph host ownership audit remain active.

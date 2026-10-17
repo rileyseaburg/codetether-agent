@@ -29,16 +29,11 @@ impl RalphLoop {
         self.state.prd.save(&self.state.prd_path).await?;
 
         // Persist PRD + iteration to store after each stage
-        if let Some(ref store) = self.store {
-            let s = store.clone();
-            let rid = self.run_id.clone();
-            let prd = self.state.prd.clone();
-            let iter = self.state.current_iteration;
-            self.store_fire_and_forget(async move {
-                s.update_prd(&rid, &prd).await?;
-                s.update_iteration(&rid, iter).await
-            });
-        }
+        codetether_ralph_core::state_store::updates::checkpoint(
+            self.store.as_ref(),
+            &self.run_id,
+            &self.state,
+        );
         Ok(())
     }
 }

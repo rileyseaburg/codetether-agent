@@ -1,6 +1,6 @@
 //! Ralph loop - the core autonomous execution loop
 
-use super::state_store::{RalphRunState, RalphStateStore, StoryResultEntry};
+use super::state_store::RalphStateStore;
 use super::types::*;
 use super::verification::run_story_verification;
 use super::{git_policy, quality_shell};

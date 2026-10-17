@@ -5,12 +5,11 @@ impl RalphLoop {
         self.state.current_iteration += 1;
 
         // Persist iteration update
-        if let Some(ref store) = self.store {
-            let s = store.clone();
-            let rid = self.run_id.clone();
-            let iter = self.state.current_iteration;
-            self.store_fire_and_forget(async move { s.update_iteration(&rid, iter).await });
-        }
+        codetether_ralph_core::state_store::updates::iteration(
+            self.store.as_ref(),
+            &self.run_id,
+            &self.state,
+        );
 
         info!(
             "=== Ralph iteration {} of {} ===",
