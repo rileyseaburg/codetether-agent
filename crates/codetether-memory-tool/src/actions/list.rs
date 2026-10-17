@@ -1,11 +1,11 @@
 //! List action.
 
-use super::super::super::ToolResult;
-use super::super::{MemoryTool, scope};
+use super::super::{Runtime, scope};
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 
-impl MemoryTool {
+impl<B: crate::AutoEmbedder> Runtime<B> {
     pub(in super::super) async fn execute_list(&self, args: Value) -> Result<ToolResult> {
         let limit = args["limit"].as_u64().map(|v| v as usize).unwrap_or(10);
         let scope = scope::search(&args);

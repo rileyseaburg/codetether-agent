@@ -1,11 +1,11 @@
 //! Single-entry retrieval action: get.
 
-use super::super::super::ToolResult;
-use super::super::MemoryTool;
+use super::super::Runtime;
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 
-impl MemoryTool {
+impl<B: crate::AutoEmbedder> Runtime<B> {
     pub(in super::super) async fn execute_get(&self, args: Value) -> Result<ToolResult> {
         let id = args["id"]
             .as_str()

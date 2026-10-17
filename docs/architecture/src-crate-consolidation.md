@@ -7079,3 +7079,25 @@ also passed. New Rust files contain at most 40 code lines. Evidence:
 `artifacts/consolidation-memory-core/`. No memory operations, runtime tests,
 Cargo, rustc or Python commands ran. Compilation remains unverified; the full
 workspace consolidation goal remains active.
+
+### Dedicated memory store and tool runtime
+
+Moved the remaining memory persistence, access operations, statistics, action
+handlers, stable scope selection and embedding lifecycle into
+`crates/codetether-memory-tool`. The application now retains type aliases and a
+small automatic-backend factory using its existing provider registry. Generic
+store/runtime types accept that factory; the factory marker and embedding
+handle are excluded from serialization. A manual Debug implementation retains
+the previous store label and fields.
+
+Thirty-five static preservation checks compare store methods, initialization,
+all seven actions, embedding operations, scope resolution and the application
+backend lookup. Five existing tests moved with preserved bodies. Added one
+unrun regression test checking legacy JSON round trips with a factory that
+implements neither Serialize nor Deserialize. Static serde-attribute inspection
+confirms only entries participate in the persisted schema; runtime serialization
+and compilation remain unverified. Module reachability, dependency-cycle,
+file-budget and whitespace checks passed. Twenty-seven Rust modules contain at
+most 48 code lines. Evidence: `artifacts/consolidation-memory-tool/`.
+No memory operations, provider calls, runtime tests, Cargo, rustc or Python
+commands ran. The full workspace consolidation goal remains active.

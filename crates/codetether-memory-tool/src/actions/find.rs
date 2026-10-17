@@ -1,11 +1,11 @@
 //! Search action.
 
-use super::super::super::ToolResult;
-use super::super::{MemoryTool, scope};
+use super::super::{Runtime, scope};
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 
-impl MemoryTool {
+impl<B: crate::AutoEmbedder> Runtime<B> {
     pub(in super::super) async fn execute_search(&self, args: Value) -> Result<ToolResult> {
         let query = args["query"].as_str();
         let tags: Option<Vec<String>> = args["tags"].as_array().map(|arr| {

@@ -5,7 +5,7 @@
 //! provides manual impls and is skipped during (de)serialization, so the chosen
 //! backend is a runtime concern that never touches the on-disk format.
 
-use crate::vectordb::TextEmbedder;
+use codetether_vectordb::TextEmbedder;
 use std::sync::Arc;
 
 /// Optional, swappable embedding backend for a memory store.
@@ -17,7 +17,7 @@ impl EmbedderHandle {
     pub async fn embed_batch(
         &self,
         inputs: &[String],
-    ) -> Option<anyhow::Result<Vec<crate::vectordb::EmbeddingVector>>> {
+    ) -> Option<anyhow::Result<Vec<codetether_vectordb::EmbeddingVector>>> {
         match &self.0 {
             Some(embedder) => Some(embedder.embed_batch(inputs).await),
             None => None,

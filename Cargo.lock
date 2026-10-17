@@ -1317,6 +1317,7 @@ dependencies = [
  "codetether-mcp-core",
  "codetether-mcp-transport",
  "codetether-memory-core",
+ "codetether-memory-tool",
  "codetether-mesh",
  "codetether-model-catalog",
  "codetether-moltbook",
@@ -2367,6 +2368,23 @@ dependencies = [
  "codetether-vectordb",
  "serde",
  "uuid",
+]
+
+[[package]]
+name = "codetether-memory-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-config",
+ "codetether-memory-core",
+ "codetether-tool-core",
+ "codetether-vectordb",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
-//! Embedding-backend-aware operations for [`MemoryStore`](super::MemoryStore).
+//! Embedding-backend-aware operations for [`Store`](super::Store).
 //!
 //! These mirror `add`/`search` but route through the optional learned-model
-//! [`TextEmbedder`](crate::vectordb::TextEmbedder), keeping query and entry
+//! [`TextEmbedder`](codetether_vectordb::TextEmbedder), keeping query and entry
 //! vectors in the same embedding space.
 //!
 //! When the learned-model backend is unavailable or fails, semantic ranking is
@@ -9,11 +9,11 @@
 //! scoring only — never mixing vector spaces.
 
 use super::embedder_handle::EmbedderHandle;
-use super::{MemoryEntry, MemoryStore, scope_widen};
-use crate::vectordb::{Embeddable, TextEmbedder};
+use super::{MemoryEntry, Store, scope_widen};
+use codetether_vectordb::{Embeddable, TextEmbedder};
 use std::sync::Arc;
 
-impl MemoryStore {
+impl<B: super::AutoEmbedder> Store<B> {
     /// Attach a learned-model embedding backend.
     pub fn with_embedder(mut self, embedder: Arc<dyn TextEmbedder>) -> Self {
         self.embedder = EmbedderHandle(Some(embedder));

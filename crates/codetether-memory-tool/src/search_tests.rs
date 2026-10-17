@@ -24,7 +24,7 @@ fn ranks_semantically_closest_first() {
 #[test]
 fn refresh_embedding_replaces_unknown_vector_space() {
     let mut entry = MemoryEntry::new("local vector", vec![]);
-    entry.embedding = Some(crate::vectordb::EmbeddingVector::new(vec![1.0, 0.0]));
+    entry.embedding = Some(codetether_vectordb::EmbeddingVector::new(vec![1.0, 0.0]));
     entry.refresh_embedding();
     assert_ne!(entry.embedding.as_ref().expect("embedding").len(), 2);
 }

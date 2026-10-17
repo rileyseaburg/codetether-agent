@@ -1,11 +1,11 @@
 //! Mutating memory actions: save and delete.
 
-use super::super::super::ToolResult;
-use super::super::{MemoryEntry, MemoryTool, scope};
+use super::super::{MemoryEntry, Runtime, scope};
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 
-impl MemoryTool {
+impl<B: crate::AutoEmbedder> Runtime<B> {
     pub(in super::super) async fn execute_save(&self, args: Value) -> Result<ToolResult> {
         let content = args["content"]
             .as_str()
