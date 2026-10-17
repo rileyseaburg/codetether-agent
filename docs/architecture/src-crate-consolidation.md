@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 35 | 2833 | Wire contracts, message classification and tool-result conversion extracted; transport, server/client and registry integration remain |
+| mcp | 35 | 2530 | Contracts/result conversion and transports extracted; client/server, registry and policy integration remain |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -171,6 +171,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-bonsai | 80 | yes | none |
 | codetether-moltbook | 36 | yes | none |
 | codetether-mcp-core | 53 | yes | none |
+| codetether-mcp-transport | 17 | yes | none |
 | codetether-model-catalog | 30 | yes | none |
 | codetether-util | 3 | yes | none |
 | codetether-vectordb | 14 | yes | none |
@@ -3770,3 +3771,25 @@ unreferenced modules. New Rust files have at most 47 code lines. Formatting,
 file limits and staged whitespace checks were used. No Cargo, rustc, Python,
 MCP transport or tests ran; compilation and tests remain unverified. Evidence
 is retained in artifacts/consolidation-mcp-contracts/. The whole goal is active.
+
+## Shared MCP transports
+
+The separate mcp-transport crate owns the transport trait, inert transport,
+standard-I/O channels/threads, HTTP/SSE transport and subprocess channels/tasks.
+Reader, writer, stderr, construction and protocol operations have separate
+modules. It uses mcp-core wire types and has no application dependency.
+The application preserves its transport import path through re-exports.
+
+Channel capacities, spawn order, framing, errors and close behavior remain
+unchanged. All moved log calls retain their original targets, including the
+separate subprocess stderr target. SSE reception remains the existing
+placeholder; this extraction does not change that behavior.
+
+Twenty-four static comparisons cover every transport implementation and task
+body, constructor sequencing, fields, and lockfile package preservation.
+Lexical graphs cover 17 transport and 35 application files without
+missing/unreferenced modules. New files have at most 34 code lines. Formatting,
+file limits and whitespace checks were used. No transport, network request,
+subprocess, Cargo, rustc, Python or Rust test was executed. Compilation and
+tests remain unverified. Evidence: artifacts/consolidation-mcp-transport/.
+The full workspace consolidation goal remains active.

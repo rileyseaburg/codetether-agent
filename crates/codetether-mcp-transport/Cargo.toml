@@ -1,0 +1,16 @@
+[package]
+name = "codetether-mcp-transport"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "MCP standard-I/O, SSE and subprocess transports"
+
+[dependencies]
+anyhow = "1.0.104"
+async-trait = "0.1.92"
+codetether-mcp-core = { path = "../codetether-mcp-core", version = "0.1.0" }
+serde_json = "1"
+tokio = { version = "1.53.1", features = ["io-util", "process", "rt", "sync"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["rustls"] }
+tracing = "0.1"

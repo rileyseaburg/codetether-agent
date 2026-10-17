@@ -1154,6 +1154,7 @@ dependencies = [
  "codetether-lsp-core",
  "codetether-marketplace",
  "codetether-mcp-core",
+ "codetether-mcp-transport",
  "codetether-mesh",
  "codetether-model-catalog",
  "codetether-moltbook",
@@ -1859,6 +1860,19 @@ dependencies = [
  "codetether-tool-core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-mcp-transport"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-mcp-core",
+ "reqwest 0.13.4",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

@@ -80,6 +80,7 @@ members = [
     "crates/codetether-tls",
     "crates/codetether-tool-core",
     "crates/codetether-mcp-core",
+    "crates/codetether-mcp-transport",
     "crates/codetether-tetherscript-values",
     "crates/codetether-util",
     "crates/codetether-voice-core",
@@ -263,6 +264,7 @@ codetether-session-runtime = { path = "crates/codetether-session-runtime", versi
 codetether-telemetry = { path = "crates/codetether-telemetry", version = "0.1.0" }
 codetether-theme = { path = "crates/codetether-theme", version = "0.1.0", features = ["ratatui"] }
 codetether-tls = { path = "crates/codetether-tls", version = "0.1.0" }
+codetether-mcp-transport = { path = "crates/codetether-mcp-transport", version = "0.1.0" }
 codetether-mcp-core = { path = "crates/codetether-mcp-core", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }
