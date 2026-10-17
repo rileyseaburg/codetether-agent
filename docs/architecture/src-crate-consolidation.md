@@ -7005,3 +7005,21 @@ file-budget and whitespace checks passed. New Rust files contain at most 45
 code lines. Evidence: `artifacts/consolidation-patch/`. No patch operations,
 ledger operations, runtime tests, Cargo, rustc or Python commands ran.
 Compilation remains unverified; the full consolidation goal remains active.
+
+### Dedicated single-file edit confirmation tool
+
+Moved `ConfirmEditTool` into `crates/codetether-confirm-edit`. Thirteen modules
+separate construction, schema, input fields, unique-match validation, colored
+diffs, preview metadata, confirmation dispatch, file writing and telemetry.
+The application retains a compatibility export. Preview and rejection paths
+remain read-only; a true confirmation reaches the existing write behavior.
+
+Thirteen static preservation checks compare the schema, validation errors,
+full diff generation, preview response and reconstructed confirmed-write flow,
+including the timing boundary, affected line range and telemetry payloads.
+The four existing confirmation integration tests remain byte-identical and
+unrun. Module reachability, dependency-cycle, file-budget and whitespace checks
+passed; new Rust files contain at most 42 code lines. Evidence:
+`artifacts/consolidation-confirm-edit/`. No file-edit requests, runtime tests,
+Cargo, rustc or Python commands ran. Compilation remains unverified; the full
+workspace consolidation goal remains active.
