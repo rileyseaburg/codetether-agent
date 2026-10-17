@@ -5098,3 +5098,25 @@ the discovery dependency closure remains acyclic. New files contain at most
 doctests, and interface enumeration were not run. No Cargo, rustc, or Python
 commands were executed. The broader objective of moving implementation into
 workspace crates remains active.
+
+### Shared peer HTTP probing
+
+Moved `src/a2a/spawn/peer_probe.rs` and `mdns_probe.rs` into focused
+`crates/codetether-a2a-http/src/peer_probe/` modules. The HTTP crate owns
+single-card fetching, one-pass candidate probing, and readiness retries.
+Startup imports the shared module directly; it retains registration and
+introduction orchestration for a later extraction. The HTTP crate now
+depends on the discovery crate for `DiscoveredPeer` and endpoint expansion;
+the dependency graph remains acyclic.
+
+Static comparisons verify all three moved function bodies and both retry
+constants. Authentication environment lookup still occurs per fetch, and
+candidate ordering, self filtering, first-success return, timeouts, delays,
+and the original log target are preserved. Remaining startup function bodies
+are unchanged. The lexical module scan covers 303 A2A application files and
+59 HTTP crate files without missing or orphaned modules. Each new source
+file has at most 26 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-peer-probing/`. No compilation, tests,
+doctests, or network probes were run. No Cargo, rustc, or Python commands
+were executed. The full migration of implementation into crates remains
+outstanding and the goal remains active.

@@ -35,3 +35,6 @@ pub mod intro;
 
 /// Git credential broker protocol and HTTP client.
 pub mod git_credentials;
+
+/// Candidate card requests and readiness retries for discovered peers.
+pub mod peer_probe;

@@ -64,12 +64,8 @@ mod agent_card;
 mod card_description;
 #[path = "spawn/handle.rs"]
 mod handle;
+use codetether_a2a_http::peer_probe::{self as mdns_probe, try_fetch_agent_card};
 pub use handle::A2APeerHandle;
-#[path = "spawn/mdns_probe.rs"]
-mod mdns_probe;
-#[path = "spawn/peer_probe.rs"]
-mod peer_probe;
-use peer_probe::try_fetch_agent_card;
 mod accept_mdns;
 mod background;
 mod command;
