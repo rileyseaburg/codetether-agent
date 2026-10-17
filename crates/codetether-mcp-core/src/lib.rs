@@ -15,3 +15,6 @@ pub use message::McpMessage;
 
 /// Client-generic registry with capability metadata and remote tool routing.
 pub mod registry;
+
+/// Server handler registration, metadata and protocol catalog queries.
+pub mod server_catalog;

@@ -19,8 +19,10 @@ use super::types::*;
 use crate::bus::{AgentBus, BusMessage};
 use crate::tool::ToolRegistry;
 use anyhow::Result;
+use codetether_mcp_core::server_catalog::{
+    McpPromptHandler, McpResourceHandler, McpToolHandler, ServerCatalog,
+};
 use serde_json::{Value, json};
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
@@ -28,17 +30,9 @@ use tracing::{debug, info, warn};
 /// MCP Server implementation
 pub struct McpServer {
     transport: Arc<dyn Transport>,
-    tools: RwLock<HashMap<String, McpToolHandler>>,
-    resources: RwLock<HashMap<String, McpResourceHandler>>,
-    /// Prompt handlers for MCP prompts (reserved for future use)
-    #[allow(dead_code)]
-    prompts: RwLock<HashMap<String, McpPromptHandler>>,
+    catalog: ServerCatalog,
     initialized: RwLock<bool>,
     server_info: ServerInfo,
-    /// Tool metadata storage for querying tool information
-    metadata: RwLock<HashMap<String, ToolMetadata>>,
-    /// Resource metadata storage for querying resource information
-    resource_metadata: RwLock<HashMap<String, ResourceMetadata>>,
     /// Optional bus bridge for live event monitoring
     bus: Option<Arc<BusBridge>>,
     /// Optional local agent bus for publishing tool calls to S3 sink
@@ -46,10 +40,6 @@ pub struct McpServer {
     /// Optional tool registry bridging all CodeTether tools to MCP
     tool_registry: Option<Arc<ToolRegistry>>,
 }
-
-type McpToolHandler = Arc<dyn Fn(Value) -> Result<CallToolResult> + Send + Sync>;
-type McpResourceHandler = Arc<dyn Fn(String) -> Result<ReadResourceResult> + Send + Sync>;
-type McpPromptHandler = Arc<dyn Fn(Value) -> Result<GetPromptResult> + Send + Sync>;
 
 impl McpServer {
     /// Create a new MCP server over stdio
@@ -73,16 +63,12 @@ impl McpServer {
     pub fn new(transport: Arc<dyn Transport>) -> Self {
         let mut server = Self {
             transport,
-            tools: RwLock::new(HashMap::new()),
-            resources: RwLock::new(HashMap::new()),
-            prompts: RwLock::new(HashMap::new()),
+            catalog: ServerCatalog::new(),
             initialized: RwLock::new(false),
             server_info: ServerInfo {
                 name: "codetether".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
             },
-            metadata: RwLock::new(HashMap::new()),
-            resource_metadata: RwLock::new(HashMap::new()),
             bus: None,
             agent_bus: None,
             tool_registry: None,
@@ -363,21 +349,9 @@ impl McpServer {
         input_schema: Value,
         handler: McpToolHandler,
     ) {
-        // Store tool metadata
-        let metadata = ToolMetadata::new(
-            name.to_string(),
-            Some(description.to_string()),
-            input_schema.clone(),
-        );
-
-        let mut metadata_map = self.metadata.write().await;
-        metadata_map.insert(name.to_string(), metadata);
-        drop(metadata_map);
-
-        let mut tools = self.tools.write().await;
-        tools.insert(name.to_string(), handler);
-
-        debug!("Registered MCP tool: {}", name);
+        self.catalog
+            .register_tool(name, description, input_schema, handler)
+            .await
     }
 
     /// Register a resource
@@ -389,65 +363,44 @@ impl McpServer {
         mime_type: Option<&str>,
         handler: McpResourceHandler,
     ) {
-        // Store resource metadata
-        let metadata = ResourceMetadata::new(
-            uri.to_string(),
-            name.to_string(),
-            Some(description.to_string()),
-            mime_type.map(|s| s.to_string()),
-        );
-
-        let mut metadata_map = self.resource_metadata.write().await;
-        metadata_map.insert(uri.to_string(), metadata);
-        drop(metadata_map);
-
-        let mut resources = self.resources.write().await;
-        resources.insert(uri.to_string(), handler);
-
-        debug!("Registered MCP resource: {}", uri);
+        self.catalog
+            .register_resource(uri, name, description, mime_type, handler)
+            .await
     }
 
     /// Get tool metadata by name
     pub async fn get_tool_metadata(&self, name: &str) -> Option<ToolMetadata> {
-        let metadata = self.metadata.read().await;
-        metadata.get(name).cloned()
+        self.catalog.get_tool_metadata(name).await
     }
 
     /// Get all tool metadata
     pub async fn get_all_tool_metadata(&self) -> Vec<ToolMetadata> {
-        let metadata = self.metadata.read().await;
-        metadata.values().cloned().collect()
+        self.catalog.get_all_tool_metadata().await
     }
 
     /// Get resource metadata by URI
     pub async fn get_resource_metadata(&self, uri: &str) -> Option<ResourceMetadata> {
-        let metadata = self.resource_metadata.read().await;
-        metadata.get(uri).cloned()
+        self.catalog.get_resource_metadata(uri).await
     }
 
     /// Get all resource metadata
     pub async fn get_all_resource_metadata(&self) -> Vec<ResourceMetadata> {
-        let metadata = self.resource_metadata.read().await;
-        metadata.values().cloned().collect()
+        self.catalog.get_all_resource_metadata().await
     }
 
     /// Register a prompt handler
     pub async fn register_prompt(&self, name: &str, handler: McpPromptHandler) {
-        let mut prompts = self.prompts.write().await;
-        prompts.insert(name.to_string(), handler);
-        debug!("Registered MCP prompt: {}", name);
+        self.catalog.register_prompt(name, handler).await
     }
 
     /// Get a prompt handler by name
     pub async fn get_prompt_handler(&self, name: &str) -> Option<McpPromptHandler> {
-        let prompts = self.prompts.read().await;
-        prompts.get(name).cloned()
+        self.catalog.get_prompt_handler(name).await
     }
 
     /// List all registered prompt names
     pub async fn list_prompts(&self) -> Vec<String> {
-        let prompts = self.prompts.read().await;
-        prompts.keys().cloned().collect()
+        self.catalog.list_prompts().await
     }
 
     /// Run the MCP server (main loop)
@@ -487,13 +440,7 @@ impl McpServer {
 
     /// Call a tool directly without going through the transport
     pub async fn call_tool_direct(&self, name: &str, arguments: Value) -> Result<CallToolResult> {
-        let tools = self.tools.read().await;
-        let handler = tools
-            .get(name)
-            .ok_or_else(|| anyhow::anyhow!("Tool not found: {}", name))?
-            .clone();
-        drop(tools);
-        handler(arguments)
+        self.catalog.call_tool_direct(name, arguments).await
     }
 
     /// Setup default tools
@@ -503,7 +450,7 @@ impl McpServer {
             self.register_registry_tools(registry).await;
             info!(
                 "Registered {} MCP tools from ToolRegistry",
-                self.tools.read().await.len()
+                self.catalog.tools().read().await.len()
             );
             return;
         }
@@ -512,7 +459,7 @@ impl McpServer {
         self.register_fallback_tools().await;
         info!(
             "Registered {} MCP tools (fallback)",
-            self.tools.read().await.len()
+            self.catalog.tools().read().await.len()
         );
     }
 
@@ -819,7 +766,10 @@ impl McpServer {
         )
         .await;
 
-        info!("Registered {} MCP tools", self.tools.read().await.len());
+        info!(
+            "Registered {} MCP tools",
+            self.catalog.tools().read().await.len()
+        );
     }
 
     /// Handle a JSON-RPC request
@@ -901,24 +851,7 @@ impl McpServer {
 
     /// Handle list tools request - reads from ToolMetadata registry
     async fn handle_list_tools(&self, _params: Option<Value>) -> Result<Value, JsonRpcError> {
-        // Read tools from the metadata registry instead of hardcoded list
-        let metadata = self.metadata.read().await;
-
-        let tool_list: Vec<McpTool> = metadata
-            .values()
-            .map(|tm| McpTool {
-                name: tm.name.clone(),
-                description: tm.description.clone(),
-                input_schema: tm.input_schema.clone(),
-            })
-            .collect();
-
-        let result = ListToolsResult {
-            tools: tool_list,
-            next_cursor: None,
-        };
-
-        serde_json::to_value(result).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+        self.catalog.handle_list_tools(_params).await
     }
 
     /// Handle call tool request
@@ -945,7 +878,7 @@ impl McpServer {
             );
         }
 
-        let tools = self.tools.read().await;
+        let tools = self.catalog.tools().read().await;
         let handler = tools
             .get(&params.name)
             .ok_or_else(|| JsonRpcError::method_not_found(&params.name))?;
@@ -1000,43 +933,12 @@ impl McpServer {
 
     /// Handle list resources request — reads from registered resource metadata
     async fn handle_list_resources(&self, _params: Option<Value>) -> Result<Value, JsonRpcError> {
-        let metadata = self.resource_metadata.read().await;
-        let resource_list: Vec<McpResource> = metadata
-            .values()
-            .map(|rm| McpResource {
-                uri: rm.uri.clone(),
-                name: rm.name.clone(),
-                description: rm.description.clone(),
-                mime_type: rm.mime_type.clone(),
-            })
-            .collect();
-
-        let result = ListResourcesResult {
-            resources: resource_list,
-            next_cursor: None,
-        };
-
-        serde_json::to_value(result).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+        self.catalog.handle_list_resources(_params).await
     }
 
     /// Handle read resource request
     async fn handle_read_resource(&self, params: Option<Value>) -> Result<Value, JsonRpcError> {
-        let params: ReadResourceParams = if let Some(p) = params {
-            serde_json::from_value(p).map_err(|e| JsonRpcError::invalid_params(e.to_string()))?
-        } else {
-            return Err(JsonRpcError::invalid_params("Missing params"));
-        };
-
-        let resources = self.resources.read().await;
-        let handler = resources
-            .get(&params.uri)
-            .ok_or_else(|| JsonRpcError::method_not_found(&params.uri))?;
-
-        match handler(params.uri.clone()) {
-            Ok(result) => serde_json::to_value(result)
-                .map_err(|e| JsonRpcError::internal_error(e.to_string())),
-            Err(e) => Err(JsonRpcError::internal_error(e.to_string())),
-        }
+        self.catalog.handle_read_resource(params).await
     }
 
     /// Handle list prompts request

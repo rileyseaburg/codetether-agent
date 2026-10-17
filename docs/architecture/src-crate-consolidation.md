@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 37 | 2359 | Shared registry/index, protocol and transports extracted; application retains client identity/state, authorized connection and server integration |
+| mcp | 37 | 2281 | Shared catalog/registry, protocol and transports extracted; server dispatch, bus events, tool policy and client identity adapters remain |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -170,7 +170,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-metrics | 16 | yes | none |
 | codetether-provider-bonsai | 80 | yes | none |
 | codetether-moltbook | 36 | yes | none |
-| codetether-mcp-core | 64 | yes | none |
+| codetether-mcp-core | 75 | yes | none |
 | codetether-mcp-transport | 26 | yes | none |
 | codetether-model-catalog | 30 | yes | none |
 | codetether-util | 3 | yes | none |
@@ -3847,3 +3847,21 @@ were added. Formatting, file limits and whitespace checks were used. No
 registry, subprocess, request, Cargo, rustc, Python or tests ran. Compilation
 and tests remain unverified. Evidence: artifacts/consolidation-mcp-registry/.
 The full workspace consolidation goal remains active.
+
+## Shared MCP server catalog
+
+MCP-core::server_catalog owns registered tool/resource/prompt handlers and
+metadata. Registration, metadata lookup, protocol listings, direct tool lookup
+and resource reads retain original locking, clone and handler-call order. The
+application server forwards catalog calls and borrows the same tool-map lock
+for its bus-aware execution path. Bus events, default-tool setup, request
+dispatch, initialization identity and authorization remain in the application.
+
+Fifty-one static comparisons cover moved methods, handler aliases, forwarding
+arguments, empty map construction and unchanged host behavior. Lexical graphs
+cover 75 core and 37 application files without missing/unreferenced
+modules. New files have at most 35 code lines. No dependencies changed.
+Formatting, file-limit and staged whitespace checks were used. No handler,
+registry, transport, Cargo, rustc, Python or test executed. Compilation and
+tests remain unverified. Evidence: artifacts/consolidation-mcp-catalog/.
+The full workspace goal remains active.
