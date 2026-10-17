@@ -1,0 +1,12 @@
+[package]
+name = "codetether-agent-messages"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Managed child-agent prompt and result message contracts"
+
+[dependencies]
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"

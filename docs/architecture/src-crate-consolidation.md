@@ -8051,3 +8051,22 @@ passed; crate modules contain at most 40 code lines. Evidence is in
 `artifacts/consolidation-agent-residency/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The full consolidation goal
 remains active.
+
+### Dedicated managed-agent message contracts
+
+Moved workspace-aware child system prompts, terminal deliverable instructions,
+runtime-error precedence and structured message-result rendering into
+`crates/codetether-agent-messages`. Eight Rust modules include seven existing
+pure regression tests. Prompt text, directory fallback, JSON fields, optional
+field omission and error/serialization fallbacks are preserved. Deliverable
+status interpretation calls the same shared swarm policy through its owning
+crate. Application message/session callers now use small compatibility exports.
+
+Twenty-two static preservation checks cover implementation bodies and exact
+prompt literals, moved tests, existing policy ownership and unchanged
+session/message integration. Four session integration tests remain in the
+application. Module/dependency checks, file budgets and whitespace checks
+passed; crate files contain at most 28 code lines. Evidence is in
+`artifacts/consolidation-agent-messages/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The full consolidation goal
+remains active.
