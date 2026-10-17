@@ -56,3 +56,6 @@ pub mod inbound_turn;
 
 /// Shared message admission over application execution hooks.
 pub mod admission;
+
+/// Context-id validation and persistent conversation resolution.
+pub mod conversation;

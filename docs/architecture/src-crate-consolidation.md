@@ -6071,3 +6071,22 @@ File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-observer-payloads/`. Compilation, tests and live event
 rendering remain unrun. No Cargo, rustc or Python commands ran. The broader
 migration remains active.
+
+### Shared conversation resolution policy
+
+Moved context-id validation and resume-or-create policy into
+`codetether-a2a-http::conversation`. A typed store supplies the application's
+session creation, resume, persisted-state check and ID assignment. Existing
+state that fails to load remains an error; only absent state produces a new
+session pinned to the valid context identifier. Application documentation now
+states that distinction explicitly.
+
+Static comparison verifies the validator, resolution branches, error text,
+log targets, application wrapper and all four store operations. The four
+existing test bodies remain byte-identical and unrun. The module scan reaches
+233 application A2A files, 169 HTTP files, 63 telemetry files, 136 bus-core files
+and 56 A2A core files without missing/orphaned modules; the dependency closure
+is acyclic. New files contain at most 25 code lines. File-budget and whitespace
+checks passed. Evidence: `artifacts/consolidation-conversation-resolution/`.
+Compilation, tests and live session persistence remain unrun. No Cargo, rustc
+or Python commands ran. The broader migration remains active.

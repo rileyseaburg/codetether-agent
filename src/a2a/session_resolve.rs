@@ -7,17 +7,12 @@
 
 use crate::session::Session;
 use anyhow::Result;
+#[cfg(test)]
+use codetether_a2a_http::conversation::usable_as_session_id;
 
-/// Whether a `context_id` is safe to use directly as a session id.
-///
-/// Mirrors the validation in `Session::session_path`: non-empty, ≤ 128
-/// bytes, and only `[A-Za-z0-9_-]` so it cannot escape the sessions
-/// directory.
-pub(crate) fn usable_as_session_id(context_id: &str) -> bool {
-    !context_id.is_empty()
-        && context_id.len() <= 128
-        && !context_id.contains(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_')
-}
+struct Store;
+#[path = "session_store.rs"]
+mod store;
 
 /// Load the conversation for `context_id`, or start a fresh one.
 ///
@@ -41,7 +36,8 @@ pub(crate) fn usable_as_session_id(context_id: &str) -> bool {
 /// # Errors
 ///
 /// Returns an error for an unsafe context ID or if creating a new session
-/// fails. A failed load of a valid ID starts a new session pinned to that ID.
+/// fails. Failed loads of existing session files remain errors; absent files
+/// start a new session pinned to the valid ID.
 ///
 /// # Examples
 ///
@@ -53,26 +49,7 @@ pub(crate) fn usable_as_session_id(context_id: &str) -> bool {
 /// # });
 /// ```
 pub async fn resolve_session(context_id: Option<&str>) -> Result<Session> {
-    let Some(id) = context_id else {
-        return Session::new().await;
-    };
-    if !usable_as_session_id(id) {
-        anyhow::bail!("A2A context_id must match [A-Za-z0-9_-] and be at most 128 bytes");
-    }
-
-    match Session::resume(id).await {
-        Ok(session) => {
-            tracing::debug!(context_id = %id, "Resumed A2A conversation session");
-            return Ok(session);
-        }
-        Err(error) if Session::session_path(id)?.exists() => return Err(error),
-        Err(_) => {}
-    }
-
-    let mut session = Session::new().await?;
-    session.id = id.to_string();
-    tracing::debug!(context_id = %id, "Started new A2A conversation session");
-    Ok(session)
+    codetether_a2a_http::conversation::resolve_session(context_id, &Store).await
 }
 
 #[cfg(test)]
