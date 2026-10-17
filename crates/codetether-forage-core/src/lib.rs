@@ -29,3 +29,8 @@ mod record;
 pub mod progress;
 /// Persistent objective seeding for forage workflows.
 pub mod seed;
+
+/// Git change snapshots for execution evidence.
+pub mod changes;
+/// Quality workflow with host-supplied command execution.
+pub mod quality;

@@ -1,4 +1,5 @@
 //! Application execution and event adapters for forage work selection.
+use codetether_forage_core::changes::snapshot_git_changed_files;
 #[cfg(test)]
 use codetether_forage_core::progress::success_progress_increment_ratio;
 use codetether_forage_core::seed::{
@@ -7,7 +8,7 @@ use codetether_forage_core::seed::{
 
 #[cfg(test)]
 use codetether_forage_core::seed::seed_default_okr_if_empty;
-use codetether_forage_core::{ForageOpportunity, MoonshotRubric, truncate_chars_with_suffix};
+use codetether_forage_core::{ForageOpportunity, MoonshotRubric};
 pub use codetether_forage_core::{ForageRunSummary, ForageSelectionSummary};
 #[cfg(test)]
 use codetether_forage_core::{normalize_prompt_field, status_weight, urgency_bonus};
@@ -32,8 +33,7 @@ use anyhow::{Context, Result};
 use chrono::Utc;
 use serde::Serialize;
 use serde_json::json;
-use std::collections::{BTreeSet, HashSet};
-use std::process::Command;
+use std::collections::HashSet;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -378,45 +378,6 @@ async fn record_execution_success_to_okr(
     codetether_forage_core::progress::record(repo, item, &evidence, cycle).await
 }
 
-fn snapshot_git_changed_files() -> Option<BTreeSet<String>> {
-    let cwd = std::env::current_dir().ok()?;
-    let is_git_repo = Command::new("git")
-        .args(["rev-parse", "--is-inside-work-tree"])
-        .current_dir(&cwd)
-        .output()
-        .ok()?
-        .status
-        .success();
-    if !is_git_repo {
-        return None;
-    }
-
-    let mut changed = BTreeSet::new();
-    changed.extend(git_name_list(&cwd, &["diff", "--name-only"]));
-    changed.extend(git_name_list(&cwd, &["diff", "--name-only", "--cached"]));
-    changed.extend(git_name_list(
-        &cwd,
-        &["ls-files", "--others", "--exclude-standard"],
-    ));
-    Some(changed)
-}
-
-fn git_name_list(cwd: &std::path::Path, args: &[&str]) -> Vec<String> {
-    let Ok(output) = Command::new("git").args(args).current_dir(cwd).output() else {
-        return Vec::new();
-    };
-    if !output.status.success() {
-        return Vec::new();
-    }
-
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .map(ToString::to_string)
-        .collect()
-}
-
 async fn execute_opportunity(
     item: &ForageOpportunity,
     args: &ForageArgs,
@@ -451,69 +412,8 @@ async fn execute_opportunity(
         quality_gates_passed: quality_passed,
     })
 }
-
-/// Run quality gates (cargo check/test) to verify changes work
 async fn run_quality_gates(changed_files: &[String]) -> Result<(String, bool)> {
-    // Only run quality gates if there are Rust files changed
-    let has_rust_files = changed_files.iter().any(|f| f.ends_with(".rs"));
-
-    if !has_rust_files {
-        return Ok((
-            "no Rust files changed, skipping quality gates".to_string(),
-            true,
-        ));
-    }
-
-    let mut results = Vec::new();
-    let mut all_passed = true;
-
-    match quality_shell::run("cargo check --message-format=short").await {
-        Ok(output) => {
-            let status = if output.success {
-                "PASS"
-            } else {
-                all_passed = false;
-                "FAIL"
-            };
-            let summary = if output.combined.chars().count() > 200 {
-                truncate_chars_with_suffix(&output.combined, 200, " [...truncated]")
-            } else if output.combined.is_empty() {
-                "no errors".to_string()
-            } else {
-                output.combined
-            };
-            results.push(format!("cargo check: {} - {}", status, summary));
-        }
-        Err(e) => {
-            results.push(format!("cargo check: ERROR - {}", e));
-            all_passed = false;
-        }
-    }
-
-    match quality_shell::run("cargo test --quiet -- --nocapture").await {
-        Ok(output) => {
-            let status = if output.success {
-                "PASS"
-            } else {
-                all_passed = false;
-                "FAIL"
-            };
-            let summary = if output.combined.chars().count() > 300 {
-                truncate_chars_with_suffix(&output.combined, 300, " [...truncated]")
-            } else if output.combined.is_empty() {
-                "no test output".to_string()
-            } else {
-                output.combined
-            };
-            results.push(format!("cargo test: {} - {}", status, summary));
-        }
-        Err(e) => {
-            results.push(format!("cargo test: ERROR - {}", e));
-            all_passed = false;
-        }
-    }
-
-    Ok((results.join("\n"), all_passed))
+    codetether_forage_core::quality::run(changed_files, quality_shell::run).await
 }
 
 async fn execute_opportunity_with_swarm(

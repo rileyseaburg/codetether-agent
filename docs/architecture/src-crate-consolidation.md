@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 13 | 1439 | Scoring, contracts, prompts, summaries, objective seeding and progress persistence extracted; execution, CLI and event adapters remain |
+| forage | 13 | 1348 | Selection, seeding, progress, Git snapshots and quality workflow extracted; application retains policy-gated shell, execution, CLI and event adapters |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -121,7 +121,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-lsp-core | 95 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
-| codetether-forage-core | 24 | yes | none |
+| codetether-forage-core | 29 | yes | none |
 | codetether-okr | 72 | yes | none |
 | codetether-paths | 5 | yes | none |
 | codetether-platform | 56 | yes | none |
@@ -3733,3 +3733,22 @@ modules have at most 42 code lines. Only existing anyhow/tracing dependency
 edges were added. No OKRs were read or written by runtime execution. No Cargo,
 rustc, Python or tests ran; compilation remains unverified. Evidence resides
 in artifacts/consolidation-forage-progress/. The full workspace goal is active.
+
+## Forage quality workflow and change snapshots
+
+Forage-core owns Git change snapshots and ordered quality-check orchestration,
+while the application supplies its existing policy-gated Bash runner. Both
+original command strings and their order are retained, as are the Rust-file
+skip guard, result flags, empty-output messages and 200/300-character summary
+limits. One check module owns formatting and outcome handling for both specs.
+The host execution wrapper still takes snapshots before and after execution,
+then invokes quality checks at the same point. No dependency changed.
+
+Eleven static comparisons cover both specialized check branches, command
+specifications, Git behavior, output records, unchanged authorization adapter
+and original forage tests. Lexical graphs cover 29 core and 13
+application files without missing/unreferenced modules. New files have at most
+37 code lines. Standalone formatting, file-limit and whitespace checks were
+used. No quality commands, Cargo, rustc, Python or tests were executed.
+Compilation and tests remain unverified. Evidence is in
+artifacts/consolidation-forage-verification/. The full workspace goal is active.

@@ -2,12 +2,8 @@
 
 use crate::tool::{Tool, bash::BashTool};
 use anyhow::Result;
+pub(super) use codetether_forage_core::quality::QualityShellOutput;
 use serde_json::json;
-
-pub(super) struct QualityShellOutput {
-    pub success: bool,
-    pub combined: String,
-}
 
 pub(super) async fn run(command: &str) -> Result<QualityShellOutput> {
     let args = json!({ "command": command });
