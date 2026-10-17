@@ -34,3 +34,6 @@ pub mod execution_policy;
 
 /// Task progress, deadline accounting and checkpoint diagnostics.
 pub mod task_timeline;
+
+/// Model, agent and host metadata for worker registration.
+pub mod registration;

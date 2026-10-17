@@ -1158,6 +1158,8 @@ name = "codetether-a2a-worker-core"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "codetether-agent-core",
+ "codetether-provider-core",
  "rand 0.10.2",
  "serde",
  "serde_json",

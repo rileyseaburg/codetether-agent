@@ -97,7 +97,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 29 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
-| codetether-a2a-worker-core | 77 | yes | none |
+| codetether-a2a-worker-core | 81 | yes | codetether-agent-core, codetether-provider-core |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
 | codetether-audit | 1 | yes | none |
@@ -4791,3 +4791,20 @@ All 122 provider-core files and 316 A2A files are reachable with no missing or
 orphaned modules. New files satisfy the 50-code-line limit; file-budget and
 whitespace checks passed. Evidence: `artifacts/consolidation-provider-tool-schema/`.
 Compilation and tests remain unrun; the larger consolidation remains active.
+
+
+### Shared worker registration metadata
+
+Worker-core registration modules now own model-array projection, built-in
+agent definitions, and host environment metadata. Provider discovery and
+signed HTTP registration remain in the application. Model/agent records use
+their existing shared provider-core and agent-core owners; this adds explicit
+downward contract dependencies instead of referring back to application types.
+
+Static comparison confirms all four functions preserve payload fields, list
+ordering, optional costs, hostname fallback, and node-name trimming. All 81
+worker-core files and 316 A2A files are reachable without missing/orphaned
+modules; the five-crate dependency closure is acyclic. New files meet the
+50-code-line limit. File-budget and whitespace checks passed. Evidence is in
+`artifacts/consolidation-worker-registration/`. Compilation, tests, and live
+registration were not run. The broader consolidation goal remains active.

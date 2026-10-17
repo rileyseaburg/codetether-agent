@@ -10,6 +10,8 @@ name = "codetether_a2a_worker_core"
 path = "src/lib.rs"
 
 [dependencies]
+codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 chrono = { version = "0.4", features = ["serde"] }
 rand = "0.10.0"
 serde = { version = "1", features = ["derive"] }
