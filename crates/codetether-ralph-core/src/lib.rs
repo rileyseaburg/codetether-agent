@@ -25,3 +25,6 @@ pub mod lifecycle;
 pub mod quality;
 pub mod rate_limit;
 pub mod relay_profiles;
+
+/// Host-driven quality verification and repair state machine.
+pub mod quality_repair;

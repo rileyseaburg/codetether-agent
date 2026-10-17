@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
+| ralph | 101 | 2870 | Contracts/services/events and quality-repair state machine extracted; loop adapters remain under cross-crate ownership audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -152,7 +152,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-openai | 72 | yes | none |
 | codetether-provider-zai | 120 | yes | none |
 | codetether-question | 30 | yes | none |
-| codetether-ralph-core | 106 | yes | none |
+| codetether-ralph-core | 111 | yes | none |
 | codetether-rlm | 448 | yes | none |
 | codetether-runtime-policy | 37 | yes | none |
 | codetether-search | 18 | yes | none |
@@ -4194,3 +4194,25 @@ input, persistence operation, Rust test or doctest ran. Compilation and runtime
 remain unverified. Evidence: artifacts/consolidation-forage-clarified/. This
 finishes the forage ownership review, not the whole-workspace objective, which
 remains active across the other pending source owners.
+
+## Ralph parallel quality-repair sequencing
+
+Ralph-core::quality_repair owns the evolving quality state, initial model-result
+handling and bounded check/verify/repair loop. Its RepairHost interface delegates
+checks, verification, repair execution and exhaustion reporting to application
+adapters. The existing verification/repair methods are unchanged; the host
+implementation forwards to them and to the existing policy-gated quality shell.
+
+All 13 static comparisons passed, covering inclusive attempt bounds, callback
+order, short-circuit exits, initial errors, disabled-quality verification, state
+layout, application forwarding and unchanged effectful host methods. Five new
+core modules and one application host file are at most 39 code lines. Lexical
+scans found all 111 core and 101 application Ralph files reachable, without
+missing modules or a cycle in the five-crate local dependency closure. No
+manifest changes were required. File-limit and whitespace checks passed;
+standalone rustfmt formatted the move.
+
+No Cargo, rustc, Python, quality command, verification command, repair agent,
+Rust test or doctest ran. Compilation and runtime remain unverified. Evidence:
+artifacts/consolidation-ralph-quality-repair/. The full workspace objective and
+the remaining Ralph ownership audit stay active.

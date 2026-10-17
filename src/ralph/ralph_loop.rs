@@ -65,7 +65,7 @@ mod parallel_failure;
 mod parallel_finish_stage;
 mod parallel_plan;
 mod parallel_quality_exhausted;
-mod parallel_quality_loop;
+mod parallel_quality_host;
 mod parallel_quality_outcome;
 mod parallel_quality_repair;
 mod parallel_quality_state;
