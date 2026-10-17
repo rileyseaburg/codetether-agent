@@ -8110,3 +8110,21 @@ added Rust modules contain at most 39 code lines. Evidence is in
 `artifacts/consolidation-spawn-model-policy/`. Compilation and runtime tests
 were not run. No Cargo, rustc or Python commands ran. The full consolidation
 goal remains active.
+
+### Dedicated agent-tool input contracts
+
+Moved the agent-tool deserialization payload, effective detach/resume helpers,
+borrowed spawn fields and required-field/model-fallback parsing into
+`crates/codetether-agent-input`. Ten Rust modules separate wire fields, helpers,
+validation and regression fixtures. Application payload and spawn-request
+modules are now re-exports. Runtime-injected serde names, optional defaults,
+validation order, workspace cloning, parent identity and history-scope parsing
+remain unchanged.
+
+Twenty-three static preservation checks cover payload and request definitions,
+helper bodies, parser behavior, ten moved tests and unchanged execution callers.
+Module/dependency checks, file budgets and whitespace checks passed; crate files
+contain at most 43 code lines. Evidence is in
+`artifacts/consolidation-agent-input/`. Compilation and runtime tests were not
+run. No Cargo, rustc or Python commands ran. The full consolidation goal remains
+active.

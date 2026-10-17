@@ -1,0 +1,17 @@
+[package]
+name = "codetether-agent-input"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Agent-tool payloads and borrowed spawn request validation"
+
+[dependencies]
+anyhow = "1"
+codetether-agent-lifecycle = { path = "../codetether-agent-lifecycle", version = "0.1.0" }
+codetether-collaboration-history = { path = "../codetether-collaboration-history", version = "0.1.0" }
+codetether-collaboration-input = { path = "../codetether-collaboration-input", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"

@@ -26,18 +26,12 @@ mod message_detach;
 mod message_finalize;
 mod message_result;
 mod params;
-#[cfg(test)]
-#[path = "params_tests.rs"]
-mod params_tests;
 pub(crate) mod persistence;
 mod policy;
 mod registry;
 pub(crate) mod residency;
 mod session_factory;
 mod spawn;
-#[cfg(test)]
-#[path = "spawn_detach_tests.rs"]
-mod spawn_detach_tests;
 mod spawn_messages;
 mod spawn_request;
 mod spawn_run;
