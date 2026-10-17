@@ -108,6 +108,7 @@ members = [
     "crates/codetether-process-tree",
     "crates/codetether-command-pty",
     "crates/codetether-command-session",
+    "crates/codetether-command-shell",
     "crates/codetether-write-stdin",
     "crates/codetether-tool-core",
     "crates/codetether-todo",
@@ -335,6 +336,7 @@ codetether-process-capture = { path = "crates/codetether-process-capture", versi
 codetether-process-tree = { path = "crates/codetether-process-tree", version = "0.1.0" }
 codetether-command-pty = { path = "crates/codetether-command-pty", version = "0.1.0" }
 codetether-command-session = { path = "crates/codetether-command-session", version = "0.1.0" }
+codetether-command-shell = { path = "crates/codetether-command-shell", version = "0.1.0" }
 codetether-write-stdin = { path = "crates/codetether-write-stdin", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }

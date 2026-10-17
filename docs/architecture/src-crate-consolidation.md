@@ -2200,6 +2200,22 @@ Evidence: `artifacts/consolidation-write-stdin/`. No session operations,
 runtime tests, Cargo, rustc or Python ran. Compilation remains unverified;
 the full workspace consolidation remains active.
 
+### Shared shell discovery and command preparation
+
+Moved shell selection, Windows Git Bash discovery and noninteractive
+subprocess setup into `crates/codetether-command-shell`. Application paths
+retain compatibility exports. The crate owns four focused modules and
+depends on shared process-tree configuration; Windows lookup uses the same
+resolved `which` version as the application.
+
+Static comparisons verify platform-specific selection order, executable
+arguments, inherited environment overrides, stdio and process-tree setup.
+Module reachability, dependency-cycle, workspace wiring, file-budget and
+whitespace checks passed. New files contain at most 48 code lines. Evidence:
+`artifacts/consolidation-command-shell/`. No shell probes, child commands,
+runtime tests, Cargo, rustc or Python ran. Compilation and platform behavior
+remain unverified. The full workspace migration remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

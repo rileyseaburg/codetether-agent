@@ -1270,6 +1270,7 @@ dependencies = [
  "codetether-cognition-native",
  "codetether-command-pty",
  "codetether-command-session",
+ "codetether-command-shell",
  "codetether-config",
  "codetether-context-policy",
  "codetether-crash",
@@ -1746,6 +1747,15 @@ dependencies = [
  "codetether-tool-core",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-command-shell"
+version = "0.1.0"
+dependencies = [
+ "codetether-process-tree",
+ "tokio",
+ "which 8.0.6",
 ]
 
 [[package]]
