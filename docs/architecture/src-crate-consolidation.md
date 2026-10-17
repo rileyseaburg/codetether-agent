@@ -7042,3 +7042,20 @@ new Rust files contain at most 36 code lines. Evidence:
 `artifacts/consolidation-confirm-multiedit/`. No file-edit requests, runtime
 tests, Cargo, rustc or Python commands ran. Compilation remains unverified;
 the full workspace consolidation goal remains active.
+
+### Dedicated skill discovery and loading tool
+
+Moved `SkillTool` into `crates/codetether-skill-tool`. Seven modules separate
+tool construction, directory discovery, instruction loading, list/load action
+responses and schema. The application retains a compatibility export. Default
+HOME-based paths, directory-first lookup, Markdown-file fallback and the cache
+accessor retain their original behavior.
+
+Twelve static preservation checks compare constructor and cache bodies,
+complete discovery/loading methods, schema and tool metadata. Expanding the
+new action helpers reproduces the original execution body. Module reachability,
+dependency-cycle, file-budget and whitespace checks passed; new Rust files
+contain at most 37 code lines. Evidence: `artifacts/consolidation-skill-tool/`.
+No skills were loaded or executed for this refactor; no runtime tests, Cargo,
+rustc or Python commands ran. Compilation remains unverified, and the full
+workspace consolidation goal remains active.

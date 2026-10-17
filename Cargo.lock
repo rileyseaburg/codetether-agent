@@ -1370,6 +1370,7 @@ dependencies = [
  "codetether-search",
  "codetether-secrets",
  "codetether-session-runtime",
+ "codetether-skill-tool",
  "codetether-swarm-core",
  "codetether-swarm-share",
  "codetether-task-tool",
@@ -3119,6 +3120,17 @@ name = "codetether-session-runtime"
 version = "0.1.0"
 dependencies = [
  "futures",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-skill-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "serde_json",
  "tokio",
 ]
 
