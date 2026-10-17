@@ -5976,3 +5976,23 @@ files contain at most 23 code lines. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-inbound-turn/`. Compilation, tests and live
 handoff remain unrun. No Cargo, rustc or Python commands ran. The broader
 migration remains active.
+
+### Shared streamed-turn execution driver
+
+Moved streamed-turn orchestration into
+`codetether-a2a-http::task_state::stream::driver`. A typed host interface supplies
+application session/provider operations and event observation; the shared driver
+owns the event channel, setup order, early returns, prompt completion and task
+settlement. The application run function now binds existing state to this driver.
+
+Static comparison verifies the original sequence after explicit host-call and
+result-text substitutions. It checks each application adapter, caller wiring,
+and unchanged provider loading and event conversion source. The channel capacity
+remains 256; observers start before provider loading and successful persistence
+precedes task completion. The module scan reaches 236 application A2A files,
+160 HTTP files and 63 telemetry files without missing/orphaned modules; the
+dependency closure is acyclic. New shared files contain at most 32 code lines;
+the application host contains 48. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-stream-driver/`. Compilation, tests and live
+execution remain unrun. No Cargo, rustc or Python commands ran. The broader
+migration remains active.

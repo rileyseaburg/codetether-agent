@@ -24,3 +24,6 @@ pub mod text;
 
 /// Task activity and bus publication for application-mapped stream events.
 pub mod events;
+
+/// Ordered execution and settlement over application session hooks.
+pub mod driver;
