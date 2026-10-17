@@ -2283,6 +2283,23 @@ passed. Files contain at most 45 code lines. Evidence:
 toolchain execution, sandbox commands, runtime tests, Cargo, rustc or Python
 ran. Compilation remains unverified. The full workspace goal remains active.
 
+### Dedicated macOS Seatbelt profiles
+
+Moved Seatbelt profile rendering, static rules, writable/protected root
+selection, quoting, staging and stale-profile cleanup into
+`crates/codetether-sandbox-seatbelt`. Thirteen files include sixteen existing
+tests. The application module re-exports profile generation, staging, gap
+reporting and host selection for its platform launcher.
+
+Static comparisons verify every moved file after visibility and policy-import
+substitutions, preserving rule order, path handling, filenames and cleanup
+behavior. Module reachability, dependency-cycle, workspace wiring, file-budget
+and whitespace checks passed. Files contain at most 48 code lines. Evidence:
+`artifacts/consolidation-sandbox-seatbelt/`. No profiles were staged, files
+pruned, sandbox commands executed or runtime tests run. Cargo, rustc and
+Python were not executed. Compilation and platform execution remain
+unverified; the complete workspace migration remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

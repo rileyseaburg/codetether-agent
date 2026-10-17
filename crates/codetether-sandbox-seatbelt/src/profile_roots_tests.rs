@@ -1,5 +1,5 @@
 use super::super::build;
-use crate::tool::sandbox::SandboxPolicy;
+use codetether_sandbox_policy::SandboxPolicy;
 use std::path::Path;
 
 fn policy() -> SandboxPolicy {
@@ -12,7 +12,11 @@ fn policy() -> SandboxPolicy {
 
 #[test]
 fn profile_grants_the_sandbox_home_even_when_temp_dir_differs() {
-    let text = build(&policy(), Path::new("/workspace"), Path::new("/var/folders/xy"));
+    let text = build(
+        &policy(),
+        Path::new("/workspace"),
+        Path::new("/var/folders/xy"),
+    );
     assert!(
         text.contains("(allow file-write* (subpath \"/tmp\"))"),
         "sandbox HOME=/tmp must stay writable: {text}"

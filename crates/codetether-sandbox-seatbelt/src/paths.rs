@@ -1,8 +1,8 @@
 //! Writable and protected path selection for macOS Seatbelt profiles.
 
-use super::super::SandboxPolicy;
 use super::base::PROTECTED;
 use super::roots;
+use crate::SandboxPolicy;
 use std::path::{Path, PathBuf};
 
 /// Absolute roots the confined process may write beneath.

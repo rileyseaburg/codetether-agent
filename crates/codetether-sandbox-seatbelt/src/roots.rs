@@ -32,5 +32,5 @@ pub(super) fn resolved(path: &Path) -> Vec<PathBuf> {
 }
 
 #[cfg(test)]
-#[path = "sandbox_seatbelt_roots_tests.rs"]
+#[path = "roots_tests.rs"]
 mod tests;

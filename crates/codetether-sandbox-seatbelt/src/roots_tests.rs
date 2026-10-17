@@ -21,7 +21,10 @@ fn resolved_emits_both_symlink_and_target_paths() {
     #[cfg(unix)]
     {
         let paths = resolved(&link);
-        assert!(paths.contains(&link), "original path must stay in the rules");
+        assert!(
+            paths.contains(&link),
+            "original path must stay in the rules"
+        );
         assert_eq!(paths.len(), 2, "resolved target must be added: {paths:?}");
     }
 }

@@ -3,7 +3,7 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
-#[path = "sandbox_seatbelt_prune.rs"]
+#[path = "prune.rs"]
 mod prune;
 
 /// Write `profile` to a uniquely named file inside `temp_dir`.
@@ -27,5 +27,5 @@ fn file_name() -> String {
 }
 
 #[cfg(test)]
-#[path = "sandbox_seatbelt_stage_tests.rs"]
+#[path = "stage_tests.rs"]
 mod tests;

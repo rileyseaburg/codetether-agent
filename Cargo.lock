@@ -1338,6 +1338,7 @@ dependencies = [
  "codetether-runtime-policy",
  "codetether-sandbox-environment",
  "codetether-sandbox-policy",
+ "codetether-sandbox-seatbelt",
  "codetether-search",
  "codetether-secrets",
  "codetether-session-runtime",
@@ -2826,6 +2827,16 @@ dependencies = [
  "anyhow",
  "serde",
  "tokio",
+]
+
+[[package]]
+name = "codetether-sandbox-seatbelt"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-sandbox-policy",
+ "tempfile",
+ "uuid",
 ]
 
 [[package]]

@@ -1,0 +1,15 @@
+[package]
+name = "codetether-sandbox-seatbelt"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "macOS Seatbelt profile generation and staging"
+
+[dependencies]
+anyhow = "1"
+codetether-sandbox-policy = { path = "../codetether-sandbox-policy", version = "0.1.0" }
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3"

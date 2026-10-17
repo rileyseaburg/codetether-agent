@@ -39,5 +39,5 @@ fn expired(entry: &std::fs::DirEntry, now: SystemTime) -> bool {
 }
 
 #[cfg(test)]
-#[path = "sandbox_seatbelt_prune_tests.rs"]
+#[path = "prune_tests.rs"]
 mod tests;

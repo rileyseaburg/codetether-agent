@@ -1,8 +1,8 @@
 use super::build;
-use crate::tool::sandbox::SandboxPolicy;
+use codetether_sandbox_policy::SandboxPolicy;
 use std::path::Path;
 
-#[path = "sandbox_seatbelt_profile_roots_tests.rs"]
+#[path = "profile_roots_tests.rs"]
 mod roots_tests;
 
 fn policy(allow_network: bool) -> SandboxPolicy {

@@ -1,9 +1,9 @@
 //! Build a Seatbelt (SBPL) profile from a sandbox policy.
 
-use super::super::SandboxPolicy;
 use super::base::{ALLOW_NETWORK, HEADER, WRITABLE_DEVICES};
 use super::paths::{protected_paths, writable_roots};
 use super::quote::quote;
+use crate::SandboxPolicy;
 use std::path::Path;
 
 /// Render the SBPL profile text that confines one sandboxed command.
@@ -39,5 +39,5 @@ fn write_rule(effect: &str, path: &str) -> String {
 }
 
 #[cfg(test)]
-#[path = "sandbox_seatbelt_profile_tests.rs"]
+#[path = "profile_tests.rs"]
 mod tests;
