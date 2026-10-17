@@ -1,7 +1,7 @@
 //! `commit` operation: optionally stage paths, then create a commit.
 
 use super::run::{cwd_of, run_git};
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 
 /// Stage files (all tracked changes, or specific `paths`) and commit with

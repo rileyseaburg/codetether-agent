@@ -1276,6 +1276,7 @@ dependencies = [
  "codetether-file-inspect",
  "codetether-file-tools",
  "codetether-forage-core",
+ "codetether-git-tool",
  "codetether-github-auth",
  "codetether-github-pr",
  "codetether-goal-core",
@@ -1942,6 +1943,18 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-git-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

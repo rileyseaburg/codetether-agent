@@ -6363,3 +6363,18 @@ acyclic. New files contain at most 39 code lines. Workspace/lockfile wiring,
 file-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-code-search/`. No search execution, runtime tests,
 Cargo, rustc or Python ran. The broader migration remains active.
+
+### Dedicated structured Git tool crate
+
+Created `crates/codetether-git-tool` and moved the full structured Git adapter
+out of the application: schema, read-only dispatch, commit staging, subprocess
+runner and existing tests. The application module re-exports `GitTool`.
+
+Static comparison verifies all seven moved files after tool-contract import
+substitutions. Command arguments, staging order, error handling and output
+truncation are unchanged. Both existing tests are preserved and unrun. All files
+are reachable without missing/orphaned modules, and the dependency closure is
+acyclic. Files contain at most 46 code lines. Workspace/lockfile wiring,
+file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-git-tool/`. No Git tool execution, runtime tests, Cargo,
+rustc or Python ran. The broader migration remains active.

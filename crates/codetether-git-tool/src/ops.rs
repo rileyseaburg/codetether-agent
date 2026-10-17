@@ -1,7 +1,7 @@
 //! Maps the `op` argument to a concrete read-only `git` invocation.
 
 use super::run::{cwd_of, run_git};
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 
 /// Execute a read-only git operation (`status`, `diff`, `log`, `branch`,

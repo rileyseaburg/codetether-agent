@@ -2,7 +2,7 @@
 
 use super::GitTool;
 use super::tests_helpers::init_repo;
-use crate::tool::Tool;
+use codetether_tool_core::Tool;
 use serde_json::json;
 
 #[tokio::test]
