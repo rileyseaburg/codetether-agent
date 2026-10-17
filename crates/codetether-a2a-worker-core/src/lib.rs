@@ -52,3 +52,6 @@ pub mod outcome;
 
 /// Post-agent result finalization and repository publication.
 pub mod finalization;
+
+/// Task agent and repository preparation policies.
+pub mod preparation;

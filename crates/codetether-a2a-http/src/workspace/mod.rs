@@ -24,3 +24,6 @@ mod scope;
 pub use scope::resolve_and_log_workspace_ids;
 mod sync_start;
 pub use sync_start::start_workspace_sync;
+
+mod task_session;
+pub use task_session::resolve_session_workspace;

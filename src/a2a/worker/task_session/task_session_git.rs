@@ -1,37 +1,17 @@
-use anyhow::Result;
-
+//! Adapt session repository metadata to shared task preparation.
+use super::super::TaskContext;
 use crate::session::Session;
-
-use super::super::{
-    TaskContext, configure_repo_git_auth, ensure_provenance_trailers, install_commit_msg_hook,
-};
-
+use anyhow::Result;
 pub(super) async fn prepare_git(
     task_id: &str,
     session: &mut Session,
     context: &TaskContext,
 ) -> Result<()> {
-    if let (Some(directory), Some(workspace_id)) = (
+    codetether_a2a_worker_core::preparation::prepare_git(
+        task_id,
         session.metadata.directory.as_deref(),
-        context.workspace_id.as_deref(),
-    ) && directory.join(".git").exists()
-        && let Err(error) = configure_repo_git_auth(directory, workspace_id)
-    {
-        tracing::warn!(task_id, error = %error, "Failed to configure Git credential helper");
-    }
-    if let Some(directory) = session.metadata.directory.as_deref() {
-        if let Err(error) = install_commit_msg_hook(directory) {
-            tracing::warn!(task_id, error = %error, "Failed to install commit-msg hook");
-        }
-        if let Some(provenance) = session.metadata.provenance.as_ref()
-            && let Err(error) = ensure_provenance_trailers(directory, provenance)
-        {
-            tracing::warn!(task_id, error = %error, "Failed to pre-seed provenance trailers");
-        }
-    }
-    super::super::git_branch::ensure_metadata_checked_out(
-        session.metadata.directory.as_deref(),
-        super::super::metadata_str(&context.metadata, &["branch_name", "git_branch", "pr_head"]),
+        session.metadata.provenance.as_ref(),
+        context,
     )
     .await
 }

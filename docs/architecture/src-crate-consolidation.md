@@ -5505,3 +5505,22 @@ lines. File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-workspace-coordination/`. Compilation, tests and
 background synchronization remain unrun. No Cargo, rustc, or Python commands
 ran. The broader migration remains active.
+
+### Shared task-session workspace and repository preparation
+
+Moved task-session workspace resolution to the HTTP workspace module and
+agent normalization/repository setup to worker-core preparation modules.
+Application adapters pass only the directory, provenance and existing shared
+task context; shared code no longer depends on the application session type.
+Removed the unused worker branch-helper forwarding module.
+
+Static comparison verifies all three moved function bodies, preserving
+virtual-task workspace behavior, workspace-ready checkpoints, agent fallback,
+credential/hook setup order, best-effort warnings, provenance trailer setup,
+and branch checkout. Original log targets remain explicit. The module scan
+reaches 110 HTTP files, 145 worker-core files, and 266 application A2A files
+without missing/orphaned modules or dependency cycles. New files contain at
+most 35 code lines. File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-session-preparation/`. Compilation, tests, workspace
+requests, and Git setup remain unrun. No Cargo, rustc, or Python commands ran.
+The broader implementation migration remains active.

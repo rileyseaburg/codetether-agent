@@ -20,7 +20,6 @@ mod extended_heartbeat;
 mod forage_args;
 mod forage_settings;
 mod forage_task;
-mod git_branch;
 #[cfg(test)]
 mod git_branch_tests;
 #[rustfmt::skip]
