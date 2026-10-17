@@ -1,7 +1,8 @@
 //! Reusable runtime permission decisions derived from effective configuration.
 //!
 //! Build [RuntimeToolPolicy] from configuration, then classify tools and actions.
-//! Session approvals, workspace loading, and OS sandbox probes belong to callers.
+//! Approval records and policy evaluation share reusable owners; application
+//! callers supply prior-context guards and OS sandbox availability probes.
 mod action_read_only;
 mod base;
 pub mod code;
@@ -34,3 +35,7 @@ pub mod approval_gate;
 pub mod invocation_scope;
 pub mod result_approval;
 pub mod session_command;
+
+pub mod evaluate;
+pub mod evaluate_tool;
+pub mod workspace;

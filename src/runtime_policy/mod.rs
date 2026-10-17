@@ -6,14 +6,12 @@
 mod approval_gate;
 mod command;
 mod invocation;
-mod invocation_decision;
 mod invocation_scope;
 mod justification;
 mod justification_schema;
 mod policy;
 mod result;
 mod sandbox_preflight;
-mod session_command;
 mod tool_kind;
 mod types;
 mod workspace;

@@ -40,7 +40,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
 | forage | 13 | 1918 | Pending cohesion and dependency audit |
-| runtime_policy | 36 | 870 | Approval identity, persistence and gates moved into runtime-policy; host configuration, prior-context and sandbox adapters remain |
+| runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
 | indexer | 8 | 146 | Core extracted; CLI and provider-resolution adapters retained |
@@ -152,7 +152,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-question | 30 | yes | none |
 | codetether-ralph-core | 106 | yes | none |
 | codetether-rlm | 448 | yes | none |
-| codetether-runtime-policy | 34 | yes | none |
+| codetether-runtime-policy | 37 | yes | none |
 | codetether-search | 11 | yes | none |
 | codetether-secrets | 81 | yes | none |
 | codetether-session-runtime | 20 | yes | none |
@@ -3546,3 +3546,24 @@ Validation evidence is in artifacts/consolidation-runtime-approval/: ten static
 source and dependency comparisons and complete lexical module graphs. Existing
 identity tests are unchanged and unrun. No Cargo, rustc or Python ran; compilation
 and tests remain unverified. The full workspace goal is still active.
+
+## Runtime-policy application boundary audit
+
+Runtime-policy owns configured evaluation, workspace selection and tool-only
+evaluation. The configured evaluator accepts a lazy sandbox probe and retains
+the original decision → scope → approval → justification → request sequence.
+The application checks prior context before calling it, and retains async
+configuration-loading entry points so their timing and fallback are unchanged.
+Redundant invocation-decision, session-command and result-approval facade files
+were removed. The remaining 33 application files (796 code lines)
+are integration tests, compatibility exports, configuration entry points, the
+prior-context guard or the actual sandbox availability adapter. This completes
+the runtime-policy ownership audit, not the overall workspace goal.
+
+Eight static checks compare original algorithms, callback placement and async
+entry points. Lexical module graphs include every test/cfg branch: 37 shared
+runtime-policy files and 33 application files, without missing or
+unreferenced modules. New files have at most 37 code lines. Standalone rustfmt,
+file-limit ratchet and staged whitespace checks are the permitted validation;
+compilation and all Rust tests remain unverified. No Cargo, rustc or Python
+ran. Evidence: artifacts/consolidation-runtime-policy-adapters/.

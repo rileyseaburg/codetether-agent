@@ -1,6 +1,5 @@
-//! Configured runtime policy evaluation for one tool invocation.
+//! Session prior-context guard and host sandbox adapter for shared policy.
 
-use super::super::{RuntimeToolPolicy, ToolPolicyOutcome};
 use crate::config::Config;
 use crate::tool::ToolResult;
 use serde_json::Value;
@@ -15,25 +14,10 @@ pub fn evaluate_tool_invocation_with_config(
     {
         return Some(blocked);
     }
-    let policy = RuntimeToolPolicy::from_config(config);
-    let decision = super::super::invocation_decision::decide(&policy, tool_name, args);
-    let scope = super::super::invocation_scope::for_tool(tool_name, args);
-    if matches!(decision.outcome, ToolPolicyOutcome::RequireApproval)
-        && super::super::approval_gate::allowed(tool_name, args, scope.action, &scope.resource)
-    {
-        return None;
-    }
-    if matches!(decision.outcome, ToolPolicyOutcome::RequireApproval)
-        && let Some(blocked) =
-            super::super::justification::missing(config, tool_name, decision, args)
-    {
-        return Some(blocked);
-    }
-    super::super::result::blocking_result_with_approval_request_for_args(
+    codetether_runtime_policy::evaluate::evaluate_tool_invocation_with_config(
+        config,
         tool_name,
-        decision,
-        scope.action,
-        &scope.resource,
         args,
+        |policy| super::super::sandbox_preflight::decision(policy, tool_name, args),
     )
 }
