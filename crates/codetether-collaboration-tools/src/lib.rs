@@ -34,3 +34,6 @@ pub use list::{ListAgentsTool, ListArgs};
 pub use messaging_host::MessagingHost;
 pub use route::Route;
 pub use send_message::SendMessageTool;
+
+mod send_input;
+pub use send_input::{SendInputArgs, SendInputTool};

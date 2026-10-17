@@ -7827,3 +7827,21 @@ contain at most 47 code lines. Evidence is in
 `artifacts/consolidation-collaboration-messaging/`. No children were loaded,
 agents messaged, runtime tests executed, or Cargo, rustc or Python commands run.
 Compilation remains unverified; the full consolidation goal remains active.
+
+### Shared structured-input submission tool
+
+Moved `send_input` argument decoding, input-preparation orchestration, optional
+interruption and durable message submission into `codetether-collaboration-tools`.
+Four added Rust modules bring the crate to thirty-four modules. The tool uses
+`codetether-collaboration-input` directly and forwards execution through the
+existing messaging host. Application registration remains a type/constant alias;
+the two existing workspace integration tests use the shared argument type.
+
+Sixteen static preservation checks cover identity/schema, decoded defaults,
+prepare-before-dispatch ordering, readiness refusal, interruption failure,
+attachment payloads, trusted context injection and unchanged runtime bindings.
+Module and dependency checks, file budgets and whitespace checks passed; crate
+modules contain at most 47 code lines. Evidence is in
+`artifacts/consolidation-collaboration-send-input/`. No agent submission,
+interruption or runtime tests were performed. No Cargo, rustc or Python commands
+ran. Compilation remains unverified; the full consolidation goal remains active.
