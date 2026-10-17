@@ -131,7 +131,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-paths | 5 | yes | none |
 | codetether-platform | 56 | yes | none |
 | codetether-plugin-marketplace | 4 | yes | none |
-| codetether-provenance | 52 | yes | none |
+| codetether-provenance | 57 | yes | none |
 | codetether-image | 13 | yes | none |
 | codetether-provider-core | 122 | yes | none |
 | codetether-provider-anthropic | 50 | yes | none |
@@ -4826,3 +4826,20 @@ meet the 50-code-line limit; file-budget and whitespace checks passed. The
 only new direct external dependency is already-locked anyhow. Evidence is
 retained in `artifacts/consolidation-worker-model-selection/`. Compilation
 and tests remain unrun; the broader consolidation goal remains active.
+
+
+### Shared worker request proofs
+
+Provenance now owns the canonical worker-proof HMAC and JSON-body binding
+functions. The worker retains credential environment lookup, timestamp
+creation, identity gating, and request-header attachment; it imports the
+shared signer and body-binding function. Serde JSON moved from a dev-only
+dependency to a regular provenance dependency, with no lockfile change.
+
+Static comparisons confirm both algorithms and the remaining HTTP adapter
+are unchanged. The two exact-output regression tests moved byte-for-byte.
+All 57 provenance files and 314 A2A files are reachable without missing or
+orphaned modules. New files meet the 50-code-line limit; file-budget and
+whitespace checks passed. Evidence: `artifacts/consolidation-worker-proof/`.
+Compilation, tests, and live signed requests remain unverified. The broader
+consolidation goal remains active.

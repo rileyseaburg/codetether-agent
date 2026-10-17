@@ -38,3 +38,6 @@ mod types_tests;
 
 #[cfg(test)]
 mod consolidation;
+
+/// Body-bound worker request proofs.
+pub mod worker_proof;

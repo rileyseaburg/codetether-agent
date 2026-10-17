@@ -3,11 +3,9 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
-use hmac::{Hmac, KeyInit, Mac};
 use reqwest::RequestBuilder;
-use sha2::Sha256;
 
-type HmacSha256 = Hmac<Sha256>;
+use codetether_provenance::worker_proof::sign;
 
 pub(in crate::a2a::worker) fn apply(
     request: RequestBuilder,
@@ -33,23 +31,3 @@ pub(in crate::a2a::worker) fn apply(
         .header("X-CodeTether-Proof-Timestamp", timestamp)
         .header("X-CodeTether-Worker-Proof", signature))
 }
-
-fn sign(
-    secret: &str,
-    action: &str,
-    worker_id: &str,
-    name: &str,
-    resource: &str,
-    timestamp: &str,
-) -> Result<String> {
-    let payload = format!(
-        "codetether-worker-proof-v1\n{action}\n{worker_id}\n{name}\n{resource}\n{timestamp}"
-    );
-    let mut mac = HmacSha256::new_from_slice(secret.as_bytes())?;
-    mac.update(payload.as_bytes());
-    Ok(hex::encode(mac.finalize().into_bytes()))
-}
-
-#[cfg(test)]
-#[path = "worker_identity_proof_tests.rs"]
-mod tests;
