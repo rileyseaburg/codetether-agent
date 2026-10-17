@@ -29,22 +29,5 @@ pub(super) fn read_git_credential_query_from_stdin() -> Result<GitCredentialQuer
     io::stdin()
         .read_to_string(&mut input)
         .context("Failed to read Git credential request from stdin")?;
-    let mut query = GitCredentialQuery::default();
-    for line in input.lines() {
-        let Some((key, value)) = line.split_once('=') else {
-            continue;
-        };
-        if value.trim().is_empty() {
-            continue;
-        }
-        {
-            match key.trim() {
-                "protocol" => query.protocol = Some(value.trim().to_string()),
-                "host" => query.host = Some(value.trim().to_string()),
-                "path" => query.path = Some(value.trim().to_string()),
-                _ => {}
-            }
-        }
-    }
-    Ok(query)
+    Ok(codetether_a2a_http::git_credentials::parse_query(&input))
 }

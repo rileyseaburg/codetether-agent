@@ -95,7 +95,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-core | 48 | yes | none |
 | codetether-a2a-discovery | 29 | yes | codetether-a2a-core |
 | codetether-a2a-grpc | 58 | yes | codetether-a2a-core, codetether-bus-core |
-| codetether-a2a-http | 48 | yes | codetether-a2a-core, codetether-provider-core |
+| codetether-a2a-http | 55 | yes | codetether-a2a-core, codetether-provider-core |
 | codetether-a2a-stream | 35 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 89 | yes | codetether-agent-core, codetether-provider-core, codetether-provenance |
 | codetether-agent-core | 44 | yes | none |
@@ -5044,3 +5044,20 @@ and 304 A2A files are reachable without missing/orphaned modules. New files
 meet the line budget; file and whitespace checks passed. Evidence is in
 `artifacts/consolidation-repo-credentials/`. Compilation and integration tests
 remain unrun; the broader consolidation goal remains active.
+
+
+### Shared credential-broker protocol
+
+HTTP-core Git credential modules now own query/material records, password
+redaction, broker request/response handling, text-query parsing, and GitHub
+CLI query rendering. Application adapters retain stdin access, stdout output,
+and external helper invocation. Existing import paths remain compatible.
+No dependencies changed.
+
+Static comparison verifies wire types, formatting, query precedence, timeout,
+headers, status handling and error messages. The existing credential tests
+are byte-identical. All 55 HTTP-crate files and 304 A2A files are reachable
+without missing/orphaned modules. New files meet the line budget; file-budget
+and whitespace checks passed. Evidence: `artifacts/consolidation-credential-broker/`.
+Compilation, tests, and live broker requests remain unrun. The wider
+consolidation goal remains active.

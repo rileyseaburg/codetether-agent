@@ -32,3 +32,6 @@ pub mod worker;
 
 /// Introduction protocol helpers and bounded delivery.
 pub mod intro;
+
+/// Git credential broker protocol and HTTP client.
+pub mod git_credentials;
