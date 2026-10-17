@@ -8301,3 +8301,21 @@ checks passed; added crate modules contain at most 28 code lines. Evidence is in
 `artifacts/consolidation-agent-lifecycle-events/`. No bus publications or runtime
 tests were executed. Compilation was not run. No Cargo, rustc or Python commands
 ran. The full consolidation goal remains active.
+
+### Dedicated child-turn coordination
+
+Moved post-turn finalization, detached event collection and first-turn kickoff
+coordination into `crates/codetether-child-turn`. Six Rust modules separate
+native effects from save/report ordering and synchronous/background dispatch.
+Application adapters retain steering cleanup, native session persistence,
+lifecycle publication, first-turn startup and mailbox completion. The same
+execution guards and cancellation-safe child task remain in use.
+
+Twenty-one static preservation checks cover save-before-report ordering,
+deliverable errors, owner notification, detached guard ownership, busy-child
+results, first-turn registration and native adapters. Existing startup and
+message execution implementations remain unchanged. Module/dependency,
+file-budget and whitespace checks passed; crate files contain at most 39 code
+lines. Evidence is in `artifacts/consolidation-child-turn/`. Compilation and
+runtime tests were not run; no background child tasks were started. No Cargo,
+rustc or Python commands ran. The full consolidation goal remains active.

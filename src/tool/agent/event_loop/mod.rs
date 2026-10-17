@@ -28,6 +28,7 @@ use crate::session::{Session, SessionEvent};
 use serde_json::Value;
 use tokio::sync::mpsc;
 
+pub(super) use host::ApplicationHost;
 pub(super) type ChildTask = codetether_child_events::ChildTask<Session>;
 /// Collect native events through the shared child-output collector.
 pub(super) async fn run(

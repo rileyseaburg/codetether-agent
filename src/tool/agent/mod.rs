@@ -24,7 +24,6 @@ mod helpers;
 mod message;
 mod message_detach;
 mod message_finalize;
-mod message_result;
 mod params;
 pub(crate) mod persistence;
 mod policy;
@@ -42,6 +41,7 @@ mod text;
 mod thread_lifecycle;
 mod tool_impl;
 mod tool_schema;
+mod turn_host;
 
 #[cfg(test)]
 mod spawn_tests;

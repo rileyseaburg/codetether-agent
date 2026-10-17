@@ -11,7 +11,7 @@ type Started = (
     tokio::task::JoinHandle<Result<Session>>,
 );
 
-pub(super) async fn begin(agent_id: &str) -> Result<Started> {
+pub(in crate::tool::agent) async fn begin(agent_id: &str) -> Result<Started> {
     let entry = thread_status::track_error(
         agent_id,
         store::get(agent_id).context(format!("Agent {agent_id} vanished after spawn")),

@@ -1,0 +1,20 @@
+[package]
+name = "codetether-child-turn"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Child-turn collection, finalization, detached dispatch and first-turn coordination"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-agent-messages = { path = "../codetether-agent-messages", version = "0.1.0" }
+codetether-agent-status = { path = "../codetether-agent-status", version = "0.1.0" }
+codetether-agent-trace = { path = "../codetether-agent-trace", version = "0.1.0" }
+codetether-child-events = { path = "../codetether-child-events", version = "0.1.0" }
+codetether-collaboration-state = { path = "../codetether-collaboration-state", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
+tokio = { version = "1", features = ["rt", "sync"] }
+tracing = "0.1"

@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-child-turn",
  "codetether-agent-status",
  "codetether-agent-trace",
  "codetether-child-events",
@@ -2451,6 +2452,23 @@ dependencies = [
  "anyhow",
  "codetether-collaboration-state",
  "serde",
+]
+
+[[package]]
+name = "codetether-child-turn"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-agent-messages",
+ "codetether-agent-status",
+ "codetether-agent-trace",
+ "codetether-child-events",
+ "codetether-collaboration-state",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
