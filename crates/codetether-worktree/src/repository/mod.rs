@@ -8,3 +8,6 @@ mod hooks;
 pub use clone_target::prepare_clone_target;
 pub use git_refspec::push_refspec;
 pub use hooks::require_installed;
+
+/// Repository-local credential helper scripts and Git configuration.
+pub mod credentials;

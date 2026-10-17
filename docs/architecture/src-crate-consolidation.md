@@ -182,7 +182,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-vectordb | 14 | yes | none |
 | codetether-voice-core | 12 | yes | none |
 | codetether-worker-http | 18 | yes | none |
-| codetether-worktree | 110 | yes | none |
+| codetether-worktree | 124 | yes | none |
 | codetether-worktree-isolation | 4 | yes | none |
 
 ## First extraction: vector storage
@@ -5027,3 +5027,20 @@ whitespace checks passed. Existing reqwest, serde/JSON, socket2, and Tokio
 features are declared directly. Evidence: `artifacts/consolidation-lan-discovery/`.
 Compilation, tests, and network behavior remain unverified; the overall goal
 remains active.
+
+
+### Shared repository credential configuration
+
+Worktree repository modules now own credential-helper script generation,
+Git-local credential settings, Git-path lookup, stale-config-lock recovery,
+and legacy-helper exclusion. Each operation has a focused source file. A2A
+retains credential broker requests, CLI handling, and compatibility exports.
+No dependencies or configured access policies changed.
+
+Static comparison verifies all 13 functions, including script quoting and
+permissions, command arguments, error strings, timeout checks, and log target.
+The existing credential test file is byte-identical. All 124 worktree files
+and 304 A2A files are reachable without missing/orphaned modules. New files
+meet the line budget; file and whitespace checks passed. Evidence is in
+`artifacts/consolidation-repo-credentials/`. Compilation and integration tests
+remain unrun; the broader consolidation goal remains active.

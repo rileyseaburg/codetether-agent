@@ -12,7 +12,6 @@
 
 mod gh_cli;
 mod gh_query;
-mod git_config;
 mod helper;
 mod material;
 mod query;
