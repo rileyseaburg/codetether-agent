@@ -5,8 +5,9 @@ use std::time::Duration;
 #[cfg(unix)]
 #[tokio::test]
 async fn idle_cache_evicts_released_clients_but_preserves_borrowers() {
-    use super::{Entries, LspClient, eviction::evict};
-    use crate::lsp::types::LspConfig;
+    use super::{Entries, eviction::evict};
+    use crate::LspClient;
+    use crate::types::LspConfig;
     use std::sync::Arc;
     use std::time::Instant;
 
@@ -38,7 +39,7 @@ fn idle_cache_releases_only_expired_unborrowed_clients() {
 
 #[tokio::test]
 async fn idle_cache_concurrent_access_uses_one_cache() {
-    let cache = super::ClientCache::default();
+    let cache = super::ClientCache::<crate::LspClient>::default();
     let guard = cache.write().await;
     assert!(
         tokio::time::timeout(Duration::from_millis(10), cache.write())

@@ -42,3 +42,6 @@ pub mod client;
 mod client_diagnostics;
 mod typescript_diagnostics;
 pub use client::LspClient;
+
+/// Manager-local caches with activity tracking and idle eviction.
+pub mod client_cache;

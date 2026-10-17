@@ -36,7 +36,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mcp | 36 | 3340 | Pending cohesion and dependency audit |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
-| lsp | 23 | 600 | Shared single-server client and diagnostics extracted; application identity wrapper retained; manager/cache routing ownership pending |
+| lsp | 21 | 502 | Shared client and generic idle cache extracted; application identity wrapper and multi-server manager routing remain |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
 | forage | 13 | 1918 | Pending cohesion and dependency audit |
@@ -118,7 +118,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-indexer | 101 | yes | none |
 | codetether-k8s | 80 | yes | none |
 | codetether-knowledge-graph | 11 | yes | none |
-| codetether-lsp-core | 78 | yes | none |
+| codetether-lsp-core | 84 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
 | codetether-okr | 72 | yes | none |
@@ -3649,3 +3649,23 @@ per new module, standalone formatting, file-limit and whitespace checks. No
 Cargo, rustc, Python, language server or LSP request executed. Compilation and
 all tests remain unverified. Evidence: artifacts/consolidation-lsp-client/.
 The broader workspace consolidation remains active.
+
+## Generic LSP cache ownership
+
+LSP-core::client_cache owns cache storage, lazy eviction startup, idle sweeps
+and timestamp refresh. CacheClient provides only the last-use mutex. The
+application specializes the generic cache for its existing identity wrapper,
+preserving the exact Arc allocation counted by eviction. Default construction
+creates the same empty Arc/RwLock map and OnceLock without starting a task.
+
+The 120-second idle limit, 30-second sweep, sole-owner test, poison recovery,
+lock lifetime and timestamp-before-Arc-clone order remain unchanged. The
+eviction log retains its original application target. Three cache tests moved
+with import/type changes and remain unrun. No dependencies changed.
+
+Seven static comparisons, lexical graphs (84 core and 21 application
+files with no missing/unreferenced modules), maximum 46 code lines per new
+file, standalone formatting, file-limit and whitespace checks are recorded in
+artifacts/consolidation-lsp-cache/. No Cargo, rustc, Python, language server or
+eviction task ran. Compilation and tests remain unverified. The full workspace
+consolidation goal remains active.

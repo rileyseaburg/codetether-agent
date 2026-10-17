@@ -1,46 +1,15 @@
-//! Lazily start idle eviction for each manager-owned language-server cache.
-
+//! Cache specialization for the application identity wrapper.
 use super::client::LspClient;
-use std::collections::HashMap;
-use std::sync::{Arc, OnceLock};
-use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-
-#[path = "client_cache/eviction.rs"]
-mod eviction;
-#[cfg(test)]
-#[path = "client_cache/tests.rs"]
-mod tests;
-
-type Entries = HashMap<String, Arc<LspClient>>;
-
-/// Manager-local cache; concurrent creation is serialized by its write guard.
-#[derive(Default)]
-pub(super) struct ClientCache {
-    entries: Arc<RwLock<Entries>>,
-    started: OnceLock<()>,
-}
-
-impl ClientCache {
-    fn start(&self) {
-        self.started.get_or_init(|| {
-            tokio::spawn(eviction::run(Arc::downgrade(&self.entries)));
-        });
-    }
-
-    pub(super) async fn read(&self) -> RwLockReadGuard<'_, Entries> {
-        self.start();
-        self.entries.read().await
-    }
-
-    pub(super) async fn write(&self) -> RwLockWriteGuard<'_, Entries> {
-        self.start();
-        self.entries.write().await
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
+pub(super) type ClientCache = codetether_lsp_core::client_cache::ClientCache<LspClient>;
+impl codetether_lsp_core::client_cache::CacheClient for LspClient {
+    fn last_used(&self) -> &Mutex<Instant> {
+        std::ops::Deref::deref(self).last_used()
     }
 }
-
 impl LspClient {
     pub(super) fn touch(self: &Arc<Self>) -> Arc<Self> {
-        *self.last_used().lock().unwrap_or_else(|e| e.into_inner()) = std::time::Instant::now();
-        Arc::clone(self)
+        codetether_lsp_core::client_cache::touch(self)
     }
 }
