@@ -106,6 +106,7 @@ members = [
     "crates/codetether-task-tool",
     "crates/codetether-process-capture",
     "crates/codetether-process-tree",
+    "crates/codetether-command-guard",
     "crates/codetether-command-pty",
     "crates/codetether-command-session",
     "crates/codetether-command-shell",
@@ -343,6 +344,7 @@ codetether-prd-tool = { path = "crates/codetether-prd-tool", version = "0.1.0" }
 codetether-task-tool = { path = "crates/codetether-task-tool", version = "0.1.0" }
 codetether-process-capture = { path = "crates/codetether-process-capture", version = "0.1.0" }
 codetether-process-tree = { path = "crates/codetether-process-tree", version = "0.1.0" }
+codetether-command-guard = { path = "crates/codetether-command-guard", version = "0.1.0" }
 codetether-command-pty = { path = "crates/codetether-command-pty", version = "0.1.0" }
 codetether-command-session = { path = "crates/codetether-command-session", version = "0.1.0" }
 codetether-command-shell = { path = "crates/codetether-command-shell", version = "0.1.0" }

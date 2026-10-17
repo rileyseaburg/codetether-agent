@@ -15,8 +15,8 @@ fn python_execution_uses_the_executing_tools_command_field() {
             serde_json::json!({"command": "python3 script.py", "cmd": "date"}),
         ),
     ] {
-        let blocked = crate::tool::shell_command_guard::result_for_args(tool, &args)
-            .expect("the executing field must be checked");
+        let blocked =
+            crate::result_for_args(tool, &args).expect("the executing field must be checked");
         assert!(!blocked.success);
         assert!(blocked.output.contains("PYTHON_EXECUTION_BLOCKED"));
     }

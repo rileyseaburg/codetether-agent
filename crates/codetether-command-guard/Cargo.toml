@@ -1,0 +1,11 @@
+[package]
+name = "codetether-command-guard"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Non-bypassable shell command validation and rejection"
+
+[dependencies]
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"

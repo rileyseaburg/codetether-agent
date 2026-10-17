@@ -1,6 +1,6 @@
 //! Pure guard regressions: no interpreter or child process is executed.
 
-use crate::tool::shell_command_guard::{result, result_for_args};
+use crate::{result, result_for_args};
 use serde_json::json;
 
 mod allowed;

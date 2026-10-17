@@ -1,8 +1,8 @@
 //! Translate direct-worktree detection into the shared shell rejection result.
 
-pub(super) fn result(tool: &str, command: &str) -> Option<crate::tool::ToolResult> {
+pub(super) fn result(tool: &str, command: &str) -> Option<codetether_tool_core::ToolResult> {
     super::worktree_add::detected(command).then(|| {
-        crate::tool::ToolResult::structured_error(
+        codetether_tool_core::ToolResult::structured_error(
             "DIRECT_WORKTREE_ADD_BLOCKED",
             tool,
             "Direct `git worktree add` is blocked; use CodeTether-managed worktree isolation.",

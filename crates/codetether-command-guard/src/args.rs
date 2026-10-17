@@ -4,10 +4,21 @@
 ///
 /// The sandbox's default cwd may be a system temporary directory; only writes
 /// to such paths are rejected by the separate temp-write guard.
-pub(crate) fn result_for_args(
+///
+/// # Arguments
+/// * `tool` - Selects the bash or exec_command command field.
+/// * `args` - Tool argument object.
+/// # Returns
+/// The command rejection, if one of the mandatory checks matches.
+/// # Examples
+/// ```rust
+/// let args = serde_json::json!({"cmd":"echo ready"});
+/// assert!(codetether_command_guard::result_for_args("exec_command", &args).is_none());
+/// ```
+pub fn result_for_args(
     tool: &str,
     args: &serde_json::Value,
-) -> Option<crate::tool::ToolResult> {
+) -> Option<codetether_tool_core::ToolResult> {
     let command = match tool {
         "bash" => args.get("command"),
         "exec_command" => args.get("cmd"),

@@ -1,6 +1,6 @@
 //! Python execution rejection, independent of file-edit and approval policy.
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 mod detect;
 

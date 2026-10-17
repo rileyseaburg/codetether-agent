@@ -2412,6 +2412,22 @@ passed. Evidence: `artifacts/consolidation-session-spawn/`. No processes,
 runtime tests, Cargo, rustc or Python ran. Compilation and runtime behavior
 remain unverified; the complete workspace migration remains active.
 
+### Dedicated mandatory command guards
+
+Moved the shell command guard pipeline, Python invocation detection,
+inline-file-edit detection, temporary-path write detection, Git-hook bypass
+checks and direct-worktree checks into `crates/codetether-command-guard`.
+Thirty-five focused files include existing detector tests. Larger hook and
+file-edit test modules were divided by function; the application tool-level
+integration tests remain byte-identical and use compatibility exports.
+
+Static comparisons verify every moved detector/helper and test body, plus
+the complete rejection order and result metadata. Module reachability,
+dependency-cycle, file-budget and whitespace checks passed; files contain
+at most 46 code lines. Evidence: `artifacts/consolidation-command-guard/`.
+No shell commands, interpreter invocations, runtime tests, Cargo, rustc or
+Python ran. Compilation remains unverified. The full migration is active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

@@ -2,7 +2,10 @@ use super::detected;
 
 #[test]
 fn detects_redirect_into_temp() {
-    assert_eq!(detected("echo hi > /tmp/out.txt").as_deref(), Some("/tmp/out.txt"));
+    assert_eq!(
+        detected("echo hi > /tmp/out.txt").as_deref(),
+        Some("/tmp/out.txt")
+    );
     assert!(detected("cargo test 2>&1 | tee /var/tmp/log").is_some());
 }
 

@@ -1,6 +1,6 @@
 //! Detection of shell commands that write into a system temp directory.
 
-use crate::tool::temp_write_guard::denied_roots;
+use codetether_tool_core::temp_write_guard::denied_roots;
 
 /// Shell utilities that mutate the filesystem.
 const WRITE_COMMANDS: &[&str] = &[

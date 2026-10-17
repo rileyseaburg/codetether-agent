@@ -1,47 +1,5 @@
-//! Non-bypassable command rules shared by shell execution tools.
-
-use super::ToolResult;
-
-mod args;
-mod python;
-mod worktree;
-pub(crate) use args::result_for_args;
-
-#[path = "shell_git_hooks.rs"]
-mod git_hooks;
-#[path = "shell_temp_write.rs"]
-mod temp_write;
-#[path = "shell_worktree_add.rs"]
-mod worktree_add;
-
-pub(crate) fn result(tool: &str, command: &str) -> Option<ToolResult> {
-    if let Some(blocked) = python::result(tool, command) {
-        return Some(blocked);
-    }
-    if let Some(mut blocked) = super::bash_file_edit_guard::file_edit_guard_result(command) {
-        blocked
-            .metadata
-            .insert("tool".into(), serde_json::json!(tool));
-        return Some(blocked);
-    }
-    if let Some(path) = temp_write::detected(command) {
-        return super::temp_write_guard::denied_result(tool, &path);
-    }
-    if git_hooks::detected(command) {
-        return Some(ToolResult::structured_error(
-            "GIT_HOOK_BYPASS_BLOCKED",
-            tool,
-            "Commits and pushes must run the repository's hooks; `--no-verify` \
-             and hook-path overrides are blocked.",
-            None,
-            Some(serde_json::json!({
-                "fix": "Rerun without the bypass and address hook failures."
-            })),
-        ));
-    }
-    worktree::result(tool, command)
-}
-
+//! Compatibility exports for shared non-bypassable command checks.
+pub(crate) use codetether_command_guard::{result, result_for_args};
 #[cfg(test)]
 #[path = "shell_command_guard_tests.rs"]
 mod tests;
