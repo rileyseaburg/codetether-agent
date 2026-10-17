@@ -1393,6 +1393,7 @@ dependencies = [
  "codetether-todo",
  "codetether-token-count",
  "codetether-tool-core",
+ "codetether-tool-progress",
  "codetether-undo-tool",
  "codetether-util",
  "codetether-vectordb",
@@ -3440,6 +3441,10 @@ dependencies = [
  "tempfile",
  "tokio",
 ]
+
+[[package]]
+name = "codetether-tool-progress"
+version = "0.1.0"
 
 [[package]]
 name = "codetether-undo-tool"

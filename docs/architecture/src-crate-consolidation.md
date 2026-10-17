@@ -7372,3 +7372,21 @@ most 45 code lines. Evidence lives in `artifacts/consolidation-application-mcp/`
 No credential values were read, HTTP requests sent, runtime tests, Cargo, rustc
 or Python commands run. Compilation remains unverified; the full consolidation
 goal remains active.
+
+### Dedicated live-output progress registry
+
+Moved process-local progress sink storage, scoped registration, emission and
+RAII cleanup into `crates/codetether-tool-progress`. Four modules separate the
+chunk contract, registry, registration lifetime and delivery. The application
+retains only translation to `SessionEvent::ToolOutputChunk` and nonblocking
+`try_send`; full and closed session channels still drop chunks. The existing
+registration/emission callers and session event definition remain unchanged.
+
+Thirteen static preservation checks compare registry initialization, replacement
+and cleanup, lookup/clone ordering, event fields and channel delivery semantics.
+Callbacks run after the registry mutex is released, and the crate is the sole
+owner of the registry. Module reachability, dependency cycles, file budgets and
+whitespace checks passed; new Rust files contain at most 21 code lines. Evidence
+lives in `artifacts/consolidation-tool-progress/`. No runtime tests, Cargo, rustc
+or Python commands ran. Compilation remains unverified; the full consolidation
+goal remains active.
