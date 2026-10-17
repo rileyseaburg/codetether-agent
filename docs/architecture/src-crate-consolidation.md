@@ -6332,3 +6332,18 @@ orphaned modules; the dependency closure is acyclic. New files contain at most
 passed. Evidence: `artifacts/consolidation-webfetch/`. No credentials, HTTP
 requests, tool execution, Cargo, rustc, Python or runtime tests ran. The broader
 migration remains active.
+
+### Dedicated web-search tool crate
+
+Created `crates/codetether-websearch` and moved the web-search implementation out
+of `src/tool/websearch.rs`. Eight focused files separate the client, DuckDuckGo
+retrieval/parsing, result and parameter records, schema and execution. Existing
+application registration uses a compatibility export.
+
+Static comparison verifies client construction, timeout, request URL, wrapped
+link/entity decoding, result limits, schemas, output formatting and error paths.
+All eight files are reachable without missing/orphaned modules, and the
+dependency closure is acyclic. New files contain at most 45 code lines.
+Workspace/lockfile wiring, file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-websearch/`. No searches, HTTP requests, runtime tests,
+Cargo, rustc or Python were executed. The broader migration remains active.

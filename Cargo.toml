@@ -103,6 +103,7 @@ members = [
     "crates/codetether-vectordb",
     "crates/codetether-worker-http",
     "crates/codetether-webfetch",
+    "crates/codetether-websearch",
     "crates/codetether-worktree",
     "crates/codetether-worktree-isolation",
     "windows/CodeTether.Companion/desktop-staging",
@@ -302,6 +303,7 @@ codetether-grep-tool = { path = "crates/codetether-grep-tool", version = "0.1.0"
 codetether-file-tools = { path = "crates/codetether-file-tools", version = "0.1.0" }
 codetether-github-auth = { path = "crates/codetether-github-auth", version = "0.1.0" }
 codetether-webfetch = { path = "crates/codetether-webfetch", version = "0.1.0" }
+codetether-websearch = { path = "crates/codetether-websearch", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }
