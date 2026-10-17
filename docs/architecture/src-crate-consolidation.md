@@ -4628,3 +4628,27 @@ retained in `artifacts/consolidation-a2a-http-router/`. Compilation, tests, and
 live requests remain unverified. Session execution, authentication policy,
 and the remaining worker/application responsibilities still require review;
 the overall consolidation goal remains active.
+
+
+### Application HTTP server module cohesion
+
+The remaining application server now separates construction/router assembly,
+default card and skills, bus emission, stream admission, state capture,
+session/provider setup, event mapping/forwarding, response construction,
+guarded completion, and failure telemetry. The root retains the server fields,
+imports, and module wiring in 40 code lines. All 19 new files stay below
+50 code lines. Runtime application dependencies remain in these host modules.
+
+Fourteen static comparisons cover existing methods, card/skill values, bus
+messages, admission, session/provider failure handling, observer startup,
+stream outcomes, and spawn captures. Explicit log targets preserve the old
+server target. The task guard remains held during completion event logging;
+UUID creation and channel/provider ordering remain as before.
+
+The A2A-wide lexical graph reaches 336 files without missing modules. It also
+identifies an existing unreachable file, `src/a2a/worker/workspace_directory.rs`;
+its contents match HEAD and it remains pending worker ownership review. This
+finding prevents treating the A2A inventory as complete. File-budget and
+whitespace checks passed. Evidence is retained in
+`artifacts/consolidation-a2a-server-modules/`. Compilation, tests and runtime
+behavior remain unverified; the broader consolidation goal remains active.
