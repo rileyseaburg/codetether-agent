@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 35 | 2530 | Contracts/result conversion and transports extracted; client/server, registry and policy integration remain |
+| mcp | 35 | 2499 | Contracts, transports, request IDs/correlation and result conversion extracted; client/server policy, identity and registry integration remain |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -171,7 +171,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-bonsai | 80 | yes | none |
 | codetether-moltbook | 36 | yes | none |
 | codetether-mcp-core | 53 | yes | none |
-| codetether-mcp-transport | 17 | yes | none |
+| codetether-mcp-transport | 21 | yes | none |
 | codetether-model-catalog | 30 | yes | none |
 | codetether-util | 3 | yes | none |
 | codetether-vectordb | 14 | yes | none |
@@ -3793,3 +3793,21 @@ file limits and whitespace checks were used. No transport, network request,
 subprocess, Cargo, rustc, Python or Rust test was executed. Compilation and
 tests remain unverified. Evidence: artifacts/consolidation-mcp-transport/.
 The full workspace consolidation goal remains active.
+
+## MCP request correlation ownership
+
+MCP-transport::rpc owns a connection's request-ID counter, pending response
+channels, request timeouts/errors, notifications and response delivery. The
+application retains receive-loop dispatch, server registration, initialization
+identity and permission checks. Its transport accessor borrows the same Arc
+allocation without cloning; constructor state and per-client counter scope
+are unchanged. Timeout and cancellation cleanup behavior was not altered.
+
+Ten static checks compare original request/notification/response operations,
+full client adaptation, subprocess approval helper, state initialization and
+transport borrowing. Lexical graphs cover 21 transport files and 35
+application files with no missing/unreferenced modules. Tokio's existing time
+feature is now explicit. New files have at most 29 code lines. Formatting,
+file-limit and whitespace checks passed; no connection, request, subprocess,
+Cargo, rustc, Python or tests ran. Compilation and tests remain unverified.
+Evidence: artifacts/consolidation-mcp-rpc/. The workspace goal remains active.

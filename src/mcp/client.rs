@@ -12,11 +12,8 @@ use anyhow::Result;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicI64, Ordering};
-use std::time::Duration;
-use tokio::sync::{RwLock, oneshot};
-use tokio::time::timeout;
-use tracing::{debug, error, info, warn};
+use tokio::sync::RwLock;
+use tracing::{debug, error, info};
 
 #[path = "client_call_tool.rs"]
 mod call_tool;
@@ -25,9 +22,7 @@ mod subprocess;
 
 /// MCP Client for connecting to external servers
 pub struct McpClient {
-    transport: Arc<dyn Transport>,
-    pending_requests: RwLock<HashMap<RequestId, oneshot::Sender<JsonRpcResponse>>>,
-    request_id: AtomicI64,
+    connection: codetether_mcp_transport::rpc::RpcConnection,
     server_info: RwLock<Option<ServerInfo>>,
     server_capabilities: RwLock<Option<ServerCapabilities>>,
     available_tools: RwLock<Vec<McpTool>>,
@@ -46,9 +41,7 @@ impl McpClient {
     /// Create a new MCP client with custom transport
     pub fn new(transport: Arc<dyn Transport>) -> Self {
         Self {
-            transport,
-            pending_requests: RwLock::new(HashMap::new()),
-            request_id: AtomicI64::new(1),
+            connection: codetether_mcp_transport::rpc::RpcConnection::new(transport),
             server_info: RwLock::new(None),
             server_capabilities: RwLock::new(None),
             available_tools: RwLock::new(Vec::new()),
@@ -64,9 +57,7 @@ impl McpClient {
         name: Option<String>,
     ) -> Self {
         Self {
-            transport,
-            pending_requests: RwLock::new(HashMap::new()),
-            request_id: AtomicI64::new(1),
+            connection: codetether_mcp_transport::rpc::RpcConnection::new(transport),
             server_info: RwLock::new(None),
             server_capabilities: RwLock::new(None),
             available_tools: RwLock::new(Vec::new()),
@@ -228,47 +219,17 @@ impl McpClient {
         let result: GetPromptResult = serde_json::from_value(response)?;
         Ok(result)
     }
-
-    /// Send a JSON-RPC request and wait for response
     async fn request(&self, method: &str, params: Option<Value>) -> Result<Value> {
-        let id = RequestId::Number(self.request_id.fetch_add(1, Ordering::SeqCst));
-        let request = JsonRpcRequest::new(id.clone(), method, params);
-
-        // Create response channel
-        let (tx, rx) = oneshot::channel();
-        self.pending_requests.write().await.insert(id.clone(), tx);
-
-        // Send request
-        self.transport.send_request(request).await?;
-
-        // Wait for response with timeout
-        let response = timeout(Duration::from_secs(30), rx)
-            .await
-            .map_err(|_| anyhow::anyhow!("Request timed out"))??;
-
-        if let Some(error) = response.error {
-            return Err(anyhow::anyhow!(
-                "MCP error {}: {}",
-                error.code,
-                error.message
-            ));
-        }
-
-        response
-            .result
-            .ok_or_else(|| anyhow::anyhow!("Empty response"))
+        self.connection.request(method, params).await
     }
-
-    /// Send a notification (no response expected)
     async fn notify(&self, method: &str, params: Option<Value>) -> Result<()> {
-        let notification = JsonRpcNotification::new(method, params);
-        self.transport.send_notification(notification).await
+        self.connection.notify(method, params).await
     }
 
     /// Message receive loop
     async fn receive_loop(&self) {
         loop {
-            match self.transport.receive().await {
+            match self.connection.transport().receive().await {
                 Ok(Some(message)) => {
                     self.handle_message(message).await;
                 }
@@ -289,11 +250,7 @@ impl McpClient {
         match message {
             McpMessage::Response(response) => {
                 // Find and notify the waiting request
-                if let Some(tx) = self.pending_requests.write().await.remove(&response.id) {
-                    let _ = tx.send(response);
-                } else {
-                    warn!("Received response for unknown request: {:?}", response.id);
-                }
+                self.connection.deliver(response).await;
             }
             McpMessage::Request(request) => {
                 // Server is making a request to us (e.g., sampling)
@@ -314,7 +271,7 @@ impl McpClient {
                     ),
                 };
 
-                if let Err(e) = self.transport.send_response(response).await {
+                if let Err(e) = self.connection.transport().send_response(response).await {
                     error!("Failed to send response: {}", e);
                 }
             }
@@ -341,7 +298,7 @@ impl McpClient {
 
     /// Close the connection
     pub async fn close(&self) -> Result<()> {
-        self.transport.close().await
+        self.connection.transport().close().await
     }
 }
 

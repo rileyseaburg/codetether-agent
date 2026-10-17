@@ -21,3 +21,6 @@ pub use null::NullTransport;
 pub use process::ProcessTransport;
 pub use sse::SseTransport;
 pub use stdio::StdioTransport;
+
+/// Request IDs, pending response channels and JSON-RPC transactions.
+pub mod rpc;
