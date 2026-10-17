@@ -13,6 +13,7 @@ members = [
     "crates/codetether-browser",
     "crates/codetether-benchmark",
     "crates/codetether-bus-core",
+    "crates/codetether-bus-http",
     "crates/codetether-bus-s3",
     "crates/codetether-companion-capture",
     "crates/codetether-companion-core",
@@ -197,6 +198,7 @@ codetether-voice-core = { path = "crates/codetether-voice-core", version = "0.1.
 codetether-context-policy = { path = "crates/codetether-context-policy", version = "0.1.0" }
 codetether-autochat-core = { path = "crates/codetether-autochat-core", version = "0.1.0" }
 codetether-bus-s3 = { path = "crates/codetether-bus-s3", version = "0.1.0" }
+codetether-bus-http = { path = "crates/codetether-bus-http", version = "0.1.0" }
 codetether-bus-core = { path = "crates/codetether-bus-core", version = "0.1.0" }
 codetether-a2a-core = { path = "crates/codetether-a2a-core", version = "0.1.0" }
 codetether-swarm-core = { path = "crates/codetether-swarm-core", version = "0.1.0" }

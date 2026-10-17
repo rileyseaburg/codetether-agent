@@ -1133,6 +1133,7 @@ dependencies = [
  "codetether-benchmark",
  "codetether-browser",
  "codetether-bus-core",
+ "codetether-bus-http",
  "codetether-bus-s3",
  "codetether-codex-auth",
  "codetether-codex-protocol",
@@ -1432,6 +1433,22 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-bus-http"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-bus-core",
+ "futures",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "urlencoding",
 ]
 
 [[package]]

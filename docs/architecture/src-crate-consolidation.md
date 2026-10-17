@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 68 | 2320 | Shared catalog/registry, server responses, protocol and transports extracted; server host and fallback adapters modularized; client and bridge ownership audit remains |
+| mcp | 68 | 1910 | Shared protocol, transport, catalogs and HTTP bus bridge extracted; server adapters modularized; client metadata ownership audit remains |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -100,6 +100,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-autochat-core | 73 | yes | none |
 | codetether-benchmark | 42 | yes | none |
 | codetether-bus-core | 134 | yes | none |
+| codetether-bus-http | 21 | yes | none |
 | codetether-bus-s3 | 30 | yes | none |
 | codetether-browser | 102 | yes | none |
 | codetether-cognition-native | 60 | yes | none |
@@ -3927,3 +3928,29 @@ Standalone rustfmt was used. No Cargo, rustc, Python, filesystem tool handler,
 application runtime, Rust test or doctest ran. Compilation and runtime remain
 unverified. Evidence: artifacts/consolidation-mcp-server-modules/. The broader
 workspace objective remains active; client and bridge ownership still need audit.
+
+## HTTP bus bridge ownership
+
+The new codetether-bus-http crate owns authenticated SSE ingestion, bounded
+event retention, bridge status, worker/workspace endpoint discovery and local
+workspace matching. Its 21 modules separate transport, reconnect policy, line
+parsing, buffer mutation/query, resolver operations and matching rules. The
+application MCP bus_bridge path re-exports the existing public API. This adapter
+depends on shared bus envelopes without coupling HTTP discovery to MCP wire types.
+
+All 30 static comparisons passed: original method and function bodies, public
+signatures, state layouts and serialization, constants, original test source,
+and the one extracted active-worker filter. HTTP bearer-token use, response
+validation, reconnect timing, SSE line framing, eviction and event order remain
+unchanged. Internal field/method visibility allows sibling implementation modules.
+Old log targets are explicit. Lexical scans found all 21 new crate and 68 MCP
+application files reachable. The five-crate local dependency closure has no
+detected cycle. New files have at most 44 code lines.
+
+The workspace manifest and lockfile were edited for the new local crate.
+The lockfile adds only its package entry and the application dependency, using
+the already locked reqwest 0.13.4. No dependency resolution ran. File-limit and
+diff whitespace checks passed; standalone rustfmt formatted moved Rust. No Cargo,
+rustc, Python, network request, credential lookup, background task, Rust test or
+doctest ran. Compilation and runtime remain unverified. Evidence is retained in
+artifacts/consolidation-bus-http/. The whole-workspace goal remains active.
