@@ -2,9 +2,9 @@
 
 use serde_json::{Value, json};
 
-pub(super) const DESCRIPTION: &str = "Recursive Language Model for processing large codebases. Use this when you need to analyze files or content that exceeds the context window. RLM chunks the content, processes each chunk, and synthesizes results. Actions: 'analyze' (analyze large content), 'summarize' (summarize large files), 'search' (semantic search across large codebase).";
+pub(crate) const DESCRIPTION: &str = "Recursive Language Model for processing large codebases. Use this when you need to analyze files or content that exceeds the context window. RLM chunks the content, processes each chunk, and synthesizes results. Actions: 'analyze' (analyze large content), 'summarize' (summarize large files), 'search' (semantic search across large codebase).";
 
-pub(super) fn parameters() -> Value {
+pub(crate) fn parameters() -> Value {
     json!({
         "type": "object",
         "properties": {

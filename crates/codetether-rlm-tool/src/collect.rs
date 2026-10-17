@@ -1,11 +1,11 @@
 //! Bounded content collection for RLM invocations.
 
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 
 const PATH_READ_BUDGET_BYTES: usize = 20 * 1024 * 1024;
 
-pub(super) async fn collect(paths: &[&str], content: Option<&str>) -> Result<String, ToolResult> {
+pub(crate) async fn collect(paths: &[&str], content: Option<&str>) -> Result<String, ToolResult> {
     if let Some(c) = content {
         return Ok(c.to_string());
     }

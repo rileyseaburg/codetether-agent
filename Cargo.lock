@@ -1320,6 +1320,7 @@ dependencies = [
  "codetether-go-monitor",
  "codetether-go-prd",
  "codetether-go-ralph",
+ "codetether-rlm-tool",
  "codetether-go-tool",
  "codetether-image-generation",
  "codetether-indexer",
@@ -2420,6 +2421,20 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-rlm-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-provider-core",
+ "codetether-rlm",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

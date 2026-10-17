@@ -7705,3 +7705,23 @@ modules contain at most 50 code lines. Evidence lives in
 `artifacts/consolidation-go-ralph/`. No pipeline, runtime tests, Cargo, rustc or
 Python commands ran. Compilation remains unverified; the full source-to-crates
 consolidation goal remains active.
+
+### Dedicated Recursive Language Model tool
+
+Moved RLM action/schema handling, direct-content and bounded file collection,
+effective query construction, processing/result interpretation and deterministic
+fallbacks into `crates/codetether-rlm-tool`. Ten Rust modules replace the previous
+application implementation. The application retains the concrete RLM context
+adapter and routing call; its tool module is now a type alias. The 20 MiB file
+read budget, direct-content precedence, action/query validation, session and
+trace context, token statistics, non-convergence handling and 8,000-token
+fallback limit are preserved. This removes 217 lines from the application tool
+directory.
+
+Twenty static preservation checks compare the moved implementation and adapter
+composition. Lexical module reachability, local dependency cycles, file budgets
+and whitespace checks passed. New crate modules contain at most 41 code lines.
+Evidence is in `artifacts/consolidation-rlm-tool/`. No input files were processed,
+provider calls or runtime tests performed, or Cargo, rustc or Python commands
+executed. Compilation remains unverified; the full source-to-crates goal remains
+active.
