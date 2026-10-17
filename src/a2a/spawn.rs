@@ -26,13 +26,13 @@
 //! # Discovery
 //!
 //! Every `discovery_interval_secs` (clamped to ≥ 5):
-//! - For each seed, build candidates via [`peer_candidates`] (tries `seed`
+//! - For each seed, build candidates via [`peer_candidates`](codetether_a2a_discovery::endpoint::peer_candidates) (tries `seed`
 //!   and `seed/a2a` unless the seed already ends in `/a2a`).
 //! - First successful agent-card fetch wins; the card is registered in
 //!   `bus.registry`.
-//! - On *first* sighting of a given `endpoint::card.name` pair: emit
+//! - On *first* sighting of a given endpoint: emit
 //!   `Discovered A2A peer` and (if `auto_introduce`) call
-//!   [`send_intro`] over the A2A client.
+//!   [`send_intro`](crate::a2a::intro::send_intro) over the A2A client.
 //! - Re-sightings re-register the card (refresh) but do not re-introduce.
 //!
 //! Outbound discovery and intro calls attach `CODETETHER_AUTH_TOKEN` as a
@@ -45,34 +45,30 @@
 //! source map).
 
 use crate::a2a::lan;
+use crate::a2a::local_identity;
 use crate::a2a::mdns::{self, DiscoveredPeer};
 use crate::a2a::server::A2AServer;
-use crate::a2a::{intro::send_intro, local_identity};
 use crate::bus::AgentBus;
 use crate::cli::SpawnArgs;
 use anyhow::{Context, Result};
 use axum::Router;
-use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
 #[path = "spawn/agent_card.rs"]
 mod agent_card;
 #[path = "spawn/handle.rs"]
 mod handle;
-use codetether_a2a_http::peer_probe::try_fetch_agent_card;
 pub use handle::A2APeerHandle;
 mod background;
 mod command;
 mod options;
 pub use background::start_a2a_in_background;
 use codetether_a2a_discovery::endpoint::{
-    collect_peers, concrete, first_lan_ipv4, normalize_base_url, peer_candidates,
+    collect_peers, concrete, first_lan_ipv4, normalize_base_url,
 };
 pub use codetether_a2a_discovery::naming::auto_agent_name;
-use codetether_a2a_http::peer_intake::mdns_intake_loop;
+use codetether_a2a_http::peer_intake::{discovery_loop, mdns_intake_loop};
 pub use command::run;
 pub use options::SpawnOptions;
 
@@ -153,6 +149,7 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
         agent_name.clone(),
         opts.discovery_interval_secs.max(5),
         opts.auto_introduce,
+        crate::a2a::intro::ledger::ledger_path,
     ));
 
     // 6. mDNS announce + browse (true P2P, default on).
@@ -220,81 +217,4 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
         bind_addr,
         public_url,
     })
-}
-
-async fn discovery_loop(
-    bus: Arc<AgentBus>,
-    peers: Vec<String>,
-    self_url: String,
-    agent_name: String,
-    interval_secs: u64,
-    auto_introduce: bool,
-) {
-    let discovered = Arc::new(Mutex::new(HashSet::<String>::new()));
-    let mut ticker = tokio::time::interval(Duration::from_secs(interval_secs));
-
-    loop {
-        ticker.tick().await;
-
-        for peer_seed in &peers {
-            let candidates = peer_candidates(peer_seed);
-            let mut discovered_card = None;
-
-            for candidate in candidates {
-                match try_fetch_agent_card(&candidate).await {
-                    Ok(card) => {
-                        discovered_card = Some((candidate, card));
-                        break;
-                    }
-                    Err(error) => {
-                        tracing::debug!(
-                            agent = %agent_name,
-                            peer = %candidate,
-                            error = %error,
-                            "Peer probe failed"
-                        );
-                    }
-                }
-            }
-
-            let Some((endpoint, card)) = discovered_card else {
-                continue;
-            };
-
-            // Dedup by endpoint only: card names embed the peer PID and
-            // churn on every restart, which caused intro storms. The
-            // persistent ledger in `intro::send` handles cross-restart
-            // dedup on our side.
-            let peer_id = endpoint.trim_end_matches('/').to_string();
-            let is_new = {
-                let mut known = discovered.lock().await;
-                known.insert(peer_id)
-            };
-
-            bus.registry.register(card.clone());
-            crate::a2a::peer_route::register(&card, &endpoint, None);
-
-            if is_new {
-                crate::a2a::mdns_liveness::emit_discovered(&bus, &card.name, &endpoint);
-                tracing::info!(
-                    agent = %agent_name,
-                    peer_name = %card.name,
-                    peer_url = %card.url,
-                    endpoint = %endpoint,
-                    "Discovered A2A peer"
-                );
-
-                if auto_introduce
-                    && let Err(error) = send_intro(&endpoint, &agent_name, &self_url, None).await
-                {
-                    tracing::warn!(
-                        agent = %agent_name,
-                        peer = %endpoint,
-                        error = %error,
-                        "Auto-intro message failed"
-                    );
-                }
-            }
-        }
-    }
 }

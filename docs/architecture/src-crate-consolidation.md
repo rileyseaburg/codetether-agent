@@ -5824,3 +5824,21 @@ files contain at most 48 code lines. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-peer-intake/`. Compilation, tests, and live
 network discovery remain unrun. No Cargo, rustc, or Python commands ran.
 The broader implementation migration remains active.
+
+### Shared explicit-seed discovery
+
+Moved the remaining explicit-seed discovery loop from application `spawn.rs`
+into the HTTP crate's `peer_intake::seeds` module. Poll scheduling, sequential
+candidate probing, and endpoint registration/introduction now have separate
+modules. Application startup supplies configured seeds, the clamped interval,
+and its existing introduction-ledger path resolver.
+
+Static comparison expands the extracted helpers and verifies the original loop's
+operation order, endpoint-only deduplication, first-success probing, route and
+presence updates, introduction conditions, and log targets. Application wiring
+matches the intended extraction. The module scan reaches 249 application A2A
+files and 118 HTTP files without missing/orphaned modules; the dependency closure
+is acyclic. New files contain at most 40 code lines. File-budget and whitespace
+checks passed. Evidence: `artifacts/consolidation-seed-discovery/`. Compilation,
+tests, and live discovery remain unrun; no Cargo, rustc, or Python commands ran.
+The broader migration remains active.

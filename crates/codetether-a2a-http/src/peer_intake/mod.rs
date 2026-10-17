@@ -1,7 +1,8 @@
-//! Concurrent HTTP resolution of peers found by local discovery.
+//! HTTP resolution of locally discovered and explicitly configured peers.
 //!
 //! [mdns_intake_loop] refreshes peer presence, registers routes, and optionally
-//! introduces the local agent. Callers supply the bus and ledger-path resolver.
+//! introduces the local agent. [discovery_loop] polls explicit seeds.
+//! Callers supply the bus and ledger-path resolver.
 use crate::{intro::send::send_intro, peer_probe as mdns_probe};
 use codetether_a2a_discovery::{liveness::PeerLiveness, mdns::DiscoveredPeer, presence, routes};
 use codetether_bus_core::AgentBus;
@@ -11,3 +12,7 @@ mod accept;
 mod run;
 use accept::handle_mdns_peer;
 pub use run::mdns_intake_loop;
+
+mod seeds;
+/// Periodic discovery of configured peer seeds.
+pub use seeds::discovery_loop;
