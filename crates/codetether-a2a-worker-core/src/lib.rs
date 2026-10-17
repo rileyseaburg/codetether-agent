@@ -22,3 +22,6 @@ mod consolidation;
 
 /// CloudEvent contracts and task-ingress normalization.
 pub mod cloudevents;
+
+/// Task-envelope targeting policy for worker intake.
+pub mod task_scope;

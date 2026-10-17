@@ -94,7 +94,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | --- | ---: | --- | --- |
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-http | 6 | yes | codetether-a2a-core |
-| codetether-a2a-worker-core | 30 | yes | none |
+| codetether-a2a-worker-core | 36 | yes | none |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
 | codetether-audit | 1 | yes | none |
@@ -4488,3 +4488,20 @@ The source line-budget and whitespace checks passed. Evidence is retained in
 `artifacts/consolidation-a2a-http/`. Compilation, tests, and runtime behavior
 remain unverified: Cargo, rustc, and runtime checks were not run.
 The broader consolidation goal remains active.
+
+
+### Shared A2A task-routing scope
+
+`codetether-a2a-worker-core::task_scope` owns task-intake targeting policy.
+Envelope field lookup and ordered agent/worker/workspace checks have separate
+modules; the existing application module re-exports `check_task_scope`.
+Metadata precedence, the first-rejection order, global/empty-workspace behavior,
+and rejection messages are preserved. The existing 11 test functions moved
+unchanged into three focused test modules. No dependencies were added.
+
+Static comparison expands the extracted lookup expression and verifies the
+original policy tokens, metadata lookup, and every moved test function. The
+worker-core module graph reaches all 36 source files without missing modules;
+all six new files are below 50 code lines. File-budget and whitespace checks
+passed. Evidence is in `artifacts/consolidation-a2a-scope/`. Tests and compilation
+were not run under the Cargo/rustc restriction. The overall goal remains active.
