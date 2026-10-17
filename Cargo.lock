@@ -1334,6 +1334,7 @@ dependencies = [
  "codetether-platform",
  "codetether-plugin-marketplace",
  "codetether-plugin-verification",
+ "codetether-podcast-tool",
  "codetether-prd-tool",
  "codetether-process-capture",
  "codetether-process-tree",
@@ -2592,6 +2593,18 @@ dependencies = [
  "sha2 0.11.0",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-podcast-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

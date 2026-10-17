@@ -7191,3 +7191,22 @@ new Rust files contain at most 48 code lines. Evidence:
 `artifacts/consolidation-youtube-tool/`. No uploads, publishing requests,
 network calls, runtime tests, Cargo, rustc or Python commands ran. Compilation
 remains unverified; the full workspace consolidation goal remains active.
+
+### Dedicated podcast management tool
+
+Moved `PodcastTool` into `crates/codetether-podcast-tool`. Thirty-five modules
+separate podcast/episode request records, required fields, action dispatch,
+multipart requests, response formatting, list/detail/delete operations and
+schema properties. The application retains a compatibility export. The voice
+API endpoint, client timeout, default author/voice and response metadata remain
+unchanged.
+
+Thirty-one static preservation checks reconstruct all six action flows and
+the complete schema, comparing field validation, parameter construction,
+request methods, form fields, response handling and errors. Module reachability,
+duplicate-module, dependency-cycle, file-budget and whitespace checks passed;
+new Rust files contain at most 47 code lines. Evidence:
+`artifacts/consolidation-podcast-tool/`. No podcast or episode operations,
+network requests, runtime tests, Cargo, rustc or Python commands ran.
+Compilation remains unverified; the full workspace consolidation goal remains
+active.
