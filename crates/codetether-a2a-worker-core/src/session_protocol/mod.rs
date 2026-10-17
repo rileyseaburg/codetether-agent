@@ -18,3 +18,6 @@ mod wrap_up_tests;
 
 /// Host-driven bounded worker execution loop.
 pub mod driver;
+
+/// Model response recording and ordered tool execution.
+pub mod response;

@@ -18,4 +18,3 @@ pub(super) fn add_tool_result(
         content,
     });
 }
-pub(super) use codetether_a2a_worker_core::session_protocol::append_text_output;

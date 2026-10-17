@@ -5619,3 +5619,21 @@ declares the existing async-trait dependency. File-budget and whitespace checks
 passed. Evidence: `artifacts/consolidation-session-driver/`. Compilation,
 tests, and live session execution remain unrun. No Cargo, rustc, or Python
 commands ran. The broader migration remains active.
+
+### Shared worker response driver
+
+Moved worker model-response sequencing into worker-core behind `ResponseHost`.
+The shared driver checks execution state, records usage, emits ordered text,
+appends the assistant message, then executes tool calls. The application host
+retains control checks, telemetry storage, session mutation, and approved tool
+execution. Unused local extraction/output re-exports were removed.
+
+Static comparison verifies the original response ordering and all four host
+methods, with response-context fields unchanged. Eleven existing control
+regression/support files remain byte-identical. The lexical graph reaches
+159 worker-core files and 254 application A2A files without missing/orphaned
+modules or dependency cycles. New files contain at most 34 code lines.
+File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-response-driver/`. Compilation, tests, and execution
+remain unrun. No Cargo, rustc, or Python commands ran. The broader migration
+remains active.

@@ -2,8 +2,6 @@ use std::{path::Path, sync::Arc};
 
 use crate::session::Session;
 
-#[path = "session_step_tools/collect.rs"]
-mod collect;
 #[cfg(test)]
 mod denied_tests;
 #[cfg(test)]
@@ -12,7 +10,7 @@ mod image_fixture;
 mod image_tests;
 mod tool_run;
 use super::session_output;
-pub(super) use collect::{ToolCall, collect_tool_calls};
+pub(super) use codetether_a2a_worker_core::session_protocol::ToolCall;
 
 pub(super) async fn execute_tool_call(
     session: &mut Session,
@@ -51,5 +49,3 @@ pub(super) async fn execute_tool_call(
     let output = tool_run::run_tool(registry, &tool_name, input, cb).await;
     session_output::add_tool_result(session, tool_id, output);
 }
-
-pub(super) use session_output::append_text_output;

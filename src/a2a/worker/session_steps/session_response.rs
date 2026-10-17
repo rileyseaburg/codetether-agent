@@ -1,11 +1,9 @@
-//! Processes a completed model response: records usage, emits output, runs any
-//! tool calls. Kept separate so the step loop stays within the file budget.
-
-use std::sync::Arc;
-
-use super::session_step_tools::{append_text_output, collect_tool_calls, execute_tool_call};
+//! Application context and adapter for the shared worker response driver.
 use crate::provider::CompletionResponse;
 use crate::session::Session;
+use std::sync::Arc;
+#[path = "session_response_host.rs"]
+mod host;
 
 /// Constant per-run inputs needed to process a step response.
 pub(super) struct ResponseContext<'a> {
@@ -14,6 +12,10 @@ pub(super) struct ResponseContext<'a> {
     pub auto_approve: super::super::AutoApprove,
     pub workspace_dir: &'a std::path::Path,
     pub output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
+}
+struct ApplicationHost<'a, 'context> {
+    context: &'a ResponseContext<'context>,
+    session: &'a mut Session,
 }
 
 /// Record usage, append text output, persist the message, then run tool calls.
@@ -24,33 +26,15 @@ pub(super) async fn process_response(
     final_output: &mut String,
     response: CompletionResponse,
 ) -> anyhow::Result<bool> {
-    crate::session::runtime::boundary::ensure_running(&session.id).await?;
-    let (pt, ct) = (
-        response.usage.prompt_tokens,
-        response.usage.completion_tokens,
-    );
-    crate::telemetry::TOKEN_USAGE.record_model_usage(ctx.model, pt as u64, ct as u64);
-    let tool_calls = collect_tool_calls(&response.message.content);
-    append_text_output(
-        &response.message.content,
-        final_output,
-        &ctx.output_callback,
-    );
-    session.add_message(response.message.clone());
-    if tool_calls.is_empty() {
-        return Ok(true);
-    }
-    for tool_call in tool_calls {
-        execute_tool_call(
+    codetether_a2a_worker_core::session_protocol::response::process_response(
+        &mut ApplicationHost {
+            context: ctx,
             session,
-            ctx.tool_registry,
-            ctx.auto_approve,
-            ctx.workspace_dir,
-            ctx.model,
-            &ctx.output_callback,
-            tool_call,
-        )
-        .await;
-    }
-    Ok(false)
+        },
+        ctx.model,
+        &ctx.output_callback,
+        final_output,
+        response,
+    )
+    .await
 }
