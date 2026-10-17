@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 68 | 1910 | Shared protocol, transport, catalogs and HTTP bus bridge extracted; server adapters modularized; client metadata ownership audit remains |
+| mcp | 73 | 1825 | Shared protocol, transport, remote client state, catalogs and HTTP bus bridge extracted; application retains policy, registry wiring and server tool adapters |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -172,7 +172,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-bonsai | 80 | yes | none |
 | codetether-moltbook | 36 | yes | none |
 | codetether-mcp-core | 81 | yes | none |
-| codetether-mcp-transport | 26 | yes | none |
+| codetether-mcp-transport | 36 | yes | none |
 | codetether-model-catalog | 30 | yes | none |
 | codetether-util | 3 | yes | none |
 | codetether-vectordb | 14 | yes | none |
@@ -3954,3 +3954,24 @@ diff whitespace checks passed; standalone rustfmt formatted moved Rust. No Cargo
 rustc, Python, network request, credential lookup, background task, Rust test or
 doctest ran. Compilation and runtime remain unverified. Evidence is retained in
 artifacts/consolidation-bus-http/. The whole-workspace goal remains active.
+
+## Remote MCP client session ownership
+
+MCP-transport::client::RemoteClient owns the correlated connection, server
+metadata, name and tool cache, initialization, incoming message handling,
+resource/prompt forwarding and transport closure. Ten focused modules separate
+these responsibilities. The application McpClient retains registry identity,
+subprocess authorization, outgoing tool policy and package-version selection.
+Its root and five implementation modules now form a small host adapter.
+
+All 38 static comparisons passed, covering moved methods and lock operations,
+constructor state, explicit initialization version, log targets, complete host
+forwarding, registry methods and policy-before-execution order. Sampling remains
+the existing unsupported response; notification refresh behavior is preserved.
+All new modules and the client root are at most 45 code lines. Lexical scans
+cover all 36 transport and 73 application MCP files with no missing or orphaned
+modules; the five-crate local dependency closure has no detected cycle.
+File-limit and whitespace checks passed. Standalone rustfmt formatted the Rust.
+No Cargo, rustc, Python, subprocess, peer connection, Rust test or doctest ran;
+compilation and runtime remain unverified. Evidence is retained in
+artifacts/consolidation-mcp-remote-client/. The full workspace goal remains active.

@@ -27,3 +27,6 @@ pub mod rpc;
 
 /// Remote MCP initialization, tool, resource and prompt operations.
 pub mod remote;
+
+/// Remote MCP protocol session and cached peer metadata.
+pub mod client;

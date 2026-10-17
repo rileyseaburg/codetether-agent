@@ -14,7 +14,7 @@ impl McpClient {
             return Ok(blocked);
         }
         let arguments = strip_approval_id(arguments);
-        self.connection.call_tool(name, arguments).await
+        self.inner.connection().call_tool(name, arguments).await
     }
 }
 
