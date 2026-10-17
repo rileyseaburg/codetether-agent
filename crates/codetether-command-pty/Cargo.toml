@@ -1,0 +1,13 @@
+[package]
+name = "codetether-command-pty"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Platform terminal attachment for interactive CodeTether commands"
+
+[dependencies]
+tokio = { version = "1", features = ["process"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.189"

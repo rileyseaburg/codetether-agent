@@ -2132,6 +2132,23 @@ whitespace checks passed; new files contain at most 46 code lines. Evidence:
 Cargo, rustc or Python ran. Platform runtime behavior and compilation remain
 unverified. The complete workspace consolidation remains active.
 
+### Shared interactive terminal attachment crate
+
+Moved `src/tool/command_pty.rs` and its platform implementations into
+`crates/codetether-command-pty`. The application re-exports the transport enum
+and attachment function so existing command and sandbox consumers use the
+shared crate. Unix terminal dimensions, descriptor ownership, stdio setup
+and controlling-terminal hook remain unchanged, as does the pipe fallback.
+
+Static comparisons verify all three source files after visibility and module
+path changes. Module reachability, dependency-cycle, workspace wiring,
+file-budget and whitespace checks passed. A missing initial lockfile insertion
+anchor was corrected before staging; the final check verifies both the root
+dependency and the complete package entry. New files contain at most 42 code
+lines. Evidence: `artifacts/consolidation-command-pty/`. No terminals,
+subprocesses, runtime tests, Cargo, rustc or Python ran. Compilation and
+platform runtime behavior remain unverified. The full migration remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict
