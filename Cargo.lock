@@ -1323,6 +1323,7 @@ dependencies = [
  "codetether-provider-zai",
  "codetether-question",
  "codetether-ralph-core",
+ "codetether-relay-tool",
  "codetether-ripgrep-tool",
  "codetether-rlm",
  "codetether-runtime-policy",
@@ -2626,6 +2627,21 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-relay-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-bus-core",
+ "codetether-tool-core",
+ "lazy_static",
+ "parking_lot",
+ "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

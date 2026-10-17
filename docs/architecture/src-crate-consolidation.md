@@ -6430,3 +6430,23 @@ file-budget and whitespace checks. New files contain at most 34 code lines.
 Evidence: `artifacts/consolidation-swarm-share/`. No store operations, runtime
 tests, Cargo, rustc or Python ran. Compilation remains unverified; the broader
 migration remains active.
+
+### Dedicated relay coordination tool
+
+Moved `src/tool/relay_autochat.rs` into `crates/codetether-relay-tool`. The
+crate owns its private bus, per-relay runtime registry and participant lists.
+It uses the existing protocol runtime in `codetether-bus-core`; the private
+bus remains separate from the process-global application bus. Twenty-six
+files separate state, construction, schema, request parsing, validation,
+action handling and tests. The application retains a compatibility export.
+
+Static comparisons verify constructors, private state, schema, error payloads,
+all six actions and the two existing regression scenarios. Validation and
+message helpers are expanded during comparison to check original operation
+order and return behavior. One test's setup was extracted into a helper;
+its assertions and operations remain preserved. Neither test was executed.
+The module and dependency scans passed, with no missing/orphaned modules or
+dependency cycles. Files contain at most 49 code lines; file-budget and
+whitespace checks passed. Evidence: `artifacts/consolidation-relay-tool/`.
+No relay traffic, runtime tests, Cargo, rustc or Python ran. Compilation
+remains unverified. The full workspace migration remains active.

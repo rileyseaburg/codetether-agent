@@ -89,6 +89,7 @@ members = [
     "crates/codetether-question",
     "crates/codetether-rlm",
     "crates/codetether-ripgrep-tool",
+    "crates/codetether-relay-tool",
     "crates/codetether-ralph-core",
     "crates/codetether-swarm-core",
     "crates/codetether-swarm-share",
@@ -314,6 +315,7 @@ codetether-websearch = { path = "crates/codetether-websearch", version = "0.1.0"
 codetether-code-search = { path = "crates/codetether-code-search", version = "0.1.0" }
 codetether-git-tool = { path = "crates/codetether-git-tool", version = "0.1.0" }
 codetether-okr-tool = { path = "crates/codetether-okr-tool", version = "0.1.0" }
+codetether-relay-tool = { path = "crates/codetether-relay-tool", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }
