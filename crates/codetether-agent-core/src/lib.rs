@@ -17,3 +17,6 @@ pub use types::{AgentInfo, AgentMode, AgentResponse, ToolMetadata, ToolUse};
 pub mod events;
 #[cfg(test)]
 mod tests;
+
+/// Shared message handling and tool-execution adapters.
+pub mod execution;

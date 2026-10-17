@@ -1,16 +1,7 @@
-//! Message extraction helpers for agent execution.
-//!
-//! This module converts provider messages into tool-call lists and final text
-//! responses used by the main execution loop.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! let text = response_text(&message);
-//! ```
+//! Application prompt composition and shared message extraction.
 
-use crate::provider::{ContentPart, Message};
 use crate::session::Session;
+pub(super) use codetether_agent_core::execution::messages::{collect_tool_calls, response_text};
 
 /// Compose the system prompt by appending the session's goal-governance
 /// block (if any) to the agent's base persona prompt.
@@ -21,46 +12,4 @@ use crate::session::Session;
 pub(super) fn compose_system_prompt(base: &str, session: &Session) -> String {
     let prompt = crate::session::tasks::runtime::compose(base, &session.id);
     crate::a2a::peer_prompt::append(prompt)
-}
-
-/// Extracts the canonical tool-call content parts from a provider message.
-///
-/// Returns owned [`ContentPart::ToolCall`] values (preserving
-/// `thought_signature`) rather than flattening into positional tuples.
-///
-/// # Examples
-///
-/// ```ignore
-/// let calls = collect_tool_calls(&message);
-/// ```
-pub(super) fn collect_tool_calls(message: &Message) -> Vec<ContentPart> {
-    message
-        .content
-        .iter()
-        .filter(|p| p.as_tool_call().is_some())
-        .cloned()
-        .collect()
-}
-
-/// Extracts the concatenated text content from a provider message.
-///
-/// # Examples
-///
-/// ```ignore
-/// let text = response_text(&message);
-/// ```
-pub(super) fn response_text(message: &Message) -> String {
-    message
-        .content
-        .iter()
-        .filter_map(extract_text)
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-fn extract_text(part: &ContentPart) -> Option<String> {
-    match part {
-        ContentPart::Text { text } => Some(text.clone()),
-        _ => None,
-    }
 }

@@ -44,7 +44,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
 | indexer | 8 | 146 | Core extracted; CLI and provider-resolution adapters retained |
-| agent | 33 | 662 | Catalog/contracts/prompts extracted; execution, tool policy, session and swarm integration remain |
+| agent | 33 | 599 | Catalog, contracts, prompts, message/image transformations and tool-result execution helpers extracted; session loop, prior-context policy and swarm adapters remain |
 | platform | 1 | 1 | Native services extracted; Linux application and GNU/MSVC Windows platform type checks passed |
 | approval | 13 | 167 | Ownership audited: approval-core owns records, ledger, pending registry, decision dispatch and grants; application retains SessionEvent delivery, test isolation and facades |
 | autochat | 5 | 68 | Shared requests, context, transport, model selection and delegation extracted; registry and local RLM execution adapters remain |
@@ -94,7 +94,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | --- | ---: | --- | --- |
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-worker-core | 30 | yes | none |
-| codetether-agent-core | 39 | yes | none |
+| codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
 | codetether-audit | 1 | yes | none |
 | codetether-autochat-core | 73 | yes | none |
@@ -3567,3 +3567,21 @@ unreferenced modules. New files have at most 37 code lines. Standalone rustfmt,
 file-limit ratchet and staged whitespace checks are the permitted validation;
 compilation and all Rust tests remain unverified. No Cargo, rustc or Python
 ran. Evidence: artifacts/consolidation-runtime-policy-adapters/.
+
+## Agent message and tool execution helpers
+
+Agent-core::execution owns tool-call and response-text extraction, image-tool
+conversation enrichment, registered-tool result conversion and invalid-tool
+fallback handling. Application helpers supply session messages and registered
+tool names. Session mutation, goal/peer prompt composition, tool permissions
+and the provider execution loop remain in the application. Agent-core gains
+only the existing tool-core dependency.
+
+Eleven static comparisons preserve call metadata, text and image order, tool
+error strings, output-budget timing, host prompt composition and the unchanged
+image-context test file. Lexical graphs cover 44 agent-core files and 33
+application-agent files with no missing/unreferenced modules. New modules have
+at most 29 code lines. Standalone formatting, file-limit and whitespace checks
+were used; no Cargo, rustc, Python, tools or model calls ran. Compilation and
+Rust tests remain unverified. Evidence: artifacts/consolidation-agent-execution/.
+The complete workspace goal remains active.

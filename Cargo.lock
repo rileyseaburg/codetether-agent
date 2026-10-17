@@ -1281,6 +1281,7 @@ name = "codetether-agent-core"
 version = "0.1.0"
 dependencies = [
  "codetether-provider-core",
+ "codetether-tool-core",
  "serde",
  "serde_json",
  "tempfile",
