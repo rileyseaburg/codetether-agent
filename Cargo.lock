@@ -1162,6 +1162,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "codetether-agent-core",
+ "codetether-provenance",
  "codetether-provider-core",
  "rand 0.10.2",
  "serde",

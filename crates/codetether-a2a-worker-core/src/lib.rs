@@ -37,3 +37,6 @@ pub mod task_timeline;
 
 /// Model, agent and host metadata for worker registration.
 pub mod registration;
+
+/// Task-claim wire fields and provenance mapping.
+pub mod claim;

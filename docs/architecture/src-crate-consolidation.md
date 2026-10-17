@@ -97,7 +97,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 44 | yes | codetether-a2a-core, codetether-provider-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
-| codetether-a2a-worker-core | 85 | yes | codetether-agent-core, codetether-provider-core |
+| codetether-a2a-worker-core | 89 | yes | codetether-agent-core, codetether-provider-core, codetether-provenance |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
 | codetether-audit | 1 | yes | none |
@@ -4912,3 +4912,18 @@ reachable without missing/orphaned modules. The new file is below 50 code
 lines; file-budget and whitespace checks passed. Evidence is retained in
 `artifacts/consolidation-a2a-identity-extension/`. Compilation and tests remain
 unrun. The overall consolidation goal remains active.
+
+
+### Shared worker task-claim response
+
+Worker-core now owns `TaskClaimResponse` and its conversion to shared claim
+provenance. Wire fields, serde defaults, and the explicit-agent/user-identity
+fallback are unchanged. The original A2A claim path re-exports the shared
+type for both server and worker consumers. The provenance dependency is
+explicit and the seven-crate local closure is acyclic.
+
+Static comparison verifies the record, conversion, and existing regression
+test. All 89 worker-core files and 311 A2A files are reachable with no missing
+orphaned modules. New files satisfy the code-line limit; file-budget and
+whitespace checks passed. Evidence: `artifacts/consolidation-worker-claim/`.
+Compilation and tests remain unrun; the broader consolidation goal is active.
