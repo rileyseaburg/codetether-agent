@@ -1,0 +1,13 @@
+[package]
+name = "codetether-a2a-http"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "HTTP discovery and JSON-RPC client for CodeTether A2A"
+
+[dependencies]
+codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
+anyhow = "1.0.104"
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }
+serde_json = "1"

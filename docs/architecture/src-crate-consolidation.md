@@ -27,7 +27,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | tui | 1208 | 42457 | Pending cohesion and dependency audit |
 | session | 916 | 27990 | Partial extraction; inspect remaining implementation |
 | provider | 141 | 3096 | Shared contracts/HTTP/images/context limits, Codex OAuth/lifecycle/request, message and response protocol/HTTP and WebSocket transport, and Google/Bedrock auth, transcript conversion, body policy, native requests, responses, streaming, and Bedrock execution/discovery/refresh and OpenAI/DeepSeek/Z.AI/Anthropic/Moonshot/Google/StepFun/OpenRouter/Vertex Anthropic/Vertex GLM/GLM-5/Copilot implementations extracted; other adapters/registry pending |
-| a2a | 355 | 12904 | Wire contracts extracted to a2a-core; JSON-RPC/gRPC transports, server and worker ownership remain pending |
+| a2a | 355 | 12904 | Wire contracts and HTTP client extracted to a2a-core/a2a-http; remaining transports, server and worker ownership remain pending |
 | cli | 198 | 10322 | Pending cohesion and dependency audit |
 | swarm | 228 | 5643 | Shared runtime/domain/prompt policy extracted; application supplies session, provider, tools, worktrees and pod operations; remaining ownership audit ongoing |
 | server | 213 | 8264 | Pending cohesion and dependency audit |
@@ -93,6 +93,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | Crate | Rust files | Workspace member | Missing declared root modules |
 | --- | ---: | --- | --- |
 | codetether-a2a-core | 47 | yes | none |
+| codetether-a2a-http | 6 | yes | codetether-a2a-core |
 | codetether-a2a-worker-core | 30 | yes | none |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
@@ -4471,3 +4472,19 @@ execution, Rust test or doctest ran; compilation and runtime remain unverified.
 Evidence: artifacts/consolidation-ralph-outcome-policy/. This completes Ralph
 source-ownership review, not the full goal: tools, TUI, session, A2A, CLI, HTTP
 server, mux and other pending owners still require workspace consolidation.
+
+
+### A2A HTTP client extraction
+
+`codetether-a2a-http` owns HTTP discovery and JSON-RPC client operations in six
+modules covering construction, discovery, messages, tasks, and transport.
+`src/a2a/client.rs` retains the original public path through a compatibility
+re-export. Wire types remain owned by `codetether-a2a-core`.
+
+Static token comparison confirms all seven method implementations and the
+client fields are unchanged. All six modules are reachable, their local
+dependency closure is acyclic, and each source file has at most 50 code lines.
+The source line-budget and whitespace checks passed. Evidence is retained in
+`artifacts/consolidation-a2a-http/`. Compilation, tests, and runtime behavior
+remain unverified: Cargo, rustc, and runtime checks were not run.
+The broader consolidation goal remains active.
