@@ -6,19 +6,13 @@ mod sandbox_availability;
 mod sandbox_bwrap_args;
 #[path = "sandbox_bwrap_probe.rs"]
 mod sandbox_bwrap_probe;
-#[path = "sandbox_command.rs"]
-mod sandbox_command;
 #[path = "sandbox_env.rs"]
 mod sandbox_env;
 #[path = "sandbox_execute.rs"]
 mod sandbox_execute;
 #[path = "sandbox_landlock.rs"]
 mod sandbox_landlock;
-#[path = "sandbox_plan_state.rs"]
-mod sandbox_plan_state;
 include!("sandbox_process_modules.rs");
-#[path = "sandbox_result_builder.rs"]
-mod sandbox_result_builder;
 #[path = "sandbox_runner.rs"]
 mod sandbox_runner;
 #[path = "sandbox_runner_direct.rs"]

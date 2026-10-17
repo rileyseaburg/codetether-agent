@@ -59,7 +59,6 @@ pub mod relay_autochat;
 pub mod ripgrep;
 pub mod rlm;
 pub mod sandbox;
-mod sandbox_limits;
 mod sandbox_network;
 mod sandbox_paths;
 pub mod search;

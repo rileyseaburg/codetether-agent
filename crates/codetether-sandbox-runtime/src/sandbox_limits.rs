@@ -1,3 +1,4 @@
+//! limits for sandboxed process execution.
 pub fn apply_memory_limit(cmd: &mut tokio::process::Command, max_bytes: u64) -> Vec<String> {
     if max_bytes == 0 {
         return Vec::new();
@@ -32,7 +33,7 @@ fn apply(cmd: &mut tokio::process::Command, max_bytes: u64) -> Vec<String> {
 
 #[cfg(not(unix))]
 fn apply(_cmd: &mut tokio::process::Command, max_bytes: u64) -> Vec<String> {
-    tracing::warn!(
+    tracing::warn!(target: "codetether_agent::tool::sandbox_limits",
         max_bytes,
         "Sandbox memory limit cannot be enforced on this platform; \
          caller will see 'memory_limit_unenforced' in unsafe_fallbacks"

@@ -2380,6 +2380,23 @@ files contain at most 50 code lines. Evidence:
 runtime tests, Cargo, rustc or Python were executed. Compilation and runtime
 confinement remain unverified. The full workspace migration remains active.
 
+### Shared sandbox process runtime
+
+Moved sandboxed spawn/execute orchestration, command preparation, waiting,
+memory limits, plan resource retention, availability and result assembly into
+`crates/codetether-sandbox-runtime`. Nine existing implementation/test files
+and a library entry point connect the shared policy, planner, environment,
+terminal and process-tree crates. Application entry points retain exports.
+
+Static comparisons verify complete execution/spawn ordering, environment
+overrides, timeout cleanup, limit handling, fallback accumulation, result
+hashing and the preserved session-hook regression. Original memory-limit
+logging targets are retained. Module reachability, dependency-cycle,
+workspace wiring, file-budget and whitespace checks passed; files contain at
+most 49 code lines. Evidence: `artifacts/consolidation-sandbox-runtime/`.
+No sandbox processes, runtime tests, Cargo, rustc or Python ran. Compilation
+and platform execution remain unverified; the full migration remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

@@ -1,3 +1,4 @@
+//! result builder for sandboxed process execution.
 use super::{SandboxResult, hash_bytes};
 use std::process::Output;
 use std::time::Instant;

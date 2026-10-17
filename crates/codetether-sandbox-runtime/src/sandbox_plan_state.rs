@@ -1,3 +1,4 @@
+//! plan state for sandboxed process execution.
 use super::{sandbox_landlock, sandbox_runner, sandbox_seccomp};
 
 pub(super) struct PlanState {

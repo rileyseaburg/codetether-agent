@@ -116,6 +116,7 @@ members = [
     "crates/codetether-sandbox-bwrap",
     "crates/codetether-sandbox-policy",
     "crates/codetether-sandbox-runner",
+    "crates/codetether-sandbox-runtime",
     "crates/codetether-sandbox-seccomp",
     "crates/codetether-sandbox-seatbelt",
     "crates/codetether-tool-core",
@@ -352,6 +353,7 @@ codetether-sandbox-landlock = { path = "crates/codetether-sandbox-landlock", ver
 codetether-sandbox-bwrap = { path = "crates/codetether-sandbox-bwrap", version = "0.1.0" }
 codetether-sandbox-policy = { path = "crates/codetether-sandbox-policy", version = "0.1.0" }
 codetether-sandbox-runner = { path = "crates/codetether-sandbox-runner", version = "0.1.0" }
+codetether-sandbox-runtime = { path = "crates/codetether-sandbox-runtime", version = "0.1.0" }
 codetether-sandbox-seccomp = { path = "crates/codetether-sandbox-seccomp", version = "0.1.0" }
 codetether-sandbox-seatbelt = { path = "crates/codetether-sandbox-seatbelt", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }

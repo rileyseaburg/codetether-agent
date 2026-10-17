@@ -1,0 +1,28 @@
+[package]
+name = "codetether-sandbox-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Sandboxed child process spawning and execution"
+
+[dependencies]
+anyhow = "1"
+codetether-command-pty = { path = "../codetether-command-pty", version = "0.1.0" }
+codetether-command-shell = { path = "../codetether-command-shell", version = "0.1.0" }
+codetether-plugin-verification = { path = "../codetether-plugin-verification", version = "0.1.0" }
+codetether-process-tree = { path = "../codetether-process-tree", version = "0.1.0" }
+codetether-sandbox-environment = { path = "../codetether-sandbox-environment", version = "0.1.0" }
+codetether-sandbox-landlock = { path = "../codetether-sandbox-landlock", version = "0.1.0" }
+codetether-sandbox-policy = { path = "../codetether-sandbox-policy", version = "0.1.0" }
+codetether-sandbox-runner = { path = "../codetether-sandbox-runner", version = "0.1.0" }
+codetether-sandbox-seccomp = { path = "../codetether-sandbox-seccomp", version = "0.1.0" }
+tokio = { version = "1", features = ["process", "time"] }
+tracing = "0.1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.189"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt", "time"] }

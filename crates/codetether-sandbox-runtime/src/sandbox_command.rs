@@ -1,3 +1,4 @@
+//! command for sandboxed process execution.
 use super::sandbox_landlock;
 use std::collections::HashMap;
 use std::path::Path;
@@ -12,8 +13,8 @@ pub(super) fn build(
 ) -> (tokio::process::Command, Vec<String>) {
     let mut cmd = tokio::process::Command::new(program);
     cmd.args(args).current_dir(work_dir).env_clear().envs(env);
-    super::super::bash_noninteractive::configure(&mut cmd);
+    codetether_command_shell::configure(&mut cmd);
     sandbox_landlock::apply(&mut cmd, landlock);
-    let fallbacks = super::super::sandbox_limits::apply_memory_limit(&mut cmd, max_memory_bytes);
+    let fallbacks = super::sandbox_limits::apply_memory_limit(&mut cmd, max_memory_bytes);
     (cmd, fallbacks)
 }
