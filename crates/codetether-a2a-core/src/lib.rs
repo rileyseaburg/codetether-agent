@@ -18,3 +18,6 @@ pub mod streaming;
 pub use streaming::*;
 pub mod push;
 pub use push::*;
+
+/// CodeTether identity extension on A2A agent cards.
+pub mod identity_extension;

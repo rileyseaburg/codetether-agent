@@ -92,7 +92,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 
 | Crate | Rust files | Workspace member | Missing declared root modules |
 | --- | ---: | --- | --- |
-| codetether-a2a-core | 47 | yes | none |
+| codetether-a2a-core | 48 | yes | none |
 | codetether-a2a-discovery | 19 | yes | none |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 44 | yes | codetether-a2a-core, codetether-provider-core |
@@ -4896,3 +4896,19 @@ meet the 50-code-line limit, and whitespace/file-budget checks passed. No
 dependencies were added. Evidence: `artifacts/consolidation-intro-ledger/`.
 Compilation, tests, and runtime persistence remain unverified. The broader
 consolidation goal remains active.
+
+
+### Shared agent-card identity extension
+
+A2A core now owns the identity-extension URI, construction, and extraction
+rules. The application adapter retains persona/SPIFFE runtime lookup and
+passes those values to the shared builder. Its existing two tests continue
+to exercise the adapter and extension. No dependencies were added.
+
+Static comparison confirms both wire functions, the URI, and the runtime
+adapter are unchanged except ownership/visibility. The test file is
+byte-identical. All 48 A2A-core files and 311 application A2A files are
+reachable without missing/orphaned modules. The new file is below 50 code
+lines; file-budget and whitespace checks passed. Evidence is retained in
+`artifacts/consolidation-a2a-identity-extension/`. Compilation and tests remain
+unrun. The overall consolidation goal remains active.
