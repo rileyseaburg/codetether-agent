@@ -44,3 +44,6 @@ pub use heartbeat_post::post_heartbeat;
 
 /// Worker state and progress snapshot assembly for heartbeats.
 pub mod heartbeat_snapshot;
+
+mod heartbeat_loop;
+pub use heartbeat_loop::start_heartbeat;

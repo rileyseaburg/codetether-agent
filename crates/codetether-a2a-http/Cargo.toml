@@ -13,7 +13,7 @@ sha2 = "0.11.0"
 hex = "0.4"
 codetether-a2a-discovery = { path = "../codetether-a2a-discovery", version = "0.1.0" }
 urlencoding = "2"
-tokio = { version = "1.53.1", features = ["time", "sync"] }
+tokio = { version = "1.53.1", features = ["time", "sync", "rt"] }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 tracing = "0.1"
 async-trait = "0.1.92"

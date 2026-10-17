@@ -10,7 +10,6 @@ pub(super) use super::{
     forage_args::build_forage_args,
     forage_settings::parse_swarm_strategy,
     forage_task::handle_forage_task,
-    heartbeat_cognition::fetch_cognition_heartbeat_payload,
     http_client::build_worker_http_client,
     metadata_flags::metadata_bool,
     metadata_lookup::metadata_lookup,

@@ -5407,3 +5407,25 @@ File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-heartbeat-payload/`. Compilation, tests, and runtime
 heartbeats remain unrun. No Cargo, rustc, or Python commands ran. The broader
 implementation migration remains active.
+
+### Shared worker heartbeat loop
+
+Moved heartbeat scheduling, cognition fallback submission, cooldown tracking,
+lease renewal, and consecutive-failure reporting into the HTTP worker module.
+The public start function keeps the same arguments and returns the same Tokio
+join-handle type; the application now re-exports it. Small modules separate
+startup configuration, tick sequencing, submission, and renewal. Removed four
+obsolete application heartbeat forwarding files. The separately edited
+extended-heartbeat file is byte-identical to its pre-extraction contents.
+
+Static comparison expands the loop helpers and matches the original sequence:
+30-second interval with skipped missed ticks, three-failure reporting/reset,
+300-second cognition cooldown after a successful fallback, and lease renewal
+after normal heartbeat submission. Shared extended-heartbeat composition also
+matches the existing adapter. The module scan covers all 100 HTTP files and
+274 application A2A files without missing/orphaned modules; the dependency
+closure remains acyclic. New files contain at most 50 code lines. Tokio's
+runtime feature is explicitly declared for task spawning. File-budget and
+whitespace checks passed. Evidence: `artifacts/consolidation-heartbeat-loop/`.
+Compilation, tests, and live scheduling remain unrun. No Cargo, rustc, or Python
+commands ran. The broader migration goal remains active.

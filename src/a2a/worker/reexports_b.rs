@@ -6,7 +6,6 @@ pub(super) use super::{
     model_defaults::{default_model_for_provider, prefers_temperature_one},
     model_preferences::choose_provider_for_tier,
     pending_tasks::fetch_pending_tasks,
-    persistent_heartbeat::{persistent_worker_enabled, persistent_worker_lease_seconds},
     runtime_state::{TaskReservation, WorkerTaskRuntime},
     server_state::attach_server_state,
     session_policy::execute_session_with_policy,
