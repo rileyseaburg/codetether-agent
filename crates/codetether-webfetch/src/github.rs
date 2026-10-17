@@ -1,13 +1,13 @@
 //! GitHub request auth helpers for webfetch.
 
-use super::super::bash_github::GitHubCommandAuth;
+use codetether_github_auth::GitHubCommandAuth;
 use reqwest::{RequestBuilder, Url, header};
 
 pub(super) async fn auth_for(url: &Url, cwd: Option<&str>) -> Option<GitHubCommandAuth> {
-    match super::super::bash_github::load_github_url_auth(url, cwd).await {
+    match codetether_github_auth::load_github_url_auth(url, cwd).await {
         Ok(auth) => auth,
         Err(error) => {
-            tracing::warn!(%url, error = %error, "Failed to load GitHub auth for webfetch");
+            tracing::warn!(target: "codetether_agent::tool::webfetch::github",%url, error = %error, "Failed to load GitHub auth for webfetch");
             None
         }
     }

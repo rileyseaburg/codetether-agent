@@ -1335,6 +1335,7 @@ dependencies = [
  "codetether-util",
  "codetether-vectordb",
  "codetether-voice-core",
+ "codetether-webfetch",
  "codetether-worker-http",
  "codetether-worktree",
  "codetether-worktree-isolation",
@@ -2772,6 +2773,23 @@ name = "codetether-voice-core"
 version = "0.1.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "codetether-webfetch"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-github-auth",
+ "codetether-tls",
+ "codetether-tool-core",
+ "once_cell",
+ "regex",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

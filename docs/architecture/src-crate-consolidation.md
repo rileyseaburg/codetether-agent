@@ -6313,3 +6313,22 @@ file-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-github-auth/`. No credentials were loaded and no network
 requests, runtime tests, Cargo, rustc or Python were executed. The broader
 migration remains active.
+
+### Dedicated web-fetch tool crate
+
+Created `crates/codetether-webfetch` and moved the complete web-fetch tool out of
+`src/`: client construction, request execution, GitHub auth application/redaction,
+parameter defaults, HTML preprocessing/conversion, truncation and result metadata.
+Sixteen focused modules preserve the existing public tool path through a
+compatibility export. Shared GitHub auth and TLS initialization remain in their
+own crates.
+
+Static comparison verifies the request/conversion/truncation pipeline, regex
+initializers, constructor policy, schema, parameter defaults, auth handling and
+result metadata. The HTML regression test moved with an unchanged body apart
+from indentation and remains unrun. All 16 files are reachable without missing
+orphaned modules; the dependency closure is acyclic. New files contain at most
+39 code lines. Workspace/lockfile wiring, file-budget and whitespace checks
+passed. Evidence: `artifacts/consolidation-webfetch/`. No credentials, HTTP
+requests, tool execution, Cargo, rustc, Python or runtime tests ran. The broader
+migration remains active.
