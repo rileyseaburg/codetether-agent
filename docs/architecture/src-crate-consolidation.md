@@ -6151,3 +6151,20 @@ file-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-plan-crate/`. Compilation, tests and tool execution
 remain unrun. No Cargo, rustc or Python commands ran. The broader migration
 remains active.
+
+### Dedicated file-diff tool crate
+
+Created `crates/codetether-file-diff` and moved `DiffTool` out of the mixed
+`file_extras` module. Seven focused files separate construction, tool metadata,
+schema, mode selection, Git diff execution and direct file comparison. Existing
+registration and `file_extras::DiffTool` paths use a compatibility export.
+
+Static comparison verifies both command branches, argument order, defaults,
+output/error handling, schema and constructors. The remaining directory,
+metadata and text-preview implementation is unchanged; the existing three test
+bodies are unchanged (only surrounding blank lines were reformatted). The scan
+reaches all seven new files with no missing/orphaned modules, and the dependency
+closure is acyclic. New files contain at most 41 code lines. Workspace/lockfile
+wiring, file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-file-diff/`. No tool commands, runtime tests, Cargo,
+rustc or Python were executed. The broader migration remains active.

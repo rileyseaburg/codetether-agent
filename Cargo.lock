@@ -1271,6 +1271,7 @@ dependencies = [
  "codetether-crash",
  "codetether-distill",
  "codetether-event-stream",
+ "codetether-file-diff",
  "codetether-forage-core",
  "codetether-github-pr",
  "codetether-goal-core",
@@ -1837,6 +1838,17 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-file-diff"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
