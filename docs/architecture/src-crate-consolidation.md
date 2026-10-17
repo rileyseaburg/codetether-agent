@@ -182,7 +182,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-vectordb | 14 | yes | none |
 | codetether-voice-core | 12 | yes | none |
 | codetether-worker-http | 18 | yes | none |
-| codetether-worktree | 105 | yes | none |
+| codetether-worktree | 111 | yes | none |
 | codetether-worktree-isolation | 4 | yes | none |
 
 ## First extraction: vector storage
@@ -4745,3 +4745,22 @@ enables Tokio time and adds the already-locked tracing dependency. File-budget
 and whitespace checks passed. Evidence is retained in
 `artifacts/consolidation-worker-timeline/`. Compilation, tests, and runtime
 timing behavior remain unverified. The wider consolidation remains active.
+
+
+### Shared repository preparation and publication checks
+
+`codetether-worktree::repository` owns clone-target preparation, push-refspec
+validation, declared-hook discovery, and executable-hook checks. The worker
+retains its Git adapter for resolving the active hook directory. The shared
+validator invokes that adapter only when declared hooks require inspection,
+preserving the empty-requirement fast path. Existing worker APIs re-export or
+delegate to the shared policy; no dependencies were added.
+
+Static comparisons cover the moved checks and the five unchanged integration
+tests. All 317 A2A modules are reachable. The worktree graph reaches 110 files
+and identifies the pre-existing orphan `src/merge_staged.rs`, whose contents
+match HEAD; its disposition remains pending the worktree ownership review.
+New files meet the 50-code-line limit; file-budget and whitespace checks
+passed. Evidence is retained in `artifacts/consolidation-worker-repository/`.
+Compilation, integration tests, and Git runtime checks were not run. The
+broader consolidation goal remains active.
