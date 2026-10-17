@@ -1181,6 +1181,7 @@ dependencies = [
  "codetether-agent-core",
  "codetether-provenance",
  "codetether-provider-core",
+ "codetether-util",
  "rand 0.10.2",
  "serde",
  "serde_json",

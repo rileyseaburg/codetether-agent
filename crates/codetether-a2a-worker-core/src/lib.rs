@@ -43,3 +43,6 @@ pub mod claim;
 
 /// Task targeting, capacity reservations and execution deadlines.
 pub mod dispatch;
+
+/// Structured worker event payloads, redaction and active sinks.
+pub mod events;

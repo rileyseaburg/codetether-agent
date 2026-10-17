@@ -5,14 +5,7 @@ use std::sync::Arc;
 
 use crate::bus::AgentBus;
 
-/// Streams one line of task output, optionally with a structured session event.
-///
-/// # Examples
-///
-/// ```ignore
-/// emit(&sink, "[tool:bash:ok] done".into(), Some(event));
-/// ```
-pub(super) type EventSink = Arc<dyn Fn(String, Option<serde_json::Value>) + Send + Sync + 'static>;
+pub(super) use codetether_a2a_worker_core::events::sink::EventSink;
 
 pub(super) fn build_output_callback(
     client: reqwest::Client,

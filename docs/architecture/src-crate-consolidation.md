@@ -5347,3 +5347,24 @@ no package version or lockfile entry changed. File-budget and whitespace
 checks passed. Evidence: `artifacts/consolidation-worker-dispatch/`.
 Compilation, tests, and runtime execution remain unrun. No Cargo, rustc,
 or Python commands ran. The broader migration goal remains active.
+
+### Shared structured worker events and active sink
+
+Moved structured tool/reasoning event construction, recursive argument
+redaction, byte limits, and active-sink lifecycle/emission into worker-core's
+`events` module. The application retains its HTTP output callback and installs
+it through the shared sink API. Its event and sink modules are now re-exports;
+there is exactly one `ACTIVE_SINK` static, in worker-core. The shared utility
+crate continues to own UTF-8-safe truncation and is now a direct worker-core
+dependency.
+
+Static comparison verifies fourteen moved functions, event constants, the
+sink callback type, and the active-sink static. All nineteen existing test
+bodies and their capture/isolation fixtures were preserved. Tests were moved
+with their implementation and split into bounded files where needed. The
+module scan reaches all 133 worker-core files and 279 application A2A files
+with no missing/orphaned modules; the dependency graph remains acyclic. All
+35 new event source/test files contain at most 36 code lines. File-budget and
+whitespace checks passed. Evidence: `artifacts/consolidation-worker-events/`.
+Compilation, tests, and runtime emission remain unrun. No Cargo, rustc, or
+Python commands ran. The broader implementation migration remains active.
