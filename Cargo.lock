@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-agent-registry",
  "codetether-agent-storage",
  "codetether-agent-tree",
  "codetether-child-mailbox",
@@ -2439,6 +2440,13 @@ dependencies = [
  "anyhow",
  "codetether-collaboration-state",
  "serde",
+]
+
+[[package]]
+name = "codetether-agent-registry"
+version = "0.1.0"
+dependencies = [
+ "parking_lot",
 ]
 
 [[package]]

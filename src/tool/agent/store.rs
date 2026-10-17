@@ -1,7 +1,7 @@
 //! Canonical child-thread registry keyed by durable session ID.
 
-use parking_lot::RwLock;
-use std::collections::HashMap;
+use crate::session::Session;
+use codetether_agent_registry::Registry;
 
 #[path = "store_crud.rs"]
 mod crud;
@@ -18,7 +18,7 @@ pub(super) use entry::AgentEntry;
 pub(super) use scope::{entries_for_parent, get_for_parent, lineage_for_session};
 
 lazy_static::lazy_static! {
-    static ref AGENT_STORE: RwLock<HashMap<String, AgentEntry>> = RwLock::new(HashMap::new());
+    static ref AGENT_STORE: Registry<Session> = Registry::default();
 }
 
 #[cfg(test)]

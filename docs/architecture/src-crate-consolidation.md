@@ -7989,3 +7989,23 @@ whitespace checks passed; new Rust modules contain at most 40 code lines.
 Evidence is in `artifacts/consolidation-agent-tree/`. No live-tree queries or
 runtime tests were executed. No Cargo, rustc or Python commands ran. Compilation
 remains unverified; the full consolidation goal remains active.
+
+### Dedicated live-agent registry
+
+Moved the live-agent metadata contract, synchronized canonical-ID map, reads
+and mutations, display-name checks, owner snapshots, lineage derivation and
+scoped target resolution into `crates/codetether-agent-registry`. Seven Rust
+modules separate entry contracts, storage, mutations, name checks, owner queries
+and target resolution. The application specializes the session type and keeps
+its residency hooks and live-tree callback; it no longer owns the map algorithms.
+Tree resolution still runs before registry locking, errors still fall through
+to ID/name lookup, and ambiguous display names still return no match.
+
+Thirty static preservation checks cover entry fields, identity, all moved
+query/mutation bodies, application delegation, residency call order and
+unchanged integration callers. The three existing registry tests remain in
+the application without changes. Module/dependency, file-budget and whitespace
+checks passed; new Rust modules contain at most 34 code lines. Evidence is in
+`artifacts/consolidation-agent-registry/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The full consolidation goal
+remains active.
