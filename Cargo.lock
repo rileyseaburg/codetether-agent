@@ -1305,6 +1305,7 @@ dependencies = [
  "codetether-plan",
  "codetether-platform",
  "codetether-plugin-marketplace",
+ "codetether-plugin-verification",
  "codetether-prd-tool",
  "codetether-process-capture",
  "codetether-process-tree",
@@ -2317,6 +2318,20 @@ dependencies = [
  "libc",
  "serde",
  "sha2 0.11.0",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-plugin-verification"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "hex",
+ "hmac 0.13.0",
+ "rand 0.10.2",
+ "serde",
+ "sha2 0.11.0",
+ "tokio",
  "tracing",
 ]
 

@@ -2231,6 +2231,25 @@ whitespace checks passed. The new module contains 30 code lines. Evidence:
 rustc or Python ran. Compilation and runtime behavior remain unverified;
 the full workspace migration remains active.
 
+### Dedicated plugin verification crate
+
+Moved plugin manifests, process-wide signing-key ownership, HMAC signing,
+constant-time signature comparison, content hashing and verified registration
+out of `src/tool/sandbox.rs` into `crates/codetether-plugin-verification`.
+Thirty-six focused files include seven existing plugin tests. The application
+sandbox re-exports the same public API and retains process confinement and
+its four original policy tests.
+
+Static token comparisons verify all key and registry methods, hashing,
+registration order, bypass checks, record fields and moved test bodies.
+Original logging targets are explicitly preserved. Remaining sandbox policy
+types and tests are unchanged. Module reachability, dependency-cycle,
+file-budget and whitespace checks passed; files contain at most 45 code
+lines. Evidence: `artifacts/consolidation-plugin-verification/`. No signing
+keys were loaded, plugins registered, runtime tests executed, or Cargo,
+rustc or Python commands run. Compilation remains unverified. The full
+workspace consolidation remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict
