@@ -1,3 +1,4 @@
+//! runner direct confined for sandbox execution planning.
 use super::super::sandbox_runner::RunnerPlan;
 use super::super::{SandboxPolicy, sandbox_landlock};
 

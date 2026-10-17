@@ -2362,6 +2362,24 @@ lines. Evidence: `artifacts/consolidation-bwrap-probe/`. No capability probes,
 commands, runtime tests, Cargo, rustc or Python were executed. Compilation
 and runtime capability remain unverified; the full migration is active.
 
+### Shared sandbox runner selection and plans
+
+Moved backend selection, owned runner plans, bubblewrap/Seatbelt planning,
+Landlock-confined direct planning and explicit unsafe-fallback policy into
+`crates/codetether-sandbox-runner`. Thirteen implementation/test files moved,
+with a library entry point connecting the previously extracted platform
+crates. Application runner modules retain compatibility exports. Existing
+application-level runner integration tests remain byte-identical.
+
+Static comparisons verify every moved implementation and twelve test bodies,
+including fallback ordering, override parsing and resource ownership. The
+original selection logging target is preserved. Module reachability,
+dependency-cycle, workspace wiring, file-budget and whitespace checks passed;
+files contain at most 50 code lines. Evidence:
+`artifacts/consolidation-sandbox-runner/`. No backend probes, plans, launches,
+runtime tests, Cargo, rustc or Python were executed. Compilation and runtime
+confinement remain unverified. The full workspace migration remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

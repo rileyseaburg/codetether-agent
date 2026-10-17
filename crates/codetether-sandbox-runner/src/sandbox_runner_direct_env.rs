@@ -1,6 +1,6 @@
 //! Parsing for the unsafe-sandbox override environment variable.
 
-pub(in crate::tool::sandbox) fn enabled(value: Option<&str>) -> bool {
+pub fn enabled(value: Option<&str>) -> bool {
     value.is_some_and(truthy)
 }
 

@@ -1,6 +1,7 @@
+//! runner direct tests for sandbox execution planning.
 use super::confined::confined_plan;
 use super::{ENV, enabled, plan_with_override};
-use crate::tool::sandbox::SandboxPolicy;
+use codetether_sandbox_policy::SandboxPolicy;
 
 fn args() -> Vec<String> {
     vec!["-c".to_string(), "echo ok".to_string()]

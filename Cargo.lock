@@ -1340,6 +1340,7 @@ dependencies = [
  "codetether-sandbox-environment",
  "codetether-sandbox-landlock",
  "codetether-sandbox-policy",
+ "codetether-sandbox-runner",
  "codetether-sandbox-seatbelt",
  "codetether-sandbox-seccomp",
  "codetether-search",
@@ -2847,6 +2848,20 @@ dependencies = [
  "anyhow",
  "serde",
  "tokio",
+]
+
+[[package]]
+name = "codetether-sandbox-runner"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-sandbox-bwrap",
+ "codetether-sandbox-landlock",
+ "codetether-sandbox-policy",
+ "codetether-sandbox-seatbelt",
+ "codetether-sandbox-seccomp",
+ "tracing",
+ "which 8.0.6",
 ]
 
 [[package]]

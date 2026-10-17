@@ -1,3 +1,4 @@
+//! runner bwrap for sandbox execution planning.
 use super::sandbox_runner::RunnerPlan;
 use super::{SandboxPolicy, sandbox_bwrap_args, sandbox_landlock, sandbox_seccomp};
 use anyhow::Result;

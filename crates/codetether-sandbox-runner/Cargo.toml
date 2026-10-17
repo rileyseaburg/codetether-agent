@@ -1,0 +1,19 @@
+[package]
+name = "codetether-sandbox-runner"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Sandbox backend selection and owned execution plans"
+
+[dependencies]
+anyhow = "1"
+codetether-sandbox-bwrap = { path = "../codetether-sandbox-bwrap", version = "0.1.0" }
+codetether-sandbox-landlock = { path = "../codetether-sandbox-landlock", version = "0.1.0" }
+codetether-sandbox-policy = { path = "../codetether-sandbox-policy", version = "0.1.0" }
+codetether-sandbox-seatbelt = { path = "../codetether-sandbox-seatbelt", version = "0.1.0" }
+codetether-sandbox-seccomp = { path = "../codetether-sandbox-seccomp", version = "0.1.0" }
+tracing = "0.1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+which = "8"
