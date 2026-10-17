@@ -1,0 +1,13 @@
+[package]
+name = "codetether-command-environment"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Command identity, runtime context and credential environment preparation"
+
+[dependencies]
+codetether-github-auth = { path = "../codetether-github-auth", version = "0.1.0" }
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
+serde_json = "1"
+tracing = "0.1"

@@ -2428,6 +2428,22 @@ at most 46 code lines. Evidence: `artifacts/consolidation-command-guard/`.
 No shell commands, interpreter invocations, runtime tests, Cargo, rustc or
 Python ran. Compilation remains unverified. The full migration is active.
 
+### Shared command identity and credential environment
+
+Moved provenance-derived Git identity, execution-context variable mapping,
+GitHub credential environment assembly and output redactions into
+`crates/codetether-command-environment`. Four modules use the existing shared
+provenance and GitHub-auth crates. Bash and exec-command retain compatibility
+exports. The original Git identity test moved with the implementation.
+
+Static comparisons verify complete environment ordering, context keys,
+identity values, redactions, auth-failure behavior and the test body. The
+original logging target is preserved. Module reachability, dependency-cycle,
+file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-command-environment/`. No credentials were loaded,
+commands launched or runtime tests executed. Cargo, rustc and Python were not
+run. Compilation remains unverified; the full migration remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

@@ -1268,6 +1268,7 @@ dependencies = [
  "codetether-codex-protocol",
  "codetether-cognition-core",
  "codetether-cognition-native",
+ "codetether-command-environment",
  "codetether-command-guard",
  "codetether-command-pty",
  "codetether-command-session",
@@ -1736,6 +1737,16 @@ dependencies = [
  "codetether-provider-core",
  "tokenizers 0.23.2",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-command-environment"
+version = "0.1.0"
+dependencies = [
+ "codetether-github-auth",
+ "codetether-provenance",
+ "serde_json",
  "tracing",
 ]
 
