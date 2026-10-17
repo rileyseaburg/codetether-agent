@@ -6132,3 +6132,22 @@ The refreshed source inventory still shows substantial implementation remaining:
 approximately 45k code lines in tools, 42k in the TUI and 28k in sessions before
 this extraction. The new todo crate is progress toward that full migration, not
 completion of the workspace goal.
+
+### Dedicated planning tools crate
+
+Created `crates/codetether-plan` and moved planning-mode state and tools out of
+`src/tool/plan.rs`. Twelve focused modules separate entry/exit tool contracts,
+parameter and state records, plan activation, progress snapshots and rendering.
+The application path re-exports the two tools, preserving one shared activation
+flag and one current-plan lock for all callers.
+
+Static comparison verifies record shapes, both singleton initializers,
+constructors, tool schemas, entry behavior, step updates, reporting, lock scope
+and exit conditions. The snapshot helper retains the write lock over mutation
+and report construction before the caller clears completed plans. The module
+scan reaches all 12 files without missing/orphaned modules; dependency closure
+is acyclic. New files contain at most 32 code lines. Workspace/lockfile wiring,
+file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-plan-crate/`. Compilation, tests and tool execution
+remain unrun. No Cargo, rustc or Python commands ran. The broader migration
+remains active.

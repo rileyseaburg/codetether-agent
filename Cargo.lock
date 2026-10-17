@@ -1288,6 +1288,7 @@ dependencies = [
  "codetether-moltbook",
  "codetether-okr",
  "codetether-paths",
+ "codetether-plan",
  "codetether-platform",
  "codetether-plugin-marketplace",
  "codetether-provenance",
@@ -2080,6 +2081,19 @@ version = "0.1.0"
 dependencies = [
  "directories 6.0.0",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-plan"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "lazy_static",
+ "parking_lot",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -54,6 +54,7 @@ members = [
     "crates/codetether-forage-core",
     "crates/codetether-paths",
     "crates/codetether-platform",
+    "crates/codetether-plan",
     "crates/codetether-plugin-marketplace",
     "crates/codetether-provenance",
     "crates/codetether-provider-core",
@@ -284,6 +285,7 @@ codetether-theme = { path = "crates/codetether-theme", version = "0.1.0", featur
 codetether-tls = { path = "crates/codetether-tls", version = "0.1.0" }
 codetether-mcp-transport = { path = "crates/codetether-mcp-transport", version = "0.1.0" }
 codetether-mcp-core = { path = "crates/codetether-mcp-core", version = "0.1.0" }
+codetether-plan = { path = "crates/codetether-plan", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }

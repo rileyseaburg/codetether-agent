@@ -1,0 +1,16 @@
+[package]
+name = "codetether-plan"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Process-local planning mode and tools for CodeTether"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+lazy_static = "1.4"
+parking_lot = "0.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
