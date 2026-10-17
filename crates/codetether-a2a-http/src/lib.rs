@@ -17,3 +17,6 @@ pub struct A2AClient {
     base_url: String,
     auth: Option<AuthenticationInfo>,
 }
+
+/// Request readers, task records and table transitions for HTTP servers.
+pub mod task_state;

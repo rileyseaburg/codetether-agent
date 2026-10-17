@@ -1,5 +1,5 @@
 use super::*;
-use crate::a2a::types::{TaskState, TaskStatus};
+use codetether_a2a_core::{TaskState, TaskStatus};
 use serde_json::json;
 use std::collections::HashMap;
 

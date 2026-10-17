@@ -203,8 +203,12 @@ async fn handle_rpc(
     let response = match request.method.as_str() {
         "message/send" => server_message_send::handle(&server, request).await,
         "message/stream" => handle_message_stream(&server, request).await,
-        "tasks/get" => handle_tasks_get(&server, request).await,
-        "tasks/cancel" => handle_tasks_cancel(&server, request).await,
+        "tasks/get" => {
+            codetether_a2a_http::task_state::handle_tasks_get(&server.tasks, request).await
+        }
+        "tasks/cancel" => {
+            codetether_a2a_http::task_state::handle_tasks_cancel(&server.tasks, request).await
+        }
         _ => Err(JsonRpcError::method_not_found(&request.method)),
     };
 
@@ -494,53 +498,5 @@ async fn handle_message_stream(
     // Return task in Working state — client polls tasks/get for completion
     let response = SendMessageResponse::Task(task);
     serde_json::to_value(response)
-        .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
-}
-
-async fn handle_tasks_get(
-    server: &A2AServer,
-    request: JsonRpcRequest,
-) -> Result<serde_json::Value, JsonRpcError> {
-    let params: TaskQueryParams = serde_json::from_value(request.params)
-        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid parameters: {}", e)))?;
-
-    let task = server.tasks.get(&params.id).ok_or_else(|| JsonRpcError {
-        code: TASK_NOT_FOUND,
-        message: format!("Task not found: {}", params.id),
-        data: None,
-    })?;
-
-    serde_json::to_value(task.value().clone())
-        .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
-}
-
-async fn handle_tasks_cancel(
-    server: &A2AServer,
-    request: JsonRpcRequest,
-) -> Result<serde_json::Value, JsonRpcError> {
-    let params: TaskQueryParams = serde_json::from_value(request.params)
-        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid parameters: {}", e)))?;
-
-    let mut task = server
-        .tasks
-        .get_mut(&params.id)
-        .ok_or_else(|| JsonRpcError {
-            code: TASK_NOT_FOUND,
-            message: format!("Task not found: {}", params.id),
-            data: None,
-        })?;
-
-    if !task.status.state.is_active() {
-        return Err(JsonRpcError {
-            code: TASK_NOT_CANCELABLE,
-            message: "Task is already in a terminal state".to_string(),
-            data: None,
-        });
-    }
-
-    task.status.state = TaskState::Cancelled;
-    task.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
-
-    serde_json::to_value(task.value().clone())
         .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
 }

@@ -1126,9 +1126,12 @@ name = "codetether-a2a-http"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "codetether-a2a-core",
+ "dashmap",
  "reqwest 0.13.4",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]

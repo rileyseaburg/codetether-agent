@@ -95,7 +95,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-discovery | 19 | yes | none |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
-| codetether-a2a-http | 6 | yes | codetether-a2a-core |
+| codetether-a2a-http | 20 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 36 | yes | none |
 | codetether-agent-core | 44 | yes | none |
@@ -4589,3 +4589,23 @@ dependencies to the gRPC crate. File-budget and whitespace checks passed.
 Evidence is retained in `artifacts/consolidation-a2a-grpc-service/`.
 Compilation, RPC execution, and tests remain unverified. The broader goal
 remains active, including the HTTP server and application worker boundary.
+
+
+### Shared HTTP task-state operations
+
+`codetether-a2a-http::task_state` owns JSON-RPC task query/cancellation,
+inbound message readers, task/reply/artifact construction, terminal updates,
+and bounded activity recording. The application retains session execution,
+bus emission, and telemetry. Existing helper paths are compatibility
+re-exports, and the HTTP dispatcher passes its task table to shared handlers.
+The new functions preserve task-map guard lifetimes, timestamps, update
+ordering, serialization errors, and activity filtering/caps.
+
+Static comparisons cover all 12 extracted functions and both relocated
+activity tests. The remaining server source differs only by task-handler
+delegation and formatting. All 20 HTTP-crate files are reachable and the
+local dependency graph remains acyclic. All 14 new source files are under
+50 code lines. File-budget and whitespace checks passed. The lockfile only
+adds already-locked chrono, dashmap, and uuid dependencies to this crate.
+Evidence: `artifacts/consolidation-a2a-http-state/`. Compilation, tests, and
+runtime behavior remain unverified; the wider goal remains active.
