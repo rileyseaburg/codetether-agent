@@ -1,4 +1,5 @@
-use crate::tool::ToolResult;
+//! result for image generation and editing.
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 use std::path::Path;
 

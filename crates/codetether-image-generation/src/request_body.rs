@@ -1,3 +1,4 @@
+//! request body for image generation and editing.
 use serde_json::{Value, json};
 
 pub(super) fn build(prompt: &str, images: Vec<String>) -> (&'static str, Value) {

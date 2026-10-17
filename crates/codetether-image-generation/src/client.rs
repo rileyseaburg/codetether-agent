@@ -1,3 +1,4 @@
+//! client for image generation and editing.
 use super::{
     auth::ImagesAuth,
     response::{ApiErrorEnvelope, ImagesResponse},

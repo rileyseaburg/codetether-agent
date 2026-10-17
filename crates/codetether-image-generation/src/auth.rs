@@ -1,4 +1,5 @@
-use crate::provider::openai_codex::ChatGptBackendAuth;
+//! auth for image generation and editing.
+use codetether_provider_codex::ChatGptBackendAuth;
 use reqwest::RequestBuilder;
 
 pub(super) enum ImagesAuth {

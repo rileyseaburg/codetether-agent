@@ -1,3 +1,4 @@
+//! input tests for image generation and editing.
 use super::args::ImagegenArgs;
 
 #[test]

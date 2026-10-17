@@ -1,3 +1,4 @@
+//! args for image generation and editing.
 use anyhow::{Result, bail};
 use serde::Deserialize;
 use std::path::PathBuf;

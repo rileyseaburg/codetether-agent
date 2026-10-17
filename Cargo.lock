@@ -1317,6 +1317,7 @@ dependencies = [
  "codetether-google-auth",
  "codetether-grep-tool",
  "codetether-image",
+ "codetether-image-generation",
  "codetether-indexer",
  "codetether-image-tool",
  "codetether-k8s",
@@ -2415,6 +2416,25 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-image-generation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.23.1",
+ "codetether-config",
+ "codetether-provider-codex",
+ "codetether-secrets",
+ "codetether-tool-core",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

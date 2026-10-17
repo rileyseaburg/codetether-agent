@@ -1,7 +1,8 @@
+//! tool impl for image generation and editing.
 use super::{args::ImagegenArgs, client::ImagesClient};
-use crate::tool::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 use std::{collections::VecDeque, sync::Mutex};
 
@@ -10,7 +11,7 @@ use std::{collections::VecDeque, sync::Mutex};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tool::image_generation::ImageGenerationTool;
+/// use codetether_image_generation::ImageGenerationTool;
 /// let tool = ImageGenerationTool::new();
 /// ```
 pub struct ImageGenerationTool {

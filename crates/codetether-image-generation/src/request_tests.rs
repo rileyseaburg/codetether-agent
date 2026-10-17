@@ -1,3 +1,4 @@
+//! request tests for image generation and editing.
 use super::request_body;
 
 #[test]
@@ -16,11 +17,4 @@ fn edit_request_wraps_image_urls() {
         request_body::build("change light", vec!["data:image/png;base64,eA==".into()]);
     assert_eq!(endpoint, "images/edits");
     assert_eq!(body["images"][0]["image_url"], "data:image/png;base64,eA==");
-}
-
-#[test]
-fn default_registry_exposes_image_generation_names() {
-    let registry = crate::tool::ToolRegistry::with_defaults();
-    assert!(registry.contains("image_gen"));
-    assert!(registry.contains("imagegen"));
 }

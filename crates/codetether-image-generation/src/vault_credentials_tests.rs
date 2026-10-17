@@ -1,4 +1,5 @@
-use crate::secrets::ProviderSecrets;
+//! vault credentials tests for image generation and editing.
+use codetether_secrets::ProviderSecrets;
 use serde_json::json;
 
 #[test]

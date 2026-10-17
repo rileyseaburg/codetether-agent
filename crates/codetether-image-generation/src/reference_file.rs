@@ -1,3 +1,4 @@
+//! reference file for image generation and editing.
 use anyhow::{Context, Result, bail};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use std::path::Path;

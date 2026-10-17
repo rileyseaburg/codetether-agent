@@ -1,13 +1,17 @@
+//! execute for image generation and editing.
 use super::{args::ImagegenArgs, tool_impl::ImageGenerationTool};
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 impl ImageGenerationTool {
-    pub(super) async fn generate(&self, args: ImagegenArgs) -> Result<crate::tool::ToolResult> {
+    pub(super) async fn generate(
+        &self,
+        args: ImagegenArgs,
+    ) -> Result<codetether_tool_core::ToolResult> {
         args.validate()?;
         let images = super::references::resolve(&args, &self.recent).await?;
         let auth = super::credentials::resolve().await?;
-        tracing::info!(
+        tracing::info!(target: "codetether_agent::tool::image_generation::execute",
             model = super::IMAGE_MODEL,
             edit = !images.is_empty(),
             "Generating image"
@@ -23,26 +27,18 @@ impl ImageGenerationTool {
         )
         .await
         .map_err(|error| {
-            tracing::warn!(error = %error, "Failed to save generated image");
+            tracing::warn!(target: "codetether_agent::tool::image_generation::execute", error = %error, "Failed to save generated image");
             error
         })
         .ok();
         let data_url = format!("data:image/png;base64,{encoded}");
-        let mut recent = self
-            .recent
-            .lock()
-            .map_err(|_| anyhow!("image cache lock poisoned"))?;
-        recent.push_back(data_url.clone());
-        while recent.len() > super::MAX_EDIT_IMAGES {
-            recent.pop_front();
-        }
-        drop(recent);
+        self.remember(&data_url)?;
         let size = STANDARD
             .decode(encoded)
             .map(|bytes| bytes.len())
             .unwrap_or_default();
         if let Some(path) = &path {
-            tracing::info!(path = %path.display(), size_bytes = size, "Generated image saved");
+            tracing::info!(target: "codetether_agent::tool::image_generation::execute", path = %path.display(), size_bytes = size, "Generated image saved");
         }
         Ok(super::result::generated(data_url, path.as_deref()))
     }

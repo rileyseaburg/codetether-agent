@@ -1,3 +1,4 @@
+//! artifact for image generation and editing.
 use anyhow::{Context, Result};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use std::path::PathBuf;
@@ -10,7 +11,7 @@ pub(super) async fn save(
     let bytes = STANDARD
         .decode(encoded.trim())
         .context("Images API returned invalid base64")?;
-    let root = crate::config::Config::data_dir()
+    let root = codetether_config::Config::data_dir()
         .unwrap_or_else(|| PathBuf::from(".codetether-agent"))
         .join("generated_images")
         .join(sanitize(session_id.unwrap_or("unknown-session")));

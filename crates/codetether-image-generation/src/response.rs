@@ -1,3 +1,4 @@
+//! response for image generation and editing.
 use anyhow::{Result, anyhow};
 use serde::Deserialize;
 

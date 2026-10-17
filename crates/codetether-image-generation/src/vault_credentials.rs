@@ -1,14 +1,13 @@
+//! vault credentials for image generation and editing.
 use super::{auth::ImagesAuth, vault_choice::Choice};
-use crate::{
-    provider::openai_codex::{OAuthCredentials, OpenAiCodexProvider},
-    secrets::ProviderSecrets,
-};
 use anyhow::Result;
+use codetether_provider_codex::{OAuthCredentials, OpenAiCodexProvider};
+use codetether_secrets::ProviderSecrets;
 
 pub(super) const IMAGE_PROVIDER_ID: &str = "openai-codex";
 
 pub(super) async fn resolve() -> Result<Option<ImagesAuth>> {
-    let Some(secrets) = crate::secrets::get_provider_secrets(IMAGE_PROVIDER_ID).await else {
+    let Some(secrets) = codetether_secrets::get_provider_secrets(IMAGE_PROVIDER_ID).await else {
         return Ok(None);
     };
     let Some(choice) = super::vault_choice::select(&secrets) else {
@@ -16,11 +15,11 @@ pub(super) async fn resolve() -> Result<Option<ImagesAuth>> {
     };
     match choice {
         Choice::ApiKey(key) => {
-            tracing::info!(provider = IMAGE_PROVIDER_ID, kind = "api_key", "Image auth");
+            tracing::info!(target: "codetether_agent::tool::image_generation::vault_credentials", provider = IMAGE_PROVIDER_ID, kind = "api_key", "Image auth");
             Ok(Some(ImagesAuth::openai(key)))
         }
         Choice::OAuth(credentials) => {
-            tracing::info!(provider = IMAGE_PROVIDER_ID, kind = "oauth", "Image auth");
+            tracing::info!(target: "codetether_agent::tool::image_generation::vault_credentials", provider = IMAGE_PROVIDER_ID, kind = "oauth", "Image auth");
             let provider =
                 OpenAiCodexProvider::from_vault_credentials(IMAGE_PROVIDER_ID, credentials);
             Ok(Some(ImagesAuth::chatgpt(

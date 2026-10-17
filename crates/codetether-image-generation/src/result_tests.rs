@@ -1,3 +1,4 @@
+//! result tests for image generation and editing.
 #[test]
 fn generated_image_succeeds_without_local_artifact() {
     let result = super::result::generated("data:image/png;base64,eA==".into(), None);

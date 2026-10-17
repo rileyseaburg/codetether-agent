@@ -1,3 +1,4 @@
+//! tests for image generation and editing.
 use super::{args::ImagegenArgs, references};
 use std::{collections::VecDeque, path::PathBuf, sync::Mutex};
 

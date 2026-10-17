@@ -1,10 +1,13 @@
+//! vault choice tests for image generation and editing.
 use super::vault_choice::{self, Choice};
-use crate::secrets::ProviderSecrets;
+use codetether_secrets::ProviderSecrets;
 use serde_json::json;
 
 fn oauth_secrets() -> ProviderSecrets {
     let mut secrets = ProviderSecrets::default();
-    secrets.extra.insert("access_token".into(), json!("expired"));
+    secrets
+        .extra
+        .insert("access_token".into(), json!("expired"));
     secrets
         .extra
         .insert("refresh_token".into(), json!("invalid"));

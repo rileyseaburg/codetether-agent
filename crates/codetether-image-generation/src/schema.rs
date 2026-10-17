@@ -1,3 +1,4 @@
+//! schema for image generation and editing.
 use serde_json::{Value, json};
 
 pub(super) fn parameters() -> Value {

@@ -7602,3 +7602,22 @@ contain at most 42 code lines. Evidence lives in
 `artifacts/consolidation-session-recall/`. No session reads, model calls,
 runtime tests, Cargo, rustc or Python commands ran. Compilation remains
 unverified; the full consolidation goal remains active.
+
+### Dedicated image-generation tool
+
+Moved image-generation authentication, Vault credential selection, references,
+request/response handling, artifact persistence and result metadata into
+`crates/codetether-image-generation`. Twenty-five Rust modules include sixteen
+existing tests; the application keeps the registry-alias test. The recent-image
+cache now has its own module while retaining the existing five-image limit and
+chronological ordering. Shared config, secrets and Codex provider owners are
+used directly; no parallel credential state is introduced.
+
+Thirty-one static preservation checks compare the moved code, description,
+credential precedence, endpoints/headers, reference handling, request bodies,
+cache behavior, artifact paths, metadata and tests. Module reachability,
+dependency cycles, file budgets and whitespace checks passed; new Rust files
+contain at most 45 code lines. Evidence lives in
+`artifacts/consolidation-image-generation/`. No credentials were read, images
+generated, runtime tests, Cargo, rustc or Python commands run. Compilation
+remains unverified; the full consolidation goal remains active.

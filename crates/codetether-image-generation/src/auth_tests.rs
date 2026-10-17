@@ -1,5 +1,6 @@
+//! auth tests for image generation and editing.
 use super::auth::ImagesAuth;
-use crate::provider::openai_codex::ChatGptBackendAuth;
+use codetether_provider_codex::ChatGptBackendAuth;
 
 #[test]
 fn chatgpt_auth_routes_to_codex_backend() {

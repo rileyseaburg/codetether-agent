@@ -1,3 +1,4 @@
+//! references for image generation and editing.
 use super::args::ImagegenArgs;
 use anyhow::{Result, bail};
 use std::{collections::VecDeque, sync::Mutex};
@@ -31,7 +32,10 @@ pub(super) async fn resolve(
 
 fn tail(images: &[String], count: usize, source: &str) -> Result<Vec<String>> {
     if images.len() < count {
-        bail!("requested the last {count} {source} images, but only {} were available", images.len());
+        bail!(
+            "requested the last {count} {source} images, but only {} were available",
+            images.len()
+        );
     }
     Ok(images[images.len() - count..].to_vec())
 }

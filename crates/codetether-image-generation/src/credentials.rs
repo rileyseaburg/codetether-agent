@@ -1,3 +1,4 @@
+//! credentials for image generation and editing.
 use super::auth::ImagesAuth;
 use anyhow::{Result, bail};
 
