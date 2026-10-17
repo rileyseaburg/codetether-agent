@@ -47,3 +47,6 @@ pub mod peer_intake;
 
 /// Task ownership and shutdown for background peer endpoints.
 pub mod peer_handle;
+
+/// Listener preparation and ordered peer discovery startup.
+pub mod peer_startup;

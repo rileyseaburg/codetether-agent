@@ -5860,3 +5860,27 @@ contain at most 24 code lines. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-peer-handle/`. Compilation, tests, and live
 shutdown remain unrun. No Cargo, rustc, or Python commands ran. The broader
 migration remains active.
+
+### Shared peer startup and options
+
+Moved listener binding, advertised-address selection, startup options/defaults,
+card publication, seed polling startup, and LAN/mDNS startup out of application
+`spawn.rs` into `codetether-a2a-http::peer_startup`. Modules separate binding,
+options, preparation, seed startup, UDP startup and mDNS advertisement. Startup
+hooks preserve application card/router construction, ledger-path lookup, and
+application-version advertisement. The application retains the CLI field
+conversion and a thin preparation adapter. Existing public `SpawnOptions`
+fields, defaults and `from_spawn_args(&args)` usage remain supported.
+
+Static comparison expands the startup helpers and verifies the original order,
+including validation before registration/tasks, UDP before mDNS, intake only
+after successful mDNS advertisement, and router construction last. It checks
+options/defaults, CLI conversion, callback/version wiring and preparation fields.
+Foreground/background caller source is unchanged. The module scan reaches 248
+application A2A files and 136 HTTP crate files without missing/orphaned modules;
+the dependency closure is acyclic. New files contain at most 45 code lines.
+File-budget and whitespace checks passed. The HTTP crate now explicitly enables
+Tokio's net feature for its moved listener ownership. Evidence:
+`artifacts/consolidation-peer-startup/`. Compilation, tests and live startup
+remain unrun. No Cargo, rustc or Python commands ran. The broader migration
+remains active.
