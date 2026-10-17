@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 37 | 2153 | Shared catalog/registry, server responses, protocol and transports extracted; server dispatch, bus events, tool policy and client identity adapters remain |
+| mcp | 47 | 2211 | Shared catalog/registry, server responses, protocol and transports extracted; bus adapters modularized; server dispatch, fallback registration and client identity adapters remain |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -3884,3 +3884,23 @@ and diff whitespace check passed. Standalone rustfmt was used. No Cargo, rustc,
 Python, application runtime, Rust tests or doctests ran; compilation and runtime
 behavior remain unverified. Evidence: artifacts/consolidation-mcp-server-protocol/.
 The whole-workspace goal remains active.
+
+## MCP bus adapter module ownership
+
+Application server/bus now owns bus-aware tool and resource registration.
+Event query, bridge status and Ralph status each have a registration module
+and an execution handler module; recent-event, PRD and progress resources
+each have their own module. The parent server retains bridge attachment and
+delegates registration. These are application adapters because their live bus
+bridge dependency belongs to the application, not to shared MCP wire logic.
+
+All 39 static comparisons passed, covering complete reconstructed registration
+bodies, schemas, handler captures, reading and output behavior, logging,
+registration order and unaffected server methods. The verifier accounts for
+standalone rustfmt removing redundant braces from one filter closure.
+Lexical scans cover 47 application MCP files and 81 shared-core files without
+missing or orphaned modules. All ten new modules are at most 41 code lines.
+The changed-source file-limit ratchet and diff whitespace checks passed.
+No Cargo, rustc, Python, bus handlers, application runtime or Rust tests ran;
+compilation and runtime behavior remain unverified. Evidence is retained in
+artifacts/consolidation-mcp-bus-modules/. The workspace goal remains active.
