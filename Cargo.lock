@@ -1317,6 +1317,7 @@ dependencies = [
  "codetether-model-catalog",
  "codetether-moltbook",
  "codetether-morph-backend",
+ "codetether-multiedit",
  "codetether-okr",
  "codetether-okr-tool",
  "codetether-paths",
@@ -2351,10 +2352,24 @@ name = "codetether-morph-backend"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "codetether-provider-core",
  "reqwest 0.13.4",
  "serde",
  "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-multiedit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-morph-backend",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
  "tracing",
 ]
 

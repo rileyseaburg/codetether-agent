@@ -6942,3 +6942,24 @@ and whitespace checks passed; new Rust files contain at most 33 code lines.
 Evidence: `artifacts/consolidation-morph-backend/`. No network requests, runtime
 tests, Cargo, rustc or Python commands ran. Compilation remains unverified;
 the full consolidation goal remains active.
+
+### Dedicated multi-file editing tool
+
+Moved `MultiEditTool` from `src/tool/multiedit.rs` into
+`crates/codetether-multiedit`. Nineteen modules separate array and operation
+validation, exact replacement, cached content, Morph instruction/update
+inference, Morph fallback, file writes and reporting. Added a shared Morph
+editor trait so the crate receives the application's existing provider-backed
+adapter without taking ownership of its provider registry. The application
+exports a concrete type alias preserving `MultiEditTool::new()`.
+
+Twenty-two static preservation checks cover the original schema, exact match
+logic, parsing, Morph fallback and error messages, deduplicated final writes,
+summary data and execution order. Repeated-file edits still accumulate before
+writing; validation errors still prevent writes, and write failures retain the
+original partial-update report. Five existing Morph integration tests and
+fixtures remain unchanged and unrun. Module reachability, dependency-cycle,
+file-budget and whitespace checks passed; new tool modules contain at most
+42 code lines. Evidence: `artifacts/consolidation-multiedit/`. No edit requests,
+network operations, runtime tests, Cargo, rustc or Python commands ran.
+Compilation remains unverified; the full consolidation goal remains active.

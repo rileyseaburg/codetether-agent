@@ -67,3 +67,6 @@ where
     }
     provider::apply_with_provider(&prompt, resolve).await
 }
+
+mod editor;
+pub use editor::Editor;

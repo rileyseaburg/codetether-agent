@@ -38,3 +38,18 @@ pub async fn apply_edit_with_morph(code: &str, instruction: &str, update: &str) 
     )
     .await
 }
+
+/// Stateless Morph adapter sharing the application's provider registry.
+///
+/// # Examples
+/// ```rust
+/// let _editor = codetether_agent::tool::morph_backend::ApplicationEditor;
+/// ```
+#[derive(Default)]
+pub struct ApplicationEditor;
+#[async_trait::async_trait]
+impl codetether_morph_backend::Editor for ApplicationEditor {
+    async fn apply(&self, code: &str, instruction: &str, update: &str) -> Result<String> {
+        apply_edit_with_morph(code, instruction, update).await
+    }
+}
