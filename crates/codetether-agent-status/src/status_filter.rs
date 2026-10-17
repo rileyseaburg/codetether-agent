@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use super::AgentStatus;
-use crate::bus::{BusEnvelope, BusMessage};
+use crate::status_source::AgentStatus;
+use codetether_bus_core::{BusEnvelope, BusMessage};
 
 pub(super) fn collect(
     envelopes: Vec<BusEnvelope>,

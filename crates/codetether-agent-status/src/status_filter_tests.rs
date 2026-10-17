@@ -1,9 +1,9 @@
 //! Regression tests for parent-scoped lifecycle status.
 
 use super::collect;
-use crate::a2a::types::TaskState;
-use crate::bus::{BusEnvelope, BusMessage};
 use chrono::Utc;
+use codetether_a2a_core::TaskState;
+use codetether_bus_core::{BusEnvelope, BusMessage};
 use std::collections::HashMap;
 
 fn update(task_id: &str) -> BusEnvelope {

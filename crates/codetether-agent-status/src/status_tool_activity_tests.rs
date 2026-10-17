@@ -1,9 +1,9 @@
 //! Tests for tool-activity backfill of sub-agent status (issue #295).
 
 use super::merge;
-use crate::a2a::types::TaskState;
-use crate::tool::agent::status_source::AgentStatus;
+use crate::status_source::AgentStatus;
 use chrono::{Duration, Utc};
+use codetether_a2a_core::TaskState;
 use std::collections::HashMap;
 
 #[test]

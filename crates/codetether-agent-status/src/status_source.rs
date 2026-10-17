@@ -8,11 +8,10 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 
-use crate::a2a::types::TaskState;
-use crate::bus::global;
+use codetether_a2a_core::TaskState;
+use codetether_bus_core::global::global;
 
-#[path = "status_filter.rs"]
-mod status_filter;
+use crate::status_filter;
 
 /// Latest known status for one sub-agent.
 #[derive(Clone)]

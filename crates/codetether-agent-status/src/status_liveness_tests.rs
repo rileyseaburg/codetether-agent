@@ -1,8 +1,8 @@
 //! Tests for sub-agent liveness classification.
 
 use super::status_liveness::{STALL_SECS, liveness};
-use crate::a2a::types::TaskState;
 use chrono::{Duration, Utc};
+use codetether_a2a_core::TaskState;
 
 #[test]
 fn terminal_states_are_settled() {

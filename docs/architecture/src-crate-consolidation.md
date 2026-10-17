@@ -8264,3 +8264,22 @@ file-budget and whitespace checks passed; new crate modules contain at most 37
 code lines. Evidence is in `artifacts/consolidation-agent-trace/`. Compilation
 and runtime tests were not run. No Cargo, rustc or Python commands ran. The full
 consolidation goal remains active.
+
+### Dedicated child-agent status reporting
+
+Moved owner-scoped status rendering, bus-history filtering, tool-activity
+fallback, liveness classification and status metadata into
+`crates/codetether-agent-status`. Fifteen Rust modules separate live snapshots,
+row formatting, task updates, tool events, timestamp merging and tests. The
+application provides live child summaries and the existing task ownership map.
+Shared bus history remains the source, with the same 1,024-event limits,
+strict/newer timestamp rules, missing-state output and 120-second stall threshold.
+
+Twenty-nine static preservation checks cover query order, row JSON, filters,
+status/timestamp decisions, provider-independent bus types and application
+snapshots. Eight existing regression tests moved with the implementation.
+Module/dependency, file-budget and whitespace checks passed; crate files contain
+at most 39 code lines. Evidence is in `artifacts/consolidation-agent-status/`.
+Compilation and runtime tests were not run, and no live status query was
+executed. No Cargo, rustc or Python commands ran. The full consolidation goal
+remains active.

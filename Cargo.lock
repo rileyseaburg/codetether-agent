@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-agent-status",
  "codetether-agent-trace",
  "codetether-child-events",
  "codetether-agent-spawn",
@@ -2450,6 +2451,17 @@ dependencies = [
  "anyhow",
  "codetether-collaboration-state",
  "serde",
+]
+
+[[package]]
+name = "codetether-agent-status"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-a2a-core",
+ "codetether-bus-core",
+ "codetether-tool-core",
+ "serde_json",
 ]
 
 [[package]]

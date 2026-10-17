@@ -1,0 +1,14 @@
+[package]
+name = "codetether-agent-status"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Owner-scoped child-agent status reporting and bus activity liveness"
+
+[dependencies]
+chrono = "0.4"
+codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"

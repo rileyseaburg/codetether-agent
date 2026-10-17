@@ -7,7 +7,7 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::a2a::types::TaskState;
+use codetether_a2a_core::TaskState;
 
 /// Seconds a `Working` agent may stay silent before it is flagged as stalled.
 pub(super) const STALL_SECS: i64 = 120;
