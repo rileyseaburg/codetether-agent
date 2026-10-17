@@ -6168,3 +6168,22 @@ closure is acyclic. New files contain at most 41 code lines. Workspace/lockfile
 wiring, file-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-file-diff/`. No tool commands, runtime tests, Cargo,
 rustc or Python were executed. The broader migration remains active.
+
+### Dedicated file-inspection tools crate
+
+Created `crates/codetether-file-inspect` and moved all remaining implementations
+out of `src/tool/file_extras.rs`: directory trees, file metadata, language/text
+statistics and head/tail previews. Twenty-six files separate contracts, schemas,
+collection, recursive traversal, rendering and regression tests. The former
+application file now only re-exports the inspection tools and dedicated diff
+tool.
+
+Static comparison verifies the three tool contracts, directory collection and
+sorting, recursive traversal, counter updates, original log targets, metadata
+and text handling, and preview boundaries. The three existing tree tests moved
+with identical bodies after removing their former module indentation; they
+remain unrun. All 26 files are reachable with no missing/orphaned modules, and
+the dependency closure is acyclic. New files contain at most 49 code lines.
+Workspace/lockfile wiring, file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-file-inspect/`. No tool runtime, filesystem tests,
+Cargo, rustc or Python ran. The broader migration remains active.
