@@ -17,3 +17,6 @@ pub mod git;
 
 /// Hook-checked commit and push orchestration with execution attribution.
 pub mod publication;
+
+/// Exclusive locks around workspace clone operations.
+pub mod clone_lock;

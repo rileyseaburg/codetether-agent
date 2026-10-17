@@ -9,7 +9,6 @@ mod clone_git_cmd;
 mod clone_location;
 mod clone_lock;
 mod clone_lock_release;
-mod clone_lock_stale;
 mod clone_register;
 mod clone_repo_exec;
 mod clone_target;

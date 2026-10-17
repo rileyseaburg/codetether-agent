@@ -5228,3 +5228,22 @@ modules, and the dependency closure remains acyclic. New files have at most
 publication were not executed. No Cargo, rustc, or Python commands ran.
 The broader migration of application implementation into crates remains
 active; this completes only the repository publication extraction.
+
+### Shared clone lock ownership
+
+Moved workspace clone lock naming, exclusive acquisition, stale-file detection,
+and release into `codetether-worktree::repository::clone_lock`. The worker
+retains only adapters for its configured clone directory and stale timeout.
+Lazy callbacks preserve directory lookup and timeout lookup timing, including
+the Unix-only directory lookup during inode-based cleanup. The shared crate
+has no dependency on worker configuration or the HTTP workspace module.
+
+Static comparison verifies all four moved functions with callback substitution:
+filename sanitization, parent creation, exclusive open, stale comparison,
+250 ms retry, and Unix device/inode matching remain unchanged. Non-Unix warning
+logging retains its original target. The module scan covers 145 worktree files
+and 291 application A2A files with no missing or orphaned modules. New files
+contain at most 38 code lines. Dependency-cycle, file-budget, and whitespace
+checks passed. Evidence: `artifacts/consolidation-clone-lock/`. Compilation,
+tests, and filesystem lock operations were not run. No Cargo, rustc, or Python
+commands ran. The broader implementation migration remains active.
