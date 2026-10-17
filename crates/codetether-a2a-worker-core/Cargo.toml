@@ -10,6 +10,7 @@ name = "codetether_a2a_worker_core"
 path = "src/lib.rs"
 
 [dependencies]
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
 async-trait = "0.1.92"
 codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
 codetether-util = { path = "../codetether-util", version = "0.1.0" }

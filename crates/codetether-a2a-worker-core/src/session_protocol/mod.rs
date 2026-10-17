@@ -21,3 +21,6 @@ pub mod driver;
 
 /// Model response recording and ordered tool execution.
 pub mod response;
+
+/// Host-authorized tool invocation and result emission.
+pub mod tool_execution;

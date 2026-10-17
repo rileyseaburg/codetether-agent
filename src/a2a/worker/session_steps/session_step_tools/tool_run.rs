@@ -1,57 +1,26 @@
-//! Tool execution with timeout handling.
-
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
-
+//! Application registry and runtime-policy adapter for shared tool execution.
+use async_trait::async_trait;
+use codetether_a2a_worker_core::session_protocol::tool_execution::{self, ToolExecutionHost};
+use std::sync::Arc;
+struct Host<'a>(&'a crate::tool::ToolRegistry);
+#[async_trait]
+impl ToolExecutionHost for Host<'_> {
+    fn tool(&self, name: &str) -> Option<Arc<dyn crate::tool::Tool>> {
+        self.0.get(name)
+    }
+    async fn evaluate(
+        &self,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> Option<crate::tool::ToolResult> {
+        crate::runtime_policy::evaluate_tool_invocation(name, input).await
+    }
+}
 pub(super) async fn run_tool(
     registry: &crate::tool::ToolRegistry,
     tool_name: &str,
     input: serde_json::Value,
     cb: &Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> crate::tool::ToolResult {
-    let Some(tool) = registry.get(tool_name) else {
-        return crate::tool::ToolResult::error(format!("Error: Unknown tool '{tool_name}'"));
-    };
-    if let Some(blocked) = crate::runtime_policy::evaluate_tool_invocation(tool_name, &input).await
-    {
-        return blocked;
-    }
-    let timeout =
-        super::super::super::env_u64("CODETETHER_WORKER_TOOL_TIMEOUT_SECS", 120).clamp(1, 3600);
-    let started = Instant::now();
-    match tokio::time::timeout(Duration::from_secs(timeout), tool.execute(input)).await {
-        Ok(Ok(result)) => {
-            // Emit the typed event when a worker sink is installed; otherwise
-            // fall back to the historical text-only callback. Flattening the
-            // tool name, status, and output into one string is what previously
-            // made every transcript entry publish as `agent.message`.
-            let emitted = super::super::super::session_event_sink::emit_tool_result_if_active(
-                tool_name,
-                result.success,
-                &result.output,
-                Some(started.elapsed().as_millis()),
-            );
-            if !emitted && let Some(cb) = cb {
-                cb(format!(
-                    "[tool:{}:{}] {}",
-                    tool_name,
-                    if result.success { "ok" } else { "err" },
-                    crate::util::truncate_bytes_safe(&result.output, 500)
-                ));
-            }
-            result
-        }
-        Ok(Err(error)) => crate::tool::ToolResult::error(format!("Error: {error}")),
-        Err(_) => crate::tool::ToolResult::structured_error(
-            "TOOL_TIMEOUT",
-            tool_name,
-            &format!("tool timed out after {}s", timeout),
-            None,
-            Some(
-                serde_json::json!({"hint": "Narrow the request, set a more specific path/include filter, or retry with smaller scope."}),
-            ),
-        ),
-    }
+    tool_execution::run_tool(&Host(registry), tool_name, input, cb).await
 }

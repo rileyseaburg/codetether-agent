@@ -13,3 +13,6 @@ pub use status::tool_result_with_status;
 mod image_tests;
 #[cfg(test)]
 mod retention_tests;
+
+mod raw;
+pub use raw::raw_tool_result;

@@ -1198,6 +1198,7 @@ dependencies = [
  "codetether-agent-core",
  "codetether-provenance",
  "codetether-provider-core",
+ "codetether-tool-core",
  "codetether-util",
  "codetether-worktree",
  "rand 0.10.2",

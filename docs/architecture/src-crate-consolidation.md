@@ -5637,3 +5637,25 @@ File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-response-driver/`. Compilation, tests, and execution
 remain unrun. No Cargo, rustc, or Python commands ran. The broader migration
 remains active.
+
+### Shared worker tool execution and raw result messages
+
+Moved worker tool lookup/policy/execution sequencing into worker-core behind
+`ToolExecutionHost`. The application adapter retains its concrete registry and
+runtime-policy evaluation. The shared driver owns timeout handling and typed
+result emission with the existing text callback fallback. Tool-core now owns
+the raw output-plus-image message constructor used by worker sessions, avoiding
+feedback formatting changes.
+
+Static comparison expands result emission and matches the original execution
+body, including unknown-tool handling, policy-before-timeout order, timeout
+metadata, and output formatting. Host lookup/policy calls and raw Tool-role
+message content are verified. All three existing image/denial test and fixture
+files are byte-identical. The module scan reaches 163 worker-core files,
+58 tool-core files, and 254 application A2A files without missing/orphaned
+modules or dependency cycles. New files contain at most 32 code lines.
+Worker-core directly declares its existing tool-core dependency. File-budget
+and whitespace checks passed. Evidence:
+`artifacts/consolidation-worker-tool-execution/`. Compilation, tests and live
+tool invocation remain unrun. No Cargo, rustc, or Python commands ran. The
+broader migration remains active.
