@@ -10,9 +10,7 @@ impl ParallelExecutionContext<'_> {
         qg_attempt: usize,
         max_quality_retries: usize,
     ) -> bool {
-        if !error_output.is_empty() {
-            state.failure_reason = Some(error_output.to_string());
-        }
+        state.remember_failure(error_output);
         let repair_result = RalphLoop::repair_parallel_story(
             self.provider,
             self.model,
@@ -27,11 +25,7 @@ impl ParallelExecutionContext<'_> {
         .await;
         match repair_result {
             Ok(repair_output) => {
-                let output = &mut state.output;
-                *output = format!(
-                    "{output}\n---\n[repair attempt {}] {repair_output}",
-                    qg_attempt + 1
-                );
+                state.append_repair(repair_output, qg_attempt);
             }
             Err(e) => {
                 warn!(

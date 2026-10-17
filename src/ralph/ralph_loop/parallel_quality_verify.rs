@@ -9,33 +9,25 @@ impl ParallelExecutionContext<'_> {
         error_output: &mut String,
         qg_attempt: usize,
     ) -> bool {
-        match run_story_verification(self.working_dir, self.story).await {
-            Ok(()) => {
-                state.qg_passed = true;
-                state.failure_reason = None;
+        codetether_ralph_core::quality_repair::verify_attempt(
+            state,
+            error_output,
+            run_story_verification(self.working_dir, self.story),
+            || {
                 info!(
                     story_id = %self.story.id,
                     attempt = qg_attempt + 1,
                     "Quality gates and verification passed"
                 );
-                return true;
-            }
-            Err(e) => {
-                *error_output = format!("Verification steps failed:\n{e}");
-                state.failure_reason = Some(error_output.clone());
-            }
-        }
-        false
+            },
+        )
+        .await
     }
     pub(super) async fn verify_without_quality(&self, state: &mut QualityProgress) {
-        match run_story_verification(self.working_dir, self.story).await {
-            Ok(()) => {
-                state.qg_passed = true;
-                state.failure_reason = None;
-            }
-            Err(e) => {
-                state.failure_reason = Some(format!("Verification steps failed:\n{e}"));
-            }
-        }
+        codetether_ralph_core::quality_repair::verify_without_checks(
+            state,
+            run_story_verification(self.working_dir, self.story),
+        )
+        .await;
     }
 }

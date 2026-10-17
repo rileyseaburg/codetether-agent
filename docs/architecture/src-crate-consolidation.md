@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 101 | 2839 | Contracts/services/events, quality-repair sequencing and progress records extracted; application execution ownership audit continues |
+| ralph | 101 | 2823 | Shared quality state/retry sequencing, progress records and contracts extracted; application execution ownership audit continues |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -152,7 +152,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-openai | 72 | yes | none |
 | codetether-provider-zai | 120 | yes | none |
 | codetether-question | 30 | yes | none |
-| codetether-ralph-core | 114 | yes | none |
+| codetether-ralph-core | 117 | yes | none |
 | codetether-rlm | 448 | yes | none |
 | codetether-runtime-policy | 37 | yes | none |
 | codetether-search | 18 | yes | none |
@@ -4236,3 +4236,21 @@ No Cargo, rustc, Python, progress write, model call, Rust test or doctest ran.
 Compilation and runtime remain unverified. Evidence:
 artifacts/consolidation-ralph-progress-records/. The broader goal and remaining
 Ralph execution ownership audit remain active.
+
+## Ralph quality evidence ownership
+
+Ralph-core now owns verification outcome application, nonempty failure-reason
+updates and repair-output accumulation alongside its retry state machine.
+Application code still supplies the original verification future and success
+log callback, preserving the existing policy-aware verifier and error text.
+Repair execution and exhausted-retry reporting remain host operations.
+
+All nine static comparisons passed: verification success/failure field updates,
+diagnostic assignment order, log placement, repair formatting and host command
+invocation paths. New files are at most 22 code lines. Lexical scans cover all
+117 core and 101 application files without missing modules or dependency-cycle
+changes. No manifest changes were required. File-limit and whitespace checks
+passed; standalone rustfmt was used. No Cargo, rustc, Python, verification,
+repair execution, Rust test or doctest ran; compilation and runtime remain
+unverified. Evidence: artifacts/consolidation-ralph-quality-state/. Remaining
+Ralph execution ownership and the whole-workspace objective stay active.

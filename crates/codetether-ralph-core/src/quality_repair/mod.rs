@@ -13,3 +13,9 @@ pub use finish::finish;
 pub use host::RepairHost;
 pub use retry::run_quality_retries;
 pub use state::QualityProgress;
+
+mod evidence;
+mod verify;
+mod verify_without_checks;
+pub use verify::verify_attempt;
+pub use verify_without_checks::verify_without_checks;
