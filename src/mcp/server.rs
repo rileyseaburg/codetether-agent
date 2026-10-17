@@ -818,35 +818,11 @@ impl McpServer {
 
     /// Handle initialize request
     async fn handle_initialize(&self, params: Option<Value>) -> Result<Value, JsonRpcError> {
-        let _params: InitializeParams = if let Some(p) = params {
-            serde_json::from_value(p).map_err(|e| JsonRpcError::invalid_params(e.to_string()))?
-        } else {
-            return Err(JsonRpcError::invalid_params("Missing params"));
-        };
-
-        let result = InitializeResult {
-            protocol_version: PROTOCOL_VERSION.to_string(),
-            capabilities: ServerCapabilities {
-                tools: Some(ToolsCapability { list_changed: true }),
-                resources: Some(ResourcesCapability {
-                    subscribe: false,
-                    list_changed: true,
-                }),
-                prompts: Some(PromptsCapability { list_changed: true }),
-                logging: Some(LoggingCapability {}),
-                experimental: super::approval::capability(),
-            },
-            server_info: self.server_info.clone(),
-            instructions: Some(
-                "CodeTether is an AI coding agent with tools for file operations, \
-                 command execution, code search, and autonomous task execution. \
-                 Use the swarm tool for complex tasks requiring parallel execution, \
-                 and ralph for PRD-driven development."
-                    .to_string(),
-            ),
-        };
-
-        serde_json::to_value(result).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+        codetether_mcp_core::server_protocol::initialize(
+            params,
+            &self.server_info,
+            super::approval::capability,
+        )
     }
 
     /// Handle list tools request - reads from ToolMetadata registry
@@ -883,35 +859,8 @@ impl McpServer {
             .get(&params.name)
             .ok_or_else(|| JsonRpcError::method_not_found(&params.name))?;
 
-        let (result_value, output_text, success) = match handler(params.arguments) {
-            Ok(result) => {
-                let text = result
-                    .content
-                    .iter()
-                    .filter_map(|c| match c {
-                        ToolContent::Text { text } => Some(text.as_str()),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                let is_err = result.is_error;
-                let val = serde_json::to_value(result)
-                    .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
-                (val, text, !is_err)
-            }
-            Err(e) => {
-                let err_text = e.to_string();
-                let result = CallToolResult {
-                    content: vec![ToolContent::Text {
-                        text: err_text.clone(),
-                    }],
-                    is_error: true,
-                };
-                let val = serde_json::to_value(result)
-                    .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
-                (val, err_text, false)
-            }
-        };
+        let (result_value, output_text, success) =
+            codetether_mcp_core::server_protocol::normalize_tool_result(handler(params.arguments))?;
 
         // Publish ToolResponse to the agent bus
         if let Some(ref bh) = bus_handle {
@@ -943,95 +892,11 @@ impl McpServer {
 
     /// Handle list prompts request
     async fn handle_list_prompts(&self, _params: Option<Value>) -> Result<Value, JsonRpcError> {
-        let result = ListPromptsResult {
-            prompts: vec![
-                McpPrompt {
-                    name: "code_review".to_string(),
-                    description: Some("Review code for issues and improvements".to_string()),
-                    arguments: vec![PromptArgument {
-                        name: "file".to_string(),
-                        description: Some("File to review".to_string()),
-                        required: true,
-                    }],
-                },
-                McpPrompt {
-                    name: "explain_code".to_string(),
-                    description: Some("Explain what code does".to_string()),
-                    arguments: vec![PromptArgument {
-                        name: "file".to_string(),
-                        description: Some("File to explain".to_string()),
-                        required: true,
-                    }],
-                },
-            ],
-            next_cursor: None,
-        };
-
-        serde_json::to_value(result).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+        codetether_mcp_core::server_protocol::list_prompts()
     }
 
     /// Handle get prompt request
     async fn handle_get_prompt(&self, params: Option<Value>) -> Result<Value, JsonRpcError> {
-        let params: GetPromptParams = if let Some(p) = params {
-            serde_json::from_value(p).map_err(|e| JsonRpcError::invalid_params(e.to_string()))?
-        } else {
-            return Err(JsonRpcError::invalid_params("Missing params"));
-        };
-
-        let result = match params.name.as_str() {
-            "code_review" => {
-                let file = params
-                    .arguments
-                    .get("file")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("file.rs");
-
-                GetPromptResult {
-                    description: Some("Code review prompt".to_string()),
-                    messages: vec![PromptMessage {
-                        role: PromptRole::User,
-                        content: PromptContent::Text {
-                            text: format!(
-                                "Please review the following code for:\n\
-                                     - Bugs and potential issues\n\
-                                     - Performance concerns\n\
-                                     - Code style and best practices\n\
-                                     - Security vulnerabilities\n\n\
-                                     File: {}",
-                                file
-                            ),
-                        },
-                    }],
-                }
-            }
-            "explain_code" => {
-                let file = params
-                    .arguments
-                    .get("file")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("file.rs");
-
-                GetPromptResult {
-                    description: Some("Code explanation prompt".to_string()),
-                    messages: vec![PromptMessage {
-                        role: PromptRole::User,
-                        content: PromptContent::Text {
-                            text: format!(
-                                "Please explain what this code does, including:\n\
-                                     - Overall purpose\n\
-                                     - Key functions and their roles\n\
-                                     - Data flow\n\
-                                     - Important algorithms used\n\n\
-                                     File: {}",
-                                file
-                            ),
-                        },
-                    }],
-                }
-            }
-            _ => return Err(JsonRpcError::method_not_found(&params.name)),
-        };
-
-        serde_json::to_value(result).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+        codetether_mcp_core::server_protocol::get_prompt(params)
     }
 }

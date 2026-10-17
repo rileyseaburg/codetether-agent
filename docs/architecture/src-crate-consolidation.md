@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 37 | 2281 | Shared catalog/registry, protocol and transports extracted; server dispatch, bus events, tool policy and client identity adapters remain |
+| mcp | 37 | 2153 | Shared catalog/registry, server responses, protocol and transports extracted; server dispatch, bus events, tool policy and client identity adapters remain |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -170,7 +170,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-metrics | 16 | yes | none |
 | codetether-provider-bonsai | 80 | yes | none |
 | codetether-moltbook | 36 | yes | none |
-| codetether-mcp-core | 75 | yes | none |
+| codetether-mcp-core | 81 | yes | none |
 | codetether-mcp-transport | 26 | yes | none |
 | codetether-model-catalog | 30 | yes | none |
 | codetether-util | 3 | yes | none |
@@ -3865,3 +3865,22 @@ Formatting, file-limit and staged whitespace checks were used. No handler,
 registry, transport, Cargo, rustc, Python or test executed. Compilation and
 tests remain unverified. Evidence: artifacts/consolidation-mcp-catalog/.
 The full workspace goal remains active.
+
+## MCP server protocol responses
+
+MCP-core::server_protocol now owns initialization response construction,
+built-in prompt metadata and rendering, and tool-result wire normalization.
+Separate modules hold initialization, prompt dispatch, each prompt template,
+and tool-result conversion. Application server methods retain handler execution,
+read-lock lifetime, bus request/response publication and approval integration.
+The capability callback is evaluated only after initialization parameters parse.
+
+All 39 static comparisons passed: exact template strings, error and default
+behavior, response conversion, host forwarding and unaffected server methods.
+Lexical module scans cover 81 core and 37 application files with no missing or
+orphaned modules; the four-crate local dependency closure has no detected cycle.
+All six new files have at most 40 code lines. The changed-source line ratchet
+and diff whitespace check passed. Standalone rustfmt was used. No Cargo, rustc,
+Python, application runtime, Rust tests or doctests ran; compilation and runtime
+behavior remain unverified. Evidence: artifacts/consolidation-mcp-server-protocol/.
+The whole-workspace goal remains active.

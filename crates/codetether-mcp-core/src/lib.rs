@@ -18,3 +18,6 @@ pub mod registry;
 
 /// Server handler registration, metadata and protocol catalog queries.
 pub mod server_catalog;
+
+/// Server initialization, built-in prompts and tool-result response formatting.
+pub mod server_protocol;
