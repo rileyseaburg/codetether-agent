@@ -17,14 +17,15 @@ use crate::a2a::types::{Part, TaskState};
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
 use crate::bus::{AgentBus, BusHandle, BusMessage};
 use crate::cli::ForageArgs;
-use crate::okr::{Okr, OkrRepository, OkrRun, OkrRunStatus};
-use crate::provider::ProviderRegistry;
+use crate::okr::{Okr, OkrRepository};
 use crate::swarm::{DecompositionStrategy, ExecutionMode, SwarmConfig, SwarmExecutor};
 use run_exec::execute_opportunity_with_run;
 mod s3_health;
 use s3_health::ensure_s3_sync_alive;
 mod progress_adapter;
 use progress_adapter::record_execution_success_to_okr;
+mod go_exec;
+use go_exec::execute_opportunity_with_go;
 mod execution;
 use execution::execute_opportunity;
 mod swarm_execution;
@@ -47,7 +48,7 @@ mod run_exec;
 mod s3_optional;
 mod tetherscript_score;
 use crate::forage_println;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::Utc;
 use codetether_forage_core::execution::ExecutionOutcome;
 use serde::Serialize;
@@ -351,97 +352,6 @@ pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> 
     .await;
 
     Ok(summary)
-}
-
-/// Execute opportunity using the Ralph PRD-driven autonomous loop (go engine)
-async fn execute_opportunity_with_go(
-    item: &ForageOpportunity,
-    args: &ForageArgs,
-) -> Result<String> {
-    use crate::cli::go_ralph::execute_go_ralph;
-
-    let timeout_secs = args.run_timeout_secs.clamp(30, 86_400);
-    let model = args
-        .model
-        .clone()
-        .unwrap_or_else(|| "anthropic/claude-sonnet-4-20250514".to_string());
-
-    // Load provider registry and get a provider
-    let registry = ProviderRegistry::from_vault()
-        .await
-        .context("Failed to load provider registry for go engine")?;
-
-    let (provider, resolved_model) = registry
-        .resolve_model(&model)
-        .with_context(|| format!("Failed to resolve model '{}' for go engine", model))?;
-
-    // Load the OKR to get full context for PRD generation
-    let repo = OkrRepository::from_config()
-        .await
-        .context("Failed to load OKR repository")?;
-
-    let mut okr = repo
-        .get_okr(item.okr_id)
-        .await?
-        .with_context(|| format!("OKR {} not found", item.okr_id))?;
-
-    // Create an OKR run for this execution
-    let mut okr_run = OkrRun::new(item.okr_id, format!("forage-cycle-{}", item.key_result_id));
-    okr_run.submit_for_approval()?;
-    okr_run.record_decision(crate::okr::ApprovalDecision::approve(
-        okr_run.id,
-        "Auto-approved from forage execution",
-    ));
-
-    // Build the task from the opportunity
-    let task = item.prompt.clone();
-
-    // Execute the Ralph PRD-driven autonomous loop
-    match tokio::time::timeout(
-        Duration::from_secs(timeout_secs),
-        execute_go_ralph(
-            &task,
-            &mut okr,
-            &mut okr_run,
-            provider,
-            &resolved_model,
-            10,   // max_iterations
-            None, // bus - could pass bus here for inter-iteration learning
-            3,    // max_concurrent_stories
-            None, // registry - passed via RalphLoop.with_registry if needed
-        ),
-    )
-    .await
-    {
-        Ok(Ok(result)) => {
-            if result.all_passed {
-                Ok(format!(
-                    "go execution completed - all {}/{} stories passed (iterations: {}/{}, branch: {})",
-                    result.passed,
-                    result.total,
-                    result.iterations,
-                    result.max_iterations,
-                    result.feature_branch
-                ))
-            } else {
-                Ok(format!(
-                    "go execution completed - {}/{} stories passed (iterations: {}/{}, branch: {}, status: {:?})",
-                    result.passed,
-                    result.total,
-                    result.iterations,
-                    result.max_iterations,
-                    result.feature_branch,
-                    result.status
-                ))
-            }
-        }
-        Ok(Err(err)) => {
-            // Update run status to failed
-            okr_run.status = OkrRunStatus::Failed;
-            Err(err).context("go execution failed")
-        }
-        Err(_) => anyhow::bail!("go execution timed out after {timeout_secs}s"),
-    }
 }
 
 #[cfg(test)]

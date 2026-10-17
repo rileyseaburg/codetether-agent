@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 21 | 1323 | Shared selection/evidence/rubric services extracted; application adapters modularized; main loop, Go-engine preparation and residual tests remain for cohesion audit |
+| forage | 25 | 1347 | Shared selection/evidence/rubric services extracted; engine and event adapters modularized; main loop and residual tests remain for cohesion audit |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -4064,3 +4064,24 @@ No Cargo, rustc, Python, engine, S3 task, audit initialization, bus drain, Rust
 test or doctest was executed. Compilation and runtime behavior remain
 unverified. Evidence: artifacts/consolidation-forage-adapters/. The broader
 workspace goal remains active.
+
+## Forage Go-engine adapter cohesion
+
+The application go_exec modules separate provider resolution, objective/run
+preparation, Ralph invocation and result rendering. ProviderRegistry and
+OkrRepository are returned to named executor bindings so they remain owned
+through execution. The default model, approval construction, timeout bounds,
+iteration/concurrency arguments, failure status and output text are preserved.
+
+All 25 static comparisons passed, including helper bodies, assembled execution
+flow, named owner bindings, the registry provider return type and unchanged
+root functions/test module. The verifier accounts for standalone rustfmt
+collapsing a single-expression success arm. All four new files are at most 40
+code lines. Lexical scans cover 25 application and 34 shared-core files with
+no missing modules; the three-crate dependency closure remains acyclic.
+File-limit and whitespace checks passed. No manifests changed.
+
+No Cargo, rustc, Python, provider resolution, Vault access, Ralph execution,
+Rust test or doctest ran; compilation and runtime behavior remain unverified.
+Evidence: artifacts/consolidation-forage-go/. The main forage loop and its
+remaining cohesion work are still part of the active workspace objective.
