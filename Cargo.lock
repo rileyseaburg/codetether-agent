@@ -1289,6 +1289,7 @@ dependencies = [
  "codetether-command-shell",
  "codetether-config",
  "codetether-confirm-edit",
+ "codetether-confirm-multiedit",
  "codetether-context-policy",
  "codetether-crash",
  "codetether-distill",
@@ -1957,6 +1958,19 @@ dependencies = [
  "async-trait",
  "codetether-telemetry",
  "codetether-tool-core",
+ "serde_json",
+ "similar 3.2.0",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-confirm-multiedit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "serde",
  "serde_json",
  "similar 3.2.0",
  "tokio",

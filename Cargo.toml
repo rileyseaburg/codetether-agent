@@ -130,6 +130,7 @@ members = [
     "crates/codetether-edit",
     "crates/codetether-patch",
     "crates/codetether-confirm-edit",
+    "crates/codetether-confirm-multiedit",
     "crates/codetether-tool-core",
     "crates/codetether-todo",
     "crates/codetether-mcp-core",
@@ -369,6 +370,7 @@ codetether-sandbox-runner = { path = "crates/codetether-sandbox-runner", version
 codetether-sandbox-runtime = { path = "crates/codetether-sandbox-runtime", version = "0.1.0" }
 codetether-sandbox-seccomp = { path = "crates/codetether-sandbox-seccomp", version = "0.1.0" }
 codetether-sandbox-seatbelt = { path = "crates/codetether-sandbox-seatbelt", version = "0.1.0" }
+codetether-confirm-multiedit = { path = "crates/codetether-confirm-multiedit", version = "0.1.0" }
 codetether-confirm-edit = { path = "crates/codetether-confirm-edit", version = "0.1.0" }
 codetether-patch = { path = "crates/codetether-patch", version = "0.1.0" }
 codetether-edit = { path = "crates/codetether-edit", version = "0.1.0" }
