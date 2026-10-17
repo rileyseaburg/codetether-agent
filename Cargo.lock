@@ -1104,14 +1104,21 @@ dependencies = [
 name = "codetether-a2a-grpc"
 version = "0.1.0"
 dependencies = [
+ "async-stream",
  "base64 0.22.1",
+ "chrono",
  "codetether-a2a-core",
+ "codetether-bus-core",
+ "dashmap",
  "prost",
  "prost-types",
  "serde_json",
+ "tokio",
+ "tokio-stream",
  "tonic",
  "tonic-prost",
  "tonic-prost-build",
+ "uuid",
 ]
 
 [[package]]

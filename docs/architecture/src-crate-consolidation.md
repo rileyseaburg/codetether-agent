@@ -27,7 +27,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | tui | 1208 | 42457 | Pending cohesion and dependency audit |
 | session | 916 | 27990 | Partial extraction; inspect remaining implementation |
 | provider | 141 | 3096 | Shared contracts/HTTP/images/context limits, Codex OAuth/lifecycle/request, message and response protocol/HTTP and WebSocket transport, and Google/Bedrock auth, transcript conversion, body policy, native requests, responses, streaming, and Bedrock execution/discovery/refresh and OpenAI/DeepSeek/Z.AI/Anthropic/Moonshot/Google/StepFun/OpenRouter/Vertex Anthropic/Vertex GLM/GLM-5/Copilot implementations extracted; other adapters/registry pending |
-| a2a | 355 | 12904 | Wire contracts, HTTP client, stream/QUIC, discovery and task scope extracted; gRPC contracts/conversions also extracted; service/store, server and remaining worker ownership remain pending |
+| a2a | 355 | 12904 | Wire contracts, HTTP client, stream/QUIC, discovery and task scope extracted; gRPC contracts, conversions and service/store also extracted; HTTP server and remaining worker ownership remain pending |
 | cli | 198 | 10322 | Pending cohesion and dependency audit |
 | swarm | 228 | 5643 | Shared runtime/domain/prompt policy extracted; application supplies session, provider, tools, worktrees and pod operations; remaining ownership audit ongoing |
 | server | 213 | 8264 | Pending cohesion and dependency audit |
@@ -94,7 +94,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | --- | ---: | --- | --- |
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-discovery | 19 | yes | none |
-| codetether-a2a-grpc | 23 | yes | codetether-a2a-core |
+| codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 6 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 36 | yes | none |
@@ -4570,3 +4570,22 @@ generation script, remain below 50 code lines. File-budget and whitespace
 checks passed. Evidence: `artifacts/consolidation-a2a-grpc-contracts/`.
 Protobuf generation, compilation, tests, doctests, and Docker builds were not
 run. The broader consolidation goal remains active.
+
+
+### Shared A2A gRPC service and task store
+
+The gRPC crate now owns `GrpcTaskStore` and `A2aServiceImpl`. Store operations,
+individual RPC handlers, and stream production have separate modules. A small
+macro declares the ten tonic forwarding methods; operation logic stays in
+ordinary functions. The application gRPC module is a compatibility re-export.
+The crate uses bus-core directly for the original task publication behavior.
+No authentication, task-state, push-configuration, or stream policy was changed.
+
+Static comparisons cover both structs, all six store methods, ten handlers,
+and both extracted stream expressions. All 45 source modules are reachable,
+and the five-crate local dependency closure is acyclic. New files remain
+below 50 code lines. The lockfile change only adds seven already-locked
+dependencies to the gRPC crate. File-budget and whitespace checks passed.
+Evidence is retained in `artifacts/consolidation-a2a-grpc-service/`.
+Compilation, RPC execution, and tests remain unverified. The broader goal
+remains active, including the HTTP server and application worker boundary.
