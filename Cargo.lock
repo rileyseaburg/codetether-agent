@@ -1266,6 +1266,7 @@ dependencies = [
  "codetether-approval-core",
  "codetether-audit",
  "codetether-autochat-core",
+ "codetether-avatar-tool",
  "codetether-bash-policy",
  "codetether-bash-tool",
  "codetether-batch-tool",
@@ -1526,6 +1527,19 @@ dependencies = [
  "codetether-context-policy",
  "codetether-provider-core",
  "codetether-rlm",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-avatar-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "reqwest 0.13.4",
  "serde",
  "serde_json",
  "tokio",

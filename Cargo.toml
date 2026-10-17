@@ -140,6 +140,7 @@ members = [
     "crates/codetether-voice-tool",
     "crates/codetether-youtube-tool",
     "crates/codetether-podcast-tool",
+    "crates/codetether-avatar-tool",
     "crates/codetether-tool-core",
     "crates/codetether-todo",
     "crates/codetether-mcp-core",
@@ -379,6 +380,7 @@ codetether-sandbox-runner = { path = "crates/codetether-sandbox-runner", version
 codetether-sandbox-runtime = { path = "crates/codetether-sandbox-runtime", version = "0.1.0" }
 codetether-sandbox-seccomp = { path = "crates/codetether-sandbox-seccomp", version = "0.1.0" }
 codetether-sandbox-seatbelt = { path = "crates/codetether-sandbox-seatbelt", version = "0.1.0" }
+codetether-avatar-tool = { path = "crates/codetether-avatar-tool", version = "0.1.0" }
 codetether-podcast-tool = { path = "crates/codetether-podcast-tool", version = "0.1.0" }
 codetether-youtube-tool = { path = "crates/codetether-youtube-tool", version = "0.1.0" }
 codetether-voice-tool = { path = "crates/codetether-voice-tool", version = "0.1.0" }

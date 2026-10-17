@@ -7210,3 +7210,21 @@ new Rust files contain at most 47 code lines. Evidence:
 network requests, runtime tests, Cargo, rustc or Python commands ran.
 Compilation remains unverified; the full workspace consolidation goal remains
 active.
+
+### Dedicated avatar generation tool
+
+Moved `AvatarTool` from `src/tool/avatar.rs` into
+`crates/codetether-avatar-tool`. Thirty-six modules separate client configuration,
+container lifecycle, action dispatch, required-field validation, multipart forms,
+local file attachment, response formatting and schema properties. The application
+retains only a compatibility export. Existing service endpoints, timeouts, form
+fields, validation order, error messages and result metadata are preserved.
+
+Thirty static preservation checks reconstruct all seven action flows and the
+complete schema against the original source. Module reachability, dependency
+cycles, duplicate modules, file budgets and whitespace were checked; new Rust
+files contain at most 34 code lines. Evidence lives in
+`artifacts/consolidation-avatar-tool/`. No generation, uploads, container control,
+network requests, runtime tests, Cargo, rustc or Python commands ran. Compilation
+and runtime behavior remain unverified. The full consolidation goal remains
+active.
