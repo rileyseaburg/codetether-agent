@@ -1,7 +1,7 @@
 //! Embedding derivation for [`MemoryEntry`](super::MemoryEntry).
 
 use super::MemoryEntry;
-use crate::vectordb::{Embeddable, EmbeddingVector, LocalEmbeddingEngine};
+use codetether_vectordb::{Embeddable, EmbeddingVector, LocalEmbeddingEngine};
 
 impl Embeddable for MemoryEntry {
     fn embedding_text(&self) -> String {
@@ -18,7 +18,7 @@ impl MemoryEntry {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_agent::tool::memory::MemoryEntry;
+    /// use codetether_memory_core::MemoryEntry;
     ///
     /// let mut entry = MemoryEntry::new("rust async runtime", vec![]);
     /// assert!(entry.embedding.is_none());
@@ -32,11 +32,24 @@ impl MemoryEntry {
     }
 
     /// Replace any cached vector with a local-engine embedding.
-    pub(super) fn refresh_embedding(&mut self) {
+    ///
+    /// # Examples
+    /// ```rust
+    /// let mut entry = codetether_memory_core::MemoryEntry::new("text", vec![]);
+    /// entry.refresh_embedding();
+    /// assert!(entry.cached_embedding().is_some());
+    /// ```
+    pub fn refresh_embedding(&mut self) {
         self.embedding = Some(self.embed_with(&LocalEmbeddingEngine::default()));
     }
 
     /// Borrow the cached embedding, computing nothing.
+    ///
+    /// # Examples
+    /// ```rust
+    /// let entry = codetether_memory_core::MemoryEntry::new("text", vec![]);
+    /// assert!(entry.cached_embedding().is_none());
+    /// ```
     pub fn cached_embedding(&self) -> Option<&EmbeddingVector> {
         self.embedding.as_ref()
     }

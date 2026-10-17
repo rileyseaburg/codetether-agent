@@ -1316,6 +1316,7 @@ dependencies = [
  "codetether-marketplace",
  "codetether-mcp-core",
  "codetether-mcp-transport",
+ "codetether-memory-core",
  "codetether-mesh",
  "codetether-model-catalog",
  "codetether-moltbook",
@@ -2356,6 +2357,16 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-memory-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-vectordb",
+ "serde",
+ "uuid",
 ]
 
 [[package]]

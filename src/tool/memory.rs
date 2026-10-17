@@ -5,94 +5,25 @@
 
 mod actions;
 mod auto_init;
-mod embeddable;
 mod embedder_handle;
-mod fuse;
 pub mod fusion;
 mod git_scope;
 pub mod query_match;
 mod scope;
 mod scope_widen;
 pub mod search;
-mod search_rank;
 pub mod semantic;
 mod store_embed;
 
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+pub use codetether_memory_core::MemoryEntry;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
-
-/// A single memory entry
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MemoryEntry {
-    /// Unique identifier
-    pub id: String,
-    /// The memory content
-    pub content: String,
-    /// Tags for categorization/search
-    pub tags: Vec<String>,
-    /// When this memory was created
-    pub created_at: DateTime<Utc>,
-    /// When this memory was last accessed
-    pub accessed_at: DateTime<Utc>,
-    /// How many times this memory has been accessed
-    pub access_count: u64,
-    /// Optional project/context scope
-    pub scope: Option<String>,
-    /// Source of the memory (session_id, tool, etc.)
-    pub source: Option<String>,
-    /// Importance level (1-5)
-    pub importance: u8,
-    /// Cached semantic embedding (computed once on save, persisted to disk).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub embedding: Option<crate::vectordb::EmbeddingVector>,
-}
-
-impl MemoryEntry {
-    pub fn new(content: impl Into<String>, tags: Vec<String>) -> Self {
-        let now = Utc::now();
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            content: content.into(),
-            tags,
-            created_at: now,
-            accessed_at: now,
-            access_count: 0,
-            scope: None,
-            source: None,
-            importance: 3, // default medium importance
-            embedding: None,
-        }
-    }
-
-    pub fn with_scope(mut self, scope: impl Into<String>) -> Self {
-        self.scope = Some(scope.into());
-        self
-    }
-
-    /// Set the source of this memory entry
-    #[allow(dead_code)]
-    pub fn with_source(mut self, source: impl Into<String>) -> Self {
-        self.source = Some(source.into());
-        self
-    }
-
-    pub fn with_importance(mut self, importance: u8) -> Self {
-        self.importance = importance.min(5);
-        self
-    }
-
-    pub fn touch(&mut self) {
-        self.accessed_at = Utc::now();
-        self.access_count += 1;
-    }
-}
 
 /// Memory store for persistence
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

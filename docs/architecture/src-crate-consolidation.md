@@ -7059,3 +7059,23 @@ contain at most 37 code lines. Evidence: `artifacts/consolidation-skill-tool/`.
 No skills were loaded or executed for this refactor; no runtime tests, Cargo,
 rustc or Python commands ran. Compilation remains unverified, and the full
 workspace consolidation goal remains active.
+
+### Shared memory records and retrieval core
+
+Moved `MemoryEntry`, local embedding derivation, lexical query matching,
+semantic scoring, reciprocal-rank fusion, candidate filtering and scope-widening
+retrieval into `crates/codetether-memory-core`. Twelve modules give records and
+retrieval one owner. Application memory persistence, tool actions and automatic
+provider-backed embedding selection remain in place and use the shared types.
+The local embedding refresh method is public so the existing store loader can
+continue refreshing persisted vectors without duplicating that logic.
+
+Fifteen static preservation checks compare the record's serialized fields,
+constructors and access tracking, all eight moved retrieval modules, and the
+remaining application store/tool bodies. Five existing memory tests and their
+support remain unchanged and unrun. Module reachability checks include the
+application memory tree; dependency-cycle, file-budget and whitespace checks
+also passed. New Rust files contain at most 40 code lines. Evidence:
+`artifacts/consolidation-memory-core/`. No memory operations, runtime tests,
+Cargo, rustc or Python commands ran. Compilation remains unverified; the full
+workspace consolidation goal remains active.

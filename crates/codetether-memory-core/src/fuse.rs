@@ -3,7 +3,7 @@
 use super::fusion::{rank_positions, rrf_term};
 use super::search_rank::Candidate;
 use super::semantic::score_against;
-use crate::vectordb::EmbeddingVector;
+use codetether_vectordb::EmbeddingVector;
 use std::collections::HashMap;
 
 /// Rank `candidates` via reciprocal-rank fusion of lexical + semantic signals.

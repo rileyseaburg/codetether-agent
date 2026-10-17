@@ -1,0 +1,13 @@
+[package]
+name = "codetether-memory-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Memory records and deterministic hybrid lexical-semantic retrieval"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+codetether-vectordb = { path = "../codetether-vectordb", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+uuid = { version = "1", features = ["v4"] }
