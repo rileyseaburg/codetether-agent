@@ -2,7 +2,8 @@
 //!
 //! [Tool] defines execution; [ToolResult] carries output and metadata. Aliases
 //! and unknown-tool fallback are registry-independent. Concrete tools, plugin
-//! registries, access policy, and provider selection live in higher layers.
+//! registries and access policy live in higher layers. Tool profiles select
+//! which registered contracts are advertised to each provider.
 mod alias;
 pub mod budget;
 mod contract;
@@ -32,3 +33,6 @@ pub mod proposed;
 
 /// Pure patch parsing and transformation shared by tool adapters and policy.
 pub mod patch;
+
+/// Deterministic advertised-tool profiles and provider defaults.
+pub mod profile;

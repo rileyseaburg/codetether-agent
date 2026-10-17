@@ -1,7 +1,7 @@
 //! Deterministic schema ordering tests.
 
 use super::super::sort;
-use crate::provider::ToolDefinition;
+use codetether_provider_core::ToolDefinition;
 
 #[test]
 fn schema_order_is_deterministic() {

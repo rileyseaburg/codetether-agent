@@ -1,6 +1,6 @@
 //! Core coding-tool catalog and deterministic schema ordering.
 
-use crate::provider::ToolDefinition;
+use codetether_provider_core::ToolDefinition;
 
 #[path = "catalog_ids.rs"]
 mod ids;

@@ -6204,3 +6204,20 @@ dependency closure is acyclic. New files contain at most 49 code lines.
 Workspace/lockfile wiring, file-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-k8s-tool/`. No Kubernetes operations, runtime tests,
 Cargo, rustc or Python were executed. The broader migration remains active.
+
+### Shared tool-profile catalog and selection
+
+Moved the complete tool-profile subsystem into `codetether-tool-core::profile`:
+public selection functions, provider rules, compact/discovery/mux catalogs,
+sorting and existing tests. The application keeps a compatibility export with
+the original visibility for provider-specific selection. No new dependency is
+needed because tool-core already owns the shared provider tool definitions.
+
+Static comparison verifies all 11 moved files after explicit import/module-path
+and API visibility substitutions. Catalog membership, aliases, provider defaults
+and deterministic ordering are unchanged. Eight test bodies remain unchanged
+and unrun. The module scan reaches 69 tool-core files with no missing/orphaned
+modules, and the dependency closure is acyclic. Moved files contain at most 48
+code lines. File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-tool-profile/`. No Cargo, rustc, Python or runtime tests
+ran. The broader migration remains active.

@@ -1,7 +1,7 @@
 //! Tests for the compact tool catalog.
 
 use super::retain_coding_tools;
-use crate::provider::ToolDefinition;
+use codetether_provider_core::ToolDefinition;
 use serde_json::json;
 
 fn definition(name: &str) -> ToolDefinition {

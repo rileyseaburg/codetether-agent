@@ -1,7 +1,7 @@
 //! Tests for the prompt-size-bounded discovery catalog.
 
 use super::retain_discovery_tools;
-use crate::provider::ToolDefinition;
+use codetether_provider_core::ToolDefinition;
 use serde_json::json;
 
 fn tool(name: &str) -> ToolDefinition {
