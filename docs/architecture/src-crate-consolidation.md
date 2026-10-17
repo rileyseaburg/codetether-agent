@@ -6034,3 +6034,20 @@ File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-intro-admission/`. Compilation, tests and live intro
 handling remain unrun. No Cargo, rustc or Python commands ran. The broader
 migration remains active.
+
+### Shared A2A server bus publication
+
+Moved inbound/outbound direction selection and optional-bus correlated message
+publication into `codetether-bus-core::a2a_messages`. The server adapter only
+supplies its bus and agent identity. Server publication remains task-only;
+the distinct peer-message helper still owns additional recipient-topic routing.
+
+Static comparison verifies all three publication functions after explicit
+bus/identity parameter substitutions, plus the application adapters. Topic,
+correlation id, content parts and missing-bus behavior are unchanged. The module
+scan reaches 232 application A2A files, 165 HTTP files, 63 telemetry files and
+136 bus-core files without missing/orphaned modules; the dependency closure is
+acyclic. The shared file contains 23 code lines. File-budget and whitespace
+checks passed. Evidence: `artifacts/consolidation-server-bus/`. Compilation,
+tests and live bus delivery remain unrun. No Cargo, rustc or Python commands
+ran. The broader migration remains active.

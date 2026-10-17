@@ -34,3 +34,6 @@ pub mod training;
 
 /// Correlated peer-message publication.
 pub mod peer_messages;
+
+/// Task-correlated messages from A2A server endpoints.
+pub mod a2a_messages;
