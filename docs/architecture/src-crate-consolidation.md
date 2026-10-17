@@ -8089,3 +8089,24 @@ whitespace checks passed; crate modules contain at most 32 code lines. Evidence
 is in `artifacts/consolidation-spawn-policy/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The full consolidation goal
 remains active.
+
+### Shared spawn model eligibility
+
+Moved model parsing, subscription/free-tier predicates, budget allowlists,
+catalog cost checks and advisory warning rendering into the existing
+`codetether-spawn-policy` crate. Nine added Rust modules keep policy data,
+parsing, catalog lookup and warning rendering separate. The application
+supplies provider handles through a registry interface; catalog calls use the
+same provider trait and model metadata types. All allowlists, missing-cost
+fallbacks, catalog-error handling, warning text and registry-load errors remain
+unchanged.
+
+Twenty-eight static preservation checks cover decision paths, policy data,
+shared parser/provider identity, moved tests and existing warning integration.
+Five tests moved with the policy, using an empty registry fixture in place of
+the application's empty provider registry; the two application warning tests
+remain unchanged. Module/dependency, file-budget and whitespace checks passed;
+added Rust modules contain at most 39 code lines. Evidence is in
+`artifacts/consolidation-spawn-model-policy/`. Compilation and runtime tests
+were not run. No Cargo, rustc or Python commands ran. The full consolidation
+goal remains active.

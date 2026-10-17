@@ -10,7 +10,7 @@
 //! assert!(parts.is_some());
 //! ```
 
-use crate::provider::parse_model_string;
+use codetether_provider_core::routing::parse_model_string;
 
 #[cfg(test)]
 /// Normalizes a model reference for policy assertions.

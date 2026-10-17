@@ -9,7 +9,8 @@
 //! let free = registry_model_is_free("provider", "model", &registry).await;
 //! ```
 
-use crate::provider::{ModelInfo, ProviderRegistry};
+use crate::ModelRegistry;
+use codetether_provider_core::ModelInfo;
 
 /// Checks provider metadata to see whether a model is effectively free.
 ///
@@ -18,10 +19,10 @@ use crate::provider::{ModelInfo, ProviderRegistry};
 /// ```ignore
 /// let free = registry_model_is_free("provider", "model", &registry).await;
 /// ```
-pub(super) async fn registry_model_is_free(
+pub(super) async fn registry_model_is_free<R: ModelRegistry>(
     provider: &str,
     model_id: &str,
-    registry: &ProviderRegistry,
+    registry: &R,
 ) -> bool {
     let Some(entry) = registry.get(provider) else {
         return false;

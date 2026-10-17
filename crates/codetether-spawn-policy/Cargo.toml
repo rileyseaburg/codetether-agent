@@ -9,6 +9,7 @@ description = "Owner-scoped spawn identity reservations and nesting-depth admiss
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 codetether-config = { path = "../codetether-config", version = "0.1.0" }
 codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
 

@@ -2453,6 +2453,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "codetether-config",
+ "codetether-provider-core",
  "codetether-tool-core",
  "tokio",
 ]

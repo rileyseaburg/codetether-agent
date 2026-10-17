@@ -41,18 +41,7 @@ async fn model_eligibility_warning(model: &str) -> Result<Option<String>, ToolRe
         Ok(registry) => registry,
         Err(error) => return Err(ToolResult::error(error.to_string())),
     };
-    if policy::is_free_or_eligible(model, &registry).await {
-        return Ok(None);
-    }
-    Ok(Some(ineligible_model_warning(model)))
-}
-
-fn ineligible_model_warning(model: &str) -> String {
-    format!(
-        "warning: '{model}' is not free/subscription-eligible; \
-         this spawn may incur metered costs. Prefer ':free' models, \
-         subscription providers, or OAuth providers."
-    )
+    Ok(policy::model_warning(model, &registry).await)
 }
 
 #[cfg(test)]

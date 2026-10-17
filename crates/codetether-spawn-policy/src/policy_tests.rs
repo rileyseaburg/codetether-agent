@@ -1,7 +1,9 @@
 //! Tests for agent spawn policy helpers.
 
 use super::*;
-use crate::provider::ProviderRegistry;
+#[path = "policy_test_registry.rs"]
+mod registry;
+use registry::EmptyRegistry;
 
 #[test]
 fn normalize_model_test() {
@@ -17,7 +19,7 @@ fn free_model_detection() {
 
 #[tokio::test]
 async fn included_provider_eligible() {
-    let registry = ProviderRegistry::new();
+    let registry = EmptyRegistry::new();
     assert!(is_free_or_eligible("openai-codex/gpt-5-mini", &registry).await);
 }
 
@@ -39,6 +41,6 @@ fn openrouter_budget_allowlist_detection() {
 
 #[tokio::test]
 async fn openrouter_budget_allowlisted_model_is_eligible() {
-    let registry = ProviderRegistry::new();
+    let registry = EmptyRegistry::new();
     assert!(is_free_or_eligible("openrouter/qwen/qwen3.5-35ba3b", &registry).await);
 }
