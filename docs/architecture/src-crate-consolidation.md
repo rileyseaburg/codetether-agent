@@ -93,7 +93,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | Crate | Rust files | Workspace member | Missing declared root modules |
 | --- | ---: | --- | --- |
 | codetether-a2a-core | 48 | yes | none |
-| codetether-a2a-discovery | 23 | yes | codetether-a2a-core |
+| codetether-a2a-discovery | 29 | yes | codetether-a2a-core |
 | codetether-a2a-grpc | 58 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 48 | yes | codetether-a2a-core, codetether-provider-core |
 | codetether-a2a-stream | 35 | yes | codetether-telemetry |
@@ -5009,3 +5009,21 @@ All 58 gRPC files and 310 A2A files are reachable without missing/orphaned
 modules. Every new file meets the 50-code-line limit; file-budget and whitespace
 checks passed. Evidence: `artifacts/consolidation-voice-grpc/`. Compilation,
 tests, and live voice transport were not run. The wider goal remains active.
+
+
+### Shared UDP LAN discovery
+
+The discovery crate now owns the UDP fallback transport alongside mDNS:
+beacon records, endpoint derivation, socket construction, receive filtering,
+and periodic broadcasts. The application LAN module re-exports its entry
+point. Shared peer types preserve the existing intake path; original logging
+targets remain explicit.
+
+Static comparison covers all six moved files and the two embedded tests.
+Port, payload, socket flags, intervals, and filter/termination conditions are
+unchanged. All 29 discovery files and 305 A2A files are reachable without
+missing/orphaned modules. New files meet the line budget; file-budget and
+whitespace checks passed. Existing reqwest, serde/JSON, socket2, and Tokio
+features are declared directly. Evidence: `artifacts/consolidation-lan-discovery/`.
+Compilation, tests, and network behavior remain unverified; the overall goal
+remains active.

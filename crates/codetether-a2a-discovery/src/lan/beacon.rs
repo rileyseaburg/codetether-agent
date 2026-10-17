@@ -39,7 +39,7 @@ const MAGIC: &str = "codetether-a2a-v1";
 /// # Examples
 ///
 /// ```ignore
-/// use codetether_agent::a2a::lan::beacon::Beacon;
+/// use codetether_a2a_discovery::lan::beacon::Beacon;
 ///
 /// let beacon = Beacon::new(
 ///     "desktop-worker".to_string(),

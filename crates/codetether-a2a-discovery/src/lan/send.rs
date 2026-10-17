@@ -8,7 +8,7 @@ pub async fn run(socket: Arc<UdpSocket>, name: String, url: String, token: Strin
     let payload = match serde_json::to_vec(&Beacon::new(name, url, token)) {
         Ok(payload) => payload,
         Err(error) => {
-            tracing::warn!(%error, "failed to encode A2A LAN beacon");
+            tracing::warn!(target: "codetether_agent::a2a::lan::send", %error, "failed to encode A2A LAN beacon");
             return;
         }
     };
@@ -17,7 +17,7 @@ pub async fn run(socket: Arc<UdpSocket>, name: String, url: String, token: Strin
     loop {
         tick.tick().await;
         if let Err(error) = socket.send_to(&payload, addr).await {
-            tracing::debug!(%error, "A2A LAN beacon send failed");
+            tracing::debug!(target: "codetether_agent::a2a::lan::send", %error, "A2A LAN beacon send failed");
         }
     }
 }

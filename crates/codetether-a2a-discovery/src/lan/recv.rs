@@ -1,7 +1,7 @@
 //! UDP beacon receiver for LAN A2A discovery.
 
 use super::beacon::Beacon;
-use crate::a2a::mdns::DiscoveredPeer;
+use crate::mdns::DiscoveredPeer;
 use std::sync::Arc;
 use tokio::{net::UdpSocket, sync::mpsc};
 
@@ -22,7 +22,7 @@ pub async fn run(
         if !is_peer(&beacon, &self_name, &self_url) {
             continue;
         }
-        tracing::debug!(
+        tracing::debug!(target: "codetether_agent::a2a::lan::recv",
             peer_name = %beacon.name,
             source = %source,
             "A2A LAN beacon discovered"

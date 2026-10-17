@@ -7,9 +7,16 @@ license = "MIT"
 description = "A2A peer discovery, address ranking and liveness tracking"
 
 [dependencies]
+reqwest = { version = "0.13.2", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+socket2 = "0.6.5"
 codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
 dashmap = "6"
 anyhow = "1.0.104"
 mdns-sd = "0.20.3"
-tokio = { version = "1.53.1", features = ["rt", "sync"] }
+tokio = { version = "1.53.1", features = ["rt", "sync", "net", "time"] }
 tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt"] }

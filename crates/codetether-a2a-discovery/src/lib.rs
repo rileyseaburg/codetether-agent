@@ -16,3 +16,6 @@ pub mod mdns;
 
 /// Learned peer routes and stable identity aliases.
 pub mod routes;
+
+/// UDP broadcast fallback for local peer discovery.
+pub mod lan;

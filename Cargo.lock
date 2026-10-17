@@ -1098,6 +1098,10 @@ dependencies = [
  "codetether-a2a-core",
  "dashmap",
  "mdns-sd",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "socket2",
  "tokio",
  "tracing",
 ]
