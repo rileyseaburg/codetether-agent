@@ -1,33 +1,5 @@
-/// Named checkpoints along the task processing pipeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TaskCheckpoint {
-    TaskReceived,
-    SlotReserved,
-    ClaimRequested,
-    ClaimRejected,
-    Claimed,
-    MetadataParsed,
-    WorkspaceReady,
-    SessionReady,
-    GitHookInstalled,
-    ProvidersLoaded,
-    ModelSelected,
-    AgentStarting,
-    AgentRunning,
-    AgentDone,
-    SessionSaved,
-    CommitStaging,
-    CommitCreated,
-    CommitPushing,
-    CommitPushed,
-    PrCreating,
-    PrCreated,
-    Releasing,
-    Released,
-    Completed,
-    GracefulShutdown,
-    Failed,
-}
+//! Focused task timeline operations.
+use super::TaskCheckpoint;
 
 impl TaskCheckpoint {
     pub fn as_str(&self) -> &'static str {

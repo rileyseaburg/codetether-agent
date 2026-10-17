@@ -31,3 +31,6 @@ pub mod task_config;
 
 /// Worker approval, model defaults and result classification.
 pub mod execution_policy;
+
+/// Task progress, deadline accounting and checkpoint diagnostics.
+pub mod task_timeline;

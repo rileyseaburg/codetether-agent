@@ -41,9 +41,9 @@ impl TaskTimeline {
                 )
             })
             .collect();
-        tracing::info!(task_id = %self.task_id, timeout_secs = self.timeout_secs, total_ms, budget_pct = format!("{:.1}%", self.budget_pct_used()), checkpoints_reached = ?reached, checkpoints_skipped = ?skipped, timeline = ?timeline, deltas = ?deltas, "[timeline] task diagnostics summary");
+        tracing::info!(target: "codetether_agent::a2a::worker::task_timeline::diagnostics_emit", task_id = %self.task_id, timeout_secs = self.timeout_secs, total_ms, budget_pct = format!("{:.1}%", self.budget_pct_used()), checkpoints_reached = ?reached, checkpoints_skipped = ?skipped, timeline = ?timeline, deltas = ?deltas, "[timeline] task diagnostics summary");
         if self.is_expired() {
-            tracing::warn!(task_id = %self.task_id, total_secs = format!("{:.1}", self.elapsed_secs()), timeout_secs = self.timeout_secs, last_checkpoint = self.current.map(|c| c.as_str()).unwrap_or("none"), "TASK EXCEEDED TIME BUDGET");
+            tracing::warn!(target: "codetether_agent::a2a::worker::task_timeline::diagnostics_emit", task_id = %self.task_id, total_secs = format!("{:.1}", self.elapsed_secs()), timeout_secs = self.timeout_secs, last_checkpoint = self.current.map(|c| c.as_str()).unwrap_or("none"), "TASK EXCEEDED TIME BUDGET");
         }
     }
 }

@@ -97,7 +97,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 29 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
-| codetether-a2a-worker-core | 63 | yes | none |
+| codetether-a2a-worker-core | 77 | yes | none |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
 | codetether-audit | 1 | yes | none |
@@ -4728,3 +4728,20 @@ files and 327 A2A files are reachable without missing/orphaned modules. New
 files satisfy the 50-code-line limit; file-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-worker-task-context/`. Compilation and tests
 remain unrun. The wider workspace consolidation goal remains active.
+
+
+### Shared worker task timeline
+
+`codetether-a2a-worker-core::task_timeline` owns checkpoints, progress state,
+deadline accounting, and structured diagnostics. Checkpoint naming, timeline
+mutation, progress synchronization, and timing helpers now occupy separate
+modules. The worker path re-exports the original four public types. Original
+logging targets are explicit; timestamp and update ordering are preserved.
+
+Static comparison verifies all 27 definitions/methods from the moved files.
+All 77 worker-core files and 317 A2A files are reachable with no missing or
+orphaned modules. Every new file meets the 50-code-line limit. The manifest
+enables Tokio time and adds the already-locked tracing dependency. File-budget
+and whitespace checks passed. Evidence is retained in
+`artifacts/consolidation-worker-timeline/`. Compilation, tests, and runtime
+timing behavior remain unverified. The wider consolidation remains active.
