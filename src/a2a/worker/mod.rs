@@ -93,7 +93,6 @@ mod test_support;
 mod test_support_provider;
 #[cfg(test)]
 mod test_tool_schema_retry;
-mod tool_schema;
 mod transport_probe;
 mod worker_bootstrap;
 mod worker_context;

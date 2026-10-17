@@ -1,50 +1,43 @@
-//! Completion fallback logic when tool schemas overflow context.
-
-use std::sync::Arc;
-
+//! Session-context adapter for shared completion fallback policy.
+use crate::{
+    provider::{CompletionResponse, Provider, ToolDefinition},
+    session::{Session, context::RequestOptions},
+};
 use anyhow::Result;
-
-use crate::{provider::Provider, session::Session};
-
-use super::{compact_worker_tool_definitions, tool_schema_bytes};
-
+use std::sync::Arc;
+#[path = "completion_retry_host.rs"]
+mod host;
+struct ApplicationHost<'a> {
+    provider: Arc<dyn Provider>,
+    session: &'a Session,
+    model: &'a str,
+    system_prompt: &'a str,
+    options: RequestOptions,
+}
 pub(super) async fn complete_worker_step_with_context_fallback(
     provider: Arc<dyn Provider>,
     session: &Session,
     model: &str,
     system_prompt: &str,
-    tool_definitions: &[crate::provider::ToolDefinition],
+    tool_definitions: &[ToolDefinition],
     temperature: Option<f32>,
-) -> Result<crate::provider::CompletionResponse> {
-    let options = crate::session::context::RequestOptions {
+) -> Result<CompletionResponse> {
+    let options = RequestOptions {
         temperature,
         top_p: None,
         max_tokens: Some(8192),
         force_keep_last: None,
         policy_override: None,
     };
-    match crate::session::context::complete_with_context(
-        Arc::clone(&provider),
-        session,
-        model,
-        system_prompt,
+    codetether_a2a_worker_core::session_protocol::completion::complete_with_fallback(
+        ApplicationHost {
+            provider,
+            session,
+            model,
+            system_prompt,
+            options,
+        },
         tool_definitions,
-        options,
     )
     .await
-    {
-        Ok(response) => Ok(response),
-        Err(error) if crate::session::helper::error::is_prompt_too_long_error(&error) => {
-            let compact = compact_worker_tool_definitions(tool_definitions);
-            tracing::warn!(error = %error, tool_count = tool_definitions.len(), original_tool_schema_bytes = tool_schema_bytes(tool_definitions), compact_tool_schema_bytes = tool_schema_bytes(&compact), "Provider rejected prompt after prepared-context recovery; retrying with compact tool schemas");
-            crate::session::context::complete_with_context(provider, session, model, system_prompt, &compact, options).await.map_err(|retry| {
-                if crate::session::helper::error::is_prompt_too_long_error(&retry) {
-                    retry.context("provider rejected prompt as too long after RLM compaction and compact tool-schema fallback")
-                } else {
-                    retry
-                }
-            })
-        }
-        Err(error) => Err(error),
-    }
 }

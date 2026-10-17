@@ -5678,3 +5678,23 @@ code lines. File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-tool-coordination/`. Compilation, tests and tool
 execution remain unrun. No Cargo, rustc, or Python commands ran. The broader
 implementation migration remains active.
+
+### Shared worker completion fallback policy
+
+Moved the one-retry compact-tool-schema policy into worker-core behind
+`CompletionHost`. The application retains context preparation and request
+options. Its initial operation clones the provider handle; its final retry
+consumes that handle as before. Worker-core reuses the context-policy error
+classifier and provider-core schema compactor. Removed the now-unused worker
+schema-helper forwarding module.
+
+Static comparison verifies fallback selection, retry count, error context,
+warning text, unchanged request options, and both host completion calls.
+The module scan reaches 170 worker-core files and 255 application A2A files
+without missing/orphaned modules; the new direct context-policy dependency
+remains acyclic. New files contain at most 28 code lines. File-budget and
+whitespace checks passed. Evidence:
+`artifacts/consolidation-completion-fallback/`. Compilation, tests, and model
+requests remain unrun. No Cargo, rustc, or Python commands ran. The unrelated
+lockfile ordering and heartbeat edits remain uncommitted. The broader
+migration remains active.

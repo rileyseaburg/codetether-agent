@@ -13,7 +13,6 @@ pub(super) use super::{
     task_stream::connect_stream,
     task_stream_buffer::StreamDisconnectReason,
     task_timeout::task_timeout_secs,
-    tool_schema::{compact_worker_tool_definitions, tool_schema_bytes},
     worker_bootstrap::{bootstrap_worker, register_current_worker},
     worker_context::WorkerContext,
     worker_env::env_u64,

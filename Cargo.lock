@@ -1196,6 +1196,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "codetether-agent-core",
+ "codetether-context-policy",
  "codetether-provenance",
  "codetether-provider-core",
  "codetether-tool-core",
