@@ -1,29 +1,17 @@
-//! Persistent ledger of peers already introduced to.
-//!
-//! The in-memory `discovered` set in the discovery loops forgets on
-//! restart, which caused thousands of duplicate intros. This ledger
-//! persists introduction identities to `<data_dir>/a2a/introduced.json`.
-//! First-party LAN identities include hashes of both process capabilities so
-//! recycled ports and other local agents cannot suppress a new introduction.
-//!
-//! Split across:
-//! - [`ledger_path`] — filesystem location
-//! - [`ledger_load`] — read into `HashSet`
-//! - [`ledger_atomic`] — temp-file rename writer
-//! - [`ledger_record`] — atomic append
-
-#[path = "ledger_atomic.rs"]
-mod ledger_atomic;
-#[path = "ledger_load.rs"]
-mod ledger_load;
+//! Application path adapter for the shared introduction ledger.
 #[path = "ledger_path.rs"]
 mod ledger_path;
-#[path = "ledger_record.rs"]
-mod ledger_record;
-
-pub use ledger_load::load;
-pub use ledger_record::record;
-
+/// Load introduction identities from the configured data directory.
+///
+/// # Errors
+/// Returns filesystem errors when the ledger cannot be read.
+pub fn load() -> Result<std::collections::HashSet<String>, std::io::Error> {
+    codetether_a2a_http::intro::ledger::load(ledger_path::ledger_path())
+}
+/// Record an introduction using the configured data directory.
+pub fn record(identity: &str) {
+    codetether_a2a_http::intro::ledger::record(identity, ledger_path::ledger_path)
+}
 /// Whether `identity` was already introduced (normalized, no trailing `/`).
 pub fn contains(identity: &str) -> bool {
     load()

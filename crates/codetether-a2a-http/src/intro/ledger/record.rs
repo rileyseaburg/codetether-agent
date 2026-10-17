@@ -4,18 +4,18 @@
 //! loop is never blocked by a ledger write — but it never overwrites
 //! a ledger it cannot read.
 
-use super::ledger_load::load;
-use super::ledger_path::ledger_path;
+use super::load;
+use std::path::PathBuf;
 
 /// Record `identity` as introduced.
-pub fn record(identity: &str) {
-    let Some(path) = ledger_path() else {
+pub fn record(identity: &str, mut resolve_path: impl FnMut() -> Option<PathBuf>) {
+    let Some(path) = resolve_path() else {
         return;
     };
-    let mut set = match load() {
+    let mut set = match load(resolve_path()) {
         Ok(s) => s,
         Err(e) => {
-            tracing::error!(
+            tracing::error!(target: "codetether_agent::a2a::intro::ledger::ledger_record",
                 error = %e,
                 "Failed to load intro ledger, aborting record to prevent data loss"
             );
@@ -25,5 +25,5 @@ pub fn record(identity: &str) {
     if !set.insert(identity.trim_end_matches('/').to_string()) {
         return;
     }
-    super::ledger_atomic::write_atomic(&path, &set);
+    super::atomic::write_atomic(&path, &set);
 }

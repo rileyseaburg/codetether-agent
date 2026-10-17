@@ -6,11 +6,11 @@
 
 use std::collections::HashSet;
 
-use super::ledger_path::ledger_path;
+use std::path::PathBuf;
 
 /// Load the set of identities we have already introduced ourselves to.
-pub fn load() -> Result<HashSet<String>, std::io::Error> {
-    let Some(path) = ledger_path() else {
+pub fn load(path: Option<PathBuf>) -> Result<HashSet<String>, std::io::Error> {
+    let Some(path) = path else {
         return Ok(HashSet::new());
     };
     match std::fs::read_to_string(&path) {

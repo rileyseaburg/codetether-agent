@@ -6,3 +6,6 @@ pub mod deliver;
 pub mod detect;
 pub mod payload;
 pub mod reply;
+
+/// Introduction-ledger storage over application-selected paths.
+pub mod ledger;

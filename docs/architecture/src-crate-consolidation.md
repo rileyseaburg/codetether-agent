@@ -95,7 +95,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-discovery | 19 | yes | none |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
-| codetether-a2a-http | 40 | yes | codetether-a2a-core, codetether-provider-core |
+| codetether-a2a-http | 44 | yes | codetether-a2a-core, codetether-provider-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 85 | yes | codetether-agent-core, codetether-provider-core |
 | codetether-agent-core | 44 | yes | none |
@@ -4879,3 +4879,20 @@ limit, and whitespace/file-budget checks passed. Tokio time is now a regular
 HTTP-crate feature; the lockfile is unchanged. Evidence is retained in
 `artifacts/consolidation-a2a-intro/`. Compilation, tests, and network delivery
 remain unrun. The broader consolidation goal remains active.
+
+
+### Shared introduction-ledger storage
+
+HTTP introduction modules now own ledger loading, best-effort recording, and
+temp-file rename writes. The application retains data-directory resolution
+and its public load/record/contains API. Recording preserves both original
+path lookups through a callback, including the early return when no path is
+available. Original logging targets and failure handling are unchanged.
+
+Static comparison covers all three storage functions; the application path
+resolver and four ledger tests are byte-identical. All 44 HTTP-crate files
+and 311 A2A files are reachable without missing/orphaned modules. New files
+meet the 50-code-line limit, and whitespace/file-budget checks passed. No
+dependencies were added. Evidence: `artifacts/consolidation-intro-ledger/`.
+Compilation, tests, and runtime persistence remain unverified. The broader
+consolidation goal remains active.
