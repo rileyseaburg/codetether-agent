@@ -21,7 +21,7 @@ impl Guard {
         let job = pid.and_then(|pid| match create_job(pid) {
             Ok(job) => Some(job),
             Err(error) => {
-                tracing::warn!(
+                tracing::warn!(target: "codetether_agent::tool::process_tree::platform",
                     pid,
                     error = %error,
                     "Falling back to taskkill for process-tree cancellation"
@@ -45,7 +45,7 @@ impl Guard {
         }
         if let Some(job) = self.job.take() {
             if let Err(error) = unsafe { TerminateJobObject(job.0, 1) } {
-                tracing::warn!(
+                tracing::warn!(target: "codetether_agent::tool::process_tree::platform",
                     error = %error,
                     "Failed to terminate cancelled process Job Object"
                 );

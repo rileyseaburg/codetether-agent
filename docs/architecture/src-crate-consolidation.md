@@ -2114,6 +2114,24 @@ Compilation, asynchronous behavior and runtime outcomes remain unverified.
 Evidence: artifacts/consolidation-swarm-result-store/. The broader consolidation
 goal remains active.
 
+### Shared subprocess-tree ownership crate
+
+Moved the process-tree guard and all platform implementations into
+`crates/codetether-process-tree`. Existing shell, command-session, sandbox,
+computer-use and RustyRoad callers continue through a compatibility export.
+The crate owns command configuration and armed/disarmed guard lifecycle,
+Unix process-group termination, Windows Job Object/taskkill handling, and
+the fallback implementation. Nine files include the original cancellation
+test and both platform fixtures.
+
+Static token comparisons verify all moved implementations and test fixtures
+after public API/path changes. Windows tracing calls retain their original
+targets explicitly. Module reachability, dependency-cycle, file-budget and
+whitespace checks passed; new files contain at most 46 code lines. Evidence:
+`artifacts/consolidation-process-tree/`. No subprocesses, cancellation tests,
+Cargo, rustc or Python ran. Platform runtime behavior and compilation remain
+unverified. The complete workspace consolidation remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

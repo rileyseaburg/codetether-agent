@@ -1303,6 +1303,7 @@ dependencies = [
  "codetether-platform",
  "codetether-plugin-marketplace",
  "codetether-prd-tool",
+ "codetether-process-tree",
  "codetether-provenance",
  "codetether-provider-anthropic",
  "codetether-provider-bedrock",
@@ -2296,6 +2297,17 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-process-tree"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "windows",
 ]
 
 [[package]]

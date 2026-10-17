@@ -11,6 +11,6 @@ pub(super) fn terminate_with_taskkill(pid: u32) {
         .stderr(Stdio::null())
         .status();
     if let Err(error) = status {
-        tracing::warn!(pid, error = %error, "Failed to terminate cancelled process tree");
+        tracing::warn!(target: "codetether_agent::tool::process_tree::platform::kill",pid, error = %error, "Failed to terminate cancelled process tree");
     }
 }
