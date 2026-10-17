@@ -7899,3 +7899,20 @@ state-crate modules contain at most 46 code lines. Evidence is in
 `artifacts/consolidation-execution-state/`. No tasks were started or cancelled,
 runtime tests executed, or Cargo, rustc or Python commands run. Compilation
 remains unverified; the full consolidation goal remains active.
+
+### Dedicated parent-history inheritance policy
+
+Moved fork-scope parsing, parent user-turn selection and child transcript
+inheritance into `crates/codetether-collaboration-history`. Eight Rust modules
+include six existing parsing, selection and interruption-marker tests. A small
+application adapter forwards session loading, history access and message append
+to the existing Session implementation, retaining page/index bookkeeping.
+
+Fifteen static preservation checks cover scope types, defaults and errors,
+selection boundaries, system-message filtering, interruption markers, early
+exits, load-error context, ordered appends and unchanged session/spawn callers.
+Module/dependency checks, file budgets and whitespace checks passed; new Rust
+modules contain at most 35 code lines. Evidence is in
+`artifacts/consolidation-collaboration-history/`. No sessions were loaded,
+transcripts mutated, runtime tests executed, or Cargo, rustc or Python commands
+run. Compilation remains unverified; the full consolidation goal remains active.

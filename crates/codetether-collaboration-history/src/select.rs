@@ -1,9 +1,9 @@
 //! Selection of complete parent turns and interrupted-turn markers.
 
-use super::ForkTurns;
-use crate::provider::{Message, Role};
+use crate::ForkTurns;
+use codetether_provider_core::{Message, Role};
 
-pub(super) fn run(messages: &[Message], scope: ForkTurns) -> Vec<Message> {
+pub(crate) fn run(messages: &[Message], scope: ForkTurns) -> Vec<Message> {
     let end = messages
         .iter()
         .rposition(|message| message.role == Role::User)

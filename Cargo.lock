@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-collaboration-history",
  "codetether-collaboration-state",
  "codetether-collaboration-tools",
  "codetether-go-tool",
@@ -2426,6 +2427,15 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-collaboration-history"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-provider-core",
 ]
 
 [[package]]

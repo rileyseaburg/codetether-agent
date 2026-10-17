@@ -1,5 +1,6 @@
+//! Existing interruption marker inheritance regression test.
 use super::{ForkTurns, select};
-use crate::provider::{ContentPart, Message, Role};
+use codetether_provider_core::{ContentPart, Message, Role};
 
 fn text(role: Role, value: &str) -> Message {
     Message {
