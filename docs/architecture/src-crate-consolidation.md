@@ -6450,3 +6450,22 @@ dependency cycles. Files contain at most 49 code lines; file-budget and
 whitespace checks passed. Evidence: `artifacts/consolidation-relay-tool/`.
 No relay traffic, runtime tests, Cargo, rustc or Python ran. Compilation
 remains unverified. The full workspace migration remains active.
+
+### Dedicated question and token-measurement tools
+
+Moved the question adapter into `crates/codetether-question-tool`, retaining
+the shared session-scoped runtime in `codetether-question`. Six modules
+separate construction, schema, execution and the original round-trip test.
+The test moved byte-for-byte and remains unrun.
+
+Moved file token measurements into `crates/codetether-token-count`. Five
+modules separate the tool contract, schema, file execution and public
+`describe` formatter. The estimator remains the existing `RlmChunker` in
+`codetether-rlm`. Both application paths are compatibility exports.
+
+Static comparisons verify the contracts, constructors, schemas, complete
+execution bodies and formatter. Module reachability, dependency-cycle,
+file-budget and whitespace checks passed. New files contain at most 32
+code lines. Evidence: `artifacts/consolidation-question-token-tools/`.
+No interactive requests, tool execution, runtime tests, Cargo, rustc or
+Python ran. Compilation remains unverified; the broader migration is active.

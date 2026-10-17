@@ -1,0 +1,17 @@
+[package]
+name = "codetether-question-tool"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Session-scoped interactive question tool for CodeTether"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-question = { path = "../codetether-question", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "time"] }

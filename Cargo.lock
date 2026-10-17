@@ -1322,6 +1322,7 @@ dependencies = [
  "codetether-provider-vertex-glm",
  "codetether-provider-zai",
  "codetether-question",
+ "codetether-question-tool",
  "codetether-ralph-core",
  "codetether-relay-tool",
  "codetether-ripgrep-tool",
@@ -1337,6 +1338,7 @@ dependencies = [
  "codetether-theme",
  "codetether-tls",
  "codetether-todo",
+ "codetether-token-count",
  "codetether-tool-core",
  "codetether-util",
  "codetether-vectordb",
@@ -2611,6 +2613,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-question-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-question",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "codetether-ralph-core"
 version = "0.1.0"
 dependencies = [
@@ -2821,6 +2835,18 @@ dependencies = [
  "codetether-tool-core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-token-count"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-rlm",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
