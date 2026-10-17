@@ -5,10 +5,10 @@ use serde_json::Value;
 pub(super) fn enabled_for_args(sandbox_enabled: bool, command: &str, args: &Value) -> bool {
     enabled_for_state(
         sandbox_enabled,
-        crate::runtime_policy::is_read_only_command(command),
-        crate::tool::sandbox::unavailable_reason().is_some(),
-        crate::tool::sandbox::direct_fallback_env_allowed(),
-        crate::runtime_policy::approved_or_session_command("bash", args),
+        codetether_runtime_policy::command::is_read_only_command(command),
+        codetether_sandbox_runtime::unavailable_reason().is_some(),
+        codetether_sandbox_runtime::direct_fallback_env_allowed(),
+        codetether_runtime_policy::approval_gate::approved_or_session_command("bash", args),
     )
 }
 
@@ -23,7 +23,7 @@ pub(super) async fn approved_direct_fallback(
 }
 
 pub(super) fn enabled_for_read_class(sandbox_enabled: bool, command: &str) -> bool {
-    sandbox_enabled && !crate::runtime_policy::is_read_only_command(command)
+    sandbox_enabled && !codetether_runtime_policy::command::is_read_only_command(command)
 }
 
 pub(super) fn enabled_for_state(

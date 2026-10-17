@@ -1,5 +1,5 @@
 use super::{from_mode, state};
-use crate::config::SandboxMode;
+use codetether_config::SandboxMode;
 
 #[test]
 fn danger_full_access_disables_sandbox() {

@@ -1,10 +1,10 @@
 //! Bash unsandboxed execution reason helpers.
 
-use crate::config::SandboxMode;
+use codetether_config::SandboxMode;
 use serde_json::Value;
 
 pub(super) async fn unsafe_reason() -> &'static str {
-    match crate::config::Config::load().await {
+    match codetether_config::Config::load().await {
         Ok(config)
             if matches!(
                 config.effective_sandbox_mode(),
@@ -13,12 +13,12 @@ pub(super) async fn unsafe_reason() -> &'static str {
         {
             "config sandbox_mode=danger-full-access"
         }
-        _ => super::super::bash_sandbox_mode::unsafe_reason(),
+        _ => super::super::mode::unsafe_reason(),
     }
 }
 
 pub(super) async fn for_command(command: &str) -> &'static str {
-    if crate::runtime_policy::is_read_only_command(command) {
+    if codetether_runtime_policy::command::is_read_only_command(command) {
         "read_only_command"
     } else {
         unsafe_reason().await

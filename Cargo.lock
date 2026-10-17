@@ -1254,6 +1254,7 @@ dependencies = [
  "codetether-approval-core",
  "codetether-audit",
  "codetether-autochat-core",
+ "codetether-bash-policy",
  "codetether-bedrock-auth",
  "codetether-bedrock-protocol",
  "codetether-bedrock-refresh",
@@ -1500,6 +1501,17 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-bash-policy"
+version = "0.1.0"
+dependencies = [
+ "codetether-config",
+ "codetether-runtime-policy",
+ "codetether-sandbox-policy",
+ "codetether-sandbox-runtime",
+ "serde_json",
 ]
 
 [[package]]

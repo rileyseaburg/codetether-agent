@@ -1,0 +1,14 @@
+[package]
+name = "codetether-bash-policy"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bash sandbox configuration and approval-aware policy construction"
+
+[dependencies]
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-runtime-policy = { path = "../codetether-runtime-policy", version = "0.1.0" }
+codetether-sandbox-policy = { path = "../codetether-sandbox-policy", version = "0.1.0" }
+codetether-sandbox-runtime = { path = "../codetether-sandbox-runtime", version = "0.1.0" }
+serde_json = "1"

@@ -6867,3 +6867,21 @@ whitespace checks passed. New files contain at most 24 code lines. Evidence:
 `artifacts/consolidation-task-tool/`. No task operations, runtime tests, Cargo,
 rustc or Python ran. Compilation remains unverified; the full consolidation
 goal remains active.
+
+### Dedicated bash sandbox policy
+
+Moved six bash sandbox implementation and test modules from `src/tool` into
+`crates/codetether-bash-policy`. Configuration, approval-aware direct fallback,
+environment defaults, audit reasons, workspace roots and policy construction
+now have a dedicated owner. The three application modules retain compatibility
+exports. Shared configuration, approval state and sandbox availability remain
+owned by their existing crates.
+
+Token comparisons verify all six moved modules, allowing only import paths,
+module paths, public export visibility and documentation changes. Six existing
+test bodies were preserved. The seven new Rust files contain at most 50 code
+lines. Lexical module reachability, dependency-cycle checks, the application
+file-budget check and whitespace checks passed. Evidence is retained under
+`artifacts/consolidation-bash-policy/`. Runtime tests and compilation remain
+unverified; no Cargo, rustc or Python commands ran. The full consolidation goal
+remains active.
