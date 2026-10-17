@@ -1317,6 +1317,7 @@ dependencies = [
  "codetether-google-auth",
  "codetether-grep-tool",
  "codetether-image",
+ "codetether-go-monitor",
  "codetether-image-generation",
  "codetether-indexer",
  "codetether-image-tool",
@@ -2416,6 +2417,17 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-go-monitor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-tool-core",
+ "codetether-util",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -9,52 +9,16 @@
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{Value, json};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use uuid::Uuid;
+
+pub use codetether_go_monitor::{ACTIVE_GO_RUNS, ActiveGoRun, GoRunPhase};
 
 use super::{Tool, ToolResult};
 use crate::cli::go_ralph::{execute_go_ralph, format_go_ralph_result};
 use crate::okr::{KeyResult, Okr, OkrRepository, OkrRun};
-
-// ─── Active execution tracking ──────────────────────────────────────────
-
-/// Phase of a running go pipeline
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "phase", rename_all = "snake_case")]
-pub enum GoRunPhase {
-    Starting,
-    Running,
-    Completed {
-        passed: usize,
-        total: usize,
-        all_passed: bool,
-        feature_branch: String,
-        summary: String,
-    },
-    Failed {
-        error: String,
-    },
-}
-
-/// Metadata for an active go run
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ActiveGoRun {
-    pub okr_id: String,
-    pub task: String,
-    pub model: String,
-    pub started_at: String,
-    pub working_dir: String,
-    pub prd_filename: String,
-    pub progress_filename: String,
-    pub phase: GoRunPhase,
-}
-
-/// Global registry of active (and recently completed) go runs.
-pub static ACTIVE_GO_RUNS: std::sync::LazyLock<Mutex<HashMap<String, ActiveGoRun>>> =
-    std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Deserialize)]
 struct GoParams {
@@ -167,7 +131,7 @@ Required for watch/status: okr_id"#
 
         match p.action.as_str() {
             "execute" => self.execute_go(p).await,
-            "watch" => self.watch_go(p).await,
+            "watch" => codetether_go_monitor::watch(p.okr_id),
             "status" => self.check_status(p).await,
             _ => Ok(ToolResult::structured_error(
                 "INVALID_ACTION",
@@ -426,150 +390,6 @@ impl GoTool {
                     "tool": "go",
                     "args": {"action": "watch", "okr_id": okr_id_str}
                 }),
-            ))
-    }
-
-    async fn watch_go(&self, p: GoParams) -> Result<ToolResult> {
-        let okr_id_str = match p.okr_id {
-            Some(id) if !id.trim().is_empty() => id,
-            _ => {
-                // If no OKR ID given, list all active runs
-                let runs = ACTIVE_GO_RUNS.lock().unwrap_or_else(|e| e.into_inner());
-                if runs.is_empty() {
-                    return Ok(ToolResult::success(
-                        "No active go pipelines. Use `go(action: \"execute\", task: \"...\")` to start one.",
-                    ));
-                }
-
-                let mut output = String::from("# Active Go Pipelines\n\n");
-                for (id, run) in runs.iter() {
-                    let phase_str = match &run.phase {
-                        GoRunPhase::Starting => "Starting".to_string(),
-                        GoRunPhase::Running => "Running".to_string(),
-                        GoRunPhase::Completed { passed, total, .. } => {
-                            format!("Completed ({passed}/{total} passed)")
-                        }
-                        GoRunPhase::Failed { error } => {
-                            format!("Failed: {}", crate::util::truncate_bytes_safe(&error, 80))
-                        }
-                    };
-                    output.push_str(&format!(
-                        "- **{id}**: {phase_str}\n  Task: {}\n  Started: {}\n\n",
-                        run.task, run.started_at
-                    ));
-                }
-                output.push_str("Use `go(action: \"watch\", okr_id: \"<id>\")` for details.");
-                return Ok(ToolResult::success(output));
-            }
-        };
-
-        // Look up the active run
-        let active_run = {
-            let runs = ACTIVE_GO_RUNS.lock().unwrap_or_else(|e| e.into_inner());
-            runs.get(&okr_id_str).cloned()
-        };
-
-        let Some(run) = active_run else {
-            return Ok(ToolResult::error(format!(
-                "No active go pipeline found for OKR `{okr_id_str}`.\n\n\
-                 Use `go(action: \"watch\")` with no okr_id to list active pipelines,\n\
-                 or `go(action: \"status\", okr_id: \"...\")` to check completed runs."
-            )));
-        };
-
-        let mut output = format!(
-            "# Go Pipeline Status\n\n\
-             **OKR ID:** `{}`\n\
-             **Task:** {}\n\
-             **Model:** {}\n\
-             **Started:** {}\n\
-             **Working Directory:** {}\n",
-            run.okr_id, run.task, run.model, run.started_at, run.working_dir
-        );
-
-        // Phase
-        match &run.phase {
-            GoRunPhase::Starting => {
-                output.push_str("\n**Phase:** Starting (generating PRD...)\n");
-            }
-            GoRunPhase::Running => {
-                output.push_str("\n**Phase:** Running Ralph loop\n");
-            }
-            GoRunPhase::Completed {
-                passed,
-                total,
-                all_passed,
-                feature_branch,
-                summary,
-            } => {
-                output.push_str(&format!(
-                    "\n**Phase:** Completed {}\n\
-                     **Result:** {passed}/{total} stories passed\n\
-                     **Feature Branch:** `{feature_branch}`\n\n\
-                     ## Summary\n\n{summary}\n",
-                    if *all_passed { "✅" } else { "⚠️" }
-                ));
-            }
-            GoRunPhase::Failed { error } => {
-                output.push_str(&format!("\n**Phase:** Failed ❌\n**Error:** {error}\n"));
-            }
-        }
-
-        // Read PRD file for story-level progress
-        if let Ok(prd_content) = std::fs::read_to_string(&run.prd_filename)
-            && let Ok(prd) = serde_json::from_str::<Value>(&prd_content)
-            && let Some(stories) = prd.get("user_stories").and_then(|s| s.as_array())
-        {
-            output.push_str("\n## Stories\n\n");
-            let mut passed_count = 0;
-            for story in stories {
-                let id = story.get("id").and_then(|v| v.as_str()).unwrap_or("?");
-                let title = story.get("title").and_then(|v| v.as_str()).unwrap_or("?");
-                let passes = story
-                    .get("passes")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
-                let icon = if passes {
-                    passed_count += 1;
-                    "✅"
-                } else {
-                    "⏳"
-                };
-                output.push_str(&format!("- {icon} **{id}**: {title}\n"));
-            }
-            output.push_str(&format!(
-                "\n**Progress:** {passed_count}/{} stories passed\n",
-                stories.len()
-            ));
-        }
-
-        // Read progress file
-        if let Ok(progress) = std::fs::read_to_string(&run.progress_filename)
-            && !progress.trim().is_empty()
-        {
-            // Show last 30 lines to avoid overwhelming output
-            let lines: Vec<&str> = progress.lines().collect();
-            let start = lines.len().saturating_sub(30);
-            let tail: String = lines[start..].join("\n");
-            output.push_str(&format!(
-                "\n## Progress Notes (last {} lines)\n\n```\n{tail}\n```\n",
-                lines.len().min(30)
-            ));
-        }
-
-        // Hint for next action
-        if matches!(run.phase, GoRunPhase::Starting | GoRunPhase::Running) {
-            output.push_str(&format!(
-                "\n---\n*Pipeline still running. Call `go(action: \"watch\", okr_id: \"{}\")` again to check progress.*\n",
-                run.okr_id
-            ));
-        }
-
-        Ok(ToolResult::success(output)
-            .with_metadata("okr_id", json!(run.okr_id))
-            .with_metadata(
-                "phase",
-                json!(serde_json::to_value(&run.phase).unwrap_or(json!("unknown"))),
             ))
     }
 

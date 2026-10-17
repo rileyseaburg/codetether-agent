@@ -7621,3 +7621,23 @@ contain at most 45 code lines. Evidence lives in
 `artifacts/consolidation-image-generation/`. No credentials were read, images
 generated, runtime tests, Cargo, rustc or Python commands run. Compilation
 remains unverified; the full consolidation goal remains active.
+
+### Dedicated autonomous-pipeline monitor
+
+Moved the `go` tool's active-run types, process-global run registry and entire
+watch action into `crates/codetether-go-monitor`. Nine modules separate state,
+watch orchestration, active-run listing, identifying metadata, lifecycle
+rendering, PRD story progress and progress notes. The application re-exports
+those same state types and registry, and dispatches watch requests directly to
+the crate. Pipeline launch, provider resolution and persisted OKR status remain
+in the application for subsequent extraction. This removes 180 lines from
+`src/tool/go.rs` without duplicating the active-run registry.
+
+Fourteen static preservation checks compare the moved types, registry,
+listing, headers, phase formatting, PRD parsing, last-thirty-line progress
+notes, watch control flow and metadata, plus the unchanged launch, status and
+provider code. Lexical module reachability, local dependency cycles, file
+budgets and whitespace checks passed. New Rust modules contain at most 39
+code lines. Evidence is in `artifacts/consolidation-go-monitor/`. No pipeline,
+file-reading monitor, runtime test, Cargo, rustc or Python command was executed.
+Compilation remains unverified; the full consolidation goal remains active.
