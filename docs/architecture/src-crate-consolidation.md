@@ -36,7 +36,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mcp | 36 | 3340 | Pending cohesion and dependency audit |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
-| lsp | 37 | 1028 | Protocol, diagnostic waiting/conversion, capabilities and document IDs extracted; client orchestration and application initialization identity remain pending |
+| lsp | 37 | 1008 | Protocol, diagnostics and initialization handshake extracted; host supplies application identity/logging; client lifecycle/cache orchestration pending |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
 | forage | 13 | 1918 | Pending cohesion and dependency audit |
@@ -118,7 +118,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-indexer | 101 | yes | none |
 | codetether-k8s | 80 | yes | none |
 | codetether-knowledge-graph | 11 | yes | none |
-| codetether-lsp-core | 61 | yes | none |
+| codetether-lsp-core | 63 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
 | codetether-okr | 72 | yes | none |
@@ -3607,3 +3607,21 @@ at most 48 code lines. Standalone formatting, the file-limit ratchet and
 whitespace checks are the permitted validation. Compilation and all Rust
 tests remain unverified. No Cargo, rustc or Python ran. The broader workspace
 consolidation goal remains active.
+
+## LSP initialization service boundary
+
+LSP-core::initialize now builds and sends initialize requests, handles errors,
+stores returned capabilities, notifies initialization and sets transport state.
+The application supplies its package version and the initialized-log observer.
+This preserves application identity and the original tracing target without
+binding the shared crate to the application's manifest. Request construction
+and handshake sequencing live in separate focused modules.
+
+Seven static checks compare all request fields and ordering, capability update
+and observer timing, initialized notification/state changes and application
+identity/log wiring. Lexical graphs cover 63 core and 37 application
+LSP files with no missing/unreferenced modules. New files have at most 28 code
+lines. No dependencies changed. Formatting, file-limit and staged whitespace
+checks were used. No Cargo, rustc, Python, language server or handshake ran;
+compilation and tests remain unverified. Evidence is retained in
+artifacts/consolidation-lsp-initialize/. The full workspace goal remains active.

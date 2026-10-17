@@ -33,3 +33,6 @@ pub mod client_diagnostics_wait;
 pub mod document_language;
 /// Decode TypeScript synchronous diagnostic payloads.
 pub mod typescript_diagnostic;
+
+/// LSP handshake with explicit client identity and capability storage.
+pub mod initialize;
