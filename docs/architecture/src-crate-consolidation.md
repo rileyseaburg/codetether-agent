@@ -5120,3 +5120,25 @@ Evidence: `artifacts/consolidation-peer-probing/`. No compilation, tests,
 doctests, or network probes were run. No Cargo, rustc, or Python commands
 were executed. The full migration of implementation into crates remains
 outstanding and the goal remains active.
+
+### Shared peer identity state and HTTP authentication
+
+The discovery crate now owns the active local peer name and lazily generated
+collaboration capability. The HTTP crate owns A2A bearer middleware, its
+cached configured token, and token comparison. The original application
+modules contain only re-exports, so discovery announcements and HTTP
+validation share the same capability singleton. HTTP public-path exemptions,
+optional configured-token behavior, byte-comparison algorithm, and stale
+identity-handle protection are unchanged. This extraction does not modify
+the separate mandatory application-server authentication layer.
+
+Static comparison verifies twelve functions, constants, and global-state
+definitions. All three existing test bodies are preserved, without execution.
+The module scan covers 301 application A2A files, 63 HTTP crate files, and
+38 discovery files with no missing or orphaned modules. The HTTP dependency
+closure remains acyclic. The discovery manifest and lock entry now directly
+declare the existing UUID dependency; no package version changed. New files
+contain at most 28 code lines, and file-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-peer-auth/`. Compilation, tests, doctests,
+and runtime requests remain unrun. No Cargo, rustc, or Python commands were
+executed. The wider migration goal remains active.

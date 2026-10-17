@@ -22,3 +22,9 @@ pub mod lan;
 
 /// Configured peer URLs and advertised interface selection.
 pub mod endpoint;
+
+/// Process-local capability advertised by peer discovery.
+pub mod collaboration_token;
+
+/// Active local peer identity and lifecycle tracking.
+pub mod local_identity;

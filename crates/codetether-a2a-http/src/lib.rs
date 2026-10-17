@@ -38,3 +38,6 @@ pub mod git_credentials;
 
 /// Candidate card requests and readiness retries for discovered peers.
 pub mod peer_probe;
+
+/// A2A peer bearer-token middleware.
+pub mod auth;

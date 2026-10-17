@@ -1105,6 +1105,7 @@ dependencies = [
  "socket2",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

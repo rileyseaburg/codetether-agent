@@ -4,7 +4,7 @@ pub(super) fn accepted(provided: &str, configured: &str) -> bool {
     let configured_match = constant_time_eq(provided.as_bytes(), configured.as_bytes());
     let discovered_match = constant_time_eq(
         provided.as_bytes(),
-        crate::a2a::collaboration_token::local().as_bytes(),
+        codetether_a2a_discovery::collaboration_token::local().as_bytes(),
     );
     configured_match | discovered_match
 }
@@ -23,7 +23,7 @@ pub(super) fn accepted(provided: &str, configured: &str) -> bool {
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::server_auth::constant_time_eq;
+/// use codetether_a2a_http::auth::constant_time_eq;
 ///
 /// assert!(constant_time_eq(b"token", b"token"));
 /// assert!(!constant_time_eq(b"token", b"other"));
@@ -43,7 +43,7 @@ mod tests {
     fn accepts_configured_or_discovered_capability() {
         assert!(super::accepted("configured", "configured"));
         assert!(super::accepted(
-            crate::a2a::collaboration_token::local(),
+            codetether_a2a_discovery::collaboration_token::local(),
             "configured"
         ));
         assert!(!super::accepted("intruder", "configured"));

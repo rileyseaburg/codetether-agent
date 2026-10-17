@@ -7,6 +7,7 @@ license = "MIT"
 description = "A2A peer discovery, address ranking and liveness tracking"
 
 [dependencies]
+uuid = { version = "1.24.0", features = ["v4"] }
 if-addrs = "0.15.0"
 reqwest = { version = "0.13.2", default-features = false }
 serde = { version = "1", features = ["derive"] }
