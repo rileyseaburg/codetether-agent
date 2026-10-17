@@ -8,61 +8,14 @@
 //! Built-in tools are trusted. Third-party plugins must be registered with
 //! verified content before callers should execute them.
 
-use serde::{Deserialize, Serialize};
-
-use std::path::PathBuf;
-
 include!("sandbox_modules.rs");
 
 pub use sandbox_availability::{direct_fallback_env_allowed, unavailable_reason};
 
-pub use sandbox_execute::execute_sandboxed;
-
-/// Sandbox execution policy for a tool invocation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SandboxPolicy {
-    /// Whether filesystem access is allowed (and to which paths).
-    pub allowed_paths: Vec<PathBuf>,
-    /// Whether network access is allowed.
-    pub allow_network: bool,
-    /// Whether shell execution is allowed.
-    pub allow_exec: bool,
-    /// Maximum execution time in seconds.
-    pub timeout_secs: u64,
-    /// Maximum memory in bytes (0 = no limit).
-    pub max_memory_bytes: u64,
-}
-
-impl Default for SandboxPolicy {
-    fn default() -> Self {
-        Self {
-            allowed_paths: Vec::new(),
-            allow_network: false,
-            allow_exec: false,
-            timeout_secs: 30,
-            max_memory_bytes: 0,
-        }
-    }
-}
-
-/// Result of a sandboxed tool execution.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SandboxResult {
-    pub tool_id: String,
-    pub success: bool,
-    pub output: String,
-    /// SHA-256 hash of the combined output for integrity verification.
-    pub output_hash: String,
-    pub exit_code: Option<i32>,
-    pub duration_ms: u64,
-    pub sandbox_violations: Vec<String>,
-    /// Isolation gaps that are visible to callers instead of hidden.
-    #[serde(default)]
-    pub unsafe_fallbacks: Vec<String>,
-}
 pub use codetether_plugin_verification::{
     PluginManifest, PluginRegistry, SigningKey, hash_bytes, hash_file,
 };
+pub use sandbox_execute::execute_sandboxed;
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,3 +83,5 @@ mod tests {
         assert!(err.to_string().contains("denies network access"));
     }
 }
+
+pub use codetether_sandbox_policy::{SandboxPolicy, SandboxResult};

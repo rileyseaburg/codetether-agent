@@ -2250,6 +2250,23 @@ keys were loaded, plugins registered, runtime tests executed, or Cargo,
 rustc or Python commands run. Compilation remains unverified. The full
 workspace consolidation remains active.
 
+### Shared sandbox policy and pre-spawn checks
+
+Moved `SandboxPolicy`, `SandboxResult`, canonical working-directory checks,
+protected-metadata argument checks and network-command detection into
+`crates/codetether-sandbox-policy`. Seven files own these records and checks,
+including three existing protected-metadata tests. Application sandbox paths
+and network modules retain compatibility exports; platform launchers still
+apply their original policies.
+
+Static comparisons verify both record shapes, defaults, complete validation
+logic and moved tests. Existing application sandbox tests are unchanged.
+Module reachability, dependency-cycle, file-budget and whitespace checks
+passed. Files contain at most 45 code lines. Evidence:
+`artifacts/consolidation-sandbox-policy/`. No validation operations, runtime
+tests, Cargo, rustc or Python ran. Compilation and runtime behavior remain
+unverified. The complete workspace migration remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

@@ -1336,6 +1336,7 @@ dependencies = [
  "codetether-ripgrep-tool",
  "codetether-rlm",
  "codetether-runtime-policy",
+ "codetether-sandbox-policy",
  "codetether-search",
  "codetether-secrets",
  "codetether-session-runtime",
@@ -2807,6 +2808,15 @@ dependencies = [
  "hex",
  "serde_json",
  "sha2 0.11.0",
+]
+
+[[package]]
+name = "codetether-sandbox-policy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "tokio",
 ]
 
 [[package]]

@@ -1,3 +1,4 @@
+//! Detect writes to protected workspace metadata in shell arguments.
 use anyhow::{Result, anyhow};
 
 const PROTECTED: &[&str] = &[".git", ".codetether", ".codex", ".agents"];
@@ -49,5 +50,5 @@ fn contains_shell_word(haystack: &str, needle: &str) -> bool {
 }
 
 #[cfg(test)]
-#[path = "sandbox_paths_metadata_tests.rs"]
+#[path = "protected_tests.rs"]
 mod tests;
