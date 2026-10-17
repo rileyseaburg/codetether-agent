@@ -10,8 +10,8 @@
 //! assert!(config.file_extensions.iter().any(|extension| extension == "rs"));
 //! ```
 
-pub mod tetherscript;
 pub mod response;
+pub mod tetherscript;
 pub mod transport;
 pub mod types;
 pub mod uri;
@@ -24,3 +24,12 @@ mod tetherscript_config_tests;
 mod tetherscript_tests;
 #[cfg(test)]
 mod workspace_folder_tests;
+
+/// Client capability declaration for diagnostic-producing servers.
+pub mod client_capabilities;
+/// Wait for a document-specific diagnostic publication.
+pub mod client_diagnostics_wait;
+/// Protocol language IDs, including JSX and TSX dialects.
+pub mod document_language;
+/// Decode TypeScript synchronous diagnostic payloads.
+pub mod typescript_diagnostic;

@@ -11,8 +11,8 @@ fn jsx_documents_use_react_ids_without_changing_server_families() {
         ("src/helpers.js", "javascript", "javascript"),
     ] {
         assert_eq!(super::id(Path::new(path)), document, "{path}");
-        assert_eq!(crate::lsp::detect_language_from_path(path), Some(family));
-        let config = crate::lsp::get_language_server_config(family).unwrap();
+        assert_eq!(crate::detect_language_from_path(path), Some(family));
+        let config = crate::get_language_server_config(family).unwrap();
         assert_eq!(config.command, "typescript-language-server");
     }
 }

@@ -36,7 +36,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mcp | 36 | 3340 | Pending cohesion and dependency audit |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
-| lsp | 39 | 1200 | Protocol core and response decoding extracted; client orchestration remains pending |
+| lsp | 37 | 1028 | Protocol, diagnostic waiting/conversion, capabilities and document IDs extracted; client orchestration and application initialization identity remain pending |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
 | forage | 13 | 1918 | Pending cohesion and dependency audit |
@@ -118,7 +118,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-indexer | 101 | yes | none |
 | codetether-k8s | 80 | yes | none |
 | codetether-knowledge-graph | 11 | yes | none |
-| codetether-lsp-core | 55 | yes | none |
+| codetether-lsp-core | 61 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
 | codetether-okr | 72 | yes | none |
@@ -3585,3 +3585,25 @@ at most 29 code lines. Standalone formatting, file-limit and whitespace checks
 were used; no Cargo, rustc, Python, tools or model calls ran. Compilation and
 Rust tests remain unverified. Evidence: artifacts/consolidation-agent-execution/.
 The complete workspace goal remains active.
+
+## LSP diagnostic helpers
+
+LSP-core owns document-specific publication waiting, TypeScript diagnostic
+conversion, client capability declarations and document language IDs. Five
+tests moved with their implementations; the paused-clock tests gain Tokio's
+test-util feature through the core crate's dev-dependency. Existing application
+paths re-export the shared helpers. Application lifecycle, initialization,
+cache management and diagnostic request orchestration remain unchanged.
+
+Full-client extraction still needs an explicit initialization identity
+boundary: the current initialize method advertises the application package
+version. This stage preserves that identity rather than silently reporting
+the core crate's version. No language server, linter or compiler was started.
+
+Evidence in artifacts/consolidation-lsp-diagnostics includes thirteen static
+source/API/dependency checks, lexical graphs with 61 shared and 37
+application LSP files, and no missing/unreferenced module files. New files have
+at most 48 code lines. Standalone formatting, the file-limit ratchet and
+whitespace checks are the permitted validation. Compilation and all Rust
+tests remain unverified. No Cargo, rustc or Python ran. The broader workspace
+consolidation goal remains active.
