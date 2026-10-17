@@ -1,0 +1,15 @@
+[package]
+name = "codetether-tetherscript-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "TetherScript interpreter execution with explicit host capabilities"
+
+[dependencies]
+anyhow = "1"
+codetether-tetherscript-computer = { path = "../codetether-tetherscript-computer", version = "0.1.0" }
+codetether-tetherscript-process = { path = "../codetether-tetherscript-process", version = "0.1.0" }
+codetether-tetherscript-values = { path = "../codetether-tetherscript-values", version = "0.1.0" }
+serde_json = "1"
+tetherscript = "0.1.0-alpha.30"

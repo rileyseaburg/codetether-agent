@@ -1,3 +1,4 @@
+//! Convert interpreter unwinding into stable error text.
 pub fn message(unwind: tetherscript::interp::Unwind) -> String {
     use tetherscript::interp::Unwind;
 

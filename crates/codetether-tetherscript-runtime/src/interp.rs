@@ -1,8 +1,9 @@
+//! Parse and execute hooks in the raw interpreter with bounded output.
 use anyhow::Result;
 use serde_json::Value;
 use tetherscript::output;
 
-use crate::tool::tetherscript::convert::json_to_tetherscript;
+use codetether_tetherscript_values::json_to_tetherscript;
 
 use super::outcome::TetherScriptOutcome;
 

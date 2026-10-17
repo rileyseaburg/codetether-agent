@@ -1,6 +1,4 @@
 //! Bind computer grants to the existing platform backend and runtime policy.
-pub use codetether_tetherscript_computer::ComputerGrant;
-pub type ComputerAuthority = codetether_tetherscript_computer::ComputerAuthority<ApplicationHost>;
 #[derive(Clone, Debug)]
 pub struct ApplicationHost;
 #[async_trait::async_trait]

@@ -1,3 +1,4 @@
+//! Lex, parse and initialize an interpreter with contextual errors.
 use anyhow::Result;
 use tetherscript::interp::Interpreter;
 use tetherscript::lexer::Lexer;

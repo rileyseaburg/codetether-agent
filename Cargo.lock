@@ -1388,7 +1388,7 @@ dependencies = [
  "codetether-task-tool",
  "codetether-telemetry",
  "codetether-tetherscript-computer",
- "codetether-tetherscript-process",
+ "codetether-tetherscript-runtime",
  "codetether-tetherscript-values",
  "codetether-theme",
  "codetether-tls",
@@ -3396,6 +3396,18 @@ name = "codetether-tetherscript-process"
 version = "0.1.0"
 dependencies = [
  "codetether-tool-progress",
+ "tetherscript",
+]
+
+[[package]]
+name = "codetether-tetherscript-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-tetherscript-computer",
+ "codetether-tetherscript-process",
+ "codetether-tetherscript-values",
+ "serde_json",
  "tetherscript",
 ]
 

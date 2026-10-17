@@ -7426,3 +7426,22 @@ whitespace checks passed; new Rust files contain at most 48 code lines. Evidence
 lives in `artifacts/consolidation-tetherscript-computer/`. No computer actions,
 runtime tests, Cargo, rustc or Python commands ran. Compilation remains
 unverified; the full consolidation goal remains active.
+
+### Dedicated TetherScript execution runtime
+
+Moved the remaining interpreter runner implementation into
+`crates/codetether-tetherscript-runtime`. Ten modules own browser grant data,
+capability-host selection, grant construction, parsing, raw interpretation,
+stdout/result conversion and unwind formatting. The application retains a
+single typed execution wrapper and its existing computer-use host adapter.
+The runtime owns the process-capability dependency through the existing optional
+`tetherscript` feature; the application's unused direct dependency was removed.
+
+Eighteen static preservation checks compare all moved execution modules, the
+application wrapper, feature wiring and unchanged plugin/capability regression
+tests. Capability selection, default scopes, output limits and result behavior
+are unchanged. Module reachability, dependency cycles, file budgets and whitespace
+checks passed; new Rust files contain at most 44 code lines. Evidence lives in
+`artifacts/consolidation-tetherscript-runtime/`. No plugin execution, runtime
+tests, Cargo, rustc or Python commands ran. Compilation remains unverified; the
+full consolidation goal remains active.

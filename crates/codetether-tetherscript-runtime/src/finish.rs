@@ -1,7 +1,8 @@
+//! Convert raw-interpreter completion and errors into a runtime outcome.
 use anyhow::Result;
 use tetherscript::value::Value as TetherScriptValue;
 
-use crate::tool::tetherscript::convert::tetherscript_to_json;
+use codetether_tetherscript_values::tetherscript_to_json;
 
 use super::outcome::{self, TetherScriptOutcome};
 

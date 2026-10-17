@@ -1,6 +1,16 @@
+//! Normalize stdout, return values and success status.
 use serde_json::Value;
 use tetherscript::value::{ResultValue, Value as TetherScriptValue};
 
+/// Captured execution text, success state and the JSON-compatible return value.
+///
+/// # Examples
+/// ```rust
+/// let outcome=codetether_tetherscript_runtime::TetherScriptOutcome{
+///     output:"done".into(),success:true,value:serde_json::json!(null),
+/// };
+/// assert!(outcome.success);
+/// ```
 #[derive(Debug)]
 pub struct TetherScriptOutcome {
     pub output: String,

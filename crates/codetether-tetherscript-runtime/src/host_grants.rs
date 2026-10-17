@@ -1,3 +1,4 @@
+//! Construct browser and computer grants without expanding requested authority.
 use std::rc::Rc;
 
 use tetherscript::browser_cap::BrowserAuthority;
@@ -5,7 +6,8 @@ use tetherscript::capability::Authority;
 use tetherscript::plugin::PluginHost;
 
 use super::browser::BrowserGrant;
-use super::computer::{ComputerAuthority, ComputerGrant};
+use crate::{ComputerGrant, Host};
+use codetether_tetherscript_computer::ComputerAuthority;
 
 pub fn grant_browser(host: &mut PluginHost, browser: BrowserGrant) {
     if let Some(endpoint) = &browser.endpoint {
@@ -13,9 +15,9 @@ pub fn grant_browser(host: &mut PluginHost, browser: BrowserGrant) {
     }
 }
 
-pub fn grant_computer(host: &mut PluginHost, computer: ComputerGrant) {
+pub fn grant_computer<H: Host>(host: &mut PluginHost, computer: ComputerGrant) {
     if computer.enabled {
-        host.grant("computer", computer_authority(computer));
+        host.grant("computer", computer_authority::<H>(computer));
     }
 }
 
@@ -28,11 +30,11 @@ fn browser_authority(endpoint: &str, browser: &BrowserGrant) -> Rc<dyn Authority
     BrowserAuthority::new(endpoint, browser.origins.clone(), scopes)
 }
 
-fn computer_authority(computer: ComputerGrant) -> Rc<dyn Authority> {
+fn computer_authority<H: Host>(computer: ComputerGrant) -> Rc<dyn Authority> {
     let scopes = if computer.scopes.is_empty() {
-        ComputerAuthority::all_scopes()
+        ComputerAuthority::<H>::all_scopes()
     } else {
         computer.scopes
     };
-    ComputerAuthority::new(computer.origins, scopes)
+    ComputerAuthority::<H>::new(computer.origins, scopes)
 }
