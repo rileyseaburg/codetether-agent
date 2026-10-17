@@ -33,7 +33,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
-| mcp | 36 | 3340 | Pending cohesion and dependency audit |
+| mcp | 35 | 2833 | Wire contracts, message classification and tool-result conversion extracted; transport, server/client and registry integration remain |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
@@ -170,6 +170,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-metrics | 16 | yes | none |
 | codetether-provider-bonsai | 80 | yes | none |
 | codetether-moltbook | 36 | yes | none |
+| codetether-mcp-core | 53 | yes | none |
 | codetether-model-catalog | 30 | yes | none |
 | codetether-util | 3 | yes | none |
 | codetether-vectordb | 14 | yes | none |
@@ -3752,3 +3753,20 @@ application files without missing/unreferenced modules. New files have at most
 used. No quality commands, Cargo, rustc, Python or tests were executed.
 Compilation and tests remain unverified. Evidence is in
 artifacts/consolidation-forage-verification/. The full workspace goal is active.
+
+## Shared MCP contracts and result conversion
+
+MCP-core owns wire records and all their constructors, protocol-version
+constants, decoded message classification and local tool-result conversion.
+Each record has a focused module. Application types and transport-message
+paths re-export the shared owners; transport operations are unchanged. Tool
+images retain their MIME field spelling, base64 handling and error behavior.
+
+Sixty-four static comparisons cover records, enum variants, serde attributes,
+constructors, constants, message classification, result conversion, unchanged
+transport code and image tests, and lockfile package preservation. Lexical
+graphs cover 53 core and 35 application files without missing or
+unreferenced modules. New Rust files have at most 47 code lines. Formatting,
+file limits and staged whitespace checks were used. No Cargo, rustc, Python,
+MCP transport or tests ran; compilation and tests remain unverified. Evidence
+is retained in artifacts/consolidation-mcp-contracts/. The whole goal is active.

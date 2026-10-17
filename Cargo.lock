@@ -1153,6 +1153,7 @@ dependencies = [
  "codetether-knowledge-graph",
  "codetether-lsp-core",
  "codetether-marketplace",
+ "codetether-mcp-core",
  "codetether-mesh",
  "codetether-model-catalog",
  "codetether-moltbook",
@@ -1847,6 +1848,17 @@ name = "codetether-marketplace"
 version = "0.1.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "codetether-mcp-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -27,36 +27,7 @@ pub trait Transport: Send + Sync {
     /// Close the transport
     async fn close(&self) -> Result<()>;
 }
-
-/// Incoming MCP message (can be request, response, or notification)
-#[derive(Debug, Clone)]
-pub enum McpMessage {
-    Request(JsonRpcRequest),
-    Response(JsonRpcResponse),
-    Notification(JsonRpcNotification),
-}
-
-impl McpMessage {
-    pub fn from_json(value: Value) -> Result<Self> {
-        // Check if it has an id
-        if value.get("id").is_some() {
-            // Has id - could be request or response
-            if value.get("method").is_some() {
-                // Has method - it's a request
-                let request: JsonRpcRequest = serde_json::from_value(value)?;
-                Ok(McpMessage::Request(request))
-            } else {
-                // No method - it's a response
-                let response: JsonRpcResponse = serde_json::from_value(value)?;
-                Ok(McpMessage::Response(response))
-            }
-        } else {
-            // No id - it's a notification
-            let notification: JsonRpcNotification = serde_json::from_value(value)?;
-            Ok(McpMessage::Notification(notification))
-        }
-    }
-}
+pub use codetether_mcp_core::McpMessage;
 
 /// Stdio transport for MCP (synchronous version for server mode)
 pub struct StdioTransport {

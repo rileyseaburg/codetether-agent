@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::mcp::ToolContent;
+/// use codetether_mcp_core::types::ToolContent;
 /// let block = ToolContent::Image {
 ///     data: "eA==".into(), mime_type: "image/png".into(),
 /// };
