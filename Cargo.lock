@@ -1223,6 +1223,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-advanced-edit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
@@ -1250,6 +1261,7 @@ dependencies = [
  "codetether-a2a-stream",
  "codetether-a2a-worker-core",
  "codetether-a2a-worker-clone",
+ "codetether-advanced-edit",
  "codetether-agent-core",
  "codetether-approval-core",
  "codetether-audit",

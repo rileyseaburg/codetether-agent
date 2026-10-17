@@ -6907,3 +6907,20 @@ whitespace checks passed. New Rust files contain at most 47 code lines.
 Evidence: `artifacts/consolidation-bash-tool/`. Compilation and runtime tests
 remain unverified. No Cargo, rustc or Python commands ran; the full workspace
 consolidation goal remains active.
+
+### Dedicated advanced editing tool
+
+Moved the complete `src/tool/advanced_edit.rs` implementation into
+`crates/codetether-advanced-edit`. Nineteen modules separate tool metadata,
+argument validation, file checks and I/O, replacement selection, six matching
+strategies, block similarity scoring and Levenshtein distance. The application
+retains a compatibility export; registration IDs and behavior remain unchanged.
+
+Eighteen static preservation checks compare all matching algorithms, ordered
+strategy selection, input validation, schema and tool metadata. Expanding the
+new helper boundaries reproduces the original block-anchor algorithm and the
+complete file I/O/error/result flow. Module reachability, dependency-cycle,
+file-budget and whitespace checks passed; new Rust files contain at most 47
+code lines. Evidence: `artifacts/consolidation-advanced-edit/`. Compilation
+and runtime tests remain unverified; no Cargo, rustc or Python commands ran.
+The full workspace consolidation goal remains active.
