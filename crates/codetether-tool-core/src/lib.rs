@@ -36,3 +36,6 @@ pub mod patch;
 
 /// Deterministic advertised-tool profiles and provider defaults.
 pub mod profile;
+
+/// Hard-denied temporary-directory writes across tool boundaries.
+pub mod temp_write_guard;

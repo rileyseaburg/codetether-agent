@@ -6258,3 +6258,20 @@ New files contain at most 44 code lines. Workspace/lockfile wiring, file-budget
 and whitespace checks passed. Evidence: `artifacts/consolidation-grep-tool/`.
 No tool runtime, Cargo, rustc or Python was executed. The broader migration
 remains active.
+
+### Shared temporary-directory write guard
+
+Moved the temporary-directory write guard, root discovery, path normalization
+and unit tests into `codetether-tool-core::temp_write_guard`. The application
+retains a compatibility export and its real write/shell boundary tests. This
+removes an application-only dependency from the file-write tool before its
+extraction.
+
+Static comparison verifies unchanged guard functions after explicit result-type,
+visibility and module-path substitutions. Root discovery, normalization and six
+unit tests are byte-identical; the four application boundary tests are unchanged.
+The scan reaches 73 tool-core files with no missing/orphaned modules, and the
+dependency closure is acyclic. Moved files contain at most 44 code lines.
+File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-temp-write-guard/`. No tests, file-write tools, Cargo,
+rustc or Python were executed. The broader migration remains active.
