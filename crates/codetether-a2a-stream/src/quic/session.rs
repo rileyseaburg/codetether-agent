@@ -7,7 +7,7 @@
 
 use super::client::QuicStreamClient;
 use super::reader::QuicFrameReader;
-use crate::a2a::stream::cursor::Cursor;
+use crate::cursor::Cursor;
 use anyhow::{Context, Result};
 use quinn::Connection;
 use rustls::pki_types::CertificateDer;

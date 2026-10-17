@@ -15,8 +15,8 @@ use super::event_id::EventId;
 /// ```rust
 /// # let dir = tempfile::tempdir().unwrap();
 /// # let path = dir.path().join("cursor");
-/// use codetether_agent::a2a::stream::cursor::Cursor;
-/// use codetether_agent::a2a::stream::event_id::EventId;
+/// use codetether_a2a_stream::cursor::Cursor;
+/// use codetether_a2a_stream::event_id::EventId;
 ///
 /// let mut cursor = Cursor::load(path.clone());
 /// assert!(cursor.last().is_none());

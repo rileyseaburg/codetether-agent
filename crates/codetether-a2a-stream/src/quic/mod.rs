@@ -36,7 +36,7 @@ pub use writer::QuicFrameWriter;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::stream::quic::ALPN;
+/// use codetether_a2a_stream::quic::ALPN;
 /// assert_eq!(ALPN, b"a2a-stream/1");
 /// ```
 pub const ALPN: &[u8] = b"a2a-stream/1";

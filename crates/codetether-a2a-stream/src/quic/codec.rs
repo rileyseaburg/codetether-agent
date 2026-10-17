@@ -26,9 +26,9 @@ pub fn encode_frame(frame: &ParsedFrame) -> Vec<u8> {
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::stream::quic::codec::{encode_frame, decode_body};
-/// use codetether_agent::a2a::stream::frame::ParsedFrame;
-/// use codetether_agent::a2a::stream::event_id::EventId;
+/// use codetether_a2a_stream::quic::codec::{encode_frame, decode_body};
+/// use codetether_a2a_stream::frame::ParsedFrame;
+/// use codetether_a2a_stream::event_id::EventId;
 ///
 /// let f = ParsedFrame {
 ///     id: Some(EventId { epoch: "e".into(), seq: 3 }),

@@ -8,7 +8,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::stream::classify::{classify, EventClass};
+/// use codetether_a2a_stream::classify::{classify, EventClass};
 ///
 /// assert_eq!(classify("task_available"), EventClass::Advisory);
 /// assert_eq!(classify("heartbeat"), EventClass::Control);
@@ -35,21 +35,6 @@ pub fn classify(event_type: &str) -> EventClass {
         _ => EventClass::Sequenced,
     }
 }
-
 #[cfg(test)]
-mod tests {
-    use super::{EventClass, classify};
-
-    #[test]
-    fn known_types() {
-        assert_eq!(classify("task_available"), EventClass::Advisory);
-        assert_eq!(classify("connected"), EventClass::Control);
-        assert_eq!(classify("resync-required"), EventClass::Control);
-        assert_eq!(classify("progress"), EventClass::Sequenced);
-    }
-
-    #[test]
-    fn unknown_defaults_sequenced() {
-        assert_eq!(classify("brand_new_event"), EventClass::Sequenced);
-    }
-}
+#[path = "classify_tests.rs"]
+mod tests;

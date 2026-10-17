@@ -10,7 +10,7 @@ use super::event_id::EventId;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::stream::frame::parse_frame;
+/// use codetether_a2a_stream::frame::parse_frame;
 ///
 /// let block = "id: ep.7\nevent: progress\ndata: {\"x\":1}";
 /// let frame = parse_frame(block).unwrap();
@@ -44,21 +44,6 @@ pub fn parse_frame(block: &str) -> Option<ParsedFrame> {
     }
     data.map(|data| ParsedFrame { id, event, data })
 }
-
 #[cfg(test)]
-mod tests {
-    use super::parse_frame;
-
-    #[test]
-    fn no_id_defaults_message_type_when_absent() {
-        let f = parse_frame("data: hello").unwrap();
-        assert!(f.id.is_none());
-        assert_eq!(f.event, "message");
-        assert_eq!(f.data, "hello");
-    }
-
-    #[test]
-    fn returns_none_without_data() {
-        assert!(parse_frame("event: heartbeat").is_none());
-    }
-}
+#[path = "frame_tests.rs"]
+mod tests;

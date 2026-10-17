@@ -10,7 +10,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::stream::breaker::CircuitBreaker;
+/// use codetether_a2a_stream::breaker::CircuitBreaker;
 ///
 /// let mut breaker = CircuitBreaker::new(3);
 /// assert!(!breaker.is_open());
@@ -56,21 +56,6 @@ impl CircuitBreaker {
         self.consecutive_failures
     }
 }
-
 #[cfg(test)]
-mod tests {
-    use super::CircuitBreaker;
-
-    #[test]
-    fn opens_at_threshold_and_closes_on_success() {
-        let mut b = CircuitBreaker::new(2);
-        b.record_failure();
-        assert!(!b.is_open());
-        b.record_failure();
-        assert!(b.is_open());
-        assert_eq!(b.failure_count(), 2);
-        b.record_success();
-        assert!(!b.is_open());
-        assert_eq!(b.failure_count(), 0);
-    }
-}
+#[path = "breaker_tests.rs"]
+mod tests;

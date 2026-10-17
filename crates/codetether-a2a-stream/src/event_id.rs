@@ -9,7 +9,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::stream::event_id::EventId;
+/// use codetether_a2a_stream::event_id::EventId;
 ///
 /// let id = EventId::parse("abc123.42").unwrap();
 /// assert_eq!(id.epoch, "abc123");
@@ -35,7 +35,7 @@ impl EventId {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_agent::a2a::stream::event_id::EventId;
+    /// use codetether_a2a_stream::event_id::EventId;
     ///
     /// assert!(EventId::parse("e.1").is_some());
     /// assert!(EventId::parse("noseq").is_none());
@@ -58,30 +58,6 @@ impl EventId {
         format!("{}.{}", self.epoch, self.seq)
     }
 }
-
 #[cfg(test)]
-mod tests {
-    use super::EventId;
-
-    #[test]
-    fn roundtrip() {
-        let id = EventId::parse("abc.99").unwrap();
-        assert_eq!(id.seq, 99);
-        assert_eq!(id.format(), "abc.99");
-    }
-
-    #[test]
-    fn epoch_with_dots_keeps_last_as_separator() {
-        let id = EventId::parse("a.b.c.7").unwrap();
-        assert_eq!(id.epoch, "a.b.c");
-        assert_eq!(id.seq, 7);
-    }
-
-    #[test]
-    fn rejects_malformed() {
-        assert!(EventId::parse("noseq").is_none());
-        assert!(EventId::parse(".5").is_none());
-        assert!(EventId::parse("e.x").is_none());
-        assert!(EventId::parse("e.-1").is_none());
-    }
-}
+#[path = "event_id_tests.rs"]
+mod tests;

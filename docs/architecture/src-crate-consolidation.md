@@ -27,7 +27,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | tui | 1208 | 42457 | Pending cohesion and dependency audit |
 | session | 916 | 27990 | Partial extraction; inspect remaining implementation |
 | provider | 141 | 3096 | Shared contracts/HTTP/images/context limits, Codex OAuth/lifecycle/request, message and response protocol/HTTP and WebSocket transport, and Google/Bedrock auth, transcript conversion, body policy, native requests, responses, streaming, and Bedrock execution/discovery/refresh and OpenAI/DeepSeek/Z.AI/Anthropic/Moonshot/Google/StepFun/OpenRouter/Vertex Anthropic/Vertex GLM/GLM-5/Copilot implementations extracted; other adapters/registry pending |
-| a2a | 355 | 12904 | Wire contracts and HTTP client extracted to a2a-core/a2a-http; remaining transports, server and worker ownership remain pending |
+| a2a | 355 | 12904 | Wire contracts, HTTP client, resumable stream/QUIC and task scope extracted; gRPC, server and remaining worker ownership remain pending |
 | cli | 198 | 10322 | Pending cohesion and dependency audit |
 | swarm | 228 | 5643 | Shared runtime/domain/prompt policy extracted; application supplies session, provider, tools, worktrees and pod operations; remaining ownership audit ongoing |
 | server | 213 | 8264 | Pending cohesion and dependency audit |
@@ -94,6 +94,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | --- | ---: | --- | --- |
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-http | 6 | yes | codetether-a2a-core |
+| codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 36 | yes | none |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
@@ -4505,3 +4506,24 @@ worker-core module graph reaches all 36 source files without missing modules;
 all six new files are below 50 code lines. File-budget and whitespace checks
 passed. Evidence is in `artifacts/consolidation-a2a-scope/`. Tests and compilation
 were not run under the Cargo/rustc restriction. The overall goal remains active.
+
+
+### Shared resumable A2A stream and QUIC transport
+
+`codetether-a2a-stream` owns event IDs, frame parsing, persisted cursors,
+resume headers, resync payloads, bounded staging, reconnect policy, transport
+probes, and QUIC clients/servers/readers/writers. Existing application module
+paths re-export these modules. TCP observations remain in telemetry and socket
+defaults remain in provider-core; neither implementation was duplicated.
+The new crate depends only on telemetry among workspace crates. Its FIPS
+feature forwards the existing rustls/QUIC flags and is enabled by the
+application FIPS feature. Worker transport selection remains in the host.
+
+Embedded regression cases were separated into focused test modules, preserving
+all 23 test functions. Source-token comparisons cover all 24 relocated files,
+allowing only the two owner-import updates and test-module declarations. All
+33 crate files and three application compatibility files are reachable; the
+local dependency graph is acyclic. Every new source file stays below 50 code
+lines. Evidence is retained in `artifacts/consolidation-a2a-stream/`.
+Compilation, tests, doctests, and transport behavior remain unverified under
+the Cargo/rustc restriction. The broader consolidation remains active.

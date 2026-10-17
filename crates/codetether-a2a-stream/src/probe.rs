@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use tokio::net::TcpStream;
 
-use crate::a2a::stream::tcp_info::{TcpInfoSnapshot, sample};
+use codetether_telemetry::tcp_info::{TcpInfoSnapshot, sample};
 
 /// Connect to `addr`, sample `TCP_INFO`, and return the snapshot.
 ///
@@ -48,19 +48,6 @@ pub fn probe_target(server_url: &str) -> Option<String> {
 
 /// Default interval between transport probes.
 pub const PROBE_INTERVAL: Duration = Duration::from_secs(15);
-
 #[cfg(test)]
-mod tests {
-    use super::probe_target;
-
-    #[test]
-    fn parses_targets_with_default_ports() {
-        assert_eq!(probe_target("http://host/path").as_deref(), Some("host:80"));
-        assert_eq!(probe_target("https://host").as_deref(), Some("host:443"));
-        assert_eq!(
-            probe_target("http://host:8001/x").as_deref(),
-            Some("host:8001")
-        );
-        assert!(probe_target("ftp://host").is_none());
-    }
-}
+#[path = "probe_tests.rs"]
+mod tests;

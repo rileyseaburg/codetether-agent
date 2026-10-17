@@ -13,7 +13,7 @@ use std::time::Duration;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::stream::backoff::Backoff;
+/// use codetether_a2a_stream::backoff::Backoff;
 /// use std::time::Duration;
 ///
 /// let mut backoff = Backoff::new(Duration::from_millis(100), Duration::from_secs(30));

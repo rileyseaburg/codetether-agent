@@ -20,7 +20,7 @@ pub enum ResyncReason {
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::a2a::stream::resync::{parse_resync, ResyncReason};
+/// use codetether_a2a_stream::resync::{parse_resync, ResyncReason};
 ///
 /// let json = r#"{"reason":"window_exceeded","head_seq":120,"epoch":"e2"}"#;
 /// let r = parse_resync(json).unwrap();
@@ -46,20 +46,6 @@ pub struct Resync {
 pub fn parse_resync(data: &str) -> Result<Resync, serde_json::Error> {
     serde_json::from_str(data)
 }
-
 #[cfg(test)]
-mod tests {
-    use super::{ResyncReason, parse_resync};
-
-    #[test]
-    fn parses_epoch_mismatch() {
-        let r = parse_resync(r#"{"reason":"epoch_mismatch","head_seq":0,"epoch":"x"}"#).unwrap();
-        assert_eq!(r.reason, ResyncReason::EpochMismatch);
-        assert_eq!(r.epoch, "x");
-    }
-
-    #[test]
-    fn rejects_unknown_reason() {
-        assert!(parse_resync(r#"{"reason":"nope","head_seq":1,"epoch":"x"}"#).is_err());
-    }
-}
+#[path = "resync_tests.rs"]
+mod tests;

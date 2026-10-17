@@ -1,0 +1,23 @@
+[package]
+name = "codetether-a2a-stream"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Resumable A2A stream protocols, reconnect policy and QUIC transport"
+
+[features]
+fips = ["rustls/fips", "quinn/rustls-aws-lc-rs-fips"]
+
+[dependencies]
+anyhow = "1.0.104"
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
+quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-aws-lc-rs"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["rustls"] }
+rustls = { version = "0.23.43", default-features = false, features = ["aws_lc_rs", "std", "tls12", "logging"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1.53.1", features = ["net"] }
+
+[dev-dependencies]
+tempfile = "3.25.0"
