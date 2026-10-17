@@ -95,7 +95,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-core | 48 | yes | none |
 | codetether-a2a-discovery | 23 | yes | codetether-a2a-core |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
-| codetether-a2a-http | 44 | yes | codetether-a2a-core, codetether-provider-core |
+| codetether-a2a-http | 45 | yes | codetether-a2a-core, codetether-provider-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 89 | yes | codetether-agent-core, codetether-provider-core, codetether-provenance |
 | codetether-agent-core | 44 | yes | none |
@@ -4944,3 +4944,19 @@ dependency closure is acyclic. New files satisfy the line budget; whitespace
 and file checks passed. Evidence is retained in
 `artifacts/consolidation-discovery-routes/`. Compilation and tests remain
 unrun; the broader consolidation goal stays active.
+
+
+### Shared pending-task HTTP client
+
+HTTP worker helpers now own pending-task URL construction, bearer-token
+attachment, HTTP failure handling, and array/envelope decoding. Worker loops
+retain logging and dispatch order through a thin runtime adapter. The third
+copy of response-body summarization was identical and now uses the shared
+helper. Log targets remain unchanged.
+
+Static comparisons cover the HTTP operation, both unchanged dispatch loops,
+and summary equivalence. All 45 HTTP-crate files and 310 A2A files are
+reachable without missing/orphaned modules. The new file has 37 code lines;
+file-budget and whitespace checks passed. The manifest adds already-locked
+urlencoding. Evidence: `artifacts/consolidation-pending-task-client/`.
+Compilation, tests, and live polling remain unrun; the broader goal is active.
