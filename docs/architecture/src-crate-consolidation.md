@@ -8030,3 +8030,24 @@ file-budget checks and whitespace checks passed; crate files contain at most 37
 code lines. Evidence is in `artifacts/consolidation-agent-lifecycle/`. Compilation
 and runtime tests were not run. No Cargo, rustc or Python commands ran. The full
 consolidation goal remains active.
+
+### Dedicated bounded agent residency
+
+Moved resident lookup and refresh, locked durable reload, activation rollback,
+capacity reservation, safe LRU eviction, and thread-limit policy into
+`crates/codetether-agent-residency`. Ten Rust modules separate each operation
+from application storage and activation contracts. The old implementation
+files and unused spawn-thread module are removed. Application adapters retain
+native prepared-manifest ownership and session overlays. Shared counters,
+activation locks, execution state, status channels and mailbox state continue
+to use their existing owners.
+
+Forty-three static preservation checks cover loading and lock order, refreshed
+entry insertion, stale-marker restoration after failure, capacity retries,
+terminal/queue eviction guards, close-before-removal, activation rollback,
+thread-limit errors, and application adapters. Eight existing test/support
+modules remain unchanged. Module/dependency, file-budget and whitespace checks
+passed; crate modules contain at most 40 code lines. Evidence is in
+`artifacts/consolidation-agent-residency/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The full consolidation goal
+remains active.

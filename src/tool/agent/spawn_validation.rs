@@ -17,8 +17,6 @@ use crate::tool::ToolResult;
 
 #[path = "spawn_depth.rs"]
 mod spawn_depth;
-#[path = "spawn_threads.rs"]
-pub(in crate::tool::agent) mod spawn_threads;
 
 /// Validates whether a requested sub-agent spawn is allowed.
 ///

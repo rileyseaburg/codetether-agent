@@ -1,13 +1,11 @@
 //! Durable child loading with bounded LRU residency.
 
-#[path = "residency/activate.rs"]
-mod activate;
 #[path = "residency/capacity.rs"]
 mod capacity;
 #[path = "residency/ensure.rs"]
 mod ensure;
-#[path = "residency/evict.rs"]
-mod evict;
+#[path = "residency/host.rs"]
+mod host;
 #[path = "residency/order.rs"]
 mod order;
 #[path = "residency/outcome.rs"]

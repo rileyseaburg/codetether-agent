@@ -22,7 +22,9 @@ pub(crate) mod paths;
 mod restore;
 
 pub(crate) use hydrate::parent as hydrate_parent;
-pub(in crate::tool::agent) use lifecycle::{activate_resume, close, exists, prepare_resume};
+pub(in crate::tool::agent) use lifecycle::{
+    ClosedAgent, activate_resume, close, exists, prepare_resume,
+};
 #[cfg(test)]
 pub(in crate::tool::agent) use lookup::is_open;
 pub(in crate::tool::agent) use lookup::{child_ids, durable_id};

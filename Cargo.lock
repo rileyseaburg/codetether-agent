@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-agent-residency",
  "codetether-agent-lifecycle",
  "codetether-agent-registry",
  "codetether-agent-storage",
@@ -2441,6 +2442,22 @@ dependencies = [
  "anyhow",
  "codetether-collaboration-state",
  "serde",
+]
+
+[[package]]
+name = "codetether-agent-residency"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-agent-lifecycle",
+ "codetether-agent-registry",
+ "codetether-child-mailbox",
+ "codetether-collaboration-state",
+ "codetether-collaboration-tools",
+ "codetether-config",
+ "codetether-tool-core",
+ "tracing",
 ]
 
 [[package]]
