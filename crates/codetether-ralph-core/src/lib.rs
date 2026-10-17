@@ -28,3 +28,6 @@ pub mod relay_profiles;
 
 /// Host-driven quality verification and repair state machine.
 pub mod quality_repair;
+
+/// Host-driven sequential and dependency-stage orchestration.
+pub mod scheduling;

@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 101 | 2823 | Shared quality state/retry sequencing, progress records and contracts extracted; application execution ownership audit continues |
+| ralph | 104 | 2851 | Shared schedulers, quality state/retries, progress and contracts extracted; host task/worktree/persistence ownership audit continues |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -152,7 +152,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-openai | 72 | yes | none |
 | codetether-provider-zai | 120 | yes | none |
 | codetether-question | 30 | yes | none |
-| codetether-ralph-core | 117 | yes | none |
+| codetether-ralph-core | 122 | yes | none |
 | codetether-rlm | 448 | yes | none |
 | codetether-runtime-policy | 37 | yes | none |
 | codetether-search | 18 | yes | none |
@@ -4254,3 +4254,25 @@ passed; standalone rustfmt was used. No Cargo, rustc, Python, verification,
 repair execution, Rust test or doctest ran; compilation and runtime remain
 unverified. Evidence: artifacts/consolidation-ralph-quality-state/. Remaining
 Ralph execution ownership and the whole-workspace objective stay active.
+
+## Ralph scheduling ownership
+
+Ralph-core::scheduling now owns the sequential iteration loop and dependency-
+stage scheduling. SequentialHost supplies live state, iteration selection,
+prompt generation, model invocation and response/error handling. ParallelHost
+supplies stage planning, optional manager construction, limit checks and full
+stage execution. The application stage callback keeps task handles and its
+semaphore alive through collection and finalization, while the shared loop
+retains the single manager across stages without additional cloning.
+
+The top-level application run method moved into its own lifecycle module with
+mode selection, final status, cleanup and finish order unchanged. All 18 static
+comparisons passed, covering the two loops, callback forwarding, entire stage
+execution block, application state layout and lifecycle. Eight new files are
+at most 32 code lines. Lexical scans found all 122 core and 104 application files
+reachable, without missing modules or dependency-cycle changes. No dependencies
+changed. File-limit and whitespace checks passed; standalone rustfmt was used.
+No Cargo, rustc, Python, scheduler run, model call, worktree operation, Rust test
+or doctest ran. Compilation and runtime remain unverified. Evidence:
+artifacts/consolidation-ralph-scheduling/. The broader goal and remaining Ralph
+host ownership audit stay active.

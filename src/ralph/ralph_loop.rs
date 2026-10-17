@@ -102,6 +102,8 @@ mod relay_session;
 mod relay_text;
 mod relay_turn;
 mod relay_types;
+mod scheduling_parallel;
+mod scheduling_sequential;
 mod seq_error;
 mod seq_failure;
 mod seq_iteration;
@@ -126,23 +128,7 @@ pub struct RalphLoop {
     delegation: Option<DelegationState>,
     run_id: String,
 }
-
-impl RalphLoop {
-    /// Run the Ralph loop until completion or max iterations
-    pub async fn run(&mut self) -> anyhow::Result<RalphState> {
-        self.start_run()?;
-        // Choose execution mode
-        if self.config.parallel_enabled {
-            self.run_parallel().await?;
-        } else {
-            self.run_sequential().await?;
-        }
-
-        codetether_ralph_core::lifecycle::finalize_status(&mut self.state);
-        self.cleanup_run_worktrees().await;
-        self.finish_run()
-    }
-}
+mod run;
 
 /// Create a sample PRD template
 pub fn create_prd_template(project: &str, feature: &str) -> Prd {
