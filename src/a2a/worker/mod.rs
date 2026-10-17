@@ -29,7 +29,6 @@ mod frame_handler;
 mod git_hook_gate;
 mod git_refspec;
 mod heartbeat_cognition;
-mod heartbeat_cognition_merge;
 mod heartbeat_loop;
 mod http_client;
 mod metadata_flags;

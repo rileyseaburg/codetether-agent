@@ -18,7 +18,7 @@ pub(super) use super::{
     tool_schema::{compact_worker_tool_definitions, tool_schema_bytes},
     worker_bootstrap::{bootstrap_worker, register_current_worker},
     worker_context::WorkerContext,
-    worker_env::{env_u64, trim_for_heartbeat},
+    worker_env::env_u64,
     worker_init::init_worker,
     worker_loop::run_worker_loop,
     worker_server_loop::run_worker_server_loop,

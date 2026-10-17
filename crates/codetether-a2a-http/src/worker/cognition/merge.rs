@@ -1,6 +1,5 @@
-//! Cognition snapshot merge into heartbeat payload.
-
-use super::{CognitionHeartbeatConfig, CognitionLatestSnapshot, trim_for_heartbeat};
+//! Merge latest cognition summary metadata into heartbeat JSON.
+use super::{CognitionHeartbeatConfig, CognitionLatestSnapshot, summary::trim_for_heartbeat};
 
 pub(super) fn merge_snapshot(
     payload: &mut serde_json::Value,

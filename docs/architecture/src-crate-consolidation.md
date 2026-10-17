@@ -5368,3 +5368,23 @@ with no missing/orphaned modules; the dependency graph remains acyclic. All
 whitespace checks passed. Evidence: `artifacts/consolidation-worker-events/`.
 Compilation, tests, and runtime emission remain unrun. No Cargo, rustc, or
 Python commands ran. The broader implementation migration remains active.
+
+### Shared cognition retrieval and worker heartbeat submission
+
+Moved cognition status/latest-snapshot HTTP retrieval, snapshot metadata merging,
+summary trimming, and signed worker heartbeat POST into the HTTP worker module.
+The application re-exports retrieval and POST functions; heartbeat loop and
+payload assembly remain application-side pending further extraction. Removed
+the obsolete application merge module and trimming helper. The unrelated
+extended-heartbeat edit remains untouched. HTTP now directly depends on
+worker-core's existing cognition wire/config types.
+
+Static comparison verifies four moved function bodies and the unchanged
+remaining environment helper. Request timeouts, status-only fallback, snapshot
+error behavior, summary formatting, proof resource, header order, and warning
+log target are preserved. The module scan covers 87 HTTP files and 278 A2A
+application files with no missing/orphaned modules; the expanded dependency
+closure remains acyclic. New files contain at most 47 code lines. File-budget
+and whitespace checks passed. Evidence: `artifacts/consolidation-heartbeat-http/`.
+Compilation, tests, cognition requests, and heartbeat submission remain unrun.
+No Cargo, rustc, or Python commands ran. The broader migration remains active.

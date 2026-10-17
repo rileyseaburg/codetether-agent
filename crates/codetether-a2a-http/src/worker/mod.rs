@@ -36,3 +36,8 @@ mod registration;
 pub use registration::register_worker_payload;
 mod release_request;
 pub use release_request::build_release_request;
+
+/// Cognition metadata retrieval for worker heartbeats.
+pub mod cognition;
+mod heartbeat_post;
+pub use heartbeat_post::post_heartbeat;
