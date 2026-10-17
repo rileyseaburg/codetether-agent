@@ -1,58 +1,31 @@
-//! `context_budget`: report context window budget status.
-//!
-//! Returns current L_working, L_effective, recently elided ranges,
-//! and the session's bucket projection. No provider call needed —
-//! pure read from the session's summary index and page sidecar.
-
-use super::context_helpers::load_calling_window;
-use super::{Tool, ToolResult};
-use crate::session::pages::PageKind;
-use anyhow::Result;
-use async_trait::async_trait;
-use serde_json::{Value, json};
-
-/// Context budget tool.
-pub struct ContextBudgetTool;
-
-#[async_trait]
-impl Tool for ContextBudgetTool {
-    fn id(&self) -> &str {
-        "context_budget"
+//! Bind context budget reporting to the application's existing session data.
+use crate::session::{Session, pages::PageKind};
+/// Context reporter using the application's session store.
+///
+/// # Examples
+/// ```rust
+/// use codetether_agent::tool::context_budget::ContextBudgetTool;
+/// let _tool: ContextBudgetTool = ContextBudgetTool;
+/// ```
+pub type ContextBudgetTool = codetether_context_budget::ContextBudgetTool<Session>;
+/// Preserve the existing unit-like construction used by tool registration.
+///
+/// # Examples
+/// ```rust
+/// let _tool = codetether_agent::tool::context_budget::ContextBudgetTool;
+/// ```
+#[allow(non_upper_case_globals)]
+pub const ContextBudgetTool: ContextBudgetTool =
+    codetether_context_budget::ContextBudgetTool::new();
+impl codetether_context_budget::BudgetSource for Session {
+    const WINDOW: usize = crate::session::store::WINDOW;
+    fn messages_len(&self) -> usize {
+        self.messages.len()
     }
-    fn name(&self) -> &str {
-        "ContextBudget"
+    fn cached_summaries(&self) -> usize {
+        self.summary_index.len()
     }
-
-    fn description(&self) -> &str {
-        "Report the current context window budget: messages count, \
-         cached summaries, page distribution, and remaining capacity. \
-         Call this to understand how much room is left before the next \
-         compression or reset. Returns L_working (current transcript \
-         length) and L_effective (with summarization multiplier)."
-    }
-
-    fn parameters(&self) -> Value {
-        json!({ "type": "object", "properties": {} })
-    }
-
-    async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let session = match load_calling_window(&args, crate::session::store::WINDOW).await {
-            Ok(Some(s)) => s,
-            Ok(None) => return Ok(ToolResult::error("No active session found.")),
-            Err(e) => return Ok(ToolResult::error(&format!("Failed to load session: {e}"))),
-        };
-        let total = session.messages.len();
-        let cached = session.summary_index.len();
-        let pinned = session
-            .pages
-            .iter()
-            .filter(|p| matches!(p, PageKind::Constraint | PageKind::Bootstrap))
-            .count();
-        let output = format!(
-            "L_working={total} messages, cached_summaries={cached}, \
-             pinned_pages={pinned}, L_effective≈{eff}",
-            eff = total + cached * 50,
-        );
-        Ok(ToolResult::success(output))
+    fn pages(&self) -> &[PageKind] {
+        self.pages.as_slice()
     }
 }

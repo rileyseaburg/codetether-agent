@@ -1,0 +1,15 @@
+[package]
+name = "codetether-context-budget"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Context window budget reporting from shared session statistics"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-context-loader = { path = "../codetether-context-loader", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"

@@ -1294,6 +1294,7 @@ dependencies = [
  "codetether-config",
  "codetether-confirm-edit",
  "codetether-confirm-multiedit",
+ "codetether-context-budget",
  "codetether-context-loader",
  "codetether-context-policy",
  "codetether-context-reset",
@@ -2050,6 +2051,18 @@ dependencies = [
  "serde_json",
  "similar 3.2.0",
  "tokio",
+]
+
+[[package]]
+name = "codetether-context-budget"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-context-loader",
+ "codetether-context-policy",
+ "codetether-tool-core",
+ "serde_json",
 ]
 
 [[package]]

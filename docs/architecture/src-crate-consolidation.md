@@ -7497,3 +7497,19 @@ contain at most 31 code lines. Evidence lives in
 `artifacts/consolidation-context-reset/`. No reset operations, runtime tests,
 Cargo, rustc or Python commands ran. Compilation remains unverified; the full
 consolidation goal remains active.
+
+### Dedicated context-budget reporter
+
+Moved context-budget tool metadata, loading/error handling, pinned-page counting
+and report formatting into `crates/codetether-context-budget`. Five modules
+separate reporting from the application's session storage adapter. The adapter
+provides existing message/summary counts, a borrowed page slice and the store's
+working-window constant; no transcript data is copied or mutated.
+
+Sixteen static preservation checks compare the exact loading window, errors,
+page classification, summary multiplier, output text and compatibility wiring.
+Module reachability, dependency cycles, file budgets and whitespace checks
+passed; new Rust files contain at most 27 code lines. Evidence lives in
+`artifacts/consolidation-context-budget/`. No sessions were loaded, runtime
+tests, Cargo, rustc or Python commands run. Compilation remains unverified;
+the full consolidation goal remains active.
