@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 107 | 2791 | Shared services extracted; parallel, relay and sequential hosts grouped; lifecycle/merge layout and final ownership review continue |
+| ralph | 111 | 2818 | Shared services extracted and host families grouped; final residual ownership review continues |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -4371,3 +4371,22 @@ No Cargo, rustc, Python, relay session, sequential agent, Rust test or doctest
 ran. Compilation and runtime remain unverified. Evidence:
 artifacts/consolidation-ralph-relay-sequential/. Lifecycle/merge layout and final
 Ralph ownership review remain part of the active whole-workspace objective.
+
+## Ralph lifecycle, model, workspace and reporting groups
+
+Thirty-five remaining flat implementation files are grouped by application
+responsibility: lifecycle/configuration/persistence, provider/tool execution,
+workspace commits/merges/conflicts, and bus/event reporting. Existing method
+visibility retains the original ralph_loop scope. Workspace merge imports
+point explicitly to the sibling parallel result context. Original log targets
+are explicit for moved macros. The Ralph loop root is now 47 code lines.
+
+All 38 static comparisons passed, including each relocated file, root state,
+public template API and declarations. Every moved/new module is at most 49
+code lines. Lexical scans cover all 111 application and 136 core files without
+missing or orphaned modules; the six-crate dependency closure is unchanged.
+File-limit and whitespace checks passed. Standalone rustfmt was used. No
+Cargo, rustc, Python, model call, merge, runtime operation, Rust test or doctest
+ran; compilation and runtime remain unverified. Evidence:
+artifacts/consolidation-ralph-host-groups/. A final Ralph residual ownership
+review remains within the broader active workspace objective.

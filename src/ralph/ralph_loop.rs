@@ -25,42 +25,8 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
-mod bus_collect;
-mod bus_publish;
-mod configure;
-mod conflict_complete;
-mod conflict_execute;
-mod conflict_invoke;
-mod conflict_merge;
-mod conflict_result;
-mod conflict_verify;
-mod conflicts;
-mod construct;
-mod event_bridge;
-mod events;
-mod git_checkout;
-mod git_commit;
-mod git_commit_dir;
-mod lifecycle_cleanup;
-mod lifecycle_finish;
-mod lifecycle_record;
-mod lifecycle_start;
-mod merge_dispatch;
-mod merge_nonconflict;
-mod merge_story;
-mod merge_success;
-mod merge_verify;
-mod merge_without_worktree;
-mod model_direct;
-mod model_exit;
-mod model_static;
 mod parallel;
-mod persistence;
-mod progress;
-mod prompts;
-mod provenance;
 mod quality;
-mod status;
 
 /// The main Ralph executor
 pub struct RalphLoop {
@@ -76,7 +42,6 @@ pub struct RalphLoop {
     delegation: Option<DelegationState>,
     run_id: String,
 }
-mod run;
 
 /// Create a sample PRD template
 pub fn create_prd_template(project: &str, feature: &str) -> Prd {
@@ -86,3 +51,11 @@ pub fn create_prd_template(project: &str, feature: &str) -> Prd {
 mod relay;
 
 mod sequential;
+
+mod workspace;
+
+mod lifecycle;
+
+mod model;
+
+mod reporting;
