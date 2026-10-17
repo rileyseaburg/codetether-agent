@@ -9,8 +9,8 @@
 //! let password = load_github_password("ws", "github.com", "owner/repo").await?;
 //! ```
 
-use crate::a2a::git_credentials::{GitCredentialQuery, request_git_credentials};
 use anyhow::Result;
+use codetether_a2a_http::git_credentials::{GitCredentialQuery, request_git_credentials};
 
 /// Requests a GitHub token for the current CodeTether workspace.
 ///

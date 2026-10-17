@@ -6294,3 +6294,22 @@ acyclic. New files contain at most 40 code lines. Workspace/lockfile wiring,
 file-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-file-tools/`. No file tools, Cargo, rustc, Python or
 runtime tests were executed. The broader migration remains active.
+
+### Dedicated repository-scoped GitHub auth crate
+
+Created `crates/codetether-github-auth` and moved the shared GitHub command/URL
+auth helpers out of the application tool module. Nine files separate command
+detection, repository context, URL matching, credential requests, CLI config
+lookup and environment/redaction records. Existing shell and web-fetch callers
+retain their compatibility paths.
+
+Static comparison verifies every moved file after the credential-client import
+is changed to its existing shared HTTP owner. Repository scoping, request
+arguments, configuration lookup, environment payloads and redaction lists are
+unchanged; the URL-parsing test is preserved and unrun. All nine files are
+reachable without missing/orphaned modules, and the dependency closure is
+acyclic. Moved files contain at most 49 code lines. Workspace/lockfile wiring,
+file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-github-auth/`. No credentials were loaded and no network
+requests, runtime tests, Cargo, rustc or Python were executed. The broader
+migration remains active.

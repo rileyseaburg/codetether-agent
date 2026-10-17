@@ -1275,6 +1275,7 @@ dependencies = [
  "codetether-file-inspect",
  "codetether-file-tools",
  "codetether-forage-core",
+ "codetether-github-auth",
  "codetether-github-pr",
  "codetether-goal-core",
  "codetether-google-auth",
@@ -1923,6 +1924,16 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-github-auth"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-a2a-http",
+ "reqwest 0.13.4",
+ "tokio",
 ]
 
 [[package]]
