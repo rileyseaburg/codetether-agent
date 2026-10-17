@@ -29,3 +29,6 @@ pub mod workspace;
 
 /// Worker HTTP client and response handling.
 pub mod worker;
+
+/// Introduction protocol helpers and bounded delivery.
+pub mod intro;

@@ -95,7 +95,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-core | 47 | yes | none |
 | codetether-a2a-discovery | 19 | yes | none |
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
-| codetether-a2a-http | 35 | yes | codetether-a2a-core, codetether-provider-core |
+| codetether-a2a-http | 40 | yes | codetether-a2a-core, codetether-provider-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
 | codetether-a2a-worker-core | 85 | yes | codetether-agent-core, codetether-provider-core |
 | codetether-agent-core | 44 | yes | none |
@@ -4861,3 +4861,21 @@ modules; the three-crate dependency closure is acyclic. New files satisfy the
 50-code-line limit; file-budget and whitespace checks passed. Evidence is in
 `artifacts/consolidation-worker-http/`. Compilation, tests, and live HTTP calls
 were not run. The broader consolidation remains active.
+
+
+### Shared introduction protocol and delivery
+
+HTTP-core introduction modules now own tagged/legacy message classification,
+payload construction, canned acknowledgements, and bounded retry delivery.
+Application paths are compatibility exports. Identity selection, token
+fallback, ledger location/persistence, and orchestration remain in the host.
+The delivery log target remains explicit and unchanged.
+
+Static comparison covers ten code items and confirms unchanged retries,
+deadlines, payload fields, and classifiers. The three existing detection
+tests remain byte-identical. All 40 HTTP-crate files and 314 A2A files are
+reachable without missing/orphaned modules. New files meet the code-line
+limit, and whitespace/file-budget checks passed. Tokio time is now a regular
+HTTP-crate feature; the lockfile is unchanged. Evidence is retained in
+`artifacts/consolidation-a2a-intro/`. Compilation, tests, and network delivery
+remain unrun. The broader consolidation goal remains active.
