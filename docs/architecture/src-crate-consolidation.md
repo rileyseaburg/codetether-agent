@@ -2149,6 +2149,22 @@ lines. Evidence: `artifacts/consolidation-command-pty/`. No terminals,
 subprocesses, runtime tests, Cargo, rustc or Python ran. Compilation and
 platform runtime behavior remain unverified. The full migration remains active.
 
+### Shared bounded process capture crate
+
+Moved `src/tool/bash_capture.rs` and its reader, runner and record modules
+into `crates/codetether-process-capture`. The crate depends on the shared
+process-tree owner and Tokio. The bash adapter retains compatibility exports.
+This provides reusable capture without application or sandbox dependencies.
+
+Static comparisons verify all four files after visibility/path substitutions:
+timeout and guard ordering, both output reader tasks, retained-byte limits,
+total-byte accounting, lossy UTF-8 decoding and result variants. Workspace
+wiring, module reachability, dependency-cycle, file-budget and whitespace
+checks passed. New files contain at most 39 code lines. Evidence:
+`artifacts/consolidation-process-capture/`. No child processes, capture runs,
+runtime tests, Cargo, rustc or Python ran. Compilation remains unverified.
+The full workspace consolidation remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

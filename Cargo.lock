@@ -1304,6 +1304,7 @@ dependencies = [
  "codetether-platform",
  "codetether-plugin-marketplace",
  "codetether-prd-tool",
+ "codetether-process-capture",
  "codetether-process-tree",
  "codetether-provenance",
  "codetether-provider-anthropic",
@@ -2305,6 +2306,14 @@ dependencies = [
  "codetether-tool-core",
  "serde",
  "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-process-capture"
+version = "0.1.0"
+dependencies = [
+ "codetether-process-tree",
  "tokio",
 ]
 
