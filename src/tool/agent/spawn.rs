@@ -11,10 +11,11 @@ use anyhow::Result;
 
 #[path = "spawn/ephemeral.rs"]
 mod ephemeral;
-#[path = "spawn/ephemeral_result.rs"]
-mod ephemeral_result;
-#[path = "spawn/ephemeral_setup.rs"]
-mod ephemeral_setup;
+#[path = "spawn/ephemeral_host.rs"]
+mod ephemeral_host;
+#[cfg(test)]
+#[path = "spawn/ephemeral_task.rs"]
+mod ephemeral_task;
 #[path = "spawn/host.rs"]
 mod host;
 #[path = "spawn/identity.rs"]

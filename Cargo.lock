@@ -2461,11 +2461,13 @@ dependencies = [
  "codetether-child-workspace",
  "codetether-collaboration-history",
  "codetether-collaboration-state",
+ "codetether-provider-core",
  "codetether-spawn-policy",
  "codetether-swarm-core",
  "codetether-tool-core",
  "serde_json",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

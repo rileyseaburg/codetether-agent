@@ -8208,3 +8208,22 @@ contain at most 39 code lines. Evidence is in
 `artifacts/consolidation-spawn-setup/`. Compilation, runtime tests and checkout
 allocation were not executed. No Cargo, rustc or Python commands ran. The full
 consolidation goal remains active.
+
+### Shared ephemeral spawn execution
+
+Moved one-shot execution sequencing, detach rejection, runtime identity and guard
+ownership, task workspace selection, writable isolation, resource setup and
+handoff attachment into `codetether-agent-spawn`. Nine added Rust modules separate
+provider/tool resources, task/prompt policy, prepared execution and the native
+loop interface. Application adapters retain the existing classifiers, provider
+resolution, tool registry, session-aware prompt rendering and agent-loop call.
+All loop arguments, including step/time limits, remain unchanged.
+
+Twenty-one static preservation checks cover admission, guards, resource ordering,
+workspace fallback, isolation, capability flags, prompt inputs, ownership and
+native loop arguments. Two workspace-policy integration tests and existing
+result tests remain unchanged. Module/dependency, file-budget and whitespace
+checks passed; added crate modules contain at most 37 code lines. Evidence is in
+`artifacts/consolidation-ephemeral-spawn/`. Compilation and runtime tests were
+not run; no ephemeral agents or workspaces were created. No Cargo, rustc or
+Python commands ran. The full consolidation goal remains active.
