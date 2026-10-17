@@ -70,3 +70,6 @@ pub mod local;
 pub mod pricing;
 
 pub mod routing;
+
+/// Compact tool schemas and measure serialized schema bytes.
+pub mod tool_schema;

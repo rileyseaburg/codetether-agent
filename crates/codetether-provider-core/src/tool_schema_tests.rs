@@ -1,4 +1,4 @@
-use crate::provider::ToolDefinition;
+use crate::ToolDefinition;
 use serde_json::json;
 #[test]
 fn compact_worker_tool_definitions_preserve_tool_identity() {

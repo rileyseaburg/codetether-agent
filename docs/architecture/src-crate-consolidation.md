@@ -133,7 +133,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-plugin-marketplace | 4 | yes | none |
 | codetether-provenance | 52 | yes | none |
 | codetether-image | 13 | yes | none |
-| codetether-provider-core | 120 | yes | none |
+| codetether-provider-core | 122 | yes | none |
 | codetether-provider-anthropic | 50 | yes | none |
 | codetether-provider-deepseek | 25 | yes | none |
 | codetether-provider-moonshot | 23 | yes | none |
@@ -4776,3 +4776,18 @@ reachable, with no missing or orphaned modules. The A2A graph remains complete
 at 317 files. Evidence is retained in `artifacts/consolidation-worktree-orphan/`.
 This is a source-reachability check; compilation and runtime tests were not
 run, and the overall consolidation goal remains active.
+
+
+### Shared provider tool-schema compaction
+
+Provider-core now owns worker tool-schema compaction and serialized byte
+counting. The worker module remains a compatibility re-export; session/context
+retry orchestration stays in the application. The counting writer, preserved
+tool identities, permissive fallback schema, and serialization-error handling
+are unchanged. No dependencies were added.
+
+Static comparison covers the implementation and existing regression test.
+All 122 provider-core files and 316 A2A files are reachable with no missing or
+orphaned modules. New files satisfy the 50-code-line limit; file-budget and
+whitespace checks passed. Evidence: `artifacts/consolidation-provider-tool-schema/`.
+Compilation and tests remain unrun; the larger consolidation remains active.
