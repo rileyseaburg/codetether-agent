@@ -4,6 +4,19 @@ use anyhow::Result;
 use std::io::Cursor;
 
 /// Encode mono 16kHz 16-bit PCM samples into a WAV byte buffer.
+///
+/// # Arguments
+/// * `samples` - Signed mono PCM samples already resampled to 16kHz.
+/// # Returns
+/// A complete in-memory WAV file.
+/// # Errors
+/// Returns an error if the WAV header, samples or finalization cannot be written.
+/// # Examples
+/// ```rust
+/// let wav = codetether_voice_input_tool::encoder::encode_wav(&[0, 1024, -1024])?;
+/// assert_eq!(&wav[..4], b"RIFF");
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub fn encode_wav(samples: &[i16]) -> Result<Vec<u8>> {
     let spec = hound::WavSpec {
         channels: 1,

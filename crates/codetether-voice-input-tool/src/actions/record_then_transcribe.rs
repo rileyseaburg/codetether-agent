@@ -5,7 +5,7 @@ use std::sync::atomic::AtomicBool;
 
 use anyhow::Result;
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 use super::super::{encoder, recorder};
 
@@ -38,6 +38,6 @@ async fn transcribe_samples(client: &reqwest::Client, samples: &[i16]) -> Result
         ));
     }
     let wav_bytes = encoder::encode_wav(samples)?;
-    tracing::info!(bytes = wav_bytes.len(), "WAV encoded");
+    tracing::info!(target: "codetether_agent::tool::voice_input::actions::record_then_transcribe", bytes = wav_bytes.len(), "WAV encoded");
     super::transcribe_api::post_transcribe(client, &wav_bytes).await
 }

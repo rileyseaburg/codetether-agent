@@ -3,7 +3,7 @@
 use anyhow::{Context, Result};
 use serde_json::Value;
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 use super::super::client;
 

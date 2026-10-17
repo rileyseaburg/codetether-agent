@@ -1,3 +1,4 @@
+//! Construct audio streams for each supported sample format.
 use super::input_builder;
 use super::{input_config, resampler::Resampler};
 use anyhow::{Result, anyhow};

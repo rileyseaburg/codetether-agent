@@ -1,10 +1,16 @@
+//! Voice-input tool registration and action dispatch.
 use super::{actions, client, params, schema};
-use crate::tool::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 
-/// Voice Input tool — records from mic and transcribes to text.
+/// Record microphone audio and transcribe it through the configured voice API.
+///
+/// # Examples
+/// ```rust
+/// let _tool = codetether_voice_input_tool::VoiceInputTool::new();
+/// ```
 pub struct VoiceInputTool {
     client: reqwest::Client,
 }
@@ -17,6 +23,17 @@ impl Default for VoiceInputTool {
 
 impl VoiceInputTool {
     /// Create a new voice input tool with a configured HTTP client.
+    ///
+    /// # Arguments
+    /// None.
+    /// # Returns
+    /// A tool ready for registration.
+    /// # Panics
+    /// Panics if the HTTP client cannot be constructed.
+    /// # Examples
+    /// ```rust
+    /// let _tool = codetether_voice_input_tool::VoiceInputTool::new();
+    /// ```
     pub fn new() -> Self {
         Self {
             client: client::build_client(),

@@ -7245,3 +7245,22 @@ Rust files contain at most 44 code lines. Evidence lives in
 `artifacts/consolidation-voice-stream-tool/`. No requests, audio playback,
 browser launches, runtime tests, Cargo, rustc or Python commands ran. Compilation
 remains unverified, and the full workspace consolidation goal remains active.
+
+### Dedicated voice-input and capture tool
+
+Moved `src/tool/voice_input/` implementation into
+`crates/codetether-voice-input-tool`. Nineteen modules own microphone selection,
+stream configuration, capture, resampling, channel downmixing, WAV encoding,
+transcription transport, action dispatch and Linux stderr restoration. The old
+module retains only compatibility exports for the tool, encoder and recorder.
+The TUI voice worker and voice integration test remain byte-for-byte unchanged.
+
+Eighteen static preservation checks compare the moved implementation, including
+all four existing tests, sample conversion, recording duration, request fields,
+error handling and the process-wide stderr lock. The downmix and descriptor
+lifetime helpers were separated without changing their executable contents.
+Module reachability, dependency cycles, file budgets and whitespace checks
+passed; new Rust files contain at most 44 code lines. Evidence lives in
+`artifacts/consolidation-voice-input-tool/`. No microphone capture, transcription
+requests, runtime tests, Cargo, rustc or Python commands ran. Compilation remains
+unverified; the full workspace consolidation goal remains active.

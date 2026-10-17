@@ -1,3 +1,4 @@
+//! Capture sample format and stream configuration.
 use anyhow::Result;
 use cpal::traits::DeviceTrait;
 

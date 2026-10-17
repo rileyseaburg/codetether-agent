@@ -1,0 +1,22 @@
+[package]
+name = "codetether-voice-input-tool"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Microphone capture, PCM resampling, WAV encoding and voice transcription"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+reqwest = { version = "0.13.2", features = ["json", "multipart", "rustls"], default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt"] }
+cpal = "0.18.1"
+hound = "3.5"
+tracing = "0.1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.189"

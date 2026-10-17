@@ -1,3 +1,4 @@
+//! Input device selection by name, environment or host default.
 use anyhow::{Result, anyhow};
 use cpal::traits::{DeviceTrait, HostTrait};
 

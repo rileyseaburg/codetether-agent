@@ -4,8 +4,8 @@ pub mod record_then_transcribe;
 pub mod transcribe_api;
 
 use super::params::Params;
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 /// Route to the correct action handler based on `params.action`.

@@ -1,3 +1,5 @@
+//! Convert interleaved input samples to 16kHz mono PCM.
+use super::downmix::mono_i16;
 use cpal::Sample;
 
 const TARGET_RATE: u64 = 16_000;
@@ -42,16 +44,4 @@ impl Resampler {
             self.out_index += 1;
         }
     }
-}
-
-fn mono_i16<T>(frame: &[T]) -> i16
-where
-    T: Sample,
-    i16: cpal::FromSample<T>,
-{
-    let total: i32 = frame
-        .iter()
-        .map(|sample| i32::from(sample.to_sample::<i16>()))
-        .sum();
-    (total / frame.len().max(1) as i32) as i16
 }

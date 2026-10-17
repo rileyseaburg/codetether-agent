@@ -1,3 +1,4 @@
+//! Resampling and channel conversion regression tests.
 use super::resampler::Resampler;
 
 fn config(rate: u32, channels: u16) -> cpal::StreamConfig {
