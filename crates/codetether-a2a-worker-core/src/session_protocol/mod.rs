@@ -15,3 +15,6 @@ pub use wrap_up::wrap_up_message;
 pub use wrap_up_step::wrap_up_step;
 #[cfg(test)]
 mod wrap_up_tests;
+
+/// Host-driven bounded worker execution loop.
+pub mod driver;

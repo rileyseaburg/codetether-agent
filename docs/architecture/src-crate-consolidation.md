@@ -5599,3 +5599,23 @@ code lines. File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-session-protocol/`. Compilation, tests and runtime
 execution remain unrun. No Cargo, rustc, or Python commands ran. The broader
 migration remains active.
+
+### Shared bounded worker session driver
+
+Moved the bounded session loop into worker-core behind `SessionLoopHost`.
+The host adapter retains application session mutation, shared runtime control,
+provider/tool execution, and persistence. The driver owns budget iteration,
+completion, and steering/goal continuation output handling. The main worker
+calls that shared driver rather than maintaining its own loop implementation.
+
+Static comparison verifies the driver ordering and all five host methods.
+Cancellation checks, steering drain, wrap-up injection, provider response
+processing, continuation, budget-exhaustion recording, and final save retain
+the original sequence. All eleven existing control test/support files are
+byte-identical. The module scan reaches 156 worker-core files and 254 A2A
+application files without missing/orphaned modules; the dependency closure
+remains acyclic. New files have at most 35 code lines. Worker-core directly
+declares the existing async-trait dependency. File-budget and whitespace checks
+passed. Evidence: `artifacts/consolidation-session-driver/`. Compilation,
+tests, and live session execution remain unrun. No Cargo, rustc, or Python
+commands ran. The broader migration remains active.

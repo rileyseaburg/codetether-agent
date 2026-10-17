@@ -1193,6 +1193,7 @@ name = "codetether-a2a-worker-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "codetether-agent-core",
  "codetether-provenance",
