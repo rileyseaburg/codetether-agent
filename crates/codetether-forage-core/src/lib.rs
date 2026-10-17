@@ -42,3 +42,6 @@ pub mod rubric_load;
 
 #[cfg(test)]
 mod tests;
+
+/// Worker-supplied forage setting normalization.
+pub mod settings;

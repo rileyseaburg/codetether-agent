@@ -64,3 +64,10 @@ pub mod agent_loop;
 
 /// Delegated prompt composition and sourced constraint policy.
 pub mod prompt_policy;
+
+/// Worker lifecycle output formatting.
+pub mod worker_output;
+/// Worker completion result text.
+pub mod worker_result;
+/// Worker strategy-name aliases.
+pub mod worker_strategy;

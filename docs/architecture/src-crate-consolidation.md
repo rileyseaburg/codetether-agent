@@ -5546,3 +5546,21 @@ clone dependency closure remains acyclic. New clone files contain at most
 `artifacts/consolidation-worker-clone/`. Compilation, tests, Git execution,
 and control-plane requests remain unrun. No Cargo, rustc, or Python commands
 ran. The broader implementation migration remains active.
+
+### Shared forage settings and swarm worker output
+
+Moved forage engine/strategy normalization into forage-core and swarm event
+formatting, result text fallback, and strategy-name mapping into swarm-core.
+The worker still selects strategy metadata using its established lookup order
+and then delegates mapping. No dependency changes were needed. The unrelated
+lockfile ordering edit was not included.
+
+Static comparison verifies all five moved functions and the retained metadata
+lookup, preserving whitespace/case handling, aliases, defaults, event text,
+and empty-result behavior. The module scan reaches 279 swarm-core files,
+45 forage-core files, and 254 A2A application files without missing/orphaned
+modules; both dependency closures are acyclic. New files have at most 46 code
+lines. File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-worker-domain-helpers/`. Compilation and tests remain
+unrun. No Cargo, rustc, or Python commands ran. The broader migration remains
+active.
