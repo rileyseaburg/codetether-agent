@@ -3,7 +3,7 @@ use super::*;
 use codetether_a2a_http::task_state::stream::complete;
 mod entry;
 mod event_data;
-mod events;
+use codetether_a2a_http::task_state::stream::events;
 use codetether_a2a_http::task_state::stream::failure;
 use codetether_a2a_http::task_state::stream::open;
 mod run;

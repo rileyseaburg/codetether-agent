@@ -21,3 +21,6 @@ mod reply;
 pub mod start_failure;
 /// Text extraction from stream requests.
 pub mod text;
+
+/// Task activity and bus publication for application-mapped stream events.
+pub mod events;

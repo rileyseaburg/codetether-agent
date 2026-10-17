@@ -5940,3 +5940,22 @@ contain at most 30 code lines. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-stream-state/`. Compilation, tests and live
 stream execution remain unrun. No Cargo, rustc or Python commands ran. The
 broader migration remains active.
+
+### Shared stream event forwarding
+
+Moved the stream receiver loop and detached forwarding task into
+`codetether-a2a-http::task_state::stream::events`. The generic receiver accepts
+an application-provided event-to-JSON function, leaving session-specific event
+conversion in the application. Accepted events still update task activity
+before publishing the same task topic and bus payload. The old application
+forwarder and unused task-activity facade are deleted.
+
+Static comparison verifies the complete forwarding/spawn definitions after
+explicit generic, callback and shared-path substitutions. It also checks caller
+wiring and unchanged event-mapper source. The module scan reaches 235 application
+A2A files, 154 HTTP files and 63 telemetry files with no missing/orphaned modules;
+the dependency closure is acyclic. New files contain at most 26 code lines.
+File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-stream-forwarding/`. Compilation, tests and live event
+forwarding remain unrun. No Cargo, rustc or Python commands ran. The broader
+migration remains active.

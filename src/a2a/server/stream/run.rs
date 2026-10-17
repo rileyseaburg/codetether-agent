@@ -23,7 +23,7 @@ pub(super) async fn run(
         };
     crate::a2a::session_config::configure(&mut session).await;
 
-    events::spawn(&bus, &tasks, &task_id, event_rx);
+    events::spawn(&bus, &tasks, &task_id, event_rx, event_data::data);
 
     let Some(registry) = registry::load(&tasks, &task_id).await else {
         return;

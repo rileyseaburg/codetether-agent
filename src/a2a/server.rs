@@ -1,6 +1,6 @@
 //! A2A Server - serve as an A2A agent
 
-use super::{server_task_activity, types::*};
+use super::types::*;
 use crate::session::SessionEvent;
 use anyhow::Result;
 use axum::Router;
