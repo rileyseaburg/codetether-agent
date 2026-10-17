@@ -1,3 +1,4 @@
+//! load support for the TetherScript plugin tool.
 mod resolve;
 mod validate;
 

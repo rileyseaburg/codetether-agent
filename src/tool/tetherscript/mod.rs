@@ -1,21 +1,24 @@
-//! TetherScript-backed plugin tool.
-
+//! TetherScript tool binding, registration and application integration tests.
 pub mod convert;
-mod errors;
-mod execute;
+mod host;
 mod input;
-mod join;
-mod load;
 mod partner;
-mod result;
-mod runner;
-mod schema;
-mod task;
-mod tool;
-
+/// Application backend used by plugin computer grants.
+pub use host::ApplicationHost;
+/// Plugin tool using the application's computer backend and policy.
+///
+/// # Examples
+/// ```rust
+/// let _tool=codetether_agent::tool::tetherscript::TetherScriptPluginTool::new();
+/// ```
+pub type TetherScriptPluginTool =
+    codetether_tetherscript_tool::TetherScriptPluginTool<ApplicationHost>;
+pub(crate) use partner::register;
+#[cfg(test)]
+#[path = "runner/process_arity_tests.rs"]
+mod process_arity_tests;
+#[cfg(test)]
+#[path = "runner/process_migration_tests.rs"]
+mod process_migration_tests;
 #[cfg(test)]
 mod tests;
-
-pub use tool::TetherScriptPluginTool;
-
-pub(crate) use partner::register;

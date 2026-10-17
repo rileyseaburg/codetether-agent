@@ -1,4 +1,5 @@
-use crate::tool::{ToolResult, tool_output_budget};
+//! result support for the TetherScript plugin tool.
+use codetether_tool_core::{ToolResult, tool_output_budget};
 
 use super::task::TetherScriptRunResult;
 

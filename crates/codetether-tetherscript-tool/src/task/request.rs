@@ -1,6 +1,7 @@
+//! task request support for the TetherScript plugin tool.
 use serde_json::Value;
 
-use crate::tool::tetherscript::input::TetherScriptPluginInput;
+use crate::input::TetherScriptPluginInput;
 
 use super::constants::{DEFAULT_TIMEOUT_SECS, MAX_TIMEOUT_SECS};
 

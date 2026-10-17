@@ -1,0 +1,16 @@
+[package]
+name = "codetether-tetherscript-tool"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Workspace-confined TetherScript plugin tool and execution lifecycle"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-tetherscript-runtime = { path = "../codetether-tetherscript-runtime", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["fs", "rt", "time"] }

@@ -1,5 +1,11 @@
 //! Bind computer grants to the existing platform backend and runtime policy.
 #[derive(Clone, Debug)]
+/// Application computer-use backend and authorization for plugin capabilities.
+///
+/// # Examples
+/// ```rust
+/// let _host=codetether_agent::tool::tetherscript::ApplicationHost;
+/// ```
 pub struct ApplicationHost;
 #[async_trait::async_trait]
 impl codetether_tetherscript_computer::Host for ApplicationHost {

@@ -7445,3 +7445,21 @@ checks passed; new Rust files contain at most 44 code lines. Evidence lives in
 `artifacts/consolidation-tetherscript-runtime/`. No plugin execution, runtime
 tests, Cargo, rustc or Python commands ran. Compilation remains unverified; the
 full consolidation goal remains active.
+
+### Dedicated TetherScript plugin tool
+
+Moved the remaining plugin implementation into `crates/codetether-tetherscript-tool`.
+Sixteen modules own input records, schema, workspace-confined loading, tool
+execution, blocking-task orchestration, timeout normalization and result/error
+formatting. The application retains only compatibility exports, registration,
+the existing computer-use host adapter and integration tests. The input's browser
+and computer predicates are now available across the crate boundary so the same
+application tests can continue to use them.
+
+Twenty static preservation checks compare all moved modules, constructor state,
+feature wiring and the host binding. All thirty existing application tests are
+unchanged and unrun. Module reachability, dependency cycles, file budgets and
+whitespace checks passed; new Rust files contain at most 46 code lines. Evidence
+lives in `artifacts/consolidation-tetherscript-tool/`. No plugin execution,
+runtime tests, Cargo, rustc or Python commands ran. Compilation remains
+unverified; the full consolidation goal remains active.

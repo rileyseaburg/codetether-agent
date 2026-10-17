@@ -1,3 +1,4 @@
+//! load validate support for the TetherScript plugin tool.
 use std::path::Path;
 
 use anyhow::Result;

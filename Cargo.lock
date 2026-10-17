@@ -1388,7 +1388,7 @@ dependencies = [
  "codetether-task-tool",
  "codetether-telemetry",
  "codetether-tetherscript-computer",
- "codetether-tetherscript-runtime",
+ "codetether-tetherscript-tool",
  "codetether-tetherscript-values",
  "codetether-theme",
  "codetether-tls",
@@ -3409,6 +3409,19 @@ dependencies = [
  "codetether-tetherscript-values",
  "serde_json",
  "tetherscript",
+]
+
+[[package]]
+name = "codetether-tetherscript-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tetherscript-runtime",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

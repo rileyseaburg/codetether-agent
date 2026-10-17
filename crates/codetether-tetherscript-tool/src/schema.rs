@@ -1,3 +1,4 @@
+//! schema support for the TetherScript plugin tool.
 use serde_json::{Value, json};
 
 /// JSON Schema for the `tetherscript_plugin` tool parameters.

@@ -1,15 +1,16 @@
+//! execute support for the TetherScript plugin tool.
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 
 use super::{errors, load, result, schema, task};
-use crate::tool::{Tool, ToolResult};
+use codetether_tool_core::{Tool, ToolResult};
 
 use super::input::TetherScriptPluginInput;
 use super::tool::TetherScriptPluginTool;
 
 #[async_trait]
-impl Tool for TetherScriptPluginTool {
+impl<H: crate::Host> Tool for TetherScriptPluginTool<H> {
     fn id(&self) -> &str {
         "tetherscript_plugin"
     }
@@ -31,7 +32,10 @@ impl Tool for TetherScriptPluginTool {
     }
 }
 
-async fn execute_tetherscript(tool: &TetherScriptPluginTool, args: Value) -> Result<ToolResult> {
+async fn execute_tetherscript<H: crate::Host>(
+    tool: &TetherScriptPluginTool<H>,
+    args: Value,
+) -> Result<ToolResult> {
     let input: TetherScriptPluginInput = match serde_json::from_value(args) {
         Ok(input) => input,
         Err(error) => return Ok(errors::invalid_params(tool.id(), error)),
@@ -45,5 +49,5 @@ async fn execute_tetherscript(tool: &TetherScriptPluginTool, args: Value) -> Res
         Err(error) => return Ok(ToolResult::error(error.to_string())),
     };
     let request = task::TetherScriptRun::new(source_name, source, input);
-    Ok(result::from_run(task::run(request).await?))
+    Ok(result::from_run(task::run::<H>(request).await?))
 }

@@ -1,3 +1,4 @@
+//! load resolve support for the TetherScript plugin tool.
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};

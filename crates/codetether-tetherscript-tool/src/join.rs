@@ -1,3 +1,4 @@
+//! join support for the TetherScript plugin tool.
 pub fn join_error(join_error: tokio::task::JoinError) -> anyhow::Error {
     if join_error.is_panic() {
         anyhow::anyhow!("TetherScript plugin task panicked: {join_error}")

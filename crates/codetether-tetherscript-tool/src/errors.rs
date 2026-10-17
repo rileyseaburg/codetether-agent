@@ -1,6 +1,7 @@
+//! errors support for the TetherScript plugin tool.
 use serde_json::{Value, json};
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 pub fn invalid_params(tool: &str, error: serde_json::Error) -> ToolResult {
     ToolResult::structured_error(

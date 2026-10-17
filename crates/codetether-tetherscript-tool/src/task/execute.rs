@@ -11,8 +11,8 @@ use std::time::Duration;
 
 use super::request::TetherScriptRun;
 use super::run_result::TetherScriptRunResult;
-use crate::tool::tetherscript::join::join_error;
-use crate::tool::tetherscript::runner::{self, BrowserGrant, ComputerGrant};
+use crate::join::join_error;
+use codetether_tetherscript_runtime::{self as runner, BrowserGrant, ComputerGrant};
 
 /// Runs the already-loaded source, hook name, JSON arguments, and optional
 /// browser capability described by `request`.
@@ -49,10 +49,10 @@ use crate::tool::tetherscript::runner::{self, BrowserGrant, ComputerGrant};
 /// the script may receive a browser capability constrained by the supplied
 /// origins and scopes.
 /// Execute a TetherScript run on a blocking thread with a timeout.
-pub async fn run(request: TetherScriptRun) -> Result<TetherScriptRunResult> {
+pub async fn run<H: crate::Host>(request: TetherScriptRun) -> Result<TetherScriptRunResult> {
     let timeout = Duration::from_secs(request.timeout_secs);
     let task = tokio::task::spawn_blocking(move || {
-        runner::run(
+        runner::run::<H>(
             request.source_name,
             request.source,
             request.hook,
