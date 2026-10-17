@@ -1322,6 +1322,7 @@ dependencies = [
  "codetether-tetherscript-values",
  "codetether-theme",
  "codetether-tls",
+ "codetether-todo",
  "codetether-tool-core",
  "codetether-util",
  "codetether-vectordb",
@@ -2609,6 +2610,19 @@ dependencies = [
  "aws-lc-rs",
  "rustls",
  "tracing",
+]
+
+[[package]]
+name = "codetether-todo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "codetether-config",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

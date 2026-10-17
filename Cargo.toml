@@ -86,6 +86,7 @@ members = [
     "crates/codetether-theme",
     "crates/codetether-tls",
     "crates/codetether-tool-core",
+    "crates/codetether-todo",
     "crates/codetether-mcp-core",
     "crates/codetether-mcp-transport",
     "crates/codetether-tetherscript-values",
@@ -284,6 +285,7 @@ codetether-tls = { path = "crates/codetether-tls", version = "0.1.0" }
 codetether-mcp-transport = { path = "crates/codetether-mcp-transport", version = "0.1.0" }
 codetether-mcp-core = { path = "crates/codetether-mcp-core", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
+codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }
 codetether-util = { path = "crates/codetether-util", version = "0.1.0" }
 codetether-vectordb = { path = "crates/codetether-vectordb", version = "0.1.0" }

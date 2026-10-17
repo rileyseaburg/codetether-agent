@@ -6106,3 +6106,29 @@ contain at most 11 code lines. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-a2a-model-config/`. Compilation, tests and
 live configuration loading remain unrun. No Cargo, rustc or Python commands
 ran. The broader migration remains active.
+
+### Dedicated todo tools crate
+
+Created `crates/codetether-todo` and moved the todo read/write implementation,
+records, status/priority types, per-session storage, filtering and rendering into
+it. Twenty focused files separate construction, schemas, read processing and
+each write action. Application tool registration retains its existing public
+paths through a compatibility export. The existing storage tests keep their
+application environment lock and call shared storage through a test adapter.
+
+Static comparison verifies the record/enum shapes, defaults, constructors, tool
+schemas, complete read/filter/render behavior, all four write actions and all
+three storage functions. Session-specific paths, status aliases, unknown-filter
+behavior, timestamp/ID generation and error results are unchanged. An incomplete
+generated clear-action body was corrected before the comparison passed. The
+three existing test bodies are byte-identical and unrun. The module scan reaches
+all 20 todo files with no missing/orphaned modules, and its dependency closure is
+acyclic. New files contain at most 39 code lines. Workspace and lockfile entries
+are present; file-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-todo-crate/`. No Cargo, rustc, Python, todo execution or
+runtime filesystem tests ran. The broader migration remains active.
+
+The refreshed source inventory still shows substantial implementation remaining:
+approximately 45k code lines in tools, 42k in the TUI and 28k in sessions before
+this extraction. The new todo crate is progress toward that full migration, not
+completion of the workspace goal.
