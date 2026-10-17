@@ -12,12 +12,7 @@
 
 pub mod client;
 mod client_cache;
-mod client_capabilities;
-#[path = "client_diagnostics.rs"]
-mod client_diagnostics;
 mod client_recovery;
-mod document_language;
-mod typescript_diagnostics;
 #[cfg(test)]
 mod typescript_repeated_tests;
 

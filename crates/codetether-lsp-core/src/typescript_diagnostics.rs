@@ -1,9 +1,8 @@
 //! Pull TypeScript diagnostics explicitly: repeated clean files need not publish again.
 
 use super::{LspActionResult, client::LspClient};
+use crate::typescript_diagnostic as diagnostic;
 use anyhow::Result;
-#[path = "typescript_diagnostic.rs"]
-mod diagnostic;
 #[path = "typescript_request.rs"]
 mod request;
 

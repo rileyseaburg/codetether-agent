@@ -36,7 +36,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mcp | 36 | 3340 | Pending cohesion and dependency audit |
 | ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
-| lsp | 37 | 1008 | Protocol, diagnostics and initialization handshake extracted; host supplies application identity/logging; client lifecycle/cache orchestration pending |
+| lsp | 23 | 600 | Shared single-server client and diagnostics extracted; application identity wrapper retained; manager/cache routing ownership pending |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
 | forage | 13 | 1918 | Pending cohesion and dependency audit |
@@ -118,7 +118,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-indexer | 101 | yes | none |
 | codetether-k8s | 80 | yes | none |
 | codetether-knowledge-graph | 11 | yes | none |
-| codetether-lsp-core | 63 | yes | none |
+| codetether-lsp-core | 78 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
 | codetether-okr | 72 | yes | none |
@@ -3625,3 +3625,27 @@ lines. No dependencies changed. Formatting, file-limit and staged whitespace
 checks were used. No Cargo, rustc, Python, language server or handshake ran;
 compilation and tests remain unverified. Evidence is retained in
 artifacts/consolidation-lsp-initialize/. The full workspace goal remains active.
+
+## Shared single-server LSP client
+
+LSP-core owns the single-server transport/configuration/capability/document
+state and all document, navigation, completion, symbol, shutdown and diagnostic
+operations. Application LspClient wraps and dereferences that client, retaining
+its existing constructors and no-argument initialization method. The wrapper
+supplies the application version and original initialization logging. Other
+client logs carry explicit original application targets.
+
+The application manager still caches Arc wrappers, so reference-count eviction
+semantics are unchanged. Cache timestamps, test configuration and diagnostic
+snapshots are accessed through shared-client getters. The moved constructor
+retains its original timestamp/lock construction order. Tokio fs is promoted
+to a normal feature because the shared client owns document reads. No package
+versions or lockfile dependencies changed.
+
+Validation: 23 static source/state/adapter checks, original cache and diagnostic
+algorithms compared with snapshots, 78 core and 23 application files
+reachable without missing/unreferenced lexical modules, maximum 42 code lines
+per new module, standalone formatting, file-limit and whitespace checks. No
+Cargo, rustc, Python, language server or LSP request executed. Compilation and
+all tests remain unverified. Evidence: artifacts/consolidation-lsp-client/.
+The broader workspace consolidation remains active.

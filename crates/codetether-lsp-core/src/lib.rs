@@ -36,3 +36,9 @@ pub mod typescript_diagnostic;
 
 /// LSP handshake with explicit client identity and capability storage.
 pub mod initialize;
+
+/// Single-server LSP client operations with explicit initialization identity.
+pub mod client;
+mod client_diagnostics;
+mod typescript_diagnostics;
+pub use client::LspClient;

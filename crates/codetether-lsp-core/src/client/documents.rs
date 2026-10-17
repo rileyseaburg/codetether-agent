@@ -21,7 +21,7 @@ impl LspClient {
             .await?;
 
         self.open_documents.write().await.insert(uri, 1);
-        debug!(path = %path.display(), "Opened document");
+        debug!(target: "codetether_agent::lsp::client::documents", path = %path.display(), "Opened document");
 
         Ok(())
     }
@@ -41,7 +41,7 @@ impl LspClient {
             .await?;
 
         self.open_documents.write().await.remove(&uri);
-        debug!(path = %path.display(), "Closed document");
+        debug!(target: "codetether_agent::lsp::client::documents", path = %path.display(), "Closed document");
 
         Ok(())
     }

@@ -18,10 +18,10 @@ async fn idle_cache_evicts_released_clients_but_preserves_borrowers() {
     let client = Arc::new(LspClient::new(config).await.unwrap());
     let mut entries = Entries::new();
     entries.insert("test".into(), Arc::clone(&client));
-    *client.last_used.lock().unwrap() = Instant::now() - Duration::from_secs(121);
+    *client.last_used().lock().unwrap() = Instant::now() - Duration::from_secs(121);
     evict(&mut entries);
     assert_eq!(entries.len(), 1, "active borrower must survive");
-    *client.last_used.lock().unwrap() = Instant::now() - Duration::from_secs(121);
+    *client.last_used().lock().unwrap() = Instant::now() - Duration::from_secs(121);
     let weak = Arc::downgrade(&client);
     drop(client);
     evict(&mut entries);

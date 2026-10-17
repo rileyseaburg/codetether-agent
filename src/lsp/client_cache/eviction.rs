@@ -23,7 +23,7 @@ pub(super) async fn run(cache: Weak<RwLock<Entries>>) {
 
 pub(super) fn evict(entries: &mut Entries) {
     entries.retain(|name, client| {
-        let mut last = client.last_used.lock().unwrap_or_else(|e| e.into_inner());
+        let mut last = client.last_used().lock().unwrap_or_else(|e| e.into_inner());
         let owners = Arc::strong_count(client);
         if owners > 1 {
             *last = Instant::now();

@@ -6,8 +6,7 @@ use anyhow::Result;
 
 use super::{DiagnosticInfo, LspActionResult, client::LspClient, path_to_uri};
 
-#[path = "client_diagnostics_wait.rs"]
-mod publication;
+use crate::client_diagnostics_wait as publication;
 
 impl LspClient {
     /// Requests fresh diagnostics for the current on-disk document.

@@ -34,7 +34,7 @@ impl LspClient {
             )
             .await?;
 
-        debug!(path = %path.display(), version = *version, "Changed document");
+        debug!(target: "codetether_agent::lsp::client::document_changes", path = %path.display(), version = *version, "Changed document");
 
         Ok(())
     }

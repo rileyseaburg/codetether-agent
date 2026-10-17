@@ -40,7 +40,7 @@ impl ClientCache {
 
 impl LspClient {
     pub(super) fn touch(self: &Arc<Self>) -> Arc<Self> {
-        *self.last_used.lock().unwrap_or_else(|e| e.into_inner()) = std::time::Instant::now();
+        *self.last_used().lock().unwrap_or_else(|e| e.into_inner()) = std::time::Instant::now();
         Arc::clone(self)
     }
 }
