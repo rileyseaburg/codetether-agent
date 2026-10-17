@@ -7355,3 +7355,20 @@ new Rust files contain at most 48 code lines. Evidence lives in
 `artifacts/consolidation-rustyroad-tool/`. No RustyRoad subprocess, runtime tests,
 Cargo, rustc or Python commands ran. Compilation remains unverified; the full
 workspace consolidation goal remains active.
+
+### Dedicated authenticated application MCP connection
+
+Moved environment configuration, connection construction, invocation mapping,
+authenticated JSON-RPC requests, response handling and tool metadata from
+`src/tool/application_mcp*` into `crates/codetether-application-mcp`. Eight modules
+own those responsibilities. The application now retains only registry insertion
+and its existing warning behavior; the old implementation directory is removed.
+
+Eleven static preservation checks compare environment precedence, private token
+storage, endpoint validation, client timeout, TLS initialization, request headers,
+response errors, metadata and registration. Module reachability, dependency
+cycles, file budgets and whitespace checks passed; new Rust files contain at
+most 45 code lines. Evidence lives in `artifacts/consolidation-application-mcp/`.
+No credential values were read, HTTP requests sent, runtime tests, Cargo, rustc
+or Python commands run. Compilation remains unverified; the full consolidation
+goal remains active.

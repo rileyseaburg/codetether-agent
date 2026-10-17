@@ -1263,6 +1263,7 @@ dependencies = [
  "codetether-a2a-worker-clone",
  "codetether-advanced-edit",
  "codetether-agent-core",
+ "codetether-application-mcp",
  "codetether-approval-core",
  "codetether-audit",
  "codetether-autochat-core",
@@ -1493,6 +1494,19 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-application-mcp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tls",
+ "codetether-tool-core",
+ "reqwest 0.13.4",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]

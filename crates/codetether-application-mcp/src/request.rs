@@ -1,12 +1,12 @@
 //! Authenticated JSON-RPC request execution for the application MCP tool.
 
 use super::{ApplicationMcpTool, invocation};
-use crate::tool::ToolResult;
 use anyhow::{Result, anyhow};
+use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
 
 pub(super) async fn run(tool: &ApplicationMcpTool, input: Value) -> Result<ToolResult> {
-    crate::tls::ensure_rustls_crypto_provider();
+    codetether_tls::ensure_rustls_crypto_provider();
     let invocation = invocation::parse(input)?;
     let payload = json!({
         "jsonrpc": "2.0",
