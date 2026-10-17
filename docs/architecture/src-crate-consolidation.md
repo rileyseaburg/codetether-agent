@@ -6378,3 +6378,19 @@ acyclic. Files contain at most 46 code lines. Workspace/lockfile wiring,
 file-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-git-tool/`. No Git tool execution, runtime tests, Cargo,
 rustc or Python ran. The broader migration remains active.
+
+### Dedicated OKR tool crate
+
+Created `crates/codetether-okr-tool` and moved the OKR tool implementation out
+of `src/tool/okr.rs`. Twenty-one focused modules separate parameters, status
+parsing, schema, lazy repository initialization and thirteen action handlers.
+The application path re-exports `OkrTool`; storage stays in `codetether-okr`.
+
+Static comparison verifies the tool contract, full schema, repository singleton,
+parsers and all thirteen action bodies. Query precedence, responses and metadata
+are preserved. All files are reachable without missing/orphaned modules, and
+the local dependency closure is acyclic. New files contain at most 47 code
+lines. File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-okr-tool/`. No repository operations, runtime tests,
+Cargo, rustc or Python ran. Compilation remains unverified, and the broader
+migration remains active.

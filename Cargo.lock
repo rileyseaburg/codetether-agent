@@ -1295,6 +1295,7 @@ dependencies = [
  "codetether-model-catalog",
  "codetether-moltbook",
  "codetether-okr",
+ "codetether-okr-tool",
  "codetether-paths",
  "codetether-plan",
  "codetether-platform",
@@ -2187,6 +2188,20 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "codetether-okr-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-okr",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
+ "tokio",
  "uuid",
 ]
 
