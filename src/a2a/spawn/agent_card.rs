@@ -6,7 +6,7 @@ pub(super) fn build(name: &str, url: &str, description: Option<&str>) -> AgentCa
     let identity = crate::provenance::ensure_runtime_agent_identity(name);
     let mut card = A2AServer::default_card(url);
     card.name = name.to_string();
-    card.description = super::card_description::resolve(description);
+    card.description = codetether_a2a_discovery::description::resolve(description);
     agent_identity::attach(&mut card, &identity);
     card
 }

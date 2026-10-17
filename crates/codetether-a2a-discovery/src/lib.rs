@@ -28,3 +28,12 @@ pub mod collaboration_token;
 
 /// Active local peer identity and lifecycle tracking.
 pub mod local_identity;
+
+/// Live collaborator context for model prompts.
+pub mod peer_prompt;
+
+/// Automatic local peer names.
+pub mod naming;
+
+/// Workspace-aware peer descriptions.
+pub mod description;

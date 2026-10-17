@@ -32,7 +32,6 @@ mod http_host;
 
 mod bus;
 mod card;
-mod card_skills;
 mod construction;
 mod stream;
 use bus::{emit_a2a_inbound, emit_a2a_outbound};

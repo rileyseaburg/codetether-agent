@@ -21,3 +21,6 @@ pub use push::*;
 
 /// CodeTether identity extension on A2A agent cards.
 pub mod identity_extension;
+
+/// Default CodeTether card metadata and coding skills.
+pub mod application_card;

@@ -1,9 +1,18 @@
 //! Peer startup naming.
-use super::*;
 
 /// Auto-derive a stable, human-readable agent name from
 /// `<short-host>-<repo-basename>-<short-pid>`. Falls back gracefully if any
 /// component is unavailable.
+///
+/// # Arguments
+/// Takes no arguments; reads the hostname, working directory and process ID.
+/// # Returns
+/// A lowercase peer name with non-alphanumeric characters replaced by dashes.
+/// # Examples
+/// ```rust
+/// use codetether_a2a_discovery::naming::auto_agent_name;
+/// assert!(!auto_agent_name().is_empty());
+/// ```
 pub fn auto_agent_name() -> String {
     let host_full = gethostname::gethostname()
         .into_string()

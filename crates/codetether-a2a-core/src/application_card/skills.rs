@@ -1,5 +1,5 @@
 //! Skills advertised by the application default card.
-use super::*;
+use crate::AgentSkill;
 pub(super) fn skills() -> Vec<AgentSkill> {
     vec![
         AgentSkill {

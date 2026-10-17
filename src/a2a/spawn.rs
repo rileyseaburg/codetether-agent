@@ -60,8 +60,6 @@ use tokio::sync::mpsc;
 
 #[path = "spawn/agent_card.rs"]
 mod agent_card;
-#[path = "spawn/card_description.rs"]
-mod card_description;
 #[path = "spawn/handle.rs"]
 mod handle;
 use codetether_a2a_http::peer_probe::{self as mdns_probe, try_fetch_agent_card};
@@ -70,16 +68,15 @@ mod accept_mdns;
 mod background;
 mod command;
 mod intake;
-mod naming;
 mod options;
 use accept_mdns::handle_mdns_peer;
 pub use background::start_a2a_in_background;
 use codetether_a2a_discovery::endpoint::{
     collect_peers, concrete, first_lan_ipv4, normalize_base_url, peer_candidates,
 };
+pub use codetether_a2a_discovery::naming::auto_agent_name;
 pub use command::run;
 use intake::mdns_intake_loop;
-pub use naming::auto_agent_name;
 pub use options::SpawnOptions;
 
 struct A2APreparation {

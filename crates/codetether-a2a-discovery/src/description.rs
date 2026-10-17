@@ -1,6 +1,17 @@
 //! Workspace-aware descriptions for automatically started A2A peers.
 
-pub(super) fn resolve(explicit: Option<&str>) -> String {
+/// Resolve an explicit description or derive one from the workspace name.
+///
+/// # Arguments
+/// * `explicit` - Description to preserve verbatim when supplied.
+/// # Returns
+/// The explicit description, or a description naming the current directory.
+/// # Examples
+/// ```rust
+/// use codetether_a2a_discovery::description::resolve;
+/// assert_eq!(resolve(Some("Voice API owner")), "Voice API owner");
+/// ```
+pub fn resolve(explicit: Option<&str>) -> String {
     explicit.map(ToString::to_string).unwrap_or_else(|| {
         let workspace = std::env::current_dir()
             .ok()

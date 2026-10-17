@@ -5164,3 +5164,25 @@ lines. File-budget and whitespace checks passed. Evidence is retained in
 `artifacts/consolidation-intro-orchestration/`. Compilation, tests, doctests,
 and live delivery remain unrun; no Cargo, rustc, or Python commands ran.
 Moving all remaining application implementation into crates is still pending.
+
+### Peer presentation and default-card ownership
+
+Moved live collaboration prompt construction, automatic peer naming, and
+workspace-aware descriptions into the discovery crate. Moved the default
+CodeTether card and advertised coding skills into A2A core. The application
+passes its package version into the shared card constructor, preserving the
+advertised version instead of substituting the core crate's version. Existing
+prompt callers use a re-export; startup imports naming and descriptions from
+the discovery crate. Removed four obsolete source files from `src/`.
+
+Static comparison verifies ten moved definitions, card values, skill data,
+prompt wording and peer ordering, and hostname/directory/PID fallback logic.
+Three existing tests are preserved; the prompt fixture now calls the shared
+card constructor with a test version rather than requiring an application
+server. The module scan covers 294 application A2A files, 50 core files, and
+42 discovery files without missing or orphaned modules. New files contain at
+most 43 code lines. The discovery manifest and lock entry directly declare
+its existing gethostname dependency. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-peer-presentation/`. Compilation, tests,
+doctests, and runtime behavior remain unverified; no Cargo, rustc, or Python
+commands were executed. The broader migration goal remains active.

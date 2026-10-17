@@ -1,9 +1,10 @@
 use super::{append, append_identity};
-use crate::a2a::{peer_route, server::A2AServer};
+use crate::routes as peer_route;
+use codetether_a2a_core::application_card::default_card;
 
 #[test]
 fn names_live_peer_and_forbids_manual_rediscovery() {
-    let mut card = A2AServer::default_card("http://192.0.2.10:4000");
+    let mut card = default_card("http://192.0.2.10:4000", "test");
     card.name = "voice-api-owner".to_string();
     card.description = "Owns the typed Voice API".to_string();
     peer_route::register(&card, &card.url, Some("capability".to_string()));
