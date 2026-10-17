@@ -5207,3 +5207,24 @@ files contain at most 27 code lines. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-repository-git/`. No moved Git operations,
 compilation, tests, Cargo, rustc, or Python were executed. The wider goal of
 moving all implementation into cohesive crates remains active.
+
+### Shared repository publication
+
+The worktree crate now owns the complete worker repository publication
+sequence: dirty-state checks, installed-hook validation, staging, attributed
+commit creation, branch/refspec resolution, and push. Focused publication
+modules own Git operations, provenance defaults, hook-path lookup, and flow.
+A four-event callback reports staging, commit creation, push start, and push
+completion. The worker adapter maps those events to its existing timeline;
+the worktree crate does not depend on the worker runtime or timeline types.
+Removed the old worker operation and provenance implementation files.
+
+Static comparisons verify nine moved function bodies and all four timeline
+mappings. The hook test file is byte-identical. The lexical graph covers all
+140 worktree files and 292 application A2A files with no missing/orphaned
+modules, and the dependency closure remains acyclic. New files have at most
+33 code lines. File-budget and whitespace checks passed. Evidence lives in
+`artifacts/consolidation-repository-publication/`. Compilation, tests, and
+publication were not executed. No Cargo, rustc, or Python commands ran.
+The broader migration of application implementation into crates remains
+active; this completes only the repository publication extraction.

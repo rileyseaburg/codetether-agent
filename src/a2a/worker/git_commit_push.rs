@@ -1,39 +1,21 @@
-//! Commit and push worker task changes.
-
-use super::{git_commit_push_ops as ops, git_hook_gate, task_timeline};
+//! Adapt repository publication progress to the worker task timeline.
+use super::task_timeline;
 use anyhow::Result;
+use codetether_worktree::repository::publication::{self, PublicationCheckpoint};
 use std::path::Path;
-
 pub(super) async fn run(
     repo_path: &Path,
     task_id: &str,
     provenance: Option<&crate::provenance::ExecutionProvenance>,
     timeline: &mut task_timeline::TaskTimeline,
 ) -> Result<Option<String>> {
-    if !repo_path.join(".git").exists() || ops::status(repo_path).await?.trim().is_empty() {
-        return Ok(None);
-    }
-    // Never create a commit or push that skipped the repository's own hooks.
-    git_hook_gate::require_installed(repo_path).await?;
-    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitStaging);
-    ops::git(repo_path, &["add", "--all"]).await?;
-    if ops::status(repo_path).await?.trim().is_empty() {
-        return Ok(None);
-    }
-    ops::commit(repo_path, task_id, provenance).await?;
-    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitCreated);
-    let commit_sha = ops::git(repo_path, &["rev-parse", "HEAD"])
-        .await
-        .unwrap_or_default();
-    let branch = ops::git(repo_path, &["rev-parse", "--abbrev-ref", "HEAD"])
-        .await
-        .unwrap_or_else(|_| "HEAD".to_string());
-    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitPushing);
-    ops::push(repo_path, branch.trim()).await?;
-    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitPushed);
-    Ok(Some(format!(
-        "Committed and pushed task changes: {} on {}",
-        commit_sha.trim(),
-        branch.trim()
-    )))
+    publication::run(repo_path, task_id, provenance, |event| {
+        timeline.checkpoint(match event {
+            PublicationCheckpoint::Staging => task_timeline::TaskCheckpoint::CommitStaging,
+            PublicationCheckpoint::Created => task_timeline::TaskCheckpoint::CommitCreated,
+            PublicationCheckpoint::Pushing => task_timeline::TaskCheckpoint::CommitPushing,
+            PublicationCheckpoint::Pushed => task_timeline::TaskCheckpoint::CommitPushed,
+        });
+    })
+    .await
 }

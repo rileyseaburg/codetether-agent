@@ -14,3 +14,6 @@ pub mod credentials;
 
 /// Git command execution and repository preparation.
 pub mod git;
+
+/// Hook-checked commit and push orchestration with execution attribution.
+pub mod publication;

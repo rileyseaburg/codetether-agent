@@ -1,4 +1,5 @@
-use crate::provenance::{ExecutionOrigin, ExecutionProvenance};
+//! Attribution for worker-origin repository publication.
+use codetether_provenance::{ExecutionOrigin, ExecutionProvenance};
 
 pub(super) fn worker_provenance(
     task_id: &str,
