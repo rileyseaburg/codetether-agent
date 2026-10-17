@@ -103,6 +103,7 @@ members = [
     "crates/codetether-token-count",
     "crates/codetether-image-tool",
     "crates/codetether-prd-tool",
+    "crates/codetether-task-tool",
     "crates/codetether-tool-core",
     "crates/codetether-todo",
     "crates/codetether-mcp-core",
@@ -324,6 +325,7 @@ codetether-question-tool = { path = "crates/codetether-question-tool", version =
 codetether-token-count = { path = "crates/codetether-token-count", version = "0.1.0" }
 codetether-image-tool = { path = "crates/codetether-image-tool", version = "0.1.0" }
 codetether-prd-tool = { path = "crates/codetether-prd-tool", version = "0.1.0" }
+codetether-task-tool = { path = "crates/codetether-task-tool", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }

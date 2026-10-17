@@ -1335,6 +1335,7 @@ dependencies = [
  "codetether-session-runtime",
  "codetether-swarm-core",
  "codetether-swarm-share",
+ "codetether-task-tool",
  "codetether-telemetry",
  "codetether-tetherscript-values",
  "codetether-theme",
@@ -2807,6 +2808,19 @@ dependencies = [
  "async-trait",
  "codetether-swarm-core",
  "codetether-tool-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "codetether-task-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "lazy_static",
+ "parking_lot",
  "serde",
  "serde_json",
 ]

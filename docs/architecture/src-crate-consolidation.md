@@ -6502,3 +6502,19 @@ checks passed, as did file-budget and whitespace checks. New files contain
 at most 44 code lines. Evidence: `artifacts/consolidation-prd-tool/`.
 No PRD operations, quality-check commands, runtime tests, Cargo, rustc or
 Python ran. Compilation remains unverified; the full migration remains active.
+
+### Dedicated in-memory task tracking tool
+
+Moved `src/tool/task.rs` into `crates/codetether-task-tool`. Thirteen modules
+separate construction, records, shared storage, schema, parameters, dispatch
+and five tracking actions. The process-wide counter and store remain single
+instances in the new crate; the application path re-exports `TaskTool`.
+
+Static comparisons verify the counter initialization and ordering, state
+records, constructors, schema, dispatch and complete create/status/complete/
+cancel/list action bodies. This preserves tracking behavior and does not add
+task execution. Module reachability, dependency-cycle, file-budget and
+whitespace checks passed. New files contain at most 24 code lines. Evidence:
+`artifacts/consolidation-task-tool/`. No task operations, runtime tests, Cargo,
+rustc or Python ran. Compilation remains unverified; the full consolidation
+goal remains active.
