@@ -97,7 +97,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 29 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
-| codetether-a2a-worker-core | 36 | yes | none |
+| codetether-a2a-worker-core | 52 | yes | none |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
 | codetether-audit | 1 | yes | none |
@@ -4675,3 +4675,22 @@ the 50-code-line limit, and whitespace/file-budget checks passed. Evidence is
 retained in `artifacts/consolidation-a2a-workspace/`. Compilation, doctests,
 and live workspace resolution remain unverified. The broader ownership
 review and consolidation goal remain active.
+
+
+### Shared worker task configuration
+
+`codetether-a2a-worker-core::task_config` owns task-envelope field access,
+metadata lookup precedence, boolean/string/list/numeric parsing, timeout
+clamps, session step budgets, persistent-heartbeat settings, and metadata
+model/tier selection. Numeric and string parsers have separate modules;
+worker modules retain their original names as compatibility re-exports.
+No dependencies were added.
+
+Static comparison confirms all 25 functions/constants are unchanged except
+visibility, and the three existing step-budget test bodies moved unchanged.
+All 52 worker-core files and 332 A2A files are reachable without missing or
+orphaned modules. All 16 new files meet the 50-code-line limit. File-budget
+and whitespace checks passed. Evidence is retained in
+`artifacts/consolidation-worker-task-config/`. Compilation, tests, and runtime
+configuration behavior remain unverified. Worker execution and the broader
+workspace consolidation still require continued ownership review.

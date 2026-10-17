@@ -25,3 +25,6 @@ pub mod cloudevents;
 
 /// Task-envelope targeting policy for worker intake.
 pub mod task_scope;
+
+/// Task-envelope parsing and worker configuration policies.
+pub mod task_config;
