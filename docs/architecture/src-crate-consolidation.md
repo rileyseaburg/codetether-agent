@@ -182,7 +182,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-vectordb | 14 | yes | none |
 | codetether-voice-core | 12 | yes | none |
 | codetether-worker-http | 18 | yes | none |
-| codetether-worktree | 111 | yes | none |
+| codetether-worktree | 110 | yes | none |
 | codetether-worktree-isolation | 4 | yes | none |
 
 ## First extraction: vector storage
@@ -4764,3 +4764,15 @@ New files meet the 50-code-line limit; file-budget and whitespace checks
 passed. Evidence is retained in `artifacts/consolidation-worker-repository/`.
 Compilation, integration tests, and Git runtime checks were not run. The
 broader consolidation goal remains active.
+
+
+### Worktree orphan disposition
+
+Removed the unreachable `merge_staged.rs` helper after confirming that no
+module declares it and no source calls `has_staged_changes`. Active merges
+continue through `integration::verified` and `integration::merge`. The existing
+no-op merge test file is byte-identical. All 110 worktree source files are now
+reachable, with no missing or orphaned modules. The A2A graph remains complete
+at 317 files. Evidence is retained in `artifacts/consolidation-worktree-orphan/`.
+This is a source-reachability check; compilation and runtime tests were not
+run, and the overall consolidation goal remains active.
