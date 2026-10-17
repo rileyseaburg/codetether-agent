@@ -1,15 +1,11 @@
 //! One deadline-bound provider request for a sub-agent.
 
 use super::state::State;
-use crate::provider::{CompletionRequest, CompletionResponse};
+use crate::provider::CompletionRequest;
 use anyhow::Result;
+pub(super) use codetether_swarm_core::agent_loop::RequestOutcome as Outcome;
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
-
-pub(super) enum Outcome {
-    Response(CompletionResponse),
-    TimedOut,
-}
 
 pub(super) async fn execute(state: &State) -> Result<Outcome> {
     let request = CompletionRequest {

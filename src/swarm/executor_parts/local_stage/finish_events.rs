@@ -2,7 +2,7 @@
 
 use super::job::Job;
 use crate::swarm::{SubTaskResult, SubTaskStatus};
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) fn emit(job: &Job, result: &SubTaskResult, status: SubTaskStatus) {
     let Some(events) = &job.events else { return };

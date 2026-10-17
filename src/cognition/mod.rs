@@ -260,15 +260,6 @@ mod tests_request;
 #[cfg(test)]
 #[path = "tests_support.rs"]
 mod tests_support;
-#[cfg(test)]
-#[path = "tick_budget_tests.rs"]
-mod tick_budget_tests;
-#[cfg(test)]
-#[path = "tick_budget_tests_support.rs"]
-mod tick_budget_tests_support;
-#[cfg(test)]
-#[path = "workspace_tests.rs"]
-mod workspace_tests;
 
 // ── Public surface ──────────────────────────────────────────────────────
 pub use attention::{AttentionItem, AttentionSource};

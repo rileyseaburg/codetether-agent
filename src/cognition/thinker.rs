@@ -42,8 +42,6 @@ mod client_build;
 mod openai_backend;
 #[path = "thinker/openai_backend_request.rs"]
 mod openai_backend_request;
-#[path = "thinker/openai_backend_response.rs"]
-mod openai_backend_response;
 #[path = "thinker/openai_backend_send.rs"]
 mod openai_backend_send;
 #[path = "thinker/openai_backend_status.rs"]

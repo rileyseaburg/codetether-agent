@@ -3,7 +3,7 @@
 use crate::bus::AgentBus;
 use crate::provider::{Message, Provider, ToolDefinition};
 use crate::tool::ToolRegistry;
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -29,9 +29,4 @@ pub(super) struct State {
     pub control: Option<crate::session::runtime::ControlHandle>,
     pub steering_cursor: usize,
 }
-
-pub(super) struct ToolCall {
-    pub id: String,
-    pub name: String,
-    pub arguments: String,
-}
+pub(super) use codetether_swarm_core::agent_loop::ToolCall;

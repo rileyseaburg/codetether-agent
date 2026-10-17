@@ -3,7 +3,7 @@
 //! tool calls, output, stage completion) by key prefix `swarm/`.
 
 use crate::bus::{BusHandle, BusMessage};
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 use serde_json::json;
 
 /// Publish a non-lifecycle event as a tagged `SharedResult`.

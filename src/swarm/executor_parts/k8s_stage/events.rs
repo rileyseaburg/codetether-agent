@@ -2,7 +2,7 @@
 
 use super::state::State;
 use crate::swarm::{SubTask, SubTaskResult, SubTaskStatus};
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) fn started(state: &State<'_>, task: &SubTask, branch: &str) {
     state.executor.try_send_event(SwarmEvent::SubTaskUpdate {

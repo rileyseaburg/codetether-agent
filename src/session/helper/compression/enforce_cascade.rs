@@ -13,9 +13,7 @@ use super::context::CompressContext;
 use super::enforce_attempt::{CascadeEnv, attempt_fits, log_attempt};
 use super::enforce_events::emit_completed;
 use super::keep_last::compress_messages_keep_last;
-
-/// Progressively smaller `keep_last` values tried by the cascade.
-const KEEP_LAST_CANDIDATES: [usize; 6] = [16, 12, 8, 6, 3, 1];
+use codetether_context_policy::compression::budget::KEEP_LAST_CANDIDATES;
 
 /// Run the keep-last RLM cascade.
 ///

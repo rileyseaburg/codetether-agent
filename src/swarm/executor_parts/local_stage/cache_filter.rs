@@ -3,7 +3,7 @@
 use super::super::cache_result;
 use super::state::State;
 use crate::swarm::{SubTask, SubTaskStatus};
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) async fn pending(state: &mut State<'_>, tasks: Vec<SubTask>) -> Vec<SubTask> {
     let mut pending = Vec::with_capacity(tasks.len());

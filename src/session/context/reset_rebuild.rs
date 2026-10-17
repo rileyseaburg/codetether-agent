@@ -6,13 +6,10 @@ use anyhow::Result;
 use tokio::sync::mpsc;
 
 use crate::provider::Message;
-use crate::session::ResidencyLevel;
 use crate::session::Session;
 use crate::session::SessionEvent;
-use crate::session::helper::experimental;
 
 use super::helpers::DerivedContext;
-use super::reset_helpers::build_reset_summary_message;
 use super::reset_summary::summarise_prefix_for_reset;
 
 /// Summarise `prefix` via RLM, prepend the summary message, append
@@ -45,18 +42,8 @@ pub(super) async fn rebuild_with_summary(
     .await?;
 
     let toc = crate::session::helper::compression::dropped_toc::render_toc(prefix, base_index);
-    let mut reset_messages = Vec::with_capacity(1 + tail.len());
-    reset_messages.push(build_reset_summary_message(&summary, &toc));
-    reset_messages.extend_from_slice(tail);
 
-    experimental::pairing::repair_orphans(&mut reset_messages);
-
-    Ok(DerivedContext {
-        resolutions: vec![ResidencyLevel::Full; reset_messages.len()],
-        dropped_ranges: Vec::new(),
-        provenance: vec!["reset".to_string(), "rlm_summary".to_string()],
-        messages: reset_messages,
-        origin_len,
-        compressed: true,
-    })
+    Ok(codetether_context_policy::derivation::reset::rebuild(
+        &summary, &toc, tail, origin_len,
+    ))
 }

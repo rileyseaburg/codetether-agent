@@ -23,48 +23,48 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 
 | Source owner | Rust files | Approximate code lines | Disposition |
 | --- | ---: | ---: | --- |
-| tool | 1237 | 45630 | Shared contracts/results/adapters extracted; concrete tools and registry composition remain |
+| tool | 1231 | 45393 | Shared contracts, classification and pure patch engine extracted; concrete tools, filesystem adapters and registry remain for audit |
 | tui | 1208 | 42457 | Pending cohesion and dependency audit |
-| session | 952 | 31933 | Partial extraction; inspect remaining implementation |
+| session | 916 | 27990 | Partial extraction; inspect remaining implementation |
 | provider | 141 | 3096 | Shared contracts/HTTP/images/context limits, Codex OAuth/lifecycle/request, message and response protocol/HTTP and WebSocket transport, and Google/Bedrock auth, transcript conversion, body policy, native requests, responses, streaming, and Bedrock execution/discovery/refresh and OpenAI/DeepSeek/Z.AI/Anthropic/Moonshot/Google/StepFun/OpenRouter/Vertex Anthropic/Vertex GLM/GLM-5/Copilot implementations extracted; other adapters/registry pending |
-| a2a | 356 | 13447 | Pending cohesion and dependency audit |
+| a2a | 355 | 12904 | Wire contracts extracted to a2a-core; JSON-RPC/gRPC transports, server and worker ownership remain pending |
 | cli | 198 | 10322 | Pending cohesion and dependency audit |
-| swarm | 289 | 10287 | Pending cohesion and dependency audit |
+| swarm | 228 | 5643 | Shared runtime/domain/prompt policy extracted; application supplies session, provider, tools, worktrees and pod operations; remaining ownership audit ongoing |
 | server | 213 | 8264 | Pending cohesion and dependency audit |
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
-| cognition | 201 | 6795 | Pending cohesion and dependency audit |
+| cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 36 | 3340 | Pending cohesion and dependency audit |
-| ralph | 57 | 2366 | Shared services extracted; lifecycle, sequential scheduling, conflict and relay coordinator/turn adapters modularized; parallel scheduling and direct model-call adapters remain pending |
-| bus | 38 | 2783 | Pending cohesion and dependency audit |
+| ralph | 101 | 2883 | Contracts/services/events extracted and loop modularized; cross-crate execution ownership remains under audit |
+| bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 39 | 1200 | Protocol core and response decoding extracted; client orchestration remains pending |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
 | forage | 13 | 1918 | Pending cohesion and dependency audit |
-| runtime_policy | 56 | 1774 | Pending cohesion and dependency audit |
+| runtime_policy | 36 | 870 | Approval identity, persistence and gates moved into runtime-policy; host configuration, prior-context and sandbox adapters remain |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
 | indexer | 8 | 146 | Core extracted; CLI and provider-resolution adapters retained |
 | agent | 33 | 662 | Catalog/contracts/prompts extracted; execution, tool policy, session and swarm integration remain |
 | platform | 1 | 1 | Native services extracted; Linux application and GNU/MSVC Windows platform type checks passed |
-| approval | 15 | 469 | Ledger extracted; live/session adapters retained |
-| autochat | 6 | 875 | Pending cohesion and dependency audit |
+| approval | 13 | 167 | Ownership audited: approval-core owns records, ledger, pending registry, decision dispatch and grants; application retains SessionEvent delivery, test isolation and facades |
+| autochat | 5 | 68 | Shared requests, context, transport, model selection and delegation extracted; registry and local RLM execution adapters remain |
 | vectordb | 13 | 409 | Core extracted; provider/backend adapters retained |
 | benchmark | 12 | 303 | Ownership audited: shared services and suite scheduling extracted; remaining modules translate Ralph/provider/telemetry state and retain runtime ownership |
 | crash | 1 | 10 | Shared crash service extracted; adapter supplies application version and memory-guard setup |
 | github_pr | 10 | 120 | Shared PR policy/context/HTTP extracted; CLI body input, A2A credential acquisition and output adapters retained |
 | moltbook | 1 | 1 | Client, wire types, HTTP helpers, credentials and content helpers extracted; compatibility facade retained |
 | review | 11 | 200 | Review contracts, prompt construction, and parsing moved to approval-core; runtime state, runner, and tool-policy adapters retained |
-| actor | 14 | 352 | Audit reachability before moving |
+| actor | 14 | 352 | Inactive tracked subtree: no application-root declaration or explicit external callers; retained for separate disposition, not migrated |
 | worker_server | 1 | 295 | Pending cohesion and dependency audit |
 | search | 9 | 92 | Shared planning/execution pipeline and contracts extracted; model registry resolution and concrete tool dispatch retained as host adapters |
 | image_clipboard | 2 | 33 | Portable image operations extracted; native clipboard access remains an application adapter |
-| voice | 9 | 229 | Pending cohesion and dependency audit |
+| voice | 6 | 20 | Ownership audited: commands, routing policy, SSH detection and speech catalog extracted; only compatibility exports, live transport selection and native CPAL probing remain |
 | worktree_cli | 6 | 144 | Entrypoint/adapter; enforce thin boundary |
 | cleanup_cli | 4 | 137 | Entrypoint/adapter; enforce thin boundary |
 | session_router_tmp | 1 | 79 | Audit reachability before moving |
 | lib | 1 | 56 | Entrypoint/adapter; enforce thin boundary |
-| cloudevents | 1 | 44 | Pending cohesion and dependency audit |
-| memory | 2 | 39 | Pending cohesion and dependency audit |
+| cloudevents | 1 | 12 | Ownership audited: event contract and parsing in a2a-worker-core; only Axum header conversion and compatibility API remain |
+| memory | 2 | 2 | Project-belief persistence and context rendering extracted to cognition-core; compatibility exports remain |
 | browser | 2 | 31 | Partial extraction; inspect remaining implementation |
 | startup_vault | 1 | 30 | Entrypoint/adapter; enforce thin boundary |
 | native_cli | 1 | 18 | Entrypoint/adapter; enforce thin boundary |
@@ -92,18 +92,25 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 
 | Crate | Rust files | Workspace member | Missing declared root modules |
 | --- | ---: | --- | --- |
-| codetether-a2a-worker-core | 27 | yes | none |
-| codetether-agent-core | 36 | yes | none |
-| codetether-approval-core | 28 | yes | none |
+| codetether-a2a-core | 47 | yes | none |
+| codetether-a2a-worker-core | 30 | yes | none |
+| codetether-agent-core | 39 | yes | none |
+| codetether-approval-core | 41 | yes | none |
 | codetether-audit | 1 | yes | none |
+| codetether-autochat-core | 73 | yes | none |
 | codetether-benchmark | 42 | yes | none |
+| codetether-bus-core | 134 | yes | none |
+| codetether-bus-s3 | 30 | yes | none |
 | codetether-browser | 102 | yes | none |
+| codetether-cognition-native | 60 | yes | none |
 | codetether-companion-capture | 6 | yes | none |
 | codetether-companion-core | 12 | yes | none |
 | codetether-companion-protocol | 8 | yes | none |
 | codetether-companion-relay | 65 | yes | none |
 | codetether-crash | 40 | yes | none |
+| codetether-cognition-core | 185 | yes | none |
 | codetether-config | 71 | yes | none |
+| codetether-context-policy | 310 | yes | none |
 | codetether-distill | 15 | yes | none |
 | codetether-event-stream | 32 | yes | none |
 | codetether-github-pr | 35 | yes | none |
@@ -143,15 +150,17 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-openai | 72 | yes | none |
 | codetether-provider-zai | 120 | yes | none |
 | codetether-question | 30 | yes | none |
-| codetether-ralph-core | 95 | yes | none |
+| codetether-ralph-core | 106 | yes | none |
 | codetether-rlm | 448 | yes | none |
+| codetether-runtime-policy | 34 | yes | none |
 | codetether-search | 11 | yes | none |
 | codetether-secrets | 81 | yes | none |
 | codetether-session-runtime | 20 | yes | none |
+| codetether-swarm-core | 276 | yes | none |
 | codetether-telemetry | 62 | yes | none |
 | codetether-theme | 13 | yes | none |
 | codetether-tls | 4 | yes | none |
-| codetether-tool-core | 31 | yes | none |
+| codetether-tool-core | 57 | yes | none |
 | codetether-tetherscript-values | 4 | yes | none |
 | codetether-provider-tetherscript | 11 | yes | none |
 | codetether-gemini-web-protocol | 74 | yes | none |
@@ -163,6 +172,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-model-catalog | 30 | yes | none |
 | codetether-util | 3 | yes | none |
 | codetether-vectordb | 14 | yes | none |
+| codetether-voice-core | 12 | yes | none |
 | codetether-worktree | 105 | yes | none |
 | codetether-worktree-isolation | 4 | yes | none |
 
@@ -1948,3 +1958,1591 @@ source limits, and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
 wrappers, Python, Git discovery, credential requests, or GitHub operations ran.
 Compilation and runtime behavior remain unverified. Evidence:
 artifacts/consolidation-github-pr-http/. The full workspace goal remains active.
+
+### Shared swarm result cache
+
+Codetether-swarm-core now owns cache configuration, entries, task/content hashing,
+lookup, insertion, entry-count eviction, JSON persistence, index loading and
+statistics access. Focused modules separate these responsibilities. The
+application retains default-directory selection and thin method forwarding,
+preserving existing swarm::cache paths and constructor signatures. The shared
+constructor accepts a lazy host directory fallback, avoiding a dependency on
+application configuration.
+
+Forty-nine static comparisons/checks cover moved methods/types, all five existing
+cache tests and their helpers, application signatures/delegation, the unchanged
+directory policy and the intended dependency changes. All 76 shared crate files
+are lexically reachable; the new cache and adapter modules have at most 34 code
+lines. Source limits, standalone rustfmt and whitespace checks pass. Existing
+hashing, eviction, expiry and asynchronous cleanup behavior is preserved in
+source; these checks do not establish runtime equivalence.
+
+The existing locked anyhow, tracing and tempfile dependencies are declared,
+Tokio filesystem support is enabled, and test-only Tokio macro/runtime features
+are explicit. No Cargo, rustc, rustdoc, compiler wrappers, Python, cache runtime,
+or Rust tests ran. Compilation and test outcomes remain unverified. Evidence:
+artifacts/consolidation-swarm-cache/. Swarm orchestration and the full workspace
+consolidation remain unfinished; the goal stays active.
+
+The swarm module audit also identified an unreachable duplicate,
+`src/swarm/executor_tokens.rs`. Its three estimator bodies match the reachable
+`token_limits/estimation.rs` after substituting the existing 3.5 constant and
+visibility. The unused file was removed; active estimators and constants were
+unchanged. All 287 remaining application swarm files are lexically reachable,
+including the explicitly validated `executor_module!` declaration template.
+Evidence: duplicate.mjs, duplicate-check.json and app-modules.json in the same
+artifact directory.
+
+### Shared swarm configuration, protocol and outcomes
+
+The shared swarm crate owns execution limits, SwarmConfig and its defaults,
+ExecutionMode parsing, DecompositionStrategy, Actor/Handler lifecycle contracts,
+ActorStatus, SwarmMessage, SwarmResult and SwarmArtifact. Configuration,
+protocol and outcome modules separate those responsibilities; the application
+root and actor_status preserve the previous public import paths. The old
+application defaults file was removed.
+
+SwarmMessage now names the existing shared ToolResult directly; the application
+tool module already re-exports that same type. The shared crate declares
+codetether-tool-core and async-trait dependencies. Its five transitive local
+crate dependencies form no cycle and have no edge back to the application.
+
+Twenty-six static source/wiring/dependency checks preserve the original fields,
+derives, serde attributes, constants, CLI aliases, defaults, status formatting,
+and actor method signatures. Sixteen new or replaced modules have at most 30
+code lines. All 91 shared and 286 application swarm files are lexically
+reachable; source limits, standalone rustfmt and whitespace checks pass. No
+Cargo, rustc, rustdoc, compiler wrappers, Python, actors, or Rust tests ran.
+Compilation, serialization and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-swarm-protocol/. Planning/execution ownership and the
+full workspace consolidation remain pending; the goal stays active.
+
+### Shared swarm decomposition planning
+
+Codetether-swarm-core::planning owns candidate JSON extraction, model-response
+wire types, two-pass task creation and dependency resolution, plan validation,
+stage assignment, initial decomposition prompts and repair prompts. The
+application parser delegates to this service; plan/prompt compatibility modules
+preserve the existing orchestration call sites. Provider requests and mutable
+orchestrator state remain application-owned and require further consolidation.
+
+Thirty-five static source/wiring checks compare the extracted parser components,
+all eight moved source/test modules, unchanged orchestrator methods and outer
+declarations, and compatibility delegates. Nine existing test bodies move
+unchanged except for shared-type import paths. Sixteen new or replaced modules
+have at most 41 code lines. All 104 shared and 281 application swarm files are
+lexically reachable, including cfg/test branches. Standalone rustfmt, source
+limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler wrappers,
+Python, provider requests, planner execution or Rust tests ran. Compilation and
+runtime behavior remain unverified. Evidence: artifacts/consolidation-swarm-planning/.
+The full workspace goal remains active.
+
+### Shared swarm coordinator state
+
+CoordinatorState owns the task and agent registries, successful completion IDs,
+readiness/stage queries and statistics. Query, lifecycle and access modules keep
+those responsibilities separate. The application Orchestrator delegates its
+existing public methods and retains configuration, provider registry/model
+selection and provider-backed decomposition. SubAgentMessage and
+OrchestratorMessage are shared protocol contracts with compatibility exports
+at the original application path.
+
+Thirty-seven static source/wiring checks cover all moved methods, application
+delegation, constructor/decomposition transitions, message fields, retained
+provider policy and initial state. Inserting a single task retains prior tasks;
+replacing a plan replaces only the task map. Unknown completion IDs are ignored,
+and repeated known completions retain their existing counter/history behavior.
+Seven new or replaced modules have at most 29 code lines. All 110 shared and
+281 application swarm modules are lexically reachable. Standalone rustfmt,
+file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, provider calls or Rust tests ran. Compilation and runtime
+semantics remain unverified. Evidence: artifacts/consolidation-swarm-state/.
+The broader workspace goal remains active.
+
+### Shared swarm decomposition flow
+
+The shared planner now owns response validation, the single repair attempt,
+required-parallel failure handling and optional single-task fallback. A
+PlanCompletion trait supplies only asynchronous prompt-to-text completion. The
+application binds its existing provider, model and temperature, retaining the
+original request construction and credential/provider setup. The application
+Orchestrator is divided into bounded setup, selection, access, lifecycle,
+query and decomposition adapter modules; obsolete private plan/prompt facades
+were removed. Its public paths and methods remain available.
+
+Twenty-seven static source/ordering comparisons check unchanged request bytes,
+provider policy, model selection, constructor order, state delegates, adapter
+wiring and the reconstructed validation/repair/fallback flow. All 20 changed
+modules are at most 47 code lines. All 120 shared and 286 application swarm files
+are lexically reachable. Five new policy tests cover initial success, repair
+success, optional fallback, required-parallel rejection and initial provider
+failure without repair; those tests were not executed.
+
+Standalone rustfmt, source limits and whitespace checks pass. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, provider requests or Rust tests ran.
+Compilation, async trait bounds and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-swarm-decomposition/. The full workspace goal remains
+active; task execution and other remaining owners still require consolidation.
+
+### Shared swarm result store
+
+The shared swarm crate owns ResultStore, result/schema/notification contracts,
+subscription patterns, typed queries, publication, expiry cleanup and task-scoped
+handles. Focused modules separate data contracts, schema inference, publication,
+queries, subscription bookkeeping, cleanup and handle behavior. The application
+result_store module re-exports every previous public type and trait.
+
+Thirty-nine static source comparisons check all types, implementations and six
+existing test bodies. Twenty new or replaced modules have at most 39 code lines.
+All 139 shared and 286 application swarm files are lexically reachable.
+Lock acquisition, store-before-broadcast ordering, cloning, query predicates and
+serialization expressions match the previous source. Expiry remains explicit
+cleanup; notification listeners retain their own filtering responsibility.
+
+Standalone rustfmt, source limits and whitespace checks pass. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, result-store operations or Rust tests ran.
+Compilation, asynchronous behavior and runtime outcomes remain unverified.
+Evidence: artifacts/consolidation-swarm-result-store/. The broader consolidation
+goal remains active.
+
+### Shared speculative branch-collapse policy
+
+The shared collapse module owns observation tracking, health counters, conflict
+risk, score calculation, threshold and low-coherence pruning, survivor rescue,
+promotion and policy/result contracts. Small modules separate these operations.
+The application retains local Git probes and sampling threads and delegates
+observations to the shared controller. Existing public types and methods remain
+available; Debug output delegates to the shared controller representation.
+
+Thirty-one static comparisons preserve the original state fields, defaults,
+score calculations, observation/evaluation ordering, threshold decisions,
+survivor rule, pruning/promotion logic and three existing tests. The local sample
+method and Git helper bodies match the original source; the standalone Git
+health probe is byte-identical. All 25 new or replaced modules have at most 49
+code lines. All 161 shared and 288 application swarm files are lexically
+reachable. Standalone rustfmt, file limits and whitespace checks pass.
+
+No Cargo, rustc, rustdoc, compiler wrappers, Python, branch probes, collapse
+policy functions or Rust tests ran. Compilation, timing and runtime decisions
+remain unverified. Evidence: artifacts/consolidation-swarm-collapse/. Task
+execution and the wider workspace consolidation remain pending; the goal stays
+active.
+
+### Shared swarm pre-flight validation policy
+
+ValidationPolicy owns configuration checks, dependency graph/cycle validation,
+token estimates and warnings, report contracts and report formatting. The
+application SwarmValidator retains provider/credential discovery and workspace
+probes, then passes their statuses and ordered issues to shared validation.
+Existing public report/type paths remain re-exported. Six existing tests move
+with the pure checks, with only imports and validator construction adjusted.
+
+Thirty-one static comparisons check the 18 moved implementation modules, two
+test modules, application probe/delegation order, shared report assembly and
+six byte-identical host modules. All 24 new or replaced modules have at most
+41 code lines. All 183 shared and 268 application swarm files are lexically
+reachable. Standalone rustfmt, file limits and whitespace checks pass.
+
+No Cargo, rustc, rustdoc, compiler wrappers, Python, provider/workspace probes,
+validation functions or Rust tests ran. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-swarm-validation/. Task execution
+and the wider workspace consolidation remain unfinished; the goal stays active.
+
+### Shared swarm context budgets and exhaustion recovery
+
+The shared context module owns byte-based token estimation, tool-output
+truncation, middle-history removal and summarization, exhaustion evidence and
+recovery advice. The application token_truncate and token_exhaustion modules
+re-export the original APIs. A direct dependency on the existing provider-core
+crate supplies the same message types already exposed by the application.
+
+Fifteen static comparisons/checks cover all eight moved modules, both
+compatibility facades, unchanged integration regression test bytes and the
+intended manifest/lock dependency edge. All 11 new or replaced modules have
+at most 43 code lines. Existing truncation limits, UTF-8 boundary handling,
+summary ordering and arithmetic behavior remain unchanged. All 192 shared
+and 260 application swarm files are lexically reachable. Standalone rustfmt,
+file limits and whitespace checks pass.
+
+No Cargo, rustc, rustdoc, compiler wrappers, Python, context routines or Rust
+tests ran. Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-swarm-context/. The full workspace goal remains active.
+
+### Shared run policy and direct event ownership
+
+The shared run_policy module owns failed-dependency partitioning, blocked-result
+construction, aggregate output rendering, the no-work result and final success/
+statistics calculation. Application modules retain the old call sites as thin
+delegates and provide timing/coordinator state to statistics calculation. Two
+existing tests move with dependency gating and output aggregation.
+
+Twenty-six application swarm event consumers now import the existing types
+directly from swarm-core or agent-core. The TUI re-exports already refer to
+those same types. No TUI module imports remain under src/swarm; rendering and
+event payloads are unchanged. Forty static source/import-identity checks cover
+the migration, including host timing input order and compatibility delegates.
+All 199 shared and 258 application swarm files are lexically reachable.
+Standalone rustfmt, file limits and whitespace checks pass.
+
+No Cargo, rustc, rustdoc, compiler wrappers, Python, event delivery or Rust tests
+ran. Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-swarm-run-policy/. Shared policy is further consolidated,
+but backend execution and the broader workspace goal remain unfinished.
+
+### Shared dependency-stage runtime coordination
+
+The shared stage_runtime module owns ascending stage traversal, readiness checks,
+empty-stage handling, failed-dependency gating, blocked-result ordering and
+backend dispatch sequencing. StageRuntime and borrowed StageInput describe the
+host boundary. The application Run implementation supplies cancellation checks,
+coordinator task selection, blocked-task events, backend calls and ordered result
+publication/statistics/retention. The old application stage implementation was
+removed; its traversal entrypoint delegates to the shared coordinator.
+
+Twenty static source/ordering checks compare original traversal, stage metadata
+and task selection, backend calls, blocked-event forwarding, post-execution
+recording and unchanged state/control/storage/statistics modules. Ten new or
+changed modules contain at most 34 code lines. All 204 shared and 260
+application swarm files are lexically reachable. Standalone rustfmt, file limits
+and whitespace checks pass.
+
+No Cargo, rustc, rustdoc, compiler wrappers, Python, runtime methods, backend
+execution or Rust tests ran. Compilation, async trait bounds and runtime behavior
+remain unverified. Evidence: artifacts/consolidation-swarm-stage-runtime/. Local
+and Kubernetes backend ownership and the full workspace goal remain unfinished.
+
+### Shared local sub-agent retry policy
+
+The shared agent_retry module owns retry termination, attempt counts, capped
+exponential backoff, retry diagnostics and AgentLoopExit. AgentAttempt supplies
+one host invocation. The local adapter retains its Job, prompts, registry and
+tool definitions and invokes the existing agent-loop helper unchanged. Old
+private backoff/logging implementations are removed; the public exit path
+remains a compatibility export.
+
+Fourteen static source/wiring comparisons preserve retry conditions, sleep and
+counter order, diagnostics, backoff formulas, request arguments and module
+wiring. Sixteen new or changed modules have at most 46 code lines. The original
+backoff test moves unchanged; three new tests specify immediate completion,
+completion after two retries and exhaustion including the initial attempt.
+No tests were run. All 216 shared and 257 application swarm files are
+lexically reachable. Standalone rustfmt, source limits and whitespace checks pass.
+
+No Cargo, rustc, rustdoc, compiler wrappers, Python, retries, provider calls or
+Rust tests ran. Compilation, async trait bounds and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-swarm-agent-retry/. The full
+workspace consolidation goal remains active.
+
+### Shared deliverable policy and local attempt outcomes
+
+The shared deliverable module owns terminal-status interpretation, verification
+contract inference, contract prompt text and calibration of unsupported
+preservation claims. Nine existing policy tests move with these implementations.
+The shared agent_result module constructs local SubTaskResult/status pairs from
+AgentOutcome and borrowed execution metadata. The local application adapter
+provides task ID, instruction, step/timeout limits and the original elapsed value.
+Tool-policy call sites retain crate-local compatibility names; remote result
+assembly remains unchanged while using the same shared deliverable policy.
+
+Eighteen static comparisons preserve all policy text, output/status rules,
+result fields and local adapter wiring. Other tool-policy sources are byte-
+identical. Seventeen new or changed modules have at most 44 code lines. All
+229 shared and 249 application swarm files are lexically reachable.
+Standalone rustfmt, file limits and whitespace checks pass. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, policy/result functions or Rust tests ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-swarm-agent-outcomes/. The full goal remains active.
+
+### Shared remote swarm protocol
+
+RemoteSubtaskPayload, RemoteBranchProbe, environment/log prefixes, Base64/JSON
+encoding and decoding, log extraction and finished-pod result interpretation
+now belong to remote_protocol in the shared swarm crate. Application Kubernetes
+and result modules re-export their previous names. The existing locked Base64
+0.23.1 dependency is declared directly; no versions change. Pod management,
+working-directory changes and remote agent execution remain application-owned.
+
+Nineteen static comparisons preserve fields/serde defaults, constants, codec
+logic, log selection and fallback errors, both existing test bodies and the
+manifest/lock edge. Twelve new or replaced modules have at most 40 code lines.
+All 239 shared and 249 application swarm files are lexically reachable.
+Standalone rustfmt, file limits and whitespace checks pass. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, remote processes, pod operations or Rust
+tests ran. Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-swarm-remote-protocol/. The full goal remains active.
+
+### Shared remote outcomes and bounded remote process adapter
+
+Remote outcome construction now lives beside the remote wire protocol. A
+deferred elapsed-time callback preserves the original clock-read position in
+both success and error result records. The application remote entrypoint uses
+separate setup, resource, prompt and invocation modules, then stops the probe
+before shared result construction and structured output emission. Provider
+registry ownership remains in the entrypoint through final output.
+
+Thirteen static source/ordering checks preserve environment/payload loading,
+working-directory setup, provider/tool setup, prompt text, execution arguments,
+result fields and final emission order. Both probe modules remain byte-identical.
+Eight new or changed files contain at most 41 code lines. All 241 shared and
+253 application swarm files are lexically reachable. Standalone rustfmt,
+file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, remote processes, pod operations or Rust tests ran. Compilation
+and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-swarm-remote-runner/. The wider goal remains active.
+
+### Shared sub-agent turn driver
+
+The shared agent_loop module owns provider-turn sequencing, parsed turn/tool
+contracts, continuation policy, limit precedence and history-budget advancement.
+AgentRuntime keeps steering, readiness, provider requests, textual tool-call
+normalization, events and tool invocation in the application. State/request/
+continuation compatibility paths retain the same data identities.
+
+Twenty-eight static source and adapter comparisons preserve original driver
+order, all exit branches, tool-call precedence, end-of-turn input handling,
+response parsing, request construction and state fields. Fifteen new or changed
+modules have at most 44 code lines. Existing application regression tests remain
+in place. All 249 shared and 253 application swarm files are lexically
+reachable; every shared crate file is within 50 code lines. Standalone rustfmt,
+file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, agent loops, provider/tool calls or Rust tests ran. Compilation,
+async trait bounds and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-swarm-agent-loop/. The full goal remains active.
+
+### Shared task preparation and lifecycle events
+
+The context module now supplies one dependency-result formatter for both local
+and Kubernetes stages. Cache policy owns read-only task selection and cached
+result retargeting. Run policy owns expected-mutation maps, synthetic failures,
+decomposed-task events and blocked-task event construction; host callbacks still
+deliver events. Application call sites retain thin compatibility names.
+
+Eighteen static comparisons verify source bodies, local/remote formatter
+equivalence, public delegates and existing tests. Three tests move with cache
+selection, mutation expectations and blocked events. Seventeen new or changed
+modules have at most 32 code lines. All 256 shared and 252 application swarm
+files are lexically reachable. Standalone rustfmt, file limits and whitespace
+checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python, task helpers,
+event delivery or Rust tests ran. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-swarm-task-adapters/. The broader
+goal remains active.
+
+### Shared delegated prompt policy
+
+The prompt_policy module owns capability/tool text, sourced constraint entries,
+constraint-mode projection, quality/source-metric contracts, repository quality
+loading and system-prompt composition. It reuses the existing shared agent-core
+AGENTS.md loader and worktree-guidance constant. The application injects session
+turn instructions through a callback applied at the original composition point.
+Existing prompt integration tests remain at the application entrypoint.
+
+Twenty-one static source/identity checks preserve strings, composition order,
+repository lookup and other tool-policy files. Fourteen pure tests move with the
+policy; one test uses an identity callback for the shared composer. Eighteen new
+or changed modules have at most 43 code lines. All 271 shared and 239
+application swarm files are lexically reachable. Standalone rustfmt, file limits
+and whitespace checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python,
+prompt execution or Rust tests ran. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-swarm-prompt-policy/. The full
+workspace goal remains active.
+
+### Shared tool workspace path guard
+
+The complete workspace-root argument guard moved from swarm into tool-core,
+which owns tool contracts and argument policies. The shared guard handles
+authoritative roots, declared path fields, batch recursion, lexical containment
+and existing-path symlink checks. The application retains one compatibility
+export at its original executor path. Nine existing tests move unchanged apart
+from their module locations.
+
+Eighteen static source/ownership checks preserve every guard/test body and the
+intended test-only tempfile dependency. Fourteen new or changed modules have at
+most 42 code lines. All 43 tool-core and 228 application swarm files are
+lexically reachable. Standalone rustfmt, file limits and whitespace checks pass.
+No Cargo, rustc, rustdoc, compiler wrappers, Python, path checks or filesystem
+tests ran. Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-tool-path-guard/. The full consolidation goal stays active.
+
+### Shared speculative branch planning and next-owner audit
+
+SpeculativeRunner, BranchSpec and the ordered fallback strategies now live
+under the shared collapse module. The application import path re-exports the
+existing API. Branch-count clamping, naming and strategy selection are unchanged.
+The CLI's dispatch TODO remains; this extraction does not claim speculative
+execution is wired up. Seven static source/size checks pass. Seven new or changed
+files have at most 46 code lines. All 276 shared and 228 application swarm
+files are lexically reachable. Standalone rustfmt, file limits and whitespace
+checks pass; no Cargo, rustc, compiler wrappers, Python, branch planning or Rust
+tests ran. Compilation and runtime behavior remain unverified.
+
+The next-owner audit found that bus envelopes and the registry depend on data-only
+A2A contracts in src/a2a/types.rs (450 code lines, 35 type definitions).
+That file imports serde and HashMap and has no crate/super references. Its
+extraction is the prerequisite to a clean shared bus boundary. Evidence:
+artifacts/consolidation-swarm-speculative/, including next-owner-audit.json.
+The full workspace goal remains active.
+
+### Shared A2A wire contracts
+
+Codetether-a2a-core owns the 35 task, message, agent-card, RPC, security,
+streaming and push-notification contracts previously implemented in
+src/a2a/types.rs. The existing application path is a compatibility re-export.
+Types are grouped into seven cohesive modules, with individual definitions and
+focused RPC-constructor files. The crate depends only on serde and serde_json,
+so bus and transport consumers can use it without importing application code.
+
+Sixty-one static comparisons/checks preserve every field/derive/serde attribute,
+all ten error-code constants, state predicates, RPC constructors and the protocol
+version default. Manifest/lock checks account for the new package/member and
+application edge only. All 47 shared files are lexically reachable and
+have at most 38 code lines. An application implementation search found no remaining
+implementations targeting moved types. Standalone rustfmt, file limits and
+whitespace checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python,
+serialization routines or Rust tests ran. Compilation, serde behavior and
+runtime compatibility remain unverified. Evidence:
+artifacts/consolidation-a2a-contracts/. The full goal remains active; bus
+ownership and A2A transports remain pending.
+
+### Shared bus contracts and message policy
+
+Codetether-bus-core owns BusEnvelope, BusMessage, durability/partition policy,
+SpeechAct, tool-schema conversions and bounded live payloads. Application paths
+re-export the same types; AgentBus/BusHandle operations, registry, recorder,
+durable storage and external sinks remain in the application.
+
+The 21-variant BusMessage enum retains its exact field shape and ordering. Seven
+declaration-only macro fragments group related variants and feed one enum
+declaration, keeping files within the line limit without nesting or changing
+variant payloads. The source checker compares each fragment and the final
+accumulation chain to the original enum; this is not compiler macro expansion.
+
+Twenty-six static source/dependency checks pass. Six speech/delivery tests move
+with unchanged bodies apart from shared-type imports. All 20 shared files
+are lexically reachable; new files have at most 33 code lines. Existing application
+bus methods/tests and catalog publication are compared against the original.
+Utility alias resolution was checked against the existing truncate module.
+Standalone rustfmt, file limits and whitespace checks pass. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, bus operations or Rust tests ran. Compilation,
+macro expansion and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-bus-contracts/. The full goal remains active.
+
+### Shared bus registry and recorder
+
+The shared bus crate owns AgentRegistry, ready/shutdown registration effects,
+BusRecorder and cursor-based history draining. Registry access, ephemeral cards,
+ready-card/skill construction and skill-ID normalization are separate modules.
+Recorder construction, append/eviction, recent queries and cursor draining are
+separate modules. Application paths remain compatibility exports.
+
+Thirty-five static source/composition checks preserve all registry fields and
+methods, card defaults, skill projection, five registry test bodies, recorder
+locking/eviction and cursor logic, and publication effects. All 40 shared
+files are lexically reachable. Twenty-four changed files have at most 42 code
+lines. Existing locked DashMap, UUID and tracing dependencies are declared;
+no versions change. Standalone rustfmt, file limits and whitespace checks pass.
+No Cargo, rustc, rustdoc, compiler wrappers, Python, registry/recorder operations
+or Rust tests ran. Compilation and concurrency behavior remain unverified.
+Evidence: artifacts/consolidation-bus-registry-recorder/. Broadcast runtime,
+durable storage and the full workspace goal remain unfinished and active.
+
+### Shared durable bus log
+
+DurableLog, partition selection, fire-and-forget append policy and the
+FileDurableLog JSONL backend now belong to bus-core. File state/construction,
+append/replay operations, partition sanitization and file-reading helpers are
+separate modules. The application retains compatibility paths and the existing
+AgentBus attachment/replay adapter until live bus extraction.
+
+Fourteen static comparisons preserve background append, lock lifetime, flush
+before line counting, offset/filter rules, path sanitization and both existing
+path tests. Eight new or changed modules have at most 35 code lines. All
+45 shared files are lexically reachable. Existing anyhow, async-trait and
+Tokio dependencies are declared without version changes. Standalone rustfmt,
+file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, log I/O, background appends or Rust tests ran. Compilation
+and runtime durability remain unverified. Evidence:
+artifacts/consolidation-bus-durable-log/. The full goal remains active.
+
+### Shared live bus runtime
+
+AgentBus and BusHandle now belong to bus-core, together with every inherent
+implementation: construction, publication, receiver filtering, lifecycle/task
+messages, Ralph learning/progress, speech, voice and durable replay. Application
+paths re-export the same types; global registration, relay and external sinks
+remain application-owned pending further audit. Runtime state, operation groups
+and existing tests are separate modules. Publication retains registry updates,
+background durability scheduling, recording and broadcast in that order.
+
+Forty-nine static checks compare all 35 inherent methods, both state layouts,
+Debug/Default implementations, envelope construction and five existing test
+bodies. All 78 bus-core Rust files are lexically connected, including test
+modules and declaration includes. Changed runtime/facade files have at most
+36 code lines. Existing Tokio test features are declared without lockfile
+changes. Standalone rustfmt, the source line-budget gate and whitespace checks
+pass. No Cargo, rustc, rustdoc, compiler wrappers, Python, bus operations or Rust
+tests ran. Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-bus-runtime/. The full workspace goal remains active.
+
+### Shared protocol relay and sink subscription boundary
+
+RelayAgentProfile and ProtocolRelayRuntime moved to bus-core. Construction,
+participant lifecycle and correlated handoff emission have separate modules.
+The application keeps a compatibility export. All six relay methods and both
+existing tests are compared to the original source; test execution is unverified.
+Tokio's time feature is added only to the existing dev dependency for those tests.
+
+The sink audit found a private-field access missed by the preceding live-runtime
+extraction: BusS3Sink subscribed through AgentBus.tx. AgentBus now exposes
+subscribe(), which returns the same broadcast receiver, and the sink uses that
+public method. This correction is covered by a static delegation check.
+The application global singleton remains local because it selects the active bus
+for application entrypoints and child-session factories. Training-record
+conversion and the S3 transport/configuration split remain pending.
+
+Sixteen static checks pass. All 84 shared bus files are lexically connected;
+nine changed shared/facade files have at most 25 code lines. The existing sink
+only changes its subscription expression. Standalone rustfmt, source file limits
+and whitespace checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python,
+relay/bus execution, credential lookup or network calls ran. Compilation and
+runtime behavior remain unverified. Evidence: artifacts/consolidation-bus-relay/.
+The full workspace consolidation goal remains active.
+
+### Shared bus training projection
+
+Training-record schemas, message projection, provenance, ordering, duplicate
+filtering, complete-tool-group validation, parallel-call merging and JSON
+serialization now belong to bus-core::training. Its public serialize_envelopes
+function accepts a bus batch and returns JSON strings; internal record types
+remain private. The existing public tool-catalog formatter remains accessible
+through the application compatibility path. S3 credential resolution, archive
+key construction, local spool, upload and startup remain application adapters.
+
+The 21 message variants have separate rendering modules. A declarative routing
+macro binds borrowed message fields and passes them to the matching renderer;
+its source table is checked against the original match arms and current message
+contracts. This checks source composition, not compiler macro expansion.
+Metadata construction and all original renderer expressions are compared
+separately, preserving field order, serde attributes and text formatting.
+
+One hundred thirty-three static checks pass, covering the four record schemas,
+21 projections, parameter types/routing, grouping/filtering/order, all retained
+sink methods and ten moved regression test bodies. The retained sink now calls
+the shared pipeline and otherwise preserves its method bodies. All 134 shared
+bus files and 23 application bus files are lexically connected; new modules
+have at most 50 code lines. The existing sink shrank to 418 code lines.
+Standalone rustfmt, source file limits and whitespace checks pass. No Cargo,
+rustc, rustdoc, compiler wrappers, Python, tests, credentials, uploads or bus
+operations ran. Compilation, macro expansion and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-bus-training/. The broad
+workspace consolidation goal remains active.
+
+### Separate bus S3 adapter and bus ownership audit
+
+The S3 implementation now belongs to codetether-bus-s3, keeping MinIO and
+executor dependencies out of bus-core. Modules separate connection settings,
+environment lookup, chat-sync fallback, Vault lookup, client construction,
+bucket lifecycle, receive/timer handling, serialization/flush, upload, spool
+files, archive keys and startup/executor initialization. Both configuration
+and sink types move with every associated implementation; existing application
+paths re-export them and the catalog formatter.
+
+Thirty-eight static checks preserve credential source order and defaults,
+endpoint normalization, bucket errors, batching/flush behavior, executor
+initialization and the spool-before-upload/delete-only-after-success sequence.
+Two existing config/endpoint tests and three executor tests move unchanged
+apart from module visibility for a fixture helper. Tests did not run.
+The new crate uses existing locked dependency versions; no existing lock
+package changed except the root's added dependency edge.
+
+All 30 adapter files and 17 remaining application bus files are lexically
+connected, with no missing modules. Changed Rust files have at most 41 code
+lines. The local path-dependency graph reaches six manifests without a cycle
+or missing path. Standalone rustfmt, file limits and whitespace checks pass.
+No Cargo, rustc, rustdoc, compiler wrapper, Python, executor initialization,
+credential lookup, file-spool operations, network calls or Rust tests ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-bus-s3/.
+
+The remaining src/bus implementation is the application global bus selector;
+its process-entrypoint/child-session role justifies retaining it locally. All
+other remaining files are compatibility exports or module declarations. This
+completes the source-ownership audit for bus, not the workspace-wide goal;
+other inventory rows remain pending.
+
+### Shared auto-chat requests, context and handoff transport
+
+Auto-chat constants, capability requirements, request parsing, convergence
+normalization, shared context contracts, merge/render rules, context bus
+publication/draining and correlated handoff reception now belong to
+codetether-autochat-core. Modules separate each policy and data contract.
+Application compatibility exports preserve existing paths. The RLM execution
+function remains a local adapter with the same body; model registry selection
+and session delegation remain for subsequent ownership work.
+
+Fifty-seven static checks compare constants, contracts, all moved functions
+and methods, unchanged model/delegation adapters, and nine existing test
+bodies. The core uses the already-extracted RLM FinalPayload contract; provider
+execution stays outside. Existing dependency versions remain unchanged, and
+the local path graph reaches six manifests without a cycle or missing path.
+All 42 shared files and six application files are lexically connected. New and
+changed Rust files have at most 33 code lines. Standalone rustfmt, source file
+limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler wrappers,
+Python, model calls, RLM executions, bus activity or Rust tests ran. Compilation,
+doctests and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-autochat-context/. The workspace goal remains active.
+
+### Shared auto-chat model rotation and selection
+
+RelayModelRotation, provider priorities, fallback resolution, alias normalization,
+model scoring and ordered preferences now belong to autochat-core. Separate
+modules own rotation state, provider lookup, OpenRouter scoring, Copilot
+selection and shared Codex defaults. A two-method ModelRegistry interface
+lets the application retain its initialized ProviderRegistry and instrumented
+provider handles without duplicating registration or changing listing order.
+Existing application entrypoints remain wrappers with the original signatures.
+
+Thirty-three static checks preserve all selection functions, constants,
+rotation state, both wrapper calls, the registry forwarding methods and five
+existing tests plus their fixture. The Codex catalog path is checked through
+the existing re-export to the same provider-core catalog. Provider-core is
+now a direct dependency; only that lock edge changes, with no version changes.
+All 66 shared files and five remaining application files are lexically
+connected. Changed files have at most 37 code lines. Standalone rustfmt, source
+file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, provider calls, model enumeration or Rust tests ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-autochat-models/. Delegation and local RLM execution
+remain under review; the full workspace goal remains active.
+
+### Shared relevance and delegation calibration
+
+The new codetether-context-policy crate owns relevance metadata, bucket axes,
+message feature extraction, recent-window projection, Beta posteriors,
+delegation configuration, environment overrides, updates and candidate ranking.
+Types and their implementations move together. Session paths re-export the
+shared modules; auto-chat's stable LCB ordering and bucket construction move
+to autochat-core using these same shared types. The local RLM executor remains
+an application adapter because its constructor installs host tool-routing
+configuration. Broader session ownership remains under audit.
+
+Eighty-five static comparisons preserve every moved item and method, bucket
+encodings, numerical formulas, field/serde layout, environment overrides and
+22 existing test bodies. Tests were not executed. All 84 context-policy files
+and 73 autochat-core files are lexically connected. Changed Rust files have
+at most 38 code lines. Local dependency paths contain no cycles or missing
+manifests; existing lock package versions are unchanged. Standalone rustfmt,
+source file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, environment lookups, scoring execution or Rust tests ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-context-policy/. The full workspace goal remains active.
+
+### Shared context derivation configuration
+
+Persisted DerivePolicy variants/defaults, RequestOptions, implicit migration
+selection, input budgets, completion output-limit configuration, incremental
+budget overrides and reset-threshold precedence now belong to context-policy.
+Stable delegation skill identifiers also move to that owner. Related budget
+helpers are grouped within each policy module; individual regressions remain
+separate files. Application paths are compatibility exports, while session
+mutation, summary generation and provider execution remain local.
+
+Fifty-three static source/contract checks preserve serde tags and fields,
+policy defaults, stable skills, all budget formulas, override parsing/order and
+15 existing test bodies. The model-window resolver is the same provider-core
+implementation already used through the application facade. Shared tests add
+only the existing serde_json dev dependency; no dependency version changes.
+All 113 context-policy files are lexically connected. Changed Rust files have
+at most 32 code lines. Standalone rustfmt, source file limits and whitespace
+checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python, environment
+lookups or Rust tests ran. Compilation, doctests and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-context-derivation/. The full
+workspace consolidation goal remains active.
+
+### Shared hierarchical summary index
+
+SummaryIndex, SummaryRange, SummaryNode and Granularity now belong to
+context-policy::summary_index. Existing access, mutation, async cache-miss
+production, range contracts and custom tree serialization retain their
+module boundaries and implementations. The application index path re-exports
+the shared API and retains workspace recall integration. Summary producers
+and the live Session remain application-owned.
+
+Fifteen static comparisons preserve every original index implementation and
+ten existing test bodies, including LRU invalidation and the serialized
+entry/legacy-map reader. All 122 context-policy files are lexically connected.
+New and changed Rust files have at most 50 code lines. Existing anyhow and
+Tokio dependencies are declared without version changes. Standalone rustfmt,
+file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, producer calls, cache operations or Rust tests ran. Compilation
+and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-summary-index/. The workspace goal remains active.
+
+### Shared page contracts and origin-aware projection
+
+PageKind, ResidencyLevel, classification and permitted fidelity paths now
+belong to context-policy::pages. SummaryGap, MessageOrigin, DerivedContext,
+summary interleaving, uncovered-range calculation and origin-aware tool
+pairing repair now belong to context-policy::projection. Application paths
+re-export these shared owners. Live session derivation still coordinates
+selection and providers, while these transformations operate on shared data.
+
+Thirty-seven static checks compare both enums and serde annotations, fidelity
+rules, projection contracts, insertion/coverage/repair algorithms and thirteen
+existing test bodies. Repair retains injection-before-dropping order and
+message/origin updates in lockstep. Import ordering is canonicalized for
+rustfmt; algorithm bodies remain token-compared. All 146 context-policy files
+are lexically connected, and changed files have at most 47 code lines.
+Standalone rustfmt, source file limits and whitespace checks pass. No Cargo,
+rustc, rustdoc, compiler wrappers, Python, projection operations or Rust tests
+ran. Compilation, doctests and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-context-projection/. The full workspace goal remains
+active, including the remaining context selection orchestration.
+
+### Shared active-task selection and prepared-summary packing
+
+Active-task anchoring, continuation recognition, task signatures, relevance
+scores, dropped-range collection and prepared-summary selection now belong
+to context-policy::selection. The packing algorithm receives the existing
+application token-estimation function as an argument. The application retains
+protected-entry selection and proactive-index acquisition, then calls the
+shared rules. No model runtime is added to the shared policy crate.
+
+Thirty-seven static checks preserve score weights, continuation strings,
+selection algorithms, the unchanged coordinator body, exact estimator
+forwarding and eleven moved test bodies. Eight packing integration tests and
+their fixtures remain byte-for-byte unchanged in the application. All 162
+shared files and 50 application context files are lexically connected. New
+files have at most 46 code lines; the existing coordinator shrank to 107.
+
+The module audit found incremental_observability.rs had neither a module
+declaration nor callers. Its source and the initial audit finding are archived
+in the evidence directory; the unused file is removed. Standalone rustfmt,
+source file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, estimator calls, summary production or Rust tests ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-context-selection/. The workspace goal remains active.
+
+### Shared context budget paths and plain pairing repair
+
+The post-repair overflow clamp and below-budget pass-through now belong to
+context-policy::projection. Application wrappers supply the same request-token
+estimator, preserving system/tool overhead. Plain tool-pair repair and its
+ExperimentalStats contract move to context-policy::transforms; the existing
+application transform pipeline still composes its other strategies.
+
+Twenty-three static checks preserve clamp bounds/provenance, below-budget
+repair ordering, all pairing loops and counters, aggregate stats arithmetic,
+exact estimator forwarding and four moved pairing tests. Clamp regression
+and fixture source remain byte-identical in the application. All 176 shared
+files and 50 application context files are lexically connected. Changed Rust
+files have at most 36 code lines. Standalone rustfmt, file limits and whitespace
+checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python, token estimation,
+transforms or Rust tests ran. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-context-budget-paths/. The
+workspace consolidation goal remains active.
+
+### Shared message transforms
+
+Tool-output deduplication, assistant whitespace cleanup, stale-output
+snipping, thinking-block pruning, duplicate-call argument handling and
+sink/recent middle trimming now belong to context-policy::transforms.
+Separate modules retain each policy's thresholds and helpers. Existing
+application paths are facades; the application apply_all pipeline, order
+and TetherScript repair feature gates remain byte-identical.
+
+Sixty-seven static checks preserve every function/fixture body, constant,
+marker and hash operation, plus 21 existing test bodies. The existing SHA-256
+dependency is declared at its locked version; no package versions change.
+All 231 shared files and 16 application experimental-transform files are
+lexically connected. Changed Rust files have at most 48 code lines.
+Standalone rustfmt, source file limits and whitespace checks pass. No Cargo,
+rustc, rustdoc, compiler wrappers, Python, transforms, plugin calls or Rust
+tests ran. Compilation, doctests and runtime behavior remain unverified.
+Evidence: artifacts/consolidation-context-transforms/. The full workspace
+consolidation goal remains active.
+
+### Shared transform orchestration and reasoning conversion
+
+The default transform pipeline now belongs to context-policy and accepts a
+FnOnce reasoning-repair hook. The application supplies its existing
+TetherScript adapter and retains the final tracing call so the original
+logging target and filters remain unchanged. Plugin loading, authority setup
+and feature gates remain application-owned. Pure message-to-hook JSON and
+repaired-reasoning application move into shared reasoning conversion modules.
+
+Fifteen static checks preserve pipeline ordering, callback placement, logging,
+all conversion function bodies, plugin adapter files and both application
+integration test files. JSON is promoted from a dev dependency to a runtime
+dependency at the same version; Cargo.lock is unchanged. All 239 shared files
+and 14 remaining experimental-transform application files are lexically
+connected. Changed files have at most 32 code lines. Standalone rustfmt, source
+file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, plugin execution, transforms or Rust tests ran. Compilation
+and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-context-pipeline/. The broader session/workspace
+consolidation goal remains active.
+
+### Shared incremental derivation coordinator
+
+The incremental coordinator now separates preparation, assembly and final
+clamping in context-policy::derivation::incremental. An owned plan spans the
+application's asynchronous prepared-index lookup. The host retains session
+cloning, its below-budget gate, protected-entry seeding and index acquisition.
+Shared preparation scores/orders the clone; shared assembly packs summaries
+and repairs pairing; shared finalization applies the budget and provenance.
+
+Ten static composition checks preserve operations and callback arguments on
+each side of the existing asynchronous boundary. The live protected-entry
+module remains byte-identical, and the existing packing integration harness
+remains available under cfg(test). All 244 shared files and 50 application
+context files are lexically connected. Changed files have at most 49 code
+lines. Standalone rustfmt, source file limits and whitespace checks pass.
+No Cargo, rustc, rustdoc, compiler wrappers, Python, index acquisition, token
+estimation or Rust tests ran. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-incremental-coordinator/.
+The broader session and workspace goal remains active.
+
+### Shared reset preparation and reconstruction
+
+Reset now has shared threshold/marker checks, active-tail splitting, ready
+context construction, summary reconstruction and provenance finalization.
+ResetPreparation distinguishes ready context, legacy fallback and a retained
+prefix/tail summary plan. The application keeps provider/background summary
+retrieval, dropped-range TOC generation and the legacy derivation call.
+The prior application fallback helper is removed after its decisions move
+into shared preparation.
+
+Twenty-five static checks cover marker and reconstruction source, branch
+correspondence, host callback/summary arguments, range finalization and module
+wiring. Three original marker tests move unchanged; six new branch tests
+cover threshold, marker, legacy, empty-prefix and summary-plan outcomes, but
+none ran. All 261 shared files and 49 application context files are lexically
+connected. Changed files have at most 44 code lines. Standalone rustfmt, source
+file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, provider calls, summaries or Rust tests ran. Compilation
+and reset runtime behavior remain unverified. Evidence:
+artifacts/consolidation-context-reset/. The workspace goal remains active.
+
+### Shared pin selection and state-header formatting
+
+Pinned-index selection, recent/pinned budget reservation and deterministic
+state-header formatting now belong to context-policy. Application adapters
+supply immutable tracked-vector views, persisted constraint prefix lines,
+and a lazy message-offset callback. The callback preserves per-included-pin
+offset lookup rather than taking an eager session snapshot.
+
+Sixteen static checks preserve all rule/function bodies after explicit input
+substitution, including the eight-line cap, first-line UTF-8 excerpt and
+saturating budget arithmetic. Four session-level regression tests remain
+byte-identical and unrun. All 269 shared files and 49 application context files
+are lexically connected; changed files have at most 35 code lines. Standalone
+rustfmt, source file limits and whitespace checks pass. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, session locks, database reads, formatting
+operations or Rust tests ran. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-context-pins/. The broad
+workspace consolidation goal remains active.
+
+### Shared effective-policy resolution
+
+Effective policy selection and persisted reset-threshold projection now
+belong to context-policy. The application supplies its persisted policy and
+message view, and retains the unknown-override warning through a callback
+so the original log target and text stay unchanged. The obsolete private
+implicit-policy facade is removed; shared implicit resolution remains active.
+
+Six static comparisons preserve complete resolver order, repeated budget
+lookup behavior, threshold mapping, warning forwarding and the unchanged
+provider-dispatch function. All 271 shared files and 48 application context
+files are lexically connected. New shared modules obey the 50-line limit,
+and the existing application dispatcher shrank. Standalone rustfmt, source
+file limits and whitespace checks pass. No Cargo, rustc, rustdoc, compiler
+wrappers, Python, environment lookups, model calls or Rust tests ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-effective-policy/. The full workspace goal remains active.
+
+### Shared dispatch choice and focused host execution
+
+Derivation dispatch selection now belongs to context-policy. Forced keep-last
+recovery (including Some(0)) and oracle replay map to legacy execution; reset
+thresholds and incremental budgets retain their payloads. Application modules
+separate entrypoint/header injection, execution dispatch and each of the three
+provider-backed branches. Existing public derive_with_policy paths are
+preserved through re-exports. The former policy_dispatch module is replaced.
+
+Thirteen static comparisons preserve the public signature, effective-policy
+warning wrapper, strategy choices, every forwarded argument, budget resolution
+and success-only state-header injection. Two pure selection regression tests
+were added but not run. All 273 shared files and 53 application context files
+are lexically connected, with no old dispatch references remaining. Changed
+files have at most 37 code lines. Standalone rustfmt, source file limits and
+whitespace checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python,
+provider calls or Rust tests ran. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-context-dispatch/. The full
+workspace goal remains active.
+
+### Shared request assembly and final input guard
+
+Stable system/history prefix construction, completion-request fields and the
+final mandatory/optional input guard now belong to context-policy::request.
+Application adapters retain proactive preparation, recall lookup, exact token
+estimators and omission logging. Optional system/developer context is still
+downgraded to user evidence and inserted before the active user turn.
+
+Ten static comparisons preserve constructor order, all request fields, budget
+reservation, rejection text, optional insertion logic, callback arguments and
+the surrounding application call order. Guard regression files and provider
+cache-prefix tests remain byte-identical and unrun. All 277 shared files and
+52 application context files are lexically connected. Changed files have at
+most 39 code lines. Standalone rustfmt, source file limits and whitespace
+checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python, estimator
+calls, requests or Rust tests ran. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-context-request/. The full
+workspace consolidation goal remains active.
+
+### Shared context-overflow recovery
+
+Context-limit error classification, prepared-context retry planning, the
+[6, 3, 1] emergency keep-last schedule and request-option transitions now
+belong to context-policy::request::recovery. The application derivation
+adapter remains byte-identical, including its warning targets and text.
+Existing classifier and completion-recovery paths are compatibility exports.
+
+Twelve static checks preserve every matching rule, budget calculation, retry
+schedule, option update and three moved test bodies. All 283 shared files and
+52 application context files are lexically connected. New modules have at
+most 38 code lines; the existing error-rendering module shrank. Standalone
+rustfmt, source file limits and whitespace checks pass. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, recovery calls or Rust tests ran. Compilation
+and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-context-recovery/. The full workspace goal stays active.
+
+### Shared transcript rendering and text selection
+
+Context-policy::transcript now owns RLM transcript rendering, stable role
+labels, ordered text-block extraction and latest nonblank user text selection.
+The application error and text helpers preserve existing paths through
+re-exports. Filesystem-backed path discovery and truncation remain unchanged.
+Content rendering, role labels and text selection are separate cohesive modules.
+
+Twelve static checks compare the reconstructed renderer and each moved
+function, verify compatibility exports and retained application functions,
+and enforce the 50-code-line limit on every changed Rust file. All 287 shared
+Rust files are lexically connected, with no missing declarations or orphan
+files. Standalone rustfmt, source file limits and whitespace checks pass.
+No dependencies changed. No Cargo, rustc, rustdoc, Python, compiler wrappers,
+Rust tests, doctests or transcript functions were executed. Compilation and
+runtime behavior remain unverified. Evidence:
+artifacts/consolidation-context-transcript/. The full workspace goal remains active.
+
+### Shared terminal compression fallback
+
+Context-policy::compression::terminal now owns retained-tail selection,
+payload-cap escalation, UTF-8-safe head/tail snippets, marker construction
+and oldest-message eviction. The application supplies the existing request
+estimator and warning callback. The warning stays in its original module
+and runs after shrinking/eviction and before the final estimate. The shared
+crate reuses codetether-util for the existing byte-safe prefix operation;
+its path dependency and lockfile entry were updated without Cargo.
+
+Twenty-one static comparisons cover the algorithms, constants, marker text,
+estimator call order, callback wiring, retained user anchor and orphan-tool
+eviction. Four existing application tests remain byte-identical and unrun.
+All 296 shared files and 30 compression-adapter files are lexically connected;
+new modules have at most 38 code lines. Standalone rustfmt, source file limits
+and whitespace checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python,
+Rust tests or compression operations ran. Compilation and runtime behavior
+remain unverified. Evidence: artifacts/consolidation-terminal-compression/.
+The full workspace goal remains active.
+
+### Shared compression summary formatting
+
+Context-policy::compression::summary owns summary-message installation,
+cached oversized-message wrappers and dropped-range navigation. Its toc
+submodule separates index construction from first-line excerpt selection.
+Application paths remain compatibility exports; four index tests moved with
+the owner without changing their bodies. Seventeen static comparisons cover
+every moved function, constants, test bodies and exports. At this stage all
+307 shared files and 29 application compression files were lexically connected;
+new modules have at most 32 code lines. Standalone rustfmt, source file limits
+and whitespace checks pass. Evidence: artifacts/consolidation-compression-summary/.
+
+### Shared compression triggers and retry schedule
+
+Context-policy::compression::budget owns BudgetCheck, trigger selection,
+per-attempt budget/history fit and the [16, 12, 8, 6, 3, 1] retry schedule.
+Application adapters keep context lookup and estimation in the original order,
+and the async cascade, provider execution, events and logging remain unchanged.
+Eleven static comparisons cover field shapes, thresholds, trigger precedence,
+schedule, input mapping and the unchanged cascade. All 310 shared files and
+29 application compression files are lexically connected. New modules have
+at most 28 code lines; existing files respect the line-budget ratchet.
+Standalone rustfmt, source file limits and whitespace checks pass. Evidence:
+artifacts/consolidation-compression-policy/.
+
+Neither stage executed Cargo, rustc, rustdoc, compiler wrappers, Python,
+Rust tests, doctests, compression or provider operations. Compilation and
+runtime behavior remain unverified. The full workspace goal remains active.
+
+### Shared voice contracts, routing and speech catalog
+
+Codetether-voice-core owns voice intents, command parsing/routing, SSH
+marker detection, audio transport policy and the speech-model catalog.
+Dictation separates contracts from parsing; the catalog separates model
+types, entries, queries and tests. Application voice paths remain exports,
+with only live process transport selection and native CPAL probing retained.
+The shared crate depends only on the already-locked Serde version. Workspace
+and lockfile changes were made without running Cargo.
+
+Thirty static comparisons preserve every algorithm, serialized type shape,
+catalog entry, native adapter, and eleven moved test bodies. Shared and
+application module graphs contain 12 and 6 connected files, respectively,
+without missing or unreferenced modules. Every changed voice file has at
+most 33 code lines. Standalone rustfmt, source line limits and whitespace
+checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python, Rust tests,
+doctests or device probes ran. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-voice/. The voice source
+ownership audit is complete; the full workspace goal remains active.
+
+### Shared belief lifecycle and project memory
+
+Codetether-cognition-core owns Belief and BeliefStatus, confidence updates,
+extraction prompts, response decoding and project-memory persistence.
+Contracts, lifecycle, response schema, prompts and decoding are separate
+modules. Project memory separates load, save and context rendering. The
+application retains the optional-thinker guard and live thinker call; all
+original public belief and memory paths remain available.
+
+Twenty-four static checks compare contracts, methods, exact prompts, decoder
+composition, timestamp calls, UUID construction, persistence behavior and
+dependency changes. Lockfile comparison ignores package-block order while
+checking every block’s contents. Six lifecycle tests moved unchanged, and
+one no-thinker test remains in the application unchanged; none ran. All 19
+shared files are lexically connected. New modules have at most 45 code lines.
+Standalone rustfmt, source file limits and whitespace checks pass. No Cargo,
+rustc, rustdoc, compiler wrappers, Python, model calls, tests, doctests or
+project-memory I/O operations ran. Compilation and runtime behavior remain
+unverified. Evidence: artifacts/consolidation-cognition-beliefs/. The full
+workspace goal remains active.
+
+### Inactive actor subtree audit
+
+Neither application root declares src/actor, and an explicit-reference scan
+across src, tests and crates found no external crate::actor, ActorRuntime or
+actor module-path references. This differs from the active swarm Actor trait.
+The 14 tracked actor files are retained, with source hashes recorded in
+artifacts/consolidation-cognition-beliefs/actor-audit.json. This lexical audit
+is not a compiler reachability proof or permission to activate the subsystem;
+its final disposition remains outstanding.
+
+### Shared persona, proposal, thought and workspace contracts
+
+Cognition-core now groups identity/policy/lifecycle request records under
+persona; proposal records, votes and governance defaults under proposal;
+thought events, phase rotation, labels and tick data under thought; and
+shared summary/attention records under workspace. Application paths remain
+compatibility exports. Inherent phase and event-label methods moved with
+owning types; their visibility permits existing application calls. No
+locks, model execution or task-spawning code moved into these contracts.
+
+Thirty-two static comparisons preserve serialized fields, defaults, method
+bodies, stable labels and facade exports. Two workspace tests moved unchanged
+and remain unrun. All 38 shared files and 199 application cognition files
+are lexically connected. New modules have at most 34 code lines. Standalone
+rustfmt, source limits and whitespace checks pass. No dependencies changed;
+no Cargo, rustc, rustdoc, compiler wrappers, Python, tests, doctests or runtime
+operations ran. Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-contracts/. The full workspace goal stays active.
+
+### Shared cognition store, voting, lineage and ranking policy
+
+Cognition-core::beliefs::update owns duplicate confirmation, contradiction
+handling, decay attention and extracted-belief merge events. proposal::voting
+owns quorum, veto, required-role, majority, deadline and attention decisions.
+Persona lineage/depth/reap-target modules own inheritance and traversal.
+Workspace ranking owns belief, attention and uncertainty ordering; shared
+text helpers retain the existing truncation and sentence-count behavior.
+Application paths now export these operations. Async voting locks, workspace
+refresh locks and existing governance/lineage tests remain unchanged.
+
+Forty static comparisons preserve algorithms, constants, event payloads,
+timestamps, UUID calls, signatures and facade exports. All 56 shared files
+and 199 remaining application cognition files are lexically connected. New
+modules have at most 43 code lines. Standalone rustfmt, source limits and
+whitespace checks pass. No dependencies changed. No Cargo, rustc, rustdoc,
+compiler wrappers, Python, Rust tests, doctests or policy operations ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-policy/. The full workspace goal stays active.
+
+### Shared cognition scheduling and store services
+
+Cognition-core now owns per-persona budget-window scheduling and idle
+detection, asynchronous budget charging, bounded event/snapshot buffering,
+recent-persona event selection, pending-vote sweeps and workspace refresh.
+The services retain their existing Arc/RwLock signatures and locking order.
+Main-loop scheduling, live thinker invocation, task startup and application
+runtime construction remain application responsibilities. The core adds only
+a dependency on the existing Tokio version with its sync feature.
+
+Twenty-six static comparisons preserve all functions, constants, lock
+scopes/order, selection ordering, event payloads, casts, saturation and time
+calls. Two budget tests moved unchanged, with unchanged fixture functions.
+All 67 shared files and 197 application cognition files are lexically
+connected. New modules have at most 41 code lines. Standalone rustfmt,
+source file limits and whitespace checks pass. No Cargo, rustc, rustdoc,
+compiler wrappers, Python, tests, doctests or service operations ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-services/. The full workspace goal remains active.
+
+### Shared cognition prompt and output presentation
+
+Cognition-core::thought::presentation groups phase prompts, event formatting,
+output normalization, placeholder detection, deterministic fallback text and
+recent-context signal summaries in focused modules. All original application
+helper paths are compatibility exports. Model invocation remains in the
+unchanged application thinker adapter. No prompts or fallback rules changed.
+
+Nineteen static comparisons preserve complete function/constant source,
+prompt and fallback literals, normalization order and facade exports. The
+original thinker adapter and two normalization tests remain byte-identical;
+no tests ran. All 76 shared files and 197 application cognition files are
+lexically connected. New modules have at most 42 code lines. Standalone
+rustfmt, source file limits and whitespace checks pass. No dependencies
+changed. No Cargo, rustc, rustdoc, compiler wrappers, Python, model calls,
+Rust tests or doctests ran. Compilation/runtime behavior remain unverified.
+Evidence: artifacts/consolidation-cognition-presentation/. The full workspace
+goal remains active.
+
+### Shared cognition persistence service
+
+Cognition-core::persistence owns the versioned state schema, referenced-event
+collection, payload trimming, evidence ordering, lock-ordered state capture,
+file-size guarding, decoding and temporary-file/rename write sequence.
+Application adapters supply data-directory resolution and log callbacks;
+logging remains in the original persistence module. The save path callback
+is evaluated after state capture, preserving the original operation order.
+Tokio fs was enabled on the already-declared dependency.
+
+Thirty static comparisons preserve schema, constants, helper algorithms,
+save/load composition, error strings, callback placement, logs and adapter
+signatures. Two persistence tests moved with only their internal import path
+adjusted; neither ran. Initial-state loading and tick flushing remain
+byte-identical. All 90 shared files and 200 application cognition files are
+lexically connected. New modules and adapters have at most 48 code lines.
+Standalone rustfmt, source limits and whitespace checks pass. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, tests, doctests or cognition-state I/O ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-persistence/. The full workspace goal stays active.
+
+### Shared cognition output builders and lineage projection
+
+Cognition-core now owns default seed requests, proposal titles/construction,
+proposal-created events, thought events, memory snapshots and snapshot
+metadata. Status/control contracts and deterministic lineage graph projection
+also moved. The application retains thinker endpoint normalization and the
+lineage read lock, delegating projection while the guard is still held.
+
+Twenty-seven static comparisons preserve all constructors, field shapes,
+quorum/deadline calculations, UUID/time call sites, output text and graph
+ordering. Existing persona and budget test sources remain byte-identical and
+unrun. All 102 shared files and 200 application cognition files are lexically
+connected. New files have at most 46 code lines. Standalone rustfmt, source
+limits and whitespace checks pass. No dependencies changed. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, tests, doctests or constructors ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-builders/. The full workspace goal stays active.
+
+### Shared execution contracts and request policy
+
+Cognition-core::execution owns capability leases, invocation/receipt records,
+outcomes, extraction request schemas and prompts, response decoding, existing
+shallow argument validation, and five check-result event constructors. The
+application executor is split into a live extraction coordinator and one
+per-request dispatcher. The sequence remains allowlist, registry, schema,
+lease creation/check, tool call, result clipping and event construction.
+
+Twenty-five static comparisons cover contracts, lease methods, prompt text,
+validation, decoding, event fields and the request-loop rewrite into early
+returns. Four shared test bodies and one application no-thinker test are
+unchanged and unrun. Proposal receipt consumers remain byte-identical. All
+121 shared files and 203 application cognition files are lexically connected;
+new executor modules have at most 40 code lines. Standalone rustfmt, source
+limits and whitespace checks pass. No dependencies changed. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, tests, doctests, lease creation or model/tool
+execution ran. Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-execution/. The full workspace goal stays active.
+
+### Shared verified-proposal dispatch and persona progress
+
+Cognition-core::proposal::dispatch owns shared execution handles, the existing
+Critical/Verified approval gate, pending-approval registration, verified sweep
+and receipt/event construction. Application approval delegates through the
+original method. Persona progress and allowed-tool lookup live beside persona
+scheduling; idle reap policy preserves the existing direct-child behavior.
+
+Twenty static comparisons preserve all bodies, lock scopes/order, error text,
+approval checks, state transitions and event fields. Tick publication and
+existing governance/idle test sources remain byte-identical and unrun. All
+128 shared files and 203 application cognition files are lexically connected.
+New modules have at most 35 code lines. Standalone rustfmt, source limits and
+whitespace checks pass. No dependencies changed. No Cargo, rustc, rustdoc,
+compiler wrappers, Python, tests, doctests, approval or dispatch operations
+ran. Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-dispatch/. The full workspace goal stays active.
+
+### Shared persona lifecycle mutations
+
+Cognition-core::persona::lifecycle now owns persona record assembly,
+creation validation/insertion, child-request mapping, reap preparation and
+lifecycle event construction. Application methods publish after the service
+releases its persona write lock. Reap events are still constructed one at a
+time immediately before publication; they are not prebuilt as a batch.
+
+Seventeen static comparisons preserve inheritance, policy precedence, IDs,
+errors, timestamps, lock-release order, event payloads and public signatures.
+Existing lifecycle, persona, branching and depth test sources remain
+byte-identical and unrun. All 134 shared files and 203 application cognition
+files are lexically connected. New modules/adapters have at most 42 code
+lines. Standalone rustfmt, source limits and whitespace checks pass. No
+dependencies changed. No Cargo, rustc, rustdoc, compiler wrappers, Python,
+Rust tests, doctests or persona operations ran. Compilation and runtime
+behavior remain unverified. Evidence: artifacts/consolidation-cognition-lifecycle/.
+The full workspace goal remains active.
+
+### Shared cognition and thinker configuration
+
+Cognition-core::configuration owns runtime options, typed environment readers
+and environment option assembly. thinker owns backend/device enums, config
+defaults, completion output, endpoint normalization and thinker environment
+assembly. The application retains client construction, backend selection and
+model loading; existing import paths delegate to the shared types/functions.
+
+Thirty static comparisons preserve fields, defaults, parsing, environment
+variable names and read order, Candle settings and per-backend timeouts. The
+client declaration and construction/selection sources remain byte-identical.
+All 146 shared files and 203 application cognition files are lexically
+connected. New shared modules have at most 49 code lines. Standalone rustfmt,
+source limits and whitespace checks pass. No dependencies changed. No Cargo,
+rustc, rustdoc, compiler wrappers, Python, tests, doctests, model loading,
+credential lookup or configuration functions ran. Compilation and runtime
+behavior remain unverified. Evidence: artifacts/consolidation-cognition-configuration/.
+The full workspace goal remains active.
+
+### Shared thinker wire and conversion policy
+
+Cognition-core::thinker::protocol owns OpenAI-compatible wire types, request
+construction and decoded-payload conversion; Bedrock body/URL/output mapping;
+and registry-provider model validation, request construction and output
+conversion. Identity and model-catalog calls use their existing provider-core
+owners directly. The application retains HTTP body decoding, networking,
+retries, logs, credentials and provider/backend execution.
+
+Twenty-seven static comparisons preserve wire fields, serde attributes,
+content/reasoning precedence, request ordering, identity calls, usage casts
+and model validation. HTTP orchestration/send/status files and existing
+request-identity/model-validation tests remain unchanged and unrun. All 157
+shared files and 200 application cognition files are lexically connected.
+New modules have at most 48 code lines. Standalone rustfmt, source limits
+and whitespace checks pass. The only dependency addition is the existing
+provider-core path crate. No Cargo, rustc, rustdoc, compiler wrappers, Python,
+network calls, tests, doctests or conversion functions ran. Compilation and
+runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-protocol/. The full workspace goal stays active.
+
+### Shared OpenAI-compatible thinker HTTP transport
+
+Cognition-core::thinker::http owns the two-attempt loop, send/status
+classification, response decoding and retry pacing. HttpObserver callbacks
+keep diagnostics in the original application modules with the same targets
+and fields. The empty application response module was removed. Reqwest JSON
+and rustls features plus Tokio time were added using existing locked versions.
+
+Twenty-three static comparisons preserve bearer handling, error text, request
+and body-consumption order, backoff, callback routing and existing retry-test
+source. All 165 shared files and 199 application cognition files are lexically
+connected. Changed transport/logging modules have at most 37 code lines.
+Standalone rustfmt, source limits and whitespace checks pass. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, tests, doctests, network requests or
+credential operations ran. Compilation and runtime behavior remain unverified.
+Evidence: artifacts/consolidation-cognition-http/. The full workspace goal
+remains active.
+
+### Shared Bedrock and resolved-provider completion services
+
+Cognition-core::thinker::bedrock constructs and processes Converse requests
+with a host-supplied signed sender and success observer. Application signing
+and original log targets remain outside the core. thinker::provider accepts
+an already-resolved provider and performs the existing validation/completion/
+conversion sequence; registry and Vault lookup remain in the application.
+Error snippets use the same shared byte-safe utility via a direct dependency.
+
+Fourteen static comparisons preserve request order, body/status handling,
+error strings, success-log timing, provider validation and output labeling.
+Client construction and request-identity test sources remain unchanged and
+unrun. All 168 shared files and 199 application cognition files are lexically
+connected; new services/adapters have at most 28 code lines. Standalone
+rustfmt, source limits and whitespace checks pass. No Cargo, rustc, rustdoc,
+compiler wrappers, Python, tests, doctests, network, signing or Vault operations
+ran. Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-backend-services/. The full workspace goal
+remains active.
+
+### Separate native cognition model owner
+
+Codetether-cognition-native owns Candle model loading, tokenizer/model/cache
+state, generation, sampling, blocking dispatch, Bonsai integration and prefill
+chunking. The application keeps compatibility exports and uses a borrowed
+identity accessor in the FunctionGemma router. Native types reuse cognition-core
+contracts and the existing Bonsai provider implementation. Native/GPU dependencies
+are feature-gated in the new owner; root candle, CUDA, cuDNN, Accelerate, MKL
+and FunctionGemma features forward to it while retaining previous flags.
+
+Forty-eight static comparisons preserve moved source, model operations,
+log targets, identity usage, feature forwarding and lockfile package contents.
+All 11 existing native/prefill test bodies moved with import-only adjustments;
+none ran, including the ignored full-model smoke test. All 37 native files
+and 169 remaining application cognition files are lexically connected.
+New modules have at most 50 code lines. Standalone rustfmt, source limits and
+whitespace checks pass. No Cargo, rustc, rustdoc, compiler wrappers, Python,
+model-file reads, model loads, device probes, GPU operations, tests or doctests
+ran. Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-native/. The full workspace goal remains active.
+
+### Shared cadence and thought-result construction
+
+Cognition-core::driver owns the fixed-cadence loop, stop checks, minimum
+interval and overrun rescheduling. The application supplies its existing
+run_tick callback and shared handles. Model/default thought-result builders
+and TickOutput now belong to the thought module; per-persona processing and
+runtime task startup remain application code.
+
+Thirteen static comparisons preserve cadence control flow, timing calls,
+result fields, output shape and unchanged per-persona processing. All 171
+shared files and 169 application cognition files are lexically connected.
+New modules/adapters have at most 36 code lines. Standalone rustfmt, source
+limits and whitespace checks pass. No dependencies changed. No Cargo, rustc,
+rustdoc, compiler wrappers, Python, driver loops, tests or doctests ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-driver/. The full workspace goal stays active.
+
+### Shared FunctionGemma routing policy
+
+Cognition-core::tool_routing owns parsed-call records, closed-block extraction,
+JSON parsing, tool prioritization, prompt/schema formatting, loaded-model
+identity injection and response inspection. The application parser supplies
+its original warning callback; native inference and response mutation remain
+in the application. No prompt or routing policy changed.
+
+Twenty-three static comparisons preserve algorithms, constants, templates,
+warning fields/target and application exports. Existing parse, malformed-parse
+and prompt tests plus the inference adapter remain byte-identical and unrun.
+All 180 shared files and 169 application cognition files are lexically connected.
+New modules have at most 38 code lines. Standalone rustfmt, source limits and
+whitespace checks pass. No dependencies changed. No Cargo, rustc, rustdoc,
+compiler wrappers, Python, routing calls, tests or doctests ran. Compilation
+and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-routing/. The full workspace goal stays active.
+
+### Complete FunctionGemma router ownership
+
+Active and disabled configuration contracts, environment loading, thinker
+configuration mapping and response rewriting now belong to cognition-core.
+Cognition-native owns the active router, inference, reformatting and the no-op
+adapter. Application feature branches re-export these owners. The disabled
+application branch names disabled_routing explicitly so feature unification
+cannot select an active router accidentally. Existing 90-second timeout,
+direct-parse ordering, configuration defaults/kill switch and log targets remain.
+
+Thirty-five static comparisons preserve source, configuration and branch
+behavior. All 9 existing router tests moved without body changes and remain
+unrun. Core/native/application module graphs contain 185, 60 and 146 connected
+files. New modules have at most 48 code lines. Standalone rustfmt, source
+limits and whitespace checks pass. The only dependencies added are existing
+Regex and Tokio time support. No Cargo, rustc, rustdoc, compiler wrappers,
+Python, routing/inference operations, tests or doctests ran. Compilation and
+runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cognition-router-owner/. The full workspace goal remains active.
+
+### Shared CloudEvent task-ingress parsing
+
+A2A-worker-core::cloudevents owns the normalized CloudEvent record and
+structured/binary/legacy parsing. The application passes a header lookup
+closure that retains its original Axum HeaderMap decoding and public API.
+Structured-body precedence, lazy header lookups and legacy defaults remain.
+
+Eight static comparisons preserve wire attributes, parsing order, defaults,
+errors and adapter wiring. Both ingress contract tests remain byte-identical
+and unrun. All 30 worker-core files are lexically connected. New modules and
+adapter have at most 23 code lines. Standalone rustfmt, source limits and
+whitespace checks pass. No dependencies changed. No Cargo, rustc, rustdoc,
+compiler wrappers, Python, parsing operations, tests or doctests ran.
+Compilation and runtime behavior remain unverified. Evidence:
+artifacts/consolidation-cloudevents/. The full workspace goal stays active.
+
+## Runtime policy decision ownership
+
+The new codetether-runtime-policy crate owns RuntimeToolPolicy and all its
+inherent implementations, decision contracts, explicit tool and command rules,
+base decisions, action classification, shell read-only classification, and
+stable metadata codes. Configuration comes from codetether-config. The
+read-only tool allowlist now belongs to codetether-tool-core and is shared by
+dispatch and permission policy through the existing application facade.
+
+The application keeps invocation ordering and live boundaries: prior-context
+checks, approved session commands, sandbox availability, approval requests,
+workspace loading, justification, and ToolResult construction. Existing public
+imports remain available. These remaining adapters still require a cohesion
+audit; runtime-policy ownership is not marked complete.
+
+Static source comparisons preserve rule precedence, command guards and
+allowlists, configuration accessor order, enum variants and metadata strings.
+The three action-classification tests moved unchanged with their module;
+application integration and read-only dispatch tests remain in place and unrun.
+The dependency closure has eight local crates and no application back-edge.
+Lexical module graphs cover 15 shared-policy, 44 tool-core and 47
+application-policy files with no missing or unreferenced modules.
+
+Validation: 19 static checks, at most 43 code lines per new Rust file, standalone
+rustfmt, global file-limit ratchet and git diff whitespace checks. Dependency
+array order is ignored in lockfile comparisons; package versions and contents
+are otherwise preserved, with one new local package and application edge.
+No Cargo, rustc, Python, model, provider, shell-command classifier execution,
+or Rust tests ran. Compilation and tests remain unverified. Evidence is in
+artifacts/consolidation-runtime-policy/. The full consolidation goal remains active.
+
+## Runtime policy invocation and diagnostics
+
+Shared runtime-policy now owns the invocation sequence as well as individual
+rules. Host session-command and sandbox callbacks are lazy: explicit command
+denials run first, then session grants, read-only classification, other
+command-prefix rules, sandbox policy and finally the action-aware default.
+Callbacks preserve their former evaluation points; the application still
+reads the session grant store and probes actual sandbox state.
+
+The pure sandbox-availability decision, blocking-result construction, missing
+justification policy and retry-example construction also moved into the shared
+crate. Approval-store access, prior-context guarding, workspace loading,
+invocation scope hashing, request metadata and schema advertising remain in
+the application. The three retry-example tests moved with their implementation,
+and the two existing sandbox decision tests and host preflight test are
+unchanged. All tests remain unrun.
+
+Evidence: artifacts/consolidation-runtime-policy-invocation contains 15 source
+comparison checks, snapshots, lexical module graphs and file-limit/whitespace
+outputs. The shared crate has 22 reachable Rust files, the application runtime
+policy has 45 files / 1235 code lines, and new files have at
+most 40 code lines. No dependency changed. No Cargo, rustc, Python, sandbox probe,
+approval-store access or Rust test was executed. Compilation and runtime behavior
+remain unverified. The whole-workspace goal remains active.
+
+## Runtime approval metadata and schema ownership
+
+Shared runtime-policy owns reviewer previews, full invocation detail, approval
+error-field insertion and the justification-schema mode flag. The application
+re-exports the same schema functions and metadata helpers, so all existing
+callers share one flag. Mode storage/loading still use relaxed atomics in their
+original order. The shared crate now directly depends on provider-core for
+ToolDefinition, an existing transitive dependency; no new package was added.
+
+The file-mutation preview support classifier belongs to tool-core. Concrete
+proposed file reconstruction remains in the application. Metadata construction
+uses the same classifier through its shared owner. Short summaries retain their
+160-character clipping, full detail retains its original hidden-field filtering,
+and approval metadata keys and insertion order are preserved. Five preview/detail
+tests moved unchanged; schema tests remain in the application. All are unrun.
+
+Validation: 15 static source/dependency checks, lexical graphs for 29 shared-policy,
+45 tool-core and 41 application-policy files, no missing/unreferenced
+modules or local dependency cycles, maximum 37 code lines per new Rust file,
+standalone formatting, global file-limit ratchet and whitespace checks. Evidence
+is in artifacts/consolidation-runtime-policy-metadata/. No Cargo, rustc or Python
+ran; compilation and tests remain unverified. Approval request persistence and
+scope construction remain for audit. The full workspace goal stays active.
+
+## Approval interaction contracts
+
+Approval-core::interaction now owns ExecPolicyAmendment, ReviewDecision,
+LiveApprovalRequest and LiveApprovalDecision. Its eight focused modules
+separate request records and builders, decision records, serialized review
+choices, command amendments and prefix parsing. All inherent implementations
+moved with their types. The application keeps compatibility exports and live
+request delivery, pending-state management and session grants.
+
+The prefix parser moved from runtime_policy into the same interaction owner
+as its returned amendment contract. No dependency or manifest changed. Source
+comparisons preserve serialization attributes, fields and variants, default
+review choices, decision labels, denial normalization and prefix token handling.
+Two application handoff test modules remain byte-identical and unrun.
+
+Validation: 17 static comparisons, 36 reachable approval-core files, 13
+application approval files and 41 runtime-policy files, no missing
+or unreferenced lexical modules, at most 49 code lines per new module, standalone
+rustfmt, global file-limit ratchet and whitespace checks. The shared approval
+crate retains its existing two-crate local dependency closure. Evidence lives
+in artifacts/consolidation-approval-interaction/. No Cargo, rustc, Python,
+approval store or live request was executed. Compilation and tests remain
+unverified, and the complete workspace consolidation goal remains active.
+
+## Approval state ownership audit
+
+Approval-core now owns process-local tuple grants, command-prefix proposals
+and grants, pending request senders and ordering, pending queries and review
+decision parsing/application. Each original singleton moved once; application
+paths re-export it. The host still sends SessionEvent::ApprovalRequest and
+retains the same cancellation guard and failed-delivery behavior.
+
+The existing test reset functions remain gated behind cfg(test) or the
+approval-core test-support feature. Only the application's dev-dependency
+enables that feature. Normal application dependencies do not expose the reset
+helpers. Approval-core adds the existing Tokio version with only its sync
+feature; no package version changed.
+
+All 13 remaining application approval files have a defined role:
+SessionEvent delivery and its cancellation guard, compatibility exports, or
+test setup/tests. They contain 167 code lines. This completes the approval
+subsystem ownership audit, not the entire workspace consolidation goal.
+
+Evidence in artifacts/consolidation-approval-state: 15 static source/dependency
+checks; 41 reachable shared approval files and 13 reachable application
+approval files; no missing/unreferenced lexical modules; maximum 47 code lines
+per new Rust file; standalone formatting, file-limit ratchet and whitespace
+checks. The original live handoff tests and environment isolation code are
+byte-identical. No Cargo, rustc, Python, grant operations or live handoff ran.
+Compilation and tests remain unverified.
+
+## Pure patch engine ownership
+
+Tool-core::patch owns the unified-diff parser, header/range/body decoding,
+hunk records and construction, stable target grouping, in-memory application,
+and approval resource formatting. Its twelve modules retain original parser
+and matching behavior. The application patch tool calls shared exports and
+continues to own filesystem access, path guards, approval enforcement and
+execution orchestration. No dependencies changed.
+
+Source comparisons preserve whitespace matching, insertion offsets, counted
+hunk completion, malformed-header handling, sorted target identities and
+result newline behavior. The hunk application regression tests moved unchanged.
+Application preview, proposed-content and approval test files are byte-identical,
+as are the application execution/proposed-content pipelines. All tests remain
+unrun. Runtime policy can now share the same patch-resource implementation.
+
+Evidence in artifacts/consolidation-patch-core: 29 static checks, lexical graphs
+for 57 tool-core files and 24 patch-tool files, no missing/unreferenced modules,
+a three-crate local tool-core dependency closure, maximum 37 code lines per new
+module, standalone formatting, file-limit ratchet and whitespace checks. No
+Cargo, rustc, Python, patch application or filesystem tool execution ran.
+Compilation and tests remain unverified. The full workspace goal remains active.
+
+## Runtime approval persistence and identity
+
+Runtime-policy now owns approval request persistence, verification, session-command
+checks, exact invocation identity and approval-gated result construction. It uses
+the same approval-core stores and tool-core patch resource implementation as
+application callers. The original hashing exclusions, grant/verification order,
+request metadata and error behavior are retained. Five unused application
+facades were removed after their callers moved. Configuration loading, prior
+context guards and sandbox probes remain application adapters.
+
+Validation evidence is in artifacts/consolidation-runtime-approval/: ten static
+source and dependency comparisons and complete lexical module graphs. Existing
+identity tests are unchanged and unrun. No Cargo, rustc or Python ran; compilation
+and tests remain unverified. The full workspace goal is still active.

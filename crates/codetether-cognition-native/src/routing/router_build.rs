@@ -1,0 +1,43 @@
+//! Router construction from a [`ToolRouterConfig`](super::ToolRouterConfig).
+
+use anyhow::{Result, anyhow};
+use std::sync::{Arc, Mutex};
+
+use super::router_config::thinker_config;
+use super::{ToolCallRouter, ToolRouterConfig};
+use crate::CandleThinker as CandleRuntime;
+
+impl ToolCallRouter {
+    /// Construct from a [`ToolRouterConfig`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the router is enabled but the model or tokenizer
+    /// path is missing, or when the Candle runtime fails to load.
+    ///
+    /// Returns `Ok(None)` when the router is disabled.
+    pub fn from_config(config: &ToolRouterConfig) -> Result<Option<Self>> {
+        if !config.enabled {
+            tracing::debug!(target: "codetether_agent::cognition::tool_router::router_build", "FunctionGemma tool router is disabled");
+            return Ok(None);
+        }
+        let model_path = config.model_path.as_ref().ok_or_else(|| {
+            anyhow!("CODETETHER_TOOL_ROUTER_MODEL_PATH is required when the tool router is enabled")
+        })?;
+        let tokenizer_path = config.tokenizer_path.as_ref().ok_or_else(|| {
+            anyhow!(
+                "CODETETHER_TOOL_ROUTER_TOKENIZER_PATH is required when the tool router is enabled"
+            )
+        })?;
+
+        let runtime = CandleRuntime::new(&thinker_config(config, model_path, tokenizer_path))?;
+        tracing::info!(target: "codetether_agent::cognition::tool_router::router_build",
+            model_path = %model_path,
+            arch = %config.arch,
+            "FunctionGemma tool-call router initialised"
+        );
+        Ok(Some(Self {
+            runtime: Arc::new(Mutex::new(runtime)),
+        }))
+    }
+}

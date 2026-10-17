@@ -1,10 +1,3 @@
-//! Shared patch data types.
+//! Compatibility exports for shared in-memory patch handling.
 
-/// Parsed unified-diff hunk targeting one file.
-#[derive(Debug)]
-pub(super) struct PatchHunk {
-    pub file: String,
-    pub start_line: usize,
-    pub old_lines: Vec<String>,
-    pub new_lines: Vec<String>,
-}
+pub(super) use codetether_tool_core::patch::PatchHunk;

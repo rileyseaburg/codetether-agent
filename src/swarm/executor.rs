@@ -23,7 +23,6 @@ executor_module!(accessors => "executor_parts/accessors.rs");
 #[path = "executor_parts/agent_loop/mod.rs"]
 mod agent_loop;
 executor_module!(agent_loop_large_result => "agent_loop_large_result.rs");
-executor_module!(backoff => "executor_parts/backoff.rs");
 executor_module!(builder => "executor_parts/builder.rs");
 executor_module!(bus_publish => "bus_publish.rs");
 executor_module!(cache_api => "executor_parts/cache_api.rs");

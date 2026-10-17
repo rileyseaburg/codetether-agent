@@ -1,13 +1,13 @@
 //! Public entry point for the reusable sub-agent loop.
 
 use super::super::AgentLoopExit;
-use crate::tui::swarm_view::SwarmEvent;
 use crate::{
     bus::AgentBus,
     provider::{Provider, ToolDefinition},
     tool::ToolRegistry,
 };
 use anyhow::Result;
+use codetether_swarm_core::SwarmEvent;
 use std::{path::PathBuf, sync::Arc};
 use tokio::sync::mpsc;
 

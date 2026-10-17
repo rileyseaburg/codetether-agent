@@ -1,7 +1,7 @@
 //! Pause and cancellation checks between swarm stages.
 
 use super::state::Run;
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) async fn may_continue(run: &Run<'_>) -> bool {
     let Some(control) = run.executor.control.as_ref() else {

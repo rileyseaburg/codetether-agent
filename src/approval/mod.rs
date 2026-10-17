@@ -2,8 +2,8 @@
 //!
 //! The module stores approval requests as append-only JSONL events and
 //! verifies approved receipts against a requested tool/action/resource tuple.
-//! The ledger lives in `codetether-approval-core`; this adapter owns live session
-//! delivery and process-local grants.
+//! The ledger, interaction records and process-local grants live in
+//! `codetether-approval-core`; this adapter delivers requests to live sessions.
 
 mod decision_kind;
 mod exec_policy;

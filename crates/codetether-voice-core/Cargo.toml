@@ -1,0 +1,10 @@
+[package]
+name = "codetether-voice-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Voice commands, audio transport policy and speech model catalog"
+license = "MIT"
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }

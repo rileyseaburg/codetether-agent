@@ -3,26 +3,14 @@
 //! This module converts effective configuration into a reusable tool
 //! invocation decision. It does not prompt users or execute tools.
 
-mod action_read_only;
-mod approval;
 mod approval_gate;
-mod approval_output;
-mod approval_prefix;
-mod base;
-mod code;
 mod command;
-mod command_prefix;
-mod command_rule;
-mod command_unsafe;
 mod invocation;
 mod invocation_decision;
 mod invocation_scope;
 mod justification;
-mod justification_example;
 mod justification_schema;
-mod permissions;
 mod policy;
-mod policy_action;
 mod result;
 mod sandbox_preflight;
 mod session_command;

@@ -14,5 +14,6 @@ mod catalog;
 mod types;
 pub use catalog::AgentRegistry;
 pub use types::{AgentInfo, AgentMode, AgentResponse, ToolMetadata, ToolUse};
+pub mod events;
 #[cfg(test)]
 mod tests;

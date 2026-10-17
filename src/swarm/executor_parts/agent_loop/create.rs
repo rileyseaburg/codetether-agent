@@ -4,7 +4,7 @@ use super::state::State;
 use crate::bus::AgentBus;
 use crate::provider::{ContentPart, Message, Provider, Role, ToolDefinition};
 use crate::tool::ToolRegistry;
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 use std::{path::PathBuf, sync::Arc, time::Instant};
 use tokio::{sync::mpsc, time::Duration};
 

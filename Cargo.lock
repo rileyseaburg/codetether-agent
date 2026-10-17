@@ -1083,6 +1083,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
 
 [[package]]
+name = "codetether-a2a-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "codetether-a2a-worker-core"
 version = "0.1.0"
 dependencies = [
@@ -1113,18 +1121,25 @@ dependencies = [
  "candle-transformers",
  "chrono",
  "clap",
+ "codetether-a2a-core",
  "codetether-a2a-worker-core",
  "codetether-agent-core",
  "codetether-approval-core",
  "codetether-audit",
+ "codetether-autochat-core",
  "codetether-bedrock-auth",
  "codetether-bedrock-protocol",
  "codetether-bedrock-refresh",
  "codetether-benchmark",
  "codetether-browser",
+ "codetether-bus-core",
+ "codetether-bus-s3",
  "codetether-codex-auth",
  "codetether-codex-protocol",
+ "codetether-cognition-core",
+ "codetether-cognition-native",
  "codetether-config",
+ "codetether-context-policy",
  "codetether-crash",
  "codetether-distill",
  "codetether-event-stream",
@@ -1167,9 +1182,11 @@ dependencies = [
  "codetether-question",
  "codetether-ralph-core",
  "codetether-rlm",
+ "codetether-runtime-policy",
  "codetether-search",
  "codetether-secrets",
  "codetether-session-runtime",
+ "codetether-swarm-core",
  "codetether-telemetry",
  "codetether-tetherscript-values",
  "codetether-theme",
@@ -1177,6 +1194,7 @@ dependencies = [
  "codetether-tool-core",
  "codetether-util",
  "codetether-vectordb",
+ "codetether-voice-core",
  "codetether-worktree",
  "codetether-worktree-isolation",
  "config",
@@ -1278,6 +1296,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "tokio",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -1294,6 +1313,21 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-autochat-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-a2a-core",
+ "codetether-bus-core",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-rlm",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -1379,6 +1413,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-bus-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "codetether-a2a-core",
+ "codetether-provider-core",
+ "codetether-util",
+ "dashmap",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "codetether-bus-s3"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-global-executor",
+ "async-std",
+ "chrono",
+ "codetether-bus-core",
+ "codetether-secrets",
+ "directories 6.0.0",
+ "minio",
+ "serde",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "codetether-codex-auth"
 version = "0.1.0"
 dependencies = [
@@ -1423,6 +1493,37 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-tungstenite 0.30.0",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-cognition-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-provider-core",
+ "codetether-util",
+ "regex",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "codetether-cognition-native"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "candle-core",
+ "candle-transformers",
+ "codetether-cognition-core",
+ "codetether-provider-bonsai",
+ "codetether-provider-core",
+ "tokenizers 0.23.2",
+ "tokio",
  "tracing",
 ]
 
@@ -1529,6 +1630,20 @@ dependencies = [
  "tokio",
  "toml 1.1.5+spec-1.1.0",
  "tracing",
+]
+
+[[package]]
+name = "codetether-context-policy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-provider-core",
+ "codetether-util",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tokio",
 ]
 
 [[package]]
@@ -2154,6 +2269,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "codetether-agent-core",
  "glob",
  "reqwest 0.13.4",
  "serde",
@@ -2184,6 +2300,19 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-rust",
  "uuid",
+]
+
+[[package]]
+name = "codetether-runtime-policy"
+version = "0.1.0"
+dependencies = [
+ "codetether-approval-core",
+ "codetether-config",
+ "codetether-provider-core",
+ "codetether-tool-core",
+ "hex",
+ "serde_json",
+ "sha2 0.11.0",
 ]
 
 [[package]]
@@ -2222,6 +2351,25 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "tokio",
+]
+
+[[package]]
+name = "codetether-swarm-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.23.1",
+ "chrono",
+ "codetether-agent-core",
+ "codetether-provider-core",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -2278,6 +2426,7 @@ dependencies = [
  "codetether-util",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
 ]
 
@@ -2295,6 +2444,13 @@ dependencies = [
  "serde_json",
  "sha2 0.11.0",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-voice-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

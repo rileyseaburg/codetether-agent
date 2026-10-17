@@ -70,58 +70,13 @@ pub mod thinking_prune;
 pub mod tool_call_dedup;
 
 use crate::provider::Message;
-
-/// Aggregate outcome of every strategy in [`apply_all`].
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ExperimentalStats {
-    /// Number of tool-result content blocks replaced by a dedup marker.
-    pub dedup_hits: usize,
-    /// Number of tool-result content blocks head/tail-snipped.
-    pub snippet_hits: usize,
-    /// Total bytes removed from the `Vec<Message>` across all strategies.
-    pub total_bytes_saved: usize,
-}
-
-impl ExperimentalStats {
-    fn merge(&mut self, other: ExperimentalStats) {
-        self.dedup_hits += other.dedup_hits;
-        self.snippet_hits += other.snippet_hits;
-        self.total_bytes_saved += other.total_bytes_saved;
-    }
-}
-
-/// Apply the default-safe experimental strategies in order, mutating
-/// `messages` in place. Returns aggregate statistics suitable for
-/// logging.
-///
-/// Order matters:
-///
-/// 1. [`dedup::dedup_tool_outputs`] runs before text cleanup so repeated
-///    tool outputs collapse against the original bytes.
-/// 2. [`lingua::prune_low_entropy`] runs after that to strip formatting
-///    noise from older assistant text without touching semantics.
-///
-/// # Examples
-///
-/// ```rust
-/// use codetether_agent::provider::{ContentPart, Message, Role};
-/// use codetether_agent::session::helper::experimental::apply_all;
-///
-/// let mut msgs: Vec<Message> = Vec::new();
-/// let stats = apply_all(&mut msgs);
-/// assert_eq!(stats.total_bytes_saved, 0);
-/// ```
+pub use codetether_context_policy::transforms::ExperimentalStats;
+/// Apply the shared pipeline and retain application-scoped logging.
 pub fn apply_all(messages: &mut Vec<Message>) -> ExperimentalStats {
-    let mut stats = ExperimentalStats::default();
-    stats.merge(thinking_prune::prune_thinking(messages));
-    // Repair: ensure pruned reasoning_content is non-null for
-    // DeepSeek V4 (runs via bundled tetherscript hook).
-    stats.merge(tetherscript_repair::repair_reasoning(messages));
-    stats.merge(dedup::dedup_tool_outputs(messages));
-    stats.merge(lingua::prune_low_entropy(messages));
-    // Correctness pass: repair any orphaned tool_call/tool_result
-    // pairs broken by the strategies above. Must run LAST.
-    stats.merge(pairing::repair_orphans(messages));
+    let stats = codetether_context_policy::transforms::pipeline::apply_all(
+        messages,
+        tetherscript_repair::repair_reasoning,
+    );
     if stats.total_bytes_saved > 0 {
         tracing::info!(
             dedup_hits = stats.dedup_hits,
@@ -130,6 +85,7 @@ pub fn apply_all(messages: &mut Vec<Message>) -> ExperimentalStats {
             "experimental context strategies applied"
         );
     }
+
     stats
 }
 

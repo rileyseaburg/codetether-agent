@@ -4,18 +4,10 @@ use chrono::{DateTime, Utc};
 
 use super::loop_ctx::LoopCtx;
 use super::{
-    MemorySnapshot, Proposal, ThoughtEvent, ThoughtPhase, ThoughtWorkItem, context_select,
-    thought_generate, tick_charge, tick_compress, tick_event, tick_propose, tick_reflect,
-    tick_test,
+    ThoughtPhase, ThoughtWorkItem, context_select, thought_generate, tick_charge, tick_compress,
+    tick_event, tick_propose, tick_reflect, tick_test,
 };
-
-/// Products of thinking one work item.
-#[derive(Default)]
-pub(super) struct TickOutput {
-    pub events: Vec<ThoughtEvent>,
-    pub snapshots: Vec<MemorySnapshot>,
-    pub proposals: Vec<Proposal>,
-}
+pub(super) use codetether_cognition_core::thought::TickOutput;
 
 /// How many prior events are fed back as context.
 const CONTEXT_LIMIT: usize = 8;

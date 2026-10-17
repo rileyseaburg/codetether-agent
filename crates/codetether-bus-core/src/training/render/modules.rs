@@ -1,0 +1,22 @@
+// Per-message projection modules.
+mod agent_message;
+mod agent_ready;
+mod agent_shutdown;
+mod agent_speech;
+mod agent_thinking;
+mod agent_tool_catalog;
+mod artifact_update;
+mod heartbeat;
+mod ralph_handoff;
+mod ralph_learning;
+mod ralph_progress;
+mod shared_result;
+mod task_update;
+mod tool_output_full;
+mod tool_request;
+mod tool_response;
+mod user_prompt;
+mod voice_agent_state_changed;
+mod voice_session_ended;
+mod voice_session_started;
+mod voice_transcript;

@@ -10,9 +10,6 @@ use crate::session::Session;
 use super::options::RequestOptions;
 use super::policy::{derive_with_policy, effective_policy};
 
-#[path = "request_messages.rs"]
-mod request_messages;
-
 /// Build a provider request from the session's derived context.
 pub async fn build_request_with_context(
     provider: Arc<dyn Provider>,
@@ -38,14 +35,12 @@ pub async fn build_request_with_context(
     )
     .await?;
     let prefetch = crate::session::index::recall::prefetch::message(session).await;
-    let request = CompletionRequest {
-        messages: request_messages::build(system_prompt, derived.messages),
-        tools: tools.to_vec(),
-        model: model.to_string(),
-        temperature: opts.temperature,
-        top_p: opts.top_p,
-        max_tokens: opts.max_tokens,
-        stop: Vec::new(),
-    };
+    let request = codetether_context_policy::request::from_derived(
+        system_prompt,
+        derived.messages,
+        model,
+        tools,
+        opts,
+    );
     super::request_guard::finish(request, prefetch.into_iter().collect())
 }

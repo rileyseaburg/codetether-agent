@@ -1,9 +1,7 @@
-//! Cognition completion through an authenticated registry provider.
-
-use anyhow::{Context, Result};
-
-use super::{ThinkerConfig, ThinkerOutput, provider_output, provider_request};
+//! Resolve an authenticated provider before shared thinker completion.
+use super::{ThinkerConfig, ThinkerOutput};
 use crate::provider::ProviderRegistry;
+use anyhow::Result;
 
 pub(super) async fn think(
     config: &ThinkerConfig,
@@ -12,13 +10,12 @@ pub(super) async fn think(
 ) -> Result<ThinkerOutput> {
     let registry = ProviderRegistry::shared_from_vault().await?;
     let (provider, model) = registry.resolve_model(&config.model)?;
-    provider_request::validate_model(&model)?;
-    let request = provider_request::build(config, model, system_prompt, user_prompt);
-    let response = provider.complete(request).await.with_context(|| {
-        format!(
-            "cognition provider '{}' rejected the request",
-            provider.name()
-        )
-    })?;
-    Ok(provider_output::convert(&config.model, response))
+    codetether_cognition_core::thinker::provider::think(
+        config,
+        provider.as_ref(),
+        model,
+        system_prompt,
+        user_prompt,
+    )
+    .await
 }

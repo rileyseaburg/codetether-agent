@@ -1,7 +1,8 @@
 //! Real-time events for sub-agent tool calls.
 
 use super::{preview, state::State};
-use crate::tui::swarm_view::{AgentToolCallDetail, SwarmEvent};
+use codetether_agent_core::events::AgentToolCallDetail;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) fn started(state: &State, name: &str) {
     if let Some(events) = &state.events {

@@ -1,10 +1,8 @@
-//! Bedrock Converse thinker backend.
-
-use anyhow::{Context, Result, anyhow};
-use std::time::Instant;
-
-use super::{ThinkerConfig, ThinkerOutput, bedrock_request, bedrock_response};
+//! Signed Bedrock dispatch and success logging for the shared thinker service.
+use super::{ThinkerConfig, ThinkerOutput};
 use crate::provider::bedrock::BedrockProvider;
+use anyhow::Result;
+use std::time::Instant;
 
 /// Generate a thought via the Bedrock Converse API.
 pub(super) async fn think(
@@ -13,33 +11,17 @@ pub(super) async fn think(
     system_prompt: &str,
     user_prompt: &str,
 ) -> Result<ThinkerOutput> {
-    let started_at = Instant::now();
-    let body = bedrock_request::body(config, system_prompt, user_prompt);
-    let body_bytes = serde_json::to_vec(&body)?;
+    codetether_cognition_core::thinker::bedrock::think(
+        config,
+        system_prompt,
+        user_prompt,
+        |url, bytes| async move { provider.send_converse_request(&url, &bytes).await },
+        |output, started_at| log_success(config, output, started_at),
+    )
+    .await
+}
 
-    let response = provider
-        .send_converse_request(&bedrock_request::url(config), &body_bytes)
-        .await
-        .context("Bedrock thinker converse request failed")?;
-
-    let status = response.status();
-    let text = response
-        .text()
-        .await
-        .context("Failed to read Bedrock thinker response")?;
-
-    if !status.is_success() {
-        return Err(anyhow!(
-            "Bedrock thinker error ({}): {}",
-            status,
-            crate::util::truncate_bytes_safe(&text, 500)
-        ));
-    }
-
-    let parsed: serde_json::Value =
-        serde_json::from_str(&text).context("Failed to parse Bedrock thinker response")?;
-    let output = bedrock_response::decode(&config.model, &parsed);
-
+fn log_success(config: &ThinkerConfig, output: &ThinkerOutput, started_at: Instant) {
     tracing::debug!(
         model = %config.model,
         latency_ms = started_at.elapsed().as_millis(),
@@ -47,5 +29,4 @@ pub(super) async fn think(
         completion_tokens = ?output.completion_tokens,
         "bedrock thinker generated thought"
     );
-    Ok(output)
 }

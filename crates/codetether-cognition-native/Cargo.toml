@@ -1,0 +1,27 @@
+[package]
+name = "codetether-cognition-native"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Native Candle model ownership and inference for cognition"
+license = "MIT"
+
+[features]
+default = []
+candle = ["dep:candle-core", "dep:candle-transformers", "dep:tokenizers", "dep:codetether-provider-bonsai", "codetether-provider-bonsai/candle"]
+candle-cuda = ["candle", "candle-core/cuda", "candle-transformers/cuda", "codetether-provider-bonsai/candle-cuda"]
+candle-cudnn = ["candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
+candle-accelerate = ["candle", "candle-core/accelerate", "candle-transformers/accelerate"]
+candle-mkl = ["candle", "candle-core/mkl", "candle-transformers/mkl"]
+functiongemma = ["candle"]
+
+[dependencies]
+anyhow = "1.0.104"
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-provider-bonsai = { path = "../codetether-provider-bonsai", version = "0.1.0", optional = true }
+tokio = { version = "1.53.1", features = ["rt", "time"] }
+tracing = "0.1"
+candle-core = { version = "0.11.0", optional = true }
+candle-transformers = { version = "0.11.0", optional = true }
+tokenizers = { version = "0.23.1", optional = true }

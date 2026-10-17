@@ -2,8 +2,8 @@
 
 use super::state::Run;
 use crate::swarm::SwarmResult;
-use crate::tui::swarm_view::SwarmEvent;
 use anyhow::Result;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) async fn execute(mut run: Run<'_>) -> Result<SwarmResult> {
     run.executor

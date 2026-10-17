@@ -2,7 +2,7 @@
 
 use super::state::State;
 use crate::swarm::{SubTaskResult, SubTaskStatus};
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) fn emit(state: &State<'_>, result: &SubTaskResult) {
     let name = state

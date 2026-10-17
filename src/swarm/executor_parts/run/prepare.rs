@@ -2,8 +2,8 @@
 
 use super::state::Run;
 use crate::swarm::{DecompositionStrategy, SwarmResult};
-use crate::tui::swarm_view::SwarmEvent;
 use anyhow::Result;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) enum Prepared<'a> {
     Empty(SwarmResult),

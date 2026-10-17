@@ -2,7 +2,7 @@
 
 use super::state::Run;
 use crate::swarm::{StageStats, SubTaskResult};
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 use std::time::Duration;
 
 pub(super) fn record(

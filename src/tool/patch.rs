@@ -14,8 +14,6 @@ mod file_io;
 mod group;
 #[path = "patch/hunk_apply.rs"]
 mod hunk_apply;
-#[path = "patch/hunk_builder.rs"]
-mod hunk_builder;
 #[path = "patch/metadata.rs"]
 mod metadata;
 #[path = "patch/parser.rs"]
@@ -37,12 +35,8 @@ mod tool;
 mod types;
 
 pub use self::tool::ApplyPatchTool;
-
 /// Return the approval resource string for a unified diff patch.
-pub fn approval_resource_from_patch(patch: &str) -> String {
-    let hunks = parser::parse_patch(patch);
-    approval::resource(&group::files(&hunks))
-}
+pub use codetether_tool_core::patch::approval_resource_from_patch;
 
 #[cfg(test)]
 mod approval_tests;

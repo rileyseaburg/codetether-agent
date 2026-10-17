@@ -1,23 +1,7 @@
-//! Reusable approval checks for execution backends.
+//! Compatibility exports for shared approval gates.
 
-use serde_json::Value;
-
-pub fn approved_invocation(tool_name: &str, args: &Value) -> bool {
-    let scope = super::invocation_scope::for_tool(tool_name, args);
-    allowed(tool_name, args, scope.action, &scope.resource)
-}
-
-pub fn approved_or_session_command(tool_name: &str, args: &Value) -> bool {
-    approved_invocation(tool_name, args) || super::session_command::approved(tool_name, args)
-}
-
-pub(super) fn allowed(tool_name: &str, args: &Value, action: &str, resource: &str) -> bool {
-    crate::approval::session_grants::allowed(tool_name, action, resource)
-        || super::approval::verified(args, tool_name, action, resource)
-}
-
-/// Return the canonical, credential-free approval tuple for execution diagnostics.
-pub(crate) fn approval_binding(tool_name: &str, args: &Value) -> (&'static str, String) {
-    let scope = super::invocation_scope::for_tool(tool_name, args);
-    (scope.action, scope.resource)
-}
+pub(super) use codetether_runtime_policy::approval_gate::allowed;
+pub(crate) use codetether_runtime_policy::approval_gate::approval_binding;
+pub use codetether_runtime_policy::approval_gate::{
+    approved_invocation, approved_or_session_command,
+};

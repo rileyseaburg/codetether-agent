@@ -1,20 +1,28 @@
 [workspace]
 members = [
     ".",
+    "crates/codetether-a2a-core",
     "crates/codetether-a2a-worker-core",
     "crates/codetether-agent-core",
     "crates/codetether-approval-core",
     "crates/codetether-audit",
+    "crates/codetether-autochat-core",
     "crates/codetether-bedrock-auth",
     "crates/codetether-bedrock-protocol",
     "crates/codetether-bedrock-refresh",
     "crates/codetether-browser",
     "crates/codetether-benchmark",
+    "crates/codetether-bus-core",
+    "crates/codetether-bus-s3",
     "crates/codetether-companion-capture",
     "crates/codetether-companion-core",
     "crates/codetether-companion-protocol",
     "crates/codetether-companion-relay",
     "crates/codetether-config",
+    "crates/codetether-runtime-policy",
+    "crates/codetether-context-policy",
+    "crates/codetether-cognition-core",
+    "crates/codetether-cognition-native",
     "crates/codetether-crash",
     "crates/codetether-codex-auth",
     "crates/codetether-codex-protocol",
@@ -62,6 +70,7 @@ members = [
     "crates/codetether-question",
     "crates/codetether-rlm",
     "crates/codetether-ralph-core",
+    "crates/codetether-swarm-core",
     "crates/codetether-search",
     "crates/codetether-secrets",
     "crates/codetether-session-runtime",
@@ -71,6 +80,7 @@ members = [
     "crates/codetether-tool-core",
     "crates/codetether-tetherscript-values",
     "crates/codetether-util",
+    "crates/codetether-voice-core",
     "crates/codetether-vectordb",
     "crates/codetether-worktree",
     "crates/codetether-worktree-isolation",
@@ -152,17 +162,18 @@ tetherscript = ["dep:tetherscript", "codetether-browser/tetherscript", "dep:code
 # Local in-process inference via Candle. Off by default: the agent leads with
 # remote/HTTP providers unless a local model backend is explicitly requested.
 candle = [
+    "codetether-cognition-native/candle",
     "codetether-provider-bonsai/candle",
     "dep:candle-core",
     "dep:candle-nn",
     "dep:candle-transformers",
     "dep:tokenizers",
 ]
-candle-cuda = ["candle", "codetether-provider-bonsai/candle-cuda", "candle-core/cuda", "candle-transformers/cuda"]
-candle-cudnn = ["candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
-candle-accelerate = ["candle", "candle-core/accelerate", "candle-transformers/accelerate"]
-candle-mkl = ["candle", "candle-core/mkl", "candle-transformers/mkl"]
-functiongemma = ["candle"]
+candle-cuda = ["codetether-cognition-native/candle-cuda", "candle", "codetether-provider-bonsai/candle-cuda", "candle-core/cuda", "candle-transformers/cuda"]
+candle-cudnn = ["codetether-cognition-native/candle-cudnn", "candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
+candle-accelerate = ["codetether-cognition-native/candle-accelerate", "candle", "candle-core/accelerate", "candle-transformers/accelerate"]
+candle-mkl = ["codetether-cognition-native/candle-mkl", "candle", "candle-core/mkl", "candle-transformers/mkl"]
+functiongemma = ["codetether-cognition-native/functiongemma", "candle"]
 # Opt-in QUIC worker transport (server listener + worker dial path). The QUIC
 # primitive stack always compiles; this gates the live wiring.
 quic-transport = []
@@ -177,6 +188,15 @@ fips = [
 ]
 
 [dependencies]
+codetether-cognition-native = { path = "crates/codetether-cognition-native", version = "0.1.0" }
+codetether-cognition-core = { path = "crates/codetether-cognition-core", version = "0.1.0" }
+codetether-voice-core = { path = "crates/codetether-voice-core", version = "0.1.0" }
+codetether-context-policy = { path = "crates/codetether-context-policy", version = "0.1.0" }
+codetether-autochat-core = { path = "crates/codetether-autochat-core", version = "0.1.0" }
+codetether-bus-s3 = { path = "crates/codetether-bus-s3", version = "0.1.0" }
+codetether-bus-core = { path = "crates/codetether-bus-core", version = "0.1.0" }
+codetether-a2a-core = { path = "crates/codetether-a2a-core", version = "0.1.0" }
+codetether-swarm-core = { path = "crates/codetether-swarm-core", version = "0.1.0" }
 codetether-ralph-core = { path = "crates/codetether-ralph-core", version = "0.1.0" }
 codetether-benchmark = { path = "crates/codetether-benchmark", version = "0.1.0" }
 codetether-github-pr = { path = "crates/codetether-github-pr", version = "0.1.0" }
@@ -194,6 +214,7 @@ codetether-bedrock-protocol = { path = "crates/codetether-bedrock-protocol", ver
 codetether-bedrock-refresh = { path = "crates/codetether-bedrock-refresh", version = "0.1.0" }
 codetether-approval-core = { path = "crates/codetether-approval-core", version = "0.1.0" }
 codetether-browser = { path = "crates/codetether-browser", version = "0.1.1" }
+codetether-runtime-policy = { path = "crates/codetether-runtime-policy", version = "0.1.0" }
 codetether-config = { path = "crates/codetether-config", version = "0.1.0" }
 codetether-codex-auth = { path = "crates/codetether-codex-auth", version = "0.1.0" }
 codetether-codex-protocol = { path = "crates/codetether-codex-protocol", version = "0.1.0" }
@@ -402,6 +423,7 @@ windows = { version = "0.62.2", features = [
 libc = "0.2.189"
 
 [dev-dependencies]
+codetether-approval-core = { path = "crates/codetether-approval-core", version = "0.1.0", features = ["test-support"] }
 async-std = "1.13.2"
 tokio-test = "0.4"
 tempfile = "3"

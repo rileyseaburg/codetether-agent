@@ -1,0 +1,41 @@
+//! Tool side-effect classification.
+
+/// Side-effect class used by [`crate::RuntimeToolPolicy`].
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_runtime_policy::ToolKind;
+///
+/// assert_eq!(ToolKind::for_name("read"), ToolKind::ReadOnly);
+/// assert_eq!(ToolKind::for_name("bash"), ToolKind::Mutating);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToolKind {
+    /// Known not to mutate local or remote state.
+    ReadOnly,
+    /// Known to be capable of mutating local or remote state.
+    Mutating,
+    /// Input to an already-approved process; does not create a new authority boundary.
+    SessionTransport,
+    /// Not classified; callers should treat it conservatively.
+    Unknown,
+}
+
+impl ToolKind {
+    /// Classify a tool name by its known side-effect behavior.
+    pub fn for_name(tool_name: &str) -> Self {
+        if tool_name == "write_stdin" {
+            Self::SessionTransport
+        } else if matches!(
+            tool_name,
+            "bash" | "exec_command" | "apply_patch" | "patch" | "rustyroad"
+        ) {
+            Self::Mutating
+        } else if codetether_tool_core::readonly::is_read_only(tool_name) {
+            Self::ReadOnly
+        } else {
+            Self::Unknown
+        }
+    }
+}

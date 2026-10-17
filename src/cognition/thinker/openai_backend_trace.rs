@@ -1,15 +1,9 @@
-//! Retry pacing and success logging for the OpenAI-compatible backend.
-
-use std::time::{Duration, Instant};
-
+//! Application retry and success diagnostics.
 use super::ThinkerOutput;
+use std::time::Instant;
 
-/// Sleep before a retry attempt; the first attempt does not wait.
-pub(super) async fn backoff(attempt: u32) {
-    if attempt > 0 {
-        tokio::time::sleep(Duration::from_millis(500 * u64::from(attempt))).await;
-        tracing::debug!(attempt, "retrying thinker HTTP request");
-    }
+pub(super) fn log_retry(attempt: u32) {
+    tracing::debug!(attempt, "retrying thinker HTTP request");
 }
 
 /// Record a completed request at debug level.

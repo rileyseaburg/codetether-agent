@@ -7,15 +7,8 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
+pub(crate) use codetether_tool_core::proposed::supported;
 use serde_json::Value;
-
-/// Whether [`contents`] can reconstruct proposed files for this tool.
-pub(crate) fn supported(tool: &str) -> bool {
-    matches!(
-        tool,
-        "apply_patch" | "patch" | "write" | "edit" | "multiedit"
-    )
-}
 
 /// Reconstruct the post-mutation content of every file a tool call touches.
 ///

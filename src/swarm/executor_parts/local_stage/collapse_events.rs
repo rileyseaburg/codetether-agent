@@ -2,7 +2,7 @@
 
 use super::state::State;
 use crate::swarm::SubTaskStatus;
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) fn killed(state: &State<'_>, id: &str, reason: &str) {
     let Some(events) = &state.executor.event_tx else {

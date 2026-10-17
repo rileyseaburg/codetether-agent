@@ -19,3 +19,6 @@ pub use runtime_env::export_worker_runtime_env;
 
 #[cfg(test)]
 mod consolidation;
+
+/// CloudEvent contracts and task-ingress normalization.
+pub mod cloudevents;

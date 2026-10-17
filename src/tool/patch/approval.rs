@@ -34,14 +34,7 @@ pub(super) fn verify(
         .map(Some)
         .map_err(|error| result::approval_invalid(error.to_string()))
 }
-
-pub(super) fn resource(files: &[String]) -> String {
-    match files {
-        [] => "workspace".to_string(),
-        [file] => file.clone(),
-        many => many.join(","),
-    }
-}
+pub(super) use codetether_tool_core::patch::approval_resource as resource;
 
 fn gated(mode: &PatchMode) -> bool {
     !mode.dry_run && env_requires_approval()

@@ -25,8 +25,7 @@
 //! * [`keep_last`] / [`keep_last_session`] — keep-last prefix compression.
 //! * [`oversized`] / [`oversized_text`] — oversized-last-message handling.
 //! * [`enforce`] + `enforce_*` — adaptive budget-cascade enforcement.
-//! * [`terminal`] / [`terminal_marker`] — terminal truncation last resort.
-//! * [`shrink`] / `shrink_*` — payload head/tail shrinking.
+//! * [`terminal`] / [`terminal_drop`] — shared fallback adapter and diagnostics.
 
 #[path = "../compression_defer.rs"]
 mod compression_defer;
@@ -36,8 +35,6 @@ mod compression_last_message;
 mod compression_summary;
 mod context;
 pub(crate) mod dropped_toc;
-#[cfg(test)]
-mod dropped_toc_tests;
 mod enforce;
 mod enforce_attempt;
 mod enforce_budget;
@@ -53,12 +50,8 @@ mod keep_last;
 mod keep_last_session;
 mod oversized;
 mod oversized_text;
-mod shrink;
-mod shrink_caps;
-mod shrink_part;
 mod terminal;
 mod terminal_drop;
-mod terminal_marker;
 
 #[cfg(test)]
 mod tests;

@@ -1,0 +1,19 @@
+[package]
+name = "codetether-context-policy"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Shared relevance and delegation calibration policy"
+license = "MIT"
+
+[dependencies]
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+serde_json = "1.0.151"
+sha2 = "0.10"
+anyhow = "1.0.104"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0.229", features = ["derive"] }
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt"] }

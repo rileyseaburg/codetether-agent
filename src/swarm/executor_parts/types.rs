@@ -19,7 +19,7 @@ use tokio::sync::mpsc;
 pub struct SwarmExecutor {
     pub(super) config: SwarmConfig,
     pub(super) coordinator_agent: Option<Arc<tokio::sync::Mutex<Agent>>>,
-    pub(super) event_tx: Option<mpsc::Sender<crate::tui::swarm_view::SwarmEvent>>,
+    pub(super) event_tx: Option<mpsc::Sender<codetether_swarm_core::SwarmEvent>>,
     pub(super) telemetry: Arc<SwarmTelemetryCollector>,
     pub(super) cache: Option<Arc<tokio::sync::Mutex<SwarmCache>>>,
     pub(super) result_store: Arc<ResultStore>,

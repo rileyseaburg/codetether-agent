@@ -1,45 +1,7 @@
-//! Validated request construction for registry-backed cognition.
-
-use anyhow::{Result, ensure};
-
-use super::ThinkerConfig;
-use crate::provider::openai_codex::reasoning_catalog;
-use crate::provider::{CompletionRequest, ContentPart, Message, Role};
-
-pub(super) fn validate_model(model: &str) -> Result<()> {
-    ensure!(
-        reasoning_catalog::is_gpt_56(model),
-        "cognition requires a GPT-5.6 class model"
-    );
-    Ok(())
-}
-
-pub(super) fn build(
-    config: &ThinkerConfig,
-    model: String,
-    system_prompt: &str,
-    user_prompt: &str,
-) -> CompletionRequest {
-    CompletionRequest {
-        messages: vec![
-            message(Role::System, system_prompt),
-            message(Role::User, user_prompt),
-        ],
-        tools: Vec::new(),
-        model,
-        temperature: Some(config.temperature),
-        top_p: config.top_p,
-        max_tokens: Some(config.max_tokens),
-        stop: Vec::new(),
-    }
-}
-
-fn message(role: Role, text: &str) -> Message {
-    Message {
-        role,
-        content: vec![ContentPart::Text { text: text.into() }],
-    }
-}
+//! Compatibility exports for shared registry-provider requests.
+pub(super) use codetether_cognition_core::thinker::protocol::provider_request::{
+    build, validate_model,
+};
 
 #[cfg(test)]
 mod tests {

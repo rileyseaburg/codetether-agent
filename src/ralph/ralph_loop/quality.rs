@@ -1,7 +1,7 @@
 //! Application shell policy and UI callbacks for shared quality sequencing.
 use super::*;
 use codetether_ralph_core::verification::{ShellExecutor, ShellOutput};
-struct QualityHost;
+pub(super) struct QualityHost;
 #[async_trait::async_trait]
 impl ShellExecutor for QualityHost {
     async fn execute(&self, cwd: &Path, command: &str) -> anyhow::Result<ShellOutput> {

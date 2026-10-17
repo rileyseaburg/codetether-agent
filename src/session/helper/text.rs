@@ -1,42 +1,9 @@
-use crate::provider::{ContentPart, Message, Role};
+pub use codetether_context_policy::transcript::{
+    extract_text_content, latest_user_text, role_label,
+};
 use regex::Regex;
 use std::path::Path;
 use std::sync::OnceLock;
-
-pub fn role_label(role: Role) -> &'static str {
-    match role {
-        Role::System | Role::Developer => "System",
-        Role::User => "User",
-        Role::Assistant => "Assistant",
-        Role::Tool => "Tool",
-    }
-}
-/// Extracts text content from a list of ContentParts.
-pub fn extract_text_content(parts: &[ContentPart]) -> String {
-    parts
-        .iter()
-        .filter_map(|part| match part {
-            ContentPart::Text { text } => Some(text.as_str()),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-/// Returns the text of the latest user message in the session.
-pub fn latest_user_text(messages: &[Message]) -> Option<String> {
-    messages.iter().rev().find_map(|m| {
-        if m.role != Role::User {
-            return None;
-        }
-        let text = extract_text_content(&m.content);
-        if text.trim().is_empty() {
-            None
-        } else {
-            Some(text)
-        }
-    })
-}
 
 /// Extracts candidate file paths from text that exist in the workspace.
 pub fn extract_candidate_file_paths(text: &str, cwd: &Path, max_files: usize) -> Vec<String> {

@@ -3,7 +3,7 @@
 use crate::bus::AgentBus;
 use crate::provider::Provider;
 use crate::swarm::ResultStore;
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{Semaphore, mpsc};

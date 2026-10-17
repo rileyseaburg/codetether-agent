@@ -15,3 +15,8 @@ pub use normalize::normalize_for_relay;
 pub use progress_prompt::build_prompt;
 pub use status::status_markdown;
 pub use story_prompt::build_story_prompt;
+
+mod parallel_prompt;
+mod repair_prompt;
+pub use parallel_prompt::build_parallel_prompt;
+pub use repair_prompt::build_repair_prompt;

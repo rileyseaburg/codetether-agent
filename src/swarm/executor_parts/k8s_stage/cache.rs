@@ -3,7 +3,7 @@
 use super::super::cache_result;
 use super::state::State;
 use crate::swarm::{SubTask, SubTaskResult, SubTaskStatus};
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) async fn find(state: &State<'_>, task: &SubTask) -> Option<SubTaskResult> {
     if !task.is_read_only() {

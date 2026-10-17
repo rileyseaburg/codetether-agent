@@ -2,7 +2,7 @@
 //! observable by other agents and tools — not just the local TUI monitor.
 
 use crate::bus::AgentBus;
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 use std::sync::Arc;
 
 #[path = "bus_publish_lifecycle.rs"]

@@ -2,7 +2,7 @@
 
 use crate::a2a::types::TaskState;
 use crate::bus::BusHandle;
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 
 /// Handle a lifecycle event, returning `true` when consumed.
 pub(super) fn handle(handle: &BusHandle, event: &SwarmEvent) -> bool {

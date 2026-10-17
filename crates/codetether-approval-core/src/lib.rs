@@ -1,8 +1,9 @@
 //! Approval records and their append-only authorization ledger.
 //!
 //! [`ApprovalStore`] records requests and decisions, then verifies that a
-//! receipt authorizes the exact tool, action, and resource requested. Live
-//! session delivery and process-local approval grants belong to the caller.
+//! receipt authorizes the exact tool, action, and resource requested. Shared
+//! process-local registries own pending decisions and session grants; callers
+//! deliver requests to interactive sessions.
 //!
 //! # Examples
 //! ```
@@ -39,3 +40,11 @@ mod tests;
 
 /// Advisory review contracts and prompt/output conversion.
 pub mod review;
+
+/// Shared records for interactive approval clients and execution adapters.
+pub mod interaction;
+
+/// Process-local grants for explicitly approved command prefixes.
+pub mod session_command_grants;
+/// Process-local grants for exact tool/action/resource approval tuples.
+pub mod session_grants;

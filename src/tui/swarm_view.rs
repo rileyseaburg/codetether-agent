@@ -4,7 +4,8 @@
 //! with per-sub-agent detail view showing tool call history,
 //! conversation messages, and output.
 
-use crate::swarm::{SubTaskStatus, SwarmStats};
+pub use codetether_swarm_core::{SubTaskInfo, SwarmEvent};
+use codetether_swarm_core::{SubTaskStatus, SwarmStats};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -25,90 +26,6 @@ mod swarm_view_list;
 #[path = "swarm_view_row.rs"]
 mod swarm_view_row;
 pub use swarm_view_detail::{AgentMessageEntry, AgentToolCallDetail};
-
-/// Events emitted by swarm execution for TUI updates
-#[derive(Debug, Clone)]
-pub enum SwarmEvent {
-    /// Swarm execution started
-    Started { task: String, total_subtasks: usize },
-    /// Task decomposition complete
-    Decomposed { subtasks: Vec<SubTaskInfo> },
-    /// SubTask status changed
-    SubTaskUpdate {
-        id: String,
-        name: String,
-        status: SubTaskStatus,
-        agent_name: Option<String>,
-    },
-    /// SubAgent started working
-    AgentStarted {
-        subtask_id: String,
-        agent_name: String,
-        specialty: String,
-    },
-    /// SubAgent made a tool call (basic)
-    AgentToolCall {
-        subtask_id: String,
-        tool_name: String,
-    },
-    /// SubAgent made a tool call with detail
-    AgentToolCallDetail {
-        subtask_id: String,
-        detail: AgentToolCallDetail,
-    },
-    /// SubAgent sent/received a message
-    AgentMessage {
-        subtask_id: String,
-        entry: AgentMessageEntry,
-    },
-    /// SubAgent completed
-    AgentComplete {
-        subtask_id: String,
-        success: bool,
-        steps: usize,
-    },
-    /// SubAgent produced output text
-    AgentOutput { subtask_id: String, output: String },
-    /// SubAgent encountered an error
-    AgentError { subtask_id: String, error: String },
-    /// Stage completed
-    StageComplete {
-        stage: usize,
-        completed: usize,
-        failed: usize,
-    },
-    /// Swarm execution complete
-    Complete { success: bool, stats: SwarmStats },
-    /// Error occurred
-    Error(String),
-}
-
-/// Information about a subtask for display
-#[derive(Debug, Clone)]
-pub struct SubTaskInfo {
-    pub id: String,
-    pub name: String,
-    pub status: SubTaskStatus,
-    pub stage: usize,
-    pub dependencies: Vec<String>,
-    pub agent_name: Option<String>,
-    pub current_tool: Option<String>,
-    pub steps: usize,
-    pub max_steps: usize,
-    /// Tool call history for this sub-agent
-    pub tool_call_history: Vec<AgentToolCallDetail>,
-    /// Conversation messages for this sub-agent
-    pub messages: Vec<AgentMessageEntry>,
-    /// Final output text
-    pub output: Option<String>,
-    /// Error message if failed
-    pub error: Option<String>,
-    /// When this agent started running (set on AgentStarted), for live elapsed.
-    #[doc(hidden)]
-    pub started_at: Option<std::time::Instant>,
-    /// Total wall-clock seconds the agent ran (set on completion).
-    pub elapsed_secs: Option<u64>,
-}
 
 /// State for the swarm view
 #[derive(Debug, Default)]

@@ -1,16 +1,7 @@
-//! Early-return for `derive_incremental` when the full history already
-//! fits the token budget.
-
-use crate::provider::{Message, ToolDefinition};
-use crate::session::ResidencyLevel;
-use crate::session::helper::experimental;
-use crate::session::helper::token::estimate_request_tokens;
-
+//! Session token-estimator adapter for the below-budget path.
 use super::helpers::DerivedContext;
-
-/// Return `Some(DerivedContext)` when `clone` already fits
-/// `budget_tokens`. The pairing-repair pass still runs so the LLM
-/// never sees orphaned tool calls.
+use crate::provider::{Message, ToolDefinition};
+use crate::session::helper::token::estimate_request_tokens;
 pub(super) fn try_pass_through(
     clone: &mut Vec<Message>,
     system_prompt: &str,
@@ -18,17 +9,10 @@ pub(super) fn try_pass_through(
     budget_tokens: usize,
     origin_len: usize,
 ) -> Option<DerivedContext> {
-    if estimate_request_tokens(system_prompt, clone, tools) > budget_tokens {
-        return None;
-    }
-    experimental::pairing::repair_orphans(clone);
-    let messages = std::mem::take(clone);
-    Some(DerivedContext {
-        resolutions: vec![ResidencyLevel::Full; messages.len()],
-        dropped_ranges: Vec::new(),
-        provenance: vec!["incremental_below_budget".to_string()],
-        messages,
+    codetether_context_policy::projection::incremental_below_budget::try_pass_through(
+        clone,
+        budget_tokens,
         origin_len,
-        compressed: false,
-    })
+        |messages| estimate_request_tokens(system_prompt, messages, tools),
+    )
 }

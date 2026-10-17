@@ -1,0 +1,8 @@
+//! Shared auto-chat policy regression tests.
+use super::*;
+mod ensure_required_relay_capabilities_adds_missing_caps;
+mod normalize_for_convergence_ignores_case_and_symbols;
+mod parse_autochat_args_with_count_only_uses_demo_task;
+mod parse_autochat_args_with_default_count;
+mod parse_autochat_request_detects_no_prd_flag;
+mod parse_autochat_request_supports_flag_anywhere;

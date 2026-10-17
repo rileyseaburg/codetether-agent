@@ -3,7 +3,7 @@
 //! Displays real-time status of the autonomous PRD-driven Ralph loop,
 //! showing story progress, quality gate results, and per-story sub-agent activity.
 
-use super::swarm_view::{AgentMessageEntry, AgentToolCallDetail};
+pub use codetether_ralph_core::events::{RalphEvent, RalphStoryInfo, RalphStoryStatus};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -12,131 +12,6 @@ use ratatui::{
     widgets::{Block, Borders, Gauge, List, ListItem, ListState, Paragraph, Wrap},
 };
 use tokio::sync::mpsc;
-
-// ---------------------------------------------------------------------------
-// Events
-// ---------------------------------------------------------------------------
-
-/// Events emitted by the Ralph loop for TUI updates
-#[derive(Debug, Clone)]
-pub enum RalphEvent {
-    /// Ralph loop started
-    Started {
-        project: String,
-        feature: String,
-        stories: Vec<RalphStoryInfo>,
-        max_iterations: usize,
-    },
-
-    /// New iteration started
-    IterationStarted {
-        iteration: usize,
-        max_iterations: usize,
-    },
-
-    /// Story work started
-    StoryStarted { story_id: String },
-
-    /// Agent tool call for a story (basic - name only)
-    StoryToolCall { story_id: String, tool_name: String },
-
-    /// Agent tool call with full detail
-    StoryToolCallDetail {
-        story_id: String,
-        detail: AgentToolCallDetail,
-    },
-
-    /// Agent message for a story
-    StoryMessage {
-        story_id: String,
-        entry: AgentMessageEntry,
-    },
-
-    /// Quality check result for a story
-    StoryQualityCheck {
-        story_id: String,
-        check_name: String,
-        passed: bool,
-    },
-
-    /// Story completed
-    StoryComplete { story_id: String, passed: bool },
-
-    /// Story output text
-    StoryOutput { story_id: String, output: String },
-
-    /// Story error
-    StoryError { story_id: String, error: String },
-
-    /// Merge result for a story (parallel mode)
-    StoryMerge {
-        story_id: String,
-        success: bool,
-        summary: String,
-    },
-
-    /// Stage completed (parallel mode)
-    StageComplete {
-        stage: usize,
-        completed: usize,
-        failed: usize,
-    },
-
-    /// Ralph loop complete
-    Complete {
-        status: String,
-        passed: usize,
-        total: usize,
-    },
-
-    /// Error
-    Error(String),
-}
-
-// ---------------------------------------------------------------------------
-// Story status
-// ---------------------------------------------------------------------------
-
-/// Status of an individual story in the Ralph view
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RalphStoryStatus {
-    Pending,
-    Blocked,
-    Running,
-    QualityCheck,
-    Passed,
-    Failed,
-}
-
-// ---------------------------------------------------------------------------
-// Story info
-// ---------------------------------------------------------------------------
-
-/// Information about a story for display
-#[derive(Debug, Clone)]
-pub struct RalphStoryInfo {
-    pub id: String,
-    pub title: String,
-    pub status: RalphStoryStatus,
-    pub priority: u8,
-    pub depends_on: Vec<String>,
-    /// Quality check results: (name, passed)
-    pub quality_checks: Vec<(String, bool)>,
-    /// Tool call history from sub-agent
-    pub tool_call_history: Vec<AgentToolCallDetail>,
-    /// Conversation messages from sub-agent
-    pub messages: Vec<AgentMessageEntry>,
-    /// Final output text
-    pub output: Option<String>,
-    /// Error message if failed
-    pub error: Option<String>,
-    /// Merge result summary
-    pub merge_summary: Option<String>,
-    /// Step counter for agent
-    pub steps: usize,
-    /// Current tool being executed
-    pub current_tool: Option<String>,
-}
 
 // ---------------------------------------------------------------------------
 // View state

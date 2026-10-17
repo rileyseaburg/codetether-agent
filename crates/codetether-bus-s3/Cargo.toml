@@ -1,0 +1,23 @@
+[package]
+name = "codetether-bus-s3"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "S3 archival adapter for CodeTether bus training records"
+license = "MIT"
+
+[dependencies]
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+anyhow = "1.0.104"
+async-global-executor = "2.4.1"
+chrono = "0.4"
+directories = "6"
+minio = "0.4.0"
+serde = { version = "1.0.229", features = ["derive"] }
+tokio = { version = "1.53.1", features = ["fs", "macros", "rt", "sync", "time"] }
+tracing = "0.1"
+uuid = { version = "1.24.0", features = ["v4"] }
+
+[dev-dependencies]
+async-std = "1.13.2"

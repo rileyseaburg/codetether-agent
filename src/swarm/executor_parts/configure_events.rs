@@ -2,7 +2,7 @@
 
 use super::{SwarmExecutor, bus_publish};
 use crate::telemetry::SwarmTelemetryCollector;
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_core::SwarmEvent;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 

@@ -1,7 +1,7 @@
 //! Approval preflight for unavailable OS sandbox runners.
 
-use super::{DecisionReason, RuntimeToolPolicy, ToolKind, ToolPolicyDecision, ToolPolicyOutcome};
-use crate::config::{ApprovalPolicy, SandboxMode};
+use super::{RuntimeToolPolicy, ToolPolicyDecision};
+use crate::config::ApprovalPolicy;
 use serde_json::Value;
 
 pub(super) fn decision(
@@ -21,28 +21,7 @@ pub(super) fn decision(
         crate::tool::sandbox::direct_fallback_env_allowed(),
     )
 }
-
-fn decision_for_state(
-    tool_name: &str,
-    command: &str,
-    mode: SandboxMode,
-    unavailable: Option<&str>,
-    env_allows_direct: bool,
-) -> Option<ToolPolicyDecision> {
-    if !matches!(tool_name, "bash" | "exec_command")
-        || super::command::is_read_only_command(command)
-    {
-        return None;
-    }
-    if matches!(mode, SandboxMode::DangerFullAccess) || unavailable.is_none() || env_allows_direct {
-        return None;
-    }
-    Some(ToolPolicyDecision::new(
-        ToolPolicyOutcome::RequireApproval,
-        DecisionReason::SandboxUnavailable,
-        ToolKind::Mutating,
-    ))
-}
+use codetether_runtime_policy::sandbox::decision_for_state;
 
 #[cfg(test)]
 #[path = "sandbox_preflight_policy_tests.rs"]

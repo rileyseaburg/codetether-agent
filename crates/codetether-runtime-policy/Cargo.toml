@@ -1,0 +1,16 @@
+[package]
+name = "codetether-runtime-policy"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Reusable runtime permission classification and decisions for CodeTether"
+license = "MIT"
+
+[dependencies]
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1.0.151"
+hex = "0.4"
+sha2 = "0.11.0"

@@ -1,4 +1,4 @@
-use super::{IssueSeverity, ValidationReport};
+use super::ValidationReport;
 use crate::swarm::{SubTask, SwarmConfig};
 use anyhow::Result;
 
@@ -24,16 +24,13 @@ impl SwarmValidator {
         let mut issues = Vec::new();
         let provider_status = self.validate_provider(&mut issues).await?;
         let workspace_status = self.validate_workspace(&mut issues)?;
-        self.validate_configuration(&mut issues);
-        self.validate_dependencies(subtasks, &mut issues);
-        let estimated_tokens = self.estimate_token_usage(subtasks, &provider_status, &mut issues);
-        let is_valid = !issues.iter().any(|i| i.severity == IssueSeverity::Error);
-        Ok(ValidationReport {
-            is_valid,
-            issues,
-            estimated_tokens,
-            provider_status,
-            workspace_status,
-        })
+        Ok(
+            codetether_swarm_core::validation::ValidationPolicy::new(self.config.clone()).validate(
+                subtasks,
+                provider_status,
+                workspace_status,
+                issues,
+            ),
+        )
     }
 }

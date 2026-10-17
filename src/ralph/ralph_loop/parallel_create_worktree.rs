@@ -1,0 +1,35 @@
+//! Create and isolate one story worktree, retaining fallback errors.
+use super::*;
+impl RalphLoop {
+    pub(super) async fn create_story_worktree(
+        mgr: Arc<WorktreeManager>,
+        story_id: String,
+    ) -> (String, Option<crate::worktree::WorktreeInfo>) {
+        let slug = story_id.to_lowercase().replace("-", "_");
+        match mgr.create(&slug).await {
+            Ok(wt) => {
+                if let Err(e) = mgr.inject_workspace_stub(&wt.path) {
+                    warn!(
+                        story_id = %story_id,
+                        error = %e,
+                        "Failed to inject workspace stub"
+                    );
+                }
+                info!(
+                    story_id = %story_id,
+                    worktree_path = %wt.path.display(),
+                    "Pre-created worktree for story"
+                );
+                (story_id, Some(wt))
+            }
+            Err(e) => {
+                warn!(
+                    story_id = %story_id,
+                    error = %e,
+                    "Failed to pre-create worktree, will use main directory"
+                );
+                (story_id, None)
+            }
+        }
+    }
+}

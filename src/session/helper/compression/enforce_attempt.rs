@@ -20,10 +20,13 @@ pub(super) fn attempt_fits(
     ctx: &CompressContext,
     env: &CascadeEnv<'_>,
 ) -> bool {
-    let history_trigger = ctx.rlm_config.history_trigger_messages;
-    let still_long =
-        history_trigger > 0 && message_count > history_trigger.saturating_sub(keep_last);
-    est <= env.safety_budget && !still_long
+    codetether_context_policy::compression::budget::attempt_fits(
+        message_count,
+        est,
+        keep_last,
+        ctx.rlm_config.history_trigger_messages,
+        env.safety_budget,
+    )
 }
 
 /// Structured log line for one compression attempt.

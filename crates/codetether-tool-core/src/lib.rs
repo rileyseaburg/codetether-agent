@@ -20,3 +20,15 @@ pub use result::ToolResult;
 mod tests;
 
 pub mod messages;
+
+/// Workspace-root validation and normalization of tool arguments.
+pub mod path_guard;
+
+/// Read-only tool classification shared by dispatch and permission policy.
+pub mod readonly;
+
+/// File-mutation preview classification shared by approval and tool dispatch.
+pub mod proposed;
+
+/// Pure patch parsing and transformation shared by tool adapters and policy.
+pub mod patch;

@@ -1,7 +1,8 @@
 //! Accumulation and event publication of assistant text.
 
 use super::{preview, state::State};
-use crate::tui::swarm_view::{AgentMessageEntry, SwarmEvent};
+use codetether_agent_core::events::AgentMessageEntry;
+use codetether_swarm_core::SwarmEvent;
 
 pub(super) fn record(state: &mut State, text: &str) {
     if text.is_empty() {

@@ -20,6 +20,8 @@ pub mod verifiability;
 pub mod verification;
 pub use template::create_prd_template;
 pub mod conflict_prompt;
+pub mod events;
 pub mod lifecycle;
 pub mod quality;
+pub mod rate_limit;
 pub mod relay_profiles;
