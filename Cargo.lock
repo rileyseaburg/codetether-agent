@@ -1302,6 +1302,7 @@ dependencies = [
  "codetether-plan",
  "codetether-platform",
  "codetether-plugin-marketplace",
+ "codetether-prd-tool",
  "codetether-provenance",
  "codetether-provider-anthropic",
  "codetether-provider-bedrock",
@@ -2280,6 +2281,20 @@ dependencies = [
  "serde",
  "sha2 0.11.0",
  "tracing",
+]
+
+[[package]]
+name = "codetether-prd-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "codetether-ralph-core",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

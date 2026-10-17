@@ -6485,3 +6485,20 @@ and whitespace checks. New files contain at most 48 code lines. Evidence:
 `artifacts/consolidation-image-tool/`. No images, URLs or tools were opened
 or executed; no runtime tests, Cargo, rustc or Python ran. Compilation remains
 unverified. The full workspace consolidation remains active.
+
+### Dedicated PRD generation and validation tool
+
+Moved `src/tool/prd.rs` into `crates/codetether-prd-tool`, using the existing
+PRD contracts and persistence in `codetether-ralph-core`. Twenty-three modules
+separate input records, schema, analysis text, story conversion, generation,
+save, validation, dependency-cycle detection and result formatting. The
+application retains a compatibility export for `PrdTool`.
+
+Static comparisons expand extracted helpers and verify all four original
+action bodies, the complete schema, input defaults, validation order and
+messages, cycle DFS, and validation summary. Generation timestamps and save
+behavior remain in the same order. Module reachability and dependency-cycle
+checks passed, as did file-budget and whitespace checks. New files contain
+at most 44 code lines. Evidence: `artifacts/consolidation-prd-tool/`.
+No PRD operations, quality-check commands, runtime tests, Cargo, rustc or
+Python ran. Compilation remains unverified; the full migration remains active.
