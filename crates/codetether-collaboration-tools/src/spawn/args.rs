@@ -1,6 +1,6 @@
 //! Spawn arguments and fork-history compatibility defaults.
 
-use crate::tool::collaboration::context::RuntimeContext;
+use crate::RuntimeContext;
 use serde::Deserialize;
 
 #[derive(Deserialize)]

@@ -25,6 +25,9 @@ mod spawn;
 #[path = "collaboration/wait.rs"]
 mod wait;
 
+#[path = "collaboration/host.rs"]
+mod host;
+
 use super::ToolRegistry;
 use std::sync::Arc;
 

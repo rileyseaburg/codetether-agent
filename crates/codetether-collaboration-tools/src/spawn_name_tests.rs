@@ -1,3 +1,4 @@
+//! Existing canonical task-name regression tests.
 use super::{generated, resolve};
 
 #[test]

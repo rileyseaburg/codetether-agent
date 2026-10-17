@@ -7,7 +7,9 @@ use anyhow::Result;
 
 pub(super) async fn ready(context: &RuntimeContext, target: &str) -> Result<Option<ToolResult>> {
     let owner = context.session_id.as_deref();
-    match crate::tool::agent::residency::open(target, owner, context.resume_config()).await? {
+    match crate::tool::agent::residency::open(target, owner, super::context::resume_config(context))
+        .await?
+    {
         EnsureOpen::Ready {
             agent_id,
             name,

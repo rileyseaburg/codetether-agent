@@ -1,9 +1,13 @@
 //! Canonical task-path attachment for successful spawn results.
 
-use crate::tool::{ToolResult, collaboration::context::RuntimeContext};
+use crate::{Host, RuntimeContext};
+use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
 
-pub(super) fn attach_task_path(mut result: ToolResult, context: &RuntimeContext) -> ToolResult {
+pub(super) fn attach_task_path<H: Host>(
+    mut result: ToolResult,
+    context: &RuntimeContext,
+) -> ToolResult {
     if !result.success {
         return result;
     }
@@ -16,9 +20,7 @@ pub(super) fn attach_task_path(mut result: ToolResult, context: &RuntimeContext)
     let Some(agent_id) = output.get("agent_id").and_then(Value::as_str) else {
         return result;
     };
-    let Ok(Some(path)) =
-        crate::tool::agent::collaboration_runtime::agent_tree::canonical(owner, agent_id)
-    else {
+    let Ok(Some(path)) = H::canonical(owner, agent_id) else {
         return result;
     };
     output["task_name"] = json!(path);

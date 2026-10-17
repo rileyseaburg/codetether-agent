@@ -1,14 +1,15 @@
 //! First-class spawn translation into the durable agent runtime.
 
 use super::{args::Args, name, result};
-use crate::tool::ToolResult;
+use crate::Host;
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
-pub(super) async fn execute(args: Args) -> Result<ToolResult> {
+pub(super) async fn execute<H: Host>(args: Args) -> Result<ToolResult> {
     let fork_turns = args.resolved_fork_turns();
     let name = name::resolve(args.task_name)?;
-    let output = super::super::legacy::execute(
+    let output = super::super::legacy::execute::<H>(
         &args.context,
         json!({
             "action":"spawn", "name":name,
@@ -20,5 +21,5 @@ pub(super) async fn execute(args: Args) -> Result<ToolResult> {
         .expect("spawn payload is an object"),
     )
     .await?;
-    Ok(result::attach_task_path(output, &args.context))
+    Ok(result::attach_task_path::<H>(output, &args.context))
 }

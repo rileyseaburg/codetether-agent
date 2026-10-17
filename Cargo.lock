@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-collaboration-tools",
  "codetether-go-tool",
  "codetether-image-generation",
  "codetether-indexer",
@@ -2424,6 +2425,18 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-collaboration-tools"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]

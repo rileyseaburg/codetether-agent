@@ -1,3 +1,4 @@
+//! Existing fork-history compatibility tests.
 use super::Args;
 use serde_json::json;
 

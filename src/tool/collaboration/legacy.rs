@@ -1,14 +1,11 @@
-//! Dispatch from first-class tools into the existing agent runtime.
-
-use super::context::RuntimeContext;
-use crate::tool::{Tool, ToolResult, agent::AgentTool};
+//! Forward collaboration operations through the existing application runtime.
+use super::{context::RuntimeContext, host::ApplicationHost};
+use crate::tool::ToolResult;
 use anyhow::Result;
 use serde_json::{Map, Value};
-
 pub(super) async fn execute(
     context: &RuntimeContext,
-    mut payload: Map<String, Value>,
+    payload: Map<String, Value>,
 ) -> Result<ToolResult> {
-    context.inject(&mut payload);
-    AgentTool::new().execute(Value::Object(payload)).await
+    codetether_collaboration_tools::execute::<ApplicationHost>(context, payload).await
 }

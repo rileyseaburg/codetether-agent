@@ -7785,3 +7785,25 @@ passed; new Rust modules contain at most 47 code lines. Evidence is in
 fetched, agent messages submitted or runtime tests executed. No Cargo, rustc or
 Python commands ran. Compilation remains unverified; the full consolidation
 goal remains active.
+
+### Dedicated collaboration lifecycle surface
+
+Moved shared runtime-context decoding/injection, legacy payload forwarding,
+spawn translation, canonical task-name handling, and interrupt/close/resume
+tools into `crates/codetether-collaboration-tools`. Seventeen Rust modules
+include four relocated fork-history/name tests. Application aliases preserve
+unit-style tool registration; its host still invokes the existing agent engine
+and canonical path lookup. Durable child loading retains its original resume
+configuration via an application conversion helper. Other collaboration tools
+reuse the shared context and forwarding path while remaining to be extracted.
+
+Forty-nine static preservation checks cover context fields, payloads, schemas,
+fork defaults, task-name validation, result enrichment, application adapters and
+unchanged registration. Crate module reachability, application declaration
+resolution, dependency cycles, file budgets and whitespace checks passed. The
+existing unregistered `mux_control` files remain outside the reachable surface.
+New Rust modules contain at most 43 code lines. Evidence is in
+`artifacts/consolidation-collaboration-tools/`. No agents were started or
+messaged, lifecycle actions performed, or runtime tests executed. No Cargo,
+rustc or Python commands ran. Compilation remains unverified; the full
+consolidation goal remains active.
