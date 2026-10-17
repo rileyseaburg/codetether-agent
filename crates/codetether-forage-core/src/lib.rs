@@ -24,3 +24,8 @@ pub use text::{truncate_chars_with_suffix, truncate_goal};
 pub use weights::{status_weight, urgency_bonus};
 
 mod record;
+
+/// Evidence-driven key-result progress updates.
+pub mod progress;
+/// Persistent objective seeding for forage workflows.
+pub mod seed;

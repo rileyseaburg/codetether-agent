@@ -39,7 +39,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
 | config | 1 | 1 | Configuration crate compatibility facade |
-| forage | 13 | 1616 | Opportunity contracts, scoring, prompts and summaries extracted; execution, seeding, persistence, CLI and event adapters remain |
+| forage | 13 | 1439 | Scoring, contracts, prompts, summaries, objective seeding and progress persistence extracted; execution, CLI and event adapters remain |
 | runtime_policy | 33 | 796 | Ownership audited: shared evaluation and approval policy in runtime-policy; application retains config-loading entry points, prior-context guard, sandbox probe and compatibility/test modules |
 | main | 1 | 1590 | Entrypoint/adapter; enforce thin boundary |
 | telemetry | 5 | 48 | Core extracted; thin application identity/startup adapters |
@@ -121,7 +121,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-lsp-core | 95 | yes | none |
 | codetether-marketplace | 4 | yes | none |
 | codetether-mesh | 3 | yes | none |
-| codetether-forage-core | 15 | yes | none |
+| codetether-forage-core | 24 | yes | none |
 | codetether-okr | 72 | yes | none |
 | codetether-paths | 5 | yes | none |
 | codetether-platform | 56 | yes | none |
@@ -3716,3 +3716,20 @@ Formatting, source limits and staged whitespace checks are the permitted
 validation. No Cargo, rustc, Python, scoring hook or forage execution ran.
 Compilation and tests remain unverified. Evidence: artifacts/consolidation-forage-core/.
 The full workspace consolidation goal remains active.
+
+## Forage objective seeding and progress persistence
+
+Forage-core now owns default/mission-derived objective seeding and execution
+progress recording. Seeding guards and repository call ordering are unchanged,
+and logging uses the original application target. Progress credit, outcome
+creation, evidence formatting/file caps and repository updates have separate
+modules. The host supplies borrowed execution facts instead of exposing CLI
+argument types to the shared crate.
+
+Fourteen static comparisons cover the original guards, formulas, repository
+sequence, metadata and unchanged root tests. Lexical graphs cover 24 shared
+and 13 application files with no missing/unreferenced modules. New
+modules have at most 42 code lines. Only existing anyhow/tracing dependency
+edges were added. No OKRs were read or written by runtime execution. No Cargo,
+rustc, Python or tests ran; compilation remains unverified. Evidence resides
+in artifacts/consolidation-forage-progress/. The full workspace goal is active.

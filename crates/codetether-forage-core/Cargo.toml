@@ -7,7 +7,9 @@ license = "MIT"
 description = "Shared forage scoring, prompts and summaries"
 
 [dependencies]
+anyhow = "1.0.104"
 codetether-okr = { path = "../codetether-okr", version = "0.1.0" }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 uuid = { version = "1.24.0", features = ["serde"] }
+tracing = "0.1"
