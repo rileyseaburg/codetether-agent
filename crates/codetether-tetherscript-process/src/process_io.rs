@@ -1,3 +1,4 @@
+//! Subprocess stdin delivery and output-reader joins.
 use super::process_types::PipeOutput;
 use std::io::Write;
 use std::process::Child;

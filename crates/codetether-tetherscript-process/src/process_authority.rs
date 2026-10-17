@@ -1,14 +1,31 @@
+//! TetherScript authority retaining one Result layer on both execution paths.
 use super::{process_run, process_types};
 use std::any::Any;
 use std::rc::Rc;
 use tetherscript::capability::Authority;
 use tetherscript::value::{Runtime, Value};
 
+/// Supplies the `codetether_process.run` native capability to a script runtime.
+///
+/// # Examples
+/// ```rust
+/// let _authority=codetether_tetherscript_process::ProcessAuthority::new(None);
+/// ```
 pub struct ProcessAuthority {
     progress_id: Option<String>,
 }
 
 impl ProcessAuthority {
+    /// Construct an authority with optional live-output delivery.
+    ///
+    /// # Arguments
+    /// * `progress_id` - Registered invocation ID, or None for the native execution path.
+    /// # Returns
+    /// An authority shared through the script runtime's local reference counter.
+    /// # Examples
+    /// ```rust
+    /// let _authority=codetether_tetherscript_process::ProcessAuthority::new(Some("call".into()));
+    /// ```
     pub fn new(progress_id: Option<String>) -> Rc<dyn Authority> {
         Rc::new(Self { progress_id })
     }

@@ -1,3 +1,4 @@
+//! Poll subprocess completion and enforce its timeout.
 use std::process::{Child, ExitStatus};
 use std::thread;
 use std::time::{Duration, Instant};

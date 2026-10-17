@@ -1,3 +1,4 @@
+//! Subprocess status and output conversion into script values.
 use super::process_types::{PipeOutput, map, string};
 use std::collections::HashMap;
 use std::process::ExitStatus;

@@ -1,3 +1,4 @@
+//! Typed process arguments and timeout defaults.
 use tetherscript::value::Value;
 
 pub fn string_arg(value: &Value, label: &str) -> Result<String, String> {

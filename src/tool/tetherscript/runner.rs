@@ -17,16 +17,6 @@ mod host_grants;
 mod interp;
 mod outcome;
 mod parse;
-mod process_args;
-mod process_authority;
-mod process_io;
-mod process_output;
-mod process_prelude;
-mod process_result;
-mod process_run;
-mod process_spawn;
-mod process_types;
-mod process_wait;
 mod unwind;
 
 pub use browser::BrowserGrant;

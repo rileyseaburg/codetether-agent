@@ -1,3 +1,4 @@
+//! Validate process_run arguments before process creation.
 use super::{process_args, process_spawn};
 use tetherscript::value::Value;
 

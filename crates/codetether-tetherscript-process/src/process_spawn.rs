@@ -1,3 +1,4 @@
+//! Own subprocess pipes, reader threads and execution sequencing.
 use super::{process_io, process_output, process_result, process_types::PipeOutput, process_wait};
 use std::io::Read;
 use std::process::{Child, Command, Stdio};

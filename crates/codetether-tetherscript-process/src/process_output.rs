@@ -1,3 +1,4 @@
+//! Bounded output accumulation and live progress delivery.
 use super::process_types::{MAX_BYTES, PipeOutput};
 use std::io::{self, Read};
 
@@ -9,7 +10,7 @@ pub fn read<R: Read>(mut reader: R, id: String, stream: &'static str) -> io::Res
         if count == 0 {
             break;
         }
-        crate::tool::progress::emit(&id, stream, String::from_utf8_lossy(&buf[..count]).into());
+        codetether_tool_progress::emit(&id, stream, String::from_utf8_lossy(&buf[..count]).into());
         if bytes.len() <= MAX_BYTES {
             bytes.extend_from_slice(&buf[..count]);
         }
