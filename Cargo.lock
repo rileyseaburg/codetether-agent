@@ -1299,6 +1299,7 @@ dependencies = [
  "codetether-context-pin",
  "codetether-context-policy",
  "codetether-context-reset",
+ "codetether-context-summarize",
  "codetether-crash",
  "codetether-distill",
  "codetether-edit",
@@ -2112,6 +2113,19 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-context-summarize"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-context-loader",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-tool-core",
+ "serde_json",
 ]
 
 [[package]]

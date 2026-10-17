@@ -7529,3 +7529,21 @@ checks passed; new Rust files contain at most 26 code lines. Evidence lives in
 `artifacts/consolidation-context-pin/`. No sessions were modified, runtime tests,
 Cargo, rustc or Python commands run. Compilation remains unverified; the full
 consolidation goal remains active.
+
+### Dedicated context summary tool
+
+Moved context summary parsing, schema, cached/produced response formatting,
+provider state and cache/produce/persist orchestration into
+`crates/codetether-context-summarize`. Nine modules separate these concerns. The
+application supplies its existing summary index, cloned producer context, RLM
+producer and summary-store write through a typed session adapter. Cached-only
+construction and provider/model construction retain their existing callers.
+
+Nineteen static preservation checks compare request defaults, constructors,
+cache-first behavior, snapshot cloning order, producer parameters, insertion and
+persistence ordering, and response formatting. Module reachability, dependency
+cycles, file budgets and whitespace checks passed; new Rust files contain at
+most 37 code lines. Evidence lives in `artifacts/consolidation-context-summarize/`.
+No summaries were generated, sessions written, runtime tests, Cargo, rustc or
+Python commands run. Compilation remains unverified; the full consolidation
+goal remains active.

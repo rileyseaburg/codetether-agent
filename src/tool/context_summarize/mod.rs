@@ -1,12 +1,12 @@
-//! `context_summarize` module.
-
-mod execute;
-mod logic;
-mod parse;
-mod produce;
-mod respond;
-mod run;
-mod schema;
-mod tool_struct;
-
-pub use tool_struct::ContextSummarizeTool;
+//! Context summary tool bound to the application's producer and session store.
+mod prepared;
+mod production;
+mod source;
+/// Cached or on-demand summaries using the existing application session backend.
+///
+/// # Examples
+/// ```rust
+/// let _tool=codetether_agent::tool::context_summarize::ContextSummarizeTool::cached_only();
+/// ```
+pub type ContextSummarizeTool =
+    codetether_context_summarize::ContextSummarizeTool<crate::session::Session>;

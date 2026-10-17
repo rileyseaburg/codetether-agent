@@ -1,6 +1,6 @@
 //! Argument parsing for `context_summarize`.
 
-use crate::session::index::types::SummaryRange;
+use codetether_context_policy::summary_index::types::SummaryRange;
 
 /// Parsed summarize request.
 pub struct SummaryArgs {

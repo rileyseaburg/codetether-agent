@@ -1,7 +1,7 @@
 //! Response formatting for `context_summarize`.
 
-use super::super::ToolResult;
-use crate::session::index::types::SummaryNode;
+use codetether_context_policy::summary_index::types::SummaryNode;
+use codetether_tool_core::ToolResult;
 
 /// Format a cached summary response.
 pub fn cached(node: &SummaryNode) -> ToolResult {

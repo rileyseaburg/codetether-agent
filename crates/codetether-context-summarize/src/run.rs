@@ -2,25 +2,28 @@
 
 use std::sync::Arc;
 
-use super::super::ToolResult;
-use super::super::context_helpers::load_calling_session;
-use super::logic::lookup_cached;
+use codetether_context_loader::load_calling_session;
+use codetether_tool_core::ToolResult;
+
 use super::tool_struct::ContextSummarizeTool;
 use super::{parse, respond};
 use anyhow::Result;
 use serde_json::Value;
 
 /// Run the summarize tool.
-pub async fn run(tool: &ContextSummarizeTool, args: Value) -> Result<ToolResult> {
+pub async fn run<S: crate::SummarySource>(
+    tool: &ContextSummarizeTool<S>,
+    args: Value,
+) -> Result<ToolResult> {
     let parsed = match parse::parse(&args) {
         Ok(parsed) => parsed,
         Err(message) => return Ok(ToolResult::error(message)),
     };
-    let mut session = match load_calling_session(&args).await? {
+    let mut session = match load_calling_session::<S>(&args).await? {
         Some(s) => s,
         None => return Ok(ToolResult::error("No active session.")),
     };
-    if let Some(node) = lookup_cached(&session, parsed.range) {
+    if let Some(node) = session.summary_index().get(parsed.range) {
         return Ok(respond::cached(node));
     }
     let (Some(provider), Some(model)) = (&tool.provider, &tool.model) else {
@@ -28,7 +31,7 @@ pub async fn run(tool: &ContextSummarizeTool, args: Value) -> Result<ToolResult>
             "Summary not cached and no provider is available.",
         ));
     };
-    let node = super::produce::produce_cached(
+    let node = super::produce::produce_cached::<S>(
         &mut session,
         parsed.range,
         parsed.target,

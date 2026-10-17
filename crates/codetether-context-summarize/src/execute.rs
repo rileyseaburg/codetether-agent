@@ -1,14 +1,14 @@
 //! Tool trait implementation for `context_summarize`.
 
-use super::super::{Tool, ToolResult};
 use super::schema;
 use super::tool_struct::ContextSummarizeTool;
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 
 #[async_trait]
-impl Tool for ContextSummarizeTool {
+impl<S: crate::SummarySource> Tool for ContextSummarizeTool<S> {
     fn id(&self) -> &str {
         "context_summarize"
     }
