@@ -119,7 +119,6 @@ mod worker_loop;
 mod worker_security;
 mod worker_server_loop;
 mod worker_tool_catalog;
-pub(super) mod workspace_resolve;
 mod workspace_scope;
 mod workspace_sync;
 mod workspace_sync_git;

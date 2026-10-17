@@ -5486,3 +5486,22 @@ files contain at most 45 code lines. File-budget and whitespace checks passed.
 Evidence: `artifacts/consolidation-task-finalization/`. Compilation, tests,
 and repository publication remain unrun. No Cargo, rustc, or Python commands
 ran. The broader implementation migration remains active.
+
+### Shared workspace coordination
+
+Moved workspace-ID resolution diagnostics and periodic workspace synchronization
+scheduling into the HTTP workspace module. The worker supplies repository setup
+through the existing callback and retains its runtime progress adapter. The
+first interval tick is still consumed without synchronization, followed by
+60-second ticks with missed ticks skipped. Removed the now-unused worker
+workspace-resolution forwarding module.
+
+Static comparison verifies all three moved functions and unchanged runtime
+progress synchronization. ID ordering, diagnostics, sync timing, callback
+placement and log targets are preserved. The module scan reaches all 109 HTTP
+files and 267 application A2A files without missing/orphaned modules; the
+expanded dependency closure is acyclic. New files contain at most 32 code
+lines. File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-workspace-coordination/`. Compilation, tests and
+background synchronization remain unrun. No Cargo, rustc, or Python commands
+ran. The broader migration remains active.

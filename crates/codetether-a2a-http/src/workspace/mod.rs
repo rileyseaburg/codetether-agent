@@ -19,3 +19,8 @@ pub use register::register_cloned_workspace;
 
 mod sync;
 pub use sync::sync_workspaces_from_server;
+
+mod scope;
+pub use scope::resolve_and_log_workspace_ids;
+mod sync_start;
+pub use sync_start::start_workspace_sync;
