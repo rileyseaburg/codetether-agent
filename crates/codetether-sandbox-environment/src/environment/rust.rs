@@ -3,7 +3,15 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub(crate) fn rustup_home() -> Option<PathBuf> {
+/// Find an absolute existing Rustup home from the host environment.
+///
+/// # Returns
+/// The configured or conventional metadata directory when present.
+/// # Examples
+/// ```rust,no_run
+/// let _home = codetether_sandbox_environment::rustup_home();
+/// ```
+pub fn rustup_home() -> Option<PathBuf> {
     std::env::var_os("RUSTUP_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".rustup")))

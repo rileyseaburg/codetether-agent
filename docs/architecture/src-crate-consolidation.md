@@ -2267,6 +2267,22 @@ passed. Files contain at most 45 code lines. Evidence:
 tests, Cargo, rustc or Python ran. Compilation and runtime behavior remain
 unverified. The complete workspace migration remains active.
 
+### Shared sandbox environment and toolchain discovery
+
+Moved restricted environment construction, active executable exposure,
+Rustup metadata discovery and read-only runtime root/PATH selection into
+`crates/codetether-sandbox-environment`. Nine files own the implementation and
+five existing unit tests. The application retains environment/toolchain
+compatibility exports and its unchanged live sandbox test.
+
+Static comparisons verify environment values, filesystem-root filtering,
+PATH ordering, deduplication, default runtime locations and all moved tests.
+Module reachability, dependency-cycle, file-budget and whitespace checks
+passed. Files contain at most 45 code lines. Evidence:
+`artifacts/consolidation-sandbox-environment/`. No environment resolution,
+toolchain execution, sandbox commands, runtime tests, Cargo, rustc or Python
+ran. Compilation remains unverified. The full workspace goal remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

@@ -1,0 +1,13 @@
+[package]
+name = "codetether-sandbox-environment"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Restricted sandbox environments and host runtime discovery"
+
+[dependencies]
+codetether-sandbox-policy = { path = "../codetether-sandbox-policy", version = "0.1.0" }
+
+[dev-dependencies]
+tempfile = "3"

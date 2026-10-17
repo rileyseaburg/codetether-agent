@@ -1336,6 +1336,7 @@ dependencies = [
  "codetether-ripgrep-tool",
  "codetether-rlm",
  "codetether-runtime-policy",
+ "codetether-sandbox-environment",
  "codetether-sandbox-policy",
  "codetether-search",
  "codetether-secrets",
@@ -2808,6 +2809,14 @@ dependencies = [
  "hex",
  "serde_json",
  "sha2 0.11.0",
+]
+
+[[package]]
+name = "codetether-sandbox-environment"
+version = "0.1.0"
+dependencies = [
+ "codetether-sandbox-policy",
+ "tempfile",
 ]
 
 [[package]]
