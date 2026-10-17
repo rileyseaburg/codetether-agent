@@ -38,3 +38,6 @@ pub mod activity;
 
 /// Terminal message settlement with best-effort telemetry.
 pub mod settlement;
+
+/// Stream request records, response artifacts and terminal outcomes.
+pub mod stream;

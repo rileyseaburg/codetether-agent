@@ -1,6 +1,22 @@
 //! Store stream success and record completion telemetry.
 use super::*;
-pub(super) fn complete(
+/// Complete a stream task, append its response and record telemetry.
+///
+/// # Arguments
+///
+/// Supply the task table, task id, context, prompt, start time and result text.
+///
+/// # Returns
+///
+/// Returns after the task update and best-effort observation recording.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_a2a_http::task_state::stream::complete::complete;
+/// let _operation = complete;
+/// ```
+pub fn complete(
     tasks: &DashMap<String, Task>,
     task_id: &String,
     context_id: Option<String>,

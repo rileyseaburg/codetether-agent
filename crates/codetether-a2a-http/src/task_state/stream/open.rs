@@ -1,6 +1,22 @@
 //! Build the initial working task record.
 use super::*;
-pub(super) fn open(params: &MessageSendParams) -> (String, Task) {
+/// Build an initial working task from an accepted stream request.
+///
+/// # Arguments
+///
+/// * `params` - Accepted message request from which to build the task.
+///
+/// # Returns
+///
+/// The existing or generated task id and a new working task record.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_a2a_http::task_state::stream::open::open;
+/// let _operation = open;
+/// ```
+pub fn open(params: &MessageSendParams) -> (String, Task) {
     let task_id = params
         .message
         .task_id

@@ -12,6 +12,8 @@ use crate::bus::BusMessage;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
+#[path = "server_http_host.rs"]
+mod http_host;
 #[path = "server_intro.rs"]
 mod server_intro;
 #[path = "server_message_send.rs"]
@@ -22,9 +24,6 @@ mod server_session_event;
 mod server_settle_build;
 #[path = "server_turn.rs"]
 mod server_turn;
-use codetether_telemetry::a2a_recording::record_a2a_message_telemetry;
-#[path = "server_http_host.rs"]
-mod http_host;
 
 mod bus;
 mod card;

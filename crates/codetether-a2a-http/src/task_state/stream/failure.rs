@@ -1,6 +1,22 @@
 //! Record a failed stream execution.
 use super::*;
-pub(super) fn record(
+/// Record a failed stream execution and its telemetry.
+///
+/// # Arguments
+///
+/// Supply the task table, task id, prompt, start time and execution error.
+///
+/// # Returns
+///
+/// Returns after marking the task failed and recording an observation.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_a2a_http::task_state::stream::failure::record;
+/// let _operation = record;
+/// ```
+pub fn record(
     tasks: &DashMap<String, Task>,
     task_id: &str,
     prompt: &str,

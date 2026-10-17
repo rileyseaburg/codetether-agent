@@ -5921,3 +5921,22 @@ orphaned modules; the dependency closure is acyclic. New files contain at most
 `artifacts/consolidation-a2a-settlement/`. Compilation, tests and live persistence
 remain unrun. No Cargo, rustc or Python commands ran. The broader migration
 remains active.
+
+### Shared stream task-state handling
+
+Moved stream request text extraction, working-task construction, reply/artifact
+construction, successful completion, completion-event logging, execution failure
+and session-construction failure into `codetether-a2a-http::task_state::stream`.
+All eight prior application implementation files are deleted. Application
+session execution now imports the shared operations while preserving the
+stream-specific task and failure semantics.
+
+Static comparison confirms identical function tokens after the required public
+visibility changes. Caller declarations match the intended module substitutions;
+the comparison ignores declaration ordering changed by rustfmt. The module scan
+reaches 237 application A2A files, 151 HTTP files and 63 telemetry files without
+missing/orphaned modules; the dependency closure is acyclic. New function files
+contain at most 30 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-stream-state/`. Compilation, tests and live
+stream execution remain unrun. No Cargo, rustc or Python commands ran. The
+broader migration remains active.
