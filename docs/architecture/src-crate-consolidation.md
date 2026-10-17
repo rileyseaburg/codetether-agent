@@ -8246,3 +8246,21 @@ Module/dependency, file-budget and whitespace checks passed; crate files contain
 at most 40 code lines. Evidence is in `artifacts/consolidation-child-events/`.
 Compilation and runtime tests were not run. No Cargo, rustc or Python commands
 ran. The full consolidation goal remains active.
+
+### Dedicated managed-agent live traces
+
+Moved the synchronized in-flight trace registry, snapshot/entry types, text and
+tool-event reducers into `crates/codetether-agent-trace`. Seven Rust modules
+separate storage, borrowed event fields, output records and reducers. The
+application maps native session events without allocating copied event data.
+The registry still replaces traces on begin, ignores unknown identities,
+clones snapshots for display and supports idempotent cleanup. Cumulative drafts,
+completed entries, 4,000-character tool previews and activity text are preserved.
+
+Twenty-one static preservation checks cover storage, types, reducers, native
+mapping and unchanged callers. The three existing trace tests remain unchanged,
+including event-collector observation before completion. Module/dependency,
+file-budget and whitespace checks passed; new crate modules contain at most 37
+code lines. Evidence is in `artifacts/consolidation-agent-trace/`. Compilation
+and runtime tests were not run. No Cargo, rustc or Python commands ran. The full
+consolidation goal remains active.

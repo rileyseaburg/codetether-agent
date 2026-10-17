@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-agent-trace",
  "codetether-child-events",
  "codetether-agent-spawn",
  "codetether-child-workspace",
@@ -2449,6 +2450,15 @@ dependencies = [
  "anyhow",
  "codetether-collaboration-state",
  "serde",
+]
+
+[[package]]
+name = "codetether-agent-trace"
+version = "0.1.0"
+dependencies = [
+ "codetether-child-events",
+ "lazy_static",
+ "parking_lot",
 ]
 
 [[package]]

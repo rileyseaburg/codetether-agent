@@ -1,0 +1,12 @@
+[package]
+name = "codetether-agent-trace"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Live child-agent transcript snapshots and event reduction"
+
+[dependencies]
+codetether-child-events = { path = "../codetether-child-events", version = "0.1.0" }
+lazy_static = "1"
+parking_lot = "0.12"
