@@ -25,39 +25,20 @@ impl RalphLoop {
         model: String,
         config: RalphConfig,
     ) -> anyhow::Result<Self> {
-        let prd = Prd::load(&prd_path).await?;
-
-        // Get working directory - use parent of prd_path or current directory
-        let working_dir = if let Some(parent) = prd_path.parent() {
-            if parent.as_os_str().is_empty() {
-                std::env::current_dir()?
-            } else {
-                parent.to_path_buf()
-            }
-        } else {
-            std::env::current_dir()?
-        };
-
-        info!(
-            "Loaded PRD: {} - {} ({} stories, {} already passed)",
-            prd.project,
-            prd.feature,
-            prd.user_stories.len(),
-            prd.passed_count()
-        );
-
-        // Resume iteration counter: each passed story consumed one iteration
-        let resumed_iterations = prd.passed_count();
-
-        let state = RalphState {
-            prd,
-            current_iteration: resumed_iterations,
-            max_iterations: config.max_iterations,
-            status: RalphStatus::Pending,
-            progress_log: Vec::new(),
-            prd_path: prd_path.clone(),
-            working_dir,
-        };
+        let state = codetether_ralph_core::lifecycle::load_initial_state(
+            &prd_path,
+            config.max_iterations,
+            |prd| {
+                info!(
+                    "Loaded PRD: {} - {} ({} stories, {} already passed)",
+                    prd.project,
+                    prd.feature,
+                    prd.user_stories.len(),
+                    prd.passed_count()
+                );
+            },
+        )
+        .await?;
 
         Ok(Self {
             state,
