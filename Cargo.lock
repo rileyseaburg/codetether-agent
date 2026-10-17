@@ -2435,8 +2435,10 @@ dependencies = [
  "async-trait",
  "codetether-collaboration-input",
  "codetether-tool-core",
+ "futures",
  "serde",
  "serde_json",
+ "tokio",
  "tracing",
  "uuid",
 ]

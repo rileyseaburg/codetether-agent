@@ -31,6 +31,9 @@ mod host;
 #[path = "collaboration/messaging_host.rs"]
 mod messaging_host;
 
+#[path = "collaboration/wait_host.rs"]
+mod wait_host;
+
 use super::ToolRegistry;
 use std::sync::Arc;
 

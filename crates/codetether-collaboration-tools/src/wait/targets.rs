@@ -1,27 +1,25 @@
 //! Resolve requested targets into status subscriptions.
 
-use crate::tool::agent::collaboration_runtime::thread_status::{self, ThreadStatus};
+use crate::{ThreadStatus, WaitHost};
 use anyhow::Result;
 use serde_json::{Map, Value, to_value};
 use tokio::sync::watch;
 
 pub(super) type Receiver = watch::Receiver<ThreadStatus>;
 
-pub(super) fn resolve(
+pub(super) fn resolve<H: WaitHost>(
     owner: &str,
     targets: &[String],
 ) -> Result<(Map<String, Value>, Vec<(String, Receiver)>)> {
     let mut final_status = Map::new();
     let mut receivers = Vec::new();
     for target in targets {
-        let Some(agent) =
-            crate::tool::agent::bridge::find_agent_tool_agent_for_parent(target, owner)
-        else {
+        let Some(agent) = H::find_agent(target, owner) else {
             final_status.insert(target.clone(), to_value(ThreadStatus::NotFound)?);
             continue;
         };
-        ensure_status(&agent.id, agent.is_processing);
-        let receiver = thread_status::subscribe(&agent.id).expect("status initialized");
+        ensure_status::<H>(&agent.id, agent.is_processing);
+        let receiver = H::subscribe(&agent.id).expect("status initialized");
         let current = receiver.borrow().clone();
         if current.is_final() {
             final_status.insert(agent.id, to_value(current)?);
@@ -32,8 +30,8 @@ pub(super) fn resolve(
     Ok((final_status, receivers))
 }
 
-fn ensure_status(agent_id: &str, running: bool) {
-    if thread_status::subscribe(agent_id).is_some() {
+fn ensure_status<H: WaitHost>(agent_id: &str, running: bool) {
+    if H::subscribe(agent_id).is_some() {
         return;
     }
     let status = if running {
@@ -41,5 +39,5 @@ fn ensure_status(agent_id: &str, running: bool) {
     } else {
         ThreadStatus::Completed(None)
     };
-    thread_status::set(agent_id, status);
+    H::set_status(agent_id, status);
 }

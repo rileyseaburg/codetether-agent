@@ -1,17 +1,18 @@
 //! Hidden compatibility path for V1 target-based waits.
 
 use super::{subscriptions, targets};
-use crate::tool::ToolResult;
+use crate::WaitHost;
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 use serde_json::{Map, Value, json};
 use tokio::time::Instant;
 
-pub(super) async fn execute(
+pub(super) async fn execute<H: WaitHost>(
     owner: &str,
     requested: &[String],
     deadline: Instant,
 ) -> Result<ToolResult> {
-    let (initial, receivers) = targets::resolve(owner, requested)?;
+    let (initial, receivers) = targets::resolve::<H>(owner, requested)?;
     if !initial.is_empty() {
         return Ok(result(initial, false));
     }

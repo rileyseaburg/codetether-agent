@@ -1,3 +1,4 @@
+//! Existing regression coverage for collaboration waits.
 use super::{Activity, result};
 
 #[test]

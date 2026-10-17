@@ -1,7 +1,7 @@
 //! Codex-compatible V2 wait result rendering.
 
-use crate::tool::ToolResult;
-use crate::tool::agent::collaboration_runtime::parent_activity::Activity;
+use crate::Activity;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 pub(super) fn result(activity: Option<Activity>) -> ToolResult {

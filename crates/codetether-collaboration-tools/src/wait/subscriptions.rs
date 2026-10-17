@@ -1,7 +1,7 @@
 //! Await status changes across multiple child watch channels.
 
 use super::targets::Receiver;
-use crate::tool::agent::collaboration_runtime::thread_status::ThreadStatus;
+use crate::ThreadStatus;
 use futures::{FutureExt, StreamExt, stream::FuturesUnordered};
 use serde_json::{Map, Value, to_value};
 use tokio::time::Instant;

@@ -1,5 +1,6 @@
+//! Existing regression coverage for collaboration waits.
 use super::first_final;
-use crate::tool::agent::collaboration_runtime::thread_status::ThreadStatus;
+use crate::ThreadStatus;
 use serde_json::json;
 use std::time::Duration;
 use tokio::sync::watch;

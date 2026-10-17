@@ -7845,3 +7845,22 @@ modules contain at most 47 code lines. Evidence is in
 `artifacts/consolidation-collaboration-send-input/`. No agent submission,
 interruption or runtime tests were performed. No Cargo, rustc or Python commands
 ran. Compilation remains unverified; the full consolidation goal remains active.
+
+### Shared collaboration waits and status contracts
+
+Moved `wait_agent` dispatch, timeout validation, legacy target resolution,
+first-final subscription handling and result rendering into
+`codetether-collaboration-tools`. Shared `ThreadStatus` and parent `Activity`
+values now have one crate owner; application aliases preserve existing live
+registries and notification queues. The crate now contains forty-nine Rust
+modules. Three timeout/outcome/subscription tests moved with the code, while
+five existing application wait tests retain their runtime bindings.
+
+Thirty-two static preservation checks cover serde states, final-state semantics,
+parent notifications, scoped lookup and status initialization, deadline handling,
+V1/V2 dispatch, closed-channel behavior, responses and moved/retained tests.
+Module/dependency checks, file budgets and whitespace checks passed; crate
+modules contain at most 47 code lines. Evidence is in
+`artifacts/consolidation-collaboration-wait/`. No wait was started, runtime tests
+executed, or Cargo, rustc or Python commands run. Compilation remains unverified;
+the full source-to-crates consolidation goal remains active.

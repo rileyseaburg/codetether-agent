@@ -5,12 +5,7 @@ use std::sync::Mutex;
 use tokio::sync::Notify;
 
 const MAX_PENDING: usize = 256;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Activity {
-    Mailbox,
-    Steered(u64),
-}
+pub(crate) use codetether_collaboration_tools::Activity;
 
 #[derive(Default)]
 pub(super) struct Channel {
