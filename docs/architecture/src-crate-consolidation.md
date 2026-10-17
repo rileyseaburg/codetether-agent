@@ -5247,3 +5247,22 @@ contain at most 38 code lines. Dependency-cycle, file-budget, and whitespace
 checks passed. Evidence: `artifacts/consolidation-clone-lock/`. Compilation,
 tests, and filesystem lock operations were not run. No Cargo, rustc, or Python
 commands ran. The broader implementation migration remains active.
+
+### Shared workspace catalog and checkout registration
+
+The HTTP workspace module now owns control-plane workspace listing, alternate
+response-envelope parsing, local-root matching, resolved workspace records,
+and completed-clone registration. Worker modules re-export these operations.
+No dependency or configuration changes were needed because the existing
+workspace record already belongs to the HTTP crate.
+
+Static comparison verifies all six moved definitions and preserves both
+existing root-matching tests. Registration URL normalization, payload fields,
+bearer handling, response status checks, and error strings are unchanged;
+workspace query logging retains its original target. The lexical module scan
+covers 74 HTTP crate files and 291 A2A application files with no missing or
+orphaned modules and an acyclic dependency closure. New files have at most
+30 code lines. File-budget and whitespace checks passed. Evidence is in
+`artifacts/consolidation-workspace-catalog/`. Compilation, tests, doctests,
+and control-plane requests remain unrun. No Cargo, rustc, or Python commands
+ran. The broader implementation migration remains active.

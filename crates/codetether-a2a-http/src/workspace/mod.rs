@@ -11,3 +11,8 @@ pub use clone_path::{git_clone_base_dir, resolve_workspace_clone_path};
 pub use fetch::fetch_workspace_record;
 pub use record::RegisteredWorkspaceRecord;
 pub use resolve::resolve_task_workspace_dir;
+
+mod catalog;
+pub use catalog::{ResolvedWorkspace, resolve_workspace_ids};
+mod register;
+pub use register::register_cloned_workspace;
