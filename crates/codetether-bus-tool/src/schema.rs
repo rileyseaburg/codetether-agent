@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 
 /// Parameter schema: optional `limit` and `topic_prefix`.
-pub fn parameters() -> Value {
+pub(super) fn parameters() -> Value {
     json!({
         "type": "object",
         "properties": {

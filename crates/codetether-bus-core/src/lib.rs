@@ -1,9 +1,11 @@
 //! Shared bus contracts, live delivery, registry, history and durable replay.
 //!
-//! Application startup, global registration and external sinks remain adapters.
+//! Application startup and external sinks remain adapters.
 use chrono::{DateTime, Utc};
 use codetether_a2a_core::{Artifact, Part, TaskState};
 use serde::{Deserialize, Serialize};
+/// Process-wide bus installation and lookup.
+pub mod global;
 mod message;
 pub use message::BusMessage;
 mod envelope;

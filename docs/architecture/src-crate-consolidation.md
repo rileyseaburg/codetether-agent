@@ -6394,3 +6394,22 @@ lines. File-budget and whitespace checks passed. Evidence:
 `artifacts/consolidation-okr-tool/`. No repository operations, runtime tests,
 Cargo, rustc or Python ran. Compilation remains unverified, and the broader
 migration remains active.
+
+### Dedicated bus-inspection tool and shared bus singleton
+
+Moved the process-global bus installation and lookup from `src/bus/global.rs`
+into `codetether-bus-core::global`. The application re-exports these functions,
+so all existing callers and the extracted tool use the same singleton. Moved
+the original singleton test unchanged apart from indentation; it remains unrun.
+
+Created `crates/codetether-bus-tool` with separate tool, schema and execution
+modules. The application re-exports `BusInspectTool`. Static token comparisons
+verify the singleton, preserved test, schema, tool contract and execution body
+after the shared-global path substitution. Default and maximum limits, topic
+filtering, missing-bus errors and result metadata are unchanged.
+
+Module reachability and dependency-cycle checks passed, as did file-budget and
+whitespace checks. Changed crate files contain at most 50 code lines. Evidence:
+`artifacts/consolidation-bus-tool/`. No bus operations, runtime tests, Cargo,
+rustc or Python ran. Compilation remains unverified. The broader migration
+remains active.

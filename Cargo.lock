@@ -1262,6 +1262,7 @@ dependencies = [
  "codetether-bus-core",
  "codetether-bus-http",
  "codetether-bus-s3",
+ "codetether-bus-tool",
  "codetether-code-search",
  "codetether-codex-auth",
  "codetether-codex-protocol",
@@ -1608,6 +1609,17 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-bus-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-bus-core",
+ "codetether-tool-core",
+ "serde_json",
 ]
 
 [[package]]
