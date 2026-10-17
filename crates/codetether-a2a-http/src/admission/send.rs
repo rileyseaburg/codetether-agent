@@ -32,7 +32,7 @@ pub async fn send<H: MessageAdmissionHost>(
         .map_err(|e| JsonRpcError::invalid_params(format!("Invalid parameters: {e}")))?;
     let (task_id, task) = parse::open_task(&params);
     if is_intro(&params.message) {
-        return server.handle_intro(&task_id, &params.message, task);
+        return intro::handle_intro(server, &task_id, &params.message, task);
     }
     server.tasks().insert(task_id.clone(), task);
     server.emit_inbound(&task_id, &params.message);

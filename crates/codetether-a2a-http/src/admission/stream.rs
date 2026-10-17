@@ -39,7 +39,7 @@ pub async fn stream<H: MessageAdmissionHost>(
 
     // Mesh introductions get a canned ack: no session, no LLM call.
     if is_intro(&params.message) {
-        return server.handle_intro(&task_id, &params.message, task);
+        return intro::handle_intro(server, &task_id, &params.message, task);
     }
 
     server.tasks().insert(task_id.clone(), task.clone());

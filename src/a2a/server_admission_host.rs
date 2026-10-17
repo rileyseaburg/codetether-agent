@@ -5,13 +5,11 @@ impl codetether_a2a_http::admission::MessageAdmissionHost for A2AServer {
     fn tasks(&self) -> &DashMap<String, Task> {
         &self.tasks
     }
-    fn handle_intro(
-        &self,
-        task_id: &str,
-        inbound: &Message,
-        task: Task,
-    ) -> Result<serde_json::Value, JsonRpcError> {
-        server_intro::handle_intro(self, task_id, inbound, task)
+    fn agent_card(&self) -> &AgentCard {
+        &self.agent_card
+    }
+    fn emit_outbound(&self, task_id: &str, outbound: &Message) {
+        emit_a2a_outbound(self, task_id, outbound);
     }
     fn emit_inbound(&self, task_id: &str, inbound: &Message) {
         emit_a2a_inbound(self, task_id, inbound);

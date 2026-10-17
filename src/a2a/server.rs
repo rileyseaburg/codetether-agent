@@ -16,8 +16,6 @@ use uuid::Uuid;
 mod admission_host;
 #[path = "server_http_host.rs"]
 mod http_host;
-#[path = "server_intro.rs"]
-mod server_intro;
 #[path = "server_message_send_turn.rs"]
 mod server_message_send_turn;
 #[path = "server_session_event.rs"]

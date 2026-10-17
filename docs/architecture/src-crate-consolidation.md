@@ -6015,3 +6015,22 @@ closure is acyclic. New files contain at most 32 code lines. File-budget and
 whitespace checks passed. Evidence: `artifacts/consolidation-message-admission/`.
 Compilation, tests and live request handling remain unrun. No Cargo, rustc or
 Python commands ran. The broader migration remains active.
+
+### Shared introduction admission acknowledgement
+
+Moved the introduction acknowledgement handler from application `server_intro.rs`
+into `codetether-a2a-http::admission::intro`. The admission host now supplies the
+agent card and inbound/outbound bus hooks; acknowledgement response construction,
+task storage and serialization belong to the shared protocol implementation.
+The former application handler file is deleted.
+
+Static comparison verifies the original handler after explicit host-call and
+log-target substitutions, including shared message/artifact identity, history
+updates and inbound-before-outbound publication. It checks admission call sites
+and the application host adapters. The module scan reaches 232 application A2A
+files, 165 HTTP files and 63 telemetry files without missing/orphaned modules;
+the dependency closure is acyclic. The moved handler contains 41 code lines.
+File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-intro-admission/`. Compilation, tests and live intro
+handling remain unrun. No Cargo, rustc or Python commands ran. The broader
+migration remains active.
