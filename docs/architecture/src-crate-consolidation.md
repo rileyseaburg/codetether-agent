@@ -8070,3 +8070,22 @@ passed; crate files contain at most 28 code lines. Evidence is in
 `artifacts/consolidation-agent-messages/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The full consolidation goal
 remains active.
+
+### Dedicated spawn identity and depth admission
+
+Moved the process-wide pending-name registry, owner-scoped reservation guard,
+live/durable duplicate admission sequence and configured nesting-depth guard
+into `crates/codetether-spawn-policy`. Seven Rust modules include two existing
+concurrency tests. The application supplies canonical identity lookups and
+parent lineage. The pending claim still spans asynchronous durable lookup,
+releases on every failure/drop, and is committed only after durable handoff.
+The depth check preserves its inclusive ceiling and configuration error text.
+
+Eighteen static preservation checks cover registry keys and poison recovery,
+reservation lifetime, admission ordering, error text, depth policy, moved tests,
+application forwarding and unchanged callers. The existing owner-scope
+integration test remains unchanged. Module/dependency checks, file budgets and
+whitespace checks passed; crate modules contain at most 32 code lines. Evidence
+is in `artifacts/consolidation-spawn-policy/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The full consolidation goal
+remains active.

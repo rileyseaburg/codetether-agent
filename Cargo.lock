@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-spawn-policy",
  "codetether-agent-messages",
  "codetether-agent-residency",
  "codetether-agent-lifecycle",
@@ -2443,6 +2444,17 @@ dependencies = [
  "anyhow",
  "codetether-collaboration-state",
  "serde",
+]
+
+[[package]]
+name = "codetether-spawn-policy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-config",
+ "codetether-tool-core",
+ "tokio",
 ]
 
 [[package]]
