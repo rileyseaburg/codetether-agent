@@ -3,7 +3,7 @@
 use anyhow::{Context, Result, ensure};
 use std::path::Path;
 
-pub(super) async fn output(cwd: &Path, args: &[&str]) -> Result<String> {
+pub(crate) async fn output(cwd: &Path, args: &[&str]) -> Result<String> {
     let output = tokio::process::Command::new("git")
         .args(args)
         .current_dir(cwd)

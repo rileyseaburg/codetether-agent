@@ -8149,3 +8149,22 @@ whitespace checks passed; new crate modules contain at most 28 code lines.
 Evidence is in `artifacts/consolidation-agent-session/`. Compilation and runtime
 tests were not run. No Cargo, rustc or Python commands ran. The full consolidation
 goal remains active.
+
+### Dedicated managed-child workspace allocation
+
+Moved child checkout allocation, checked Git queries, primary-checkout discovery,
+handoff identity, isolation guidance and result attachment into
+`crates/codetether-child-workspace`. Seven Rust modules use the existing worktree
+and provenance crates directly. Allocation still uses the requested checkout's
+committed HEAD, preserves relative cwd, creates storage beneath the primary
+checkout, injects the same workspace stub and retains failed child checkouts for
+review. Handoff text and JSON fields remain unchanged.
+
+Twenty-four static preservation checks cover allocation order, Git/path errors,
+shared dependency calls, serialized identity, guidance text, result success flags
+and unchanged application callers/tests. Eight existing Git integration tests
+remain in the application and exercise the shared allocator through its re-export.
+Module/dependency, file-budget and whitespace checks passed; crate files contain
+at most 34 code lines. Evidence is in `artifacts/consolidation-child-workspace/`.
+No checkout allocations or runtime tests were executed. Compilation was not run.
+No Cargo, rustc or Python commands ran. The full consolidation goal remains active.

@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-child-workspace",
  "codetether-agent-session",
  "codetether-agent-input",
  "codetether-spawn-policy",
@@ -2446,6 +2447,20 @@ dependencies = [
  "anyhow",
  "codetether-collaboration-state",
  "serde",
+]
+
+[[package]]
+name = "codetether-child-workspace"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provenance",
+ "codetether-tool-core",
+ "codetether-worktree",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
