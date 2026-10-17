@@ -29,3 +29,6 @@ pub mod types;
 
 pub use cache::SummaryIndex;
 pub use types::{Granularity, SummaryNode, SummaryRange};
+
+/// Shared summary banner removal.
+pub mod text;

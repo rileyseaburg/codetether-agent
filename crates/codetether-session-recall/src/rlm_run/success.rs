@@ -1,8 +1,8 @@
 //! Successful session-recall response formatting.
 
-use crate::rlm::RlmResult;
-use crate::session::index_produce::summary_text::strip_stats_header;
-use crate::tool::ToolResult;
+use codetether_context_policy::summary_index::text::strip_stats_header;
+use codetether_rlm::RlmResult;
+use codetether_tool_core::ToolResult;
 
 pub(super) fn format(sources: &[String], result: &RlmResult) -> ToolResult {
     let clean = strip_stats_header(&result.processed);

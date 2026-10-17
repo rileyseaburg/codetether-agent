@@ -7582,3 +7582,23 @@ new Rust files contain at most 50 code lines. Evidence lives in
 `artifacts/consolidation-context-browse/`. No history was browsed or materialized,
 runtime tests, Cargo, rustc or Python commands run. Compilation remains
 unverified; the full consolidation goal remains active.
+
+### Dedicated session recall tool
+
+Moved local recall parsing, evidence/source formatting, prompt framing, answer
+and fallback formatting, tool state and orchestration into
+`crates/codetether-session-recall`. Seventeen modules include the two original
+tests. The application adapter delegates to the existing indexed search and RLM
+router, preserving options, context identity and trace creation. RecallHit is
+shared through a compatibility export. The common statistics-banner parser now
+lives in context-policy and is re-exported by the prior summary helper.
+
+Removed the undeclared legacy context loader; its original source is retained
+in the extraction evidence. Twenty-four static preservation checks compare
+active request paths, defaults, score threshold, rendering, RLM context,
+non-convergence fallback, shared parsing and tests. Module reachability,
+dependency cycles, file budgets and whitespace checks passed; new Rust files
+contain at most 42 code lines. Evidence lives in
+`artifacts/consolidation-session-recall/`. No session reads, model calls,
+runtime tests, Cargo, rustc or Python commands ran. Compilation remains
+unverified; the full consolidation goal remains active.

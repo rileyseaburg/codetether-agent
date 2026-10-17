@@ -3,12 +3,12 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
-use crate::tool::{Tool, ToolResult};
+use codetether_tool_core::{Tool, ToolResult};
 
 use super::tool_struct::SessionRecallTool;
 
 #[async_trait]
-impl Tool for SessionRecallTool {
+impl<H: crate::Host> Tool for SessionRecallTool<H> {
     fn id(&self) -> &str {
         "session_recall"
     }

@@ -1387,6 +1387,7 @@ dependencies = [
  "codetether-search",
  "codetether-search-router",
  "codetether-secrets",
+ "codetether-session-recall",
  "codetether-session-runtime",
  "codetether-skill-tool",
  "codetether-swarm-core",
@@ -3387,6 +3388,20 @@ dependencies = [
  "tracing",
  "vaultrs",
  "windows",
+]
+
+[[package]]
+name = "codetether-session-recall"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-rlm",
+ "codetether-tool-core",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

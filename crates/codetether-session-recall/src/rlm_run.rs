@@ -4,14 +4,14 @@ mod context;
 mod fallback;
 mod success;
 
-use crate::provider::Provider;
-use crate::rlm::{RlmConfig, RlmRouter};
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_provider_core::Provider;
+use codetether_rlm::RlmConfig;
+use codetether_tool_core::ToolResult;
 use std::sync::Arc;
 
 /// Run RLM processing against the flattened recall context.
-pub async fn run_recall(
+pub async fn run_recall<H: crate::Host>(
     recall_context: &str,
     sources: &[String],
     query: &str,
@@ -20,13 +20,12 @@ pub async fn run_recall(
     config: &RlmConfig,
 ) -> Result<ToolResult> {
     let framed = context::frame(query, recall_context);
-    let auto_ctx = context::auto(provider, model, query);
 
-    match RlmRouter::auto_process(&framed, auto_ctx, config).await {
+    match H::synthesize(&framed, query, provider, model, config).await {
         Ok(result) if result.success => Ok(success::format(sources, &result)),
         Ok(result) => Ok(fallback::non_converged(recall_context, sources, &result)),
         Err(error) => Ok(super::faults::fault_result(
-            crate::session::Fault::BackendError {
+            codetether_context_policy::fault::Fault::BackendError {
                 reason: error.to_string(),
             },
             format!("RLM recall failed: {error}"),

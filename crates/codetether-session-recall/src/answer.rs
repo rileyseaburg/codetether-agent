@@ -3,16 +3,16 @@
 use anyhow::Result;
 use std::sync::Arc;
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
-pub(super) async fn run(
-    tool: &super::tool_struct::SessionRecallTool,
+pub(super) async fn run<H: crate::Host>(
+    tool: &super::tool_struct::SessionRecallTool<H>,
     query: &str,
     evidence: &str,
-    hits: &[crate::session::index::recall::hit::RecallHit],
+    hits: &[crate::RecallHit],
 ) -> Result<ToolResult> {
-    let sources = crate::session::index::recall::render::sources(hits);
-    super::rlm_run::run_recall(
+    let sources = crate::render::sources(hits);
+    super::rlm_run::run_recall::<H>(
         evidence,
         &sources,
         query,

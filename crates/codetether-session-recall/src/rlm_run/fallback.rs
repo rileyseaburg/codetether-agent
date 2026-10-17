@@ -1,11 +1,11 @@
 //! Non-converged session-recall fallback formatting.
 
-use crate::rlm::RlmResult;
-use crate::session::index_produce::summary_text::strip_stats_header;
-use crate::tool::ToolResult;
+use codetether_context_policy::summary_index::text::strip_stats_header;
+use codetether_rlm::RlmResult;
+use codetether_tool_core::ToolResult;
 
 pub(super) fn non_converged(context: &str, sources: &[String], result: &RlmResult) -> ToolResult {
-    tracing::warn!(
+    tracing::warn!(target: "codetether_agent::tool::session_recall::rlm_run::fallback",
         input_tokens = result.stats.input_tokens,
         output_tokens = result.stats.output_tokens,
         "RLM recall did not converge"

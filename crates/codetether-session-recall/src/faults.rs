@@ -1,7 +1,7 @@
 //! Fault classification and result helpers for session recall.
 
-use crate::session::Fault;
-use crate::tool::ToolResult;
+use codetether_context_policy::fault::Fault;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 /// Build a `ToolResult` tagged with fault metadata.

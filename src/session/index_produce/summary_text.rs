@@ -24,14 +24,7 @@ pub fn bounded_summary(result: RlmResult, target_tokens: usize) -> Result<String
     }
     Ok(clamp_tokens(trimmed, target_tokens))
 }
-
-/// Remove the router stats banner from memory summaries.
-pub fn strip_stats_header(text: &str) -> &str {
-    let Some(rest) = text.strip_prefix("[RLM: ") else {
-        return text;
-    };
-    rest.split_once("\n\n").map_or(text, |(_, body)| body)
-}
+pub use codetether_context_policy::summary_index::text::strip_stats_header;
 
 /// Deterministically bound text to the requested approximate token budget.
 pub fn clamp_tokens(text: &str, target_tokens: usize) -> String {
