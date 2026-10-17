@@ -1,3 +1,4 @@
+//! fd for seccomp filter preparation.
 use anyhow::{Result, anyhow};
 use std::os::fd::RawFd;
 

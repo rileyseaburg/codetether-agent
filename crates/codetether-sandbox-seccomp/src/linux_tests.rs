@@ -1,3 +1,4 @@
+//! linux tests for seccomp filter preparation.
 use super::prepare;
 use std::os::fd::AsRawFd;
 

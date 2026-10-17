@@ -2300,6 +2300,21 @@ pruned, sandbox commands executed or runtime tests run. Cargo, rustc and
 Python were not executed. Compilation and platform execution remain
 unverified; the complete workspace migration remains active.
 
+### Dedicated seccomp profile preparation
+
+Moved seccomp architecture selection, BPF generation, profile-file ownership,
+descriptor inheritance and fallback behavior into
+`crates/codetether-sandbox-seccomp`. Seven files include the three existing
+filter/descriptor tests. The sandbox module retains compatibility exports.
+
+Static comparisons verify all moved code after visibility/module-path changes,
+including syscall lists, instruction encoding, descriptor operations and test
+bodies. Module reachability, dependency-cycle, workspace wiring, file-budget
+and whitespace checks passed; files contain at most 41 code lines. Evidence:
+`artifacts/consolidation-sandbox-seccomp/`. No filters were prepared or attached,
+and no runtime tests, Cargo, rustc or Python were executed. Compilation and
+kernel enforcement remain unverified. The full workspace goal remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

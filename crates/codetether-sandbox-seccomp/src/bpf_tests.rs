@@ -1,3 +1,4 @@
+//! bpf tests for seccomp filter preparation.
 use super::program;
 
 #[test]

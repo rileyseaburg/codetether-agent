@@ -1,3 +1,4 @@
+//! bpf for seccomp filter preparation.
 const LD_W_ABS: u16 = 0x20;
 const JMP_JEQ_K: u16 = 0x15;
 const RET_K: u16 = 0x06;
@@ -42,5 +43,5 @@ fn emit(out: &mut Vec<u8>, code: u16, jt: u8, jf: u8, k: u32) {
 }
 
 #[cfg(test)]
-#[path = "sandbox_seccomp_bpf_tests.rs"]
+#[path = "bpf_tests.rs"]
 mod tests;

@@ -1,0 +1,15 @@
+[package]
+name = "codetether-sandbox-seccomp"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Seccomp profile generation and descriptor ownership"
+
+[dependencies]
+anyhow = "1"
+tokio = { version = "1", features = ["process"] }
+
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+libc = "0.2.189"
+tempfile = "3"
