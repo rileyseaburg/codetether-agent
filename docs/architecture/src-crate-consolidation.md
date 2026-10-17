@@ -7318,3 +7318,21 @@ and whitespace checks passed; new Rust files contain at most 39 code lines.
 Evidence lives in `artifacts/consolidation-mcp-tools/`. No subprocess connection,
 remote invocation, runtime tests, Cargo, rustc or Python commands ran.
 Compilation remains unverified; the full consolidation goal remains active.
+
+### Dedicated MCP bridge
+
+Moved MCP bridge command parsing, schema, argument shaping, connection setup,
+approval preflight and all four actions into `crates/codetether-mcp-bridge`.
+Thirteen modules separate tool/resource actions, host policy, client resource
+capabilities and serialization. The application retains the existing client
+and authorization hooks through small adapters. The three application approval
+tests remain unchanged and call the extracted policy through their adapter.
+
+Twenty-six static preservation checks reconstruct the complete ordered execution
+and each action, including command parsing, approval forwarding, alias approvals,
+connection closing and result conversion. Module reachability, dependency-cycle,
+file-budget and whitespace checks passed; new Rust files contain at most 33 code
+lines. Evidence lives in `artifacts/consolidation-mcp-bridge/`. No external MCP
+connections, remote calls, runtime tests, Cargo, rustc or Python commands ran.
+Compilation remains unverified; the full workspace consolidation goal remains
+active.

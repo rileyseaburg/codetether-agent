@@ -1,0 +1,15 @@
+[package]
+name = "codetether-mcp-bridge"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Policy-aware bridge to external MCP tools and resources"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-mcp-core = { path = "../codetether-mcp-core", version = "0.1.0" }
+codetether-mcp-tools = { path = "../codetether-mcp-tools", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
