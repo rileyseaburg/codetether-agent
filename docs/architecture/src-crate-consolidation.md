@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 104 | 2813 | Shared schedulers, quality, progress and background store updates extracted; application execution/host ownership audit continues |
+| ralph | 104 | 2773 | Shared schedulers, quality, progress, persistence and delegation policy extracted; application execution/host ownership audit continues |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -152,7 +152,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-openai | 72 | yes | none |
 | codetether-provider-zai | 120 | yes | none |
 | codetether-question | 30 | yes | none |
-| codetether-ralph-core | 129 | yes | none |
+| codetether-ralph-core | 135 | yes | none |
 | codetether-rlm | 448 | yes | none |
 | codetether-runtime-policy | 37 | yes | none |
 | codetether-search | 18 | yes | none |
@@ -4295,3 +4295,23 @@ passed; standalone rustfmt was used. No Cargo, rustc, Python, background task,
 store write, Rust test or doctest ran; compilation and runtime remain unverified.
 Evidence: artifacts/consolidation-ralph-store-updates/. The broader workspace
 goal and remaining Ralph host ownership audit remain active.
+
+## Ralph relay delegation policy
+
+Ralph-core::delegation now owns stable role keys, role-to-skill/difficulty/tool
+use mapping and candidate ranking. The application keeps ProviderRegistry
+access and passes a lazy callback. Disabled delegation returns its original
+defaults before candidate listing, and enabled selection retains the default
+model. The selected-provider log keeps its original application target.
+
+All 11 static comparisons passed, including role constants, mapping functions,
+full ranking control flow and application forwarding. The existing session
+delegation API re-exports the same context-policy types used directly by the
+shared policy. Six new modules are at most 27 code lines. Lexical scans cover
+135 core and 104 application files without missing modules; the six-crate
+local dependency closure is acyclic. The manifest/lockfile add the existing
+context-policy crate as a direct dependency; no resolution ran. File-limit and
+whitespace checks passed; standalone rustfmt was used. No Cargo, rustc, Python,
+provider lookup, ranking execution, Rust test or doctest ran. Compilation and
+runtime remain unverified. Evidence: artifacts/consolidation-ralph-delegation/.
+The complete workspace objective and remaining Ralph host review remain active.

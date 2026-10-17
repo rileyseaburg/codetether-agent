@@ -31,3 +31,6 @@ pub mod quality_repair;
 
 /// Host-driven sequential and dependency-stage orchestration.
 pub mod scheduling;
+
+/// Relay role mapping and calibrated provider ranking.
+pub mod delegation;

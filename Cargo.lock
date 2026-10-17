@@ -2333,6 +2333,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "codetether-agent-core",
+ "codetether-context-policy",
  "glob",
  "reqwest 0.13.4",
  "serde",
