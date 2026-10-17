@@ -1,52 +1,40 @@
-use std::sync::Arc;
-
-use anyhow::Result;
-use tokio::sync::mpsc;
-
-use crate::{
-    bus::AgentBus,
-    swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor, SwarmResult},
-};
+//! Run the executor inline so dropping its owner cannot detach the orchestration.
 
 use super::super::swarm_event_output::format_swarm_event_for_output;
+use crate::{
+    bus::AgentBus,
+    swarm::{DecompositionStrategy, SwarmConfig, SwarmControl, SwarmExecutor, SwarmResult},
+};
+use anyhow::Result;
+use std::sync::Arc;
+use tokio::sync::mpsc;
 
 pub(super) async fn run(
     prompt: &str,
     strategy: DecompositionStrategy,
     config: SwarmConfig,
     bus: Option<&Arc<AgentBus>>,
-    output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
+    output: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
+    control: SwarmControl,
 ) -> Result<SwarmResult> {
-    if output_callback.is_some() {
-        return run_streaming(prompt, strategy, config, bus, output_callback).await;
-    }
-    let mut executor = SwarmExecutor::new(config);
+    let (events, mut incoming) = mpsc::channel(256);
+    let mut executor = SwarmExecutor::new(config).with_control(control);
     if let Some(bus) = bus {
         executor = executor.with_bus(Arc::clone(bus));
     }
-    executor.execute(prompt, strategy).await
-}
-
-async fn run_streaming(
-    prompt: &str,
-    strategy: DecompositionStrategy,
-    config: SwarmConfig,
-    bus: Option<&Arc<AgentBus>>,
-    output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
-) -> Result<SwarmResult> {
-    let (event_tx, mut event_rx) = mpsc::channel(256);
-    let mut executor = SwarmExecutor::new(config).with_event_tx(event_tx);
-    if let Some(bus) = bus {
-        executor = executor.with_bus(Arc::clone(bus));
+    if output.is_some() {
+        executor = executor.with_event_tx(events);
     }
-    let prompt_owned = prompt.to_string();
-    let mut handle = tokio::spawn(async move { executor.execute(&prompt_owned, strategy).await });
-    let mut final_result = None;
-    while final_result.is_none() {
+    let execution = executor.execute(prompt, strategy);
+    tokio::pin!(execution);
+    let mut receiving = output.is_some();
+    loop {
         tokio::select! {
-            event = event_rx.recv() => if let Some(event) = event && let Some(cb) = &output_callback && let Some(line) = format_swarm_event_for_output(&event) { cb(line); },
-            joined = &mut handle => final_result = Some(joined.map_err(|error| anyhow::anyhow!("Swarm join failure: {}", error))??),
+            result = &mut execution => return result,
+            event = incoming.recv(), if receiving => match event {
+                Some(event) => if let Some(cb) = &output && let Some(line) = format_swarm_event_for_output(&event) { cb(line); },
+                None => receiving = false,
+            }
         }
     }
-    Ok(final_result.expect("swarm result"))
 }

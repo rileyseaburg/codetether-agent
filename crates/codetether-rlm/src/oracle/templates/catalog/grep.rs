@@ -1,0 +1,32 @@
+//! grep query definitions.
+
+mod grep_find_occurrences;
+pub(super) use grep_find_occurrences::VALUE as GREP_FIND_OCCURRENCES;
+mod grep_find_regex;
+pub(super) use grep_find_regex::VALUE as GREP_FIND_REGEX;
+mod grep_count_occurrences;
+pub(super) use grep_count_occurrences::VALUE as GREP_COUNT_OCCURRENCES;
+mod grep_find_functions;
+pub(super) use grep_find_functions::VALUE as GREP_FIND_FUNCTIONS;
+mod grep_find_structs;
+pub(super) use grep_find_structs::VALUE as GREP_FIND_STRUCTS;
+mod grep_find_enums;
+pub(super) use grep_find_enums::VALUE as GREP_FIND_ENUMS;
+mod grep_find_traits;
+pub(super) use grep_find_traits::VALUE as GREP_FIND_TRAITS;
+mod grep_find_impls;
+pub(super) use grep_find_impls::VALUE as GREP_FIND_IMPLS;
+mod grep_find_imports;
+pub(super) use grep_find_imports::VALUE as GREP_FIND_IMPORTS;
+mod grep_find_tests;
+pub(super) use grep_find_tests::VALUE as GREP_FIND_TESTS;
+mod grep_find_error_handling;
+pub(super) use grep_find_error_handling::VALUE as GREP_FIND_ERROR_HANDLING;
+mod grep_find_macros;
+pub(super) use grep_find_macros::VALUE as GREP_FIND_MACROS;
+mod grep_find_comments;
+pub(super) use grep_find_comments::VALUE as GREP_FIND_COMMENTS;
+mod grep_find_todos;
+pub(super) use grep_find_todos::VALUE as GREP_FIND_TODOS;
+mod grep_find_string_literals;
+pub(super) use grep_find_string_literals::VALUE as GREP_FIND_STRING_LITERALS;

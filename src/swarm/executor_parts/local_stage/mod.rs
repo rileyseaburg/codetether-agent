@@ -26,6 +26,7 @@ mod integrate;
 mod integrate_worktree;
 mod job;
 mod job_builder;
+mod job_execute;
 mod job_run;
 mod killed_worktree;
 mod launch;

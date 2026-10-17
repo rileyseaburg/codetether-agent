@@ -19,5 +19,5 @@ pub fn error_result(message: impl Into<String>) -> super::ToolResult {
 }
 
 pub fn unsupported_platform_result() -> super::ToolResult {
-    error_result("Computer use is currently supported only on Windows")
+    error_result("Computer use supports Windows desktop automation and Linux desktop screenshots")
 }

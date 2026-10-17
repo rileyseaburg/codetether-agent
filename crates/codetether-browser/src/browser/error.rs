@@ -1,5 +1,19 @@
+//! Browser failure categories with stable display messages.
+//!
+//! [BrowserError] keeps command, navigation, DOM, and evaluation failures in
+//! one public sum type; child modules own conversions and display support.
+mod convert;
+mod display;
+use display::stack_suffix;
 use thiserror::Error;
-
+/// Failure reported by browser command execution.
+///
+/// # Examples
+/// ```
+/// use codetether_browser::BrowserError;
+/// let error = BrowserError::SessionNotStarted;
+/// assert!(matches!(error, BrowserError::SessionNotStarted));
+/// ```
 #[allow(dead_code)]
 #[derive(Debug, Error)]
 pub enum BrowserError {
@@ -56,18 +70,5 @@ pub enum BrowserError {
     OperationFailed(String),
 }
 
-impl From<anyhow::Error> for BrowserError {
-    fn from(error: anyhow::Error) -> Self {
-        Self::OperationFailed(error.to_string())
-    }
-}
-
-impl From<serde_json::Error> for BrowserError {
-    fn from(error: serde_json::Error) -> Self {
-        Self::OperationFailed(error.to_string())
-    }
-}
-
-fn stack_suffix(stack: Option<&str>) -> String {
-    stack.map(|value| format!("\n{value}")).unwrap_or_default()
-}
+#[cfg(test)]
+mod tests;

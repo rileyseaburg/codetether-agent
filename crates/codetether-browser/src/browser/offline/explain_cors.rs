@@ -4,7 +4,8 @@ use anyhow::Result;
 use reqwest::blocking::Client;
 use std::collections::BTreeMap;
 
-use super::explain_cors_analyse::header_reasons;
+mod analyse;
+use analyse::header_reasons;
 
 #[derive(Debug, serde::Serialize)]
 pub struct CorsExplanation {

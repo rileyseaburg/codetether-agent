@@ -2,7 +2,6 @@
 //!
 //! This tool enables LLM-driven parallel execution of tasks across multiple
 //! sub-agents in a swarm pattern, with configurable concurrency and aggregation.
-
 use super::{Tool, ToolResult};
 use crate::swarm::executor::run_agent_loop;
 use anyhow::Result;
@@ -143,11 +142,9 @@ impl Tool for SwarmExecuteTool {
             let shared_results = Arc::clone(&shared_results);
             let failed_task_id = task_id.clone();
             let failed_task_name = task_input.name.clone();
-            let max_steps = max_steps;
-            let timeout_secs = timeout_secs;
+            let (max_steps, timeout_secs) = (max_steps, timeout_secs);
             let events = observer.sender();
-
-            let handle = tokio::spawn(async move {
+            let handle = crate::session::runtime::ControlHandle::spawn(async move {
                 let _permit = semaphore
                     .acquire()
                     .await
@@ -157,6 +154,7 @@ impl Tool for SwarmExecuteTool {
                 let registry = agent_registry::shared(
                     read_only,
                     verification,
+                    expects_changes,
                     &working_dir,
                     shared_results,
                     task_id.clone(),

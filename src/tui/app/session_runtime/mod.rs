@@ -2,6 +2,7 @@
 
 mod active_cancel;
 mod active_completion;
+#[cfg(test)]
 mod active_turn;
 mod command;
 mod execute;

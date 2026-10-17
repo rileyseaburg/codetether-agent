@@ -1,6 +1,7 @@
 //! OKR struct, run workflow, and outcome tests.
 
 use super::*;
+use uuid::Uuid;
 
 #[test]
 fn test_okr_creation() {

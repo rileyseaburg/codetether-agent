@@ -1,47 +1,20 @@
-//! Resident-memory watchdog and allocator reclamation coordinator.
-//!
-//! Samples process RSS, preserves pre-OOM evidence, and asks the system
-//! allocator to release unused arenas while memory remains elevated.
+//! Application-version adapter for the process memory watchdog.
 
-mod config;
-#[cfg(test)]
-mod config_tests;
-mod reclaim;
-mod report;
-#[cfg(test)]
-mod report_tests;
-mod runner;
-mod state;
-#[cfg(test)]
-mod state_tests;
+pub use codetether_telemetry::rss_watchdog::{
+    ENV_RSS_CRITICAL_MIB, ENV_RSS_SAMPLE_SECS, ENV_RSS_TRIM_SECS, ENV_RSS_WARN_MIB,
+};
 
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-
-pub use config::{ENV_RSS_CRITICAL_MIB, ENV_RSS_SAMPLE_SECS, ENV_RSS_TRIM_SECS, ENV_RSS_WARN_MIB};
-
-/// Starts the process-wide watchdog using `spool_dir` for crash evidence.
-///
-/// Repeated calls are harmless; only the first call starts a task.
+/// Start the singleton watchdog with this application's report identity.
 ///
 /// # Arguments
-///
-/// * `spool_dir` - Directory where critical-threshold reports are persisted.
-///
-/// # Returns
-///
-/// Returns immediately after scheduling the singleton background task.
-///
+/// * `spool_dir` - Directory for memory-pressure reports.
 /// # Examples
-///
 /// ```rust,no_run
-/// use std::path::PathBuf;
-///
-/// codetether_agent::telemetry::rss_watchdog::spawn(PathBuf::from("/tmp/reports"));
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+/// codetether_agent::telemetry::rss_watchdog::spawn("/tmp/reports".into());
+/// # });
 /// ```
-pub fn spawn(spool_dir: PathBuf) {
-    static STARTED: AtomicBool = AtomicBool::new(false);
-    if !STARTED.swap(true, Ordering::SeqCst) {
-        tokio::spawn(runner::run(spool_dir, config::Config::load()));
-    }
+pub fn spawn(spool_dir: std::path::PathBuf) {
+    super::identity::register();
+    codetether_telemetry::rss_watchdog::spawn(spool_dir);
 }

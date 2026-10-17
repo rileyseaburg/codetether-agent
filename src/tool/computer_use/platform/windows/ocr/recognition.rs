@@ -1,7 +1,10 @@
 //! Blocking native recognition orchestration and response assembly.
 
 use super::{angle, bitmap, engine, output, source};
-use crate::tool::{ToolResult, computer_use::{response, capture_preview}};
+use crate::tool::{
+    ToolResult,
+    computer_use::{capture_preview, response},
+};
 use serde_json::json;
 use std::path::Path;
 use windows::Media::Ocr::OcrEngine;
@@ -16,9 +19,16 @@ pub(super) fn run(
     let maximum = OcrEngine::MaxImageDimension()?;
     let bitmap = bitmap::decode(&source.bytes, maximum)?;
     let result = engine.RecognizeAsync(&bitmap)?.join()?;
-    let preview = source.captured.then(|| capture_preview::prepare(
-        &source.bytes, bitmap.PixelWidth()? as u32, bitmap.PixelHeight()? as u32,
-    )).transpose()?;
+    let preview = source
+        .captured
+        .then(|| {
+            capture_preview::prepare(
+                &source.bytes,
+                bitmap.PixelWidth()? as u32,
+                bitmap.PixelHeight()? as u32,
+            )
+        })
+        .transpose()?;
     let mut response = response::success_result(json!({
         "backend": "windows_winrt_ocr", "text": result.Text()?.to_string(),
         "language": engine.RecognizerLanguage()?.LanguageTag()?.to_string(),

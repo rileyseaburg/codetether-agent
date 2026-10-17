@@ -14,6 +14,7 @@ mod empty;
 mod final_stats;
 mod finish;
 mod prepare;
+mod prepare_plan;
 mod stage;
 mod stage_stats;
 mod stages;

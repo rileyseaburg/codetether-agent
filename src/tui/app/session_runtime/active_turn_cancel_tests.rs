@@ -1,6 +1,6 @@
 //! A live human goal change cannot lose cancellation before executor attachment.
 
-use super::super::ActiveTurn;
+use super::ActiveTurn;
 use futures::FutureExt;
 use std::sync::Arc;
 use tokio::sync::Notify;

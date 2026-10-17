@@ -1,4 +1,5 @@
 //! Shared HTTP harness for relay contract tests.
+pub mod session;
 use axum::body::{Body, to_bytes};
 use axum::http::Request;
 use codetether_companion_relay::{Analysis, Analyze, Relay, router};

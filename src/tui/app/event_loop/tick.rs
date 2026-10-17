@@ -23,6 +23,7 @@ pub async fn refresh_audit(app: &mut App) {
 }
 
 pub async fn run(app: &mut App) {
+    crate::tui::app::watchdog::question_wait::tick(app);
     let before = dirty::Snapshot::capture(app);
     super::autochat::drain_autochat(app);
     crate::tui::app::event_handlers::drain_voice_transcription(&mut app.state);

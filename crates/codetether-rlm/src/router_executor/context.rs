@@ -1,0 +1,25 @@
+//! Auto-process context construction for executor bridge.
+
+use serde_json::json;
+use std::sync::Arc;
+
+use super::RlmExecutor;
+use crate::provider_adapter::ProviderWrap;
+use crate::router::CrateAutoProcessContext;
+
+pub(super) fn auto_context(exec: &RlmExecutor, query: &str) -> CrateAutoProcessContext<'static> {
+    CrateAutoProcessContext {
+        tool_id: "rlm_executor",
+        tool_args: json!({ "query": query }),
+        session_id: "rlm-executor",
+        abort: None,
+        on_progress: None,
+        provider: Arc::new(ProviderWrap(Arc::clone(&exec.provider))),
+        model: exec.model.clone(),
+        bus: None,
+        trace_id: None,
+        subcall_provider: None,
+        subcall_model: None,
+        rewriter: None,
+    }
+}

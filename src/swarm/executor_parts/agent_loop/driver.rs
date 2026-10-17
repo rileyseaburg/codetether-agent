@@ -6,6 +6,8 @@ use anyhow::Result;
 
 pub(super) async fn execute(state: &mut State) -> Result<AgentLoopExit> {
     loop {
+        super::control::ready(state).await?;
+        super::control::apply_input(state);
         if let Some(exit) = limits::reached(state) {
             return Ok(exit);
         }
@@ -33,11 +35,12 @@ pub(super) async fn execute(state: &mut State) -> Result<AgentLoopExit> {
         state.messages.push(turn.message);
         match loop_step::after_turn(turn.finish, has_tools) {
             loop_step::AfterTurn::Execute => {
-                if tools::execute(state, turn.tools).await {
+                if tools::execute(state, turn.tools).await? {
                     return Ok(AgentLoopExit::TimedOut);
                 }
             }
             loop_step::AfterTurn::Continue => continue,
+            loop_step::AfterTurn::Finish if super::control::apply_input(state) => continue,
             loop_step::AfterTurn::Finish => return Ok(AgentLoopExit::Completed),
         }
     }

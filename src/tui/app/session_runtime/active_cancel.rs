@@ -3,51 +3,56 @@
 use std::sync::Arc;
 
 use parking_lot::Mutex;
+#[cfg(test)]
 use tokio::sync::Notify;
 
-use super::active_turn::ActiveTurn;
-use crate::session::helper::steering::SteeringInput;
+use crate::session::runtime::{
+    CONTROL,
+    steering::{self, SteeringInput},
+};
+use codetether_session_runtime::Lease;
 
+#[path = "active_attach.rs"]
+mod attach;
 #[path = "active_release.rs"]
 mod release;
 
 /// Synchronized control plane for cancellation and active-turn steering.
 #[derive(Clone, Default)]
-pub(super) struct ActiveCancel(Arc<Mutex<ActiveTurn>>);
+pub(super) struct ActiveCancel(Arc<Mutex<Option<Lease>>>);
 
 impl ActiveCancel {
     /// Reserve `session_id` and open its steering inbox before handoff.
     pub(super) fn prepare(&self, session_id: &str) -> bool {
         let mut active = self.0.lock();
-        if !active.prepare(session_id) {
+        if active.is_some() {
             return false;
         }
-        crate::session::helper::steering::open(session_id);
+        let Some(lease) = CONTROL.reserve(session_id) else {
+            return false;
+        };
+        *active = Some(lease);
+        steering::open(session_id);
         true
-    }
-
-    /// Attach a runtime cancellation notifier to the named session.
-    pub(super) fn set(&self, session_id: &str, notify: Arc<Notify>) -> bool {
-        let mut active = self.0.lock();
-        let attached = active.attach(session_id, notify);
-        if attached {
-            crate::session::helper::steering::open(session_id);
-        }
-        attached
     }
 
     /// Notify the active executor, returning whether one was attached.
     pub(super) fn notify(&self) -> bool {
-        self.0.lock().request_cancel()
+        self.0
+            .lock()
+            .as_ref()
+            .is_some_and(|lease| CONTROL.cancel(lease))
     }
 
     /// Atomically append input when the active session still accepts it.
     pub(super) fn steer(&self, input: SteeringInput) -> bool {
         let active = self.0.lock();
-        let Some(session_id) = active.session_id() else {
+        let Some(lease) = active.as_ref() else {
             return false;
         };
-        crate::session::helper::steering::push(session_id, input)
+        CONTROL
+            .with_current(lease, || steering::push(lease.session_id(), input))
+            .unwrap_or(false)
     }
 }
 

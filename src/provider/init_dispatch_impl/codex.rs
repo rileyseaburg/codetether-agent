@@ -1,4 +1,4 @@
-use crate::provider::openai_codex::{OAuthCredentials, OpenAiCodexProvider};
+use crate::provider::openai_codex::OpenAiCodexProvider;
 use crate::provider::traits::Provider;
 use crate::secrets::ProviderSecrets;
 use std::sync::Arc;
@@ -26,17 +26,4 @@ fn build(secrets: &ProviderSecrets, vault_id: Option<&str>) -> Option<Arc<dyn Pr
     Some(Arc::new(provider))
 }
 
-/// Parse Codex OAuth credentials from a provider secret record.
-pub(in crate::provider) fn credentials(secrets: &ProviderSecrets) -> Option<OAuthCredentials> {
-    Some(OAuthCredentials {
-        access_token: value(secrets, "access_token")?,
-        refresh_token: value(secrets, "refresh_token")?,
-        expires_at: secrets.extra.get("expires_at")?.as_u64()?,
-        id_token: value(secrets, "id_token"),
-        chatgpt_account_id: value(secrets, "chatgpt_account_id"),
-    })
-}
-
-fn value(secrets: &ProviderSecrets, key: &str) -> Option<String> {
-    secrets.extra.get(key)?.as_str().map(String::from)
-}
+pub(in crate::provider) use codetether_codex_auth::lifecycle::credentials;

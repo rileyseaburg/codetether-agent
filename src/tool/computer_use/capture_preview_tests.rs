@@ -5,7 +5,9 @@ use super::*;
 fn png(width: u32, height: u32) -> Vec<u8> {
     let image = image::RgbImage::from_pixel(width, height, image::Rgb([20, 40, 60]));
     let mut output = Cursor::new(Vec::new());
-    image.write_to(&mut output, image::ImageFormat::Png).unwrap();
+    image
+        .write_to(&mut output, image::ImageFormat::Png)
+        .unwrap();
     output.into_inner()
 }
 
@@ -31,13 +33,18 @@ fn small_png_is_retained_as_an_image() {
 }
 
 #[cfg(not(windows))]
-#[path = "../../platform/windows/computer_use/encode.rs"]
-mod native_encode;
+use codetether_platform::capture as native_encode;
 
 #[test]
 #[cfg(not(windows))]
 fn gdi_reserved_alpha_is_opaque_and_bad_buffers_are_rejected() {
     let encoded = native_encode::bgra_to_png(1, 1, vec![5, 10, 20, 0]).unwrap();
-    assert_eq!(image::load_from_memory(&encoded).unwrap().to_rgba8().as_raw(), &[20, 10, 5, 255]);
+    assert_eq!(
+        image::load_from_memory(&encoded)
+            .unwrap()
+            .to_rgba8()
+            .as_raw(),
+        &[20, 10, 5, 255]
+    );
     assert!(native_encode::bgra_to_png(2, 2, vec![0; 4]).is_err());
 }

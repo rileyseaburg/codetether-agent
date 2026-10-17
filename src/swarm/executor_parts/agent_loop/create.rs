@@ -45,5 +45,7 @@ pub(super) fn state(
         output: String::new(),
         deadline: Instant::now() + Duration::from_secs(timeout_secs),
         temperature: crate::session::helper::request_state::settings::temperature_for(model),
+        control: crate::session::runtime::ControlHandle::current(),
+        steering_cursor: 0,
     }
 }

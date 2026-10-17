@@ -40,22 +40,7 @@ struct ModelCache {
 
 impl LocalCudaProvider {
     fn strip_inline_think_blocks(raw: &str) -> String {
-        let mut remaining = raw;
-        let mut visible = String::new();
-
-        while let Some(start) = remaining.find("<think>") {
-            visible.push_str(&remaining[..start]);
-            let after_start = &remaining[start + "<think>".len()..];
-            if let Some(end) = after_start.find("</think>") {
-                remaining = &after_start[end + "</think>".len()..];
-            } else {
-                remaining = "";
-                break;
-            }
-        }
-
-        visible.push_str(remaining);
-        visible.trim().to_string()
+        codetether_provider_core::local::LocalCudaPrompt::strip_inline_think_blocks(raw)
     }
 
     /// Create a new LocalCudaProvider
@@ -259,55 +244,11 @@ impl LocalCudaProvider {
     }
 
     fn map_finish_reason(reason: Option<&str>) -> FinishReason {
-        match reason {
-            Some("stop") => FinishReason::Stop,
-            Some("length") => FinishReason::Length,
-            Some("tool_calls") => FinishReason::ToolCalls,
-            Some("content_filter") => FinishReason::ContentFilter,
-            Some("error") => FinishReason::Error,
-            _ => FinishReason::Stop,
-        }
+        codetether_provider_core::local::LocalCudaPrompt::map_finish_reason(reason)
     }
 
     fn to_prompts(messages: &[Message]) -> (String, String) {
-        let mut system_lines = Vec::new();
-        let mut convo_lines = Vec::new();
-
-        for msg in messages {
-            match msg.role {
-                Role::System | Role::Developer => {
-                    let text = Self::content_to_string(&msg.content);
-                    if !text.is_empty() {
-                        system_lines.push(text);
-                    }
-                }
-                Role::User => {
-                    convo_lines.push(format!("User:\n{}", Self::content_to_string(&msg.content)));
-                }
-                Role::Assistant => {
-                    convo_lines.push(format!(
-                        "Assistant:\n{}",
-                        Self::content_to_string(&msg.content)
-                    ));
-                }
-                Role::Tool => {
-                    convo_lines.push(format!("Tool:\n{}", Self::content_to_string(&msg.content)));
-                }
-            }
-        }
-
-        let system_prompt = if system_lines.is_empty() {
-            "You are CodeTether local CUDA coding assistant.".to_string()
-        } else {
-            system_lines.join("\n\n")
-        };
-        let user_prompt = if convo_lines.is_empty() {
-            "User:\n(Empty prompt)".to_string()
-        } else {
-            convo_lines.join("\n\n")
-        };
-
-        (system_prompt, user_prompt)
+        codetether_provider_core::local::LocalCudaPrompt::to_prompts(messages)
     }
 }
 
@@ -377,87 +318,14 @@ use env::{first_env, parse_env_f32, parse_env_u64, parse_env_usize};
 impl LocalCudaProvider {
     /// Format messages into a prompt string
     fn format_messages(messages: &[Message]) -> String {
-        let mut prompt = String::new();
-
-        for msg in messages {
-            match msg.role {
-                Role::System | Role::Developer => {
-                    prompt.push_str("System: ");
-                    prompt.push_str(&Self::content_to_string(&msg.content));
-                    prompt.push_str("\n\n");
-                }
-                Role::User => {
-                    prompt.push_str("User: ");
-                    prompt.push_str(&Self::content_to_string(&msg.content));
-                    prompt.push_str("\n\n");
-                }
-                Role::Assistant => {
-                    prompt.push_str("Assistant: ");
-                    prompt.push_str(&Self::content_to_string(&msg.content));
-                    prompt.push_str("\n\n");
-                }
-                Role::Tool => {
-                    // Tool results go in the conversation as context
-                    prompt.push_str("Tool: ");
-                    prompt.push_str(&Self::content_to_string(&msg.content));
-                    prompt.push_str("\n\n");
-                }
-            }
-        }
-
-        prompt.push_str("Assistant: ");
-        prompt
+        codetether_provider_core::local::LocalCudaPrompt::format_messages(messages)
     }
 
     fn content_to_string(parts: &[ContentPart]) -> String {
-        parts
-            .iter()
-            .map(|part| match part {
-                ContentPart::Text { text } => text.clone(),
-                ContentPart::ToolResult { content, .. } => content.clone(),
-                ContentPart::Thinking { text, .. } => text.clone(),
-                _ => String::new(),
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
+        codetether_provider_core::local::LocalCudaPrompt::content_to_string(parts)
     }
 }
-
-/// Configuration for LocalCudaProvider
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct LocalCudaConfig {
-    /// Model name (e.g., "qwen3.5-9b", "deepseek-coder-6.7b")
-    pub model_name: String,
-    /// Path to the model weights (GGUF or safetensors format)
-    pub model_path: Option<String>,
-    /// Context window size
-    pub context_window: Option<usize>,
-    /// Maximum tokens to generate
-    pub max_new_tokens: Option<usize>,
-    /// Temperature for sampling
-    pub temperature: Option<f32>,
-    /// Top-p for nucleus sampling
-    pub top_p: Option<f32>,
-    /// Repetition penalty
-    pub repeat_penalty: Option<f32>,
-    /// CUDA device ordinal (0 for first GPU)
-    pub cuda_device: Option<usize>,
-}
-
-impl Default for LocalCudaConfig {
-    fn default() -> Self {
-        Self {
-            model_name: "qwen3.5-9b".to_string(),
-            model_path: None,
-            context_window: Some(8192),
-            max_new_tokens: Some(4096),
-            temperature: Some(0.7),
-            top_p: Some(0.9),
-            repeat_penalty: Some(1.1),
-            cuda_device: Some(0),
-        }
-    }
-}
+pub use codetether_provider_core::local::LocalCudaConfig;
 
 #[cfg(test)]
 mod tests {

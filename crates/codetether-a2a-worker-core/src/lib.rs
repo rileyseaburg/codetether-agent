@@ -16,3 +16,6 @@ pub use cognition::{CognitionHeartbeatConfig, CognitionLatestSnapshot, Cognition
 pub use heartbeat::{HeartbeatState, WorkerStatus};
 pub use identity::{generate_worker_id, normalize_max_concurrent_tasks, resolve_worker_id};
 pub use runtime_env::export_worker_runtime_env;
+
+#[cfg(test)]
+mod consolidation;

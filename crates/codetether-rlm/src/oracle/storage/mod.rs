@@ -17,7 +17,9 @@ mod manager;
 mod remote;
 mod spool_io;
 mod sync;
+mod sync_record;
 mod sync_stats;
+mod sync_upload;
 mod types;
 mod usage;
 

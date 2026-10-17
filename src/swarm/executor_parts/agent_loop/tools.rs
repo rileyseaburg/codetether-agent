@@ -6,8 +6,9 @@ use super::{
 };
 use crate::provider::{ContentPart, Message, Role};
 
-pub(super) async fn execute(state: &mut State, calls: Vec<ToolCall>) -> bool {
+pub(super) async fn execute(state: &mut State, calls: Vec<ToolCall>) -> anyhow::Result<bool> {
     for call in calls {
+        super::control::ready(state).await?;
         let completed = tool_one::execute(state, call).await;
         let mut content = vec![ContentPart::ToolResult {
             tool_call_id: completed.id,
@@ -20,8 +21,8 @@ pub(super) async fn execute(state: &mut State, calls: Vec<ToolCall>) -> bool {
         });
         tracing::debug!(tool = %completed.name, "Recorded tool result");
         if completed.timed_out {
-            return true;
+            return Ok(true);
         }
     }
-    false
+    Ok(false)
 }

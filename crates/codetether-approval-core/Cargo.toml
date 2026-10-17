@@ -1,0 +1,20 @@
+[package]
+name = "codetether-approval-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Approval records and append-only authorization ledger for CodeTether"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+chrono = { version = "0.4", features = ["serde"] }
+codetether-paths = { path = "../codetether-paths", version = "0.1.0" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tracing = "0.1"
+uuid = { version = "1.24.0", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tempfile = "3.25.0"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }

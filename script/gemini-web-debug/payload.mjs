@@ -1,4 +1,6 @@
+/** @param {string} prompt @param {string} at @returns {URLSearchParams} */
 export function form(prompt, at) {
+  /** @type {unknown[]} */
   const inner = Array(69).fill(null);
   inner[0] = [prompt, 0, null, null, null, null, 0];
   inner[1] = ["en"];
@@ -10,6 +12,7 @@ export function form(prompt, at) {
   return new URLSearchParams({ "f.req": JSON.stringify([null, JSON.stringify(inner)]), at });
 }
 
+/** @param {string} [mode] @returns {string} */
 export function modelHeader(mode = "5bf011840784117a") {
   return JSON.stringify([1, null, null, null, mode, null, null, 0, [4], null, null, 3]);
 }

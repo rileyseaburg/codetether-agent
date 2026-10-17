@@ -85,3 +85,5 @@ state_v5.py
 *.jsonl
 *.stderr
 .codetether-target/
+.upstream/
+.script/

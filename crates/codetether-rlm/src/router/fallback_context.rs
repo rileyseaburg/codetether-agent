@@ -1,4 +1,10 @@
-//! Session-context specific fallback formatting.
+//! Build a structured fallback summary from preserved context.
+
+mod files;
+mod sections;
+mod spans;
+use files::collect_file_lines;
+use sections::append_sections;
 
 /// Build a structured fallback for `session_context` compaction output.
 pub fn session_context_fallback(output: &str, input_tokens: usize) -> String {
@@ -16,23 +22,7 @@ pub fn session_context_fallback(output: &str, input_tokens: usize) -> String {
         .take(5)
         .copied()
         .collect();
-    let head: String = lines
-        .iter()
-        .take(30)
-        .copied()
-        .collect::<Vec<_>>()
-        .join("\n");
-    let tail: String = lines
-        .iter()
-        .rev()
-        .take(80)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .copied()
-        .collect::<Vec<_>>()
-        .join("\n");
-
+    let (head, tail) = spans::head_tail(&lines);
     let mut p = vec![
         "## Context Summary (Fallback Mode)".into(),
         format!("*Original: {input_tokens} tokens - RLM processing produced insufficient output*"),
@@ -53,29 +43,4 @@ pub fn session_context_fallback(output: &str, input_tokens: usize) -> String {
     p.push(String::new());
     append_sections(&mut p, &head, &tail);
     p.join("\n")
-}
-
-fn collect_file_lines<'a>(lines: &'a [&'a str]) -> Vec<&'a str> {
-    lines
-        .iter()
-        .filter_map(|l| {
-            (l.contains(".ts") || l.contains(".rs") || l.contains(".py") || l.contains(".json"))
-                .then_some(*l)
-        })
-        .take(15)
-        .collect()
-}
-
-fn append_sections(parts: &mut Vec<String>, head: &str, tail: &str) {
-    parts.extend_from_slice(&[
-        "### Initial Request".into(),
-        "```".into(),
-        head.into(),
-        "```".into(),
-        String::new(),
-        "### Recent Activity".into(),
-        "```".into(),
-        tail.into(),
-        "```".into(),
-    ]);
 }

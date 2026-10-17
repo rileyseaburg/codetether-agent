@@ -1,7 +1,5 @@
 //! Public re-exports for the Bedrock provider module.
 
-#[path = "auth_bearer.rs"]
-mod auth_bearer;
 #[path = "auth_recover.rs"]
 pub(crate) mod auth_recover;
 

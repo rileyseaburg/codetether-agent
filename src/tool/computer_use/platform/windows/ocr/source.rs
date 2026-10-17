@@ -1,10 +1,10 @@
 //! OCR input bytes and provenance; image files never claim screen coordinates.
 
+use crate::tool::computer_use::capture_limits::{MAX_FILE_BYTES, file_bytes};
 use anyhow::Context;
 use serde_json::{Value, json};
-use std::path::Path;
 use std::io::Read;
-use crate::tool::computer_use::capture_limits::{MAX_FILE_BYTES, file_bytes};
+use std::path::Path;
 
 pub(super) struct Source {
     pub(super) bytes: Vec<u8>,
@@ -27,7 +27,10 @@ pub(super) fn load(path: Option<&Path>, hwnd: Option<i64>) -> anyhow::Result<Sou
         file_bytes(file.metadata()?.len())?;
         let mut bytes = Vec::new();
         file.take(MAX_FILE_BYTES + 1).read_to_end(&mut bytes)?;
-        anyhow::ensure!(bytes.len() as u64 <= MAX_FILE_BYTES, "OCR file grew beyond input safety budget");
+        anyhow::ensure!(
+            bytes.len() as u64 <= MAX_FILE_BYTES,
+            "OCR file grew beyond input safety budget"
+        );
         return Ok(Source {
             bytes,
             provenance: json!({"kind": "file", "path": path, "screen_origin": null}),

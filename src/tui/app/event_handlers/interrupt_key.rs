@@ -4,6 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::tui::app::session_runtime::TuiSessionHandle;
 use crate::tui::app::state::App;
+use crate::tui::models::ViewMode;
 
 pub(super) fn handle(app: &mut App, runtime: &TuiSessionHandle, key: KeyEvent) -> Option<bool> {
     if !app.state.processing {
@@ -11,7 +12,9 @@ pub(super) fn handle(app: &mut App, runtime: &TuiSessionHandle, key: KeyEvent) -
     }
     let ctrl_c =
         matches!(key.code, KeyCode::Char('c')) && key.modifiers.contains(KeyModifiers::CONTROL);
-    if !ctrl_c && !matches!(key.code, KeyCode::Esc) {
+    let escape_from_chat =
+        matches!(key.code, KeyCode::Esc) && app.state.view_mode == ViewMode::Chat;
+    if !ctrl_c && !escape_from_chat {
         return None;
     }
     runtime.request_cancel_current();

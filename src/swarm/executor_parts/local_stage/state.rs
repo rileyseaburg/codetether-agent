@@ -37,3 +37,11 @@ pub(super) struct State<'a> {
     pub promoted: Option<String>,
     pub semaphore: Arc<tokio::sync::Semaphore>,
 }
+
+impl Drop for State<'_> {
+    fn drop(&mut self) {
+        for abort in self.aborts.values() {
+            abort.abort();
+        }
+    }
+}

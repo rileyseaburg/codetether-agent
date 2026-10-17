@@ -20,9 +20,6 @@ mod swarm;
 mod tooling;
 mod types;
 
-#[cfg(test)]
-mod tests;
-
 pub use core::Agent;
 pub use registry::AgentRegistry;
 pub use types::{AgentInfo, AgentMode, AgentResponse, ToolMetadata, ToolUse};

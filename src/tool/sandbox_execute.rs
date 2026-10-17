@@ -17,7 +17,7 @@ pub async fn execute_sandboxed(
     if !policy.allow_exec {
         return Err(anyhow!("Sandbox policy denies process execution"));
     }
-    let mut env = sandbox_env::restricted();
+    let mut env = sandbox_env::restricted(policy);
     let network_fallbacks = super::super::sandbox_network::validate(policy, command, args)?;
     if !policy.allow_network {
         env.insert("CODETETHER_SANDBOX_NO_NETWORK".to_string(), "1".to_string());

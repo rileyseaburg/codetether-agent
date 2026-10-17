@@ -1,7 +1,7 @@
 //! Decomposition and initialization of a swarm run.
 
 use super::state::Run;
-use crate::swarm::{DecompositionStrategy, Orchestrator, SwarmResult};
+use crate::swarm::{DecompositionStrategy, SwarmResult};
 use crate::tui::swarm_view::SwarmEvent;
 use anyhow::Result;
 
@@ -16,8 +16,7 @@ pub(super) async fn run<'a>(
     strategy: DecompositionStrategy,
 ) -> Result<Prepared<'a>> {
     let strategy_name = format!("{strategy:?}");
-    let mut orchestrator = Orchestrator::new(executor.config.clone()).await?;
-    let subtasks = orchestrator.decompose(task, strategy).await?;
+    let (orchestrator, subtasks) = super::prepare_plan::run(executor, task, strategy).await?;
     if subtasks.is_empty() {
         executor.try_send_event(SwarmEvent::Error("No subtasks generated".into()));
         return Ok(Prepared::Empty(super::empty::result()));

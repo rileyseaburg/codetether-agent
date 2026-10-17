@@ -1,6 +1,7 @@
 //! Unit tests for the Bedrock provider module.
 
-use super::{BedrockProvider, CompletionRequest, parse_converse_response};
+use super::BedrockProvider;
+use codetether_provider_core::CompletionRequest;
 
 #[path = "opus_alias_resolution_tests.rs"]
 mod opus_alias_resolution;
@@ -44,47 +45,4 @@ fn non_opus_47_request_includes_temperature() {
         config.get("temperature").is_some(),
         "temperature should be present for non-Opus-4.7 models"
     );
-}
-
-#[test]
-fn sigv4_canonicalizes_model_suffix_in_path() {
-    let url = "https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-lite-v1:0/converse-stream";
-    let canonical = super::sigv4::canonicalize_url(url).unwrap();
-    assert_eq!(
-        canonical.canonical_uri,
-        "/model/amazon.nova-lite-v1%3A0/converse-stream"
-    );
-}
-
-#[test]
-fn sigv4_does_not_double_encode_model_suffix() {
-    let url =
-        "https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-lite-v1%3A0/converse";
-    let canonical = super::sigv4::canonicalize_url(url).unwrap();
-    assert_eq!(
-        canonical.canonical_uri,
-        "/model/amazon.nova-lite-v1%3A0/converse"
-    );
-}
-
-#[test]
-fn sigv4_sorts_and_encodes_query_parameters() {
-    let url = "https://bedrock.us-east-1.amazonaws.com/inference-profiles?typeEquals=SYSTEM_DEFINED&maxResults=200";
-    let canonical = super::sigv4::canonicalize_url(url).unwrap();
-    assert_eq!(
-        canonical.canonical_querystring,
-        "maxResults=200&typeEquals=SYSTEM_DEFINED"
-    );
-}
-
-#[test]
-fn parse_converse_response_handles_multibyte_error_prefix_without_panicking() {
-    let prefix = "a".repeat(299);
-    let body = format!("{prefix}\u{2014}{{");
-
-    let err = parse_converse_response(&body).unwrap_err();
-    let message = err.to_string();
-
-    assert!(message.contains("Failed to parse Bedrock response:"));
-    assert!(!message.contains("byte index 300 is not a char boundary"));
 }

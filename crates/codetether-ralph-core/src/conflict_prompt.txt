@@ -1,0 +1,35 @@
+# CONFLICT RESOLUTION TASK
+
+## Story Context: {} - {}
+{}
+
+## Conflicting Files
+The following files have merge conflicts that need resolution:
+{}
+
+## Conflict Details
+{}
+
+## Your Task
+1. Read each conflicting file to see the conflict markers
+2. Understand what BOTH sides are trying to do:
+   - HEAD (main branch): the current state
+   - The incoming branch: the sub-agent's changes for story {}
+3. Resolve each conflict by:
+   - Keeping BOTH changes if they don't actually conflict
+   - Merging the logic if they touch the same code
+   - Preferring the sub-agent's changes if they implement the story requirement
+4. Remove ALL conflict markers (<<<<<<<, =======, >>>>>>>)
+5. Ensure the final code compiles: run `cargo check`
+
+## CRITICAL RULES
+- Do NOT leave any conflict markers in files
+- Do NOT just pick one side - understand and merge the intent
+- MUST run `cargo check` after resolving to verify
+- Stage resolved files with `git add <file>`
+
+## Termination
+SUCCESS: Output `CONFLICTS_RESOLVED` when all files are resolved and compile
+FAILED: Output `CONFLICTS_UNRESOLVED: <reason>` if you cannot resolve
+
+Working directory: {}

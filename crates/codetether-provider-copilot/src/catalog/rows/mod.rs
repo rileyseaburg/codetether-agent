@@ -1,0 +1,13 @@
+//! Ordered catalog row groups.
+type Row = (&'static str, &'static str, usize, usize, bool);
+mod part_0;
+mod part_1;
+mod part_2;
+mod part_3;
+pub(super) fn all() -> impl Iterator<Item = &'static Row> {
+    part_0::ROWS
+        .iter()
+        .chain(part_1::ROWS.iter())
+        .chain(part_2::ROWS.iter())
+        .chain(part_3::ROWS.iter())
+}

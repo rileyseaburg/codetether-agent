@@ -1,0 +1,25 @@
+//! Responses SSE and event decoding with persistent per-stream state.
+mod append_response_output_text;
+mod append_response_output_tool;
+mod emit_missing_responses_tool_arguments;
+mod extract_json_string;
+mod finish_responses_sse_parser;
+mod finish_responses_tool_call;
+mod next_responses_sse_event;
+mod parse_responses_event;
+mod parse_responses_output_parts;
+mod parse_responses_sse_bytes;
+mod parse_responses_sse_event;
+mod parse_responses_usage;
+mod record_completed_reasoning;
+mod record_completed_response;
+mod record_completed_tools;
+mod record_done_tool;
+mod record_incomplete_response;
+mod record_response_error;
+mod record_responses_tool_arguments;
+mod record_responses_tool_item;
+mod record_text_delta;
+mod response_event_arguments;
+mod response_tool_state;
+mod start_response_tool;

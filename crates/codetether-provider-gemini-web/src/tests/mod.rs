@@ -1,0 +1,8 @@
+//! Existing provider compatibility and protocol tests.
+use crate::GeminiWebProvider;
+mod extract_protocol_error_code_reads_error_event;
+mod extract_protocol_request_id_reads_wrapped_id;
+mod extract_tool_calls_accepts_escaped_tool_markup;
+mod extract_tool_calls_preserves_text_when_no_valid_blocks;
+mod extract_tool_calls_returns_calls_and_cleaned_text;
+mod extract_tool_calls_strips_tool_result_blocks_when_calls_present;

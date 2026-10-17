@@ -1,10 +1,5 @@
-//! Platform abstraction layer.
+//! Compatibility facade for shared native operating-system services.
 //!
-//! Provides platform-specific implementations for audio capture, playback,
-//! and other OS-level features that differ between Windows, macOS, and Linux.
-
-#[cfg(target_os = "windows")]
-pub mod windows;
-
-#[cfg(not(target_os = "windows"))]
-pub mod unix;
+//! Implementations live in `codetether-platform`; existing application paths
+//! remain available through these re-exports.
+pub use codetether_platform::*;

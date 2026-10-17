@@ -18,7 +18,7 @@ pub(super) async fn run(runner: &mut Runner<'_>) -> Result<SessionResult> {
             StepFlow::Finish => break false,
             StepFlow::ContinueGoal => step = 0,
             StepFlow::Continue if super::budget::exhausted(step, runner.progress.max_steps) => {
-                match super::super::response::continue_goal(runner).await {
+                match super::super::response::continue_goal(runner).await? {
                     StepFlow::ContinueGoal => step = 0,
                     StepFlow::Finish | StepFlow::Continue => break true,
                 }

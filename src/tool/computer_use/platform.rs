@@ -2,9 +2,11 @@
 
 use crate::tool::computer_use::input::ComputerUseInput;
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 use crate::tool::computer_use::response;
 
+#[cfg(target_os = "linux")]
+mod linux;
 #[cfg(target_os = "windows")]
 mod windows;
 
@@ -13,7 +15,11 @@ pub async fn dispatch(input: &ComputerUseInput) -> anyhow::Result<crate::tool::T
     {
         return windows::dispatch(input).await;
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    {
+        return linux::dispatch(input).await;
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     {
         let _ = input;
         Ok(response::unsupported_platform_result())

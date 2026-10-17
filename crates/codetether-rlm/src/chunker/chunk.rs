@@ -1,11 +1,26 @@
-//! Main chunking logic — splits content into semantic chunks.
+//! Accumulate content between semantic boundaries.
 
-use super::boundaries::find_boundaries;
-use super::estimate::estimate_tokens;
-use super::split::split_large_chunk;
-use super::types::{Chunk, ChunkOptions, ChunkType};
+use super::{
+    boundaries::find_boundaries,
+    types::{Chunk, ChunkOptions, ChunkType},
+};
+mod flush;
+use flush::flush_chunk;
 
 /// Split content into semantic chunks.
+///
+/// # Arguments
+/// `content` is the source text; `options` controls splitting limits.
+///
+/// # Returns
+/// Ordered chunks with original line spans.
+///
+/// # Examples
+/// ```
+/// use codetether_rlm::RlmChunker;
+/// let chunks = RlmChunker::chunk("hello", None);
+/// assert_eq!(chunks[0].content, "hello");
+/// ```
 pub fn chunk(content: &str, options: Option<ChunkOptions>) -> Vec<Chunk> {
     let opts = options.unwrap_or_default();
     let lines: Vec<&str> = content.lines().collect();
@@ -31,33 +46,4 @@ pub fn chunk(content: &str, options: Option<ChunkOptions>) -> Vec<Chunk> {
         flush_chunk(&mut chunks, &cur, start, lines.len(), ctype, &opts);
     }
     chunks
-}
-
-fn flush_chunk(
-    out: &mut Vec<Chunk>,
-    lines: &[&str],
-    start: usize,
-    end: usize,
-    ctype: ChunkType,
-    opts: &ChunkOptions,
-) {
-    let content = lines.join("\n");
-    let tokens = estimate_tokens(&content);
-    if tokens > opts.max_chunk_tokens {
-        out.extend(split_large_chunk(
-            lines,
-            start,
-            ctype,
-            opts.max_chunk_tokens,
-        ));
-    } else {
-        out.push(Chunk {
-            content,
-            chunk_type: ctype,
-            start_line: start,
-            end_line: end.saturating_sub(1),
-            tokens,
-            priority: 3,
-        });
-    }
 }

@@ -1,7 +1,7 @@
 //! Window snapshot output assembly.
 
-use std::path::Path;
 use anyhow::Context;
+use std::path::Path;
 
 use crate::tool::computer_use::response;
 
@@ -15,7 +15,12 @@ pub(super) fn window_result(
     bounds: crate::platform::windows::computer_use::window::bounds::WindowBounds,
 ) -> anyhow::Result<crate::tool::ToolResult> {
     let preview = crate::tool::computer_use::capture_preview::prepare(png, width, height)
-        .with_context(|| format!("Original capture saved at {}; preview failed", path.display()))?;
+        .with_context(|| {
+            format!(
+                "Original capture saved at {}; preview failed",
+                path.display()
+            )
+        })?;
     Ok(response::success_result(serde_json::json!({
         "captured": true,
         "mime_type": "image/png",

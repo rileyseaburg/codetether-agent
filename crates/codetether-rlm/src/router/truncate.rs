@@ -1,11 +1,24 @@
-//! Smart truncation with RLM hint generation.
+//! Preserve head and tail while truncating large outputs.
 
+mod hint;
 use crate::chunker::RlmChunker;
+use hint::build_rlm_hint;
 use tracing::info;
 
 /// Truncate output to `max_tokens` with head/tail preservation.
 ///
 /// Returns `(truncated_text, was_truncated, original_token_count)`.
+///
+/// # Arguments
+/// Tool identity and arguments shape the hint; `max_tokens` is the text budget.
+///
+/// # Examples
+/// ```
+/// use codetether_rlm::smart_truncate;
+/// let (text, truncated, _) = smart_truncate("hello", "read", &serde_json::json!({}), 100);
+/// assert_eq!(text, "hello");
+/// assert!(!truncated);
+/// ```
 pub fn smart_truncate(
     output: &str,
     tool_id: &str,
@@ -47,35 +60,4 @@ pub fn smart_truncate(
         head, omitted, hint, tail
     );
     (truncated, true, estimated)
-}
-
-fn build_rlm_hint(tool_id: &str, args: &serde_json::Value, tokens: usize) -> String {
-    let base = format!("⚠️ OUTPUT TOO LARGE ({tokens} tokens). Use RLM for full analysis:");
-    match tool_id {
-        "read" => {
-            let p = args
-                .get("filePath")
-                .and_then(|v| v.as_str())
-                .unwrap_or("...");
-            format!(
-                "{base}\n```\nrlm({{ query: \"Analyze this file\", content_paths: [\"{p}\"] }})\n```"
-            )
-        }
-        "bash" => format!(
-            "{base}\n```\nrlm({{ query: \"Analyze this command output\", content: \"<paste or use content_paths>\" }})\n```"
-        ),
-        "grep" => {
-            let pat = args
-                .get("pattern")
-                .and_then(|v| v.as_str())
-                .unwrap_or("...");
-            let inc = args.get("include").and_then(|v| v.as_str()).unwrap_or("*");
-            format!(
-                "{base}\n```\nrlm({{ query: \"Summarize search results for {pat}\", content_glob: \"{inc}\" }})\n```"
-            )
-        }
-        _ => format!(
-            "{base}\n```\nrlm({{ query: \"Summarize this output\", content: \"...\" }})\n```\n"
-        ),
-    }
 }

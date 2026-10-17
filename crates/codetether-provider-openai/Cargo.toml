@@ -1,0 +1,21 @@
+[package]
+name = "codetether-provider-openai"
+version = "0.1.0"
+edition = "2024"
+description = "OpenAI-compatible chat, reasoning streams, embeddings, and model discovery"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+async-openai = { version = "0.41.3", features = ["chat-completion"] }
+async-trait = "0.1.92"
+bytes = "1.12.1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+futures = "0.3.34"
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "stream", "rustls"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }

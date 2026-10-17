@@ -14,7 +14,6 @@ pub use context::{AutoProcessContext, ProcessProgress, RoutingContext, RoutingRe
 
 use super::RlmConfig;
 use super::RlmResult;
-use super::repl::{ReplRuntime, RlmRepl};
 use anyhow::Result;
 use codetether_rlm::router;
 
@@ -43,9 +42,7 @@ impl RlmRouter {
         ctx: AutoProcessContext<'_>,
         config: &RlmConfig,
     ) -> Result<RlmResult> {
-        let mut repl = RlmRepl::new(output.to_string(), ReplRuntime::Rust);
-        let mut host = host_impl::ReplHost(&mut repl);
         let crate_ctx = convert::convert_ctx(ctx);
-        router::auto_process(output, crate_ctx, config, &mut host).await
+        router::auto_process_with_repl(output, crate_ctx, config).await
     }
 }

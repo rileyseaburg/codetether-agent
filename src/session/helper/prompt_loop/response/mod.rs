@@ -21,7 +21,9 @@ use crate::provider::CompletionResponse;
 
 pub(super) use flow::handle;
 
-pub(super) async fn continue_goal(runner: &mut Runner<'_>) -> super::state::StepFlow {
+pub(super) async fn continue_goal(
+    runner: &mut Runner<'_>,
+) -> anyhow::Result<super::state::StepFlow> {
     goal::flow(runner).await
 }
 

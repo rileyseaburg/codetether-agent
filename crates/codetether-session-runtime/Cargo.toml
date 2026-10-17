@@ -1,0 +1,13 @@
+[package]
+name = "codetether-session-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Shared session execution control for CodeTether frontends"
+license = "MIT"
+
+[dependencies]
+tokio = { version = "1", features = ["sync"] }
+
+[dev-dependencies]
+futures = "0.3"

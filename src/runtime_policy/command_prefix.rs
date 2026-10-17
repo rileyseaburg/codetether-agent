@@ -1,5 +1,8 @@
 //! Safe read-only command prefixes.
 
+#[path = "command_git_prefix.rs"]
+mod git;
+
 const READ_ONLY: &[&str] = &[
     "pwd",
     "ls",
@@ -34,4 +37,5 @@ pub(super) fn read_only(command: &str) -> bool {
     READ_ONLY
         .iter()
         .any(|prefix| command == *prefix || command.starts_with(&format!("{prefix} ")))
+        || git::scoped_read(command)
 }

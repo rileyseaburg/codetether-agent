@@ -1,47 +1,23 @@
-//! Structured representation of an RLM FINAL() answer.
-//!
-//! The oracle validator parses the raw answer string into one of
-//! these variants so it can choose the right verification strategy
-//! (grep diff, AST comparison, or "skip").
-//!
-//! # Examples
-//!
-//! ```ignore
-//! let fmt = FinalAnswerFormat::parse("42:async fn foo()\n100:pub struct Bar");
-//! match fmt {
-//!     FinalAnswerFormat::LineNumberedMatches { matches } => { /* verify */ }
-//!     _ => { /* skip */ }
-//! }
-//! ```
+//! Structured representation of a FINAL answer.
 
 mod parse;
 
-pub use parse::extract_count_from_text;
-
-/// A parsed FINAL() answer, classified by its structure.
-///
-/// Constructed via [`FinalAnswerFormat::parse`] which tries each
-/// format in priority order: line-numbered → count → JSON → text.
+/// Classification of an RLM FINAL() answer format.
 ///
 /// # Examples
-///
-/// ```ignore
-/// let fmt = FinalAnswerFormat::parse("Found 15 async functions");
-/// assert!(matches!(fmt, FinalAnswerFormat::CountResult { count: 15 }));
+/// ```
+/// use codetether_rlm::oracle::FinalAnswerFormat;
+/// let value = FinalAnswerFormat::parse("1:fn main() {}");
+/// assert!(matches!(value,FinalAnswerFormat::LineNumberedMatches{..}));
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum FinalAnswerFormat {
-    /// Zero or more `line_number:content` pairs extracted from
-    /// the answer text (e.g., `42:async fn foo()`).
+    /// Line-numbered matches (e.g., "42:async fn foo()", "100:pub struct Bar")
     LineNumberedMatches { matches: Vec<(usize, String)> },
-    /// A single integer extracted from prose like
-    /// "Found 15 occurrences".
+    /// Count result (e.g., "Found 15 occurrences")
     CountResult { count: usize },
-    /// A successfully-parsed JSON value (object or array).
+    /// Structured data (e.g., function signature JSON)
     StructuredData { data: serde_json::Value },
-    /// Anything that doesn't match the above formats.
-    ///
-    /// Semantic answers fall here and cannot be deterministically
-    /// verified.
+    /// Free-form text (semantic - no deterministic verification)
     FreeFormText { text: String },
 }

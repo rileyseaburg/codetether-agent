@@ -12,7 +12,6 @@
 //! assert!(registry.list().is_empty());
 //! ```
 
-use super::parse::parse_model_string;
 use super::traits::Provider;
 use crate::secrets::ProviderSecrets;
 use anyhow::Result;
@@ -120,32 +119,7 @@ impl ProviderRegistry {
     /// assert!(registry.resolve_model("gpt-4o").is_err());
     /// ```
     pub fn resolve_model(&self, model_str: &str) -> Result<(Arc<dyn Provider>, String)> {
-        let (provider_name, model) = parse_model_string(model_str);
-
-        if let Some(provider_name) = provider_name {
-            let normalized = match provider_name {
-                "local-cuda" | "localcuda" => "local_cuda",
-                "zhipuai" => "zai",
-                "gsai" | "usai-gov" => "usai",
-                other => other,
-            };
-
-            let provider = self.providers.get(normalized).cloned().ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Provider '{}' not found. Available: {:?}",
-                    normalized,
-                    self.list()
-                )
-            })?;
-            Ok((provider, model.to_string()))
-        } else {
-            let first_provider = self
-                .providers
-                .values()
-                .next()
-                .ok_or_else(|| anyhow::anyhow!("No providers available in registry"))?;
-            Ok((first_provider.clone(), model_str.to_string()))
-        }
+        codetether_provider_core::routing::resolve_model(&self.providers, model_str)
     }
 }
 

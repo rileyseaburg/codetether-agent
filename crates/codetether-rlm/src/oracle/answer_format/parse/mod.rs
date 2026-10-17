@@ -1,80 +1,42 @@
-//! Parsing logic for [`FinalAnswerFormat`](super::FinalAnswerFormat).
-//!
-//! Delegates to per-format strategies in [`strategies`] and
-//! exposes [`extract_count_from_text`] for reuse.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! let fmt = FinalAnswerFormat::parse("Found 15 matches");
-//! ```
+//! Answer format priority: numbered matches, counts, JSON, then free text.
 
-mod strategies;
-
-use strategies::{try_parse_count, try_parse_json, try_parse_line_numbered};
-
+mod count;
+mod numbered;
 use super::FinalAnswerFormat;
-
+use count::extract_count_from_text;
 impl FinalAnswerFormat {
     /// Parse a FINAL() answer string into its classified format.
     ///
-    /// Tries each format in priority order: line-numbered →
-    /// count → JSON → free-form text.
-    ///
     /// # Examples
-    ///
-    /// ```ignore
-    /// let fmt = FinalAnswerFormat::parse("Found 15 matches");
-    /// assert!(matches!(fmt, FinalAnswerFormat::CountResult { .. }));
+    /// ```
+    /// use codetether_rlm::oracle::FinalAnswerFormat;
+    /// assert!(matches!(FinalAnswerFormat::parse("Found 2 matches"),FinalAnswerFormat::CountResult{count:2}));
     /// ```
     pub fn parse(answer: &str) -> Self {
-        if let Some(fmt) = try_parse_line_numbered(answer) {
-            return fmt;
+        if let Some(format) = numbered::parse(answer) {
+            return format;
         }
-        if let Some(fmt) = try_parse_count(answer) {
-            return fmt;
+        // Try to parse as count result
+        let lower = answer.to_lowercase();
+        if lower.contains("found") || lower.contains("count:") || lower.contains("occurrences") {
+            // Extract number from text like "Found 15 async functions"
+            if let Some(count) = extract_count_from_text(answer) {
+                return Self::CountResult { count };
+            }
         }
-        if let Some(fmt) = try_parse_json(answer) {
-            return fmt;
+
+        // Try to parse as JSON
+        if (answer.trim().starts_with('{') || answer.trim().starts_with('['))
+            && let Ok(data) = serde_json::from_str::<serde_json::Value>(answer)
+        {
+            return Self::StructuredData { data };
         }
+
+        // Default to free-form text
         Self::FreeFormText {
             text: answer.to_string(),
         }
     }
 }
-
-/// Extract a count number from natural language text
-/// like "Found 15 async functions" or "count: 42".
-///
-/// Returns `None` when no recognizable numeric pattern is found.
-///
-/// # Examples
-///
-/// ```ignore
-/// assert_eq!(extract_count_from_text("Found 15 items"), Some(15));
-/// assert_eq!(extract_count_from_text("no numbers here"), None);
-/// ```
-pub fn extract_count_from_text(text: &str) -> Option<usize> {
-    static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-    let re = RE.get_or_init(|| {
-        regex::Regex::new(
-            r"(?i)(?:found|count:?\s*)\s*(\d+)|(\d+)\s+(?:functions?|matches?|occurrences?|items?|results?)"
-        ).expect("Invalid regex")
-    });
-    for cap in re.captures_iter(text) {
-        if let Some(m) = cap.get(1) {
-            if let Ok(n) = m.as_str().parse() {
-                return Some(n);
-            }
-        }
-        if let Some(m) = cap.get(2) {
-            if let Ok(n) = m.as_str().parse() {
-                return Some(n);
-            }
-        }
-    }
-    None
-}
-
 #[cfg(test)]
 mod tests;

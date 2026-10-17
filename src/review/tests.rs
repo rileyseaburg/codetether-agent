@@ -2,5 +2,4 @@
 
 mod fixture;
 mod parse_tools;
-mod prompt;
 mod run;

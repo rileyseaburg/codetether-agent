@@ -1,6 +1,8 @@
-//! RLM configuration type and defaults.
+//! RLM serialized runtime configuration.
 
 use serde::{Deserialize, Serialize};
+mod config_defaults;
+mod default;
 
 /// RLM configuration.
 ///
@@ -38,50 +40,5 @@ pub struct RlmConfig {
     #[serde(default = "config_defaults::default_history_trigger_messages")]
     pub history_trigger_messages: usize,
 }
-
-mod config_defaults {
-    pub fn default_mode() -> String {
-        "auto".into()
-    }
-    pub fn default_threshold() -> f64 {
-        0.35
-    }
-    pub fn default_max_iterations() -> usize {
-        15
-    }
-    pub fn default_max_subcalls() -> usize {
-        50
-    }
-    pub fn default_runtime() -> String {
-        "rust".into()
-    }
-    pub fn default_history_trigger_messages() -> usize {
-        0
-    }
-}
-
-impl Default for RlmConfig {
-    fn default() -> Self {
-        use config_defaults::*;
-        Self {
-            mode: default_mode(),
-            threshold: default_threshold(),
-            max_iterations: default_max_iterations(),
-            max_subcalls: default_max_subcalls(),
-            runtime: default_runtime(),
-            root_model: None,
-            subcall_model: None,
-            history_trigger_messages: default_history_trigger_messages(),
-        }
-    }
-}
-
 #[cfg(test)]
-mod tests {
-    use super::RlmConfig;
-
-    #[test]
-    fn default_history_trigger_is_disabled() {
-        assert_eq!(RlmConfig::default().history_trigger_messages, 0);
-    }
-}
+mod tests;

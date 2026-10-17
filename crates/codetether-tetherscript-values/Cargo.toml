@@ -1,0 +1,11 @@
+[package]
+name = "codetether-tetherscript-values"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Shared JSON and TetherScript runtime value conversion"
+license = "MIT"
+
+[dependencies]
+serde_json = "1.0.151"
+tetherscript = "0.1.0-alpha.30"

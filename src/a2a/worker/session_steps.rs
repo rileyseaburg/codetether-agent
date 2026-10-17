@@ -1,23 +1,24 @@
-//! Iterative LLM/tool execution loop for worker sessions.
-
-use std::sync::Arc;
-
-use anyhow::Result;
+//! Worker execution adapts approval, output, and task budgets to session control.
 
 use crate::{provider::Provider, session::Session};
+use anyhow::Result;
+use std::sync::Arc;
 
+mod session_complete;
+mod session_context;
+#[cfg(test)]
+mod session_control_tests;
 mod session_failure;
 #[cfg(test)]
 mod session_failure_tests;
+mod session_loop;
+mod session_outcome;
 mod session_output;
 mod session_response;
 mod session_step_tools;
 mod session_wrap_up;
-use session_failure::{record_loop_halt, step_or_record};
-use session_response::{ResponseContext, process_response};
-use session_wrap_up::maybe_inject;
-mod session_outcome;
 pub(super) use session_outcome::SessionStepsOutcome;
+use session_response::ResponseContext;
 
 pub(super) async fn run_session_steps(
     provider: Arc<dyn Provider>,
@@ -31,55 +32,26 @@ pub(super) async fn run_session_steps(
     output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
     max_steps: usize,
 ) -> Result<SessionStepsOutcome> {
-    let temperature = Some(if super::prefers_temperature_one(model) {
-        1.0
-    } else {
-        0.7
-    });
-    let rctx = ResponseContext {
+    crate::session::runtime::boundary::ensure_running(&session.id).await?;
+    let mut control = crate::session::runtime::execution_scope::ExecutionScope::open(&session.id)?;
+    let context = session_context::Context {
+        provider,
         model,
-        tool_registry,
-        auto_approve,
-        workspace_dir,
-        output_callback,
-    };
-    let mut final_output = String::new();
-    let mut completed = false;
-    let max_steps = max_steps.max(1);
-    tracing::info!(max_steps, model, "Worker session step budget");
-    for step in 1..=max_steps {
-        tracing::info!(step, max_steps, "Agent step starting");
-        maybe_inject(session, step, max_steps);
-        let response = super::complete_worker_step_with_context_fallback(
-            Arc::clone(&provider),
-            session,
+        system_prompt,
+        tool_definitions,
+        response: ResponseContext {
             model,
-            system_prompt,
-            tool_definitions,
-            temperature,
-        )
+            tool_registry,
+            auto_approve,
+            workspace_dir,
+            output_callback,
+        },
+    };
+    let result = control
+        .run(session_loop::run(&context, session, max_steps.max(1)))
         .await;
-        let response = step_or_record(session, step, response).await?;
-        if process_response(&rctx, session, &mut final_output, response).await {
-            completed = true;
-            break;
-        }
+    if let Err(error) = &result {
+        session_failure::record_loop_halt(session, &error.to_string()).await;
     }
-    if !completed {
-        tracing::warn!(
-            max_steps,
-            "Worker session exhausted its step budget before completion"
-        );
-        record_loop_halt(
-            session,
-            &format!("step budget ({max_steps}) exhausted before completion"),
-        )
-        .await;
-    }
-    session.save().await?;
-    Ok(SessionStepsOutcome {
-        text: final_output.trim().to_string(),
-        budget_exhausted: !completed,
-        max_steps,
-    })
+    result
 }

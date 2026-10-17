@@ -5,6 +5,7 @@ use crate::session::SessionEvent;
 use anyhow::Result;
 
 pub(super) async fn run(runner: &mut Runner<'_>, step: usize) -> Result<()> {
+    crate::session::runtime::boundary::ensure_running(&runner.session.id).await?;
     super::super::super::steering::drain_into(runner.session);
     let model = &mut runner.model;
     #[rustfmt::skip]

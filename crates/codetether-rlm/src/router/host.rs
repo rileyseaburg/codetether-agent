@@ -1,9 +1,8 @@
 //! Host-provided trait for RLM tool dispatch.
 //!
-//! The router needs three host-defined capabilities that live in
-//! `codetether-agent`: the REPL context, structured tool dispatch,
-//! and tool-definition generation. This trait exposes them without
-//! coupling the crate to concrete types.
+//! The router needs context inspection, structured tool dispatch, and tool
+//! definitions. The shared [`super::ReplHost`] supplies the standard in-memory
+//! implementation; embedding applications can provide alternatives.
 
 use crate::traits::ToolDefinition;
 
@@ -18,8 +17,8 @@ pub enum HostToolResult {
 
 /// Narrow interface the router needs from the host environment.
 ///
-/// Implemented by `codetether-agent` with `RlmRepl` and the
-/// `dispatch_tool_call` function from `src/rlm/tools.rs`.
+/// # Implementors
+/// [`super::ReplHost`] uses the shared REPL and tool dispatcher.
 pub trait RouterHost: Send {
     /// Return the `rlm_head/tail/grep/…` tool definitions.
     fn tool_definitions(&self) -> Vec<ToolDefinition>;

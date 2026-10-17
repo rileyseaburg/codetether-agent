@@ -1,14 +1,11 @@
-//! Result construction and bus emission for auto_process.
+//! Construct the final RLM result and completion log.
 
+mod measure;
+use super::types::LoopOutcome;
+use crate::{result::RlmResult, stats::RlmStats};
 use std::time::Instant;
 use tracing::info;
 use uuid::Uuid;
-
-use crate::chunker::RlmChunker;
-use crate::result::RlmResult;
-use crate::stats::RlmStats;
-
-use super::types::LoopOutcome;
 
 /// Build the final `RlmResult`.
 pub(super) fn build_result(
@@ -18,13 +15,7 @@ pub(super) fn build_result(
     start: Instant,
     trace_id: Uuid,
 ) -> RlmResult {
-    let output_tokens = RlmChunker::estimate_tokens(answer);
-    let elapsed = start.elapsed().as_millis() as u64;
-    let ratio = if output_tokens == 0 {
-        0.0
-    } else {
-        output_tokens as f64 / input_tokens as f64
-    };
+    let (output_tokens, elapsed, ratio) = measure::measure(answer, input_tokens, start);
     let processed = format!(
         "[RLM: {input_tokens} → {output_tokens} tokens | {} iterations | {} sub-calls]\n\n{}",
         outcome.iterations, outcome.subcalls, answer

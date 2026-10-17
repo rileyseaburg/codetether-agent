@@ -16,4 +16,5 @@ pub(super) fn render(frame: &mut Frame, app: &mut App) {
     super::interlude::render_if_active(frame, frame.area(), app);
     crate::tui::app::watchdog::render_watchdog_notification(frame, frame.area(), &app.state);
     super::answer_review::render(frame, app);
+    super::question::render(frame, app);
 }

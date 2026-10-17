@@ -1,0 +1,18 @@
+[package]
+name = "codetether-benchmark"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Benchmark contracts, discovery, pricing, and scoring for CodeTether"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+serde = { version = "1.0.229", features = ["derive"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }
+serde_json = "1.0.151"
+tracing = "0.1"
+tempfile = "3.25.0"
+async-trait = "0.1.92"
+chrono = "0.4"
+tokio = { version = "1.53.1", features = ["fs"] }

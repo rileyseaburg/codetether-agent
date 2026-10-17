@@ -1,32 +1,4 @@
-//! Provider wrapper that records completion and stream performance metrics.
-
-use super::Provider;
-use std::sync::Arc;
-
-#[path = "metrics/calls.rs"]
-mod calls;
+//! Compatibility exports for shared provider instrumentation and request identity.
+pub use codetether_provider_metrics::MetricsProvider;
 #[path = "metrics/identity.rs"]
 pub(crate) mod identity;
-#[path = "metrics/provider_impl.rs"]
-mod provider_impl;
-#[path = "metrics/provider_impl_delegates.rs"]
-mod provider_impl_delegates;
-#[cfg(test)]
-#[path = "metrics/provider_impl_tests.rs"]
-mod provider_impl_tests;
-#[path = "metrics/record.rs"]
-mod record;
-#[path = "metrics/stream.rs"]
-mod stream;
-
-/// A provider wrapper that instruments every request.
-pub struct MetricsProvider {
-    pub(super) inner: Arc<dyn Provider>,
-}
-
-impl MetricsProvider {
-    /// Wraps a provider with automatic latency and throughput collection.
-    pub fn wrap(inner: Arc<dyn Provider>) -> Arc<Self> {
-        Arc::new(Self { inner })
-    }
-}

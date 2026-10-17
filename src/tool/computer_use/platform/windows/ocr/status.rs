@@ -6,11 +6,13 @@ use serde_json::{Value, json};
 use windows::Media::Ocr::OcrEngine;
 
 pub(super) fn report() -> ToolResult {
-    let payload = probe().unwrap_or_else(|error| json!({
-        "backend": "windows_winrt_ocr", "runtime_available": false,
-        "available": false, "error": format!("{error:#}"),
-        "remediation": identity::SETUP_HINT
-    }));
+    let payload = probe().unwrap_or_else(|error| {
+        json!({
+            "backend": "windows_winrt_ocr", "runtime_available": false,
+            "available": false, "error": format!("{error:#}"),
+            "remediation": identity::SETUP_HINT
+        })
+    });
     response::success_result(payload)
 }
 
@@ -28,7 +30,9 @@ fn probe() -> anyhow::Result<Value> {
         .map(|tag| tag.to_string());
     let probe_result = if package.is_some() {
         default_engine.as_ref().ok().map(probe::recognize)
-    } else { None };
+    } else {
+        None
+    };
     let available = probe_result.as_ref().is_some_and(|result| result.is_ok());
     Ok(json!({
         "backend": "windows_winrt_ocr", "runtime_available": true,

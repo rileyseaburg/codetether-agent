@@ -2,19 +2,28 @@
 
 use super::super::{Runner, state::StepFlow};
 
-pub(super) async fn flow(runner: &mut Runner<'_>) -> StepFlow {
-    match crate::session::tasks::runtime::next_message(&runner.session.id).await {
-        Ok(Some(message)) => {
-            runner.session.add_message(message);
+pub(super) async fn flow(runner: &mut Runner<'_>) -> anyhow::Result<StepFlow> {
+    let decision = crate::session::runtime::continuation::continue_goal(runner.session).await?;
+    Ok(apply(runner, decision))
+}
+
+pub(super) async fn after_message(runner: &mut Runner<'_>) -> anyhow::Result<StepFlow> {
+    let decision = crate::session::runtime::continuation::after_message(runner.session).await?;
+    Ok(apply(runner, decision))
+}
+
+fn apply(
+    runner: &mut Runner<'_>,
+    decision: crate::session::runtime::continuation::Continuation,
+) -> StepFlow {
+    use crate::session::runtime::continuation::Continuation;
+    match decision {
+        Continuation::Goal => {
             reset_turn(runner);
-            tracing::info!(session_id = %runner.session.id, "Continuing active goal");
             StepFlow::ContinueGoal
         }
-        Ok(None) => StepFlow::Finish,
-        Err(error) => {
-            tracing::warn!(error = %error, "Failed to schedule goal continuation");
-            StepFlow::Finish
-        }
+        Continuation::Steering => StepFlow::Continue,
+        Continuation::Finish => StepFlow::Finish,
     }
 }
 

@@ -1,9 +1,10 @@
-//! Provider-neutral protocol types and bounded HTTP retry helpers.
+//! Provider contracts, protocol types, model identities, and bounded HTTP retries.
 //!
 //! Build conversation history with [`Message`], submit [`CompletionRequest`]
 //! values through a provider, and consume [`CompletionResponse`] or
 //! [`StreamChunk`] values. [`retry`] handles transient HTTP failures without
-//! depending on a particular provider or the agent runtime.
+//! depending on transport adapters or the agent runtime. Shared model rules and
+//! catalog caches keep request selection and reported model identities consistent.
 //!
 //! # Examples
 //!
@@ -42,3 +43,30 @@ pub use stream_chunk::StreamChunk;
 pub use tool_call::ToolCallRef;
 pub use tool_definition::ToolDefinition;
 pub use usage::Usage;
+
+mod provider;
+pub use provider::Provider;
+pub mod codex;
+pub mod model_identity;
+
+#[cfg(test)]
+mod provider_tests;
+
+pub mod body_cap;
+pub mod chat_images;
+pub mod shared_http;
+pub mod socket_opts;
+
+#[cfg(test)]
+mod body_cap_tests;
+
+/// Shared context-window limits with model-specific precedence.
+pub mod limits;
+
+pub mod request_identity;
+
+pub mod local;
+
+pub mod pricing;
+
+pub mod routing;

@@ -1,0 +1,17 @@
+[package]
+name = "codetether-provider-metrics"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Provider completion and stream instrumentation"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+async-trait = "0.1.92"
+chrono = "0.4"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
+futures = "0.3.34"
+tokio = { version = "1.53.1", features = ["rt", "macros", "time"] }
+tracing = "0.1"

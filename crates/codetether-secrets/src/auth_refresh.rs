@@ -1,6 +1,9 @@
 //! Reauthenticate Kubernetes clients after rejection and restart lease maintenance.
 
-use super::*;
+use crate::SecretsManager;
+use anyhow::Result;
+use std::sync::Arc;
+use vaultrs::{client::VaultClient, error::ClientError};
 
 impl SecretsManager {
     pub(super) async fn refresh_kubernetes_auth(&self) -> Result<Option<Arc<VaultClient>>> {

@@ -14,6 +14,7 @@ pub(in crate::session::helper::prompt_loop) async fn handle(
     step: usize,
     mut response: CompletionResponse,
 ) -> Result<StepFlow> {
+    crate::session::runtime::boundary::ensure_running(&runner.session.id).await?;
     let (mut calls, truncated) =
         super::super::super::tool_call_parse::parse_tool_calls(&response.message.content);
     let text = super::super::super::text::extract_text_content(&&response.message.content);

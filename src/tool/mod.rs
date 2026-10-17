@@ -72,7 +72,6 @@ pub mod task;
 #[cfg(feature = "tetherscript")]
 pub mod tetherscript;
 pub mod todo;
-mod tool_result_error;
 pub mod undo;
 pub mod voice;
 pub mod voice_input;
@@ -81,10 +80,6 @@ pub mod webfetch;
 pub mod websearch;
 pub mod youtube;
 
-use anyhow::Result;
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 
 use crate::provider::Provider;
@@ -92,89 +87,7 @@ pub use budget::{DEFAULT_TOOL_OUTPUT_MAX_BYTES, tool_output_budget};
 pub use mcp_tools::{McpToolManager, McpToolWrapper};
 pub use sandbox::{PluginManifest, PluginRegistry, SigningKey, hash_bytes, hash_file};
 
-/// A tool that can be executed by an agent
-#[async_trait]
-pub trait Tool: Send + Sync {
-    /// Tool identifier
-    fn id(&self) -> &str;
-
-    /// Human-readable name
-    fn name(&self) -> &str;
-
-    /// Description for the LLM
-    fn description(&self) -> &str;
-
-    /// JSON Schema for parameters
-    fn parameters(&self) -> Value;
-
-    /// Execute the tool with given arguments
-    async fn execute(&self, args: Value) -> Result<ToolResult>;
-}
-
-/// Result from tool execution
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolResult {
-    pub output: String,
-    pub success: bool,
-    #[serde(default)]
-    pub metadata: HashMap<String, Value>,
-}
-
-impl ToolResult {
-    pub fn success(output: impl Into<String>) -> Self {
-        Self {
-            output: output.into(),
-            success: true,
-            metadata: HashMap::new(),
-        }
-    }
-
-    pub fn error(message: impl Into<String>) -> Self {
-        Self {
-            output: message.into(),
-            success: false,
-            metadata: HashMap::new(),
-        }
-    }
-
-    pub fn with_metadata(mut self, key: impl Into<String>, value: Value) -> Self {
-        self.metadata.insert(key.into(), value);
-        self
-    }
-
-    /// Truncate `output` to at most `max_bytes`, tagging `metadata.truncated`
-    /// with the original length when truncation occurs.
-    ///
-    /// Uses UTF-8-safe truncation. When the output fits, returns `self`
-    /// unchanged.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use codetether_agent::tool::ToolResult;
-    ///
-    /// let r = ToolResult::success("x".repeat(1_000)).truncate_to(100);
-    /// assert!(r.output.len() <= 100 + 32); // + marker
-    /// assert!(r.metadata.contains_key("truncated"));
-    /// ```
-    pub fn truncate_to(mut self, max_bytes: usize) -> Self {
-        if self.output.len() <= max_bytes {
-            return self;
-        }
-        let original_len = self.output.len();
-        let head = crate::util::truncate_bytes_safe(&self.output, max_bytes);
-        self.output =
-            format!("{head}\n…[truncated: {original_len} bytes, showing first {max_bytes}]");
-        self.metadata.insert(
-            "truncated".to_string(),
-            serde_json::json!({
-                "original_bytes": original_len,
-                "shown_bytes": max_bytes,
-            }),
-        );
-        self
-    }
-}
+pub use codetether_tool_core::{Tool, ToolResult};
 
 /// Registry of available tools
 pub struct ToolRegistry {

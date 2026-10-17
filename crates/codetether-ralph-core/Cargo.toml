@@ -1,0 +1,22 @@
+[package]
+name = "codetether-ralph-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "PRD contracts, persistence and story scheduling for CodeTether Ralph"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["fs", "sync"] }
+async-trait = "0.1.92"
+chrono = "0.4"
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }
+tracing = "0.1"
+
+glob = "0.3.4"
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt"] }

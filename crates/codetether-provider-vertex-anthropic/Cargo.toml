@@ -1,0 +1,21 @@
+[package]
+name = "codetether-provider-vertex-anthropic"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Vertex Anthropic request conversion, retry transport, and streaming"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+async-trait = "0.1.92"
+codetether-google-auth = { path = "../codetether-google-auth", version = "0.1.0" }
+codetether-provider-anthropic = { path = "../codetether-provider-anthropic", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+futures = "0.3.34"
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "stream", "rustls"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["time"] }
+tracing = "0.1"

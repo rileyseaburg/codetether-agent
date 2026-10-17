@@ -1,7 +1,7 @@
 //! Tests that loop-halt diagnostics are recorded into the session so an
 //! autonomous worker never ends a run without a visible reason.
 
-use super::record_loop_halt;
+use super::session_failure::record_loop_halt;
 use crate::provider::{ContentPart, Role};
 use crate::session::Session;
 

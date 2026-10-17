@@ -3,7 +3,7 @@
 //! does not require access to the full `ToolRegistry`.
 
 use anyhow::Result;
-use serde_json::{Value, json};
+use codetether_search::arguments::enrich_args;
 
 use crate::tool::{Tool, ToolResult, file, memory, search, webfetch, websearch};
 
@@ -26,34 +26,3 @@ pub async fn run_choice(choice: &BackendChoice, query: &str) -> Result<ToolResul
         )),
     }
 }
-
-fn enrich_args(choice: &BackendChoice, query: &str) -> Value {
-    let mut args = choice.args.clone();
-    if !args.is_object() {
-        args = Value::Object(Default::default());
-    }
-    let obj = args.as_object_mut().expect("args normalized above");
-    match choice.backend {
-        Backend::Grep if obj.get("pattern").is_none() => {
-            obj.insert("pattern".into(), json!(query));
-        }
-        Backend::Glob if obj.get("pattern").is_none() => {
-            obj.insert("pattern".into(), json!(query));
-        }
-        Backend::Websearch if obj.get("query").is_none() => {
-            obj.insert("query".into(), json!(query));
-        }
-        Backend::Memory => {
-            obj.insert("action".into(), json!("search"));
-            if obj.get("query").is_none() {
-                obj.insert("query".into(), json!(query));
-            }
-        }
-        _ => {}
-    }
-    args
-}
-
-#[cfg(test)]
-#[path = "dispatch_tests.rs"]
-mod tests;

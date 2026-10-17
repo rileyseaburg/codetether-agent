@@ -22,6 +22,7 @@ pub(super) async fn execute_task_agent(
         return execute_swarm_with_policy(
             session,
             &context.prompt,
+            runtime.auto_approve,
             context.model_tier.as_deref(),
             context.selected_model.clone(),
             &context.metadata,

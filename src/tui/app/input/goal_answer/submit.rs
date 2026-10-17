@@ -2,6 +2,8 @@
 
 #[path = "submit_question.rs"]
 mod question;
+#[path = "submit_review.rs"]
+mod review;
 use crate::session::tasks::runtime::answer_review;
 use crate::tui::app::{
     session_runtime::{SessionSlot, TuiSessionHandle},
@@ -26,28 +28,20 @@ pub(crate) async fn intercept(
     if super::continuation::intercept(app, slot, runtime).await {
         return true;
     }
-    let Some(question) = question::parse(&input) else {
+    let question = question::parse(&input).or_else(|| {
+        answer_review::held(slot.view().id())
+            .then(|| question::followup(&input))
+            .flatten()
+    });
+    let Some(question) = question else {
         return false;
     };
-    match answer_review::begin(slot.view().id(), question).await {
-        Ok(false) => false,
-        Ok(true) => {
-            runtime.request_cancel_current();
-            app.state.push_history(input);
-            app.state.clear_input();
-            app.state.answer_review_yes = false;
-            app.state.status = "Goal paused — answering your question before continuing".into();
-            app.state.needs_redraw = true;
-            true
-        }
-        Err(error) => {
-            runtime.request_cancel_current();
-            app.state.status = format!("Cannot safely pause goal: {error}");
-            true
-        }
-    }
+    review::begin(app, slot.view().id(), runtime, question, &input).await
 }
 
+#[cfg(test)]
+#[path = "submit_followup_tests.rs"]
+mod followup_tests;
 #[cfg(test)]
 #[path = "submit_tests.rs"]
 mod tests;

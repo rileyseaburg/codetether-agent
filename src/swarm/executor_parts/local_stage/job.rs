@@ -30,4 +30,5 @@ pub(super) struct Job {
     pub max_retries: u32,
     pub base_delay_ms: u64,
     pub max_delay_ms: u64,
+    pub control: Option<crate::swarm::SwarmControl>,
 }

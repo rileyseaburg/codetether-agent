@@ -1,5 +1,12 @@
 //! Process-wide identity shared by provenance and A2A transports.
 
+mod configuration;
+mod principal;
+mod read;
+mod store;
+mod write;
+use configuration::configured_identity;
+pub use principal::{RuntimePrincipal, runtime_persona_id, runtime_spiffe_id};
 use std::sync::OnceLock;
 
 static IDENTITY: OnceLock<String> = OnceLock::new();
@@ -59,15 +66,8 @@ pub fn bind_runtime_agent_identity(identity: &str) -> String {
     IDENTITY.get().cloned().unwrap_or(identity)
 }
 
-fn configured_identity() -> Option<String> {
-    std::env::var("CODETETHER_AGENT_IDENTITY_ID")
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-}
-
 fn persisted_identity() -> Option<String> {
-    let identity = super::runtime_identity_store::load_or_create()?;
+    let identity = store::load_or_create()?;
     let _ = IDENTITY.set(identity.clone());
     IDENTITY.get().cloned().or(Some(identity))
 }

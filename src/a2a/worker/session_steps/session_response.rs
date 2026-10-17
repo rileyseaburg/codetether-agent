@@ -23,7 +23,8 @@ pub(super) async fn process_response(
     session: &mut Session,
     final_output: &mut String,
     response: CompletionResponse,
-) -> bool {
+) -> anyhow::Result<bool> {
+    crate::session::runtime::boundary::ensure_running(&session.id).await?;
     let (pt, ct) = (
         response.usage.prompt_tokens,
         response.usage.completion_tokens,
@@ -37,7 +38,7 @@ pub(super) async fn process_response(
     );
     session.add_message(response.message.clone());
     if tool_calls.is_empty() {
-        return true;
+        return Ok(true);
     }
     for tool_call in tool_calls {
         execute_tool_call(
@@ -51,5 +52,5 @@ pub(super) async fn process_response(
         )
         .await;
     }
-    false
+    Ok(false)
 }

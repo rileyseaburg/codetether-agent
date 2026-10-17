@@ -1,0 +1,17 @@
+[package]
+name = "codetether-gemini-web-transport"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Gemini Web authenticated transport and session handling"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+regex = "1"
+reqwest = { version = "0.13.2", default-features = false, features = ["rustls", "form"] }
+tokio = { version = "1.53.1", features = ["sync"] }
+tracing = "0.1"
+codetether-gemini-web-protocol = { path = "../codetether-gemini-web-protocol", version = "0.1.0" }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+serde_json = "1.0.151"

@@ -3,8 +3,11 @@
 //! Core types, oracle, chunker, event definitions, and the routing
 //! subsystem for Recursive Language Model processing.
 //!
-//! **Driver modules** (`repl`, `tools`) remain in `codetether-agent`
-//! due to tight coupling with `Provider`/`SessionBus`. The router is
+//! [provider_adapter] bridges shared provider contracts into the RLM interface.
+//! [repl] owns in-memory context operations and DSL evaluation, while
+//! [external_repl] owns Bun/Node process I/O. [legacy_executor] runs analysis
+//! with optional caller-supplied response rewriting. Session event adapters
+//! remain in the application. The router is
 //! provided here behind the [`RouterHost`] trait so the host can
 //! inject its concrete tool-dispatch implementation.
 
@@ -46,3 +49,24 @@ pub use router::{
 };
 pub use stats::RlmStats;
 pub use types::{RlmAnalysisResult, SubQuery};
+
+/// Shared-provider adapter and request/response conversion.
+pub mod provider_adapter;
+
+/// In-memory REPL context operations and DSL evaluation.
+pub mod repl;
+
+/// RLM tool schemas, bounded outputs, and in-memory dispatch.
+pub mod tools;
+
+/// External Bun/Node process wrapper for REPL commands.
+pub mod external_repl;
+
+/// Legacy executor text decoding and trace-evidence helpers.
+pub mod legacy_support;
+
+/// Legacy analysis executor with caller-supplied response rewriting.
+pub mod legacy_executor;
+
+/// Router-backed executor preserving the root application compatibility API.
+pub mod router_executor;

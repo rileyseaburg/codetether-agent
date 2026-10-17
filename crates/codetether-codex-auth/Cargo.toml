@@ -1,0 +1,20 @@
+[package]
+name = "codetether-codex-auth"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Codex OAuth exchange, credential coordination, and persistence"
+license = "MIT"
+
+[dependencies]
+directories = "6"
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+tokio = { version = "1.53.1", features = ["sync", "time"] }
+anyhow = "1.0.104"
+base64 = "0.23.1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+sha2 = "0.11.0"
+urlencoding = "2"

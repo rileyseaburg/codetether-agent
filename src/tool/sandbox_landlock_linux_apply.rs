@@ -13,7 +13,7 @@ pub(crate) fn apply(cmd: &mut tokio::process::Command, rules: Option<Rules>) {
 
 fn install(rules: &Rules) -> std::io::Result<()> {
     let attr = RulesetAttr {
-        handled_access_fs: sys::HANDLED_ACCESS,
+        handled_access_fs: rules.handled_access,
     };
     let fd = unsafe { sys::create_ruleset(&attr) };
     if fd < 0 {

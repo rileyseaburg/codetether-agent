@@ -1,0 +1,12 @@
+[package]
+name = "codetether-image"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Portable image attachments, data-URL validation, and size fitting"
+license = "MIT"
+
+[dependencies]
+base64 = "0.23.1"
+image = { version = "0.25", default-features = false, features = ["png", "bmp", "jpeg"] }
+tracing = "0.1"

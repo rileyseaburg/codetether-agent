@@ -1,5 +1,2 @@
-mod from_json;
-mod to_json;
-
-pub use from_json::json_to_tetherscript;
-pub use to_json::tetherscript_to_json;
+//! Compatibility exports for shared TetherScript value conversion.
+pub use codetether_tetherscript_values::{json_to_tetherscript, tetherscript_to_json};

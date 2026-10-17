@@ -19,7 +19,9 @@ pub(super) async fn publish_start(runner: &Runner<'_>, call: &Call) {
 
 /// Returns the reason an interactive, stubbed, or repeated call is blocked.
 pub(super) fn blocked(runner: &mut Runner<'_>, call: &Call) -> Option<String> {
-    if super::super::super::runtime::is_interactive_tool(&call.name) {
+    if super::super::super::runtime::is_interactive_tool(&call.name)
+        && !codetether_question::runtime::available()
+    {
         return Some("Interactive tool 'question' is disabled in this interface. Ask the user directly in assistant text.".into());
     }
     super::super::super::edit::detect_stub_in_tool_input(&call.name, &call.input)

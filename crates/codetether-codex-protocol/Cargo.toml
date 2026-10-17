@@ -1,0 +1,18 @@
+[package]
+name = "codetether-codex-protocol"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Codex request encoding, response decoding, and reasoning checkpoints"
+license = "MIT"
+
+[dependencies]
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+serde_json = "1.0.151"
+tracing = "0.1"
+anyhow = "1.0.104"
+bytes = "1.12.1"
+futures = "0.3.34"
+reqwest = { version = "0.13.2", default-features = false, features = ["stream", "rustls"] }
+sha2 = "0.11"
+hex = "0.4"

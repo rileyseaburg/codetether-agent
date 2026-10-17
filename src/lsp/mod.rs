@@ -17,34 +17,18 @@ mod client_capabilities;
 mod client_diagnostics;
 mod client_recovery;
 mod document_language;
-pub mod tetherscript;
-pub mod transport;
-pub mod types;
 mod typescript_diagnostics;
 #[cfg(test)]
 mod typescript_repeated_tests;
-pub mod uri;
-pub mod workspace_folder;
 
 pub use client::LspManager;
+pub use codetether_lsp_core::{tetherscript, transport, types, uri, workspace_folder};
 pub use types::*;
 pub use uri::{path_to_uri, uri_to_path};
 
 #[cfg(test)]
-#[path = "tetherscript_tests.rs"]
-mod tetherscript_tests;
-
-#[cfg(test)]
 #[path = "tetherscript_smoke_tests.rs"]
 mod tetherscript_smoke_tests;
-
-#[cfg(test)]
-#[path = "tetherscript_config_tests.rs"]
-mod tetherscript_config_tests;
-
-#[cfg(test)]
-#[path = "workspace_folder_tests.rs"]
-mod workspace_folder_tests;
 
 #[cfg(test)]
 mod jsx_diagnostics_tests;

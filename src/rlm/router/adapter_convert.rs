@@ -1,7 +1,2 @@
-//! Request/response conversion between main crate and RLM types.
-
-mod request;
-mod response;
-
-pub(super) use request::build_req;
-pub(super) use response::to_llm_resp;
+//! Compatibility aliases for shared RLM request and response conversion.
+pub use codetether_rlm::provider_adapter::{build_req, to_llm_resp};

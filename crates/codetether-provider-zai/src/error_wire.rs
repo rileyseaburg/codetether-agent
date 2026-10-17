@@ -27,3 +27,15 @@ pub(crate) fn message(status: reqwest::StatusCode, text: &str) -> String {
             )
         })
 }
+
+/// Preserve the application's full-body buffered error fallback.
+pub(crate) fn full_message(status: reqwest::StatusCode, text: &str) -> String {
+    serde_json::from_str::<ZaiError>(text)
+        .map(|error| {
+            format!(
+                "Z.AI API error: {} ({:?})",
+                error.error.message, error.error.error_type
+            )
+        })
+        .unwrap_or_else(|_| format!("Z.AI API error: {status} {text}"))
+}

@@ -6,3 +6,7 @@
 mod fixtures;
 mod persist_tests;
 mod sync_tests;
+
+mod consolidation;
+
+mod consolidation_batch;

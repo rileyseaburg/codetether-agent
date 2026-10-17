@@ -1,0 +1,15 @@
+[package]
+name = "codetether-github-pr"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "GitHub PR context, lifecycle policy, and body rendering for CodeTether"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }

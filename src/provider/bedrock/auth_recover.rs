@@ -10,12 +10,7 @@
 
 use crate::provider::bedrock::{BedrockProvider, sso_refresh};
 use crate::secrets;
-use reqwest::StatusCode;
-
-/// True for the statuses Bedrock uses to reject an expired/invalid key.
-pub(crate) fn is_auth_failure(status: StatusCode) -> bool {
-    matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN)
-}
+pub(crate) use codetether_provider_bedrock::recovery::is_auth_failure;
 
 /// Try to replace the provider's bearer token. Returns `true` when a new
 /// token was installed and the caller should retry. SigV4 providers never

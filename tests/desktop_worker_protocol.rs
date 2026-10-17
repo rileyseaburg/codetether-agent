@@ -31,7 +31,8 @@ fn desktop_worker_is_protocol_only_and_preserves_multiple_requests() {
         .map(|line| serde_json::from_str(line).unwrap())
         .collect();
     assert_eq!(responses.len(), 2);
-    assert!(responses.iter().all(|result| !result.success));
+    assert_eq!(responses[0].success, cfg!(target_os = "linux"));
+    assert!(!responses[1].success);
     assert!(
         output.stderr.is_empty(),
         "worker startup must not emit agent logs"

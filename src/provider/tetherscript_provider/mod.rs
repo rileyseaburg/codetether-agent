@@ -1,14 +1,3 @@
-mod authority;
-mod call;
+//! Compatibility exports for the shared TetherScript provider and native Cerebras factory.
+pub use codetether_provider_tetherscript::{TetherScriptProvider, usai};
 pub mod cerebras;
-mod complete;
-mod complete_parse;
-mod convert;
-mod model_list;
-#[cfg(test)]
-mod model_record;
-mod provider_impl;
-mod runner;
-pub mod usai;
-
-pub use runner::TetherScriptProvider;

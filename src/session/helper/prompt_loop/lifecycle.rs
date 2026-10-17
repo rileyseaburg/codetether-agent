@@ -17,9 +17,11 @@ use anyhow::Result;
 ///
 /// Returns an error from setup, completion, tool execution, or persistence.
 pub(crate) async fn run(runner: &mut Runner<'_>) -> Result<SessionResult> {
-    let _steering = super::super::steering::RunGuard::open(&runner.session.id);
+    crate::session::runtime::boundary::ensure_running(&runner.session.id).await?;
+    let mut control =
+        crate::session::runtime::execution_scope::ExecutionScope::open(&runner.session.id)?;
     let leases = super::super::workspace_coordination::LeaseTurn::open(&runner.lease_owner);
-    let result = steps::run(runner).await;
+    let result = control.run(steps::run(runner)).await;
     leases.close().await;
     result
 }

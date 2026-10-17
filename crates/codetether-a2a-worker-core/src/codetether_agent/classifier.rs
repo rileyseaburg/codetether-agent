@@ -1,5 +1,11 @@
-use super::{record::SubAgentRunRecord, state::SubAgentRunState};
+//! Classify child-session records from their activity fields.
+
+use super::record::SubAgentRunRecord;
 use serde_json::Value;
+mod activity;
+mod name;
+use activity::{classify_counts, reason_for};
+use name::agent_name;
 
 /// Inspects a CodeTether child session JSON value and returns orphan-aware status.
 ///
@@ -52,37 +58,4 @@ pub fn classify_child_session_value(value: &Value) -> Option<SubAgentRunRecord> 
         last_heartbeat_at,
         reason,
     })
-}
-
-fn agent_name(value: &Value) -> Option<&str> {
-    value.get("agent").and_then(Value::as_str).or_else(|| {
-        value
-            .pointer("/metadata/provenance/identity/agent_name")
-            .and_then(Value::as_str)
-    })
-}
-
-fn classify_counts(
-    messages: usize,
-    tools: usize,
-    tokens: u64,
-    has_heartbeat: bool,
-) -> SubAgentRunState {
-    if messages <= 1 && tools == 0 && tokens == 0 && !has_heartbeat {
-        SubAgentRunState::Orphaned
-    } else if tools > 0 || tokens > 0 || has_heartbeat {
-        SubAgentRunState::Running
-    } else {
-        SubAgentRunState::Created
-    }
-}
-
-fn reason_for(state: SubAgentRunState) -> &'static str {
-    match state {
-        SubAgentRunState::Orphaned => {
-            "child session was created but no worker heartbeat, tool use, token usage, or output was recorded"
-        }
-        SubAgentRunState::Running => "child session recorded worker activity",
-        _ => "child session exists but has not reached a terminal state",
-    }
 }

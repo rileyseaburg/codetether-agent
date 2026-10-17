@@ -8,14 +8,18 @@ mod ids;
 pub(super) fn retain_discovery_tools(definitions: Vec<ToolDefinition>) -> Vec<ToolDefinition> {
     definitions
         .into_iter()
-        .filter(|tool| ids::DISCOVERY.contains(&tool.name.as_str()))
+        .filter(|tool| tool.name == "question" || ids::DISCOVERY.contains(&tool.name.as_str()))
         .collect()
 }
 
 pub(super) fn retain_coding_tools(definitions: Vec<ToolDefinition>) -> Vec<ToolDefinition> {
     definitions
         .into_iter()
-        .filter(|tool| ids::CODING.contains(&tool.name.as_str()) || is_mcp(&tool.name))
+        .filter(|tool| {
+            tool.name == "question"
+                || ids::CODING.contains(&tool.name.as_str())
+                || is_mcp(&tool.name)
+        })
         .collect()
 }
 

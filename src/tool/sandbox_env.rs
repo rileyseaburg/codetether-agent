@@ -10,13 +10,23 @@ mod rust;
 
 pub(super) use rust::rustup_home;
 
-pub(super) fn restricted() -> HashMap<String, String> {
+pub(super) fn restricted(policy: &super::SandboxPolicy) -> HashMap<String, String> {
     let mut env = HashMap::new();
     env.insert("PATH".to_string(), search_path());
     env.insert("HOME".to_string(), "/tmp".to_string());
     env.insert("LANG".to_string(), "C.UTF-8".to_string());
     rust::extend(&mut env);
     runtime::extend(&mut env);
+    if policy.allowed_paths.is_empty() {
+        env.insert(
+            "TMPDIR".into(),
+            "/tmp/.codetether/cargo-target".into(),
+        );
+        env.insert(
+            "CARGO_TARGET_DIR".into(),
+            "/tmp/.codetether/cargo-target".into(),
+        );
+    }
     env
 }
 

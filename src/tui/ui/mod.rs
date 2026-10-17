@@ -15,6 +15,7 @@ pub mod interlude;
 pub mod main;
 mod main_overlays;
 pub mod mode_accent;
+mod question;
 pub mod sessions;
 pub mod sessions_age_color;
 pub mod sessions_list_item;

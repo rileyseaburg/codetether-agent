@@ -1,6 +1,7 @@
 //! KR progress and completion tests.
 
 use super::*;
+use uuid::Uuid;
 
 #[test]
 fn test_key_result_progress() {

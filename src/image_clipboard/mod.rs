@@ -1,16 +1,7 @@
-//! Clipboard image bridge helpers.
+//! System clipboard access and portable image compatibility exports.
 //!
-//! These helpers support SSH sessions by converting a local clipboard image
-//! into a text data URL that can be pasted through a terminal.
-
+//! OS capture remains here; attachment parsing, fitting, and rejection handling
+//! are shared with providers through the portable image crate.
 mod capture;
-mod data_url;
-pub mod fit;
-mod reject;
-
-#[cfg(test)]
-mod tests;
-
 pub use capture::{capture_image, copy_text};
-pub use data_url::attachment_from_data_url;
-pub use reject::{RejectReason, reject_reason};
+pub use codetether_image::{ImageAttachment, attachment_from_data_url, fit, RejectReason, reject_reason};

@@ -1,0 +1,39 @@
+[package]
+name = "codetether-platform"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Native platform services and capture primitives for CodeTether"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+image = { version = "0.25", default-features = false, features = ["png", "bmp", "jpeg"] }
+
+[target.'cfg(windows)'.dependencies]
+open = "5.4.1"
+serde_json = "1.0.151"
+uuid = { version = "1.24.0", features = ["v4", "serde"] }
+which = "8.0.5"
+windows = { version = "0.62.2", features = [
+    "Foundation",
+    "Globalization",
+    "Graphics_Imaging",
+    "Media_Ocr",
+    "Storage_Streams",
+    "Win32_System_WinRT",
+    "Win32_Storage_Packaging_Appx",
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Com",
+    "Win32_System_DataExchange",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Memory",
+    "Win32_System_Registry", "Win32_Security_Cryptography",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+    "Win32_Security",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }

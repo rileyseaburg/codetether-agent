@@ -22,7 +22,7 @@ pub(super) async fn execute(state: &State) -> Result<Outcome> {
         stop: Vec::new(),
     };
     let remaining = remaining(state.deadline, Instant::now());
-    match timeout(remaining, state.provider.complete(request)).await {
+    match timeout(remaining, super::completion::run(state, request)).await {
         Ok(response) => Ok(Outcome::Response(response?)),
         Err(_) => {
             tracing::warn!(

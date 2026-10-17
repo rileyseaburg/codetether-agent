@@ -7,8 +7,8 @@ use crate::tui::app::{
 };
 
 #[tokio::test]
-async fn answer_review_intercepts_plain_and_ask_questions() {
-    for question in ["Why?", "/ask Why?"] {
+async fn answer_review_intercepts_only_explicit_ask_questions() {
+    for question in ["/ask Why?", "/ask\tWhy?"] {
         let session = crate::session::tasks::answer_review_test_support::session().await;
         let slot = SessionSlot::new(session);
         let mut app = App::default();
@@ -43,7 +43,7 @@ async fn held_goal_routes_ask_to_agentic_continuation() {
     let runtime = spawn(event_tx, notice_tx);
     app.state.input = "/continue".into();
     assert!(super::intercept(&mut app, &slot, &runtime).await);
-    app.state.input = "Why?".into();
+    app.state.input = "/ask Why?".into();
     assert!(super::intercept(&mut app, &slot, &runtime).await);
 
     app.state.input = "/ask spawn subagents".into();

@@ -1,0 +1,47 @@
+# PRD: {} - {}
+
+## Working Directory: {wd}
+
+## Current Story: {} - {}
+
+{}
+
+### Acceptance Criteria:
+{}
+
+### Verification Steps:
+{}
+
+## WORKFLOW (follow this exactly):
+
+1. **EXPLORE** (2-4 tool calls): Use `glob` and `read` to understand existing code
+2. **IMPLEMENT** (5-15 tool calls): Use `write` or `edit` to make changes
+3. **VERIFY**: Run a verification command appropriate to the language (see below)
+4. **FIX OR FINISH**:
+   - If no errors: Output `STORY_COMPLETE: {}` and STOP
+   - If errors: Parse the error, fix it, re-verify (max 3 fix attempts)
+   - After 3 failed attempts: Output `STORY_BLOCKED: <error summary>` and STOP
+
+## VERIFICATION BY LANGUAGE:
+- **Rust**: `bash` with `cargo check 2>&1`
+- **Python**: Interpreter execution, including `python3`, is blocked; use TetherScript or native tools instead.
+- **TypeScript/JavaScript**: `bash` with `npx tsc --noEmit` (if tsconfig.json exists)
+- Choose the right check for the files you modified
+
+## TOOL USAGE:
+- `read`: Read file content (always read before editing!)
+- `edit`: Modify files (MUST include 3+ lines before/after for unique context)
+- `write`: Create new files
+- `bash`: Run commands with `{{"command": "...", "cwd": "{wd}"}}`
+
+## CRITICAL RULES:
+- ALWAYS read a file before editing it
+- When edit fails with "ambiguous match", include MORE context lines
+- Do NOT add TODO/placeholder comments
+- Count your fix attempts - STOP after 3 failures
+
+## TERMINATION:
+SUCCESS: Output `STORY_COMPLETE: {}`
+BLOCKED: Output `STORY_BLOCKED: <brief error description>`
+
+Do NOT keep iterating indefinitely. Stop when done or blocked.

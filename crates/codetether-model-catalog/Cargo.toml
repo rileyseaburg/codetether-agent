@@ -1,0 +1,15 @@
+[package]
+name = "codetether-model-catalog"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Model API catalog and credential-aware lookup"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }
+serde = { version = "1.0.229", features = ["derive"] }
+tracing = "0.1"

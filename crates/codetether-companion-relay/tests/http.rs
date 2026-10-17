@@ -24,7 +24,7 @@ async fn owner_device_split_and_lifecycle() {
     let commands = format!("/companion/sessions/{id}/commands");
     assert_eq!(call(&app, "GET", &commands, Some(OWNER), None).await.0, 401);
     let idle = call(&app, "GET", &commands, Some(&device), None).await;
-    assert_eq!(idle, (200, json!({"request_id": null})));
+    assert_eq!(idle, (200, json!({"request_id": null, "reply": null})));
     let request = format!("/companion/sessions/{id}/request");
     let question = Some(json!({"question": "What?"}));
     assert_eq!(
@@ -36,7 +36,7 @@ async fn owner_device_split_and_lifecycle() {
     let (status, queued) = call(&app, "POST", &request, Some(OWNER), question).await;
     assert_eq!(status, 202);
     let (_, polled) = call(&app, "GET", &commands, Some(&device), None).await;
-    assert_eq!(polled, json!({"request_id": queued["request_id"]}));
+    assert_eq!(polled, json!({"request_id": queued["request_id"], "reply": null}));
     let frames = format!("/companion/sessions/{id}/frames");
     let stale = Some(json!({"image": "AAAA", "captured_at": "2020-01-01T00:00:00Z"}));
     assert_eq!(

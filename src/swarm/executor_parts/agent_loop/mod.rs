@@ -8,6 +8,8 @@
 //! returned tuple contains accumulated text, steps, tool calls, and exit reason.
 
 mod api;
+mod completion;
+mod control;
 mod create;
 mod driver;
 mod limits;
@@ -27,6 +29,14 @@ mod tools;
 mod turn;
 pub use api::run_agent_loop;
 
+#[cfg(test)]
+mod control_goal_tests;
+#[cfg(test)]
+mod control_test_provider;
+#[cfg(test)]
+mod control_test_response;
+#[cfg(test)]
+mod control_tests;
 #[cfg(test)]
 mod image_test_provider;
 #[cfg(test)]

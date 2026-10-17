@@ -15,8 +15,6 @@ mod browser_grant;
 #[cfg(feature = "tetherscript")]
 mod computer_grant;
 #[cfg(feature = "tetherscript")]
-mod conversion;
-#[cfg(feature = "tetherscript")]
 mod deepseek_repair;
 #[cfg(feature = "tetherscript")]
 mod file_source;

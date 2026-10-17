@@ -1,7 +1,2 @@
-//! Native Anthropic Messages response types and parsing.
-
-mod content;
-mod parse;
-mod types;
-
-pub(in crate::provider::bedrock) use parse::parse_anthropic_messages_response;
+//! Native InvokeModel response compatibility export.
+pub(in crate::provider::bedrock) use codetether_bedrock_protocol::native::response::parse_anthropic_messages_response;

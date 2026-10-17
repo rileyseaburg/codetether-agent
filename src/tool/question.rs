@@ -1,12 +1,18 @@
-//! Question Tool - Ask the user a question and wait for response.
+//! Async question-tool adapter. Selection and rendezvous live in the question crate.
 
 use super::{Tool, ToolResult};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
-use serde::Deserialize;
+use codetether_question::{Request, runtime};
 use serde_json::{Value, json};
-use std::io::{self, Write};
 
+/// Ask batched questions through an attached interactive frontend.
+///
+/// # Examples
+/// ```
+/// use codetether_agent::tool::{question::QuestionTool, Tool};
+/// assert_eq!(QuestionTool::new().id(), "question");
+/// ```
 pub struct QuestionTool;
 
 impl Default for QuestionTool {
@@ -15,19 +21,15 @@ impl Default for QuestionTool {
     }
 }
 
+#[cfg(test)]
+#[path = "question_tests.rs"]
+mod tests;
+
 impl QuestionTool {
+    /// Construct the stateless runtime adapter.
     pub fn new() -> Self {
         Self
     }
-}
-
-#[derive(Deserialize)]
-struct Params {
-    question: String,
-    #[serde(default)]
-    options: Vec<String>,
-    #[serde(default)]
-    default: Option<String>,
 }
 
 #[async_trait]
@@ -39,58 +41,22 @@ impl Tool for QuestionTool {
         "Ask Question"
     }
     fn description(&self) -> &str {
-        "Ask the user a question and wait for their response. Use for clarification or user input."
+        "Ask the user questions with labeled choices, descriptions, multiple selection, and custom answers. Put recommended choices first. Custom answers are offered automatically."
     }
     fn parameters(&self) -> Value {
-        json!({
-            "type": "object",
-            "properties": {
-                "question": {"type": "string", "description": "Question to ask the user"},
-                "options": {"type": "array", "items": {"type": "string"}, "description": "Optional list of valid responses"},
-                "default": {"type": "string", "description": "Default value if user presses Enter"}
-            },
-            "required": ["question"]
-        })
+        codetether_question::parameters()
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: Params = serde_json::from_value(params).context("Invalid params")?;
-
-        // Print question
-        print!("\n📝 {}", p.question);
-
-        if !p.options.is_empty() {
-            print!(" [{}]", p.options.join("/"));
-        }
-
-        if let Some(ref default) = p.default {
-            print!(" (default: {})", default);
-        }
-
-        print!(": ");
-        io::stdout().flush()?;
-
-        // Read response
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
-        let response = input.trim().to_string();
-
-        let final_response = if response.is_empty() {
-            p.default.unwrap_or_default()
-        } else {
-            response
+        let request = match Request::parse(params.clone()) {
+            Ok(request) => request,
+            Err(error) => return Ok(ToolResult::error(error.to_string())),
         };
-
-        // Validate against options if provided
-        if !p.options.is_empty() && !p.options.contains(&final_response) {
-            return Ok(ToolResult::error(format!(
-                "Invalid response '{}'. Valid options: {}",
-                final_response,
-                p.options.join(", ")
-            )));
+        let session = params.get("__ct_session_id").and_then(Value::as_str);
+        match runtime::ask(request, session).await {
+            Ok(answers) => Ok(ToolResult::success(json!({"answers": answers}).to_string())
+                .with_metadata("answers", json!(answers))),
+            Err(error) => Ok(ToolResult::error(error.to_string())),
         }
-
-        Ok(ToolResult::success(final_response.clone())
-            .with_metadata("response", json!(final_response)))
     }
 }

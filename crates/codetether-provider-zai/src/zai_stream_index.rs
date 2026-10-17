@@ -1,8 +1,8 @@
 //! Index resolution and argument-fragment helpers for Z.AI tool streaming.
 
-#[path = "zai_capture.rs"]
+#[path = "capture/mod.rs"]
 pub mod capture;
-#[path = "zai_stream_delta.rs"]
+#[path = "delta/mod.rs"]
 pub mod delta;
 
 use super::zai_stream_state::ZaiStreamToolState;

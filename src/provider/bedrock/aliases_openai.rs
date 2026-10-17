@@ -1,41 +1,5 @@
-//! Short-name aliases for Bedrock-hosted OpenAI GPT models.
-//!
-//! GPT-5.6 Sol/Terra/Luna were added to the Bedrock catalog in Codex
-//! rust-v0.143.0 (openai/codex PR #30285). All three support `max`
-//! reasoning effort. GPT-6 Astra uses the announced `gpt-6-astra` API slug;
-//! the canonical Bedrock ID follows AWS's existing `openai.<slug>` scheme.
-//!
-//! # Examples
-//!
-//! ```rust
-//! use codetether_agent::provider::bedrock::aliases_openai::resolve_openai_alias;
-//!
-//! assert_eq!(resolve_openai_alias("gpt-5.6-sol"), Some("openai.gpt-5.6-sol"));
-//! assert_eq!(resolve_openai_alias("gpt-5.5"), Some("openai.gpt-5.5"));
-//! assert_eq!(resolve_openai_alias("claude-opus-4-7"), None);
-//! ```
-
-/// Resolve a short OpenAI GPT alias to the full Bedrock model ID.
-///
-/// Returns `None` when the input is not a Bedrock-hosted OpenAI GPT alias
-/// so the caller can fall through to other alias families.
-pub fn resolve_openai_alias(model: &str) -> Option<&'static str> {
-    match model {
-        "gpt-6-astra" => Some("openai.gpt-6-astra"),
-        // GPT-6.1 Sol is only invokable through the global inference profile
-        // (observed live: `us.` is an invalid identifier, bare `openai.` needs
-        // a profile).
-        "gpt-6.1-sol" | "openai.gpt-6.1-sol" | "us.openai.gpt-6.1-sol" => {
-            Some("global.openai.gpt-6.1-sol")
-        }
-        "gpt-5.6-sol" => Some("openai.gpt-5.6-sol"),
-        "gpt-5.6-terra" => Some("openai.gpt-5.6-terra"),
-        "gpt-5.6-luna" => Some("openai.gpt-5.6-luna"),
-        "gpt-5.5" => Some("openai.gpt-5.5"),
-        "gpt-5.4" => Some("openai.gpt-5.4"),
-        _ => None,
-    }
-}
+//! Shared aliases for OpenAI models on Bedrock.
+pub use codetether_provider_core::model_identity::bedrock::aliases_openai::*;
 
 #[cfg(test)]
 #[path = "aliases_openai_tests.rs"]

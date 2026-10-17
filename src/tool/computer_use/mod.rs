@@ -1,7 +1,8 @@
 //! Computer use tool for OS-level GUI automation
 //!
 //! Provides native desktop automation capabilities including app discovery,
-//! screen capture, and input simulation. Currently supports Windows only.
+//! screen capture, and input simulation on Windows. Linux supports desktop
+//! screenshots through installed, session-compatible capture utilities.
 
 pub mod input;
 pub mod response;
@@ -39,7 +40,7 @@ impl Tool for ComputerUseTool {
     }
 
     fn description(&self) -> &str {
-        "Native Windows desktop automation and WinRT OCR in an isolated worker. Start with snapshot/list_apps or ocr_status. Snapshots retain original pixels on disk and attach bounded previews: use preview scaling for coordinates. Physical keyboard input requires an explicit foreground hwnd. input_mode=shadow queues HWND messages without physical fallback. Worker failures are not retried because effects may be uncertain."
+        "Desktop screenshots on Linux/Ubuntu (start with status or snapshot); native Windows desktop automation and WinRT OCR in an isolated worker. Linux requires a graphical session and an installed capture utility; input and OCR are Windows-only. Snapshots retain original pixels on disk and attach bounded previews: use preview scaling for coordinates. Windows physical keyboard input requires an explicit foreground hwnd. input_mode=shadow queues HWND messages without physical fallback. Worker failures are not retried because effects may be uncertain."
     }
 
     fn parameters(&self) -> Value {

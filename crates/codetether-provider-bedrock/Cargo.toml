@@ -1,0 +1,22 @@
+[package]
+name = "codetether-provider-bedrock"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Bedrock request execution, recovery coordination, and model discovery"
+license = "MIT"
+
+[dependencies]
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+urlencoding = "2"
+async-trait = "0.1.92"
+futures = "0.3.34"
+rand = "0.10.2"
+tokio = { version = "1.53.1", features = ["time"] }
+anyhow = "1.0.104"
+codetether-bedrock-auth = { path = "../codetether-bedrock-auth", version = "0.1.0" }
+codetether-bedrock-protocol = { path = "../codetether-bedrock-protocol", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "stream", "rustls"] }
+serde_json = "1.0.151"
+tracing = "0.1"

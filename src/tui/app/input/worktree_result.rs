@@ -25,9 +25,11 @@ pub(crate) async fn run_prompt(
     registry: Arc<ProviderRegistry>,
     original_dir: Option<PathBuf>,
 ) -> anyhow::Result<()> {
-    session
-        .prompt_with_events_and_images(prompt, images, event_tx, registry)
-        .await?;
+    codetether_question::runtime::scope(
+        session.id.clone(),
+        session.prompt_with_events_and_images(prompt, images, event_tx, registry),
+    )
+    .await?;
     session.metadata.directory = original_dir;
     Ok(())
 }

@@ -30,25 +30,15 @@
 //! ```
 
 pub mod auto;
-pub mod embed;
-pub mod embed_hash;
-pub mod embeddable;
-pub mod embedder;
-pub mod persist;
 pub mod provider;
-pub mod record;
-pub mod similarity;
-pub mod store;
-pub mod store_mutate;
-pub mod store_search;
-pub mod tokenize;
-pub mod vector;
+pub use codetether_vectordb::{
+    embed, embed_hash, embeddable, embedder, persist, record, similarity, store, store_mutate,
+    store_search, tokenize, vector,
+};
 
 #[cfg(test)]
 #[path = "provider_tests.rs"]
 mod provider_tests;
-#[cfg(test)]
-mod tests;
 
 pub use embed::{DEFAULT_DIMENSIONS, LocalEmbeddingEngine};
 pub use embeddable::Embeddable;

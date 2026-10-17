@@ -25,7 +25,7 @@ pub(super) async fn after(runner: &mut Runner<'_>, error: &anyhow::Error) -> boo
     tokio::time::sleep(std::time::Duration::from_secs(u64::from(attempt))).await;
     matches!(
         super::response::continue_goal(runner).await,
-        StepFlow::ContinueGoal
+        Ok(StepFlow::ContinueGoal)
     )
 }
 

@@ -19,7 +19,7 @@ pub(crate) async fn handle_event(
     runtime: &TuiSessionHandle,
     key: KeyEvent,
 ) -> anyhow::Result<bool> {
-    if !super::key_repeat::dispatchable(key) {
+    if !super::key_repeat::dispatchable(key) || super::paste::question_key::handle(app, key) {
         return Ok(false);
     }
     if crate::tui::app::input::goal_answer::editor::handle(app, slot, runtime, key).await

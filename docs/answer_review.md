@@ -1,8 +1,14 @@
 # Answer review while a goal is running
 
-A TUI question interrupts goal work without granting tool permissions. Plain
-chat input and `/ask <question>` create a durable answer-review hold when the
-session has an unfinished goal. Without a goal, normal input handling applies.
+A deliberate `/ask <question>` interrupts goal work without granting tool
+permissions. Ordinary chat, including corrections and status questions, reaches
+the working agent with its existing objective and tools. It does not create an
+answer-review hold or cancel active work. Without a goal, normal input handling
+applies.
+
+While a review hold is already open, plain follow-up questions stay in that
+context-only conversation. Existing `/ask` input on a held goal explicitly
+releases the hold into a tool-capable continuation; `/continue` also resumes.
 
 ## Interaction
 

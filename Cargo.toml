@@ -2,29 +2,76 @@
 members = [
     ".",
     "crates/codetether-a2a-worker-core",
+    "crates/codetether-agent-core",
+    "crates/codetether-approval-core",
     "crates/codetether-audit",
+    "crates/codetether-bedrock-auth",
+    "crates/codetether-bedrock-protocol",
+    "crates/codetether-bedrock-refresh",
     "crates/codetether-browser",
+    "crates/codetether-benchmark",
     "crates/codetether-companion-capture",
     "crates/codetether-companion-core",
     "crates/codetether-companion-protocol",
     "crates/codetether-companion-relay",
+    "crates/codetether-config",
+    "crates/codetether-crash",
+    "crates/codetether-codex-auth",
+    "crates/codetether-codex-protocol",
+    "crates/codetether-codex-transport",
     "crates/codetether-distill",
     "crates/codetether-event-stream",
     "crates/codetether-goal-core",
+    "crates/codetether-github-pr",
+    "crates/codetether-google-auth",
+    "crates/codetether-gemini-web-protocol",
+    "crates/codetether-gemini-web-transport",
+    "crates/codetether-image",
+    "crates/codetether-indexer",
     "crates/codetether-k8s",
     "crates/codetether-knowledge-graph",
+    "crates/codetether-lsp-core",
     "crates/codetether-marketplace",
     "crates/codetether-mesh",
+    "crates/codetether-model-catalog",
+    "crates/codetether-moltbook",
     "crates/codetether-okr",
     "crates/codetether-paths",
+    "crates/codetether-platform",
     "crates/codetether-plugin-marketplace",
     "crates/codetether-provenance",
     "crates/codetether-provider-core",
+    "crates/codetether-provider-metrics",
+    "crates/codetether-provider-codex",
+    "crates/codetether-provider-bedrock",
+    "crates/codetether-provider-bonsai",
+    "crates/codetether-provider-copilot",
+    "crates/codetether-provider-anthropic",
+    "crates/codetether-provider-deepseek",
+    "crates/codetether-provider-google",
+    "crates/codetether-provider-gemini-web",
+    "crates/codetether-provider-glm5",
+    "crates/codetether-provider-moonshot",
+    "crates/codetether-provider-stepfun",
+    "crates/codetether-provider-vertex-anthropic",
+    "crates/codetether-provider-vertex-glm",
+    "crates/codetether-provider-openai",
+    "crates/codetether-provider-tetherscript",
+    "crates/codetether-provider-openrouter",
     "crates/codetether-provider-zai",
+    "crates/codetether-question",
     "crates/codetether-rlm",
+    "crates/codetether-ralph-core",
+    "crates/codetether-search",
     "crates/codetether-secrets",
+    "crates/codetether-session-runtime",
+    "crates/codetether-telemetry",
+    "crates/codetether-theme",
     "crates/codetether-tls",
+    "crates/codetether-tool-core",
+    "crates/codetether-tetherscript-values",
     "crates/codetether-util",
+    "crates/codetether-vectordb",
     "crates/codetether-worktree",
     "crates/codetether-worktree-isolation",
     "windows/CodeTether.Companion/desktop-staging",
@@ -33,7 +80,7 @@ members = [
 
 [package]
 name = "codetether-agent"
-version = "4.7.6-dev.36"
+version = "4.7.6-dev.38"
 
 
 edition = "2024"
@@ -101,16 +148,17 @@ path = "src/main.rs"
 
 [features]
 default = ["tetherscript"]
-tetherscript = ["dep:tetherscript", "codetether-browser/tetherscript"]
+tetherscript = ["dep:tetherscript", "codetether-browser/tetherscript", "dep:codetether-tetherscript-values", "dep:codetether-provider-tetherscript", "codetether-provider-bonsai/tetherscript"]
 # Local in-process inference via Candle. Off by default: the agent leads with
 # remote/HTTP providers unless a local model backend is explicitly requested.
 candle = [
+    "codetether-provider-bonsai/candle",
     "dep:candle-core",
     "dep:candle-nn",
     "dep:candle-transformers",
     "dep:tokenizers",
 ]
-candle-cuda = ["candle", "candle-core/cuda", "candle-transformers/cuda"]
+candle-cuda = ["candle", "codetether-provider-bonsai/candle-cuda", "candle-core/cuda", "candle-transformers/cuda"]
 candle-cudnn = ["candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
 candle-accelerate = ["candle", "candle-core/accelerate", "candle-transformers/accelerate"]
 candle-mkl = ["candle", "candle-core/mkl", "candle-transformers/mkl"]
@@ -129,28 +177,72 @@ fips = [
 ]
 
 [dependencies]
+codetether-ralph-core = { path = "crates/codetether-ralph-core", version = "0.1.0" }
+codetether-benchmark = { path = "crates/codetether-benchmark", version = "0.1.0" }
+codetether-github-pr = { path = "crates/codetether-github-pr", version = "0.1.0" }
+codetether-crash = { path = "crates/codetether-crash", version = "0.1.0" }
+codetether-moltbook = { path = "crates/codetether-moltbook", version = "0.1.0" }
+codetether-search = { path = "crates/codetether-search", version = "0.1.0" }
+codetether-question = { path = "crates/codetether-question", version = "0.1.0" }
 rusqlite = { version = "0.32", features = ["bundled"] }
 # Workspace crates
 codetether-a2a-worker-core = { path = "crates/codetether-a2a-worker-core", version = "0.1.0" }
+codetether-agent-core = { path = "crates/codetether-agent-core", version = "0.1.0" }
 codetether-audit = { path = "crates/codetether-audit", version = "0.1.0" }
+codetether-bedrock-auth = { path = "crates/codetether-bedrock-auth", version = "0.1.0" }
+codetether-bedrock-protocol = { path = "crates/codetether-bedrock-protocol", version = "0.1.0" }
+codetether-bedrock-refresh = { path = "crates/codetether-bedrock-refresh", version = "0.1.0" }
+codetether-approval-core = { path = "crates/codetether-approval-core", version = "0.1.0" }
 codetether-browser = { path = "crates/codetether-browser", version = "0.1.1" }
+codetether-config = { path = "crates/codetether-config", version = "0.1.0" }
+codetether-codex-auth = { path = "crates/codetether-codex-auth", version = "0.1.0" }
+codetether-codex-protocol = { path = "crates/codetether-codex-protocol", version = "0.1.0" }
 codetether-distill = { path = "crates/codetether-distill", version = "0.1.0" }
 codetether-event-stream = { path = "crates/codetether-event-stream", version = "0.1.0" }
 codetether-goal-core = { path = "crates/codetether-goal-core", version = "0.1.0" }
+codetether-indexer = { path = "crates/codetether-indexer", version = "0.1.0" }
+codetether-image = { path = "crates/codetether-image", version = "0.1.0" }
+codetether-google-auth = { path = "crates/codetether-google-auth", version = "0.1.0" }
 codetether-k8s = { path = "crates/codetether-k8s", version = "0.1.0" }
 codetether-knowledge-graph = { path = "crates/codetether-knowledge-graph", version = "0.1.0" }
+codetether-lsp-core = { path = "crates/codetether-lsp-core", version = "0.1.0" }
 codetether-marketplace = { path = "crates/codetether-marketplace", version = "0.1.0" }
 codetether-mesh = { path = "crates/codetether-mesh", version = "0.1.0" }
+codetether-model-catalog = { path = "crates/codetether-model-catalog", version = "0.1.0" }
 codetether-okr = { path = "crates/codetether-okr", version = "0.1.0" }
 codetether-paths = { path = "crates/codetether-paths", version = "0.1.0" }
+codetether-platform = { path = "crates/codetether-platform", version = "0.1.0" }
 codetether-plugin-marketplace = { path = "crates/codetether-plugin-marketplace", version = "0.1.0" }
 codetether-provenance = { path = "crates/codetether-provenance", version = "0.1.0" }
 codetether-provider-core = { path = "crates/codetether-provider-core", version = "0.1.0" }
+codetether-provider-metrics = { path = "crates/codetether-provider-metrics", version = "0.1.0" }
+codetether-provider-codex = { path = "crates/codetether-provider-codex", version = "0.1.0" }
+codetether-provider-bedrock = { path = "crates/codetether-provider-bedrock", version = "0.1.0" }
+codetether-provider-bonsai = { path = "crates/codetether-provider-bonsai", version = "0.1.0" }
+codetether-provider-copilot = { path = "crates/codetether-provider-copilot", version = "0.1.0" }
+codetether-provider-anthropic = { path = "crates/codetether-provider-anthropic", version = "0.1.0" }
+codetether-provider-deepseek = { path = "crates/codetether-provider-deepseek", version = "0.1.0" }
+codetether-provider-google = { path = "crates/codetether-provider-google", version = "0.1.0" }
+codetether-provider-gemini-web = { path = "crates/codetether-provider-gemini-web", version = "0.1.0" }
+codetether-provider-glm5 = { path = "crates/codetether-provider-glm5", version = "0.1.0" }
+codetether-provider-moonshot = { path = "crates/codetether-provider-moonshot", version = "0.1.0" }
+codetether-provider-stepfun = { path = "crates/codetether-provider-stepfun", version = "0.1.0" }
+codetether-provider-vertex-anthropic = { path = "crates/codetether-provider-vertex-anthropic", version = "0.1.0" }
+codetether-provider-vertex-glm = { path = "crates/codetether-provider-vertex-glm", version = "0.1.0" }
+codetether-provider-openai = { path = "crates/codetether-provider-openai", version = "0.1.0" }
+codetether-provider-tetherscript = { path = "crates/codetether-provider-tetherscript", version = "0.1.0", optional = true }
+codetether-provider-openrouter = { path = "crates/codetether-provider-openrouter", version = "0.1.0" }
 codetether-provider-zai = { path = "crates/codetether-provider-zai", version = "0.1.0" }
 codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.1" }
 codetether-secrets = { path = "crates/codetether-secrets", version = "0.1.0" }
+codetether-session-runtime = { path = "crates/codetether-session-runtime", version = "0.1.0" }
+codetether-telemetry = { path = "crates/codetether-telemetry", version = "0.1.0" }
+codetether-theme = { path = "crates/codetether-theme", version = "0.1.0", features = ["ratatui"] }
 codetether-tls = { path = "crates/codetether-tls", version = "0.1.0" }
+codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
+codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }
 codetether-util = { path = "crates/codetether-util", version = "0.1.0" }
+codetether-vectordb = { path = "crates/codetether-vectordb", version = "0.1.0" }
 codetether-worktree = { path = "crates/codetether-worktree", version = "0.1.0" }
 codetether-worktree-isolation = { path = "crates/codetether-worktree-isolation", version = "0.1.0" }
 

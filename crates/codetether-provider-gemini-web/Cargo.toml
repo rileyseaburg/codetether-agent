@@ -1,0 +1,19 @@
+[package]
+name = "codetether-provider-gemini-web"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Gemini Web provider orchestration and completion assembly"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+async-trait = "0.1.92"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-gemini-web-protocol = { path = "../codetether-gemini-web-protocol", version = "0.1.0" }
+codetether-gemini-web-transport = { path = "../codetether-gemini-web-transport", version = "0.1.0" }
+futures = "0.3.34"
+reqwest = { version = "0.13.2", default-features = false, features = ["rustls"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["sync"] }
+tracing = "0.1"

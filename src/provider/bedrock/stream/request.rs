@@ -1,13 +1,7 @@
-//! HTTP request half of the Bedrock converse-stream adapter.
-//!
-//! Owns URL construction, SigV4/bearer dispatch, and non-200 error mapping;
-//! the byte-to-chunk pump lives in [`super::pump`].
-
-use super::pump::event_chunk_stream;
-use crate::provider::StreamChunk;
-use crate::provider::bedrock::{BedrockProvider, auth_recover};
-use anyhow::{Context, Result};
-
+//! Delegate Bedrock execution to the client crate.
+use crate::provider::bedrock::BedrockProvider;
+use anyhow::Result;
+use codetether_provider_core::StreamChunk;
 impl BedrockProvider {
     /// POST to `/model/{id}/converse-stream` and yield `StreamChunk`s as
     /// eventstream frames arrive.
@@ -22,28 +16,8 @@ impl BedrockProvider {
         model_id: &str,
         body: Vec<u8>,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
-        let url = self.runtime_model_url(model_id, "converse-stream");
-        tracing::debug!("Bedrock stream URL: {}", url);
-
-        let mut response = self
-            .send_request("POST", &url, Some(&body), "bedrock")
-            .await?;
-
-        // On a mid-session auth failure, attempt a silent token refresh and
-        // retry once so an active TUI recovers without restarting.
-        if auth_recover::is_auth_failure(response.status()) && auth_recover::recover(self).await {
-            response = self
-                .send_request("POST", &url, Some(&body), "bedrock")
-                .await?;
-        }
-
-        let status = response.status();
-        if !status.is_success() {
-            let text = response.text().await.context("failed to read error body")?;
-            let body = crate::util::truncate_bytes_safe(&text, 500);
-            anyhow::bail!(super::auth_error::message(status, body));
-        }
-
-        Ok(event_chunk_stream(response))
+        self.bedrock_client()
+            .converse_stream(model_id, body, self)
+            .await
     }
 }

@@ -104,7 +104,7 @@ ast_query("(function_item name: (identifier) @name)")
 
 Returns formatted AST matches with line numbers and captures.
 
-### 3. Trace Validator (`src/rlm/oracle/validator.rs`)
+### 3. Trace Validator (`crates/codetether-rlm/src/oracle/validator/mod.rs`)
 
 **Purpose**: Orchestrates validation by routing queries to appropriate oracles and outputting golden traces.
 

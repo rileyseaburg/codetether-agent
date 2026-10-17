@@ -10,7 +10,7 @@ mod tests;
 pub(super) fn parameters_schema() -> Value {
     json!({
         "type": "object",
-        "description": "Native Windows desktop control and OCR. Physical input is the default; shadow input queues HWND-targeted messages without moving the real cursor or changing focus.",
+        "description": "Linux/Ubuntu supports status and desktop snapshot in a graphical session with a capture utility. Windows supports native desktop control and OCR. Physical input is the default; Windows shadow input queues HWND-targeted messages without moving the real cursor or changing focus.",
         "properties": {
             "action": {
                 "type": "string",
@@ -23,7 +23,7 @@ pub(super) fn parameters_schema() -> Value {
                     "focus_viewport", "blender_select_frame",
                     "bring_to_front", "wait_ms", "stop"
                 ],
-                "description": "Action to execute. Snapshot returns physical screen pixel bounds and real cursor position. Use bring_to_front before interacting."
+                "description": "Action to execute. Linux supports status and snapshot only; snapshots report captured-image pixels, not a global input coordinate system. Windows snapshots return physical screen pixel bounds and cursor position; use bring_to_front before interacting."
             },
             "app": {"type": "string", "description": "App name for request_app."},
             "input_mode": {"type": "string", "enum": ["physical", "shadow"], "default": "physical", "description": "Shadow requires hwnd, never falls back to physical input, and reports queued messages rather than confirmed application effects. Not all applications accept background messages."},

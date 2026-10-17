@@ -1,0 +1,15 @@
+//! Indexer regression tests.
+
+use super::*;
+use anyhow::anyhow;
+use tempfile::tempdir;
+mod build_index_emits_workspace_knowledge_graph;
+mod detects_hidden_paths;
+mod embedding_input_prefix_is_char_safe;
+mod language_detection_works;
+mod local_embedding_provider_aliases_are_supported;
+mod local_embeddings_have_expected_dimensions;
+mod model_selector_uses_explicit_prefix_when_missing;
+mod refresh_workspace_knowledge_snapshot_writes_json;
+mod retryable_embedding_error_detection_matches_transient_signals;
+mod symbol_hint_estimation_works_for_rust;

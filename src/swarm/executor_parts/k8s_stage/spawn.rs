@@ -8,7 +8,7 @@ use super::{
 use std::time::Instant;
 
 pub(super) async fn available(state: &mut State<'_>) {
-    while state.active.len() < state.budget {
+    while super::control::may_spawn(state) {
         let Some(task) = state.pending.pop_front() else {
             break;
         };

@@ -19,7 +19,7 @@ pub(super) async fn finish_or_retry(
         return Ok(StepFlow::Continue);
     }
     if !super::super::super::build::is_build_agent(&runner.session.agent) {
-        return Ok(final_flow(runner).await);
+        return final_flow(runner).await;
     }
     let report = super::super::super::validation::build_validation_report(
         &runner.workspace.cwd,
@@ -28,7 +28,7 @@ pub(super) async fn finish_or_retry(
     )
     .await?;
     let Some(report) = report else {
-        return Ok(final_flow(runner).await);
+        return final_flow(runner).await;
     };
     runner.progress.validation_retries += 1;
     if runner.progress.validation_retries >= limits::POST_EDIT_VALIDATION_MAX_RETRIES {
@@ -43,9 +43,6 @@ pub(super) async fn finish_or_retry(
     Ok(StepFlow::Continue)
 }
 
-async fn final_flow(runner: &mut Runner<'_>) -> StepFlow {
-    match super::super::super::steering::drain_or_close_into(runner.session) {
-        0 => super::continue_goal(runner).await,
-        _ => StepFlow::Continue,
-    }
+async fn final_flow(runner: &mut Runner<'_>) -> Result<StepFlow> {
+    super::goal::after_message(runner).await
 }

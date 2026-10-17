@@ -1,16 +1,34 @@
-//! Routing decision logic.
+//! Apply mode and output-capability gates before pressure routing.
 
-use crate::capability::{OutputCapability, output_capability};
-use crate::chunker::RlmChunker;
-use crate::config::RlmConfig;
-
+mod pressure;
 use super::types::{RoutingContext, RoutingResult};
+use crate::{
+    capability::{OutputCapability, output_capability},
+    chunker::RlmChunker,
+    config::RlmConfig,
+};
+use pressure::{no_route, overflow_check};
 
 /// Decide whether tool output should be routed through RLM.
 ///
 /// Gated on [`output_capability`]: only
 /// [`OutputCapability::BulkSummarizable`] tools may be destructively
 /// summarised. `ExactContent` and `Unknown` fail closed.
+///
+/// # Arguments
+/// `output` is the tool output, `ctx` describes current context usage, and
+/// `config` selects routing mode and threshold.
+///
+/// # Returns
+/// The routing decision, reason, and estimated token count.
+///
+/// # Examples
+/// ```
+/// use codetether_rlm::{should_route, RoutingContext, RlmConfig};
+/// let context = RoutingContext { tool_id: "read".into(), session_id: "s".into(),
+///     call_id: None, model_context_limit: 1000, current_context_tokens: None };
+/// assert!(!should_route("source", &context, &RlmConfig::default()).should_route);
+/// ```
 pub fn should_route(output: &str, ctx: &RoutingContext, config: &RlmConfig) -> RoutingResult {
     let estimated = RlmChunker::estimate_tokens(output);
 
@@ -46,30 +64,4 @@ pub fn should_route(output: &str, ctx: &RoutingContext, config: &RlmConfig) -> R
     }
 
     overflow_check(ctx, estimated)
-}
-
-fn no_route(reason: &str, tokens: usize) -> RoutingResult {
-    RoutingResult {
-        should_route: false,
-        reason: reason.into(),
-        estimated_tokens: tokens,
-    }
-}
-
-fn overflow_check(ctx: &RoutingContext, estimated: usize) -> RoutingResult {
-    let Some(current) = ctx.current_context_tokens else {
-        return no_route("within_threshold", estimated);
-    };
-    let projected = current + estimated;
-    let limit = (ctx.model_context_limit as f64 * 0.8) as usize;
-    let dominates = estimated * 2 >= projected;
-    if projected > limit && dominates {
-        RoutingResult {
-            should_route: true,
-            reason: "would_overflow".into(),
-            estimated_tokens: estimated,
-        }
-    } else {
-        no_route("within_threshold", estimated)
-    }
 }

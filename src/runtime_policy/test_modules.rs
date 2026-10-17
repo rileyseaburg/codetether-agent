@@ -2,6 +2,8 @@
 // stays focused on the public policy surface.
 #[path = "approval_tests.rs"]
 mod approval_tests;
+#[path = "command_git_tests.rs"]
+mod command_git_tests;
 #[path = "command_tests.rs"]
 mod command_tests;
 #[path = "justification_scope_tests.rs"]

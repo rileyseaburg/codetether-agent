@@ -3,6 +3,8 @@
 //! Skipped when no sandbox runner is available on the host, so CI without
 //! bubblewrap or Landlock still passes.
 
+#[path = "sandbox_cargo_live_tests.rs"]
+mod cargo;
 #[path = "sandbox_rust_live_tests.rs"]
 mod rust;
 

@@ -32,11 +32,17 @@ pub(in crate::swarm::executor) async fn execute(
     tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
     tick.tick().await;
     loop {
+        if super::control::stopped(executor.control()) {
+            break;
+        }
         super::spawn::available(&mut state).await;
         if state.pending.is_empty() && state.active.is_empty() {
             break;
         }
-        tick.tick().await;
+        tokio::select! {
+            _ = super::control::cancelled(executor.control()) => break,
+            _ = tick.tick() => {},
+        }
         let finished = super::poll::finished(&mut state).await;
         super::record::results(&mut state, finished).await;
         super::collapse::sample(&mut state).await;

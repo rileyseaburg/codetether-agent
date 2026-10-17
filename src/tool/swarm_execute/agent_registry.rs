@@ -14,6 +14,7 @@ pub(crate) use base::standard;
 pub(super) fn shared(
     read_only: bool,
     verification: bool,
+    expects_changes: bool,
     workspace: &Path,
     store: Arc<ResultStore>,
     producer_id: String,
@@ -21,7 +22,14 @@ pub(super) fn shared(
     model: String,
 ) -> Arc<ToolRegistry> {
     with_shared(
-        base::build(read_only, verification, workspace, provider, model),
+        base::build_for_task(
+            read_only,
+            verification,
+            expects_changes,
+            workspace,
+            provider,
+            model,
+        ),
         store,
         producer_id,
     )

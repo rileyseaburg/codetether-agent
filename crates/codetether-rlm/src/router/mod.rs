@@ -32,3 +32,11 @@ pub use types::{
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod consolidation;
+
+mod repl_host;
+pub use repl_host::ReplHost;
+mod auto_process_repl;
+pub use auto_process_repl::auto_process_with_repl;

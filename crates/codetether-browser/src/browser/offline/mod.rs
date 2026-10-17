@@ -4,14 +4,9 @@
 //! See `src/cli/browserctl/offline.rs` for the CLI dispatch.
 
 pub mod auth_trace;
-pub(crate) mod auth_trace_run;
-#[cfg(feature = "tetherscript")]
-pub(crate) mod auth_trace_serde;
 pub mod cookie_diff;
-pub(crate) mod cookie_diff_index;
 pub mod cookie_parse;
 pub mod explain_cors;
-pub(crate) mod explain_cors_analyse;
 pub mod record;
 pub mod replay;
 
@@ -19,5 +14,5 @@ pub mod replay;
 mod tests;
 #[cfg(test)]
 mod tests_helpers;
-#[cfg(test)]
+#[cfg(all(test, feature = "tetherscript"))]
 mod tests_net;

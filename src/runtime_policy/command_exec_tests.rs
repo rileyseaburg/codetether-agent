@@ -16,6 +16,15 @@ fn exec_command_uses_the_same_command_policy_as_bash() {
 }
 
 #[test]
+fn exec_command_allows_scoped_git_inspection_but_not_mutation() {
+    let config = Config::default();
+    let inspection = json!({"cmd": "git -C /workspace diff --stat"});
+    let mutation = json!({"cmd": "git -C /workspace commit -m change"});
+    assert!(evaluate_tool_invocation_with_config(&config, "exec_command", &inspection).is_none());
+    assert!(evaluate_tool_invocation_with_config(&config, "exec_command", &mutation).is_some());
+}
+
+#[test]
 fn write_stdin_reuses_process_authority_but_honors_explicit_denial() {
     let args = json!({"session_id": 1, "chars": "yes\n"});
     assert!(

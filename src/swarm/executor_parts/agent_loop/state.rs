@@ -26,6 +26,8 @@ pub(super) struct State {
     pub output: String,
     pub deadline: Instant,
     pub temperature: Option<f32>,
+    pub control: Option<crate::session::runtime::ControlHandle>,
+    pub steering_cursor: usize,
 }
 
 pub(super) struct ToolCall {

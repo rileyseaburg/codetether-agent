@@ -1,0 +1,29 @@
+[package]
+name = "codetether-provider-codex"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Codex provider orchestration, credentials, and backend selection"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+async-trait = "0.1.92"
+codetether-codex-auth = { path = "../codetether-codex-auth", version = "0.1.0" }
+codetether-codex-protocol = { path = "../codetether-codex-protocol", version = "0.1.0" }
+codetether-codex-transport = { path = "../codetether-codex-transport", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+futures = "0.3.34"
+parking_lot = "0.12"
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "stream", "rustls"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["full"] }
+tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-native-roots"] }
+tracing = "0.1"
+
+[dev-dependencies]
+base64 = "0.23.1"
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+tempfile = "3"
+tokio = { version = "1.53.1", features = ["test-util"] }

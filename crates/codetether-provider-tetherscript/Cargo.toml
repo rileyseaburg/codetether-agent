@@ -1,0 +1,17 @@
+[package]
+name = "codetether-provider-tetherscript"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "TetherScript-backed providers with capability-scoped runtime calls"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+async-trait = "0.1.92"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-tetherscript-values = { path = "../codetether-tetherscript-values", version = "0.1.0" }
+futures = "0.3.34"
+serde_json = "1.0.151"
+tetherscript = { version = "0.1.0-alpha.30", features = ["tera", "openssl-tls"] }
+tokio = { version = "1.53.1", features = ["rt"] }

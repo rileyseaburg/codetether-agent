@@ -1,0 +1,55 @@
+//! Request-scoped validation of model-emitted tool calls.
+
+mod batch_guard;
+#[path = "tool_validation/mimicry.rs"]
+pub mod mimicry;
+mod schema;
+mod session_guard;
+
+use super::tool_calls;
+use anyhow::{Context, Result, bail};
+use codetether_provider_core::{Message, ToolDefinition};
+use serde_json::Value;
+
+pub fn extract(
+    text: &str,
+    tools: &[ToolDefinition],
+    messages: &[Message],
+) -> Result<(String, Vec<(String, String)>)> {
+    // A `<tool_result>` alongside a real `<tool_call>` is the model copying the
+    // transcript style we ourselves render. Strip it and proceed; only fabricated
+    // output with no accompanying call is a genuine forgery.
+    let text = mimicry::tolerate(text)?;
+    let text = text.as_str();
+    let (cleaned, calls) = tool_calls::extract(text);
+    if tool_calls::contains_unparsed_markup(&cleaned) {
+        bail!("response contains incomplete or malformed <tool_call> markup");
+    }
+    let validated = calls
+        .into_iter()
+        .map(|call| validate(call, tools))
+        .collect::<Result<Vec<_>>>()?;
+    batch_guard::validate(&validated)?;
+    session_guard::validate(&validated, messages)?;
+    Ok((cleaned, validated))
+}
+
+fn validate(call: (String, String), tools: &[ToolDefinition]) -> Result<(String, String)> {
+    let (name, raw_arguments) = call;
+    let tool = tools
+        .iter()
+        .find(|tool| tool.name == name)
+        .with_context(|| format!("tool `{name}` was not advertised in this request"))?;
+    let arguments: Value = serde_json::from_str(&raw_arguments)
+        .with_context(|| format!("tool `{name}` arguments are not valid JSON"))?;
+    if !arguments.is_object() {
+        bail!("tool `{name}` arguments must be a JSON object");
+    }
+    schema::validate(&arguments, &tool.parameters)
+        .with_context(|| format!("tool `{name}` arguments failed schema validation"))?;
+    Ok((name, serde_json::to_string(&arguments)?))
+}
+
+#[cfg(test)]
+#[path = "tool_validation_tests.rs"]
+mod tests;

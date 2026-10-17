@@ -43,5 +43,6 @@ pub(super) async fn build(state: &mut State<'_>, task: SubTask, index: usize) ->
         max_retries: state.executor.config.max_retries,
         base_delay_ms: state.executor.config.base_delay_ms,
         max_delay_ms: state.executor.config.max_delay_ms,
+        control: state.executor.control().cloned(),
     }
 }

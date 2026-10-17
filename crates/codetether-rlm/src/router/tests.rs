@@ -1,6 +1,5 @@
 //! Router unit tests.
 
-use crate::capability::output_capability;
 use crate::config::RlmConfig;
 use crate::router::extract::extract_final;
 use crate::router::{RoutingContext, should_route};

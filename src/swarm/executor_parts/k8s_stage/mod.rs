@@ -12,6 +12,7 @@ mod collapse;
 mod collapse_audit;
 mod collapse_kill;
 mod context;
+mod control;
 mod events;
 mod failure;
 mod final_result;

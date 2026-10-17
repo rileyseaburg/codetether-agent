@@ -1,0 +1,18 @@
+//! Application profile regression tests.
+use super::ZaiProvider;
+use crate::thinking::{should_disable_thinking_for_request, thinking_config_for_request};
+use crate::{CompletionRequest, ContentPart, DEFAULT_BASE_URL, Message, Role};
+use codetether_provider_core::Provider;
+use serde_json::{Value, json};
+mod convert_messages_keeps_text_content_for_assistant_tool_calls_with_text;
+mod convert_messages_serializes_tool_arguments_as_json_string;
+mod convert_messages_uses_null_content_for_empty_assistant_tool_calls;
+mod convert_messages_wraps_invalid_tool_arguments_as_json_string;
+mod convert_messages_wraps_scalar_tool_arguments_as_json_string;
+mod list_models_includes_glm_5_1;
+mod list_models_includes_glm_5_turbo;
+mod long_low_budget_zai_requests_keep_thinking_enabled;
+mod model_supports_tool_stream_matches_glm_5_family;
+mod normal_zai_requests_keep_clear_thinking_enabled;
+mod preview_text_truncates_on_char_boundary;
+mod short_exact_zai_requests_disable_thinking;

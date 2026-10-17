@@ -1,3 +1,6 @@
+#[cfg(test)]
+#[path = "question_tests.rs"]
+mod question_tests;
 use crate::provider::ToolDefinition;
 use crate::session::helper::bootstrap::list_tools_bootstrap_definition;
 use crate::session::helper::runtime::is_interactive_tool;
@@ -14,7 +17,9 @@ pub(super) fn active_tool_definitions(
     registry
         .definitions()
         .into_iter()
-        .filter(|tool| !is_interactive_tool(&tool.name))
+        .filter(|tool| {
+            !is_interactive_tool(&tool.name) || codetether_question::runtime::available()
+        })
         .filter(|tool| !is_dead_confirmation_tool(&tool.name))
         .collect()
 }

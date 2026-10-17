@@ -1,9 +1,9 @@
 //! Capture and write system clipboard data for the image bridge.
 
-use std::io::Cursor;
 
 use anyhow::{Context, Result};
-use base64::Engine;
+#[cfg(not(windows))]
+use codetether_image::attachment_from_rgba;
 
 use crate::session::ImageAttachment;
 
@@ -70,17 +70,4 @@ pub fn copy_text(text: &str) -> Result<()> {
 pub fn copy_text(text: &str) -> Result<()> {
     crate::tui::clipboard_winapi::set_clipboard_text(text)
         .context("failed to write text to clipboard via raw-dylib")
-}
-
-fn attachment_from_rgba(width: usize, height: usize, bytes: Vec<u8>) -> Option<ImageAttachment> {
-    let buf: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
-        image::ImageBuffer::from_raw(width as u32, height as u32, bytes)?;
-    let mut png = Vec::new();
-    buf.write_to(&mut Cursor::new(&mut png), image::ImageFormat::Png)
-        .ok()?;
-    let data = base64::engine::general_purpose::STANDARD.encode(&png);
-    Some(ImageAttachment {
-        data_url: format!("data:image/png;base64,{data}"),
-        mime_type: Some("image/png".to_string()),
-    })
 }
