@@ -20,8 +20,6 @@ mod migration;
 pub(crate) mod paths;
 #[path = "persistence/restore.rs"]
 mod restore;
-#[path = "persistence/tree_target.rs"]
-mod tree_target;
 
 pub(crate) use hydrate::parent as hydrate_parent;
 pub(in crate::tool::agent) use lifecycle::{activate_resume, close, exists, prepare_resume};

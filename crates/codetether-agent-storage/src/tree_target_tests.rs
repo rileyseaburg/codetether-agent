@@ -1,5 +1,6 @@
+//! Existing durable-tree scope regression test.
 use super::{Manifest, find};
-use crate::tool::agent::persistence::manifest::Lifecycle;
+use crate::Lifecycle;
 
 #[test]
 fn resolves_absolute_relative_and_id_targets_within_one_root() {

@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-agent-storage",
  "codetether-child-mailbox",
  "codetether-collaboration-history",
  "codetether-collaboration-state",
@@ -2428,6 +2429,18 @@ dependencies = [
  "tokio",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-agent-storage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-config",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

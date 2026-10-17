@@ -2,7 +2,7 @@
 
 use super::{
     atomic,
-    manifest::{Lifecycle, Manifest},
+    manifest::{self, Lifecycle},
     paths,
 };
 use crate::tool::agent::store::AgentEntry;
@@ -11,7 +11,7 @@ use anyhow::Result;
 pub(in crate::tool::agent) async fn save(name: &str, entry: &AgentEntry) -> Result<()> {
     atomic::write(
         &paths::manifest(&entry.session.id)?,
-        &Manifest::from_entry(name, entry),
+        &manifest::from_entry(name, entry),
     )
     .await
 }
@@ -21,7 +21,7 @@ pub(in crate::tool::agent) async fn save_lifecycle(
     entry: &AgentEntry,
     lifecycle: Lifecycle,
 ) -> Result<()> {
-    let manifest = Manifest::from_entry(name, entry).with_lifecycle(lifecycle);
+    let manifest = manifest::from_entry(name, entry).with_lifecycle(lifecycle);
     atomic::write(&paths::manifest(&entry.session.id)?, &manifest).await
 }
 

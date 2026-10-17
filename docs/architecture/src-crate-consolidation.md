@@ -7936,3 +7936,21 @@ file budgets and whitespace checks passed; new crate modules contain at most
 mailboxes were written, agents dispatched, runtime tests executed, or Cargo,
 rustc or Python commands run. Compilation remains unverified; the full
 consolidation goal remains active.
+
+### Dedicated agent sidecar storage
+
+Moved atomic JSON sidecar I/O, validated agent paths, durable manifest contracts,
+manifest scanning and canonical tree lookup into `crates/codetether-agent-storage`.
+Eight Rust modules include the existing durable-tree regression test. The
+application retains live-entry-to-manifest conversion and restore/migration
+orchestration. Existing mailbox disk adapters now reach the shared storage
+through compatibility exports, preserving their path and I/O behavior.
+
+Sixteen static preservation checks cover read/write/remove handling, temporary
+rename fallback, identifier validation, manifest serde/lifecycle fields,
+scanning, tree scope, conversion and unchanged restore/mailbox callers. Module
+and dependency checks, file budgets and whitespace checks passed; new Rust
+modules contain at most 37 code lines. Evidence is in
+`artifacts/consolidation-agent-storage/`. No sidecars were written, manifests
+discovered, runtime tests executed, or Cargo, rustc or Python commands run.
+Compilation remains unverified; the full consolidation goal remains active.
