@@ -1,8 +1,8 @@
 //! Approval policy for mutating patch execution.
 
 use super::{args::PatchMode, result};
-use crate::approval::{ApprovalReceipt, ApprovalRequest, ApprovalStore};
-use crate::tool::ToolResult;
+use codetether_approval_core::{ApprovalReceipt, ApprovalRequest, ApprovalStore};
+use codetether_tool_core::ToolResult;
 
 const REQUIRED_ENV: &str = "CODETETHER_PATCH_APPROVAL_REQUIRED";
 const TOOL: &str = "apply_patch";

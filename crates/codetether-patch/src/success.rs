@@ -1,7 +1,7 @@
 //! Success response construction for patch execution.
 
 use super::apply::ApplyOutcome;
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 pub(super) fn build(outcome: &ApplyOutcome, dry_run: bool) -> ToolResult {

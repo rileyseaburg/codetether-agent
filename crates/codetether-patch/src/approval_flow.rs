@@ -1,8 +1,8 @@
 //! Approval branching for the patch execution pipeline.
 
 use super::{approval, args::PatchMode, metadata, result};
-use crate::approval::ApprovalReceipt;
-use crate::tool::ToolResult;
+use codetether_approval_core::ApprovalReceipt;
+use codetether_tool_core::ToolResult;
 
 pub(super) fn required(mode: &PatchMode) -> bool {
     approval::required(mode)

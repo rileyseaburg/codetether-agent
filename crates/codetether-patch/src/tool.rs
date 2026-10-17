@@ -1,13 +1,18 @@
 //! Public apply_patch tool wrapper.
 
 use super::{pipeline, schema};
-use crate::tool::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 use std::path::PathBuf;
 
 /// Tool that applies unified diff patches under a workspace root.
+///
+/// # Examples
+/// ```rust
+/// let _tool = codetether_patch::ApplyPatchTool::with_root("workspace".into());
+/// ```
 pub struct ApplyPatchTool {
     root: PathBuf,
 }
@@ -20,6 +25,15 @@ impl Default for ApplyPatchTool {
 
 impl ApplyPatchTool {
     /// Create a tool rooted at the current process directory.
+    ///
+    /// # Arguments
+    /// None.
+    /// # Returns
+    /// A patch tool using the process directory, or `.` if unavailable.
+    /// # Examples
+    /// ```rust
+    /// let _tool = codetether_patch::ApplyPatchTool::new();
+    /// ```
     pub fn new() -> Self {
         Self {
             root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
@@ -27,6 +41,15 @@ impl ApplyPatchTool {
     }
 
     /// Create a tool rooted at a specific workspace path.
+    ///
+    /// # Arguments
+    /// `root` is the workspace used to resolve patch targets.
+    /// # Returns
+    /// A patch tool bound to that workspace.
+    /// # Examples
+    /// ```rust
+    /// let _tool = codetether_patch::ApplyPatchTool::with_root("workspace".into());
+    /// ```
     pub fn with_root(root: PathBuf) -> Self {
         Self { root }
     }

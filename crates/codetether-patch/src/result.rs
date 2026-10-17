@@ -1,7 +1,7 @@
 //! ToolResult construction for patch outcomes.
 
-use crate::approval::ApprovalRequest;
-use crate::tool::ToolResult;
+use codetether_approval_core::ApprovalRequest;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 /// Build the unified diff parse error used by the patch tool.

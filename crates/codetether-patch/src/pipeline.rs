@@ -1,8 +1,8 @@
 //! End-to-end patch execution pipeline.
 
 use super::{apply, approval_flow, args, group, metadata, parser, result, success};
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
 use std::path::Path;
 

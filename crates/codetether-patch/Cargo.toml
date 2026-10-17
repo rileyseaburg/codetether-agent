@@ -1,0 +1,17 @@
+[package]
+name = "codetether-patch"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Workspace patch execution with shared approval records"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

@@ -1321,6 +1321,7 @@ dependencies = [
  "codetether-multiedit",
  "codetether-okr",
  "codetether-okr-tool",
+ "codetether-patch",
  "codetether-paths",
  "codetether-plan",
  "codetether-platform",
@@ -2415,6 +2416,18 @@ dependencies = [
  "serde_json",
  "tokio",
  "uuid",
+]
+
+[[package]]
+name = "codetether-patch"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-approval-core",
+ "codetether-tool-core",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

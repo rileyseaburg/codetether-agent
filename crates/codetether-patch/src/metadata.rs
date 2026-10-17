@@ -1,6 +1,6 @@
 //! Metadata attachment for patch results.
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
 
 /// Attach consistent review metadata to a patch result.

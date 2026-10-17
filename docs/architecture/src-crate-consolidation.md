@@ -6986,3 +6986,22 @@ New Rust files contain at most 46 code lines. Evidence is retained under
 `artifacts/consolidation-edit/`. No file-edit requests, runtime tests, Cargo,
 rustc or Python commands ran. Compilation remains unverified; the full
 workspace consolidation goal remains active.
+
+### Dedicated patch execution and reconstruction crate
+
+Moved active patch modules into `crates/codetether-patch`. Twenty Rust files
+own argument parsing, approval branching, workspace path validation, file I/O,
+patch execution, result metadata and proposed-content reconstruction. Parsing
+and hunk application continue using the shared tool-core algorithms; approval
+requests and receipts use the same shared approval-store types. The application
+retains exports and its approval-fixture tests.
+
+Static token comparisons cover all nineteen moved modules, allowing only
+shared dependency paths, proposed-content export visibility and documentation
+changes. Four path/reconstruction tests moved unchanged; three application
+approval/preview tests and their support remained byte-identical. Lexical
+module reachability (including the application test adapter), dependency-cycle,
+file-budget and whitespace checks passed. New Rust files contain at most 45
+code lines. Evidence: `artifacts/consolidation-patch/`. No patch operations,
+ledger operations, runtime tests, Cargo, rustc or Python commands ran.
+Compilation remains unverified; the full consolidation goal remains active.
