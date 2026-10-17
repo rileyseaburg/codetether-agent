@@ -1396,6 +1396,7 @@ dependencies = [
  "codetether-worktree",
  "codetether-write-stdin",
  "codetether-worktree-isolation",
+ "codetether-youtube-tool",
  "config",
  "cpal",
  "crossterm",
@@ -3453,6 +3454,19 @@ dependencies = [
  "anyhow",
  "tempfile",
  "tracing",
+]
+
+[[package]]
+name = "codetether-youtube-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
