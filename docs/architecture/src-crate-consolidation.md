@@ -7264,3 +7264,21 @@ passed; new Rust files contain at most 44 code lines. Evidence lives in
 `artifacts/consolidation-voice-input-tool/`. No microphone capture, transcription
 requests, runtime tests, Cargo, rustc or Python commands ran. Compilation remains
 unverified; the full workspace consolidation goal remains active.
+
+### Dedicated Git undo tool
+
+Moved undo history inspection, preview, schema, reset execution and output
+formatting into `crates/codetether-undo-tool`. Ten modules separate these
+responsibilities and expose an explicit authorization policy contract. The
+application adapter delegates to its existing session-aware runtime check;
+it preserves the `UndoTool` type and unit-like value used by current callers.
+The obsolete application `undo_policy.rs` implementation has been removed.
+
+Fifteen static preservation checks reconstruct the complete ordered execution,
+including preview's early return and the authorization gate before reset.
+All three existing integration tests remain byte-for-byte unchanged and unrun.
+Module reachability, dependency cycles, file budgets and whitespace checks
+passed; new Rust files contain at most 38 code lines. Evidence lives in
+`artifacts/consolidation-undo-tool/`. No undo/reset operation, runtime tests,
+Cargo, rustc or Python commands ran. Compilation remains unverified; the full
+workspace consolidation goal remains active.

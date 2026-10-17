@@ -1388,6 +1388,7 @@ dependencies = [
  "codetether-todo",
  "codetether-token-count",
  "codetether-tool-core",
+ "codetether-undo-tool",
  "codetether-util",
  "codetether-vectordb",
  "codetether-voice-core",
@@ -3363,6 +3364,17 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "codetether-undo-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
