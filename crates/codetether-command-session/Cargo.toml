@@ -1,0 +1,15 @@
+[package]
+name = "codetether-command-session"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Persistent subprocess sessions with bounded output and liveness"
+
+[dependencies]
+anyhow = "1"
+codetether-command-pty = { path = "../codetether-command-pty", version = "0.1.0" }
+codetether-process-tree = { path = "../codetether-process-tree", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
+tokio = { version = "1", features = ["fs", "process", "sync", "io-util", "rt", "time"] }

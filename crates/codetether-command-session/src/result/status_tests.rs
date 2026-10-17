@@ -1,5 +1,5 @@
 use super::suffix;
-use crate::tool::command_session::Poll;
+use crate::Poll;
 use std::time::Duration;
 
 fn poll(running: bool, poll_bytes: usize, silent_secs: u64) -> Poll {

@@ -1,5 +1,5 @@
 use super::tool_result;
-use crate::tool::command_session::{Poll, SpawnMetadata};
+use crate::{Poll, SpawnMetadata};
 
 #[test]
 fn redacts_command_credentials_before_returning_output() {

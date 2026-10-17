@@ -2,8 +2,8 @@
 
 use tokio::time::{Duration, Instant, timeout};
 
-use super::super::buffer::Buffer;
 use super::super::Running;
+use super::super::buffer::Buffer;
 
 pub(super) async fn output(command: &mut Running, output: &mut Buffer) {
     let deadline = Instant::now() + Duration::from_millis(100);

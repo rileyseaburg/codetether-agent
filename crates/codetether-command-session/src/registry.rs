@@ -10,14 +10,28 @@ use super::Running;
 
 const MAX_SESSIONS: usize = 64;
 
+/// Owns up to 64 running commands, identified by monotonically assigned IDs.
+///
+/// # Examples
+/// ```rust
+/// let _registry = codetether_command_session::Registry::default();
+/// ```
 #[derive(Default)]
-pub(crate) struct Registry {
+pub struct Registry {
     next_id: AtomicU64,
     sessions: Mutex<HashMap<u64, Arc<Mutex<Running>>>>,
 }
 
 impl Registry {
-    pub(crate) async fn insert(&self, command: Running) -> Result<u64> {
+    /// Retain a command and assign its session ID.
+    ///
+    /// # Arguments
+    /// * `command` - Running command whose lifetime the registry will own.
+    /// # Returns
+    /// The newly assigned ID.
+    /// # Errors
+    /// Returns an error when 64 sessions are already retained.
+    pub async fn insert(&self, command: Running) -> Result<u64> {
         let mut sessions = self.sessions.lock().await;
         if sessions.len() >= MAX_SESSIONS {
             return Err(anyhow!(
@@ -29,11 +43,13 @@ impl Registry {
         Ok(id)
     }
 
-    pub(crate) async fn get(&self, id: u64) -> Option<Arc<Mutex<Running>>> {
+    /// Clone the shared command handle for `id`, or return `None`.
+    pub async fn get(&self, id: u64) -> Option<Arc<Mutex<Running>>> {
         self.sessions.lock().await.get(&id).cloned()
     }
 
-    pub(crate) async fn remove(&self, id: u64) {
+    /// Remove registry ownership of `id`; remaining shared handles stay valid.
+    pub async fn remove(&self, id: u64) {
         self.sessions.lock().await.remove(&id);
     }
 }

@@ -2165,6 +2165,26 @@ checks passed. New files contain at most 39 code lines. Evidence:
 runtime tests, Cargo, rustc or Python ran. Compilation remains unverified.
 The full workspace consolidation remains active.
 
+### Shared persistent command-session lifecycle
+
+Moved the reusable command-session lifecycle into
+`crates/codetether-command-session`: registry ownership and limits, running
+process state, PTY/pipe readers, incremental polling, head/tail buffering,
+liveness accounting and model-facing result formatting. Twenty-one existing
+files moved into the crate, with a documented library entry point. The
+application retains spawning, sandbox integration and tool registration
+adapters, all unchanged, plus compatibility exports for existing callers.
+
+Static token comparisons verify all moved implementations and nine preserved
+unit tests after crate-path/visibility substitutions. Application adapter and
+integration-test files remain byte-identical. Module scans cover both the
+new crate and remaining application command-session tree, finding no missing
+or orphaned modules. Dependency-cycle, file-budget, whitespace and workspace
+wiring checks passed. Files contain at most 49 code lines. Evidence:
+`artifacts/consolidation-command-session/`. No commands, PTYs, runtime tests,
+Cargo, rustc or Python ran. Compilation and runtime behavior remain unverified;
+the full workspace goal remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict
