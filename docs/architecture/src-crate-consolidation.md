@@ -97,7 +97,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-a2a-grpc | 45 | yes | codetether-a2a-core, codetether-bus-core |
 | codetether-a2a-http | 29 | yes | codetether-a2a-core |
 | codetether-a2a-stream | 33 | yes | codetether-telemetry |
-| codetether-a2a-worker-core | 58 | yes | none |
+| codetether-a2a-worker-core | 63 | yes | none |
 | codetether-agent-core | 44 | yes | none |
 | codetether-approval-core | 41 | yes | none |
 | codetether-audit | 1 | yes | none |
@@ -4711,3 +4711,20 @@ reachable without missing or orphaned modules. New files satisfy the
 50-code-line limit; whitespace/file-budget checks passed. Evidence is in
 `artifacts/consolidation-worker-execution-policy/`. Compilation and tests were
 not run. The broader workspace consolidation goal remains active.
+
+
+### Shared worker task-context derivation
+
+Worker-core task configuration now owns `TaskContext`, its builder, and the
+existing author-binding rules for session reuse and workspace preservation.
+The application context module is a compatibility re-export. The private
+application record module and moved test files no longer duplicate ownership.
+No runtime or provider dependency was added.
+
+Static comparison covers five source files, including all five existing test
+bodies. Metadata precedence, prompt fallback, model/tier selection, verified
+resume checks, and preservation conditions are unchanged. All 63 worker-core
+files and 327 A2A files are reachable without missing/orphaned modules. New
+files satisfy the 50-code-line limit; file-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-worker-task-context/`. Compilation and tests
+remain unrun. The wider workspace consolidation goal remains active.

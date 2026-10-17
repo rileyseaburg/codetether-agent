@@ -75,7 +75,6 @@ mod task_agent_swarm_result;
 mod task_claim;
 mod task_context;
 mod task_context_helpers;
-mod task_context_struct;
 mod task_data;
 mod task_dispatch;
 #[rustfmt::skip]

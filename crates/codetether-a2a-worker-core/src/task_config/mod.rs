@@ -34,3 +34,8 @@ pub use session_step_budget::{
 };
 mod task_context_helpers;
 pub use task_context_helpers::{context_selected_model, context_workspace_id, tier_from_metadata};
+
+mod task_context;
+mod task_context_struct;
+pub use task_context::build_task_context;
+pub use task_context_struct::TaskContext;
