@@ -1754,6 +1754,8 @@ dependencies = [
  "codetether-command-pty",
  "codetether-command-shell",
  "codetether-process-tree",
+ "codetether-sandbox-policy",
+ "codetether-sandbox-runtime",
  "codetether-tool-core",
  "serde_json",
  "tokio",

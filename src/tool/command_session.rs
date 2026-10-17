@@ -1,14 +1,12 @@
-//! Application spawning and tool registration around shared command sessions.
+//! Application tool registration around shared command sessions.
 pub(crate) use codetether_command_session::{Poll, Registry, Running, SpawnMetadata, tool_result};
 
 #[path = "command_session/register.rs"]
 mod register_tools;
-#[path = "command_session/spawn.rs"]
-mod spawn;
 
 pub(crate) use register_tools::register;
 
-pub(crate) use spawn::command;
+pub(crate) use codetether_command_session::spawn as command;
 
 #[cfg(test)]
 #[path = "command_session/buffer_integration_tests.rs"]

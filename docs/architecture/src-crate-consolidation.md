@@ -2397,6 +2397,21 @@ most 49 code lines. Evidence: `artifacts/consolidation-sandbox-runtime/`.
 No sandbox processes, runtime tests, Cargo, rustc or Python ran. Compilation
 and platform execution remain unverified; the full migration remains active.
 
+### Command-session creation owned by its crate
+
+Moved the sandbox/direct dispatcher and sandboxed-session adapter into
+`codetether-command-session`. The crate now owns both creation paths alongside
+session lifetime management. The application re-exports the same `command`
+entry point and retains tool registration and integration tests.
+
+Static comparisons verify sandbox-first dispatch, direct delegation,
+sandboxed spawn arguments and session metadata after shared-crate import
+substitutions. Module reachability covers both the crate and remaining
+application subtree. Dependency-cycle, file-budget and whitespace checks
+passed. Evidence: `artifacts/consolidation-session-spawn/`. No processes,
+runtime tests, Cargo, rustc or Python ran. Compilation and runtime behavior
+remain unverified; the complete workspace migration remains active.
+
 ### Shared speculative branch-collapse policy
 
 The shared collapse module owns observation tracking, health counters, conflict

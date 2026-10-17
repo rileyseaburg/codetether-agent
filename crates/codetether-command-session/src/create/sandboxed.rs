@@ -4,7 +4,7 @@ use anyhow::Result;
 use std::path::Path;
 
 use super::super::{Running, SpawnMetadata};
-use crate::tool::sandbox::SandboxPolicy;
+use codetether_sandbox_policy::SandboxPolicy;
 
 pub(super) async fn command(
     program: &str,
@@ -14,15 +14,9 @@ pub(super) async fn command(
     environment: &[(String, String)],
     policy: &SandboxPolicy,
 ) -> Result<Running> {
-    let spawned = crate::tool::sandbox::sandbox_spawn::spawn(
-        program,
-        args,
-        policy,
-        cwd,
-        keep_stdin,
-        environment,
-    )
-    .await?;
+    let spawned =
+        codetether_sandbox_runtime::spawn(program, args, policy, cwd, keep_stdin, environment)
+            .await?;
     Running::new_attached(
         spawned.child,
         SpawnMetadata {

@@ -7,6 +7,8 @@ license = "MIT"
 description = "Persistent subprocess sessions with bounded output and liveness"
 
 [dependencies]
+codetether-sandbox-policy = { path = "../codetether-sandbox-policy", version = "0.1.0" }
+codetether-sandbox-runtime = { path = "../codetether-sandbox-runtime", version = "0.1.0" }
 codetether-command-shell = { path = "../codetether-command-shell", version = "0.1.0" }
 anyhow = "1"
 codetether-command-pty = { path = "../codetether-command-pty", version = "0.1.0" }
