@@ -41,3 +41,6 @@ pub use release_request::build_release_request;
 pub mod cognition;
 mod heartbeat_post;
 pub use heartbeat_post::post_heartbeat;
+
+/// Worker state and progress snapshot assembly for heartbeats.
+pub mod heartbeat_snapshot;

@@ -5388,3 +5388,22 @@ closure remains acyclic. New files contain at most 47 code lines. File-budget
 and whitespace checks passed. Evidence: `artifacts/consolidation-heartbeat-http/`.
 Compilation, tests, cognition requests, and heartbeat submission remain unrun.
 No Cargo, rustc, or Python commands ran. The broader migration remains active.
+
+### Shared heartbeat snapshot assembly
+
+Moved heartbeat state/progress snapshot assembly and the resulting payload
+record into the HTTP worker module. Separate helpers own status/count updates
+and progress serialization; the application payload module is now a re-export.
+The scheduling loop and its failure counters remain unchanged in this increment.
+
+Static comparison expands the two helpers and matches the original builder:
+shared-state update order, locks, sorted sub-agent snapshot, number formatting,
+cognition cooldown predicate, optional inserts, and base fallback are preserved.
+The payload record fields are unchanged, and helper return types were checked
+against the existing worker-core method signatures. All 92 HTTP files and 278
+application A2A files remain reachable without missing/orphaned modules; the
+dependency closure stays acyclic. New files contain at most 39 code lines.
+File-budget and whitespace checks passed. Evidence:
+`artifacts/consolidation-heartbeat-payload/`. Compilation, tests, and runtime
+heartbeats remain unrun. No Cargo, rustc, or Python commands ran. The broader
+implementation migration remains active.
