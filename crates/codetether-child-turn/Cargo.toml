@@ -7,6 +7,9 @@ license = "MIT"
 description = "Child-turn collection, finalization, detached dispatch and first-turn coordination"
 
 [dependencies]
+codetether-agent-input = { path = "../codetether-agent-input", version = "0.1.0" }
+codetether-child-mailbox = { path = "../codetether-child-mailbox", version = "0.1.0" }
+codetether-collaboration-input = { path = "../codetether-collaboration-input", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 codetether-agent-messages = { path = "../codetether-agent-messages", version = "0.1.0" }

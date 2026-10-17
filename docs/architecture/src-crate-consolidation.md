@@ -8319,3 +8319,22 @@ file-budget and whitespace checks passed; crate files contain at most 39 code
 lines. Evidence is in `artifacts/consolidation-child-turn/`. Compilation and
 runtime tests were not run; no background child tasks were started. No Cargo,
 rustc or Python commands ran. The full consolidation goal remains active.
+
+### Shared child-message routing and settlement
+
+Moved local/remote message selection, busy-child enqueue behavior, detached
+mailbox submission and accepted-turn settlement into `codetether-child-turn`.
+Five added Rust modules separate routing, mailbox effects, startup effects and
+turn collection. Native adapters retain exact-owner resolution, remote fallback,
+mailbox parameter handling and session startup. Existing direct and durable
+mailbox callers use a specialization wrapper around the shared executor.
+
+Seventeen static preservation checks cover input error ordering, routing,
+queue receipt text, durable enqueue-before-dispatch, image forwarding,
+execution registration, detached collection and finalization-before-mailbox
+completion. Existing startup, remote fallback, session and mailbox integration
+remain unchanged. Module/dependency, file-budget and whitespace checks passed;
+added crate modules contain at most 39 code lines. Evidence is in
+`artifacts/consolidation-child-message/`. Compilation and runtime tests were
+not run; no messages or agent turns were executed. No Cargo, rustc or Python
+commands ran. The full consolidation goal remains active.

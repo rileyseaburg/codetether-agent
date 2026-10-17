@@ -11,7 +11,7 @@ type Started = (
     tokio::task::JoinHandle<Result<Session>>,
 );
 
-pub(super) async fn begin(
+pub(in crate::tool::agent) async fn begin(
     agent_id: &str,
     message: String,
     images: Vec<MessageImage>,

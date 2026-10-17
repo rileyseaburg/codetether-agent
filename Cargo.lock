@@ -2460,6 +2460,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "codetether-agent-input",
+ "codetether-child-mailbox",
+ "codetether-collaboration-input",
  "codetether-agent-messages",
  "codetether-agent-status",
  "codetether-agent-trace",

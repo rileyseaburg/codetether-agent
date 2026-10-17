@@ -4,7 +4,7 @@ use super::{helpers, remote};
 use crate::tool::ToolResult;
 use anyhow::Result;
 
-pub(super) async fn execute(
+pub(in crate::tool::agent) async fn execute(
     target: &str,
     message: &str,
     params: &helpers::Params,
