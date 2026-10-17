@@ -47,3 +47,6 @@ pub mod heartbeat_snapshot;
 
 mod heartbeat_loop;
 pub use heartbeat_loop::start_heartbeat;
+
+/// Claim response handling and progress transitions.
+pub mod claim;

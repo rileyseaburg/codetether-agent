@@ -5429,3 +5429,23 @@ runtime feature is explicitly declared for task spawning. File-budget and
 whitespace checks passed. Evidence: `artifacts/consolidation-heartbeat-loop/`.
 Compilation, tests, and live scheduling remain unrun. No Cargo, rustc, or Python
 commands ran. The broader migration goal remains active.
+
+### Shared task claim and execution outcome transitions
+
+The HTTP worker module now owns the claim request/response lifecycle, returned
+claim data, rejection diagnostics, and accepted-claim timeline updates.
+Worker-core owns successful/error result normalization and failure checkpoints.
+Application adapters supply runtime request fields and re-export the outcome
+API. Removed the now-unused application claim-request and identity-proof
+forwarders.
+
+Static comparison expands the rejection helper to match the original claim
+body and verifies all four outcome definitions plus unchanged claim fields.
+Conflict logging, bounded response text, the 60-to-604800-second timeout clamp,
+provenance extraction, failure messages, and timeline ordering are preserved.
+The module scan covers 104 HTTP files, 138 worker-core files, and 272 A2A files
+without missing/orphaned modules; the dependency closure stays acyclic. New
+files contain at most 39 code lines. File-budget and whitespace checks passed.
+Evidence: `artifacts/consolidation-task-transitions/`. Compilation, tests, and
+live task claiming remain unrun. No Cargo, rustc, or Python commands ran.
+The broader migration remains active.

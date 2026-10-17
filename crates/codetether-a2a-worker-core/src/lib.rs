@@ -46,3 +46,6 @@ pub mod dispatch;
 
 /// Structured worker event payloads, redaction and active sinks.
 pub mod events;
+
+/// Claimed-task execution outcome normalization.
+pub mod outcome;
