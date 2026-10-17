@@ -34,7 +34,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | mux | 252 | 7209 | Pending cohesion and dependency audit |
 | cognition | 146 | 2103 | Domain/store/backend services, native model/router ownership and cadence extracted; client assembly, registry/signing adapters, publication and tick composition pending |
 | mcp | 71 | 1715 | Shared protocol, transport, client state, catalogs, bus HTTP and native search extracted; application retains policy, registry wiring and server tool adapters |
-| ralph | 111 | 2818 | Shared services extracted and host families grouped; final residual ownership review continues |
+| ralph | 111 | 2777 | Shared services and event projections extracted; grouped application hosts remain under final ownership review |
 | bus | 17 | 54 | Ownership audited: shared runtime/training and separate S3 adapter extracted; only compatibility exports and application global bus selection remain |
 | lsp | 13 | 280 | Ownership audited: protocol, clients, managers, diagnostics and cache in lsp-core; application retains identity wrapper, trait adapters and integration tests |
 | rlm | 16 | 185 | Ownership audited: shared execution extracted; only compatibility APIs, local-router setup and provider/session-bus adapters remain |
@@ -152,7 +152,7 @@ This is the workspace-wide goal. The session runtime is one completed part, not 
 | codetether-provider-openai | 72 | yes | none |
 | codetether-provider-zai | 120 | yes | none |
 | codetether-question | 30 | yes | none |
-| codetether-ralph-core | 136 | yes | none |
+| codetether-ralph-core | 138 | yes | none |
 | codetether-rlm | 448 | yes | none |
 | codetether-runtime-policy | 37 | yes | none |
 | codetether-search | 18 | yes | none |
@@ -4390,3 +4390,23 @@ Cargo, rustc, Python, model call, merge, runtime operation, Rust test or doctest
 ran; compilation and runtime remain unverified. Evidence:
 artifacts/consolidation-ralph-host-groups/. A final Ralph residual ownership
 review remains within the broader active workspace objective.
+
+## Ralph event projection ownership
+
+Ralph-core::events now builds initial story presentation records and maps
+shared SwarmEvent payloads into RalphEvent values. The application keeps
+channel creation, forwarding and close handling. Unsupported swarm variants
+still skip forwarding; supported variants retain their payload and story ID.
+The core directly declares its existing shared swarm-contract dependency.
+
+Seven static comparisons passed: initial records, forwarding signature,
+nonblocking event sends, payload mapping, unsupported variants, channel
+capacity/clone order and the narrow lockfile addition. The two new modules
+are at most 27 code lines. Lexical scans cover 138 core and 111 application
+files without missing modules or a cycle in the seven-crate local dependency
+closure. The lockfile only adds swarm-core to Ralph-core; no resolution ran.
+File-limit and whitespace checks passed; standalone rustfmt was used.
+No Cargo, rustc, Python, channel execution, Rust test or doctest ran; compilation
+and runtime remain unverified. Evidence:
+artifacts/consolidation-ralph-event-mapping/. The final Ralph ownership review
+and full workspace objective remain active.

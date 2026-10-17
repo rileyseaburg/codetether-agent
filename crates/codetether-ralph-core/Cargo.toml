@@ -7,6 +7,7 @@ description = "PRD contracts, persistence and story scheduling for CodeTether Ra
 license = "MIT"
 
 [dependencies]
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
 codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
 codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
 anyhow = "1.0.104"

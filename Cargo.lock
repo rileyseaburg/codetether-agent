@@ -2334,6 +2334,7 @@ dependencies = [
  "chrono",
  "codetether-agent-core",
  "codetether-context-policy",
+ "codetether-swarm-core",
  "glob",
  "reqwest 0.13.4",
  "serde",

@@ -15,7 +15,7 @@ use crate::session::{Session, SessionEvent};
 use crate::swarm::{executor::AgentLoopExit, run_agent_loop};
 use crate::tool::ToolRegistry;
 use crate::worktree::WorktreeManager;
-use codetether_ralph_core::events::{RalphEvent, RalphStoryInfo, RalphStoryStatus};
+use codetether_ralph_core::events::{RalphEvent, RalphStoryInfo};
 use codetether_swarm_core::SwarmEvent;
 use futures::stream::{self, StreamExt};
 use std::collections::HashMap;

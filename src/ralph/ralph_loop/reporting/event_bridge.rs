@@ -12,30 +12,10 @@ impl RalphLoop {
         let ralph_tx = ralph_tx.clone();
         let handle = tokio::spawn(async move {
             while let Some(event) = swarm_rx.recv().await {
-                let ralph_event = match event {
-                    SwarmEvent::AgentToolCall { tool_name, .. } => RalphEvent::StoryToolCall {
-                        story_id: story_id.clone(),
-                        tool_name,
-                    },
-                    SwarmEvent::AgentToolCallDetail { detail, .. } => {
-                        RalphEvent::StoryToolCallDetail {
-                            story_id: story_id.clone(),
-                            detail,
-                        }
-                    }
-                    SwarmEvent::AgentMessage { entry, .. } => RalphEvent::StoryMessage {
-                        story_id: story_id.clone(),
-                        entry,
-                    },
-                    SwarmEvent::AgentOutput { output, .. } => RalphEvent::StoryOutput {
-                        story_id: story_id.clone(),
-                        output,
-                    },
-                    SwarmEvent::AgentError { error, .. } => RalphEvent::StoryError {
-                        story_id: story_id.clone(),
-                        error,
-                    },
-                    _ => continue, // Skip swarm-specific events
+                let Some(ralph_event) =
+                    codetether_ralph_core::events::from_swarm_event(&story_id, event)
+                else {
+                    continue;
                 };
                 if ralph_tx.send(ralph_event).await.is_err() {
                     break;
