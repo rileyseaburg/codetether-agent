@@ -1,6 +1,8 @@
 //! Completion-response assembly from retained output-item checkpoints.
 
-use crate::provider::{CompletionResponse, ContentPart, FinishReason, Message, Role, Usage};
+use codetether_provider_core::{
+    CompletionResponse, ContentPart, FinishReason, Message, Role, Usage,
+};
 
 pub(super) fn message(content: Vec<ContentPart>) -> Message {
     Message {
@@ -9,7 +11,7 @@ pub(super) fn message(content: Vec<ContentPart>) -> Message {
     }
 }
 
-pub(super) fn usage(outcome: &super::super::super::outcome::DrainOutcome) -> Usage {
+pub(super) fn usage(outcome: &codetether_stream_outcome::DrainOutcome) -> Usage {
     outcome
         .response
         .as_ref()
@@ -17,14 +19,12 @@ pub(super) fn usage(outcome: &super::super::super::outcome::DrainOutcome) -> Usa
         .unwrap_or_default()
 }
 
-pub(super) fn is_clean_empty(outcome: &super::super::super::outcome::DrainOutcome) -> bool {
-    matches!(
-        outcome.stop,
-        super::super::super::outcome::StreamStop::Clean
-    ) && outcome
-        .response
-        .as_ref()
-        .is_none_or(|value| value.message.content.is_empty())
+pub(super) fn is_clean_empty(outcome: &codetether_stream_outcome::DrainOutcome) -> bool {
+    matches!(outcome.stop, codetether_stream_outcome::StreamStop::Clean)
+        && outcome
+            .response
+            .as_ref()
+            .is_none_or(|value| value.message.content.is_empty())
 }
 
 pub(super) fn build(content: Vec<ContentPart>, usage: Usage) -> CompletionResponse {
@@ -40,13 +40,4 @@ pub(super) fn build(content: Vec<ContentPart>, usage: Usage) -> CompletionRespon
             FinishReason::Stop
         },
     }
-}
-
-pub(super) fn prepend(
-    mut response: CompletionResponse,
-    mut content: Vec<ContentPart>,
-) -> CompletionResponse {
-    content.append(&mut response.message.content);
-    response.message.content = content;
-    response
 }

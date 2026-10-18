@@ -4,18 +4,18 @@ use std::sync::Arc;
 
 use tokio::sync::mpsc;
 
-use crate::provider::{CompletionRequest, Provider};
-use crate::session::SessionEvent;
+use codetether_provider_core::{CompletionRequest, Provider};
+use codetether_session_events::SessionEvent;
 
-use super::super::idle_fault::fault_from;
-use super::super::idle_timeout::drain;
-use super::super::outcome::DrainOutcome;
+use codetether_stream_drain::drain;
+use codetether_stream_outcome::DrainOutcome;
+use codetether_stream_outcome::fault_from;
 
-pub(super) async fn run(
+pub(super) async fn run<S>(
     provider: &Arc<dyn Provider>,
     request: &CompletionRequest,
     session_id: &str,
-    event_tx: Option<&mpsc::Sender<SessionEvent>>,
+    event_tx: Option<&mpsc::Sender<SessionEvent<S>>>,
 ) -> DrainOutcome {
     match provider
         .complete_stream_scoped(request.clone(), session_id)

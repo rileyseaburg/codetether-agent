@@ -2,12 +2,12 @@
 
 use tokio::sync::mpsc;
 
-use crate::session::{SessionEvent, StreamRetryEvent};
+use codetether_session_events::{SessionEvent, StreamRetryEvent};
 
-use super::super::outcome::StreamStop;
+use codetether_stream_outcome::StreamStop;
 
-pub(super) async fn retry(
-    tx: Option<&mpsc::Sender<SessionEvent>>,
+pub(super) async fn retry<S>(
+    tx: Option<&mpsc::Sender<SessionEvent<S>>>,
     attempt: u32,
     max_restarts: u32,
     stop: &StreamStop,

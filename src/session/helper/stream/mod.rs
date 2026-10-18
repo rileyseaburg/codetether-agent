@@ -20,9 +20,6 @@ use anyhow::Result;
 use futures::stream::BoxStream;
 
 mod accept;
-mod idle_fault;
-mod idle_timeout;
-mod outcome;
 mod restart;
 #[cfg(test)]
 mod restart_checkpoint_tests;

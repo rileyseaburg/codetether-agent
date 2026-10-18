@@ -1,0 +1,17 @@
+[package]
+name = "codetether-stream-restart"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Whole-request stream retries and completed-item checkpoints"
+
+[dependencies]
+anyhow = "1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+codetether-stream-drain = { path = "../codetether-stream-drain", version = "0.1.0" }
+codetether-stream-outcome = { path = "../codetether-stream-outcome", version = "0.1.0" }
+thiserror = "2"
+tokio = { version = "1", features = ["sync", "time"] }
+tracing = "0.1"

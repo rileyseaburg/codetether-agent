@@ -1,6 +1,6 @@
 //! Error wrapper carrying output items completed before retry exhaustion.
 
-use crate::provider::ContentPart;
+use codetether_provider_core::ContentPart;
 
 #[derive(Debug, thiserror::Error)]
 #[error("{source}")]

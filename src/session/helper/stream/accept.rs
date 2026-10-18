@@ -1,5 +1,4 @@
-//! Shared final stream acceptance policy.
-pub(super) use codetether_stream_outcome::{accept, exhausted};
+//! Native regression coverage for shared stream acceptance.
 #[cfg(test)]
 #[path = "fault_accept_tests.rs"]
 mod tests;

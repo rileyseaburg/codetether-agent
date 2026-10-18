@@ -1,10 +1,10 @@
 //! Incorporation of completed items into retry state and request context.
 
-use crate::provider::{CompletionRequest, CompletionResponse, ContentPart};
+use codetether_provider_core::{CompletionRequest, CompletionResponse, ContentPart};
 
 pub(super) fn run(
     state: &mut super::State,
-    outcome: &super::super::super::outcome::DrainOutcome,
+    outcome: &codetether_stream_outcome::DrainOutcome,
     request: &mut CompletionRequest,
 ) -> Option<CompletionResponse> {
     if outcome.completed.is_empty() {

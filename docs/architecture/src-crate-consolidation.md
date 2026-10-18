@@ -9668,3 +9668,21 @@ the largest crate file has 44 code lines. Nine original collector/keepalive
 tests moved without execution. Evidence is in `artifacts/consolidation-stream-drain/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or worker
 commands ran. Full workspace consolidation remains active.
+
+### Dedicated stream-restart crate
+
+Moved whole-request retry orchestration, retry timing, provider stream attempts,
+retry notifications and completed-item checkpoint retention into
+`crates/codetether-stream-restart`. Eleven modules separate engine, policy,
+attempts, events, checkpoint incorporation, error wrapping and response assembly.
+Native callers retain their fixed session-event API through one wrapper;
+obsolete outcome/drain adapters were removed.
+
+Thirty-three static comparisons cover retry/fallback ordering, checkpoint
+incorporation, retained error payloads, delay selection, moved timing tests and
+unchanged native integration tests. Module/dependency graphs, file budgets and
+whitespace checks passed; the largest crate file has 44 code lines. Two existing
+timing tests moved without execution. Evidence is in
+`artifacts/consolidation-stream-restart/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python or worker commands ran. Full workspace
+consolidation remains active.

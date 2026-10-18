@@ -4,10 +4,12 @@
 mod absorb;
 #[path = "checkpoint/error.rs"]
 mod error;
+#[path = "checkpoint/prepend.rs"]
+mod prepend;
 #[path = "checkpoint/response.rs"]
 mod response;
 
-use crate::provider::{CompletionRequest, CompletionResponse, ContentPart};
+use codetether_provider_core::{CompletionRequest, CompletionResponse, ContentPart};
 
 #[derive(Default)]
 pub(super) struct State {
@@ -17,7 +19,7 @@ pub(super) struct State {
 impl State {
     pub(super) fn absorb(
         &mut self,
-        outcome: &super::super::outcome::DrainOutcome,
+        outcome: &codetether_stream_outcome::DrainOutcome,
         request: &mut CompletionRequest,
     ) -> Option<CompletionResponse> {
         absorb::run(self, outcome, request)
@@ -25,17 +27,17 @@ impl State {
 
     pub(super) fn accept(
         self,
-        outcome: super::super::outcome::DrainOutcome,
+        outcome: codetether_stream_outcome::DrainOutcome,
         retries: u32,
     ) -> anyhow::Result<CompletionResponse> {
         if self.content.is_empty() {
-            return super::super::accept::accept(outcome, retries);
+            return codetether_stream_outcome::accept(outcome, retries);
         }
         if response::is_clean_empty(&outcome) {
             return Ok(response::build(self.content, response::usage(&outcome)));
         }
-        match super::super::accept::accept(outcome, retries) {
-            Ok(accepted) => Ok(response::prepend(accepted, self.content)),
+        match codetether_stream_outcome::accept(outcome, retries) {
+            Ok(accepted) => Ok(prepend::run(accepted, self.content)),
             Err(error) => Err(self.wrap(error)),
         }
     }
@@ -45,8 +47,15 @@ impl State {
     }
 }
 
-pub(in crate::session::helper) fn content_from_error(
-    error: &anyhow::Error,
-) -> Option<Vec<ContentPart>> {
+/// Retrieve completed provider items retained in a terminal restart error.
+/// # Arguments
+/// Receives the error returned by the restart engine.
+/// # Returns
+/// A cloned checkpoint, or None when no completed items were retained.
+/// # Examples
+/// ```
+/// assert!(codetether_stream_restart::checkpointed_content(&anyhow::anyhow!("plain")).is_none());
+/// ```
+pub fn content_from_error(error: &anyhow::Error) -> Option<Vec<ContentPart>> {
     error::content(error)
 }
