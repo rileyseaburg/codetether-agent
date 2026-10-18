@@ -10224,3 +10224,18 @@ budgets and whitespace checks passed; new modules contain at most 20 code lines.
 Evidence is in `artifacts/consolidation-coordination-lifetime/`. Compilation
 and runtime tests were not run. No Cargo, rustc, Python, renewal or release calls
 ran. Full workspace consolidation remains active.
+
+### Dedicated mux state model
+
+Moved mux snapshots, session/window state, runtime status, isolation policy and
+legacy snapshot decoding into `crates/codetether-mux-model`. Fourteen modules
+separate serialized records, lifecycle mutations, lookup/allocation methods and
+legacy conversion. Native model and isolation modules re-export the shared types;
+worktree allocation and protocol handling remain unchanged consumers.
+
+Thirty-eight static comparisons cover serialization attributes, field types,
+state mutations, legacy conversion, five moved tests and native consumers.
+Module/dependency graphs, file budgets and whitespace checks passed; new files
+contain at most 39 code lines. Evidence is in `artifacts/consolidation-mux-model/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or mux/worktree
+operations ran. Full workspace consolidation remains active.

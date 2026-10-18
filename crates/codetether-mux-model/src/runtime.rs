@@ -2,11 +2,20 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::provenance::RuntimePrincipal;
+use codetether_provenance::RuntimePrincipal;
 
 /// Durable identity and live turn state for the active mux TUI.
+/// # Examples
+/// ```
+/// let status = codetether_mux_model::MuxRuntimeStatus {
+///     session_id: "s".into(), session_title: "Work".into(), processing: false,
+///     message_count: 0, current_tool: None, needs_interaction: false,
+///     lagging: false, principal: Default::default(),
+/// };
+/// assert!(!status.processing);
+/// ```
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-pub(crate) struct MuxRuntimeStatus {
+pub struct MuxRuntimeStatus {
     /// Durable session identifier used only for internal routing.
     pub session_id: String,
     /// Human-readable session title used in agent-facing output.

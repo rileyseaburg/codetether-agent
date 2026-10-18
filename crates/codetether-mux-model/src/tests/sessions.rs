@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::mux::model::MuxRuntimeStatus;
+use crate::MuxRuntimeStatus;
 
 #[test]
 fn sessions_on_one_server_are_isolated_and_window_ids_are_server_wide() {

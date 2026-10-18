@@ -8,11 +8,9 @@ use super::{MuxSession, MuxSnapshot};
 
 impl MuxSnapshot {
     /// Create an isolated session rooted at `workspace`, returning its first window id.
-    pub(in crate::mux) fn create_session(
-        &mut self,
-        name: String,
-        workspace: PathBuf,
-    ) -> Result<u64> {
+    /// # Errors
+    /// Returns an error when the session name already exists.
+    pub fn create_session(&mut self, name: String, workspace: PathBuf) -> Result<u64> {
         if self.session(&name).is_some() {
             bail!("mux session '{name}' already exists");
         }
@@ -25,7 +23,9 @@ impl MuxSnapshot {
     }
 
     /// Remove a session, returning its window ids so their PTYs can be stopped.
-    pub(in crate::mux) fn close_session(&mut self, name: &str) -> Result<Vec<u64>> {
+    /// # Errors
+    /// Returns an error when the session name does not exist.
+    pub fn close_session(&mut self, name: &str) -> Result<Vec<u64>> {
         let Some(index) = self.sessions.iter().position(|item| item.name == name) else {
             bail!("mux session '{name}' does not exist");
         };

@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-mux-model",
  "codetether-workspace-coordination",
  "codetether-worktree-lease",
  "codetether-mutation-scope",
@@ -5103,6 +5104,16 @@ dependencies = [
  "serde_json",
  "tracing",
  "tokio",
+]
+
+[[package]]
+name = "codetether-mux-model"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provenance",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -6,5 +6,4 @@ mod multiprocess;
 mod parse;
 mod protocol;
 mod runtime_protocol;
-mod sessions;
 mod token;
