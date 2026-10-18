@@ -10,7 +10,6 @@ use crate::provider::bedrock::runtime_config;
 use crate::session::Session;
 use crate::tui::app::state::App;
 
-use super::persist;
 /// Current effort label as shown in the Settings panel.
 pub fn bedrock_thinking_effort_label() -> &'static str {
     codetether_settings_policy::bedrock_thinking_effort_label(
@@ -22,8 +21,10 @@ pub fn bedrock_thinking_effort_label() -> &'static str {
 
 /// Cycle: medium → low → high → medium (default is medium).
 pub async fn cycle_bedrock_thinking_effort(app: &mut App, session: &mut Session) {
-    let next =
-        codetether_settings_policy::next_bedrock_thinking_effort(bedrock_thinking_effort_label());
-    runtime_config::set_thinking_effort(Some(next.to_string()));
-    persist(app, session, format!("Bedrock thinking effort: {next}")).await;
+    super::host::cycle(
+        app,
+        session,
+        codetether_settings_policy::cycles::Cycle::BedrockEffort,
+    )
+    .await;
 }

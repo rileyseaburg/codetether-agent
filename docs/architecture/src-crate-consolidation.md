@@ -14576,3 +14576,19 @@ Full workspace consolidation remains active.
 - Added only anyhow to the settings-policy crate. No Cargo, rustc, Rust tests,
   environment mutation or session persistence ran. Full consolidation remains
   unfinished.
+
+### Provider setting cycle ownership
+
+- Moved Bedrock service-tier/thinking-effort and Codex/OpenRouter reasoning
+  update sequencing into codetether-settings-policy::cycles. Provider state
+  reads/writes and level catalogs are supplied through a native Runtime binding.
+- Preserved native labels, the unsupported-Codex guard, distinct reasoning
+  cycles and save-result status behavior. Removed native persistence forwarding
+  functions after their last callers moved into shared policy.
+- Verification: nine static checks passed for labels and caller selection,
+  provider bindings, reasoning guards/rules, status/save behavior, retained
+  OpenRouter test sources and module bounds. Module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-provider-cycles/.
+- No dependencies changed. No Cargo, rustc, Rust tests, provider mutation or
+  persistence ran. Full workspace consolidation remains unfinished.

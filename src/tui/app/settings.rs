@@ -4,9 +4,6 @@ use crate::session::Session;
 use crate::tui::app::state::App;
 
 include!("settings_modules.rs");
-async fn persist(app: &mut App, session: &mut Session, message: String) {
-    crate::tui::app::settings::host::persist(app, session, message).await;
-}
 pub use codetether_settings_policy::autocomplete_status_message;
 
 pub async fn set_slash_autocomplete(app: &mut App, session: &mut Session, next: bool) {
