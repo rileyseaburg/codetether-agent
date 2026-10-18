@@ -1,0 +1,15 @@
+//! Approval popup content, geometry, scrolling and rendering.
+//!
+//! render projects the shared pending queue into a terminal popup. content_lines
+//! composes full request metadata, invocation, diagnostics and reviewer findings.
+mod content;
+mod footer;
+mod layout;
+mod lsp;
+mod preview;
+mod render;
+mod review;
+mod scroll;
+mod text;
+pub use content::lines as content_lines;
+pub use render::render;

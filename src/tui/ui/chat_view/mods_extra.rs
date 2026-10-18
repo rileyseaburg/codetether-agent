@@ -3,14 +3,7 @@
 pub(crate) mod agent_lines;
 pub mod agent_tab_style;
 pub(crate) mod approval_diff;
-pub(crate) mod approval_overlay_layout;
 pub(crate) mod approval_overlay_content;
-pub(crate) mod approval_overlay_footer;
-pub(crate) mod approval_overlay_lsp;
-pub(crate) mod approval_overlay_preview;
-pub(crate) mod approval_overlay_review;
-pub(crate) mod approval_overlay_text;
-pub(crate) mod approval_preview_scroll;
 pub mod bubble_assistant;
 pub mod bubble_mods;
 pub mod context_gauge_heat;

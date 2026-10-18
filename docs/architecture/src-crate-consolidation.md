@@ -12811,3 +12811,20 @@ Full workspace consolidation remains active.
 - Only the new package/dependency entries were staged from Cargo.lock. No
   rendering, Cargo, rustc, compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Approval popup rendering extraction
+
+- Moved approval popup rendering, full request/diagnostic/reviewer content,
+  geometry, footer shortcuts and wrapped-row scrolling into
+  codetether-approval-view. Thirteen modules contain at most 40 code lines.
+- The native renderer now supplies composer text and a mutable preview scroll
+  offset. Shared rendering retains queue reads, feedback suppression, preview
+  limit updates, widget ordering and colors. Native integration tests remain
+  unchanged; geometry, scrolling and footer tests moved with their code.
+- Verification: 18 static comparisons passed for the moved modules, renderer,
+  native adapter and existing integration tests. Module/dependency checks,
+  direct rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-approval-view/.
+- Only the new package/root dependency records were staged from Cargo.lock.
+  No rendering, Cargo, rustc, compilation or Rust tests ran. Full consolidation
+  remains incomplete.

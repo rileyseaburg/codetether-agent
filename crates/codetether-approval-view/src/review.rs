@@ -1,7 +1,7 @@
 //! Complete reviewer findings for scrollable approval details.
 
 mod style;
-use crate::review::ReviewVerdict;
+use codetether_approval_core::review::ReviewVerdict;
 use ratatui::{style::Stylize, text::Line};
 
 /// Include every finding without reducing the command viewport's height.

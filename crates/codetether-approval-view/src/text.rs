@@ -1,6 +1,6 @@
 //! Scrollable request metadata for the approval popup.
 
-use crate::tui::app::state::approval_queue::ApprovalSnapshot;
+use codetether_approval_queue::ApprovalSnapshot;
 use ratatui::{
     style::Stylize,
     text::{Line, Text},

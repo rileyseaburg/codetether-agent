@@ -11,5 +11,5 @@ pub(super) fn popup(area: Rect) -> Rect {
 }
 
 #[cfg(test)]
-#[path = "approval_overlay_layout_tests.rs"]
+#[path = "layout_tests.rs"]
 mod tests;

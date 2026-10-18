@@ -5,7 +5,7 @@ use ratatui::{
     text::{Line, Text},
 };
 
-use crate::review::{ReviewOutcome, ReviewVerdict};
+use codetether_approval_core::review::{ReviewOutcome, ReviewVerdict};
 
 pub(super) fn color_for(outcome: ReviewOutcome) -> Color {
     match outcome {

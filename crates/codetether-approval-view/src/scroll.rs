@@ -21,5 +21,5 @@ pub(super) fn offset_for_rows(rows: usize, height: u16) -> u16 {
 }
 
 #[cfg(test)]
-#[path = "approval_preview_scroll_tests.rs"]
+#[path = "scroll_tests.rs"]
 mod tests;

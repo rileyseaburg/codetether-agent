@@ -1266,6 +1266,7 @@ dependencies = [
  "codetether-approval-queue",
  "codetether-approval-edit",
  "codetether-approval-diff",
+ "codetether-approval-view",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6371,6 +6372,16 @@ version = "0.1.0"
 dependencies = [
  "ratatui",
  "syntect",
+]
+
+[[package]]
+name = "codetether-approval-view"
+version = "0.1.0"
+dependencies = [
+ "codetether-approval-core",
+ "codetether-approval-diff",
+ "codetether-approval-queue",
+ "ratatui",
 ]
 
 [[package]]

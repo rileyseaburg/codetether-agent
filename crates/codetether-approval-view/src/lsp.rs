@@ -1,6 +1,6 @@
 //! Complete language-server diagnostics for scrollable approval details.
 
-use crate::tui::app::state::approval_queue::{ApprovalReport, ApprovalReportState};
+use codetether_approval_queue::{ApprovalReport, ApprovalReportState};
 use ratatui::{
     style::Stylize,
     text::{Line, Text},
