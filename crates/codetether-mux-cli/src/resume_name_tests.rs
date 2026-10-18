@@ -1,7 +1,7 @@
 //! Tests for derived mux resume names.
 
 use super::derive;
-use crate::mux::registry::validate_name;
+use codetether_mux_registry::validate_name;
 
 #[test]
 fn derives_a_name_from_the_session_id_prefix() {

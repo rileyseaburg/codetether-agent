@@ -10527,3 +10527,21 @@ contain at most 44 code lines. Evidence is in
 `artifacts/consolidation-mux-lifecycle/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, process startup, process termination or network
 shutdown ran. Full workspace consolidation remains active.
+
+### Mux CLI schema and execution extracted
+
+Moved the mux command schema, dispatch, create/resume/attach/serve operations,
+listing projection and rendering, and resume-name derivation into
+`crates/codetether-mux-cli`. Sixteen modules now depend on the shared mux crates.
+A native Host adapter supplies only recorded-session workspace lookup and lazy
+clipboard access. The native argument path re-exports the schema and retains
+its full-application parser tests. Four resume-name tests moved with the code.
+
+Twenty-five static checks compare schemas/attributes, command branches, listing
+text/JSON shape, host wiring and eight unchanged native parser-test files.
+Module/dependency graphs, file budgets and whitespace checks passed. The
+unchanged enum schema retains 49 code lines (below the repository limit of 50);
+other modules have at most 44. Evidence is in
+`artifacts/consolidation-mux-cli/`. Compilation and runtime tests were not run.
+No Cargo, rustc, Python, clipboard, process or network operation ran.
+Full workspace consolidation remains active.

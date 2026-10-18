@@ -1,25 +1,14 @@
 //! Mux session listing across every workspace server.
 
+use super::list_entry::ListedSession;
 use anyhow::Result;
-use serde::Serialize;
-
-#[derive(Serialize)]
-struct ListedSession {
-    name: String,
-    workspace: String,
-    address: String,
-    pid: u32,
-    windows: usize,
-    active: u64,
-    reachable: bool,
-}
 
 pub(super) async fn run(json: bool) -> Result<()> {
     let mut listed = Vec::new();
-    for record in crate::mux::registry::list().await? {
+    for record in codetether_mux_registry::list().await? {
         let reachable = tokio::time::timeout(
             std::time::Duration::from_millis(300),
-            crate::mux::client::probe(&record),
+            codetether_mux_client::handshake::probe(&record),
         )
         .await
         .is_ok_and(|result| result.is_ok());
@@ -39,16 +28,8 @@ pub(super) async fn run(json: bool) -> Result<()> {
         println!("no mux sessions");
     } else {
         for item in listed {
-            print_item(&item);
+            super::list_render::print_item(&item);
         }
     }
     Ok(())
-}
-
-fn print_item(item: &ListedSession) {
-    let status = if item.reachable { "up" } else { "stale" };
-    println!(
-        "{}: {} windows (active {}) [{}] pid={} {} {}",
-        item.name, item.windows, item.active, status, item.pid, item.address, item.workspace
-    );
 }

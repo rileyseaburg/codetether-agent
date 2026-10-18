@@ -12,7 +12,7 @@ use super::MuxStartOptions;
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::cli::command::mux_args::MuxCommand;
+/// use codetether_mux_cli::MuxCommand;
 ///
 /// let command = MuxCommand::Kill {
 ///     target: "work".into(),

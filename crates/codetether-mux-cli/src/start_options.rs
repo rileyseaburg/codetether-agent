@@ -7,7 +7,7 @@ use clap::Args;
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::cli::command::mux_args::MuxStartOptions;
+/// use codetether_mux_cli::MuxStartOptions;
 ///
 /// let options = MuxStartOptions {
 ///     detached: true,

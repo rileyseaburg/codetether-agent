@@ -10,3 +10,7 @@ pub(super) use handshake::probe;
 pub(super) async fn attach(target: &crate::mux::registry::SessionTarget) -> anyhow::Result<()> {
     codetether_mux_attachment::attach_session(target, clipboard::local_content).await
 }
+
+pub(in crate::mux) fn clipboard_content() -> Option<String> {
+    clipboard::local_content()
+}

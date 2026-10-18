@@ -1,32 +1,5 @@
-//! Command-line arguments for persistent network mux sessions.
-//!
-//! [`MuxArgs`] wraps one [`MuxCommand`] such as creating, attaching to,
-//! listing, or stopping a named server.
-
-#[path = "mux_args/command.rs"]
-mod mux_command;
-#[path = "mux_args/start_options.rs"]
-mod start_options;
-
-use clap::Parser;
-pub use mux_command::MuxCommand;
-pub use start_options::MuxStartOptions;
-
-/// Network mux lifecycle arguments.
-///
-/// # Examples
-///
-/// ```
-/// use codetether_agent::cli::command::mux_args::{MuxArgs, MuxCommand};
-/// let args = MuxArgs { command: MuxCommand::List { json: false } };
-/// assert!(matches!(args.command, MuxCommand::List { json: false }));
-/// ```
-#[derive(Debug, Parser)]
-pub struct MuxArgs {
-    /// Mux lifecycle operation to perform.
-    #[command(subcommand)]
-    pub command: MuxCommand,
-}
+//! Shared mux argument schema with native CLI integration tests.
+pub use codetether_mux_cli::{MuxArgs, MuxCommand, MuxStartOptions};
 
 #[cfg(test)]
 #[path = "mux_args_tests.rs"]

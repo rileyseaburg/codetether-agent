@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-mux-cli",
  "codetether-mux-lifecycle",
  "codetether-mux-control",
  "codetether-mux-server",
@@ -5316,6 +5317,24 @@ dependencies = [
  "sysinfo 0.39.6",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-mux-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "clap",
+ "codetether-mux-attachment",
+ "codetether-mux-client",
+ "codetether-mux-lifecycle",
+ "codetether-mux-registry",
+ "codetether-mux-server",
+ "codetether-mux-workspace",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
