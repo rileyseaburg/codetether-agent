@@ -4,13 +4,12 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use chrono::Utc;
-use uuid::Uuid;
 
-use crate::provenance::{ClaimProvenance, ExecutionProvenance};
+use crate::provenance::ClaimProvenance;
 use crate::provider::{Message, Usage};
 
 use super::pages::{PageKind, classify, classify_all};
-use super::types::{Session, SessionMetadata};
+use super::types::Session;
 
 #[cfg(test)]
 #[path = "lifecycle/default_model.rs"]
@@ -40,30 +39,20 @@ impl Session {
     /// # });
     /// ```
     pub async fn new() -> Result<Self> {
-        let id = Uuid::new_v4().to_string();
-        let now = Utc::now();
-        let provenance = Some(ExecutionProvenance::for_session(&id, "build"));
-        let history_sink = crate::session::history_sink::HistorySinkConfig::from_env()
-            .ok()
-            .flatten();
+        let initial = codetether_session_metadata::lifecycle::InitialSession::new()?;
 
         Ok(Self {
-            id,
+            id: initial.id,
             title: None,
-            created_at: now,
-            updated_at: now,
+            created_at: initial.created_at,
+            updated_at: initial.updated_at,
             messages: Default::default(),
             pages: Default::default(),
             summary_index: super::index::SummaryIndex::new(),
             tool_uses: Default::default(),
             usage: Usage::default(),
-            agent: "build".to_string(),
-            metadata: SessionMetadata {
-                directory: Some(std::env::current_dir()?),
-                provenance,
-                history_sink,
-                ..Default::default()
-            },
+            agent: initial.agent,
+            metadata: initial.metadata,
             max_steps: None,
             bus: None,
             storage: Default::default(),
@@ -85,7 +74,7 @@ impl Session {
 
     /// Seed session metadata from a loaded [`crate::config::Config`].
     ///
-    /// Copies [`crate::config::Config::rlm`] into [`SessionMetadata::rlm`] so
+    /// Copies [`crate::config::Config::rlm`] into [`SessionMetadata::rlm`](super::types::SessionMetadata::rlm) so
     /// RLM compaction and tool-output routing honour user-configured
     /// thresholds, iteration limits, and model selectors, and adopts
     /// [`crate::config::Config::default_model`] when the session has no model
@@ -94,7 +83,7 @@ impl Session {
     ///
     /// Also attempts to resolve [`RlmConfig::subcall_model`] against the
     /// given provider registry. When resolution succeeds the resolved
-    /// provider is cached on [`SessionMetadata`] (not serialised) so
+    /// provider is cached on [`SessionMetadata`](super::types::SessionMetadata) (not serialised) so
     /// every `AutoProcessContext` built from this session can cheaply
     /// reference it. On failure the subcall provider is left as `None`
     /// and the resolution failure is logged.
@@ -125,27 +114,27 @@ impl Session {
     /// Set the agent persona owning this session. Also updates the
     /// provenance record so audit logs reflect the new agent.
     pub fn set_agent_name(&mut self, agent_name: impl Into<String>) {
-        let agent_name = agent_name.into();
-        self.agent = agent_name.clone();
-        if let Some(provenance) = self.metadata.provenance.as_mut() {
-            provenance.set_agent_name(&agent_name);
-        }
+        codetether_session_metadata::lifecycle::set_agent_name(
+            &mut self.agent,
+            &mut self.metadata,
+            agent_name,
+        );
     }
 
     /// Tag the session as having been dispatched by a specific A2A worker
     /// for a specific task.
     pub fn attach_worker_task_provenance(&mut self, worker_id: &str, task_id: &str) {
-        if let Some(provenance) = self.metadata.provenance.as_mut() {
-            provenance.apply_worker_task(worker_id, task_id);
-        }
+        codetether_session_metadata::lifecycle::attach_worker_task(
+            &mut self.metadata,
+            worker_id,
+            task_id,
+        );
     }
 
     /// Attach a claim-provenance record to the session's execution
     /// provenance.
     pub fn attach_claim_provenance(&mut self, claim: &ClaimProvenance) {
-        if let Some(provenance) = self.metadata.provenance.as_mut() {
-            provenance.apply_claim(claim);
-        }
+        codetether_session_metadata::lifecycle::attach_claim(&mut self.metadata, claim);
     }
 
     /// Append a message to the transcript and bump `updated_at`.

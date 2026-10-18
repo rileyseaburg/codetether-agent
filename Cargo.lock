@@ -4788,6 +4788,7 @@ dependencies = [
  "codetether-session-title",
  "serde",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]

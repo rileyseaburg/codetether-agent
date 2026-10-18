@@ -11,3 +11,6 @@ mod model;
 mod summary;
 pub use model::SessionMetadata;
 pub use summary::SessionSummary;
+
+/// Initial session identity and provenance mutation helpers.
+pub mod lifecycle;

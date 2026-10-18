@@ -16455,3 +16455,24 @@ Full workspace consolidation remains active.
   No dependencies changed. Evidence: `artifacts/consolidation-worker-init/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared initial session metadata and provenance lifecycle
+
+- Moved initial UUID/timestamps, default agent, execution provenance,
+  history-sink configuration and workspace metadata construction into
+  `codetether-session-metadata::lifecycle::InitialSession`.
+- Moved agent-name, worker/task and accepted-claim provenance updates into the
+  same lifecycle module. Native Session methods delegate these mutations and
+  project initial fields into the transcript/runtime container.
+- Preserved UUID/time/configuration order, default build persona, absent-
+  provenance no-op behavior, native transcript defaults and other lifecycle
+  methods. Updated affected Rustdoc links after removing native-only imports.
+- Added the existing UUID dependency to the metadata crate and staged only that
+  package's dependency entry in a HEAD-derived lockfile, preserving unrelated
+  working-tree lockfile changes.
+- Verification: full initial-data/provenance body comparisons, all native field
+  mappings, unchanged other methods/metadata defaults/history settings, module
+  and dependency graphs, direct rustfmt, file limits and whitespace. Evidence:
+  `artifacts/consolidation-session-initial/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
