@@ -1,19 +1,17 @@
-//! Belief extraction and merge for the Reflect phase.
-
-use super::loop_ctx::LoopCtx;
-use super::tick_process::TickOutput;
-use super::{ThoughtWorkItem, belief_merge, beliefs, tick_progress};
-
+use super::Host;
+use crate::{ThoughtWorkItem, runtime::LoopContext, thought::TickOutput};
+use crate::{beliefs::update as belief_merge, persona::progress as tick_progress};
 /// Extract beliefs from a Reflect-phase thought and merge them into the store.
-pub(super) async fn reflect(
-    ctx: &LoopCtx,
+pub(super) async fn reflect<T, R, H: Host<T, R>>(
+    ctx: &LoopContext<T, R>,
     work: &ThoughtWorkItem,
     thinking: &str,
     out: &mut TickOutput,
+    host: &H,
 ) {
-    let extracted =
-        beliefs::extract_beliefs_from_thought(ctx.thinker.as_deref(), &work.persona_id, thinking)
-            .await;
+    let extracted = host
+        .extract(ctx.thinker.as_deref(), &work.persona_id, thinking)
+        .await;
     if extracted.is_empty() {
         return;
     }

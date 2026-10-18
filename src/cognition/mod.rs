@@ -128,8 +128,6 @@ mod loop_drive;
 mod tick_budget;
 #[path = "tick_charge.rs"]
 mod tick_charge;
-#[path = "tick_compress.rs"]
-mod tick_compress;
 #[path = "tick_event.rs"]
 mod tick_event;
 #[path = "tick_flush.rs"]
@@ -140,18 +138,12 @@ mod tick_idle_reap;
 mod tick_process;
 #[path = "tick_progress.rs"]
 mod tick_progress;
-#[path = "tick_propose.rs"]
-mod tick_propose;
-#[path = "tick_reflect.rs"]
-mod tick_reflect;
 #[path = "tick_run.rs"]
 mod tick_run;
 #[path = "tick_snapshot.rs"]
 mod tick_snapshot;
 #[path = "tick_snapshot_meta.rs"]
 mod tick_snapshot_meta;
-#[path = "tick_test.rs"]
-mod tick_test;
 #[path = "tick_test_phase.rs"]
 mod tick_test_phase;
 #[path = "tick_window.rs"]

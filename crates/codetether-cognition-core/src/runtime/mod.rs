@@ -23,3 +23,6 @@ mod stop;
 
 /// One tick of cognition work, governance and publication.
 pub mod tick;
+
+/// Per-work-item cognition phase execution and state changes.
+pub mod process;

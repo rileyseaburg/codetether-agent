@@ -1,14 +1,12 @@
-//! Compress-phase snapshotting, belief decay, and workspace refresh.
-
+use crate::{ThoughtResult, ThoughtWorkItem, runtime::LoopContext, thought::TickOutput};
+use crate::{
+    beliefs::update as belief_decay, thought::build as tick_snapshot,
+    workspace::refresh as workspace_refresh,
+};
 use chrono::{DateTime, Utc};
-
-use super::loop_ctx::LoopCtx;
-use super::tick_process::TickOutput;
-use super::{ThoughtResult, ThoughtWorkItem, belief_decay, tick_snapshot, workspace_refresh};
-
 /// Snapshot memory, decay stale beliefs, and refresh the shared workspace.
-pub(super) async fn compress(
-    ctx: &LoopCtx,
+pub(super) async fn compress<T, R>(
+    ctx: &LoopContext<T, R>,
     work: &ThoughtWorkItem,
     thought: &ThoughtResult,
     hot_event_count: usize,

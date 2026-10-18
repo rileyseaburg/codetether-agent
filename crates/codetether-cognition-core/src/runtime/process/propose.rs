@@ -1,9 +1,6 @@
-//! Proposal minting from a Reflect-phase thought.
-
-use super::loop_ctx::LoopCtx;
-use super::tick_process::TickOutput;
-use super::{ThoughtResult, ThoughtWorkItem, proposal_create, proposal_event};
-
+use crate::proposal::build as proposal_create;
+use crate::proposal::build as proposal_event;
+use crate::{ThoughtResult, ThoughtWorkItem, runtime::LoopContext, thought::TickOutput};
 /// A proposal is minted every 8th thought, offset into the Reflect phase.
 const EVERY: u64 = 8;
 const OFFSET: u64 = 2;
@@ -14,8 +11,8 @@ pub(super) fn is_checkpoint(thought_count: u64) -> bool {
 }
 
 /// Mint a proposal and queue its creation event.
-pub(super) async fn propose(
-    ctx: &LoopCtx,
+pub(super) async fn propose<T, R>(
+    ctx: &LoopContext<T, R>,
     work: &ThoughtWorkItem,
     thought: &ThoughtResult,
     active_persona_count: usize,

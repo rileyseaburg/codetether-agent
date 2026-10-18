@@ -16612,3 +16612,22 @@ Full workspace consolidation remains active.
   dependencies changed. Evidence: `artifacts/consolidation-cognition-tick/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared cognition work-item phase processing
+
+- Moved per-work-item context selection, thought event/accounting and phase
+  dispatch into `codetether-cognition-core::runtime::process`.
+- Moved Reflect belief merging, proposal checkpoints/construction, Test
+  reporting/gating, and Compress snapshot/decay/workspace updates into separate
+  core phase modules. Removed four native phase implementation files.
+- Three typed hooks retain native generation, belief extraction and tool
+  execution. Native tool policy/leases and deterministic generation fallback
+  remain unchanged behind those hooks.
+- Preserved eight-event context, model-backed gates, proposal constants, event
+  payloads, accounting order, lock order and progress marking.
+- Verification: complete processing/phase/event bodies, checkpoint constants,
+  exact native hooks and tool wrapper, unchanged native inference/executor,
+  module/dependency graphs, direct rustfmt, file limits and whitespace. No
+  dependencies changed. Evidence: `artifacts/consolidation-cognition-process/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
