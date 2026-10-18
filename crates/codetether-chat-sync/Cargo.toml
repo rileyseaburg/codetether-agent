@@ -1,0 +1,15 @@
+[package]
+name = "codetether-chat-sync"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Chat archive batching, MinIO synchronization and configuration"
+
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+minio = "0.4.0"
+tokio = { version = "1.53.1", features = ["sync", "time"] }
+tracing = "0.1"

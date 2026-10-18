@@ -11148,3 +11148,19 @@ Full workspace consolidation remains active.
   Evidence remains in `artifacts/consolidation-message-formatter/` and tool history.
 - Compilation, runtime tests and rendering were not run; no Cargo or rustc
   commands executed. Full `src/` consolidation remains active.
+
+### Chat archive synchronization extraction
+
+- Moved chat archive reading, MinIO client/bucket operations, batch upload,
+  checkpoint handling, worker scheduling, events and configuration from
+  `src/tui/chat/sync` into `crates/codetether-chat-sync`.
+- Nineteen modules separate configuration sources and policy, batch metadata,
+  bucket setup and a single worker cycle. Maximum module size is 43 code lines.
+  Native module paths and public re-exports remain compatible.
+- Uses the existing shared secrets manager. Twenty static comparisons verify
+  complete reconstructed configuration precedence and worker-cycle behavior,
+  unchanged archive/key helpers, client/upload bodies and event metadata.
+  Module reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-chat-sync/`. Compilation, tests, Vault
+  access, archive operations and uploads were not run. No Cargo or rustc commands
+  executed. Full consolidation remains active.

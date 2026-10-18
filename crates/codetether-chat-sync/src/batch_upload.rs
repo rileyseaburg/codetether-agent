@@ -9,14 +9,19 @@ use minio::s3::client::MinioClient;
 use super::archive_reader::read_chat_archive_batch;
 use super::config_types::ChatSyncConfig;
 use super::minio_client::ensure_minio_bucket;
+pub use crate::batch_types::ChatSyncBatch;
 
-pub struct ChatSyncBatch {
-    pub bytes: u64,
-    pub records: usize,
-    pub object_key: String,
-    pub next_offset: u64,
-}
-
+/// Upload one available archive batch.
+/// # Arguments
+/// Client, archive path, configuration, host tag and current offset.
+/// # Returns
+/// Uploaded metadata, or None when no data is available.
+/// # Errors
+/// Propagates archive, bucket or upload errors.
+/// # Examples
+/// ```text
+/// Configure the archive destination, then use sync_batch through the chat-sync API.
+/// ```
 pub async fn sync_batch(
     client: &MinioClient,
     archive_path: &PathBuf,
