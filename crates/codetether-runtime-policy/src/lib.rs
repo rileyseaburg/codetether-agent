@@ -42,3 +42,6 @@ pub mod workspace;
 
 /// Per-turn memory of explicitly declined tool requests.
 pub mod decline;
+
+/// Configuration loading and native prior-context/sandbox evaluation hooks.
+pub mod evaluation;

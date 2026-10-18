@@ -48,3 +48,6 @@ pub async fn handle(method: &str, params: Option<Value>) -> Result<Value, JsonRp
         _ => Err(JsonRpcError::method_not_found(method)),
     }
 }
+
+/// Outbound MCP tool invocation policy and local metadata stripping.
+pub mod outbound;

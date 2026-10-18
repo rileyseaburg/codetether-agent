@@ -20423,3 +20423,26 @@ formatter-added error-arm block was accounted for explicitly and its log
 retained. Evidence: `artifacts/consolidation-reasoning-repair/`. Cargo, rustc,
 Python, Rust tests and plugin execution were not run; compilation and runtime
 remain unverified.
+
+### Invocation guard and outbound MCP ownership
+
+Moved invocation configuration selection, default-config fallback and
+prior-context-before-policy sequencing into `codetether-runtime-policy::evaluation`.
+Native callbacks retain session context lookup and OS sandbox availability.
+Moved outbound MCP authorization, denial-envelope construction and local
+approval-ID removal into `codetether-mcp-approval::outbound`.
+
+Preserved evaluation of original arguments, prior-context precedence, lazy
+sandbox checking, error envelope fields and transport error propagation.
+Approval IDs are removed only after authorization. Existing native invocation
+tests, configured evaluator, sandbox probe and transport calls are unchanged.
+The MCP approval crate now directly declares its anyhow result dependency.
+
+Validation: full translated evaluation bodies, denial and argument-stripping
+checks, native callbacks/delegates, unchanged guard tests/evaluator/transport,
+isolated lock delta, module reachability, dependency cycles, file-size ratchet,
+whitespace and direct formatting. An exact formatter-only closure-block
+normalization was added to the comparison, retaining its initial failure log.
+Evidence: `artifacts/consolidation-invocation-guard/`. Cargo, rustc, Python, Rust
+tests, configuration loading and tool/remote execution were not run; compilation
+and runtime remain unverified.

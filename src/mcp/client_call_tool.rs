@@ -1,38 +1,23 @@
-//! Runtime-policy guard for remote MCP tool calls.
-
-use super::{CallToolResult, McpClient, ToolContent};
+//! Native policy and transport bindings for shared outbound MCP enforcement.
+use super::{CallToolResult, McpClient};
 use anyhow::Result;
 use serde_json::Value;
-
+impl codetether_mcp_approval::outbound::Host for McpClient {
+    async fn blocked(&self, name: &str, arguments: &Value) -> Option<String> {
+        crate::runtime_policy::evaluate_tool_invocation(name, arguments)
+            .await
+            .map(|result| result.output)
+    }
+    async fn call(&self, name: &str, arguments: Value) -> Result<CallToolResult> {
+        self.inner.connection().call_tool(name, arguments).await
+    }
+}
 impl McpClient {
     pub(super) async fn call_tool_checked(
         &self,
         name: &str,
         arguments: Value,
     ) -> Result<CallToolResult> {
-        if let Some(blocked) = blocked(name, &arguments).await {
-            return Ok(blocked);
-        }
-        let arguments = strip_approval_id(arguments);
-        self.inner.connection().call_tool(name, arguments).await
+        codetether_mcp_approval::outbound::call_checked(self, name, arguments).await
     }
-}
-
-async fn blocked(name: &str, arguments: &Value) -> Option<CallToolResult> {
-    if let Some(blocked) = crate::runtime_policy::evaluate_tool_invocation(name, &arguments).await {
-        return Some(CallToolResult {
-            content: vec![ToolContent::Text {
-                text: blocked.output,
-            }],
-            is_error: true,
-        });
-    }
-    None
-}
-
-fn strip_approval_id(mut arguments: Value) -> Value {
-    if let Some(map) = arguments.as_object_mut() {
-        map.remove("approval_id");
-    }
-    arguments
 }

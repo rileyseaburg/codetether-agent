@@ -1,30 +1,22 @@
-use crate::config::Config;
+//! Native entry points for shared invocation configuration and policy flow.
 use crate::tool::ToolResult;
 use serde_json::Value;
 use std::path::Path;
-
 #[path = "invocation_configured.rs"]
 mod configured;
+#[path = "invocation_host.rs"]
+mod host;
 pub use configured::evaluate_tool_invocation_with_config;
-
 pub async fn evaluate_tool_invocation(tool_name: &str, args: &Value) -> Option<ToolResult> {
-    let config = match super::workspace::from_args(args) {
-        Some(path) => Config::load_for_workspace(path).await,
-        None => Config::load().await,
-    }
-    .unwrap_or_default();
-    evaluate_tool_invocation_with_config(&config, tool_name, args)
+    codetether_runtime_policy::evaluation::evaluate::<host::Native>(tool_name, args).await
 }
-
 pub async fn evaluate_tool_invocation_for_workspace(
     tool_name: &str,
     args: &Value,
     workspace: &Path,
 ) -> Option<ToolResult> {
-    let config = Config::load_for_workspace(workspace)
+    codetether_runtime_policy::evaluation::for_workspace::<host::Native>(tool_name, args, workspace)
         .await
-        .unwrap_or_default();
-    evaluate_tool_invocation_with_config(&config, tool_name, args)
 }
 
 #[cfg(test)]
