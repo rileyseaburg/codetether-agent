@@ -3,10 +3,10 @@
 use anyhow::{Result, bail};
 use sysinfo::{Pid, ProcessesToUpdate, Signal, System};
 
-use crate::mux::registry::MuxRecord;
+use codetether_mux_registry::MuxRecord;
 
 /// Stops the exact process recorded for an unresponsive mux session.
-pub(super) async fn run(record: &MuxRecord) -> Result<()> {
+pub async fn run(record: &MuxRecord) -> Result<()> {
     let record = record.clone();
     tokio::task::spawn_blocking(move || terminate(&record))
         .await

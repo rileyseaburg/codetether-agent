@@ -1,0 +1,26 @@
+[package]
+name = "codetether-mux-lifecycle"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Mux daemon startup, managed sessions and verified shutdown"
+
+[dependencies]
+anyhow = "1"
+codetether-mux-client = { path = "../codetether-mux-client", version = "0.1.0" }
+codetether-mux-control = { path = "../codetether-mux-control", version = "0.1.0" }
+codetether-mux-protocol = { path = "../codetether-mux-protocol", version = "0.1.0" }
+codetether-mux-registry = { path = "../codetether-mux-registry", version = "0.1.0" }
+codetether-mux-server = { path = "../codetether-mux-server", version = "0.1.0" }
+codetether-mux-workspace = { path = "../codetether-mux-workspace", version = "0.1.0" }
+futures = "0.3"
+libc = "0.2.189"
+sysinfo = "0.39.6"
+tokio = { version = "1", features = ["rt", "time"] }
+tracing = "0.1"
+
+[dev-dependencies]
+chrono = "0.4"
+codetether-mux-model = { path = "../codetether-mux-model", version = "0.1.0" }
+tokio = { version = "1", features = ["macros", "test-util", "net", "io-util"] }

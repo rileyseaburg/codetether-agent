@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-mux-lifecycle",
  "codetether-mux-control",
  "codetether-mux-server",
  "codetether-mux-workspace",
@@ -5293,6 +5294,26 @@ dependencies = [
  "codetether-mux-protocol",
  "codetether-mux-registry",
  "serde",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-mux-lifecycle"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-mux-client",
+ "codetether-mux-control",
+ "codetether-mux-model",
+ "codetether-mux-protocol",
+ "codetether-mux-registry",
+ "codetether-mux-server",
+ "codetether-mux-workspace",
+ "futures",
+ "libc",
+ "sysinfo 0.39.6",
  "tokio",
  "tracing",
 ]

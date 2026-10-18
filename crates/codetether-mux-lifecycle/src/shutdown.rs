@@ -2,17 +2,17 @@
 
 use anyhow::{Context, Result, bail};
 
-use crate::mux::protocol::{ClientRequest, ServerResponse, VERSION, read_frame, write_frame};
-use crate::mux::registry::MuxRecord;
+use codetether_mux_protocol::{ClientRequest, ServerResponse, VERSION, read_frame, write_frame};
+use codetether_mux_registry::MuxRecord;
 
-pub(super) async fn request(record: &MuxRecord) -> Result<ServerResponse> {
+pub async fn request(record: &MuxRecord) -> Result<ServerResponse> {
     tokio::time::timeout(std::time::Duration::from_secs(2), exchange(record))
         .await
         .context("mux server did not confirm shutdown within 2 seconds")?
 }
 
 async fn exchange(record: &MuxRecord) -> Result<ServerResponse> {
-    let (mut stream, version) = crate::mux::client::handshake::connect(record, None).await?;
+    let (mut stream, version) = codetether_mux_client::handshake::connect(record, None).await?;
     if !(1..=VERSION).contains(&version) {
         bail!("unsupported mux protocol version {version}");
     }

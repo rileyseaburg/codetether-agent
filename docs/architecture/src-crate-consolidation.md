@@ -10509,3 +10509,21 @@ contain at most 40 code lines. Evidence is in
 `artifacts/consolidation-mux-control/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, network subscription or session mutation ran.
 Full workspace consolidation remains active.
+
+### Mux daemon lifecycle extracted
+
+Moved daemon command construction, detached process setup, duplicate detection,
+startup discovery, shared-server session joining, managed TUI launch, polling
+backoff, session/server shutdown and verified force termination into
+`crates/codetether-mux-lifecycle`. Seventeen modules preserve the original
+process identity checks, signal escalation, protocol tolerance and concurrency.
+Native command/control paths now re-export the shared lifecycle API. The seven
+existing backoff, process-identity and shutdown tests moved with the code.
+
+Twenty-seven static checks compare original modules, the split runtime wait,
+exports, deleted native implementations and unchanged native consumers.
+Module/dependency graphs, file budgets and whitespace checks passed; modules
+contain at most 44 code lines. Evidence is in
+`artifacts/consolidation-mux-lifecycle/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, process startup, process termination or network
+shutdown ran. Full workspace consolidation remains active.

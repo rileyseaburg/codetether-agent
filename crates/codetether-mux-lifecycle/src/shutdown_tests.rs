@@ -1,9 +1,11 @@
+//! Legacy protocol shutdown regression.
+
 use chrono::Utc;
 use tokio::net::TcpListener;
 
-use crate::mux::model::MuxSnapshot;
-use crate::mux::protocol::{ClientRequest, ServerResponse, read_frame, write_frame};
-use crate::mux::registry::MuxRecord;
+use codetether_mux_model::MuxSnapshot;
+use codetether_mux_protocol::{ClientRequest, ServerResponse, read_frame, write_frame};
+use codetether_mux_registry::MuxRecord;
 
 #[tokio::test]
 async fn protocol_one_server_can_be_stopped() {
@@ -35,7 +37,7 @@ async fn protocol_one_server_can_be_stopped() {
         state: MuxSnapshot::new(
             "legacy".into(),
             std::env::temp_dir(),
-            crate::mux::isolation::Isolation::Worktree,
+            codetether_mux_workspace::Isolation::Worktree,
         ),
     };
     let response = super::shutdown::request(&record).await.unwrap();
