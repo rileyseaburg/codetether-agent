@@ -10,20 +10,21 @@
 //! side effects such as marking activity and keeping the chat view pinned to
 //! the newest message when auto-follow is enabled.
 
-mod chat_host;
 mod context;
 mod errors;
 mod interlude;
 mod lifecycle;
 mod retention;
-mod retry;
-mod text_dispatch;
 mod tools;
-mod usage;
 
 #[cfg(test)]
 mod tests;
 
+codetether_chat_events::declare_chat_state!(
+    crate::tui::app::state::App,
+    crate::session::SessionEvent,
+    crate::tui::constants::MAX_STREAMING_TEXT_BYTES,
+);
 pub use usage::attach_usage_to_last_completion_message;
 
 codetether_session_events::declare_event_pipeline!(

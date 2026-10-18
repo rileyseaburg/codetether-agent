@@ -21,3 +21,11 @@ pub mod tools;
 
 /// Error cleanup and retry-scheduling presentation.
 pub mod error;
+
+mod binding;
+
+/// Message type used by application-local chat state declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use codetether_chat_model::ChatMessage;
+}

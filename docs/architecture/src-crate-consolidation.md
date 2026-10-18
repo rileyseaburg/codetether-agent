@@ -27041,3 +27041,19 @@ native production-scope, standalone formatting, file-limit and whitespace checks
 pass for 725 roots and 617 crates. No dependency or lock changes were required;
 unrelated working files remain untouched. Evidence: artifacts/consolidation-tui-lifecycle-binding/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Chat stream and usage state bindings
+
+Moved StreamView/UsageView implementations and typed text/retry/usage entry
+points into codetether-chat-events::binding, split into stream and usage modules.
+Removed six root implementation files. The root selects App, SessionEvent and
+the existing maximum streaming size, and retains its public usage helper export.
+Message mutation, timing, streaming limits, completion metrics and unrelated-event
+fall-through preserve their existing shared implementations.
+
+All twenty expanded function bodies match the originals. Remaining event handlers
+and test sources are unchanged. Declaration, module/dependency, native production
+scope, standalone formatting, file-limit and whitespace checks pass for 725 roots
+and 617 crates. No dependency/lock changes were needed; unrelated working files
+are untouched. Evidence: artifacts/consolidation-chat-state-binding/. No Cargo,
+rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
