@@ -28,3 +28,13 @@ pub use message::prepare_message;
 /// Implementation support for application-local session bindings.
 #[doc(hidden)]
 pub mod session_binding;
+
+mod factory_binding;
+
+/// Dependencies used by application-local factory declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use codetether_agent_input::{Params, SpawnRequest};
+    pub use codetether_child_workspace::Handoff;
+}

@@ -26802,3 +26802,20 @@ scope, standalone formatting, file-limit and whitespace checks pass for 729 root
 and 617 crates. No manifest/lock changes were needed; unrelated working files
 remain untouched. Evidence: artifacts/consolidation-view-binding/. No Cargo,
 rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Managed and isolated session factory declarations
+
+Moved typed child-session creation, inherited-policy lookup and isolated-checkout
+creation wrappers into codetether-agent-session::factory_binding. The root factory
+selects Session and the unchanged prior-context callback; the spawn session module
+selects Session. Removed session_factory/binding.rs. The original managed-session
+contract macro and its arguments remain unchanged, and its implementation files
+are untouched.
+
+All three factory function bodies match the originals after type-path substitution.
+Policy, parent-workspace and isolated-checkout integration-test sources are
+unchanged. Declaration, module/dependency, native production-scope, standalone
+formatting, file-limit and whitespace checks pass for 729 roots and 617 crates.
+No dependency or lock changes were needed; unrelated working files are untouched.
+Evidence: artifacts/consolidation-session-factory-binding/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
