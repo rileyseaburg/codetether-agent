@@ -14067,3 +14067,18 @@ Full workspace consolidation remains active.
   artifacts/consolidation-relay-request/.
 - No dependency or lockfile changes. No Cargo, rustc, Rust tests or command
   execution ran. Full workspace consolidation remains unfinished.
+
+### Initial run session selection extraction
+
+- Moved Codex import, explicit session resume, latest-workspace resume and new
+  session selection into codetether-run-resume. A separate latest-session module
+  owns fallback creation; native session_source.rs delegates storage operations.
+- Selection precedence, branch-local identifier cloning, errors, logging and
+  workspace scoping remain unchanged. Native execution calls the shared selector
+  before its existing start event and model policy.
+- Verification: eight static expanded-selection/native-body/adapter/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-run-session/.
+- Added only cli-options and tracing dependencies to the existing run-resume
+  lockfile package. No Cargo, rustc, Rust tests or session-store operations ran.
+  Full workspace consolidation remains unfinished.

@@ -14,3 +14,9 @@ pub use events::execute_prompt_with_resume_events;
 pub use host::RunSession;
 pub use plain::execute_prompt_with_resume;
 pub use plan::{RunResumePlan, validate_auto_continue};
+
+mod selection;
+mod selection_last;
+mod source;
+pub use selection::select_session;
+pub use source::SessionSource;

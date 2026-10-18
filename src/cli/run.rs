@@ -6,6 +6,7 @@ mod jsonl;
 mod knowledge;
 mod relay_host;
 mod run_execute;
+mod session_source;
 mod sol_workflow;
 use relay_host::run_protocol_first_relay;
 
@@ -13,7 +14,7 @@ use super::RunArgs;
 use crate::autochat::model_rotation::resolve_provider_for_model_autochat;
 use crate::bus::AgentBus;
 use crate::okr::{Okr, OkrRepository};
-use crate::session::{Session, import_codex_session_by_id};
+use crate::session::Session;
 use anyhow::Result;
 use codetether_autochat_core::AUTOCHAT_MAX_AGENTS;
 use codetether_relay_plan::{
@@ -180,38 +181,8 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
     }
 
     // Create or continue session.
-    let mut session = if let Some(codex_id) = args.codex_session.clone() {
-        tracing::info!("Importing Codex session: {}", codex_id);
-        import_codex_session_by_id(&codex_id).await?
-    } else if let Some(session_id) = args.session.clone() {
-        tracing::info!("Continuing session: {}", session_id);
-        Session::resume(&session_id).await?
-    } else if args.continue_session {
-        match Session::resume_last(Some(&workspace_dir)).await {
-            Ok(s) => {
-                tracing::info!(
-                    session_id = %s.id,
-                    workspace = %workspace_dir.display(),
-                    "Continuing last workspace session"
-                );
-                s
-            }
-            Err(err) => {
-                let s = Session::new().await?;
-                tracing::warn!(
-                    error = %err,
-                    session_id = %s.id,
-                    workspace = %workspace_dir.display(),
-                    "Session lookup failed; created new session"
-                );
-                s
-            }
-        }
-    } else {
-        let s = Session::new().await?;
-        tracing::info!("Created new session: {}", s.id);
-        s
-    };
+    let mut session =
+        codetether_run_resume::select_session::<Session>(&args, &workspace_dir).await?;
     if jsonl_output {
         jsonl::write_started(&session.id)?;
     }

@@ -7,6 +7,8 @@ license = "MIT"
 description = "Prompt retry and checkpoint orchestration for CLI runs"
 
 [dependencies]
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+tracing = "0.1"
 anyhow = "1"
 async-trait = "0.1"
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }

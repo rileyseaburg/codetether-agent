@@ -7037,6 +7037,8 @@ dependencies = [
  "codetether-session-events",
  "codetether-step-limit",
  "tokio",
+ "codetether-cli-options",
+ "tracing",
 ]
 
 [[package]]
