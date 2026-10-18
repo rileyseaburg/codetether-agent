@@ -1,20 +1,10 @@
-//! Direct text steering for a pending approval request.
-
-use crate::tui::app::state::{App, approval_queue};
-
-/// Sends ordinary chat input as the reason for rejecting and revising a tool call.
-pub(super) fn submit(app: &mut App) -> bool {
-    super::image_sidecar_recover::recover_pasted_images(app);
-    let prompt = app.state.input.trim().to_string();
-    if prompt.is_empty() || prompt.starts_with('/') {
-        return false;
-    }
-    let Some(id) = approval_queue::active_id() else {
-        return false;
-    };
-    super::approval_command::run(app, &format!("/deny {id} {prompt}"))
-}
-
+//! Frontend callback selection for pending approval text feedback.
+codetether_approval_view::declare_frontend_approval_feedback!(
+    crate::tui::app::state::App;
+    crate::tui::app::input::image_sidecar_recover::recover_pasted_images,
+    crate::tui::app::state::approval_queue::active_id,
+    crate::tui::app::input::approval_command::run,
+);
 #[cfg(test)]
 #[path = "approval_feedback_tests.rs"]
 mod tests;

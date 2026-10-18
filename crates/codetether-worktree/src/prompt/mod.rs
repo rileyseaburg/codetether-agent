@@ -2,6 +2,7 @@
 //! [create_worktree] creates a checkout and updates the host's effective
 //! directory through a callback. [WorktreeState] retains cleanup ownership.
 mod create;
+mod frontend;
 pub use create::create_worktree;
 /// Owned worktree manager, checkout and original target branch.
 /// # Examples

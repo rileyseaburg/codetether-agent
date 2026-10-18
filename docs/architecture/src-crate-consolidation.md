@@ -27793,3 +27793,20 @@ formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
 Unrelated files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-goal-editor/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Approval feedback and worktree prompt entry bindings
+
+Moved direct-text approval feedback into codetether-approval-view, prompt
+worktree/session directory binding into codetether-worktree, and question-scoped
+prompt execution into codetether-session-runtime. Root wrappers select the
+existing callbacks and keep their exports; the unused branch-module alias was
+removed after checking references.
+
+All three expanded function bodies match after feedback callback qualification.
+The current-branch function is unchanged, and prompt errors retain the original
+return-before-directory-restoration behavior. The approval-feedback test is
+byte-for-byte unchanged. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Unrelated files are unchanged; no manifest or lock changes were
+needed. Evidence: artifacts/consolidation-input-tail/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

@@ -5,6 +5,7 @@
 //! request is removed, stopping on an error or lack of progress.
 mod binding;
 mod dispatch;
+mod feedback_binding;
 mod release;
 mod result;
 mod view;

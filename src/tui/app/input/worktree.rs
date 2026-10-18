@@ -1,11 +1,6 @@
-//! Native branch lookup and session-directory binding for prompt worktrees.
-use super::base_branch::current_branch;
-use crate::session::Session;
+//! Frontend type and branch selection for prompt worktrees.
 pub(crate) use codetether_worktree::prompt::WorktreeState;
-use std::path::Path;
-pub(crate) async fn create_worktree(cwd: &Path, session: &mut Session) -> Option<WorktreeState> {
-    codetether_worktree::prompt::create_worktree(cwd, current_branch, |path| {
-        session.metadata.directory = Some(path);
-    })
-    .await
-}
+codetether_worktree::declare_frontend_prompt_worktree!(
+    crate::session::Session,
+    codetether_git_view::current_branch,
+);
