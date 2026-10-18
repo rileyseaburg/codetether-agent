@@ -275,6 +275,7 @@ members = [
     "crates/codetether-approval-diagnostics",
     "crates/codetether-relay-okr",
     "crates/codetether-authorization-policy",
+    "crates/codetether-openai-wire",
     "crates/codetether-tui-style",
     "crates/codetether-answer-review-view",
     "crates/codetether-message-cache",
@@ -624,6 +625,7 @@ codetether-proposed-content = { path = "crates/codetether-proposed-content", ver
 codetether-approval-diagnostics = { path = "crates/codetether-approval-diagnostics", version = "0.1.0" }
 codetether-relay-okr = { path = "crates/codetether-relay-okr", version = "0.1.0" }
 codetether-authorization-policy = { path = "crates/codetether-authorization-policy", version = "0.1.0" }
+codetether-openai-wire = { path = "crates/codetether-openai-wire", version = "0.1.0" }
 codetether-session-resume = { path = "crates/codetether-session-resume", version = "0.1.0" }
 codetether-paste-buffer = { path = "crates/codetether-paste-buffer", version = "0.1.0" }
 codetether-task-tracker = { path = "crates/codetether-task-tracker", version = "0.1.0" }

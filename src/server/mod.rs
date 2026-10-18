@@ -62,6 +62,12 @@ use tonic_web::GrpcWebLayer;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
+use codetether_openai_wire::{
+    OpenAiChatCompletionChoice, OpenAiChatCompletionMessage, OpenAiChatCompletionRequest,
+    OpenAiChatCompletionResponse, OpenAiRequestMessage, OpenAiRequestTool, OpenAiRequestToolCall,
+    OpenAiRequestToolCallFunction, OpenAiRequestToolDefinition, OpenAiResponseToolCall,
+    OpenAiResponseToolCallFunction, OpenAiStop, OpenAiUsage, openai_stream_chunk,
+};
 use task_dispatch::dispatch_task;
 pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
 
@@ -1078,130 +1084,6 @@ async fn list_agents() -> Json<Vec<crate::agent::AgentInfo>> {
 type OpenAiApiError = (StatusCode, Json<serde_json::Value>);
 type OpenAiApiResult<T> = Result<T, OpenAiApiError>;
 
-#[derive(Debug, Deserialize)]
-struct OpenAiChatCompletionRequest {
-    model: String,
-    messages: Vec<OpenAiRequestMessage>,
-    #[serde(default)]
-    tools: Vec<OpenAiRequestTool>,
-    temperature: Option<f32>,
-    top_p: Option<f32>,
-    max_tokens: Option<usize>,
-    max_completion_tokens: Option<usize>,
-    stop: Option<OpenAiStop>,
-    stream: Option<bool>,
-    reasoning_effort: Option<String>,
-    service_tier: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum OpenAiStop {
-    Single(String),
-    Multiple(Vec<String>),
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAiRequestMessage {
-    role: String,
-    #[serde(default)]
-    content: Option<serde_json::Value>,
-    #[serde(default)]
-    tool_call_id: Option<String>,
-    #[serde(default)]
-    tool_calls: Vec<OpenAiRequestToolCall>,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAiRequestToolCall {
-    id: String,
-    #[serde(rename = "type", default = "default_function_type")]
-    kind: String,
-    function: OpenAiRequestToolCallFunction,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAiRequestToolCallFunction {
-    name: String,
-    #[serde(default = "default_json_object_string")]
-    arguments: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAiRequestTool {
-    #[serde(rename = "type", default = "default_function_type")]
-    kind: String,
-    function: OpenAiRequestToolDefinition,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAiRequestToolDefinition {
-    name: String,
-    #[serde(default)]
-    description: String,
-    #[serde(default = "default_json_object")]
-    parameters: serde_json::Value,
-}
-
-#[derive(Debug, Serialize)]
-struct OpenAiChatCompletionResponse {
-    id: String,
-    object: String,
-    created: i64,
-    model: String,
-    choices: Vec<OpenAiChatCompletionChoice>,
-    usage: OpenAiUsage,
-}
-
-#[derive(Debug, Serialize)]
-struct OpenAiChatCompletionChoice {
-    index: usize,
-    message: OpenAiChatCompletionMessage,
-    finish_reason: String,
-}
-
-#[derive(Debug, Serialize)]
-struct OpenAiChatCompletionMessage {
-    role: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tool_calls: Option<Vec<OpenAiResponseToolCall>>,
-}
-
-#[derive(Debug, Serialize)]
-struct OpenAiResponseToolCall {
-    id: String,
-    #[serde(rename = "type")]
-    kind: String,
-    function: OpenAiResponseToolCallFunction,
-}
-
-#[derive(Debug, Serialize)]
-struct OpenAiResponseToolCallFunction {
-    name: String,
-    arguments: String,
-}
-
-#[derive(Debug, Serialize)]
-struct OpenAiUsage {
-    prompt_tokens: usize,
-    completion_tokens: usize,
-    total_tokens: usize,
-}
-
-fn default_function_type() -> String {
-    "function".to_string()
-}
-
-fn default_json_object() -> serde_json::Value {
-    serde_json::json!({})
-}
-
-fn default_json_object_string() -> String {
-    "{}".to_string()
-}
-
 fn openai_error(
     status: StatusCode,
     message: impl Into<String>,
@@ -1503,30 +1385,6 @@ fn convert_response_message(
     };
 
     (content, tool_calls)
-}
-
-fn openai_stream_chunk(
-    id: &str,
-    created: i64,
-    model: &str,
-    delta: serde_json::Value,
-    finish_reason: Option<&str>,
-) -> serde_json::Value {
-    let finish_reason = finish_reason
-        .map(|value| serde_json::Value::String(value.to_string()))
-        .unwrap_or(serde_json::Value::Null);
-
-    serde_json::json!({
-        "id": id,
-        "object": "chat.completion.chunk",
-        "created": created,
-        "model": model,
-        "choices": [{
-            "index": 0,
-            "delta": delta,
-            "finish_reason": finish_reason,
-        }]
-    })
 }
 
 fn openai_stream_event(payload: &serde_json::Value) -> Event {

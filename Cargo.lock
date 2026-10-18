@@ -1271,6 +1271,7 @@ dependencies = [
  "codetether-approval-diagnostics",
  "codetether-relay-okr",
  "codetether-authorization-policy",
+ "codetether-openai-wire",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6432,6 +6433,14 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "codetether-openai-wire"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

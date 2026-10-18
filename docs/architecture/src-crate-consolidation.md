@@ -12947,3 +12947,20 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   authorization requests, policy evaluation, Cargo, rustc or Rust tests ran.
   Full consolidation remains incomplete.
+
+### OpenAI-compatible wire contract extraction
+
+- Moved OpenAI-compatible chat request/response schemas, serde defaults and
+  stream chunk/reasoning/finish-reason builders into codetether-openai-wire.
+  Eleven modules contain at most 32 code lines.
+- Native server imports the shared contracts and retains provider selection,
+  validation, message conversion and HTTP execution. Stream adapter functions
+  are re-exported. Field types, serde names/defaults and JSON payloads are
+  preserved; public fields let the existing native handlers construct them.
+- Verification: 132 static comparisons passed for the moved contracts and
+  functions plus all remaining named server items, including tests. Module and
+  dependency checks, direct rustfmt, file limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-openai-wire/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  serialization, HTTP requests, Cargo, rustc or Rust tests ran. Full workspace
+  consolidation remains incomplete.
