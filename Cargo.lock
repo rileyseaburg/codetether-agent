@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-mux-control",
  "codetether-mux-server",
  "codetether-mux-workspace",
  "codetether-mux-agent-task",
@@ -5277,6 +5278,21 @@ dependencies = [
  "codetether-worktree-lease",
  "rand 0.10.2",
  "tempfile",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-mux-control"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-mux-client",
+ "codetether-mux-coordination",
+ "codetether-mux-model",
+ "codetether-mux-protocol",
+ "codetether-mux-registry",
+ "serde",
  "tokio",
  "tracing",
 ]

@@ -10492,3 +10492,20 @@ static assertion checks the authentication error helper import. Evidence is in
 `artifacts/consolidation-mux-server/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, server listener, process or benchmark ran.
 Full workspace consolidation remains active.
+
+### Running-session frontend controls extracted
+
+Moved discovery/reachability probes, session/window summaries, window mutations,
+semantic runtime reports, graceful session close and live-output fan-in into
+`crates/codetether-mux-control`. Fourteen modules separate summary projection,
+authenticated operations, reconnecting subscriptions and output delivery.
+Native lifecycle/startup code consumes the shared summary API and remains
+unchanged; its process-launch responsibilities are still pending extraction.
+
+Twenty-nine static checks compare original modules, summary methods, the
+subscription loop, unchanged startup consumers and exported API types.
+Module/dependency graphs, file budgets and whitespace checks passed; modules
+contain at most 40 code lines. Evidence is in
+`artifacts/consolidation-mux-control/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, network subscription or session mutation ran.
+Full workspace consolidation remains active.

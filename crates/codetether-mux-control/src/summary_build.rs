@@ -1,9 +1,8 @@
 //! Building session summaries from registry records and live snapshots.
 
 use super::MuxSessionSummary;
-use super::summary_window::MuxWindowSummary;
-use crate::mux::model::{MuxSession, MuxSnapshot};
-use crate::mux::registry::{MuxRecord, SessionTarget};
+use codetether_mux_model::{MuxSession, MuxSnapshot};
+use codetether_mux_registry::{MuxRecord, SessionTarget};
 
 impl MuxSessionSummary {
     /// Every session hosted by one server record.
@@ -16,7 +15,22 @@ impl MuxSessionSummary {
             .collect()
     }
 
-    pub(super) fn from_target(target: &SessionTarget, reachable: bool) -> Self {
+    /// Project a discovered target into a session summary.
+    ///
+    /// # Arguments
+    /// * `target` - Discovered server record and selected session.
+    /// * `reachable` - Whether the caller successfully contacted the server.
+    /// # Returns
+    /// A summary marked unreachable if its session is missing from the record.
+    /// # Examples
+    /// ```no_run
+    /// # async fn example() -> anyhow::Result<()> {
+    /// let target = codetether_mux_registry::load("work").await?;
+    /// let summary = codetether_mux_control::MuxSessionSummary::from_target(&target, false);
+    /// assert!(!summary.reachable);
+    /// # Ok(()) }
+    /// ```
+    pub fn from_target(target: &SessionTarget, reachable: bool) -> Self {
         Self::from_state(
             &target.record,
             &target.record.state,
@@ -36,19 +50,6 @@ impl MuxSessionSummary {
         match state.session(name) {
             Some(session) => Self::new(record, state, session, reachable),
             None => Self::new(record, state, &placeholder, false),
-        }
-    }
-
-    fn new(record: &MuxRecord, state: &MuxSnapshot, session: &MuxSession, reachable: bool) -> Self {
-        Self {
-            name: session.name.clone(),
-            workspace: state.workspace.clone(),
-            address: record.address.to_string(),
-            pid: record.pid,
-            active_window: session.active_window,
-            windows: session.windows.iter().map(MuxWindowSummary::from).collect(),
-            reachable,
-            runtime: session.runtime.clone(),
         }
     }
 }

@@ -4,11 +4,11 @@ use anyhow::{Result, bail};
 use tokio::sync::mpsc::Sender;
 
 use super::MuxLiveOutput;
-use crate::mux::client::MuxConnection;
-use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
+use codetether_mux_client::MuxConnection;
+use codetether_mux_protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
 pub(super) async fn run(name: &str, sender: &Sender<MuxLiveOutput>) -> Result<()> {
-    let target = crate::mux::registry::load(name).await?;
+    let target = codetether_mux_registry::load(name).await?;
     let window_id = target.active_window()?;
     let mut connection = MuxConnection::connect(&target).await?;
     let response = connection
@@ -35,14 +35,7 @@ pub(super) async fn run(name: &str, sender: &Sender<MuxLiveOutput>) -> Result<()
         };
         offset = next_offset;
         if !data.is_empty() {
-            sender
-                .send(MuxLiveOutput {
-                    session: name.into(),
-                    data: String::from_utf8_lossy(&data).into_owned(),
-                    offset,
-                    running,
-                })
-                .await?;
+            super::output::send(sender, name, data, offset, running).await?;
         }
         if !running {
             return Ok(());
