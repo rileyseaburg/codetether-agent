@@ -11,9 +11,15 @@ use ratatui::style::Color;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::ui::chat_view::spinner::spinner_hue::hue_color;
+/// use codetether_tui_style::spinner::spinner_hue::hue_color;
 /// let _c = hue_color(3000);
 /// ```
+///
+/// # Arguments
+/// * `period_ms` - Rotation period in milliseconds.
+///
+/// # Returns
+/// A fully saturated color for the current hue.
 pub fn hue_color(period_ms: u128) -> Color {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

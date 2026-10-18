@@ -1,0 +1,12 @@
+[package]
+name = "codetether-tui-style"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Terminal animations, view accents, pane borders, and welcome presentation"
+
+[dependencies]
+codetether-theme = { path = "../codetether-theme", version = "0.1.0", features = ["ratatui"] }
+codetether-tui-models = { path = "../codetether-tui-models", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }

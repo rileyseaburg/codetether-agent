@@ -11826,3 +11826,21 @@ Full workspace consolidation remains active.
   limits and git diff --check passed. Evidence: artifacts/consolidation-goal-prompt/.
 - No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
   consolidation remains incomplete.
+
+### TUI styling and animation extraction
+
+- Moved the welcome banner, pane borders, view-mode accent mappings, gradient
+  rules and sweeps, spinner/hue animation, thinking pulse and elapsed labels
+  into codetether-tui-style. Twelve modules contain at most 34 code lines each.
+- The crate reuses codetether-theme gradient primitives and the shared ViewMode
+  type; it has no application dependency. Native modules are compatibility
+  re-exports, including the existing spinner::spinner_hue public path.
+- Preserved clock sources and periods, RGB detection/fallback behavior, glyph
+  arrays and order, HSV conversion, view accent colors, border emphasis, banner
+  text and up-to-twelve-span separators. No new runtime behavior was introduced.
+- Verification: 32 source comparisons passed for all moved functions, constants
+  and native exports. Module reachability, dependency cycles, direct formatting,
+  file-limit checks and git diff --check passed. Evidence:
+  artifacts/consolidation-tui-style/.
+- No Cargo, rustc, compilation, tests or rendered-output checks ran. Full workspace
+  consolidation remains incomplete.
