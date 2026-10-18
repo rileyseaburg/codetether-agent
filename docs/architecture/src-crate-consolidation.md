@@ -24084,3 +24084,18 @@ limits and whitespace checks passed. Unrelated working changes remain untouched.
 Evidence: artifacts/consolidation-provider-cache/. No Cargo, rustc, Python,
 compilation, registry initialization or tests ran. Full consolidation remains
 active.
+
+### Headless clipboard regression moved into the clipboard crate
+
+Moved the Linux headless clipboard test into codetether-terminal-clipboard and
+replaced the native clipboard_ssh wrapper with a crate reexport. Removed both
+native wrapper/test files. The moved test uses a local environment mutex in its
+crate test process; its detector assertion, DISPLAY/WAYLAND_DISPLAY changes and
+restoration are unchanged. No dependencies changed.
+
+Static comparison verifies those explicit lock substitutions and unchanged
+native export binding. Module/dependency scans cover 691 roots and 572 crates
+without missing modules or cycles. Direct rustfmt, source file limits and
+whitespace checks passed. Unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-clipboard-test/. No environment changes, tests, Cargo,
+rustc, Python or compilation ran. Full consolidation remains active.

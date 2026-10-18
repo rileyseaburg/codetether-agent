@@ -5,6 +5,8 @@
 //! Environment hints guide users without disabling forwarded clipboard access.
 mod access;
 mod environment;
+#[cfg(test)]
+mod environment_tests;
 mod guidance;
 mod osc52;
 mod platform;

@@ -1,8 +1,8 @@
 pub mod app;
 pub mod chat;
-pub use codetether_terminal_clipboard as clipboard;
-pub mod clipboard_ssh;
 pub use codetether_clipboard::winapi as clipboard_winapi;
+pub use codetether_terminal_clipboard as clipboard;
+pub use codetether_terminal_clipboard as clipboard_ssh;
 pub use codetether_terminal_clipboard as clipboard_text;
 pub mod constants;
 pub mod help;

@@ -1,9 +1,14 @@
 //! Linux headless clipboard detection tests.
 
 #[cfg(target_os = "linux")]
+static ENV: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+#[cfg(target_os = "linux")]
 #[test]
 fn tmux_without_display_is_headless() {
-    let _lock = crate::approval::test_env::lock_env();
+    let _lock = ENV
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let display = std::env::var_os("DISPLAY");
     let wayland = std::env::var_os("WAYLAND_DISPLAY");
     unsafe {
