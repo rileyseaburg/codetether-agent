@@ -24458,3 +24458,25 @@ in the lockfile; unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-session-schema/. No Cargo, rustc, Python, compiler
 macro expansion, serialization execution or tests ran. Full consolidation
 remains active.
+
+### Session data lifecycle moved into cohesive schema modules
+
+Moved eleven Session methods into codetether-session-schema::lifecycle modules:
+construction, bus attachment/normalization, provenance, and transcript access
+and append. The impl_session_lifecycle macro preserves inherent methods on the
+application-local Session type. Native configuration/provider methods remain
+bound to the application. Removed lifecycle/normalize.rs and store/append.rs;
+the shared transcript method now composes the same WorkingSet append operation
+before updating the timestamp. Added three direct dependencies.
+
+Static comparison verifies signatures and bodies after explicit shared-path
+substitution and expansion of the removed append wrapper. Native apply_config
+is unchanged. Initial extraction delimiter errors were rejected by rustfmt;
+failed files and an explanation are retained with the evidence. Module and
+dependency scans cover 693 roots and 574 crates without missing modules or
+cycles. Direct dependency audit, direct rustfmt, source file limits and
+whitespace checks passed. Only required lockfile entries are staged; unrelated
+working changes remain untouched. Evidence:
+artifacts/consolidation-session-lifecycle/. No Cargo, rustc, Python, compiler
+macro expansion, lifecycle execution or tests ran. Full consolidation remains
+active.

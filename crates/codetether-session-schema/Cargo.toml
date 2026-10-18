@@ -4,9 +4,12 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
-description = "Session field layout and serialization contract with application-local types"
+description = "Session schema and lifecycle operations with application-local types"
 
 [dependencies]
+anyhow = "1"
+codetether-session-history = { path = "../codetether-session-history", version = "0.1.0" }
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }

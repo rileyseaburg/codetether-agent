@@ -3707,6 +3707,9 @@ dependencies = [
  "codetether-session-store",
  "codetether-tracked-vec",
  "serde",
+ "anyhow",
+ "codetether-provenance",
+ "codetether-session-history",
 ]
 
 [[package]]

@@ -9,7 +9,6 @@ pub(crate) mod constraints;
 pub(crate) mod cursor;
 #[cfg(test)]
 use codetether_session_store::consumer as cursor_read;
-pub(crate) mod append;
 pub(crate) use codetether_session_store::delete;
 use codetether_session_store::events;
 mod header;
