@@ -12926,3 +12926,24 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-retry-state/.
 - No dependency changes were needed. No model changes, retry execution, Cargo,
   rustc, compilation or Rust tests ran. Full consolidation remains incomplete.
+
+### Server authorization policy extraction
+
+- Inventory snapshot before this extraction found 3,676 Rust files and 87,674
+  nonblank/noncomment lines under src, including tests and compatibility code.
+  Substantial native implementation remains; this is not a completion audit.
+- Moved the server authorization policy to codetether-authorization-policy.
+  Twenty-one modules separate environment policy, wire context, client pool,
+  remote evaluation, local role/scope evaluation and ten existing tests.
+  Each module contains at most 43 code lines.
+- Server routing/middleware and policies/data.json are unchanged. The crate
+  embeds that same policy file at its new relative path. Local evaluation,
+  OPA request fields, timeouts, fail-open/fail-closed behavior and denial status
+  preserve the previous implementation.
+- Verification: 34 static comparisons passed for algorithms, wire contracts,
+  client construction, moved tests and unchanged middleware/data. Module and
+  dependency checks, direct rustfmt, file limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-auth-policy/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  authorization requests, policy evaluation, Cargo, rustc or Rust tests ran.
+  Full consolidation remains incomplete.

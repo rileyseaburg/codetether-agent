@@ -1270,6 +1270,7 @@ dependencies = [
  "codetether-proposed-content",
  "codetether-approval-diagnostics",
  "codetether-relay-okr",
+ "codetether-authorization-policy",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6420,6 +6421,17 @@ dependencies = [
  "serde_json",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-authorization-policy"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]
