@@ -8,3 +8,8 @@ mod view;
 pub use finder::{confirm_finder, open_finder};
 pub use open::{open_argument, open_path};
 pub use view::View;
+
+mod key_host;
+mod keys;
+pub use key_host::KeyHost;
+pub use keys::handle_editor_key;

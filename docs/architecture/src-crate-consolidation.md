@@ -19398,3 +19398,23 @@ runtime remain unverified.
 The final staged review caught a missing serde_json lockfile edge caused by a
 version-qualified similar dependency. Corrected the minimal lockfile update
 and strengthened validation to require all three added dependency entries.
+
+### Synchronous editor key policy
+
+Moved editor key dispatch, ordinary buffer exit/reset behavior, save-error
+status and the dirty-buffer finder warning into `codetether-editor::interactive`.
+The existing editor crate owns key mapping and buffer mutation; the added keys
+module now owns their orchestration. Native code binds nine state/operation
+methods and delegates incoming keys. No dependencies changed.
+
+Preserved both approval-handler checks and their ordering around finder
+opening, missing-buffer early return, direct chat-view assignment, scroll reset,
+status text and redraw timing. Approval handling, event priority and native
+finder entry points remain unchanged.
+
+Validation: two complete translated function bodies, nine native bindings,
+unchanged priority caller/approval handlers/tests/finder/manifests, lexical
+module reachability, dependency-cycle checks, file-size ratchet, whitespace
+and direct formatting. Evidence: `artifacts/consolidation-editor-keys/`.
+No Cargo, rustc, Python or Rust tests ran; compilation and runtime remain
+unverified.
