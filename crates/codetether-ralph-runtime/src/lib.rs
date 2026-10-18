@@ -5,6 +5,7 @@
 //! Scheduling, model execution, merge, Git and lifecycle policy have dedicated crates.
 /// Runtime service composition using the shared application registries and agent.
 pub mod application;
+mod cli;
 mod host;
 use codetether_bus_core::AgentBus;
 use codetether_context_policy::delegation::DelegationState;

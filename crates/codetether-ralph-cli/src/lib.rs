@@ -3,6 +3,8 @@
 //! Host supplies Vault initialization and the existing Ralph loop. PRD schema,
 //! selection precedence, configuration and status formatting live here.
 mod create;
+mod loop_runner;
+pub use loop_runner::LoopRunner;
 pub mod interactive;
 mod output;
 mod run;

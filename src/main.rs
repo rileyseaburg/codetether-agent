@@ -70,7 +70,9 @@ async fn dispatch(cli: Cli) -> anyhow::Result<()> {
             codetether_rlm_cli::execute::<provider::ProviderRegistry>(args).await
         }
         Some(Command::Oracle(args)) => cli::oracle::execute(args).await,
-        Some(Command::Ralph(args)) => ralph_cli::execute(args).await,
+        Some(Command::Ralph(args)) => {
+            codetether_ralph_cli::execute::<ralph_cli::NativeHost>(args).await
+        }
         Some(Command::Mcp(args)) => {
             // Resolve the target MCP server command from either `--command "cmd args"`
             // (flag form) or trailing positional args (e.g. `connect npx -y @x/foo /path`).

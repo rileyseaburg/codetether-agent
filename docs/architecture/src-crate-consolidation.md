@@ -23652,3 +23652,24 @@ checks passed. Only required dependency entries are staged in Cargo.lock;
 unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-benchmark-application/. No Cargo, rustc, Python,
 compilation, benchmarks or runtime tests ran. Full consolidation remains active.
+
+### Ralph CLI composition moved to provider and runtime crates
+
+Moved native Ralph provider loading/selection into application-providers::cli::ralph
+and native loop construction/execution/reporting into ralph-runtime::cli. The
+ralph-cli crate owns their LoopRunner contract; the provider host composes a
+registry with any implementing loop. src/ralph_cli.rs now only binds the existing
+provider registry and RalphLoop types, and main invokes the shared command
+executor directly. Added ralph-runtime -> ralph-cli and the directly used
+application-providers -> ralph-core dependencies without a cycle.
+
+Static comparisons preserve selection and loop bodies after explicit type
+substitution, every delegated argument and the native type choices. Direct
+crate import checks account for self-crate references in doc examples; the
+initial overly strict check output is retained. Module/dependency scans cover
+691 roots and 571 crates with no missing modules or cycles. Direct rustfmt,
+source file limits and whitespace checks passed. Only required lockfile entries
+are staged; the unrelated working lockfile and A2A edits are preserved.
+Evidence: artifacts/consolidation-ralph-cli/. No Cargo, rustc, Python,
+compilation, Ralph execution or runtime tests ran. Full consolidation remains
+active.
