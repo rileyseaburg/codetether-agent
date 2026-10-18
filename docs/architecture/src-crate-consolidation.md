@@ -17681,3 +17681,19 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-agent-detail/`.
 - No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Editor viewport and goal-draft rendering
+
+- Moved ordinary editor cursor-follow/draw/hover sequencing and goal-draft
+  viewport/footer rendering into `codetether-editor::viewport`, split into
+  state, plain and goal modules.
+- A borrowed View exposes only the buffer, mutable scroll/rectangle fields,
+  hover text and goal/status values. Native adapters project those fields;
+  editor sessions and language-server managers remain with their owners.
+- Verified both complete rendering bodies under explicit field substitutions,
+  all native projection fields, unchanged editor drawing/scroll helpers and
+  goal-editor integration test, lexical module/dependency graphs, direct
+  rustfmt, file limits and whitespace. No manifest or lock changes.
+  Evidence: `artifacts/consolidation-editor-viewport/`.
+- No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

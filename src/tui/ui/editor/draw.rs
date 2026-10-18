@@ -1,33 +1,23 @@
-//! Application adapter for editor drawing and LSP hover display.
-use super::{
-    render::text_width,
-    scroll::{follow_col, follow_cursor},
-};
+//! Native editor-field projection and shared drawing entry points.
+use crate::tui::app::state::{App, AppState};
 pub use codetether_editor::draw::draw;
+use codetether_editor::viewport::View;
 use ratatui::Frame;
 
-/// Draws the editor from app state if a buffer is active; no-op otherwise.
-///
-/// Updates `editor_scroll`/`editor_hscroll` so the cursor stays visible.
-pub fn draw_active(f: &mut Frame, app: &mut crate::tui::app::state::App) {
-    let area = f.area();
-    app.state.editor_lsp.area = area;
-    let height = area.height.saturating_sub(2) as usize;
-    if let Some(buf) = app.state.editor.as_ref() {
-        let w = text_width(buf.backend(), area.width);
-        app.state.editor_scroll = follow_cursor(buf.backend(), app.state.editor_scroll, height);
-        app.state.editor_hscroll = follow_col(buf.backend(), app.state.editor_hscroll, w);
+/// Borrow application fields needed to render an editor frame.
+pub(crate) fn view(state: &mut AppState) -> View<'_> {
+    View {
+        buffer: state.editor.as_ref(),
+        scroll: &mut state.editor_scroll,
+        hscroll: &mut state.editor_hscroll,
+        lsp_area: &mut state.editor_lsp.area,
+        hover: state.editor_lsp.hover.as_deref(),
+        goal_active: state.goal_editor.is_some(),
+        status: &state.status,
     }
-    if let Some(buf) = app.state.editor.as_ref() {
-        draw(
-            f,
-            area,
-            buf,
-            app.state.editor_scroll,
-            app.state.editor_hscroll,
-        );
-    }
-    if let Some(contents) = app.state.editor_lsp.hover.as_ref() {
-        super::hover_popup::draw_hover(f, area, contents);
-    }
+}
+
+/// Draw the active document, following its cursor and showing hover text.
+pub fn draw_active(f: &mut Frame, app: &mut App) {
+    codetether_editor::viewport::draw_active(f, &mut view(&mut app.state));
 }

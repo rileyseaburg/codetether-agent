@@ -73,3 +73,6 @@ pub use render::editor_lines;
 
 mod file_buffer_access;
 mod render_width;
+
+/// Cursor-following editor and goal-draft viewport rendering.
+pub mod viewport;
