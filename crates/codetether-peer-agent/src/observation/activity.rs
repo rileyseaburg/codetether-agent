@@ -3,7 +3,7 @@
 use super::store::{TURNS, key};
 use serde_json::Value;
 
-pub(in crate::tool::agent) fn record(name: &str, owner: Option<&str>, events: &[Value]) {
+pub fn record(name: &str, owner: Option<&str>, events: &[Value]) {
     let Some(mut turn) = TURNS.get_mut(&key(name, owner)) else {
         return;
     };

@@ -1,4 +1,4 @@
-use crate::a2a::peer_route::PeerRoute;
+use codetether_a2a_discovery::routes::PeerRoute;
 use std::time::Duration;
 
 #[tokio::test]

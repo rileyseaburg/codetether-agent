@@ -1,6 +1,8 @@
 //! Non-blocking A2A request construction for a remote agent turn.
 
-use crate::a2a::types::{Message, MessageRole, MessageSendConfiguration, MessageSendParams, Part};
+use codetether_a2a_core::{
+    Message, MessageRole, MessageSendConfiguration, MessageSendParams, Part,
+};
 
 pub(super) fn build(text: &str, context_id: Option<&str>) -> MessageSendParams {
     MessageSendParams {
@@ -34,7 +36,7 @@ fn metadata() -> std::collections::HashMap<String, serde_json::Value> {
         "codetether.transport".to_string(),
         serde_json::Value::String("mdns".to_string()),
     )]);
-    if let Some(name) = crate::a2a::local_identity::current_name() {
+    if let Some(name) = codetether_a2a_discovery::local_identity::current_name() {
         map.insert(
             "codetether.sender".to_string(),
             serde_json::Value::String(name),

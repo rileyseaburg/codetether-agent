@@ -1,6 +1,6 @@
 //! State models for one observed remote-agent conversation.
 
-use crate::provider::Message;
+use codetether_provider_core::Message;
 use serde_json::Value;
 
 #[derive(Clone)]
@@ -17,7 +17,7 @@ pub(super) struct RemoteTurn {
 
 /// Read-only remote-peer state used by the TUI bridge.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(in crate::tool::agent) struct RemoteSnapshot {
+pub struct RemoteSnapshot {
     /// Discovered peer name.
     pub name: String,
     /// Retained user and assistant messages.
@@ -29,9 +29,9 @@ pub(in crate::tool::agent) struct RemoteSnapshot {
 }
 
 /// Marks an observed remote turn failed if its future is cancelled.
-pub(in crate::tool::agent) struct RemoteTurnGuard {
+pub struct RemoteTurnGuard {
     pub(super) name: String,
-    pub(in crate::tool::agent) owner_session_id: Option<String>,
+    pub owner_session_id: Option<String>,
     pub(super) turn_id: String,
     pub(super) settled: bool,
 }

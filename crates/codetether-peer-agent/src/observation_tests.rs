@@ -1,4 +1,4 @@
-use crate::tool::agent::message::remote::reply::PeerReply;
+use crate::reply::PeerReply;
 
 #[test]
 fn remote_turn_is_visible_only_to_its_parent() {

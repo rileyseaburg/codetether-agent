@@ -3,14 +3,18 @@
 use super::message::text as message;
 use super::store::{TURNS, key};
 use super::types::{RemoteTurn, RemoteTurnGuard};
-use crate::provider::Role;
+use codetether_provider_core::Role;
 
 /// Starts a visible remote turn and returns its cancellation-safe guard.
-pub(in crate::tool::agent) fn begin(
-    name: &str,
-    owner: Option<&str>,
-    prompt: &str,
-) -> RemoteTurnGuard {
+/// # Arguments
+/// * `name` — Discovered peer identity.
+/// * `owner` — Optional parent owning this conversation.
+/// * `prompt` — Request text retained in the transcript.
+/// # Returns
+/// A cancellation guard; settle it with a reply to record successful completion.
+/// # Examples
+/// Dropping the guard records the existing cancellation result.
+pub fn begin(name: &str, owner: Option<&str>, prompt: &str) -> RemoteTurnGuard {
     let turn_id = uuid::Uuid::new_v4().to_string();
     let lookup = key(name, owner);
     let prompt_text = prompt.to_string();

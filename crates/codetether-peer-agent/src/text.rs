@@ -1,6 +1,6 @@
 //! Text and terminal-state extraction from A2A responses.
 
-use crate::a2a::types::{Message, Part, SendMessageResponse, Task, TaskState};
+use codetether_a2a_core::{Message, Part, SendMessageResponse, Task, TaskState};
 
 pub(super) fn response(response: &SendMessageResponse) -> (String, bool) {
     match response {

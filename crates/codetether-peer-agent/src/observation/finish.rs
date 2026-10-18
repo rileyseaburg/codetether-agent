@@ -2,7 +2,7 @@
 
 use super::message::text as message;
 use super::store::{TURNS, key};
-use crate::provider::Role;
+use codetether_provider_core::Role;
 
 pub(super) fn record(name: &str, owner: Option<&str>, turn_id: &str, output: &str, failed: bool) {
     if let Some(mut turn) = TURNS.get_mut(&key(name, owner)) {

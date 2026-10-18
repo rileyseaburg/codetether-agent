@@ -1,6 +1,6 @@
 //! Terminal-state classification for polled A2A tasks.
 
-use crate::a2a::types::TaskState;
+use codetether_a2a_core::TaskState;
 
 /// Terminal task states stop the poll loop.
 pub(super) fn finished(state: TaskState) -> bool {

@@ -1,25 +1,9 @@
-//! Conversion from A2A activity metadata to the existing TUI live trace.
-
+//! Apply one structured peer activity event to a live-trace snapshot.
 use super::projection_value::{display, text};
-use super::types::RemoteTurn;
-use crate::tool::agent::event_loop::live_trace::{LiveTraceEntry, LiveTraceSnapshot};
+use codetether_agent_trace::{LiveTraceEntry, LiveTraceSnapshot};
 use serde_json::Value;
 
-pub(super) fn trace(turn: &RemoteTurn) -> Option<LiveTraceSnapshot> {
-    turn.is_processing.then(|| {
-        let mut trace = LiveTraceSnapshot {
-            prompt: turn.prompt.clone(),
-            activity: Some("Waiting for A2A peer activity…".into()),
-            ..Default::default()
-        };
-        for event in &turn.activity {
-            apply(&mut trace, event);
-        }
-        trace
-    })
-}
-
-fn apply(trace: &mut LiveTraceSnapshot, event: &Value) {
+pub(super) fn apply(trace: &mut LiveTraceSnapshot, event: &Value) {
     match event.get("type").and_then(Value::as_str) {
         Some("thinking") => trace.activity = Some("Thinking…".into()),
         Some("thinking_complete") => trace.activity = Some("Reasoning complete".into()),

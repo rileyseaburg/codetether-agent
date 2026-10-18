@@ -4,10 +4,10 @@
 //! transcript records the plain reply separately (see `request/run.rs`).
 
 use super::reply::PeerReply;
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
-pub(in crate::tool::agent) fn render(name: &str, reply: &PeerReply) -> ToolResult {
+pub fn render(name: &str, reply: &PeerReply) -> ToolResult {
     let output = json!({
         "agent": name,
         "response": reply.text,

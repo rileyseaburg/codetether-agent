@@ -8394,3 +8394,22 @@ unchanged. Module/dependency, file-budget and whitespace checks passed; crate
 files contain at most 28 code lines. Evidence is in
 `artifacts/consolidation-agent-tool/`. Compilation and runtime tests were not run.
 No Cargo, rustc or Python commands ran. The full consolidation goal remains active.
+
+### Dedicated discovered-peer agent runtime
+
+Moved discovered-peer listing, non-blocking A2A payloads, authenticated transport,
+bounded idle polling, result extraction, detached dispatch and parent-scoped
+observations into `crates/codetether-peer-agent`. Thirty-three Rust modules retain
+the existing request, polling and observation responsibilities. Native listing
+supplies only local child-name collisions. Existing A2A client, discovery routes,
+provider messages and live-trace types are consumed from their owning crates.
+Context validation now directly uses its owning HTTP conversation module.
+
+Forty static preservation checks cover the moved items, payloads, authentication
+fallback, poll deadlines/fingerprints, cancellation records, activity bounds,
+reply formatting, logging targets and native bridge callers. Nine existing tests
+moved; two TUI transcript tests remain unchanged in the application. Module and
+dependency checks, file budgets and whitespace checks passed; crate files contain
+at most 43 code lines. Evidence is in `artifacts/consolidation-peer-agent/`.
+Compilation and runtime tests were not run; no network calls were executed.
+No Cargo, rustc or Python commands ran. The full consolidation goal remains active.

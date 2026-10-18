@@ -1,38 +1,13 @@
-//! First-party agent-tool access to automatically discovered LAN peers.
-
-mod list;
+//! Application local-name filtering for shared discovered-peer turns.
+pub(in crate::tool::agent) use codetether_peer_agent::{message_or_missing, reply, result};
+#[path = "observation.rs"]
 pub(in crate::tool::agent) mod observation;
-mod payload;
-mod poll;
-pub(in crate::tool::agent) mod reply;
-mod request;
-pub(in crate::tool::agent) mod result;
-#[cfg(test)]
-#[path = "remote_tests.rs"]
-mod tests;
-mod text;
-mod transport;
-
-use crate::tool::ToolResult;
-use anyhow::Result;
-use serde_json::Value;
-
-pub(super) async fn message_or_missing(
-    name: &str,
-    text: &str,
-    context_id: Option<&str>,
-    parent_session_id: Option<&str>,
-    detach: bool,
-) -> Result<ToolResult> {
-    if context_id.is_some_and(|id| !crate::a2a::session_resolve::usable_as_session_id(id)) {
-        return Ok(ToolResult::error(
-            "context_id must match [A-Za-z0-9_-] and contain at most 128 bytes",
-        ));
+struct Names;
+impl codetether_peer_agent::LocalNames for Names {
+    fn contains(name: &str) -> bool {
+        super::super::store::contains_name(name, None)
     }
-
-    request::execute(name, text, context_id, parent_session_id, detach).await
 }
-
-pub(in crate::tool::agent) fn list() -> Vec<Value> {
-    list::all()
+pub(in crate::tool::agent) fn list() -> Vec<serde_json::Value> {
+    codetether_peer_agent::list::<Names>()
 }

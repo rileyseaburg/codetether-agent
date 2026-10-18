@@ -1,8 +1,9 @@
 //! Authenticated A2A transport for one discovered peer turn.
 
 use super::{payload, reply::PeerReply};
-use crate::a2a::{client::A2AClient, peer_route::PeerRoute};
 use anyhow::{Context, Result, anyhow};
+use codetether_a2a_discovery::routes::PeerRoute;
+use codetether_a2a_http::A2AClient;
 use std::time::Duration;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
@@ -21,7 +22,7 @@ pub(super) async fn send(
     if let Some(token) = token {
         client = client.with_token(token);
     }
-    tracing::info!(peer_name = %name, endpoint = %route.endpoint, "Sending request to LAN peer");
+    tracing::info!(target: "codetether_agent::tool::agent::message::remote::transport", peer_name = %name, endpoint = %route.endpoint, "Sending request to LAN peer");
     let response = tokio::time::timeout(
         REQUEST_TIMEOUT,
         client.send_message(payload::build(text, context_id)),
@@ -30,6 +31,6 @@ pub(super) async fn send(
     .map_err(|_| anyhow!("LAN peer {name} did not accept the request within {REQUEST_TIMEOUT:?}"))?
     .with_context(|| format!("LAN peer {name} call failed at {}", route.endpoint))?;
     let response = super::poll::complete(name, owner, &client, response).await?;
-    tracing::info!(peer_name = %name, endpoint = %route.endpoint, "LAN peer replied");
+    tracing::info!(target: "codetether_agent::tool::agent::message::remote::transport", peer_name = %name, endpoint = %route.endpoint, "LAN peer replied");
     Ok(PeerReply::from_response(&response))
 }

@@ -1,7 +1,7 @@
 //! Terminal-state classification tests for remote polling.
 
 use super::finished::finished;
-use crate::a2a::types::TaskState;
+use codetether_a2a_core::TaskState;
 
 #[test]
 fn only_submitted_and_working_tasks_keep_polling() {

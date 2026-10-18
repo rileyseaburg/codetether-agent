@@ -1,6 +1,6 @@
 //! Projection of task activity observed during A2A status polling.
 
-pub(super) fn record(name: &str, owner: Option<&str>, task: &crate::a2a::types::Task) {
+pub(super) fn record(name: &str, owner: Option<&str>, task: &codetether_a2a_core::Task) {
     let Some(events) = task
         .metadata
         .get("activity")

@@ -2,11 +2,11 @@
 
 use super::finish::record;
 use super::types::RemoteTurnGuard;
-use crate::tool::agent::message::remote::reply::PeerReply;
+use crate::reply::PeerReply;
 
 impl RemoteTurnGuard {
     /// Records the peer's reply in the transcript and settles the turn.
-    pub(in crate::tool::agent) fn settle(mut self, reply: &PeerReply) {
+    pub fn settle(mut self, reply: &PeerReply) {
         self.finish(&reply.text, reply.failed);
     }
 

@@ -1,9 +1,9 @@
 //! Background dispatch for interactive remote-agent messages.
 
 use super::run;
-use crate::a2a::peer_route::PeerRoute;
-use crate::tool::ToolResult;
-use crate::tool::agent::message::remote::observation::types::RemoteTurnGuard;
+use crate::observation::types::RemoteTurnGuard;
+use codetether_a2a_discovery::routes::PeerRoute;
+use codetether_tool_core::ToolResult;
 
 pub(super) fn spawn(
     name: &str,
@@ -25,7 +25,7 @@ pub(super) fn spawn(
         )
         .await
         {
-            tracing::warn!(peer_name = %owned_name, %error, "Detached LAN peer turn failed");
+            tracing::warn!(target: "codetether_agent::tool::agent::message::remote::request::detached", peer_name = %owned_name, %error, "Detached LAN peer turn failed");
         }
     });
     ToolResult::success(format!(

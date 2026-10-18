@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use crate::a2a::types::Task;
+use codetether_a2a_core::Task;
 
 /// Snapshot of everything that changes when the peer does work.
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -3,9 +3,9 @@
 //! The deadline is an *idle* budget (see `poll_progress`): a peer that is
 //! visibly working is never cut off; a hung one fails within [`IDLE_TIMEOUT`].
 
-use crate::a2a::client::A2AClient;
-use crate::a2a::types::SendMessageResponse;
 use anyhow::{Context, Result, anyhow};
+use codetether_a2a_core::SendMessageResponse;
+use codetether_a2a_http::A2AClient;
 use std::time::Duration;
 
 #[path = "poll_activity.rs"]

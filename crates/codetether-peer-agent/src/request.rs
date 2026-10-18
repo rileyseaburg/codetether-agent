@@ -6,8 +6,8 @@ mod detached;
 mod run;
 
 use super::observation;
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_tool_core::ToolResult;
 
 pub(super) async fn execute(
     name: &str,
@@ -16,7 +16,7 @@ pub(super) async fn execute(
     parent_session_id: Option<&str>,
     detach: bool,
 ) -> Result<ToolResult> {
-    let Some(route) = crate::a2a::peer_route::get(name) else {
+    let Some(route) = codetether_a2a_discovery::routes::get(name) else {
         return Ok(ToolResult::error(format!("Agent {name} not found")));
     };
     let turn = observation::begin(name, parent_session_id, text);

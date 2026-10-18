@@ -1,9 +1,9 @@
 //! Awaited transport and evidence completion for one remote turn.
 
 use super::super::{observation::types::RemoteTurnGuard, reply::PeerReply, result, transport};
-use crate::a2a::peer_route::PeerRoute;
-use crate::tool::ToolResult;
 use anyhow::Result;
+use codetether_a2a_discovery::routes::PeerRoute;
+use codetether_tool_core::ToolResult;
 
 /// Send one turn to a peer, record what it said, and render it for the model.
 pub(super) async fn execute(

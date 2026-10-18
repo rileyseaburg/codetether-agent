@@ -2,14 +2,14 @@
 
 use serde_json::{Value, json};
 
-pub(super) fn all() -> Vec<Value> {
-    let name = crate::a2a::local_identity::current_name();
+pub(super) fn all<H: crate::LocalNames>() -> Vec<Value> {
+    let name = codetether_a2a_discovery::local_identity::current_name();
     let mut agents = local(name.clone()).into_iter().collect::<Vec<_>>();
     agents.extend(
-        crate::a2a::peer_route::list()
+        codetether_a2a_discovery::routes::list()
             .into_iter()
             .filter(|(peer, _)| name.as_deref() != Some(peer))
-            .filter(|(name, _)| !super::super::super::store::contains_name(name, None))
+            .filter(|(name, _)| !H::contains(name))
             .map(|(name, route)| {
                 json!({
                     "name": name, "kind": "lan-peer", "self": false,
