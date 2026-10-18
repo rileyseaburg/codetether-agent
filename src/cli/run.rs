@@ -27,12 +27,12 @@ use codetether_relay_planner::{
     decide_dynamic_spawn_with_registry, plan_okr_draft_with_registry,
     plan_relay_profiles_with_registry,
 };
+use codetether_relay_report::AutochatCliResult;
 use codetether_relay_rlm::prepare_autochat_handoff_with_registry;
 use codetether_run_command::{
     command_with_optional_args, is_easy_go_command, normalize_cli_go_command,
     resolve_autochat_model, validate_easy_go_task,
 };
-use serde::Serialize;
 use std::{collections::HashMap, io::Write};
 use uuid::Uuid;
 
@@ -42,21 +42,6 @@ const AUTOCHAT_MAX_ROUNDS: usize = crate::autochat::AUTOCHAT_MAX_ROUNDS;
 const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = crate::autochat::AUTOCHAT_MAX_DYNAMIC_SPAWNS;
 const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = crate::autochat::AUTOCHAT_SPAWN_CHECK_MIN_CHARS;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
-
-#[derive(Debug, Serialize)]
-struct AutochatCliResult {
-    status: String,
-    relay_id: String,
-    model: String,
-    agent_count: usize,
-    turns: usize,
-    agents: Vec<String>,
-    final_handoff: String,
-    summary: String,
-    failure: Option<String>,
-    shared_context_items: usize,
-    rlm_context_count: usize,
-}
 
 fn resolve_provider_for_model_autochat(
     registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
@@ -730,36 +715,19 @@ async fn run_protocol_first_relay(
     )
     .await;
 
-    let mut summary = format!(
-        "Autochat complete ({status}) — relay {} with {} agents over {} turns.\n\nFinal relay handoff:\n{}",
-        relay.relay_id(),
-        ordered_agents.len(),
+    let summary = codetether_relay_report::summary(&codetether_relay_report::Summary {
+        status: &status,
+        relay_id: relay.relay_id(),
+        agent_count: ordered_agents.len(),
         turns,
-        truncate_with_ellipsis(&baton, 4_000)
-    );
-    if let Some(note) = &failure_note {
-        summary.push_str(&format!("\n\nFailure detail: {note}"));
-    }
-    if planner_used {
-        summary.push_str("\n\nTeam planning: model-organized profiles.");
-    } else {
-        summary.push_str("\n\nTeam planning: fallback self-organizing profiles.");
-    }
-    if rlm_handoff_count > 0 {
-        summary.push_str(&format!("\nRLM-normalized handoffs: {rlm_handoff_count}"));
-    }
-    if rlm_context_count > 0 {
-        summary.push_str(&format!("\nRLM context deltas: {rlm_context_count}"));
-    }
-    if shared_context.item_count() > 0 {
-        summary.push_str(&format!(
-            "\nShared context items: {}",
-            shared_context.item_count()
-        ));
-    }
-    if dynamic_spawn_count > 0 {
-        summary.push_str(&format!("\nDynamic relay spawns: {dynamic_spawn_count}"));
-    }
+        final_handoff: &baton,
+        failure: failure_note.as_deref(),
+        planner_used,
+        rlm_handoff_count,
+        rlm_context_count,
+        shared_context_items: shared_context.item_count(),
+        dynamic_spawn_count,
+    });
 
     Ok(AutochatCliResult {
         status,

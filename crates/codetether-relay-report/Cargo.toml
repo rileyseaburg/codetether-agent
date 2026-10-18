@@ -1,0 +1,11 @@
+[package]
+name = "codetether-relay-report"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "CLI relay result serialization and summary output"
+
+[dependencies]
+codetether-relay-plan = { path = "../codetether-relay-plan", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }

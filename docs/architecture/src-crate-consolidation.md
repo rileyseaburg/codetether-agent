@@ -13954,3 +13954,17 @@ Full workspace consolidation remains active.
   ratchet and whitespace checks. Evidence: artifacts/consolidation-relay-progress/.
 - No dependencies or lockfile entries changed. No Cargo, rustc, Rust tests or
   OKR persistence operations ran. Full workspace consolidation remains unfinished.
+
+### Relay result reporting extraction
+
+- Moved AutochatCliResult and human-readable relay summary rendering into
+  codetether-relay-report. Modules separate the serialized result, borrowed
+  summary facts, lead/status text and optional counters.
+- Native execution supplies final values. Wire field names, full final handoff,
+  summary truncation, failure/planning notes and counter ordering are unchanged.
+- Verification: four static schema/expanded-summary/whole-native-body/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-relay-report/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or relay execution ran. Full workspace
+  consolidation remains unfinished.

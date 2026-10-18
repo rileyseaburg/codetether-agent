@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-relay-report",
  "codetether-relay-rlm",
  "codetether-relay-planner",
  "codetether-run-command",
@@ -7073,6 +7074,14 @@ dependencies = [
  "codetether-relay-plan",
  "codetether-rlm",
  "tracing",
+]
+
+[[package]]
+name = "codetether-relay-report"
+version = "0.1.0"
+dependencies = [
+ "codetether-relay-plan",
+ "serde",
 ]
 
 [[package]]
