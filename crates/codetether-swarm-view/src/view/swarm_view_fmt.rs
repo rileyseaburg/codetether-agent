@@ -1,12 +1,22 @@
 //! Status glyph + elapsed-time formatting for swarm subtask rows.
 
-use super::SubTaskInfo;
-use crate::swarm::SubTaskStatus;
+use crate::SubTaskInfo;
+use codetether_swarm_core::SubTaskStatus;
 use ratatui::style::Color;
 
 /// Icon and color for a subtask status. Avoids `DarkGray` (poor contrast) in
 /// favor of `Gray` for WCAG 1.4.3 legibility on dark terminals.
-pub(crate) fn status_glyph(status: SubTaskStatus) -> (&'static str, Color) {
+/// # Arguments
+/// * `status` - Current subtask state.
+/// # Returns
+/// The display glyph and its terminal color.
+/// # Examples
+/// ```
+/// use codetether_swarm_core::SubTaskStatus;
+/// let (glyph, _) = codetether_swarm_view::swarm_view_fmt::status_glyph(SubTaskStatus::Running);
+/// assert_eq!(glyph, "●");
+/// ```
+pub fn status_glyph(status: SubTaskStatus) -> (&'static str, Color) {
     match status {
         SubTaskStatus::Pending => ("○", Color::Gray),
         SubTaskStatus::Blocked => ("⊘", Color::Yellow),
@@ -22,7 +32,17 @@ pub(crate) fn status_glyph(status: SubTaskStatus) -> (&'static str, Color) {
 ///
 /// Returns the frozen `elapsed_secs` once set, otherwise the live duration
 /// since `started_at` while the agent is still running.
-pub(crate) fn elapsed_label(task: &SubTaskInfo) -> Option<String> {
+/// # Arguments
+/// * `task` - Task containing start time and optional frozen duration.
+/// # Returns
+/// A seconds/minutes label, or None when no duration is available.
+/// # Examples
+/// ```no_run
+/// # fn example(task: &codetether_swarm_view::SubTaskInfo) {
+/// let label = codetether_swarm_view::swarm_view_fmt::elapsed_label(task);
+/// # }
+/// ```
+pub fn elapsed_label(task: &SubTaskInfo) -> Option<String> {
     let secs = task.elapsed_secs.or_else(|| {
         (task.status == SubTaskStatus::Running)
             .then(|| task.started_at.map(|s| s.elapsed().as_secs()))

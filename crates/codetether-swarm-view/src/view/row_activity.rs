@@ -1,27 +1,12 @@
-//! Single-row span construction for a swarm subtask.
-
-use super::SubTaskInfo;
-use super::swarm_view_fmt::{elapsed_label, status_glyph};
-use crate::swarm::SubTaskStatus;
+//! Agent identity, active tool, elapsed time and step annotations.
+use super::swarm_view_fmt::elapsed_label;
+use crate::SubTaskInfo;
+use codetether_swarm_core::SubTaskStatus;
 use ratatui::{
     style::{Color, Modifier, Style},
-    text::{Line, Span},
+    text::Span,
 };
-
-/// Build the styled line for one subtask. `show_divider` prefixes a stage
-/// marker when this row begins a new stage.
-pub(crate) fn task_line(task: &SubTaskInfo, show_divider: bool) -> Line<'static> {
-    let (icon, color) = status_glyph(task.status);
-    let stage_tag = if show_divider {
-        format!("── S{} ─ ", task.stage)
-    } else {
-        "       ".to_string()
-    };
-    let mut spans = vec![
-        Span::styled(stage_tag, Style::default().fg(Color::Gray)),
-        Span::styled(format!("{icon} "), Style::default().fg(color)),
-        Span::styled(task.name.clone(), Style::default().fg(Color::White)),
-    ];
+pub(super) fn append(task: &SubTaskInfo, spans: &mut Vec<Span<'static>>) {
     if task.status == SubTaskStatus::Running
         && let Some(agent) = &task.agent_name
     {
@@ -50,5 +35,4 @@ pub(crate) fn task_line(task: &SubTaskInfo, show_divider: bool) -> Line<'static>
             Style::default().fg(Color::Gray),
         ));
     }
-    Line::from(spans)
 }

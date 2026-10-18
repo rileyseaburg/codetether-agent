@@ -1,8 +1,8 @@
 //! Tests for swarm subtask row formatting.
 
-use super::super::SubTaskInfo;
 use super::{elapsed_label, status_glyph};
-use crate::swarm::SubTaskStatus;
+use crate::SubTaskInfo;
+use codetether_swarm_core::SubTaskStatus;
 
 fn task(status: SubTaskStatus) -> SubTaskInfo {
     SubTaskInfo {

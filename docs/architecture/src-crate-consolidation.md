@@ -11445,3 +11445,25 @@ Full workspace consolidation remains active.
   native file limits and git diff --check passed.
 - Evidence: artifacts/consolidation-swarm-view-state/. No Cargo, rustc,
   compilation or runtime tests were run. Full consolidation remains incomplete.
+
+### Swarm terminal renderer extraction
+
+- Moved all remaining swarm renderer and list/row/formatting implementation
+  into crates/codetether-swarm-view. Native src/tui/swarm_view.rs now re-exports
+  the state, event/detail types, renderer and shared row-formatting API.
+- Added focused presentation modules for run headers/progress, statistics,
+  list selection and stage dividers, agent detail headers, tool history and
+  previews, conversation, output/errors, scrolling and navigation hints.
+- Preserved status colors, contrast-safe selection styling, stage dividers,
+  live/frozen elapsed labels and line/byte truncation limits. The separate
+  subagent panel continues to use the same status_glyph implementation.
+- Four formatting tests moved unchanged apart from imports; the existing
+  attachment test remains in the crate. The shared agent-core dependency now
+  supplies the public message/tool-detail types previously re-exported natively.
+- Verification: 58 static comparisons covering helpers, reconstruction of all
+  original renderer functions, existing formatting tests and unchanged state.
+  Forty-four Rust modules contain at most 44 nonblank/noncomment code lines.
+  Lexical module reachability, dependency cycles, direct rustfmt, native file
+  limits and git diff --check passed. Evidence: artifacts/consolidation-swarm-render/.
+- No Cargo, rustc, compilation, runtime tests or terminal rendering were run.
+  Full workspace consolidation remains incomplete.

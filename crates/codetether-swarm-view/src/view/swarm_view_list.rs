@@ -3,8 +3,8 @@
 //! Builds one [`ListItem`] per subtask (preserving the index-based selection
 //! mapping) while adding a stage-change divider and a WCAG-friendly highlight.
 
-use super::SwarmViewState;
 use super::swarm_view_row::task_line;
+use crate::SwarmViewState;
 use ratatui::{
     style::{Color, Modifier, Style},
     widgets::ListItem,
