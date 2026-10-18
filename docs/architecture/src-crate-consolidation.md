@@ -23367,3 +23367,22 @@ checks passed. No manifests or lockfiles changed. Evidence:
 artifacts/consolidation-a2a-facades/.
 No network, authentication operations, tests, Cargo, rustc or Python ran.
 Compilation and runtime behavior remain unverified. Full consolidation is active.
+
+### CLI facade paths point directly to command crates
+
+Replaced eleven native CLI re-export files with direct aliases in the main and
+platform command facades. Approval, Bedrock auth, cleanup, configuration,
+connection, Oracle, checkpoint, search rendering, worktree, Bonsai and clipboard
+paths now point directly to their owning command crates. All thirty-two prior
+exported symbol paths retain the same crate/module targets.
+
+The root parser, command enum, command dispatch and native run implementation
+remain unchanged. The initial module scan referenced deleted Bonsai/connection
+facades as explicit roots; those two obsolete roots were removed, while their
+owning crate roots remain covered. The corrected scan covers 697 roots and 571
+crates with no missing modules or cycles. Direct rustfmt, native file-size
+limits and whitespace checks passed. No manifests or lockfiles changed;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-cli-facades/.
+No CLI commands, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

@@ -2,30 +2,30 @@
 
 #[cfg(test)]
 mod access_mode_args_tests;
-pub mod approval;
+pub use codetether_approval_cli as approval;
 pub mod auth;
-pub mod auth_bedrock;
+pub use codetether_bedrock_auth_cli as auth_bedrock;
 include!("platform_commands.rs");
-pub mod cleanup_args;
+pub use codetether_cleanup_cli as cleanup_args;
 pub mod command;
-pub mod config;
+pub use codetether_config_cli as config;
 use codetether_config_cli as config_args;
-pub mod connect;
+pub use codetether_connect_cli as connect;
 pub mod context;
 pub mod go_ralph;
 mod models_args;
-pub mod oracle;
+pub use codetether_oracle_cli as oracle;
 mod root_args;
 pub mod run;
 use codetether_cli_options as run_args;
-pub mod run_checkpoint;
+pub use codetether_run_resume as run_checkpoint;
 mod run_config;
 pub mod run_loop;
 pub mod search;
-pub mod search_render;
 use codetether_cli_options as swarm_subagent_args;
 use codetether_cli_options as tui_args;
-pub mod worktree_args;
+pub use codetether_search_cli as search_render;
+pub use codetether_worktree_cli as worktree_args;
 
 pub use codetether_context_cli::{
     ContextArgs, ContextBrowseArgs, ContextBrowseCommand, ContextCommand, ContextResetArgs,

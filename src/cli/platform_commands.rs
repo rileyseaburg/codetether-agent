@@ -1,7 +1,7 @@
 // Local platform and credential-management CLI surfaces.
-pub mod bonsai;
+pub use codetether_bonsai_cli as bonsai;
 pub mod browserctl;
-pub mod clipboard;
+pub use codetether_clipboard_cli as clipboard;
 pub mod vault;
 pub mod windows;
 pub mod windows_worker;
