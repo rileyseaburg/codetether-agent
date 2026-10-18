@@ -23112,3 +23112,22 @@ assertion stopped before staging, and the corrected helper preserves the
 existing version. Evidence: artifacts/consolidation-stream-restart-tests/.
 No recovery streams, native persistence, tests, Cargo, rustc or Python ran.
 Compilation and runtime behavior remain unverified. Full consolidation is active.
+
+### Session routing facade delegates to owning crates
+
+Moved proactive LSP registry binding into
+codetether-application-registry::proactive. Its generic application registry
+supplies the same deferred LSP lookup to the existing diagnostics policy.
+The native router now re-exports this function and both shared model-failover
+selection functions, removing all three native function implementations.
+
+Static comparison preserves proactive context arguments and the existing tool
+instance lookup. Rule-based and delegation-scored failover implementations are
+unchanged and exposed directly through the previous native module path. Module
+and dependency scans cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the proactive-context dependency edge was staged for application-registry
+in Cargo.lock; unrelated working changes remain unchanged. Evidence:
+artifacts/consolidation-session-routing/.
+No LSP requests, model selection calls, tests, Cargo, rustc or Python ran.
+Compilation and runtime behavior remain unverified. Full consolidation is active.

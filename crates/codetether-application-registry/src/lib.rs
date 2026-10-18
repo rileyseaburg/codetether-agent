@@ -41,3 +41,6 @@ impl<H: Application> std::fmt::Debug for ToolRegistry<H> {
         std::fmt::Debug::fmt(&self.inner, f)
     }
 }
+
+/// Proactive context supplied by application-registered diagnostic tools.
+pub mod proactive;

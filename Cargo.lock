@@ -2080,6 +2080,7 @@ dependencies = [
  "codetether-exec-command",
  "codetether-plugin-verification",
  "codetether-prior-context-access",
+ "codetether-proactive-context",
  "codetether-provider-core",
  "codetether-swarm-core",
  "codetether-tool-construction",

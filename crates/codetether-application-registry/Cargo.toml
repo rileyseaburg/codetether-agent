@@ -7,6 +7,7 @@ license = "MIT"
 description = "Application tool registry construction and shared runtime integration"
 
 [dependencies]
+codetether-proactive-context = { path = "../codetether-proactive-context", version = "0.1.0" }
 codetether-application-mcp = { path = "../codetether-application-mcp", version = "0.1.0" }
 codetether-prior-context-access = { path = "../codetether-prior-context-access", version = "0.1.0" }
 tracing = "0.1"
