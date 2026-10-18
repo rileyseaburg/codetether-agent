@@ -1,9 +1,7 @@
 //! Runtime policy gate for session helper tool calls.
 
+pub(in crate::session::helper) use codetether_tool_reporting::ToolTuple;
 use serde_json::Value;
-use std::collections::HashMap;
-
-pub(in crate::session::helper) type ToolTuple = (String, bool, Option<HashMap<String, Value>>);
 
 pub(in crate::session::helper) async fn blocked(
     tool_name: &str,

@@ -9927,3 +9927,19 @@ the largest crate file has 30 code lines. Eight existing tests moved without
 execution. Evidence is in `artifacts/consolidation-tool-recovery/`. Compilation
 and runtime tests were not run. No Cargo, rustc, Python or tool execution ran.
 Full workspace consolidation remains active.
+
+### Runtime tool reporting consolidated
+
+Moved cancellation-safe tool heartbeats, audit-log correlation, unknown-tool
+and failure reporting, error-chain formatting and the shared result tuple into
+`codetether-tool-reporting`. Its sixteen modules now separate event payloads,
+audit details, audit recording, heartbeat ownership and reporting failures.
+Native execution and policy callers keep their existing exports.
+
+Seventeen static comparisons cover heartbeat timing/cancellation, correlation
+fields, full error chains, result tuples, existing tests and unchanged callers.
+Module/dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 34 code lines. Three original regression tests moved without
+execution. Evidence is in `artifacts/consolidation-tool-reporting-runtime/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or tool
+execution ran. Full workspace consolidation remains active.

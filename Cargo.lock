@@ -4909,6 +4909,8 @@ dependencies = [
 name = "codetether-tool-reporting"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "codetether-audit",
  "codetether-session-events",
  "codetether-tool-core",
  "codetether-util",
