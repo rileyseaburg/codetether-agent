@@ -26,8 +26,8 @@ count_lines() {
 
 changed_files() {
     {
-        git diff --name-only --diff-filter=ACMRT "$BASE" -- 'src/**/*.rs'
-        git ls-files --others --exclude-standard -- 'src/**/*.rs'
+        git diff --name-only --diff-filter=ACMRT "$BASE" -- ':(glob)src/**/*.rs' ':(glob)crates/codetether-agent/src/**/*.rs'
+        git ls-files --others --exclude-standard -- ':(glob)src/**/*.rs' ':(glob)crates/codetether-agent/src/**/*.rs'
     } | sort -u
 }
 
@@ -39,12 +39,23 @@ fail() {
 while IFS= read -r f; do
     [ -f "$f" ] || continue
     new=$(count_lines "$f")
-    if ! git cat-file -e "$BASE:$f" 2>/dev/null; then
+    previous=$f
+    if ! git cat-file -e "$BASE:$previous" 2>/dev/null; then
+        case "$f" in
+            crates/codetether-agent/src/*)
+                legacy="src/${f#crates/codetether-agent/src/}"
+                if [ ! -e "$legacy" ]; then
+                    previous=$legacy
+                fi
+                ;;
+        esac
+    fi
+    if ! git cat-file -e "$BASE:$previous" 2>/dev/null; then
         [ "$new" -le "$MAX_LINES" ] ||
             fail "New file $f has $new code lines (limit: $MAX_LINES)"
         continue
     fi
-    old=$(git show "$BASE:$f" | count_lines)
+    old=$(git show "$BASE:$previous" | count_lines)
     if [ "$old" -le "$MAX_LINES" ] && [ "$new" -gt "$MAX_LINES" ]; then
         fail "$f grew past $MAX_LINES code lines ($old -> $new)"
     elif [ "$old" -gt "$MAX_LINES" ] && [ "$new" -gt "$old" ]; then
@@ -54,8 +65,8 @@ done < <(changed_files)
 
 if [ "$ERRORS" -gt 0 ]; then
     echo ""
-    echo "FAILED: $ERRORS file(s) violate global src/**/*.rs line budget."
+    echo "FAILED: $ERRORS file(s) violate the application source line budget."
     exit 1
 fi
 
-echo "OK: changed src/**/*.rs files respect the global line-budget ratchet."
+echo "OK: changed application source files respect the global line-budget ratchet."

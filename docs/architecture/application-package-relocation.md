@@ -1,0 +1,55 @@
+# Remaining application package relocation
+
+The component crates own the extracted domain implementations. The root package
+still assembles their native adapters in `src/`, so the requested physical
+consolidation is incomplete. Moving a few more forwarding methods does not remove
+that remaining package boundary.
+
+The next package-level change is to move `codetether-agent` into
+`crates/codetether-agent`. Keep its library name `codetether_agent`, binary name
+`codetether`, features and dependency versions unchanged. This is the application
+composition crate; domain implementations retain their existing owning crates.
+
+## Concrete changes required
+
+1. Split the existing root manifest. Keep workspace membership, profiles and
+   registry patches at the repository root. Move package, library, binary,
+   feature and dependency tables into the application crate. Replace the `.`
+   workspace member and set the application as the default member. Rebase its
+   local dependency paths without changing dependency identities or versions.
+2. Move `src/` and the application's integration tests with their relative
+   module structure intact. Preserve source contents except explicit path fixes.
+   Keep uncommitted user changes uncommitted and preserve their contents when
+   their source paths move.
+3. Preserve the three Rust example targets (`browser_validate`, `oracle_demo`,
+   `thinker_example`) while leaving runtime TetherScript examples at their
+   documented repository paths.
+4. Update repository-root assumptions in
+   `src/session/store/tests/incident.rs`, `tests/fixtures/workspace.rs`, and
+   `tests/worktree_module_graph.rs`. Relative test imports into `../src/`
+   should remain valid when tests move alongside the application source.
+5. Update Docker's `COPY src ./src`, release-version readers, development
+   version scripts, install paths, and source-audit roots. Relevant readers
+   include `release.sh`, `script/{bump,set}-dev-version.sh`, and the release
+   metadata/macOS workflows. Preserve their existing version-update semantics.
+6. Verify every moved source against its prior content; inspect workspace
+   membership, dependency targets, target discovery, include paths, and all
+   live scripts that address the old package location. Directory relocation
+   alone does not prove completion of the broader cohesion goal.
+
+## Static-check prerequisites implemented
+
+`script/architecture/application_layout.mjs` identifies exactly one application
+package at either supported location and rejects ambiguous or missing layouts.
+The declaration audit uses its source root. The file-size ratchet checks both
+locations and carries a moved file's original baseline forward only when the
+old source path no longer exists. Copies and new files retain the new-file limit.
+Explicit Git glob pathspecs also cover files directly beneath `src/`.
+
+Five Node tests exercise current/relocated layouts, ambiguity, wrong package
+identity, unchanged oversized moves, oversized growth, and copied/new-file
+limits. These tests execute only Node, Bash, Git and native filesystem operations.
+They do not compile Rust or prove Rust type correctness.
+
+Cargo, rustc and Python remain prohibited. The full consolidation goal remains
+active until the relocation and remaining ownership audit are actually complete.

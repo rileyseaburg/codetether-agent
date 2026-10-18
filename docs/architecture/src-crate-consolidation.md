@@ -28690,3 +28690,19 @@ file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
 Evidence: artifacts/consolidation-transcript-test/. No dependencies or unrelated
 working files changed. Cargo, rustc, Python, compilation and runtime tests were
 not run. Full consolidation remains active and incomplete.
+
+### Prepare the remaining application package relocation
+
+Added a package-layout resolver so the declaration audit can inspect either the
+current root application or crates/codetether-agent. Updated the source-size
+ratchet to cover both locations and retain the original baseline for moved files
+without granting that baseline to copies. Tests exposed and fixed the previous
+pathspec's omission of Rust files directly under src/.
+
+All five Node tests pass, including moved-file growth and new/copied-file
+rejection. Current declaration, file-size and whitespace checks pass. Evidence:
+artifacts/consolidation-package-layout/ and artifacts/application-layout-tests/.
+The first failed test run is retained. The concrete remaining package move and
+its manifest, Docker, release, test-fixture and example-path requirements are
+recorded in application-package-relocation.md. This prepares the move; source
+files have not been relocated in this commit. No Cargo, rustc or Python ran.
