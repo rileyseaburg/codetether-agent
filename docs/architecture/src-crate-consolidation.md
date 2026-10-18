@@ -13732,3 +13732,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, benchmark runs or result publication ran.
   Full workspace consolidation remains unfinished.
+
+### Ralph CLI policy extraction
+
+- Moved Ralph CLI dispatch, PRD creation/status reporting, model/provider
+  selection, run-configuration assembly and result output into codetether-ralph-cli.
+  Native src/ralph_cli.rs retains Vault loading and RalphLoop execution.
+- Default glm-5, qualified provider handling and ZAI/Moonshot/OpenAI fallback
+  ordering remain intact. Status markdown is still computed only for non-JSON
+  output. The host interface allows the native loop's existing future behavior.
+- Verification: 13 static action/selection/output/native-binding/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-ralph-cli/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, Vault requests or Ralph execution ran. Full
+  workspace consolidation remains unfinished.

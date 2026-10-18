@@ -26,6 +26,7 @@ mod worktree_cli;
 
 mod benchmark_cli;
 mod native_cli;
+mod ralph_cli;
 mod rlm_cli;
 
 #[tokio::main(worker_threads = 8)]
@@ -255,94 +256,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::SwarmSubagent(args)) => swarm::remote_subtask::run_swarm_subagent(args).await,
         Some(Command::Rlm(args)) => rlm_cli::run(args).await,
         Some(Command::Oracle(args)) => cli::oracle::execute(args).await,
-        Some(Command::Ralph(args)) => {
-            use provider::ProviderRegistry;
-
-            match args.action.as_str() {
-                "create-prd" => {
-                    let project = args.project_name.as_deref().unwrap_or("my-project");
-                    let feature = args.feature.as_deref().unwrap_or("new-feature");
-                    let prd = ralph::create_prd_template(project, feature);
-
-                    if args.json {
-                        println!("{}", serde_json::to_string_pretty(&prd)?);
-                    } else {
-                        println!("{}", serde_json::to_string_pretty(&prd)?);
-                        eprintln!("\nSave this to prd.json and run: codetether ralph run");
-                    }
-                    Ok(())
-                }
-                "status" => {
-                    let prd = ralph::Prd::load(&args.prd).await?;
-                    let stories: Vec<String> = prd
-                        .user_stories
-                        .iter()
-                        .map(|s| {
-                            let check = if s.passes { "[x]" } else { "[ ]" };
-                            format!("- {} {}: {}", check, s.id, s.title)
-                        })
-                        .collect();
-
-                    println!("# Ralph Status\n");
-                    println!("**Project:** {}", prd.project);
-                    println!("**Feature:** {}", prd.feature);
-                    println!("**Branch:** {}", prd.branch_name);
-                    println!(
-                        "**Progress:** {}/{} stories\n",
-                        prd.passed_count(),
-                        prd.user_stories.len()
-                    );
-                    println!("## Stories\n{}", stories.join("\n"));
-                    Ok(())
-                }
-                "run" => {
-                    tracing::info!("Starting Ralph loop with PRD: {}", args.prd.display());
-
-                    let registry = ProviderRegistry::from_vault().await?;
-
-                    // Parse provider/model from --model flag (e.g. "zai/glm-5" → provider=zai, model=glm-5)
-                    let model_ref = args.model.unwrap_or_else(|| "glm-5".to_string());
-                    let (provider, model) =
-                        if let Some((prov_name, model_name)) = model_ref.split_once('/') {
-                            let prov = registry.get(prov_name).ok_or_else(|| {
-                                anyhow::anyhow!("Provider '{prov_name}' not found in Vault")
-                            })?;
-                            (prov, model_name.to_string())
-                        } else {
-                            let prov = registry
-                                .get("zai")
-                                .or_else(|| registry.get("moonshotai"))
-                                .or_else(|| registry.get("openai"))
-                                .ok_or_else(|| anyhow::anyhow!("No provider available in Vault"))?;
-                            (prov, model_ref)
-                        };
-
-                    let config = ralph::RalphConfig {
-                        prd_path: args.prd.to_string_lossy().to_string(),
-                        max_iterations: args.max_iterations,
-                        ..Default::default()
-                    };
-
-                    let mut loop_runner =
-                        ralph::RalphLoop::new(args.prd.clone(), provider, model, config).await?;
-
-                    let result = loop_runner.run().await?;
-
-                    if args.json {
-                        println!("{}", serde_json::to_string_pretty(&result)?);
-                    } else {
-                        println!("{}", loop_runner.status_markdown());
-                    }
-                    Ok(())
-                }
-                _ => {
-                    anyhow::bail!(
-                        "Unknown action: {}. Use run, status, or create-prd",
-                        args.action
-                    );
-                }
-            }
-        }
+        Some(Command::Ralph(args)) => ralph_cli::execute(args).await,
         Some(Command::Mcp(args)) => {
             // Resolve the target MCP server command from either `--command "cmd args"`
             // (flag form) or trailing positional args (e.g. `connect npx -y @x/foo /path`).

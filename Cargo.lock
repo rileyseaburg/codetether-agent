@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-ralph-cli",
  "codetether-benchmark-cli",
  "codetether-okr-cli",
  "codetether-telemetry-cli",
@@ -6910,6 +6911,19 @@ dependencies = [
  "codetether-benchmark",
  "codetether-cli-options",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-ralph-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-cli-options",
+ "codetether-ralph-core",
+ "codetether-provider-core",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]
