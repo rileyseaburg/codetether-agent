@@ -1,14 +1,9 @@
-use std::path::Path;
-use std::sync::Arc;
-
 #[path = "commands/a2a.rs"]
 mod a2a;
 #[path = "commands/goal/mod.rs"]
 pub(crate) mod goal;
 #[path = "commands/open_editor.rs"]
 mod open_editor;
-#[path = "commands/session_ops.rs"]
-mod session_ops;
 codetether_settings_policy::declare_setting_commands!(
     crate::tui::app::state::App,
     crate::session::Session,
@@ -21,8 +16,6 @@ use open_editor::open_editor;
 #[path = "commands/dispatch_host/mod.rs"]
 mod dispatch_host;
 
-use crate::provider::ProviderRegistry;
-use crate::session::Session;
 use crate::tui::app::session_sync::{refresh_sessions, return_to_chat};
 use crate::tui::app::spawn_agent::handle_spawn_command;
 use crate::tui::app::state::App;
@@ -71,24 +64,11 @@ codetether_ralph_cli::declare_frontend_ralph!(
     crate::tui::app::commands::push_system_message,
 );
 
-pub async fn handle_slash_command(
-    app: &mut App,
-    cwd: &std::path::Path,
-    session: &mut Session,
-    registry: Option<&Arc<ProviderRegistry>>,
-    command: &str,
-) {
-    codetether_slash_command::pipeline::dispatch(
-        &mut dispatch_host::Dispatch {
-            app,
-            cwd,
-            session,
-            registry,
-        },
-        command,
-    )
-    .await;
-}
+codetether_slash_command::declare_slash_entry!(
+    crate::tui::app::state::App,
+    crate::session::Session,
+    crate::provider::ProviderRegistry,
+);
 
 codetether_relay_okr::declare_go_command!(
     crate::tui::app::state::App,

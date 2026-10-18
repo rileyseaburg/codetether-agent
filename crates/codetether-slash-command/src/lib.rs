@@ -44,3 +44,5 @@ mod legacy_tui_tests;
 
 /// Session utility command routing and review composition.
 pub mod utility;
+
+mod application_binding;

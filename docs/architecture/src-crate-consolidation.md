@@ -27201,3 +27201,19 @@ production-scope, standalone formatting, file-limit and whitespace checks pass
 for 725 roots and 617 crates. No dependency/lock changes were needed; unrelated
 working files remain untouched. Evidence: artifacts/consolidation-go-command-binding/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Frontend slash dispatcher host and session actions
+
+Moved dispatcher state, Host forwarding, six session-command methods and the
+public command entry point into codetether-slash-command declarations. Removed
+session_ops.rs; the root dispatch module selects the same stage/runtime/session
+callbacks and retains leading/simple/tail handlers. Imports made unused by this
+move were removed after checking their nested-module uses.
+
+All fourteen expanded function bodies match their originals after callback-path
+substitution. Remaining stage sources are byte-for-byte unchanged. Declaration,
+module/dependency, native production-scope, standalone formatting, file-limit and
+whitespace checks pass for 725 roots and 617 crates. No dependency/lock changes
+were needed; unrelated working files remain untouched. Evidence:
+artifacts/consolidation-slash-host-binding/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.
