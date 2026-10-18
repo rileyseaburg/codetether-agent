@@ -1,12 +1,7 @@
-//! Concrete application session adapter for native claimed-task execution.
-use super::WorkerTaskRuntime;
-mod sessions;
-
-pub(super) struct Factory;
-pub(super) struct Native<'a>(&'a WorkerTaskRuntime);
-impl codetether_native_worker::claimed::SessionFactory for Factory {
-    type Sessions<'a> = Native<'a>;
-    fn sessions(runtime: &WorkerTaskRuntime) -> Self::Sessions<'_> {
-        Native(runtime)
-    }
-}
+//! Application type selection for native claimed-session preparation and execution.
+pub(super) type Factory = codetether_native_worker::claimed::ApplicationFactory<
+    super::task_session::Loader,
+    crate::tool::registry_lifecycle::Native,
+    crate::a2a::worker_tool_registry::Native,
+    crate::swarm::SwarmExecutor,
+>;

@@ -25915,3 +25915,20 @@ Only four required worker dependencies are staged in Cargo.lock; unrelated
 files remain unchanged. Evidence: artifacts/consolidation-worker-swarm/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active.
+
+### Native agent selection and claimed-session assembly
+
+Moved standard/swarm agent selection and claimed-session preparation/dispatch
+into codetether-native-worker. ApplicationFactory selects the loader, registry,
+workflow and swarm executor without importing the root Session type. The root
+claimed-session factory is now a type alias. Native title preseeding uses two
+application accessors and preserves resumed titles; its existing root tests
+remain unchanged. Removed the root task-agent files and session assembly impl.
+
+Static comparisons preserve branch arguments, clone-versus-take output callback
+ownership, preparation/agent calls and title-preseed behavior. Module/dependency
+scans cover 719 roots and 605 crates without missing modules, cycles or undeclared
+dependencies. Declaration, file-limit, direct rustfmt and whitespace checks pass.
+No manifest/lockfile changes were needed; unrelated dirty files remain unchanged.
+Evidence: artifacts/consolidation-worker-agent/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

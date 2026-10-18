@@ -36,7 +36,6 @@ mod session_steps;
 use codetether_swarm_core::worker_output as swarm_event_output;
 mod swarm_policy;
 use codetether_swarm_core::worker_result as swarm_policy_result;
-mod task_agent;
 use codetether_a2a_worker_core::execution_policy as task_agent_swarm_result;
 use codetether_a2a_worker_core::task_config as task_context;
 use codetether_a2a_worker_core::task_config as task_context_helpers;

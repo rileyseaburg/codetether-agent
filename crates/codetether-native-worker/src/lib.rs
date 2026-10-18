@@ -79,3 +79,8 @@ pub mod tool_registry;
 
 /// Controlled swarm execution, result persistence and standard-session handoff.
 pub mod swarm_policy;
+
+/// Select standard or swarm execution for a prepared worker session.
+pub mod agent;
+/// Preserve resumed titles and preseed titles supplied with worker tasks.
+pub mod task_title;

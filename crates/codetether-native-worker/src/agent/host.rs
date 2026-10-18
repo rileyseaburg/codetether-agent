@@ -1,17 +1,17 @@
-//! Native session and swarm settings for shared agent selection.
-use super::super::{TaskContext, WorkerTaskRuntime};
-use crate::session::{Session, SessionResult};
+//! Native standard and swarm calls retaining worker task settings.
+use super::*;
 use codetether_a2a_worker_core::session_protocol::policy::PolicySessionResult;
-use std::sync::Arc;
-pub(super) struct Native<'a> {
-    pub session: &'a mut Session,
-    pub runtime: &'a WorkerTaskRuntime,
-    pub context: &'a TaskContext,
-    pub output: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
-}
-impl codetether_a2a_worker_core::execution_policy::agent::Host for Native<'_> {
+use codetether_session_events::SessionResult;
+impl<S, T, W, E> codetether_a2a_worker_core::execution_policy::agent::Host
+    for Native<'_, S, T, W, E>
+where
+    S: Session,
+    T: Application,
+    W: codetether_worker_tools::Host<Registry = ToolRegistry<T>>,
+    E: codetether_swarm_runtime::inline::Executor<Bus = AgentBus>,
+{
     async fn swarm(&mut self) -> anyhow::Result<(SessionResult, bool)> {
-        super::super::execute_swarm_with_policy(
+        crate::swarm_policy::execute::<S, T, W, E>(
             self.session,
             &self.context.prompt,
             self.runtime.auto_approve,
@@ -27,7 +27,7 @@ impl codetether_a2a_worker_core::execution_policy::agent::Host for Native<'_> {
         .await
     }
     async fn standard(&mut self) -> anyhow::Result<PolicySessionResult> {
-        super::super::execute_session_with_policy(
+        crate::session_policy::execute::<S, T, W>(
             self.session,
             &self.context.prompt,
             self.runtime.auto_approve,

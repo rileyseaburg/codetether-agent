@@ -1,10 +1,11 @@
-//! Session title preseeding for worker-executed tasks.
-
-/// A2A tasks already have a human-readable title. Preseed it so worker
-/// execution does not block on the optional, provider-backed title call before
-/// the actual task model is invoked. Preserve titles on resumed sessions.
-pub(super) fn preseed_task_title(session: &mut crate::session::Session, title: &str) {
-    if session.title.is_none() {
-        session.set_title(title.to_string());
+//! Application session title access for native task-title preseeding.
+#[cfg(test)]
+pub(super) use codetether_native_worker::task_title::preseed_task_title;
+impl codetether_native_worker::task_title::Title for crate::session::Session {
+    fn task_title(&self) -> Option<&str> {
+        self.title.as_deref()
+    }
+    fn set_task_title(&mut self, title: String) {
+        self.set_title(title);
     }
 }

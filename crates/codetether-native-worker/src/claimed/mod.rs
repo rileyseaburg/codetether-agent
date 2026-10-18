@@ -74,3 +74,8 @@ impl<S: SessionFactory, F: Forage + 'static> crate::lifecycle::Executor for Exec
         .await
     }
 }
+
+mod application;
+pub use application::ApplicationFactory;
+#[doc(hidden)]
+pub use application::ApplicationSessions;
