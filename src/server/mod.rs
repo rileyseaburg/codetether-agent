@@ -5,6 +5,7 @@
 mod approval_routes;
 mod audit_http_state;
 pub mod auth;
+mod bus_http_state;
 mod config_status;
 mod k8s_http_state;
 mod models_catalog;
@@ -38,12 +39,11 @@ use crate::tool::{PluginRegistry as AgentPluginRegistry, hash_bytes};
 use anyhow::Result;
 use auth::AuthState;
 use axum::{
-    body::Body,
     extract::Path,
     extract::{Query, State},
-    http::{HeaderMap, Request, StatusCode},
+    http::{HeaderMap, StatusCode},
     middleware,
-    response::sse::{Event, KeepAlive, Sse},
+    response::sse::{Event, Sse},
     response::{IntoResponse, Json, Response},
     routing::{get, post},
 };
@@ -262,7 +262,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
             post(session_recovery::handle),
         )
         // Agent Bus — SSE stream + publish
-        .route("/v1/bus/stream", get(stream_bus_events))
+        .merge(codetether_bus_sse::http::router::<AppState>())
         .with_state(state.clone())
         // A2A routes at both the root and /a2a so local runtimes can discover
         // and invoke the same server through either shape.
@@ -365,31 +365,6 @@ async fn stream_cognition(
     State(state): State<AppState>,
 ) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
     codetether_cognition_api::stream_cognition(state.cognition.subscribe_events())
-}
-
-/// Stream bus events as SSE, filtered by JWT topic claims.
-///
-/// The JWT must contain a `topics` claim with an array of topic patterns
-/// to subscribe to. Events are filtered to only include envelopes whose
-/// topic matches one of the allowed patterns.
-async fn stream_bus_events(
-    State(state): State<AppState>,
-    req: Request<Body>,
-) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
-    // Extract JWT claims from request extensions (set by auth middleware)
-    let allowed_topics: Vec<String> = req
-        .extensions()
-        .get::<crate::server::auth::JwtClaims>()
-        .map(|claims| claims.topics.clone())
-        .unwrap_or_default();
-
-    // Subscribe to the bus
-    let bus_handle = state.bus.handle("stream_bus_events");
-    let rx = bus_handle.into_receiver();
-
-    let event_stream = codetether_bus_sse::bus_events(rx, allowed_topics);
-
-    Sse::new(event_stream).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
 }
 
 async fn get_latest_snapshot(

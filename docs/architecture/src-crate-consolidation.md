@@ -14279,3 +14279,19 @@ Full workspace consolidation remains active.
   artifacts/consolidation-model-http/.
 - No Cargo, rustc, Rust tests, provider calls or server startup ran. Full
   workspace consolidation remains unfinished.
+
+### Bus event streaming HTTP ownership
+
+- Moved JWT topic extraction, bus subscription, SSE keepalive setup and route
+  assembly from src/server/mod.rs into codetether-bus-sse::http. Separate
+  modules own the handler, route and application state contract.
+- Native state retains only its existing shared bus binding. JWT claims use
+  codetether-http-auth directly, which is the same type re-exported by native
+  auth. Topic defaults, subscription name and 15-second keepalive are unchanged.
+- Added the existing HTTP auth crate as a bus SSE dependency. Staged only that
+  package's lockfile dependency change, preserving unrelated working edits.
+- Verification: six static checks passed, plus module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks. Evidence:
+  artifacts/consolidation-bus-http/.
+- No Cargo, rustc, Rust tests, live streams or server startup ran. Full workspace
+  consolidation remains unfinished.

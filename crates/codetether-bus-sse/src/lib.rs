@@ -4,6 +4,7 @@
 //! exact task topics and payload IDs, reporting a terminal gap after lag.
 mod bus;
 mod filter;
+pub mod http;
 mod service;
 mod topic;
 pub use bus::events as bus_events;
