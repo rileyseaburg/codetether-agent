@@ -9602,3 +9602,19 @@ lines. Two original authority/workdir tests moved without execution. Evidence
 is in `artifacts/consolidation-runtime-input/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python or worker commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated prompt-policy crate
+
+Moved local CUDA provider recognition, compact prompt text and environment
+selection, interactive-tool classification and empty codesearch detection into
+`crates/codetether-prompt-policy`. Nine modules separate policy responsibilities
+and original regression cases. Existing prompt-loop consumers retain their
+native runtime exports.
+
+Seventeen static comparisons cover function bodies, environment rules, default
+prompt text, moved tests, unchanged remaining session tests and six caller
+modules. Module/dependency graphs, file budgets and whitespace checks passed;
+the largest crate file has 25 code lines. Four existing tests moved without
+execution. Evidence is in `artifacts/consolidation-prompt-policy/`. Compilation
+and runtime tests were not run. No Cargo, rustc, Python or worker commands ran.
+Full workspace consolidation remains active.

@@ -1,0 +1,7 @@
+[package]
+name = "codetether-prompt-policy"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Local prompt selection and prompt-loop tool classifications"

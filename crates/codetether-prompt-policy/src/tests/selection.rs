@@ -1,4 +1,5 @@
-use super::light_prompt::prefers_light_system_prompt;
+//! Original compact-prompt provider and environment regression test.
+use crate::prefers_light_system_prompt;
 
 /// Environment state is process-global, so all cases run in one test to
 /// avoid races with other parallel tests.

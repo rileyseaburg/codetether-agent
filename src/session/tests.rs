@@ -10,7 +10,6 @@ use super::helper::provider::{
     assistant_claims_imminent_tool_use, choose_default_provider,
     resolve_provider_for_session_request, should_retry_missing_native_tool_call,
 };
-use super::helper::runtime::is_codesearch_no_match_output;
 use super::helper::stream::collect_stream_completion_with_events;
 use super::helper::text::{extract_candidate_file_paths, extract_text_content};
 use crate::provider::{
@@ -318,33 +317,6 @@ fn looks_like_build_execution_request_detects_fix_prompt() {
     ));
     assert!(!looks_like_build_execution_request(
         "what does this module do?"
-    ));
-}
-
-#[test]
-fn codesearch_no_match_detection_matches_expected_format() {
-    assert!(is_codesearch_no_match_output(
-        "codesearch",
-        true,
-        "No matches found for pattern: foo_bar"
-    ));
-}
-
-#[test]
-fn codesearch_no_match_detection_matches_prefixed_output() {
-    assert!(is_codesearch_no_match_output(
-        "codesearch",
-        true,
-        "build step 1 codesearch: No matches found for pattern: foo_bar"
-    ));
-}
-
-#[test]
-fn codesearch_no_match_detection_ignores_non_codesearch_tools() {
-    assert!(!is_codesearch_no_match_output(
-        "grep",
-        true,
-        "No matches found for pattern: foo_bar"
     ));
 }
 
