@@ -1,0 +1,12 @@
+[package]
+name = "codetether-summary-quality"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Quality gates and bounded text for RLM summaries"
+
+[dependencies]
+anyhow = "1"
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }

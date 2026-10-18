@@ -131,6 +131,7 @@ members = [
     "crates/codetether-context-dispatch",
     "crates/codetether-prepared-context",
     "crates/codetether-proactive-planning",
+    "crates/codetether-summary-quality",
     "crates/codetether-workspace-index",
     "crates/codetether-codex-records",
     "crates/codetether-codex-discovery",
@@ -439,6 +440,7 @@ codetether-codex-transcript = { path = "crates/codetether-codex-transcript", ver
 codetether-codex-discovery = { path = "crates/codetether-codex-discovery", version = "0.1.0" }
 codetether-codex-records = { path = "crates/codetether-codex-records", version = "0.1.0" }
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
+codetether-summary-quality = { path = "crates/codetether-summary-quality", version = "0.1.0" }
 codetether-proactive-planning = { path = "crates/codetether-proactive-planning", version = "0.1.0" }
 codetether-prepared-context = { path = "crates/codetether-prepared-context", version = "0.1.0" }
 codetether-context-dispatch = { path = "crates/codetether-context-dispatch", version = "0.1.0" }

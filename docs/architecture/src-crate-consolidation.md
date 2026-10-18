@@ -9398,3 +9398,17 @@ checks passed; the largest crate file has 28 code lines. Evidence is in
 `artifacts/consolidation-proactive-planning/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python or model calls ran. Full workspace
 consolidation remains active.
+
+### Dedicated summary-quality crate
+
+Moved RLM result validation, degraded-output filtering, minimum output sizing
+and deterministic token clamping into `crates/codetether-summary-quality`.
+Fourteen modules include the seven existing quality/bounds tests. Native
+summary-text and gate modules now only re-export shared functions.
+
+Twelve static comparisons cover all moved functions and test bodies. Module
+and dependency graphs, file budgets and whitespace checks passed; the
+largest crate file has 20 code lines. Evidence is in
+`artifacts/consolidation-summary-quality/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python or model calls ran. Full workspace
+consolidation remains active.
