@@ -21393,3 +21393,20 @@ file-size limits, and whitespace checks passed. Evidence:
 package and root dependency, preserving unrelated working changes. No Cargo,
 rustc, or Python commands ran. Compilation and runtime tests remain unverified;
 full workspace consolidation remains active.
+
+### Shared watchdog check and cancellation sequence
+
+Moved timer/tick stall detection, optional in-flight gating, recovery feedback,
+and lazy executor cancellation into `codetether-watchdog::recovery::check`.
+The native event-loop paths bind detection and runtime cancellation. The timer
+path still requires an in-flight prompt; the per-tick path retains its existing
+ungated behavior. Removed the native recovery-state wrapper and kept its UI
+trait implementation linked directly from the watchdog adapter.
+
+Static checks verify detector arguments, the distinct timer/tick gates,
+feedback-before-cancellation ordering, the same displayed timeout, and unchanged
+UI recovery source. Source/dependency graphs across 698 roots and 564 crates,
+direct rustfmt, native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-watchdog-check/`. No dependency or lockfile changes.
+No Cargo, rustc, or Python commands ran; compilation/runtime tests remain
+unverified. Full consolidation remains active.

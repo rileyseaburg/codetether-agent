@@ -1,36 +1,31 @@
-//! Watchdog-triggered request restart for stalled prompts.
-//!
-//! Detects when the provider has stopped sending events for longer than the
-//! configured timeout and automatically restarts the request.
-//!
-//! This module handles the **watchdog-timer branch** of the select loop.
-//! The per-tick fast-path lives in [`super::tick_watchdog`], and the shared
-//! state reset lives in [`watchdog_state`].
-
-#[path = "watchdog_state.rs"]
-mod watchdog_state;
-
+//! Timer-driven watchdog checks with native UI and runtime bindings.
+#[path = "watchdog_ui.rs"]
+mod ui;
+use crate::tui::{
+    app::{session_runtime::TuiSessionHandle, state::App},
+    constants::MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS,
+};
 use std::time::Duration;
-
-use crate::tui::app::session_runtime::TuiSessionHandle;
-use crate::tui::app::state::App;
-
-pub(in crate::tui::app::event_loop) use watchdog_state::apply_watchdog_state;
-
-/// Check the watchdog and restart if stalled.
+impl codetether_watchdog::recovery::CheckHost for App {
+    fn detect(&self, interval: Duration) -> Option<codetether_watchdog::WatchdogNotification> {
+        crate::tui::app::watchdog::check_watchdog_stall(&self.state, interval)
+    }
+    fn has_inflight(&self) -> bool {
+        self.state.main_inflight_prompt.is_some()
+    }
+}
+/// Check the timer watchdog and cancel a stalled prompt eligible for retry.
 pub(super) async fn maybe_watchdog_restart(
     app: &mut App,
     runtime: &TuiSessionHandle,
     watchdog_interval: Duration,
 ) {
-    let notif = match crate::tui::app::watchdog::check_watchdog_stall(&app.state, watchdog_interval)
-    {
-        Some(n) => n,
-        None => return,
-    };
-    if app.state.main_inflight_prompt.is_none() {
-        return;
-    }
-    apply_watchdog_state(app, notif);
-    runtime.cancel_current().await;
+    codetether_watchdog::recovery::check(
+        app,
+        watchdog_interval,
+        MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS,
+        true,
+        || runtime.cancel_current(),
+    )
+    .await;
 }

@@ -3,11 +3,13 @@
 //! [apply] records a detected stall. [execute] retries only the actual in-flight
 //! prompt after session return. [give_up] stops retries at the shared budget.
 mod cancel;
+mod check;
 mod give_up;
 mod host;
 mod retry;
 mod state;
 pub use cancel::apply;
+pub use check::{CheckHost, check};
 pub use give_up::give_up;
 pub use host::Host;
 pub use retry::execute;
