@@ -84,93 +84,6 @@ pub async fn execute(args: AuthArgs) -> Result<()> {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct LoginResponsePayload {
-    access_token: String,
-    expires_at: String,
-    user: serde_json::Value,
-}
-
-async fn login_with_password(
-    client: &Client,
-    server_url: &str,
-    email: &str,
-    password: &str,
-) -> Result<LoginResponsePayload> {
-    let user_agent = format!("codetether-agent/{}", env!("CARGO_PKG_VERSION"));
-
-    let resp = client
-        .post(format!("{}/v1/users/login", server_url))
-        .header("User-Agent", &user_agent)
-        .header("Content-Type", "application/json")
-        .json(&json!({
-            "email": email,
-            "password": password,
-        }))
-        .send()
-        .await
-        .context("Failed to connect to CodeTether server")?;
-
-    if !resp.status().is_success() {
-        let status = resp.status();
-        let body: serde_json::Value = resp.json().await.unwrap_or_default();
-        let detail = body
-            .get("detail")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Authentication failed");
-        anyhow::bail!("Login failed ({}): {}", status, detail);
-    }
-
-    let login: LoginResponsePayload = resp
-        .json()
-        .await
-        .context("Failed to parse login response")?;
-
-    Ok(login)
-}
-
-fn write_saved_credentials(
-    server_url: &str,
-    email: &str,
-    login: &LoginResponsePayload,
-) -> Result<PathBuf> {
-    // Store token to ~/.config/codetether-agent/credentials.json
-    let cred_path = credential_file_path()?;
-    if let Some(parent) = cred_path.parent() {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("Failed to create config dir: {}", parent.display()))?;
-    }
-
-    let creds = json!({
-        "server": server_url,
-        "access_token": login.access_token,
-        "expires_at": login.expires_at,
-        "email": email,
-    });
-
-    // Write with restrictive permissions (owner-only read/write)
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        let file = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .open(&cred_path)
-            .with_context(|| format!("Failed to write credentials to {}", cred_path.display()))?;
-        serde_json::to_writer_pretty(file, &creds)?;
-    }
-    #[cfg(not(unix))]
-    {
-        let file = std::fs::File::create(&cred_path)
-            .with_context(|| format!("Failed to write credentials to {}", cred_path.display()))?;
-        serde_json::to_writer_pretty(file, &creds)?;
-    }
-
-    Ok(cred_path)
-}
-
 async fn authenticate_register(args: RegisterAuthArgs) -> Result<()> {
     #[derive(Debug, Deserialize)]
     struct RegisterResponse {
@@ -367,42 +280,6 @@ fn rpassword_prompt(prompt: &str) -> Result<String> {
         io::stdin().read_line(&mut password)?;
         Ok(password.trim().to_string())
     }
-}
-
-/// Get the path to the credential storage file.
-fn credential_file_path() -> Result<std::path::PathBuf> {
-    use directories::ProjectDirs;
-    let dirs = ProjectDirs::from("ai", "codetether", "codetether-agent")
-        .ok_or_else(|| anyhow::anyhow!("Cannot determine config directory"))?;
-    Ok(dirs.config_dir().join("credentials.json"))
-}
-
-/// Stored credentials from `codetether auth login`.
-#[derive(Debug, Deserialize)]
-pub struct SavedCredentials {
-    pub server: String,
-    pub access_token: String,
-    pub expires_at: String,
-    #[serde(default)]
-    pub email: String,
-}
-
-/// Load saved credentials from disk, returning `None` if the file doesn't exist,
-/// is malformed, or the token has expired.
-pub fn load_saved_credentials() -> Option<SavedCredentials> {
-    let path = credential_file_path().ok()?;
-    let data = std::fs::read_to_string(&path).ok()?;
-    let creds: SavedCredentials = serde_json::from_str(&data).ok()?;
-
-    // Check expiry if parseable
-    if let Ok(expires) = chrono::DateTime::parse_from_rfc3339(&creds.expires_at)
-        && expires < chrono::Utc::now()
-    {
-        tracing::warn!("Saved credentials have expired — run `codetether auth login` to refresh");
-        return None;
-    }
-
-    Some(creds)
 }
 
 async fn authenticate_codex(args: CodexAuthArgs) -> Result<()> {
@@ -1610,4 +1487,23 @@ mod tests {
         assert_eq!(dropped_expired, 0);
         assert_eq!(dropped_non_auth, 1);
     }
+}
+
+pub(crate) use codetether_user_auth::{LoginResponsePayload, write_saved_credentials};
+pub use codetether_user_auth::{SavedCredentials, load_saved_credentials};
+
+async fn login_with_password(
+    client: &Client,
+    server_url: &str,
+    email: &str,
+    password: &str,
+) -> Result<LoginResponsePayload> {
+    codetether_user_auth::login_with_password(
+        client,
+        server_url,
+        email,
+        password,
+        env!("CARGO_PKG_VERSION"),
+    )
+    .await
 }

@@ -1,0 +1,16 @@
+[package]
+name = "codetether-user-auth"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "User password login and platform-local credential persistence"
+
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+directories = "6"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"

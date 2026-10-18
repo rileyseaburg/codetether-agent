@@ -10692,3 +10692,19 @@ passed; new modules have at most 44 code lines. Evidence is in
 `artifacts/consolidation-bedrock-auth-cli/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python, credential lookup, AWS/SSO request, token
 minting or credential-storage operation ran. Full consolidation remains active.
+
+### User login and credential cache extracted
+
+Moved password-login HTTP requests, response/stored record contracts, platform
+credential-path resolution and credential load/save operations out of the
+large native auth module into `crates/codetether-user-auth`. Seven modules
+separate HTTP, records, location, reads and writes. A native login wrapper
+supplies the application's original package version for the User-Agent;
+existing credential consumers retain their re-exported interfaces.
+
+Fifty-nine static comparisons/checks cover moved bodies, credential shapes,
+version injection and every retained native auth item. Module/dependency
+graphs, file budgets and whitespace checks passed; modules have at most 41 code
+lines. Evidence is in `artifacts/consolidation-user-auth/`. Compilation and
+runtime tests were not run. No Cargo, rustc, Python, credential read/write or
+login request ran. Full workspace consolidation remains active.
