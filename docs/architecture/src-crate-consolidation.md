@@ -27171,3 +27171,18 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 617 crates. No dependency/lock changes were needed; unrelated working files are
 untouched. Evidence: artifacts/consolidation-setting-commands/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Interactive Ralph command binding
+
+Moved Ralph loop creation/execution, monitor view fields and the command wrapper
+into codetether-ralph-cli::declare_frontend_ralph. Removed ralph_host.rs and
+ralph_view.rs. The root selects its existing App, Session, RalphLoop, provider
+registry, view mode and system-notice callback. Event receivers, stories, iteration
+counts, model fallback and loop-result handling retain their original paths.
+
+All ten expanded function bodies match the originals after type/callback path
+substitution. Tests are unchanged. Declaration, module/dependency, native
+production-scope, standalone formatting, file-limit and whitespace checks pass
+for 725 roots and 617 crates. No dependency/lock changes were needed; unrelated
+working files remain untouched. Evidence: artifacts/consolidation-ralph-command-binding/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

@@ -61,3 +61,17 @@ pub async fn execute<H: Host>(args: codetether_cli_options::RalphArgs) -> anyhow
         ),
     }
 }
+
+mod application_binding;
+
+/// Types used by frontend Ralph command declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use codetether_provider_core::Provider;
+    pub use codetether_ralph_core::{
+        RalphConfig,
+        events::{RalphEvent, RalphStoryInfo},
+    };
+    pub use tokio::sync::mpsc;
+}

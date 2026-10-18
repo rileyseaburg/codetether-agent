@@ -9,10 +9,6 @@ mod go_host;
 pub(crate) mod goal;
 #[path = "commands/open_editor.rs"]
 mod open_editor;
-#[path = "commands/ralph_host.rs"]
-mod ralph_host;
-#[path = "commands/ralph_view.rs"]
-mod ralph_view;
 #[path = "commands/session_ops.rs"]
 mod session_ops;
 codetether_settings_policy::declare_setting_commands!(
@@ -68,26 +64,14 @@ codetether_session_fork::declare_fork_command!(
     crate::tui::app::commands::push_system_message,
 );
 
-/// Parse and dispatch a `/ralph ...` subcommand.
-///
-/// Returns `true` when the input matched a recognised subcommand (`run`,
-/// `status`). Returns `false` for the bare `/ralph` (which falls through to
-/// the "open monitor view" branch below).
-async fn handle_ralph_subcommand(
-    app: &mut App,
-    cwd: &Path,
-    session: &Session,
-    registry: Option<&Arc<ProviderRegistry>>,
-    rest: &str,
-) -> bool {
-    codetether_ralph_cli::interactive::handle::<ralph_host::AppHost, ProviderRegistry, _>(
-        &mut ralph_view::CommandView(app),
-        cwd,
-        session.metadata.model.as_deref(),
-        registry,
-        rest,
-    )
-}
+codetether_ralph_cli::declare_frontend_ralph!(
+    crate::tui::app::state::App,
+    crate::session::Session,
+    crate::ralph::RalphLoop,
+    crate::provider::ProviderRegistry,
+    crate::tui::models::ViewMode,
+    crate::tui::app::commands::push_system_message,
+);
 
 pub async fn handle_slash_command(
     app: &mut App,
