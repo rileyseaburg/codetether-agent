@@ -17331,3 +17331,16 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-computer-tool/`. No Cargo, rustc, Python,
   OS actions, Rust compilation or Rust tests ran. The computer-use subsystem
   is extracted; the full workspace consolidation remains incomplete.
+
+### Shared compact webview inspector
+
+- Moved compact inspector content, fallback labels, shortcut rows and bordered
+  panel rendering into `codetether-inspector-view::compact`.
+- Native code projects twelve borrowed/scalar state fields and delegates line
+  building/rendering. The existing full inspector API remains separate.
+- Verification: complete line/row/render body comparisons and every native
+  field mapping; unchanged webview layout and existing inspector; module and
+  dependency graphs, direct rustfmt, file limits and whitespace.
+- No dependency changes. Evidence: `artifacts/consolidation-compact-inspector/`.
+  No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

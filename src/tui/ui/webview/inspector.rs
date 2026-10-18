@@ -1,11 +1,7 @@
-use ratatui::{prelude::*, widgets::*};
-
+//! Native rendering adapter for the shared compact inspector.
 use crate::tui::app::state::App;
+use ratatui::{Frame, layout::Rect};
 
 pub fn render_webview_inspector(f: &mut Frame, app: &App, area: Rect) {
-    let block = Block::default().borders(Borders::ALL).title(" Inspector ");
-    f.render_widget(
-        Paragraph::new(super::inspector_lines::build(app)).block(block),
-        area,
-    );
+    codetether_inspector_view::compact::render(f, &super::inspector_lines::view(app), area);
 }

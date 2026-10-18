@@ -15,3 +15,6 @@ pub use layout::render_inspector;
 pub use metrics::render_metrics;
 pub use tool_history::render_tool_history;
 pub use view::InspectorView;
+
+/// Compact session state and shortcuts for webview layouts.
+pub mod compact;
