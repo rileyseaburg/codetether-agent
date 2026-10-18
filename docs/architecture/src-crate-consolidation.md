@@ -18693,3 +18693,26 @@ brace formatting difference is normalized explicitly; its initial logs are
 retained. Evidence: `artifacts/consolidation-agent-replay/`. No Cargo, rustc,
 Python, Rust tests or live tool calls ran; compilation and runtime behavior
 remain unverified.
+
+### Agent completion loop and request assembly
+
+Moved the agent's outer completion loop, provider-specific fallback model
+selection, tool availability filtering and request assembly into
+`codetether-agent-completion`. The crate composes tool replay through
+`codetether-agent-replay`. Focused native state and completion adapters retain
+goal/peer prompt composition, session history/accounting and the context-aware
+provider call with its original options.
+
+The human message, assistant messages, tool replay and final response retain
+their ordering. The configured/default step budget, model fallback values,
+serialized tool definitions, temperature/top-p and None-valued context options
+are preserved. The obsolete private model/request/replay-forwarding modules
+were removed after moving their last callers.
+
+Validation: complete loop and model-body comparisons, full request mapping,
+native state/context option checks, unchanged prompt composition/replay/input
+services, lexical module reachability, dependency-cycle checks, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-agent-completion/`. No Cargo, rustc, Python, Rust tests,
+provider calls or native completion execution ran; compilation and runtime
+behavior remain unverified.

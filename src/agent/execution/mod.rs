@@ -9,12 +9,10 @@
 //! let response = agent.execute(&mut session, "fix it").await?;
 //! ```
 
+mod completion_host;
 mod messages;
-mod model;
 mod replay_host;
-mod request;
 mod run;
-mod tool_calls;
 #[cfg(test)]
 mod tool_calls_policy;
 mod tool_image_context;

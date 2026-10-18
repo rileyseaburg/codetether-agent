@@ -1,7 +1,6 @@
 //! Application prompt composition and shared message extraction.
 
 use crate::session::Session;
-pub(super) use codetether_agent_core::execution::messages::{collect_tool_calls, response_text};
 
 /// Compose the system prompt by appending the session's goal-governance
 /// block (if any) to the agent's base persona prompt.

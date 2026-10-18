@@ -1566,6 +1566,7 @@ dependencies = [
  "codetether-advanced-edit",
  "codetether-agent-command",
  "codetether-agent-core",
+ "codetether-agent-completion",
  "codetether-agent-replay",
  "codetether-application-mcp",
  "codetether-approval-core",
@@ -1886,6 +1887,17 @@ dependencies = [
  "codetether-provider-core",
  "codetether-tool-core",
  "futures",
+]
+
+[[package]]
+name = "codetether-agent-completion"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-agent-core",
+ "codetether-agent-replay",
+ "codetether-provider-core",
 ]
 
 [[package]]
