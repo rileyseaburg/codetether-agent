@@ -1,0 +1,20 @@
+[package]
+name = "codetether-native-thinker"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native thinker and belief extraction bindings"
+
+[features]
+default = []
+candle = ["codetether-cognition-native/candle", "codetether-native-providers/candle"]
+functiongemma = ["candle", "codetether-cognition-native/functiongemma"]
+
+[dependencies]
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+codetether-cognition-native = { path = "../codetether-cognition-native", version = "0.1.0" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

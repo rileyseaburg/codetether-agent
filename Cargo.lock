@@ -1946,6 +1946,7 @@ dependencies = [
  "codetether-native-tui",
  "codetether-native-cli",
  "codetether-native-crash",
+ "codetether-native-thinker",
 ]
 
 [[package]]
@@ -3834,6 +3835,16 @@ dependencies = [
  "codetether-tetherscript-values",
  "codetether-tool-core",
  "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-native-thinker"
+version = "0.1.0"
+dependencies = [
+ "codetether-cognition-core",
+ "codetether-cognition-native",
+ "codetether-native-providers",
  "tokio",
 ]
 

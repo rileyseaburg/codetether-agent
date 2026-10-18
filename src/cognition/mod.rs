@@ -24,14 +24,7 @@
 // ── Subsystems ──────────────────────────────────────────────────────────
 include!("subsystem_modules.rs");
 
-// The real router needs the in-process Candle runtime, so it requires both
-// `functiongemma` and `candle`. Every other build gets the no-op stand-in.
-#[cfg(all(feature = "functiongemma", feature = "candle"))]
-pub mod tool_router;
-#[cfg(not(all(feature = "functiongemma", feature = "candle")))]
-#[allow(dead_code)]
-#[path = "tool_router_disabled.rs"]
-pub mod tool_router;
+pub use codetether_native_thinker::tool_router;
 
 // ── Contracts ───────────────────────────────────────────────────────────
 use codetether_cognition_core::control as control_request;
@@ -101,17 +94,15 @@ use codetether_cognition_core::workspace::refresh as workspace_refresh;
 use codetether_cognition_core::thought::context as context_select;
 use codetether_cognition_core::thought::presentation as context_signals;
 use codetether_cognition_core::thought::presentation as context_summary;
-#[path = "defaults.rs"]
-mod defaults;
 use codetether_cognition_core::thought::presentation as normalize;
 use codetether_cognition_core::thought::presentation as normalize_shape;
 use codetether_cognition_core::thought::presentation as phase_default;
 use codetether_cognition_core::thought::presentation as placeholder;
 use codetether_cognition_core::thought::presentation as prompt_build;
 use codetether_cognition_core::thought::presentation as prompt_phase;
-#[path = "text_util.rs"]
-pub mod text_util;
 use codetether_cognition_core::thought::result as thought_result;
+use codetether_native_thinker::defaults;
+pub use codetether_native_thinker::text_util;
 
 // ── Tests ───────────────────────────────────────────────────────────────
 #[cfg(test)]

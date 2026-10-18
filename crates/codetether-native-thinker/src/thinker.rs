@@ -9,7 +9,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use codetether_agent::cognition::{ThinkerBackend, ThinkerConfig};
+//! use codetether_native_thinker::{ThinkerBackend, ThinkerConfig};
 //!
 //! let cfg = ThinkerConfig::default();
 //! assert_eq!(cfg.backend, ThinkerBackend::OpenAICompat);
@@ -39,7 +39,8 @@ use codetether_cognition_native as candle_disabled;
 use codetether_cognition_native as candle;
 
 pub use backend::ThinkerBackend;
-pub(super) use client::Services;
+#[doc(hidden)]
+pub use client::Services;
 pub use client::ThinkerClient;
 pub use config::ThinkerConfig;
 pub use device_pref::CandleDevicePreference;
@@ -52,4 +53,5 @@ use candle_disabled::CandleThinker;
 
 /// Candle runtime handle for crate-internal consumers such as the tool router.
 #[cfg(feature = "candle")]
-pub(super) use candle::CandleThinker as CandleRuntime;
+#[doc(hidden)]
+pub use candle::CandleThinker as CandleRuntime;

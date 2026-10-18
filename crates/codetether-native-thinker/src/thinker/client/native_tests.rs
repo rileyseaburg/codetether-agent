@@ -1,7 +1,7 @@
 //! Non-native backends must not accept a misleading native provider identity.
 
 use super::ThinkerClient;
-use crate::cognition::thinker::{ThinkerBackend, ThinkerConfig};
+use crate::thinker::{ThinkerBackend, ThinkerConfig};
 
 #[tokio::test]
 async fn thinker_identity_override_rejects_non_native_backends_before_dispatch() {

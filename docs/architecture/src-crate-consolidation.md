@@ -25373,3 +25373,25 @@ staged; unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-native-crash/. No Cargo, rustc, Python, crash upload,
 initialization execution or runtime tests ran. Full consolidation remains
 active.
+
+### Native thinker services and belief helpers moved into their own crate
+
+Moved eight files from cognition into codetether-native-thinker: the thinker
+client/service aliases, belief extraction, default/text helpers, and enabled
+and disabled router exports. Root cognition retains its tool-registry-bound
+runtime and executor; the independent thinker surface now belongs to the new
+crate. Both existing tests moved with the implementation.
+
+Native client and service identities still resolve to the same provider-bound
+types. Root candle and functiongemma flags forward to the new crate, retaining
+the original conjunction for router selection and the disabled alternative.
+Candle also forwards to native provider support for standalone crate consumers.
+No runtime test-mode flag or persistence behavior was changed.
+
+Source comparisons pass after explicit path/visibility changes and formatting.
+Static scans cover 712 module roots and 598 dependency crates without missing
+modules, cycles or undeclared direct workspace dependencies. Declaration,
+file-limit, direct rustfmt and whitespace checks pass. Only the new package/root
+lock entries are staged; unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-native-thinker/. No Cargo, rustc, Python, inference or
+runtime tests ran. Full consolidation remains active.
