@@ -9479,3 +9479,21 @@ and rendering tests moved into the crate, without execution. Evidence is in
 `artifacts/consolidation-recall-index/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, model or worker commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated recall persistence crate
+
+Moved recall catalog schemas, atomic JSON writes, sidecar paths and I/O,
+transaction ordering, stale-write checks, the mutation lock and deletion guards
+into `crates/codetether-recall-store`. Twelve modules separate persistence
+responsibilities. A native host provides validated session paths, the recall
+root and materialized projection reads. Native workers and streaming search
+retain their existing entry points through thin adapters.
+
+Forty-five static comparisons cover catalog serialization, path derivation,
+projection-first fallback, rename retry, stale/deleted write rejection, shared
+locking, unchanged worker callers and native bindings. Module/dependency graphs,
+file budgets and whitespace checks passed; the largest crate file has 31 code
+lines. The existing deletion-guard test moved into the crate without execution.
+Evidence is in `artifacts/consolidation-recall-store/`. Compilation and runtime
+tests were not run. No Cargo, rustc, Python or worker commands ran. Full workspace
+consolidation remains active.

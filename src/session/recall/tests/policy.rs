@@ -14,12 +14,3 @@ async fn denied_sessions_do_not_prefetch_recall() {
     });
     assert!(super::super::prefetch::message(&session).await.is_none());
 }
-
-#[test]
-fn deletion_tombstone_blocks_and_restore_releases() {
-    let id = "recall-delete-race";
-    super::super::tombstone::mark(id);
-    assert!(super::super::tombstone::contains(id));
-    super::super::tombstone::restore(id);
-    assert!(!super::super::tombstone::contains(id));
-}
