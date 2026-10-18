@@ -23621,6 +23621,22 @@ Unrelated files are unchanged; no manifest or lock changes were needed. Evidence
 artifacts/consolidation-loop-entry/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
 
+### Prompt dispatch and attachment finalization bindings
+
+Moved prompt dispatch state/services and attachment finalization actions into
+separate binding modules under codetether-chat-submit::dispatch and ::finish.
+Removed five root host files. Root declarations select the same concrete types,
+held-goal check, worker notification, provider task, goal adoption, publication
+and paste expansion callbacks.
+
+All sixteen expanded function bodies and both borrowed host layouts match their
+originals after callback-path qualification. Shared ordering, attachment takes,
+request timing and provider handoff are unchanged. Declaration, module/dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
+lock changes were needed. Evidence: artifacts/consolidation-prompt-bindings/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
 ### Queued-prompt frontend bindings
 
 Moved queued-prompt command/answer delivery, input access, queue gates and the

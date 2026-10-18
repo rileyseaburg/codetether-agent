@@ -1,37 +1,16 @@
-//! Final stage of chat submission: take pending attachments, expand paste
-//! placeholders, push the user message, and dispatch to the provider.
-
-use std::{path::Path, sync::Arc};
-
-use crate::provider::ProviderRegistry;
-use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
-use crate::tui::app::state::App;
-use crate::tui::worker_bridge::TuiWorkerBridge;
-
+//! Frontend attachment and publication selection for prompt finalization.
 #[path = "chat_submit_goal.rs"]
 mod goal;
-mod host;
-
-/// Dispatch `prompt` plus any pending images/text-paste sidecars.
-pub(super) async fn finish_submit(
-    app: &mut App,
-    cwd: &Path,
-    slot: &mut SessionSlot,
-    registry: &Option<Arc<ProviderRegistry>>,
-    worker_bridge: &Option<TuiWorkerBridge>,
-    runtime: &TuiSessionHandle,
-    prompt: &str,
-) {
-    codetether_chat_submit::finish::finish(
-        &mut host::Native {
-            app,
-            cwd,
-            slot,
-            registry,
-            worker_bridge,
-            runtime,
-        },
-        prompt,
-    )
-    .await;
-}
+codetether_chat_submit::declare_frontend_prompt_finish!(
+    crate::tui::app::state::App,
+    crate::tui::app::session_runtime::SessionSlot,
+    crate::provider::ProviderRegistry,
+    crate::tui::worker_bridge::TuiWorkerBridge,
+    crate::tui::app::session_runtime::TuiSessionHandle,
+    crate::session::ImageAttachment,
+    crate::tui::app::input::pasted_text::PendingTextPaste;
+    crate::tui::app::input::chat_submit_finish::goal::adopt,
+    crate::tui::app::input::chat_helpers::push_user_messages,
+    crate::tui::app::input::chat_submit_dispatch::dispatch_prompt,
+    crate::tui::app::input::pasted_text::expand_paste_placeholders,
+);

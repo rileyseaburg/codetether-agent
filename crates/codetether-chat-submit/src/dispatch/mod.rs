@@ -3,6 +3,7 @@
 //! [dispatch_prompt] applies the held-goal gate, resets prompt recovery state,
 //! and chooses provider handoff or the missing-provider path. [Host] retains
 //! native UI/session services; [State] supplies the disjoint mutable fields.
+mod binding;
 mod host;
 mod run;
 mod state;

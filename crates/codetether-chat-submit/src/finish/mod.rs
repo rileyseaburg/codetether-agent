@@ -4,6 +4,7 @@
 //! prompt, adopts a goal, publishes compact chat content and dispatches it.
 mod actions;
 mod attachments;
+mod binding;
 mod run;
 pub use actions::Actions;
 pub use attachments::Attachments;
