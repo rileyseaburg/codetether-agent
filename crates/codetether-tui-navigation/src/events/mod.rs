@@ -8,3 +8,5 @@ mod run;
 pub use host::{Dispatch, Host, Layers, Review};
 pub use repeat::dispatchable;
 pub use run::dispatch;
+/// Interrupt and modal handler priority.
+pub mod priority;

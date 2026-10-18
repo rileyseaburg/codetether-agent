@@ -17468,3 +17468,17 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-key-events/`.
 - No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared modal priority and scroll shortcuts
+
+- Moved interrupt/interlude/goal/spawn/search/editor priority into
+  `codetether-tui-navigation::events::priority` and chat-only Alt/Control
+  scrolling into `modified::scroll`.
+- Native adapters retain the existing handlers and scroll methods. Core owns
+  short-circuit order, the spawn-active guard, chat-only gating and key mapping.
+- Verification: complete priority/scroll match comparisons, every native
+  handler and effect binding, unchanged consumers/tests, module/dependency
+  graphs, direct rustfmt, file limits and whitespace. No dependency changes.
+  Evidence: `artifacts/consolidation-modal-scroll/`.
+- No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

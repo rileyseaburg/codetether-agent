@@ -8,3 +8,5 @@ mod run;
 pub use action::Action;
 pub use host::{Effects, Host, Routing, State};
 pub use run::dispatch;
+/// Chat-only scroll shortcut selection.
+pub mod scroll;
