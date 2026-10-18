@@ -11,7 +11,7 @@ impl codetether_chat_layout::messages::Host for Native<'_> {
         self.app
     }
     fn accent(&self) -> Color {
-        crate::tui::ui::mode_accent::mode_accent(&self.app.state.view_mode)
+        crate::tui::ui::mode_accent::mode_accent(&self.app.state.view.mode)
     }
     fn title(&self) -> Line<'static> {
         super::super::title::build_title(self.app, self.session)

@@ -8,7 +8,7 @@ use crate::tui::models::ViewMode;
 #[tokio::test]
 async fn settings_opens_while_session_checked_out() {
     let mut app = App::default();
-    app.state.view_mode = ViewMode::Chat;
+    app.state.view.mode = ViewMode::Chat;
     let cwd = std::path::Path::new(".");
     let mut slot = SessionSlot::new(Session::new().await.expect("session"));
     // Simulate an in-flight prompt owning the session.
@@ -17,13 +17,13 @@ async fn settings_opens_while_session_checked_out() {
     let handled = super::run(&mut app, cwd, &mut slot, &None, "/settings").await;
 
     assert!(handled, "slash command should be handled");
-    assert_eq!(app.state.view_mode, ViewMode::Settings);
+    assert_eq!(app.state.view.mode, ViewMode::Settings);
 }
 
 #[tokio::test]
 async fn image_usage_reported_while_checked_out() {
     let mut app = App::default();
-    app.state.view_mode = ViewMode::Chat;
+    app.state.view.mode = ViewMode::Chat;
     let cwd = std::path::Path::new(".");
     let mut slot = SessionSlot::new(Session::new().await.expect("session"));
     let _checked_out = slot.take_for_prompt().expect("session checked out");
@@ -37,7 +37,7 @@ async fn image_usage_reported_while_checked_out() {
 #[tokio::test]
 async fn unknown_command_reports_busy_while_checked_out() {
     let mut app = App::default();
-    app.state.view_mode = ViewMode::Chat;
+    app.state.view.mode = ViewMode::Chat;
     let cwd = std::path::Path::new(".");
     let mut slot = SessionSlot::new(Session::new().await.expect("session"));
     let _checked_out = slot.take_for_prompt().expect("session checked out");
@@ -46,5 +46,5 @@ async fn unknown_command_reports_busy_while_checked_out() {
 
     assert!(handled);
     assert!(app.state.status.contains("busy"));
-    assert_eq!(app.state.view_mode, ViewMode::Chat);
+    assert_eq!(app.state.view.mode, ViewMode::Chat);
 }

@@ -1,5 +1,7 @@
 //! Saved chat scroll state and transitions away from the chat view.
 use codetether_tui_models::ViewMode;
+mod state;
+pub use state::ViewState;
 /// Scroll positions retained while another view is active.
 ///
 /// # Examples

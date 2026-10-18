@@ -22,7 +22,7 @@ mod tests {
     #[tokio::test]
     async fn enter_with_pending_image_sends_even_without_text() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
         app.state.pending_images.push(ImageAttachment {
             data_url: "data:image/png;base64,Zm9v".to_string(),
             mime_type: Some("image/png".to_string()),

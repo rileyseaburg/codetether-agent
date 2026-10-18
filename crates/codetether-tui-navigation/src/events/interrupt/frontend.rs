@@ -21,7 +21,7 @@ macro_rules! declare_frontend_interrupt {
                     self.app.state.processing
                 }
                 fn in_chat(&self) -> bool {
-                    self.app.state.view_mode == ViewMode::Chat
+                    self.app.state.view.mode == ViewMode::Chat
                 }
                 fn request_cancel(&mut self) {
                     self.runtime.request_cancel_current();

@@ -38,7 +38,7 @@ async fn ctrl_c_interrupts_processing() {
 async fn escape_leaves_swarm_monitor_without_interrupting_processing() {
     let mut app = App::default();
     app.state.processing = true;
-    app.state.view_mode = ViewMode::Swarm;
+    app.state.view.mode = ViewMode::Swarm;
     let handled = super::interrupt_key::handle(
         &mut app,
         &runtime(),
@@ -47,6 +47,6 @@ async fn escape_leaves_swarm_monitor_without_interrupting_processing() {
     assert_eq!(handled, None);
 
     crate::tui::app::navigation::handle_escape(&mut app);
-    assert_eq!(app.state.view_mode, ViewMode::Chat);
+    assert_eq!(app.state.view.mode, ViewMode::Chat);
     assert!(!app.state.status.contains("Cancellation requested"));
 }

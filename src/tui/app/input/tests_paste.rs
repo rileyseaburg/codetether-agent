@@ -21,7 +21,7 @@ mod tests {
     #[tokio::test]
     async fn paste_keeps_multiline_text_in_single_chat_input() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
         handle_paste(&mut app, "first line\nsecond line").await;
         assert_eq!(app.state.composer.input, "first line\nsecond line");
         assert_eq!(app.state.status, "Pasted 2 lines into input");
@@ -34,7 +34,7 @@ mod tests {
     #[tokio::test]
     async fn multiline_paste_then_enter_submits_as_single_message() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
 
         let pasted = "line one\nline two\nline three";
         handle_paste(&mut app, pasted).await;
@@ -85,7 +85,7 @@ mod tests {
     #[tokio::test]
     async fn large_paste_is_summarised_into_sidecar() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
 
         // 6 lines — over the 5-line threshold.
         let pasted = "alpha\nbeta\ngamma\ndelta\nepsilon\nzeta";
@@ -122,7 +122,7 @@ mod tests {
         use crate::tui::app::input::pasted_text::expand_paste_placeholders;
 
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
 
         let pasted = "one\ntwo\nthree\nfour\nfive\nsix";
         handle_paste(&mut app, pasted).await;
@@ -150,7 +150,7 @@ mod tests {
     #[tokio::test]
     async fn two_large_pastes_get_independent_ids() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
 
         handle_paste(&mut app, "a\nb\nc\nd\ne\nf").await;
         handle_paste(&mut app, "g\nh\ni\nj\nk\nl").await;
@@ -168,7 +168,7 @@ mod tests {
     #[tokio::test]
     async fn short_multiline_paste_still_inlines() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
         handle_paste(&mut app, "alpha\nbeta").await;
         assert_eq!(app.state.composer.input, "alpha\nbeta");
         assert!(app.state.pending_text_pastes.is_empty());
@@ -177,7 +177,7 @@ mod tests {
     #[tokio::test]
     async fn typed_newline_then_enter_submits_as_single_message() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
         app.state.composer.input = "hello\nworld".to_string();
         app.state.composer.cursor = app.state.composer.input.chars().count();
 

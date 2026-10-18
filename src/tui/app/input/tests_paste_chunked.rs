@@ -31,7 +31,7 @@ mod tests {
     #[tokio::test]
     async fn chunked_data_url_paste_still_attaches_image() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
         let url = big_data_url();
 
         paste_in_chunks(&mut app, &url, 4096).await;

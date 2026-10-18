@@ -7,7 +7,6 @@ use tokio::sync::Notify;
 
 use crate::session::ImageAttachment;
 use crate::tui::chat::message::ChatMessage;
-use crate::tui::models::ViewMode;
 use crate::tui::symbol_search::SymbolSearchState;
 use crate::tui::{audit_view::AuditViewState, bus_log::BusLogState};
 use crate::tui::{ralph_view::RalphViewState, swarm_view::SwarmViewState};
@@ -45,7 +44,7 @@ pub struct App {
 /// ```
 #[rustfmt::skip]
 pub struct AppState {
-    pub view_mode: ViewMode, pub messages: Vec<ChatMessage>, pub composer: codetether_composer_view::ComposerState,
+    pub view: codetether_tui_navigation::view_state::ViewState, pub messages: Vec<ChatMessage>, pub composer: codetether_composer_view::ComposerState,
     pub chat_viewport: codetether_chat_layout::ChatScrollState, pub(crate) history_page: super::history_page::HistoryPageState, pub approval_preview_scroll: u16, pub tool_viewport: codetether_tool_panel::ToolPreviewScrollState,
     pub protocol_registry: codetether_protocol_view::RegistryState, pub status: String, pub processing: bool, pub approval_waiting: bool, pub session_id: Option<String>, pub session_picker: codetether_session_picker::SessionPickerState, pub cwd_display: String,
     pub bus_log: BusLogState, pub swarm: SwarmViewState, pub audit: AuditViewState, pub git: git_state::GitViewState, pub ralph: RalphViewState, pub audit_loop: crate::tui::audit_loop_view::audit_loop_state::AuditLoopState, pub symbol_search: SymbolSearchState,
@@ -59,7 +58,7 @@ pub struct AppState {
     pub stream_recovery: codetether_stream_recovery::StreamRecoveryState,
     pub chat_sync: codetether_chat_sync::ChatSyncState,
     pub autochat: crate::tui::app::autochat::state::AutochatState, pub file_picker: crate::tui::app::file_picker::FilePickerState, pub workspace: crate::tui::models::WorkspaceSnapshot, pub goal_prompt: Option<crate::tui::app::goal_prompt::GoalPromptState>, pub(crate) answer_review_yes: bool, pub fuzzy_find: Option<crate::tui::app::fuzzy_find::FuzzyFindState>, pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
-    pub recording: codetether_voice_capture::RecordingState, pub saved_scroll: codetether_tui_navigation::view_state::SavedScroll, pub forage: crate::tui::forage_run::ForageState, pub needs_redraw: bool, pub shell: codetether_chat_shell::State,
+    pub recording: codetether_voice_capture::RecordingState, pub forage: crate::tui::forage_run::ForageState, pub needs_redraw: bool, pub shell: codetether_chat_shell::State,
     /// Active editor document and its viewport offsets.
     pub editor: codetether_editor::EditorState, pub(crate) goal_editor: Option<crate::tui::app::input::goal_answer::editor::Draft>, pub(crate) approval_edit: Option<crate::tui::app::state::approval_queue::edit_session::ApprovalEditSession>, pub chat_hit: crate::tui::ui::chat_view::hit::ChatHit,
     /// Editor LSP state: shared manager and transient hover/JSDoc popup.

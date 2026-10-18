@@ -3,8 +3,8 @@ use crate::tui::{app::state::AppState, models::ViewMode};
 use codetether_editor::interactive::EditorView;
 
 pub(super) fn view(state: &mut AppState) -> EditorView<'_, impl FnMut() + '_> {
-    let current = &mut state.view_mode;
-    let saved = &mut state.saved_scroll;
+    let current = &mut state.view.mode;
+    let saved = &mut state.view.saved_scroll;
     let chat_scroll = state.chat_viewport.chat_scroll;
     let chat_auto_follow = state.chat_viewport.chat_auto_follow;
     let tool_scroll = state.tool_viewport.tool_preview_scroll;

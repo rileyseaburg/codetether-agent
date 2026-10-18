@@ -8,7 +8,7 @@ fn opens_the_new_child_transcript_immediately() {
 
     open(&mut app, "observer");
 
-    assert_eq!(app.state.view_mode, ViewMode::Subagents);
+    assert_eq!(app.state.view.mode, ViewMode::Subagents);
     assert_eq!(app.state.agent_tree.active.as_deref(), Some("observer"));
     assert!(app.state.agent_tree.detail_mode);
     assert_eq!(app.state.agent_tree.detail_scroll, 0);

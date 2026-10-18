@@ -11,7 +11,7 @@ mod tests {
     #[tokio::test]
     async fn image_data_url_paste_attaches_without_inserting_text() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
         app.state.composer.input = "draft".to_string();
         app.state.composer.cursor = app.state.composer.input.len();
         let payload = base64::engine::general_purpose::STANDARD.encode("png bytes");

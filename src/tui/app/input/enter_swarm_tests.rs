@@ -27,7 +27,7 @@ fn agents_enter_opens_swarm_detail() {
     let mut app = App::default();
     app.state.swarm.subtasks.push(task());
     dispatch(&mut app);
-    assert_eq!(app.state.view_mode, ViewMode::Swarm);
+    assert_eq!(app.state.view.mode, ViewMode::Swarm);
     assert!(app.state.swarm.detail_mode);
 }
 

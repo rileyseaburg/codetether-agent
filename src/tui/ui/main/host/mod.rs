@@ -11,6 +11,6 @@ pub(super) struct Native<'a> {
 }
 impl codetether_tui_render::State for Native<'_> {
     fn view(&self) -> crate::tui::models::ViewMode {
-        self.app.state.view_mode
+        self.app.state.view.mode
     }
 }

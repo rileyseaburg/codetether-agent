@@ -26,7 +26,7 @@ macro_rules! declare_frontend_text_input {
                 $active(self.0)
             }
             fn in_view(&self, view: ViewMode) -> bool {
-                self.0.state.view_mode == view
+                self.0.state.view.mode == view
             }
             fn bus_filter_active(&self) -> bool {
                 self.0.state.bus_log.filter_input_mode

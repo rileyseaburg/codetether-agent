@@ -21,7 +21,7 @@ mod tests {
     #[tokio::test]
     async fn enter_echoes_user_message_before_provider_failure() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
         app.state.composer.input = "hello tui".to_string();
         app.state.composer.cursor = app.state.composer.input.chars().count();
 

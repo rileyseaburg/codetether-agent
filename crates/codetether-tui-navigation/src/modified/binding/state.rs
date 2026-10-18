@@ -11,7 +11,7 @@ macro_rules! __frontend_modified_state {
             use $mode as ViewMode;
             impl State for Native<'_> {
                 fn in_chat(&self) -> bool {
-                    self.app.state.view_mode == ViewMode::Chat
+                    self.app.state.view.mode == ViewMode::Chat
                 }
                 fn watchdog_active(&self) -> bool {
                     self.app.state.watchdog.notification.is_some()

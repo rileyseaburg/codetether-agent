@@ -19,7 +19,7 @@ async fn slash_model_opens_model_picker_without_registry() {
     )
     .await;
 
-    assert_eq!(app.state.view_mode, ViewMode::Model);
+    assert_eq!(app.state.view.mode, ViewMode::Model);
     assert!(app.state.model_picker.model_picker_active);
     assert!(app.state.model_picker.available_models.is_empty());
     assert_eq!(app.state.status, "No models available");
@@ -55,7 +55,7 @@ async fn apply_selected_model_persists_to_session() {
     apply_selected_model(&mut app, &mut session);
 
     assert_eq!(session.metadata.model.as_deref(), Some("openai/gpt-4o"));
-    assert_eq!(app.state.view_mode, ViewMode::Chat);
+    assert_eq!(app.state.view.mode, ViewMode::Chat);
     assert!(!app.state.model_picker.model_picker_active);
 }
 
@@ -67,7 +67,7 @@ fn closing_model_picker_returns_to_chat() {
 
     close_model_picker(&mut app);
 
-    assert_eq!(app.state.view_mode, ViewMode::Chat);
+    assert_eq!(app.state.view.mode, ViewMode::Chat);
     assert!(!app.state.model_picker.model_picker_active);
 }
 
@@ -85,7 +85,7 @@ async fn slash_model_alias_opens_model_picker() {
     )
     .await;
 
-    assert_eq!(app.state.view_mode, ViewMode::Model);
+    assert_eq!(app.state.view.mode, ViewMode::Model);
     assert!(app.state.model_picker.model_picker_active);
 }
 
@@ -103,7 +103,7 @@ async fn slash_latency_opens_latency_view() {
     )
     .await;
 
-    assert_eq!(app.state.view_mode, ViewMode::Latency);
+    assert_eq!(app.state.view.mode, ViewMode::Latency);
     assert_eq!(app.state.status, "Latency inspector");
 }
 
@@ -263,7 +263,7 @@ async fn slash_new_creates_fresh_session_with_different_id() {
     assert_eq!(app.state.session_id, Some(session.id.clone()));
     assert!(app.state.messages.is_empty());
     assert!(app.state.status.contains("New chat session"));
-    assert_eq!(app.state.view_mode, ViewMode::Chat);
+    assert_eq!(app.state.view.mode, ViewMode::Chat);
 }
 
 #[tokio::test]

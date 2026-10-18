@@ -28517,3 +28517,21 @@ file-limit checks pass (724 roots, 617 crates). Evidence:
 artifacts/consolidation-file-picker-methods/. No dependencies or unrelated
 working files changed. No Cargo, rustc, Python, compilation or runtime tests ran;
 the moved tests were not executed. Full consolidation remains active and incomplete.
+
+### Crate-owned active view state
+
+Moved active ViewMode and SavedScroll ownership into
+codetether-tui-navigation::view_state::ViewState. AppState now contains one view
+component. ViewState constructs ViewTransition from its owned fields and the
+three borrowed viewport values; root transition wiring no longer knows the
+component's internal field layout.
+
+Static comparison covers all 49 changed existing files, default initialization
+and transition field mappings. Direct mode reads/writes and saved-scroll values
+are preserved. Scanned 1,191 root Rust files for obsolete field access. The
+preexisting unrelated formatting in app/tests.rs was restored to satisfy its
+line-budget ratchet. Declaration, module/dependency, production-scope,
+formatting, whitespace and file-limit checks pass (724 roots, 617 crates).
+Evidence: artifacts/consolidation-view-state/. No dependencies or unrelated
+working files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.

@@ -10,7 +10,7 @@ impl State for Native<'_> {
         Navigation(self.app)
     }
     fn in_chat(&self) -> bool {
-        self.app.state.view_mode == crate::tui::models::ViewMode::Chat
+        self.app.state.view.mode == crate::tui::models::ViewMode::Chat
     }
     fn symbols_active(&self) -> bool {
         symbols::symbol_search_active(self.app)

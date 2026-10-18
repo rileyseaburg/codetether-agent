@@ -10,7 +10,7 @@ async fn enter_without_local_active_turn_queues_follow_up() {
     let _guard = QUEUE_TEST_LOCK.lock().await;
     let _ = prompt_queue::take();
     let mut app = App::default();
-    app.state.view_mode = ViewMode::Chat;
+    app.state.view.mode = ViewMode::Chat;
     app.state.processing = true;
     app.state.composer.input = "hello tui".to_string();
     app.state.composer.cursor = app.state.composer.input.chars().count();

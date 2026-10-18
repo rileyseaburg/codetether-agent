@@ -6,7 +6,7 @@ use std::path::Path;
 pub(in crate::tui::app::event_handlers) struct Native<'a>(pub &'a mut App);
 impl codetether_chat_files::Host for Native<'_> {
     fn in_chat(&self) -> bool {
-        self.0.state.view_mode == ViewMode::Chat
+        self.0.state.view.mode == ViewMode::Chat
     }
     fn messages(&self) -> &[ChatMessage] {
         &self.0.state.messages
@@ -27,7 +27,7 @@ impl codetether_chat_files::Host for Native<'_> {
         crate::tui::app::state::view::transition(&mut self.0.state).save_scroll_state();
     }
     fn show_git(&mut self) {
-        self.0.state.view_mode = ViewMode::Git;
+        self.0.state.view.mode = ViewMode::Git;
     }
     fn open_viewer(&mut self, cwd: &Path, file: &Path) {
         crate::tui::app::file_picker::open_file_in_viewer(self.0, cwd, file);

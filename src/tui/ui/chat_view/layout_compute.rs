@@ -25,7 +25,7 @@ pub fn compute_chat_chunks(area: Rect, app: &App) -> ChatChunks {
         &app.state.composer.input,
         app.state
             .composer
-            .slash_suggestions_visible(&app.state.view_mode, app.state.processing),
+            .slash_suggestions_visible(&app.state.view.mode, app.state.processing),
         super::agent_bar::presence::visible(app),
     )
 }

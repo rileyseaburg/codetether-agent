@@ -9,7 +9,7 @@ async fn enter_while_goal_is_active_steers_without_stopping_it() {
     let _guard = QUEUE_TEST_LOCK.lock().await;
     let _ = prompt_queue::take();
     let mut app = App::default();
-    app.state.view_mode = ViewMode::Chat;
+    app.state.view.mode = ViewMode::Chat;
     app.state.processing = true;
     app.state.composer.input = "use the cloned repos".into();
     let session = crate::session::tasks::answer_review_test_support::session().await;

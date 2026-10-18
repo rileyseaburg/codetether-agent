@@ -16,7 +16,7 @@ mod tests {
         let mut app = App::default();
         crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Chat);
         open_swarm_monitor(&mut app);
-        assert_eq!(app.state.view_mode, ViewMode::Chat);
+        assert_eq!(app.state.view.mode, ViewMode::Chat);
         assert!(app.state.status.contains("/swarm <task>"));
         let last = app.state.messages.last().expect("guidance message");
         assert!(matches!(last.message_type, MessageType::System));
@@ -27,6 +27,6 @@ mod tests {
         let mut app = App::default();
         app.state.swarm.active = true;
         open_swarm_monitor(&mut app);
-        assert_eq!(app.state.view_mode, ViewMode::Swarm);
+        assert_eq!(app.state.view.mode, ViewMode::Swarm);
     }
 }

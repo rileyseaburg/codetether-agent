@@ -11,7 +11,7 @@ macro_rules! __frontend_editor_keys_host {
             pub(super) struct Native<'a>(pub &'a mut App);
             impl $crate::interactive::KeyHost for Native<'_> {
                 fn in_editor(&self) -> bool {
-                    self.0.state.view_mode == ViewMode::Editor
+                    self.0.state.view.mode == ViewMode::Editor
                 }
                 fn approval_editing(&self) -> bool {
                     self.0.state.approval_edit.is_some()
@@ -23,7 +23,7 @@ macro_rules! __frontend_editor_keys_host {
                     &mut self.0.state.editor.buffer
                 }
                 fn show_chat(&mut self) {
-                    self.0.state.view_mode = ViewMode::Chat;
+                    self.0.state.view.mode = ViewMode::Chat;
                 }
                 fn reset_scroll(&mut self) {
                     self.0.state.editor.scroll = 0;

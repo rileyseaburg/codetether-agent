@@ -54,7 +54,7 @@ mod tests {
     #[tokio::test]
     async fn enter_key_event_dispatches_to_chat_submit() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
         app.state.composer.input = "hello from key event".to_string();
         app.state.composer.cursor = app.state.composer.input.chars().count();
 
@@ -92,7 +92,7 @@ mod tests {
     #[tokio::test]
     async fn question_mark_inserts_into_chat_input() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
 
         let cwd = std::path::Path::new(".");
         let mut slot = test_slot().await;
@@ -123,7 +123,7 @@ mod tests {
     #[tokio::test]
     async fn ctrl_w_prefills_ask_command_in_chat() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
 
         let cwd = std::path::Path::new(".");
         let mut slot = test_slot().await;
@@ -147,7 +147,7 @@ mod tests {
     #[tokio::test]
     async fn ctrl_m_opens_model_picker() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
 
         let cwd = std::path::Path::new(".");
         let mut slot = test_slot().await;
@@ -165,7 +165,7 @@ mod tests {
             .expect("handle_event");
 
         assert!(!quit);
-        assert_eq!(app.state.view_mode, ViewMode::Model);
+        assert_eq!(app.state.view.mode, ViewMode::Model);
         assert!(app.state.model_picker.model_picker_active);
         assert_eq!(app.state.status, "No models available");
     }
@@ -173,7 +173,7 @@ mod tests {
     #[tokio::test]
     async fn ctrl_r_dispatches_voice_shortcut() {
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
         let key = KeyEvent {
             code: KeyCode::Char('r'),
             modifiers: KeyModifiers::CONTROL,
@@ -203,7 +203,7 @@ mod tests {
         // in-buffer `\n` so the paste doesn't fan out into N separate
         // chat messages.
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
 
         let cwd = std::path::Path::new(".");
         let mut slot = test_slot().await;
@@ -261,7 +261,7 @@ mod tests {
     async fn slow_enter_submits_as_normal() {
         // Gap > 20ms between last char and Enter → real human submit.
         let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
+        app.state.view.mode = ViewMode::Chat;
 
         let cwd = std::path::Path::new(".");
         let mut slot = test_slot().await;

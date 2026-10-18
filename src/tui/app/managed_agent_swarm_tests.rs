@@ -23,6 +23,6 @@ fn prefix_focus_opens_matching_swarm_worker() {
         elapsed_secs: None,
     });
     assert!(focus(&mut app, "agent-abc"));
-    assert_eq!(app.state.view_mode, ViewMode::Swarm);
+    assert_eq!(app.state.view.mode, ViewMode::Swarm);
     assert!(app.state.swarm.detail_mode);
 }

@@ -12,6 +12,6 @@ impl codetether_webview::State for Native<'_> {
         self.0
             .state
             .composer
-            .slash_suggestions_visible(&self.0.state.view_mode, self.0.state.processing)
+            .slash_suggestions_visible(&self.0.state.view.mode, self.0.state.processing)
     }
 }

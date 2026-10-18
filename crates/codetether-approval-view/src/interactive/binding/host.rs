@@ -14,7 +14,7 @@ macro_rules! __frontend_approval_keys_host {
             impl $crate::interactive::Host for Native<'_> {
                 fn preview(&mut self) -> Preview<'_> {
                     Preview {
-                        chat: self.0.state.view_mode == ViewMode::Chat,
+                        chat: self.0.state.view.mode == ViewMode::Chat,
                         editing: self.0.state.approval_edit.is_some(),
                         help: self.0.state.help.visible,
                         input: &self.0.state.composer.input,

@@ -8,7 +8,7 @@ use std::path::Path;
 
 pub(super) fn controls(app: &mut App) -> Controls<'_, LspClient> {
     Controls {
-        in_editor: app.state.view_mode == ViewMode::Editor,
+        in_editor: app.state.view.mode == ViewMode::Editor,
         approval_editing: app.state.approval_edit.is_some(),
         goal_editing: app.state.goal_editor.is_some(),
         editor: &mut app.state.editor.buffer,

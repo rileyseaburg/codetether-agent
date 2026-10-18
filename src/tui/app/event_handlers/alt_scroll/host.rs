@@ -3,7 +3,7 @@ use codetether_tui_navigation::modified::scroll::{Action, Host};
 pub(super) struct Native<'a>(pub &'a mut App);
 impl Host for Native<'_> {
     fn in_chat(&self) -> bool {
-        self.0.state.view_mode == ViewMode::Chat
+        self.0.state.view.mode == ViewMode::Chat
     }
     fn apply(&mut self, action: Action) {
         match action {

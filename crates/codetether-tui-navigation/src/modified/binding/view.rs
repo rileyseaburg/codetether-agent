@@ -27,7 +27,7 @@ macro_rules! __frontend_modified_view {
                             .save_scroll_state();
                     }
                     Action::View(view) => {
-                        app.state.view_mode = view.clone();
+                        app.state.view.mode = view.clone();
                     }
                     _ => return false,
                 }

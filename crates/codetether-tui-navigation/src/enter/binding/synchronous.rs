@@ -9,7 +9,7 @@ macro_rules! __frontend_enter_synchronous {
             use $mode as ViewMode;
             impl $crate::enter::Sync for Native<'_> {
                 fn view(&self) -> ViewMode {
-                    self.app.state.view_mode.clone()
+                    self.app.state.view.mode.clone()
                 }
                 fn bus_filter_active(&self) -> bool {
                     self.app.state.bus_log.filter_input_mode

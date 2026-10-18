@@ -12,7 +12,7 @@ impl Host for Navigation<'_> {
     fn context(&self) -> Context {
         let app = &*self.0;
         Context {
-            view_mode: app.state.view_mode.clone(),
+            view_mode: app.state.view.mode.clone(),
             show_help: app.state.help.visible,
             symbols_active: crate::tui::app::symbols::symbol_search_active(app),
             model_picker_active: app.state.model_picker.model_picker_active,
@@ -23,7 +23,7 @@ impl Host for Navigation<'_> {
             slash_navigable: app
                 .state
                 .composer
-                .slash_suggestions_navigable(&app.state.view_mode, app.state.processing),
+                .slash_suggestions_navigable(&app.state.view.mode, app.state.processing),
             subagent_detail: app.state.agent_tree.detail_mode,
             subagent_scroll: app.state.agent_tree.detail_scroll,
             protocol_scroll: app.state.protocol_registry.scroll,

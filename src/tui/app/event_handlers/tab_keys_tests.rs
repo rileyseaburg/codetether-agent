@@ -29,7 +29,7 @@ fn tab_and_backtab_navigate_swarm_workers() {
     app.state.swarm.subtasks = vec![task("one"), task("two")];
     dispatch(&mut app, KeyCode::Tab);
     assert_eq!(app.state.swarm.selected_index, 1);
-    assert_eq!(app.state.view_mode, ViewMode::Swarm);
+    assert_eq!(app.state.view.mode, ViewMode::Swarm);
     dispatch(&mut app, KeyCode::BackTab);
     assert_eq!(app.state.swarm.selected_index, 0);
     dispatch(&mut app, KeyCode::BackTab);

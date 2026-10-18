@@ -19,7 +19,7 @@ macro_rules! __frontend_paste_routing {
                     $refresh(self);
                 }
                 fn view(&self) -> View {
-                    match &self.state.view_mode {
+                    match &self.state.view.mode {
                         ViewMode::Bus => View::Bus,
                         ViewMode::Model => View::Model,
                         ViewMode::Sessions => View::Sessions,

@@ -13,10 +13,10 @@ impl codetether_file_picker::interactive::View for Native<'_> {
         &mut self.0.state.file_picker
     }
     fn show_picker(&mut self) {
-        self.0.state.view_mode = ViewMode::FilePicker;
+        self.0.state.view.mode = ViewMode::FilePicker;
     }
     fn show_chat(&mut self) {
-        self.0.state.view_mode = ViewMode::Chat;
+        self.0.state.view.mode = ViewMode::Chat;
     }
     fn set_status(&mut self, status: String) {
         self.0.state.status = status;

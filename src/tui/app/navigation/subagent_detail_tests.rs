@@ -7,7 +7,7 @@ fn escape_returns_from_child_detail_to_agent_dashboard() {
     app.state.agent_tree.detail_mode = true;
     app.state.agent_tree.detail_scroll = 12;
     handle_escape(&mut app);
-    assert_eq!(app.state.view_mode, ViewMode::Subagents);
+    assert_eq!(app.state.view.mode, ViewMode::Subagents);
     assert!(!app.state.agent_tree.detail_mode);
     assert_eq!(app.state.agent_tree.detail_scroll, 0);
 }

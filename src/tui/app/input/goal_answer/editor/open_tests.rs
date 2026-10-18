@@ -13,7 +13,7 @@ async fn goal_editor_prefills_busy_goal_and_escape_discards_the_draft() {
     app.state.processing = true;
     app.state.watchdog.inflight_prompt = Some("Original work".into());
     fixture::submit(&mut app, &mut slot, &runtime, "/goal edit").await;
-    assert_eq!(app.state.view_mode, ViewMode::Editor);
+    assert_eq!(app.state.view.mode, ViewMode::Editor);
     assert_eq!(
         app.state.editor.buffer.as_ref().unwrap().text(),
         "Finish the goal"

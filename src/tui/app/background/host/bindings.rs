@@ -4,7 +4,7 @@ impl Host for Native<'_> {
     type Notice = super::super::SessionNotice;
     fn models(&mut self) {
         self.app.state.model_picker.apply_refresh_status(
-            self.app.state.view_mode == crate::tui::models::ViewMode::Model,
+            self.app.state.view.mode == crate::tui::models::ViewMode::Model,
             &mut self.app.state.status,
         );
     }

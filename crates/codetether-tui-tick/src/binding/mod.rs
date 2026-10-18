@@ -25,7 +25,7 @@ macro_rules! declare_frontend_tick {
         /// Refresh audit data when the audit view is active.
         pub async fn refresh_audit(app: &mut $app) {
             use $mode as ViewMode;
-            if app.state.view_mode == ViewMode::Audit {
+            if app.state.view.mode == ViewMode::Audit {
                 $audit(&mut app.state.audit).await;
             }
         }

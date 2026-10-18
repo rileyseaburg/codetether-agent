@@ -3,7 +3,7 @@ use crate::tui::{app::input, models::ViewMode};
 use codetether_tui_navigation::modes::{Action, State};
 impl State for Native<'_> {
     fn in_view(&self, view: ViewMode) -> bool {
-        self.app.state.view_mode == view
+        self.app.state.view.mode == view
     }
     fn effect(&mut self, action: Action) {
         match action {

@@ -16,7 +16,7 @@ impl ::core::default::Default for $state {
     #[rustfmt::skip]
     fn default() -> Self {
         Self {
-            view_mode: $crate::ViewMode::Chat,
+            view: ::core::default::Default::default(),
             messages: ::std::vec![],
             composer: ::core::default::Default::default(),
             chat_viewport: ::core::default::Default::default(),
@@ -66,7 +66,6 @@ impl ::core::default::Default for $state {
             chat_layout_mode: $layout(),
             last_key_at: None,
             recording: ::core::default::Default::default(),
-            saved_scroll: ::core::default::Default::default(),
             forage: $forage(),
             needs_redraw: true,
             shell: ::core::default::Default::default(),
