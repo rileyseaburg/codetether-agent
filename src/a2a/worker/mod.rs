@@ -47,8 +47,8 @@ use codetether_a2a_worker_core::task_config as task_data;
 #[rustfmt::skip]
 mod task_dispatch_special;
 mod task_execute;
-#[rustfmt::skip]
-mod task_execute_sink;mod task_execute_title;
+use codetether_native_worker::event_sink as task_execute_sink;
+mod task_execute_title;
 #[cfg(test)]
 mod task_execute_title_tests;
 mod task_handler;

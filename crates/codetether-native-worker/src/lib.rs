@@ -43,3 +43,8 @@ pub mod entrypoints;
 
 /// Task admission, claim, progress and release with application execution hooks.
 pub mod lifecycle;
+
+/// Structured event-sink installation and cleanup for worker tasks.
+pub mod event_sink;
+/// Policy-gated clone and forage dispatch with application forage hooks.
+pub mod special;

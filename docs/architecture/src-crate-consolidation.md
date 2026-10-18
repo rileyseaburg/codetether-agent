@@ -25575,3 +25575,23 @@ artifacts/consolidation-worker-lifecycle/. The staged lockfile adds only the
 worker crate's provenance dependency; all three unrelated dirty files remain
 unchanged. No Cargo, rustc, Python, compilation or runtime tests ran. Full
 consolidation remains active.
+
+### Native special-task effects and structured event sinks
+
+Moved worker special-task policy and clone effects into
+codetether-native-worker::special, retaining only the session-dependent forage
+callback in the root adapter. Moved structured event-sink installation and
+cleanup into codetether-native-worker::event_sink; the root uses its module
+alias. The shared classifier, policy evaluator, clone implementation, forage
+executor and process event-sink singleton are unchanged.
+
+Static comparisons preserve policy/clone bodies, the forage executor call and
+the complete event-sink implementation after owning-path substitutions and
+visibility changes. Import ordering required an explicit rustfmt normalization
+in the comparison script; the initial mismatch remains in execution history.
+Module/dependency checks cover 714 roots and 600 crates without missing modules,
+cycles or undeclared direct dependencies. Declaration, file-limit, direct
+rustfmt and whitespace checks pass. Only three worker dependency additions are
+staged in the lockfile; unrelated working changes remain unchanged. Evidence:
+artifacts/consolidation-worker-effects/. No Cargo, rustc, Python, runtime
+execution or tests ran. Full src consolidation remains active.
