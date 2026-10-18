@@ -37,3 +37,6 @@ mod foreground;
 pub use background::start_background;
 /// Serve a prepared endpoint until the supplied shutdown signal.
 pub use foreground::serve_foreground;
+
+/// Optional worker-local peer configuration and startup.
+pub mod worker;

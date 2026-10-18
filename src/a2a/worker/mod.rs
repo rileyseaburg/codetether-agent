@@ -1,7 +1,7 @@
 //! A2A worker implementation split into SRP-focused submodules.
 
 #[rustfmt::skip]
-mod a2a_peer;mod a2a_peer_config;
+mod a2a_peer;
 mod auto_approve;
 mod clone_target;
 mod clone_task;

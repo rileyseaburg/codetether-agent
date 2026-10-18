@@ -16419,3 +16419,20 @@ Full workspace consolidation remains active.
   dependencies changed. Evidence: `artifacts/consolidation-worker-bootstrap/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared optional worker-peer startup
+
+- Moved optional worker-local peer startup into
+  `codetether-a2a-http::peer_startup::worker`, alongside shared SpawnOptions
+  and the existing A2APeerHandle owner.
+- Split environment settings, public-URL adjustment and startup sequencing into
+  cohesive modules. Removed native `a2a_peer_config.rs`; the native peer adapter
+  supplies only hostname/public URL and the bus-bound endpoint-start callback.
+- Preserved mDNS opt-in, seed environment precedence/order, port reads, URL parse
+  fallback, every spawn option, success/failure logging and SSE fallback.
+- Verification: complete startup/environment/URL body comparisons and callback
+  binding, unchanged endpoint/startup caller/options, module/dependency graphs,
+  direct rustfmt, file budgets and diff whitespace. No dependencies changed.
+  Evidence: `artifacts/consolidation-worker-peer/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
