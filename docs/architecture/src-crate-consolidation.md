@@ -16306,3 +16306,19 @@ Full workspace consolidation remains active.
   No dependencies changed. Evidence: `artifacts/consolidation-worker-agent/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared claimed-task session preparation
+
+- Moved task-session resume/fallback policy, provenance and metadata assignment,
+  Git preparation and checkpoint ordering into worker-core preparation/session.
+- Native loader and workspace bindings retain actual session storage and server
+  workspace resolution. Removed the native Git-preparation forwarding module.
+- Preserved required author-session failure behavior, model override order,
+  virtual-task Git bypass and timeline detail strings. The existing native
+  resume integration test remains unchanged and was not executed.
+- Verification: complete preparation/loading body comparisons, native metadata,
+  provenance, workspace and loader bindings, unchanged resume/Git callers,
+  module/dependency graphs, direct rustfmt, file budgets, isolated lock addition
+  and diff whitespace. Evidence: `artifacts/consolidation-task-session/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

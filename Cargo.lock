@@ -1226,6 +1226,7 @@ dependencies = [
  "codetether-provider-policy",
  "codetether-session-events",
  "codetether-session-control",
+ "codetether-session-metadata",
 ]
 
 [[package]]
