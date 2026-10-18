@@ -21915,3 +21915,30 @@ missing modules or cycles. Direct rustfmt, native file-size limits and whitespac
 checks passed. No manifest or lockfile changes. Evidence:
 `artifacts/consolidation-mcp-image-tests/`. These tests were moved, not executed;
 no Cargo, rustc or Python ran. Full consolidation remains active.
+
+### Dedicated application tool registry
+
+Moved the native tool-registry wrapper, ten collection accessors, five
+constructors, Debug/Default implementations, shared batch lifecycle, and four
+consumer trait implementations into `codetether-application-registry`.
+`src/tool/mod.rs` now exports a policy-specialized type alias. Cohesive modules
+own collection access, construction, aliases, search registration, lifecycle,
+and batch/cognition/swarm/workspace integrations. Native callbacks retain
+concrete catalog factories, provider-registry construction and runtime policy.
+
+Compatibility alias registration now has public wrapper methods; the native
+catalog no longer reaches through a private storage field. The weak batch
+binding still uses the existing shared lifecycle in the same order, with the
+same registry and batch instance. Native batch aliases/tests, workspace tool
+factories, and swarm filtering entry points remain in place; the obsolete
+native cognition registry implementation file is removed.
+
+Source comparisons cover ten accessors, five constructors, Debug/Default,
+lifecycle operations, four integration trait implementations and native search
+construction. Default/provider catalog flags and batch policy callbacks remain
+unchanged. Module/dependency checks cover 694 roots and 566 crates without
+missing modules or cycles. Direct rustfmt, native file-size limits and whitespace
+checks passed. Only the new package and root dependency are staged in the
+lockfile; unrelated working lockfile changes remain intact. Evidence:
+`artifacts/consolidation-application-registry/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation stays active.

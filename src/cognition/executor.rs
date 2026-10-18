@@ -6,8 +6,6 @@ pub use codetether_cognition_core::execution::{
     CapabilityLease, DecisionReceipt, ExecutionOutcome, ToolInvocation,
 };
 use std::sync::Arc;
-#[path = "executor/registry.rs"]
-mod registry;
 /// Execute thought-extracted requests through the shared cognition dispatcher.
 pub async fn execute_tool_requests(
     thinker: Option<&ThinkerClient>,

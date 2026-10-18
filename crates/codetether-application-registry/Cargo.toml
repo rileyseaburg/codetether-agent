@@ -1,0 +1,19 @@
+[package]
+name = "codetether-application-registry"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Application tool registry construction and shared runtime integration"
+
+[dependencies]
+async-trait = "0.1"
+codetether-batch-tool = { path = "../codetether-batch-tool", version = "0.1.0" }
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+codetether-plugin-verification = { path = "../codetether-plugin-verification", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-tool-registry = { path = "../codetether-tool-registry", version = "0.1.0" }
+codetether-workspace-tools = { path = "../codetether-workspace-tools", version = "0.1.0" }
+serde_json = "1"

@@ -1589,6 +1589,7 @@ dependencies = [
  "codetether-agent-runtime",
  "codetether-agent-replay",
  "codetether-application-mcp",
+ "codetether-application-registry",
  "codetether-approval-core",
  "codetether-approval-session",
  "codetether-approval-review",
@@ -2000,6 +2001,22 @@ dependencies = [
  "reqwest 0.13.4",
  "serde_json",
  "uuid",
+]
+
+[[package]]
+name = "codetether-application-registry"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "codetether-batch-tool",
+ "codetether-cognition-core",
+ "codetether-plugin-verification",
+ "codetether-provider-core",
+ "codetether-swarm-core",
+ "codetether-tool-core",
+ "codetether-tool-registry",
+ "codetether-workspace-tools",
+ "serde_json",
 ]
 
 [[package]]

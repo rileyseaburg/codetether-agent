@@ -10,12 +10,10 @@ impl Host for Native<'_> {
     }
     fn register_alias(&mut self, alias: &str, kind: ToolKind) {
         self.registry
-            .inner
             .register_compat_alias(alias, construct::create(kind));
     }
     fn register_with_alias(&mut self, alias: &str, kind: ToolKind) {
         self.registry
-            .inner
             .register_with_alias(alias, construct::create(kind));
     }
 }

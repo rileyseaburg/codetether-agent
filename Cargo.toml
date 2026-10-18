@@ -547,6 +547,7 @@ members = [
     "crates/codetether-agent-communication",
     "crates/codetether-tool-core",
     "crates/codetether-tool-registry",
+    "crates/codetether-application-registry",
     "crates/codetether-workspace-tools",
     "crates/codetether-replay-oracle",
     "crates/codetether-policy-eval",
@@ -1214,6 +1215,7 @@ codetether-policy-eval = { path = "crates/codetether-policy-eval", version = "0.
 codetether-replay-oracle = { path = "crates/codetether-replay-oracle", version = "0.1.0" }
 codetether-workspace-tools = { path = "crates/codetether-workspace-tools", version = "0.1.0" }
 codetether-tool-registry = { path = "crates/codetether-tool-registry", version = "0.1.0" }
+codetether-application-registry = { path = "crates/codetether-application-registry", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-computer-tool = { path = "crates/codetether-computer-tool", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
