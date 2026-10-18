@@ -2,8 +2,8 @@
 use super::*;
 use std::time::Duration;
 
-impl RunLoop<'_> {
-    pub(in crate::forage) async fn run(mut self) -> Result<ForageRunSummary> {
+impl<H: Host> RunLoop<'_, H> {
+    pub(crate) async fn run(mut self) -> Result<ForageRunSummary> {
         let top = self.args.top.clamp(1, 50);
         let interval_secs = self.args.interval_secs.clamp(5, 86_400);
         let mut cycle: usize = 0;

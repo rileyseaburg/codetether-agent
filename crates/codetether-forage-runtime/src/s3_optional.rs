@@ -4,9 +4,9 @@
 //! missing S3/MinIO configuration degrades to local-only mode with a warning
 //! rather than aborting the run.
 
-use crate::bus::AgentBus;
-use crate::bus::s3_sink::{BusS3Sink, BusS3SinkConfig};
 use anyhow::Result;
+use codetether_bus_core::AgentBus;
+use codetether_bus_s3::{BusS3Sink, BusS3SinkConfig};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
@@ -19,6 +19,7 @@ pub(super) async fn try_start_bus_s3_sink(bus: Arc<AgentBus>) -> Option<JoinHand
         Ok(config) => config,
         Err(err) => {
             tracing::warn!(
+                target: "codetether_agent::forage::s3_optional",
                 error = %err,
                 "S3 bus archival not configured; running forage in local-only mode. \
                  Set MINIO_*/CODETETHER_CHAT_SYNC_MINIO_* or Vault 'chat-sync-minio' to enable."
@@ -29,7 +30,7 @@ pub(super) async fn try_start_bus_s3_sink(bus: Arc<AgentBus>) -> Option<JoinHand
     match BusS3Sink::from_config(bus, config).await {
         Ok(sink) => Some(tokio::spawn(async move { sink.run().await })),
         Err(err) => {
-            tracing::warn!(error = %err, "Failed to start S3 bus sink; continuing local-only");
+            tracing::warn!(target: "codetether_agent::forage::s3_optional", error = %err, "Failed to start S3 bus sink; continuing local-only");
             None
         }
     }

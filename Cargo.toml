@@ -94,6 +94,7 @@ members = [
     "crates/codetether-worker-tools",
     "crates/codetether-forage-execution",
     "crates/codetether-forage-reporting",
+    "crates/codetether-forage-runtime",
     "crates/codetether-paths",
     "crates/codetether-platform",
     "crates/codetether-plan",
@@ -1060,6 +1061,7 @@ codetether-tool-construction = { path = "crates/codetether-tool-construction", v
 codetether-worker-tools = { path = "crates/codetether-worker-tools", version = "0.1.0" }
 codetether-forage-execution = { path = "crates/codetether-forage-execution", version = "0.1.0" }
 codetether-forage-reporting = { path = "crates/codetether-forage-reporting", version = "0.1.0" }
+codetether-forage-runtime = { path = "crates/codetether-forage-runtime", version = "0.1.0" }
 codetether-github-auth = { path = "crates/codetether-github-auth", version = "0.1.0" }
 codetether-webfetch = { path = "crates/codetether-webfetch", version = "0.1.0" }
 codetether-websearch = { path = "crates/codetether-websearch", version = "0.1.0" }

@@ -19018,3 +19018,29 @@ lexical module reachability, dependency-cycle checks, file-size ratchet,
 whitespace and direct formatting. Evidence:
 `artifacts/consolidation-forage-reporting/`. No Cargo, rustc, Python, Rust tests,
 audit writes or live bus publication ran; compilation and runtime remain unverified.
+
+### Forage runtime and live-service ownership
+
+Moved forage startup, discovery, cycle control, selected-opportunity execution,
+summary counters, progress evidence and optional S3 startup/liveness into
+`codetether-forage-runtime`. The entrypoint owns repository, bus, observer and
+sink handles while the generic RunLoop borrows those owners. The application
+provides custom scoring and interactive clarification through two host methods,
+extending its existing execution bindings. Native public entrypoints and test
+selection/progress helpers delegate to the shared implementation.
+
+Preserved initialization and publication order, global bus installation,
+moonshot seeding before clarification, scoring inputs, top/cycle/sleep limits,
+saturating counters, fail-fast exits, progress-before-success reporting and S3
+termination errors. Moved S3 diagnostics retain their original native target.
+Native scoring plugins, clarification, regression assertions and execution
+adapters are unchanged.
+
+Validation: 16 complete function-body comparisons, borrowed owner layout,
+native signatures and host forwarding, unchanged regression files and engines,
+removed native implementations, declared dependency versions, isolated lock
+change, lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-forage-runtime/`. No Cargo, rustc, Python, Rust tests,
+forage execution, interactive prompts or S3 operations ran; compilation and
+runtime behavior remain unverified.

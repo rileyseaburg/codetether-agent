@@ -1624,6 +1624,7 @@ dependencies = [
  "codetether-forage-core",
  "codetether-forage-execution",
  "codetether-forage-reporting",
+ "codetether-forage-runtime",
  "codetether-git-tool",
  "codetether-github-auth",
  "codetether-github-pr",
@@ -3016,6 +3017,22 @@ dependencies = [
  "serde_json",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-forage-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-bus-core",
+ "codetether-bus-s3",
+ "codetether-cli-options",
+ "codetether-forage-core",
+ "codetether-forage-execution",
+ "codetether-forage-reporting",
+ "codetether-okr",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

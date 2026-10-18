@@ -36,42 +36,5 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
 /// }
 /// ```
 pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> {
-    ensure_audit_log_initialized().await;
-    let repo = OkrRepository::from_config().await?;
-    let moonshot_rubric = load_moonshot_rubric(&args).await?;
-    if args.execute {
-        seed_initial_okr_if_empty(&repo, &moonshot_rubric).await?;
-    }
-    let bus = AgentBus::new().into_arc();
-    // Make forage observable to other in-process agents/tools: install this
-    // bus as the process-global one when none has been set yet (first writer
-    // wins, so this is a no-op if an entrypoint already installed a bus).
-    crate::bus::set_global(bus.clone());
-    // S3 archival is best-effort: forage always runs, even without MinIO/S3.
-    // `--no-s3` skips the attempt entirely; otherwise we try and degrade to
-    // local-only mode (with a warning) when no configuration is present.
-    let mut s3_sync_handle = start_sink::start(&args, &bus).await;
-    // Only police S3 liveness if a sink actually started.
-    let require_s3 = s3_sync_handle.is_some();
-    let forage_id = "forage-runtime";
-    let bus_handle = bus.handle(forage_id);
-    let mut observer = bus.handle("forage-observer");
-    let events = events::RunEvents {
-        args: &args,
-        moonshot_rubric: &moonshot_rubric,
-        bus_handle: &bus_handle,
-    };
-    events.start().await;
-
-    runtime::RunLoop {
-        args: &args,
-        repo: &repo,
-        moonshot_rubric: &moonshot_rubric,
-        events: &events,
-        observer: &mut observer,
-        s3_sync_handle: &mut s3_sync_handle,
-        require_s3,
-    }
-    .run()
-    .await
+    codetether_forage_runtime::execute_with_summary::<super::execution_host::Native>(args).await
 }

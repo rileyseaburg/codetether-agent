@@ -6,7 +6,7 @@ use super::*;
 mod cycle;
 mod run;
 mod summary;
-pub(super) struct RunLoop<'a> {
+pub(super) struct RunLoop<'a, H: Host> {
     pub args: &'a ForageArgs,
     pub repo: &'a OkrRepository,
     pub moonshot_rubric: &'a MoonshotRubric,
@@ -14,4 +14,5 @@ pub(super) struct RunLoop<'a> {
     pub observer: &'a mut BusHandle,
     pub s3_sync_handle: &'a mut Option<tokio::task::JoinHandle<Result<()>>>,
     pub require_s3: bool,
+    pub host: std::marker::PhantomData<fn() -> H>,
 }

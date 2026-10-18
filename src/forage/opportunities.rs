@@ -1,36 +1,13 @@
-//! Adapt CLI goals, repository loading and custom scoring to shared selection.
+//! Test bindings for shared forage opportunity selection.
 use super::*;
-
-pub(super) async fn load_moonshot_rubric(args: &ForageArgs) -> Result<MoonshotRubric> {
-    codetether_forage_core::rubric_load::load(
-        &args.moonshots,
-        args.moonshot_file.as_deref(),
-        args.moonshot_required,
-        args.moonshot_min_alignment,
-    )
-    .await
-}
-
-pub(super) async fn build_opportunities(
-    repo: &OkrRepository,
-    moonshots: &MoonshotRubric,
-) -> Result<Vec<ForageOpportunity>> {
-    let okrs = repo.list_okrs().await?;
-    Ok(collect_opportunities_with_rubric(&okrs, moonshots))
-}
-
-#[cfg(test)]
 pub(super) fn collect_opportunities(okrs: &[Okr]) -> Vec<ForageOpportunity> {
-    collect_opportunities_with_rubric(okrs, &MoonshotRubric::default())
+    codetether_forage_runtime::collect_opportunities::<super::execution_host::Native>(okrs)
 }
-
 pub(super) fn collect_opportunities_with_rubric(
     okrs: &[Okr],
-    moonshots: &MoonshotRubric,
+    rubric: &MoonshotRubric,
 ) -> Vec<ForageOpportunity> {
-    codetether_forage_core::collect_opportunities_with_rubric(
-        okrs,
-        moonshots,
-        &mut tetherscript_score::apply,
+    codetether_forage_runtime::collect_opportunities_with_rubric::<super::execution_host::Native>(
+        okrs, rubric,
     )
 }
