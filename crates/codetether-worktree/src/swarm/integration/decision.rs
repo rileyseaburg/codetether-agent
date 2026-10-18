@@ -1,8 +1,8 @@
 //! Pre-merge handling for verification and mutation worktrees.
 
 use super::SubTaskResult;
-use crate::swarm::worktree_branch::policy::{self, Decision};
-use crate::worktree::{WorktreeInfo, WorktreeManager};
+use crate::swarm::branch::policy::{self, Decision};
+use crate::{WorktreeInfo, WorktreeManager};
 
 pub(super) async fn before_merge(
     result: &mut SubTaskResult,

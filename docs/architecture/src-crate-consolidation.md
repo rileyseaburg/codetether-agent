@@ -15384,3 +15384,22 @@ Full workspace consolidation remains active.
   whitespace checks passed. Evidence: `artifacts/consolidation-registry-composition/`.
 - Cargo, rustc, Python, Rust compilation and Rust tests were not run. Unrelated
   worktree changes were retained; full consolidation remains incomplete.
+
+### Main-swarm integration outcome ownership
+
+- Moved the main executor's completed-worktree integration from
+  `src/swarm/merge_outcome.rs` and its decision/record/failure modules into
+  `codetether-worktree::swarm::integration`. The executor uses the shared function
+  through the existing native compatibility module.
+- Moved all four integration regressions and their Git/result fixtures with the
+  implementation. The shared path retains commit-before-inspection ordering,
+  net-patch checks, verification/mutation decisions, merge reporting, cleanup,
+  and failed-artifact retention.
+- The worktree crate now depends on the shared swarm result contracts. Its
+  dependency graph remains acyclic. Every moved file is within 50 code lines.
+- Verification: full normalized token comparisons for all ten moved files,
+  unchanged executor call sites, module/test reachability, dependency DAG,
+  direct rustfmt, line-limit ratchet, isolated lockfile addition, and diff
+  whitespace checks passed. Evidence: `artifacts/consolidation-swarm-integration/`.
+- No Cargo, rustc, Python, compilation or Rust tests ran. The broader workspace
+  consolidation remains unfinished.

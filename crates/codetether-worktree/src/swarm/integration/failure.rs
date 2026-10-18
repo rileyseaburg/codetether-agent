@@ -1,7 +1,7 @@
 //! Record failed integrations while preserving their worktrees.
 
 use super::SubTaskResult;
-use crate::worktree::MergeResult;
+use crate::MergeResult;
 
 pub(super) fn merge(result: &mut SubTaskResult, merged: &MergeResult) {
     let kind = if merged.aborted {

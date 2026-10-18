@@ -1,6 +1,6 @@
 use super::{fixture_git as git, fixture_result};
-use crate::swarm::SubTaskResult;
-use crate::worktree::{WorktreeInfo, WorktreeManager};
+use crate::{WorktreeInfo, WorktreeManager};
+use codetether_swarm_core::SubTaskResult;
 use std::{fs, path::PathBuf};
 
 pub(super) struct Fixture {

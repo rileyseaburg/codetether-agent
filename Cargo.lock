@@ -7621,6 +7621,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "codetether-swarm-core",
 ]
 
 [[package]]

@@ -1,4 +1,4 @@
-use crate::swarm::SubTaskResult;
+use codetether_swarm_core::SubTaskResult;
 
 pub(super) fn create() -> SubTaskResult {
     SubTaskResult {

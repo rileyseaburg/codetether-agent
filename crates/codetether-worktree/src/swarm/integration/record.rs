@@ -1,9 +1,9 @@
 //! Record a swarm worktree merge without hiding failed artifacts.
 
 use super::SubTaskResult;
-use crate::worktree::{MergeResult, WorktreeInfo, WorktreeManager};
+use crate::{MergeResult, WorktreeInfo, WorktreeManager};
 
-#[path = "merge_failure.rs"]
+#[path = "failure.rs"]
 mod failure;
 pub(super) use failure::fail;
 
@@ -37,5 +37,5 @@ async fn success(
 }
 
 #[cfg(test)]
-#[path = "merge_outcome_tests.rs"]
+#[path = "tests.rs"]
 mod tests;

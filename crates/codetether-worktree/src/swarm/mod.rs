@@ -9,3 +9,6 @@ pub mod branch;
 pub mod commit;
 
 mod git;
+
+/// Integrate completed subtask worktrees and retain failed artifacts.
+pub mod integration;
