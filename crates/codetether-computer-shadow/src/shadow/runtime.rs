@@ -7,8 +7,8 @@ use super::{
     types::State,
     validate,
 };
-use crate::tool::ToolResult;
 use anyhow::{Result, ensure};
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 pub(super) fn dispatch(input: &ComputerUseInput) -> ToolResult {
@@ -26,7 +26,7 @@ fn execute(input: &ComputerUseInput) -> Result<ToolResult> {
     if let Some(status) = super::status::reply(input, entry.state) {
         return Ok(status);
     }
-    let _dpi = crate::platform::windows::computer_use::dpi::DpiContext::enter()?;
+    let _dpi = codetether_platform::windows::computer_use::dpi::DpiContext::enter()?;
     let plan = plan::build(input, target.geometry()?, entry.state)?;
     let before = native::observe();
     let outcome = replay::execute(&plan, &mut entry.state, |event| target.post(event));

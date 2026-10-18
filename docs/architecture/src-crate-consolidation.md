@@ -17225,3 +17225,22 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-computer-contract/`.
 - No Cargo, rustc, Python, OS automation, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Dedicated shadow-input execution crate
+
+- Moved the complete HWND-targeted shadow-input subsystem (30 Rust files,
+  approximately 1,100 lines, including 20 tests) into
+  `codetether-computer-shadow`.
+- The crate owns validation, coordinates, keyboard/mouse/drag planning,
+  replay, queue reports, per-window logical state and Windows message posting.
+  Native shadow dispatch now re-exports the shared entry point.
+- Preserved all bodies and conditional Windows branches. Imports now use the
+  shared computer contract, tool result type and platform DPI guard directly.
+  Windows API dependencies remain target-specific.
+- Verification: every moved file and original test compared, allowing only
+  import paths/order and public dispatch visibility; unchanged native routing,
+  worker and DPI support; module/dependency graphs, direct rustfmt, file limits
+  and whitespace. Evidence: `artifacts/consolidation-computer-shadow/`.
+- Staged only the new package/root dependency in the committed lockfile baseline.
+  No Cargo, rustc, Python, desktop actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

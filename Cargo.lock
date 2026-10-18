@@ -1575,6 +1575,7 @@ dependencies = [
  "codetether-command-session",
  "codetether-command-shell",
  "codetether-computer-contract",
+ "codetether-computer-shadow",
  "codetether-config",
  "codetether-confirm-edit",
  "codetether-confirm-multiedit",
@@ -2360,6 +2361,20 @@ dependencies = [
  "codetether-tool-core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-computer-shadow"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-computer-contract",
+ "codetether-platform",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "windows",
 ]
 
 [[package]]

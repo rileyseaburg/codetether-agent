@@ -1,6 +1,6 @@
 //! Honest queue-only outcomes, capabilities, and logical state reporting.
 use super::{replay::Outcome, types::State};
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
 
 pub(super) fn result(
