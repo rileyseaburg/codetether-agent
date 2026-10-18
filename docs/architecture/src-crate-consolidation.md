@@ -16577,3 +16577,19 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-cognition-query/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared cognition start, stop and persona creation
+
+- Moved cognition start/stop sequencing, start-request interval handling and
+  persona-creation event publication onto the shared core runtime.
+- Start accepts the native loop driver as a callback; the application facade
+  retains existing method signatures and supplies its unchanged tick driver.
+- Preserved disabled-runtime rejection, persona seeding before the running
+  check, interval clamping, running flag/timestamp order, loop task ownership,
+  abort-and-join behavior and optional stop-event payload/publication.
+- Verification: complete start/request/stop/create body comparisons, native
+  forwarding and driver binding, unchanged tick/status/HTTP and persona policy,
+  module/dependency graphs, direct rustfmt, file limits and whitespace. No
+  dependencies changed. Evidence: `artifacts/consolidation-cognition-lifecycle/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
