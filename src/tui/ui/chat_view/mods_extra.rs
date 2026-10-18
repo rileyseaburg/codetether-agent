@@ -3,12 +3,6 @@
 pub(crate) mod agent_lines;
 pub mod agent_tab_style;
 pub(crate) mod approval_diff;
-pub(crate) mod approval_diff_assets;
-pub(crate) mod approval_diff_line;
-pub(crate) mod approval_diff_syntax;
-#[cfg(test)]
-#[path = "approval_diff_tests.rs"]
-mod approval_diff_tests;
 pub(crate) mod approval_overlay_layout;
 pub(crate) mod approval_overlay_content;
 pub(crate) mod approval_overlay_footer;

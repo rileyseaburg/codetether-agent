@@ -12794,3 +12794,20 @@ Full workspace consolidation remains active.
 - Only new crate package/dependency records were staged from Cargo.lock. No
   patch-runtime operations, Cargo, rustc, compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Approval diff rendering extraction
+
+- Moved syntax-aware diff rendering into codetether-approval-diff. Eight modules
+  separate line dispatch, addition/deletion styling, context/metadata lines,
+  paired syntax state, span conversion, lazy assets and the existing TypeScript
+  regression test. Modules contain at most 35 code lines.
+- Native approval_diff now re-exports the shared renderer. Overlay composition
+  and its rendering/content tests remain unchanged. Header recognition, separate
+  old/new syntax state, TypeScript fallback, theme and colors are preserved.
+- Verification: 20 static source comparisons passed for renderer functions,
+  syntax state/methods, moved test and unchanged overlay integration. Module and
+  dependency checks, direct rustfmt, file limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-approval-diff/.
+- Only the new package/dependency entries were staged from Cargo.lock. No
+  rendering, Cargo, rustc, compilation or Rust tests ran. Full consolidation
+  remains incomplete.

@@ -1265,6 +1265,7 @@ dependencies = [
  "codetether-settings-policy",
  "codetether-approval-queue",
  "codetether-approval-edit",
+ "codetether-approval-diff",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6362,6 +6363,14 @@ dependencies = [
  "codetether-patch",
  "similar 3.2.0",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-approval-diff"
+version = "0.1.0"
+dependencies = [
+ "ratatui",
+ "syntect",
 ]
 
 [[package]]

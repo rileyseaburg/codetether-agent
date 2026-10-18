@@ -1,3 +1,4 @@
+//! Existing TypeScript addition highlighting regression.
 #[test]
 fn typescript_addition_has_syntax_spans() {
     let diff = concat!(
@@ -8,7 +9,7 @@ fn typescript_addition_has_syntax_spans() {
         "+console.log(tabs)\n",
     );
 
-    let lines = super::approval_diff::lines(diff);
+    let lines = crate::lines(diff);
 
     assert!(
         lines[3]
