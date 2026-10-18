@@ -154,7 +154,7 @@ fn scan_with_index(
 ) -> Result<TailLoad> {
     // Fast path: check the sidecar index.
     if let Some(ws) = canonical_workspace.as_ref() {
-        let index = super::workspace_index::WorkspaceIndex::load_sync();
+        let index = super::workspace_index::load_sync();
         if let Some(id) = index.get(ws) {
             let candidate = sessions_dir.join(format!("{id}.json"));
             if candidate.exists() {

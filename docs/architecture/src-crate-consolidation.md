@@ -8971,3 +8971,20 @@ budgets and whitespace checks passed; the largest crate file has 43 code
 lines. Evidence is in `artifacts/consolidation-session-listing/`. Compilation
 and runtime tests were not run. No Cargo, rustc or Python commands ran. The
 full workspace consolidation remains active.
+
+### Dedicated workspace-index crate
+
+Moved the workspace-to-session sidecar representation, filename, lookup,
+loading and persistence into `crates/codetether-workspace-index`. Six modules
+separate storage resolution, JSON shape, map operations, reads and writes.
+Native code now supplies the session directory and delegates the two entry
+points; the resume call site uses that adapter.
+
+Eleven static comparisons cover serialization shape, lookup/update logic,
+load-on-error fallback, path resolution, original write/rename fallback and
+unchanged resume logic apart from the entry-point adjustment. Module and
+workspace dependency graphs, file budgets and whitespace checks passed; the
+largest crate file has 24 code lines. Evidence is in
+`artifacts/consolidation-workspace-index/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The full workspace
+consolidation remains active.
