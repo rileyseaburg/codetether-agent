@@ -1921,6 +1921,7 @@ dependencies = [
  "which 8.0.6",
  "windows",
  "codetether-windows-cli",
+ "codetether-rlm-view",
 ]
 
 [[package]]
@@ -3681,6 +3682,14 @@ dependencies = [
  "codetether-collaboration-input",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-rlm-view"
+version = "0.1.0"
+dependencies = [
+ "codetether-session-picker",
+ "ratatui",
 ]
 
 [[package]]

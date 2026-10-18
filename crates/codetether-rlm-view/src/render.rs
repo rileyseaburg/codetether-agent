@@ -1,3 +1,4 @@
+//! Render the RLM overview with its workspace session summary.
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -5,8 +6,19 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use crate::tui::sessions::render_sessions_summary;
+use codetether_session_picker::summary::render_sessions_summary;
 
+/// Draw the RLM overview and workspace session summary.
+/// # Arguments
+/// Receives the frame, panel bounds, workspace label, status, session count and selected index.
+/// # Returns
+/// Updates the supplied frame within the panel bounds.
+/// # Examples
+/// ```no_run
+/// # fn draw(frame: &mut ratatui::Frame, area: ratatui::layout::Rect) {
+/// codetether_rlm_view::render_rlm(frame, area, ".", "Ready", 3, 0);
+/// # }
+/// ```
 pub fn render_rlm(
     f: &mut Frame,
     area: Rect,

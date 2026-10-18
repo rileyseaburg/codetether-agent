@@ -24099,3 +24099,21 @@ without missing modules or cycles. Direct rustfmt, source file limits and
 whitespace checks passed. Unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-clipboard-test/. No environment changes, tests, Cargo,
 rustc, Python or compilation ran. Full consolidation remains active.
+
+### Remaining standalone overview renderers moved into view crates
+
+Moved native status rendering into tui-style::status and workspace session
+summary rendering into session-picker::summary. Created codetether-rlm-view
+for the RLM overview panel, composed with the shared session summary. Native
+TUI modules now reexport those owners, removing all three source files while
+preserving existing call paths. Added the new crate to the workspace and root
+dependencies, with ratatui and session-picker as its dependencies.
+
+Static whole-file token comparisons preserve every renderer after the shared
+summary import substitution. Added public usage documentation. Module and
+dependency scans cover 692 roots and 573 crates without missing modules or
+cycles. Direct rustfmt, source file limits and whitespace checks passed. Only
+the new local package and root dependency are staged in Cargo.lock; unrelated
+working edits remain untouched. Evidence: artifacts/consolidation-basic-views/.
+No Cargo, rustc, Python, compilation, rendering or tests ran. Full consolidation
+remains active.

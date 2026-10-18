@@ -9,5 +9,6 @@ pub mod gradient_rule;
 pub mod gradient_sweep;
 pub mod mode_accent;
 pub mod spinner;
+pub mod status;
 pub mod thinking_pulse;
 pub use codetether_theme::gradient;

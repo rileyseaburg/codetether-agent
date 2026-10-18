@@ -1,0 +1,11 @@
+[package]
+name = "codetether-rlm-view"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Terminal RLM overview and workspace session summary composition"
+
+[dependencies]
+codetether-session-picker = { path = "../codetether-session-picker", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
