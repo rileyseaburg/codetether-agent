@@ -4,7 +4,7 @@
 //! calls or other non-text parts. Used by `/ask` to render the model's
 //! reply as a single system message in the TUI.
 
-use crate::provider::{ContentPart, Message};
+use codetether_provider_core::{ContentPart, Message};
 
 /// Concatenate every [`ContentPart::Text`] in `message`.
 ///

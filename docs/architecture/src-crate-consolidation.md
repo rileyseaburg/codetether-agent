@@ -14672,3 +14672,21 @@ Full workspace consolidation remains active.
   whitespace checks passed. Evidence: artifacts/consolidation-editor-interactive/.
 - No Cargo, rustc, Rust tests, workspace scans or editor file reads ran. Full
   workspace consolidation remains unfinished.
+
+### Ephemeral side-question ownership
+
+- Moved `/ask` request building, provider execution, text extraction and result
+  presentation into the dedicated codetether-side-question crate. Its only
+  dependency is the shared provider contract crate.
+- Native bindings supply read-only session history/model, existing provider
+  resolution and ephemeral status/system-message output. The crate exposes no
+  session mutation or persistence operation.
+- Preserved the side-question instruction, empty tool list, 1,024-token limit,
+  provider fallback, status messages and text-only extraction.
+- Verification: seven static checks passed for complete request/response bodies,
+  dispatch guards, native conversation forwarding, module bounds and isolated
+  lock additions. Module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-side-question/.
+- No Cargo, rustc, Rust tests, provider requests or session changes ran. Full
+  workspace consolidation remains unfinished.

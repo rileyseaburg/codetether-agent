@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-side-question",
  "codetether-turn-undo",
  "codetether-server-runtime",
  "codetether-server-router",
@@ -7285,6 +7286,13 @@ dependencies = [
  "anyhow",
  "chrono",
  "tracing",
+]
+
+[[package]]
+name = "codetether-side-question"
+version = "0.1.0"
+dependencies = [
+ "codetether-provider-core",
 ]
 
 [[package]]

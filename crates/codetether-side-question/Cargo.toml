@@ -1,0 +1,10 @@
+[package]
+name = "codetether-side-question"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Ephemeral tool-free side questions over read-only conversation context"
+
+[dependencies]
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
