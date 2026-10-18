@@ -1,0 +1,12 @@
+[package]
+name = "codetether-git-view"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Workspace Git snapshots and terminal status presentation"
+
+[dependencies]
+chrono = "0.4"
+serde = { version = "1.0.229", features = ["derive"] }
+ratatui = { version = "0.30.2", default-features = false }

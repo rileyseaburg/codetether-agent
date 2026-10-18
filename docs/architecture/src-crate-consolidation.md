@@ -11180,3 +11180,19 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-protocol-view/`. Compilation, runtime tests
   and rendering were not run; no Cargo or rustc commands executed.
 - Full consolidation remains active.
+
+### Git view consolidation
+
+- Moved Git status/log/branch/diff capture, serialized snapshot state, line
+  composition and view layout into `crates/codetether-git-view`.
+- Twelve modules separate capture commands, branch labeling, section assembly,
+  styling and rendering. Maximum module size is 31 code lines.
+- Native Git modules now re-export shared APIs; the view supplies its existing
+  input-preview callback. Workspace snapshots use the same shared status
+  helper while workspace pruning remains unchanged.
+- Nineteen static comparisons verify command arguments, complete function
+  bodies, snapshot shape, capture ordering, presentation and unchanged callers.
+  Module reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-git-view/`. Compilation, tests, moved Git
+  capture functions and rendering were not run. No Cargo or rustc commands
+  executed. Full consolidation remains active.
