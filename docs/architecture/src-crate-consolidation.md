@@ -20528,3 +20528,22 @@ formatted-parent comparisons, complete module reachability including owners,
 dependency cycles, file-size ratchet, whitespace and direct formatting.
 Evidence: `artifacts/consolidation-nested-facades/`. No Cargo, rustc, Python or
 Rust tests ran; compilation and runtime remain unverified.
+
+### Tab routing ownership
+
+Moved the remaining view-aware Tab/BackTab dispatch from
+`src/tui/app/event_handlers/tab_keys.rs` into
+`crates/codetether-tui-navigation/src/tab.rs`. The navigation crate now owns
+view admission, direction routing, and synchronization of active agent focus
+with the selected swarm task. Native `navigation/host/tab.rs` supplies only
+previous/next swarm selection operations; the existing focus host supplies
+agent lookup and assignment. The native event handler delegates to this owner.
+No dependencies changed.
+
+Verification: explicit source-body comparison after host substitutions preserves
+all original routing branches and focus updates. The existing swarm navigation
+regression source is unchanged and remains linked to the native entry point.
+Direct rustfmt, source/module graph checks, git whitespace checks, and the native
+file-size ratchet passed. Evidence is in `artifacts/consolidation-tab-routing/`.
+No Cargo, rustc, or Python commands ran. Compilation and runtime tests remain
+unverified; this extraction does not complete the broader consolidation goal.

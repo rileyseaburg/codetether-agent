@@ -6,31 +6,13 @@
 
 use crossterm::event::KeyCode;
 
-use crate::tui::app::{navigation as nav, state::App};
+use crate::tui::app::{navigation::Navigation, state::App};
+#[cfg(test)]
 use crate::tui::models::ViewMode;
 
 /// Route a Tab or BackTab keypress to the right focus action.
 pub(super) fn dispatch(app: &mut App, code: KeyCode) {
-    if app.state.view_mode == ViewMode::Swarm {
-        match code {
-            KeyCode::BackTab => app.state.swarm.select_prev(),
-            KeyCode::Tab => app.state.swarm.select_next(),
-            _ => {}
-        }
-        app.state.active_spawned_agent = app
-            .state
-            .swarm
-            .selected_subtask()
-            .and_then(|task| task.agent_name.clone());
-        return;
-    }
-    if app.state.view_mode != ViewMode::Chat && app.state.view_mode != ViewMode::Subagents {
-        return;
-    }
-    match code {
-        KeyCode::BackTab => nav::cycle_agent_focus_back(app),
-        _ => nav::handle_tab(app),
-    }
+    codetether_tui_navigation::tab::dispatch(&mut Navigation(app), code);
 }
 
 #[cfg(test)]

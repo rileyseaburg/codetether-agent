@@ -47,3 +47,6 @@ pub mod mouse;
 
 /// Saved viewport state and chat-view transition policy.
 pub mod view_state;
+
+/// View-aware Tab routing and swarm focus synchronization.
+pub mod tab;
