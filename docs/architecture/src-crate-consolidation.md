@@ -18368,3 +18368,24 @@ test-source comparisons, module/dependency graph checks, file-size ratchet and
 whitespace. Evidence: `artifacts/consolidation-goal-input/`. No goal command or
 continuation was executed. No Cargo, rustc or Python ran; Rust compilation and
 integration tests remain unverified.
+
+### Goal question holds and explicit continuation
+
+Moved question parsing, hold initiation, continuation recognition, held-ask
+release and answer-delivery decisions into `codetether-goal-answer`. The crate
+has separate parser, journal contract, input, release and delivery modules.
+Native adapters retain durable user-only journal operations, session-view
+identity, composer/status updates and the existing ask implementation.
+
+Native entrypoints remain for integration tests. The original question parser
+unit test moved with its module; native answer, follow-up, explicit continuation
+and hold-release test sources are unchanged. Delivery still waits for processing
+to stop and session ownership to return. An answer records Answered/Unsatisfied
+without releasing the hold; explicit continuation preserves its durable
+ResumeRequested operation.
+
+Validation: full workflow-body and callback comparisons, journal argument and
+cursor/history ordering checks, existing test-source comparisons, module and
+dependency graphs, file-size ratchet and whitespace. Evidence:
+`artifacts/consolidation-goal-answer/`. No question/goal transition, provider,
+Cargo, rustc, Python or Rust test was executed; compilation remains unverified.

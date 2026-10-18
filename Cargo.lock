@@ -1389,6 +1389,7 @@ dependencies = [
  "codetether-webview-bars",
  "codetether-webview",
  "codetether-tui-render",
+ "codetether-goal-answer",
  "codetether-goal-command",
  "codetether-mcp-bus",
  "codetether-mcp-fallback",
@@ -16146,6 +16147,14 @@ dependencies = [
  "codetether-provider-core",
  "codetether-swarm-view",
  "ratatui",
+]
+
+[[package]]
+name = "codetether-goal-answer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-goal-core",
 ]
 
 [[package]]

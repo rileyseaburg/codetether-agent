@@ -1,0 +1,11 @@
+[package]
+name = "codetether-goal-answer"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Human question holds, answer delivery and explicit goal continuation"
+
+[dependencies]
+anyhow = "1"
+codetether-goal-core = { path = "../codetether-goal-core", version = "0.1.0" }

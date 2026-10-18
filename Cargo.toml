@@ -302,6 +302,7 @@ members = [
     "crates/codetether-webview",
     "crates/codetether-tui-render",
     "crates/codetether-goal-command",
+    "crates/codetether-goal-answer",
     "crates/codetether-mcp-bus",
     "crates/codetether-mcp-fallback",
     "crates/codetether-mcp-server",
@@ -818,6 +819,7 @@ codetether-webview-bars = { path = "crates/codetether-webview-bars", version = "
 codetether-webview = { path = "crates/codetether-webview", version = "0.1.0" }
 codetether-tui-render = { path = "crates/codetether-tui-render", version = "0.1.0" }
 codetether-goal-command = { path = "crates/codetether-goal-command", version = "0.1.0" }
+codetether-goal-answer = { path = "crates/codetether-goal-answer", version = "0.1.0" }
 codetether-mcp-bus = { path = "crates/codetether-mcp-bus", version = "0.1.0" }
 codetether-mcp-fallback = { path = "crates/codetether-mcp-fallback", version = "0.1.0" }
 codetether-mcp-server = { path = "crates/codetether-mcp-server", version = "0.1.0" }
