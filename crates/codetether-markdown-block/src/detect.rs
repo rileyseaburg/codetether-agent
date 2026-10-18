@@ -5,29 +5,31 @@ use ratatui::{
     text::Span,
 };
 
-#[path = "message_formatter_block_detect_helpers.rs"]
+#[path = "helpers.rs"]
 mod helpers;
 use helpers::{blockquote, header, header_spans, is_rule, list_item};
 
-#[path = "message_formatter_block_tasks.rs"]
+#[path = "tasks.rs"]
 mod tasks;
 use tasks::{list_block, task_block, task_item};
 
 #[cfg(test)]
-#[path = "message_formatter_block_tasks_tests.rs"]
+#[path = "tasks_tests.rs"]
 mod tasks_tests;
+pub use crate::Block;
 
-/// Outcome of block-level detection for one line.
-pub(in crate::tui) enum Block {
-    Plain,
-    Styled(Vec<Span<'static>>),
-    Prefixed {
-        prefix: Vec<Span<'static>>,
-        rest: String,
-    },
-}
-
-pub(in crate::tui) fn classify(line: &str) -> Block {
+/// Classify one Markdown line and style its block-level markers.
+/// # Arguments
+/// * `line` - Raw Markdown line, including any indentation.
+/// # Returns
+/// Fully styled spans, a styled prefix with residual text, or a plain marker.
+/// # Examples
+/// ```
+/// use codetether_markdown_block::{classify, Block};
+/// assert!(matches!(classify("# Title"), Block::Styled(_)));
+/// assert!(matches!(classify("- item"), Block::Prefixed { .. }));
+/// ```
+pub fn classify(line: &str) -> Block {
     let trimmed = line.trim_start();
     let indent = &line[..line.len() - trimmed.len()];
 

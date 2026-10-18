@@ -1,0 +1,10 @@
+[package]
+name = "codetether-markdown-block"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Terminal Markdown block classification and prefix styling"
+
+[dependencies]
+ratatui = { version = "0.30.2", default-features = false }

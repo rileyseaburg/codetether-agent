@@ -7,13 +7,8 @@ use ratatui::text::Span;
 
 use super::MessageFormatter;
 
-#[path = "message_formatter_block_detect.rs"]
-mod detect;
-pub(super) use detect::{Block, classify};
+pub(super) use codetether_markdown_block::{Block, classify};
 
-#[cfg(test)]
-#[path = "message_formatter_block_tests.rs"]
-mod tests;
 
 /// Format one line: apply block-level markdown, then inline emphasis.
 pub(super) fn format_line(fmt: &MessageFormatter, line: &str, role: &str) -> Vec<Span<'static>> {

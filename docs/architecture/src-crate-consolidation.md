@@ -11092,3 +11092,19 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-math-text/`. Compilation and tests were not
   run; no Cargo or rustc commands executed. The formatter state machine and
   broader `src/` consolidation remain active work.
+
+### Markdown block classification extraction
+
+- Moved heading, rule, quote, list and task-checkbox classification and styling
+  into `crates/codetether-markdown-block`. Native block formatting retains only
+  the bridge to the formatter's inline text pass.
+- Nine modules separate block results, classification, plain-text detection,
+  header styling, task/list rendering and regression tests. A size check caught
+  the initially combined header/detector helper; splitting it brought every
+  module below 45 code lines (maximum 43).
+- Eight existing tests moved with the code. Eleven static comparisons verify
+  the moved types/files, split header body and unchanged inline bridge/callers.
+  Module reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-markdown-block/`. Compilation, runtime tests
+  and rendering were not run; no Cargo or rustc commands executed.
+- Full consolidation remains active.

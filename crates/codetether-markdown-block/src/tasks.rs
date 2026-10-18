@@ -7,7 +7,7 @@ use ratatui::{
 
 use super::Block;
 
-#[path = "message_formatter_block_bullets.rs"]
+#[path = "bullets.rs"]
 mod bullets;
 #[cfg(test)]
 pub(super) use bullets::bullet_for_depth;
