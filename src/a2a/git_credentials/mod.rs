@@ -13,15 +13,14 @@
 mod helper;
 use codetether_a2a_http::git_credentials as material;
 use codetether_a2a_http::git_credentials as query;
-mod repo_config;
 use codetether_a2a_http::git_credentials as request;
 use codetether_worktree::repository::credentials as script;
-#[cfg(test)]
-mod tests;
 
+pub use codetether_worktree::repository::credentials::{
+    configure_repo_git_auth, configure_repo_git_github_app,
+};
 pub use helper::run_git_credential_helper;
 pub use material::GitCredentialMaterial;
 pub use query::GitCredentialQuery;
-pub use repo_config::{configure_repo_git_auth, configure_repo_git_github_app};
 pub use request::request_git_credentials;
 pub use script::write_git_credential_helper_script;

@@ -42,3 +42,5 @@ mod workspace_entry;
 pub use workspace_entry::maybe_configure_repo_git_auth_from_entry;
 mod agent_config;
 pub use agent_config::configure_repo_git_github_app_from_agent_config;
+#[cfg(test)]
+mod tests;

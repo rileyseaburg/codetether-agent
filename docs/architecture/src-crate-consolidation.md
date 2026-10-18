@@ -22917,3 +22917,19 @@ limits and whitespace checks passed. No manifests or lockfiles changed.
 Evidence: `artifacts/consolidation-sandbox-toolchain-tests/`.
 No tests, subprocesses, Cargo, rustc or Python ran; compilation and runtime
 results remain unverified. Full consolidation is active.
+
+### Repository credential regressions colocated with their implementation
+
+Moved helper-placement, stale Git-config-lock recovery and fresh-lock refusal
+tests into focused modules under codetether-worktree's repository credentials.
+The three test bodies are token-identical. The native credential test file
+and redundant repository-config re-export shim were removed; the native public
+functions now re-export the same owning-crate functions directly.
+
+Credential helper/broker behavior and lock recovery implementation are
+unchanged. Module/dependency checks cover 699 roots and 571 crates without
+missing modules or cycles. Direct rustfmt, native file-size limits and whitespace
+checks passed. No manifest or lockfile changes were needed. Evidence:
+`artifacts/consolidation-credential-tests/`.
+No credential tests, Git fixture operations, Cargo, rustc or Python ran;
+compilation and runtime results remain unverified. Full consolidation is active.
