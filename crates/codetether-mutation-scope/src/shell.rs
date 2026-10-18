@@ -12,7 +12,17 @@ const SIMPLE: &[&str] = &[
     "realpath", "rg", "stat", "tail", "test", "tr", "type", "uniq", "wc", "which",
 ];
 
-pub(super) fn read_only(command: &str) -> bool {
+/// Recognize supported read-only shell commands without executing them.
+/// # Arguments
+/// `command` is the shell text to classify.
+/// # Returns
+/// True only when every pipeline segment matches the existing read-only rules.
+/// # Examples
+/// ```
+/// assert!(codetether_mutation_scope::shell::read_only("rg pattern src"));
+/// assert!(!codetether_mutation_scope::shell::read_only("rm file"));
+/// ```
+pub fn read_only(command: &str) -> bool {
     if command.trim().is_empty() || hazardous(command) {
         return false;
     }

@@ -10157,3 +10157,21 @@ checks passed; new crate files contain at most 29 code lines. Evidence is in
 `artifacts/consolidation-request-preparation/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python, registry construction or provider calls ran.
 Full workspace consolidation remains active.
+
+### Dedicated mutation-scope crate
+
+Moved tool-to-path classification, nested batch aggregation, patch target parsing,
+read-only command recognition, repository-root resolution and bounded-scope
+filtering into `crates/codetether-mutation-scope`. Twenty-three modules include
+nineteen existing tests and separate command dialects, scope checks and target
+formats. Session coordination and the mux authority now share the exact same
+whole-workspace claim check. Coordinator calls, lease renewal/release and
+coordinator error outcomes remain unchanged native services.
+
+Fifty-seven static comparisons cover original function bodies, command allowlists,
+path/root rules, tests and untouched coordinator operations. Module/dependency
+graphs, file budgets and whitespace checks passed; new files contain at most 44
+code lines. Evidence is in `artifacts/consolidation-mutation-scope/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python, classified
+commands, coordinator calls or filesystem test fixtures were executed.
+Full workspace consolidation remains active.

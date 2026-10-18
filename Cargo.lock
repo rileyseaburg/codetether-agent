@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-mutation-scope",
  "codetether-request-preparation",
  "codetether-evidence-runtime",
  "codetether-evidence-ledger",
@@ -5066,6 +5067,14 @@ dependencies = [
  "codetether-provider-openrouter",
  "codetether-provider-policy",
  "codetether-tool-catalog",
+]
+
+[[package]]
+name = "codetether-mutation-scope"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

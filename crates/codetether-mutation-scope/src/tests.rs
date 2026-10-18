@@ -37,20 +37,3 @@ fn unknown_shell_mutation_claims_the_workspace_root() {
     let paths = super::paths::mutation_paths("exec_command", &json!({ "cmd": "cargo fmt" }));
     assert_eq!(paths.unwrap(), vec![std::path::PathBuf::new()]);
 }
-
-#[test]
-fn batch_aggregates_nested_mutations_atomically() {
-    let input = json!({ "calls": [
-        { "tool": "read", "args": { "path": "ignored" } },
-        { "tool": "write", "args": { "path": "a.rs" } },
-        { "name": "multiedit", "arguments": { "edits": [{ "file": "b.rs" }] } }
-    ] });
-    let paths = super::paths::mutation_paths("batch", &input).unwrap();
-    assert_eq!(
-        paths,
-        vec![
-            std::path::PathBuf::from("a.rs"),
-            std::path::PathBuf::from("b.rs")
-        ]
-    );
-}

@@ -4,7 +4,17 @@ use serde_json::Value;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
-pub(super) fn paths(input: &Value) -> Option<Vec<PathBuf>> {
+/// Collect deduplicated target paths from supported patch headers.
+/// # Arguments
+/// `input` supplies a patch string under `patch`.
+/// # Returns
+/// Sorted target paths, or None when the patch has no file targets.
+/// # Examples
+/// ```
+/// let paths = codetether_mutation_scope::patch::paths(&serde_json::json!({"patch":"+++ b/a.rs"}));
+/// assert_eq!(paths.unwrap()[0], std::path::PathBuf::from("a.rs"));
+/// ```
+pub fn paths(input: &Value) -> Option<Vec<PathBuf>> {
     let patch = input.get("patch")?.as_str()?;
     let paths = patch
         .lines()
