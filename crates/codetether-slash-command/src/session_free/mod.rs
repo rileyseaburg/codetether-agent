@@ -2,6 +2,7 @@
 //!
 //! Implement [Host] for native attachments and view operations. [run] returns
 //! false for commands that require a session so callers can report it as busy.
+mod binding;
 mod host;
 pub use host::Host;
 /// Normalize and dispatch a command that does not require session access.

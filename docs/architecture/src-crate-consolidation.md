@@ -23669,6 +23669,21 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 were needed. Evidence: artifacts/consolidation-slash-intake/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
 
+### Session-free command frontend bindings
+
+Moved UI-only command state access and file/image/model helpers into
+codetether-slash-command::session_free::binding modules. Removed three root
+adapter files; the root selects the same frontend, view/presentation enums and
+attachment/model callbacks. Commands still require no mutable session borrow.
+
+All nine expanded function bodies and the host layout match after the explicit
+image presentation alias. Session-free tests are byte-for-byte unchanged.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. Unrelated
+files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-session-free/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
+
 ### Queued-prompt frontend bindings
 
 Moved queued-prompt command/answer delivery, input access, queue gates and the

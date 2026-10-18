@@ -1,18 +1,10 @@
-//! Native bindings for commands available while the session is checked out.
-use crate::{provider::ProviderRegistry, tui::app::state::App};
-use std::{path::Path, sync::Arc};
-#[path = "slash_no_session_helpers.rs"]
-mod helpers;
-#[path = "slash_no_session_host.rs"]
-mod host;
-#[path = "slash_no_session_image.rs"]
-mod image;
-/// Dispatch a UI-only command without accessing the current session.
-pub(super) fn run(
-    app: &mut App,
-    cwd: &Path,
-    registry: &Option<Arc<ProviderRegistry>>,
-    prompt: &str,
-) -> bool {
-    codetether_slash_command::session_free::run(&mut host::Native { app, cwd, registry }, prompt)
-}
+//! Frontend callbacks for commands that require no mutable session.
+codetether_slash_command::declare_frontend_session_free!(
+    crate::tui::app::state::App,
+    crate::provider::ProviderRegistry,
+    crate::tui::models::ViewMode,
+    codetether_image::interactive::Presentation;
+    crate::tui::app::file_share::command,
+    crate::tui::app::model_picker::open_without_session,
+    crate::tui::app::input::attach_image_command,
+);
