@@ -28,7 +28,6 @@ mod mcp_cli;
 mod mcp_serve;
 mod native_cli;
 mod ralph_cli;
-mod rlm_cli;
 mod swarm_cli;
 
 #[tokio::main(worker_threads = 8)]
@@ -68,7 +67,9 @@ async fn dispatch(cli: Cli) -> anyhow::Result<()> {
         Some(Command::Config(args)) => cli::config::execute(args).await,
         Some(Command::Swarm(args)) => swarm_cli::execute(args).await,
         Some(Command::SwarmSubagent(args)) => swarm::remote_subtask::run_swarm_subagent(args).await,
-        Some(Command::Rlm(args)) => rlm_cli::run(args).await,
+        Some(Command::Rlm(args)) => {
+            codetether_rlm_cli::execute::<provider::ProviderRegistry>(args).await
+        }
         Some(Command::Oracle(args)) => cli::oracle::execute(args).await,
         Some(Command::Ralph(args)) => ralph_cli::execute(args).await,
         Some(Command::Mcp(args)) => {

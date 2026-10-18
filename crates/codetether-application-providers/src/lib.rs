@@ -8,6 +8,7 @@ use codetether_provider_core::Provider;
 use codetether_secrets::ProviderSecrets;
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 mod application;
+pub mod cli;
 pub use application::Application;
 mod collection;
 mod config;

@@ -23610,3 +23610,22 @@ cycles. Direct rustfmt, source file limits and whitespace checks passed. The
 working lockfile and unrelated A2A edits remain unchanged. Evidence:
 artifacts/consolidation-mcp-client-host/. No Cargo, rustc, Python, compilation,
 tests or MCP operations ran. Full consolidation remains active.
+
+### Provider-backed CLI initialization moved into the provider crate
+
+Moved model discovery initialization and RLM provider selection into separate
+modules under codetether-application-providers::cli. The registry now implements
+the models CLI Registry and RLM ProviderSource contracts directly. Removed
+src/cli/models/mod.rs and src/rlm_cli.rs. The native model entry binds the
+application type; main invokes the RLM command with its existing provider
+registry. Added direct dependencies on models-cli, rlm-cli and rlm-selection.
+
+Static comparisons preserve the model initialization/execution body after
+removing the registry wrapper, and preserve the RLM selection body and error
+text after substituting the generic registry type. Module/dependency scans cover
+691 roots and 571 crates with no missing modules or cycles. Direct rustfmt,
+source file limits and whitespace checks passed. Only the three required
+application-providers lockfile dependency entries were staged from HEAD; the
+unrelated working lockfile and A2A edits remain untouched. Evidence:
+artifacts/consolidation-provider-cli/. No Cargo, rustc, Python, compilation,
+provider requests or runtime tests ran. Full consolidation remains active.
