@@ -1260,6 +1260,7 @@ dependencies = [
  "codetether-session-resume",
  "codetether-chat-transcript",
  "codetether-file-share",
+ "codetether-mcp-connections",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6313,6 +6314,16 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-mcp-connections"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-mcp-core",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

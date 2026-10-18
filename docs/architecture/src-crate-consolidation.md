@@ -12703,3 +12703,22 @@ Full workspace consolidation remains active.
 - Only the new package/dependency changes were staged from Cargo.lock, preserving
   unrelated working changes. No Cargo, rustc, compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Named MCP connection registry extraction
+
+- Moved native TUI MCP connection storage, replacement, server/tool listing,
+  tool dispatch, result formatting and JSON summaries into
+  codetether-mcp-connections. Nine modules contain at most 36 code lines.
+- Connections is generic over the existing RegistryClient contract plus a
+  ConnectionClient constructor. The native McpClient adapter retains the same
+  approval-aware subprocess constructor and TUI callers retain their API.
+  Explicit connection cloning preserves shared Arc clients without requiring
+  the client itself to implement Clone. Registry default remains bound-free.
+- Verification: 16 source comparisons passed for all six moved methods,
+  summary/storage data, cloning, defaults, authorization delegation and five
+  unchanged native integration files. Module/dependency checks, direct rustfmt,
+  file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-mcp-connections/.
+- Only the new crate's package and dependency records were staged from
+  Cargo.lock. No subprocesses, MCP calls, Cargo, rustc, compilation or Rust tests
+  ran. The full consolidation goal remains incomplete.
