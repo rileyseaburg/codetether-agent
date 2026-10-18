@@ -2,7 +2,7 @@
 use crate::provider::Message;
 use crate::session::Session;
 use async_trait::async_trait;
-pub(super) struct NativeSource;
+pub(crate) struct NativeSource;
 #[async_trait]
 impl codetether_history_page::HistorySource for NativeSource {
     async fn load_tail(id: &str, window: usize) -> Result<Vec<Message>, String> {

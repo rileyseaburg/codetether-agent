@@ -14,3 +14,6 @@ pub use source::HistorySource;
 pub use types::{Fingerprint, Page, PageResult, Request};
 #[cfg(test)]
 mod tests;
+
+/// Interactive page requests, state transitions and viewport preservation.
+pub mod interactive;

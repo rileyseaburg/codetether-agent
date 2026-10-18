@@ -2,12 +2,14 @@
 
 use super::HistoryPageState;
 
-impl HistoryPageState {
-    pub(crate) fn set_viewport_height(&mut self, height: usize) {
+impl<S> HistoryPageState<S> {
+    /// Record a viewport height, clamped to at least one row.
+    pub fn set_viewport_height(&mut self, height: usize) {
         self.viewport_height = height.max(1);
     }
 
-    pub(crate) fn page_step(&self) -> usize {
+    /// Return one viewport of movement with a one-row overlap.
+    pub fn page_step(&self) -> usize {
         self.viewport_height.saturating_sub(1).max(1)
     }
 

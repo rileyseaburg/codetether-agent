@@ -2,10 +2,11 @@
 
 use super::HistoryPageState;
 
-impl Default for HistoryPageState {
+impl<S> Default for HistoryPageState<S> {
     fn default() -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         Self {
+            source: std::marker::PhantomData,
             source_id: None,
             generation: 0,
             boundary: Vec::new(),

@@ -14882,3 +14882,24 @@ Full workspace consolidation remains active.
 - Added existing telemetry and view-retention dependencies. Staged lockfile
   changes contain only these dependency edges; unrelated lockfile edits remain
   unstaged. No Cargo, rustc or Rust tests ran. Full consolidation is unfinished.
+
+### Interactive backward-pagination ownership
+
+- Moved the remaining pager state machine into codetether-history-page::interactive:
+  generation-tagged queues, reset/default state, request coalescing and retention
+  guards, page acceptance, viewport measurements, prepend application and render
+  anchoring. The state is generic over the existing HistorySource interface.
+- Native HistoryPageState is now an alias bound to the session-store source.
+  Native code retains only that source adapter and AppState field projections;
+  event-loop draining and anchor updates call the shared implementation.
+- Moved stale-generation, moved-viewport, rewind and memory-cap regression tests
+  with their original assertions. Their shared fixture retains the original
+  viewport's auto-follow default so the reset assertion remains meaningful.
+- Verification: thirteen static checks covered transition bodies, defaults,
+  requests, draining, prepend/anchor calculations, migrated tests, source and UI
+  bindings. Module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-history-interactive/.
+- Added existing chat-model, chat-transcript, view-retention and Tokio dependencies;
+  staged lockfile changes contain only those edges. No Cargo, rustc or Rust tests
+  ran. Full workspace consolidation remains unfinished.

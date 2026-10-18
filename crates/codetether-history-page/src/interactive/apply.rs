@@ -2,7 +2,7 @@
 
 use super::{HistoryPageState, Page};
 
-impl HistoryPageState {
+impl<S> HistoryPageState<S> {
     pub(super) fn take_result(&mut self) -> Option<Result<Page, String>> {
         while let Ok((generation, result)) = self.rx.try_recv() {
             if generation == self.generation {
@@ -40,7 +40,8 @@ impl HistoryPageState {
         self.pending_rewind = 0;
     }
 
-    pub(crate) fn expanded(&self) -> bool {
+    /// Whether a nonempty older page has been accepted since the last reset.
+    pub fn expanded(&self) -> bool {
         self.expanded
     }
 

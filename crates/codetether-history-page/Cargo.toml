@@ -7,6 +7,10 @@ license = "MIT"
 description = "Bounded history page loading and stable message-boundary selection"
 
 [dependencies]
+codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
+codetether-chat-transcript = { path = "../codetether-chat-transcript", version = "0.1.0" }
+codetether-view-retention = { path = "../codetether-view-retention", version = "0.1.0" }
+tokio = { version = "1.53.1", features = ["rt", "sync"] }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 async-trait = "0.1"
 serde_json = "1"

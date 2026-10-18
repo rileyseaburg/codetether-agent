@@ -6322,6 +6322,10 @@ dependencies = [
  "async-trait",
  "codetether-provider-core",
  "serde_json",
+ "codetether-chat-model",
+ "codetether-chat-transcript",
+ "codetether-view-retention",
+ "tokio",
 ]
 
 [[package]]

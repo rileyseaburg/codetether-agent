@@ -1,58 +1,18 @@
-//! Background backward pagination state for the chat transcript.
-
-#[path = "history_page/anchor.rs"]
-mod anchor;
-#[path = "history_page/apply.rs"]
-mod apply;
-#[path = "history_page/default.rs"]
-mod default;
-#[path = "history_page/drain.rs"]
-mod drain;
-#[path = "history_page/load.rs"]
-mod load;
-#[path = "history_page/render_anchor.rs"]
-mod render_anchor;
-#[path = "history_page/request.rs"]
-mod request;
-#[path = "history_page/reset.rs"]
-mod reset;
-#[path = "history_page/select.rs"]
-mod select;
+//! Native storage and view bindings for shared backward pagination.
 #[path = "history_page/source.rs"]
 mod source;
-#[path = "history_page/types.rs"]
-mod types;
-#[path = "history_page/viewport.rs"]
-mod viewport;
-
-#[cfg(test)]
-#[path = "history_page/race_tests.rs"]
-mod race_tests;
-#[cfg(test)]
-#[path = "history_page/tests.rs"]
-mod tests;
-
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-
-pub(crate) use drain::drain;
-use types::Page;
-use types::{Fingerprint, PageResult};
-
-/// Cursor, channel, and viewport state for lazy backward history loading.
-pub(crate) struct HistoryPageState {
-    source_id: Option<String>,
-    generation: u64,
-    boundary: Vec<Fingerprint>,
-    depth: usize,
-    before: Option<usize>,
-    loading: bool,
-    exhausted: bool,
-    expanded: bool,
-    viewport_height: usize,
-    pending_rewind: usize,
-    pending_old_lines: Option<usize>,
-    pending_old_scroll: usize,
-    pending_render_rewind: usize,
-    tx: UnboundedSender<PageResult>,
-    rx: UnboundedReceiver<PageResult>,
+#[path = "history_page/view.rs"]
+mod view;
+use crate::tui::app::state::{App, AppState};
+pub(crate) type HistoryPageState =
+    codetether_history_page::interactive::HistoryPageState<source::NativeSource>;
+/// Apply one completed page, if available.
+pub(crate) fn drain(app: &mut App) -> bool {
+    codetether_history_page::interactive::drain(&mut app.state)
+}
+impl AppState {
+    /// Restore the viewport anchor after older messages were prepended.
+    pub(crate) fn apply_pending_history_anchor(&mut self, total_lines: usize) {
+        codetether_history_page::interactive::apply_pending_history_anchor(self, total_lines);
+    }
 }
