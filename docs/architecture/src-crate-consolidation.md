@@ -11718,3 +11718,20 @@ Full workspace consolidation remains active.
   git diff --check passed. Evidence: artifacts/consolidation-session-picker/.
 - Cargo, rustc, compilation and runtime tests were not run. These checks do not
   establish that the Rust tests pass. Full workspace consolidation is incomplete.
+
+### Session picker state ownership
+
+- Replaced AppState's separate session-list, selection and filter fields with
+  codetether_session_picker::SessionPickerState. The crate now owns navigation,
+  query edits, filtered access, refreshed-list selection clamping, clearing and
+  active-session upserts in four focused state modules.
+- Native refresh retains disk I/O, logging and status updates. Native upserts
+  retain conversion from the live Session to SessionSummary. Input, chat title,
+  main view, webview and existing integration fixtures access the new owner.
+- Verification: 26 static comparisons passed for moved methods, adapter calls,
+  schema/default substitutions, metadata conversion, refresh orchestration and
+  field-only updates across consumers/tests. All 19 crate modules remain under
+  45 code lines. Module/path dependency checks, direct formatting, the source
+  file-limit ratchet and git diff --check passed.
+- Evidence: artifacts/consolidation-session-picker-state/. No Cargo, rustc,
+  compilation or runtime tests ran. Full consolidation remains incomplete.

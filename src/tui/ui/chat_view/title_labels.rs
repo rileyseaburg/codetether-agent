@@ -20,8 +20,9 @@ pub fn session_label(app: &App) -> String {
     };
     let label = app
         .state
+        .session_picker
         .sessions
-        .get(app.state.selected_session)
+        .get(app.state.session_picker.selected_session)
         .filter(|session| session.id == id)
         .map(crate::session::SessionSummary::display_label)
         .unwrap_or_else(|| id.to_string());

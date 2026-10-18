@@ -59,8 +59,8 @@ pub(super) async fn handle_enter_sessions(
     let session_id = app
         .state
         .filtered_sessions()
-        .get(app.state.selected_session)
-        .map(|(orig_idx, _)| app.state.sessions[*orig_idx].id.clone());
+        .get(app.state.session_picker.selected_session)
+        .map(|(orig_idx, _)| app.state.session_picker.sessions[*orig_idx].id.clone());
     if let Some(session_id) = session_id {
         if let Some(session) = slot.borrow_mut() {
             crate::tui::app::codex_sessions::load_selected_session(app, cwd, session, &session_id)

@@ -1,36 +1,22 @@
-//! Session list navigation and filtering methods.
-
+//! Compatibility methods forwarding to owned session-picker state.
 use crate::session::SessionSummary;
-
 impl super::AppState {
     pub fn sessions_select_prev(&mut self) {
-        if self.selected_session > 0 {
-            self.selected_session -= 1;
-        }
+        self.session_picker.sessions_select_prev()
     }
-
     pub fn sessions_select_next(&mut self) {
-        if self.selected_session + 1 < self.filtered_sessions().len() {
-            self.selected_session += 1;
-        }
+        self.session_picker.sessions_select_next()
     }
-
     pub fn filtered_sessions(&self) -> Vec<(usize, &SessionSummary)> {
-        codetether_session_picker::filtered_sessions(&self.sessions, &self.session_filter)
+        self.session_picker.filtered_sessions()
     }
-
     pub fn clear_session_filter(&mut self) {
-        self.session_filter.clear();
-        self.selected_session = 0;
+        self.session_picker.clear_session_filter()
     }
-
     pub fn session_filter_backspace(&mut self) {
-        self.session_filter.pop();
-        self.selected_session = 0;
+        self.session_picker.session_filter_backspace()
     }
-
     pub fn session_filter_push(&mut self, c: char) {
-        self.session_filter.push(c);
-        self.selected_session = 0;
+        self.session_picker.session_filter_push(c)
     }
 }

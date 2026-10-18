@@ -21,9 +21,9 @@ pub(super) mod window {
 /// ```
 pub fn render_sessions_view(f: &mut Frame, app: &mut App) {
     let view = codetether_session_picker::PickerView {
-        sessions: &app.state.sessions,
-        filter: &app.state.session_filter,
-        selected: app.state.selected_session,
+        sessions: &app.state.session_picker.sessions,
+        filter: &app.state.session_picker.session_filter,
+        selected: app.state.session_picker.selected_session,
         active_session: app.state.session_id.as_deref(),
         status: &app.state.status,
     };

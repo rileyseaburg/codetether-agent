@@ -20,7 +20,7 @@ pub fn summary(id: &str, title: &str) -> SessionSummary {
 /// Build an [`AppState`] preloaded with `sessions` and `filter`.
 pub fn state_with(sessions: Vec<SessionSummary>, filter: &str) -> AppState {
     let mut state = AppState::default();
-    state.sessions = sessions;
-    state.session_filter = filter.to_string();
+    state.session_picker.sessions = sessions;
+    state.session_picker.session_filter = filter.to_string();
     state
 }

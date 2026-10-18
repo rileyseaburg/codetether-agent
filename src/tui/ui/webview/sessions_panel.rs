@@ -11,11 +11,12 @@ pub fn render(f: &mut Frame, app: &App, area: Rect) {
     let visible = area.height.saturating_sub(2) as usize / 2;
     let selected = app
         .state
+        .session_picker
         .selected_session
-        .min(app.state.sessions.len().saturating_sub(1));
-    let range = bounds(selected, app.state.sessions.len(), visible);
+        .min(app.state.session_picker.sessions.len().saturating_sub(1));
+    let range = bounds(selected, app.state.session_picker.sessions.len(), visible);
     for idx in range {
-        let summary = &app.state.sessions[idx];
+        let summary = &app.state.session_picker.sessions[idx];
         lines.push(rows::title(idx, selected, summary));
         lines.push(Line::styled(
             rows::metadata(summary),

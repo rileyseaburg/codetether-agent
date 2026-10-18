@@ -13,9 +13,12 @@ async fn finished_session_moves_to_top_without_duplicates() {
     session.title = Some("renamed".into());
     upsert_active_session(&mut app, &session);
 
-    assert_eq!(app.state.sessions.len(), 2);
-    assert_eq!(app.state.sessions[0].id, session.id);
-    assert_eq!(app.state.sessions[0].title.as_deref(), Some("renamed"));
-    assert_eq!(app.state.sessions[1].id, other.id);
-    assert_eq!(app.state.selected_session, 0);
+    assert_eq!(app.state.session_picker.sessions.len(), 2);
+    assert_eq!(app.state.session_picker.sessions[0].id, session.id);
+    assert_eq!(
+        app.state.session_picker.sessions[0].title.as_deref(),
+        Some("renamed")
+    );
+    assert_eq!(app.state.session_picker.sessions[1].id, other.id);
+    assert_eq!(app.state.session_picker.selected_session, 0);
 }
