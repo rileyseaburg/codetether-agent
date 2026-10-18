@@ -7,6 +7,7 @@ license = "MIT"
 description = "Application-bound provider registry initialization, caching and integrations"
 
 [dependencies]
+codetether-search-cli = { path = "../codetether-search-cli", version = "0.1.0" }
 codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }
 codetether-models-cli = { path = "../codetether-models-cli", version = "0.1.0" }
 codetether-rlm-cli = { path = "../codetether-rlm-cli", version = "0.1.0" }

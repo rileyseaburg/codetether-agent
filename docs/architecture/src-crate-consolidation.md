@@ -23691,3 +23691,21 @@ Only the required dependency entry is staged in Cargo.lock; the unrelated
 working lockfile and A2A edits remain untouched. Evidence:
 artifacts/consolidation-swarm-cli/. No Cargo, rustc, Python, compilation, swarm
 execution or runtime tests ran. Full consolidation remains active.
+
+### Search CLI provider initialization moved into the provider crate
+
+Moved search command provider loading and automatic embedding selection from
+src/cli/search.rs into application-providers::cli::search. The native public
+entry remains a binding to the same provider application type. The shared entry
+uses the exact AutoEmbedder<ProviderRegistry<H>> type previously selected by the
+native memory alias. Added a direct search-cli dependency.
+
+Static comparison preserves the operation body after substituting the generic
+registry and expanding the embedding alias. The initial verifier replaced only
+the alias import, so its normalization was corrected to include the call site;
+initial output is preserved. Module/dependency scans cover 691 roots and 571
+crates without missing modules or cycles. Direct rustfmt, source file limits
+and whitespace checks passed. Only the required lockfile dependency is staged;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-search-cli/. No Cargo, rustc, Python, compilation,
+provider requests or runtime tests ran. Full consolidation remains active.

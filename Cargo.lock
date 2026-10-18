@@ -2061,6 +2061,7 @@ dependencies = [
  "codetether-rlm-cli",
  "codetether-rlm-selection",
  "codetether-search",
+ "codetether-search-cli",
  "codetether-search-router",
  "codetether-secrets",
  "codetether-session-events",
