@@ -1765,6 +1765,7 @@ dependencies = [
  "codetether-tls",
  "codetether-todo",
  "codetether-token-count",
+ "codetether-tool-construction",
  "codetether-tool-core",
  "codetether-tool-progress",
  "codetether-undo-tool",
@@ -5444,6 +5445,43 @@ dependencies = [
  "serde_json",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-tool-construction"
+version = "0.1.0"
+dependencies = [
+ "codetether-avatar-tool",
+ "codetether-browser-tool",
+ "codetether-bus-tool",
+ "codetether-code-search",
+ "codetether-computer-tool",
+ "codetether-context-reset",
+ "codetether-file-tool-catalog",
+ "codetether-grep-tool",
+ "codetether-image-generation",
+ "codetether-image-tool",
+ "codetether-k8s-tool",
+ "codetether-okr-tool",
+ "codetether-plan",
+ "codetether-podcast-tool",
+ "codetether-prd-tool",
+ "codetether-question-tool",
+ "codetether-relay-tool",
+ "codetether-ripgrep-tool",
+ "codetether-skill-tool",
+ "codetether-swarm-share",
+ "codetether-task-tool",
+ "codetether-todo",
+ "codetether-token-count",
+ "codetether-tool-core",
+ "codetether-tool-registry",
+ "codetether-voice-input-tool",
+ "codetether-voice-stream-tool",
+ "codetether-voice-tool",
+ "codetether-webfetch",
+ "codetether-websearch",
+ "codetether-youtube-tool",
 ]
 
 [[package]]

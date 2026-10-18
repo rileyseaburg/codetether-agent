@@ -1,0 +1,43 @@
+[package]
+name = "codetether-tool-construction"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Scalar tool construction grouped by runtime responsibility"
+
+[features]
+tetherscript = []
+
+[dependencies]
+codetether-avatar-tool = { path = "../codetether-avatar-tool", version = "0.1.0" }
+codetether-browser-tool = { path = "../codetether-browser-tool", version = "0.1.0" }
+codetether-bus-tool = { path = "../codetether-bus-tool", version = "0.1.0" }
+codetether-code-search = { path = "../codetether-code-search", version = "0.1.0" }
+codetether-computer-tool = { path = "../codetether-computer-tool", version = "0.1.0" }
+codetether-context-reset = { path = "../codetether-context-reset", version = "0.1.0" }
+codetether-file-tool-catalog = { path = "../codetether-file-tool-catalog", version = "0.1.0" }
+codetether-grep-tool = { path = "../codetether-grep-tool", version = "0.1.0" }
+codetether-image-generation = { path = "../codetether-image-generation", version = "0.1.0" }
+codetether-image-tool = { path = "../codetether-image-tool", version = "0.1.0" }
+codetether-k8s-tool = { path = "../codetether-k8s-tool", version = "0.1.0" }
+codetether-okr-tool = { path = "../codetether-okr-tool", version = "0.1.0" }
+codetether-plan = { path = "../codetether-plan", version = "0.1.0" }
+codetether-podcast-tool = { path = "../codetether-podcast-tool", version = "0.1.0" }
+codetether-prd-tool = { path = "../codetether-prd-tool", version = "0.1.0" }
+codetether-question-tool = { path = "../codetether-question-tool", version = "0.1.0" }
+codetether-relay-tool = { path = "../codetether-relay-tool", version = "0.1.0" }
+codetether-ripgrep-tool = { path = "../codetether-ripgrep-tool", version = "0.1.0" }
+codetether-skill-tool = { path = "../codetether-skill-tool", version = "0.1.0" }
+codetether-swarm-share = { path = "../codetether-swarm-share", version = "0.1.0" }
+codetether-task-tool = { path = "../codetether-task-tool", version = "0.1.0" }
+codetether-todo = { path = "../codetether-todo", version = "0.1.0" }
+codetether-token-count = { path = "../codetether-token-count", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-tool-registry = { path = "../codetether-tool-registry", version = "0.1.0" }
+codetether-voice-input-tool = { path = "../codetether-voice-input-tool", version = "0.1.0" }
+codetether-voice-stream-tool = { path = "../codetether-voice-stream-tool", version = "0.1.0" }
+codetether-voice-tool = { path = "../codetether-voice-tool", version = "0.1.0" }
+codetether-webfetch = { path = "../codetether-webfetch", version = "0.1.0" }
+codetether-websearch = { path = "../codetether-websearch", version = "0.1.0" }
+codetether-youtube-tool = { path = "../codetether-youtube-tool", version = "0.1.0" }

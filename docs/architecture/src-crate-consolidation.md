@@ -18883,3 +18883,28 @@ checks, file-size ratchet, whitespace and direct formatting. Evidence:
 assumed compound punctuation tokens; corrected it to match the token helper's
 single-character punctuation and retained the failed check log. No Cargo,
 rustc, Python or Rust tests ran; compilation and runtime remain unverified.
+
+### Scalar tool construction
+
+Moved context, execution, media, search and integration selection tables into
+`codetether-tool-construction`, preserving those responsibilities as separate
+modules. Its file module delegates to `codetether-file-tool-catalog`. The existing
+`codetether-tool-catalog` remains responsible for discovery and advertisement.
+The application now binds 15 concrete editor/session/provider-dependent factories
+through the typed NativeTool/Host interface. Shared tools are constructed directly
+from their implementation crates. The native media and search tables are removed.
+
+The original file/context/execution/media/search/integration evaluation order,
+then goal and collaboration fallbacks, remains intact. Registration, aliases,
+provider ownership and clone/take behavior are unchanged. TetherScript construction
+and its factory variant use the forwarded application feature gate.
+
+Validation: 44 complete constructor mappings and 15 native factories, group and
+fallback order, feature gates, unchanged registration/provider code, dependency
+versions and declarations, isolated lockfile delta, lexical module reachability,
+dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
+Inspection caught and corrected substring replacements in the WebSearch and
+CodeSearch import paths. The verifier's initial identifier regex omitted digits
+in k8s_tool; corrected that check and retained its failure log. Evidence lives in
+`artifacts/consolidation-tool-construction/`. No Cargo, rustc, Python or Rust tests
+ran; compilation and runtime behavior remain unverified.

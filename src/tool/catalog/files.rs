@@ -1,9 +1,10 @@
-//! File catalog binding for application-owned editor backends.
+//! Bind the two file editors to the application Morph backend.
 use super::*;
-pub(super) fn create(kind: ToolKind) -> Option<Arc<dyn Tool>> {
-    codetether_file_tool_catalog::create(
-        kind,
-        || Arc::new(edit::EditTool::new()) as Arc<dyn Tool>,
-        || Arc::new(multiedit::MultiEditTool::new()) as Arc<dyn Tool>,
-    )
+use codetether_tool_construction::NativeTool;
+pub(super) fn create(kind: NativeTool) -> Option<Arc<dyn Tool>> {
+    Some(match kind {
+        NativeTool::Edit => Arc::new(edit::EditTool::new()) as Arc<dyn Tool>,
+        NativeTool::MultiEdit => Arc::new(multiedit::MultiEditTool::new()) as Arc<dyn Tool>,
+        _ => return None,
+    })
 }

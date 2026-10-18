@@ -7,9 +7,7 @@ mod execution;
 mod files;
 mod host;
 mod integrations;
-mod media;
 mod provider;
-mod search_tools;
 pub(super) use host::Native;
 pub(super) fn register_group(registry: &mut ToolRegistry, kind: ToolKind) {
     Native {
