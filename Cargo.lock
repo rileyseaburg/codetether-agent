@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-snapshot-io",
  "codetether-session-codec",
  "codetether-session-metadata",
  "codetether-session-title",
@@ -2670,6 +2671,16 @@ dependencies = [
  "codetether-collaboration-input",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-snapshot-io"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "tempfile",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

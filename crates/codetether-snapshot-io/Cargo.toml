@@ -1,0 +1,16 @@
+[package]
+name = "codetether-snapshot-io"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Atomic snapshot replacement and content-verified save elision"
+
+[dependencies]
+anyhow = "1"
+tempfile = "3"
+tokio = { version = "1", features = ["rt"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros"] }
+uuid = { version = "1", features = ["v4"] }

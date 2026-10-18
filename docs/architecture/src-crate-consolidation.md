@@ -8935,3 +8935,21 @@ whitespace checks passed; crate files contain at most 42 code lines. Evidence is
 in `artifacts/consolidation-session-codec/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The full consolidation remains
 active.
+
+### Dedicated snapshot byte-I/O crate
+
+Moved atomic snapshot replacement, successful-write hash tracking, current-byte
+verification and cache invalidation into `crates/codetether-snapshot-io`. Nine
+modules separate atomic replacement, shared hash state, hash calculation,
+comparison, updates and existing regressions. Native persistence notifications
+remain unchanged and call the shared byte-level operations through re-exports.
+
+The crate preserves unique temporary files, sync/replace order, old-destination
+retention on failure, poison handling and the requirement to verify actual disk
+bytes before eliding a write. Twelve static comparisons cover those bodies,
+five tests moved unchanged and the unchanged native notification code. Module
+references, dependencies, code budgets and whitespace checks passed; files
+contain at most 36 code lines. Evidence is in
+`artifacts/consolidation-snapshot-io/`. Compilation and runtime tests were not
+run. No Cargo, rustc or Python commands ran. The full consolidation remains
+active.

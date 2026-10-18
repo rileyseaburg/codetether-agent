@@ -5,10 +5,23 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
-pub(in crate::session::persistence) async fn atomic_write(
-    path: &Path,
-    content: Vec<u8>,
-) -> Result<Vec<u8>> {
+/// # Arguments
+/// `path` selects the destination; `content` is the complete replacement.
+/// The caller must create the parent directory first.
+/// # Returns
+/// The same owned bytes after successful durable replacement.
+/// # Errors
+/// Returns temporary-file, write, sync, replacement or worker errors.
+/// # Panics
+/// Requires a Tokio runtime for the blocking worker.
+/// # Examples
+/// ```rust,no_run
+/// # async fn example(path: &std::path::Path) -> anyhow::Result<()> {
+/// let bytes = codetether_snapshot_io::atomic_write(path, b"snapshot".to_vec()).await?;
+/// assert_eq!(bytes, b"snapshot");
+/// # Ok(()) }
+/// ```
+pub async fn atomic_write(path: &Path, content: Vec<u8>) -> Result<Vec<u8>> {
     let path = path.to_path_buf();
     tokio::task::spawn_blocking(move || {
         let parent = path.parent().context("session snapshot has no parent")?;
@@ -29,5 +42,5 @@ pub(in crate::session::persistence) async fn atomic_write(
 }
 
 #[cfg(test)]
-#[path = "atomic_write/tests.rs"]
+#[path = "atomic/tests.rs"]
 mod tests;
