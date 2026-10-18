@@ -1,4 +1,4 @@
-use crate::session::SessionEvent;
+use super::SessionEvent;
 
 use super::mapper;
 
@@ -8,7 +8,7 @@ fn retry_abandons_partial_item_before_next_attempt() {
     let first = mapper.map_session_event(&SessionEvent::TextChunk("partial".into()));
     let first_id = first[0].payload["item_id"].clone();
     let retry = mapper.map_session_event(&SessionEvent::StreamRetry(
-        crate::session::StreamRetryEvent {
+        codetether_session_events::StreamRetryEvent {
             attempt: 1,
             max_restarts: 3,
             reason: "connection reset".into(),

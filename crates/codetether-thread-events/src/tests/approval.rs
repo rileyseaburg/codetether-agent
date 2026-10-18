@@ -1,5 +1,5 @@
-use crate::approval::LiveApprovalRequest;
-use crate::session::SessionEvent;
+use super::SessionEvent;
+use codetether_approval_core::interaction::LiveApprovalRequest;
 
 use super::mapper;
 

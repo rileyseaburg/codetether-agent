@@ -5,7 +5,7 @@
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::session::thread_events::thread_id_for_session;
+/// use codetether_thread_events::thread_id_for_session;
 ///
 /// assert_eq!(thread_id_for_session("s1"), "s1");
 /// ```
@@ -18,7 +18,7 @@ pub fn thread_id_for_session(session_id: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::session::thread_events::turn_id_for_session;
+/// use codetether_thread_events::turn_id_for_session;
 ///
 /// assert_eq!(turn_id_for_session("s1", 42), "turn-s1-42");
 /// ```

@@ -1,4 +1,4 @@
-use crate::approval::ApprovalDecision;
+use codetether_approval_core::ApprovalDecision;
 
 use super::mapper;
 

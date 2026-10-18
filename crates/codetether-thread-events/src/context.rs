@@ -8,7 +8,7 @@ use super::time::timestamp_ms;
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::session::thread_events::ThreadEventContext;
+/// use codetether_thread_events::ThreadEventContext;
 ///
 /// let context = ThreadEventContext::new("session-1", "turn-1");
 /// assert_eq!(context.thread_id, "session-1");

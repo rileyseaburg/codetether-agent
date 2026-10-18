@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::session::thread_events::timestamp_ms;
+/// use codetether_thread_events::timestamp_ms;
 ///
 /// assert!(timestamp_ms() > 0);
 /// ```

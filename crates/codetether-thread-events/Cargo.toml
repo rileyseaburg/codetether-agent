@@ -1,0 +1,13 @@
+[package]
+name = "codetether-thread-events"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Stateful mapping of live session signals into thread event records"
+
+[dependencies]
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+codetether-thread-store = { path = "../codetether-thread-store", version = "0.1.0" }
+serde_json = "1"

@@ -1,17 +1,17 @@
-//! Map [`SessionEvent`](crate::session::SessionEvent) variants.
+//! Map [`SessionEvent`](codetether_session_events::SessionEvent) variants.
 
-use crate::session::SessionEvent;
-use crate::session::thread_store::ThreadEvent;
+use codetether_session_events::SessionEvent;
+use codetether_thread_store::ThreadEvent;
 
 use super::mapper::ThreadEventMapper;
 
 impl ThreadEventMapper {
     /// Map one live session event into zero or more thread events.
-    pub fn map_session_event(&mut self, event: &SessionEvent) -> Vec<ThreadEvent> {
+    pub fn map_session_event<S>(&mut self, event: &SessionEvent<S>) -> Vec<ThreadEvent> {
         match event {
             SessionEvent::TextChunk(text) => self.text_chunk(text),
             SessionEvent::TextComplete(text) => self.text_completed(text),
-            SessionEvent::StreamRetry(super::super::StreamRetryEvent {
+            SessionEvent::StreamRetry(codetether_session_events::StreamRetryEvent {
                 attempt,
                 max_restarts,
                 reason,

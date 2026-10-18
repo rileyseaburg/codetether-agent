@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 
-use crate::session::thread_store::ThreadEvent;
+use codetether_thread_store::ThreadEvent;
 
 use super::mapper::ThreadEventMapper;
 

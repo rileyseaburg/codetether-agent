@@ -9142,3 +9142,20 @@ Module/dependency graphs, file budgets and whitespace checks passed; the
 largest crate file has 24 code lines. Evidence is in
 `artifacts/consolidation-thread-store/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. Full consolidation remains active.
+
+### Dedicated thread-event mapper crate
+
+Moved the complete stateful thread-event mapper into
+`crates/codetether-thread-events`. Thirty-three modules separate record
+stamping, IDs, assistant/tool item state, lifecycle, commands, patches,
+approvals, retries and the twelve existing regression tests. The mapper
+accepts shared session events with any snapshot payload and uses approval
+and thread-record types from their existing crate owners. Native thread
+events now contains only a compatibility re-export.
+
+Fifty-four static comparisons cover moved types, functions, method bodies
+and tests, including event payloads and ordering. Module/dependency graphs,
+file budgets and whitespace checks passed; the largest crate file has
+43 code lines. Evidence is in `artifacts/consolidation-thread-events/`.
+Compilation and runtime tests were not run. No Cargo, rustc or Python
+commands ran. Full workspace consolidation remains active.

@@ -1,4 +1,4 @@
-use crate::session::SessionEvent;
+use super::SessionEvent;
 
 use super::mapper;
 

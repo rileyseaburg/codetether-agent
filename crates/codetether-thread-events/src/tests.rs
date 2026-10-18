@@ -1,4 +1,5 @@
-use crate::session::thread_events::{ThreadEventContext, ThreadEventMapper};
+type SessionEvent = codetether_session_events::SessionEvent<()>;
+use crate::{ThreadEventContext, ThreadEventMapper};
 
 mod approval;
 mod approval_decision;
@@ -9,6 +10,7 @@ mod patch;
 mod retry;
 mod stable_item;
 mod tool;
+mod tool_metadata;
 mod tool_output;
 
 fn mapper() -> ThreadEventMapper {

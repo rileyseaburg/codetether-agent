@@ -2,8 +2,9 @@
 
 use serde_json::json;
 
-use crate::approval::{ApprovalDecision, ApprovalStatus, LiveApprovalRequest};
-use crate::session::thread_store::ThreadEvent;
+use codetether_approval_core::interaction::LiveApprovalRequest;
+use codetether_approval_core::{ApprovalDecision, ApprovalStatus};
+use codetether_thread_store::ThreadEvent;
 
 use super::mapper::ThreadEventMapper;
 

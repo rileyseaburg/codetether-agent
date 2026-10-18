@@ -10,7 +10,7 @@ fn patch_approval_event_carries_patch_ids() {
 
 #[test]
 fn patch_metadata_emits_completion_and_approval_events() {
-    let events = mapper().map_session_event(&crate::session::SessionEvent::ToolCallMetadata {
+    let events = mapper().map_session_event(&super::SessionEvent::ToolCallMetadata {
         tool_call_id: "patch-1".into(),
         name: "apply_patch".into(),
         metadata: serde_json::json!({
