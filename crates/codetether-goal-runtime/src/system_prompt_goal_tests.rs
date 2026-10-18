@@ -1,8 +1,9 @@
 //! Prompt rendering retains the full existing goal without mutating its log.
 
 use super::from_log;
-use crate::session::tasks::{GoalSourceKind, TaskEvent, TaskLog, TaskState, turn_instructions};
+use crate::turn_instructions;
 use chrono::Utc;
+use codetether_goal_core::{GoalSourceKind, TaskEvent, TaskLog, TaskState};
 
 #[test]
 fn turn_contract_preserves_existing_goal_criteria_and_budget() {

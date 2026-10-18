@@ -1,25 +1,10 @@
-//! Read the durable answer hold, failing closed on unreadable task logs.
-
-use crate::session::tasks::{TaskLog, TaskState, state_cache};
-use anyhow::Result;
-
-pub(crate) fn read(session: &str) -> Result<TaskState> {
-    state_cache::load(&TaskLog::for_session(session)?)
+//! Native session specialization of fail-closed answer-review queries.
+pub(crate) fn read(session: &str) -> anyhow::Result<crate::session::tasks::TaskState> {
+    codetether_goal_runtime::answer_review::read::<super::super::journal::NativeJournal>(session)
 }
-
 pub(crate) fn held(session: &str) -> bool {
-    match read(session) {
-        Ok(state) => state.answer_review.is_some(),
-        Err(error) => {
-            tracing::warn!(%error, session, "Answer-review log unreadable; refusing continuation");
-            true
-        }
-    }
+    codetether_goal_runtime::answer_review::held::<super::super::journal::NativeJournal>(session)
 }
-
 pub(crate) fn ready(session: &str) -> bool {
-    read(session)
-        .ok()
-        .and_then(|state| state.answer_review)
-        .is_some_and(|review| review.ready)
+    codetether_goal_runtime::answer_review::ready::<super::super::journal::NativeJournal>(session)
 }

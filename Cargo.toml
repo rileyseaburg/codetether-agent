@@ -39,6 +39,7 @@ members = [
     "crates/codetether-distill",
     "crates/codetether-event-stream",
     "crates/codetether-goal-core",
+    "crates/codetether-goal-runtime",
     "crates/codetether-grep-tool",
     "crates/codetether-github-pr",
     "crates/codetether-git-tool",
@@ -356,6 +357,7 @@ codetether-codex-auth = { path = "crates/codetether-codex-auth", version = "0.1.
 codetether-codex-protocol = { path = "crates/codetether-codex-protocol", version = "0.1.0" }
 codetether-distill = { path = "crates/codetether-distill", version = "0.1.0" }
 codetether-event-stream = { path = "crates/codetether-event-stream", version = "0.1.0" }
+codetether-goal-runtime = { path = "crates/codetether-goal-runtime", version = "0.1.0" }
 codetether-goal-core = { path = "crates/codetether-goal-core", version = "0.1.0" }
 codetether-indexer = { path = "crates/codetether-indexer", version = "0.1.0" }
 codetether-image = { path = "crates/codetether-image", version = "0.1.0" }

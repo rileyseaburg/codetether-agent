@@ -14,7 +14,7 @@ const ON: u8 = 2;
 static MODE: AtomicU8 = AtomicU8::new(UNSET);
 
 /// Return whether submitted prompts are adopted as session goals.
-pub(crate) fn enabled() -> bool {
+pub fn enabled() -> bool {
     match MODE.load(Ordering::Relaxed) {
         ON => true,
         OFF => false,
@@ -23,7 +23,7 @@ pub(crate) fn enabled() -> bool {
 }
 
 /// Enable or disable prompt-to-goal adoption for this process.
-pub(crate) fn set_enabled(on: bool) {
+pub fn set_enabled(on: bool) {
     MODE.store(if on { ON } else { OFF }, Ordering::Relaxed);
 }
 

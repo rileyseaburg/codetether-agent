@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-goal-runtime",
  "codetether-session-control",
  "codetether-session-steering",
  "codetether-agent-communication",
@@ -2393,6 +2394,22 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
+]
+
+[[package]]
+name = "codetether-goal-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-goal-core",
+ "codetether-provider-core",
+ "codetether-session-control",
+ "parking_lot",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

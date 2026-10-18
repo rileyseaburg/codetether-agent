@@ -3,10 +3,9 @@
 mod account;
 mod adopt;
 pub(crate) mod answer_review;
-mod auto_goal;
 mod continuation;
+pub(super) mod journal;
 mod load;
-mod prompt;
 mod resume;
 mod system_prompt;
 mod transition;
@@ -15,7 +14,7 @@ pub(crate) use transition_checked::set_status_if_current;
 
 pub(crate) use account::record_usage;
 pub(crate) use adopt::adopt_prompt;
-pub(crate) use auto_goal::{enabled as auto_goal_enabled, set_enabled as set_auto_goal};
+pub(crate) use codetether_goal_runtime::{auto_goal_enabled, set_auto_goal};
 pub(crate) use continuation::next_message;
 pub(crate) use load::current;
 pub(crate) use resume::prompt as resume_prompt;

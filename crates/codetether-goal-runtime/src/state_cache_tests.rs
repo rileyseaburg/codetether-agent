@@ -1,6 +1,6 @@
 use super::load;
-use crate::session::tasks::{GoalSourceKind, TaskEvent, TaskLog};
 use chrono::Utc;
+use codetether_goal_core::{GoalSourceKind, TaskEvent, TaskLog};
 
 fn goal(objective: &str) -> TaskEvent {
     TaskEvent::GoalSet {

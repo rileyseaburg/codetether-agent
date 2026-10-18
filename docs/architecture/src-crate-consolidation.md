@@ -8522,3 +8522,29 @@ budgets and whitespace checks pass; crate modules contain at most 41 code lines.
 Evidence is in `artifacts/consolidation-session-control/`. Compilation and runtime
 tests were not run. No Cargo, rustc or Python commands ran. The broader source
 to crate consolidation remains active.
+
+### Dedicated goal-runtime crate
+
+Moved goal usage accounting, opt-in prompt adoption, continuation generation,
+status transitions, revision-checked updates, user answer-review gates, system
+prompt composition and execution-boundary checks into
+`crates/codetether-goal-runtime`. The crate also owns the metadata-keyed journal
+fold cache and shared turn-instruction template. Twenty Rust modules separate
+these responsibilities. Native adapters supply the existing session journal path
+and retain existing application API signatures and native journal handle types.
+
+Goal events, append order, active/terminal checks, answer-review holds, cache
+stamps/capacity, environment-driven auto-goal settings and error behavior are
+preserved. Both continuation and turn-instruction templates are byte-identical.
+The runtime gate still checks the single session-control plane before reading
+journal state. Original logging targets remain unchanged.
+
+Forty-five static checks compare control flow, state declarations, native cache
+and gate adapters, templates, and retained/moved tests. Six tests moved with
+cache, prompt, auto-goal and instruction ownership; three native prompt/review
+integration tests remain unchanged. Runtime module references, workspace path
+dependencies, code-line budgets and whitespace checks passed; crate modules
+contain at most 42 code lines. Evidence is in
+`artifacts/consolidation-goal-runtime/`. Compilation and runtime tests were not
+run. No Cargo, rustc or Python commands ran. Consolidation of the remaining
+session orchestration and other source areas is still required.

@@ -1,6 +1,6 @@
 //! Rendering for model-visible automatic goal continuation.
 
-use crate::session::tasks::Goal;
+use codetether_goal_core::Goal;
 
 const TEMPLATE: &str = include_str!("continuation.md");
 
