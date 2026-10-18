@@ -1,0 +1,18 @@
+[package]
+name = "codetether-actor"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Addressable actor mailboxes, delivery state and A2A message conversion"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
+codetether-a2a-grpc = { path = "../codetether-a2a-grpc", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+dashmap = "6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }

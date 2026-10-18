@@ -1,9 +1,19 @@
+//! Actor processing acknowledgments.
+
 use serde::{Deserialize, Serialize};
 
 /// Acknowledgement returned by an actor after handling a message.
+///
+/// # Examples
+/// ```
+/// let ack = codetether_actor::ActorAck::new("message-1", "worker");
+/// assert_eq!(ack.actor_id, "worker");
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActorAck {
+    /// Acknowledged message identifier.
     pub message_id: String,
+    /// Actor that acknowledged the message.
     pub actor_id: String,
 }
 

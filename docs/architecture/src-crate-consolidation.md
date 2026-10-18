@@ -10545,3 +10545,20 @@ other modules have at most 44. Evidence is in
 `artifacts/consolidation-mux-cli/`. Compilation and runtime tests were not run.
 No Cargo, rustc, Python, clipboard, process or network operation ran.
 Full workspace consolidation remains active.
+
+### Actor mailbox subsystem extracted
+
+Moved actor identifiers, envelopes/builders, mailbox queues, runtime delivery
+records, acknowledgments, dead-letter annotations, bus encoding and local /
+protobuf A2A conversion from `src/actor` into `crates/codetether-actor`. Sixteen
+modules use the existing bus and A2A crates directly. Delivery transitions and
+local JSON codec responsibilities are separate modules. The native actor root
+is now a compatibility re-export, and both existing tests moved with the code.
+
+Twenty-four static checks compare original modules, runtime method bodies,
+state fields and A2A conversion/fallback functions. Module/dependency graphs,
+file budgets and whitespace checks passed; modules have at most 36 code lines.
+Evidence is in `artifacts/consolidation-actor/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python or actor/bus operations ran.
+Full workspace consolidation remains active. Undeclared mux agent-control
+source remains pending review rather than being activated by this extraction.

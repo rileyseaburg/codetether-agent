@@ -1,5 +1,7 @@
+//! Encoding and decoding actor messages over the shared event bus.
+
 use super::{ActorEnvelope, ActorId};
-use crate::bus::{BusEnvelope, BusHandle, BusMessage};
+use codetether_bus_core::{BusEnvelope, BusHandle, BusMessage};
 
 /// Publishes actor envelopes over the existing topic bus.
 pub fn publish_actor(handle: &BusHandle, envelope: &ActorEnvelope) -> usize {

@@ -1,6 +1,14 @@
+//! Convenient construction of typed actor envelopes.
+
 use super::{envelope::ActorEnvelope, id::ActorId};
 
 /// Builder for strongly named actor commands/events.
+///
+/// # Examples
+/// ```
+/// let message = codetether_actor::ActorMessage::new("a", "b", "run", serde_json::json!({}));
+/// assert_eq!(message.into_envelope().to.0, "b");
+/// ```
 #[derive(Debug, Clone)]
 pub struct ActorMessage {
     from: ActorId,

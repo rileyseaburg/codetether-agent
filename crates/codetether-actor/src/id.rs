@@ -1,6 +1,14 @@
+//! Addressable actor identifiers and mailbox topic names.
+
 use serde::{Deserialize, Serialize};
 
 /// Addressable actor identity used for mailbox routing.
+///
+/// # Examples
+/// ```
+/// let actor = codetether_actor::ActorId::new("worker");
+/// assert_eq!(actor.inbox_topic(), "actor.worker.inbox");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ActorId(pub String);
 

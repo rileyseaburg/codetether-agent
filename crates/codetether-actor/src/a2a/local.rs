@@ -1,5 +1,7 @@
-use crate::a2a::types::Message;
-use crate::actor::ActorEnvelope;
+//! Local A2A message conversion through the shared JSON codec.
+
+use crate::ActorEnvelope;
+use codetether_a2a_core::Message;
 
 /// Converts local serde A2A messages into actor envelopes.
 pub fn message_to_actor(from: &str, to: &str, message: &Message) -> ActorEnvelope {

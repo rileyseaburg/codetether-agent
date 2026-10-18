@@ -1,5 +1,7 @@
+//! Actor routing and A2A round-trip regressions.
+
 use super::*;
-use crate::a2a::types::{Message, MessageRole, Part};
+use codetether_a2a_core::{Message, MessageRole, Part};
 
 #[test]
 fn runtime_delivers_to_addressed_mailbox() {

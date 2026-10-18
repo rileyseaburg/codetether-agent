@@ -1,17 +1,32 @@
+//! Timestamped actor messages with correlation metadata.
+
 use super::id::ActorId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Typed message delivered to one actor mailbox.
+///
+/// # Examples
+/// ```
+/// let envelope = codetether_actor::ActorEnvelope::new("a".into(), "b".into(), "run", serde_json::json!({}));
+/// assert_eq!(envelope.kind, "run");
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActorEnvelope {
+    /// Unique envelope identifier.
     pub id: String,
+    /// Sending actor.
     pub from: ActorId,
+    /// Destination actor.
     pub to: ActorId,
+    /// Message kind used for dispatch.
     pub kind: String,
+    /// Structured message payload.
     pub payload: serde_json::Value,
+    /// Optional request/response correlation.
     pub correlation_id: Option<String>,
+    /// UTC envelope creation time.
     pub timestamp: DateTime<Utc>,
 }
 

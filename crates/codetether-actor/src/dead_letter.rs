@@ -1,3 +1,5 @@
+//! Dead-letter topics and envelope annotations.
+
 use super::{ActorEnvelope, ActorId};
 
 /// Builds the dead-letter topic for an actor.

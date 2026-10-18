@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-actor",
  "codetether-mux-cli",
  "codetether-mux-lifecycle",
  "codetether-mux-control",
@@ -5335,6 +5336,21 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-actor"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-a2a-core",
+ "codetether-a2a-grpc",
+ "codetether-bus-core",
+ "dashmap",
+ "serde",
+ "serde_json",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
