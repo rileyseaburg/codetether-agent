@@ -16944,3 +16944,14 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-tui-tick-helpers/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Correct remaining dirty-snapshot caller
+
+- Updated the select-loop snapshot and final comparison to use the shared tick
+  snapshot adapter introduced in the earlier periodic-update extraction.
+- The prior extraction updated the tick caller but left this second caller on
+  the removed associated methods. Repository-wide event-loop search now shows
+  both callers using `dirty::capture`, preserving the same comparison timing.
+- Verification: two-expression-only diff inspection, caller search, file limits
+  and whitespace. No Cargo, rustc, Python, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

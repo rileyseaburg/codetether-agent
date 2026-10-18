@@ -8,7 +8,7 @@ mod dirty;
 mod queued_prompt;
 
 pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Result<bool> {
-    let before = dirty::Snapshot::capture(args.app);
+    let before = dirty::capture(args.app);
     let app = &mut *args.app;
     let slot = &mut *args.slot;
     let bridge = &mut *args.worker_bridge;
@@ -56,6 +56,6 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
     .await;
     queued_prompt::drain(app, args.cwd, slot, args.registry, bridge, args.runtime).await;
     super::bus_inbox::trigger_next(app, args.cwd, slot, args.registry, bridge, args.runtime).await;
-    app.state.needs_redraw |= before.changed_since(app);
+    app.state.needs_redraw |= before != dirty::capture(app);
     Ok(false)
 }
