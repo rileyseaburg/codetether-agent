@@ -21428,3 +21428,23 @@ the staged lockfile contains that single owning-package edge. Evidence:
 `artifacts/consolidation-go-ralph-runtime/`. No Cargo, rustc, or Python commands
 ran; compilation and runtime tests remain unverified. Full consolidation is
 still active.
+
+### Shared thinker backend for the CUDA provider
+
+Moved the local CUDA provider's thinker-runtime implementation into
+`codetether-provider-local-cuda`. Its `Runtime` trait is now implemented for
+the existing shared cognition `Client<H>` when that client satisfies the
+runtime's Send/Sync/static requirements. The native provider alias specializes
+directly with its existing `ThinkerClient`; the one-field native runtime wrapper
+and file are removed.
+
+Construction still invokes the same thinker client constructor and propagates
+its errors. Inference passes the same provider identity, system text, and user
+text to the same inherent client method. The removed wrapper had no custom drop
+behavior or other state. Existing CUDA feature gates and non-CUDA source are
+unchanged. No dependency or lockfile edits.
+
+Static comparisons, source/dependency graphs across 698 roots and 564 crates,
+direct rustfmt, native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-cuda-thinker/`. No Cargo, rustc, or Python commands ran;
+CUDA compilation and inference remain unverified. Full consolidation is active.
