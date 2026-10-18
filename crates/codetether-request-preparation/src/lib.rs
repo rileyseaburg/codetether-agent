@@ -14,3 +14,6 @@ pub use capabilities::model_supports_tools;
 pub use host::Host;
 pub use prompt::system_prompt_for;
 pub use state::ProviderStepState;
+
+/// Active model restoration and failover state transitions.
+pub mod step_model;

@@ -5281,6 +5281,8 @@ dependencies = [
  "codetether-provider-openrouter",
  "codetether-provider-policy",
  "codetether-tool-catalog",
+ "anyhow",
+ "tracing",
 ]
 
 [[package]]

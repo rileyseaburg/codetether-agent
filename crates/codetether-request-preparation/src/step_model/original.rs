@@ -1,18 +1,11 @@
-//! Resolve original provider/model before within-step failover.
-
-use crate::provider::parse_model_string;
-use crate::session::Session;
-
-/// Resolve the original (pre-failover) provider and model from session metadata.
-///
-/// Returns `None` when the session has no stored model or when the current
-/// selection already matches the original.
-pub(crate) fn resolve_original(
-    session: &Session,
+//! Resolve original provider/model identity without native session access.
+use codetether_provider_core::routing::parse_model_string;
+pub(super) fn resolve_original(
+    model_str: Option<&str>,
     selected_provider: &str,
     model: &str,
 ) -> Option<(String, String)> {
-    let model_str = session.metadata.model.as_ref()?;
+    let model_str = model_str?;
     let (prov, mdl) = parse_model_string(model_str);
     let orig_provider = prov
         .map(|p| match p {

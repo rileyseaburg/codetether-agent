@@ -15850,3 +15850,22 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-lifecycle-phases/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared step-model restoration and failover
+
+- Moved borrowed StepVars, original-model resolution, restoration and failover
+  application into `codetether-request-preparation::step_model`, beside the
+  existing ProviderStepState owner. Session and registry types are generic;
+  native hooks supply metadata, providers, state rebuilding and preparation.
+- Removed the native step_vars, step_restore and step_restore_apply modules.
+  Compatibility functions retain their concrete signatures for existing callers.
+- Preserved provider alias handling, no-op restoration, identity assignments
+  before provider lookup errors, derived-field application order and proactive
+  preparation after failover. Native rate-gate policy remains unchanged.
+- Verification: complete restore/failover and original-resolution comparisons,
+  all borrowed fields, four native hooks, both forwarding functions, unchanged
+  callers and underlying preparation/application, module/dependency graphs,
+  direct rustfmt, file budgets, isolated lock additions and diff whitespace.
+  Evidence: `artifacts/consolidation-step-model/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
