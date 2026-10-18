@@ -13,3 +13,6 @@ pub use host::Host;
 pub use overflow::resolve as derivation;
 pub use recover::recover;
 pub use state::Attempt;
+
+/// Request dispatch, success accounting and failure-recovery loop.
+pub mod driver;

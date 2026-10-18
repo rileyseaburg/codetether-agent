@@ -15783,3 +15783,19 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-completion-recovery/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Workspace-wide
   consolidation remains incomplete.
+
+### Shared completion-attempt driver
+
+- Moved the provider attempt loop and request-before-dispatch sequencing into
+  `codetether-prompt-loop::completion::driver`. Removed the native send module;
+  native request and effect adapters now supply session-specific services.
+- Preserved initial context preparation before timer startup, attempt increments,
+  request-budget failures entering the same recovery branch, success feedback
+  and usage before goal-failure resets, and stream-checkpoint persistence before
+  recovery decisions. Recovery errors retain their existing propagation.
+- Verification: complete loop comparison, removed send-sequence comparison,
+  all eight native bindings, unchanged request/context/recovery/usage services,
+  module/dependency graphs, direct rustfmt, file budgets and diff whitespace.
+  Evidence: `artifacts/consolidation-completion-driver/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.
