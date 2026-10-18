@@ -385,58 +385,6 @@ pub struct RlmArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct OracleArgs {
-    #[command(subcommand)]
-    pub command: OracleCommand,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum OracleCommand {
-    /// Validate a FINAL(JSON) payload deterministically against source content
-    Validate(OracleValidateArgs),
-    /// Sync pending oracle spool files to MinIO/S3
-    Sync(OracleSyncArgs),
-}
-
-#[derive(Parser, Debug)]
-pub struct OracleValidateArgs {
-    /// Query associated with the payload (used as trace prompt)
-    #[arg(long)]
-    pub query: String,
-
-    /// Source file to validate against
-    #[arg(short, long)]
-    pub file: Option<PathBuf>,
-
-    /// Source content to validate against (use - for stdin)
-    #[arg(long)]
-    pub content: Option<String>,
-
-    /// FINAL(JSON) payload string
-    #[arg(long)]
-    pub payload: Option<String>,
-
-    /// Path to a file containing FINAL(JSON) payload
-    #[arg(long)]
-    pub payload_file: Option<PathBuf>,
-
-    /// Output as JSON
-    #[arg(long)]
-    pub json: bool,
-
-    /// Persist validated record to oracle storage pipeline
-    #[arg(long)]
-    pub persist: bool,
-}
-
-#[derive(Parser, Debug)]
-pub struct OracleSyncArgs {
-    /// Output as JSON
-    #[arg(long)]
-    pub json: bool,
-}
-
-#[derive(Parser, Debug)]
 pub struct RalphArgs {
     /// Action to perform
     #[arg(value_parser = ["run", "status", "create-prd"])]
@@ -837,3 +785,5 @@ pub struct ForageArgs {
 }
 
 pub use codetether_auth_cli::{AuthArgs, AuthCommand, CodexAuthArgs, CopilotAuthArgs};
+
+pub use codetether_oracle_cli::{OracleArgs, OracleCommand, OracleSyncArgs, OracleValidateArgs};

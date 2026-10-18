@@ -10808,3 +10808,18 @@ whitespace checks passed; modules have at most 42 code lines. Evidence is in
 run. No Cargo, rustc, Python, SSH, shell-profile sourcing or browser launch ran.
 Full workspace consolidation remains active. Undeclared onboarding source
 remains pending rather than being enabled by this extraction.
+
+### Oracle CLI extracted
+
+Moved Oracle argument contracts, source/payload loading, synthetic-analysis
+construction, validation/persistence orchestration and text/JSON reporting
+into `crates/codetether-oracle-cli`. Nine modules use the existing RLM Oracle
+implementation. Native CLI paths re-export the command entry point and types.
+
+Sixteen static comparisons/checks cover original helper bodies, synthetic
+analysis fields, validation/persistence order, rendering and argument schemas.
+Module/dependency graphs, file budgets and whitespace checks passed; modules
+have at most 41 code lines. Evidence is in
+`artifacts/consolidation-oracle-cli/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, Oracle validation, user-input read or storage-sync
+operation ran. Full workspace consolidation remains active.
