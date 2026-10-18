@@ -11755,3 +11755,19 @@ Full workspace consolidation remains active.
   --check passed. Evidence: artifacts/consolidation-agent-identity/.
 - No Cargo, rustc, compilation or runtime tests ran. Full consolidation remains
   incomplete; these source checks do not establish runtime or type correctness.
+
+### Tether Catch play-break extraction
+
+- Moved the interlude state, clock/scoring rules, paddle controls, popup geometry
+  and board rendering into codetether-interlude. Ten focused modules contain at
+  most 23 code lines; the existing scoring/movement test moved with its state.
+- Native adapters retain processing/activation guards, session-event activation
+  and redraw scheduling. Modifier rejection and movement key dispatch now belong
+  to the game crate. Tick arithmetic, lane clamping, scoring, glyph placement and
+  advance-before-render order remain unchanged.
+- Verification: 19 static comparisons passed for state, methods, rules, rendering,
+  geometry, key handling, visibility guards and the existing test. Module graph,
+  path dependency cycles, direct formatting, source line limits and diff checks
+  passed. Evidence: artifacts/consolidation-interlude/.
+- No Cargo, rustc, compilation, runtime tests or terminal rendering ran. Full
+  workspace consolidation remains incomplete.
