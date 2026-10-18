@@ -4,7 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use codetether_session_listing::Source;
 use std::path::{Path, PathBuf};
-pub(super) struct ApplicationSource;
+pub(in crate::session) struct ApplicationSource;
 #[async_trait]
 impl Source for ApplicationSource {
     const INDEX_FILENAME: &'static str = crate::session::workspace_index::INDEX_FILENAME;

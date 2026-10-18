@@ -1,0 +1,15 @@
+[package]
+name = "codetether-session-catalog"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Combined native and Codex session catalog"
+
+[dependencies]
+anyhow = "1"
+codetether-codex-discovery = { path = "../codetether-codex-discovery", version = "0.1.0" }
+codetether-session-listing = { path = "../codetether-session-listing", version = "0.1.0" }
+codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
+tokio = { version = "1", features = ["rt"] }
+tracing = "0.1"

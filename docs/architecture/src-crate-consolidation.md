@@ -9060,3 +9060,20 @@ budgets and whitespace checks passed; the largest crate file has 21 code
 lines. Evidence is in `artifacts/consolidation-codex-import/`. Compilation
 and runtime tests were not run. No Cargo, rustc or Python commands ran.
 The full workspace consolidation remains active.
+
+### Dedicated combined session-catalog crate
+
+Moved native/Codex catalog assembly into `crates/codetether-session-catalog`.
+Five modules separate Codex summary projection, blocking archive discovery,
+duplicate-ID merging and the combined listing entry point. The native facade
+specializes the existing session-listing source; storage ownership stays with
+that adapter.
+
+Six static comparisons cover source-order sequencing, blocking discovery and
+soft failure handling, Codex title prefixes, duplicate precedence, sorting,
+original log targets and unchanged integration test sources. Module and
+dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 27 code lines. Evidence is in
+`artifacts/consolidation-session-catalog/`. Compilation and runtime tests
+were not run. No Cargo, rustc or Python commands ran. The full workspace
+consolidation remains active.

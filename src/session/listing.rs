@@ -6,6 +6,6 @@ mod scan;
 mod summary;
 #[cfg(test)]
 mod tests;
-pub(super) use codetether_session_listing::merge_summary;
 pub use directory::{list_sessions, list_sessions_for_directory, list_sessions_paged};
+pub(super) use host::ApplicationSource;
 pub use summary::SessionSummary;

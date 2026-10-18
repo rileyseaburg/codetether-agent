@@ -110,6 +110,7 @@ members = [
     "crates/codetether-session-codec",
     "crates/codetether-snapshot-io",
     "crates/codetether-session-listing",
+    "crates/codetether-session-catalog",
     "crates/codetether-workspace-index",
     "crates/codetether-codex-records",
     "crates/codetether-codex-discovery",
@@ -418,6 +419,7 @@ codetether-codex-transcript = { path = "crates/codetether-codex-transcript", ver
 codetether-codex-discovery = { path = "crates/codetether-codex-discovery", version = "0.1.0" }
 codetether-codex-records = { path = "crates/codetether-codex-records", version = "0.1.0" }
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
+codetether-session-catalog = { path = "crates/codetether-session-catalog", version = "0.1.0" }
 codetether-session-listing = { path = "crates/codetether-session-listing", version = "0.1.0" }
 codetether-snapshot-io = { path = "crates/codetether-snapshot-io", version = "0.1.0" }
 codetether-session-codec = { path = "crates/codetether-session-codec", version = "0.1.0" }
