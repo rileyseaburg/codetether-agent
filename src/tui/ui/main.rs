@@ -1,30 +1,11 @@
-//! Top-level TUI view dispatcher.
-//!
-//! Routes the current `ViewMode` to the appropriate renderer.
-//! All per-view rendering lives in dedicated sub-modules
-//! (see `chat_view`, `sessions`, `inspector`, `webview`, etc.)
-//! to satisfy SRP and the 50-line file limit for new modules.
-
-use ratatui::Frame;
-
-use super::main_overlays::render as render_overlays;
+//! Native bindings for top-level TUI rendering.
+mod bus;
+mod host;
 use crate::tui::app::{session_runtime::SessionView, state::App};
-use crate::tui::audit_view::render_audit_view;
-use crate::tui::bus_log::{ProtocolSummary, render_bus_log_with_summary};
-use crate::tui::latency::render_latency;
-use crate::tui::lsp::render_lsp;
-use crate::tui::models::ViewMode;
-use crate::tui::ralph_view::render_ralph_view;
-use crate::tui::rlm::render_rlm;
-use crate::tui::settings::render_settings;
-use crate::tui::swarm_view::render_swarm_view;
-
-use super::chat_view::render_chat_view;
-use super::sessions::render_sessions_view;
-
+use ratatui::Frame;
 /// Top-level entry point called by the TUI event loop on every frame.
 ///
-/// Dispatches to the active [`ViewMode`] renderer and renders overlays.
+/// Dispatches to the active [`crate::tui::models::ViewMode`] renderer and renders overlays.
 ///
 /// # Examples
 ///
@@ -36,76 +17,5 @@ use super::sessions::render_sessions_view;
 /// # }
 /// ```
 pub fn ui(f: &mut Frame, app: &mut App, session: &SessionView) {
-    dispatch_view(f, app, session);
-    render_overlays(f, app);
-}
-
-fn dispatch_view(f: &mut Frame, app: &mut App, session: &SessionView) {
-    match app.state.view_mode {
-        ViewMode::Chat => render_chat_or_webview(f, app, session),
-        ViewMode::Sessions => render_sessions_view(f, app),
-        ViewMode::Swarm => render_swarm_view(f, &mut app.state.swarm, f.area()),
-        ViewMode::Ralph => render_ralph_view(f, &mut app.state.ralph, f.area()),
-        ViewMode::Bus => render_bus_view(f, app),
-        ViewMode::Subagents => super::subagent_view::render(f, f.area(), &app.state),
-        ViewMode::Model => crate::tui::model_picker::render_model_picker(f, f.area(), app, session),
-        ViewMode::Settings => render_settings(f, f.area(), &app.state),
-        ViewMode::Lsp => render_lsp(f, f.area(), &app.state.cwd_display, &app.state.status),
-        ViewMode::Rlm => render_rlm(
-            f,
-            f.area(),
-            &app.state.cwd_display,
-            &app.state.status,
-            app.state.session_picker.sessions.len(),
-            app.state.session_picker.selected_session,
-        ),
-        ViewMode::Latency => render_latency(f, f.area(), app),
-        ViewMode::Transport => crate::tui::transport_view::render_transport(f, f.area()),
-        ViewMode::Protocol => {
-            crate::tui::protocol_registry_view::render_protocol_registry(f, app, f.area())
-        }
-        ViewMode::FilePicker => crate::tui::app::file_picker::render_file_picker(f, f.area(), app),
-        ViewMode::Inspector => super::inspector::render_inspector_view(f, app),
-        ViewMode::Audit => render_audit_view(f, &mut app.state.audit, f.area()),
-        ViewMode::Git => {
-            crate::tui::git_view::render_git_view(f, f.area(), &app.state.git, &app.state.status)
-        }
-        ViewMode::AuditLoop => crate::tui::audit_loop_view::render_audit_loop_view(
-            f,
-            &app.state.audit_loop,
-            f.area(),
-            &app.state.status,
-        ),
-        ViewMode::Editor => super::goal_editor::render(f, app),
-    }
-}
-
-fn render_chat_or_webview(f: &mut Frame, app: &mut App, session: &SessionView) {
-    if !super::webview::layout::is_webview(app.state.chat_layout_mode)
-        || !super::webview::render(f, app)
-    {
-        render_chat_view(f, app, session);
-    }
-}
-
-fn render_bus_view(f: &mut Frame, app: &mut App) {
-    let worker = &app.state.worker;
-    let mut registered_agents = worker
-        .worker_bridge_registered_agents
-        .iter()
-        .cloned()
-        .collect::<Vec<_>>();
-    registered_agents.sort();
-    let summary = ProtocolSummary {
-        cwd_display: app.state.cwd_display.clone(),
-        worker_id: worker.worker_id.clone(),
-        worker_name: worker.worker_name.clone(),
-        a2a_connected: worker.a2a_connected,
-        processing: worker.worker_bridge_processing_state,
-        registered_agents,
-        queued_tasks: worker.worker_task_queue.len(),
-        recent_task: worker.recent_tasks.last().cloned(),
-        peer_endpoint_ready: app.state.peer_endpoint_ready,
-    };
-    render_bus_log_with_summary(f, &mut app.state.bus_log, f.area(), Some(summary))
+    codetether_tui_render::render(f, &mut host::Native { app, session });
 }

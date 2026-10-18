@@ -1386,6 +1386,7 @@ dependencies = [
  "codetether-workspace-view",
  "codetether-webview-bars",
  "codetether-webview",
+ "codetether-tui-render",
  "codetether-git-view",
  "codetether-protocol-view",
  "codetether-chat-sync",
@@ -15930,5 +15931,14 @@ version = "0.1.0"
 dependencies = [
  "codetether-chat-layout",
  "codetether-webview-bars",
+ "ratatui",
+]
+
+[[package]]
+name = "codetether-tui-render"
+version = "0.1.0"
+dependencies = [
+ "codetether-chat-layout",
+ "codetether-tui-models",
  "ratatui",
 ]

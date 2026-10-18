@@ -17610,3 +17610,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-webview-composition/`.
 - No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Top-level terminal view dispatch and overlay order
+
+- Moved the exhaustive 19-view selection, classic/Webview fallback decision,
+  and seven global overlays in their existing priority order into the dedicated
+  `codetether-tui-render` crate.
+- Split its application contracts into state, chat, primary, diagnostics,
+  management and overlay modules. Native adapters supply the existing renderer
+  arguments and session view. The native bus summary projection is preserved
+  in a separate file; UI entry is a single shared-render call.
+- Verified each original match arm against its native binding and shared target,
+  full fallback logic, overlay calls/order and bus projection, unchanged view
+  models/renderers, module/dependency graphs, direct rustfmt, file limits and
+  whitespace. Only the new package and root dependency were added to the staged
+  lock; unrelated working-copy changes remain untouched.
+  Evidence: `artifacts/consolidation-tui-render/`.
+- No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
