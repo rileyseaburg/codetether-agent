@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-terminal-text",
  "codetether-chat-model",
  "codetether-token-display",
  "codetether-latency-view",
@@ -5688,6 +5689,10 @@ dependencies = [
  "codetether-util",
  "serde",
 ]
+
+[[package]]
+name = "codetether-terminal-text"
+version = "0.1.0"
 
 [[package]]
 name = "codetether-tracked-vec"

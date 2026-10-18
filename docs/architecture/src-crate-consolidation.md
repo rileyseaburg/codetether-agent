@@ -11030,3 +11030,17 @@ Full workspace consolidation remains active.
   file-limit and whitespace checks passed.
 - Evidence: `artifacts/consolidation-chat-model/`. Compilation and tests were
   not run; no Cargo or rustc commands executed. Full consolidation remains active.
+
+### Terminal text cleanup extraction
+
+- Moved artifact detection, box-border removal, visual-row reflow and paste
+  normalization from `src/tui/chat/strip` into
+  `crates/codetether-terminal-text`, with no external dependencies.
+- Seven modules separate detection, per-line cleanup, reflow, normalization
+  and existing test groups. Maximum module size is 44 code lines.
+- Nine existing tests moved unchanged. Nine static comparisons verify the
+  moved functions, border helpers, test bodies, compatibility export and
+  unchanged paste handlers. Module reachability, workspace dependency DAG,
+  file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-terminal-text/`. Compilation and Rust tests
+  were not run; no Cargo or rustc commands executed. Full consolidation is active.
