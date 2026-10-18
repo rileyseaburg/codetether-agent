@@ -22702,3 +22702,26 @@ lockfile; the unrelated working lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-ralph-shell/`.
 No quality commands, tests, Cargo, rustc or Python ran; compilation and runtime
 behavior remain unverified. Full consolidation is active.
+
+### Ralph runtime composition and Git policy owned by shared crates
+
+Moved Ralph's runtime Host composition into
+`codetether-ralph-runtime::application` and its Git policy adapter into
+`codetether-ralph-agent::shell`. Native runtime code now selects the same
+provider registry, tool application, agent host and relay host through a type
+alias. The separate native agent-binding file was removed. Native Git checkout
+keeps its entry point and delegates through the shared policy type.
+
+The first dependency check rejected a cycle through application-providers,
+forage-execution and go-ralph. The final runtime binding accepts the concrete
+provider registry and agent host as type parameters, avoiding that back-edge.
+Static comparisons preserve verification, Git policy invocation, checkout and
+all concrete runtime type choices. Native relay/session operations are unchanged.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the Ralph agent's ralph-git and Ralph runtime's application-registry edges
+are staged in the lockfile; the unrelated working lockfile remains byte-identical.
+Evidence: `artifacts/consolidation-ralph-runtime-binding/`, including the rejected
+initial dependency graph.
+No Ralph runs, Git operations through Ralph, Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

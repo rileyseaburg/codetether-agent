@@ -7,6 +7,7 @@ license = "MIT"
 description = "Ralph runtime state ownership and shared service integration"
 
 [dependencies]
+codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }

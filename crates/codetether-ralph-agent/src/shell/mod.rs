@@ -4,8 +4,10 @@
 //! returns the existing command-specific error. Both use the application's
 //! runtime authorization before invoking the shared Bash tool.
 use std::marker::PhantomData;
+mod git;
 mod quality;
 mod verification;
+pub use git::GitPolicy;
 /// Shell executor returning denied commands as unsuccessful quality output.
 /// # Examples
 /// ```no_run

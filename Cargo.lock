@@ -7999,6 +7999,7 @@ dependencies = [
  "codetether-bus-core",
  "codetether-provider-core",
  "codetether-ralph-core",
+ "codetether-ralph-git",
  "codetether-swarm-agent",
  "codetether-swarm-core",
  "codetether-tool-core",
@@ -8110,6 +8111,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "codetether-application-registry",
  "codetether-bus-core",
  "codetether-context-policy",
  "codetether-provider-core",
