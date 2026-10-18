@@ -16081,9 +16081,11 @@ dependencies = [
  "async-trait",
  "chrono",
  "codetether-goal-core",
+ "codetether-goal-verification",
  "codetether-session-task",
  "codetether-tool-core",
  "serde",
  "serde_json",
  "uuid",
+ "tracing",
 ]

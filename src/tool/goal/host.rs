@@ -13,3 +13,16 @@ impl codetether_goal_tools::Host for Native {
         control::update(session, edit).await
     }
 }
+
+impl codetether_goal_tools::UpdateHost for Native {
+    type Verifier = super::verify::LlmVerifier;
+    fn verifier(args: &codetether_goal_tools::UpdateArgs) -> Self::Verifier {
+        super::verify::LlmVerifier {
+            worker_model: args.current_model.clone(),
+            workspace: args.workspace.clone().map_or_else(
+                || std::env::current_dir().unwrap_or_else(|_| ".".into()),
+                Into::into,
+            ),
+        }
+    }
+}

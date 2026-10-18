@@ -1,8 +1,9 @@
-//! Native session journal and revision-checked status transitions.
+//! Native audit journal and revision-checked transitions.
+use super::host::Native;
 use crate::session::tasks::{Goal, GoalStatus, runtime};
 use anyhow::Result;
 use codetether_goal_verification::VerdictRecord;
-pub(super) struct Native;
+
 impl codetether_goal_verification::audit::Host for Native {
     async fn read(session: &str) -> Result<Vec<VerdictRecord>> {
         crate::tool::goal::verdict_log::read(session).await

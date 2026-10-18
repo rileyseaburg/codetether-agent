@@ -2,8 +2,8 @@
 
 #[path = "goal/attempt_cap.rs"]
 pub mod attempt_cap;
-#[path = "goal/context.rs"]
-mod context;
+#[path = "goal/audit_host.rs"]
+mod audit_host;
 #[path = "goal/create.rs"]
 mod create;
 #[path = "goal/create_run.rs"]
@@ -17,14 +17,10 @@ mod edit_tests;
 mod get;
 #[path = "goal/host.rs"]
 mod host;
-#[path = "goal/response.rs"]
-mod response;
 #[path = "session_task/mod.rs"]
 mod session_task;
 #[path = "goal/update.rs"]
 mod update;
-#[path = "goal/update_gate.rs"]
-mod update_gate;
 #[path = "goal/update_run.rs"]
 mod update_run;
 #[path = "goal/verdict_log.rs"]

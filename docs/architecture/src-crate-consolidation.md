@@ -17970,3 +17970,21 @@ Full workspace consolidation remains active.
   goal-tools package. Evidence: `artifacts/consolidation-goal-tool-contracts/`.
 - No Cargo, rustc, Python, goal tool calls, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared update_goal contract and verified transition workflow
+
+- Moved update arguments/schema/Tool implementation and the full validation,
+  audited-review and revision-checked commit sequence into
+  `codetether-goal-tools::update`.
+- Native UpdateHost constructs the same concrete verifier with the same model
+  and workspace fields. Native audit/storage bindings are unchanged in behavior.
+  The legacy session-task completion path retains its forwarding entry point.
+- Verified complete Tool/argument contracts, workflow and commit bodies, native
+  verifier construction, journal/transition bindings, and unchanged legacy,
+  cap, race, blocked and unavailable-verifier tests. Removed obsolete native
+  gate/start/commit/context/response delegates after checking references.
+  Module/dependency graphs, direct rustfmt, file limits and whitespace passed.
+  Added only existing verification/tracing dependencies to the goal-tools lock
+  entry. Evidence: `artifacts/consolidation-update-goal/`.
+- No Cargo, rustc, Python, goal/verifier calls, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

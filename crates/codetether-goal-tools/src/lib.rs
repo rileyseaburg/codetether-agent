@@ -23,3 +23,7 @@ mod get_tool;
 pub use create_tool::CreateGoalTool;
 pub use edit_tool::EditGoalTool;
 pub use get_tool::GetGoalTool;
+
+mod update;
+pub use update::{Args as UpdateArgs, Host as UpdateHost, UpdateGoalTool};
+pub use update::{run as update, run_with as update_with};
