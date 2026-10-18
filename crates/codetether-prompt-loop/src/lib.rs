@@ -55,3 +55,6 @@ pub mod input;
 
 /// Ordered model, workspace, and progress initialization.
 pub mod setup;
+
+/// Application-local public prompt entry points.
+pub mod session_api;

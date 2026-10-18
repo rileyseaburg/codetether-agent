@@ -37,7 +37,7 @@
 //! - [`lifecycle`] — constructor, agent/provenance, message append.
 //! - [`persistence`] — save / load / delete / directory lookup.
 //! - [`title`] — title generation and context-change hook.
-//! - [`prompt_api`] — public [`prompt`](Session::prompt) entry points.
+//! - Shared prompt declarations — public [`prompt`](Session::prompt) entry points.
 //! - [`context`] — [`DerivedContext`] + [`derive_context`]: produce the
 //!   per-step LLM context from the append-only chat history without
 //!   mutating [`Session::messages`]. See the Phase A plan.
@@ -53,7 +53,12 @@ use codetether_session_events as event_token;
 mod events;
 mod lifecycle;
 include!("storage_modules.rs");
-mod prompt_api;
+codetether_prompt_loop::impl_session_prompt!(
+    Session,
+    crate::provider::ProviderRegistry,
+    helper::prompt::run_prompt,
+    helper::prompt_events::run_prompt_with_events
+);
 pub mod step_limit;
 mod tail_load;
 mod title;

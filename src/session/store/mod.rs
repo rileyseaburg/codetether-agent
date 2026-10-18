@@ -21,7 +21,6 @@ mod migration;
 pub(crate) use codetether_session_store::projection;
 use codetether_session_store::read;
 use codetether_session_store::records;
-mod resume;
 mod save;
 mod snapshot;
 mod state;

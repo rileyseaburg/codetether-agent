@@ -4,6 +4,7 @@ mod history;
 mod lifecycle;
 mod paths;
 mod tail;
+mod workspace;
 
 /// Add persistence methods to an application-local session schema.
 ///
@@ -23,5 +24,6 @@ macro_rules! impl_session_persistence {
         $crate::__session_persistence_tail!($name);
         $crate::__session_persistence_history!($name);
         $crate::__session_persistence_paths!($name);
+        $crate::__session_persistence_workspace!($name);
     };
 }

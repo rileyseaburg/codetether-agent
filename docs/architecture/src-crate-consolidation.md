@@ -24722,3 +24722,23 @@ checks passed. Dependencies and existing native tests are unchanged; unrelated
 working changes remain untouched. Evidence:
 artifacts/consolidation-session-prior-context/. No Cargo, rustc, Python, compiler
 macro expansion, policy execution or tests ran. Full consolidation remains active.
+
+### Remaining Session prompt and workspace APIs moved into crates
+
+Moved the three public prompt methods into prompt-loop's session_api declaration,
+with the native registry, plain runner and streaming runner supplied explicitly.
+Moved recorded_workspace and resume_last into the session-schema persistence
+workspace module. Removed session/prompt_api.rs, workspace_resolve.rs and
+store/resume.rs. No dependencies changed.
+
+Static comparisons preserve signatures, result/event/image types, callback
+arguments, empty-image handling, workspace lookup and bounded-resume limits.
+A search now finds no directly written inherent impl Session blocks in src;
+Session is still a local type with shared declaration macros and native service
+bindings. This milestone does not complete the overall src consolidation.
+Module/dependency scans cover 693 roots and 574 crates without missing modules
+or cycles. Direct dependency audit, direct rustfmt, file limits and whitespace
+checks passed. Unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-session-final-apis/. No Cargo, rustc, Python, compiler
+macro expansion, prompts, storage operations or tests ran. Full consolidation
+remains active.

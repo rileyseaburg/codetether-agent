@@ -11,7 +11,5 @@ mod save_guard;
 #[cfg(test)]
 #[path = "persistence_snapshot.rs"]
 mod snapshot;
-#[path = "workspace_resolve.rs"]
-mod workspace_resolve;
 
 codetether_session_schema::impl_session_persistence!(Session);
