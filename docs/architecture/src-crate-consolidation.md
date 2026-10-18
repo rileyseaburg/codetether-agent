@@ -13575,3 +13575,22 @@ Full workspace consolidation remains active.
 - Only the task API's bus-SSE dependency was staged from Cargo.lock. No Cargo,
   rustc, Rust tests, subscriptions or live requests ran. Full workspace
   consolidation remains unfinished.
+
+### Inline CLI option schema extraction
+
+- Moved all 23 inline argument/command types from src/cli/mod.rs into
+  codetether-cli-options, one schema per module. Native command execution and
+  dispatch remain unchanged, and existing cli type paths re-export the same
+  types. The native root shrank from 408 to 53 nonblank/noncomment lines.
+- Field names, derives, Clap attributes, defaults, aliases, help text and env
+  bindings were preserved. The A2A default now references its existing shared
+  worker-core owner directly instead of the native re-export.
+- Modules are below 45 code lines except the single ForageArgs declaration
+  (48 including imports); its field layout was not flattened or reshaped merely
+  to split an already cohesive option schema.
+- Verification: 49 static declaration/export/module/size checks passed, plus
+  module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-cli-options/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or CLI parsing commands ran. Full source
+  consolidation remains unfinished.

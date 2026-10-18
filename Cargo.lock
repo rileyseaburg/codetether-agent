@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-cli-options",
  "codetether-server-status",
  "codetether-plugin-http",
  "codetether-session-fork",
@@ -6802,6 +6803,14 @@ dependencies = [
  "codetether-plugin-verification",
  "codetether-verifier-http",
  "serde",
+]
+
+[[package]]
+name = "codetether-cli-options"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "codetether-a2a-worker-core",
 ]
 
 [[package]]
