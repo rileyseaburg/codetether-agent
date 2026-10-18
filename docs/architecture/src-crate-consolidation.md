@@ -27980,3 +27980,23 @@ artifacts/consolidation-editor-view/. The first verification log records a
 verifier slice-boundary error corrected before the passing comparison.
 No Cargo, rustc, Python, compilation or runtime tests ran. App/AppState and other
 root adapters still require consolidation; the full goal remains active.
+
+### Crate-owned approval editor host
+
+Replaced the declaration-generated approval editor host with BorrowedHost in
+crates/codetether-approval-edit/src/interactive/borrowed_host.rs. The ordinary
+struct and Host implementation now belong to that crate; the unused declaration
+macro and its audit selector are removed. The root assembles field borrows and
+wires the chat transition in approval_editor/borrow.rs. The key entry point and
+existing regression test module paths are preserved.
+
+The navigation callback uses the same view mode, saved-scroll state and viewport
+values as AppState::set_view_mode. Approval handling changes editor, approval and
+status fields, not these captured viewport values, before invoking the callback.
+Static comparison covers eight host methods, eight field mappings, the key entry
+point and five navigation inputs. Both existing test sources and shared
+save/cancel policy are unchanged. Declaration, module/dependency, production
+scope, formatting, whitespace and file-limit checks pass (725 roots, 617 crates).
+Evidence: artifacts/consolidation-approval-borrowed/. No dependencies changed;
+unrelated working files are unchanged. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active and incomplete.

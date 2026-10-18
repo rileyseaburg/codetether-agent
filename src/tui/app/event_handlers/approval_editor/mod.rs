@@ -1,4 +1,6 @@
 //! Approval-backed source editor orchestration.
+mod borrow;
+mod key;
 
 #[cfg(test)]
 use codetether_approval_edit::interactive as finish;
@@ -10,12 +12,3 @@ mod key_tests;
 mod tests;
 
 pub(super) use key::handle;
-
-codetether_approval_edit::declare_frontend_approval_editor!(
-    pub(in crate::tui::app::event_handlers);
-    crate::tui::app::state::App,
-    crate::tui::models::ViewMode,
-    codetether_editor::FileBuffer,
-    codetether_approval_edit::ApprovalEditSession,
-    codetether_editor::EditorInput,
-);
