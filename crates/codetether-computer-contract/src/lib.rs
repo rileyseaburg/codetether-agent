@@ -9,3 +9,6 @@ pub mod schema;
 
 /// Input-mode and application-selector routing rules.
 pub mod routing;
+
+/// Platform-independent Blender selection evidence formatting.
+pub mod blender_result;

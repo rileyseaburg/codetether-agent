@@ -20159,3 +20159,33 @@ used a nonexistent directory for this file-based module; corrected its scoped
 inventory and retained the failed log. Evidence:
 `artifacts/consolidation-dashboard-enter/`. No Cargo, rustc, Python, Rust tests
 or interactive navigation ran; compilation and runtime remain unverified.
+
+### Blender result assembly and regression ownership
+
+The full library/binary source audit found a stale test include under native
+browserctl pointing to a computer-use source file already moved into the
+Windows crate. Moved Blender selection result assembly and the existing two
+regression tests into `codetether-computer-contract`. The Windows implementation
+now delegates with its original mouse-result enrichment callback.
+
+Preserved every result field, confirmed-selection success policy, image-data
+removal before text serialization, metadata-only image attachment, method/note
+selection, and native cursor/window enrichment timing. Test assertions and the
+mock formatter are unchanged apart from owner paths and callback injection.
+The tests are now platform-independent and no longer include a deleted file.
+No dependencies changed.
+
+Validation: full assembly/helper body comparisons, complete translated test
+comparison, native delegate and unchanged enrichment call site, module
+reachability, dependency cycles, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-blender-result/`. No Cargo,
+rustc, Python, Rust tests or computer-use actions ran; compilation and runtime
+remain unverified.
+
+The accompanying source inventory resolves 2,920 library files and 15 binary
+files, including cfg/test declarations and explicitly expanded executor-module
+invocations. It reports no missing declared source targets and 29 files outside
+both closures. Those files are inspection candidates, not proven dead code;
+none were deleted based solely on the inventory. Initial audit limitations
+(main-file resolution and a module macro) were corrected with logs retained.
+Evidence: `artifacts/consolidation-source-audit/`.

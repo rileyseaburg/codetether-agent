@@ -1,5 +1,2 @@
-//! Compatibility export and application computer-use regression tests.
+//! Browser tool compatibility export.
 pub use codetether_browser_tool::BrowserCtlTool;
-#[cfg(test)]
-#[path="screenshot/blender_tests.rs"]
-mod blender_tests;
