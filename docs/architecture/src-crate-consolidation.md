@@ -17591,3 +17591,22 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-webview-bars/`.
 - No Cargo, rustc, Python, rendering actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Webview composition and transcript/composer rendering
+
+- Moved the complete Webview rendering sequence into `codetether-webview`,
+  including terminal-size fallback, responsive panel selection, suggestions,
+  status and ordered overlays. State, panel, composer and overlay traits expose
+  only the operations needed from the native application.
+- Moved transcript scroll clamping and composer presentation into separate
+  `chat::center`, `chat::input` and `chat::size` modules. Native code supplies
+  scroll/text/mode values and retains the existing cursor and message-cache
+  integration. Removed the obsolete native main-chunks adapter.
+- Verified entire compositor and renderer bodies under explicit substitutions,
+  all native host methods, size constants and predicate, unchanged cache/cursor
+  implementations and regression tests, lexical module/dependency graphs,
+  direct rustfmt, file limits and whitespace. Staged lock changes are limited to
+  the new package and root dependency; unrelated working-copy changes remain.
+  Evidence: `artifacts/consolidation-webview-composition/`.
+- No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

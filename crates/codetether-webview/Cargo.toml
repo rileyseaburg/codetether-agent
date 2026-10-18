@@ -1,0 +1,12 @@
+[package]
+name = "codetether-webview"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Webview panel composition and transcript/composer rendering"
+
+[dependencies]
+codetether-chat-layout = { path = "../codetether-chat-layout", version = "0.1.0" }
+codetether-webview-bars = { path = "../codetether-webview-bars", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
