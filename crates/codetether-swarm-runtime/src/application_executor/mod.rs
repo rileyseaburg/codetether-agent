@@ -31,3 +31,7 @@ impl<H: ExecutorHost> From<SwarmConfig> for SwarmExecutor<H> {
         Self::new(config)
     }
 }
+
+mod forage;
+/// Kubernetes stage execution over the shared executor services.
+pub mod kubernetes;

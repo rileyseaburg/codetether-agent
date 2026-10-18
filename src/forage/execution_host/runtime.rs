@@ -1,5 +1,5 @@
 //! Delegate prepared engine requests to existing application entry points.
-use super::{Native, swarm::NativeSwarm};
+use super::{Native, NativeSwarm};
 use crate::{
     cli::RunArgs,
     okr::{Okr, OkrRun},

@@ -1,5 +1,5 @@
 //! Existing application services for shared forage execution.
 mod forage;
 mod runtime;
-mod swarm;
+use crate::swarm::SwarmExecutor as NativeSwarm;
 pub(super) struct Native;

@@ -20,3 +20,5 @@ tracing = "0.1"
 uuid = { version = "1", features = ["v4"] }
 codetether-swarm-cache = { path = "../codetether-swarm-cache", version = "0.1.0" }
 codetether-swarm-bus = { path = "../codetether-swarm-bus", version = "0.1.0" }
+codetether-swarm-k8s = { path = "../codetether-swarm-k8s", version = "0.1.0" }
+codetether-forage-execution = { path = "../codetether-forage-execution", version = "0.1.0" }

@@ -22189,3 +22189,21 @@ checks passed. Only the owning runtime's swarm-cache and swarm-bus dependency
 edges are staged in the lockfile. Evidence:
 `artifacts/consolidation-swarm-executor/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Shared swarm Kubernetes and forage integrations
+
+Moved the Kubernetes executor-service implementation and stage entry point
+into the swarm runtime, and implemented forage execution directly on the
+shared application executor. Native Kubernetes forwarding modules and the
+single-field forage executor wrapper were removed. The native run and forage
+bindings now select the shared module/type through aliases.
+
+Source comparisons preserve configuration/control/cache access, event delivery,
+all Kubernetes stage arguments and forage task/decomposition arguments. Forage
+construction still calls the same executor constructor. Module/dependency checks
+cover 698 roots and 570 crates without missing modules or cycles. Direct
+rustfmt, native file-size limits and whitespace checks passed. Only the owning
+runtime's Kubernetes and forage-execution dependency edges are staged in the
+lockfile. Evidence: `artifacts/consolidation-swarm-consumers/`. No Cargo, rustc
+or Python ran; compilation and runtime tests remain unverified. Full
+consolidation is active.
