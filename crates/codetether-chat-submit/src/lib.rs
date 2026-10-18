@@ -4,6 +4,7 @@
 //! prompt, resolves managed-agent/mention routing, and finally chooses command,
 //! steering or ordinary submission. Implement [Host] using native UI handlers.
 mod frontend;
+mod history_binding;
 mod intercept;
 mod routing;
 mod run;

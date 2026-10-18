@@ -2,6 +2,7 @@
 //!
 //! [push_user_messages] appends the compact transcript entries. [no_provider]
 //! resets native processing state before reporting the configuration error.
+mod binding;
 mod failure;
 mod messages;
 pub use failure::{FailureHost, no_provider};

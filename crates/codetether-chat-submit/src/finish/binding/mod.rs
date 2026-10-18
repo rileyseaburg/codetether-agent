@@ -1,6 +1,7 @@
 //! Frontend finish context and typed entry point.
 mod actions;
 mod attachments;
+mod goal;
 /// Declare frontend prompt finish over existing state and service callbacks.
 ///
 /// The shared policy retains operation ordering and passes through prompt,

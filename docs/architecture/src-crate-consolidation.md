@@ -23684,6 +23684,21 @@ files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-session-free/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
 
+### Prompt history, publication and goal-adoption bindings
+
+Moved frontend history access and capture, message publication and missing-
+provider feedback, and best-effort goal adoption into the corresponding
+codetether-chat-submit modules. Removed the root publication host file; root
+entry modules now select types and service callbacks.
+
+All eleven expanded function bodies and publication host fields match after
+callback-path qualification. History writes, feedback cleanup, status strings
+and adoption error logging are unchanged. Declaration, module/dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
+lock changes were needed. Evidence: artifacts/consolidation-chat-effects/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
 ### Queued-prompt frontend bindings
 
 Moved queued-prompt command/answer delivery, input access, queue gates and the
