@@ -9533,3 +9533,21 @@ crate file has 38 code lines. Two original backfill tests moved without executio
 Evidence is in `artifacts/consolidation-recall-worker/`. Compilation and runtime
 tests were not run. No Cargo, rustc, Python or worker commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated recall-context preparation crate
+
+Moved authorization-gated automatic recall injection and bounded transcript
+flattening into `crates/codetether-recall-context`. Six modules separate the
+session view, prefetch, flattening, content-part budget accounting and tests.
+The native view invokes the existing prior-context policy before shared code
+reads workspace/query inputs. Query scope, evidence wording, the three-hit
+limit, score threshold and 30,000-token default budget remain unchanged.
+
+Eighteen static comparisons cover authorization order, prefetch options,
+evidence rendering, flattening loops, token accounting, truncation markers,
+original tests and native bindings. Module/dependency graphs, file budgets and
+whitespace checks passed; the largest crate file has 41 code lines. Two original
+flattening tests moved without execution. Evidence is in
+`artifacts/consolidation-recall-context/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python or worker commands ran. Full workspace
+consolidation remains active.

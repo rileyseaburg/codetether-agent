@@ -8,6 +8,3 @@ pub mod flatten;
 pub mod render;
 
 pub use flatten::flatten_messages as messages_to_recall_context;
-
-#[cfg(test)]
-mod tests;

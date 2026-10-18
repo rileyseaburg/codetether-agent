@@ -10,6 +10,7 @@ pub(crate) mod hit;
 mod indexed_session;
 mod paths;
 pub(crate) mod prefetch;
+mod prefetch_host;
 mod query_host;
 mod queue;
 pub(crate) mod render;

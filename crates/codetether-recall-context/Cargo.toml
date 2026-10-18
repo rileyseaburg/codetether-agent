@@ -1,0 +1,15 @@
+[package]
+name = "codetether-recall-context"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bounded recall transcript preparation and automatic evidence injection"
+
+[dependencies]
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-recall-index = { path = "../codetether-recall-index", version = "0.1.0" }
+codetether-recall-query = { path = "../codetether-recall-query", version = "0.1.0" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
+codetether-session-recall = { path = "../codetether-session-recall", version = "0.1.0" }
