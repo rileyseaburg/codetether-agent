@@ -9,64 +9,15 @@ use crate::provider::openai_codex::{OAuthCredentials, OpenAiCodexProvider};
 use crate::secrets::{self, ProviderSecrets};
 use anyhow::{Context, Result};
 use reqwest::Client;
-use serde::{Deserialize, de, de::Deserializer};
 use serde_json::json;
 use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::PathBuf;
-use tokio::time::{Duration, Instant, sleep};
+use tokio::time::Duration;
 
 const DEFAULT_GITHUB_DOMAIN: &str = "github.com";
-const OAUTH_POLLING_SAFETY_MARGIN_MS: u64 = 3000;
 const CODEX_CALLBACK_TIMEOUT_SECS: u64 = 300;
 const CODEX_CALLBACK_TIMEOUT_SSH_SECS: u64 = 15;
-const CODEX_DEVICE_AUTH_TIMEOUT_SECS: u64 = 15 * 60;
-
-#[derive(Debug, Deserialize)]
-struct DeviceCodeResponse {
-    device_code: String,
-    user_code: String,
-    verification_uri: String,
-    #[serde(default)]
-    verification_uri_complete: Option<String>,
-    #[serde(default)]
-    interval: Option<u64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct AccessTokenResponse {
-    #[serde(default)]
-    access_token: Option<String>,
-    #[serde(default)]
-    error: Option<String>,
-    #[serde(default)]
-    error_description: Option<String>,
-    #[serde(default)]
-    interval: Option<u64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct CodexDeviceCodeResponse {
-    device_auth_id: String,
-    #[serde(alias = "usercode")]
-    user_code: String,
-    #[serde(default, deserialize_with = "deserialize_interval_seconds")]
-    interval: u64,
-}
-
-#[derive(Debug, Deserialize)]
-struct CodexDeviceCodeTokenResponse {
-    authorization_code: String,
-    code_verifier: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct CodexDeviceErrorResponse {
-    #[serde(default)]
-    error: Option<String>,
-    #[serde(default)]
-    error_description: Option<String>,
-}
 
 pub async fn execute(args: AuthArgs) -> Result<()> {
     match args.command {
@@ -551,218 +502,6 @@ async fn authenticate_copilot(args: CopilotAuthArgs) -> Result<()> {
     Ok(())
 }
 
-async fn request_codex_device_code(
-    client: &Client,
-    issuer: &str,
-    user_agent: &str,
-) -> Result<CodexDeviceCodeResponse> {
-    let url = format!("{issuer}/api/accounts/deviceauth/usercode");
-    let response = client
-        .post(&url)
-        .header("Accept", "application/json")
-        .header("Content-Type", "application/json")
-        .header("User-Agent", user_agent)
-        .json(&json!({
-            "client_id": OpenAiCodexProvider::oauth_client_id(),
-        }))
-        .send()
-        .await
-        .with_context(|| format!("Failed to reach device authorization endpoint: {url}"))?;
-
-    let status = response.status();
-    if !status.is_success() {
-        let body = response.text().await.unwrap_or_default();
-        if status == reqwest::StatusCode::NOT_FOUND {
-            anyhow::bail!(
-                "Device code login is not enabled for this Codex server. Use browser OAuth flow instead."
-            );
-        }
-        anyhow::bail!(
-            "Failed to initiate Codex device authorization ({}): {}",
-            status,
-            truncate_body(&body)
-        );
-    }
-
-    let mut device: CodexDeviceCodeResponse = response
-        .json()
-        .await
-        .context("Failed to parse Codex device authorization response")?;
-    if device.interval == 0 {
-        device.interval = 5;
-    }
-    Ok(device)
-}
-
-async fn poll_for_codex_authorization_code(
-    client: &Client,
-    issuer: &str,
-    user_agent: &str,
-    device: &CodexDeviceCodeResponse,
-) -> Result<CodexDeviceCodeTokenResponse> {
-    let url = format!("{issuer}/api/accounts/deviceauth/token");
-    let interval_secs = device.interval.max(1);
-    let timeout = Duration::from_secs(CODEX_DEVICE_AUTH_TIMEOUT_SECS);
-    let start = Instant::now();
-
-    loop {
-        let response = client
-            .post(&url)
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .header("User-Agent", user_agent)
-            .json(&json!({
-                "device_auth_id": device.device_auth_id,
-                "user_code": device.user_code,
-            }))
-            .send()
-            .await
-            .with_context(|| format!("Failed to poll device authorization endpoint: {url}"))?;
-
-        let status = response.status();
-        if status.is_success() {
-            return response
-                .json()
-                .await
-                .context("Failed to parse Codex device authorization response");
-        }
-
-        let body = response.text().await.unwrap_or_default();
-        if status == reqwest::StatusCode::FORBIDDEN || status == reqwest::StatusCode::NOT_FOUND {
-            if start.elapsed() >= timeout {
-                anyhow::bail!(
-                    "Device authorization timed out after {} seconds",
-                    CODEX_DEVICE_AUTH_TIMEOUT_SECS
-                );
-            }
-            sleep_with_margin(interval_secs).await;
-            continue;
-        }
-
-        if let Ok(payload) = serde_json::from_str::<CodexDeviceErrorResponse>(&body)
-            && let Some(error) = payload.error.as_deref()
-        {
-            let description = payload
-                .error_description
-                .as_deref()
-                .unwrap_or("No error description provided");
-            anyhow::bail!("Codex device authorization failed: {error} ({description})");
-        }
-
-        anyhow::bail!(
-            "Codex device authorization failed ({}): {}",
-            status,
-            truncate_body(&body)
-        );
-    }
-}
-
-async fn request_device_code(
-    client: &Client,
-    domain: &str,
-    user_agent: &str,
-    client_id: &str,
-) -> Result<DeviceCodeResponse> {
-    let url = format!("https://{domain}/login/device/code");
-    let response = client
-        .post(&url)
-        .header("Accept", "application/json")
-        .header("Content-Type", "application/json")
-        .header("User-Agent", user_agent)
-        .json(&json!({
-            "client_id": client_id,
-            "scope": "read:user",
-        }))
-        .send()
-        .await
-        .with_context(|| format!("Failed to reach device authorization endpoint: {url}"))?;
-
-    let status = response.status();
-    if !status.is_success() {
-        let body = response.text().await.unwrap_or_default();
-        anyhow::bail!(
-            "Failed to initiate device authorization ({}): {}",
-            status,
-            truncate_body(&body)
-        );
-    }
-
-    let mut device: DeviceCodeResponse = response
-        .json()
-        .await
-        .context("Failed to parse device authorization response")?;
-    if device.interval.unwrap_or(0) == 0 {
-        device.interval = Some(5);
-    }
-    Ok(device)
-}
-
-async fn poll_for_access_token(
-    client: &Client,
-    domain: &str,
-    user_agent: &str,
-    client_id: &str,
-    device: &DeviceCodeResponse,
-) -> Result<String> {
-    let url = format!("https://{domain}/login/oauth/access_token");
-    let mut interval_secs = device.interval.unwrap_or(5).max(1);
-
-    loop {
-        let response = client
-            .post(&url)
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .header("User-Agent", user_agent)
-            .json(&json!({
-                "client_id": client_id,
-                "device_code": device.device_code,
-                "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
-            }))
-            .send()
-            .await
-            .with_context(|| format!("Failed to poll token endpoint: {url}"))?;
-
-        let status = response.status();
-        if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            anyhow::bail!(
-                "Failed to exchange device code for access token ({}): {}",
-                status,
-                truncate_body(&body)
-            );
-        }
-
-        let payload: AccessTokenResponse = response
-            .json()
-            .await
-            .context("Failed to parse OAuth token response")?;
-
-        if let Some(token) = payload.access_token
-            && !token.trim().is_empty()
-        {
-            return Ok(token);
-        }
-
-        match payload.error.as_deref() {
-            Some("authorization_pending") => sleep_with_margin(interval_secs).await,
-            Some("slow_down") => {
-                interval_secs = payload
-                    .interval
-                    .filter(|value| *value > 0)
-                    .unwrap_or(interval_secs + 5);
-                sleep_with_margin(interval_secs).await;
-            }
-            Some(error) => {
-                let description = payload
-                    .error_description
-                    .unwrap_or_else(|| "No error description provided".to_string());
-                anyhow::bail!("Copilot OAuth failed: {} ({})", error, description);
-            }
-            None => sleep_with_margin(interval_secs).await,
-        }
-    }
-}
-
 fn resolve_client_id(client_id: Option<String>) -> Result<String> {
     let id = client_id
         .map(|value| value.trim().to_string())
@@ -774,44 +513,6 @@ fn resolve_client_id(client_id: Option<String>) -> Result<String> {
         })?;
 
     Ok(id)
-}
-
-async fn sleep_with_margin(interval_secs: u64) {
-    sleep(Duration::from_millis(
-        interval_secs.saturating_mul(1000) + OAUTH_POLLING_SAFETY_MARGIN_MS,
-    ))
-    .await;
-}
-
-fn truncate_body(body: &str) -> String {
-    const MAX_LEN: usize = 300;
-    if body.len() <= MAX_LEN {
-        body.to_string()
-    } else {
-        format!("{}...", &body[..MAX_LEN])
-    }
-}
-
-fn deserialize_interval_seconds<'de, D>(deserializer: D) -> std::result::Result<u64, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum IntervalValue {
-        Number(u64),
-        String(String),
-    }
-
-    let value = Option::<IntervalValue>::deserialize(deserializer)?;
-    match value {
-        Some(IntervalValue::Number(value)) => Ok(value),
-        Some(IntervalValue::String(value)) => value
-            .trim()
-            .parse::<u64>()
-            .map_err(|error| de::Error::custom(format!("invalid interval value: {error}"))),
-        None => Ok(0),
-    }
 }
 
 fn prompt_line(prompt: &str) -> Result<String> {
@@ -836,29 +537,6 @@ fn prompt_optional_line(prompt: &str) -> Result<String> {
     Ok(input.trim().to_string())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::CodexDeviceCodeResponse;
-
-    #[test]
-    fn parses_codex_device_interval_from_string() {
-        let parsed: CodexDeviceCodeResponse = serde_json::from_str(
-            r#"{"device_auth_id":"id-1","user_code":"ABCD-EFGH","interval":"7"}"#,
-        )
-        .expect("expected valid device-code payload");
-        assert_eq!(parsed.interval, 7);
-    }
-
-    #[test]
-    fn parses_codex_device_interval_from_number() {
-        let parsed: CodexDeviceCodeResponse = serde_json::from_str(
-            r#"{"device_auth_id":"id-1","user_code":"ABCD-EFGH","interval":9}"#,
-        )
-        .expect("expected valid numeric interval payload");
-        assert_eq!(parsed.interval, 9);
-    }
-}
-
 pub(crate) use codetether_user_auth::{LoginResponsePayload, write_saved_credentials};
 pub use codetether_user_auth::{SavedCredentials, load_saved_credentials};
 
@@ -881,3 +559,21 @@ async fn login_with_password(
 use codetether_cookie_auth_cli::execute as authenticate_cookie_import;
 
 use codetether_oauth_callback::{capture_oauth_callback_auto, extract_oauth_code_and_state};
+
+use codetether_device_auth::{
+    poll_for_access_token, poll_for_codex_authorization_code, request_device_code,
+};
+
+async fn request_codex_device_code(
+    client: &Client,
+    issuer: &str,
+    user_agent: &str,
+) -> Result<codetether_device_auth::CodexDeviceCodeResponse> {
+    codetether_device_auth::request_codex_device_code(
+        client,
+        issuer,
+        user_agent,
+        OpenAiCodexProvider::oauth_client_id(),
+    )
+    .await
+}

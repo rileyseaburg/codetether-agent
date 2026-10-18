@@ -10741,3 +10741,20 @@ passed; modules have at most 42 code lines. Evidence is in
 `artifacts/consolidation-oauth-callback/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, callback listener or authentication operation ran.
 Full workspace consolidation remains active.
+
+### OAuth device authorization extracted
+
+Moved Codex/GitHub device challenges, request/poll transports, response schemas,
+error mapping, interval decoding and polling delays into
+`crates/codetether-device-auth`. Fifteen modules separate transport and state
+handling. The native Codex request wrapper supplies the same provider client ID;
+provider token exchange/storage remains native. Both existing interval-decoding
+tests moved with the response contracts.
+
+Thirty-four static comparisons/checks cover response shapes, expanded request
+and polling stages, timing constants, client-ID wiring and all remaining native
+auth items. Module/dependency graphs, file budgets and whitespace checks passed;
+modules have at most 41 code lines. Evidence is in
+`artifacts/consolidation-device-auth/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, device authorization or polling request ran.
+Full workspace consolidation remains active.
