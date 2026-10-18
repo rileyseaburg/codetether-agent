@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-clipboard-cli",
  "codetether-clipboard",
  "codetether-bonsai-cli",
  "codetether-context-cli",
@@ -5634,6 +5635,15 @@ dependencies = [
  "codetether-image",
  "image",
  "windows",
+]
+
+[[package]]
+name = "codetether-clipboard-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "codetether-clipboard",
 ]
 
 [[package]]

@@ -10910,3 +10910,17 @@ Full workspace consolidation remains active.
   No compilation, test execution or clipboard operations were performed;
   Cargo and rustc were not executed.
 - Full `src/` consolidation remains active.
+
+### Clipboard CLI extraction
+
+- Moved clipboard CLI argument definitions, dispatch and print/copy behavior
+  from `src/cli/clipboard.rs` into `crates/codetether-clipboard-cli`.
+- Four modules separate arguments, dispatch and image handling. The native
+  module re-exports its existing public API; main-command dispatch is unchanged.
+- Uses the shared clipboard backend directly. Nine static assertions compare
+  argument schemas, moved bodies and untouched callers. Maximum module size is
+  15 code lines; module reachability, dependency DAG, file limits and whitespace
+  checks passed.
+- Evidence: `artifacts/consolidation-clipboard-cli/`. Compilation, runtime tests
+  and clipboard operations were not run. No Cargo or rustc commands executed.
+- Full consolidation remains active.

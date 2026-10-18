@@ -1,0 +1,12 @@
+[package]
+name = "codetether-clipboard-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Clipboard image bridge CLI arguments and output behavior"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.6.6", features = ["derive"] }
+codetether-clipboard = { path = "../codetether-clipboard", version = "0.1.0" }
