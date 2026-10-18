@@ -19,6 +19,7 @@ mod chat_submit_slash;
 mod codex_parity_command;
 mod continue_command;
 pub(crate) mod goal_answer;
+mod text_host;
 
 // Re-exports so the event loop's auto-drain hook can submit a queued
 // user message as a fresh turn without duplicating the dispatch logic.

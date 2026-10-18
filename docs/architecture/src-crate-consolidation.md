@@ -17498,3 +17498,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-paste-burst/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared character and backspace routing
+
+- Moved mention/filter/chat character and backspace decisions into
+  `codetether-tui-navigation::text`, including filter status and input-mode
+  transitions. Native code binds explicit buffer/filter/symbol effects.
+- Preserved modifier guards, whitespace mention termination, @ insertion
+  ownership, symbol refresh order and post-backspace mode updates.
+  Native async signatures remain compatible; their bodies do not suspend.
+- Verification: full routing-body comparison, all native state/effect bindings,
+  absence of native App references in shared logic, unchanged callers/tests,
+  module/dependency graphs, direct rustfmt, file limits and whitespace.
+- No dependency changes. Evidence: `artifacts/consolidation-text-input/`.
+  No Cargo, rustc, Python, UI effects, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

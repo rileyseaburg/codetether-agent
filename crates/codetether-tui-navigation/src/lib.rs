@@ -35,3 +35,6 @@ pub mod modes;
 
 /// Ordered key-event admission and modal dispatch.
 pub mod events;
+
+/// View-aware character/backspace routing and input-mode policy.
+pub mod text;
