@@ -7,7 +7,7 @@ pub(super) fn empty_models(capabilities: &[ProviderCapability]) -> Option<String
          If you use Vault, follow this workflow:\n{}\n\
          If you intentionally use local AWS credentials, check that profile and region; see codetether auth bedrock --help.\n\
          If you used --provider, also check the provider name.",
-        crate::cli::vault::help::WORKFLOW,
+        crate::setup::WORKFLOW,
     ))
 }
 

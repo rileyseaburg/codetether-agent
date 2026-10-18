@@ -1,5 +1,6 @@
+//! Model enrichment and rendering regressions.
 use super::{enrich, render, types::ProviderCapability};
-use crate::provider::ModelInfo;
+use codetether_provider_core::ModelInfo;
 
 fn luna() -> ModelInfo {
     ModelInfo {

@@ -10593,3 +10593,21 @@ graphs, file budgets and whitespace checks passed; modules have at most 41 code
 lines. Evidence is in `artifacts/consolidation-worktree-cli/`. Compilation and
 runtime tests were not run. No Cargo, rustc, Python, worktree operation or editor
 launch ran. Full workspace consolidation remains active.
+
+### Models CLI discovery and rendering extracted
+
+Moved provider filtering, model collection, Codex alias/reasoning enrichment,
+capability serialization/rendering, empty-result guidance and argument schema
+into `crates/codetether-models-cli`. Twelve modules use a small Registry trait
+implemented by the native provider adapter. Native execution still loads the
+registry from Vault before calling the shared command. The CLI dispatcher now
+calls that native entry function explicitly; the shared argument type is
+re-exported. The Vault help path re-exports the identical shared setup text.
+
+Seventeen static checks compare collection, enrichment, formatting, argument
+attributes, setup text and native initialization/dispatch wiring. All four
+existing model/guidance tests moved. Module/dependency graphs, file budgets and
+whitespace checks passed; new modules have at most 43 code lines. Evidence is
+in `artifacts/consolidation-models-cli/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, credential lookup, provider initialization or model
+network request ran. Full workspace consolidation remains active.

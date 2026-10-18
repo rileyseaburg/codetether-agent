@@ -190,6 +190,7 @@ members = [
     "crates/codetether-actor",
     "crates/codetether-cleanup-cli",
     "crates/codetether-worktree-cli",
+    "crates/codetether-models-cli",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -502,6 +503,7 @@ codetether-codex-records = { path = "crates/codetether-codex-records", version =
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
+codetether-models-cli = { path = "crates/codetether-models-cli", version = "0.1.0" }
 codetether-worktree-cli = { path = "crates/codetether-worktree-cli", version = "0.1.0" }
 codetether-cleanup-cli = { path = "crates/codetether-cleanup-cli", version = "0.1.0" }
 codetether-actor = { path = "crates/codetether-actor", version = "0.1.0" }

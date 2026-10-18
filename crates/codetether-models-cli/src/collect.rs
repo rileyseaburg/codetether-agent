@@ -1,11 +1,11 @@
 //! Capability collection from configured providers.
 
-use crate::provider::ProviderRegistry;
+use crate::Registry;
 
 use super::types::ProviderCapability;
 
 pub(super) async fn capabilities(
-    registry: &ProviderRegistry,
+    registry: &impl Registry,
     filter: Option<&str>,
 ) -> Vec<ProviderCapability> {
     let mut capabilities = Vec::new();
@@ -19,7 +19,7 @@ pub(super) async fn capabilities(
     capabilities
 }
 
-async fn collect_provider(registry: &ProviderRegistry, name: &str) -> ProviderCapability {
+async fn collect_provider(registry: &impl Registry, name: &str) -> ProviderCapability {
     let result = match registry.get(name) {
         Some(provider) => provider.list_models().await,
         None => Err(anyhow::anyhow!("provider disappeared during discovery")),

@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-models-cli",
  "codetether-worktree-cli",
  "codetether-cleanup-cli",
  "codetether-actor",
@@ -5372,6 +5373,17 @@ dependencies = [
  "anyhow",
  "clap",
  "codetether-worktree",
+ "serde_json",
+]
+
+[[package]]
+name = "codetether-models-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "codetether-provider-core",
+ "serde",
  "serde_json",
 ]
 

@@ -589,7 +589,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Pr(args)) => github_pr::run(args).await,
         Some(Command::Approval(args)) => cli::approval::execute(args),
         Some(Command::Clipboard(args)) => cli::clipboard::execute(args),
-        Some(Command::Models(args)) => args.execute().await,
+        Some(Command::Models(args)) => cli::execute_models(args).await,
         Some(Command::Index(args)) => indexer::run(args).await,
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
         Some(Command::Vault(args)) => cli::vault::execute(args).await,

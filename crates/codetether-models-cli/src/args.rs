@@ -1,0 +1,21 @@
+//! Args for the `models` command.
+
+use clap::Parser;
+
+/// Filter options for listing available provider models.
+///
+/// # Examples
+/// ```
+/// let args = codetether_models_cli::ModelsArgs { provider: None, json: true };
+/// assert!(args.json);
+/// ```
+#[derive(Parser, Debug)]
+pub struct ModelsArgs {
+    /// Filter by provider name
+    #[arg(short, long)]
+    pub provider: Option<String>,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
+}

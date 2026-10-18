@@ -1,29 +1,18 @@
-//! Provider/model capability discovery for `codetether models`.
-
-mod collect;
-mod enrich;
-mod guidance;
-mod render;
-mod types;
-
+//! Native provider initialization for shared model discovery.
 use super::ModelsArgs;
 use crate::provider::ProviderRegistry;
 
 pub async fn execute(args: ModelsArgs) -> anyhow::Result<()> {
     let registry = ProviderRegistry::from_vault().await?;
-    let capabilities = collect::capabilities(&registry, args.provider.as_deref()).await;
-    let output = if args.json {
-        render::json(&capabilities)?
-    } else {
-        render::text(&capabilities)
-    };
-    println!("{output}");
-    if let Some(hint) = guidance::empty_models(&capabilities) {
-        eprintln!("{hint}");
-    }
-    Ok(())
+    codetether_models_cli::execute(args, &Registry(registry)).await
 }
 
-#[cfg(test)]
-#[path = "tests.rs"]
-mod tests;
+struct Registry(ProviderRegistry);
+impl codetether_models_cli::Registry for Registry {
+    fn list(&self) -> Vec<&str> {
+        self.0.list()
+    }
+    fn get(&self, name: &str) -> Option<std::sync::Arc<dyn codetether_provider_core::Provider>> {
+        self.0.get(name)
+    }
+}

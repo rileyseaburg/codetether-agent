@@ -7,16 +7,6 @@ use super::{
     empty_models,
 };
 
-fn configured() -> ProviderCapability {
-    ProviderCapability {
-        provider: "bedrock".into(),
-        available: true,
-        source: "configured provider registry",
-        error: None,
-        models: vec![],
-    }
-}
-
 #[test]
 fn empty_discovery_has_workflow_without_changing_json() {
     let providers = [configured()];
@@ -49,3 +39,7 @@ fn discovered_models_do_not_emit_recovery_hints() {
     });
     assert!(empty_models(&[provider]).is_none());
 }
+
+#[path = "guidance_fixture.rs"]
+mod fixture;
+use fixture::configured;

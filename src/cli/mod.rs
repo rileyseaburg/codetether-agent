@@ -30,7 +30,7 @@ pub mod worktree_args;
 use clap::{Parser, Subcommand};
 pub use command::Command;
 pub use config_args::{ConfigArgs, ConfigCommand, ProjectArgs, ProjectCommand};
-pub use root_args::Cli;
+pub use {root_args::Cli, models_args::execute as execute_models};
 use std::path::PathBuf;
 pub use worktree_args::{
     WorktreeArgs, WorktreeCommand, WorktreeListArgs, WorktreeOpenArgs, WorktreeWorkspaceArgs,
