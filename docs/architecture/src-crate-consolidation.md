@@ -25635,3 +25635,23 @@ file-limit, direct rustfmt and whitespace checks pass. No manifest/lock changes
 were needed and unrelated dirty files remain unchanged. Evidence:
 artifacts/consolidation-worker-preparation/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Native registry services and worker catalog publication
+
+Added codetether-native-registry to own native provider search registration,
+runtime authorization and publication of the concrete worker tool schemas.
+The root registry lifecycle is now a native specialization and one Catalog
+hook preserving its existing ordered constructors and optional features.
+Removed the root worker_tool_catalog module; worker initialization selects the
+same application catalog for the crate-owned publisher. The announcement keeps
+its original tracing target, fields, schema source and receiver count.
+
+Static comparisons preserve native search/policy method bodies and the root
+catalog population body, plus publication after explicit type specialization
+and tracing-target preservation. Module/dependency scans cover 715 roots and
+601 crates without missing modules, cycles or undeclared direct dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks pass. The staged
+lockfile adds only the new package and root dependency; unrelated working files
+remain unchanged. Evidence: artifacts/consolidation-native-registry/. No Cargo,
+rustc, Python, compilation or runtime tests ran. Full consolidation remains
+active.

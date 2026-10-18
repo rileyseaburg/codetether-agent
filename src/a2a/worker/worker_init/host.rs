@@ -6,7 +6,7 @@ use std::sync::Arc;
 pub(in crate::a2a::worker) struct Native;
 impl codetether_native_worker::initialization::Hooks for Native {
     fn announce(handle: &BusHandle) -> usize {
-        super::super::worker_tool_catalog::announce(handle)
+        codetether_native_registry::announce::<crate::tool::registry_lifecycle::Catalog>(handle)
     }
     async fn peer(args: &A2aArgs, name: &str, bus: Arc<AgentBus>) -> Option<A2APeerHandle> {
         super::super::maybe_start_worker_a2a_peer(args, name, bus).await

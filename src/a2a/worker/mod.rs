@@ -76,7 +76,6 @@ use codetether_native_worker::worker_context;
 use codetether_a2a_worker_core as worker_env;
 mod worker_init;
 mod worker_security;
-mod worker_tool_catalog;
 use codetether_native_worker::workspace_scope;
 use codetether_native_worker::workspace_sync;
 use codetether_worktree::repository::credentials as workspace_sync_git;

@@ -1275,6 +1275,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-native-registry",
  "codetether-context-health",
  "codetether-native-indexer",
  "codetether-native-memory",
@@ -3790,6 +3791,21 @@ dependencies = [
  "codetether-worktree-lease",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "codetether-native-registry"
+version = "0.1.0"
+dependencies = [
+ "codetether-application-registry",
+ "codetether-bus-core",
+ "codetether-native-providers",
+ "codetether-native-runtime-policy",
+ "codetether-native-search",
+ "codetether-provider-core",
+ "codetether-tool-core",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]
