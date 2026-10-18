@@ -26692,3 +26692,23 @@ limits and whitespace checks pass. No manifest/lock changes were required, and
 unrelated working changes are untouched. Evidence: artifacts/consolidation-lifecycle-binding/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active.
+
+### Explicit child-control application binding
+
+Moved ControlHost and MarkerHost implementations plus typed interrupt/kill
+forwarders into codetether-agent-lifecycle's control_binding and handler_binding
+modules. Removed handlers/host.rs, handlers/host/{control,marker}.rs and
+handlers/kill.rs. Root declarations still select the same Session, persistence,
+live store, mailbox, terminal announcement and trace-cleanup services.
+
+All eleven expanded function bodies match the originals after explicit path
+substitution. In particular, mailbox clearing and durable removal are unchanged,
+normal session add_message/save methods remain in use, and live removal still
+precedes trace cleanup. Existing interruption test sources and fixtures are
+byte-for-byte unchanged. The host matcher accepts rustfmt's optional separator
+comma; the initial failed declaration check is retained as evidence. Final
+declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 730 module roots and 617 crates.
+No manifest/lock changes were required; unrelated working files remain untouched.
+Evidence: artifacts/consolidation-control-binding/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

@@ -29,6 +29,8 @@ pub use marker::INTERRUPTION_MARKER;
 pub use marker_host::MarkerHost;
 
 mod application_binding;
+mod control_binding;
+mod handler_binding;
 
 /// Dependencies used by application-local lifecycle declarations.
 #[doc(hidden)]
@@ -36,5 +38,6 @@ pub mod __private {
     pub use anyhow::Result;
     pub use async_trait::async_trait;
     pub use codetether_collaboration_tools::EnsureOpen;
+    pub use codetether_provider_core::Message;
     pub use codetether_tool_core::ToolResult;
 }

@@ -1,17 +1,7 @@
 //! Native specialization for shared active-turn interruption.
-use crate::tool::ToolResult;
-pub(in crate::tool::agent) async fn handle(
-    target: &str,
-    parent: Option<&str>,
-    marker_enabled: bool,
-) -> anyhow::Result<ToolResult> {
-    codetether_agent_lifecycle::interrupt::<super::host::ApplicationHost>(
-        target,
-        parent,
-        marker_enabled,
-    )
-    .await
-}
+codetether_agent_lifecycle::declare_interrupt_handler!(
+    pub(in crate::tool::agent) fn handle; super::host::ApplicationHost
+);
 #[cfg(test)]
 #[path = "interrupt/idle_tests.rs"]
 mod idle_tests;
