@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-workspace-snapshot",
  "codetether-git-view",
  "codetether-protocol-view",
  "codetether-chat-sync",
@@ -5773,9 +5774,18 @@ dependencies = [
 name = "codetether-git-view"
 version = "0.1.0"
 dependencies = [
+ "codetether-workspace-snapshot",
  "chrono",
  "serde",
  "ratatui",
+]
+
+[[package]]
+name = "codetether-workspace-snapshot"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-util",
 ]
 
 [[package]]

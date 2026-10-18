@@ -11196,3 +11196,20 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-git-view/`. Compilation, tests, moved Git
   capture functions and rendering were not run. No Cargo or rustc commands
   executed. Full consolidation remains active.
+
+### Workspace snapshot extraction
+
+- Moved workspace entry types, shallow scanning, stable directory-first sorting,
+  pruning and snapshot capture from `src/tui/utils` into
+  `crates/codetether-workspace-snapshot`.
+- Seven modules separate data, collection, ordering, pruning, Git status and
+  capture. Maximum module size is 28 code lines.
+- The shared Git-status implementation moved from the Git view crate into this
+  rendering-independent crate. Git view now depends on the snapshot layer;
+  existing Git-view and TUI paths remain compatibility exports.
+- Seventeen static comparisons verify types, collection/sort bodies, capture
+  ordering, unchanged status logic, pruning and consumer bindings. Module
+  reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-workspace-snapshot/`. Compilation, tests,
+  filesystem snapshots and Git capture were not run. No Cargo or rustc commands
+  executed. Full consolidation remains active.

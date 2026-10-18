@@ -1,7 +1,2 @@
-//! Git/FS helpers backing [`super::workspace::WorkspaceSnapshot`].
-
-
-pub fn should_skip_entry(name: &str) -> bool {
-    crate::workspace_scan::is_pruned_workspace_dir(name)
-}
-pub use codetether_git_view::detect_git_status;
+//! Shared workspace pruning and Git status helpers.
+pub use codetether_workspace_snapshot::{detect_git_status, should_skip_entry};
