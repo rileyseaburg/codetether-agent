@@ -26786,3 +26786,19 @@ file-limit and whitespace checks pass for 729 roots and 617 crates. No dependenc
 or lock changes were required; unrelated working files remain untouched.
 Evidence: artifacts/consolidation-residency-binding/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Application agent-view and roster binding
+
+Moved the registry source, three public snapshot functions and async tool roster
+forwarder into codetether-agent-view::declare_application_view. The root bridge
+selects Session/store and retains integration tests; handlers re-export the same
+roster operation. Removed bridge_host.rs and handlers/list.rs. Public view names,
+return types, owner scoping and the existing generic ApplicationHost are preserved.
+
+All seven expanded function bodies match their originals after the equivalent
+host-path substitution. UI, transcript and remote-agent integration-test sources
+and fixtures are unchanged. Declaration, module/dependency, native production
+scope, standalone formatting, file-limit and whitespace checks pass for 729 roots
+and 617 crates. No manifest/lock changes were needed; unrelated working files
+remain untouched. Evidence: artifacts/consolidation-view-binding/. No Cargo,
+rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

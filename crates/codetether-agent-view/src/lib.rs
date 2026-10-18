@@ -21,3 +21,12 @@ pub use snapshots::{all as list, find};
 pub use transcript::for_parent as transcript;
 mod local;
 mod remote;
+
+mod application_binding;
+
+/// Dependencies used by application-local view declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use codetether_tool_core::ToolResult;
+}

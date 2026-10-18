@@ -18,9 +18,7 @@ mod kill {
         pub(in crate::tool::agent) fn handle; super::host::ApplicationHost
     );
 }
-#[path = "handlers/list.rs"]
-mod list;
 
+pub(super) use super::bridge::handle_list;
 pub(super) use interrupt::handle as handle_interrupt;
 pub(super) use kill::handle as handle_kill;
-pub(super) use list::handle as handle_list;
