@@ -15,7 +15,7 @@ macro_rules! declare_frontend_copy_command {
                 self.state.status = status;
             }
             fn clear_input(&mut self) {
-                self.state.clear_input();
+                self.state.composer.clear_input();
             }
         }
         pub(super) fn run(app: &mut App, prompt: &str) {

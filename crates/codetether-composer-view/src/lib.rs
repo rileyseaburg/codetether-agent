@@ -49,3 +49,5 @@ mod state;
 /// Application-local composer adapters for cursor, edits, history and completion.
 pub mod state_binding;
 pub use state::ComposerState;
+
+mod state_methods;

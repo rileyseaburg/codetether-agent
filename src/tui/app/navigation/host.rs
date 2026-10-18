@@ -20,7 +20,10 @@ impl Host for Navigation<'_> {
             ralph_detail: app.state.ralph.detail_mode,
             bus_filter: app.state.bus_log.filter_input_mode,
             bus_detail: app.state.bus_log.detail_mode,
-            slash_navigable: app.state.slash_suggestions_navigable(),
+            slash_navigable: app
+                .state
+                .composer
+                .slash_suggestions_navigable(&app.state.view_mode, app.state.processing),
             subagent_detail: app.state.agent_tree.detail_mode,
             subagent_scroll: app.state.agent_tree.detail_scroll,
             protocol_scroll: app.state.protocol_registry.scroll,

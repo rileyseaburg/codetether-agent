@@ -16,13 +16,13 @@ impl codetether_symbol_mention::Composer for App {
         &mut self.state.symbol_search
     }
     fn insert_char(&mut self, character: char) {
-        self.state.insert_char(character);
+        self.state.composer.insert_char(character);
     }
     fn insert_text(&mut self, text: &str) {
-        self.state.insert_text(text);
+        self.state.composer.insert_text(text);
     }
     fn replace_input_chars(&mut self, range: Range<usize>, replacement: &str) {
-        self.state.replace_input_chars(range, replacement);
+        self.state.composer.replace_input_chars(range, replacement);
     }
     fn set_status(&mut self, status: String) {
         self.state.status = status;

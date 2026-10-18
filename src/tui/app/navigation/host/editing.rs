@@ -4,31 +4,31 @@ use codetether_tui_navigation::Action;
 pub(super) fn apply(app: &mut App, action: &Action) -> bool {
     match action {
         Action::HistoryPrevious => {
-            let _ = app.state.history_prev();
+            let _ = app.state.composer.history_prev();
         }
         Action::HistoryNext => {
-            let _ = app.state.history_next();
+            let _ = app.state.composer.history_next();
         }
         Action::CursorWordLeft => {
-            app.state.move_cursor_word_left();
+            app.state.composer.move_cursor_word_left();
         }
         Action::CursorWordRight => {
-            app.state.move_cursor_word_right();
+            app.state.composer.move_cursor_word_right();
         }
         Action::CursorLeft => {
-            app.state.move_cursor_left();
+            app.state.composer.move_cursor_left();
         }
         Action::CursorRight => {
-            app.state.move_cursor_right();
+            app.state.composer.move_cursor_right();
         }
         Action::DeleteForward => {
-            app.state.delete_forward();
+            app.state.composer.delete_forward();
         }
         Action::CursorHome => {
-            app.state.move_cursor_home();
+            app.state.composer.move_cursor_home();
         }
         Action::CursorEnd => {
-            app.state.move_cursor_end();
+            app.state.composer.move_cursor_end();
         }
         _ => return false,
     }

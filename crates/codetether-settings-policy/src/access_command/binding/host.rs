@@ -38,7 +38,7 @@ macro_rules! __frontend_access_host {
                     self.app.state.scroll_to_bottom();
                 }
                 fn clear_input(&mut self) {
-                    self.app.state.clear_input();
+                    self.app.state.composer.clear_input();
                 }
             }
         }

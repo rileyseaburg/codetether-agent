@@ -13,7 +13,7 @@ macro_rules! declare_frontend_history {
                 &self.state.composer.input
             }
             fn push_history(&mut self, prompt: String) {
-                self.state.push_history(prompt);
+                self.state.composer.push_history(prompt);
             }
         }
         pub(super) fn capture(app: &mut App) -> String {

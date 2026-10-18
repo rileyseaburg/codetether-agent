@@ -18,7 +18,7 @@ macro_rules! __frontend_shell_view {
                     self.state.status = status;
                 }
                 fn clear_input(&mut self) {
-                    self.state.clear_input();
+                    self.state.composer.clear_input();
                 }
                 fn scroll_to_bottom(&mut self) {
                     self.state.scroll_to_bottom();

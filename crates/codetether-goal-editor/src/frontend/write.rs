@@ -26,7 +26,7 @@ macro_rules! __frontend_goal_editor_write {
                     self.app.state.editor_lsp.clear_hover();
                 }
                 fn clear_input(&mut self) {
-                    self.app.state.clear_input();
+                    self.app.state.composer.clear_input();
                 }
                 fn show_editor(&mut self) {
                     self.app.state.set_view_mode(ViewMode::Editor);

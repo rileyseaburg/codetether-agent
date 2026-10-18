@@ -31,7 +31,6 @@ pub use codetether_composer_view::state_binding::history;
 pub use codetether_git_view as git_state;
 pub mod history_page;
 pub use codetether_composer_view::state_binding::cursor as input_cursor;
-pub mod input_edit;
 pub use codetether_composer_view::state_binding::replace as input_replace;
 pub(crate) use codetether_interlude as interlude;
 pub mod message_cache;

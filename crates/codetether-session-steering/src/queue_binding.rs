@@ -13,7 +13,7 @@ macro_rules! define_app_prompt_queue {
             }
             let preview = $preview(&prompt, 80);
             $crate::follow_up::store(prompt);
-            app.state.clear_input();
+            app.state.composer.clear_input();
             app.state.status = format!("Queued next prompt: {preview}");
         }
     };

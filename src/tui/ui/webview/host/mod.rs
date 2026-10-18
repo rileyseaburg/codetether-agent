@@ -9,6 +9,9 @@ impl codetether_webview::State for Native<'_> {
         &self.0.state.composer.input
     }
     fn suggestions_visible(&self) -> bool {
-        self.0.state.slash_suggestions_visible()
+        self.0
+            .state
+            .composer
+            .slash_suggestions_visible(&self.0.state.view_mode, self.0.state.processing)
     }
 }

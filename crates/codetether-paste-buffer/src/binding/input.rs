@@ -23,7 +23,7 @@ macro_rules! __frontend_paste_input {
                     };
                 }
                 fn insert_text(&mut self, text: &str) {
-                    self.state.insert_text(text);
+                    self.state.composer.insert_text(text);
                 }
                 fn set_status(&mut self, status: String) {
                     self.state.status = status;

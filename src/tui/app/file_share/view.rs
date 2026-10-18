@@ -20,7 +20,7 @@ impl codetether_file_share::interactive::View for Composer<'_> {
         self.0.state.composer.history.history_index = None;
     }
     fn refresh_suggestions(&mut self) {
-        self.0.state.refresh_slash_suggestions();
+        self.0.state.composer.refresh_slash_suggestions();
     }
     fn show_chat(&mut self) {
         self.0.state.set_view_mode(ViewMode::Chat);

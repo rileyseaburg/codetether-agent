@@ -10,5 +10,5 @@ pub(super) fn compose_side_question(app: &mut App) {
     }
     app.state.composer.cursor = app.state.composer.input.chars().count();
     app.state.status = "Compose a side question (/ask)".to_string();
-    app.state.refresh_slash_suggestions();
+    app.state.composer.refresh_slash_suggestions();
 }

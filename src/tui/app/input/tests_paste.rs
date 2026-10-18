@@ -127,7 +127,7 @@ mod tests {
         let pasted = "one\ntwo\nthree\nfour\nfive\nsix";
         handle_paste(&mut app, pasted).await;
         // Type a question after the placeholder.
-        app.state.insert_text("\nplease summarise this");
+        app.state.composer.insert_text("\nplease summarise this");
 
         // What the user sees in chat history.
         let display_prompt = app.state.composer.input.trim().to_string();

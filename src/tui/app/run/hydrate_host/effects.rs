@@ -16,10 +16,10 @@ impl codetether_tui_startup::hydrate::Effects<Session> for Native<'_> {
         }
     }
     fn refresh_suggestions(&mut self) {
-        self.0.state.refresh_slash_suggestions();
+        self.0.state.composer.refresh_slash_suggestions();
     }
     fn move_cursor_end(&mut self) {
-        self.0.state.move_cursor_end();
+        self.0.state.composer.move_cursor_end();
     }
     fn push_system(&mut self, text: String) {
         self.0

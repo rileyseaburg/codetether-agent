@@ -23,7 +23,7 @@ macro_rules! __frontend_approval_command_host {
                     self.0.state.approval_preview_scroll = 0;
                 }
                 fn clear_input(&mut self) {
-                    self.0.state.clear_input();
+                    self.0.state.composer.clear_input();
                 }
                 fn push_system(&mut self, text: String) {
                     self.0

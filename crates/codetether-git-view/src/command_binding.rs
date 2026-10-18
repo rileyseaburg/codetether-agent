@@ -11,7 +11,7 @@ macro_rules! declare_frontend_diff_command {
         use $message as ChatMessage;
         impl $crate::command::View for App {
             fn clear_input(&mut self) {
-                self.state.clear_input();
+                self.state.composer.clear_input();
             }
             fn set_status(&mut self, status: String) {
                 self.state.status = status;

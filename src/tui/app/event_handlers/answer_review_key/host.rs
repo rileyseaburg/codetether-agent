@@ -21,7 +21,7 @@ impl codetether_answer_review_view::interactive::Host for Native<'_> {
         answer_review::record(self.slot.view().id(), &review.goal_id, &review.id, action).await
     }
     fn clear_input(&mut self) {
-        self.app.state.clear_input();
+        self.app.state.composer.clear_input();
     }
     fn set_status(&mut self, status: String) {
         self.app.state.status = status;

@@ -32,7 +32,7 @@ macro_rules! __frontend_utility_host {
                     $dispatch(self.app, self.cwd, self.session, self.registry, command).await;
                 }
                 fn clear_input(&mut self) {
-                    self.app.state.clear_input();
+                    self.app.state.composer.clear_input();
                 }
             }
         }

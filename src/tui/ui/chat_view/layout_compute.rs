@@ -23,7 +23,9 @@ pub fn compute_chat_chunks(area: Rect, app: &App) -> ChatChunks {
     codetether_chat_layout::compute_chat_chunks(
         area,
         &app.state.composer.input,
-        app.state.slash_suggestions_visible(),
+        app.state
+            .composer
+            .slash_suggestions_visible(&app.state.view_mode, app.state.processing),
         super::agent_bar::presence::visible(app),
     )
 }

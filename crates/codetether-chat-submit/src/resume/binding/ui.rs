@@ -10,7 +10,7 @@ macro_rules! __frontend_continuation_ui {
             use $notification as WatchdogNotification;
             impl $crate::resume::Ui for Native<'_> {
                 fn clear_input(&mut self) {
-                    self.app.state.clear_input();
+                    self.app.state.composer.clear_input();
                 }
                 fn set_restarts(&mut self, count: u32) {
                     self.app.state.watchdog.restart_count = count;

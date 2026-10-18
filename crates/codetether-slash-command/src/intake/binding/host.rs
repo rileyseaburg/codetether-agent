@@ -33,7 +33,7 @@ macro_rules! __frontend_command_intake {
                     $session_free(self.app, self.cwd, self.registry, prompt)
                 }
                 fn clear_input(&mut self) {
-                    self.app.state.clear_input();
+                    self.app.state.composer.clear_input();
                 }
                 fn status(&mut self, message: String) {
                     self.app.state.status = message;

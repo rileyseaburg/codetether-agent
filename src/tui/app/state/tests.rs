@@ -6,13 +6,13 @@ use super::{AppState, scroll::TOOL_PREVIEW_FOLLOW};
 fn utf8_cursor_moves_by_character_not_byte() {
     let mut state = AppState::default();
     state.composer.input = "aé🙂z".to_string();
-    state.move_cursor_end();
+    state.composer.move_cursor_end();
     assert_eq!(state.composer.cursor, 4);
-    state.move_cursor_left();
+    state.composer.move_cursor_left();
     assert_eq!(state.composer.cursor, 3);
-    state.move_cursor_left();
+    state.composer.move_cursor_left();
     assert_eq!(state.composer.cursor, 2);
-    state.move_cursor_right();
+    state.composer.move_cursor_right();
     assert_eq!(state.composer.cursor, 3);
 }
 
@@ -20,9 +20,9 @@ fn utf8_cursor_moves_by_character_not_byte() {
 fn utf8_backspace_removes_full_character() {
     let mut state = AppState::default();
     state.composer.input = "aé🙂z".to_string();
-    state.move_cursor_end();
-    state.move_cursor_left();
-    state.delete_backspace();
+    state.composer.move_cursor_end();
+    state.composer.move_cursor_left();
+    state.composer.delete_backspace();
     assert_eq!(state.composer.input, "aéz");
     assert_eq!(state.composer.cursor, 2);
 }
@@ -32,7 +32,7 @@ fn utf8_delete_forward_removes_full_character() {
     let mut state = AppState::default();
     state.composer.input = "aé🙂z".to_string();
     state.composer.cursor = 1;
-    state.delete_forward();
+    state.composer.delete_forward();
     assert_eq!(state.composer.input, "a🙂z");
     assert_eq!(state.composer.cursor, 1);
 }
@@ -42,7 +42,7 @@ fn utf8_insert_respects_character_cursor() {
     let mut state = AppState::default();
     state.composer.input = "a🙂z".to_string();
     state.composer.cursor = 2;
-    state.insert_char('é');
+    state.composer.insert_char('é');
     assert_eq!(state.composer.input, "a🙂éz");
     assert_eq!(state.composer.cursor, 3);
 }

@@ -3,7 +3,7 @@ use super::Navigation;
 use crate::tui::models::ViewMode;
 impl codetether_tui_navigation::focus::Host for Navigation<'_> {
     fn apply_selected_slash_suggestion(&mut self) -> bool {
-        self.0.state.apply_selected_slash_suggestion()
+        self.0.state.composer.apply_selected_slash_suggestion()
     }
     fn agent_names(&self) -> Vec<String> {
         super::super::agent_focus::agent_names(self.0)

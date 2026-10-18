@@ -28,10 +28,10 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.settings_panel.select_next();
         }
         Action::SlashPrevious => {
-            app.state.select_prev_slash_suggestion();
+            app.state.composer.select_prev_slash_suggestion();
         }
         Action::SlashNext => {
-            app.state.select_next_slash_suggestion();
+            app.state.composer.select_next_slash_suggestion();
         }
         Action::FilePrevious => {
             crate::tui::app::file_picker::file_picker_select_prev(app);

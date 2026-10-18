@@ -15,7 +15,7 @@ macro_rules! declare_frontend_mux_command {
                 return false;
             };
             output::show(app, result);
-            app.state.clear_input();
+            app.state.composer.clear_input();
             true
         }
     };

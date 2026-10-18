@@ -10,7 +10,7 @@ macro_rules! __frontend_utility_review {
             use $message as ChatMessage;
             impl $crate::utility::review::View for App {
                 fn clear_input(&mut self) {
-                    self.state.clear_input();
+                    self.state.composer.clear_input();
                 }
                 fn input(&mut self) -> &mut String {
                     &mut self.state.composer.input

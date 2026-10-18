@@ -28275,3 +28275,25 @@ production-scope, formatting, whitespace and file-limit checks pass (725 roots,
 617 crates). Evidence: artifacts/consolidation-settings-panel-state/.
 No dependencies or unrelated working files changed. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active and incomplete.
+
+### Composer methods owned by the composer crate
+
+Moved 27 editing, cursor, history, completion and visibility methods from
+root-expanded AppState implementations to ComposerState. They are organized in
+state_methods/{cursor,edit,history,completion,visibility}. Removed the root
+input_edit.rs declaration and updated callers to address the component.
+Visibility methods now receive the unchanged view mode and processing flag
+explicitly, keeping unrelated UI state outside the composer.
+
+Static comparisons cover all 27 method bodies and 41 changed caller/registration
+files. The generic voice-input and command-history callers keep their original
+APIs. A root-source scan found no remaining composer-method calls outside a
+composer receiver. An initial verifier normalization error for the second
+visibility method was corrected; its failure log is retained. Core edit,
+history, completion and visibility policies are unchanged.
+
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks pass (725 roots, 617 crates). Evidence:
+artifacts/consolidation-composer-methods/. No dependencies or unrelated working
+files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.

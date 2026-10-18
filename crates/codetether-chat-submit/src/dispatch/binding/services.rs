@@ -16,7 +16,7 @@ macro_rules! __prompt_dispatch_services {
                     $held(self.slot.view().id())
                 }
                 fn clear_input(&mut self) {
-                    self.app.state.clear_input();
+                    self.app.state.composer.clear_input();
                 }
                 async fn processing_started(&mut self) {
                     $started(self.app, self.worker_bridge).await;

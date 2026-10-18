@@ -25,6 +25,6 @@ pub fn render_suggestions(f: &mut Frame, app: &App, area: Rect) {
         &app.state.composer.completion.slash_suggestions,
         app.state.composer.completion.selected_slash_suggestion,
         area,
-        || app.state.current_slash_hint(),
+        || app.state.composer.current_slash_hint(),
     );
 }

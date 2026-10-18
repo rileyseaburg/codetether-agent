@@ -16,10 +16,10 @@ macro_rules! __frontend_goal_input_view {
                     self.app.state.status = text;
                 }
                 fn history(&mut self, text: String) {
-                    self.app.state.push_history(text);
+                    self.app.state.composer.push_history(text);
                 }
                 fn clear(&mut self) {
-                    self.app.state.clear_input();
+                    self.app.state.composer.clear_input();
                 }
                 fn redraw(&mut self) {
                     self.app.state.needs_redraw = true;

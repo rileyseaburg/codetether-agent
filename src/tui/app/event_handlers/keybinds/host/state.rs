@@ -19,7 +19,7 @@ impl State for Native<'_> {
         crate::tui::app::navigation::handle_symbol_enter(self.app);
     }
     fn newline(&mut self) {
-        self.app.state.insert_char('\n');
+        self.app.state.composer.insert_char('\n');
     }
     fn paste_newline(&self) -> bool {
         super::super::super::paste_burst::enter_is_likely_paste_newline(self.app)

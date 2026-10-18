@@ -16,7 +16,7 @@ macro_rules! __frontend_steering_view {
                     &mut self.app.state.messages
                 }
                 fn clear_input(&mut self) {
-                    self.app.state.clear_input();
+                    self.app.state.composer.clear_input();
                 }
                 fn status(&mut self, message: String) {
                     self.app.state.status = message;

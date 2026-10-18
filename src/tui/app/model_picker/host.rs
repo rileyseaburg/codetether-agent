@@ -31,6 +31,6 @@ impl codetether_model_picker::interactive::verifier_command::CommandView for Pic
         crate::tool::goal::verify::selected_verifier_model()
     }
     fn clear_input(&mut self) {
-        self.0.state.clear_input();
+        self.0.state.composer.clear_input();
     }
 }

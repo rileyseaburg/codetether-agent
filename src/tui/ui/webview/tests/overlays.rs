@@ -8,8 +8,12 @@ use crate::tui::app::state::App;
 fn webview_shows_slash_suggestions() {
     let mut app = App::default();
     app.state.composer.input = "/he".to_string();
-    app.state.refresh_slash_suggestions();
-    assert!(app.state.slash_suggestions_visible());
+    app.state.composer.refresh_slash_suggestions();
+    assert!(
+        app.state
+            .composer
+            .slash_suggestions_visible(&app.state.view_mode, app.state.processing)
+    );
     let text = draw(&mut app, 100, 30);
     assert!(
         text.contains("/help"),
