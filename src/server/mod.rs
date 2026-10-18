@@ -49,11 +49,8 @@ use axum::{
 };
 use codetether_task_ingest::CloudEventResponse;
 use futures::StreamExt;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::sync::{Mutex, broadcast};
 use tower_http::trace::TraceLayer;
 
 use codetether_authorization_policy::policy_middleware;
@@ -208,7 +205,10 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/api/provider", get(list_providers))
         .route("/api/agent", get(list_agents))
         // OpenAI-compatible APIs
-        .merge(models_catalog::router())
+        .merge(codetether_model_catalog::http::router::<
+            models_catalog::AppHost,
+            AppState,
+        >())
         .merge(codetether_openai_serving::http::router::<
             openai_http_host::AppHost,
             AppState,

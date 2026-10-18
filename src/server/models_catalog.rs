@@ -1,37 +1,21 @@
-//! OpenAI/OpenRouter-compatible model discovery handlers.
+//! Native provider registry bindings for model discovery HTTP requests.
+use crate::provider::{Provider, ProviderRegistry};
+use std::sync::Arc;
 
-mod collect;
-use codetether_model_catalog::discovery::{query, types, types_vscode, vscode};
-mod error;
+pub(super) struct AppHost;
 
-use axum::{Json, Router, extract::Query, http::StatusCode, routing::get};
-
-pub(crate) type ModelsResult<T> = Result<T, (StatusCode, Json<serde_json::Value>)>;
-
-pub(crate) fn router() -> Router<super::AppState> {
-    Router::new()
-        .route("/models", get(list_models))
-        .route("/v1/models", get(list_models))
-        .route("/v1/models/vscode", get(list_vscode_models))
-}
-
-pub(crate) async fn list_models(
-    Query(query): Query<query::ModelsQuery>,
-) -> ModelsResult<Json<serde_json::Value>> {
-    let data = model_data().await?;
-    if vscode::requested(query.format.as_deref()) {
-        return Ok(Json(serde_json::json!(vscode::response(&data))));
+impl codetether_model_catalog::http::Host for AppHost {
+    type Registry = ProviderRegistry;
+    async fn load_registry() -> anyhow::Result<Arc<ProviderRegistry>> {
+        ProviderRegistry::shared_from_vault().await
     }
-    Ok(Json(serde_json::json!(types::ModelsResponse { data })))
 }
 
-pub(crate) async fn list_vscode_models() -> ModelsResult<Json<types_vscode::VscodeModelsResponse>> {
-    Ok(Json(vscode::response(&model_data().await?)))
-}
-
-async fn model_data() -> ModelsResult<Vec<types::Model>> {
-    let registry = crate::provider::ProviderRegistry::shared_from_vault()
-        .await
-        .map_err(error::load_error)?;
-    Ok(collect::collect_models(&registry, chrono::Utc::now().timestamp()).await)
+impl codetether_model_catalog::discovery::CatalogRegistry for ProviderRegistry {
+    fn list(&self) -> Vec<&str> {
+        ProviderRegistry::list(self)
+    }
+    fn get(&self, name: &str) -> Option<Arc<dyn Provider>> {
+        ProviderRegistry::get(self, name)
+    }
 }

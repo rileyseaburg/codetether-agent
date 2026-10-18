@@ -9,3 +9,6 @@ pub use wire::*;
 
 /// Provider metadata projection for compatible model-discovery APIs.
 pub mod discovery;
+
+/// HTTP discovery routes over an application-supplied provider registry.
+pub mod http;

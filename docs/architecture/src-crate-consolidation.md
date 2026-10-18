@@ -14261,3 +14261,21 @@ Full workspace consolidation remains active.
   checks passed. Evidence: artifacts/consolidation-openai-http/.
 - No dependency or lockfile changes. No Cargo, rustc, Rust tests, provider
   requests or server startup ran. Full workspace consolidation remains active.
+
+### Model discovery HTTP ownership
+
+- Moved model-list route assembly, response-format selection, registry loading
+  orchestration and HTTP error mapping into codetether-model-catalog::http.
+  Dedicated modules own routing, extraction, data collection, errors and the
+  provider-loading contract. Native models_catalog now contains only bindings.
+- Removed the native collection forwarding file and moved the native error
+  implementation into the owning crate. Preserved both model-list aliases,
+  VS Code projections, collection timestamp, load errors and server layer order.
+- Added Axum and Chrono to the catalog crate. Only those catalog dependency
+  entries were staged in Cargo.lock; unrelated working lockfile edits remain.
+- Verification: ten static checks passed, plus module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks. Removed three
+  unused server import lines to satisfy the file-limit ratchet. Evidence:
+  artifacts/consolidation-model-http/.
+- No Cargo, rustc, Rust tests, provider calls or server startup ran. Full
+  workspace consolidation remains unfinished.
