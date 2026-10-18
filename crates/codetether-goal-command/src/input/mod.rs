@@ -2,6 +2,7 @@
 //!
 //! [intercept] handles goal and task commands before session borrowing. [restart]
 //! records a one-shot intent; [drain] resumes it only when ownership is available.
+mod binding;
 mod execute;
 mod host;
 mod pending;

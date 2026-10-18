@@ -27748,3 +27748,18 @@ file-limit and whitespace checks pass for 725 roots and 617 crates. Unrelated
 files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-command-output/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Goal-command interception, restart and deferred-resume bindings
+
+Moved frontend goal-input interception, composer/view updates, command actions,
+restart cleanup and deferred resume into codetether-goal-command::input::binding.
+Removed six root implementation files. Root declarations select the same
+frontend/session types, task-state type and existing command/editor/resume services.
+
+All twenty-three expanded function bodies and three borrowed host layouts match
+after editor callback qualification. Five goal-input test files are byte-for-byte
+unchanged. Declaration, module/dependency, native production-scope, standalone
+formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
+Unrelated files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-goal-input/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
