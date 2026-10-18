@@ -1,0 +1,18 @@
+[package]
+name = "codetether-session-schema"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Session field layout and serialization contract with application-local types"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
+codetether-tracked-vec = { path = "../codetether-tracked-vec", version = "0.1.0" }

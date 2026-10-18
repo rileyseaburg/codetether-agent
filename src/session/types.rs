@@ -1,74 +1,10 @@
-//! Core data types for [`Session`]: the session struct itself, its
-//! persistent metadata, and the image attachment helper used by multimodal
-//! prompts.
-
-use std::sync::Arc;
-
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-
-use crate::agent::ToolUse;
-use crate::provider::{Message, Usage};
-use crate::session::index::SummaryIndex;
-use crate::session::pages::PageKind;
-
-use codetether_session_metadata as metadata;
-pub use metadata::SessionMetadata;
-
-/// Step budget used by bounded delegated runs that do not supply one.
-///
-/// Primary sessions are unbounded when [`Session::max_steps`] is [`None`].
-pub const DEFAULT_MAX_STEPS: usize = 50;
-/// Portable image attachment shared with clipboard and provider code.
+//! Native session type generated from the shared field and serialization schema.
+//!
+//! The type remains local so application-owned inherent operations are preserved.
 pub use codetether_image::ImageAttachment;
+pub use codetether_session_metadata::SessionMetadata;
+pub use codetether_session_schema::DEFAULT_MAX_STEPS;
 
-/// A conversation session.
-///
-/// See the [`session`](crate::session) module docs for a usage overview.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Session {
-    /// UUID identifying this session on disk.
-    pub id: String,
-    /// Optional human-readable title. Auto-generated from the first user
-    /// message when absent; see [`Session::generate_title`](crate::session::Session::generate_title).
-    pub title: Option<String>,
-    /// When the session was first created.
-    pub created_at: DateTime<Utc>,
-    /// When the session was last modified.
-    pub updated_at: DateTime<Utc>,
-    /// Durable session configuration.
-    ///
-    /// Serialized *before* [`Self::messages`] so metadata readers can identify
-    /// the workspace before reaching the transcript.
-    pub metadata: SessionMetadata,
-    /// Name of the agent persona that owns this session.
-    pub agent: String,
-    /// Ordered conversation transcript.
-    #[serde(deserialize_with = "super::tracked::tail")]
-    pub messages: super::tracked::TrackedVec<Message>,
-    /// Per-message page classification sidecar.
-    ///
-    /// Backfilled on load for legacy sessions that predate the
-    /// history/context split.
-    #[serde(default)]
-    pub pages: super::tracked::TrackedVec<PageKind>,
-    /// Hierarchical summary cache used as the seed for proactive RLM
-    /// preparation and invalidated on the [`Session::add_message`] hot path.
-    #[serde(default)]
-    pub summary_index: SummaryIndex,
-    /// Per-tool-call audit records.
-    #[serde(deserialize_with = "super::tracked::tail")]
-    pub tool_uses: super::tracked::TrackedVec<ToolUse>,
-    /// Aggregate token usage across all completions in this session.
-    pub usage: Usage,
-    /// Maximum agentic loop steps. [`None`] allows the turn to continue until
-    /// completion or an explicit cancellation.
-    #[serde(skip)]
-    pub max_steps: Option<usize>,
-    /// Optional bus for publishing agent thinking/reasoning.
-    #[serde(skip)]
-    pub bus: Option<Arc<crate::bus::AgentBus>>,
-    /// Optimistic revision and loaded-window offsets; omitted from JSON exports.
-    #[serde(skip)]
-    pub storage: super::store::State,
-}
+codetether_session_schema::declare_session!(
+    pub struct Session;
+);

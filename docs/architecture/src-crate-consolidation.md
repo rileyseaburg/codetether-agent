@@ -24436,3 +24436,25 @@ checks passed. No dependencies changed, and unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-tui-legacy-helpers/. No Cargo,
 rustc, Python, compilation, helper execution or tests ran. Full consolidation
 remains active.
+
+### Session schema moved into a dedicated crate
+
+Moved the complete Session field and serde declaration plus the delegated-run
+step default into codetether-session-schema. Its declare_session macro expands
+the type in the native module so existing native inherent methods, direct field
+access and struct literals keep the same local type. Native session/types.rs now
+contains compatibility exports and that declaration invocation. This extracts
+schema ownership; application Session operations remain to be consolidated.
+
+The macro uses shared field types and the original tracked-vector tail decoder.
+It requires the canonical dependency name for serde attribute resolution.
+Static comparison verifies the full field order, types, derives and serde
+attributes after explicit path substitution. The initial invocation comparison
+assumed one-line formatting; token comparison corrected it, with evidence kept.
+Module/dependency scans cover 693 roots and 574 crates without missing modules
+or cycles. Direct dependency audit, direct rustfmt, source file limits and
+whitespace checks passed. Only the new package and root dependency are staged
+in the lockfile; unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-session-schema/. No Cargo, rustc, Python, compiler
+macro expansion, serialization execution or tests ran. Full consolidation
+remains active.

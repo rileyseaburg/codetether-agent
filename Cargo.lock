@@ -1922,6 +1922,7 @@ dependencies = [
  "windows",
  "codetether-windows-cli",
  "codetether-rlm-view",
+ "codetether-session-schema",
 ]
 
 [[package]]
@@ -3691,6 +3692,21 @@ version = "0.1.0"
 dependencies = [
  "codetether-session-picker",
  "ratatui",
+]
+
+[[package]]
+name = "codetether-session-schema"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-agent-core",
+ "codetether-bus-core",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-session-metadata",
+ "codetether-session-store",
+ "codetether-tracked-vec",
+ "serde",
 ]
 
 [[package]]

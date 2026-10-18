@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/codetether-session-schema",
     ".",
     "crates/codetether-tui-tick",
     "crates/codetether-rlm-view",
@@ -1078,6 +1079,7 @@ codetether-session-catalog = { path = "crates/codetether-session-catalog", versi
 codetether-session-listing = { path = "crates/codetether-session-listing", version = "0.1.0" }
 codetether-snapshot-io = { path = "crates/codetether-snapshot-io", version = "0.1.0" }
 codetether-session-codec = { path = "crates/codetether-session-codec", version = "0.1.0" }
+codetether-session-schema = { path = "crates/codetether-session-schema", version = "0.1.0" }
 codetether-session-metadata = { path = "crates/codetether-session-metadata", version = "0.1.0" }
 codetether-session-title = { path = "crates/codetether-session-title", version = "0.1.0" }
 codetether-run-checkpoint = { path = "crates/codetether-run-checkpoint", version = "0.1.0" }
