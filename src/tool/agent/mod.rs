@@ -26,7 +26,6 @@ mod message_detach;
 mod message_finalize;
 use codetether_agent_input as params;
 pub(crate) mod persistence;
-mod policy;
 mod registry;
 pub(crate) mod residency;
 mod session_factory;

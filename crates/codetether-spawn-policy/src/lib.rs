@@ -5,6 +5,7 @@
 //! after durable registration; dropping it releases an unfinished claim.
 //! [validate_depth] checks a depth already derived from the live parent.
 //! [is_free_or_eligible] and [model_warning] retain model cost admission policy.
+pub mod admission;
 mod depth;
 mod host;
 mod identity;

@@ -23961,3 +23961,20 @@ and whitespace checks passed. Only the required lockfile dependency is staged;
 unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-trace-events/. No Cargo, rustc, Python, compilation,
 event processing or tests ran. Full consolidation remains active.
+
+### Spawn admission sequencing moved into the policy crate
+
+Moved depth-before-provider admission and advisory model-cost validation into
+codetether-spawn-policy::admission. The native binding derives the same parent
+depth and supplies the existing registry future. Removed the native spawn_depth
+and policy forwarding files. Registry loading is not polled until the depth
+check succeeds, preserving rejection order and provider-access behavior.
+No dependencies changed.
+
+Static comparisons preserve the error-to-ToolResult conversion and model-warning
+operation, with the same arguments and ordering. Existing native validation
+tests remain unchanged. Module/dependency scans cover 691 roots and 572 crates
+without missing modules or cycles. Direct rustfmt, source file limits and
+whitespace checks passed. Unrelated working changes remain untouched.
+Evidence: artifacts/consolidation-spawn-admission/. No Cargo, rustc, Python,
+compilation, provider requests or tests ran. Full consolidation remains active.

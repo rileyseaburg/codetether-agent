@@ -10,13 +10,9 @@
 //! let warning = validate_spawn_request(&request).await?;
 //! ```
 
-use super::policy;
-use super::registry;
 use super::spawn_request::SpawnRequest;
+use super::{registry, store};
 use crate::tool::ToolResult;
-
-#[path = "spawn_depth.rs"]
-mod spawn_depth;
 
 /// Validates whether a requested sub-agent spawn is allowed.
 ///
@@ -32,16 +28,14 @@ mod spawn_depth;
 pub(super) async fn validate_spawn_request(
     request: &SpawnRequest<'_>,
 ) -> Result<Option<String>, ToolResult> {
-    spawn_depth::validate(request).await?;
-    model_eligibility_warning(request.model).await
-}
-
-async fn model_eligibility_warning(model: &str) -> Result<Option<String>, ToolResult> {
-    let registry = match registry::get_registry().await {
-        Ok(registry) => registry,
-        Err(error) => return Err(ToolResult::error(error.to_string())),
-    };
-    Ok(policy::model_warning(model, &registry).await)
+    let (_, depth) = store::lineage_for_session(request.parent_session_id);
+    codetether_spawn_policy::admission::validate(
+        request.name,
+        depth,
+        request.model,
+        registry::get_registry(),
+    )
+    .await
 }
 
 #[cfg(test)]
