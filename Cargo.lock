@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-run-context",
  "codetether-run-events",
  "codetether-run-jsonl",
  "codetether-mcp-target",
@@ -6988,6 +6989,17 @@ dependencies = [
  "codetether-thread-events",
  "codetether-thread-store",
  "tokio",
+]
+
+[[package]]
+name = "codetether-run-context"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-indexer",
+ "serde_json",
+ "tempfile",
+ "tracing",
 ]
 
 [[package]]

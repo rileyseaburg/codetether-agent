@@ -13826,3 +13826,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or live event sink execution ran. Full workspace
   consolidation remains unfinished.
+
+### Run context preparation extraction
+
+- Moved attachment canonicalization/message construction and opt-in workspace
+  knowledge refresh into codetether-run-context. Separate file and knowledge
+  modules retain their existing regression tests. Native modules are re-exports.
+- The snapshot module calls the same codetether-indexer implementation directly;
+  no host adapter is needed. Missing/non-file attachment errors, prompt wording,
+  environment parsing, logging and nonfatal snapshot failures remain unchanged.
+- Verification: ten static full-body/test-body/native-binding/size checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-run-context/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or snapshot refresh ran. Full workspace
+  consolidation remains unfinished.
