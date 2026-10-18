@@ -19480,3 +19480,26 @@ manifests, lexical module reachability, dependency-cycle checks, file-size
 ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-interrupt/`. No Cargo, rustc, Python, Rust tests or
 runtime cancellation ran; compilation and runtime remain unverified.
+
+### Relay objective approval workflow
+
+Moved pending-objective approval/denial transitions, modal key classification
+and background OKR/run persistence into
+`codetether-relay-okr::interactive::approval`. The crate already owns pending
+approval state and drafting. Separate action, key and persistence modules now
+own the decision workflow; native code supplies eight state, relay-start and
+chat-presentation bindings. Removed the native persistence helper.
+
+Preserved pending-state consumption, decision text, optional repository writes,
+relay launch ordering, system/status messages, scroll updates and key-modifier
+rules. Background persistence still attempts OKR then run writes independently
+and retains the original error log targets. Native regression tests and relay
+worker implementation remain unchanged.
+
+Validation: six complete translated action/key/persistence bodies, eight native
+bindings, unchanged regression tests/caller/worker, isolated lockfile delta,
+lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-okr-approval/`. No Cargo, rustc, Python, Rust tests,
+repository persistence or relay execution ran; compilation and runtime remain
+unverified.

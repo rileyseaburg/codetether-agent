@@ -32,7 +32,6 @@ mod mode_keys;
 mod model_picker_key;
 mod mouse;
 mod okr;
-mod okr_save;
 mod paste;
 mod paste_burst;
 mod shared_file_open;

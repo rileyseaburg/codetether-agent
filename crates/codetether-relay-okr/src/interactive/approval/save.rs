@@ -5,8 +5,8 @@
 //!
 //! # Examples
 //!
-//! ```ignore
-//! spawn_okr_save(Arc::clone(&repo), okr, run);
+//! ```text
+//! spawn_okr_save(repo, okr, run);
 //! ```
 
 use std::sync::Arc;
@@ -18,21 +18,21 @@ use std::sync::Arc;
 ///
 /// # Examples
 ///
-/// ```ignore
-/// spawn_okr_save(Arc::clone(&repo), okr, run);
+/// ```text
+/// spawn_okr_save(repo, okr, run);
 /// ```
 #[allow(dead_code)]
-pub(super) fn spawn_okr_save(
-    repo: Arc<crate::okr::OkrRepository>,
-    okr: crate::okr::Okr,
-    run: crate::okr::OkrRun,
+pub fn spawn_okr_save(
+    repo: Arc<codetether_okr::OkrRepository>,
+    okr: codetether_okr::Okr,
+    run: codetether_okr::OkrRun,
 ) {
     tokio::spawn(async move {
         if let Err(e) = repo.create_okr(okr).await {
-            tracing::error!(error = %e, "Failed to save approved OKR");
+            tracing::error!(target: "codetether_agent::tui::app::event_handlers::okr_save", error = %e, "Failed to save approved OKR");
         }
         if let Err(e) = repo.create_run(run).await {
-            tracing::error!(error = %e, "Failed to save approved OKR run");
+            tracing::error!(target: "codetether_agent::tui::app::event_handlers::okr_save", error = %e, "Failed to save approved OKR run");
         }
     });
 }

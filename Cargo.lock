@@ -7193,10 +7193,12 @@ name = "codetether-relay-okr"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "crossterm",
  "codetether-okr",
  "codetether-provider-core",
  "serde",
  "serde_json",
+ "tokio",
  "tracing",
  "uuid",
 ]

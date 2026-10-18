@@ -11,3 +11,6 @@ pub use command::execute;
 pub use host::{CommandHost, DraftHost};
 pub use propose::propose;
 pub use repository::ensure_repository;
+
+/// Pending-objective approval and relay startup workflow.
+pub mod approval;
