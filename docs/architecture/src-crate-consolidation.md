@@ -27926,3 +27926,17 @@ native production-scope, standalone formatting, file-limit and whitespace checks
 pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
 lock changes were needed. Evidence: artifacts/consolidation-event-priority/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Approval action and preview-key frontend bindings
+
+Moved approval preview/editor field access and key/copy/edit/scroll wrappers
+into codetether-approval-view::interactive::binding. Removed the root action
+host; the root retains test placement and selects the same concrete types and
+approval-command callback.
+
+All twelve expanded function bodies match their originals. Approval navigation,
+feedback and scroll test sources are unchanged. Declaration, module/dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
+lock changes were needed. Evidence: artifacts/consolidation-approval-keys/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

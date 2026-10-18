@@ -3,6 +3,7 @@
 //! [handle] dispatches approval shortcuts through a frontend [Host]. [open]
 //! opens a patch-edit session, [copy_preview] exports clean preview text and
 //! [scroll]/[wheel] use the existing bounded preview navigation policy.
+mod binding;
 mod copy;
 mod decision;
 mod edit;
