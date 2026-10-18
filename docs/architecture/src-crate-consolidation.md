@@ -13672,3 +13672,18 @@ Full workspace consolidation remains active.
 - Only this crate's four added dependencies were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, provider loading, model execution, dataset writes
   or trace persistence ran. Full workspace consolidation remains unfinished.
+
+### Moltbook CLI execution extraction
+
+- Moved the Moltbook branch from src/main.rs into codetether-moltbook-cli.
+  Registration, status, profile, profile updates, posts, introductions,
+  heartbeat, comments and search each own a module; a small dispatcher selects
+  the operation using the existing shared argument types.
+- Client calls, credential loading, output strings and error propagation are
+  unchanged. Native main now delegates to the shared command executor.
+- Verification: 20 static operation/main-body/size checks passed, plus module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-moltbook-cli/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, network requests, registrations, posts or comments
+  ran. Full workspace consolidation remains unfinished.

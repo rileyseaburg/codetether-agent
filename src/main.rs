@@ -13,8 +13,8 @@
 use clap::Parser;
 use cli::{Cli, Command};
 use codetether_agent::{
-    a2a, benchmark, bus, cli, config, forage, github_pr, indexer, mcp, moltbook, mux, okr,
-    provider, ralph, server, swarm, telemetry, tool, tui, worker_server,
+    a2a, benchmark, bus, cli, config, forage, github_pr, indexer, mcp, mux, okr, provider, ralph,
+    server, swarm, telemetry, tool, tui, worker_server,
 };
 use swarm::{DecompositionStrategy, ExecutionMode, SwarmExecutor};
 use telemetry::{TOKEN_USAGE, get_persistent_stats};
@@ -863,104 +863,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Command::Cleanup(args)) => cleanup_cli::run(args).await,
         Some(Command::Worktree(args)) => worktree_cli::run(args).await,
-        Some(Command::Moltbook(args)) => {
-            use cli::MoltbookCommand;
-
-            match args.command {
-                MoltbookCommand::Register(reg) => {
-                    println!("🦞 Registering on Moltbook as '{}'...\n", reg.name);
-                    let result =
-                        moltbook::MoltbookClient::register(&reg.name, reg.description.as_deref())
-                            .await?;
-
-                    println!("✅ Registered successfully!\n");
-                    println!("   Agent:             {}", reg.name);
-                    println!("   Claim URL:         {}", result.agent.claim_url);
-                    println!("   Verification Code: {}", result.agent.verification_code);
-                    println!("\n🔗 Send the claim URL to your human to verify ownership.");
-                    if result.vault_saved {
-                        println!("🔐 API key has been saved to Vault (codetether/moltbook).");
-                    } else {
-                        println!(
-                            "⚠️  Could not save API key to Vault. Check VAULT_ADDR/VAULT_TOKEN and save it manually."
-                        );
-                    }
-                    Ok(())
-                }
-                MoltbookCommand::Status => {
-                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
-                    let status = client.claim_status().await?;
-                    println!("Moltbook claim status: {}", status.status);
-                    Ok(())
-                }
-                MoltbookCommand::Profile => {
-                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
-                    let profile = client.me().await?;
-                    println!("# Moltbook Profile\n");
-                    println!("**Name:** {}", profile.name);
-                    if let Some(desc) = &profile.description {
-                        println!("**Description:** {}", desc);
-                    }
-                    if let Some(k) = profile.karma {
-                        println!("**Karma:** {}", k);
-                    }
-                    if let Some(f) = profile.follower_count {
-                        println!("**Followers:** {}", f);
-                    }
-                    if let Some(claimed) = profile.is_claimed {
-                        println!("**Claimed:** {}", if claimed { "Yes" } else { "No" });
-                    }
-                    println!("\n🔗 https://www.moltbook.com/u/{}", profile.name);
-                    Ok(())
-                }
-                MoltbookCommand::UpdateProfile(upd) => {
-                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
-                    client.update_profile(upd.description.as_deref()).await?;
-                    println!("✅ Profile updated (CodeTether branding included).");
-                    Ok(())
-                }
-                MoltbookCommand::Post(post) => {
-                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
-                    let resp = client
-                        .create_post(&post.submolt, &post.title, &post.content)
-                        .await?;
-                    println!("✅ Posted to m/{}: {}", post.submolt, post.title);
-                    tracing::debug!("Post response: {}", resp);
-                    Ok(())
-                }
-                MoltbookCommand::Intro => {
-                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
-                    let profile = client.me().await?;
-                    let (title, content) = moltbook::intro_post(&profile.name);
-                    let resp = client
-                        .create_post("introductions", &title, &content)
-                        .await?;
-                    println!("✅ CodeTether intro posted to m/introductions!");
-                    println!("   Title: {}", title);
-                    tracing::debug!("Post response: {}", resp);
-                    Ok(())
-                }
-                MoltbookCommand::Heartbeat => {
-                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
-                    let summary = client.heartbeat().await?;
-                    println!("{}", summary);
-                    Ok(())
-                }
-                MoltbookCommand::Comment(c) => {
-                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
-                    let resp = client.comment(&c.post_id, &c.content).await?;
-                    println!("✅ Commented on post {}", c.post_id);
-                    tracing::debug!("Comment response: {}", resp);
-                    Ok(())
-                }
-                MoltbookCommand::Search(s) => {
-                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
-                    let results = client.search(&s.query, s.limit).await?;
-                    println!("{}", serde_json::to_string_pretty(&results)?);
-                    Ok(())
-                }
-            }
-        }
+        Some(Command::Moltbook(args)) => codetether_moltbook_cli::execute(args).await,
 
         // OKR commands
         Some(Command::Okr(args)) => {
