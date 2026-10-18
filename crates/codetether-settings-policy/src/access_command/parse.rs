@@ -1,8 +1,8 @@
-use crate::config::AccessMode;
+use codetether_config::AccessMode;
 
 pub(super) fn prompt(prompt: &str) -> Option<(&'static str, &str)> {
     commands().into_iter().find_map(|cmd| {
-        crate::tui::app::text::command_with_optional_args(prompt, cmd).map(|rest| (cmd, rest))
+        codetether_slash_command::command_with_optional_args(prompt, cmd).map(|rest| (cmd, rest))
     })
 }
 
@@ -15,13 +15,7 @@ pub(super) fn mode(value: &str) -> Option<AccessMode> {
     }
 }
 
-pub(super) fn label(mode: AccessMode) -> &'static str {
-    match mode {
-        AccessMode::Ask => "ask",
-        AccessMode::Approve => "approve",
-        AccessMode::Full => "full",
-    }
-}
+pub(super) use crate::access_label as label;
 
 fn commands() -> [&'static str; 4] {
     ["/access-mode", "/access", "/sandbox-mode", "/permissions"]
@@ -30,7 +24,7 @@ fn commands() -> [&'static str; 4] {
 #[cfg(test)]
 mod tests {
     use super::{mode, prompt};
-    use crate::config::AccessMode;
+    use codetether_config::AccessMode;
 
     #[test]
     fn parses_access_mode_aliases() {

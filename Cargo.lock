@@ -7135,6 +7135,8 @@ name = "codetether-settings-policy"
 version = "0.1.0"
 dependencies = [
  "codetether-config",
+ "codetether-slash-command",
+ "codetether-trust-status",
  "anyhow",
 ]
 

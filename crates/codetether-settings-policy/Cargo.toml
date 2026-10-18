@@ -9,3 +9,5 @@ description = "Pure preference labels and provider-specific setting cycle polici
 [dependencies]
 anyhow = "1"
 codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-slash-command = { path = "../codetether-slash-command", version = "0.1.0" }
+codetether-trust-status = { path = "../codetether-trust-status", version = "0.1.0" }

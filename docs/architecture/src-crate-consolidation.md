@@ -19783,3 +19783,26 @@ delta, lexical module reachability, dependency-cycle checks, file-size ratchet,
 whitespace and direct formatting. Evidence:
 `artifacts/consolidation-verifier-command/`. No Cargo, rustc, Python, Rust tests
 or preference changes ran; compilation and runtime remain unverified.
+
+### Access-mode command workflow
+
+Moved access-mode alias parsing, command ordering, config reload, trust-summary
+refresh and result/release presentation into
+`codetether-settings-policy::access_command`. Reused the existing equivalent
+access-label function. Native Host bindings supply seven verifier/session/
+approval/UI operations. Removed four native policy/result/session/parser files;
+the parser's two regression tests moved with its implementation.
+
+Preserved verifier precedence, bare-permissions fallthrough, usage text,
+process-override ordering, session reload, full-mode-only release, summary
+refresh and result/scroll/input updates. Existing approval release and verifier
+implementations are unchanged. No settings were changed during validation.
+
+Validation: eleven complete bodies including two migrated tests, label-body
+equivalence, seven native bindings, unchanged release/verifier/cycle paths,
+isolated lockfile delta, module reachability, dependency cycles, file-size
+ratchet, whitespace and direct formatting. The first comparison helper stopped
+at the semicolon in an array return type; corrected that parser and retained
+the failed log. Evidence: `artifacts/consolidation-access-command/`. No Cargo,
+rustc, Python, Rust tests or access-mode commands ran; compilation and runtime
+remain unverified.
