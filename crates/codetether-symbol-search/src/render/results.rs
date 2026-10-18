@@ -1,3 +1,4 @@
+//! Symbol picker render results.
 mod item;
 
 use ratatui::{
@@ -7,7 +8,7 @@ use ratatui::{
     widgets::{Block, Borders, List},
 };
 
-use crate::tui::symbol_search::SymbolSearchState;
+use crate::SymbolSearchState;
 
 pub fn render(frame: &mut Frame, state: &mut SymbolSearchState, area: Rect) {
     let items = state.results.iter().map(item::render).collect::<Vec<_>>();

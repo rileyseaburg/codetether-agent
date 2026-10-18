@@ -23,7 +23,7 @@ pub fn schedule(app: &mut App) {
             return;
         }
     };
-    let files = app.state.symbol_search.language_files.clone();
+    let files = app.state.symbol_search.language_files().to_vec();
     super::runtime::schedule(query, files, root);
 }
 
@@ -35,7 +35,7 @@ pub fn drain(app: &mut App) -> bool {
     if !active(app) || app.state.symbol_search.query != done.query {
         return false;
     }
-    app.state.symbol_search.language_files = done.files;
+    app.state.symbol_search.set_language_files(done.files);
     match done.result {
         Ok(results) => app.state.symbol_search.set_results(results),
         Err(error) => app.state.symbol_search.set_error(error.to_string()),

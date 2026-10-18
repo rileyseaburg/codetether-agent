@@ -11329,3 +11329,21 @@ Full workspace consolidation remains active.
   `git diff --check` passed. Evidence: `artifacts/consolidation-audit-view/`.
 - No Cargo, rustc, compilation or runtime tests were run. The full `src/` to
   `crates/` consolidation remains incomplete.
+
+### Workspace symbol picker extraction
+
+- Moved the complete src/tui/symbol_search tree and symbol result parsing/ranking
+  from src/tui/app/symbols into crates/codetether-symbol-search. Native files
+  re-export the shared API. Search requests, scheduling and composer integration
+  remain application-owned and are not claimed as consolidated by this change.
+- The crate owns the entry schema, mentions, query/cursor lifecycle, popup layout,
+  result rows, status rendering, parsing, ranking and language-file cache access.
+  It depends only on ratatui. The native refresh adapter uses cache accessors.
+- Verification: 14 static comparisons cover every original picker module, parser,
+  ranking implementation and the native refresh adaptation. All three existing
+  parser/ranking tests moved intact. The crate has 14 modules, at most 42 code
+  lines each. Lexical module reachability, path-dependency cycle checks, direct
+  rustfmt, the native file-limit ratchet and git diff --check passed.
+- Evidence: artifacts/consolidation-symbol-search/. No Cargo, rustc, compilation,
+  runtime tests or language-server requests were run. Full consolidation remains
+  incomplete.

@@ -1,3 +1,4 @@
+//! Symbol picker render area.
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 pub fn centered(area: Rect, width: u16, height: u16) -> Rect {

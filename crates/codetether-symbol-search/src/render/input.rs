@@ -1,3 +1,4 @@
+//! Symbol picker render input.
 use ratatui::{
     Frame,
     layout::Rect,
@@ -6,7 +7,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 
-use crate::tui::symbol_search::{SymbolSearchMode, SymbolSearchState};
+use crate::{SymbolSearchMode, SymbolSearchState};
 
 pub fn render(frame: &mut Frame, state: &SymbolSearchState, area: Rect) {
     let action = match state.mode {

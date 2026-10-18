@@ -1,10 +1,11 @@
+//! Symbol picker render results item.
 use ratatui::{
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::ListItem,
 };
 
-use crate::tui::symbol_search::SymbolEntry;
+use crate::SymbolEntry;
 
 pub fn render(symbol: &SymbolEntry) -> ListItem<'_> {
     let location = symbol
