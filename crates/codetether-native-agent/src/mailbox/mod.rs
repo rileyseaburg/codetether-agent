@@ -29,3 +29,7 @@ pub trait Execution: Send + Sync + 'static {
 /// let _: Option<codetether_native_agent::Mailbox<()>> = None;
 /// ```
 pub struct Mailbox<E>(PhantomData<fn() -> E>);
+
+mod params;
+pub use params::queued_mailbox_params;
+mod binding;

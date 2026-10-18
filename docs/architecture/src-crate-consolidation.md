@@ -26920,3 +26920,22 @@ native production-scope, standalone formatting, file-limit and whitespace checks
 pass for 727 roots and 617 crates. No dependency/lock changes were needed; unrelated
 working files are untouched. Evidence: artifacts/consolidation-agent-tool-binding/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Native mailbox application and queued parameters
+
+Moved ownership-checked mailbox submission, application execution binding,
+public mailbox operations and test helper wrappers into native-agent::mailbox.
+Queued parameter reconstruction is now the normal queued_mailbox_params function
+in the same owning module. The root selects the original store and message-turn
+executor. Removed message_queue/{host,params,api,test_api}.rs. The native durable
+Mailbox implementation and shared queue state remain unchanged.
+
+Eleven function bodies match the originals after explicit path substitution,
+including every reconstructed Params field, ownership validation, guard/receipt
+forwarding and test helper result mapping. Integration test sources are unchanged.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 726 roots and 617 crates. The emptied
+root message_queue directory was removed from explicit scan roots; both owning
+crates remain scanned. No dependency/lock changes were needed; unrelated working
+files remain untouched. Evidence: artifacts/consolidation-mailbox-binding/. No
+Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

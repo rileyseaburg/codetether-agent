@@ -35,16 +35,19 @@ pub mod provider_cache;
 pub use ephemeral::Ephemeral;
 
 mod mailbox;
-pub use mailbox::{Execution as MailboxExecution, Mailbox};
+pub use mailbox::{Execution as MailboxExecution, Mailbox, queued_mailbox_params};
 
 mod binding;
 /// Types used by the application-local session service declaration.
 #[doc(hidden)]
 pub mod __private {
-    pub use anyhow::Result;
+    pub use anyhow::{Result, anyhow};
     pub use async_trait::async_trait;
     pub use codetether_agent_core::ToolUse;
+    pub use codetether_agent_input::Params;
     pub use codetether_agent_runtime::{SessionView, SessionWrite};
+    pub use codetether_child_mailbox as child_mailbox;
+    pub use codetether_collaboration_state::execution::AgentRunGuard;
     pub use codetether_provider_core::{Message, Usage};
     pub use codetether_tool_core::ToolResult;
     pub use serde_json::Value;
