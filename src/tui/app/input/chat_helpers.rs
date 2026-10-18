@@ -1,59 +1,20 @@
-//! Helpers for chat prompt submission.
-//!
-//! Pushes user and image messages into the chat log and
-//! handles the no-provider error case.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! push_user_messages(&mut app, "hello", &images);
-//! no_provider_error(&mut app, &bridge).await;
-//! ```
-
-use crate::session::ImageAttachment;
-use crate::tui::app::state::App;
-use crate::tui::app::worker_bridge::handle_processing_stopped;
-use crate::tui::chat::message::{ChatMessage, MessageType};
-use crate::tui::worker_bridge::TuiWorkerBridge;
-
-/// Push user text and image messages into the chat log.
-///
-/// # Examples
-///
-/// ```ignore
-/// push_user_messages(&mut app, "hello", &[]);
-/// ```
+//! Native effects for shared chat publication and missing-provider reporting.
+use crate::{
+    session::ImageAttachment,
+    tui::{app::state::App, worker_bridge::TuiWorkerBridge},
+};
+#[path = "chat_publication_host.rs"]
+mod publication_host;
+/// Push user text and image messages into the visible chat log.
 pub(crate) fn push_user_messages(app: &mut App, prompt: &str, images: &[ImageAttachment]) {
-    if !prompt.is_empty() {
-        app.state
-            .messages
-            .push(ChatMessage::new(MessageType::User, prompt.to_string()));
-    }
-    for image in images {
-        let summary = super::image::image_summary(image);
-        app.state.messages.push(ChatMessage::new(
-            MessageType::Image {
-                url: image.data_url.clone(),
-            },
-            summary,
-        ));
-    }
+    codetether_chat_submit::publication::push_user_messages(
+        &mut app.state.messages,
+        prompt,
+        images,
+    );
 }
-
-/// Show an error when no provider is configured.
-///
-/// # Examples
-///
-/// ```ignore
-/// no_provider_error(&mut app, &bridge).await;
-/// ```
+/// Report missing provider configuration through shared publication sequencing.
 pub(super) async fn no_provider_error(app: &mut App, bridge: &Option<TuiWorkerBridge>) {
-    handle_processing_stopped(app, bridge).await;
-    app.state.clear_request_timing();
-    app.state.messages.push(ChatMessage::new(
-        MessageType::Error,
-        "No providers available. Configure credentials first.",
-    ));
-    app.state.status = "No providers configured".to_string();
-    app.state.scroll_to_bottom();
+    codetether_chat_submit::publication::no_provider(&mut publication_host::Native { app, bridge })
+        .await;
 }

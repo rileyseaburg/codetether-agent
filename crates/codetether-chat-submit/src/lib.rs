@@ -25,3 +25,8 @@ pub mod dispatch;
 
 /// Owned prompt/session handoff with runtime rejection recovery.
 pub mod handoff;
+
+/// Raw prompt capture using native history policy.
+pub mod history;
+/// Visible chat entries and missing-provider reporting.
+pub mod publication;

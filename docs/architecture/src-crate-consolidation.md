@@ -16783,3 +16783,22 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-chat-handoff/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared chat publication and raw-history capture
+
+- Moved user/image message construction, missing-provider reporting sequence
+  and raw input capture into the chat submission crate.
+- Shared publication uses existing chat-message and image contracts. Native
+  hooks retain worker-bridge/timing/status/scroll effects and the current
+  history insertion policy.
+- Preserved text-before-image ordering, image summary and timestamp creation,
+  nonempty trimmed history capture, and processing-stop/timing/error/status/
+  scroll ordering for missing providers.
+- Added existing chat-model/image dependencies; staged only those dependencies
+  in the chat-submit lock entry, preserving unrelated working-tree changes.
+- Verification: complete publication/failure/capture bodies, native bindings,
+  unchanged history/queue/steering code, module/dependency graphs, direct
+  rustfmt, file limits and whitespace. Evidence:
+  `artifacts/consolidation-chat-publication/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

@@ -5926,6 +5926,10 @@ dependencies = [
 [[package]]
 name = "codetether-chat-submit"
 version = "0.1.0"
+dependencies = [
+ "codetether-chat-model",
+ "codetether-image",
+]
 
 [[package]]
 name = "codetether-chat-sync"
