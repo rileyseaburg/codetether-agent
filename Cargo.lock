@@ -6759,6 +6759,9 @@ dependencies = [
  "codetether-session-metadata",
  "serde",
  "tracing",
+ "codetether-goal-core",
+ "serde_json",
+ "codetether-authorization-policy",
 ]
 
 [[package]]

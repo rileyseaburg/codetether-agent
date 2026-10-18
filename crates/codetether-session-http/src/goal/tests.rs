@@ -4,11 +4,17 @@
 #[test]
 fn session_goal_controls_use_session_policy() {
     assert_eq!(
-        crate::server::match_policy_rule("/api/session/session-a/goal", "GET"),
+        codetether_authorization_policy::routes::match_policy_rule(
+            "/api/session/session-a/goal",
+            "GET"
+        ),
         Some("sessions:read")
     );
     assert_eq!(
-        crate::server::match_policy_rule("/api/session/session-a/goal", "POST"),
+        codetether_authorization_policy::routes::match_policy_rule(
+            "/api/session/session-a/goal",
+            "POST"
+        ),
         Some("agent:execute")
     );
 }

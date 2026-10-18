@@ -13468,3 +13468,19 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, session storage mutations or prompts ran.
   The full workspace consolidation remains unfinished.
+
+### Session goal HTTP consolidation
+
+- Moved session goal reads/edits, identifier checks, session existence checks,
+  error mapping and the existing policy test into codetether-session-http's
+  goal module. GoalHost binds the native revision-checked read/update_user
+  controller; goal mutation rules remain with their existing owner.
+- The server mounts the shared goal router alongside the shared persisted
+  session router and the remaining native fork endpoint. Identifier syntax,
+  validation-before-controller ordering, status codes and redaction are intact.
+- Verification: 12 static handler/adapter/policy/size checks passed, plus
+  module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-session-goal-http/.
+- Only this crate's three added dependency entries were staged in Cargo.lock.
+  No Cargo, rustc, Rust tests or goal mutations ran. Full source consolidation
+  remains unfinished.

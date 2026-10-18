@@ -27,3 +27,6 @@ pub fn router<H: SessionHost, S: Clone + Send + Sync + 'static>() -> axum::Route
         .route("/api/session/{id}", get(get::get::<H>))
         .route("/api/session/{id}/prompt", post(prompt::prompt::<H>))
 }
+
+mod goal;
+pub use goal::{GoalHost, router as goal_router};
