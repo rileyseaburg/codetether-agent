@@ -12103,3 +12103,18 @@ Full workspace consolidation remains active.
   source limits and git diff --check passed. Evidence: artifacts/consolidation-tool-panel/.
 - No Cargo, rustc, compilation or runtime rendering ran. Full workspace
   consolidation remains incomplete.
+
+### Transcript entry assembly ownership
+
+- Moved transcript entry assembly, entry separators and EntryAppendResult into
+  codetether-tool-panel. A focused entry_panel helper preserves the sequence of
+  panel rendering, maximum-scroll updates and chat-message rendering.
+- Native entry assembly supplies the same lazy approval-name lookup. Pending
+  activity is still attached only to the final entry, and separators retain the
+  original glyphs, gradients and named-color fallback.
+- Verification: five new source comparisons passed, plus all 83 prior tool-panel
+  comparisons. All 45 tool-panel modules stay below 45 code lines. Full native
+  chat-view and shared module graphs, dependency cycles, source limits and diff
+  checks passed. Evidence: artifacts/consolidation-entry-assembly/.
+- No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
+  consolidation remains incomplete.

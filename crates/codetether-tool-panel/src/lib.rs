@@ -13,3 +13,12 @@ pub use types::{RenderEntry, ToolPanelRender};
 pub const TOOL_PANEL_VISIBLE_LINES: usize = 12;
 /// Scroll sentinel for following the latest tool activity.
 pub const TOOL_PREVIEW_FOLLOW: usize = 1_000_000;
+
+mod entries;
+mod entry_result;
+mod separator;
+pub use entries::append_entries;
+pub use entry_result::EntryAppendResult;
+pub use separator::push_separator;
+
+mod entry_panel;

@@ -6183,6 +6183,7 @@ dependencies = [
  "codetether-message-cache",
  "codetether-message-formatter",
  "codetether-theme",
+ "codetether-tui-style",
  "codetether-util",
  "ratatui",
  "serde_json",
