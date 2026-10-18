@@ -8,3 +8,6 @@ pub use result::{PromptRunResult, notice};
 
 /// Failed-completion recovery and presentation sequence.
 pub mod failure;
+
+/// Successful completion ownership, persistence and presentation sequence.
+pub mod success;

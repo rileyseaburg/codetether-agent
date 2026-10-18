@@ -17193,3 +17193,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-completion-failure/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared successful-completion lifecycle
+
+- Moved successful session completion ordering into
+  `codetether-session-events::completion::success`, including stale-result
+  handling, processing cleanup, restore and active-session finalization.
+- The native active-session adapter retains the mutable session borrow through
+  bus attachment, cancel/reconnect reset, session-ID update, save and cached
+  list upsert. Stale results still save best-effort and refresh the full list.
+- Verification: complete branch/operation comparison and every native binding,
+  unchanged notice dispatcher, failure path, session slot and list upsert;
+  module/dependency graphs, direct rustfmt, file limits and whitespace.
+  No dependency changes. Evidence: `artifacts/consolidation-completion-success/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
