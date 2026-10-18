@@ -7,7 +7,9 @@ use clap::{Args, Subcommand};
 /// # Examples
 /// ```
 /// use clap::Parser;
-/// let cli = codetether_agent::cli::Cli::try_parse_from(["codetether", "vault", "status"]);
+/// #[derive(Parser)]
+/// struct Cli { #[command(flatten)] vault: codetether_vault_cli::VaultArgs }
+/// let cli = Cli::try_parse_from(["vault", "status"]);
 /// assert!(cli.is_ok());
 /// ```
 #[derive(Args, Debug, Clone)]

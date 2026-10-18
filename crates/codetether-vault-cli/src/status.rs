@@ -1,6 +1,6 @@
 //! Non-secret effective login status; workload initialization remains separate.
-use crate::secrets::login;
 use anyhow::Result;
+use codetether_secrets::login;
 pub(super) async fn status() -> Result<()> {
     let env_only = std::env::var("CODETETHER_VAULT_SOURCE").as_deref() == Ok("env");
     let workload = std::env::var("VAULT_ROLE").is_ok_and(|role| !role.trim().is_empty());

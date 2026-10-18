@@ -9,7 +9,7 @@ pub(super) async fn wait(
     client_id: &str,
 ) -> Result<String> {
     let deadline = Instant::now() + Duration::from_secs(grant.expires_in.min(1800));
-    let client = crate::secrets::login::http::client()?;
+    let client = codetether_secrets::login::http::client()?;
     let mut interval = grant.interval.clamp(1, 60);
     loop {
         if Instant::now() >= deadline {

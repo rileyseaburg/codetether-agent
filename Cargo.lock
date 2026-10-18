@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-vault-cli",
  "codetether-approval-cli",
  "codetether-indexer-cli",
  "codetether-models-cli",
@@ -5409,6 +5410,22 @@ dependencies = [
  "codetether-approval-core",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-vault-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "codetether-models-cli",
+ "codetether-secrets",
+ "crossterm",
+ "open",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

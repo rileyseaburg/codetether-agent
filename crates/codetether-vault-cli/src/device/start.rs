@@ -1,28 +1,15 @@
 //! Begin device authorization without a confidential client secret.
 
+pub(super) use super::grant::Grant;
 use anyhow::{Result, ensure};
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-pub(super) struct Grant {
-    pub device_code: String,
-    pub user_code: String,
-    pub verification_uri: String,
-    pub expires_in: u64,
-    #[serde(default = "interval")]
-    pub interval: u64,
-}
-fn interval() -> u64 {
-    5
-}
 
 pub(super) async fn request(
     metadata: &super::discovery::Metadata,
     client_id: &str,
     no_browser: bool,
 ) -> Result<Grant> {
-    let grant: Grant = crate::secrets::login::http::json(
-        crate::secrets::login::http::client()?
+    let grant: Grant = codetether_secrets::login::http::json(
+        codetether_secrets::login::http::client()?
             .post(&metadata.device_authorization_endpoint)
             .form(&[("client_id", client_id), ("scope", "openid profile")]),
     )

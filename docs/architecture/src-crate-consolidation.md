@@ -10642,3 +10642,21 @@ whitespace checks passed; modules have at most 44 code lines. Evidence is in
 `artifacts/consolidation-approval-cli/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, live approval store or decision operation ran.
 Full workspace consolidation remains active.
+
+### Vault CLI extracted
+
+Moved model-independent Vault arguments, status/settings handling, hidden token
+input and restoration, browser OIDC subprocess handling, device authorization
+and token polling into `crates/codetether-vault-cli`. Twenty-two modules use the
+shared secrets login API and setup guidance. Device grant parsing is separated
+from request execution. Native Vault commands re-export the crate; the two
+full-application parser/error-context test files remain native, and the OIDC
+stream test moved with its implementation.
+
+Twenty-eight static comparisons/checks cover original modules, command dispatch,
+device requests and grant parsing, and unchanged native integration tests.
+Module/dependency graphs, file budgets and whitespace checks passed; modules
+have at most 42 code lines. Evidence is in
+`artifacts/consolidation-vault-cli/`. Compilation and runtime tests were not run.
+No Cargo, rustc, Python, credential lookup, login, browser, subprocess or network
+operation ran. Full workspace consolidation remains active.

@@ -1,7 +1,7 @@
 //! Read-only status and explicit local URL/logout operations.
 
-use crate::secrets::login;
 use anyhow::Result;
+use codetether_secrets::login;
 
 pub(super) fn url(address: &str) -> Result<()> {
     let address = login::normalize(address)?;

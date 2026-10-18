@@ -22,7 +22,7 @@ struct Auth {
 }
 
 pub(super) async fn login(address: &str, args: &super::device_args::DeviceArgs) -> Result<String> {
-    let path = crate::secrets::login::http::auth_path(&args.mount, &args.role)?;
+    let path = codetether_secrets::login::http::auth_path(&args.mount, &args.role)?;
     ensure!(
         !args.client_id.trim().is_empty(),
         "A public device client ID is required"
@@ -30,7 +30,7 @@ pub(super) async fn login(address: &str, args: &super::device_args::DeviceArgs) 
     let metadata = discovery::load(&args.issuer).await?;
     let grant = start::request(&metadata, &args.client_id, args.no_browser).await?;
     let jwt = poll::wait(&metadata, &grant, &args.client_id).await?;
-    let response: LoginResponse = crate::secrets::login::http::post(
+    let response: LoginResponse = codetether_secrets::login::http::post(
         address,
         &path,
         &serde_json::json!({"role": args.role, "jwt": jwt}),
@@ -42,3 +42,5 @@ pub(super) async fn login(address: &str, args: &super::device_args::DeviceArgs) 
     );
     Ok(response.auth.client_token)
 }
+
+mod grant;

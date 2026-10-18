@@ -1,8 +1,8 @@
 //! Acquire privately, validate least privilege, then atomically replace login state.
 
 use super::args::Login;
-use crate::secrets::login;
 use anyhow::Result;
+use codetether_secrets::login;
 
 pub(super) async fn run(method: Login) -> Result<()> {
     let mut profile = login::current()?;

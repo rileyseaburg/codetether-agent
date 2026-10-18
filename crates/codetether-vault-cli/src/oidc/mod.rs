@@ -23,7 +23,7 @@ pub(super) async fn login(
     role: &str,
     no_browser: bool,
 ) -> Result<String> {
-    crate::secrets::login::http::auth_path(mount, role)?;
+    codetether_secrets::login::http::auth_path(mount, role)?;
     eprintln!(
         "Sign in using Vault OIDC. Under SSH, forward localhost:8250 to this VM, or use device login."
     );
