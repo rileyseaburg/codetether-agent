@@ -6625,6 +6625,7 @@ dependencies = [
  "codetether-session-resume",
  "codetether-session-store",
  "codetether-terminal-runtime",
+ "codetether-tui-models",
  "codetether-workspace-snapshot",
  "ratatui",
  "tokio",

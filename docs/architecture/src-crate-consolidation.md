@@ -20006,3 +20006,23 @@ reachability, dependency cycles, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-startup-config/`. No Cargo,
 rustc, Python, Rust tests or startup policy execution ran; compilation and
 runtime remain unverified.
+
+### First frame and startup channel ownership
+
+Moved initial frontend construction/loading/draw order into
+`codetether-tui-startup::first_frame` and the event/notice channel pair into
+`::channels`. Native code supplies the existing loading-state and drawing
+operations and specializes the generic channel payload types. Removed the
+native first-frame implementation.
+
+Preserved default App construction, workspace-only initial session view,
+render-error propagation and the original ignored successful draw flag.
+Channel capacities remain 64 events and 8 notices, with the same endpoint
+ownership. The native renderer and event loop are unchanged.
+
+Validation: complete first-frame/channel bodies, endpoint fields and capacities,
+loading/draw bindings and native return type, unchanged renderer/view/loop/tests,
+isolated lockfile delta, module reachability, dependency cycles, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-startup-resources/`. No Cargo, rustc, Python, Rust tests
+or terminal rendering ran; compilation and runtime remain unverified.

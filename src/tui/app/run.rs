@@ -10,7 +10,6 @@ mod host;
 mod hydrate;
 mod hydrate_host;
 mod hydrate_initial;
-mod initial_frame;
 mod loop_run;
 mod peer;
 mod provider;

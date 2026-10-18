@@ -25,3 +25,8 @@ pub mod resolve;
 
 /// Startup trust/reviewer/session configuration ordering.
 pub mod configuration;
+
+/// Bounded session event and notice channel ownership.
+pub mod channels;
+/// Initial frontend construction and loading-frame rendering.
+pub mod first_frame;

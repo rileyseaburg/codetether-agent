@@ -11,6 +11,7 @@ use crate::{
 use codetether_tui_startup::Terminal;
 use std::{path::Path, sync::Arc};
 mod frame;
+mod initial_frame;
 mod load;
 mod runtime;
 pub(super) struct Native;

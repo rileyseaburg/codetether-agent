@@ -4,7 +4,7 @@ impl codetether_tui_startup::Frame for Native {
     type App = App;
     type Session = Session;
     fn draw(terminal: &mut Terminal, cwd: &Path, network: bool) -> anyhow::Result<App> {
-        initial_frame::draw(terminal, cwd, network)
+        codetether_tui_startup::first_frame::draw::<Native>(terminal, cwd, network)
     }
     async fn resolve(
         scan: Option<anyhow::Result<TailLoad>>,
