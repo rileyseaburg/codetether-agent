@@ -20566,3 +20566,22 @@ direct formatting, native file-limit, and whitespace checks passed. Evidence:
 `artifacts/consolidation-thinker-regressions/`. No Cargo, rustc, or Python commands
 ran. The relocated Rust tests were not executed, and compilation is unverified.
 The full workspace consolidation remains incomplete.
+
+### Settings panel action and selection ownership
+
+Moved nine-row settings dispatch, boolean toggle decisions, and bounded cursor
+navigation into `codetether-settings-policy::panel`. The panel module separates
+its host contract from selection operations. Native dispatch now passes the
+selected row and bindings for current preference fields, existing setters,
+access cycling, and the already-shared provider-cycle adapter. The native
+settings count forwards to the crate's count; view-transition code is unchanged.
+No dependencies changed.
+
+Verification statically traces each original row to its identical preference
+field and setter or provider-cycle implementation, compares the original
+navigation expressions after explicit field substitutions, and confirms the
+out-of-range no-op. Direct rustfmt, the 691-root source graph, native file-size
+ratchet, and whitespace checks passed. Evidence is retained in
+`artifacts/consolidation-settings-panel/`. No Cargo, rustc, or Python commands
+ran. Compilation and runtime behavior were not tested. This is another part of
+the ongoing migration, not completion of all implementation extraction.

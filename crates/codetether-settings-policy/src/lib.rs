@@ -24,3 +24,6 @@ pub use reasoning::{next_codex_effort, next_openrouter_effort, reasoning_label};
 
 /// Access-mode command parsing and application workflow.
 pub mod access_command;
+
+/// Settings panel selection bounds and action dispatch.
+pub mod panel;

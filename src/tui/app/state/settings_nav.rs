@@ -3,18 +3,14 @@
 use crate::tui::models::ViewMode;
 
 impl super::AppState {
-    pub(crate) const SETTINGS_COUNT: usize = 9;
+    pub(crate) const SETTINGS_COUNT: usize = codetether_settings_policy::panel::COUNT;
 
     pub fn settings_select_prev(&mut self) {
-        if self.selected_settings_index > 0 {
-            self.selected_settings_index -= 1;
-        }
+        codetether_settings_policy::panel::select_previous(&mut self.selected_settings_index);
     }
 
     pub fn settings_select_next(&mut self) {
-        if self.selected_settings_index + 1 < Self::SETTINGS_COUNT {
-            self.selected_settings_index += 1;
-        }
+        codetether_settings_policy::panel::select_next(&mut self.selected_settings_index);
     }
 
     pub fn set_view_mode(&mut self, view_mode: ViewMode) {
