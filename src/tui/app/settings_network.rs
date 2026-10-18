@@ -3,11 +3,8 @@
 use crate::session::Session;
 use crate::tui::app::state::App;
 
-use super::{on_off_label, persist};
-
-pub fn network_access_status_message(enabled: bool) -> String {
-    format!("TUI network access: {}", on_off_label(enabled))
-}
+use super::persist;
+pub use codetether_settings_policy::network_access_status_message;
 
 pub async fn set_network_access(app: &mut App, session: &mut Session, next: bool) {
     app.state.allow_network = next;

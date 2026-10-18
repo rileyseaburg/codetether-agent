@@ -8,7 +8,7 @@ use super::persist;
 
 /// Current Codex effort label displayed in Settings.
 pub fn codex_thinking_effort_label() -> String {
-    runtime_config::thinking_level().unwrap_or_else(|| "default".to_string())
+    codetether_settings_policy::reasoning_label(runtime_config::thinking_level())
 }
 
 /// Cycle through the active Codex model's supported efforts.
@@ -20,12 +20,7 @@ pub async fn cycle_codex_thinking_effort(app: &mut App, session: &mut Session) {
         return;
     }
     let current = runtime_config::thinking_level();
-    let next = current
-        .as_deref()
-        .and_then(|value| levels.iter().position(|level| *level == value))
-        .and_then(|index| levels.get(index + 1))
-        .copied();
-    let next = current.is_none().then_some(levels[0]).or(next);
+    let next = codetether_settings_policy::next_codex_effort(current.as_deref(), &levels);
     runtime_config::set_thinking_level(next.map(String::from));
     persist(
         app,

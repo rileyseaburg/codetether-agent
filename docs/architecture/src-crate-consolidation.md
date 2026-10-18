@@ -12741,3 +12741,20 @@ Full workspace consolidation remains active.
 - Only the new crate's dependency/package entries were staged from Cargo.lock.
   No MCP commands, subprocesses, Cargo, rustc, compilation or Rust tests ran.
   Full consolidation remains incomplete.
+
+### Settings policy extraction
+
+- Moved boolean status labels, access-mode labels/cycling, Bedrock tier/effort
+  normalization and cycling, and Codex/OpenRouter reasoning-level policies
+  into codetether-settings-policy. Five modules contain at most 28 code lines.
+- Provider runtime reads/writes, session persistence, configuration loading and
+  paused-request release remain in native adapters. Codex/OpenRouter retain
+  their distinct unknown-value handling and original nonempty-level assumptions.
+- Verification: 35 static comparisons passed for shared algorithms, native
+  getters/effects, session/network mutation helpers and unchanged settings
+  wiring/integration tests. Module/dependency checks, direct rustfmt, file limits
+  and whitespace checks passed. Evidence:
+  artifacts/consolidation-settings-policy/.
+- Only the new package and root dependency records were staged from Cargo.lock.
+  No settings mutations, Cargo, rustc, compilation or Rust tests ran. Full
+  workspace consolidation remains incomplete.

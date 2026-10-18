@@ -1,0 +1,10 @@
+[package]
+name = "codetether-settings-policy"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Pure preference labels and provider-specific setting cycle policies"
+
+[dependencies]
+codetether-config = { path = "../codetether-config", version = "0.1.0" }

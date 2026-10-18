@@ -1262,6 +1262,7 @@ dependencies = [
  "codetether-file-share",
  "codetether-mcp-connections",
  "codetether-mcp-command",
+ "codetether-settings-policy",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6333,6 +6334,13 @@ version = "0.1.0"
 dependencies = [
  "codetether-mcp-connections",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-settings-policy"
+version = "0.1.0"
+dependencies = [
+ "codetether-config",
 ]
 
 [[package]]

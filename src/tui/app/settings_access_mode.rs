@@ -13,23 +13,9 @@ pub fn current_access_mode() -> AccessMode {
         .and_then(|status| status.access_mode)
         .unwrap_or(AccessMode::Ask)
 }
+use codetether_settings_policy::next_access_mode;
 
-fn next_access_mode(mode: AccessMode) -> AccessMode {
-    match mode {
-        AccessMode::Ask => AccessMode::Approve,
-        AccessMode::Approve => AccessMode::Full,
-        AccessMode::Full => AccessMode::Ask,
-    }
-}
-
-/// Human-readable label for an access mode.
-pub fn label(mode: AccessMode) -> &'static str {
-    match mode {
-        AccessMode::Ask => "ask",
-        AccessMode::Approve => "approve",
-        AccessMode::Full => "full",
-    }
-}
+pub use codetether_settings_policy::access_label as label;
 
 /// Cycle to the next access mode and apply it to the live session.
 pub async fn cycle_access_mode(app: &mut App, session: &mut Session) {

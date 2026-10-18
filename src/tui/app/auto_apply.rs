@@ -5,15 +5,7 @@
 
 use crate::session::Session;
 use crate::tui::app::state::App;
-
-fn auto_apply_flag_label(enabled: bool) -> &'static str {
-    if enabled { "ON" } else { "OFF" }
-}
-
-/// Human-readable status line describing the auto-apply edit state.
-pub fn auto_apply_status_message(enabled: bool) -> String {
-    format!("TUI edit auto-apply: {}", auto_apply_flag_label(enabled))
-}
+pub use codetether_settings_policy::auto_apply_status_message;
 
 /// Set the auto-apply-edits flag and persist it onto the session.
 pub async fn set_auto_apply_edits(app: &mut App, session: &mut Session, next: bool) {

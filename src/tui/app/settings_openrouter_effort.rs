@@ -8,7 +8,7 @@ use super::persist;
 
 /// Current OpenRouter effort label displayed in Settings.
 pub fn openrouter_thinking_effort_label() -> String {
-    runtime_config::thinking_level().unwrap_or_else(|| "default".to_string())
+    codetether_settings_policy::reasoning_label(runtime_config::thinking_level())
 }
 
 /// Cycle `default -> none -> minimal -> low -> medium -> high -> xhigh -> max`.
@@ -18,10 +18,10 @@ pub fn openrouter_thinking_effort_label() -> String {
 /// rather than letting the turn fail with HTTP 400.
 pub async fn cycle_openrouter_thinking_effort(app: &mut App, session: &mut Session) {
     let levels = reasoning_levels::LEVELS;
-    let next = runtime_config::thinking_level()
-        .as_deref()
-        .and_then(|current| levels.iter().position(|level| *level == current))
-        .map_or(Some(levels[0]), |index| levels.get(index + 1).copied());
+    let next = codetether_settings_policy::next_openrouter_effort(
+        runtime_config::thinking_level().as_deref(),
+        levels,
+    );
     runtime_config::set_thinking_level(next.map(String::from));
     persist(
         app,
