@@ -1,10 +1,8 @@
 //! Prepare the canonical session and worker-specific swarm configuration.
 
 use super::context::Context;
-use crate::{
-    a2a::worker::swarm_setup::SwarmSetup,
-    provider::{ContentPart, Message, Role},
-};
+use crate::provider::{ContentPart, Message, Role};
+use codetether_application_providers::worker_swarm::SwarmSetup;
 
 pub(super) async fn run(context: &mut Context<'_>) -> anyhow::Result<SwarmSetup> {
     context.session.add_delegated_message(Message {
@@ -17,8 +15,10 @@ pub(super) async fn run(context: &mut Context<'_>) -> anyhow::Result<SwarmSetup>
     if context.session.title.is_none() {
         context.session.generate_title().await?;
     }
-    let setup = crate::a2a::worker::build_swarm_setup(
-        context.session,
+    let setup = codetether_application_providers::worker_swarm::build::<
+        crate::provider::registry::application::Native,
+    >(
+        &mut context.session.metadata,
         context.metadata,
         context.explicit_model.take(),
         context.model_tier,

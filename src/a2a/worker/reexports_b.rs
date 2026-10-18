@@ -10,7 +10,5 @@ pub(super) use super::{
     session_policy::execute_session_with_policy,
     session_registry::load_task_provider_registry,
     session_steps::run_session_steps,
-    swarm_model::resolve_swarm_model,
     swarm_policy::execute_swarm_with_policy,
-    swarm_setup::build_swarm_setup,
 };

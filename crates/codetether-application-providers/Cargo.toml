@@ -7,6 +7,7 @@ license = "MIT"
 description = "Application-bound provider registry initialization, caching and integrations"
 
 [dependencies]
+codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
 codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
 codetether-provider-bedrock = { path = "../codetether-provider-bedrock", version = "0.1.0" }
 codetether-thinker-service = { path = "../codetether-thinker-service", version = "0.1.0" }

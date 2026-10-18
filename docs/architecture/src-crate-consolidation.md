@@ -23273,3 +23273,22 @@ cover the move, so no manifests or lockfiles changed. Evidence:
 artifacts/consolidation-forage-task-options/.
 No forage execution, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Worker swarm setup owned by application-providers
+
+Moved worker swarm model resolution and session-metadata configuration into
+codetether-application-providers::worker_swarm. The shared entry point borrows
+SessionMetadata directly and updates its model after the unchanged worker-core
+configuration builder resolves. The native caller now supplies that metadata
+and its provider application type. Two native implementation files were removed.
+
+Static comparisons preserve lazy registry loading, explicit/tier model
+selection, directory selection, configuration parsing, model update and caller
+ordering. Worker-core policy and native swarm execution remain unchanged.
+Module/dependency scans cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, file-size limits and whitespace checks passed. Only
+the session-metadata dependency edge was staged for application-providers;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-worker-swarm-binding/.
+No swarm tasks, provider loads, tests, Cargo, rustc or Python ran. Compilation
+and runtime behavior remain unverified. Full consolidation remains active.

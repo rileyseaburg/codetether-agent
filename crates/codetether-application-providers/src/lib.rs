@@ -64,3 +64,5 @@ pub mod indexing;
 pub mod model_resolution;
 /// Credentialed thinker backends and cached provider-registry completion.
 pub mod thinker;
+/// Worker swarm settings using the application provider cache.
+pub mod worker_swarm;
