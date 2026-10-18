@@ -1,7 +1,5 @@
-//! Native entry point for shell-prefixed composer input.
-use crate::tui::app::state::App;
-use std::path::Path;
-/// Consume shell input through the shared background command lifecycle.
-pub(in crate::tui::app::input) async fn run(app: &mut App, cwd: &Path, prompt: &str) -> bool {
-    codetether_chat_shell::submit(app, cwd, prompt)
-}
+//! Frontend entry selection for shell-prefixed input.
+codetether_chat_shell::declare_frontend_shell_command!(
+    pub(in crate::tui::app::input);
+    crate::tui::app::state::App,
+);

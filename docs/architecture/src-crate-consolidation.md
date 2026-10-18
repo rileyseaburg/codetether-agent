@@ -27733,3 +27733,18 @@ native production-scope, standalone formatting, file-limit and whitespace checks
 pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
 lock changes were needed. Evidence: artifacts/consolidation-utility-views/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Mux and shell command frontend output bindings
+
+Moved mux command result presentation and its entry point into
+codetether-mux-command::frontend. Moved shell lifecycle view, output drain and
+shell-prefix entry bindings into codetether-chat-shell::frontend. Removed two
+root implementation files; root modules retain the same command exports.
+
+All nine expanded function bodies match their originals. Shell tests and support
+sources are byte-for-byte unchanged; shell-entry visibility is preserved.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. Unrelated
+files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-command-output/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

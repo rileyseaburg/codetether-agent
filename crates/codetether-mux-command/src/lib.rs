@@ -8,6 +8,7 @@ mod action_helpers;
 mod action_parse;
 mod execute;
 mod format;
+mod frontend;
 #[cfg(test)]
 mod tests;
 use std::path::Path;

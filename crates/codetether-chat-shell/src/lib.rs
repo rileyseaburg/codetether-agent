@@ -5,6 +5,7 @@
 mod command;
 mod drain;
 mod event;
+mod frontend;
 mod run;
 mod state;
 mod truncate;
