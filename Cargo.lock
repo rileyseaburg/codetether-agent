@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-evidence-ledger",
  "codetether-evidence-prompt",
  "codetether-evidence-core",
  "codetether-tool-outcome",
@@ -5024,6 +5025,16 @@ name = "codetether-evidence-prompt"
 version = "0.1.0"
 dependencies = [
  "codetether-evidence-core",
+]
+
+[[package]]
+name = "codetether-evidence-ledger"
+version = "0.1.0"
+dependencies = [
+ "codetether-evidence-core",
+ "codetether-provider-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

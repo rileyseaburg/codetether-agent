@@ -10103,3 +10103,21 @@ checks passed; new prompt modules contain at most 29 code lines. The existing
 native digest orphan remains unchanged and explicitly recorded. Evidence is in
 `artifacts/consolidation-evidence-prompt/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python or tool execution ran. Full consolidation remains active.
+
+### Dedicated evidence-ledger crate
+
+Moved ledger construction, serializable scope items, message/scope extraction,
+ledger paths and persistence, evidence writeback and bounded writeback reading,
+and missing-scope note rendering into `crates/codetether-evidence-ledger`.
+Twelve modules separate data, construction, persistence, paths and reading.
+Native adapters pass the session ID and message slice; the final gate and
+memory-palace synchronization continue consuming the same shared data shape.
+
+Twenty-eight static comparisons cover original function bodies, struct fields,
+read limits, path construction, best-effort writes, session adapters and
+unchanged final-gate/palace/prompt consumers. Module/dependency graphs, file
+budgets and whitespace checks passed; new files contain at most 40 code lines.
+The pre-existing native digest orphan remains unchanged. Evidence is in
+`artifacts/consolidation-evidence-ledger/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python or persistence functions were executed.
+Full workspace consolidation remains active.

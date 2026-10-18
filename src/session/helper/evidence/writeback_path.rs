@@ -1,7 +1,2 @@
-use std::path::PathBuf;
-
-pub(crate) fn for_session(session_id: &str) -> PathBuf {
-    PathBuf::from(".codetether")
-        .join("memory-writeback")
-        .join(format!("{session_id}.json"))
-}
+//! Shared evidence ledger services.
+pub(crate) use codetether_evidence_ledger::writeback_path::*;
