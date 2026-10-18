@@ -17375,3 +17375,21 @@ Full workspace consolidation remains active.
 - No dependency changes. Evidence: `artifacts/consolidation-mux-interaction/`.
   No Cargo, rustc, Python, mux commands, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared mux-agent output reading
+
+- Moved semantic output reading, workspace-file fallback, terminal tail reading
+  and JSON/excerpt formatting into `codetether-mux-control::agents::read`.
+- A native projection-reader binding retains session-store path resolution;
+  the shared crate owns fallback order and output formatting. Reader futures
+  require Send and the reader requires Sync for asynchronous tool callers.
+- Moved the existing excerpt test, preserved the latest-two-excerpt selection
+  and 20,000-character UTF-8-safe terminal limit, and removed the now-unused
+  native target lookup adapter.
+- Verification: complete read-stage/projection/matcher body comparisons,
+  unchanged test, native binding and caller checks, module/dependency graphs,
+  direct rustfmt, file limits and whitespace. Enabled Tokio fs in mux-control;
+  no new dependency or lockfile entries. Evidence:
+  `artifacts/consolidation-mux-read/`.
+- No Cargo, rustc, Python, mux/storage reads, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

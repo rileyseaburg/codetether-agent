@@ -15,5 +15,5 @@ codetether-mux-model = { path = "../codetether-mux-model", version = "0.1.0" }
 codetether-mux-protocol = { path = "../codetether-mux-protocol", version = "0.1.0" }
 codetether-mux-registry = { path = "../codetether-mux-registry", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
-tokio = { version = "1", features = ["rt", "sync", "time"] }
+tokio = { version = "1", features = ["rt", "sync", "time", "fs"] }
 tracing = "0.1"

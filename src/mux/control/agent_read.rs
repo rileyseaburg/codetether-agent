@@ -1,22 +1,11 @@
-//! Semantic observation for one mux-backed agent.
-
+//! Native storage binding for shared mux-agent output reading.
 use anyhow::Result;
-
-mod session;
-mod terminal;
-mod text;
-
-/// Read the retained output tail from a named mux agent.
-///
-/// # Errors
-///
-/// Returns an error when discovery, authentication, or terminal reading fails.
-pub(crate) async fn read_agent_output(name: &str) -> Result<Option<String>> {
-    let Some(target) = super::agent_target::load(name).await? else {
-        return Ok(None);
-    };
-    if let Some(output) = session::read(&target).await? {
-        return Ok(Some(output));
+struct ProjectionReader;
+impl codetether_mux_control::AgentProjectionReader for ProjectionReader {
+    async fn read(&self, id: &str, name: &str) -> Result<Option<serde_json::Value>> {
+        crate::session::store::projection::read(id, name).await
     }
-    terminal::read(name, &target).await.map(Some)
+}
+pub(crate) async fn read_agent_output(name: &str) -> Result<Option<String>> {
+    codetether_mux_control::read_agent_output(name, &ProjectionReader).await
 }

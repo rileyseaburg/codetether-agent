@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 
-use crate::mux::MuxRuntimeStatus;
+use codetether_mux_model::MuxRuntimeStatus;
 
 pub(super) fn render(runtime: &MuxRuntimeStatus, indexed: &Value) -> String {
     json!({

@@ -14,3 +14,5 @@ mod watch;
 pub use interact::interact_agent;
 pub use message::send_agent_message;
 pub use watch::watch_agent;
+mod read;
+pub use read::{ProjectionReader, read_agent_output};

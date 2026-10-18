@@ -26,4 +26,5 @@ mod runtime_reporter;
 pub use runtime_reporter::RuntimeReporter;
 
 mod agents;
+pub use agents::{ProjectionReader as AgentProjectionReader, read_agent_output};
 pub use agents::{agent_sessions, interact_agent, is_agent_route, send_agent_message, watch_agent};

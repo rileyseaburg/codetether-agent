@@ -3,9 +3,9 @@
 use anyhow::{Result, bail};
 use serde_json::json;
 
-use crate::mux::client::MuxConnection;
-use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
-use crate::mux::registry::SessionTarget;
+use codetether_mux_client::MuxConnection;
+use codetether_mux_protocol::{ClientRequest, ProgramRequest, ServerResponse};
+use codetether_mux_registry::SessionTarget;
 
 pub(super) async fn read(name: &str, target: &SessionTarget) -> Result<String> {
     let window_id = target.active_window()?;
