@@ -1,8 +1,5 @@
-//! Repository-aware system prompt for direct swarm workers.
-
-use crate::swarm::tool_policy::{SystemPromptInput, system_prompt};
+//! Native session instructions for shared direct-worker prompt composition.
 use std::path::Path;
-
 pub(crate) fn build(
     task_id: &str,
     specialty: Option<&str>,
@@ -12,17 +9,14 @@ pub(crate) fn build(
     read_only: bool,
     expects_changes: bool,
 ) -> String {
-    let directory = working_dir.to_string_lossy();
-    let prompt = system_prompt(SystemPromptInput {
-        specialty: specialty.unwrap_or("Generalist"),
-        subtask_id: task_id,
-        working_dir: &directory,
+    codetether_swarm_tool::prompt::build(
+        task_id,
+        specialty,
+        working_dir,
         model,
         instruction,
-        context: "",
-        line_limit: None,
         read_only,
         expects_changes,
-    });
-    format!("{prompt}\n\nRecursive delegation is unavailable in this direct swarm worker.")
+        crate::session::tasks::turn_instructions::append,
+    )
 }

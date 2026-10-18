@@ -16,6 +16,8 @@ pub trait Observer: Send {
     fn sender(&self) -> mpsc::Sender<SwarmEvent>;
     /// Publish the final ordered worker outcomes.
     fn complete(&mut self, results: &[TaskResult]);
+    /// Report a setup failure and suppress subsequent cancellation reporting.
+    fn fail(&mut self, error: impl Into<String>);
 }
 /// Native dependencies required by shared direct-swarm execution.
 /// # Implementors

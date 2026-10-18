@@ -4,6 +4,9 @@ use codetether_swarm_tool::{
     runtime::Observer as RuntimeObserver, task_input::TaskInput, task_result::TaskResult,
 };
 impl RuntimeObserver for Observer {
+    fn fail(&mut self, error: impl Into<String>) {
+        self.fail(error);
+    }
     fn begin(tasks: &[TaskInput], max_steps: usize) -> Self {
         Self::begin(tasks, max_steps)
     }

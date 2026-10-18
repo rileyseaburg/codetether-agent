@@ -15316,3 +15316,26 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-swarm-monitor/`.
 - No Cargo, rustc, Python, compilation or Rust tests were executed. Broader
   consolidation remains active; native provider and registry setup still exist.
+
+### Direct swarm provider and prompt setup ownership
+
+- Moved provider loading/result classification from the native swarm setup module
+  into `codetether-swarm-tool::provider_setup`. The native adapter supplies its
+  existing cached Vault-registry future and implements read-only provider lookup.
+  The shared code owns missing-provider errors, model resolution, observer failure
+  notification, and the original nested Result contract.
+- Added failure reporting to the existing runtime observer contract and bound it
+  to the monitor's unchanged inherent failure handler.
+- Moved direct-worker system prompt construction into
+  `codetether-swarm-tool::prompt`. The native adapter supplies the same session
+  instruction callback used by the previous shared-core prompt wrapper. Prompt
+  defaults, blank context, absent line override, and delegation restriction text
+  are unchanged.
+- Verification: Node body comparisons covered the entire provider-load/error
+  flow and prompt construction, native cache/registry/callback bindings, observer
+  forwarding and unchanged execution. No dependency changes. Module reachability,
+  dependency graph, direct rustfmt, file-limit checks and `git diff --check` passed.
+  Evidence: `artifacts/consolidation-swarm-setup/`.
+- Cargo, rustc, Python, Rust compilation and Rust tests were not run. The broader
+  goal remains incomplete, including native registry construction and other
+  implementation still under `src/`.

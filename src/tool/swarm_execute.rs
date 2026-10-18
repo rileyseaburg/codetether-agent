@@ -10,7 +10,6 @@ use serde_json::Value;
 pub(crate) mod agent_prompt;
 pub(crate) mod agent_registry;
 mod default_impl;
-use codetether_swarm_tool::model_selection;
 mod provider_setup;
 mod runtime_host;
 use codetether_swarm_tool::schema;

@@ -49,3 +49,8 @@ mod workspace;
 
 /// Concurrent direct-swarm execution with native runtime bindings.
 pub mod runtime;
+
+/// Repository-aware direct-worker system prompt construction.
+pub mod prompt;
+/// Registry lookup and provider-error reporting for direct workers.
+pub mod provider_setup;
