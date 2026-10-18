@@ -14129,3 +14129,19 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, provider requests, approval prompts or workflow
   execution ran. Full workspace consolidation remains unfinished.
+
+### Run command dispatcher extraction
+
+- Moved final command preparation, Sol routing, relay/PRD routing and outer
+  JSONL error reporting into codetether-run-cli. Native run.rs now only binds
+  host types and delegates its public execute entry point.
+- Removed five unused native forwarding modules. Sol host/worker visibility now
+  permits the native route binding while retaining the existing implementation.
+  Preparation order, route precedence, model selection and failure reporting
+  remain unchanged.
+- Verification: six static full-preparation/expanded-route/entry/native-binding/
+  size checks passed, plus module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks. Evidence: artifacts/consolidation-run-cli/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or command execution ran. Full workspace
+  consolidation remains unfinished.

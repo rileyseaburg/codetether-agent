@@ -1,0 +1,25 @@
+[package]
+name = "codetether-run-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Non-interactive run command preparation and routing"
+
+[dependencies]
+anyhow = "1"
+tracing = "0.1"
+codetether-autochat-core = { path = "../codetether-autochat-core", version = "0.1.0" }
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-cli-relay = { path = "../codetether-cli-relay", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-go-cli = { path = "../codetether-go-cli", version = "0.1.0" }
+codetether-go-ralph = { path = "../codetether-go-ralph", version = "0.1.0" }
+codetether-run-command = { path = "../codetether-run-command", version = "0.1.0" }
+codetether-run-context = { path = "../codetether-run-context", version = "0.1.0" }
+codetether-run-jsonl = { path = "../codetether-run-jsonl", version = "0.1.0" }
+codetether-run-policy = { path = "../codetether-run-policy", version = "0.1.0" }
+codetether-run-resume = { path = "../codetether-run-resume", version = "0.1.0" }
+codetether-run-runtime = { path = "../codetether-run-runtime", version = "0.1.0" }
+codetether-run-report = { path = "../codetether-run-report", version = "0.1.0" }
+codetether-sol-workflow = { path = "../codetether-sol-workflow", version = "0.1.0" }

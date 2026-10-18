@@ -3,7 +3,7 @@ use super::{diagnostics, planner, worker::Worker};
 use crate::cli::RunArgs;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
-pub(super) struct NativeHost;
+pub(in crate::cli::run) struct NativeHost;
 #[async_trait::async_trait(?Send)]
 impl codetether_sol_workflow::Host for NativeHost {
     type Worker = Worker;

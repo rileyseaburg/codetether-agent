@@ -8,7 +8,7 @@ use crate::session::Session;
 use codetether_sol_workflow as model;
 
 /// Stateful coding worker shared across implementation and repair turns.
-pub(super) struct Worker {
+pub(in crate::cli::run) struct Worker {
     pub(super) session: Session,
     workspace: PathBuf,
     max_steps: Option<usize>,

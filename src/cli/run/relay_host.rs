@@ -35,6 +35,3 @@ impl codetether_cli_relay::Session for Session {
         Session::prompt(self, prompt).await
     }
 }
-#[path = "relay_host_run.rs"]
-mod run;
-pub(super) use run::run_protocol_first_relay;
