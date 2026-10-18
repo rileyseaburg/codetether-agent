@@ -1,23 +1,21 @@
-//! Poll the pending voice transcription slot and inject text into input.
-
+//! Bind shared nonblocking transcription polling to the frontend input state.
 use crate::tui::app::state::AppState;
-
-/// Check for a completed transcription and append text to the input buffer.
-/// Called from the tick loop. Clears the slot after consuming.
-pub fn drain_voice_transcription(state: &mut AppState) {
-    let slot = match &state.pending_voice_text {
-        Some(s) => s.clone(),
-        None => return,
-    };
-    let text = match slot.try_lock().ok().and_then(|mut g| g.take()) {
-        Some(t) => t,
-        None => return,
-    };
-    state.pending_voice_text = None;
-    if text.is_empty() {
-        state.status = "Voice transcription produced no text".into();
-        return;
+use codetether_voice_capture::{Input, VoiceSlot};
+impl Input for AppState {
+    fn pending(&self) -> Option<&VoiceSlot> {
+        self.pending_voice_text.as_ref()
     }
-    state.insert_text(&text);
-    state.status = "Voice transcribed ✓".into();
+    fn clear_pending(&mut self) {
+        self.pending_voice_text = None;
+    }
+    fn insert_text(&mut self, text: &str) {
+        AppState::insert_text(self, text);
+    }
+    fn set_status(&mut self, status: &str) {
+        self.status = status.into();
+    }
+}
+/// Consume the pending result through the original nonblocking input path.
+pub fn drain_voice_transcription(state: &mut AppState) {
+    codetether_voice_capture::drain_voice_transcription(state);
 }

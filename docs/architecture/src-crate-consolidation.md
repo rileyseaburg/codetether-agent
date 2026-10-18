@@ -19285,3 +19285,26 @@ file-size ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-voice-capture/`. No Cargo, rustc, Python, Rust tests,
 microphone access or transcription requests ran; compilation and runtime remain
 unverified.
+
+### Interactive voice controls and result consumption
+
+Moved recording start/stop transitions and completed-transcription consumption
+into control and drain modules in `codetether-voice-capture`. The native handler
+borrows its existing fields; a small Input adapter supplies pending-slot access,
+status updates and text insertion. AppState storage and defaults are unchanged.
+Removed the now-unused native worker re-export.
+
+The older, unreferenced top-level drain was not identical to the active drain:
+it used a blocking lock and retained empty results. Preserved it separately in
+the shared compatibility module while the native handler continues using the
+nonblocking active implementation. Start/stop guards, status strings, ordering,
+slot ownership and input insertion behavior are unchanged.
+
+Validation: full recording-transition and both drain-body comparisons, five
+native adapter operations, unchanged state/defaults/worker/transport, unchanged
+manifests, lexical module reachability, dependency-cycle checks, file-size
+ratchet, whitespace and formatting. The first adapter assertion mishandled a
+normalized trailing comma; corrected the verifier and retained the failed log.
+Evidence: `artifacts/consolidation-voice-controls/`. No Cargo, rustc, Python,
+Rust tests, recording or transcription ran; compilation and runtime remain
+unverified.

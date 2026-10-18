@@ -9,3 +9,12 @@ mod worker;
 pub use config::max_duration;
 pub use transcribe::transcribe_sync;
 pub use worker::{VoiceSlot, spawn_voice_worker};
+
+/// Older blocking drain retained for compatibility, separate from active polling.
+pub mod compatibility;
+mod controls;
+mod drain;
+mod input;
+pub use controls::{Controls, toggle_recording};
+pub use drain::drain_voice_transcription;
+pub use input::Input;
