@@ -27009,3 +27009,19 @@ file-limit and whitespace checks pass for 725 roots and 617 crates. No dependenc
 lock changes were needed; unrelated working files remain untouched. Evidence:
 artifacts/consolidation-tui-drain-binding/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### TUI event-pipeline host binding
+
+Moved pipeline state access, seven stage callbacks and the typed event entry
+point into codetether-session-events::pipeline::binding. Removed the three root
+session_events/host files. The generated Native type retains the same visibility
+and fields for existing lifecycle/error adapters. Root selection explicitly names
+the unchanged frontend types, retention/context callbacks and event handlers.
+
+All thirteen expanded function bodies match the originals after callback-path
+substitution. Every remaining event-specific source and test file is unchanged.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. No dependency
+or lock changes were required; unrelated working files remain untouched. Evidence:
+artifacts/consolidation-tui-pipeline-binding/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.

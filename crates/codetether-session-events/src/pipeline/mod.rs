@@ -9,3 +9,5 @@ mod view;
 pub use run::handle;
 pub use stages::Stages;
 pub use view::View;
+
+mod binding;

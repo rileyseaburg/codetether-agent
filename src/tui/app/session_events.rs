@@ -1,7 +1,7 @@
 //! TUI adapter for session runtime events.
 //!
 //! This module is the boundary between the session runtime and the terminal UI.
-//! It receives [`SessionEvent`] values produced by the runtime, routes them
+//! It receives [`crate::session::SessionEvent`] values produced by the runtime, routes them
 //! through the event-processing pipeline, updates UI retention state, and then
 //! applies the resulting event to the visible application context.
 //!
@@ -10,14 +10,13 @@
 //! side effects such as marking activity and keeping the chat view pinned to
 //! the newest message when auto-follow is enabled.
 
+mod chat_host;
 mod context;
 mod errors;
-mod host;
 mod interlude;
 mod lifecycle;
 mod retention;
 mod retry;
-mod chat_host;
 mod text_dispatch;
 mod tools;
 mod usage;
@@ -27,54 +26,27 @@ mod tests;
 
 pub use usage::attach_usage_to_last_completion_message;
 
-use crate::session::SessionEvent;
-use crate::tui::app::session_runtime::SessionSlot;
-use crate::tui::app::state::App;
-use crate::tui::worker_bridge::TuiWorkerBridge;
+codetether_session_events::declare_event_pipeline!(
+    crate::tui::app::state::App,
+    crate::tui::app::session_runtime::SessionSlot,
+    crate::tui::worker_bridge::TuiWorkerBridge,
+    crate::session::SessionEvent;
+    crate::tui::app::session_events::retention::trim,
+    crate::tui::app::session_events::context::handle_event;
+    crate::tui::app::session_events::lifecycle::handle_event,
+    crate::tui::app::session_events::interlude::handle_event,
+    crate::tui::app::session_events::retry::handle_event,
+    crate::tui::app::session_events::tools::handle_event,
+    crate::tui::app::session_events::text_dispatch::handle_event,
+    crate::tui::app::session_events::usage::handle_event,
+    crate::tui::app::session_events::errors::handle_event,
+);
 
-/// Handles a single session runtime event and applies its effects to the TUI.
-///
-/// This function records that activity occurred, sends the event through the
-/// session-event pipeline, trims retained UI data after successful processing,
-/// and finally dispatches the processed event into the application context.
-/// If the pipeline consumes the event and returns `None`, the current flow is
-/// stopped instead of performing retention or context updates.
-///
-/// # Arguments
-///
-/// * `app` - Mutable TUI application state that receives timestamp, scrolling,
-///   retention, flow, and context updates.
-/// * `slot` - Runtime slot associated with the session that produced the event.
-///   Pipeline stages may use this to update per-session runtime state.
-/// * `worker_bridge` - Optional bridge used when event handling needs to
-///   communicate with the background TUI worker.
-/// * `evt` - Runtime event emitted by the session layer.
-///
-/// # Side Effects
-///
-/// Updates `app.state.main_last_event_at` to the current instant. When chat
-/// auto-follow is enabled, the chat viewport is scrolled to the bottom before
-/// pipeline processing. Depending on the pipeline result, this may also stop
-/// the current flow, trim retained UI state, and update the displayed context.
-///
-/// # Errors
-///
-/// This function does not return errors. Pipeline failures are represented by
-/// the pipeline's event output and flow-control behavior rather than by a
-/// `Result`.
-pub(crate) async fn handle_session_event(
-    app: &mut App,
-    slot: &mut SessionSlot,
-    worker_bridge: &Option<TuiWorkerBridge>,
-    evt: SessionEvent,
-) {
-    codetether_session_events::pipeline::handle(
-        &mut host::Native {
-            app,
-            slot,
-            worker_bridge,
-        },
-        evt,
-    )
-    .await;
-}
+#[cfg(test)]
+use crate::session::SessionEvent;
+#[cfg(test)]
+use crate::tui::app::session_runtime::SessionSlot;
+#[cfg(test)]
+use crate::tui::app::state::App;
+#[cfg(test)]
+use crate::tui::worker_bridge::TuiWorkerBridge;
