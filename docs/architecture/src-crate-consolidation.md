@@ -24702,3 +24702,23 @@ checks passed. Unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-recall-storage-bindings/. No Cargo, rustc, Python,
 compiler macro expansion, indexing, storage I/O or tests ran. Full consolidation
 remains active.
+
+### Prior-context ingress moved into its owning policy crate
+
+Moved trusted-human and delegated-message ingress methods into
+codetether-prior-context-access, together with a borrowed session view for the
+existing permission lookup. Policy transitions still occur before ordinary
+message append; delegated updates still use the same restricted policy
+function. Removed prior_context/human.rs, delegated.rs and session_update.rs.
+The native permission helper is now a shared-function re-export.
+
+Static comparisons preserve both ingress signatures and their expanded update
+calls before append. The borrowed metadata/transcript view and shared permission
+call were checked directly. An initial verifier attempted to format macro
+paths outside a macro; the corrected expectations passed, with evidence kept.
+Module/dependency scans cover 693 roots and 574 crates without missing modules
+or cycles. Direct dependency audit, direct rustfmt, file limits and whitespace
+checks passed. Dependencies and existing native tests are unchanged; unrelated
+working changes remain untouched. Evidence:
+artifacts/consolidation-session-prior-context/. No Cargo, rustc, Python, compiler
+macro expansion, policy execution or tests ran. Full consolidation remains active.

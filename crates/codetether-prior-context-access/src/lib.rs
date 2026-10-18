@@ -15,3 +15,6 @@ pub use call::{PRIOR_CONTEXT_TOOLS, requests_prior_context};
 pub use registry::{available, remove_tools};
 pub use state::allowed;
 pub use update::{delegated, trusted};
+
+/// Application-local message ingress and policy access.
+pub mod session_binding;

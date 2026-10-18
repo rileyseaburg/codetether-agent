@@ -1,13 +1,10 @@
 //! User-directed access policy for prior session context.
 
 mod blocking;
-mod delegated;
 mod directive;
 use codetether_prior_context_policy as directive_message;
-mod human;
 mod registry;
 mod session_state;
-mod session_update;
 
 #[cfg(test)]
 use crate::provider::Message;
@@ -30,3 +27,5 @@ pub(crate) use session_state::allowed as allowed_for_session;
 
 #[cfg(test)]
 mod tests;
+
+codetether_prior_context_access::impl_session_ingress!(crate::session::Session);
