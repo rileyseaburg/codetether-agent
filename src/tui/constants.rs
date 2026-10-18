@@ -28,10 +28,10 @@ pub const FILE_PICKER_PAGE_STEP: usize = 12;
 /// budget (`idle_timeout::IDLE_TIMEOUT`, 180 s) so the two watchdogs cooperate
 /// instead of racing.
 pub const MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS: u64 = 240;
-/// Maximum automatic restart attempts before the watchdog gives up.
-pub const WATCHDOG_MAX_RESTARTS: u32 = 3;
 pub use codetether_model_failover::constants::SMART_SWITCH_MAX_RETRIES;
 pub use codetether_model_failover::constants::SMART_SWITCH_PROVIDER_PRIORITY;
+/// Maximum automatic restart attempts before the watchdog gives up.
+pub use codetether_watchdog::WATCHDOG_MAX_RESTARTS;
 pub const AUTOCHAT_MAX_AGENTS: usize = crate::autochat::AUTOCHAT_MAX_AGENTS;
 pub const AUTOCHAT_DEFAULT_AGENTS: usize = crate::autochat::AUTOCHAT_DEFAULT_AGENTS;
 pub const AUTOCHAT_MAX_ROUNDS: usize = crate::autochat::AUTOCHAT_MAX_ROUNDS;

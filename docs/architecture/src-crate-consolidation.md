@@ -12469,3 +12469,21 @@ Full workspace consolidation remains active.
 - Only the new dependency and package record were staged from Cargo.lock.
   No timing sleeps, Cargo, rustc, compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Watchdog detection and notification extraction
+
+- Moved watchdog stall detection, restart/activity predicates, notification
+  state and popup rendering into codetether-watchdog. Seven modules contain
+  at most 39 code lines. The shared detector uses WatchdogSource to query host
+  state without taking ownership of the session or question runtime.
+- Native bindings retain the existing human-wait gate and expose request clocks,
+  restart count and the shared tool tracker. Cancellation, question-wait clock
+  updates and recovery execution remain unchanged. Constant and type paths
+  continue through compatibility exports.
+- Verification: 28 source comparisons/checks passed for detector/query order,
+  timing predicates, label text, notification construction, rendering, native
+  projections and unchanged handlers/tests. Module/dependency checks, direct
+  rustfmt, source limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-watchdog/.
+- Only the new crate's dependency and package record were staged from Cargo.lock.
+  No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.

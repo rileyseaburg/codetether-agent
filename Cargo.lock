@@ -1254,6 +1254,7 @@ dependencies = [
  "codetether-stream-recovery",
  "codetether-model-failover",
  "codetether-tool-tracker",
+ "codetether-watchdog",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6258,6 +6259,14 @@ version = "0.1.0"
 dependencies = [
  "codetether-bus-core",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-watchdog"
+version = "0.1.0"
+dependencies = [
+ "codetether-tool-tracker",
+ "ratatui",
 ]
 
 [[package]]
