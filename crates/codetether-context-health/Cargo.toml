@@ -1,0 +1,10 @@
+[package]
+name = "codetether-context-health"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Context compaction and RLM health state and status formatting"
+
+[dependencies]
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }

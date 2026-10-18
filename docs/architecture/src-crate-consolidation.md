@@ -12168,3 +12168,18 @@ Full workspace consolidation remains active.
   artifacts/consolidation-streaming-state/.
 - No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
   incomplete; source comparison does not establish runtime correctness.
+
+### Context-health state and status formatting
+
+- Moved recent compaction, RLM progress/completion and truncation summaries into
+  codetether-context-health. The crate also owns context-usage and status-line
+  formatting. Its six focused modules contain at most 28 code lines each.
+- The crate depends only on the shared session-event payloads. Native state
+  re-exports the type; the command renderer supplies current token estimates.
+  Existing event handlers and the context-status integration test are unchanged.
+- Verification: 12 source comparisons passed for event methods, fields, output
+  ordering, usage branches and the native adapter/test. Full shared module and
+  dependency graphs, direct formatting, source limits and diff checks passed.
+  Evidence: artifacts/consolidation-context-health/.
+- No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
+  incomplete.
