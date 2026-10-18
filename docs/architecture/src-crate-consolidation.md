@@ -22150,3 +22150,21 @@ its cognition-API dependency; that single edge is staged in the lockfile.
 Evidence: `artifacts/consolidation-cognition-http/`. No Cargo, rustc or Python
 ran; compilation and runtime tests remain unverified. Full consolidation is
 still active.
+
+### Worker HTTP handlers with task API ownership
+
+Moved worker claim, release and SSE request handling into
+`codetether-task-api::worker_http`, removing three native implementation files.
+The handlers use shared queue/bus access contracts. `WorkerState` transfers the
+existing queue handle into the SSE stream; the shared server state implements
+that transfer directly. Native route assembly keeps the same paths, order,
+Kubernetes routes and mux merge, with explicit application-state specialization.
+
+Static comparisons preserve claim/release arguments, header/query extraction,
+subscription-before-snapshot sequencing, queue ownership, the 15-second
+keepalive and the existing stream log target. Module/dependency checks cover
+698 roots and 570 crates without missing modules or cycles. Direct rustfmt,
+native file-size limits and whitespace checks passed. No manifest or lockfile
+changes. Evidence: `artifacts/consolidation-worker-http/`. No Cargo, rustc or
+Python ran; compilation and runtime tests remain unverified. Full consolidation
+is active.

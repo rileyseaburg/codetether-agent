@@ -52,3 +52,6 @@ pub use output_stream::stream_task_output;
 
 /// Task route groups over application-owned queue and bus state.
 pub mod http;
+
+/// Worker HTTP extraction using the application queue and event bus.
+pub mod worker_http;

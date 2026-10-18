@@ -8,3 +8,9 @@ impl<R: Send + Sync + 'static> codetether_task_api::http::HttpState for AppState
         &self.inner.bus
     }
 }
+
+impl<R: Send + Sync + 'static> codetether_task_api::worker_http::WorkerState for AppState<R> {
+    fn into_queue(self) -> codetether_task_queue::KnativeTaskQueue {
+        self.inner.knative_tasks
+    }
+}
