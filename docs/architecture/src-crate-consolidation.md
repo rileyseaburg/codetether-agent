@@ -22596,3 +22596,24 @@ dependency edge is staged in the lockfile; the unrelated working lockfile
 remains byte-identical. Evidence: `artifacts/consolidation-morph-provider/`.
 No edits through Morph, provider requests, Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Ralph application composition owned by the agent crate
+
+Moved Ralph's base prompt, provider-backed tool registry construction,
+definition collection and prepared invocation mapping into
+`codetether-ralph-agent::application`. Three focused modules own the binding
+type, Host implementation and agent-loop call. The native module now aliases
+that binding to the original tool-registry application and sub-agent policy;
+its separate execution adapter file was removed.
+
+Static comparisons preserve all twelve loop arguments, the shared builtin
+prompt, registry construction and definition access. Direct, parallel and
+conflict execution sources are unchanged. Module/dependency checks cover 699
+roots and 571 crates without missing modules or cycles. Direct rustfmt, native
+file-size limits and whitespace checks passed. Only the Ralph agent crate's
+agent-core, application-registry and swarm-agent dependency edges are staged
+in the lockfile; the unrelated working lockfile remains byte-identical.
+Evidence: `artifacts/consolidation-ralph-application/` (the initial expected-source
+generic syntax error is retained beside the successful comparison).
+No Ralph execution, provider requests, Cargo, rustc or Python ran; compilation
+and runtime tests remain unverified. Full consolidation is active.

@@ -1,10 +1,9 @@
-//! Forward the prepared Ralph invocation to the native agent loop.
-use crate::tool::ToolRegistry;
-use codetether_ralph_agent::Invocation;
-pub(super) async fn run(
-    request: Invocation<'_, ToolRegistry>,
+//! Forward each prepared Ralph invocation to the shared agent loop.
+use crate::Invocation;
+pub(super) async fn run<H: codetether_swarm_agent::Host>(
+    request: Invocation<'_, H::Registry>,
 ) -> codetether_swarm_core::agent_retry::AgentOutcome {
-    crate::swarm::run_agent_loop(
+    codetether_swarm_agent::run_agent_loop::<H>(
         request.provider,
         request.model,
         request.system,

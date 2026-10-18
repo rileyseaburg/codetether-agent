@@ -17,3 +17,5 @@ pub use direct::direct;
 pub use host::Host;
 pub use parallel::parallel;
 pub use request::Invocation;
+/// Ralph execution using application registries and the shared agent loop.
+pub mod application;
