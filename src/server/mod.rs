@@ -75,104 +75,10 @@ use codetether_openai_wire::{
     OpenAiRequestToolCallFunction, OpenAiRequestToolDefinition, OpenAiResponseToolCall,
     OpenAiResponseToolCallFunction, OpenAiStop, OpenAiUsage, openai_stream_chunk,
 };
+use codetether_tool_discovery::RegisteredToolView;
+pub use codetether_tool_discovery::{RegisteredTool, ToolRegistry};
 use task_dispatch::dispatch_task;
 pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
-
-/// A registered tool with TTL tracking
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegisteredTool {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub version: String,
-    pub endpoint: String,
-    pub capabilities: Vec<String>,
-    pub parameters: serde_json::Value,
-    pub execution_mode: String,
-    pub registered_at: chrono::DateTime<chrono::Utc>,
-    pub last_heartbeat: chrono::DateTime<chrono::Utc>,
-    pub expires_at: chrono::DateTime<chrono::Utc>,
-}
-
-#[derive(Serialize)]
-struct RegisteredToolView {
-    #[serde(flatten)]
-    tool: RegisteredTool,
-    agent_executable: bool,
-}
-
-impl From<RegisteredTool> for RegisteredToolView {
-    fn from(tool: RegisteredTool) -> Self {
-        let agent_executable = tool_contract::is_agent_executable(&tool.execution_mode);
-        Self {
-            tool,
-            agent_executable,
-        }
-    }
-}
-
-/// Tool registry with TTL-based expiry
-#[derive(Clone)]
-pub struct ToolRegistry {
-    tools: Arc<tokio::sync::RwLock<HashMap<String, RegisteredTool>>>,
-}
-
-impl Default for ToolRegistry {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ToolRegistry {
-    pub fn new() -> Self {
-        Self {
-            tools: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-        }
-    }
-
-    /// Register a new tool
-    pub async fn register(&self, tool: RegisteredTool) {
-        let mut tools = self.tools.write().await;
-        tools.insert(tool.id.clone(), tool);
-    }
-
-    /// Get a tool by ID
-    #[allow(dead_code)]
-    pub async fn get(&self, id: &str) -> Option<RegisteredTool> {
-        let tools = self.tools.read().await;
-        tools.get(id).cloned()
-    }
-
-    /// List all tools (excluding expired)
-    pub async fn list(&self) -> Vec<RegisteredTool> {
-        let tools = self.tools.read().await;
-        let now = chrono::Utc::now();
-        tools
-            .values()
-            .filter(|t| t.expires_at > now)
-            .cloned()
-            .collect()
-    }
-
-    /// Update heartbeat for a tool (extends TTL by 30s)
-    pub async fn heartbeat(&self, id: &str) -> Option<RegisteredTool> {
-        let mut tools = self.tools.write().await;
-        if let Some(tool) = tools.get_mut(id) {
-            let now = chrono::Utc::now();
-            tool.last_heartbeat = now;
-            tool.expires_at = now + Duration::from_secs(90);
-            return Some(tool.clone());
-        }
-        None
-    }
-
-    /// Clean up expired tools
-    pub async fn cleanup(&self) {
-        let mut tools = self.tools.write().await;
-        let now = chrono::Utc::now();
-        tools.retain(|_, t| t.expires_at > now);
-    }
-}
 
 /// Server state shared across handlers
 #[derive(Clone)]
@@ -2035,9 +1941,8 @@ fn env_bool(name: &str, default: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{RegisteredTool, RegisteredToolView, normalize_model_reference};
+    use super::normalize_model_reference;
     use axum::http::StatusCode;
-    use serde_json::json;
 
     #[test]
     fn normalize_model_reference_accepts_colon_format() {
@@ -2045,28 +1950,5 @@ mod tests {
             normalize_model_reference("openai:gpt-4o"),
             "openai/gpt-4o".to_string()
         );
-    }
-
-    #[test]
-    fn registered_tool_view_derives_discovery_contract() {
-        let now = chrono::Utc::now();
-        let tool = RegisteredTool {
-            id: "demo".into(),
-            name: "Demo".into(),
-            description: "Demo tool".into(),
-            version: "1.0.0".into(),
-            endpoint: "https://example.test/tool".into(),
-            capabilities: vec!["demo".into()],
-            parameters: json!({}),
-            execution_mode: super::tool_contract::DISCOVERY_ONLY_MODE.into(),
-            registered_at: now,
-            last_heartbeat: now,
-            expires_at: now,
-        };
-
-        let value = serde_json::to_value(RegisteredToolView::from(tool)).unwrap();
-
-        assert_eq!(value["execution_mode"], "discovery_only");
-        assert_eq!(value["agent_executable"], false);
     }
 }

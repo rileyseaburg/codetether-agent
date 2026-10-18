@@ -1273,6 +1273,7 @@ dependencies = [
  "codetether-authorization-policy",
  "codetether-openai-wire",
  "codetether-openai-adapter",
+ "codetether-tool-discovery",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6452,6 +6453,16 @@ dependencies = [
  "codetether-openai-wire",
  "codetether-provider-core",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-tool-discovery"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

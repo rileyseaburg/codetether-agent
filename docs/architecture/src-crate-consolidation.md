@@ -12994,3 +12994,21 @@ Full workspace consolidation remains active.
   at most 43 code lines. Evidence: artifacts/consolidation-policy-routes/.
 - No dependencies changed. No requests, authorization evaluation, Cargo, rustc
   or Rust tests ran. Full consolidation remains incomplete.
+
+### Dynamic tool discovery registry extraction
+
+- Moved RegisteredTool, discovery response conversion, ToolRegistry and the
+  discovery-only contract into codetether-tool-discovery. Eleven modules contain
+  at most 35 code lines. The three contract tests and view serialization test
+  moved with their implementation.
+- Native HTTP handlers use shared types and retain their behavior. Registry
+  locking, expired-record lookup/list behavior, cleanup and 90-second heartbeat
+  extension are preserved. The former 30-second method comment was corrected
+  to match the existing extension; client heartbeat guidance remains unchanged.
+- Verification: 105 static comparisons passed for state, methods, contract,
+  moved test and remaining native server functions/tests. Module/dependency
+  checks, direct rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-tool-discovery/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  registry operations, Cargo, rustc or Rust tests ran. Full consolidation is
+  incomplete.
