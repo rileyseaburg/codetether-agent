@@ -33,3 +33,12 @@ impl Default for ToolRegistry {
 }
 #[cfg(test)]
 mod view_tests;
+
+mod api_heartbeat;
+mod api_list;
+mod api_register;
+mod api_types;
+pub use api_heartbeat::tool_heartbeat;
+pub use api_list::list_tools;
+pub use api_register::register_tool;
+pub use api_types::{RegisterToolRequest, RegisterToolResponse};

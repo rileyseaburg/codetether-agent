@@ -76,8 +76,9 @@ use codetether_openai_wire::{
     OpenAiRequestToolCallFunction, OpenAiRequestToolDefinition, OpenAiResponseToolCall,
     OpenAiResponseToolCallFunction, OpenAiStop, OpenAiUsage, openai_stream_chunk,
 };
+use codetether_tool_discovery::RegisterToolResponse;
 use codetether_tool_discovery::RegisteredToolView;
-pub use codetether_tool_discovery::{RegisteredTool, ToolRegistry};
+pub use codetether_tool_discovery::{RegisterToolRequest, RegisteredTool, ToolRegistry};
 use task_dispatch::dispatch_task;
 pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
 
@@ -1379,83 +1380,20 @@ async fn k8s_delete_subagent(
         .map(Json)
         .map_err(internal_error)
 }
-
-/// Request to register a tool
-#[derive(Debug, Deserialize)]
-pub struct RegisterToolRequest {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub version: String,
-    pub endpoint: String,
-    pub capabilities: Vec<String>,
-    pub parameters: serde_json::Value,
-}
-
-/// Response from registering a tool
-#[derive(Serialize)]
-struct RegisterToolResponse {
-    tool: RegisteredToolView,
-    message: String,
-}
-
-/// List all registered tools (active, non-expired)
 async fn list_tools(State(state): State<AppState>) -> Json<Vec<RegisteredToolView>> {
-    Json(
-        state
-            .tool_registry
-            .list()
-            .await
-            .into_iter()
-            .map(RegisteredToolView::from)
-            .collect(),
-    )
+    codetether_tool_discovery::list_tools(&state.tool_registry).await
 }
-
-/// Register a new tool
 async fn register_tool(
     State(state): State<AppState>,
     Json(req): Json<RegisterToolRequest>,
 ) -> Result<Json<RegisterToolResponse>, (StatusCode, String)> {
-    let now = chrono::Utc::now();
-    let tool = RegisteredTool {
-        id: req.id.clone(),
-        name: req.name,
-        description: req.description,
-        version: req.version,
-        endpoint: req.endpoint,
-        capabilities: req.capabilities,
-        parameters: req.parameters,
-        execution_mode: tool_contract::registration_execution_mode(),
-        registered_at: now,
-        last_heartbeat: now,
-        expires_at: now + Duration::from_secs(90),
-    };
-
-    state.tool_registry.register(tool.clone()).await;
-
-    tracing::info!(tool_id = %tool.id, "Tool registered");
-
-    Ok(Json(RegisterToolResponse {
-        tool: RegisteredToolView::from(tool),
-        message: tool_contract::discovery_registration_message(),
-    }))
+    codetether_tool_discovery::register_tool(&state.tool_registry, req).await
 }
-
-/// Heartbeat endpoint to extend tool TTL
 async fn tool_heartbeat(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<RegisteredToolView>, (StatusCode, String)> {
-    state
-        .tool_registry
-        .heartbeat(&id)
-        .await
-        .map(|tool| {
-            tracing::info!(tool_id = %id, "Tool heartbeat received");
-            Json(RegisteredToolView::from(tool))
-        })
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Tool {} not found", id)))
+    codetether_tool_discovery::tool_heartbeat(&state.tool_registry, id).await
 }
 
 /// List registered plugins.

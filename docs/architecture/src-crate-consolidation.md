@@ -13044,3 +13044,18 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   archives, HTTP endpoints, Cargo, rustc or Rust tests were executed.
   Full consolidation remains incomplete.
+
+### Tool discovery API service extraction
+
+- Moved registration request/response records and list/register/heartbeat API
+  operations into codetether-tool-discovery. Four added modules contain at most
+  30 code lines. Native HTTP handlers project the shared registry and input.
+- Registration timestamps, 90-second expiry, discovery-only mode, logging,
+  JSON responses and unknown-ID status/text are unchanged.
+- Verification: 87 static comparisons passed for moved operations/schemas and
+  unchanged server functions/tests. Module/dependency checks, direct rustfmt,
+  file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-discovery-api/.
+- Only axum/tracing dependencies for this package were staged from Cargo.lock.
+  No registrations, heartbeats, Cargo, rustc or Rust tests ran. Full workspace
+  consolidation remains incomplete.

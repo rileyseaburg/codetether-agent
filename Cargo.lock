@@ -6465,6 +6465,8 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "axum",
+ "tracing",
 ]
 
 [[package]]
