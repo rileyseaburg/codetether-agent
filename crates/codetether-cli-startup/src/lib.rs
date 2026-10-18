@@ -6,5 +6,6 @@
 //! command selection. The application supplies its own version and memory guards.
 pub mod crash;
 pub mod environment;
+pub mod lifecycle;
 pub mod logging;
 pub mod vault;

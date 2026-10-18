@@ -10,13 +10,13 @@
 //! Local development may also use env/AWS fallback credentials unless
 //! `CODETETHER_DISABLE_ENV_FALLBACK=1` is set for Vault-only mode.
 
-use clap::Parser;
 use cli::{Cli, Command};
 use codetether_agent::{
     a2a, benchmark, bus, cli, forage, github_pr, indexer, mcp, mux, provider, ralph, server, swarm,
     tool,
 };
 
+mod application;
 mod cleanup_cli;
 mod startup_crash;
 mod tui_cli;
@@ -33,27 +33,10 @@ mod swarm_cli;
 
 #[tokio::main(worker_threads = 8)]
 async fn main() -> anyhow::Result<()> {
-    // Native local commands bypass network credentials and agent startup.
-    if let Some(result) = native_cli::early().await {
-        return result;
-    }
-    codetether_cli_startup::environment::initialize()?;
-    let cli = Cli::parse();
-    if let Some(result) = native_cli::dispatch(&cli.command).await {
-        return result;
-    }
+    codetether_cli_startup::lifecycle::run::<application::Native>().await
+}
 
-    // Check if we're running TUI - if so, redirect logs to file instead of stdout
-    // TUI is the default when no subcommand is given.
-    let is_tui = matches!(&cli.command, Some(Command::Tui(_)) | None);
-    let is_git_credential_helper = matches!(&cli.command, Some(Command::GitCredentialHelper(_)));
-
-    codetether_cli_startup::logging::initialize(is_tui, is_git_credential_helper);
-
-    startup_crash::initialize(is_tui).await;
-
-    codetether_cli_startup::vault::initialize(&cli.command, is_tui, is_git_credential_helper).await;
-
+async fn dispatch(cli: Cli) -> anyhow::Result<()> {
     let mcp_control_plane_url = cli.server.clone();
     let mcp_control_plane_token = cli.token.clone();
     let (mcp_project_root, mcp_project_was_explicit) = (cli.project.clone(), cli.project.is_some());

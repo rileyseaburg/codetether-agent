@@ -20782,3 +20782,23 @@ and whitespace checks passed. Evidence:
 `artifacts/consolidation-picker-feedback/`. No Cargo, rustc, or Python commands
 ran. Rust tests and compilation remain unverified. The broader migration goal
 is still active.
+
+### CLI process lifecycle ownership
+
+Moved startup ordering from the binary main function into
+`codetether-cli-startup::lifecycle`: early native commands, environment setup,
+root parsing, parsed native command bypass, logging-mode selection, crash setup,
+Vault initialization, and final dispatch. Native `application.rs` supplies the
+existing parser and concrete command/crash operations. The binary main function
+now invokes the shared lifecycle while retaining its eight-thread Tokio runtime.
+The existing command-dispatch body, MCP connection options, and every command
+arm remain byte-identical. No dependencies changed.
+
+Verification compares the full startup sequence under explicit native callback
+substitutions, confirms both early-return positions, checks the original runtime
+attribute, and compares the complete dispatch suffix byte-for-byte. Direct
+rustfmt, source graph checks across 693 roots, native file-size limits, and
+whitespace checks passed. Evidence: `artifacts/consolidation-cli-lifecycle/`.
+No Cargo, rustc, or Python commands ran; startup services and Rust tests were
+not executed. Compilation and runtime behavior remain unverified. The complete
+workspace migration remains active.
