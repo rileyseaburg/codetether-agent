@@ -26404,3 +26404,22 @@ file-limit and whitespace checks pass. Only native-goal-tools test dependencies
 are staged in Cargo.lock; unrelated working changes are preserved. Evidence:
 artifacts/consolidation-native-goal-tests/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### Native legacy session-task host and guard ownership
+
+Moved the session-task journal resolver and goal-completion adapter into the
+existing native-goal-tools Host, so legacy completion still uses the same
+verified update path. The root session-task module now selects only its tool
+type. Three tests covering active-goal clearing, answer-review replacement
+and task/objective separation moved with their adapters and pure event fixtures.
+Seven root implementation/test files are removed; the public tool alias remains.
+
+Static comparisons preserve completion arguments, journal paths, six adapter/
+test bodies and both fixture event constructors. The native test host continues
+to reject unexpected verifier construction. Module/dependency scans cover 730
+roots and 616 crates without missing modules, cycles or undeclared dependencies.
+Declaration, standalone formatting, file-limit and whitespace checks pass. Only
+the added session-task dependency is staged in Cargo.lock. Unrelated changes
+remain untouched. Evidence: artifacts/consolidation-native-session-task/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active and incomplete.

@@ -3818,6 +3818,7 @@ dependencies = [
  "codetether-native-goals",
  "codetether-native-providers",
  "codetether-native-swarm",
+ "codetether-session-task",
  "codetether-tool-core",
  "serde_json",
  "tempfile",

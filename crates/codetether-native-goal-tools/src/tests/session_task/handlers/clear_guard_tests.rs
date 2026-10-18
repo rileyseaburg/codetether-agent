@@ -1,7 +1,7 @@
 //! Model-facing `clear_goal` cannot discard an active, unverified goal.
 
-use crate::approval::test_env::lock_env;
-use crate::session::tasks::TaskLog;
+use codetether_native_approval::test_env::lock_env;
+use codetether_native_goals::TaskLog;
 use serde_json::json;
 
 #[tokio::test]
@@ -19,11 +19,11 @@ async fn active_goal_is_not_cleared() {
         .await
         .unwrap();
     assert!(!result.success, "{}", result.output);
-    let state = crate::session::tasks::TaskState::from_log(&log.read_all().await.unwrap());
+    let state = codetether_native_goals::TaskState::from_log(&log.read_all().await.unwrap());
     assert!(state.goal.is_some());
-    crate::session::tasks::runtime::set_status(
+    codetether_native_goals::runtime::set_status(
         "clear-guard",
-        crate::session::tasks::GoalStatus::Paused,
+        codetether_native_goals::GoalStatus::Paused,
     )
     .await
     .unwrap();

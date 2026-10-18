@@ -18,6 +18,8 @@ codetether-application-registry = { path = "../codetether-application-registry",
 codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
 codetether-native-swarm = { path = "../codetether-native-swarm", version = "0.1.0" }
 
+codetether-session-task = { path = "../codetether-session-task", version = "0.1.0" }
+
 [dev-dependencies]
 chrono = "0.4"
 tempfile = "3"

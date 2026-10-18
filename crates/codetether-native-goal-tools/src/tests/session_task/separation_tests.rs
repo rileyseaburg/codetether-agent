@@ -1,6 +1,6 @@
 //! Task discovery/listing cannot conflate the objective with work items.
 
-use crate::session::tasks::{TaskLog, TaskState, goal_block, task_block};
+use codetether_native_goals::{TaskLog, TaskState, goal_block, task_block};
 use serde_json::json;
 
 #[tokio::test]

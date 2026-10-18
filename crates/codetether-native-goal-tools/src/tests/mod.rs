@@ -21,3 +21,5 @@ mod edit {
     #[allow(non_upper_case_globals)]
     pub(super) const EditGoalTool: EditGoalTool = EditGoalTool::new();
 }
+
+mod session_task;

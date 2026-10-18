@@ -1,7 +1,7 @@
 //! Tool-level replacement must not bypass the explicit satisfaction decision.
 
-use crate::session::tasks::answer_review_test_support::{decision, goal};
-use crate::session::tasks::{AnswerReviewAction as Action, TaskLog, TaskState};
+use crate::tests::session_task::fixtures::{decision, goal};
+use codetether_native_goals::{AnswerReviewAction as Action, TaskLog, TaskState};
 use serde_json::json;
 
 #[tokio::test]

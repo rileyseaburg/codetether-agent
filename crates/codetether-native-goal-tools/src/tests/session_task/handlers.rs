@@ -4,7 +4,7 @@ mod clear_guard_tests;
 #[path = "handlers/set_guard_tests.rs"]
 mod set_guard_tests;
 pub(super) async fn list(
-    log: &crate::session::tasks::TaskLog,
-) -> anyhow::Result<crate::tool::ToolResult> {
+    log: &codetether_native_goals::TaskLog,
+) -> anyhow::Result<codetether_tool_core::ToolResult> {
     codetether_session_task::list_tasks(log).await
 }
