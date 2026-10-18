@@ -1,11 +1,14 @@
 //! Native provider binding for local stages.
-use super::{Native, providers};
+use super::{LocalStage, LocalStageHost, providers};
 use std::sync::Arc;
-impl codetether_swarm_local_stage::Providers for Native<'_> {
-    type Providers = crate::provider::ProviderRegistry;
+impl<H: LocalStageHost> codetether_swarm_local_stage::Providers for LocalStage<'_, H> {
+    type Providers = H::Providers;
 
-    fn get(providers: &Self::Providers, name: &str) -> Option<Arc<dyn crate::provider::Provider>> {
-        providers.get(name)
+    fn get(
+        providers: &Self::Providers,
+        name: &str,
+    ) -> Option<Arc<dyn codetether_provider_core::Provider>> {
+        H::get(providers, name)
     }
 
     fn choose(

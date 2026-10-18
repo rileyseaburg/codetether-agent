@@ -22207,3 +22207,23 @@ runtime's Kubernetes and forage-execution dependency edges are staged in the
 lockfile. Evidence: `artifacts/consolidation-swarm-consumers/`. No Cargo, rustc
 or Python ran; compilation and runtime tests remain unverified. Full
 consolidation is active.
+
+### Local-stage executor bindings in the swarm runtime
+
+Moved local-stage service access, cache operations, provider delegation and
+execution forwarding into `codetether-swarm-runtime::local_stage`. The native
+host module and its six implementation/helper files were removed. The shared
+stage entry point now receives the existing executor and planner directly,
+while `LocalStageHost` supplies provider enumeration/lookup and the native
+agent-job future. The original native job implementation remains unchanged;
+its visibility now permits the executor's application binding to call it.
+
+Static comparisons preserve all four service interfaces, cache mutex scopes,
+poisoned delegation-lock recovery, provider-selection fallback, outcome
+recording and stage arguments. The shared delegation function receives the
+same lazy provider enumeration previously passed through the native wrapper.
+Module/dependency checks cover 698 roots and 570 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only four owning-runtime dependency edges are staged in the lockfile. Evidence:
+`artifacts/consolidation-local-stage/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

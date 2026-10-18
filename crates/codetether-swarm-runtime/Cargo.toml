@@ -22,3 +22,7 @@ codetether-swarm-cache = { path = "../codetether-swarm-cache", version = "0.1.0"
 codetether-swarm-bus = { path = "../codetether-swarm-bus", version = "0.1.0" }
 codetether-swarm-k8s = { path = "../codetether-swarm-k8s", version = "0.1.0" }
 codetether-forage-execution = { path = "../codetether-forage-execution", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-swarm-local-job = { path = "../codetether-swarm-local-job", version = "0.1.0" }
+codetether-swarm-local-stage = { path = "../codetether-swarm-local-stage", version = "0.1.0" }
+codetether-swarm-delegation = { path = "../codetether-swarm-delegation", version = "0.1.0" }

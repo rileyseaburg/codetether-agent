@@ -1,6 +1,6 @@
 //! Native cache binding for local stages.
-use super::{Native, cache};
-impl codetether_swarm_local_stage::Cache for Native<'_> {
+use super::{LocalStage, LocalStageHost, cache};
+impl<H: LocalStageHost> codetether_swarm_local_stage::Cache for LocalStage<'_, H> {
     async fn cache_get(
         &self,
         task: &codetether_swarm_core::SubTask,

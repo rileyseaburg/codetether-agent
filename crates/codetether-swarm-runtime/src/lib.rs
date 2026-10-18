@@ -71,3 +71,6 @@ mod application_executor;
 pub use application_executor::{ExecutorHost, SwarmExecutor};
 
 pub use application_executor::kubernetes;
+
+pub use application_executor::local as local_stage;
+pub use application_executor::local::LocalStageHost;

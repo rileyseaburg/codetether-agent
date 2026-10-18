@@ -35,3 +35,6 @@ impl<H: ExecutorHost> From<SwarmConfig> for SwarmExecutor<H> {
 mod forage;
 /// Kubernetes stage execution over the shared executor services.
 pub mod kubernetes;
+
+/// Local-stage scheduling over shared executor services.
+pub mod local;

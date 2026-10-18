@@ -1,10 +1,11 @@
 //! Native service binding for local stages.
-use super::Native;
-use crate::swarm::{SwarmConfig, SwarmControl};
+use super::{LocalStage, LocalStageHost};
+use codetether_session_control::ControlHandle as SwarmControl;
+use codetether_swarm_core::SwarmConfig;
 use codetether_swarm_core::{SwarmEvent, result_store::ResultStore};
 use std::sync::Arc;
 use tokio::sync::mpsc;
-impl codetether_swarm_local_stage::Services for Native<'_> {
+impl<H: LocalStageHost> codetether_swarm_local_stage::Services for LocalStage<'_, H> {
     fn config(&self) -> &SwarmConfig {
         &self.0.inner.config
     }
@@ -17,7 +18,7 @@ impl codetether_swarm_local_stage::Services for Native<'_> {
         &self.0.inner.event_tx
     }
 
-    fn bus(&self) -> &Option<Arc<crate::bus::AgentBus>> {
+    fn bus(&self) -> &Option<Arc<codetether_bus_core::AgentBus>> {
         &self.0.inner.bus
     }
 
