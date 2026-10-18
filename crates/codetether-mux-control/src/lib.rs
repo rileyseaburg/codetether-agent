@@ -20,3 +20,7 @@ pub use stop::stop_session;
 pub use summary::{MuxSessionSummary, MuxWindowSummary};
 
 mod summary_create;
+
+mod runtime_reporter;
+/// Change-driven reporting for an inherited mux owner.
+pub use runtime_reporter::RuntimeReporter;

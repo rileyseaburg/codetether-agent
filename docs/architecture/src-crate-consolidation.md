@@ -16985,3 +16985,20 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-bridge-shutdown/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared mux runtime reporting lifecycle
+
+- Moved borrowed runtime-status comparison, snapshot construction and lagging
+  policy into `codetether-mux-model::runtime_view`.
+- Moved change-driven report caching and clear-on-exit behavior into
+  `codetether-mux-control::RuntimeReporter`; native code only projects UI fields
+  and holds the shared reporter.
+- Preserved allocation-free comparison, title fallback, principal separation,
+  cache-before-send semantics (including failed sends), log messages and clear
+  only after an attempted update. Native projection test is unchanged.
+- Verification: complete comparison/snapshot/lagging/reporter bodies, native
+  field mapping and test, unchanged wire/transport/shutdown code, module and
+  dependency graphs, direct rustfmt, file limits and whitespace. No dependency
+  changes. Evidence: `artifacts/consolidation-mux-status/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

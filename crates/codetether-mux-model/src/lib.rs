@@ -17,3 +17,7 @@ pub use session::MuxSession;
 pub use window::MuxWindow;
 #[cfg(test)]
 mod tests;
+
+/// Borrowed facts for allocation-free runtime status comparison.
+pub mod runtime_view;
+pub use runtime_view::RuntimeView;
