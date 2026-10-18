@@ -3997,6 +3997,10 @@ dependencies = [
 name = "codetether-native-worker"
 version = "0.1.0"
 dependencies = [
+ "codetether-native-session-runtime",
+ "codetether-session-orchestration",
+ "codetether-session-steering",
+ "codetether-session-control",
  "codetether-native-context",
  "codetether-native-goals",
  "codetether-native-runtime-policy",

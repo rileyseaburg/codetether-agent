@@ -57,3 +57,6 @@ pub mod preparation;
 
 /// Context-aware worker completion, compact-schema fallback and goal accounting.
 pub mod completion;
+
+/// Scoped worker session steps with application response execution.
+pub mod session_loop;

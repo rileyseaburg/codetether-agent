@@ -25795,3 +25795,22 @@ rustfmt and whitespace checks pass. Only two worker dependencies are added to
 the staged lockfile; unrelated files remain unchanged. Evidence:
 artifacts/consolidation-worker-completion/. No Cargo, rustc, Python,
 compilation or tests ran. Full consolidation remains active.
+
+### Scoped native worker session loop
+
+Moved the worker session-loop host into codetether-native-worker::session_loop.
+Existing context, orchestration and transcript traits supply goal gates,
+steering drains, wrap-up injection, completion, continuation and persistence.
+A Responses hook retains only concrete application response/tool execution.
+The root entry selects that hook and the original shared worker Context.
+
+Static comparisons preserve all seven loop host methods after explicit native
+service paths and transcript trait calls. The transcript save implementation
+still delegates to Session::save and the steering wrapper delegates to the same
+shared drain. Existing control and failure test entry files are unchanged.
+Module/dependency scans cover 719 roots and 605 crates without missing modules,
+cycles or undeclared direct dependencies. Declaration, file-limit, direct
+rustfmt and whitespace checks pass. Only four worker dependencies are added
+to the staged lockfile; unrelated dirty files remain unchanged. Evidence:
+artifacts/consolidation-worker-session-loop/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

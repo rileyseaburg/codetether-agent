@@ -45,5 +45,8 @@ pub(super) async fn run_session_steps(
             output_callback,
         },
     };
-    session_loop::run(&context, session, max_steps).await
+    codetether_native_worker::session_loop::run::<_, _, session_loop::Responses>(
+        &context, session, max_steps,
+    )
+    .await
 }

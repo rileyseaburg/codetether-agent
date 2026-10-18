@@ -1,21 +1,14 @@
-//! Adapt application session state to the shared worker loop driver.
-use super::{SessionStepsOutcome, session_context::Context};
-use crate::session::Session;
-use anyhow::Result;
-#[path = "session_loop_host.rs"]
-mod host;
-struct ApplicationHost<'a, 'context> {
-    context: &'a Context<'context>,
-    session: &'a mut Session,
-}
-pub(super) async fn run(
-    context: &Context<'_>,
-    session: &mut Session,
-    max_steps: usize,
-) -> Result<SessionStepsOutcome> {
-    codetether_a2a_worker_core::session_protocol::driver::run_scoped(
-        &mut ApplicationHost { context, session },
-        max_steps,
-    )
-    .await
+//! Application response handling for the native worker session loop.
+use crate::{provider::CompletionResponse, session::Session, tool::ToolRegistry};
+use codetether_a2a_worker_core::session_protocol::context::ResponseContext;
+pub(super) struct Responses;
+impl codetether_native_worker::session_loop::Responses<Session, ToolRegistry> for Responses {
+    async fn process(
+        context: &ResponseContext<'_, ToolRegistry>,
+        session: &mut Session,
+        output: &mut String,
+        response: CompletionResponse,
+    ) -> anyhow::Result<bool> {
+        super::session_response::process_response(context, session, output, response).await
+    }
 }
