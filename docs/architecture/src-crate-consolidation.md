@@ -14754,3 +14754,20 @@ Full workspace consolidation remains active.
   artifacts/consolidation-model-picker-interactive/.
 - No dependencies changed. No Cargo, rustc, Rust tests, cache reads or provider
   refreshes ran. Full workspace consolidation remains unfinished.
+
+### Slash-command routing ownership
+
+- Moved leading-command recognition, session-command recognition and legacy
+  unknown-message suppression into codetether-slash-command::routing.
+  Modules separate command kinds, ordered recognition and suppression policy.
+- Native TUI code retains action execution. All ten leading action bodies are
+  unchanged; six session actions still discard return values before reporting
+  dispatch handled. Conditional relay and later command stages retain their
+  positions and existing fall-through behavior.
+- Verification: seven static checks passed for action bodies, recognition order,
+  boundary handling, expanded whole-dispatch equivalence, suppression names,
+  session calls and module bounds. Module reachability, dependency DAG, direct
+  rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-slash-routing/.
+- No dependency changes. No Cargo, rustc, Rust tests or command execution ran.
+  Full workspace consolidation remains unfinished.

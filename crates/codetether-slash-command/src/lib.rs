@@ -10,6 +10,7 @@ mod descriptions;
 mod easy;
 mod hint_match;
 mod normalize;
+pub mod routing;
 mod usage;
 pub use arguments::command_with_optional_args;
 pub use catalog::SLASH_COMMANDS;

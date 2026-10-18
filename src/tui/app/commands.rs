@@ -126,75 +126,71 @@ pub async fn handle_slash_command(
     let normalized = normalize_easy_command(command);
     let normalized = normalize_slash_command(&normalized);
 
-    if let Some(rest) = command_with_optional_args(&normalized, "/go") {
-        handle_go_command(app, session, registry, rest).await;
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/image") {
-        let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
-        crate::tui::app::input::attach_image_command(
-            app,
-            cwd,
-            cleaned,
-            codetether_image::interactive::Presentation::Chat,
-        );
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/file") {
-        let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
-        crate::tui::app::file_share::command(app, cwd, cleaned);
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/edit") {
-        open_editor(
-            app,
-            cwd,
-            rest.trim().trim_matches(|c| c == '"' || c == '\''),
-        );
-        return;
-    }
-    if let Some(rest) = command_with_optional_args(&normalized, "/autoapply") {
-        settings_command::execute(app, session, Setting::AutoApply, rest).await;
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/network") {
-        settings_command::execute(app, session, Setting::Network, rest).await;
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/autocomplete") {
-        settings_command::execute(app, session, Setting::Autocomplete, rest).await;
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/ask") {
-        let question = rest.trim();
-        if question.is_empty() {
-            app.state.status =
+    if let Some((kind, rest)) = codetether_slash_command::routing::leading(&normalized) {
+        match kind {
+            codetether_slash_command::routing::LeadingCommand::Go => {
+                handle_go_command(app, session, registry, rest).await;
+                return;
+            }
+            codetether_slash_command::routing::LeadingCommand::Image => {
+                let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
+                crate::tui::app::input::attach_image_command(
+                    app,
+                    cwd,
+                    cleaned,
+                    codetether_image::interactive::Presentation::Chat,
+                );
+                return;
+            }
+            codetether_slash_command::routing::LeadingCommand::File => {
+                let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
+                crate::tui::app::file_share::command(app, cwd, cleaned);
+                return;
+            }
+            codetether_slash_command::routing::LeadingCommand::Edit => {
+                open_editor(
+                    app,
+                    cwd,
+                    rest.trim().trim_matches(|c| c == '"' || c == '\''),
+                );
+                return;
+            }
+            codetether_slash_command::routing::LeadingCommand::AutoApply => {
+                settings_command::execute(app, session, Setting::AutoApply, rest).await;
+                return;
+            }
+            codetether_slash_command::routing::LeadingCommand::Network => {
+                settings_command::execute(app, session, Setting::Network, rest).await;
+                return;
+            }
+            codetether_slash_command::routing::LeadingCommand::Autocomplete => {
+                settings_command::execute(app, session, Setting::Autocomplete, rest).await;
+                return;
+            }
+            codetether_slash_command::routing::LeadingCommand::Ask => {
+                let question = rest.trim();
+                if question.is_empty() {
+                    app.state.status =
                 "Usage: /ask <question> — ephemeral side question (full context, no tools, not saved)"
                     .to_string();
-            push_system_message(
-                app,
-                "`/ask <question>` runs an ephemeral side query with full context but no tools, and is not saved to the session.",
-            );
-            return;
+                    push_system_message(
+                        app,
+                        "`/ask <question>` runs an ephemeral side query with full context but no tools, and is not saved to the session.",
+                    );
+                    return;
+                }
+                super::ask::run_ask(app, session, registry, question).await;
+                return;
+            }
+            codetether_slash_command::routing::LeadingCommand::Context => {
+                handle_context_command(app, rest);
+                return;
+            }
+            codetether_slash_command::routing::LeadingCommand::Mcp => {
+                handle_mcp_command(app, rest).await;
+                return;
+            }
         }
-        super::ask::run_ask(app, session, registry, question).await;
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/context") {
-        handle_context_command(app, rest);
-        return;
-    }
-
-    if let Some(rest) = command_with_optional_args(&normalized, "/mcp") {
-        handle_mcp_command(app, rest).await;
-        return;
     }
 
     if let Some(rest) = command_with_optional_args(&normalized, "/ralph")
@@ -366,49 +362,7 @@ pub async fn handle_slash_command(
 
     // If we get here, none of the handlers above matched.
     // Easy-mode aliases are already normalized before reaching this point,
-    if !matches!(
-        normalized.as_str(),
-        "/help"
-            | "/sessions"
-            | "/import-codex"
-            | "/session"
-            | "/swarm"
-            | "/ralph"
-            | "/bus"
-            | "/protocol"
-            | "/model"
-            | "/settings"
-            | "/lsp"
-            | "/rlm"
-            | "/latency"
-            | "/transport"
-            | "/audit"
-            | "/git"
-            | "/auditloop"
-            | "/chat"
-            | "/home"
-            | "/main"
-            | "/symbols"
-            | "/symbol"
-            | "/new"
-            | "/undo"
-            | "/keys"
-            | "/file"
-            | "/image"
-            | "/autoapply"
-            | "/network"
-            | "/autocomplete"
-            | "/mcp"
-            | "/context"
-            | "/spawn"
-            | "/kill"
-            | "/agents"
-            | "/agent"
-            | "/autochat"
-            | "/protocols"
-            | "/registry"
-            | "/recall"
-    ) {
+    if !codetether_slash_command::routing::suppress_unknown(&normalized) {
         app.state.status = format!("Unknown command: {normalized}");
     }
 }
