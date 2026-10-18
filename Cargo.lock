@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-cli-command",
  "codetether-cli-options",
  "codetether-server-status",
  "codetether-plugin-http",
@@ -6812,6 +6813,30 @@ dependencies = [
  "clap",
  "codetether-a2a-worker-core",
  "codetether-config",
+]
+
+[[package]]
+name = "codetether-cli-command"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "codetether-approval-cli",
+ "codetether-auth-cli",
+ "codetether-bonsai-cli",
+ "codetether-browser-cli",
+ "codetether-cleanup-cli",
+ "codetether-clipboard-cli",
+ "codetether-config-cli",
+ "codetether-connect-cli",
+ "codetether-context-cli",
+ "codetether-indexer-cli",
+ "codetether-models-cli",
+ "codetether-mux-cli",
+ "codetether-oracle-cli",
+ "codetether-search-cli",
+ "codetether-vault-cli",
+ "codetether-worktree-cli",
+ "codetether-cli-options",
 ]
 
 [[package]]

@@ -13609,3 +13609,18 @@ Full workspace consolidation remains active.
 - Only the option crate's config dependency was staged from Cargo.lock.
   No Cargo, rustc, Rust tests or CLI execution ran. Full workspace consolidation
   remains unfinished.
+
+### Top-level CLI command schema extraction
+
+- Moved the Command enum from src/cli/command.rs into codetether-cli-command,
+  assembling typed argument schemas from their existing crate owners.
+  Native cli::Command and cli::command::mux_args paths remain available.
+- Command variants, hidden flags, names, aliases and payload types are
+  unchanged. The native root parser still owns application-version handling;
+  command execution and existing parser integration tests remain native.
+- Verification: 21 static enum/schema/dependency/size checks passed, plus
+  module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-cli-command/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or command execution ran. Full workspace
+  consolidation remains unfinished.
