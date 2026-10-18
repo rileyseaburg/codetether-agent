@@ -10431,3 +10431,9 @@ budgets and whitespace checks passed; new modules have at most 42 code lines.
 Evidence is in `artifacts/consolidation-mux-pty/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python, terminal/process startup or benchmark ran.
 Full workspace consolidation remains active.
+
+PTY interface follow-up: static public-interface review found the registry's
+argument/result types retained restricted re-export visibility in the crate
+root. Exported `PtyAttach`, `PtyChunk` and `TerminalSize` publicly and added an
+explicit export assertion to the extraction verifier. This corrects the shared
+API boundary; compilation remains unverified under the toolchain restriction.

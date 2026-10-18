@@ -25,4 +25,4 @@ mod registry_lookup;
 mod types;
 
 pub use registry::PtyRegistry;
-pub(super) use types::{PtyAttach, PtyChunk, TerminalSize};
+pub use types::{PtyAttach, PtyChunk, TerminalSize};
