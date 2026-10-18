@@ -17482,3 +17482,19 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-modal-scroll/`.
 - No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared paste-burst newline detection
+
+- Moved recent-key timing, slow-terminal detection and current-line/newline
+  checks into `codetether-paste-buffer::burst`; native code supplies a borrowed
+  input/cursor/time view.
+- Preserved 80ms/300ms thresholds, one-character minimum, chat-only admission,
+  Windows/WT_SESSION behavior and short-circuit order.
+- Moved all five existing test cases with unchanged assertions; their fixture
+  now builds the small input view rather than a full native App.
+- Verification: complete helper/constant comparisons, native field mapping,
+  test assertions/fixture values, module/dependency graphs, direct rustfmt,
+  file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-paste-burst/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

@@ -26,3 +26,6 @@ pub mod routing;
 
 /// Submission-time recovery of images split across text sidecars.
 pub mod image_recovery;
+
+/// Timing-aware detection of paste newlines delivered as key events.
+pub mod burst;

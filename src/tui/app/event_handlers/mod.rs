@@ -37,8 +37,6 @@ mod okr_save;
 mod overlay_scroll;
 mod paste;
 mod paste_burst;
-#[cfg(test)]
-mod paste_burst_tests;
 mod scroll_down;
 mod scroll_up;
 mod shared_file_open;

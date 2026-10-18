@@ -4,19 +4,15 @@
 mod tests {
     use std::time::{Duration, Instant};
 
-    use crate::tui::app::event_handlers::paste_burst::{
-        current_line_len, enter_is_likely, enter_is_likely_paste_newline,
-    };
-    use crate::tui::app::state::App;
-    use crate::tui::models::ViewMode;
+    use super::super::{View, current_line_len, enter_is_likely, enter_is_likely_paste_newline};
 
-    fn app_with_input(input: &str, age_ms: u64) -> App {
-        let mut app = App::default();
-        app.state.view_mode = ViewMode::Chat;
-        app.state.input = input.to_string();
-        app.state.input_cursor = input.chars().count();
-        app.state.last_key_at = Some(Instant::now() - Duration::from_millis(age_ms));
-        app
+    fn app_with_input(input: &str, age_ms: u64) -> View<'_> {
+        View {
+            in_chat: true,
+            input,
+            cursor: input.chars().count(),
+            last_key_at: Some(Instant::now() - Duration::from_millis(age_ms)),
+        }
     }
 
     #[test]
