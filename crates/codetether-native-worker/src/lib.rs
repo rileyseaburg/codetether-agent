@@ -60,3 +60,8 @@ pub mod completion;
 
 /// Scoped worker session steps with application response execution.
 pub mod session_loop;
+
+/// Response sequencing with native telemetry and application tool-call effects.
+pub mod response;
+/// Native registry lookup and policy-gated tool execution.
+pub mod tools;

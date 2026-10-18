@@ -11,14 +11,12 @@ mod session_control_tests;
 mod session_failure;
 #[cfg(test)]
 mod session_failure_tests;
-mod session_loop;
 use codetether_a2a_worker_core::session_protocol as session_outcome;
 use codetether_a2a_worker_core::session_protocol::transcript as session_output;
-mod session_response;
 mod session_step_tools;
+use codetether_a2a_worker_core::session_protocol::context::ResponseContext;
 use codetether_a2a_worker_core::session_protocol::transcript as session_wrap_up;
 pub(super) use session_outcome::SessionStepsOutcome;
-use session_response::ResponseContext;
 
 pub(super) async fn run_session_steps(
     provider: Arc<dyn Provider>,
@@ -45,8 +43,10 @@ pub(super) async fn run_session_steps(
             output_callback,
         },
     };
-    codetether_native_worker::session_loop::run::<_, _, session_loop::Responses>(
-        &context, session, max_steps,
-    )
+    codetether_native_worker::session_loop::run::<
+        _,
+        _,
+        codetether_native_worker::response::Handler<session_step_tools::Runner>,
+    >(&context, session, max_steps)
     .await
 }

@@ -24,7 +24,7 @@ impl ToolCallHost for ApplicationHost<'_> {
         tool_name: &str,
         input: serde_json::Value,
     ) -> crate::tool::ToolResult {
-        super::tool_run::run_tool(self.registry, tool_name, input, self.cb).await
+        codetether_native_worker::tools::run_tool(self.registry, tool_name, input, self.cb).await
     }
     fn record_result(&mut self, tool_id: String, result: crate::tool::ToolResult) {
         session_output::add_tool_result(self.session, tool_id, result);

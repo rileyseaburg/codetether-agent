@@ -25814,3 +25814,26 @@ rustfmt and whitespace checks pass. Only four worker dependencies are added
 to the staged lockfile; unrelated dirty files remain unchanged. Evidence:
 artifacts/consolidation-worker-session-loop/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Native worker response and tool execution adapters
+
+Moved response control/telemetry/transcript effects and policy-gated registry
+execution into codetether-native-worker::response and ::tools. The session loop
+selects Handler with one root tool-call callback preserving the application's
+input enrichment and result recording. Removed the old response/loop adapters
+and root tool-run file. The retained callback has its own response module.
+
+Static comparisons preserve control checks, telemetry updates, transcript append,
+tool lookup/evaluation/run bodies and response/tool-call argument order. The
+existing tool denial/image test files remain unchanged. The first file-limit
+check rejected growth in session_step_tools.rs; splitting its callback restored
+the limit. The initial text transformation of the registry type also matched
+its Tool prefix; direct source inspection caught it before checks and the type
+was corrected to the owning application registry. Evidence remains in the tool
+history and artifacts/consolidation-worker-response/.
+
+Module/dependency scans cover 719 roots and 605 crates without missing modules,
+cycles or undeclared dependencies. Declaration, direct rustfmt, whitespace and
+final file-limit checks pass. Only the two required worker dependencies are
+staged in Cargo.lock; unrelated dirty files remain unchanged. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
