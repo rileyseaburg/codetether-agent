@@ -11,7 +11,6 @@
 //! Supports language servers via stdio transport with JSON-RPC 2.0.
 
 pub mod client;
-mod client_cache;
 #[cfg(test)]
 mod typescript_repeated_tests;
 

@@ -21271,3 +21271,25 @@ package and root dependency; unrelated working changes remain separate. No
 Cargo, rustc, or Python commands ran. Rust tests were relocated and inspected,
 not executed. Compilation and runtime behavior remain unverified, and full
 consolidation remains active.
+
+### Dedicated application-identified LSP client crate
+
+Moved the LSP client wrapper's construction, dereferencing, handshake,
+manager integration, and cache timestamp access into `codetether-lsp-client`.
+The native client and manager are type aliases specialized with a small identity
+host. That host supplies the root package version and the original structured
+initialization log event, including its original module target. Protocol,
+transport, manager, and cache implementations remain in lsp-core.
+
+The shared wrapper adds only a zero-sized host marker; all operational method
+bodies match after generic host substitutions and marker initialization. Source
+comparison uses Rust tokens after direct formatting, preserving string literals.
+The initial comparison found only an optional trailing comma removed by rustfmt;
+its evidence was retained before correcting comparison normalization. No native
+LSP regression test source was edited or moved.
+
+Source/dependency graphs cover 697 roots and 563 crates with no missing modules
+or cycles. Direct rustfmt, native file-size limits, and whitespace checks passed.
+Evidence: `artifacts/consolidation-lsp-client/`. The lockfile change adds only the
+new package and root dependency. No Cargo, rustc, or Python commands ran;
+compilation and runtime tests remain unverified. Full consolidation is ongoing.

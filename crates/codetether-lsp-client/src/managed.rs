@@ -1,6 +1,6 @@
 //! Supply application construction and initialization to the shared manager.
 use super::*;
-impl codetether_lsp_core::manager::ManagedClient for LspClient {
+impl<H: Host> codetether_lsp_core::manager::ManagedClient for LspClient<H> {
     fn new(config: LspConfig) -> impl std::future::Future<Output = Result<Self>> + Send {
         LspClient::new(config)
     }

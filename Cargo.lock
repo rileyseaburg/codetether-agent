@@ -1695,6 +1695,7 @@ dependencies = [
  "codetether-k8s-tool",
  "codetether-knowledge-graph",
  "codetether-lsp-core",
+ "codetether-lsp-client",
  "codetether-lsp-tool",
  "codetether-marketplace",
  "codetether-mcp-bridge",
@@ -3392,6 +3393,14 @@ dependencies = [
  "codetether-provider-core",
  "codetether-tool-core",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-lsp-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-lsp-core",
 ]
 
 [[package]]
