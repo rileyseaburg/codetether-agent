@@ -10995,3 +10995,22 @@ Full workspace consolidation remains active.
   brace-boundary mismatch was corrected in the verifier. Compilation, runtime
   tests and terminal rendering were not run. No Cargo or rustc commands ran.
 - Full consolidation remains active.
+
+### Token and cost display extraction
+
+- Moved `src/tui/token_display.rs` and `token_display_context.rs`
+  implementation into `crates/codetether-token-display`; native paths now
+  re-export the shared presenter and context indicator.
+- Seventeen modules separate construction, pricing, cost aggregation, cache
+  rate, throughput, context calculation/style, status sections and detailed
+  model/provider rows. Maximum module size is 38 code lines.
+- The crate consumes existing provider-core pricing/limits, telemetry counters,
+  cost-guard severity and theme rendering. No parallel pricing or policy
+  implementation was introduced. Existing latency and chat callers are unchanged.
+- Twenty-three static assertions compare complete reconstructed status/detail
+  bodies, remaining method bodies, context styles, default construction and
+  unchanged bindings. Module reachability, dependency DAG, file limits and
+  whitespace checks passed.
+- Evidence: `artifacts/consolidation-token-display/`. Compilation, runtime tests
+  and rendering were not run; no Cargo or rustc commands executed.
+- Full `src/` consolidation remains active.
