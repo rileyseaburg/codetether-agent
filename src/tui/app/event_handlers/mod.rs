@@ -6,7 +6,6 @@ mod approval_key;
 #[cfg(test)]
 mod approval_key_tests;
 mod click_open;
-mod ctrl_c;
 mod editor_click;
 mod editor_key;
 mod editor_lsp;
@@ -17,8 +16,6 @@ mod event_priority;
 mod fuzzy_find_key;
 mod goal_prompt_key;
 mod interlude_key;
-mod interrupt_host;
-mod interrupt_key;
 #[cfg(test)]
 mod interrupt_key_tests;
 mod keybinds;
@@ -46,4 +43,11 @@ codetether_chat_clipboard::declare_frontend_chat_clipboard!(
     crate::tui::constants::SCROLL_BOTTOM,
     crate::tui::app::input::paste_into_chat,
     codetether_chat_transcript::build_transcript,
+);
+
+codetether_tui_navigation::declare_frontend_interrupt!(
+    crate::tui::app::state::App,
+    crate::tui::app::session_runtime::TuiSessionHandle,
+    crate::tui::models::ViewMode,
+    crossterm::event::KeyEvent,
 );

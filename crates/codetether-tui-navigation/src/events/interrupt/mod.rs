@@ -4,6 +4,7 @@
 //! [handle_ctrl_c] requests cancellation when busy and exits when idle.
 //! Frontends implement [Host] to retain their cancellation transport.
 mod ctrl_c;
+mod frontend;
 mod interrupt_key;
 pub use ctrl_c::handle_ctrl_c;
 pub use interrupt_key::handle;

@@ -27911,3 +27911,18 @@ file-limit and whitespace checks pass for 725 roots and 617 crates. Unrelated
 files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-key-dispatch/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Event priority and interrupt frontend bindings
+
+Moved interrupt state, interrupt/Control-C wrappers and modal-priority host
+operations into codetether-tui-navigation::events bindings. Removed four root
+implementation files while retaining their module names for callers and tests.
+Root declarations select the existing cancellation and modal callbacks.
+
+All fifteen expanded function bodies match after callback qualification; the
+interrupt test source is byte-for-byte unchanged. Shared cancellation, idle-exit
+and modal priority policies are unchanged. Declaration, module/dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
+lock changes were needed. Evidence: artifacts/consolidation-event-priority/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
