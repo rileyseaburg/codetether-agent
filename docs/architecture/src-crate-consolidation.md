@@ -18550,3 +18550,27 @@ in the comparison; its initial failure log is retained. Evidence:
 `artifacts/consolidation-ralph-stage/`. No Cargo, rustc, Python, Rust tests,
 worktree operations or live stages were executed. Compilation and runtime
 behavior remain unverified.
+
+### Ralph story merge and conflict lifecycle
+
+Moved successful-story integration, merge-result routing, conflict prompt and
+resolver coordination, main-workspace verification, completion reporting and
+branch-specific abort/cleanup into `codetether-ralph-merge`. The borrowed merge
+context now belongs to that crate instead of the native parallel module.
+Native bindings retain commit policy, verification, PRD mutation and event/store
+services. Conflict execution binds the same shared agent host and limits.
+
+The original behavior is preserved for ordinary successful merges, verification
+failure, resolver success/failure, non-conflict aborts, unresolved merge states
+and stories without worktrees. In particular, worktree cleanup and event/store
+reporting remain in their original branches and sequence. Removed the obsolete
+native resolver wrapper and parallel merge-context module after their callers
+moved.
+
+Validation: complete comparisons of all twelve merge/conflict handler bodies,
+borrowed-context fields, native callback mappings and entrypoint signature,
+resolver binding, unchanged commit/verification/worktree services, lexical
+module reachability, dependency-cycle checks, file-size ratchet, whitespace and
+direct formatting checks. Evidence: `artifacts/consolidation-ralph-merge/`.
+No Cargo, rustc, Python, Rust tests, live merges or verification commands ran;
+compilation and runtime behavior remain unverified.

@@ -1,0 +1,17 @@
+[package]
+name = "codetether-ralph-merge"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Ralph story merge, conflict resolution and completion reporting"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-ralph-agent = { path = "../codetether-ralph-agent", version = "0.1.0" }
+codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }
+codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
+tracing = "0.1"

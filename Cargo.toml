@@ -120,6 +120,7 @@ members = [
     "crates/codetether-ralph-sequential",
     "crates/codetether-ralph-task",
     "crates/codetether-ralph-stage",
+    "crates/codetether-ralph-merge",
     "crates/codetether-swarm-core",
     "crates/codetether-swarm-orchestrator",
     "crates/codetether-swarm-k8s",
@@ -665,6 +666,7 @@ codetether-ralph-agent = { path = "crates/codetether-ralph-agent", version = "0.
 codetether-ralph-sequential = { path = "crates/codetether-ralph-sequential", version = "0.1.0" }
 codetether-ralph-task = { path = "crates/codetether-ralph-task", version = "0.1.0" }
 codetether-ralph-stage = { path = "crates/codetether-ralph-stage", version = "0.1.0" }
+codetether-ralph-merge = { path = "crates/codetether-ralph-merge", version = "0.1.0" }
 codetether-benchmark = { path = "crates/codetether-benchmark", version = "0.1.0" }
 codetether-github-pr = { path = "crates/codetether-github-pr", version = "0.1.0" }
 codetether-crash = { path = "crates/codetether-crash", version = "0.1.0" }

@@ -1710,6 +1710,7 @@ dependencies = [
  "codetether-question-tool",
  "codetether-ralph-agent",
  "codetether-ralph-sequential",
+ "codetether-ralph-merge",
  "codetether-ralph-stage",
  "codetether-ralph-task",
  "codetether-ralph-core",
@@ -7330,6 +7331,20 @@ dependencies = [
  "codetether-worktree",
  "futures",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-ralph-merge"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-bus-core",
+ "codetether-provider-core",
+ "codetether-ralph-agent",
+ "codetether-ralph-core",
+ "codetether-worktree",
  "tracing",
 ]
 

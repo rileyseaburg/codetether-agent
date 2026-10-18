@@ -5,6 +5,5 @@
 use super::*;
 mod driver;
 mod host;
-pub(super) mod parallel_result_types;
 mod scheduling_parallel;
 mod stage_host;
