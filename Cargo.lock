@@ -1278,6 +1278,7 @@ dependencies = [
  "codetether-native-ralph",
  "codetether-native-recall",
  "codetether-native-swarm",
+ "codetether-native-proactive",
  "codetether-native-agent",
  "codetether-native-server",
  "codetether-native-cognition",
@@ -3896,6 +3897,21 @@ dependencies = [
  "codetether-worktree-lease",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "codetether-native-proactive"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-context-policy",
+ "codetether-prepared-context",
+ "codetether-proactive-context",
+ "codetether-proactive-worker",
+ "codetether-provider-core",
+ "codetether-session-store",
+ "serde_json",
 ]
 
 [[package]]

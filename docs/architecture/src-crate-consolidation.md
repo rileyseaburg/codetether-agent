@@ -26200,3 +26200,24 @@ index module rather than the session module. The adapter now imports the explici
 crate::session::Session path. This is a source-level correction; the earlier
 structural/token audits did not establish Rust name resolution or compilation.
 No Cargo, rustc, Python, compilation or runtime tests ran.
+
+### Native proactive context service ownership
+
+Moved proactive worker launch, prepared-index lookup, validated sidecar paths,
+transactional cursor access and projection commits into
+codetether-native-proactive. Its lifecycle, store and worker modules retain the
+existing shared runtime and persistence operations. The root supplies only
+message-window consumption and normal bounded tail loading, alongside its
+existing proactive source contract. Root store/worker adapter files are removed.
+
+Static comparisons preserve former macro-generated store and worker bodies,
+including session identity validation, rlm sidecar paths, cursor commit result
+mapping, configured tail window and registration/removal order. Both proactive
+and recall session bindings now use explicit crate::session::Session imports;
+the recall correction was committed separately as e94a7d458. Module/dependency
+scans cover 727 roots and 613 crates with no missing modules, cycles or undeclared
+dependencies. Declaration, standalone formatting, file-limit and whitespace
+checks pass. Only the new package/root dependency are staged in Cargo.lock;
+unrelated working files remain unchanged. Evidence is retained in
+artifacts/consolidation-native-proactive/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full workspace consolidation remains active and incomplete.
