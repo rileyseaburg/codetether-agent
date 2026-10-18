@@ -70,3 +70,6 @@ pub mod forage;
 
 /// Worker swarm limits, strategy and model configuration.
 pub mod swarm_setup;
+
+/// Worker startup identity, workspace parsing and processing-set state.
+pub mod initialization;

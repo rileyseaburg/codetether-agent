@@ -16229,3 +16229,19 @@ Full workspace consolidation remains active.
   addition and whitespace. Evidence: `artifacts/consolidation-worker-scope/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker startup policies
+
+- Moved workspace-list parsing, worker identity binding and processing-set
+  construction into `codetether-a2a-worker-core::initialization`.
+- Moved the worker auto-approval/access-mode mapping and both existing tests
+  into `codetether-config::a2a_runtime`; the native override application remains
+  unchanged. This moves existing policy without widening or narrowing access.
+- Preserved workspace ordering/trimming and current-directory panic behavior,
+  provenance fallback names, async mutex state and approval mapping.
+- Verification: complete helper-body comparisons, processing construction,
+  exact mapping/test comparisons, unchanged native runtime builder and startup,
+  module/dependency graphs, direct rustfmt, file budgets and diff whitespace.
+  No dependencies changed. Evidence: `artifacts/consolidation-worker-initialization/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

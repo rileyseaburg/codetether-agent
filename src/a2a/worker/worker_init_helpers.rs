@@ -4,11 +4,7 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use crate::{
-    bus::AgentBus,
-    cli::A2aArgs,
-    config::{AccessMode, Config},
-};
+use crate::{bus::AgentBus, cli::A2aArgs, config::Config};
 
 use super::{WorkerTaskRuntime, normalize_max_concurrent_tasks, parse_auto_approve, task_timeline};
 
@@ -25,42 +21,7 @@ pub(super) fn apply_auto_approve_access_mode(args: &A2aArgs) {
     let access_mode = auto_approve_access_mode(&args.auto_approve);
     Config::apply_process_access_mode_override(access_mode);
 }
-
-/// Map a worker auto-approve policy onto the equivalent runtime access mode.
-///
-/// Only the unattended `all` policy widens the access mode; `safe` and `none`
-/// leave the configured value untouched so their prompts still apply.
-pub(super) fn auto_approve_access_mode(auto_approve: &str) -> Option<AccessMode> {
-    match auto_approve.trim() {
-        "all" => Some(AccessMode::Full),
-        _ => None,
-    }
-}
-
-#[cfg(test)]
-mod auto_approve_access_mode_tests {
-    use super::auto_approve_access_mode;
-    use crate::config::AccessMode;
-
-    #[test]
-    fn unattended_all_policy_grants_full_access() {
-        assert!(matches!(
-            auto_approve_access_mode("all"),
-            Some(AccessMode::Full)
-        ));
-        assert!(matches!(
-            auto_approve_access_mode(" all "),
-            Some(AccessMode::Full)
-        ));
-    }
-
-    #[test]
-    fn narrower_policies_keep_configured_access_mode() {
-        assert!(auto_approve_access_mode("safe").is_none());
-        assert!(auto_approve_access_mode("none").is_none());
-        assert!(auto_approve_access_mode("").is_none());
-    }
-}
+pub(super) use codetether_config::a2a_runtime::auto_approve_access_mode;
 
 pub(super) fn build_task_runtime(
     args: &A2aArgs,
@@ -86,25 +47,7 @@ pub(super) fn build_task_runtime(
         workspace_ids: Vec::new(),
     }
 }
-
 pub(super) fn parse_codebases(args: &A2aArgs) -> Vec<String> {
-    args.workspaces
-        .as_deref()
-        .map(|items| {
-            items
-                .split(',')
-                .map(|item| item.trim().to_string())
-                .collect()
-        })
-        .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()])
+    codetether_a2a_worker_core::initialization::parse_codebases(args.workspaces.as_deref())
 }
-
-pub(super) fn resolve_name(configured: Option<&str>) -> String {
-    match configured {
-        Some(name) => crate::provenance::bind_runtime_agent_identity(name),
-        None => crate::provenance::ensure_runtime_agent_identity(&format!(
-            "codetether-{}",
-            std::process::id()
-        )),
-    }
-}
+pub(super) use codetether_a2a_worker_core::initialization::resolve_name;

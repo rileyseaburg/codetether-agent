@@ -26,3 +26,6 @@ pub async fn configured_model() -> Option<String> {
         None => async_load_config_model().await,
     }
 }
+
+mod worker_access;
+pub use worker_access::auto_approve_access_mode;
