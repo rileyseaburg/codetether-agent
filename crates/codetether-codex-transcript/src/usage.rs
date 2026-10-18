@@ -1,6 +1,6 @@
 use super::payloads::CodexTokenEnvelope;
-use crate::provider::Usage;
 use anyhow::Result;
+use codetether_provider_core::Usage;
 use serde_json::Value;
 
 pub(crate) fn parse_event_msg_usage(payload: Value) -> Result<Option<Usage>> {

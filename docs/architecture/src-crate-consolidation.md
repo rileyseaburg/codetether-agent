@@ -9023,3 +9023,23 @@ checks passed; the largest crate file has 41 code lines. Evidence is in
 `artifacts/consolidation-codex-discovery/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. Full consolidation remains
 active.
+
+### Dedicated Codex transcript crate
+
+Moved full JSONL transcript parsing, message/role conversion, reasoning
+extraction, tool arguments/results, usage projection and the 4,000-message
+FIFO retention budget into `crates/codetether-codex-transcript`. Twenty-four
+modules separate payload schemas, record dispatch, accumulated state and
+finalization. Native parsing now maps the shared result into Session and
+adds the existing provenance, summary index and default runtime fields.
+The native response, budget, payload, title and usage implementations were
+removed, along with the now-unused native record-normalization facades.
+
+Thirty-three static checks cover moved conversion bodies, schemas, retention
+logic, line processing, record dispatch, directory resolution, native field
+mapping and unchanged integration sources. Two budget tests moved unchanged;
+three native import/discovery tests remain. Module/dependency graphs, file
+budgets and whitespace checks passed; the largest crate file has 39 code
+lines. Evidence is in `artifacts/consolidation-codex-transcript/`. Compilation
+and runtime tests were not run. No Cargo, rustc or Python commands ran.
+Full workspace consolidation remains active.

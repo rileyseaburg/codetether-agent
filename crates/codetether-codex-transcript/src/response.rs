@@ -1,11 +1,14 @@
 mod capture;
 mod message;
+mod output;
+mod role;
 mod tool;
+mod value;
 
 use super::payloads::CodexReasoningPayload;
 use super::title::extract_reasoning_text;
-use crate::provider::{ContentPart, Message, Role};
 use anyhow::Result;
+use codetether_provider_core::{ContentPart, Message, Role};
 use serde_json::Value;
 
 pub(crate) fn parse_response_item(
@@ -19,7 +22,7 @@ pub(crate) fn parse_response_item(
     match item_type {
         "message" => message::parse_message_item(payload, first_user_text),
         "function_call" => tool::parse_function_call_item(payload),
-        "function_call_output" => tool::parse_function_output_item(payload),
+        "function_call_output" => output::parse_function_output_item(payload),
         "reasoning" => parse_reasoning_item(payload),
         _ => Ok(None),
     }

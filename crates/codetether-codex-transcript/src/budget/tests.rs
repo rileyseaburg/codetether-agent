@@ -1,7 +1,7 @@
 //! Tests for the [`BoundedMessages`](super::BoundedMessages) import budget.
 
 use super::*;
-use crate::provider::{ContentPart, Role};
+use codetether_provider_core::{ContentPart, Role};
 use std::path::Path;
 
 fn msg(text: &str) -> Message {

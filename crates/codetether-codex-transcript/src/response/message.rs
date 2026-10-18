@@ -1,15 +1,15 @@
-use crate::provider::{ContentPart, Message, Role};
 use anyhow::Result;
+use codetether_provider_core::{ContentPart, Message, Role};
 use serde_json::Value;
 
-use crate::session::codex_import::payloads::CodexResponseMessagePayload;
+use crate::payloads::CodexResponseMessagePayload;
 
 pub(super) fn parse_message_item(
     payload: Value,
     first_user_text: &mut Option<String>,
 ) -> Result<Option<Message>> {
     let payload: CodexResponseMessagePayload = serde_json::from_value(payload)?;
-    let Some(role) = map_role(&payload.role) else {
+    let Some(role) = super::role::map_role(&payload.role) else {
         return Ok(None);
     };
     let mut content = Vec::new();
@@ -40,13 +40,4 @@ pub(super) fn parse_message_item(
     }
 
     Ok((!content.is_empty()).then_some(Message { role, content }))
-}
-
-fn map_role(role: &str) -> Option<Role> {
-    match role {
-        "user" => Some(Role::User),
-        "assistant" => Some(Role::Assistant),
-        "developer" => Some(Role::Developer),
-        _ => None,
-    }
 }

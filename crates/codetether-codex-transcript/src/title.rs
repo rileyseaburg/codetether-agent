@@ -1,5 +1,4 @@
 use super::payloads::CodexReasoningPayload;
-pub(crate) use codetether_codex_discovery::derive_title_from_text;
 use serde_json::Value;
 
 pub(crate) fn extract_reasoning_text(payload: &CodexReasoningPayload) -> Option<String> {

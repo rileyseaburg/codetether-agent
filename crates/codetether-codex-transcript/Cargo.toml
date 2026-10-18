@@ -1,0 +1,18 @@
+[package]
+name = "codetether-codex-transcript"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bounded Codex transcript parsing and provider message conversion"
+
+[dependencies]
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+codetether-codex-discovery = { path = "../codetether-codex-discovery", version = "0.1.0" }
+codetether-codex-records = { path = "../codetether-codex-records", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-session-title = { path = "../codetether-session-title", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
