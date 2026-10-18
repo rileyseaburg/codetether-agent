@@ -86,7 +86,9 @@ async fn dispatch(cli: Cli) -> anyhow::Result<()> {
                     )
                     .await
                 }
-                _ => mcp_cli::execute(args, resolved_command).await,
+                _ => {
+                    codetether_mcp_cli::execute::<mcp_cli::NativeHost>(args, resolved_command).await
+                }
             }
         }
         Some(Command::Stats(args)) => codetether_telemetry_cli::execute(args),

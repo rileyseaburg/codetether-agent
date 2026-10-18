@@ -23591,3 +23591,22 @@ or cycles. Direct rustfmt, file-size limits and whitespace checks passed. The
 working lockfile and unrelated A2A edits remain unchanged. Evidence:
 artifacts/consolidation-root-cli/. No Cargo, rustc, Python, compilation or runtime
 tests ran. Full consolidation remains active.
+
+### MCP client built-in operations moved into the MCP CLI crate
+
+Moved local registry/server construction, tool discovery and direct tool calls
+from src/mcp_cli.rs into codetether-mcp-cli::application::ApplicationHost. The
+native file now selects the existing registry, policy-bound server and authorized
+client types. Main dispatch calls the shared executor directly. Each operation
+still creates a fresh local server, registers its tools and invokes the same
+catalog operation. No dependencies or lockfile changes were needed.
+
+Static body comparisons preserve both moved methods after explicit generic type
+substitutions. Native type bindings and dispatch arguments remain unchanged.
+The initial dispatch comparison expected an optional comma after a block match
+arm; that expectation was corrected, with the initial output retained. Module
+and dependency scans cover 691 roots and 571 crates without missing modules or
+cycles. Direct rustfmt, source file limits and whitespace checks passed. The
+working lockfile and unrelated A2A edits remain unchanged. Evidence:
+artifacts/consolidation-mcp-client-host/. No Cargo, rustc, Python, compilation,
+tests or MCP operations ran. Full consolidation remains active.

@@ -1,6 +1,7 @@
 //! MCP client command parsing, execution and presentation.
 //!
 //! Host provides built-in tool access and an authorized external client.
+pub mod application;
 mod call;
 mod connect;
 mod list_tools;
