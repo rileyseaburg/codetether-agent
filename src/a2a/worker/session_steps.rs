@@ -4,7 +4,7 @@ use crate::{provider::Provider, session::Session};
 use anyhow::Result;
 use std::sync::Arc;
 
-mod session_complete;
+use codetether_native_worker::completion::accounted as session_complete;
 mod session_context;
 #[cfg(test)]
 mod session_control_tests;

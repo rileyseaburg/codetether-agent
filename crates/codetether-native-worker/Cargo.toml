@@ -28,3 +28,5 @@ codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
 codetether-native-runtime-policy = { path = "../codetether-native-runtime-policy", version = "0.1.0" }
 codetether-a2a-worker-clone = { path = "../codetether-a2a-worker-clone", version = "0.1.0" }
 codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-native-context = { path = "../codetether-native-context", version = "0.1.0" }
+codetether-native-goals = { path = "../codetether-native-goals", version = "0.1.0" }

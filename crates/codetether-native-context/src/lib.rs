@@ -18,3 +18,6 @@ pub use derive::derive_context;
 pub use dispatch::derive_with_policy;
 pub use incremental::derive_incremental;
 pub use reset::derive_reset;
+
+/// Session operations required for native context requests and completion.
+pub use codetether_context_request::Host as ContextHost;

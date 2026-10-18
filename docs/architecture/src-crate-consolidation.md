@@ -25775,3 +25775,23 @@ rustfmt and whitespace checks pass. Only the new package/root dependency are
 staged in Cargo.lock; unrelated dirty files remain unchanged. Evidence:
 artifacts/consolidation-native-context/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### Native worker completion and goal accounting
+
+Moved worker context-fallback completion, initial/retry provider ownership and
+accounted-completion adapters into codetether-native-worker::completion. The
+native context crate exposes its existing context-host trait for this binding.
+Accounted completion accepts the shared worker context and transcript host,
+using native goal APIs for prompt composition and usage recording. Four root
+adapter files are removed; existing worker helper names and session-step calls
+resolve through re-exports. The compact-schema retry integration test is unchanged.
+
+Static comparisons preserve fallback options including the 8192-token limit,
+initial/retry completion arguments, model lookup, prompt composition and usage
+accounting. The session identity accessor is the existing context-host contract.
+Module/dependency scans cover 719 roots and 605 crates without missing modules,
+cycles or undeclared direct dependencies. Declaration, file-limit, direct
+rustfmt and whitespace checks pass. Only two worker dependencies are added to
+the staged lockfile; unrelated files remain unchanged. Evidence:
+artifacts/consolidation-worker-completion/. No Cargo, rustc, Python,
+compilation or tests ran. Full consolidation remains active.

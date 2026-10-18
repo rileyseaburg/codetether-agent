@@ -3,9 +3,9 @@ use super::*;
 use async_trait::async_trait;
 use codetether_a2a_worker_core::session_protocol::completion::CompletionHost;
 #[async_trait]
-impl CompletionHost for ApplicationHost<'_> {
+impl<S: ContextHost> CompletionHost for ApplicationHost<'_, S> {
     async fn complete_initial(&mut self, tools: &[ToolDefinition]) -> Result<CompletionResponse> {
-        crate::session::context::complete_with_context(
+        codetether_native_context::complete_with_context(
             Arc::clone(&self.provider),
             self.session,
             self.model,
@@ -16,7 +16,7 @@ impl CompletionHost for ApplicationHost<'_> {
         .await
     }
     async fn complete_retry(self, tools: &[ToolDefinition]) -> Result<CompletionResponse> {
-        crate::session::context::complete_with_context(
+        codetether_native_context::complete_with_context(
             self.provider,
             self.session,
             self.model,

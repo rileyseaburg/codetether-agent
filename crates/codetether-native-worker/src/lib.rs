@@ -54,3 +54,6 @@ pub mod claimed;
 
 /// Worker session preparation with application persistence and metadata access.
 pub mod preparation;
+
+/// Context-aware worker completion, compact-schema fallback and goal accounting.
+pub mod completion;
