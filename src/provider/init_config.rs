@@ -6,11 +6,11 @@ impl ProviderRegistry {
     /// # Errors
     /// Returns the first configured provider construction failure.
     pub async fn from_config(config: &crate::config::Config) -> Result<Self> {
-        let mut registry = Self::new();
-        codetether_provider_factory::config::populate_from_config::<
-            super::init_dispatch::host::Native,
-        >(&mut registry, config)
-        .await?;
-        Ok(registry)
+        Ok(Self {
+            inner: codetether_provider_registry::ProviderRegistry::from_config::<
+                super::init_dispatch::host::Native,
+            >(config)
+            .await?,
+        })
     }
 }

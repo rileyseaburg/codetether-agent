@@ -1,0 +1,15 @@
+[package]
+name = "codetether-provider-registry"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Instrumented provider collection, construction and model resolution"
+
+[dependencies]
+anyhow = "1.0.104"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-provider-factory = { path = "../codetether-provider-factory", version = "0.1.0" }
+codetether-provider-metrics = { path = "../codetether-provider-metrics", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }

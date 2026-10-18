@@ -21,15 +21,12 @@ use std::sync::Arc;
 /// Registry of available providers.
 #[derive(Clone)]
 pub struct ProviderRegistry {
-    pub(crate) providers: HashMap<String, Arc<dyn Provider>>,
+    pub(crate) inner: codetether_provider_registry::ProviderRegistry,
 }
 
 impl std::fmt::Debug for ProviderRegistry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ProviderRegistry")
-            .field("provider_count", &self.providers.len())
-            .field("providers", &self.providers.keys().collect::<Vec<_>>())
-            .finish()
+        std::fmt::Debug::fmt(&self.inner, f)
     }
 }
 
@@ -45,7 +42,7 @@ impl ProviderRegistry {
     /// ```
     pub fn new() -> Self {
         Self {
-            providers: HashMap::new(),
+            inner: codetether_provider_registry::ProviderRegistry::new(),
         }
     }
 
@@ -61,20 +58,16 @@ impl ProviderRegistry {
     /// # }
     /// ```
     pub fn register(&mut self, provider: Arc<dyn Provider>) {
-        let name = provider.name().to_string();
-        let wrapped = super::metrics::MetricsProvider::wrap(provider);
-        self.providers.insert(name, wrapped);
+        self.inner.register(provider);
     }
 
     /// Build a registry directly from provider secret records.
     pub fn from_provider_secrets_map(secrets: &HashMap<String, ProviderSecrets>) -> Self {
-        let mut registry = Self::new();
-        for (provider_id, provider_secrets) in secrets {
-            if let Some(provider) = super::init_dispatch::dispatch(provider_id, provider_secrets) {
-                registry.register(provider);
-            }
+        Self {
+            inner: codetether_provider_registry::ProviderRegistry::from_provider_secrets_map::<
+                super::init_dispatch::host::Native,
+            >(secrets),
         }
-        registry
     }
 
     /// Get a provider by name.
@@ -87,7 +80,7 @@ impl ProviderRegistry {
     /// assert!(registry.get("openai").is_none());
     /// ```
     pub fn get(&self, name: &str) -> Option<Arc<dyn Provider>> {
-        self.providers.get(name).cloned()
+        self.inner.get(name)
     }
 
     /// List all registered provider names.
@@ -100,7 +93,7 @@ impl ProviderRegistry {
     /// assert!(registry.list().is_empty());
     /// ```
     pub fn list(&self) -> Vec<&str> {
-        self.providers.keys().map(|s| s.as_str()).collect()
+        self.inner.list()
     }
 
     /// Resolve a model string to a provider and model name.
@@ -119,7 +112,7 @@ impl ProviderRegistry {
     /// assert!(registry.resolve_model("gpt-4o").is_err());
     /// ```
     pub fn resolve_model(&self, model_str: &str) -> Result<(Arc<dyn Provider>, String)> {
-        codetether_provider_core::routing::resolve_model(&self.providers, model_str)
+        self.inner.resolve_model(model_str)
     }
 }
 

@@ -14969,3 +14969,24 @@ Full workspace consolidation remains active.
   are staged in Cargo.lock. No environment credential probing, provider startup,
   Vault/network access, Cargo, rustc or Rust tests ran. Full consolidation remains
   unfinished.
+
+### Instrumented provider registry ownership
+
+- Moved provider-map ownership, registration instrumentation, lookup, model
+  resolution and construction from secret/config/Vault inputs into the dedicated
+  codetether-provider-registry crate. Modules separate creation, registration,
+  lookup, factory population and application construction.
+- Native ProviderRegistry is a thin wrapper retaining local trait-implementation
+  compatibility. It delegates methods and Debug formatting to the shared type;
+  the process-wide cache accessor remains unchanged in the native layer.
+- Registration still reads the original name, wraps with MetricsProvider once,
+  then inserts into the same HashMap representation. Factory population now
+  operates directly on the shared registry through its Registry implementation.
+- Verification: eight static check groups covered six registry methods,
+  Debug/Default, native forwarding, config/Vault construction, unchanged cache,
+  factory instrumentation and collection access. Module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-provider-registry/.
+- Staged lockfile changes contain only the new crate and root dependency.
+  No provider construction, network access, Cargo, rustc or Rust tests ran.
+  Full workspace consolidation remains unfinished.

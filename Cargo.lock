@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-provider-registry",
  "codetether-provider-factory",
  "codetether-provider-local-cuda",
  "codetether-forage-interactive",
@@ -7370,6 +7371,18 @@ dependencies = [
  "codetether-config",
  "futures",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-provider-registry"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
+ "codetether-provider-factory",
+ "codetether-provider-metrics",
+ "codetether-secrets",
+ "codetether-config",
 ]
 
 [[package]]

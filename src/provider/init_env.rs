@@ -3,13 +3,13 @@ use super::{Provider, ProviderRegistry};
 use std::sync::Arc;
 impl codetether_provider_factory::Registry for ProviderRegistry {
     fn contains(&self, name: &str) -> bool {
-        self.providers.contains_key(name)
+        self.inner.contains(name)
     }
     fn register(&mut self, provider: Arc<dyn Provider>) {
         ProviderRegistry::register(self, provider);
     }
     fn len(&self) -> usize {
-        self.providers.len()
+        self.inner.len()
     }
 }
 /// Register missing providers from environment variables in shared policy order.

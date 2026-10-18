@@ -7,9 +7,12 @@ impl ProviderRegistry {
     /// # Errors
     /// Returns Vault provider discovery failures.
     pub async fn from_vault() -> Result<Self> {
-        let mut registry = Self::new();
-        codetether_provider_factory::vault::populate_from_vault::<super::init_dispatch::host::Native>(&mut registry).await?;
-        Ok(registry)
+        Ok(Self {
+            inner: codetether_provider_registry::ProviderRegistry::from_vault::<
+                super::init_dispatch::host::Native,
+            >()
+            .await?,
+        })
     }
 
     /// Process-wide cached [`from_vault`](Self::from_vault) registry.
