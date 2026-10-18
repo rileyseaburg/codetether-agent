@@ -24,21 +24,22 @@ pub(crate) async fn execute(
     if app.state.processing {
         return;
     }
-    let Some(prompt) = app.state.pending_stream_reconnect.take() else {
+    let Some(prompt) = app.state.stream_recovery.pending_stream_reconnect.take() else {
         return;
     };
     let Some(registry) = registry.as_ref() else {
-        app.state.pending_stream_reconnect = Some(prompt);
+        app.state.stream_recovery.pending_stream_reconnect = Some(prompt);
         return;
     };
     let Some(session) = slot.take_for_prompt() else {
-        app.state.pending_stream_reconnect = Some(prompt);
+        app.state.stream_recovery.pending_stream_reconnect = Some(prompt);
         return;
     };
     push_reconnect_banner(app);
     app.state.processing = true;
     // Backoff: 10s / 20s / 40s for attempts 1 / 2 / 3.
-    let secs = 10 * 2u64.saturating_pow(app.state.stream_reconnect_count.saturating_sub(1));
+    let secs =
+        codetether_stream_recovery::backoff_secs(app.state.stream_recovery.stream_reconnect_count);
     tokio::time::sleep(Duration::from_secs(secs)).await;
     app.state.begin_request_timing();
     app.state.main_inflight_prompt = Some(prompt.clone());

@@ -1,3 +1,4 @@
+//! Existing error classification regression coverage.
 use super::is_stream_disconnect;
 
 #[test]

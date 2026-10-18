@@ -12,10 +12,8 @@
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
-use super::stream_disconnect::is_stream_disconnect;
-
 /// Maximum same-model reconnect attempts before giving up.
-pub const MAX_RECONNECT_ATTEMPTS: u32 = 3;
+pub use codetether_stream_recovery::MAX_RECONNECT_ATTEMPTS;
 
 /// Schedule a stream-reconnect retry if the error is a transient disconnect
 /// and the budget has not been exhausted.
@@ -23,34 +21,23 @@ pub const MAX_RECONNECT_ATTEMPTS: u32 = 3;
 /// Sets `app.state.pending_stream_reconnect` to the prompt text so the
 /// execute path can re-submit it on the next notice-branch iteration.
 pub(crate) fn schedule(app: &mut App, error: &str) {
-    if !is_stream_disconnect(error) {
-        return;
-    }
-    if app.state.stream_reconnect_count >= MAX_RECONNECT_ATTEMPTS {
-        app.state.stream_reconnect_count = 0;
-        return;
-    }
-    let prompt = app.state.main_inflight_prompt.clone();
-    let Some(prompt) = prompt else { return };
-    app.state.stream_reconnect_count += 1;
-    app.state.pending_stream_reconnect = Some(prompt);
+    app.state
+        .stream_recovery
+        .schedule(error, &app.state.main_inflight_prompt);
 }
 
 /// Reset the reconnect counter when a turn completes successfully.
 pub(crate) fn reset_on_success(app: &mut App) {
-    app.state.stream_reconnect_count = 0;
-    app.state.pending_stream_reconnect = None;
+    app.state.stream_recovery.reset_on_success();
 }
 
 /// Push a visible reconnect banner to the chat.
 pub(crate) fn push_reconnect_banner(app: &mut App) {
-    let attempt = app.state.stream_reconnect_count;
-    let msg = format!(
-        "⚡ Stream disconnected — reconnecting (attempt {attempt}/{MAX_RECONNECT_ATTEMPTS})…"
-    );
+    let attempt = app.state.stream_recovery.stream_reconnect_count;
+    let msg = codetether_stream_recovery::reconnect_banner(attempt);
     app.state
         .messages
         .push(ChatMessage::new(MessageType::System, msg));
-    app.state.status = format!("Reconnecting ({attempt}/{MAX_RECONNECT_ATTEMPTS})…");
+    app.state.status = codetether_stream_recovery::reconnect_status(attempt);
     app.state.scroll_to_bottom();
 }

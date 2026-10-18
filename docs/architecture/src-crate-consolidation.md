@@ -12412,3 +12412,21 @@ Full workspace consolidation remains active.
 - Only the new dependency and package record were staged from Cargo.lock.
   No terminal lifecycle functions or panic hooks were executed during checks.
   No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.
+
+### Stream recovery policy extraction
+
+- Moved disconnect/permanent-error classification, reconnect count and pending
+  prompt ownership, scheduling/reset rules, backoff calculation and progress
+  text into dependency-free codetether-stream-recovery. Eight modules contain
+  at most 29 code lines, including the existing classification tests.
+- Native code retains session ownership, prompt submission, sleeping, chat
+  messages and redraw behavior. Existing scheduling tests now read the shared
+  owner. Exhausting the retry count preserves the original pending-prompt
+  behavior; this extraction does not alter the retry policy.
+- Verification: 18 source comparisons/checks passed for classification markers,
+  guards and mutations, text, backoff, native execution, defaults and existing
+  tests. Module/dependency checks, direct rustfmt, file limits and whitespace
+  checks passed. Evidence: artifacts/consolidation-stream-recovery/.
+- Only this crate's dependency and package record were staged from Cargo.lock.
+  No retries, sleeps, Cargo, rustc, compilation or Rust tests were executed.
+  Full workspace consolidation remains incomplete.
