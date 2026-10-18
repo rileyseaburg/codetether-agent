@@ -26,3 +26,6 @@ mod solarized_light;
 mod theme;
 pub use color::ColorDef;
 pub use theme::Theme;
+
+/// Terminal color capability detection and theme fallback conversion.
+pub mod terminal;

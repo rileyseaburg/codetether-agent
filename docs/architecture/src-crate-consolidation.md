@@ -10943,3 +10943,19 @@ Full workspace consolidation remains active.
   Compilation, runtime tests, environment mutation and clipboard/terminal
   operations were not run. No Cargo or rustc commands executed.
 - Full consolidation remains active.
+
+### Terminal theme adaptation consolidation
+
+- Moved `src/tui/theme_utils.rs` implementation into the existing
+  `crates/codetether-theme/src/terminal` owner, colocating terminal capability
+  adaptation with the theme types it transforms.
+- Nine modules separate detection, support queries, validation, fallback
+  selection, indexed and RGB conversion, and tests. Maximum module size is
+  31 code lines. Native `theme_utils` now re-exports the existing public API.
+- Two existing tests moved unchanged in behavior. Sixteen static assertions
+  compare conversion and detection bodies, variants, capability methods,
+  tests, unchanged callers and the unchanged crate manifest.
+- Module reachability, dependency DAG, file-limit and whitespace checks passed.
+  Evidence: `artifacts/consolidation-theme-terminal/`.
+- No dependencies or lockfile edits were required. Compilation and tests were
+  not run; no Cargo or rustc commands executed. Full consolidation stays active.
