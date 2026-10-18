@@ -23386,3 +23386,20 @@ unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-cli-facades/.
 No CLI commands, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Provider facades reference their implementation crates directly
+
+Replaced eight native provider re-export files with direct aliases for Gemini
+Web, GLM-5, Google, Moonshot, OpenRouter, StepFun, Vertex Anthropic and Vertex GLM.
+All fifteen previously exported symbol paths retain their original crate
+prefixes. The GLM endpoint/configuration documentation now lives with the GLM
+implementation. Z.AI, Copilot and local-runtime bindings remain unchanged.
+
+Static comparisons preserve exported targets and GLM implementation tokens;
+all retained endpoint documentation is present in the owning crate. Module and
+dependency scans cover 697 roots and 571 crates with no missing modules or
+cycles. Direct rustfmt, file-size limits and whitespace checks passed. No
+manifest or lockfile changes were needed; unrelated working changes remain
+unchanged. Evidence: artifacts/consolidation-provider-facades/.
+No provider calls, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

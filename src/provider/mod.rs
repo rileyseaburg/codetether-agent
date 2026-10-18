@@ -26,25 +26,25 @@ pub mod codex_reasoning;
 pub mod copilot;
 pub use codetether_provider_deepseek as deepseek;
 mod fallback_policy;
-pub mod gemini_web;
-pub mod glm5;
-pub mod google;
 pub use codetether_provider_core::limits;
+pub use codetether_provider_gemini_web as gemini_web;
+pub use codetether_provider_glm5 as glm5;
+pub use codetether_provider_google as google;
 include!("native_modules.rs");
 pub mod pricing;
 include!("image_modules.rs");
 
 pub mod metrics;
 pub use codetether_model_catalog as models;
-pub mod moonshot;
+pub use codetether_provider_moonshot as moonshot;
 pub use codetether_provider_openai as openai;
 pub mod openai_codex;
-pub mod openrouter;
+pub use codetether_provider_openrouter as openrouter;
 pub mod retry;
-pub mod stepfun;
+pub use codetether_provider_stepfun as stepfun;
 pub mod tetherscript_provider;
-pub mod vertex_anthropic;
-pub mod vertex_glm;
+pub use codetether_provider_vertex_anthropic as vertex_anthropic;
+pub use codetether_provider_vertex_glm as vertex_glm;
 pub mod zai;
 // ── Internal split modules ──────────────────────────────────────────
 
