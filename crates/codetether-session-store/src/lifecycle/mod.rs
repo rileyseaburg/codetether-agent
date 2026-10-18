@@ -15,3 +15,7 @@ pub use latest::last_for_directory_tail;
 pub use load::{load, load_tail};
 pub use path::{session_path, sessions_dir};
 pub use save::save;
+
+/// Application-local persistence host declarations.
+#[doc(hidden)]
+pub mod session_binding;

@@ -24742,3 +24742,20 @@ checks passed. Unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-session-final-apis/. No Cargo, rustc, Python, compiler
 macro expansion, prompts, storage operations or tests ran. Full consolidation
 remains active.
+
+### Native persistence-host implementation moved into the store crate
+
+Moved the seven lifecycle Host methods into session-store, split between loading
+and notification modules. The native persistence module declares the binding
+with its existing eight callback functions. Removed
+session/persistence/lifecycle_host.rs. No dependencies changed.
+
+Static comparisons preserve signatures and method bodies after explicit
+callback substitution, including workspace-versus-global listing selection,
+summary-ID extraction and each notification call. The native callback list is
+compared as a whole. Module/dependency scans cover 693 roots and 574 crates
+without missing modules or cycles. Direct dependency audit, direct rustfmt,
+file limits and whitespace checks passed. Unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-session-persistence-host/. No Cargo,
+rustc, Python, compiler macro expansion, persistence I/O or tests ran. Full
+consolidation remains active.
