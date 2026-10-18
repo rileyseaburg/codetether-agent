@@ -13,14 +13,12 @@
 use clap::Parser;
 use cli::{Cli, Command};
 use codetether_agent::{
-    a2a, benchmark, bus, cli, config, forage, github_pr, indexer, mcp, mux, provider, ralph,
-    server, swarm, tool, tui, worker_server,
+    a2a, benchmark, bus, cli, forage, github_pr, indexer, mcp, mux, provider, ralph, server, swarm,
+    tool, tui, worker_server,
 };
-use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod cleanup_cli;
 mod startup_crash;
-mod startup_vault;
 mod worktree_cli;
 
 mod benchmark_cli;
@@ -36,20 +34,7 @@ async fn main() -> anyhow::Result<()> {
     if let Some(result) = native_cli::early().await {
         return result;
     }
-    // Load local .env for developer workflows (e.g. `cargo run` without exported vars).
-    // Existing process environment still takes precedence over .env values.
-    let _ = dotenvy::dotenv();
-
-    // Harden the process environment so every spawned subprocess (git,
-    // credential helpers, ssh) fails fast instead of prompting on the
-    // terminal (e.g. "Username for 'https://forgejo...':" freezing the TUI).
-    codetether_agent::noninteractive_env::harden();
-
-    // Install process-wide crypto providers before any TLS/JWT usage, then
-    // fail closed if FIPS mode is required (fips build or env) but inactive.
-    codetether_agent::tls::ensure_rustls_crypto_provider();
-    let _ = jsonwebtoken::crypto::aws_lc::DEFAULT_PROVIDER.install_default();
-    codetether_agent::tls::require_fips()?;
+    codetether_cli_startup::environment::initialize()?;
     let cli = Cli::parse();
     if let Some(result) = native_cli::dispatch(&cli.command).await {
         return result;
@@ -60,42 +45,11 @@ async fn main() -> anyhow::Result<()> {
     let is_tui = matches!(&cli.command, Some(Command::Tui(_)) | None);
     let is_git_credential_helper = matches!(&cli.command, Some(Command::GitCredentialHelper(_)));
 
-    // Initialize tracing
-    if is_tui {
-        // For TUI, log to file to avoid corrupting the display
-        let log_dir = config::Config::data_dir()
-            .unwrap_or_else(|| std::path::PathBuf::from("/tmp/codetether-agent"));
-        let _ = std::fs::create_dir_all(&log_dir);
-        let log_file = tui::app::run::open_tui_log(&log_dir);
-
-        if let Some(file) = log_file {
-            tracing_subscriber::registry()
-                .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-                .with(
-                    tracing_subscriber::fmt::layer()
-                        .with_writer(std::sync::Mutex::new(file))
-                        .with_ansi(false),
-                )
-                .init();
-        }
-        // If file creation fails, just don't log
-    } else if is_git_credential_helper {
-        // Git parses credential-helper stdout as a key=value protocol. Do not
-        // install stdout tracing here, or normal startup logs become credentials.
-    } else {
-        // Logs go to STDERR, never stdout. stdout is reserved for program and
-        // protocol output (MCP stdio JSON-RPC, `codetether run` piped into
-        // other tools, etc.); writing logs there corrupts that stream and is
-        // the #1 "codetether pollutes stdout" complaint from agents.
-        tracing_subscriber::registry()
-            .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-            .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
-            .init();
-    }
+    codetether_cli_startup::logging::initialize(is_tui, is_git_credential_helper);
 
     startup_crash::initialize(is_tui).await;
 
-    startup_vault::initialize(&cli.command, is_tui, is_git_credential_helper).await;
+    codetether_cli_startup::vault::initialize(&cli.command, is_tui, is_git_credential_helper).await;
 
     let mcp_control_plane_url = cli.server.clone();
     let mcp_control_plane_token = cli.token.clone();

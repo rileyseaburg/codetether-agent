@@ -1,8 +1,20 @@
 //! Decide whether the selected command needs the shared provider secrets manager.
 
-use codetether_agent::{cli::Command, secrets};
+use codetether_cli_command::Command;
+use codetether_secrets as secrets;
 
-pub(crate) async fn initialize(command: &Option<Command>, is_tui: bool, git_helper: bool) {
+/// Initialize configured provider secrets when the selected command needs them.
+/// # Arguments
+/// Receives the parsed command, TUI mode and credential-helper mode.
+/// # Returns
+/// Skips excluded commands or installs the configured secrets manager.
+/// # Examples
+/// ```no_run
+/// async fn startup() {
+///     codetether_cli_startup::vault::initialize(&None, true, false).await;
+/// }
+/// ```
+pub async fn initialize(command: &Option<Command>, is_tui: bool, git_helper: bool) {
     if is_tui
         || git_helper
         || matches!(

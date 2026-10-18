@@ -1,0 +1,22 @@
+[package]
+name = "codetether-cli-startup"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "CLI environment preparation, logging and optional service initialization"
+
+[dependencies]
+anyhow = "1"
+codetether-cli-command = { path = "../codetether-cli-command", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-crash = { path = "../codetether-crash", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+codetether-tls = { path = "../codetether-tls", version = "0.1.0" }
+dotenvy = "0.15"
+jsonwebtoken = { version = "11.0.0", features = ["aws_lc_rs"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[dev-dependencies]
+tempfile = "3"

@@ -18118,3 +18118,27 @@ parsers, native watch test, canonical request executor and form-key handling;
 module/dependency graph checks, changed-source file limits and whitespace.
 Evidence: `artifacts/consolidation-spawn-command/`. No agent spawn, Cargo,
 rustc, Python or Rust tests were executed; compilation remains unverified.
+
+### CLI process and optional-service startup
+
+Created `codetether-cli-startup` with separate environment, logging, crash and
+Vault modules. Environment startup owns dotenv loading, the unchanged child
+prompt defaults, TLS/JWT provider installation and FIPS enforcement. Logging
+owns the original TUI-file/credential-helper/stderr selection and append-only
+log opening. Crash startup owns config fallback and consent selection while
+accepting the native application version/memory-guard callback. Vault startup
+owns the exact original command exclusions and configured-manager handling.
+
+`src/main.rs` now invokes those phases in the original order; its native early
+command paths and full dispatch remain unchanged. The redundant native Vault
+startup file was removed. `noninteractive_env.rs` and the TUI log module retain
+compatibility exports, and the existing append-preservation test moved with
+the log implementation. The binary retains only its crash callback binding.
+
+Validation: full-main-body comparison apart from explicit delegation sites;
+complete comparisons of environment defaults, phase bodies and log opening;
+unchanged native early dispatcher, TLS implementation and memory-guard/crash
+bindings; module/dependency graph checks, source-size ratchet and whitespace.
+Evidence: `artifacts/consolidation-cli-startup/`. Startup routines were not
+executed during validation. No Cargo, rustc or Python ran; compilation and Rust
+tests remain unverified.

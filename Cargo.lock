@@ -1340,6 +1340,7 @@ dependencies = [
  "codetether-rlm-cli",
  "codetether-rlm-selection",
  "codetether-cli-command",
+ "codetether-cli-startup",
  "codetether-cli-options",
  "codetether-server-status",
  "codetether-plugin-http",
@@ -2164,6 +2165,23 @@ dependencies = [
  "codetether-bus-core",
  "codetether-tool-core",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-cli-startup"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-cli-command",
+ "codetether-config",
+ "codetether-crash",
+ "codetether-secrets",
+ "codetether-tls",
+ "dotenvy",
+ "jsonwebtoken",
+ "tempfile",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

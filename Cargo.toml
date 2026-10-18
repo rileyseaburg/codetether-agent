@@ -144,6 +144,7 @@ members = [
     "crates/codetether-session-http",
     "crates/codetether-cli-options",
     "crates/codetether-cli-command",
+    "crates/codetether-cli-startup",
     "crates/codetether-moltbook-cli",
     "crates/codetether-telemetry-cli",
     "crates/codetether-okr-cli",
@@ -933,6 +934,7 @@ codetether-session-recovery = { path = "crates/codetether-session-recovery", ver
 codetether-session-http = { path = "crates/codetether-session-http", version = "0.1.0" }
 codetether-cli-options = { path = "crates/codetether-cli-options", version = "0.1.0" }
 codetether-cli-command = { path = "crates/codetether-cli-command", version = "0.1.0" }
+codetether-cli-startup = { path = "crates/codetether-cli-startup", version = "0.1.0" }
 codetether-moltbook-cli = { path = "crates/codetether-moltbook-cli", version = "0.1.0" }
 codetether-telemetry-cli = { path = "crates/codetether-telemetry-cli", version = "0.1.0" }
 codetether-okr-cli = { path = "crates/codetether-okr-cli", version = "0.1.0" }
