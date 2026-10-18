@@ -12,3 +12,4 @@ codetether-lsp-core = { path = "../codetether-lsp-core", version = "0.1.0" }
 ratatui = { version = "0.30.2", default-features = false }
 tokio = { version = "1", features = ["time"] }
 tracing = "0.1"
+crossterm = "0.29.0"

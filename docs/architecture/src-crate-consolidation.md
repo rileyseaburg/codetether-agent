@@ -19348,3 +19348,28 @@ unchanged regression tests and keyboard caller, isolated lockfile delta, lexical
 module reachability, dependency-cycle checks, file-size ratchet, whitespace and
 direct formatting. Evidence: `artifacts/consolidation-chat-files/`. No Cargo,
 rustc, Python or Rust tests ran; compilation and runtime remain unverified.
+
+### Editor interaction controls
+
+Moved editor click navigation, LSP shortcut routing, lazy manager creation,
+definition/hover orchestration and result application into
+`codetether-editor-lsp::interactive`. Separate modules own click mapping, keys,
+definition requests, hover requests, definition results and buffer navigation.
+The native handlers now bind nine borrowed fields/guards and delegate. Removed
+the native definition-result and navigation files.
+
+The shared Controls type is generic over the existing ManagedClient contract,
+so native client initialization identity and manager caching are preserved.
+Approval F12 suppression, Escape hover dismissal, goal-draft click behavior,
+status messages, redraw timing and early returns retain their original order.
+The existing shared request/retry and buffer-navigation implementations and
+native keyboard/mouse callers are unchanged.
+
+Validation: eight complete translated function bodies, all nine state bindings,
+four native delegates, unchanged supporting implementations/callers, minimal
+lockfile change, lexical module reachability, dependency-cycle checks, file-size
+ratchet, whitespace and direct formatting. The initial comparison reported a
+rustfmt match-arm brace removal; normalized that exact formatting change and
+retained the failed log. Evidence: `artifacts/consolidation-editor-controls/`.
+No Cargo, rustc, Python, Rust tests or language-server execution ran; compilation
+and runtime remain unverified.

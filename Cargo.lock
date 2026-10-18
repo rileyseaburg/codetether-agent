@@ -6813,6 +6813,7 @@ dependencies = [
  "ratatui",
  "tokio",
  "tracing",
+ "crossterm",
 ]
 
 [[package]]

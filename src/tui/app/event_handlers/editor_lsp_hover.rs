@@ -1,30 +1,6 @@
-//! Async LSP hover (JSDoc/docstring) for the in-TUI editor.
-//!
-//! Issues a `textDocument/hover` request at the editor cursor and stores the
-//! returned markdown in `editor_lsp.hover` for the popup renderer to display.
-//! Shares [`ensure_manager`](super::editor_lsp::ensure_manager) and
-//! [`cursor_target`](super::editor_lsp::cursor_target) with go-to-definition.
-
-use std::path::Path;
-
+//! Forward frontend actions to shared editor interaction policy.
 use crate::tui::app::state::App;
-use codetether_editor_lsp::HoverOutcome;
-
-use super::editor_lsp::{cursor_target, ensure_manager};
-
-/// Runs hover at the editor cursor and stores rendered markdown for a popup.
+use std::path::Path;
 pub(crate) async fn hover(app: &mut App, cwd: &Path) {
-    let Some((path, line, col)) = cursor_target(app) else {
-        return;
-    };
-    let manager = ensure_manager(app, cwd);
-    let Ok(client) = manager.get_client_for_file(&path).await else {
-        app.state.status = "LSP unavailable for hover".to_string();
-        return;
-    };
-    match codetether_editor_lsp::hover(client.as_ref(), &path, line, col).await {
-        HoverOutcome::Content(contents) => app.state.editor_lsp.hover = Some(contents),
-        HoverOutcome::Status(status) => app.state.status = status,
-    }
-    app.state.needs_redraw = true;
+    codetether_editor_lsp::interactive::hover(&mut super::editor_lsp::controls(app), cwd).await
 }

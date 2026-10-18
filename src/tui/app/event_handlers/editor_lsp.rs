@@ -1,47 +1,24 @@
-//! Async LSP go-to-definition for the in-TUI editor.
-//!
-//! Translates the editor's `(line, col)` cursor into a `textDocument/definition`
-//! request via the shared [`LspManager`], then navigates the editor to the
-//! result. Hover lives in [`editor_lsp_hover`](super::editor_lsp_hover) (SRP).
-
+//! Bind application fields to shared editor interaction policy.
+use crate::{
+    lsp::client::LspClient,
+    tui::{app::state::App, models::ViewMode},
+};
+use codetether_editor_lsp::interactive::Controls;
 use std::path::Path;
-use std::sync::Arc;
 
-use crate::lsp::LspManager;
-use crate::tui::app::state::App;
-
-/// Ensures the app has a shared [`LspManager`], creating one rooted at `cwd`.
-pub(super) fn ensure_manager(app: &mut App, cwd: &Path) -> Arc<LspManager> {
-    if let Some(m) = app.state.editor_lsp.manager.clone() {
-        return m;
+pub(super) fn controls(app: &mut App) -> Controls<'_, LspClient> {
+    Controls {
+        in_editor: app.state.view_mode == ViewMode::Editor,
+        approval_editing: app.state.approval_edit.is_some(),
+        goal_editing: app.state.goal_editor.is_some(),
+        editor: &mut app.state.editor,
+        editor_scroll: &mut app.state.editor_scroll,
+        editor_hscroll: &mut app.state.editor_hscroll,
+        editor_lsp: &mut app.state.editor_lsp,
+        status: &mut app.state.status,
+        needs_redraw: &mut app.state.needs_redraw,
     }
-    let root = crate::lsp::path_to_uri(cwd);
-    let manager = Arc::new(LspManager::new(Some(root)));
-    app.state.editor_lsp.manager = Some(manager.clone());
-    manager
 }
-/// Resolve the current buffer cursor through shared LSP coordinate conversion.
-pub(super) fn cursor_target(app: &App) -> Option<(std::path::PathBuf, u32, u32)> {
-    codetether_editor_lsp::cursor_target(app.state.editor.as_ref())
-}
-
-/// Runs go-to-definition at the editor cursor and navigates to the result.
-///
-/// Language servers often return empty results until indexing finishes, so the
-/// actual polling lives in [`editor_lsp_retry`](super::editor_lsp_retry).
 pub(crate) async fn goto_definition(app: &mut App, cwd: &Path) {
-    let Some((path, line, col)) = cursor_target(app) else {
-        return;
-    };
-    let manager = ensure_manager(app, cwd);
-    let client = match manager.get_client_for_file(&path).await {
-        Ok(c) => c,
-        Err(e) => {
-            app.state.status = format!("LSP unavailable: {e}");
-            app.state.needs_redraw = true;
-            return;
-        }
-    };
-    app.state.status = "Looking up definition…".to_string();
-    super::editor_lsp_retry::resolve_definition(app, client.as_ref(), &path, line, col).await;
+    codetether_editor_lsp::interactive::goto_definition(&mut controls(app), cwd).await;
 }
