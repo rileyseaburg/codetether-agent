@@ -28569,3 +28569,25 @@ file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
 Evidence: artifacts/consolidation-transcript-viewport/. No dependency manifests
 or unrelated working files changed. Cargo, rustc, Python, compilation, doc tests,
 and runtime tests were not run. Full consolidation remains active and incomplete.
+
+### Move selected-agent chat rendering into its owning crates
+
+Deleted src/tui/ui/chat_view/agent_lines.rs. Its known-agent gate now lives in
+codetether-agent-dashboard::selection::known_lines, next to the existing detail
+selection policy. Line wrapping and tool-preview scroll reset moved into
+codetether-tool-panel::TranscriptViewport::detail. The native pipeline supplies
+selected names, managed sessions, the current parent-scoped registry, and the
+borrowed viewport through lines/host/agent.rs.
+
+The remote-agent integration test remains registered under lines with only its
+App import adjusted. Static token comparison verifies the rendering body;
+selection truth-table checks verify the gate and lookup short-circuit behavior.
+Source inspection verifies both registry paths call the same agent-view lookup.
+Missing and stale selection still leave the viewport untouched and let the main
+chat pipeline continue. No additional registry caching or snapshots were added.
+
+Declaration, module/dependency, production-dependency, dependency-audit,
+file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
+Evidence: artifacts/consolidation-agent-transcript/. No dependencies or unrelated
+working files changed. Cargo, rustc, Python, compilation, doc tests and runtime
+tests were not run. Full consolidation remains active and incomplete.

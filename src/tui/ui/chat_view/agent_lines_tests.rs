@@ -1,6 +1,6 @@
 //! Remote-tab transcript projection tests.
 
-use super::*;
+use crate::tui::app::state::App;
 #[test]
 fn selected_mdns_agent_replaces_the_main_chat_transcript() {
     let suffix = uuid::Uuid::new_v4();

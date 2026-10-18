@@ -1,4 +1,5 @@
 //! Cold transcript construction from shared message data.
+mod detail;
 mod viewport;
 use crate::{PendingToolSnapshot, ToolPanelRender, append_entries, build_render_entries};
 use codetether_chat_model::ChatMessage;

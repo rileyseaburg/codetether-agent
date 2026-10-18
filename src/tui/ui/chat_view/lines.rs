@@ -1,4 +1,7 @@
 //! Native entry point for shared cached chat-line assembly.
+#[cfg(test)]
+#[path = "agent_lines_tests.rs"]
+mod agent_lines_tests;
 mod host;
 #[cfg(test)]
 #[path = "real_session_benchmark.rs"]

@@ -1,4 +1,5 @@
 //! Native renderers and cache access for the shared chat-line pipeline.
+mod agent;
 mod transcript;
 use crate::tui::{
     app::state::App, color_palette::ColorPalette, message_formatter::MessageFormatter,
@@ -15,7 +16,7 @@ impl codetether_message_cache::pipeline::Host for Native<'_> {
         transcript::selected(self, content_width)
     }
     fn agent_lines(&mut self, content_width: usize) -> Option<DrawnLines> {
-        super::super::agent_lines::build(self.app, content_width, self.formatter)
+        agent::build(self, content_width)
     }
     fn cache_inputs(&self) -> RenderInputs {
         RenderInputs {

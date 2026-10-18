@@ -1,6 +1,5 @@
 // Extra chat-view sub-modules added in this session.
 // Included from `mod.rs` via `include!`.
-pub(crate) mod agent_lines;
 pub use codetether_agent_dashboard::bar::style as agent_tab_style;
 pub(crate) mod approval_diff;
 pub(crate) mod approval_overlay_content;

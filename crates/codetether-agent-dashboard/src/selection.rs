@@ -1,7 +1,9 @@
 //! Focused detail selection from managed sessions and a parent-scoped registry.
+mod known;
 use crate::{Child, detail, tool_detail};
 use codetether_agent_tree::SpawnedAgent;
 use codetether_session_store::Snapshot;
+pub use known::known_lines;
 use ratatui::text::Line;
 use std::collections::HashMap;
 
