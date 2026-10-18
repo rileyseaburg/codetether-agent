@@ -24,7 +24,8 @@ async fn summary_waits_for_an_existing_writer() {
     let writer = connection::open(&path).unwrap();
     writer.execute_batch("BEGIN IMMEDIATE").unwrap();
     let expected = node.clone();
-    let mut commit = tokio::spawn(async move { summaries::put(&session, range, &node).await });
+    let mut commit =
+        tokio::spawn(async move { summaries::put_snapshot(&session, range, &node).await });
     let early = tokio::time::timeout(Duration::from_millis(150), &mut commit).await;
     writer.execute_batch("COMMIT").unwrap();
     assert!(early.is_err(), "summary did not wait for writer: {early:?}");
@@ -36,6 +37,8 @@ async fn summary_waits_for_an_existing_writer() {
             |row| row.get(0),
         )
         .unwrap();
-    assert_eq!(serde_json::from_str::<SummaryNode>(&body).unwrap(), expected);
+    assert_eq!(
+        serde_json::from_str::<SummaryNode>(&body).unwrap(),
+        expected
+    );
 }
-

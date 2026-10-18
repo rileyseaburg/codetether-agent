@@ -13,6 +13,6 @@ impl codetether_recall_store::Host for NativeHost {
         Ok(crate::session::Session::sessions_dir()?.join("recall"))
     }
     async fn projection(&self, id: &str) -> Result<Option<Value>> {
-        crate::session::store::projection::read(id, "recall").await
+        crate::session::store::projection::read_session(id, "recall").await
     }
 }

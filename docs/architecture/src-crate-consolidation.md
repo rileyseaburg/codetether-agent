@@ -23532,3 +23532,22 @@ native background entry points. Direct rustfmt, file-size limits and whitespace
 checks passed. Evidence: artifacts/consolidation-summary-resolver-fix/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active.
+
+### Storage callers use the owning API names directly
+
+Removed the native projection and summary forwarding files after updating five
+internal callers to read_session and put_snapshot. The store now imports the
+owning projection/summaries modules directly. This handles renamed exports
+explicitly: aliasing the whole module without changing the calls would have
+selected different shared functions under the short read/put names.
+
+Static caller comparisons preserve every argument and operation order. The
+summary contention test retains its assertions, and shared projection reading,
+checkpoint capture and revision checking remain unchanged. No stale calls to
+the short native names remain. Module/dependency scans cover 691 roots and 571
+crates without missing modules or cycles. Direct rustfmt, file-size limits and
+whitespace checks passed. No manifests or lockfiles changed; unrelated working
+changes remain untouched. Evidence:
+artifacts/consolidation-storage-renamed-facades/.
+No storage operations, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

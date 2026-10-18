@@ -3,7 +3,7 @@ use anyhow::Result;
 struct ProjectionReader;
 impl codetether_mux_control::AgentProjectionReader for ProjectionReader {
     async fn read(&self, id: &str, name: &str) -> Result<Option<serde_json::Value>> {
-        crate::session::store::projection::read(id, name).await
+        crate::session::store::projection::read_session(id, name).await
     }
 }
 pub(crate) async fn read_agent_output(name: &str) -> Result<Option<String>> {

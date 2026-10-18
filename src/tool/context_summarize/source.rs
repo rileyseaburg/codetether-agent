@@ -39,6 +39,6 @@ impl codetether_context_summarize::SummarySource for Session {
         range: SummaryRange,
         node: &SummaryNode,
     ) -> anyhow::Result<()> {
-        crate::session::store::summaries::put(self, range, node).await
+        crate::session::store::summaries::put_snapshot(self, range, node).await
     }
 }
