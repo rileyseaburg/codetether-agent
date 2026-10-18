@@ -23747,3 +23747,20 @@ Only the required dependency entries are staged in Cargo.lock; unrelated
 working changes remain untouched. Evidence:
 artifacts/consolidation-native-dispatch/. No Cargo, rustc, Python, compilation,
 command execution or runtime tests ran. Full consolidation remains active.
+
+### Root parser regression coverage moved beside the shared schema
+
+Moved nine existing tests into codetether-cli-command::tests, split into
+access_mode, defaults, vault_help and windows modules. A fixed metadata fixture
+instantiates the same shared parser. The application package-identity and
+run-policy integration tests remain native. Windows CLI now reexports its owning
+crate directly, removing the native windows facade and its test file; the native
+Vault help test file is also removed. Added config as an explicit test dependency.
+
+Static function comparisons confirm all nine moved test bodies and both retained
+native test bodies are unchanged. Module/dependency scans cover 692 roots and
+572 crates without missing modules or cycles. Direct rustfmt, source file limits
+and whitespace checks passed. Only the required lockfile dependency is staged;
+unrelated working changes are preserved. Evidence:
+artifacts/consolidation-cli-parser-tests/. No tests, Cargo, rustc, Python or
+compilation ran. Full consolidation remains active.

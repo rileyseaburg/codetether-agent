@@ -1,8 +1,8 @@
 //! The installer health check must not invoke a model or require provider auth.
 
-use super::*;
-use crate::cli::{Cli, Command};
+use super::{Cli, Command};
 use clap::Parser;
+use codetether_cli_options::{WindowsArgs, WindowsCommand};
 
 #[test]
 fn windows_ocr_probe_has_a_model_free_cli() {

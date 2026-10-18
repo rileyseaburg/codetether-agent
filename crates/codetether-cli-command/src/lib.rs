@@ -4,6 +4,8 @@
 //! Argument schemas remain owned by their dedicated option and command crates.
 include!("imports.rs");
 pub mod root;
+#[cfg(test)]
+mod tests;
 /// Available CodeTether CLI operations and their typed argument payloads.
 /// # Examples
 /// ```

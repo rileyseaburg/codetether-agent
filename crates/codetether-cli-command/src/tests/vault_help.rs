@@ -1,5 +1,5 @@
 //! Help is a model-free, cross-platform login workflow, not just flag names.
-use crate::cli::Cli;
+use super::Cli;
 use clap::{CommandFactory, Parser, error::ErrorKind};
 
 #[test]

@@ -25,3 +25,6 @@ codetether-search-cli = { path = "../codetether-search-cli", version = "0.1.0" }
 codetether-vault-cli = { path = "../codetether-vault-cli", version = "0.1.0" }
 codetether-worktree-cli = { path = "../codetether-worktree-cli", version = "0.1.0" }
 codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+
+[dev-dependencies]
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
