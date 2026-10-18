@@ -1,0 +1,17 @@
+[package]
+name = "codetether-terminal-clipboard"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Terminal clipboard access, OSC52 fallback and environment guidance"
+
+[dependencies]
+base64 = "0.23.1"
+codetether-clipboard = { path = "../codetether-clipboard", version = "0.1.0" }
+codetether-image = { path = "../codetether-image", version = "0.1.0" }
+crossterm = "0.29"
+tracing = "0.1"
+
+[target.'cfg(not(windows))'.dependencies]
+arboard = "3.4"

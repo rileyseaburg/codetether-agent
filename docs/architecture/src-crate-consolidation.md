@@ -10924,3 +10924,22 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-clipboard-cli/`. Compilation, runtime tests
   and clipboard operations were not run. No Cargo or rustc commands executed.
 - Full consolidation remains active.
+
+### Terminal clipboard extraction
+
+- Moved clipboard access, SSH/headless detection and guidance, and system-copy
+  / OSC52 fallback from three TUI modules into
+  `crates/codetether-terminal-clipboard`.
+- Seven modules separate access, environment hints, guidance, copy policy,
+  platform writes and OSC52 encoding. Maximum module size is 21 code lines.
+- Existing TUI modules now re-export the shared API. The native environment
+  regression test remains with its shared application test lock and exercises
+  the re-exported detection function; the test source is unchanged.
+- Thirty-two static assertions compare all moved bodies and platform branches,
+  the original OSC52 sequence, native test wiring and unchanged callers.
+  Module reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-terminal-clipboard/`. Direct formatting
+  detected a misplaced copied module comment, corrected before checks passed.
+  Compilation, runtime tests, environment mutation and clipboard/terminal
+  operations were not run. No Cargo or rustc commands executed.
+- Full consolidation remains active.
