@@ -15050,3 +15050,21 @@ Full workspace consolidation remains active.
   checks passed. Evidence: artifacts/consolidation-tui-navigation/.
 - Staged lockfile changes contain only the new crate and its root dependency.
   No Cargo, rustc, UI execution or Rust tests ran. Full consolidation is unfinished.
+
+### Agent focus policy ownership
+
+- Moved main-inclusive and child-only focus cycling, backward cycling, slash
+  completion precedence, detail-pane transitions, focus-change sequencing and
+  ordered agent-name merging into codetether-tui-navigation::focus.
+- Native bindings provide managed/tool/swarm names and primitive UI operations.
+  Focus changes retain status → swarm selection → active identity → cache clear
+  → scroll ordering. Managed names retain depth-first order; tool names sort
+  before deduplication; unseen swarm names append in task order.
+- Existing focus integration tests remain unchanged, including their original
+  native fixtures and entry points. Thin test bindings call shared policy.
+- Verification: seventeen static checks covered transition bodies, detail
+  handling, ring merging, native lookup/effect bindings and unchanged tests.
+  Module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence: artifacts/consolidation-agent-focus/.
+- No dependency changes. No UI execution, Cargo, rustc or Rust tests ran.
+  Full workspace consolidation remains unfinished.

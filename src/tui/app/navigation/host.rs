@@ -42,3 +42,5 @@ impl Host for Navigation<'_> {
         crate::tui::app::file_picker::file_picker_escape(self.0)
     }
 }
+
+mod focus;

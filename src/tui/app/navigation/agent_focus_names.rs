@@ -12,26 +12,20 @@ pub(super) fn agent_names(app: &App) -> Vec<String> {
         .unwrap_or_default();
     assemble(app, tools)
 }
-
-fn assemble(app: &App, mut tools: Vec<AgentSnapshot>) -> Vec<String> {
-    let mut names = crate::tui::app::state::agent_tree::dfs_order(&app.state.spawned_agents)
-        .into_iter()
-        .map(|node| node.name)
-        .collect::<Vec<_>>();
-    tools.sort_by(|left, right| left.name.cmp(&right.name));
-    for tool in tools {
-        if !names.contains(&tool.name) {
-            names.push(tool.name);
-        }
-    }
-    for task in &app.state.swarm.subtasks {
-        if let Some(name) = task.agent_name.as_ref()
-            && !names.contains(name)
-        {
-            names.push(name.clone());
-        }
-    }
-    names
+fn assemble(app: &App, tools: Vec<AgentSnapshot>) -> Vec<String> {
+    codetether_tui_navigation::focus::assemble(
+        crate::tui::app::state::agent_tree::dfs_order(&app.state.spawned_agents)
+            .into_iter()
+            .map(|node| node.name)
+            .collect(),
+        tools.into_iter().map(|tool| tool.name).collect(),
+        app.state
+            .swarm
+            .subtasks
+            .iter()
+            .map(|task| task.agent_name.clone())
+            .collect(),
+    )
 }
 
 #[cfg(test)]

@@ -17,3 +17,6 @@ pub use escape::{handle_escape, toggle_help};
 pub use host::{Context, Host};
 pub use jump::{handle_end, handle_home};
 pub use paging::{handle_page_down, handle_page_up};
+
+/// Agent focus ordering, cycling and detail transitions.
+pub mod focus;
