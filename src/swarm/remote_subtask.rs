@@ -3,7 +3,6 @@
 //! Setup, resources, prompts and invocation are separate; the shared protocol
 //! owns result construction. Probe shutdown precedes structured result emission.
 use super::executor::{run_agent_loop, workspace_registry};
-use super::tool_policy;
 use crate::{cli::SwarmSubagentArgs, provider::ProviderRegistry};
 use anyhow::{Context, Result, anyhow};
 use codetether_swarm_core::remote_protocol::{

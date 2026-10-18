@@ -28,3 +28,6 @@ mod tests;
 mod agent_result;
 mod agent_success;
 pub use agent_result::from_agent_result;
+
+/// Prompt assembly for remote task payloads.
+pub mod prompts;

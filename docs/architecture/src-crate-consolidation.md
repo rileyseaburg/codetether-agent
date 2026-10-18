@@ -21184,3 +21184,18 @@ direct rustfmt, native file-size limits, and whitespace checks passed. Evidence:
 edge is staged in the lockfile. No Cargo, rustc, or Python commands ran. No
 plugins or Rust tests were executed. Compilation and runtime behavior remain
 unverified; complete consolidation remains active.
+
+### Remote swarm prompt assembly ownership
+
+Moved remote-task specialty defaults, workspace display, capability flags,
+system-prompt input assembly, and dependency-context user prompt formatting into
+`codetether-swarm-core::remote_protocol::prompts`. The native wrapper supplies
+the same session-instruction callback used by the previous prompt adapter.
+The remote execution path and resource setup are unchanged.
+
+Full-body comparison confirms the same specialty fallback, read-only and
+verification behavior, prompt fields, and context text. Direct rustfmt, source
+graphs, native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-remote-prompts/`. No dependencies changed. No Cargo,
+rustc, or Python commands ran; no prompt-runtime or Rust tests were executed.
+Compilation remains unverified and full consolidation remains active.
