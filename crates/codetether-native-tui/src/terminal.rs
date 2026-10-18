@@ -1,3 +1,4 @@
+//! Terminal subsystem informational panel.
 use ratatui::{
     Frame,
     layout::Rect,

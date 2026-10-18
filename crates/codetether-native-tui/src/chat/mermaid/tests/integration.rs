@@ -1,8 +1,8 @@
 //! Tests for mermaid detection and MessageFormatter integration.
 
 use super::flatten::flatten;
-use crate::tui::chat::mermaid::{is_mermaid, render_block};
-use crate::tui::message_formatter::MessageFormatter;
+use crate::chat::mermaid::{is_mermaid, render_block};
+use codetether_message_formatter::MessageFormatter;
 
 #[test]
 fn language_detection() {

@@ -1,3 +1,4 @@
+//! LSP workspace panel and command preview.
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -5,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use crate::tui::input::render_input_preview;
+use codetether_tui_style::input_preview::render_input_preview;
 
 pub fn render_lsp(f: &mut Frame, area: Rect, cwd: &str, status: &str) {
     let chunks = Layout::default()

@@ -1943,6 +1943,7 @@ dependencies = [
  "codetether-native-mcp-client",
  "codetether-native-edit",
  "codetether-native-rustyroad",
+ "codetether-native-tui",
 ]
 
 [[package]]
@@ -3778,6 +3779,32 @@ dependencies = [
  "codetether-tool-core",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "codetether-native-tui"
+version = "0.1.0"
+dependencies = [
+ "codetether-agent-identity",
+ "codetether-autochat-core",
+ "codetether-chat-layout",
+ "codetether-chat-model",
+ "codetether-chat-sync",
+ "codetether-file-picker",
+ "codetether-file-share",
+ "codetether-mermaid",
+ "codetether-message-formatter",
+ "codetether-model-failover",
+ "codetether-relay-okr",
+ "codetether-terminal-text",
+ "codetether-tool-panel",
+ "codetether-tool-preview",
+ "codetether-tui-models",
+ "codetether-tui-style",
+ "codetether-util",
+ "codetether-watchdog",
+ "codetether-workspace-snapshot",
+ "ratatui",
 ]
 
 [[package]]

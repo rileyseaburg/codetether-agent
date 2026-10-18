@@ -1,3 +1,4 @@
+//! Shared legacy UI and workspace snapshot compatibility exports.
 pub use codetether_tui_models::legacy_helpers as helpers;
 pub use codetether_workspace_snapshot as workspace;
 pub use codetether_workspace_snapshot as workspace_entries;

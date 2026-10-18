@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/codetether-native-tui",
     "crates/codetether-native-edit",
     "crates/codetether-native-rustyroad",
     "crates/codetether-native-mcp-client",
@@ -704,6 +705,7 @@ fips = [
 ]
 
 [dependencies]
+codetether-native-tui = { path = "crates/codetether-native-tui", version = "0.1.0" }
 codetether-native-edit = { path = "crates/codetether-native-edit", version = "0.1.0" }
 codetether-native-rustyroad = { path = "crates/codetether-native-rustyroad", version = "4.7.6-dev.38" }
 codetether-native-mcp-client = { path = "crates/codetether-native-mcp-client", version = "4.7.6-dev.38" }

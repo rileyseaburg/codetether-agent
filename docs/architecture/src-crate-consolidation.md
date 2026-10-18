@@ -25283,3 +25283,23 @@ Only the registry's two required test dependencies are staged in Cargo.lock;
 unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-command-guards/. No Cargo, rustc, Python, sandbox
 execution or runtime tests ran. Full consolidation remains active.
+
+### State-independent native TUI modules moved into a dedicated crate
+
+Moved ten files into codetether-native-tui: chat/Mermaid exports and formatter
+integration tests, frontend constants, utility exports, agent identity helpers,
+and the LSP and terminal informational panels. These modules do not depend on
+App or AppState. The root TUI re-exports their previous paths. Stateful views
+remain separate and are not counted as migrated by this change.
+
+All five Mermaid/formatter tests moved intact except direct crate paths. The
+message-formatter dependency is test-only; production rendering still uses the
+same shared style/input functions and ratatui types. Source comparisons pass
+for all ten files after explicit import, visibility and module-doc changes.
+Static scans cover 709 module roots and 595 dependency crates without missing
+modules, cycles or undeclared direct workspace dependencies. Declaration,
+file-limit, direct rustfmt and whitespace checks pass. Only the new package and
+root dependency are staged in Cargo.lock; unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-native-tui/. No Cargo, rustc,
+Python, UI rendering process or runtime tests ran. Full consolidation remains
+active.
