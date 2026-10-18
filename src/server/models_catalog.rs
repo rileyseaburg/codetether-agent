@@ -1,19 +1,8 @@
 //! OpenAI/OpenRouter-compatible model discovery handlers.
 
 mod collect;
-mod convert;
+use codetether_model_catalog::discovery::{query, types, types_vscode, vscode};
 mod error;
-mod ids;
-mod options;
-mod parameters;
-mod pricing;
-mod query;
-mod types;
-mod types_architecture;
-mod types_pricing;
-mod types_top_provider;
-mod types_vscode;
-mod vscode;
 
 use axum::{Json, Router, extract::Query, http::StatusCode, routing::get};
 

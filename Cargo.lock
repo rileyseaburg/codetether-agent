@@ -3568,6 +3568,9 @@ dependencies = [
  "reqwest 0.13.4",
  "serde",
  "tracing",
+ "serde_json",
+ "futures",
+ "tokio",
 ]
 
 [[package]]

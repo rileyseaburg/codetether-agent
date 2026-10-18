@@ -1,6 +1,6 @@
 //! OpenRouter-style supported parameter names.
 
-pub(crate) fn supported_parameters(model: &crate::provider::ModelInfo) -> Vec<String> {
+pub fn supported_parameters(model: &codetether_provider_core::ModelInfo) -> Vec<String> {
     let mut params = base_parameters();
     if model.supports_tools {
         params.extend(["tools", "tool_choice"]);
@@ -13,8 +13,8 @@ fn base_parameters() -> Vec<&'static str> {
 }
 
 /// Base parameters plus `reasoning_effort`/`service_tier` when supported.
-pub(crate) fn with_options(
-    model: &crate::provider::ModelInfo,
+pub fn with_options(
+    model: &codetether_provider_core::ModelInfo,
     options: &super::options::ModelOptions,
 ) -> Vec<String> {
     let mut params = supported_parameters(model);

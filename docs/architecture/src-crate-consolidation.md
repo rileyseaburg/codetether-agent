@@ -13236,3 +13236,21 @@ Full workspace consolidation remains active.
 - Only the policy crate's two added dependencies were staged from Cargo.lock.
   No authentication requests, environment mutations, Cargo, rustc or Rust tests
   ran. Full consolidation remains incomplete.
+
+### Compatible model discovery extraction
+
+- Moved model discovery schemas, IDs, capability/pricing projection, model
+  options, VS Code conversion and concurrent collection into
+  codetether-model-catalog::discovery. Sixteen modules contain at most 40 code
+  lines; the existing VS Code format test moved with the converter.
+- A small CatalogRegistry interface preserves caller-owned provider lookup.
+  Native code retains Vault acquisition, route wiring and HTTP responses.
+  Collection order, five-second per-provider timeout, failure handling and
+  final ID sort are preserved.
+- Verification: 20 static comparisons passed for moved modules/helpers and
+  unchanged native orchestration/registry. Module/dependency checks, direct
+  rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-model-discovery/.
+- Only the catalog's three added dependencies were staged from Cargo.lock. No
+  provider lookups/listings, Cargo, rustc or Rust tests ran. Full consolidation
+  remains incomplete.

@@ -2,11 +2,11 @@
 
 use super::{types::Model, types_vscode};
 
-pub(crate) fn requested(format: Option<&str>) -> bool {
+pub fn requested(format: Option<&str>) -> bool {
     matches!(format, Some("vscode" | "vscode-lm" | "language-model"))
 }
 
-pub(crate) fn response(models: &[Model]) -> types_vscode::VscodeModelsResponse {
+pub fn response(models: &[Model]) -> types_vscode::VscodeModelsResponse {
     types_vscode::VscodeModelsResponse {
         data: models.iter().map(convert).collect(),
     }

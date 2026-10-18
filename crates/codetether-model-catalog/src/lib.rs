@@ -6,3 +6,6 @@ mod catalog;
 mod wire;
 pub use catalog::ModelCatalog;
 pub use wire::*;
+
+/// Provider metadata projection for compatible model-discovery APIs.
+pub mod discovery;

@@ -1,6 +1,6 @@
 //! Pricing conversion helpers.
 
-pub(crate) fn price(model: &crate::provider::ModelInfo) -> super::types::Pricing {
+pub fn price(model: &codetether_provider_core::ModelInfo) -> super::types::Pricing {
     super::types::Pricing {
         prompt: per_token(model.input_cost_per_million),
         completion: per_token(model.output_cost_per_million),
