@@ -1,0 +1,10 @@
+//! Placeholder, expansion, size and allocation regressions.
+mod expand_drops_pastes_whose_placeholder_was_deleted;
+mod expand_replaces_only_first_occurrence_per_paste;
+mod expand_replaces_placeholder_with_full_content;
+mod fixture;
+mod format_size_human_readable;
+mod next_paste_id_starts_at_one_and_increments;
+mod placeholder_reports_lines_and_size;
+mod placeholder_single_line_still_reports_one_line;
+mod should_summarize_thresholds;

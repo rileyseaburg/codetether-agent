@@ -12519,3 +12519,20 @@ Full workspace consolidation remains active.
   checks passed. Evidence: artifacts/consolidation-task-tracker/.
 - Only the crate's dependency and package record were staged from Cargo.lock.
   No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.
+
+### Paste sidecar extraction
+
+- Moved PendingTextPaste, byte/line summaries, summarization thresholds, ID
+  allocation, attachment and both delimited/raw placeholder expansion into
+  dependency-free codetether-paste-buffer. Seventeen small modules contain at
+  most 22 code lines, including all eight existing tests and their fixture.
+- The native attach function retains its AppState signature and delegates with
+  the existing pending-paste vector; other native paths re-export shared helpers.
+  Placeholder contents, threshold boundaries, first-occurrence expansion and
+  existing ID arithmetic are unchanged.
+- Verification: 21 source comparisons passed for types, methods, constants,
+  allocation, expansion, test bodies and native delegates. Module/dependency
+  checks, direct rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-paste-buffer/.
+- Only the new dependency and package record were staged from Cargo.lock.
+  No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.

@@ -1256,6 +1256,7 @@ dependencies = [
  "codetether-tool-tracker",
  "codetether-watchdog",
  "codetether-task-tracker",
+ "codetether-paste-buffer",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6277,6 +6278,10 @@ dependencies = [
  "codetether-a2a-core",
  "codetether-bus-core",
 ]
+
+[[package]]
+name = "codetether-paste-buffer"
+version = "0.1.0"
 
 [[package]]
 name = "codetether-tracked-vec"
