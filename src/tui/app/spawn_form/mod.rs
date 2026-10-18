@@ -7,9 +7,6 @@
 pub mod keys;
 pub mod render;
 pub mod state;
-#[cfg(test)]
-#[path = "state_tests.rs"]
-mod state_tests;
 pub mod submit;
 
 pub(crate) use keys::handle_spawn_form_key;

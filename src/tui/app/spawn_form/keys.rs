@@ -2,7 +2,8 @@
 
 use std::path::Path;
 
-use crossterm::event::{KeyCode, KeyEvent};
+use codetether_spawn_form::FormAction;
+use crossterm::event::KeyEvent;
 
 use crate::tui::app::session_runtime::SessionSlot;
 use crate::tui::app::spawn_form::{close_spawn_form, submit_spawn_form};
@@ -22,16 +23,12 @@ pub(crate) async fn handle_spawn_form_key(
     let Some(form) = app.state.spawn_form.as_mut() else {
         return false;
     };
-    match key.code {
-        KeyCode::Esc => {
+    match form.handle_key(key) {
+        FormAction::Cancel => {
             close_spawn_form(app);
             true
         }
-        KeyCode::Tab | KeyCode::BackTab => {
-            form.next_field();
-            true
-        }
-        KeyCode::Enter => {
+        FormAction::Submit => {
             let form = app.state.spawn_form.take().unwrap();
             let Some(session) = slot.borrow() else {
                 app.state.status = "Session is busy; spawn was not run".to_string();
@@ -41,14 +38,6 @@ pub(crate) async fn handle_spawn_form_key(
             submit_spawn_form(app, session, cwd, form).await;
             true
         }
-        KeyCode::Backspace => {
-            form.backspace();
-            true
-        }
-        KeyCode::Char(c) => {
-            form.insert_char(c);
-            true
-        }
-        _ => true, // swallow all other keys while modal is open
+        FormAction::Continue => true,
     }
 }

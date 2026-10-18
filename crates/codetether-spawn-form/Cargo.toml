@@ -1,0 +1,12 @@
+[package]
+name = "codetether-spawn-form"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Agent spawn form state, terminal editing, and rendering"
+
+[dependencies]
+codetether-help-view = { path = "../codetether-help-view", version = "0.1.0" }
+crossterm = "0.29.0"
+ratatui = { version = "0.30.2", default-features = false }

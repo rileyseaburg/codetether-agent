@@ -1,6 +1,9 @@
+//! Form navigation and argument regression coverage.
+//! Form state and terminal presentation require no application runtime.
+
 //! Tests for spawn form state navigation and argument assembly.
 
-use super::state::{SpawnField, SpawnFormState};
+use crate::{SpawnField, SpawnFormState};
 
 #[test]
 fn next_field_cycles_through_supported_fields() {

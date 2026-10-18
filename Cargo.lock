@@ -1249,6 +1249,7 @@ dependencies = [
  "codetether-answer-review-view",
  "codetether-tui-style",
  "codetether-goal-prompt",
+ "codetether-spawn-form",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6204,6 +6205,15 @@ dependencies = [
 [[package]]
 name = "codetether-slash-command"
 version = "0.1.0"
+
+[[package]]
+name = "codetether-spawn-form"
+version = "0.1.0"
+dependencies = [
+ "codetether-help-view",
+ "crossterm",
+ "ratatui",
+]
 
 [[package]]
 name = "codetether-tracked-vec"

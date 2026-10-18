@@ -12304,3 +12304,21 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-timing-state/.
 - No dependencies or lockfile entries changed. No Cargo, rustc, compilation or
   Rust tests ran. Full workspace consolidation remains incomplete.
+
+### Spawn form extraction
+
+- Moved the spawn form's field/state types, focused-field editing, argument
+  assembly, terminal widget rendering and keyboard transitions into the new
+  codetether-spawn-form crate. Twelve modules contain at most 34 code lines,
+  including the three existing state regression tests moved with the form.
+- Key handling returns explicit Continue, Cancel or Submit actions. Native
+  code retains modal open/close status, busy-session handling and the existing
+  spawn-command submission path. Native state/render modules are compatibility
+  exports and adapters; no agent lifecycle implementation was duplicated.
+- Verification: 20 source comparisons passed for types, methods, rendering,
+  tests, key actions and unchanged submission behavior. Shared/native module
+  reachability, dependency-cycle checks, direct rustfmt, source limits and
+  whitespace checks passed. Evidence: artifacts/consolidation-spawn-form/.
+- Only this crate's dependency and package entry were staged from Cargo.lock;
+  unrelated lockfile drift and A2A edits were preserved. No Cargo, rustc,
+  compilation or Rust tests ran. Full workspace consolidation is incomplete.
