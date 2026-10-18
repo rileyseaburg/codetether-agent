@@ -17513,3 +17513,17 @@ Full workspace consolidation remains active.
 - No dependency changes. Evidence: `artifacts/consolidation-text-input/`.
   No Cargo, rustc, Python, UI effects, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared view-level Enter routing
+
+- Moved Enter handler selection across all TUI views into
+  `codetether-tui-navigation::enter`, with synchronous view effects and
+  asynchronous session/submission contracts.
+- Native bindings retain the existing session, swarm, chat, model and settings
+  handlers. Preserved bus-filter precedence and passive-view no-op behavior.
+- Verification: complete view-match comparison and every native handler/field
+  mapping; unchanged session/swarm handlers and tests, module/dependency
+  graphs, direct rustfmt, file limits and whitespace. No dependency changes.
+  Evidence: `artifacts/consolidation-enter-routing/`.
+- No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

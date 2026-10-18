@@ -38,3 +38,6 @@ pub mod events;
 
 /// View-aware character/backspace routing and input-mode policy.
 pub mod text;
+
+/// View-level Enter handler selection.
+pub mod enter;
