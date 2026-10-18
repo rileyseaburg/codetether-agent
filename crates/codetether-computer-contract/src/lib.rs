@@ -6,3 +6,6 @@
 pub mod input;
 pub mod response;
 pub mod schema;
+
+/// Input-mode and application-selector routing rules.
+pub mod routing;

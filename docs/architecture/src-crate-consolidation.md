@@ -17278,3 +17278,22 @@ Full workspace consolidation remains active.
   dependency versions. Evidence: `artifacts/consolidation-computer-linux/`.
 - No Cargo, rustc, Python, screenshot utilities, Rust compilation or Rust tests
   ran. Full workspace consolidation remains incomplete.
+
+### Dedicated Windows computer-use backend
+
+- Moved 68 Windows backend source files, including five tests, into
+  `codetether-computer-windows`; native Windows dispatch now re-exports the
+  crate entry point. Moved input-routing policy and its four tests into
+  `codetether-computer-contract::routing`.
+- Preserved workflow bodies for input, capture, OCR, capability reporting and
+  helper routines. Imports now use dedicated contract/capture/shadow/platform
+  crates. Retained the existing Windows feature list and target gating.
+- Six previously unreferenced PowerShell helper files remain unreferenced in
+  their new location; they were preserved rather than activated. The module
+  graph explicitly checks that exact set of disconnected files.
+- Verification: complete moved-file comparisons, routing/test comparisons,
+  unchanged worker/platform dispatch, module/dependency graphs, direct rustfmt,
+  file limits and whitespace. Staged lock changes add only the new crate/root
+  dependency. Evidence: `artifacts/consolidation-computer-windows/`.
+- No Cargo, rustc, Python, Windows actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
