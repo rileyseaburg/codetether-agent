@@ -26619,3 +26619,26 @@ Standalone formatting, file limits and whitespace checks pass; unrelated
 working changes remain untouched. Evidence: artifacts/consolidation-native-review-binding/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active.
+
+### Agent storage application binding
+
+Moved the concrete persistence host and root storage forwarding operations into
+codetether-agent-storage's application_binding and operation_binding modules.
+The root now invokes declare_application_storage with its Session, live registry,
+mailbox and original restricted visibility. Removed ten persistence adapter files,
+including the runtime/mailbox host implementations and atomic/path facades.
+Recovery, close/resume, owner migration, scoped lookup, best-effort logging and
+test-only open-state lookup continue through the same owners and call sequence.
+
+The declaration audit expands both nested macros and compares all sixteen function
+bodies with the originals after explicit path substitution. Visibility and the
+three service selections are checked separately. Existing integration tests and
+fixtures remain byte-for-byte unchanged. The declaration parser now accepts scoped
+visibility paths and includes a malformed-visibility rejection probe. The module
+scanner's macro-definition classification was corrected after a false missing-file
+report, retained in the evidence. Final scans cover 730 module roots and 617 crates
+without missing modules or dependency findings. Standalone formatting, file limits
+and whitespace checks pass. No manifest/lock changes were needed, and unrelated
+working files are unchanged. Evidence: artifacts/consolidation-storage-binding/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains
+active.

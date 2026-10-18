@@ -36,3 +36,15 @@ pub use manifest_io::{remove, save, save_lifecycle};
 pub use migration::reparent_owner;
 pub use prepare::prepare_resume;
 pub use runtime_host::RuntimeHost;
+
+mod application_binding;
+mod operation_binding;
+
+/// Implementation dependencies for application storage declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use async_trait::async_trait;
+    pub use codetether_agent_registry::AgentEntry;
+    pub use tracing::warn;
+}

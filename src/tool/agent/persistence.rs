@@ -1,39 +1,11 @@
 //! Durable spawned-agent manifests and recovery orchestration.
 
-#[path = "persistence/atomic.rs"]
-pub(crate) mod atomic;
-#[path = "persistence/host.rs"]
-mod host;
-#[path = "persistence/hydrate.rs"]
-mod hydrate;
-#[path = "persistence/lifecycle.rs"]
-mod lifecycle;
-#[path = "persistence/lookup.rs"]
-mod lookup;
-use codetether_agent_storage as manifest;
-#[path = "persistence/manifest_io.rs"]
-mod manifest_io;
-use codetether_agent_storage::scan as manifest_scan;
-#[path = "persistence/migration.rs"]
-mod migration;
-#[path = "persistence/paths.rs"]
-pub(crate) mod paths;
-
-pub(crate) use hydrate::parent as hydrate_parent;
-pub(in crate::tool::agent) use lifecycle::{
-    ClosedAgent, activate_resume, close, exists, prepare_resume,
-};
-#[cfg(test)]
-pub(in crate::tool::agent) use lookup::is_open;
-pub(in crate::tool::agent) use lookup::{child_ids, durable_id};
-pub(in crate::tool::agent) use manifest_io::{remove, save};
-pub(crate) use migration::owner as reparent_owner;
-
-pub(crate) async fn hydrate_best_effort(parent: &str) {
-    if let Err(error) = hydrate_parent(Some(parent)).await {
-        tracing::warn!(parent_session_id = parent, %error, "Agent recovery failed");
-    }
-}
+codetether_agent_storage::declare_application_storage!(
+    pub(in crate::tool::agent);
+    crate::session::Session,
+    crate::tool::agent::store,
+    crate::tool::agent::collaboration_runtime::message_queue,
+);
 
 #[cfg(test)]
 #[path = "persistence/close_receipt_tests.rs"]
