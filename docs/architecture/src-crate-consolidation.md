@@ -17344,3 +17344,19 @@ Full workspace consolidation remains active.
 - No dependency changes. Evidence: `artifacts/consolidation-compact-inspector/`.
   No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared mux agent-roster projection
+
+- Moved mux session discovery-to-roster formatting and stable route matching
+  into `codetether-mux-control::agents`, with separate discovery, projection
+  and route modules. Moved the existing route-ID regression test.
+- Native mux control re-exports the shared functions for existing caller paths;
+  removed the old unreferenced implementation/test files from its directory.
+- Preserved every projected runtime/principal field, active-window selection,
+  display-name fallback and identity-based route matching.
+- Verification: complete projection/collection/matcher comparisons, unchanged
+  test and caller files, module/dependency graphs, direct rustfmt, file limits
+  and whitespace. Added serde_json to mux-control; staged only that lockfile
+  dependency. Evidence: `artifacts/consolidation-mux-agents/`.
+- No Cargo, rustc, Python, network calls, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

@@ -5616,6 +5616,7 @@ dependencies = [
  "codetether-mux-protocol",
  "codetether-mux-registry",
  "serde",
+ "serde_json",
  "tokio",
  "tracing",
 ]

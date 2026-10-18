@@ -8,6 +8,7 @@ description = "Frontend discovery, mutation, runtime reporting and live mux outp
 
 [dependencies]
 anyhow = "1"
+serde_json = "1"
 codetether-mux-client = { path = "../codetether-mux-client", version = "0.1.0" }
 codetether-mux-coordination = { path = "../codetether-mux-coordination", version = "0.1.0" }
 codetether-mux-model = { path = "../codetether-mux-model", version = "0.1.0" }
