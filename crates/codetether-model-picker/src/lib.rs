@@ -3,7 +3,8 @@
 //! [matching] implements the shared query policy. Supply a [PickerView] to
 //! [render_model_picker] to display its filtered catalog and current selection.
 //! [ModelPickerState] owns catalog, query, selection and lifecycle flags;
-//! the application retains provider refresh and shared status output.
+//! it also owns refresh completion and cache updates. The application supplies
+//! a provider registry and retains shared status output.
 mod data;
 mod filter;
 mod footer;
@@ -22,3 +23,8 @@ mod state_navigation;
 pub use state::ModelPickerState;
 
 mod state_store;
+
+mod refresh_direct;
+mod refresh_drain;
+mod refresh_finish;
+mod refresh_start;

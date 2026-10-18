@@ -11563,3 +11563,22 @@ Full workspace consolidation remains active.
   git diff --check passed. Evidence: artifacts/consolidation-model-store/.
 - No Cargo, rustc, compilation, runtime tests or cache reads/writes were run.
   Full workspace consolidation remains incomplete.
+
+### Model refresh state ownership extraction
+
+- Moved the refresh receiver, in-flight flag and target-model selection into
+  ModelPickerState. Updated eight native files to use the embedded state and
+  removed the obsolete AppState receiver alias and field defaults.
+- The picker crate now owns background discovery, newest-completion draining,
+  direct awaited refresh, target reselection and refresh completion/persistence.
+  Native methods forward requests and gate summary display on the active view.
+- Preserved channel installation, discovery task behavior, receiver draining,
+  no-registry behavior, persistence-before-target-selection ordering and UI
+  status conditions. Existing native integration tests remain unchanged.
+- Verification: 15 static comparisons cover every moved operation, native
+  adapters, unchanged integration tests and field migrations. Eighteen picker
+  modules contain at most 34 code lines each. Lexical module reachability,
+  dependency cycles, direct formatting, native file limits and git diff --check
+  passed. Evidence: artifacts/consolidation-model-refresh/.
+- No Cargo, rustc, compilation, runtime tests or provider requests were run.
+  Full workspace consolidation remains incomplete.

@@ -5935,8 +5935,11 @@ dependencies = [
 name = "codetether-model-picker"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "codetether-model-discovery",
  "codetether-model-store",
  "ratatui",
+ "tokio",
 ]
 
 [[package]]

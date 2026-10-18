@@ -7,5 +7,8 @@ license = "MIT"
 description = "Model catalog query matching and terminal picker presentation"
 
 [dependencies]
+anyhow = "1"
+codetether-model-discovery = { path = "../codetether-model-discovery", version = "0.1.0" }
+tokio = { version = "1", features = ["rt", "sync"] }
 codetether-model-store = { path = "../codetether-model-store", version = "0.1.0" }
 ratatui = { version = "0.30.2", default-features = false }

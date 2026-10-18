@@ -10,6 +10,13 @@
 /// ```
 #[derive(Debug, Default)]
 pub struct ModelPickerState {
+    /// Whether provider discovery is currently in flight.
+    pub model_refresh_in_flight: bool,
+    /// Completion stream for the current background refresh.
+    pub model_refresh_rx:
+        Option<tokio::sync::mpsc::UnboundedReceiver<codetether_model_discovery::ModelRefreshEvent>>,
+    /// Model to reselect after a refreshed catalog arrives.
+    pub model_picker_target_model: Option<String>,
     /// Available provider-qualified model identifiers.
     pub available_models: Vec<String>,
     /// Index into the currently filtered catalog.

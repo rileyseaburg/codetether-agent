@@ -21,6 +21,6 @@ pub(super) fn apply_verifier_model(app: &mut App) {
         None => "No verifier model selected".to_string(),
     };
     app.state.close_model_picker();
-    app.state.model_picker_target_model = None;
+    app.state.model_picker.model_picker_target_model = None;
     return_to_chat(app);
 }

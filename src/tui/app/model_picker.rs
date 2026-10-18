@@ -13,9 +13,9 @@ pub async fn open_model_picker(
 ) {
     app.state.open_model_picker();
     app.state.set_view_mode(ViewMode::Model);
-    app.state.model_picker_target_model = session.metadata.model.clone();
+    app.state.model_picker.model_picker_target_model = session.metadata.model.clone();
 
-    if let Some(current_model) = app.state.model_picker_target_model.as_deref()
+    if let Some(current_model) = app.state.model_picker.model_picker_target_model.as_deref()
         && let Some(index) = app
             .state
             .filtered_models()
@@ -34,15 +34,15 @@ pub async fn open_model_picker(
         app.state.start_model_refresh(Arc::clone(registry));
     } else {
         app.state.model_picker.available_models.clear();
-        app.state.model_refresh_in_flight = false;
-        app.state.model_refresh_rx = None;
+        app.state.model_picker.model_refresh_in_flight = false;
+        app.state.model_picker.model_refresh_rx = None;
         app.state.status = "No models available".to_string();
     }
 }
 
 pub fn close_model_picker(app: &mut App) {
     app.state.close_model_picker();
-    app.state.model_picker_target_model = None;
+    app.state.model_picker.model_picker_target_model = None;
     return_to_chat(app);
 }
 
@@ -54,6 +54,6 @@ pub fn apply_selected_model(app: &mut App, session: &mut Session) {
         app.state.status = "No model selected".to_string();
     }
     app.state.close_model_picker();
-    app.state.model_picker_target_model = None;
+    app.state.model_picker.model_picker_target_model = None;
     return_to_chat(app);
 }

@@ -1,49 +1,19 @@
 //! Application model-refresh tasks and state updates.
-use codetether_model_discovery::load_available_models;
 pub use codetether_model_discovery::{ModelRefreshEvent, ModelRefreshSummary};
 mod catalog_registry;
 use std::sync::Arc;
-
-use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
 use crate::tui::models::ViewMode;
 
 impl super::AppState {
     pub fn start_model_refresh(&mut self, registry: Arc<ProviderRegistry>) {
-        let (tx, rx) = mpsc::unbounded_channel();
-        self.model_refresh_rx = Some(rx);
-        self.model_refresh_in_flight = true;
-
-        tokio::spawn(async move {
-            let (models, summary) = load_available_models(registry.as_ref()).await;
-            let _ = tx.send(ModelRefreshEvent::Loaded { models, summary });
-        });
+        self.model_picker.start_model_refresh(registry);
     }
-
     pub fn drain_model_refresh(&mut self) {
-        let mut latest = None;
-        if let Some(rx) = self.model_refresh_rx.as_mut() {
-            while let Ok(event) = rx.try_recv() {
-                latest = Some(event);
-            }
-        }
-
-        let Some(ModelRefreshEvent::Loaded { models, summary }) = latest else {
+        let Some(summary) = self.model_picker.drain_model_refresh() else {
             return;
         };
-
-        self.finish_model_refresh(models);
-
-        if let Some(target) = self.model_picker_target_model.as_deref()
-            && let Some(index) = self
-                .filtered_models()
-                .iter()
-                .position(|model| *model == target)
-        {
-            self.model_picker.selected_model_index = index;
-        }
-
         if self.model_picker.model_picker_active || self.view_mode == ViewMode::Model {
             self.status = summary.status_message();
         }
@@ -58,14 +28,7 @@ impl super::AppState {
         &mut self,
         registry: Option<&Arc<ProviderRegistry>>,
     ) -> anyhow::Result<ModelRefreshSummary> {
-        let Some(registry) = registry else {
-            self.model_picker.available_models.clear();
-            return Ok(ModelRefreshSummary::empty());
-        };
-
-        let (models, summary) = load_available_models(registry.as_ref()).await;
-        self.set_available_models(models);
-        Ok(summary)
+        self.model_picker.refresh_available_models(registry).await
     }
 }
 
@@ -144,7 +107,10 @@ mod tests {
             .await
             .expect("refresh should succeed");
 
-        assert_eq!(state.model_picker.available_models, ["openrouter/openai/gpt-5.5"]);
+        assert_eq!(
+            state.model_picker.available_models,
+            ["openrouter/openai/gpt-5.5"]
+        );
         assert_eq!(summary.loaded_models, 1);
         assert_eq!(summary.loaded_providers, 1);
     }
