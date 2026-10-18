@@ -12,3 +12,6 @@ pub use state::ContextHealthState;
 
 /// Interactive context status command.
 pub mod command;
+
+/// Context telemetry event handling and presentation.
+pub mod events;

@@ -19560,3 +19560,23 @@ unchanged event handlers/tests/manifests, lexical module reachability,
 dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
 Evidence: `artifacts/consolidation-event-pipeline/`. No Cargo, rustc, Python,
 Rust tests or UI execution ran; compilation and runtime remain unverified.
+
+### Context telemetry event presentation
+
+Moved token estimates, truncation, compaction and RLM event routing and status
+presentation into `codetether-context-health::events`. Separate context,
+compaction and RLM modules own the same event categories as before; a View
+contract supplies five native health/token/status/error bindings. Removed the
+native compaction and RLM event implementations.
+
+Preserved state-update order, status strings, compaction-error chat messages,
+and ignoring unrelated session events. Existing health history methods and the
+session pipeline's final context callback remain unchanged. No dependencies
+changed.
+
+Validation: eight complete translated function bodies, five native bindings,
+native delegate, unchanged health history/pipeline callback and manifests,
+lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-context-events/`. No Cargo, rustc, Python, Rust tests
+or UI execution ran; compilation and runtime remain unverified.
