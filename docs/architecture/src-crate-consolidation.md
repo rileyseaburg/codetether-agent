@@ -13452,3 +13452,19 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or live session operations ran. Full workspace
   consolidation remains unfinished.
+
+### Persisted session HTTP extraction
+
+- Moved create, get, list and blocking-prompt handlers from native session
+  routes into codetether-session-http. SessionHost supplies native durable
+  storage and prompt execution; native goal-edit and fork routes remain mounted
+  alongside the shared router under the existing server middleware.
+- Pagination defaults (offset 0, limit 100), title/agent application, status
+  codes and error strings are unchanged. Blocking prompts still reject blank
+  text, load once, execute, then save before returning the original result.
+- Verification: 18 static handler/adapter/route/size checks passed, plus module
+  reachability, local dependency DAG, direct rustfmt, source file limits and
+  whitespace checks. Evidence: artifacts/consolidation-session-http/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, session storage mutations or prompts ran.
+  The full workspace consolidation remains unfinished.

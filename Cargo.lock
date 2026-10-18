@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-session-http",
  "codetether-session-recovery",
  "codetether-session-access",
  "codetether-session-realtime",
@@ -6745,6 +6746,19 @@ dependencies = [
  "codetether-session-access",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-session-http"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "codetether-session-events",
+ "codetether-session-metadata",
+ "serde",
+ "tracing",
 ]
 
 [[package]]

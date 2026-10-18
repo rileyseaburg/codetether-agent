@@ -13,10 +13,10 @@ pub(super) struct ListSessionsQuery {
 }
 
 /// Return one bounded page of persisted session summaries.
-pub(super) async fn list(
+pub(super) async fn list<H: crate::SessionHost>(
     Query(query): Query<ListSessionsQuery>,
-) -> Result<Json<Vec<crate::session::SessionSummary>>, (StatusCode, String)> {
-    let sessions = crate::session::list_sessions()
+) -> Result<Json<Vec<codetether_session_metadata::SessionSummary>>, (StatusCode, String)> {
+    let sessions = H::list()
         .await
         .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
     let offset = query.offset.unwrap_or(0);

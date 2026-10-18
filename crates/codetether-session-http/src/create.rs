@@ -12,13 +12,11 @@ pub(super) struct CreateSessionRequest {
 }
 
 /// Create and persist one empty session.
-pub(super) async fn create(
+pub(super) async fn create<H: crate::SessionHost>(
     Json(request): Json<CreateSessionRequest>,
-) -> Result<Json<crate::session::Session>, (StatusCode, String)> {
-    let mut session = crate::session::Session::new()
-        .await
-        .map_err(internal_error)?;
-    session.title = request.title;
+) -> Result<Json<H>, (StatusCode, String)> {
+    let mut session = H::new().await.map_err(internal_error)?;
+    session.set_title(request.title);
     if let Some(agent) = request.agent {
         session.set_agent_name(agent);
     }
