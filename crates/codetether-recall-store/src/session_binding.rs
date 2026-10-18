@@ -9,7 +9,7 @@ pub use serde_json::Value;
 /// ```
 #[macro_export]
 macro_rules! declare_session_host {
-    ($visibility:vis struct $host:ident; $session:ty, $projection:path) => {
+    ($visibility:vis struct $host:ident; $(,)? $session:ty, $projection:path) => {
         #[derive(Default)]
         $visibility struct $host;
         #[$crate::session_binding::async_trait]

@@ -24759,3 +24759,12 @@ file limits and whitespace checks passed. Unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-session-persistence-host/. No Cargo,
 rustc, Python, compiler macro expansion, persistence I/O or tests ran. Full
 consolidation remains active.
+
+### Accept formatted recall-host declaration syntax
+
+Static inspection found rustfmt inserts a comma after the semicolon in the
+native recall host declaration. The exported recall-store macro now accepts
+that optional comma, preserving the same generated host and implementation.
+The prepared-storage extraction verifier checks the actual formatted invocation
+against this accepted shape. No Cargo, rustc, Python, compiler expansion or tests
+ran; this corrects the declaration contract found during ongoing consolidation.
