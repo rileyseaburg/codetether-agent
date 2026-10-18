@@ -22,3 +22,9 @@ impl<S> Default for Host<S> {
         Self(PhantomData)
     }
 }
+
+/// Native background-model policy and typed notifications.
+mod background;
+pub use background::{Background, Notify};
+/// Native RLM summary-node production.
+pub mod summary;

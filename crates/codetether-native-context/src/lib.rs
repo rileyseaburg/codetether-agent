@@ -21,3 +21,6 @@ pub use reset::derive_reset;
 
 /// Session operations required for native context requests and completion.
 pub use codetether_context_request::Host as ContextHost;
+
+mod compression;
+pub use compression::compress_last_message_if_oversized;

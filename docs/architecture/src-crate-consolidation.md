@@ -26244,3 +26244,23 @@ Standalone formatting, file-limit and whitespace checks pass. Only the new
 package/root dependency are staged in Cargo.lock; unrelated working files stay
 unchanged. Evidence: artifacts/consolidation-native-session-store/. No Cargo,
 rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Native summary and oversized-message compression bindings
+
+Moved the remaining summary-production entrypoint and native background type
+selection into codetether-native-proactive, and oversized-message compression
+into codetether-native-context. Both root function-adapter files are removed;
+root exports retain typed session events and summary observability. No new
+crate is needed for these operations: they belong to the existing proactive
+summary and context-compression responsibilities.
+
+Static body comparisons preserve every shared call argument. Model-resolution
+inspection confirms the background resolver depends on provider policy rather
+than its session event type; summary uses that same native resolver and
+compression reuses the existing native context hooks. Module/dependency scans
+cover 728 roots and 614 crates without missing modules, cycles or undeclared
+dependencies. Declaration, standalone formatting, file-limit and whitespace
+checks pass. Only four added native-proactive dependencies are staged in
+Cargo.lock; unrelated working files remain unchanged. Evidence is retained in
+artifacts/consolidation-native-summary/. No Cargo, rustc, Python, compilation or
+runtime tests ran. The full consolidation goal remains active and incomplete.

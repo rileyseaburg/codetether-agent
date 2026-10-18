@@ -3906,12 +3906,16 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "codetether-application-providers",
  "codetether-context-policy",
+ "codetether-native-providers",
  "codetether-prepared-context",
  "codetether-proactive-context",
  "codetether-proactive-worker",
  "codetether-provider-core",
+ "codetether-rlm",
  "codetether-session-store",
+ "codetether-summary-producer",
  "serde_json",
 ]
 

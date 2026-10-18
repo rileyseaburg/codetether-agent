@@ -16,3 +16,7 @@ codetether-proactive-context = { path = "../codetether-proactive-context", versi
 codetether-proactive-worker = { path = "../codetether-proactive-worker", version = "0.1.0" }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.0" }
+codetether-summary-producer = { path = "../codetether-summary-producer", version = "0.1.0" }
