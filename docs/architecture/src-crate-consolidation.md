@@ -18861,3 +18861,25 @@ module reachability, dependency-cycle checks, file-size ratchet, whitespace and
 formatting. Evidence: `artifacts/consolidation-github-pr-cli/`. No Cargo, rustc,
 Python, Rust tests, credential requests or PR publication were executed;
 compilation and runtime behavior remain unverified.
+
+### File tool catalog construction
+
+Moved all 15 file-tool constructor selections from `src/tool/catalog/files.rs`
+into `codetether-file-tool-catalog`. The access module owns file reads, writes,
+listing, inspection, diff and Git constructors; the editing module owns edit,
+patch and confirmation constructors. The native adapter supplies only lazy
+factories for the two editors bound to the application's Morph backend.
+
+The shared catalog's registration order is unchanged. Unrelated kinds return
+None, and editor factories are called only for their respective selected kind.
+The new crate depends directly on existing shared tool implementations and has
+no dependency on the application crate.
+
+Validation: static comparison of all 15 constructor mappings, lazy dispatch,
+native factories, unchanged catalog ordering and editor bindings, workspace
+wiring, isolated lockfile delta, lexical module reachability, dependency-cycle
+checks, file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-file-tool-catalog/`. The initial verifier incorrectly
+assumed compound punctuation tokens; corrected it to match the token helper's
+single-character punctuation and retained the failed check log. No Cargo,
+rustc, Python or Rust tests ran; compilation and runtime remain unverified.

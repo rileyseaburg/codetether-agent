@@ -1619,6 +1619,7 @@ dependencies = [
  "codetether-exec-command",
  "codetether-file-diff",
  "codetether-file-inspect",
+ "codetether-file-tool-catalog",
  "codetether-file-tools",
  "codetether-forage-core",
  "codetether-git-tool",
@@ -2932,6 +2933,22 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-file-tool-catalog"
+version = "0.1.0"
+dependencies = [
+ "codetether-advanced-edit",
+ "codetether-confirm-edit",
+ "codetether-confirm-multiedit",
+ "codetether-file-diff",
+ "codetether-file-inspect",
+ "codetether-file-tools",
+ "codetether-git-tool",
+ "codetether-patch",
+ "codetether-tool-core",
+ "codetether-tool-registry",
 ]
 
 [[package]]

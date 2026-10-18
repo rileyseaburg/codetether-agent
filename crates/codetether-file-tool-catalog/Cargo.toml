@@ -1,0 +1,19 @@
+[package]
+name = "codetether-file-tool-catalog"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "File tool selection and construction for the application catalog"
+
+[dependencies]
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-tool-registry = { path = "../codetether-tool-registry", version = "0.1.0" }
+codetether-file-tools = { path = "../codetether-file-tools", version = "0.1.0" }
+codetether-file-inspect = { path = "../codetether-file-inspect", version = "0.1.0" }
+codetether-file-diff = { path = "../codetether-file-diff", version = "0.1.0" }
+codetether-git-tool = { path = "../codetether-git-tool", version = "0.1.0" }
+codetether-advanced-edit = { path = "../codetether-advanced-edit", version = "0.1.0" }
+codetether-patch = { path = "../codetether-patch", version = "0.1.0" }
+codetether-confirm-edit = { path = "../codetether-confirm-edit", version = "0.1.0" }
+codetether-confirm-multiedit = { path = "../codetether-confirm-multiedit", version = "0.1.0" }

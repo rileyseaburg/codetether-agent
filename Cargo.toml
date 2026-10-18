@@ -89,6 +89,7 @@ members = [
     "crates/codetether-file-diff",
     "crates/codetether-file-inspect",
     "crates/codetether-file-tools",
+    "crates/codetether-file-tool-catalog",
     "crates/codetether-paths",
     "crates/codetether-platform",
     "crates/codetether-plan",
@@ -1050,6 +1051,7 @@ codetether-k8s-tool = { path = "crates/codetether-k8s-tool", version = "0.1.0" }
 codetether-ripgrep-tool = { path = "crates/codetether-ripgrep-tool", version = "0.1.0" }
 codetether-grep-tool = { path = "crates/codetether-grep-tool", version = "0.1.0" }
 codetether-file-tools = { path = "crates/codetether-file-tools", version = "0.1.0" }
+codetether-file-tool-catalog = { path = "crates/codetether-file-tool-catalog", version = "0.1.0" }
 codetether-github-auth = { path = "crates/codetether-github-auth", version = "0.1.0" }
 codetether-webfetch = { path = "crates/codetether-webfetch", version = "0.1.0" }
 codetether-websearch = { path = "crates/codetether-websearch", version = "0.1.0" }
