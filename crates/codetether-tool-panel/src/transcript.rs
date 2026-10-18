@@ -1,8 +1,10 @@
 //! Cold transcript construction from shared message data.
+mod viewport;
 use crate::{PendingToolSnapshot, ToolPanelRender, append_entries, build_render_entries};
 use codetether_chat_model::ChatMessage;
 use codetether_message_formatter::MessageFormatter;
 use codetether_theme::ColorPalette;
+pub use viewport::TranscriptViewport;
 /// Render a transcript and report the required tool-panel scroll limit.
 ///
 /// # Arguments

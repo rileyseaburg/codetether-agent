@@ -1,4 +1,5 @@
 //! Native renderers and cache access for the shared chat-line pipeline.
+mod transcript;
 use crate::tui::{
     app::state::App, color_palette::ColorPalette, message_formatter::MessageFormatter,
 };
@@ -11,7 +12,7 @@ pub(super) struct Native<'a> {
 }
 impl codetether_message_cache::pipeline::Host for Native<'_> {
     fn swarm_lines(&mut self, content_width: usize) -> Option<DrawnLines> {
-        super::super::swarm_lines::build(self.app, content_width, self.formatter, self.palette)
+        transcript::selected(self, content_width)
     }
     fn agent_lines(&mut self, content_width: usize) -> Option<DrawnLines> {
         super::super::agent_lines::build(self.app, content_width, self.formatter)
@@ -28,13 +29,7 @@ impl codetether_message_cache::pipeline::Host for Native<'_> {
         &mut self.app.state.message_cache
     }
     fn build_uncached(&mut self, separator_width: usize, panel_width: usize) -> Vec<Line<'static>> {
-        super::super::build_uncached::build_uncached(
-            self.app,
-            separator_width,
-            panel_width,
-            self.formatter,
-            self.palette,
-        )
+        transcript::main(self, separator_width, panel_width)
     }
     fn push_streaming(&self, lines: &mut Vec<Line<'static>>, separator_width: usize) {
         super::super::streaming::push_streaming_preview(

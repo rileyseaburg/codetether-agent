@@ -28547,3 +28547,25 @@ Repository-wide symbol checks, unchanged runtime/source hashes, declaration,
 module/dependency, production-dependency, file-limit, formatting and whitespace
 checks pass. Evidence: artifacts/consolidation-legacy-cancel/. Cargo, rustc,
 Python and runtime tests were not run. Full consolidation remains incomplete.
+
+### Move transcript viewport rendering into the tool-panel crate
+
+Moved main-chat and selected-worker rendering from
+src/tui/ui/chat_view/build_uncached.rs and swarm_lines.rs into
+codetether-tool-panel::TranscriptViewport. Both root implementation files are
+deleted. The crate now owns entry construction, width calculations, pending-tool
+rendering, rebuilt-line construction, and updates to tool-preview scroll bounds.
+The native pipeline only projects messages, viewport, presentation resources,
+and the existing lazy approval lookup through lines/host/transcript.rs.
+
+Preserved the distinction between missing worker selection (no viewport update),
+an empty selected transcript (empty rows), and an empty main transcript (welcome
+banner). Existing swarm integration tests and the manual benchmark are unchanged
+and registered under lines instead of the deleted module. Static token comparison
+proves both moved function bodies equivalent after their explicit input mappings.
+
+Declaration, module/dependency, production-dependency, dependency-audit,
+file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
+Evidence: artifacts/consolidation-transcript-viewport/. No dependency manifests
+or unrelated working files changed. Cargo, rustc, Python, compilation, doc tests,
+and runtime tests were not run. Full consolidation remains active and incomplete.

@@ -16,7 +16,6 @@ pub use codetether_chat_status::kb_style;
 pub use codetether_composer_view as suggestion_style;
 pub use codetether_tui_style::spinner::spinner_hue;
 pub mod suggestions;
-pub(crate) mod swarm_lines;
 pub(crate) mod swarm_messages;
 pub use codetether_message_bubbles::timeline;
 pub use codetether_tui_style::thinking_pulse;

@@ -27,7 +27,7 @@ mod streaming_preview;
 pub use streaming_preview::push_streaming_preview;
 
 mod transcript;
-pub use transcript::build_transcript;
+pub use transcript::{TranscriptViewport, build_transcript};
 
 mod scroll_bounds;
 mod scroll_navigation;
