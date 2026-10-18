@@ -3711,6 +3711,8 @@ dependencies = [
  "codetether-provenance",
  "codetether-session-history",
  "codetether-session-codec",
+ "serde_json",
+ "codetether-session-location",
 ]
 
 [[package]]

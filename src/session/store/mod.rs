@@ -1,6 +1,5 @@
 //! Transactional indexed storage. JSON is an import/export format only.
 //! [`State`] records revisions and loaded-window offsets for delta persistence.
-mod api;
 pub(crate) mod archive;
 mod batch;
 use codetether_session_store::blobs;

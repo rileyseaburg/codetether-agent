@@ -24499,3 +24499,25 @@ required lockfile dependency entry is staged; unrelated changes remain intact.
 Evidence: artifacts/consolidation-session-store-bindings/. No Cargo, rustc,
 Python, compiler macro expansion, persistence operations or tests ran. Full
 consolidation remains active.
+
+### Session persistence APIs moved into the schema crate
+
+Moved fifteen inherent persistence methods into four schema-crate modules:
+lifecycle load/save/delete, bounded loading, history/export, and paths. The
+impl_session_persistence macro retains methods on the local Session type.
+Explicit-path loading delegates through the unchanged native lifecycle host,
+whose method calls the same indexed loader. Native listing, migration and
+background notification ownership stays in that host. Removed store/api.rs
+and persistence/paths.rs; tail_load.rs now only names the shared result type.
+
+Static comparison preserves signatures and method bodies after explicit path
+substitution and normalizes only optional trailing parameter commas. Native
+lifecycle host contents are byte-identical. Documentation substitutions were
+corrected before final checks; the initial verifier mismatch is documented.
+Module/dependency scans cover 693 roots and 574 crates without missing modules
+or cycles. Direct dependency audit, direct rustfmt, file limits and whitespace
+checks passed. Only two required lockfile dependency entries are staged;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-session-persistence-api/. No Cargo, rustc, Python,
+compiler macro expansion, persistence operations or tests ran. Full
+consolidation remains active.

@@ -7,6 +7,7 @@
 mod declare;
 mod header;
 mod lifecycle;
+mod persistence;
 mod storage;
 pub use header::{HeaderSource, header};
 
@@ -27,6 +28,7 @@ pub mod __private {
     pub use codetether_provider_core::{Message, Usage};
     pub use codetether_session_codec as codec;
     pub use codetether_session_history::History;
+    pub use codetether_session_location as location;
     pub use codetether_session_metadata as metadata;
     pub use codetether_session_metadata::SessionMetadata;
     pub use codetether_session_store as store;
@@ -35,4 +37,5 @@ pub mod __private {
     pub use codetether_tracked_vec::{TrackedVec, tail};
     pub use serde;
     pub use serde::{Deserialize, Serialize};
+    pub use serde_json;
 }
