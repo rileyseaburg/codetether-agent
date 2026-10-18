@@ -10959,3 +10959,19 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-theme-terminal/`.
 - No dependencies or lockfile edits were required. Compilation and tests were
   not run; no Cargo or rustc commands executed. Full consolidation stays active.
+
+### Chat-turn statistics consolidation
+
+- Moved the rolling `ChatLatencyStats` implementation from TUI state into
+  `crates/codetether-telemetry/src/chat_latency`, preserving the native type
+  path through a re-export.
+- Five modules separate sample storage, bounded recording/reset, summary
+  queries and nearest-rank percentile calculation. Maximum module size is
+  23 code lines; all original public methods and derives are retained.
+- Nineteen static assertions compare method bodies, window capacity, stored
+  types, native bindings and unchanged recording/rendering callers.
+  Module reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-chat-latency/`. An extraction-script API
+  mismatch was corrected before source changes. No dependency/lockfile change
+  was needed. Compilation and tests were not run; no Cargo or rustc commands
+  executed. Full consolidation remains active.

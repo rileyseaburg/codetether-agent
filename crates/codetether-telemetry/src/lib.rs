@@ -119,3 +119,6 @@ static TEST_ALLOCATOR: alloc_guard::GuardAlloc = alloc_guard::GuardAlloc;
 
 /// Best-effort recording of completed A2A message exchanges.
 pub mod a2a_recording;
+
+/// Bounded rolling timing statistics for completed chat turns.
+pub mod chat_latency;
