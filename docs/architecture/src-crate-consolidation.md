@@ -27057,3 +27057,19 @@ scope, standalone formatting, file-limit and whitespace checks pass for 725 root
 and 617 crates. No dependency/lock changes were needed; unrelated working files
 are untouched. Evidence: artifacts/consolidation-chat-state-binding/. No Cargo,
 rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### TUI tool-event presentation and timing
+
+Moved the tool-event View/Timing implementations and typed handler into focused
+modules under codetether-chat-events::tools::binding. Removed tools/view.rs and
+tools/timing.rs. The root retains its existing approval module and selects App,
+SessionEvent, worker bridge, approval delivery, trust guidance and worker-start
+callbacks. Approval behavior and policy selection are unchanged.
+
+All fifteen expanded function bodies match the originals after callback-path
+substitution. Other event handlers, approval code and test sources are unchanged.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. No dependency
+or lock changes were needed; unrelated working files remain untouched. Evidence:
+artifacts/consolidation-tool-events-binding/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.

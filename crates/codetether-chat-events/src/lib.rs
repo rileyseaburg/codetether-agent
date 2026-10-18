@@ -27,5 +27,6 @@ mod binding;
 /// Message type used by application-local chat state declarations.
 #[doc(hidden)]
 pub mod __private {
+    pub use codetether_approval_core::interaction::LiveApprovalRequest;
     pub use codetether_chat_model::ChatMessage;
 }

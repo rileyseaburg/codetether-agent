@@ -54,3 +54,5 @@ pub async fn handle_event<S>(
     }
     None
 }
+
+mod binding;
