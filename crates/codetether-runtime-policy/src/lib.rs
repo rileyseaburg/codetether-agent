@@ -39,3 +39,6 @@ pub mod session_command;
 pub mod evaluate;
 pub mod evaluate_tool;
 pub mod workspace;
+
+/// Per-turn memory of explicitly declined tool requests.
+pub mod decline;

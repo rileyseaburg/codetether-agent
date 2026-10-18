@@ -15553,3 +15553,20 @@ Full workspace consolidation remains active.
   whitespace. Evidence: `artifacts/consolidation-rlm-resolution/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains unfinished.
+
+### Shared per-turn approval-decline guard
+
+- Moved declined-request state and repeat blocking from the native prompt loop
+  into `codetether-runtime-policy::decline`, with argument normalization in its
+  own module. Native code retains a compatibility re-export.
+- Moved the three existing regression tests and metadata fixture. The prompt
+  loop still creates a new guard for each turn, records through the same call
+  path, and checks the same guard before tool invocation.
+- Preserved the denial code, ignored approval metadata fields, duplicate-record
+  suppression and exact model-facing repeat-request explanation.
+- Verification: state/constant and complete body comparisons, unchanged test
+  bodies, unchanged caller/per-turn setup, module and dependency graphs, direct
+  rustfmt, file budgets and diff whitespace checks. No dependency changes.
+  Evidence: `artifacts/consolidation-decline-guard/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.
