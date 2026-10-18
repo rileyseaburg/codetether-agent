@@ -7533,6 +7533,7 @@ dependencies = [
  "codetether-stream-bounds",
  "codetether-goal-core",
  "codetether-provider-metrics",
+ "codetether-image",
 ]
 
 [[package]]

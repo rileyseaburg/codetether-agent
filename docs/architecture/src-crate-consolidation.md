@@ -15918,3 +15918,20 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-tool-dispatch/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared human-input ingestion and publication
+
+- Moved text/image message construction and title-generation ordering into
+  `codetether-prompt-loop::input`. Native hooks retain human provenance,
+  session mutation, turn identity and title generation.
+- Moved correlated UserPrompt payload construction and workspace resolution
+  into `codetether-bus-core::user_prompt`, with borrowed native provenance.
+- Preserved text-first attachment ordering, Role::User, history before bus
+  publication, title generation afterward, and no-bus early return before
+  current-directory fallback.
+- Verification: both complete body comparisons, all five native services,
+  both native wrappers, unchanged title generation and setup, module/dependency
+  graphs, direct rustfmt, file budgets, isolated lock addition and diff
+  whitespace. Evidence: `artifacts/consolidation-user-input/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

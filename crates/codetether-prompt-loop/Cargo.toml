@@ -38,3 +38,5 @@ codetether-stream-bounds = { path = "../codetether-stream-bounds", version = "0.
 codetether-goal-core = { path = "../codetether-goal-core", version = "0.1.0" }
 
 codetether-provider-metrics = { path = "../codetether-provider-metrics", version = "0.1.0" }
+
+codetether-image = { path = "../codetether-image", version = "0.1.0" }

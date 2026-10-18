@@ -47,3 +47,6 @@ pub mod usage;
 
 /// Iterative provider/tool lifecycle and step-budget decisions.
 pub mod lifecycle;
+
+/// Human text/image input and title-generation sequencing.
+pub mod input;

@@ -45,3 +45,6 @@ pub mod tool_events;
 
 /// Correlated assistant reasoning and text events.
 pub mod assistant_events;
+
+/// Human prompt publication with session and workspace provenance.
+pub mod user_prompt;

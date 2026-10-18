@@ -1,42 +1,13 @@
-//! Ingestion of user text and image attachments.
-
+//! Native entry point for shared human-input ingestion.
+mod host;
 use super::Runner;
-use crate::provider::{ContentPart, Message, Role};
 use crate::session::ImageAttachment;
-use anyhow::Result;
-
 impl Runner<'_> {
-    /// Adds user content, publishes it, and generates a title when needed.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when automatic title generation fails.
     pub(crate) async fn accept(
         &mut self,
         message: &str,
         images: Vec<ImageAttachment>,
-    ) -> Result<()> {
-        let mut content = vec![ContentPart::Text {
-            text: message.to_string(),
-        }];
-        content.extend(images.iter().map(|image| ContentPart::Image {
-            url: image.data_url.clone(),
-            mime_type: image.mime_type.clone(),
-        }));
-        if !images.is_empty() {
-            tracing::info!(image_count = images.len(), "Adding image attachments");
-        }
-        self.session.add_human_message(Message {
-            role: Role::User,
-            content,
-        });
-        let turn_id = self.progress.turn_id.clone();
-        super::super::publish_user_prompt::publish(self.session, message, Some(turn_id));
-        if self.session.title.is_none() {
-            self.session
-                .generate_ai_title_with(self.model.provider.as_ref(), &self.model.model_id)
-                .await?;
-        }
-        Ok(())
+    ) -> anyhow::Result<()> {
+        codetether_prompt_loop::input::accept(self, message, images).await
     }
 }
