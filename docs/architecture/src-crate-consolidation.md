@@ -19944,3 +19944,25 @@ and manifests, module reachability, dependency cycles, file-size ratchet,
 whitespace and direct formatting. Evidence:
 `artifacts/consolidation-saved-scroll/`. No Cargo, rustc, Python or Rust tests
 ran; compilation and runtime remain unverified.
+
+### Startup hydration ownership
+
+Moved initial/loading/completed hydration, startup notices and network-environment
+synchronization into `codetether-tui-startup::hydrate`. Session metadata, frontend
+fields and external effects have separate contracts. Native bindings retain
+worker registration and transcript synchronization; four standalone native
+helpers were removed.
+
+Preserved CLI-or-session network precedence, metadata update before environment
+synchronization, history-source selection, worker registration, suggestions and
+cursor setup, and banners before the final combined status. The first-frame
+and startup tests remain unchanged. No dependencies changed.
+
+Validation: six complete hydration/notice/environment bodies plus worker
+attachment, 22 metadata/state/effect bindings, unchanged startup tests and
+manifests, module reachability, dependency cycles, file-size ratchet, whitespace
+and direct formatting. The comparison helper initially replaced a substring
+inside set_worker_bridge; corrected to a whole-identifier replacement and kept
+the failed log. Evidence: `artifacts/consolidation-startup-hydrate/`. No Cargo,
+rustc, Python, Rust tests or startup/environment execution ran; compilation and
+runtime remain unverified.

@@ -1,11 +1,6 @@
-//! Initial (pre-startup) TUI app hydration.
-
+//! Native first-frame hydration entry and regression coverage.
+use crate::{session::Session, tui::app::state::App};
 use std::path::Path;
-
-use crate::session::Session;
-use crate::tui::app::state::App;
-
-/// Hydrates `app` with the fields known before the slow startup phase completes.
 pub(super) fn initial(
     app: &mut App,
     cwd: &Path,
@@ -13,30 +8,21 @@ pub(super) fn initial(
     peer_ready: bool,
     session: &Session,
 ) {
-    loading(app, cwd, allow_network);
-    app.state.peer_endpoint_ready = peer_ready;
-    app.state.session_id = Some(session.id.clone());
+    codetether_tui_startup::hydrate::initial(
+        &mut super::hydrate_host::Native(app),
+        cwd,
+        allow_network,
+        peer_ready,
+        session,
+    );
 }
-
-/// Prepares the application state shown while startup dependencies load.
-///
-/// # Arguments
-///
-/// * `app` — State updated for the loading frame.
-/// * `cwd` — Workspace path displayed in the frame.
-/// * `allow_network` — Requested network policy shown during startup.
-///
-/// # Examples
-///
-/// ```text
-/// Loading providers and workspace...
-/// ```
 pub(super) fn loading(app: &mut App, cwd: &Path, allow_network: bool) {
-    app.state.cwd_display = cwd.display().to_string();
-    app.state.allow_network = allow_network;
-    app.state.status = "Loading providers and workspace...".to_string();
+    codetether_tui_startup::hydrate::loading(
+        &mut super::hydrate_host::Native(app),
+        cwd,
+        allow_network,
+    );
 }
-
 #[cfg(test)]
 #[path = "hydrate_initial_tests.rs"]
 mod tests;

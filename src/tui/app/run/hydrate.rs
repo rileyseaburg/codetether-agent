@@ -1,11 +1,9 @@
-use crate::session::Session;
-use crate::tui::app::message_text::sync_messages_from_source;
-use crate::tui::app::state::App;
-use crate::tui::models::WorkspaceSnapshot;
-use crate::tui::worker_bridge::TuiWorkerBridge;
-
+//! Native completed-startup hydration entry.
 use super::session_outcome::SessionLoadOutcome;
-
+use crate::{
+    session::Session,
+    tui::{app::state::App, models::WorkspaceSnapshot, worker_bridge::TuiWorkerBridge},
+};
 pub(super) fn complete(
     app: &mut App,
     allow_network: bool,
@@ -14,29 +12,12 @@ pub(super) fn complete(
     outcome: SessionLoadOutcome,
     workspace: WorkspaceSnapshot,
 ) {
-    app.state.workspace = workspace;
-    app.state.auto_apply_edits = session.metadata.auto_apply_edits;
-    app.state.allow_network = session.metadata.allow_network || allow_network;
-    app.state.slash_autocomplete = session.metadata.slash_autocomplete;
-    app.state.use_worktree = session.metadata.use_worktree;
-    app.state.session_id = Some(session.id.clone());
-    session.metadata.allow_network = app.state.allow_network;
-    super::network_env::apply(app.state.allow_network);
-    let (source_id, has_older) = outcome.history_source(&session.id);
-    sync_messages_from_source(app, session, source_id, has_older);
-    super::worker_attach::attach(app, worker_bridge);
-    app.state.refresh_slash_suggestions();
-    app.state.move_cursor_end();
-    // Push a visible banner for scan failures or tail-cap truncation BEFORE
-    // setting the status bar, so the user sees it in chat not just the footer.
-    super::session_banner::push(&outcome, app);
-    let loaded = outcome.status();
-    let policy = crate::tui::ui::trust_status::startup_summary();
-    if let Some(policy) = policy.as_deref() {
-        super::policy_notice::push(app, policy);
-    }
-    app.state.status = match policy {
-        Some(policy) => format!("{loaded} | {policy}"),
-        None => loaded,
-    };
+    codetether_tui_startup::hydrate::complete(
+        &mut super::hydrate_host::Native(app),
+        allow_network,
+        session,
+        worker_bridge,
+        outcome,
+        workspace,
+    );
 }

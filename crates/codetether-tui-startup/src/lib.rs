@@ -16,3 +16,6 @@ pub use driver::run;
 pub use host::{Frame, Host, Load, Runtime, Terminal};
 pub use startup::load;
 pub use state::{Resolved, Startup};
+
+/// Initial and completed frontend state hydration.
+pub mod hydrate;
