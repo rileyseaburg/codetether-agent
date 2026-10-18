@@ -12,7 +12,7 @@ macro_rules! __impl_tool_event_view {
                 &mut self.app.state.messages
             }
             fn reset_tool_preview_scroll(&mut self) {
-                self.app.state.reset_tool_preview_scroll();
+                self.app.state.tool_viewport.reset_tool_preview_scroll();
             }
             fn start_pending_tool(&mut self, name: String) {
                 self.app.state.tool_timing.start_pending_tool(name);

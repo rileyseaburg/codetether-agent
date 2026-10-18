@@ -41,3 +41,6 @@ pub mod limits;
 
 /// Application-local UI state adapters.
 pub mod state_binding;
+
+#[cfg(test)]
+mod scroll_tests;

@@ -28406,3 +28406,20 @@ file-limit checks pass (724 roots, 617 crates). Evidence:
 artifacts/consolidation-cache-methods/. No dependencies or unrelated working
 files changed. No Cargo, rustc, Python, compilation or runtime tests ran; the
 moved tests were not executed. Full consolidation remains active and incomplete.
+
+### Tool-preview scrolling owned by the tool-panel crate
+
+Removed four generated AppState tool-preview scrolling methods. Navigation,
+transcript reset and render-bound updates now use ToolPreviewScrollState
+directly. Moved the auto-follow/clamping regression test from the root state
+tests into codetether-tool-panel, using the same default viewport and assertions.
+The root scroll module retains only chat scrolling and its compatibility constant.
+
+Static comparisons cover all ten modified existing files and the moved test's
+operation sequence. An initial verifier replacement-scope error was corrected
+and the log retained. Tool-preview navigation and bound algorithms are unchanged.
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks pass (724 roots, 617 crates). Evidence:
+artifacts/consolidation-tool-scroll-methods/. No dependencies or unrelated
+working files changed. No Cargo, rustc, Python, compilation or runtime tests ran;
+the moved test was not executed. Full consolidation remains active and incomplete.

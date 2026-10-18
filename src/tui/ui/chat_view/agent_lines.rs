@@ -18,7 +18,7 @@ pub(super) fn build(
         .into_iter()
         .flat_map(|line| formatter.wrap_line(line.spans, width))
         .collect();
-    app.state.set_tool_preview_max_scroll(0);
+    app.state.tool_viewport.set_tool_preview_max_scroll(0);
     Some(DrawnLines::from_rebuild(lines))
 }
 

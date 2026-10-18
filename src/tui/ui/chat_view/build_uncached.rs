@@ -20,6 +20,8 @@ pub(super) fn build_uncached(
         palette,
         || crate::tui::app::state::approval_queue::active().map(|item| item.tool),
     );
-    app.state.set_tool_preview_max_scroll(rendered.max_scroll);
+    app.state
+        .tool_viewport
+        .set_tool_preview_max_scroll(rendered.max_scroll);
     rendered.lines
 }

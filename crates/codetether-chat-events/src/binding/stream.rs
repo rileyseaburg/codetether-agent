@@ -36,7 +36,7 @@ macro_rules! __impl_chat_stream {
                     .clear_streaming_text(&mut self.0.state.streaming);
             }
             fn reset_tool_preview_scroll(&mut self) {
-                self.0.state.reset_tool_preview_scroll();
+                self.0.state.tool_viewport.reset_tool_preview_scroll();
             }
             fn messages(&mut self) -> &mut Vec<$crate::__private::ChatMessage> {
                 &mut self.0.state.messages

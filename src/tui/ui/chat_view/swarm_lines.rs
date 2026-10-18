@@ -28,6 +28,7 @@ pub(super) fn build(
         palette,
     );
     app.state
+        .tool_viewport
         .set_tool_preview_max_scroll(result.tool_preview_max_scroll);
     Some(DrawnLines::from_rebuild(lines))
 }

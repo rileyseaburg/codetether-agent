@@ -4,10 +4,10 @@ use codetether_tui_navigation::Action;
 pub(super) fn apply(app: &mut App, action: &Action) -> bool {
     match action {
         Action::ToolUp(value) => {
-            app.state.scroll_tool_preview_up(*value);
+            app.state.tool_viewport.scroll_tool_preview_up(*value);
         }
         Action::ToolDown(value) => {
-            app.state.scroll_tool_preview_down(*value);
+            app.state.tool_viewport.scroll_tool_preview_down(*value);
         }
         Action::RalphDetailUp(value) => {
             app.state.ralph.detail_scroll_up(*value);

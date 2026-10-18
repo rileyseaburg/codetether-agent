@@ -29,10 +29,10 @@ impl View for App {
         metrics::fields(&mut self.state)
     }
     fn reset_tool_preview_scroll(&mut self) {
-        self.state.reset_tool_preview_scroll();
+        self.state.tool_viewport.reset_tool_preview_scroll();
     }
     fn set_tool_preview_max_scroll(&mut self, max: usize) {
-        self.state.set_tool_preview_max_scroll(max);
+        self.state.tool_viewport.set_tool_preview_max_scroll(max);
     }
     fn scroll_to_bottom(&mut self) {
         self.state.scroll_to_bottom();
