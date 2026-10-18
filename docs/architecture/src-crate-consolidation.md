@@ -24811,3 +24811,22 @@ the audit. This is a deliberately limited macro-grammar check, not Rust type
 checking: it does not execute derives, async-trait, functions or tests and
 cannot validate type bounds or runtime behavior. No Cargo, rustc or Python ran.
 The overall migration remains active and incomplete.
+
+### AppState default initialization moved into the TUI models crate
+
+Moved the full AppState Default implementation into
+codetether-tui-models::app_defaults. The native default_impl file now declares
+its existing state type and fourteen component constructor paths. Shared code
+owns the initial flags, counters, buffers, view/input modes and status text.
+No field types, state layout or component constructors changed, and no new
+dependencies were needed.
+
+The declaration audit now includes AppState initialization: 32 calls, 80 macro
+definitions and 46 inherent Session methods were checked. An exact comparison
+of the expanded Default implementation preserves every field value and its
+initialization order after resolving the original type aliases. Module and
+dependency scans cover 693 roots and 574 crates without missing modules or
+cycles. Direct dependency audit, direct rustfmt, file limits and whitespace
+checks passed. Unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-tui-default-state/. No Cargo, rustc, Python, compiler
+expansion, TUI construction or tests ran. Full consolidation remains active.

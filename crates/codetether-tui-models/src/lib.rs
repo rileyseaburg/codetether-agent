@@ -22,3 +22,6 @@ pub use session_view::SessionView;
 
 /// Legacy UI utility types and fallback behavior.
 pub mod legacy_helpers;
+
+/// Application state initialization with native component factories.
+pub mod app_defaults;
