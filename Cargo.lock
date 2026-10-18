@@ -1367,6 +1367,7 @@ dependencies = [
  "codetether-file-picker",
  "codetether-fuzzy-finder",
  "codetether-help-view",
+ "codetether-tui-cli",
  "codetether-tui-models",
  "codetether-model-store",
  "codetether-model-discovery",
@@ -6330,6 +6331,16 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tracing",
+]
+
+[[package]]
+name = "codetether-tui-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-a2a-http",
+ "codetether-cli-options",
+ "codetether-config",
 ]
 
 [[package]]

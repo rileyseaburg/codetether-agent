@@ -14,11 +14,12 @@ use clap::Parser;
 use cli::{Cli, Command};
 use codetether_agent::{
     a2a, benchmark, bus, cli, forage, github_pr, indexer, mcp, mux, provider, ralph, server, swarm,
-    tool, tui,
+    tool,
 };
 
 mod cleanup_cli;
 mod startup_crash;
+mod tui_cli;
 mod worker_cli;
 mod worktree_cli;
 
@@ -60,48 +61,7 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Some(Command::Bonsai(args)) => cli::bonsai::run(args).await,
         Some(Command::Windows(args)) => cli::windows::run(args).await,
-        Some(Command::Tui(args)) => {
-            let allow_network = args.allow_network;
-            let access_mode = args.access_mode;
-            let yolo = args.yolo || cli.yolo;
-            // A2A peer is on by default. `--no-a2a` opts out entirely.
-            // When on, every field auto-picks a sensible default unless the
-            // user supplied an explicit override (--a2a-port / --a2a-name /
-            // --a2a-peer, etc.).
-            let a2a_options = if args.a2a {
-                Some(crate::a2a::spawn::SpawnOptions {
-                    name: args.a2a_name.clone(),
-                    hostname: args.a2a_hostname.clone(),
-                    port: args.a2a_port.unwrap_or(0),
-                    public_url: args.a2a_public_url.clone(),
-                    description: args.a2a_description.clone(),
-                    peer: args.a2a_peer.clone(),
-                    discovery_interval_secs: args.a2a_discovery_interval_secs,
-                    auto_introduce: args.a2a_auto_introduce,
-                    mdns: args.a2a_mdns,
-                })
-            } else {
-                None
-            };
-            let start_new = args.project.as_deref() == Some(std::path::Path::new("new"));
-            let project = if start_new {
-                cli.project
-            } else {
-                args.project.or(cli.project)
-            };
-            if start_new {
-                unsafe { std::env::set_var("CODETETHER_TUI_NEW_SESSION", "1") }
-            };
-            tui::run(
-                project,
-                allow_network,
-                a2a_options,
-                access_mode,
-                yolo,
-                args.session,
-            )
-            .await
-        }
+        Some(Command::Tui(args)) => tui_cli::execute(Some(args), cli.project, cli.yolo).await,
         Some(Command::Mux(args)) => mux::execute(args).await,
         Some(Command::Serve(args)) => server::serve(args).await,
         Some(Command::Run(args)) => cli::run::execute(args).await,
@@ -154,19 +114,6 @@ async fn main() -> anyhow::Result<()> {
 
         // OKR commands
         Some(Command::Okr(args)) => codetether_okr_cli::execute(args).await,
-        None => {
-            // Default: launch TUI with auto-everything A2A peer enabled.
-            // Same defaults as `codetether tui` with no flags.
-            let project = cli.project;
-            tui::run(
-                project,
-                false,
-                Some(crate::a2a::spawn::SpawnOptions::auto()),
-                None,
-                cli.yolo,
-                None,
-            )
-            .await
-        }
+        None => tui_cli::execute(None, cli.project, cli.yolo).await,
     }
 }

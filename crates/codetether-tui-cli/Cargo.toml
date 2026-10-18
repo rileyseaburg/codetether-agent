@@ -1,0 +1,13 @@
+[package]
+name = "codetether-tui-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "TUI command option precedence and launch coordination"
+
+[dependencies]
+anyhow = "1"
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }

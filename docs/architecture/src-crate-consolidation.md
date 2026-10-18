@@ -18183,3 +18183,23 @@ provider/tool/transport construction sources, module/dependency graphs, file
 limits and whitespace checks. Evidence: `artifacts/consolidation-mcp-serve/`.
 No provider discovery, MCP server, network operation, Cargo, rustc, Python or Rust
 test was executed. Compilation remains unverified.
+
+### TUI CLI launch settings
+
+Moved explicit/default TUI command launch behavior from `src/main.rs` into the
+new `codetether-tui-cli` crate. Its explicit-options module owns project and
+root-option precedence, the new-session environment marker, A2A option mapping
+and launch arguments. The launch module preserves the separate default path,
+including automatic peer configuration and disabled network allowance.
+`src/tui_cli.rs` only forwards resolved settings to the native TUI runtime.
+
+The existing shared `SpawnOptions` type is used directly; no changes were made
+to the native peer implementation or its existing unrelated working edits.
+TUI runtime, access-mode handling and CLI parser definitions remain unchanged.
+
+Validation: full original explicit/default branch comparisons, every forwarded
+argument and peer field, full-main comparison outside those extraction sites,
+unchanged runtime/parser sources, module/dependency graphs, file-size ratchet
+and whitespace checks. Evidence: `artifacts/consolidation-tui-cli/`. No TUI or
+peer was launched. No Cargo, rustc, Python or Rust tests ran; compilation remains
+unverified.
