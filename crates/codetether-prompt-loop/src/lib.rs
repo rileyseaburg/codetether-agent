@@ -25,3 +25,7 @@ pub mod repair;
 
 /// Sequencing of response guards, publication, repair and tool execution.
 pub mod driver;
+
+mod reset;
+/// Terminal response validation and continuation sequencing.
+pub mod terminal;

@@ -1,48 +1,11 @@
-//! Final-answer validation and exhausted build-tool retries.
-
-use super::super::super::loop_constants as limits;
+//! Native entry point for shared terminal-response sequencing.
 use super::super::{Runner, state::StepFlow};
 use crate::provider::CompletionResponse;
-use anyhow::Result;
-
-/// Accepts a final answer or schedules fixes for validation diagnostics.
-///
-/// # Errors
-///
-/// Returns an error when validation fails or its retry budget is exhausted.
+#[path = "terminal/host.rs"]
+mod host;
 pub(super) async fn finish_or_retry(
     runner: &mut Runner<'_>,
     response: CompletionResponse,
-) -> Result<StepFlow> {
-    runner.session.add_message(response.message);
-    if super::super::super::steering::drain_into(runner.session) > 0 {
-        return Ok(StepFlow::Continue);
-    }
-    if !super::super::super::build::is_build_agent(&runner.session.agent) {
-        return final_flow(runner).await;
-    }
-    let report = super::super::super::validation::build_validation_report(
-        &runner.workspace.cwd,
-        &runner.workspace.touched,
-        &runner.workspace.baseline_dirty,
-    )
-    .await?;
-    let Some(report) = report else {
-        return final_flow(runner).await;
-    };
-    runner.progress.validation_retries += 1;
-    if runner.progress.validation_retries >= limits::POST_EDIT_VALIDATION_MAX_RETRIES {
-        anyhow::bail!(
-            "Post-edit validation failed after {} attempts.\n\n{}",
-            limits::POST_EDIT_VALIDATION_MAX_RETRIES,
-            report.prompt
-        );
-    }
-    super::nudge::add(runner, &report.prompt);
-    runner.progress.output.clear();
-    Ok(StepFlow::Continue)
-}
-
-async fn final_flow(runner: &mut Runner<'_>) -> Result<StepFlow> {
-    super::goal::after_message(runner).await
+) -> anyhow::Result<StepFlow> {
+    codetether_prompt_loop::terminal::finish_or_retry(runner, response).await
 }

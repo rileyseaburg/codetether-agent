@@ -15676,3 +15676,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-response-driver/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains unfinished.
+
+### Shared terminal-response sequencing
+
+- Moved final-answer insertion, pending-steering precedence, build validation
+  retries and final goal-flow dispatch into `codetether-prompt-loop::terminal`.
+  Native callbacks retain actual session, validation-service and journal access.
+- Moved the existing goal-turn reset assignments onto LoopState. Preserved the
+  original subset of reset fields, including the existing treatment of declined
+  requests and goal-failure accounting.
+- Preserved transcript insertion before steering, validation bypass for non-build
+  agents, retry counter/error timing, corrective-message insertion before output
+  clearing, and final continuation behavior.
+- Verification: full transformed terminal body and reset comparisons, native
+  callback bindings, unchanged goal decision branches and dependencies, module
+  graph, direct rustfmt, file budgets and diff whitespace. Evidence:
+  `artifacts/consolidation-terminal-flow/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains unfinished.

@@ -26,15 +26,6 @@ fn apply(
         Continuation::Finish => StepFlow::Finish,
     }
 }
-
 fn reset_turn(runner: &mut Runner<'_>) {
-    let progress = &mut runner.progress;
-    progress.output.clear();
-    progress.validation_retries = 0;
-    progress.repeat_guard = Default::default();
-    progress.codesearch_misses = 0;
-    progress.build_retries = 0;
-    progress.native_retries = 0;
-    progress.steps_since_write = 0;
-    progress.turn_id = uuid::Uuid::new_v4().to_string();
+    runner.progress.reset_goal_turn();
 }
