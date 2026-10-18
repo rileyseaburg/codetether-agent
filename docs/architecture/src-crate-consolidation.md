@@ -20138,3 +20138,24 @@ module reachability, dependency cycles, isolated lock delta, file-size ratchet,
 whitespace and direct formatting. Evidence: `artifacts/consolidation-agent-bar/`.
 Cargo, rustc, Python, Rust tests and terminal rendering were not run; compilation
 and runtime remain unverified.
+
+### Dashboard Enter navigation ownership
+
+Moved Enter-key detail selection, stale-focus pruning, swarm name lookup and
+swarm detail opening into `codetether-agent-dashboard::interaction`. Native
+code supplies ten focused field/registry/view operations and the existing
+entry point delegates the navigation policy. Removed the native swarm helper.
+
+Preserved stale-focus checks across local, owned-tool and swarm registries;
+selected swarm lookup before local detail; detail scroll reset; unselected
+swarm fallback; recursive retry after focus cycling; and empty-dashboard
+status. Existing managed-agent and swarm tests remain unchanged and reach the
+shared policy through the same native entry point.
+
+Validation: full translated dispatch/focus/swarm bodies, ten native bindings,
+unchanged tests/navigation/manifests, module reachability, dependency cycles,
+file-size ratchet, whitespace and direct formatting. The module audit initially
+used a nonexistent directory for this file-based module; corrected its scoped
+inventory and retained the failed log. Evidence:
+`artifacts/consolidation-dashboard-enter/`. No Cargo, rustc, Python, Rust tests
+or interactive navigation ran; compilation and runtime remain unverified.

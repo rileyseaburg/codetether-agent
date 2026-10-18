@@ -34,3 +34,6 @@ pub mod spawned;
 
 /// Unified main, local, tool and swarm header tabs.
 pub mod bar;
+
+/// Dashboard Enter-key navigation and stale-selection policy.
+pub mod interaction;
