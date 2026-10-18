@@ -14159,3 +14159,17 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, server startup or access-setting changes ran.
   Full workspace consolidation remains unfinished.
+
+### A2A gRPC listener extraction
+
+- Moved gRPC address selection, service construction and detached listener
+  startup into codetether-a2a-grpc::listener. Address resolution and transport
+  startup have separate modules; both A2A and voice services retain their owner.
+- Preserves the environment/default port, parse errors, HTTP/1 support,
+  CORS/gRPC-Web layer order, service registration and listener-failure logging.
+- Verification: three static expanded-listener/full-server-body/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-grpc-listener/.
+- Added only the listener's existing workspace dependencies to the lockfile;
+  tokio's runtime feature is explicit. No Cargo, rustc, Rust tests, server startup
+  or network listeners ran. Full workspace consolidation remains unfinished.

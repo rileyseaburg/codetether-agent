@@ -17,3 +17,6 @@ pub mod server;
 
 /// Bus-backed voice service and streaming event transport.
 pub mod voice;
+
+/// Background A2A and voice gRPC-Web listener startup.
+pub mod listener;

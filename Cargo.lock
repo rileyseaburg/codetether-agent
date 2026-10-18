@@ -1129,6 +1129,9 @@ dependencies = [
  "tonic-prost",
  "tonic-prost-build",
  "uuid",
+ "codetether-server-cors",
+ "tonic-web",
+ "tracing",
 ]
 
 [[package]]

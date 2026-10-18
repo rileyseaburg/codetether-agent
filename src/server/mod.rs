@@ -54,7 +54,6 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Mutex, broadcast};
-use tonic_web::GrpcWebLayer;
 use tower_http::trace::TraceLayer;
 
 use codetether_audit_http::AuditQuery;
@@ -191,32 +190,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     let a2a_nested_router = a2a_server.router();
 
     // Start gRPC transport on a separate port
-    let grpc_port = std::env::var("CODETETHER_GRPC_PORT")
-        .ok()
-        .and_then(|p| p.parse::<u16>().ok())
-        .unwrap_or(50051);
-    let grpc_addr: std::net::SocketAddr = format!("{}:{}", args.hostname, grpc_port).parse()?;
-    let grpc_store = crate::a2a::grpc::GrpcTaskStore::with_bus(agent_card, bus.clone());
-    let grpc_service = grpc_store.into_service();
-    let voice_service = crate::a2a::voice_grpc::VoiceServiceImpl::new(bus.clone()).into_service();
-    tokio::spawn(async move {
-        tracing::info!(addr = %grpc_addr, "Starting gRPC A2A server");
-
-        // Configure CORS for marketing site (production + local dev)
-        let cors = codetether_server_cors::grpc();
-
-        if let Err(error) = tonic::transport::Server::builder()
-            .accept_http1(true)
-            .layer(cors)
-            .layer(GrpcWebLayer::new())
-            .add_service(grpc_service)
-            .add_service(voice_service)
-            .serve(grpc_addr)
-            .await
-        {
-            tracing::warn!(addr = %grpc_addr, error = ?error, "gRPC A2A server exited");
-        }
-    });
+    codetether_a2a_grpc::listener::spawn(&args.hostname, agent_card, bus.clone())?;
 
     let state = AppState {
         config: Arc::new(config),

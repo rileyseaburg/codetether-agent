@@ -7,11 +7,14 @@ license = "MIT"
 description = "A2A gRPC protobuf contracts and wire conversions"
 
 [dependencies]
+codetether-server-cors = { path = "../codetether-server-cors", version = "0.1.0" }
+tonic-web = "0.14"
+tracing = "0.1"
 codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
 async-stream = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 dashmap = "6"
-tokio = { version = "1.53.1", features = ["sync"] }
+tokio = { version = "1.53.1", features = ["sync", "rt"] }
 tokio-stream = "0.1.19"
 uuid = { version = "1.24.0", features = ["v4"] }
 codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
