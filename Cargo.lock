@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-cookie-auth-cli",
  "codetether-user-auth",
  "codetether-bedrock-auth-cli",
  "codetether-config-cli",
@@ -5472,6 +5473,18 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "codetether-cookie-auth-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "codetether-secrets",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

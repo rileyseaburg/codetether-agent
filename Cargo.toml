@@ -197,6 +197,7 @@ members = [
     "crates/codetether-config-cli",
     "crates/codetether-bedrock-auth-cli",
     "crates/codetether-user-auth",
+    "crates/codetether-cookie-auth-cli",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -509,6 +510,7 @@ codetether-codex-records = { path = "crates/codetether-codex-records", version =
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
+codetether-cookie-auth-cli = { path = "crates/codetether-cookie-auth-cli", version = "0.1.0" }
 codetether-user-auth = { path = "crates/codetether-user-auth", version = "0.1.0" }
 codetether-bedrock-auth-cli = { path = "crates/codetether-bedrock-auth-cli", version = "0.1.0" }
 codetether-config-cli = { path = "crates/codetether-config-cli", version = "0.1.0" }

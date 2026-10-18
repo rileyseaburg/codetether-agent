@@ -10708,3 +10708,19 @@ graphs, file budgets and whitespace checks passed; modules have at most 41 code
 lines. Evidence is in `artifacts/consolidation-user-auth/`. Compilation and
 runtime tests were not run. No Cargo, rustc, Python, credential read/write or
 login request ran. Full workspace consolidation remains active.
+
+### Provider-cookie import extracted
+
+Moved Netscape cookie parsing, provider-specific selection, duplicate/expiry
+handling, rendering, import/rotation metadata, Vault persistence and completion
+reporting from the native auth module into `crates/codetether-cookie-auth-cli`.
+Fourteen modules include the re-exported CLI argument schema. Two existing
+cookie regression tests moved; unrelated authentication tests remain native.
+
+Sixty-nine static comparisons/checks cover helper bodies, exact pipeline stage
+inputs/order, storage metadata, output text, argument schema and every retained
+native item/test. Module/dependency graphs, file budgets and whitespace checks
+passed; modules have at most 41 code lines. Evidence is in
+`artifacts/consolidation-cookie-auth-cli/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python, cookie-file read or Vault operation ran.
+Full workspace consolidation remains active.
