@@ -11860,3 +11860,19 @@ Full workspace consolidation remains active.
   formatting, source file limits and git diff --check passed.
 - Evidence: artifacts/consolidation-answer-review-view/. No Cargo, rustc,
   compilation, tests or terminal rendering ran. Full consolidation is incomplete.
+
+### Formatted-message cache extraction
+
+- Moved the thread-local formatted-line cache, pointer/timestamp/role/width keys,
+  capacity-based byte accounting and bounded storage into codetether-message-cache.
+  It depends on existing shared chat model and message formatter types, plus
+  ratatui; the native format_cache module is a compatibility re-export.
+- Preserved the 128-entry and 2 MiB limits, oversized-entry rejection, full-cache
+  eviction, replacement accounting, cloned cache results and explicit reset.
+  Three original policy/storage tests moved with their implementations.
+- Verification: all five moved source files match token-for-token apart from
+  imports and documentation; the native export also matches the intended API.
+  Five modules contain at most 43 code lines. Module/dependency graph checks,
+  direct formatting, source file limits and git diff --check passed.
+- Evidence: artifacts/consolidation-message-cache/. No Cargo, rustc, compilation
+  or tests ran. Full workspace consolidation remains incomplete.

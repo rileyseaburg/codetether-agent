@@ -5,7 +5,7 @@ use std::mem::size_of;
 use ratatui::text::{Line, Span};
 
 use super::Key;
-use crate::tui::chat::message::ChatMessage;
+use codetether_chat_model::ChatMessage;
 
 pub(super) const BYTE_LIMIT: usize = 2 * 1024 * 1024;
 

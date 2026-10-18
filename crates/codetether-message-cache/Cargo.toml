@@ -1,0 +1,12 @@
+[package]
+name = "codetether-message-cache"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Thread-local byte-limited caching of formatted chat messages"
+
+[dependencies]
+codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
+codetether-message-formatter = { path = "../codetether-message-formatter", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
