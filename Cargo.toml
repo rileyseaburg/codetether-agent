@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/codetether-native-agent",
     "crates/codetether-native-server",
     "crates/codetether-native-cognition",
     "crates/codetether-native-forage",
@@ -720,6 +721,7 @@ fips = [
 
 [dependencies]
 codetether-native-a2a = { path = "crates/codetether-native-a2a", version = "4.7.6-dev.38" }
+codetether-native-agent = { path = "crates/codetether-native-agent", version = "0.1.0" }
 codetether-native-server = { path = "crates/codetether-native-server", version = "0.1.0" }
 codetether-native-cognition = { path = "crates/codetether-native-cognition", version = "0.1.0" }
 codetether-native-forage = { path = "crates/codetether-native-forage", version = "0.1.0" }

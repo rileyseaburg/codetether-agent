@@ -1,7 +1,7 @@
 //! Preserve native session construction and mutation methods.
 use super::*;
 #[async_trait::async_trait]
-impl codetether_agent_runtime::SessionWrite for Native {
+impl codetether_agent_runtime::SessionWrite for SessionServices {
     async fn new_session() -> anyhow::Result<Session> {
         Session::new().await
     }

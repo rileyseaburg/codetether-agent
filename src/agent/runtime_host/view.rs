@@ -1,6 +1,6 @@
 //! Borrow native session history, accounting and access policy.
 use super::*;
-impl codetether_agent_runtime::SessionView for Native {
+impl codetether_agent_runtime::SessionView for SessionServices {
     type Session = Session;
     fn directory(session: &Session) -> Option<&Path> {
         session.metadata.directory.as_deref()

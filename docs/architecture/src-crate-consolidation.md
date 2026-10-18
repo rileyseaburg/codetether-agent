@@ -26104,3 +26104,21 @@ direct rustfmt and whitespace checks pass. Only the four required native-server
 dependencies are staged in Cargo.lock; unrelated files remain unchanged.
 Evidence: artifacts/consolidation-native-realtime/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Native agent registry and context services
+
+Added codetether-native-agent to own registry lookup/registration, global policy,
+goal/peer prompt composition and context-aware completion. Its generic Host
+forwards session views/writes and input enrichment through the application's
+existing methods. The root retains those methods and selects the native host;
+the old root registry adapter is removed. The public Agent state owner remains
+the same shared runtime specialization.
+
+Static comparisons preserve all root view/write/enrichment bodies, registry
+operations, prompt composition and completion options. Module/dependency scans
+cover 723 roots and 609 crates without missing modules, cycles or undeclared
+dependencies. Declaration, file-limit, direct rustfmt and whitespace checks pass.
+Only the new package/root dependency are staged in Cargo.lock; unrelated dirty
+files remain unchanged. Evidence: artifacts/consolidation-native-agent/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active.

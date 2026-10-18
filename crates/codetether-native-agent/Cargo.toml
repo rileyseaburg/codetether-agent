@@ -1,0 +1,22 @@
+[package]
+name = "codetether-native-agent"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native agent registry, policy and context services with application session access"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-a2a-discovery = { path = "../codetether-a2a-discovery", version = "0.1.0" }
+codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
+codetether-agent-completion = { path = "../codetether-agent-completion", version = "0.1.0" }
+codetether-agent-runtime = { path = "../codetether-agent-runtime", version = "0.1.0" }
+codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
+codetether-native-context = { path = "../codetether-native-context", version = "0.1.0" }
+codetether-native-goals = { path = "../codetether-native-goals", version = "0.1.0" }
+codetether-native-runtime-policy = { path = "../codetether-native-runtime-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"

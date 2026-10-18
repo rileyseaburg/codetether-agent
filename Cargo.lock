@@ -1275,6 +1275,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-native-agent",
  "codetether-native-server",
  "codetether-native-cognition",
  "codetether-native-forage",
@@ -3612,6 +3613,25 @@ dependencies = [
  "codetether-telemetry",
  "codetether-worktree",
  "tokio",
+]
+
+[[package]]
+name = "codetether-native-agent"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-a2a-discovery",
+ "codetether-agent-completion",
+ "codetether-agent-core",
+ "codetether-agent-runtime",
+ "codetether-application-registry",
+ "codetether-native-context",
+ "codetether-native-goals",
+ "codetether-native-runtime-policy",
+ "codetether-provider-core",
+ "codetether-tool-core",
+ "serde_json",
 ]
 
 [[package]]

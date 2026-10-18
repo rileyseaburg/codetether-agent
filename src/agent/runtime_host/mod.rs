@@ -6,13 +6,15 @@ use crate::{
     agent::ToolUse,
     provider::{Message, Usage},
     session::Session,
-    tool::{Tool, ToolRegistry, ToolResult},
+    tool::ToolResult,
 };
 use serde_json::Value;
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 mod context;
-mod registry;
 mod view;
 mod write;
 /// Native registry and session binding exposed by the public Agent alias.
-pub struct Native;
+pub struct SessionServices;
+/// Native registry/context services with application session bookkeeping.
+pub type Native =
+    codetether_native_agent::Host<SessionServices, crate::tool::registry_lifecycle::Native>;
