@@ -26835,3 +26835,18 @@ file-limit and whitespace checks pass for 729 roots and 617 crates. No manifest
 or lock changes were needed, and unrelated working files remain untouched.
 Evidence: artifacts/consolidation-spawn-binding/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Durable spawn registration binding
+
+Moved registration's session save, lineage lookup, manifest write, reserved
+insertion and typed persistence entry point into
+codetether-agent-spawn::declare_application_registration. The root selects the
+existing Session, store and persistence modules; removed spawn_store/host.rs.
+All five expanded function bodies match the originals. Shared registration
+sequencing and capacity-reservation accounting remain unchanged.
+
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 729 roots and 617 crates. No dependency
+or lock changes were needed; unrelated working files remain untouched. Evidence:
+artifacts/consolidation-registration-binding/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.

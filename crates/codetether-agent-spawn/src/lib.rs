@@ -49,3 +49,5 @@ pub mod __private {
     pub use codetether_spawn_policy::Reservation;
     pub use codetether_tool_core::ToolResult;
 }
+
+mod registration_binding;
