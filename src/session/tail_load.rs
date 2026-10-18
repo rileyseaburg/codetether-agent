@@ -23,13 +23,7 @@ impl Session {
     /// # Errors
     /// Returns an error if the file cannot be opened or the JSON is malformed.
     pub async fn load_tail(id: &str, window: usize) -> Result<TailLoad> {
-        let path = Self::session_path(id)?;
-        let loaded = Self::load_tail_from_path(path, window).await?;
-        anyhow::ensure!(
-            loaded.session.id == id,
-            "Session file identity does not match requested ID"
-        );
-        Ok(loaded)
+        codetether_session_store::lifecycle::load_tail::<Self>(id, window).await
     }
 
     /// Load a session from an explicit path with a bounded message window.

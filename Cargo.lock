@@ -3275,6 +3275,8 @@ dependencies = [
  "sha2 0.11.0",
  "tempfile",
  "tokio",
+ "codetether-session-location",
+ "tracing",
 ]
 
 [[package]]

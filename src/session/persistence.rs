@@ -12,6 +12,8 @@ use super::tail_load::TailLoad;
 use super::tail_seed::with_tail_cap;
 use super::types::Session;
 
+mod lifecycle_host;
+#[cfg(test)]
 mod location;
 mod paths;
 #[cfg(test)]
@@ -31,14 +33,7 @@ impl Session {
     /// Returns an error if the session file does not exist, exceeds the
     /// sanity size cap, or the JSON is malformed.
     pub async fn load(id: &str) -> Result<Self> {
-        let path = Self::session_path(id)?;
-        let mut session = super::store::load(&path, usize::MAX).await?.session;
-        anyhow::ensure!(
-            session.id == id,
-            "Session file identity does not match requested ID"
-        );
-        session.normalize_sidecars();
-        Ok(session)
+        codetether_session_store::lifecycle::load::<Self>(id).await
     }
 
     /// Load the most recent session, optionally scoped to a workspace
@@ -69,21 +64,8 @@ impl Session {
         workspace: Option<&std::path::Path>,
         window: usize,
     ) -> Result<TailLoad> {
-        let sessions_dir = Self::sessions_dir()?;
-        let canonical_workspace = workspace.map(|w| {
-            w.canonicalize().unwrap_or_else(|e| {
-                tracing::warn!(path = %w.display(), error = %e, "canonicalize failed; using raw path");
-                w.to_path_buf()
-            })
-        });
-        let sessions = match canonical_workspace {
-            Some(workspace) => super::listing::list_sessions_for_directory(&workspace).await?,
-            None => super::list_sessions().await?,
-        };
-        let latest = sessions
-            .first()
-            .ok_or_else(|| anyhow::anyhow!("No sessions found"))?;
-        Self::load_tail(&latest.id, window).await
+        codetether_session_store::lifecycle::last_for_directory_tail::<Self>(workspace, window)
+            .await
     }
 
     /// Load the most recent session globally (unscoped).
@@ -109,37 +91,12 @@ impl Session {
     /// `.json` files are now small locators, not the canonical transcript.
     ///
     pub async fn save(&self) -> Result<()> {
-        let path = self
-            .storage
-            .path_for(&self.id)
-            .map(Ok)
-            .unwrap_or_else(|| Self::session_path(&self.id))?;
-        if super::store::save(self, &path).await? {
-            location::record(&self.id, &path);
-            super::index::recall::schedule(self);
-            super::index_produce::notify::saved(self);
-            super::store::archive::schedule(self);
-        }
-        Ok(())
+        codetether_session_store::lifecycle::save::<Self>(self).await
     }
 
     /// Delete a session file by ID. No-op if the file does not exist.
     pub async fn delete(id: &str) -> Result<()> {
-        let path = Self::session_path(id)?;
-        super::index_produce::notify::removed(id).await;
-        super::index::recall::remove(id).await?;
-        super::store::delete::run(&path, id).await?;
-        match tokio::fs::remove_file(&path).await {
-            Ok(()) => {
-                location::forget(id);
-                Ok(())
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                location::forget(id);
-                Ok(())
-            }
-            Err(e) => Err(e.into()),
-        }
+        codetether_session_store::lifecycle::delete::<Self>(id).await
     }
 }
 

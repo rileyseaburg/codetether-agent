@@ -14,8 +14,6 @@ impl Session {
 
     /// Resolve a durable session by ID across mux worktree ownership changes.
     pub(crate) fn session_path(id: &str) -> Result<PathBuf> {
-        crate::session::store::id::validate(id)?;
-        let local = Self::sessions_dir()?.join(format!("{id}.json"));
-        super::location::resolve(id, local)
+        codetether_session_store::lifecycle::session_path(id)
     }
 }

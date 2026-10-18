@@ -52,3 +52,6 @@ pub mod legacy;
 
 pub mod metadata;
 pub mod window;
+
+/// Persistence lifecycle and native indexing notifications.
+pub mod lifecycle;

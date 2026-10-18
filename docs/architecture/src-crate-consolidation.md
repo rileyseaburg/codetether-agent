@@ -15008,3 +15008,24 @@ Full workspace consolidation remains active.
 - Added serde_json and tracing dependency edges; only those changes are staged
   in Cargo.lock. No credential loading, provider construction, network access,
   Cargo, rustc or Rust tests ran. Full workspace consolidation is unfinished.
+
+### Session persistence lifecycle ownership
+
+- Moved full and bounded identity-checked loading, latest-session selection,
+  changed-save notification sequencing, deletion ordering and validated path
+  resolution into codetether-session-store::lifecycle.
+- Reused existing Snapshot/Restore interfaces. Native Host supplies indexed
+  loading, ordered listing identities and recall/index/archive notifications.
+  Native Session methods now delegate; legacy scan regression helpers remain
+  unchanged and the old location facade is test-only.
+- Preserved full-load normalization, mismatch errors, canonicalization fallback,
+  first-listed selection, storage checkpoint path preference, notifications only
+  after a changed write, and missing-locator handling after ordered deletion.
+- Verification: nine static check groups covered all moved operation bodies,
+  native callbacks/list ordering, snapshot binding and unchanged compatibility
+  methods/test helpers. Module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-session-lifecycle/.
+- Added existing session-location and tracing dependencies; only those dependency
+  edges are staged in Cargo.lock. No storage operations, Cargo, rustc or Rust
+  tests ran. Full workspace consolidation remains unfinished.
