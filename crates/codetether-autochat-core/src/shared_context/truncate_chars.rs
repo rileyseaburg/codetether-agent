@@ -1,5 +1,4 @@
 //! Relay context truncate chars.
-use super::*;
 
 pub(super) fn truncate_chars(input: &str, max_chars: usize) -> String {
     if input.chars().count() <= max_chars {

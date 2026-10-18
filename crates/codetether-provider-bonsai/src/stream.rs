@@ -2,7 +2,9 @@
 use super::BonsaiProvider;
 use anyhow::Result;
 use codetether_provider_core::{CompletionRequest, StreamChunk};
-use futures::{StreamExt, stream::BoxStream};
+#[cfg(feature = "candle-cuda")]
+use futures::StreamExt;
+use futures::stream::BoxStream;
 pub(super) fn start(
     provider: &BonsaiProvider,
     request: CompletionRequest,

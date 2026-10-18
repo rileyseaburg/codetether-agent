@@ -32,7 +32,7 @@ impl OpenRouterProvider {
 
         let response: OpenRouterResponse = serde_json::from_str(&text).context(format!(
             "Failed to parse response: {}",
-            util::truncate_bytes_safe(&text, 200)
+            codetether_util::truncate_bytes_safe(&text, 200)
         ))?;
 
         Ok(response)

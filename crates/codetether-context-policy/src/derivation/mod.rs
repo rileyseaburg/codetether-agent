@@ -2,7 +2,6 @@
 //!
 //! [DerivePolicy] describes the strategy. [policy_implicit] resolves legacy
 //! selections, and budget modules cap working context using shared model limits.
-use serde::{Deserialize, Serialize};
 mod policy;
 pub use policy::DerivePolicy;
 /// Completion limit read from the session environment setting.

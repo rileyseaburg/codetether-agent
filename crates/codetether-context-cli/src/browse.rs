@@ -21,6 +21,6 @@ fn print_result(result: ToolResult) -> Result<()> {
         println!("{}", result.output);
         Ok(())
     } else {
-        bail!("{}", result.output)
+        anyhow::bail!("{}", result.output)
     }
 }

@@ -1,6 +1,5 @@
 //! usage wire representation.
 use serde::Deserialize;
-use super::*;
 #[derive(Debug, Deserialize)]
 pub(crate) struct DsUsage {
     #[serde(default)]

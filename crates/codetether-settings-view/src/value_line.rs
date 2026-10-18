@@ -1,7 +1,7 @@
 //! Settings value line.
 use super::row_style::row_style;
 use ratatui::{
-    style::{Color, Style, Stylize},
+    style::{Color, Style},
     text::{Line, Span},
 };
 

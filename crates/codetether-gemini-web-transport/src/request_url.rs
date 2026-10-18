@@ -12,7 +12,7 @@ pub(crate) fn request_url(
             ("f.sid", tokens.f_sid.as_str()),
             ("hl", "en"),
             ("pageId", "none"),
-            ("_reqid", reqid.as_str()),
+            ("_reqid", reqid),
             ("rt", "c"),
         ],
     )

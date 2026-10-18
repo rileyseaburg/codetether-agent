@@ -1,5 +1,4 @@
 //! Auto-chat preferred models for provider.
-use super::*;
 
 pub(super) fn preferred_models_for_provider(provider_name: &str) -> &'static [&'static str] {
     match provider_name {

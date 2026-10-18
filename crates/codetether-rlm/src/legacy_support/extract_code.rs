@@ -1,5 +1,4 @@
 //! Legacy executor extract code.
-use super::*;
 
 /// Extract code from LLM response
 /// Select fenced code, or recognize supported DSL command lines.

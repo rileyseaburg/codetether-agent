@@ -1,6 +1,5 @@
 //! message wire representation.
 use serde::Deserialize;
-use super::*;
 #[derive(Debug, Deserialize)]
 pub(crate) struct DsMessage {
     #[serde(default)]

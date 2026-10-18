@@ -1,4 +1,5 @@
 //! Buffered and streaming request body construction.
+use super::model_id;
 use crate::*;
 impl VertexGlmProvider {
     pub(crate) fn body(request: &CompletionRequest, streaming: bool) -> Value {

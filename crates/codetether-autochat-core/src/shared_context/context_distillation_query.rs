@@ -1,5 +1,4 @@
 //! Relay context context distillation query.
-use super::*;
 
 /// Build the structured RLM query for a relay turn.
 ///

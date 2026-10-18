@@ -2,6 +2,7 @@
 use crate::*;
 impl GeminiWebProvider {
     /// Build a `RequestBuilder` for the StreamGenerate endpoint.
+    #[cfg(test)]
     pub(crate) async fn build_request(
         &self,
         prompt: &str,

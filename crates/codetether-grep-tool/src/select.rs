@@ -1,5 +1,4 @@
 //! select for bounded grep searches.
-use super::*;
 pub(super) fn entry(
     entry: std::result::Result<ignore::DirEntry, ignore::Error>,
     include_pattern: &Option<glob::Pattern>,

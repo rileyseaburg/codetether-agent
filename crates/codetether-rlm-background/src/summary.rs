@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use codetether_rlm::RlmRouter;
-use codetether_rlm::router::AutoProcessContext;
+use codetether_rlm::provider_adapter::ProviderWrap;
+use codetether_rlm::router::{CrateAutoProcessContext, auto_process_with_repl};
 
 use super::job::Job;
 
@@ -15,20 +15,21 @@ pub(super) async fn summarize(job: &Job) -> anyhow::Result<String> {
         codetether_rlm::RlmModelPurpose::Background,
     )
     .await;
-    let ctx = AutoProcessContext {
+    let ctx = CrateAutoProcessContext {
         tool_id: &job.tool,
         tool_args: job.input.clone(),
         session_id: &job.session_id,
         abort: None,
         on_progress: None,
-        provider,
+        provider: Arc::new(ProviderWrap(provider)),
         model,
         bus: None,
         trace_id: None,
         subcall_provider: None,
         subcall_model: None,
+        rewriter: None,
     };
-    Ok(RlmRouter::auto_process(&job.content, ctx, &job.config)
+    Ok(auto_process_with_repl(&job.content, ctx, &job.config)
         .await?
         .processed)
 }

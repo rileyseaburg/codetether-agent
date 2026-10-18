@@ -1,5 +1,4 @@
 //! collapse spaces.
-use super::*;
 
 pub(super) fn collapse_spaces(s: &str) -> String {
     let mut out = String::with_capacity(s.len());

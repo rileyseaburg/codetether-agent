@@ -1,5 +1,4 @@
 //! record for workspace code search.
-use super::*;
 
 #[derive(Debug)]
 pub(crate) struct Match {

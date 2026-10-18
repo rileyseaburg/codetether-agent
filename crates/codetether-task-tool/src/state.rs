@@ -1,5 +1,4 @@
 //! state for in-memory task tracking.
-use super::*;
 
 #[derive(Debug, Clone)]
 pub(super) struct TaskInfo {

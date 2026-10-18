@@ -1,5 +1,4 @@
 //! read construct for core file tools.
-use super::*;
 /// Read a file with line selection and telemetry.
 ///
 /// # Examples

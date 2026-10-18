@@ -7,6 +7,7 @@ description = "Codex OAuth exchange, credential coordination, and persistence"
 license = "MIT"
 
 [dependencies]
+tracing = "0.1"
 directories = "6"
 codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
 tokio = { version = "1.53.1", features = ["sync", "time"] }

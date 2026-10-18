@@ -1,5 +1,4 @@
 //! Shared auto-chat request policy.
-use super::*;
 
 /// Parse an optional leading count and borrow the remaining task text.
 ///

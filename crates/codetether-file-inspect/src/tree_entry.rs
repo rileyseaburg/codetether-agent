@@ -1,5 +1,4 @@
 //! tree entry for filesystem inspection.
-use super::*;
 
 /// Entry with resolved metadata for sorting
 pub(crate) struct TreeEntry {

@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use codetether_provider_core::{Message, Provider};
-use codetether_rlm::{RlmConfig, RlmRouter};
+use codetether_rlm::{RlmConfig, router};
 
 use super::{Notify, cache, render, route_ctx};
 
@@ -22,7 +22,7 @@ pub(super) fn route_or_defer(
 ) -> String {
     let ctx_window = codetether_provider_core::limits::context_window_for_model(model);
     let context = route_ctx::routing_ctx(tool, call_id, session_id, ctx_window, messages);
-    let routing = RlmRouter::should_route(rendered, &context, config);
+    let routing = router::should_route(rendered, &context, config);
     if !routing.should_route {
         return rendered.to_string();
     }
@@ -30,7 +30,7 @@ pub(super) fn route_or_defer(
     if let Some(summary) = cache::ready(key) {
         return summary;
     }
-    let (truncated, _, _) = RlmRouter::smart_truncate(rendered, tool, input, ctx_window / 4);
+    let (truncated, _, _) = router::smart_truncate(rendered, tool, input, ctx_window / 4);
     super::route_spawn::start(
         key,
         rendered,

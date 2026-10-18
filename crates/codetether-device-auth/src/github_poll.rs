@@ -1,5 +1,5 @@
 //! Device authorization github_poll responsibilities.
-use crate::{DeviceCodeResponse, github_types::AccessTokenResponse, timing::sleep_with_margin};
+use crate::{DeviceCodeResponse, timing::sleep_with_margin};
 use anyhow::Result;
 use reqwest::Client;
 

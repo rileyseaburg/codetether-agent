@@ -11,6 +11,7 @@ pub use codetether_approval_session as live;
 pub mod session_command_grants;
 pub mod session_grants;
 
+#[cfg(test)]
 pub(crate) use codetether_approval_core::ApprovalEvent;
 pub use codetether_approval_core::{
     ApprovalDecision, ApprovalReceipt, ApprovalRequest, ApprovalStatus, ApprovalStore,

@@ -1,5 +1,4 @@
 //! Legacy dated model detection.
-use crate::*;
 /// Check if a model ID is a dated variant (e.g. "gpt-4o-2024-05-13") that should
 /// be filtered out in favor of the canonical alias (e.g. "gpt-4o").
 pub(crate) fn is_dated_model_variant(id: &str) -> bool {

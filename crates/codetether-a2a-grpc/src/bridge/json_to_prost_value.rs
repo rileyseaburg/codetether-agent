@@ -1,5 +1,4 @@
 //! json to prost value conversion.
-use super::*;
 
 pub(super) fn json_to_prost_value(v: &serde_json::Value) -> prost_types::Value {
     let kind = match v {

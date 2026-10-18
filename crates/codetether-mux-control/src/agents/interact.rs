@@ -24,7 +24,10 @@ pub async fn interact_agent(name: &str) -> Result<Option<String>> {
     let Some(target) = super::target::load(name).await? else {
         return Ok(None);
     };
-    let Some(runtime) = target.runtime() else {
+    let Some(runtime) = target
+        .session()
+        .and_then(|session| session.runtime.as_ref())
+    else {
         bail!("mux session '{name}' has not registered semantic TUI state");
     };
     if !runtime.needs_interaction {

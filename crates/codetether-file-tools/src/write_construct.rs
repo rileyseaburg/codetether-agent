@@ -1,5 +1,4 @@
 //! write construct for core file tools.
-use super::*;
 /// Write a file with path validation and telemetry.
 ///
 /// # Examples

@@ -1,5 +1,4 @@
 //! result for web search.
-use super::*;
 
 #[derive(Debug, Clone)]
 pub(crate) struct SearchResult {

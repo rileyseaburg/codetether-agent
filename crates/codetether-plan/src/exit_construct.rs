@@ -1,5 +1,4 @@
 //! exit construct for the planning tools.
-use super::*;
 /// Report plan progress and exit when complete or summarized.
 ///
 /// # Examples

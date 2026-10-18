@@ -8,7 +8,7 @@ mod default;
 mod direct_messages;
 mod drain_speech;
 mod handles;
-mod publication;
+pub(crate) mod publication;
 mod publish;
 mod publish_ralph_handoff;
 mod publish_ralph_learning;

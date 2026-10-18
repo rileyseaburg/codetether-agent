@@ -1,5 +1,4 @@
 //! Counters and transport failure recorded during one flush.
-use super::*;
 #[derive(Default)]
 pub(super) struct FlushAttempt {
     pub(super) sent: usize,

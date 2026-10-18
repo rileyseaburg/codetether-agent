@@ -1,4 +1,5 @@
 impl OpenAiCodexProvider {
+    #[cfg(test)]
     fn parse_responses_event(
         parser: &mut ResponsesSseParser,
         event: &Value,

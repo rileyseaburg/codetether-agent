@@ -1,7 +1,8 @@
 //! Run foreground RLM compaction and recover with deterministic compression.
 use codetether_provider_core::Provider;
-use codetether_rlm::router::AutoProcessContext;
-use codetether_rlm::{RlmChunker, RlmConfig, RlmRouter};
+use codetether_rlm::provider_adapter::ProviderWrap;
+use codetether_rlm::router::{CrateAutoProcessContext, auto_process_with_repl};
+use codetether_rlm::{RlmChunker, RlmConfig};
 use std::sync::Arc;
 
 /// Summarize context using a same-provider model and deterministic fallback.
@@ -37,20 +38,21 @@ pub async fn context_summary(
         return None;
     }
     let (provider, model) = super::model::resolve(provider, model).await;
-    let request = AutoProcessContext {
+    let request = CrateAutoProcessContext {
         tool_id: "session_context",
         tool_args: serde_json::json!({ "reason": reason }),
         session_id,
         abort: None,
         on_progress: None,
-        provider,
+        provider: Arc::new(ProviderWrap(provider)),
         model,
         bus: None,
         trace_id: None,
         subcall_provider: None,
         subcall_model: None,
+        rewriter: None,
     };
-    match RlmRouter::auto_process(context, request, config).await {
+    match auto_process_with_repl(context, request, config).await {
         Ok(result) => Some(result.processed),
         Err(error) => {
             tracing::warn!(target: "codetether_agent::session::helper::compression::compression_defer", %error, "Foreground RLM compaction failed; using deterministic compression");

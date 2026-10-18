@@ -7,6 +7,7 @@ license = "MIT"
 description = "Vault CLI configuration, private token input and login flows"
 
 [dependencies]
+which = "8.0.5"
 anyhow = "1"
 clap = { version = "4.6.6", features = ["derive", "env"] }
 codetether-models-cli = { path = "../codetether-models-cli", version = "0.1.0" }

@@ -1,6 +1,5 @@
 //! error wire schema.
-use super::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub(crate) struct ErrorResponse {
     pub(crate) error: ErrorDetail,

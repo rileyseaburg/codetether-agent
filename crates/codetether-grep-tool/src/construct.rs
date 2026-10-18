@@ -1,5 +1,4 @@
 //! construct for bounded grep searches.
-use super::*;
 /// Search local text files with bounded time, file size and result counts.
 ///
 /// # Examples

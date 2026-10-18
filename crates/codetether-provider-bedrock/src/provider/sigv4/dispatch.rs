@@ -32,6 +32,7 @@ impl BedrockProvider {
     }
 
     /// Send an HTTP request using whichever auth mode is configured.
+    #[cfg(test)]
     pub(in crate::provider) async fn send_request(
         &self,
         method: &str,

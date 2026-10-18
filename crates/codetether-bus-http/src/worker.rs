@@ -1,5 +1,4 @@
 //! Resolve the bus endpoint advertised by one worker.
-use super::*;
 
 /// Resolve a worker's first-class bus connection via the control plane.
 ///

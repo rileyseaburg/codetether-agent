@@ -7,6 +7,7 @@ impl OpenAiCodexProvider {
         codetether_codex_protocol::CodexProtocol::parse_responses_sse_bytes(parser, bytes)
     }
 
+    #[cfg(test)]
     fn parse_responses_sse_bytes_with_activity(
         parser: &mut ResponsesSseParser,
         bytes: &[u8],

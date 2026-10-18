@@ -1,5 +1,4 @@
 //! tools wire schema.
-use super::*;
 use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize)]
 pub(crate) struct ChatTool {

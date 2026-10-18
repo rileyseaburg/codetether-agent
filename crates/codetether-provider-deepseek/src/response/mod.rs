@@ -3,11 +3,11 @@
 //! `DsResponse` represents decoded server data; `parse` produces the shared
 //! completion result while preserving usage and tool-call stop precedence.
 mod envelope;
-mod message;
-mod usage;
-mod parse;
 mod finish;
+mod message;
+mod parse;
+mod usage;
 pub(crate) use envelope::DsResponse;
-use message::{DsMessage, DsToolCall, DsFunction};
-use usage::DsUsage;
+use message::DsMessage;
 pub(crate) use parse::parse;
+use usage::DsUsage;

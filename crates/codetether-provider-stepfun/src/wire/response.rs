@@ -1,6 +1,6 @@
 //! response wire schema.
 use super::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 // ============== Response Types ==============
 
 #[derive(Debug, Deserialize)]

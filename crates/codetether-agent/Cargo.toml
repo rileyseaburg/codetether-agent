@@ -761,7 +761,7 @@ crossterm = { version = "0.29.0", features = ["event-stream"] }
 # Config
 config = "0.15"
 directories = "6"
-toml = "1.1.4+spec-1.1.0"
+toml = "1.1.4"
 dotenvy = "0.15"
 
 # Secrets (HashiCorp Vault)

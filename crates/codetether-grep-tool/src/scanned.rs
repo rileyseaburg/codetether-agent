@@ -1,5 +1,4 @@
 //! Accumulated matches and stopping conditions for one grep scan.
-use super::*;
 pub(super) struct Scanned {
     pub results: Vec<String>,
     pub scanned_files: usize,

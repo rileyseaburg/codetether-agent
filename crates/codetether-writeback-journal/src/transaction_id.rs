@@ -1,9 +1,8 @@
 //! Opaque monotonic transaction identity.
-use crate::WritebackJournal;
 use serde::{Deserialize, Serialize};
 
-/// Opaque handle returned from [`WritebackJournal::stage`] and required
-/// by [`WritebackJournal::reject`] / [`WritebackJournal::commit`].
+/// Opaque handle returned from [`crate::WritebackJournal::stage`] and required
+/// by [`crate::WritebackJournal::reject`] / [`crate::WritebackJournal::commit`].
 ///
 /// Monotonic per journal instance. Crashing between stage and commit
 /// leaves a `Staged` entry in the journal — the next load can reconcile

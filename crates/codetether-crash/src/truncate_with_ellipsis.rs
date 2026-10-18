@@ -1,5 +1,4 @@
 //! Crash reporting truncate with ellipsis.
-use super::*;
 pub(super) fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
     if max_chars == 0 {
         return String::new();

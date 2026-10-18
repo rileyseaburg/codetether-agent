@@ -1,5 +1,4 @@
 //! Legacy executor infer file from query.
-use super::*;
 
 /// Infer the file following the last case-insensitive in separator.
 ///

@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 /// ```
 #[derive(Clone)]
 pub struct BonsaiProvider {
+    #[cfg(feature = "candle-cuda")]
     pub(super) config: BonsaiConfig,
     pub(super) timing: Arc<Mutex<Option<GenerationTiming>>>,
     #[cfg(feature = "candle-cuda")]
@@ -29,6 +30,7 @@ impl BonsaiProvider {
             "Bonsai model files missing"
         );
         Ok(Self {
+            #[cfg(feature = "candle-cuda")]
             config,
             timing: Arc::new(Mutex::new(None)),
             #[cfg(feature = "candle-cuda")]

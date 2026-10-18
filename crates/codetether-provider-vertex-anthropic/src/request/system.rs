@@ -1,6 +1,6 @@
 //! system content conversion.
 use crate::*;
-pub(super) fn push(msg: &Message, system_blocks: &mut Vec<Value>, api_messages: &mut Vec<Value>) {
+pub(super) fn push(msg: &Message, system_blocks: &mut Vec<Value>, _api_messages: &mut Vec<Value>) {
     for part in &msg.content {
         match part {
             ContentPart::Text { text } => {

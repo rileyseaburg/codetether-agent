@@ -32,6 +32,7 @@ impl OpenAiCodexProvider {
     /// * `base_url` cannot be converted into a client request.
     /// * the bearer token or account ID cannot be represented as a valid HTTP
     ///   header value.
+    #[cfg(test)]
     fn build_responses_ws_request_with_base_url_and_account_id(
         base_url: &str,
         token: &str,

@@ -1,5 +1,4 @@
 //! hook skip env in shell hook-bypass detection.
-use super::*;
 
 /// Environment assignments that make repository hook managers skip checks.
 pub(super) fn hook_skip_env(word: &str) -> bool {

@@ -7,6 +7,7 @@ impl GeminiWebProvider {
     ///   - `bl`        build label (`cfb2h`)
     ///
     /// Regexes are compiled once and reused across calls via `OnceLock`.
+    #[cfg(test)]
     pub(crate) async fn get_session_tokens(&self) -> Result<SessionTokens> {
         codetether_gemini_web_transport::GeminiWebSession::new(
             &self.client,

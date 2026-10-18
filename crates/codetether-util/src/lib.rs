@@ -9,12 +9,14 @@
 //! # Examples
 //!
 //! ```rust
-//! use codetether_util::truncate::truncate_bytes_safe;
+//! use codetether_util::truncate_bytes_safe;
 //!
 //! assert_eq!(truncate_bytes_safe("hello", 3), "hel");
+//! assert_eq!(truncate_bytes_safe("aé", 2), "a");
 //! ```
 
 pub mod truncate;
+pub use truncate::truncate_bytes_safe;
 pub mod workspace_scan;
 
 /// Case-insensitive subsequence ranking.

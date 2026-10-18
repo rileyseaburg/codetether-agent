@@ -1,6 +1,5 @@
 //! signatures response schema.
 use super::*;
-use crate::*;
 #[derive(Debug, Deserialize)]
 pub(crate) struct ExtraContent {
     pub(crate) google: Option<GoogleExtra>,

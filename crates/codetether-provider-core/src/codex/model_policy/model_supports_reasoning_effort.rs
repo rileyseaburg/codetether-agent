@@ -1,5 +1,4 @@
 //! Codex model supports reasoning effort.
-use super::*;
 
 /// Check the existing model-family rule for reasoning effort.
 ///

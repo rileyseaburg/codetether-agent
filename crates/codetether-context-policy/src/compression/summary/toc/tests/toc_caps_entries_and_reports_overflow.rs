@@ -1,5 +1,6 @@
 //! toc caps entries and reports overflow.
 use super::*;
+use codetether_provider_core::Message;
 #[test]
 fn toc_caps_entries_and_reports_overflow() {
     let prefix: Vec<Message> = (0..15)

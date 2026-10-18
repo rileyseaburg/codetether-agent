@@ -1,5 +1,4 @@
 //! Shared auto-chat request policy.
-use super::*;
 
 /// Normalize ASCII text for bounded convergence comparisons.
 ///

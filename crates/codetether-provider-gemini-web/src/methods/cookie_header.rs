@@ -9,6 +9,7 @@ impl GeminiWebProvider {
     ///
     /// If only 2 columns are present (simple `name\tvalue` format), those are
     /// used directly so the function remains backward-compatible.
+    #[cfg(test)]
     pub(crate) fn cookie_header(&self) -> String {
         codetether_gemini_web_transport::GeminiWebSession::new(
             &self.client,

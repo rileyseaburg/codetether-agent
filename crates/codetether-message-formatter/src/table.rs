@@ -1,6 +1,6 @@
 //! Bridge shared Markdown table rendering to native prose fallback.
 use super::MessageFormatter;
-pub use codetether_markdown_table::{is_separator_row, is_table_row, render_table};
+pub use codetether_markdown_table::{is_table_row, render_table};
 use ratatui::text::Line;
 
 /// Flush buffered table rows into `out`.

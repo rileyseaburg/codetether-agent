@@ -2,10 +2,10 @@
 
 use super::{load::current, prompt};
 use crate::Journal;
-use crate::provider::{ContentPart, Message, Role};
 use anyhow::Result;
 use chrono::Utc;
 use codetether_goal_core::{GoalRuntimeUpdate, TaskEvent};
+use codetether_provider_core::{ContentPart, Message, Role};
 
 /// Build and account for an automatic continuation of the active goal.
 /// # Arguments

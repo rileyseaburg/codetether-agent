@@ -2,7 +2,6 @@
 use crate::PickerView;
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::style::Stylize;
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState};
 

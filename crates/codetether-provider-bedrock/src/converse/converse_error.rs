@@ -16,6 +16,6 @@ pub(super) fn map(status: StatusCode, text: &str) -> anyhow::Error {
     }
     anyhow::anyhow!(
         "Bedrock API error: {status} {}",
-        util::truncate_bytes_safe(text, 500)
+        codetether_util::truncate_bytes_safe(text, 500)
     )
 }

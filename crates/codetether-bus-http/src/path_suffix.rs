@@ -1,5 +1,4 @@
 //! Score shared directory suffixes.
-use super::*;
 
 pub(super) fn shared_path_suffix_score(left: &str, right: &str) -> usize {
     let left_parts: Vec<&str> = left.split('/').filter(|part| !part.is_empty()).collect();

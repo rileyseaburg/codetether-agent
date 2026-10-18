@@ -12,6 +12,7 @@ use codetether_provider_core::{
     Role, StreamChunk, ToolDefinition,
 };
 use reqwest::Client;
+#[cfg(test)]
 use serde_json::Value;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;

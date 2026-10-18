@@ -9,13 +9,16 @@ mod generate;
 mod instance;
 #[cfg(feature = "candle")]
 pub mod native;
+#[cfg(feature = "candle-cuda")]
 mod protocol;
 mod provider_impl;
+#[cfg(feature = "candle-cuda")]
 mod request;
 #[cfg(feature = "candle-cuda")]
 mod runtime;
 #[cfg(feature = "candle-cuda")]
 mod sampler;
+#[cfg(any(feature = "candle-cuda", test))]
 mod stop;
 mod stream;
 mod timing;

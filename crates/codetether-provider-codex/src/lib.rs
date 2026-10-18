@@ -5,8 +5,10 @@
 //! catalogs use the shared provider-core cache. Transport and OAuth details
 //! remain in their dedicated crates.
 use codetether_provider_core::{
-    CompletionRequest, CompletionResponse, ContentPart, Message, ModelInfo, Provider, Role,
+    CompletionRequest, CompletionResponse, Message, ModelInfo, Provider,
     StreamChunk, ToolDefinition,
 };
+#[cfg(test)]
+use codetether_provider_core::{ContentPart, Role};
 mod provider;
 pub use provider::*;

@@ -1,5 +1,4 @@
 //! Non-chat inference-profile name exclusion.
-use super::*;
 pub(super) fn excluded(pname: &str) -> bool {
     let name_lower = pname.to_lowercase();
     let skip_tokens = [

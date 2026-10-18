@@ -30,7 +30,7 @@ pub(super) fn apply(trace: &mut LiveTraceSnapshot, event: TraceEvent<'_>) {
             ..
         } => {
             trace.entries.push(LiveTraceEntry::ToolResult {
-                name: name.clone(),
+                name: name.to_string(),
                 output: codetether_child_events::truncate_preview(output, 4_000),
                 success,
             });

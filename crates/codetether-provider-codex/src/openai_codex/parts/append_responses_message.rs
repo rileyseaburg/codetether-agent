@@ -1,4 +1,5 @@
 impl OpenAiCodexProvider {
+    #[cfg(test)]
     fn append_responses_message(
         message: &Message,
         input: &mut Vec<Value>,

@@ -4,7 +4,7 @@
 //! It does not load secrets or own token refresh policy.
 //! [provider::BedrockProvider] owns provider state and integrates construction,
 //! validation, protocol routing and credential recovery.
-use anyhow::{Context, Result};
+use anyhow::Result;
 use codetether_bedrock_auth::BedrockAuth;
 use reqwest::Client;
 mod discovery;

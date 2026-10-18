@@ -2,7 +2,7 @@
 //!
 //! Wraps `stream.next().await` so a stalled HTTP connection (TCP open,
 //! zero SSE events) cannot block the agent loop forever, and classifies *why*
-//! the stream stopped into a [`StreamStop`] so the restart engine can decide
+//! the stream stopped into a [`codetether_stream_outcome::StreamStop`] so the restart engine can decide
 //! whether re-opening a fresh stream is sound.
 
 use codetether_provider_core::StreamChunk;
@@ -10,19 +10,20 @@ use codetether_session_events::SessionEvent;
 use futures::stream::BoxStream;
 
 use super::drain_state::DrainState;
+#[cfg(test)]
 pub(super) use codetether_stream_outcome::IDLE_TIMEOUT;
-use codetether_stream_outcome::{DrainOutcome, StreamStop};
+use codetether_stream_outcome::DrainOutcome;
 
 /// Drain `stream`, classifying the stop reason. Never errors on its own; a
-/// terminal error chunk is reported as [`StreamStop::Fault`] for the caller.
+/// terminal error chunk is reported as [`codetether_stream_outcome::StreamStop::Fault`] for the caller.
 ///
 /// A provider stream that ends (`None`) *without* first emitting a
 /// [`StreamChunk::Done`] terminated prematurely: the HTTP body closed before
 /// the model signalled completion. Every streaming provider emits `Done` on a
 /// real finish, so a missing `Done` is a reliable "connection dropped
-/// mid-turn" signal. Rather than mis-report that as [`StreamStop::Clean`]
+/// mid-turn" signal. Rather than mis-report that as [`codetether_stream_outcome::StreamStop::Clean`]
 /// (which silently accepts a truncated reply), it is classified as
-/// [`StreamStop::PrematureEnd`] so the restart engine re-requests a fresh
+/// [`codetether_stream_outcome::StreamStop::PrematureEnd`] so the restart engine re-requests a fresh
 /// stream and discards the partial.
 /// # Arguments
 /// Receives a provider stream and optional typed event sender.

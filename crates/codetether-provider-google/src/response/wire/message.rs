@@ -1,6 +1,5 @@
 //! message response schema.
 use super::*;
-use crate::*;
 #[derive(Debug, Deserialize)]
 pub(crate) struct ChoiceMessage {
     #[allow(dead_code)]

@@ -1,5 +1,4 @@
 //! Match exact, prefix and suffix bus topic filters.
-use super::*;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 

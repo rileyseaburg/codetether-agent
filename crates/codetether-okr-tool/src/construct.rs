@@ -1,5 +1,4 @@
 //! construct for OKR tool dispatch.
-use super::*;
 /// Tool adapter for persistent objectives, key results and execution runs.
 ///
 /// # Examples

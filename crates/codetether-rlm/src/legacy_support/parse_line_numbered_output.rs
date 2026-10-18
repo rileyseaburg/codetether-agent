@@ -1,5 +1,4 @@
 //! Legacy executor parse line numbered output.
-use super::*;
 
 /// Parse numbered lines, accepting an optional L prefix.
 ///

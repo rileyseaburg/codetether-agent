@@ -9,6 +9,7 @@
 //! Callers retry the original request exactly once when this returns `true`.
 
 use crate::provider::{BedrockProvider, sso_refresh};
+#[cfg(test)]
 pub(crate) use crate::recovery::is_auth_failure;
 use codetether_secrets as secrets;
 

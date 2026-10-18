@@ -1,5 +1,4 @@
 //! short n in shell hook-bypass detection.
-use super::*;
 
 /// Commit's `-n` is `--no-verify`, alone or inside a short-flag group (`-an`).
 /// Stop at `-m`/`-F`/`-C`, whose value may itself contain an `n`.

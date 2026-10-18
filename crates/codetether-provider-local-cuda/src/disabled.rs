@@ -11,8 +11,6 @@ use codetether_provider_core::{
 };
 use futures::stream::BoxStream;
 
-pub use codetether_provider_core::local::LocalCudaConfig;
-
 fn feature_error() -> anyhow::Error {
     anyhow!("local_cuda requires --features candle-cuda")
 }

@@ -5,8 +5,8 @@ use super::*;
 ///
 /// Shared by [`BusHandle::send_with_correlation`](super::BusHandle) and the
 /// catalog announcement so envelope construction lives in one place.
-pub(super) fn publish(
-    bus: &Arc<AgentBus>,
+pub(crate) fn publish(
+    bus: &AgentBus,
     agent_id: &str,
     topic: String,
     message: BusMessage,

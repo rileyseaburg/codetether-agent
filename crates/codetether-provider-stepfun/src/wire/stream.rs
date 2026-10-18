@@ -1,6 +1,5 @@
 //! stream wire schema.
-use super::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 // ============== Streaming Types ==============
 
 #[derive(Debug, Deserialize)]

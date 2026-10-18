@@ -2,6 +2,7 @@
 use crate::provider::BedrockProvider;
 impl BedrockProvider {
     /// Build a runtime endpoint URL with the model ID encoded as one path segment.
+    #[cfg(test)]
     pub(in crate::provider) fn runtime_model_url(&self, model_id: &str, operation: &str) -> String {
         self.bedrock_client().runtime_model_url(model_id, operation)
     }

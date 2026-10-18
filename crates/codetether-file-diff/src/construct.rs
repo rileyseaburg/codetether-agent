@@ -1,5 +1,4 @@
 //! construct for file comparisons.
-use super::*;
 /// Compare files or inspect Git changes using the system diff tools.
 ///
 /// # Examples

@@ -1,5 +1,4 @@
 //! list construct for core file tools.
-use super::*;
 /// List names and entry types in a directory.
 ///
 /// # Examples

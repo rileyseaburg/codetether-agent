@@ -1,4 +1,5 @@
 pub use codetether_codex_auth::OAuthCredentials;
+#[cfg(test)]
 use codetether_codex_auth::PkcePair;
 use codetether_codex_protocol::request::ResponsesWsBackend;
 
@@ -9,4 +10,5 @@ struct CachedTokens {
 }
 use codetether_provider_core::codex::CodexServiceTier;
 
+#[cfg(test)]
 use codetether_codex_protocol::ResponsesSseParser;

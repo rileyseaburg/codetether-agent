@@ -12,13 +12,16 @@ pub(super) async fn read(
     target: &SessionTarget,
     reader: &impl ProjectionReader,
 ) -> Result<Option<String>> {
-    let Some(runtime) = target.runtime() else {
+    let Some(session) = target.session() else {
+        return Ok(None);
+    };
+    let Some(runtime) = session.runtime.as_ref() else {
         return Ok(None);
     };
     if let Some(indexed) = reader.read(&runtime.session_id, "recall").await? {
         return Ok(Some(projection::render(runtime, &indexed)));
     }
-    let Some(window) = target.active() else {
+    let Some(window) = session.active() else {
         return Ok(None);
     };
     let path = window

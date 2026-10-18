@@ -1,5 +1,4 @@
 //! Codex api key hidden model.
-use super::*;
 
 /// Check whether a seed model is hidden in API-key mode.
 ///

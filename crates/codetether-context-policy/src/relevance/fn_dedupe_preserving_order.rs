@@ -1,5 +1,4 @@
 //! dedupe preserving order policy.
-use super::*;
 
 pub(super) fn dedupe_preserving_order(items: &mut Vec<String>) {
     let mut seen: std::collections::HashSet<String> =

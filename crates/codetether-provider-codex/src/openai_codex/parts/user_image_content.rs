@@ -1,4 +1,6 @@
+#[cfg(test)]
 use codetether_codex_protocol::UserImageFormat;
+#[cfg(test)]
 impl OpenAiCodexProvider {
     fn user_has_images(message: &Message) -> bool {
         codetether_codex_protocol::CodexProtocol::user_has_images(message)

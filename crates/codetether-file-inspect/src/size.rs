@@ -1,5 +1,4 @@
 //! size for filesystem inspection.
-use super::*;
 
 /// Format file size in human-readable form
 pub(super) fn format_size(bytes: u64) -> String {

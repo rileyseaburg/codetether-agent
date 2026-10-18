@@ -1,5 +1,4 @@
 //! floor char boundary.
-use super::*;
 
 /// Round `idx` down to the nearest UTF-8 character boundary. Returns 0
 /// if no valid boundary exists below `idx`.

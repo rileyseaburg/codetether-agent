@@ -5,6 +5,7 @@ impl GeminiWebProvider {
     /// second slot is a JSON-encoded 69-element inner array.
     ///
     /// Index layout matches the Python GemChat reference implementation.
+    #[cfg(test)]
     pub(crate) fn build_freq(prompt: &str) -> String {
         codetether_gemini_web_protocol::GeminiWebProtocol::build_freq(prompt)
     }

@@ -1,5 +1,4 @@
 //! ends with source ext policy.
-use super::*;
 
 pub(super) fn ends_with_source_ext(s: &str) -> bool {
     [

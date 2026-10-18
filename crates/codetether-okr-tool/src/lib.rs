@@ -32,7 +32,7 @@ mod tool;
 mod update_okr;
 mod update_run;
 pub use construct::OkrTool;
-use params::{KrParam, Params};
+use params::Params;
 use parse::{parse_okr_status, parse_run_status, parse_uuid};
 use repository::get_repo;
 

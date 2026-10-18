@@ -1,9 +1,6 @@
 //! Most recent timed tool rows, newest first.
 use crate::recent_rows::recent_tool_latencies;
-use crate::{
-    LatencyView,
-    format::{format_duration, section_heading},
-};
+use crate::{LatencyView, format::section_heading};
 use ratatui::text::Line;
 pub(crate) fn append(lines: &mut Vec<Line<'static>>, view: &LatencyView<'_>) {
     lines.push(Line::from(""));

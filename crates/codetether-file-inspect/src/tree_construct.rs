@@ -1,5 +1,4 @@
 //! tree construct for filesystem inspection.
-use super::*;
 /// Filesystem inspection tool.
 ///
 /// # Examples

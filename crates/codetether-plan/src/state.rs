@@ -1,5 +1,4 @@
 //! state for the planning tools.
-use super::*;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Plan {

@@ -1,5 +1,4 @@
 //! language for filesystem inspection.
-use super::*;
 pub(super) fn name(ext: &std::ffi::OsStr) -> &'static str {
     match ext.to_str().unwrap_or("") {
         "rs" => "Rust",

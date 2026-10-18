@@ -26,7 +26,7 @@ pub async fn send_agent_message(name: &str, message: &str) -> Result<Option<Stri
     let Some(target) = super::target::load(name).await? else {
         return Ok(None);
     };
-    let Some(runtime) = target.runtime().cloned() else {
+    let Some(runtime) = target.session().and_then(|session| session.runtime.clone()) else {
         bail!("mux session '{name}' has not registered semantic TUI state");
     };
     let transport = if runtime.processing {

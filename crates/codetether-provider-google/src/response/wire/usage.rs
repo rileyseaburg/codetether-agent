@@ -1,6 +1,5 @@
 //! usage response schema.
 use super::*;
-use crate::*;
 #[derive(Debug, Deserialize)]
 pub(crate) struct ApiUsage {
     #[serde(default)]

@@ -18,7 +18,7 @@ pub fn next_options(
             force_keep_last: None,
             ..opts
         }),
-        prompt_too_long::Plan::Emergency { keep_last } => Some(RequestOptions {
+        Plan::Emergency { keep_last } => Some(RequestOptions {
             force_keep_last: Some(keep_last),
             ..opts
         }),

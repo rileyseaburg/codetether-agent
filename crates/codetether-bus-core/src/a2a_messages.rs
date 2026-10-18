@@ -4,6 +4,9 @@
 //! topic used by peer-message publication. Missing buses are a no-op.
 use crate::{AgentBus, BusMessage};
 use codetether_a2a_core::Message;
+#[cfg(test)]
+#[path = "a2a_messages_tests.rs"]
+mod tests;
 /// Publish an inbound message from the remote peer.
 ///
 /// # Arguments
@@ -56,8 +59,9 @@ pub fn emit(bus: Option<&AgentBus>, task_id: &str, from: &str, to: &str, message
     let Some(bus) = bus else {
         return;
     };
-    let handle = bus.handle("a2a");
-    handle.send_with_correlation(
+    crate::runtime::publication::publish(
+        bus,
+        "a2a",
         format!("task.{task_id}"),
         BusMessage::AgentMessage {
             from: from.to_string(),

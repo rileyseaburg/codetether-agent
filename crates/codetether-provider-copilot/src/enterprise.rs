@@ -1,5 +1,4 @@
 //! Enterprise endpoint normalization.
-use crate::*;
 /// Normalize an enterprise domain or URL.
 ///
 /// # Arguments
