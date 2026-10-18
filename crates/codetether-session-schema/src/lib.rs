@@ -9,6 +9,7 @@ mod header;
 mod lifecycle;
 mod persistence;
 mod storage;
+mod title;
 pub use header::{HeaderSource, header};
 
 /// Step budget for bounded delegated runs that do not specify one.
@@ -25,7 +26,8 @@ pub mod __private {
     pub use codetether_bus_core::global;
     pub use codetether_context_policy::{pages::PageKind, summary_index::SummaryIndex};
     pub use codetether_provenance::ClaimProvenance;
-    pub use codetether_provider_core::{Message, Usage};
+    pub use codetether_provider_core::{Message, Provider, Usage};
+    pub use codetether_provider_policy as provider_policy;
     pub use codetether_session_codec as codec;
     pub use codetether_session_history::History;
     pub use codetether_session_location as location;
@@ -34,6 +36,7 @@ pub mod __private {
     pub use codetether_session_store as store;
     pub use codetether_session_store::State;
     pub use codetether_session_store::window;
+    pub use codetether_session_title as titles;
     pub use codetether_tracked_vec::{TrackedVec, tail};
     pub use serde;
     pub use serde::{Deserialize, Serialize};

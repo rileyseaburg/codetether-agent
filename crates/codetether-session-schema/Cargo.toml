@@ -7,6 +7,8 @@ license = "MIT"
 description = "Session schema and lifecycle operations with application-local types"
 
 [dependencies]
+codetether-session-title = { path = "../codetether-session-title", version = "0.1.0" }
+codetether-provider-policy = { path = "../codetether-provider-policy", version = "0.1.0" }
 serde_json = "1"
 codetether-session-location = { path = "../codetether-session-location", version = "0.1.0" }
 codetether-session-codec = { path = "../codetether-session-codec", version = "0.1.0" }

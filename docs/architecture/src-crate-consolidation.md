@@ -24521,3 +24521,23 @@ unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-session-persistence-api/. No Cargo, rustc, Python,
 compiler macro expansion, persistence operations or tests ran. Full
 consolidation remains active.
+
+### Session title operations moved into the schema crate
+
+Moved twelve title methods into focused schema-crate modules: lifecycle,
+field/timestamp host, caller-selected AI generation, default provider selection
+and display labels. The native title module invokes impl_session_titles with
+its existing ProviderRegistry type and re-exports shared title utilities.
+Removed native title/ai.rs, ai_default.rs, display.rs and host.rs. Added direct
+dependencies on session-title and provider-policy.
+
+Static comparison preserves signatures, branches, field updates, timestamp
+behavior and fallback paths after explicit shared-path substitutions. Confirmed
+the provider preference and default-model aliases resolve to the same policies.
+Module/dependency scans cover 693 roots and 574 crates without missing modules
+or cycles. Direct dependency audit, direct rustfmt, source file limits and
+whitespace checks passed. Only required lockfile dependencies are staged;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-session-titles/. No Cargo, rustc, Python, compiler macro
+expansion, model calls, title operations or tests ran. Full consolidation
+remains active.
