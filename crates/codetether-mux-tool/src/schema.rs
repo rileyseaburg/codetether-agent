@@ -1,6 +1,14 @@
 //! JSON schema for the mux-only manager tool.
 
-pub(super) fn parameters() -> serde_json::Value {
+/// Return the mux manager's original JSON argument schema.
+/// # Returns
+/// Supported actions, property descriptions and required action field.
+/// # Examples
+/// ```
+/// let schema = codetether_mux_tool::parameters();
+/// assert_eq!(schema["type"], "object");
+/// ```
+pub fn parameters() -> serde_json::Value {
     serde_json::json!({
         "type":"object",
         "properties":{

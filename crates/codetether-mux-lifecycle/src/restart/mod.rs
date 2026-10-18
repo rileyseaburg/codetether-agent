@@ -7,3 +7,6 @@ mod start;
 mod wait;
 pub use start::start_exact;
 pub use wait::wait_stopped;
+
+mod session;
+pub use session::restart_session;

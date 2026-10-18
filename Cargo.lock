@@ -1442,6 +1442,7 @@ dependencies = [
  "codetether-mux-lifecycle",
  "codetether-mux-command",
  "codetether-mux-control",
+ "codetether-mux-tool",
  "codetether-mux-server",
  "codetether-mux-workspace",
  "codetether-mux-agent-task",
@@ -5804,6 +5805,20 @@ dependencies = [
  "codetether-mux-control",
  "codetether-mux-lifecycle",
  "codetether-mux-workspace",
+]
+
+[[package]]
+name = "codetether-mux-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-mux-control",
+ "codetether-mux-lifecycle",
+ "codetether-mux-workspace",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

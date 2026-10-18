@@ -18818,3 +18818,26 @@ unchanged callers, lexical module reachability, dependency-cycle checks,
 file-size ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-swarm-bus/`. No Cargo, rustc, Python, Rust tests or live
 bus publication ran; compilation and runtime behavior remain unverified.
+
+### Mux manager tool and restored restart entry point
+
+Moved mux tool argument/schema handling, action dispatch, observation responses,
+steering and lifecycle safety into `codetether-mux-tool`. Native code supplies
+only the existing session-output reader and tool-registry metadata binding.
+The schema test remains unchanged. The tool still refuses lifecycle actions on
+working sessions and requires force for unknown state.
+
+The roll action referenced a removed restart_session entry point. Restored its
+implementation from the parent of d22d3b2bb in
+`codetether-mux-lifecycle::restart::restart_session`, using the existing shared
+registry/control/stop-wait/start-exact/TUI-launch services. Its working-session
+guard, inherited durable-session selection and existing workspace/isolation
+remain in the historical sequence; no live restart was performed.
+
+Validation: 17 complete action/helper body comparisons, unchanged schema,
+metadata and defaults, historical restart body and launch-order comparison,
+native reader mapping, unchanged schema test and restart primitives, module
+reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-mux-tool/`. No Cargo, rustc,
+Python, Rust tests or live mux operations ran; compilation and runtime behavior
+remain unverified.

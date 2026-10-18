@@ -6,10 +6,10 @@ use super::args::Args;
 
 pub(super) async fn ensure(args: &Args) -> Result<()> {
     let name = args.name.as_deref().context("name required")?;
-    let status = crate::mux::control::agent_sessions()
+    let status = codetether_mux_control::agent_sessions()
         .await?
         .into_iter()
-        .find(|item| crate::mux::control::is_agent_route(item, name))
+        .find(|item| codetether_mux_control::is_agent_route(item, name))
         .context("mux session not found")?;
     if status["status"] == "working" {
         bail!("refusing lifecycle action on a working mux");
