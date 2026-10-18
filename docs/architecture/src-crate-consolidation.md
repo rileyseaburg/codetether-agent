@@ -22862,3 +22862,18 @@ lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-context-production/`.
 No summary production, provider requests, Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Sandbox policy regressions colocated with the runtime crate
+
+Moved the native inline sandbox tests into focused runtime-crate modules for
+path denial, network denial and default memory limits. The four existing test
+bodies are token-identical, including command inputs, policy settings, expected
+errors and assertions. The native sandbox facade retains its public exports;
+the sandbox execution implementation is unchanged.
+
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+No manifest or lockfile changes were needed. Evidence:
+`artifacts/consolidation-sandbox-policy-tests/`.
+No test subprocesses, test suite, Cargo, rustc or Python ran; compilation and
+runtime results remain unverified. Full consolidation is active.

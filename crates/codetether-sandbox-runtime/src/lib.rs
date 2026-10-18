@@ -22,3 +22,5 @@ mod sandbox_spawn;
 pub use sandbox_availability::{direct_fallback_env_allowed, unavailable_reason};
 pub use sandbox_execute::execute_sandboxed;
 pub use sandbox_spawn::{Spawned, spawn};
+#[cfg(test)]
+mod policy_tests;
