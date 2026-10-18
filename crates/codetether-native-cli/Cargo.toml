@@ -43,6 +43,13 @@ codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
 codetether-sol-workflow = { path = "../codetether-sol-workflow", version = "0.1.0" }
 codetether-validation = { path = "../codetether-validation", version = "0.1.0" }
 
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-cli-relay = { path = "../codetether-cli-relay", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-run-runtime = { path = "../codetether-run-runtime", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+tokio = { version = "1", features = ["sync"] }
+
 [dev-dependencies]
 clap = { version = "4.6.6", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

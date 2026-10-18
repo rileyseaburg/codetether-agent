@@ -26579,3 +26579,23 @@ declaration, standalone formatting, file-limit and whitespace checks pass.
 No manifest/lock changes are needed; unrelated working files are unchanged.
 Evidence: artifacts/consolidation-native-agent-binding/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Native CLI run session bindings
+
+Moved twenty session adapter methods from five root CLI files into
+native-cli::impl_run_session. The declaration implements the run/resume source,
+ordinary-run runtime, run policy and relay contracts. The root supplies its
+Session type, Codex import callback and default step limit; route aliases select
+the existing generic runtime hosts. Deleted run_loop_host.rs, run_config.rs and
+run/{session_source,session_runtime,relay_host}.rs.
+
+The declaration auditor now includes impl_run_session and expands the actual
+root invocation. All twenty method bodies match the originals after explicit
+path substitution, including registry loading, relay message order and the
+three non-Send async contracts. Static module/dependency scans cover 730 roots
+and 617 crates; native production scope covers 43 crates and 356 files without
+findings. Standalone formatting, file limits and whitespace checks pass. The
+lock index adds only this crate's required direct dependencies; the unrelated
+working lockfile and A2A edits remain byte-for-byte unchanged.
+Evidence: artifacts/consolidation-native-run-binding/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
