@@ -10052,3 +10052,20 @@ and whitespace checks passed; new modules contain at most 41 code lines.
 Evidence is in `artifacts/consolidation-tool-outcome/`. Compilation and runtime
 tests were not run. No Cargo, rustc, Python or tool execution ran. Full workspace
 consolidation remains active.
+
+### Request schema and temperature policies consolidated
+
+Moved active-tool filtering and advertised-schema selection into
+`codetether-tool-catalog`, retaining lazy frontend availability checks,
+provider profile selection, the runtime justification callback and discovery
+insertion order. Native request helpers now supply registry definitions and
+application callbacks. Moved model-specific request temperature selection into
+`codetether-provider-policy` with its existing regression test.
+
+Eleven static comparisons cover original policy bodies, branch precedence,
+callback wiring, native prompt generation, the temperature regression and
+unchanged request assembly/frontend integration. Module/dependency graphs,
+file budgets and whitespace checks passed; new modules contain at most 18 code
+lines. Evidence is in `artifacts/consolidation-request-policies/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or tool
+execution ran. Full workspace consolidation remains active.

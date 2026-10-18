@@ -4993,8 +4993,10 @@ dependencies = [
 name = "codetether-tool-catalog"
 version = "0.1.0"
 dependencies = [
+ "codetether-prompt-policy",
  "codetether-provider-core",
  "serde_json",
+ "codetether-tool-core",
 ]
 
 [[package]]

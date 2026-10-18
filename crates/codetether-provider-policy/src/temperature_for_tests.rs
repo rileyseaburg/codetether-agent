@@ -1,6 +1,6 @@
 //! Tests for model-specific request temperature selection.
 
-use super::super::temperature_for;
+use crate::temperature_for;
 
 #[test]
 fn incompatible_models_do_not_get_a_default_temperature() {

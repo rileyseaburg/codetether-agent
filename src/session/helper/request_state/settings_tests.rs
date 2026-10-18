@@ -30,8 +30,6 @@ fn local_cuda_does_not_advertise_native_tools() {
 
 #[path = "settings_local_contract_tests.rs"]
 mod local_contract;
-#[path = "settings_temperature_tests.rs"]
-mod temperature;
 
 #[test]
 fn openrouter_safety_classifier_does_not_advertise_native_tools() {

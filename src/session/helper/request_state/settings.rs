@@ -1,20 +1,10 @@
 use super::super::bootstrap::inject_tool_prompt;
 use super::super::evidence::append_guardrails_for_cwd;
-use super::super::provider::{prefers_temperature_one, temperature_is_deprecated};
 use super::super::runtime::{local_cuda_light_system_prompt, prefers_light_system_prompt};
+pub(crate) use codetether_provider_policy::temperature_for;
 
 use crate::provider::ToolDefinition;
 use std::path::Path;
-
-pub(crate) fn temperature_for(model: &str) -> Option<f32> {
-    if temperature_is_deprecated(model) {
-        None
-    } else if prefers_temperature_one(model) {
-        Some(1.0)
-    } else {
-        Some(0.7)
-    }
-}
 
 pub(super) fn model_supports_tools(provider: &str, model: &str) -> bool {
     // local_cuda has no native tool-call channel, so the caller injects a

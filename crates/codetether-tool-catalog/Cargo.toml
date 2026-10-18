@@ -7,5 +7,7 @@ license = "MIT"
 description = "Tool catalog prompts, schema discovery and advertised-tool promotion"
 
 [dependencies]
+codetether-prompt-policy = { path = "../codetether-prompt-policy", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 serde_json = "1"

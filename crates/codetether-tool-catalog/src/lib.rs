@@ -16,3 +16,8 @@ pub use prompt::inject_tool_prompt;
 pub use schema::list_tools_bootstrap_definition;
 #[cfg(test)]
 mod promotion_tests;
+
+mod active;
+mod advertised;
+pub use active::active_tool_definitions;
+pub use advertised::advertised_tools;

@@ -1,41 +1,27 @@
+//! Native registry and runtime-policy hooks for shared schema selection.
 #[cfg(test)]
 #[path = "question_tests.rs"]
 mod question_tests;
 use crate::provider::ToolDefinition;
-use crate::session::helper::bootstrap::list_tools_bootstrap_definition;
-use crate::session::helper::runtime::is_interactive_tool;
 use crate::tool::ToolRegistry;
-
-fn is_dead_confirmation_tool(name: &str) -> bool {
-    matches!(name, "confirm_edit" | "confirm_multiedit")
-}
-
 pub(super) fn active_tool_definitions(
     registry: &ToolRegistry,
     _selected_provider: &str,
 ) -> Vec<ToolDefinition> {
-    registry
-        .definitions()
-        .into_iter()
-        .filter(|tool| {
-            !is_interactive_tool(&tool.name) || codetether_question::runtime::available()
-        })
-        .filter(|tool| !is_dead_confirmation_tool(&tool.name))
-        .collect()
+    codetether_tool_catalog::active_tool_definitions(
+        registry.definitions(),
+        codetether_question::runtime::available,
+    )
 }
-
 pub(super) fn advertised_tools(
     model_supports_tools: bool,
     tools: &[ToolDefinition],
     provider: &str,
 ) -> Vec<ToolDefinition> {
-    if !model_supports_tools {
-        return Vec::new();
-    }
-    let advertised = crate::tool::profile::apply_for_provider(tools.to_vec(), provider);
-    let mut advertised = crate::runtime_policy::require_justification_in_ask_mode(advertised);
-    if advertised.len() < tools.len() {
-        advertised.push(list_tools_bootstrap_definition());
-    }
-    advertised
+    codetether_tool_catalog::advertised_tools(
+        model_supports_tools,
+        tools,
+        provider,
+        crate::runtime_policy::require_justification_in_ask_mode,
+    )
 }

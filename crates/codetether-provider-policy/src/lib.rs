@@ -26,3 +26,8 @@ mod tests;
 
 mod defaults;
 pub use defaults::default_model_for_provider;
+
+mod temperature_for;
+pub use temperature_for::temperature_for;
+#[cfg(test)]
+mod temperature_for_tests;
