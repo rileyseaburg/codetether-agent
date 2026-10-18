@@ -27268,3 +27268,20 @@ production-scope, standalone formatting, file-limit and whitespace checks pass
 for 725 roots and 617 crates. Tests and unrelated files are unchanged. Evidence:
 artifacts/consolidation-tail-commands/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Interactive autochat frontend bindings
+
+Moved the autochat provider registry adapter, frontend View implementation,
+event/run/worker forwarding and session-specific event/state aliases into
+codetether-autochat-core::interactive::binding modules. The root selects the
+same AppState, session event, registry, provider and message types. Removed six
+root implementation files while retaining their module paths and exports.
+
+All ten expanded function bodies match their originals. Both type aliases and
+the remaining relay reexports are preserved. Shared Vault loading, model
+resolution, message construction and relay launch arguments are unchanged.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. No manifest
+or lock changes were needed; tests and unrelated working files are unchanged.
+Evidence: artifacts/consolidation-autochat-bindings/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

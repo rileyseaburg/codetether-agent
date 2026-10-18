@@ -3,6 +3,7 @@
 //! Supply [host::Host] to load providers and [host::View] for presentation.
 //! The event payload remains generic so native session snapshots stay outside
 //! this crate. Commands and workers share the same state and completion events.
+mod binding;
 pub mod command;
 pub mod events;
 pub mod handler;
