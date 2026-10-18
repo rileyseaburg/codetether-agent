@@ -1,11 +1,11 @@
 //! Cancellation-safe clearing of one TUI prompt's active ownership.
 
-use super::active_cancel::ActiveCancel;
+use crate::handle::Control;
 
-pub(super) struct Guard(ActiveCancel);
+pub(super) struct Guard<C: Control>(C);
 
-impl Guard {
-    pub(super) fn new(active: ActiveCancel) -> Self {
+impl<C: Control> Guard<C> {
+    pub(super) fn new(active: C) -> Self {
         Self(active)
     }
 
@@ -15,7 +15,7 @@ impl Guard {
     }
 }
 
-impl Drop for Guard {
+impl<C: Control> Drop for Guard<C> {
     fn drop(&mut self) {
         self.0.clear();
     }

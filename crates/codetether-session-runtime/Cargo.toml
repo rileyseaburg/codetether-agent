@@ -7,7 +7,6 @@ description = "Shared session execution control for CodeTether frontends"
 license = "MIT"
 
 [dependencies]
-tokio = { version = "1", features = ["sync"] }
+tokio = { version = "1", features = ["sync", "macros"] }
 
-[dev-dependencies]
 futures = "0.3"

@@ -16101,3 +16101,20 @@ Full workspace consolidation remains active.
   dependencies changed. Evidence: `artifacts/consolidation-runtime-dispatch/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared cancellation-aware prompt execution
+
+- Moved the owned prompt task sequence and active-ownership cleanup guard into
+  `codetether-session-runtime::execute`. Native hooks retain worktree operations,
+  prompt execution, directory mutation and completion-notice conversion.
+- Preserved worktree creation before the caught/select block, cancellation-first
+  biased polling, panic capture, worktree-result handling before ownership
+  release, and notice delivery after release. Guard drop still clears ownership.
+- Promoted the already-used futures dependency from dev-only to runtime and
+  enabled Tokio macros for the moved select. Lock dependencies did not change.
+- Verification: complete execution-body and guard comparisons, six native hooks,
+  native forwarding, unchanged worktree code and completion tests, manifest
+  changes, module/dependency graphs, direct rustfmt, file budgets and whitespace.
+  Evidence: `artifacts/consolidation-runtime-execute/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

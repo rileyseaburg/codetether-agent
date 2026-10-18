@@ -60,3 +60,6 @@ pub mod handle;
 
 /// Command-loop dispatch and ordered submission gates.
 pub mod dispatch;
+
+/// Owned prompt execution with cancellation and completion cleanup.
+pub mod execute;

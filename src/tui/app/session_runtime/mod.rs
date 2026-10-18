@@ -1,11 +1,11 @@
 //! Move-based TUI session runtime.
 
 mod active_cancel;
-mod active_completion;
 #[cfg(test)]
 mod active_turn;
 mod command;
 mod execute;
+mod execute_host;
 mod handle;
 mod dispatch_host;
 mod loop_submit;
