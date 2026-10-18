@@ -20939,3 +20939,17 @@ Static full-body comparison, direct rustfmt, source graph, native file-limit,
 and whitespace checks passed. Evidence: `artifacts/consolidation-goal-feedback/`.
 No dependencies changed. No Cargo, rustc, or Python commands ran. Rust tests and
 compilation remain unverified; the complete consolidation remains active.
+
+### Early native-command selection ownership
+
+Moved the first-argument `windows`/`bonsai` bypass predicate and early parsing
+sequence into the CLI startup lifecycle's default early hook. The native host
+now uses that default while retaining root parsing and concrete command
+execution. The native dispatch match is unchanged, and other hosts can still
+override the early hook. No dependencies changed.
+
+Exact source comparison confirms the argument predicate and parse-before-native
+call order. Direct rustfmt, source graph checks, native file-size limits, and
+whitespace checks passed. Evidence: `artifacts/consolidation-cli-early/`.
+No Cargo, rustc, or Python commands ran. No CLI commands, startup services, or
+Rust tests were executed. Compilation remains unverified; consolidation is active.

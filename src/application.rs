@@ -5,9 +5,6 @@ use codetether_agent::cli::{Cli, Command};
 pub(super) struct Native;
 impl codetether_cli_startup::lifecycle::Host for Native {
     type Invocation = Cli;
-    async fn early() -> Option<anyhow::Result<()>> {
-        super::native_cli::early().await
-    }
     fn parse() -> Cli {
         Cli::parse()
     }

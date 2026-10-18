@@ -12,7 +12,14 @@ pub trait Host {
     /// Parsed root options and selected command.
     type Invocation;
     /// Run commands that bypass environment setup and full startup.
-    fn early() -> impl Future<Output = Option<Result<()>>>;
+    /// By default, only `windows` and `bonsai` in the first argument position
+    /// are parsed and dispatched before the normal startup sequence.
+    fn early() -> impl Future<Output = Option<Result<()>>>
+    where
+        Self: Sized,
+    {
+        super::early::run::<Self>()
+    }
     /// Parse the application's complete root command line.
     fn parse() -> Self::Invocation;
     /// Borrow the selected command for logging and optional-service policy.
