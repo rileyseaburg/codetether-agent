@@ -36,3 +36,5 @@ codetether-sandbox-policy = { path = "../codetether-sandbox-policy", version = "
 codetether-sandbox-runtime = { path = "../codetether-sandbox-runtime", version = "0.1.0" }
 tempfile = "3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+codetether-command-guard = { path = "../codetether-command-guard", version = "0.1.0" }
+codetether-file-tools = { path = "../codetether-file-tools", version = "0.1.0" }

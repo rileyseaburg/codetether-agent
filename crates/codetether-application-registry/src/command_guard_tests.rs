@@ -1,5 +1,7 @@
-use super::result;
-use crate::tool::{Tool, bash::BashTool, exec_command::ExecCommandTool};
+use codetether_bash_tool::BashTool;
+use codetether_command_guard::result;
+use codetether_exec_command::ExecCommandTool;
+use codetether_tool_core::Tool;
 use std::sync::Arc;
 
 #[test]
@@ -52,7 +54,10 @@ fn blocks_every_hook_bypass_form() {
     ] {
         let blocked = result("bash", command).expect("hook bypass must be blocked");
         assert!(!blocked.success, "{command}");
-        assert!(blocked.output.contains("GIT_HOOK_BYPASS_BLOCKED"), "{command}");
+        assert!(
+            blocked.output.contains("GIT_HOOK_BYPASS_BLOCKED"),
+            "{command}"
+        );
     }
 }
 
@@ -76,7 +81,7 @@ fn allows_ordinary_git_commands() {
 
 #[tokio::test]
 async fn exec_command_tool_enforces_worktree_guard() {
-    let sessions = Arc::new(crate::tool::command_session::Registry::default());
+    let sessions = Arc::new(codetether_command_session::Registry::default());
     let tool = ExecCommandTool::new(sessions, None);
     let blocked = tool
         .execute(serde_json::json!({"cmd": "git worktree add /tmp/random"}))

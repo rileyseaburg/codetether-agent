@@ -44,3 +44,8 @@ impl<H: Application> std::fmt::Debug for ToolRegistry<H> {
 
 /// Proactive context supplied by application-registered diagnostic tools.
 pub mod proactive;
+
+#[cfg(test)]
+mod command_guard_tests;
+#[cfg(test)]
+mod temp_write_guard_tests;

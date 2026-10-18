@@ -25261,3 +25261,25 @@ new package/root lock entries are staged. Unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-native-edit-road/. No Cargo,
 rustc, Python, edit execution, RustyRoad backend or runtime tests ran. Full
 consolidation remains active.
+
+### Sandbox exports and command-guard tests consolidated
+
+Moved the sandbox's public signing and policy exports into the existing
+codetether-sandbox-runtime root, which already depends on their owning crates.
+The root tool module now re-exports that runtime directly. Removed four sandbox
+wrapper/wiring files and the shell-command/temp-write guard wrappers; their
+public paths resolve directly to the existing guard implementations.
+
+Two boundary-test files moved into codetether-application-registry, where their
+file, bash, exec and session dependencies can be composed without a dependency
+back to the root application. All ten test functions are preserved with direct
+crate imports. Runtime sandbox bodies, guard rule ordering, permissions and
+resource checks are unchanged. No new crate was added.
+
+Static source comparisons pass, and module/dependency scans cover 708 roots and
+594 crates without missing modules, cycles or undeclared direct workspace
+imports. Declaration, file-limit, direct rustfmt and whitespace checks pass.
+Only the registry's two required test dependencies are staged in Cargo.lock;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-command-guards/. No Cargo, rustc, Python, sandbox
+execution or runtime tests ran. Full consolidation remains active.

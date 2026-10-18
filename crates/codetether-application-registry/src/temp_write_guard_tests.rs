@@ -1,6 +1,8 @@
 //! End-to-end checks that the temp ban holds at real tool boundaries.
 
-use crate::tool::{Tool, file::WriteTool, shell_command_guard};
+use codetether_command_guard as shell_command_guard;
+use codetether_file_tools::WriteTool;
+use codetether_tool_core::Tool;
 use serde_json::json;
 
 #[tokio::test]

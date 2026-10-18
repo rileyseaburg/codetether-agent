@@ -3,10 +3,12 @@
 //! [spawn] leaves a child running; [execute_sandboxed] waits for completion.
 //! Policy validation and runner planning precede both paths. Retained plans
 //! keep filter resources alive while child processes are created.
-use codetether_plugin_verification::hash_bytes;
+pub use codetether_plugin_verification::{
+    PluginManifest, PluginRegistry, SigningKey, hash_bytes, hash_file,
+};
 use codetether_sandbox_environment as sandbox_env;
 use codetether_sandbox_landlock as sandbox_landlock;
-use codetether_sandbox_policy::{SandboxPolicy, SandboxResult};
+pub use codetether_sandbox_policy::{SandboxPolicy, SandboxResult};
 use codetether_sandbox_runner as sandbox_runner;
 use codetether_sandbox_runner as sandbox_runner_select;
 use codetether_sandbox_runner as sandbox_runner_direct;

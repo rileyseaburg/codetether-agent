@@ -2131,6 +2131,8 @@ dependencies = [
  "codetether-sandbox-runtime",
  "tempfile",
  "tokio",
+ "codetether-command-guard",
+ "codetether-file-tools",
 ]
 
 [[package]]
