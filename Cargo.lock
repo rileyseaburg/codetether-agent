@@ -3710,6 +3710,7 @@ dependencies = [
  "anyhow",
  "codetether-provenance",
  "codetether-session-history",
+ "codetether-session-codec",
 ]
 
 [[package]]

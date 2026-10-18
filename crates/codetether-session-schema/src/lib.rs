@@ -5,7 +5,10 @@
 //! supplies the established fallback for bounded delegated runs.
 //! [impl_session_lifecycle!] adds construction, provenance and transcript methods.
 mod declare;
+mod header;
 mod lifecycle;
+mod storage;
+pub use header::{HeaderSource, header};
 
 /// Step budget for bounded delegated runs that do not specify one.
 /// Primary sessions may still run without a step limit.
@@ -22,9 +25,11 @@ pub mod __private {
     pub use codetether_context_policy::{pages::PageKind, summary_index::SummaryIndex};
     pub use codetether_provenance::ClaimProvenance;
     pub use codetether_provider_core::{Message, Usage};
+    pub use codetether_session_codec as codec;
     pub use codetether_session_history::History;
     pub use codetether_session_metadata as metadata;
     pub use codetether_session_metadata::SessionMetadata;
+    pub use codetether_session_store as store;
     pub use codetether_session_store::State;
     pub use codetether_session_store::window;
     pub use codetether_tracked_vec::{TrackedVec, tail};

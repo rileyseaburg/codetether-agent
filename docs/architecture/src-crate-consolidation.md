@@ -24480,3 +24480,22 @@ working changes remain untouched. Evidence:
 artifacts/consolidation-session-lifecycle/. No Cargo, rustc, Python, compiler
 macro expansion, lifecycle execution or tests ran. Full consolidation remains
 active.
+
+### Session storage contracts moved into the schema crate
+
+Moved sixteen Snapshot, Restore and Legacy trait methods into separate storage
+modules in codetether-session-schema. The impl_session_store macro binds those
+contracts to the existing local Session type. Added shared HeaderSource and
+header projection; the native codec module re-exports that projection. Removed
+native store/header.rs, store/restore.rs and store/legacy.rs; store/snapshot.rs
+now contains the macro invocation. Added the direct session-codec dependency.
+
+Static comparisons preserve method signatures, field references, normalization,
+timestamp ordering and live/legacy codec selection after explicit path changes
+and expansion of the removed header wrappers. Module/dependency scans cover
+693 roots and 574 crates without missing modules or cycles. Direct dependency
+audit, direct rustfmt, file limits and whitespace checks passed. Only the
+required lockfile dependency entry is staged; unrelated changes remain intact.
+Evidence: artifacts/consolidation-session-store-bindings/. No Cargo, rustc,
+Python, compiler macro expansion, persistence operations or tests ran. Full
+consolidation remains active.
