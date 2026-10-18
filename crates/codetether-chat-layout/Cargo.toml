@@ -10,3 +10,5 @@ description = "Chat panel geometry, status packing, viewports and scrollbars"
 codetether-theme = { path = "../codetether-theme", version = "0.1.0", features = ["ratatui"] }
 ratatui = { version = "0.30.2", default-features = false }
 unicode-width = "0.2"
+
+codetether-tui-style = { path = "../codetether-tui-style", version = "0.1.0" }

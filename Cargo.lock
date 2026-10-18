@@ -6958,6 +6958,7 @@ dependencies = [
 name = "codetether-chat-layout"
 version = "0.1.0"
 dependencies = [
+ "codetether-tui-style",
  "codetether-theme",
  "ratatui",
  "unicode-width",

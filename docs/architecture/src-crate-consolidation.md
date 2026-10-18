@@ -20094,3 +20094,26 @@ module reachability, dependency cycles, file-size ratchet, whitespace and direct
 formatting. No dependencies changed. Evidence:
 `artifacts/consolidation-chat-line-pipeline/`. Cargo, rustc, Python, Rust tests
 and rendering were not executed; compilation and runtime remain unverified.
+
+### Message-panel rendering ownership
+
+Moved message-panel scroll clamping and both owned/borrowed drawing paths into
+`codetether-chat-layout::messages`, beside its viewport, scrollbar and hit-state
+implementations. Native adapters provide history hooks, viewport access,
+current title/accent and the hit recorder. The old scroll sentinel and height
+memo API now re-export the crate-owned definitions.
+
+Preserved history height before anchoring, anchoring before measured bounds,
+follow-bottom handling, u16 saturation, original border styling, owned-buffer
+paragraph scrolling, borrowed-buffer visible slicing, hit recording before
+drawing, and the final scrollbar pass. The layout crate now depends on the
+existing terminal style crate; the dependency graph remains acyclic.
+
+Validation: complete translated scroll and two render bodies, seven native
+field bindings, three delegates, unchanged viewport/hit/scrollbar/history
+implementations and tests, isolated lock delta, module reachability, dependency
+cycles, file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-message-panel/`. New documentation examples capture
+frame geometry before borrowing the frame for drawing. Cargo, rustc, Python,
+Rust tests and terminal rendering were not run; compilation and runtime remain
+unverified.

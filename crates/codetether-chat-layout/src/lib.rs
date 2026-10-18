@@ -30,3 +30,6 @@ pub const SCROLL_BOTTOM: usize = 1_000_000;
 
 /// Responsive webview layout and layout-mode selection.
 pub mod webview;
+
+/// History-aware message-panel drawing and hit tracking.
+pub mod messages;
