@@ -6,7 +6,9 @@ use ratatui::style::Stylize;
 use ratatui::text::Line;
 
 mod host;
+mod registry;
 pub use host::Host;
+pub use registry::Registry;
 
 /// Assemble one tool child's parent-scoped details.
 /// # Arguments

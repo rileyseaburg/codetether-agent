@@ -24205,3 +24205,20 @@ limits and whitespace checks passed. Only the required lockfile dependency is
 staged; unrelated changes are preserved. Evidence:
 artifacts/consolidation-agent-detail/. No Cargo, rustc, Python, compilation,
 view rendering or tests ran. Full consolidation remains active.
+
+### Dashboard registry adapter moved into its owning crate
+
+Moved tool-child detail registry adaptation into
+codetether-agent-dashboard::tool_detail::Registry<H>. It calls the same shared
+agent-view lookup, transcript and live-trace operations with the native
+ApplicationHost selected at the detail call site. Removed the native registry
+file. The native host reexport is crate-visible so the TUI can select it directly;
+its implementation and parent scoping remain unchanged. No dependencies changed.
+
+Static comparisons preserve all three method bodies after expanding the old
+bridge wrappers to their existing shared calls. Native host, transcript and live
+trace bindings remain byte-identical. Module/dependency scans cover 692 roots
+and 573 crates without missing modules or cycles. Direct rustfmt, source file
+limits and whitespace checks passed. Unrelated changes remain untouched.
+Evidence: artifacts/consolidation-detail-registry/. No Cargo, rustc, Python,
+compilation, registry operations or tests ran. Full consolidation remains active.

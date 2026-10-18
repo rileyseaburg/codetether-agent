@@ -4,7 +4,7 @@ use super::store;
 #[path = "bridge_host.rs"]
 mod host;
 pub use codetether_agent_view::{AgentOrigin, AgentSnapshot};
-pub(super) use host::ApplicationHost;
+pub(crate) use host::ApplicationHost;
 #[path = "bridge_live.rs"]
 mod live;
 #[cfg(test)]
