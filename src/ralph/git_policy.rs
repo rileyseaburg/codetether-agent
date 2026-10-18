@@ -1,7 +1,8 @@
 //! Native policy binding and checkout compatibility entry point.
 use anyhow::Result;
 use std::{path::Path, process::Output};
-pub(crate) struct Native;
+/// Native Git policy binding used by the public Ralph runtime.
+pub struct Native;
 #[async_trait::async_trait]
 impl codetether_ralph_git::Host for Native {
     async fn check(args: serde_json::Value) -> Result<Option<crate::tool::ToolResult>> {

@@ -1,0 +1,22 @@
+//! Publish story learnings, handoffs and progress to the agent bus.
+use super::*;
+impl<H: Host> RalphLoop<H> {
+    /// Publish story learnings, handoff context, and progress to the bus.
+    pub(crate) fn bus_publish_story_result(
+        &self,
+        story: &UserStory,
+        iteration: usize,
+        learnings: &[String],
+        next_story_id: Option<&str>,
+    ) {
+        let Some(ref bus) = self.bus else { return };
+        codetether_ralph_core::bus::publish(
+            bus,
+            &self.state,
+            story,
+            iteration,
+            learnings,
+            next_story_id,
+        );
+    }
+}

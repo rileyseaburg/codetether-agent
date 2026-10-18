@@ -1714,6 +1714,7 @@ dependencies = [
  "codetether-ralph-git",
  "codetether-ralph-relay",
  "codetether-ralph-run",
+ "codetether-ralph-runtime",
  "codetether-ralph-stage",
  "codetether-ralph-task",
  "codetether-ralph-core",
@@ -7388,6 +7389,30 @@ dependencies = [
  "codetether-ralph-core",
  "codetether-worktree",
  "tracing",
+]
+
+[[package]]
+name = "codetether-ralph-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-bus-core",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-ralph-agent",
+ "codetether-ralph-core",
+ "codetether-ralph-git",
+ "codetether-ralph-merge",
+ "codetether-ralph-relay",
+ "codetether-ralph-run",
+ "codetether-ralph-sequential",
+ "codetether-ralph-stage",
+ "codetether-ralph-task",
+ "codetether-worktree",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

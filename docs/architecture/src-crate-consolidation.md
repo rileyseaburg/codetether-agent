@@ -18643,3 +18643,31 @@ replacement was corrected; its formatting error log is retained in
 `artifacts/consolidation-ralph-run/` alongside the final evidence. No Cargo,
 rustc, Python, Rust tests or live run/cleanup operations were executed.
 Compilation and runtime behavior remain unverified.
+
+### Ralph runtime state ownership and service integration
+
+Moved the complete `src/ralph/ralph_loop/` implementation tree and its state owner
+into `codetether-ralph-runtime`. The shared `RalphLoop<H>` owns the original
+fields, construction, builder methods, status and integration with the dedicated
+run, sequential, stage, task, relay, merge and Git crates. A small Host contract
+supplies the provider registry, agent/relay/Git bindings, stateless quality shell
+and verification service.
+
+The native `codetether_agent::ralph::RalphLoop` is now a type alias specialized
+with the existing application services. Native files retain only concrete tool
+registry construction, agent-loop forwarding, session construction/prompting and
+command-policy execution. Existing constructor/builder/run/status signatures
+specialize to the same types; state field order and resource ownership remain
+unchanged. The native zero-sized quality shell now derives Default for the
+shared binding. Public service-bound types remain accessible through associated
+types without exposing implementation-module paths.
+
+Validation: 88 full function-body/signature comparisons, state fields/drop order,
+public specialization and native binding checks, unchanged external service
+sources, lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting across 53 files. Native Ralph's reachable tree
+is reduced to 21 files; the new runtime tree has 43 reachable files with no
+missing/orphaned modules. Evidence: `artifacts/consolidation-ralph-runtime/`.
+The first comparison needed the explicit generic context-signature mapping;
+its failure log is retained. No Cargo, rustc, Python, Rust tests or live runtime
+operations ran. Compilation and runtime behavior remain unverified.

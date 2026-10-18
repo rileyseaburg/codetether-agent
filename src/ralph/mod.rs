@@ -10,6 +10,7 @@ mod delegation;
 pub(crate) mod git_policy;
 mod quality_shell;
 mod ralph_loop;
+mod runtime_host;
 pub mod state_store;
 pub mod store_http;
 pub mod store_memory;
