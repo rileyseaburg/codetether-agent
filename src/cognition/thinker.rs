@@ -30,9 +30,6 @@ use codetether_cognition_core::thinker as output;
 #[path = "thinker/client.rs"]
 mod client;
 
-#[path = "thinker/provider.rs"]
-mod provider;
-
 use codetether_cognition_native::dispatch as candle_dispatch;
 
 #[cfg(not(feature = "candle"))]

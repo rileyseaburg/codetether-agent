@@ -62,3 +62,5 @@ pub mod editing;
 pub mod indexing;
 /// RLM model choices resolved through the application's cached providers.
 pub mod model_resolution;
+/// Credentialed thinker backends and cached provider-registry completion.
+pub mod thinker;

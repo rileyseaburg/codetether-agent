@@ -1,9 +1,10 @@
-//! Credentialed Bedrock construction retained by the application.
-use super::ThinkerConfig;
-use crate::provider::bedrock::{AwsCredentials, BedrockProvider};
+//! Credentialed Bedrock construction under the existing thinker policy.
 use anyhow::{Result, anyhow};
+use codetether_cognition_core::ThinkerConfig;
+use codetether_provider_bedrock::provider::{AwsCredentials, BedrockProvider};
 use std::sync::Arc;
-pub(super) fn bedrock(config: &ThinkerConfig) -> Result<Arc<BedrockProvider>> {
+
+pub(super) fn build(config: &ThinkerConfig) -> Result<Arc<BedrockProvider>> {
     let creds = AwsCredentials::from_environment().ok_or_else(|| {
         anyhow!(
             "Bedrock thinker requires AWS credentials (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or ~/.aws/credentials)"

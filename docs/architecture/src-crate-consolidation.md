@@ -23131,3 +23131,28 @@ in Cargo.lock; unrelated working changes remain unchanged. Evidence:
 artifacts/consolidation-session-routing/.
 No LSP requests, model selection calls, tests, Cargo, rustc or Python ran.
 Compilation and runtime behavior remain unverified. Full consolidation is active.
+
+### Thinker provider operations owned by application-providers
+
+Moved credentialed Bedrock construction, signed request forwarding and cached
+registry completion into codetether-application-providers::thinker. The native
+thinker client selects its shared service host by type alias. Three native
+implementation files were deleted. Native provider configuration supplies a
+small Registry implementation selecting the application provider cache.
+
+The thinker host requires that narrow Registry contract instead of the full
+Application factory contract. This avoids a recursive trait requirement when
+the native provider factory itself constructs a local CUDA thinker client.
+The native Application factory/cache implementation remains unchanged.
+
+Static comparisons preserve the credential lookup, error text, region,
+provider/model resolution, prompt argument order and signed transport call.
+The existing native thinker test, local CUDA alias and thinker service dispatch
+are unchanged. Module/dependency scans cover 699 roots and 571 crates without
+missing modules or cycles. Direct rustfmt, file-size limits and whitespace
+checks passed. Only four new direct dependency edges were staged for the
+provider crate, reusing the existing thinker-service reqwest package; unrelated
+working changes remain unchanged. Evidence:
+artifacts/consolidation-thinker-provider-binding/.
+No credential reads, model loads, requests, tests, Cargo, rustc or Python ran.
+Compilation and runtime behavior remain unverified. Full consolidation is active.

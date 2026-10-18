@@ -11,3 +11,13 @@ impl codetether_application_providers::Application for Native {
         &CACHED
     }
 }
+
+impl codetether_application_providers::thinker::Registry for Native {
+    async fn think(
+        config: &codetether_cognition_core::ThinkerConfig,
+        system: &str,
+        user: &str,
+    ) -> anyhow::Result<codetether_cognition_core::ThinkerOutput> {
+        codetether_application_providers::thinker::think::<Self>(config, system, user).await
+    }
+}
