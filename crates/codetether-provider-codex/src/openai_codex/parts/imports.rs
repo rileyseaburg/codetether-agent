@@ -5,7 +5,7 @@ use super::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 #[cfg(test)]
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use futures::stream::BoxStream;
 #[cfg(test)]
 use super::{ContentPart, Role};
