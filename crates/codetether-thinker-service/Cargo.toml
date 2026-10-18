@@ -1,0 +1,21 @@
+[package]
+name = "codetether-thinker-service"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Shared thinker backend wiring, native dispatch and transport diagnostics"
+
+[features]
+candle = ["codetether-cognition-native/candle"]
+candle-cuda = ["candle", "codetether-cognition-native/candle-cuda"]
+candle-cudnn = ["candle-cuda", "codetether-cognition-native/candle-cudnn"]
+candle-accelerate = ["candle", "codetether-cognition-native/candle-accelerate"]
+candle-mkl = ["candle", "codetether-cognition-native/candle-mkl"]
+
+[dependencies]
+anyhow = "1"
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+codetether-cognition-native = { path = "../codetether-cognition-native", version = "0.1.0" }
+reqwest = { version = "0.13.2", default-features = false }
+tracing = "0.1"

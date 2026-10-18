@@ -1,47 +1,20 @@
-//! Native model and provider bindings for the shared thinker client.
+//! Application credentials and registry lookup for shared thinker services.
 mod build;
-mod inference;
-use super::super::{CandleThinker, ThinkerConfig, ThinkerOutput};
+use super::super::{ThinkerConfig, ThinkerOutput};
 use crate::provider::bedrock::BedrockProvider;
 use anyhow::Result;
-use codetether_cognition_core::thinker::client::Host;
-use std::sync::{Arc, Mutex};
-/// Application backend hooks retained by the public thinker-client alias.
+use std::sync::Arc;
+/// Application credential and registry hooks for the shared thinker service.
 pub struct Native;
-impl Host for Native {
-    type Native = Arc<Mutex<CandleThinker>>;
+impl codetether_thinker_service::Host for Native {
     type Bedrock = Arc<BedrockProvider>;
-    fn native(config: &ThinkerConfig) -> Result<Self::Native> {
-        build::native(config)
-    }
     fn bedrock(config: &ThinkerConfig) -> Result<Self::Bedrock> {
         build::bedrock(config)
     }
-    async fn http(
-        config: &ThinkerConfig,
-        http: &reqwest::Client,
-        system: &str,
-        user: &str,
-    ) -> Result<ThinkerOutput> {
-        inference::http(config, http, system, user).await
-    }
     async fn registry(config: &ThinkerConfig, system: &str, user: &str) -> Result<ThinkerOutput> {
-        inference::registry(config, system, user).await
+        super::super::provider::think(config, system, user).await
     }
-    async fn bedrock_think(
-        config: &ThinkerConfig,
-        provider: &Self::Bedrock,
-        system: &str,
-        user: &str,
-    ) -> Result<ThinkerOutput> {
-        inference::bedrock(config, provider, system, user).await
-    }
-    async fn native_think(
-        runtime: &Self::Native,
-        provider: &str,
-        system: &str,
-        user: &str,
-    ) -> Result<ThinkerOutput> {
-        inference::native(runtime, provider, system, user).await
+    async fn send(provider: &Self::Bedrock, url: &str, bytes: &[u8]) -> Result<reqwest::Response> {
+        provider.send_converse_request(url, bytes).await
     }
 }

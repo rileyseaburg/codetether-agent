@@ -1,5 +1,5 @@
 //! Application logging adapter for shared thinker HTTP transport.
-use super::{ThinkerConfig, ThinkerOutput};
+use crate::{ThinkerConfig, ThinkerOutput};
 use anyhow::Result;
 use codetether_cognition_core::thinker::http::{self, HttpObserver};
 use reqwest::Client;
@@ -23,15 +23,15 @@ pub(super) async fn think(
 struct HttpLog;
 impl HttpObserver for HttpLog {
     fn transient_transport(&self, error: &reqwest::Error) {
-        super::openai_backend_send::log_transient(error);
+        crate::openai_backend_send::log_transient(error);
     }
     fn transient_status(&self, status: reqwest::StatusCode) {
-        super::openai_backend_status::log_transient(status);
+        crate::openai_backend_status::log_transient(status);
     }
     fn retry(&self, attempt: u32) {
-        super::openai_backend_trace::log_retry(attempt);
+        crate::openai_backend_trace::log_retry(attempt);
     }
     fn success(&self, output: &ThinkerOutput, started_at: Instant, attempt: u32) {
-        super::openai_backend_trace::log_success(output, started_at, attempt);
+        crate::openai_backend_trace::log_success(output, started_at, attempt);
     }
 }

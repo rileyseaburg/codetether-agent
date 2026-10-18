@@ -19174,3 +19174,27 @@ file-size ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-cognition-loop/`. No Cargo, rustc, Python, Rust tests,
 cognition loop or persistence operations ran; compilation and runtime remain
 unverified.
+
+### Thinker backend service wiring
+
+Moved thinker HTTP observation, retry/success diagnostics, Bedrock dispatch and
+native model construction/dispatch wiring into `codetether-thinker-service`.
+The shared Service implements the existing cognition client host. Native hooks
+retain credentialed Bedrock construction, provider-registry resolution and the
+signed transport call. The public ThinkerClient alias now selects that shared
+service; request/response contracts and regression tests are unchanged.
+
+Preserved backend routing, serialized Candle handle ownership, credential error
+text, HTTP/Bedrock diagnostic fields and original targets, and existing native
+feature behavior. Candle/CUDA/cuDNN/Accelerate/MKL flags are forwarded. The lock
+entry uses the existing reqwest 0.13.4 resolution.
+
+Validation: 11 complete transport/diagnostic bodies, native construction and
+credential bodies, six service routes, native forwarding, public alias,
+unchanged tests, feature and lock wiring, lexical module reachability,
+dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
+Inspection corrected the registry adapter's changed nesting depth. The first
+verification also found remaining old-form sibling helper paths; these were
+made consistent and the failed check was retained. Evidence:
+`artifacts/consolidation-thinker-service/`. No Cargo, rustc, Python, Rust tests,
+credential loading or model requests ran; compilation and runtime are unverified.

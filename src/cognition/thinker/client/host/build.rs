@@ -1,10 +1,8 @@
-use super::{CandleThinker, ThinkerConfig};
+//! Credentialed Bedrock construction retained by the application.
+use super::ThinkerConfig;
 use crate::provider::bedrock::{AwsCredentials, BedrockProvider};
 use anyhow::{Result, anyhow};
-use std::sync::{Arc, Mutex};
-pub(super) fn native(config: &ThinkerConfig) -> Result<Arc<Mutex<CandleThinker>>> {
-    Ok(Arc::new(Mutex::new(CandleThinker::new(config)?)))
-}
+use std::sync::Arc;
 pub(super) fn bedrock(config: &ThinkerConfig) -> Result<Arc<BedrockProvider>> {
     let creds = AwsCredentials::from_environment().ok_or_else(|| {
         anyhow!(

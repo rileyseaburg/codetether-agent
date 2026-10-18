@@ -1336,6 +1336,7 @@ dependencies = [
  "codetether-benchmark-cli",
  "codetether-okr-cli",
  "codetether-telemetry-cli",
+ "codetether-thinker-service",
  "codetether-moltbook-cli",
  "codetether-rlm-cli",
  "codetether-rlm-selection",
@@ -5495,6 +5496,17 @@ dependencies = [
  "ratatui",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-thinker-service"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-cognition-core",
+ "codetether-cognition-native",
+ "reqwest 0.13.4",
+ "tracing",
 ]
 
 [[package]]
