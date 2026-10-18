@@ -5,7 +5,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::model::NodeShape;
+/// use codetether_mermaid::model::NodeShape;
 ///
 /// let shape = NodeShape::Round;
 /// match shape {
@@ -25,6 +25,12 @@ pub enum NodeShape {
 }
 
 /// A flowchart node or a sequence-diagram participant.
+/// # Examples
+/// ```
+/// use codetether_mermaid::model::{Node, NodeShape};
+/// let node = Node { id: "A".into(), label: "Start".into(), shape: NodeShape::Rect };
+/// assert_eq!(node.id, "A");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {
     /// Mermaid identifier used by edges.
@@ -36,6 +42,11 @@ pub struct Node {
 }
 
 /// A directed connection between two [`Node`]s.
+/// # Examples
+/// ```
+/// let edge = codetether_mermaid::model::Edge { from: "A".into(), to: "B".into(), label: None, dotted: false };
+/// assert!(!edge.dotted);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Edge {
     /// Source node id.
@@ -49,6 +60,11 @@ pub struct Edge {
 }
 
 /// Which mermaid diagram family a fenced block declared.
+/// # Examples
+/// ```
+/// use codetether_mermaid::model::DiagramKind;
+/// match DiagramKind::Sequence { DiagramKind::Sequence => {}, DiagramKind::FlowchartVertical | DiagramKind::FlowchartHorizontal => {} }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiagramKind {
     /// `flowchart`/`graph` with top-down layout.
@@ -60,6 +76,12 @@ pub enum DiagramKind {
 }
 
 /// A parsed mermaid diagram ready for rendering.
+/// # Examples
+/// ```
+/// use codetether_mermaid::model::{Diagram, DiagramKind};
+/// let diagram = Diagram { kind: DiagramKind::Sequence, nodes: Vec::new(), edges: Vec::new() };
+/// assert!(diagram.edges.is_empty());
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagram {
     /// Diagram family and orientation.

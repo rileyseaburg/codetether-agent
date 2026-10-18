@@ -2,9 +2,9 @@
 
 use ratatui::style::Color;
 
-use crate::tui::chat::mermaid::canvas::Canvas;
-use crate::tui::chat::mermaid::model::Diagram;
-use crate::tui::chat::mermaid::render::{connector, node_box};
+use crate::canvas::Canvas;
+use crate::model::Diagram;
+use crate::render::{connector, node_box};
 
 /// Rows used by one node box plus the connector beneath it.
 const STRIDE: usize = 5;

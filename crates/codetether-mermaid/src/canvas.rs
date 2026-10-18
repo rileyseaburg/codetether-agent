@@ -1,7 +1,7 @@
 //! Fixed-size character grid used to compose mermaid diagrams.
 //!
 //! Diagram renderers draw boxes and connectors into a [`Canvas`] and then
-//! convert it into ratatui [`Line`]s once, which keeps layout math separate
+//! convert it into ratatui [`Line`](ratatui::text::Line)s once, which keeps layout math separate
 //! from styling concerns.
 
 use ratatui::style::Color;
@@ -14,7 +14,7 @@ pub type Cell = (char, Color);
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::canvas::Canvas;
+/// use codetether_mermaid::canvas::Canvas;
 /// use ratatui::style::Color;
 ///
 /// let mut c = Canvas::new(6, 1);

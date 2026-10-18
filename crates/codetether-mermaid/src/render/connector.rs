@@ -2,9 +2,9 @@
 
 use ratatui::style::Color;
 
-use crate::tui::chat::mermaid::canvas::Canvas;
-use crate::tui::chat::mermaid::model::Diagram;
-use crate::tui::chat::mermaid::render::edges;
+use crate::canvas::Canvas;
+use crate::model::Diagram;
+use crate::render::edges;
 
 /// Draw the two-row connector below node `i` at horizontal center `mid`.
 ///

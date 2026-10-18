@@ -5,7 +5,7 @@
 
 use ratatui::{style::Color, text::Line};
 
-use crate::tui::chat::mermaid::model::{Diagram, DiagramKind};
+use crate::model::{Diagram, DiagramKind};
 
 pub mod connector;
 pub mod edges;
@@ -22,7 +22,7 @@ pub mod vertical;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::{parse::parse, render::render};
+/// use codetether_mermaid::{parse::parse, render::render};
 /// use ratatui::style::Color;
 ///
 /// let d = parse("flowchart LR\n A[One] --> B[Two]").unwrap();

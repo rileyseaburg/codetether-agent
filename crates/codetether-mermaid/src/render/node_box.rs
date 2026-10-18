@@ -2,8 +2,8 @@
 
 use ratatui::style::Color;
 
-use crate::tui::chat::mermaid::canvas::Canvas;
-use crate::tui::chat::mermaid::model::{Node, NodeShape};
+use crate::canvas::Canvas;
+use crate::model::{Node, NodeShape};
 
 /// Border glyphs for one node shape: corners then horizontal/vertical.
 fn glyphs(shape: NodeShape) -> [char; 6] {
@@ -19,7 +19,7 @@ fn glyphs(shape: NodeShape) -> [char; 6] {
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::render::node_box::box_width;
+/// use codetether_mermaid::render::node_box::box_width;
 /// assert_eq!(box_width("abc"), 7);
 /// ```
 pub fn box_width(label: &str) -> usize {

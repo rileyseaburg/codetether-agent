@@ -11044,3 +11044,21 @@ Full workspace consolidation remains active.
   file-limit and whitespace checks passed.
 - Evidence: `artifacts/consolidation-terminal-text/`. Compilation and Rust tests
   were not run; no Cargo or rustc commands executed. Full consolidation is active.
+
+### Mermaid renderer extraction
+
+- Moved Mermaid parsing, canvas composition, vertical/horizontal/sequence
+  layouts, edge footnotes and framing from `src/tui/chat/mermaid` into
+  `crates/codetether-mermaid`.
+- Preserved the existing cohesive module boundaries and public submodule API:
+  27 Rust modules, maximum 42 code lines each. Native Mermaid entry points
+  now re-export the shared crate.
+- Eleven parser/layout tests moved with the renderer. Five existing detection
+  and application-formatter integration tests remain native, along with their
+  flattening helper, and still use the compatibility entry point.
+- Thirty-one static comparisons verify whole moved files after crate-path
+  normalization, unchanged native integration tests and unchanged consumers.
+  Module reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-mermaid/`. Compilation, test execution and
+  rendering were not run; no Cargo or rustc commands executed.
+- Full consolidation remains active.

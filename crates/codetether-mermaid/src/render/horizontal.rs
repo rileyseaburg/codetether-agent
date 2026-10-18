@@ -2,9 +2,9 @@
 
 use ratatui::style::Color;
 
-use crate::tui::chat::mermaid::canvas::Canvas;
-use crate::tui::chat::mermaid::model::Diagram;
-use crate::tui::chat::mermaid::render::{edges, node_box};
+use crate::canvas::Canvas;
+use crate::model::Diagram;
+use crate::render::{edges, node_box};
 
 /// Columns reserved for the arrow between two boxes.
 const GAP: usize = 5;

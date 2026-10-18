@@ -1,7 +1,7 @@
 //! Parse `sequenceDiagram` message statements such as `A->>B: text`.
 
-use crate::tui::chat::mermaid::model::Edge;
-use crate::tui::chat::mermaid::parse::{builder::Builder, participant};
+use crate::model::Edge;
+use crate::parse::{builder::Builder, participant};
 
 const ARROWS: [&str; 6] = ["-->>", "->>", "-->", "->", "--x", "-x"];
 
@@ -13,8 +13,8 @@ const ARROWS: [&str; 6] = ["-->>", "->>", "-->", "->", "--x", "-x"];
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::builder::Builder;
-/// use codetether_agent::tui::chat::mermaid::parse::sequence::push_sequence;
+/// use codetether_mermaid::parse::builder::Builder;
+/// use codetether_mermaid::parse::sequence::push_sequence;
 ///
 /// let mut b = Builder::default();
 /// push_sequence(&mut b, "Alice->>Bob: hi");

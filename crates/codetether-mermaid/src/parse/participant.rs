@@ -1,6 +1,6 @@
 //! Parse `participant`/`actor` declarations in a sequence diagram.
 
-use crate::tui::chat::mermaid::model::{Node, NodeShape};
+use crate::model::{Node, NodeShape};
 
 /// Parse a `participant X as Label` or `actor X` declaration.
 ///
@@ -9,7 +9,7 @@ use crate::tui::chat::mermaid::model::{Node, NodeShape};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::participant::declaration;
+/// use codetether_mermaid::parse::participant::declaration;
 ///
 /// assert_eq!(declaration("participant A as Alice").unwrap().label, "Alice");
 /// assert_eq!(declaration("actor Bob").unwrap().id, "Bob");

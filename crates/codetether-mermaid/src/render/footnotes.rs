@@ -5,8 +5,8 @@ use ratatui::{
     text::{Line, Span},
 };
 
-use crate::tui::chat::mermaid::model::Diagram;
-use crate::tui::chat::mermaid::render::edges;
+use crate::model::Diagram;
+use crate::render::edges;
 
 /// Build `A → B` footnotes for non-adjacent edges.
 ///
@@ -15,8 +15,8 @@ use crate::tui::chat::mermaid::render::edges;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::parse;
-/// use codetether_agent::tui::chat::mermaid::render::footnotes::footnotes;
+/// use codetether_mermaid::parse::parse;
+/// use codetether_mermaid::render::footnotes::footnotes;
 ///
 /// let d = parse("flowchart TD\n A-->B\n B-->C\n A-->C").unwrap();
 /// assert_eq!(footnotes(&d).len(), 2);

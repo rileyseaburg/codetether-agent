@@ -1,6 +1,6 @@
 //! Detect the diagram kind from a mermaid block's first directive line.
 
-use crate::tui::chat::mermaid::model::DiagramKind;
+use crate::model::DiagramKind;
 
 /// Classify a mermaid header line.
 ///
@@ -9,8 +9,8 @@ use crate::tui::chat::mermaid::model::DiagramKind;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::header::parse_header;
-/// use codetether_agent::tui::chat::mermaid::model::DiagramKind;
+/// use codetether_mermaid::parse::header::parse_header;
+/// use codetether_mermaid::model::DiagramKind;
 ///
 /// assert_eq!(parse_header("flowchart LR"), Some(DiagramKind::FlowchartHorizontal));
 /// assert_eq!(parse_header("graph TD"), Some(DiagramKind::FlowchartVertical));

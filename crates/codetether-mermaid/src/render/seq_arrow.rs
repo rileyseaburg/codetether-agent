@@ -2,8 +2,8 @@
 
 use ratatui::style::Color;
 
-use crate::tui::chat::mermaid::canvas::Canvas;
-use crate::tui::chat::mermaid::model::Edge;
+use crate::canvas::Canvas;
+use crate::model::Edge;
 
 /// Draw the arrow shaft, head, and optional label on row `y`.
 pub fn draw(canvas: &mut Canvas, edge: &Edge, from: usize, to: usize, y: usize, color: Color) {

@@ -1,5 +1,3 @@
-//! Test modules for mermaid rendering.
-
+//! Application formatter integration with shared Mermaid rendering.
 mod flatten;
 mod integration;
-mod layouts;

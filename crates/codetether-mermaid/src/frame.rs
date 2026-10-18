@@ -13,7 +13,7 @@ pub const BORDER: Color = Color::Blue;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::frame::frame;
+/// use codetether_mermaid::frame::frame;
 ///
 /// let out = frame(Vec::new(), 40);
 /// assert_eq!(out.len(), 2);

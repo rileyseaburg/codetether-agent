@@ -1,7 +1,7 @@
 //! Tests for the three mermaid diagram layouts.
 
 use super::flatten::flatten;
-use crate::tui::chat::mermaid::render_block;
+use crate::render_block;
 
 #[test]
 fn vertical_block_is_framed_and_contains_labels() {

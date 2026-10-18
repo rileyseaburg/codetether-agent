@@ -1,7 +1,7 @@
 //! Accumulate nodes and edges from flowchart statements.
 
-use crate::tui::chat::mermaid::model::{Edge, Node};
-use crate::tui::chat::mermaid::parse::{chain, node::parse_node};
+use crate::model::{Edge, Node};
+use crate::parse::{chain, node::parse_node};
 
 /// Mutable collection state shared while parsing statements.
 #[derive(Default)]

@@ -1,7 +1,7 @@
 //! Tests for mermaid source parsing.
 
 use super::parse;
-use crate::tui::chat::mermaid::model::{DiagramKind, NodeShape};
+use crate::model::{DiagramKind, NodeShape};
 
 #[test]
 fn flowchart_td_nodes_and_edges() {

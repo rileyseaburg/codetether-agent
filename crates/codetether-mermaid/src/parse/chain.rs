@@ -1,6 +1,6 @@
 //! Split a chained flowchart statement into individual edge segments.
 
-use crate::tui::chat::mermaid::parse::arrow::{split_arrow, take_label};
+use crate::parse::arrow::{split_arrow, take_label};
 
 /// One `from --arrow--> to` hop within a statement.
 pub struct Segment<'a> {
@@ -19,7 +19,7 @@ pub struct Segment<'a> {
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::chain::segments;
+/// use codetether_mermaid::parse::chain::segments;
 ///
 /// let segs = segments("A[One] --> B --> C");
 /// assert_eq!(segs.len(), 2);

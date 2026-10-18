@@ -1,6 +1,6 @@
 //! Parse a single node token such as `A[Label]`, `B(Label)`, or `C{Label}`.
 
-use crate::tui::chat::mermaid::model::{Node, NodeShape};
+use crate::model::{Node, NodeShape};
 
 /// Split a node token into an id plus a shaped label.
 ///
@@ -9,8 +9,8 @@ use crate::tui::chat::mermaid::model::{Node, NodeShape};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::node::parse_node;
-/// use codetether_agent::tui::chat::mermaid::model::NodeShape;
+/// use codetether_mermaid::parse::node::parse_node;
+/// use codetether_mermaid::model::NodeShape;
 ///
 /// let n = parse_node("A[Start]").unwrap();
 /// assert_eq!(n.id, "A");

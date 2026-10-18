@@ -16,7 +16,7 @@ impl Canvas {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_agent::tui::chat::mermaid::canvas::Canvas;
+    /// use codetether_mermaid::canvas::Canvas;
     /// use ratatui::style::Color;
     ///
     /// let mut c = Canvas::new(8, 2);

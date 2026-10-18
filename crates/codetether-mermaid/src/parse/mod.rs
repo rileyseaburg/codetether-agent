@@ -4,7 +4,7 @@
 //! [`Diagram`]. Parsing is deliberately lenient: unknown statements are
 //! skipped so a partially streamed diagram still renders.
 
-use crate::tui::chat::mermaid::model::{Diagram, DiagramKind};
+use crate::model::{Diagram, DiagramKind};
 
 pub mod arrow;
 pub mod builder;
@@ -24,7 +24,7 @@ use builder::Builder;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::parse;
+/// use codetether_mermaid::parse::parse;
 ///
 /// let d = parse("flowchart TD\n  A[Start] --> B[End]").unwrap();
 /// assert_eq!(d.nodes.len(), 2);

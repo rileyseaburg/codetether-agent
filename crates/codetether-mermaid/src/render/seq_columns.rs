@@ -1,7 +1,7 @@
 //! Column geometry for sequence-diagram participants.
 
-use crate::tui::chat::mermaid::model::Diagram;
-use crate::tui::chat::mermaid::render::node_box;
+use crate::model::Diagram;
+use crate::render::node_box;
 
 /// Horizontal spacing added between adjacent participant boxes.
 const GAP: usize = 6;
@@ -11,8 +11,8 @@ const GAP: usize = 6;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::parse;
-/// use codetether_agent::tui::chat::mermaid::render::seq_columns::columns;
+/// use codetether_mermaid::parse::parse;
+/// use codetether_mermaid::render::seq_columns::columns;
 ///
 /// let d = parse("sequenceDiagram\n A->>B: go").unwrap();
 /// let cols = columns(&d);

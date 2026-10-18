@@ -1,6 +1,6 @@
 //! Edge lookup helpers shared by the flowchart layouts.
 
-use crate::tui::chat::mermaid::model::{Diagram, Edge};
+use crate::model::{Diagram, Edge};
 
 /// Find the edge connecting `from` to `to` in either direction.
 ///
@@ -26,8 +26,8 @@ pub fn between<'a>(diagram: &'a Diagram, from: &str, to: &str) -> Option<(&'a Ed
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::parse;
-/// use codetether_agent::tui::chat::mermaid::render::edges::leftover;
+/// use codetether_mermaid::parse::parse;
+/// use codetether_mermaid::render::edges::leftover;
 ///
 /// let d = parse("flowchart TD\n A-->B\n B-->C\n A-->C").unwrap();
 /// assert_eq!(leftover(&d).len(), 1);

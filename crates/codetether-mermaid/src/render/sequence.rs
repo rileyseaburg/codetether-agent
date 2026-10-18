@@ -2,9 +2,9 @@
 
 use ratatui::style::Color;
 
-use crate::tui::chat::mermaid::canvas::Canvas;
-use crate::tui::chat::mermaid::model::Diagram;
-use crate::tui::chat::mermaid::render::{node_box, seq_arrow, seq_columns};
+use crate::canvas::Canvas;
+use crate::model::Diagram;
+use crate::render::{node_box, seq_arrow, seq_columns};
 
 /// Rows consumed per message: one label row and one arrow row.
 const STRIDE: usize = 2;

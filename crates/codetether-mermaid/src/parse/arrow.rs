@@ -9,7 +9,7 @@ const ARROWS: [&str; 6] = ["-.->", "==>", "-->", "---", "->", "--"];
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::arrow::split_arrow;
+/// use codetether_mermaid::parse::arrow::split_arrow;
 ///
 /// let (l, a, r) = split_arrow("A --> B").unwrap();
 /// assert_eq!((l.trim(), a, r.trim()), ("A", "-->", "B"));
@@ -33,7 +33,7 @@ pub fn split_arrow(line: &str) -> Option<(&str, &'static str, &str)> {
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::mermaid::parse::arrow::take_label;
+/// use codetether_mermaid::parse::arrow::take_label;
 ///
 /// let (label, rest) = take_label("|yes| B");
 /// assert_eq!(label.as_deref(), Some("yes"));
