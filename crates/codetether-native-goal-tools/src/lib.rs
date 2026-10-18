@@ -36,3 +36,6 @@ pub mod __private {
 mod tests;
 
 mod session_task;
+
+/// Goal capability construction with application-selected verification.
+pub mod catalog;

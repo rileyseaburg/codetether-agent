@@ -26423,3 +26423,26 @@ the added session-task dependency is staged in Cargo.lock. Unrelated changes
 remain untouched. Evidence: artifacts/consolidation-native-session-task/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active and incomplete.
+
+### Native goal catalog construction
+
+Moved the five goal capability constructors into native-goal-tools::catalog:
+session_task, get_goal, create_goal, update_goal and edit_goal. The root factory
+only selects LlmVerifier. Seven private root constructor/alias files are removed;
+shared constructors and the existing native host remain unchanged.
+
+The review also found that production session-task code imported ToolResult
+through a dev-only tool-core dependency. Tool-core is now a normal dependency;
+the catalog adds tool-registry as a normal dependency too. This extraction's
+scope check explicitly verifies those manifest sections in addition to the
+existing package-level dependency audit.
+
+Static comparison preserves all five catalog branches, constructor calls,
+registration order and out-of-group None result. The obsolete session-task
+module audit root is removed because native-goal-tools' complete module graph
+now covers its implementation. Module/dependency scans cover 729 roots and 616
+crates without missing modules, cycles or undeclared dependencies. Declaration,
+standalone formatting, file-limit and whitespace checks pass. Only the added
+tool-registry lock dependency is staged; unrelated working files are unchanged.
+Evidence: artifacts/consolidation-native-goal-catalog/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

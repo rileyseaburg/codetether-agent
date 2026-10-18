@@ -3820,6 +3820,7 @@ dependencies = [
  "codetether-native-swarm",
  "codetether-session-task",
  "codetether-tool-core",
+ "codetether-tool-registry",
  "serde_json",
  "tempfile",
  "tokio",
