@@ -10,7 +10,7 @@
 //! - **Critical Path**: Latency-oriented metric for parallel execution
 pub use codetether_swarm_core::{StageStats, SwarmStats};
 pub mod actor_status;
-pub mod cache;
+pub use codetether_swarm_cache as cache;
 pub use codetether_swarm_git as collapse_controller;
 pub mod control;
 pub mod delegation;

@@ -1,0 +1,13 @@
+[package]
+name = "codetether-swarm-cache"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Application swarm result cache and execution cache integration"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+codetether-paths = { path = "../codetether-paths", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-swarm-k8s = { path = "../codetether-swarm-k8s", version = "0.1.0" }

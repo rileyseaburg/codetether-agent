@@ -21,7 +21,7 @@ impl SwarmCache {
 
     /// Get the default cache directory
     fn default_cache_dir() -> PathBuf {
-        crate::config::Config::data_dir()
+        codetether_paths::data_dir()
             .map(|dirs| dirs.join("cache").join("swarm"))
             .unwrap_or_else(|| PathBuf::from(".codetether-agent/cache/swarm"))
     }

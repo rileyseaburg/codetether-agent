@@ -21371,3 +21371,25 @@ passed. No dependency or lockfile changes. Evidence:
 `artifacts/consolidation-prompt-setup/`. No Cargo, rustc, or Python commands ran;
 compilation and runtime tests remain unverified. Full workspace consolidation
 remains active.
+
+### Dedicated application swarm cache crate
+
+Moved the complete native swarm cache module (type, construction, accessors,
+operations) into `codetether-swarm-cache`. Its Kubernetes cache trait
+implementation moved with the owning type, preserving trait legality and the
+existing executor integration. The root swarm module now aliases this crate;
+there is no remaining native cache wrapper directory.
+
+The default-directory lookup calls `codetether-paths::data_dir` directly. The
+previous native config alias resolved to `codetether-config`, whose `data_dir`
+method delegates directly to that exact function. Explicit directory handling,
+fallback path, lazy default lookup, cache keys, storage operations, statistics,
+and Kubernetes cache calls are unchanged. Full formatted-source comparisons
+allow only import, documentation path, and this verified delegation change.
+
+Source/dependency graphs across 698 roots and 564 crates, direct rustfmt, native
+file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-swarm-cache/`. The staged lockfile adds only the new
+package and root dependency, preserving unrelated working changes. No Cargo,
+rustc, or Python commands ran. Compilation and runtime tests remain unverified;
+full workspace consolidation remains active.

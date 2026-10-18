@@ -4,7 +4,6 @@ use crate::swarm::{SwarmCache, SwarmConfig, SwarmControl};
 use codetether_swarm_core::SwarmEvent;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-mod cache;
 pub(super) struct Native<'a>(pub &'a SwarmExecutor);
 impl codetether_swarm_k8s::Host for Native<'_> {
     type Cache = SwarmCache;

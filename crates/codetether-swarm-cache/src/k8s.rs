@@ -1,5 +1,5 @@
 //! Preserve cache operations beneath the executor's existing mutex.
-use crate::swarm::{SubTask, SubTaskResult, SwarmCache};
+use crate::{SubTask, SubTaskResult, SwarmCache};
 impl codetether_swarm_k8s::Cache for SwarmCache {
     async fn get(&mut self, task: &SubTask) -> Option<SubTaskResult> {
         SwarmCache::get(self, task).await
