@@ -1,6 +1,6 @@
 //! Protocol compatibility window for the mux client.
 
-use crate::mux::protocol::VERSION;
+use codetether_mux_protocol::VERSION;
 
 /// Only multi-session servers speak a compatible dialect: a connection binds
 /// to a session at authentication, which older servers cannot honor.

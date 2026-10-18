@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-mux-client",
  "codetether-mux-registry",
  "codetether-mux-protocol",
  "codetether-mux-model",
@@ -5143,6 +5144,17 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-mux-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-mux-model",
+ "codetether-mux-protocol",
+ "codetether-mux-registry",
  "tokio",
 ]
 

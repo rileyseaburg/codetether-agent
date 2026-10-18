@@ -10269,3 +10269,19 @@ graphs, file budgets and whitespace checks passed; new files contain at most 35
 code lines. Evidence is in `artifacts/consolidation-mux-registry/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python, live registry
 reads or persistence operations ran. Full workspace consolidation remains active.
+
+### Dedicated mux client transport
+
+Moved authenticated connections, version enforcement, secondary binding reuse,
+framed requests, tolerant handshakes/probes and client snapshot lookup into
+`crates/codetether-mux-client`. Seven modules keep transport and connection
+state separate from terminal UI code. Native client files now re-export the
+shared types and services; proxy and server consumers remain unchanged.
+
+Fifteen static comparisons cover original connection methods, complete handshake
+and state modules, one moved version test and native consumers. Module/dependency
+graphs, file budgets and whitespace checks passed; new files contain at most 36
+code lines. The pre-existing native `client/exec_tests.rs` orphan remains
+unchanged and recorded. Evidence is in `artifacts/consolidation-mux-client/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python, authentication
+or network calls ran. Full workspace consolidation remains active.
