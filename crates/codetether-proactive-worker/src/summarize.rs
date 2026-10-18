@@ -1,12 +1,12 @@
 //! Awaited RLM production for proactive summary-index nodes.
 
-use crate::rlm::RlmRouter;
-use crate::rlm::router::AutoProcessContext;
-use crate::session::helper::error::messages_to_rlm_context;
-use crate::session::index::SummaryNode;
+use codetether_context_policy::summary_index::SummaryNode;
+use codetether_context_policy::transcript::messages_to_rlm_context;
+use codetether_rlm::RlmRouter;
+use codetether_rlm::router::AutoProcessContext;
 
-use super::ranges::Plan;
-use super::types::Snapshot;
+use codetether_proactive_planning::Plan;
+use codetether_proactive_runtime::Snapshot;
 
 pub(super) async fn range(snapshot: &Snapshot, plan: Plan) -> anyhow::Result<SummaryNode> {
     let slice = snapshot
@@ -36,8 +36,7 @@ pub(super) async fn range(snapshot: &Snapshot, plan: Plan) -> anyhow::Result<Sum
         subcall_model: None,
     };
     let result = RlmRouter::auto_process(&input, request, &snapshot.runtime.config).await?;
-    let content =
-        crate::session::index_produce::summary_text::bounded_summary(result, plan.target_tokens)?;
+    let content = codetether_summary_quality::bounded_summary(result, plan.target_tokens)?;
     Ok(SummaryNode {
         content,
         target_tokens: plan.target_tokens,

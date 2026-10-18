@@ -1,19 +1,12 @@
 //! Continuous anticipatory RLM preparation for session context.
 
-mod capacity;
-mod commit;
-mod fingerprint;
 mod freshness;
-mod inherit;
 mod merge;
-mod ranges;
 mod registry;
 mod registry_status;
 mod runtime;
 mod schedule;
-mod slot;
 mod store;
-mod summarize;
 mod types;
 mod worker;
 

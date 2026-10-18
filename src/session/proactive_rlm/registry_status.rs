@@ -1,2 +1,2 @@
-//! Shared registry generation and lifecycle queries.
-pub(super) use codetether_proactive_runtime::{exists, is_current, remove};
+//! Shared removal of proactive runtime state.
+pub(super) use codetether_proactive_runtime::remove;

@@ -1,2 +1,2 @@
-//! Shared runtime and pending snapshot types.
-pub(super) use codetether_proactive_runtime::{Runtime, Snapshot};
+//! Shared proactive provider/runtime configuration.
+pub(super) use codetether_proactive_runtime::Runtime;

@@ -9428,3 +9428,20 @@ has 37 code lines. Evidence is in
 `artifacts/consolidation-proactive-runtime/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python or worker/model calls ran. Full
 workspace consolidation remains active.
+
+### Dedicated proactive-summary worker crate
+
+Moved coalescing worker execution, incremental cursor processing, retained
+legacy full-window processing, RLM summary requests, prepared-index inheritance
+and deletion-race-aware commit handling into `crates/codetether-proactive-worker`.
+Eight modules separate these operations and the storage host contract. Native
+adapters provide cursor/projection operations, session loading and validated
+sidecar access. Obsolete native registry/type exports were trimmed.
+
+Fifteen static comparisons cover worker loop order, generation/capacity
+checks, 24-message deliveries and 16-message commits, summary requests,
+inheritance, sidecar handling and native bindings. Module/dependency graphs,
+file budgets and whitespace checks passed; the largest crate file has 42
+code lines. Evidence is in `artifacts/consolidation-proactive-worker/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or
+worker/model calls ran. Full workspace consolidation remains active.

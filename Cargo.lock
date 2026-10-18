@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-proactive-worker",
  "codetether-proactive-runtime",
  "codetether-summary-quality",
  "codetether-proactive-planning",
@@ -3551,6 +3552,25 @@ dependencies = [
  "codetether-provider-core",
  "codetether-rlm",
  "tokio",
+]
+
+[[package]]
+name = "codetether-proactive-worker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-context-policy",
+ "codetether-prepared-context",
+ "codetether-proactive-planning",
+ "codetether-proactive-runtime",
+ "codetether-provider-core",
+ "codetether-rlm",
+ "codetether-session-store",
+ "codetether-summary-quality",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

@@ -1,2 +1,2 @@
-//! Shared process-wide runtime registry and coalescing operations.
-pub(super) use codetether_proactive_runtime::{enqueue, register, settle, take};
+//! Shared registration for proactive runtimes.
+pub(super) use codetether_proactive_runtime::register;
