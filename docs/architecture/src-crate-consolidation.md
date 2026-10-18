@@ -24561,3 +24561,22 @@ working changes remain untouched. Evidence:
 artifacts/consolidation-session-model-checkpoints/. No Cargo, rustc, Python,
 compiler macro expansion, checkpoint I/O, model calls or tests ran. Full
 consolidation remains active.
+
+### Session context data views moved into the schema crate
+
+Moved fourteen field-access methods for legacy, reset, dispatch and proactive
+context sources into separate schema-crate context modules. The context facade
+invokes impl_session_context_views for the existing Session. Removed native
+context/legacy_host.rs, context/reset_host.rs, context/dispatch/host.rs and
+proactive_rlm/view.rs. Added five direct dependencies for these contracts.
+
+Static comparisons preserve all signatures and bodies after explicit path
+substitutions, including saved policy, constraint prefix and absolute message
+offsets. Native derivation and preparation functions remain unchanged apart
+from removing the relocated module declarations. Module/dependency scans cover
+693 roots and 574 crates without missing modules or cycles. Direct dependency
+audit, direct rustfmt, file limits and whitespace checks passed. Only required
+lockfile entries are staged; unrelated working changes remain untouched.
+Evidence: artifacts/consolidation-session-context-views/. No Cargo, rustc,
+Python, compiler macro expansion, context derivation or tests ran. Full
+consolidation remains active.

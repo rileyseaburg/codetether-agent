@@ -7,6 +7,11 @@ license = "MIT"
 description = "Session schema and lifecycle operations with application-local types"
 
 [dependencies]
+codetether-context-legacy = { path = "../codetether-context-legacy", version = "0.1.0" }
+codetether-reset-derivation = { path = "../codetether-reset-derivation", version = "0.1.0" }
+codetether-context-dispatch = { path = "../codetether-context-dispatch", version = "0.1.0" }
+codetether-proactive-context = { path = "../codetether-proactive-context", version = "0.1.0" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
 async-trait = "0.1"
 codetether-config = { path = "../codetether-config", version = "0.1.0" }
 codetether-session-model-policy = { path = "../codetether-session-model-policy", version = "0.1.0" }

@@ -37,3 +37,6 @@ pub use self::helpers::DerivedContext;
 pub use self::options::RequestOptions;
 pub use self::policy::{derive_with_policy, effective_policy};
 pub use self::request::build_request_with_context;
+
+use super::Session;
+codetether_session_schema::impl_session_context_views!(Session);

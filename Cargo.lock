@@ -3719,6 +3719,11 @@ dependencies = [
  "codetether-config",
  "codetether-session-model-policy",
  "codetether-run-checkpoint",
+ "codetether-context-legacy",
+ "codetether-reset-derivation",
+ "codetether-context-dispatch",
+ "codetether-proactive-context",
+ "codetether-rlm",
 ]
 
 [[package]]

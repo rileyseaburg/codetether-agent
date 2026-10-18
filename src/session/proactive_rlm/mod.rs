@@ -1,6 +1,5 @@
 //! Native source and storage bindings for shared proactive context.
 mod store;
-mod view;
 mod worker;
 use crate::{provider::Provider, session::Session};
 use std::sync::Arc;

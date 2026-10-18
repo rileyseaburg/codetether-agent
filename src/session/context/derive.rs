@@ -5,8 +5,6 @@ use crate::session::{Session, SessionEvent};
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-#[path = "legacy_host.rs"]
-mod host;
 
 /// Derive an ephemeral [`DerivedContext`] from `session`'s pure history.
 ///

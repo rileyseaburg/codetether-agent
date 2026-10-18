@@ -5,7 +5,6 @@ use anyhow::Result;
 use codetether_context_policy::{derivation::DerivePolicy, projection::helpers::DerivedContext};
 use std::sync::Arc;
 use tokio::sync::mpsc;
-mod host;
 
 /// Derive an ephemeral [`DerivedContext`] under a chosen [`DerivePolicy`].
 ///

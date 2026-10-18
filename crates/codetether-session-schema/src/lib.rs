@@ -5,6 +5,7 @@
 //! supplies the established fallback for bounded delegated runs.
 //! [impl_session_lifecycle!] adds construction, provenance and transcript methods.
 mod checkpoint;
+mod context;
 mod declare;
 mod header;
 mod lifecycle;
@@ -28,10 +29,16 @@ pub mod __private {
     pub use codetether_bus_core::AgentBus;
     pub use codetether_bus_core::global;
     pub use codetether_config as config;
+    pub use codetether_context_dispatch as context_dispatch;
+    pub use codetether_context_legacy as context_legacy;
+    pub use codetether_context_policy::derivation::DerivePolicy;
     pub use codetether_context_policy::{pages::PageKind, summary_index::SummaryIndex};
+    pub use codetether_proactive_context as proactive_context;
     pub use codetether_provenance::ClaimProvenance;
     pub use codetether_provider_core::{Message, Provider, Usage};
     pub use codetether_provider_policy as provider_policy;
+    pub use codetether_reset_derivation as reset_derivation;
+    pub use codetether_rlm::RlmConfig;
     pub use codetether_run_checkpoint as checkpoint;
     pub use codetether_session_codec as codec;
     pub use codetether_session_history::History;

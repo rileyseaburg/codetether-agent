@@ -5,8 +5,6 @@ use crate::session::{Session, SessionEvent};
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-#[path = "reset_host.rs"]
-mod host;
 
 /// [`DerivePolicy::Reset`](crate::session::derive_policy::DerivePolicy::Reset) implementation.
 ///
