@@ -16,6 +16,6 @@ impl codetether_agent_runtime::Registry for Native {
         tools.definitions()
     }
     async fn blocked(name: &str, args: &Value) -> Option<ToolResult> {
-        super::super::tooling::policy_gate::blocked(name, args).await
+        codetether_native_runtime_policy::evaluate_tool_invocation(name, args).await
     }
 }

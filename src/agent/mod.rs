@@ -16,7 +16,6 @@ mod core;
 mod execution;
 use codetether_agent_core as registry;
 mod runtime_host;
-mod tooling;
 mod types;
 
 pub use core::Agent;

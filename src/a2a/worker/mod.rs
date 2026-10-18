@@ -7,9 +7,6 @@ use codetether_a2a_worker_clone as clone_task;
 use codetether_worktree::repository as clone_target;
 mod completion_retry;
 mod extended_heartbeat;
-#[cfg(test)]
-mod git_branch_tests;
-mod git_hook_gate;
 use codetether_a2a_http::worker as heartbeat_loop;
 use codetether_a2a_http::worker as http_client;
 use codetether_a2a_worker_core::task_config as metadata_flags;

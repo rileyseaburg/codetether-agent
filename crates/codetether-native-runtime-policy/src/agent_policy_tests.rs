@@ -1,5 +1,5 @@
-use super::blocked_with_config;
-use crate::config::{Config, PermissionProfile, PermissionProfileConfig};
+use crate::evaluate_tool_with_config as blocked_with_config;
+use codetether_config::{Config, PermissionProfile, PermissionProfileConfig};
 
 #[test]
 fn read_only_tool_is_not_blocked() {

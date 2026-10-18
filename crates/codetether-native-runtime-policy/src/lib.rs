@@ -12,3 +12,6 @@ use codetether_provider_core as provider;
 use codetether_tool_core as tool;
 mod runtime_policy;
 pub use runtime_policy::*;
+
+#[cfg(test)]
+mod agent_policy_tests;

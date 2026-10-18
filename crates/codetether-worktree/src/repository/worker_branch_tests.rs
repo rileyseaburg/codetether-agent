@@ -1,6 +1,6 @@
 //! Tests for worker Git branch helpers.
 
-use super::git_refspec::push_refspec;
+use super::push_refspec;
 
 #[test]
 fn push_refspec_uses_full_heads_namespace_for_slash_branches() {

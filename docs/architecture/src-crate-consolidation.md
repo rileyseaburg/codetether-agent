@@ -25655,3 +25655,21 @@ lockfile adds only the new package and root dependency; unrelated working files
 remain unchanged. Evidence: artifacts/consolidation-native-registry/. No Cargo,
 rustc, Python, compilation or runtime tests ran. Full consolidation remains
 active.
+
+### Policy and repository regression ownership
+
+Moved three native runtime-policy tests from the agent gate adapter into
+codetether-native-runtime-policy. Agent registry dispatch calls that same
+native evaluator directly; the redundant tooling module and gate are removed.
+Moved five worker hook-installation tests and two branch-refspec tests into
+codetether-worktree beside repository publication and branch validation.
+Removed the root test modules and hook facade. No dependencies changed.
+
+Static token comparisons preserve all ten tests except their owning-crate
+imports. The production gate still calls the identical native evaluator with
+the same arguments. Module/dependency scans cover 715 roots and 601 crates
+without missing modules, cycles or undeclared direct dependencies. Declaration,
+file-limit, direct rustfmt and whitespace checks pass. Unrelated dirty files
+remain unchanged. Evidence: artifacts/consolidation-native-regressions/.
+Tests were moved but not executed; no Cargo, rustc or Python ran. Full
+consolidation remains active.

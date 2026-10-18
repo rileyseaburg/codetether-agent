@@ -45,3 +45,6 @@ pub enum PublicationCheckpoint {
     /// The push succeeded.
     Pushed,
 }
+
+#[cfg(test)]
+mod worker_hook_tests;

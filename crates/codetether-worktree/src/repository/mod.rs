@@ -20,3 +20,6 @@ pub mod publication;
 
 /// Exclusive locks around workspace clone operations.
 pub mod clone_lock;
+
+#[cfg(test)]
+mod worker_branch_tests;
