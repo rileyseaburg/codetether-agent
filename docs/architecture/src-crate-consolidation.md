@@ -26169,3 +26169,25 @@ and whitespace checks pass. Only the new package/root dependency are staged in
 Cargo.lock. Unrelated working files remain unchanged. Evidence is retained in
 artifacts/consolidation-native-recall/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active and incomplete.
+
+### Native swarm service ownership
+
+Moved swarm agent registry lookup, policy denial, parent-goal accounting,
+autonomous prompt construction, rooted workspace tool selection, provider
+loading/delegation, preflight provider loading and local-stage execution into
+codetether-native-swarm. Modules separate agent, executor, providers, workspace,
+delegation and policy. Root aliases still select the same application tool
+catalog and coordinator Agent. The existing five prompt regression tests move
+with prompt composition; concrete session and registry integration tests stay
+at their root bindings. TetherScript feature forwarding retains both rooted-tool
+branches and the same native LSP/TetherScript tool implementations.
+
+Static comparisons preserve service bodies after explicit path and type
+substitutions, including registry lookup, accounting, denial text, prompt
+suffixes, workspace tool construction and provider enumeration. Module and
+dependency scans cover 726 roots and 612 crates without missing modules, cycles
+or undeclared dependencies. Declaration, standalone formatting, file-limit and
+whitespace checks pass. Only the new package/root dependency are staged in
+Cargo.lock; unrelated working changes are untouched. Evidence is retained in
+artifacts/consolidation-native-swarm/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active and incomplete.

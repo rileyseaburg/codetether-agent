@@ -1,0 +1,33 @@
+[package]
+name = "codetether-native-swarm"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native swarm agent policy, workspace tools, providers and stage execution"
+
+[features]
+default = []
+tetherscript = ["dep:codetether-native-tetherscript"]
+
+[dependencies]
+anyhow = "1"
+serde_json = "1"
+codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-native-goals = { path = "../codetether-native-goals", version = "0.1.0" }
+codetether-native-runtime-policy = { path = "../codetether-native-runtime-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-provider-step = { path = "../codetether-provider-step", version = "0.1.0" }
+codetether-swarm-agent = { path = "../codetether-swarm-agent", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-swarm-delegation = { path = "../codetether-swarm-delegation", version = "0.1.0" }
+codetether-swarm-local-job = { path = "../codetether-swarm-local-job", version = "0.1.0" }
+codetether-swarm-orchestrator = { path = "../codetether-swarm-orchestrator", version = "0.1.0" }
+codetether-swarm-runtime = { path = "../codetether-swarm-runtime", version = "0.1.0" }
+codetether-swarm-validation = { path = "../codetether-swarm-validation", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-workspace-tools = { path = "../codetether-workspace-tools", version = "0.1.0" }
+codetether-native-lsp = { path = "../codetether-native-lsp", version = "4.7.6-dev.38" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-native-tetherscript = { path = "../codetether-native-tetherscript", version = "0.1.0", optional = true }

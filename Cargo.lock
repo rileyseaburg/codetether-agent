@@ -1277,6 +1277,7 @@ version = "4.7.6-dev.38"
 dependencies = [
  "codetether-native-ralph",
  "codetether-native-recall",
+ "codetether-native-swarm",
  "codetether-native-agent",
  "codetether-native-server",
  "codetether-native-cognition",
@@ -4006,6 +4007,32 @@ dependencies = [
  "codetether-search",
  "codetether-search-router",
  "codetether-tool-core",
+]
+
+[[package]]
+name = "codetether-native-swarm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-application-registry",
+ "codetether-context-policy",
+ "codetether-native-goals",
+ "codetether-native-lsp",
+ "codetether-native-providers",
+ "codetether-native-runtime-policy",
+ "codetether-native-tetherscript",
+ "codetether-provider-core",
+ "codetether-provider-step",
+ "codetether-swarm-agent",
+ "codetether-swarm-core",
+ "codetether-swarm-delegation",
+ "codetether-swarm-local-job",
+ "codetether-swarm-orchestrator",
+ "codetether-swarm-runtime",
+ "codetether-swarm-validation",
+ "codetether-tool-core",
+ "codetether-workspace-tools",
+ "serde_json",
 ]
 
 [[package]]
