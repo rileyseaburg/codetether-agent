@@ -39,3 +39,6 @@ pub mod mention;
 
 /// Manual continuation prompt resolution, idle dispatch and stalled recovery.
 pub mod resume;
+
+/// Goal-aware draining of one-shot queued chat prompts.
+pub mod queued;

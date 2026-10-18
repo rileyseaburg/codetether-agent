@@ -17002,3 +17002,18 @@ Full workspace consolidation remains active.
   changes. Evidence: `artifacts/consolidation-mux-status/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared queued-prompt drain
+
+- Moved one-shot queued prompt admission into `codetether-chat-submit::queued`,
+  with native command, queue and input-state bindings.
+- Core owns goal-input delivery order, processing/pending/held short-circuiting,
+  queue take, populated input/cursor/status and normal Enter dispatch.
+- Preserved disk-backed held checks only after cheap in-memory gates, pending
+  queue retention when blocked and character-based cursor positioning.
+- Verification: full drain-body comparison and all native arguments/fields,
+  unchanged event-loop/queue/goal handlers and queue test, module/dependency
+  graphs, direct rustfmt, file limits and whitespace. No dependency changes.
+  Evidence: `artifacts/consolidation-chat-queued/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
