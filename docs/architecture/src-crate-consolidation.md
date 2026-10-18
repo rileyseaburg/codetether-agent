@@ -28653,3 +28653,23 @@ dependency-audit, file-limit, formatting and whitespace checks pass (724 roots,
 617 crates). Evidence: artifacts/consolidation-watchdog-source/. No dependencies
 or unrelated working files changed. Cargo, rustc, Python, compilation, doc tests
 and runtime tests were not run. Full consolidation remains active and incomplete.
+
+### Move the symbol-mention composer adapter into its crate
+
+Moved all eight Composer methods from the native App implementation to
+codetether-symbol-mention::ComposerView. The view borrows the editor, picker and
+status while invoking typed callbacks for the editor's existing read and edit
+operations. Root mention entry points construct this view; standalone picker
+confirmation now enters through the same binding. No new dependency was needed.
+
+The native boundary/confirm/dismiss integration tests are unchanged and still
+exercise the real composer editing methods. Static comparison verifies all eight
+method mappings, all four mention entry points, and the unchanged mention policy
+functions. Cursor/range semantics and editor history/completion updates are
+preserved by using the same ComposerState method references.
+
+Declaration, module/dependency, production-dependency, dependency-audit,
+file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
+Evidence: artifacts/consolidation-mention-composer/. No dependencies or unrelated
+working files changed. Cargo, rustc, Python, compilation, doc tests and runtime
+tests were not run. Full consolidation remains active and incomplete.
