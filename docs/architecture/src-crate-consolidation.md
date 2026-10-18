@@ -24346,3 +24346,21 @@ Only the six required lockfile dependencies are staged; unrelated working
 changes remain untouched. Evidence: artifacts/consolidation-context-factory/.
 No Cargo, rustc, Python, compilation, tool construction or tests ran. Full
 consolidation remains active.
+
+### Provider-backed factory moved into the construction crate
+
+Moved summary, RLM, recall and Ralph provider-backed constructor branches from
+src/tool/catalog/provider.rs into
+codetether-tool-construction::provider::bound, deleting the native factory file.
+The native binding supplies its existing session and application host types.
+Ralph and recall host modules are visible within the parent tool module so the
+catalog can name those existing types. Added four direct crate dependencies.
+
+Static token comparisons preserve all constructor calls and default RLM
+configuration. The existing provider clone/transfer selector is byte-identical.
+Module/dependency scans cover 692 roots and 573 crates without missing modules
+or cycles; direct workspace dependency audit, direct rustfmt, source file limits
+and whitespace checks passed. Only four required lockfile dependency entries
+are staged; unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-provider-factory/. No Cargo, rustc, Python, compilation,
+tool construction or tests ran. Full consolidation remains active.

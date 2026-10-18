@@ -5959,6 +5959,10 @@ dependencies = [
  "codetether-context-summarize",
  "codetether-lsp-tool",
  "codetether-memory-tool",
+ "codetether-rlm",
+ "codetether-rlm-tool",
+ "codetether-ralph-tool",
+ "codetether-session-recall",
 ]
 
 [[package]]

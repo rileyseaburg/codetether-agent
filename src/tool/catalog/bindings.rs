@@ -11,6 +11,11 @@ impl CatalogFactories for construct::Constructors {
         cfg!(feature = "tetherscript")
     }
     fn provider(kind: ProviderTool, provider: Arc<dyn Provider>, model: String) -> Arc<dyn Tool> {
-        provider::create(kind, provider, model)
+        codetether_tool_construction::provider::bound::create::<
+            crate::session::Session,
+            codetether_rlm_tool::application::ApplicationHost<crate::session::SessionBus>,
+            session_recall::host::ApplicationHost,
+            ralph::host::ApplicationHost,
+        >(kind, provider, model)
     }
 }
