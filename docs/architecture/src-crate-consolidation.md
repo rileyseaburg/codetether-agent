@@ -11597,3 +11597,23 @@ Full workspace consolidation remains active.
   dependency cycles, direct rustfmt, native file limits and git diff --check passed.
 - Evidence: artifacts/consolidation-tui-models/. No Cargo, rustc, compilation
   or runtime tests were run. Full workspace consolidation remains incomplete.
+
+### Help overlay extraction
+
+- Moved help content construction, scroll state, popup bounds and rendering from
+  src/tui/help.rs into crates/codetether-help-view. Native code now projects
+  session/worker/settings fields and retains the show-help guard.
+- Split session status, keyboard controls, image guidance, command groups,
+  per-view controls, token summaries and row formatting into focused modules.
+  The popup rectangle helper remains available to the native spawn form through
+  the existing re-export. Clipboard shortcut content moved with the overlay.
+- Preserved full help section/row order, metadata formatting, usage/cost reads,
+  theme/clipboard detection, scroll clamping and scrollbar conditions. Existing
+  byte-based session-label truncation is preserved rather than silently changed.
+- Verification: 70 static comparisons cover helper bodies, reconstruction of
+  the entire original builder, scroll state, copy shortcuts, rendering and native
+  field projection. Thirty-three modules contain at most 44 code lines each.
+  Lexical module reachability, dependency cycles, direct rustfmt, native file
+  limits and git diff --check passed. Evidence: artifacts/consolidation-help-view/.
+- No Cargo, rustc, compilation, runtime tests or terminal rendering were run.
+  Full workspace consolidation remains incomplete.

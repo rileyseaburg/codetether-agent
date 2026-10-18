@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-help-view",
  "codetether-tui-models",
  "codetether-model-store",
  "codetether-model-discovery",
@@ -5970,6 +5971,17 @@ version = "0.1.0"
 dependencies = [
  "codetether-workspace-snapshot",
  "serde",
+]
+
+[[package]]
+name = "codetether-help-view"
+version = "0.1.0"
+dependencies = [
+ "codetether-telemetry",
+ "codetether-terminal-clipboard",
+ "codetether-theme",
+ "codetether-token-display",
+ "ratatui",
 ]
 
 [[package]]
