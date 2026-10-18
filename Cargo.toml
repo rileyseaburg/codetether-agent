@@ -138,6 +138,7 @@ members = [
     "crates/codetether-run-resume",
     "crates/codetether-relay-plan",
     "crates/codetether-run-command",
+    "crates/codetether-relay-planner",
     "crates/codetether-rlm-selection",
     "crates/codetether-rlm-cli",
     "crates/codetether-session-fork",
@@ -860,6 +861,7 @@ codetether-sol-workflow = { path = "crates/codetether-sol-workflow", version = "
 codetether-run-resume = { path = "crates/codetether-run-resume", version = "0.1.0" }
 codetether-relay-plan = { path = "crates/codetether-relay-plan", version = "0.1.0" }
 codetether-run-command = { path = "crates/codetether-run-command", version = "0.1.0" }
+codetether-relay-planner = { path = "crates/codetether-relay-planner", version = "0.1.0" }
 codetether-rlm-selection = { path = "crates/codetether-rlm-selection", version = "0.1.0" }
 codetether-rlm-cli = { path = "crates/codetether-rlm-cli", version = "0.1.0" }
 codetether-session-fork = { path = "crates/codetether-session-fork", version = "0.1.0" }

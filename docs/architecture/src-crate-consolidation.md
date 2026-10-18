@@ -13908,3 +13908,20 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc or Rust tests ran. Full workspace consolidation remains
   unfinished.
+
+### Relay planning operations extraction
+
+- Moved objective drafting, team-profile planning and dynamic-spawn planning
+  from src/cli/run.rs into codetether-relay-planner. Separate modules own each
+  operation and request builder; a shared response module preserves Text and
+  Thinking extraction. All use the existing ModelRegistry and resolver.
+- Prompt text, temperature/top-p/token settings, optional-failure behavior,
+  model logging, team-size limits, runtime profile construction and spawn-reason
+  fallback remain unchanged. Native registry initialization stays in the app.
+- Verification: 13 static expanded-body/request/resolver/remaining-code/size
+  checks passed, plus module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks. Evidence:
+  artifacts/consolidation-relay-planner/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or provider requests ran. Full workspace
+  consolidation remains unfinished.

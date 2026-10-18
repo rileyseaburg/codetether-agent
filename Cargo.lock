@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-relay-planner",
  "codetether-run-command",
  "codetether-relay-plan",
  "codetether-run-resume",
@@ -7050,6 +7051,16 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-autochat-core",
+]
+
+[[package]]
+name = "codetether-relay-planner"
+version = "0.1.0"
+dependencies = [
+ "codetether-autochat-core",
+ "codetether-provider-core",
+ "codetether-relay-plan",
+ "tracing",
 ]
 
 [[package]]

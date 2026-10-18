@@ -1,0 +1,13 @@
+[package]
+name = "codetether-relay-planner"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Relay team, objective and dynamic-spawn planning"
+
+[dependencies]
+codetether-autochat-core = { path = "../codetether-autochat-core", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-relay-plan = { path = "../codetether-relay-plan", version = "0.1.0" }
+tracing = "0.1"
