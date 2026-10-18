@@ -9551,3 +9551,20 @@ flattening tests moved without execution. Evidence is in
 `artifacts/consolidation-recall-context/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python or worker commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated prior-context directive policy crate
+
+Moved prior-context directive parsing, normalization, quoted-example handling,
+permission/denial vocabulary and persistent/temporary resolution into
+`crates/codetether-prior-context-policy`. Twenty-seven modules include focused
+parser responsibilities and nine original regression-test modules. Native
+session updates, enforcement and tool filtering retain their existing APIs
+through parser re-exports.
+
+Sixty-eight static comparisons cover parser function bodies, vocabulary,
+fixtures, moved tests and unchanged native enforcement/session callers.
+Module/dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 44 code lines. Twenty-five existing tests moved without execution.
+Evidence is in `artifacts/consolidation-prior-context-policy/`. Compilation and
+runtime tests were not run. No Cargo, rustc, Python or worker commands ran.
+Full workspace consolidation remains active.

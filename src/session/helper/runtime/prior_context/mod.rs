@@ -1,27 +1,15 @@
 //! User-directed access policy for prior session context.
 
-mod actions;
 mod blocking;
 mod call;
 mod delegated;
 mod delegation;
-mod denial;
 mod directive;
-mod directive_clause;
 mod directive_message;
-mod example_line;
 mod human;
-mod normalize;
-mod permission;
-mod permission_action;
-mod permission_target;
-mod quoted;
-mod reenable;
 mod registry;
 mod session_state;
 mod session_update;
-mod source_preference;
-mod targets;
 
 #[cfg(test)]
 use crate::provider::Message;

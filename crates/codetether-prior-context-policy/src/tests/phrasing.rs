@@ -1,5 +1,5 @@
 use super::user;
-use crate::session::helper::runtime::prior_context_allowed;
+use crate::resolve as prior_context_allowed;
 
 #[test]
 fn denial_words_take_precedence_over_permission_words() {

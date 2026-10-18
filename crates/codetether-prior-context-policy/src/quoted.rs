@@ -8,7 +8,7 @@ pub(super) fn strip(input: &str) -> String {
     for character in input.chars() {
         if let Some(expected) = closing {
             if character == expected {
-                if target_only(&quoted) {
+                if super::quoted_target::target_only(&quoted) {
                     output.push_str(&quoted);
                 }
                 closing = None;
@@ -29,19 +29,8 @@ pub(super) fn strip(input: &str) -> String {
             }
         };
     }
-    if closing.is_some() && target_only(&quoted) {
+    if closing.is_some() && super::quoted_target::target_only(&quoted) {
         output.push_str(&quoted);
     }
     output
-}
-
-fn target_only(input: &str) -> bool {
-    let normalized = input
-        .to_lowercase()
-        .replace(['_', '-'], " ")
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
-    super::targets::PHRASES.contains(&normalized.as_str())
-        || ["memory", "scope", "sessions"].contains(&normalized.as_str())
 }

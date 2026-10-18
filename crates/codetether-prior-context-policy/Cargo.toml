@@ -1,0 +1,11 @@
+[package]
+name = "codetether-prior-context-policy"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Prior-context directive parsing and one-turn or persistent access policy"
+
+[dependencies]
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }

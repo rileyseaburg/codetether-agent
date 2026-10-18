@@ -1,5 +1,5 @@
 use super::user;
-use crate::session::helper::runtime::prior_context_allowed;
+use crate::resolve as prior_context_allowed;
 
 #[test]
 fn ordinary_code_commands_do_not_unlock_prior_context() {

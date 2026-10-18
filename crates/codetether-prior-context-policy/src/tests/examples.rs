@@ -1,5 +1,5 @@
 use super::user;
-use crate::session::helper::runtime::prior_context_allowed;
+use crate::resolve as prior_context_allowed;
 
 #[test]
 fn quoted_docs_and_list_examples_are_not_directives() {

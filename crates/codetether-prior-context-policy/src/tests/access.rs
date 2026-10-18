@@ -1,5 +1,5 @@
 use super::user;
-use crate::session::helper::runtime::prior_context_allowed;
+use crate::resolve as prior_context_allowed;
 
 #[test]
 fn varied_opt_outs_persist_across_followups() {
