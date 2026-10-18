@@ -42,3 +42,10 @@ impl<H: Application> std::fmt::Debug for ProviderRegistry<H> {
         std::fmt::Debug::fmt(&self.inner, f)
     }
 }
+
+/// Application-backed local and cloud memory embedding selection.
+pub mod embedding;
+/// Auto-chat rotation using the application registry.
+pub mod rotation;
+/// Router model resolution through the application registry.
+pub mod routing;

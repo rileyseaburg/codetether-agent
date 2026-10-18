@@ -2009,6 +2009,7 @@ name = "codetether-application-providers"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "codetether-a2a-worker-core",
  "codetether-autochat-core",
  "codetether-config",
@@ -2016,6 +2017,7 @@ dependencies = [
  "codetether-forage-execution",
  "codetether-go-prd",
  "codetether-go-tool",
+ "codetether-memory-tool",
  "codetether-model-catalog",
  "codetether-model-discovery",
  "codetether-model-failover",
@@ -2031,6 +2033,7 @@ dependencies = [
  "codetether-side-question",
  "codetether-spawn-policy",
  "codetether-swarm-tool",
+ "codetether-vectordb",
  "serde_json",
  "tokio",
 ]

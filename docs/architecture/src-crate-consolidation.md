@@ -21990,3 +21990,25 @@ checks passed. Staged lock changes contain only the new package and its root
 dependency; unrelated working changes are intact. Evidence:
 `artifacts/consolidation-application-providers/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Application provider embedding and routing ownership
+
+Moved the automatic memory-embedding factory and five routing/embedding
+functions into `codetether-application-providers`. Focused modules own cached
+provider loading, stateless factory construction, local/cloud embedding
+selection, search-model resolution and auto-chat rotation. The native memory,
+search, rotation and vector-backend modules now contain aliases and re-exports.
+
+The memory factory retains the shared-cache call, empty-registry fallback on
+load failure, and the existing embedding selector. A native type alias and
+constant preserve expression construction with `ApplicationAutoEmbedder`; the
+factory keeps the same Debug text and stateless Clone/Default behavior. Source
+comparisons preserve all five forwarding functions and selection arguments.
+Feature-gated local embedding re-exports remain unchanged.
+
+Module/dependency checks cover 695 roots and 567 crates with no missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+The owning crate gained async-trait, memory-tool and vectordb dependencies;
+only these three package edges are staged in the lockfile. Evidence:
+`artifacts/consolidation-provider-routing/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

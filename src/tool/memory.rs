@@ -10,17 +10,8 @@ pub type MemoryTool = codetether_memory_tool::Runtime<ApplicationAutoEmbedder>;
 /// ```rust
 /// let _factory = codetether_agent::tool::memory::ApplicationAutoEmbedder;
 /// ```
-#[derive(Debug, Clone, Default)]
-pub struct ApplicationAutoEmbedder;
-#[async_trait::async_trait]
-impl codetether_memory_tool::AutoEmbedder for ApplicationAutoEmbedder {
-    async fn create() -> Option<std::sync::Arc<dyn crate::vectordb::TextEmbedder>> {
-        use crate::provider::ProviderRegistry;
-        use crate::vectordb::auto::auto_embedder;
-        let registry = match ProviderRegistry::shared_from_vault().await {
-            Ok(registry) => registry,
-            Err(_) => std::sync::Arc::new(ProviderRegistry::new()),
-        };
-        auto_embedder(&registry).await
-    }
-}
+pub type ApplicationAutoEmbedder =
+    codetether_application_providers::embedding::AutoEmbedder<crate::provider::ProviderRegistry>;
+/// Stateless factory value retained for the native construction syntax.
+#[allow(non_upper_case_globals)]
+pub const ApplicationAutoEmbedder: ApplicationAutoEmbedder = ApplicationAutoEmbedder::new();
