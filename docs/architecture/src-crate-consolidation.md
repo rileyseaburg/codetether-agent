@@ -15123,3 +15123,20 @@ Full workspace consolidation remains active.
   artifacts/consolidation-command-leaves/.
 - No dependency changes. No memory-file loading, provider calls, command execution,
   Cargo, rustc or Rust tests ran. Full consolidation remains unfinished.
+
+### Tool registry storage ownership
+
+- Moved tool-map ownership, plugin-registry initialization, registration/lookup,
+  removal, compatibility alias wrapping and profiled definition projection into
+  the dedicated codetether-tool-registry crate.
+- The native ToolRegistry delegates storage operations while retaining the
+  application-specific default/provider tool factories and batch weak-reference
+  initialization. Its Default behavior and Debug output are unchanged.
+- Verification: all twelve shared registry method bodies were compared with the
+  original operations. Native default/provider construction, alias population,
+  batch setup, search registration and forwarding were checked unchanged.
+  Module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence: artifacts/consolidation-tool-registry/.
+- Staged lockfile changes contain only the new crate and root dependency.
+  No plugin initialization, tool execution, Cargo, rustc or Rust tests ran.
+  Full workspace consolidation remains unfinished.

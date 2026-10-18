@@ -79,7 +79,7 @@ pub mod webfetch;
 pub mod websearch;
 pub mod youtube;
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use crate::provider::Provider;
 pub use budget::{DEFAULT_TOOL_OUTPUT_MAX_BYTES, tool_output_budget};
@@ -90,38 +90,34 @@ pub use codetether_tool_core::{Tool, ToolResult};
 
 /// Registry of available tools
 pub struct ToolRegistry {
-    tools: HashMap<String, Arc<dyn Tool>>,
-    plugin_registry: PluginRegistry,
+    inner: codetether_tool_registry::ToolRegistry,
 }
 
 impl std::fmt::Debug for ToolRegistry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ToolRegistry")
-            .field("tools", &self.tools.keys().collect::<Vec<_>>())
-            .finish()
+        std::fmt::Debug::fmt(&self.inner, f)
     }
 }
 
 impl ToolRegistry {
     pub fn new() -> Self {
         Self {
-            tools: HashMap::new(),
-            plugin_registry: PluginRegistry::from_env(),
+            inner: codetether_tool_registry::ToolRegistry::new(),
         }
     }
 
     /// Get a reference to the plugin registry for managing signed plugins.
     pub fn plugins(&self) -> &PluginRegistry {
-        &self.plugin_registry
+        self.inner.plugins()
     }
 
     /// Register a tool
     pub fn register(&mut self, tool: Arc<dyn Tool>) {
-        self.tools.insert(tool.id().to_string(), tool);
+        self.inner.register(tool);
     }
 
     fn register_compat_alias(&mut self, id: &str, inner: Arc<dyn Tool>) {
-        self.register(Arc::new(alias::AliasTool::new(id, inner)));
+        self.inner.register_compat_alias(id, inner);
     }
 
     fn register_compat_aliases(&mut self) {
@@ -137,53 +133,42 @@ impl ToolRegistry {
 
     /// Get a tool by ID
     pub fn get(&self, id: &str) -> Option<Arc<dyn Tool>> {
-        self.tools.get(id).cloned()
+        self.inner.get(id)
     }
 
     /// List all tool IDs
     pub fn list(&self) -> Vec<&str> {
-        self.tools.keys().map(|s| s.as_str()).collect()
+        self.inner.list()
     }
 
     /// Get tool definitions for LLM
     pub fn definitions(&self) -> Vec<crate::provider::ToolDefinition> {
-        let defs: Vec<_> = self
-            .tools
-            .values()
-            .map(|t| crate::provider::ToolDefinition {
-                name: t.id().to_string(),
-                description: t.description().to_string(),
-                parameters: t.parameters(),
-            })
-            .collect();
-        profile::apply(defs)
+        self.inner.definitions()
     }
 
     /// Register multiple tools at once
     pub fn register_all(&mut self, tools: Vec<Arc<dyn Tool>>) {
-        for tool in tools {
-            self.register(tool);
-        }
+        self.inner.register_all(tools);
     }
 
     /// Remove a tool by ID
     pub fn unregister(&mut self, id: &str) -> Option<Arc<dyn Tool>> {
-        self.tools.remove(id)
+        self.inner.unregister(id)
     }
 
     /// Check if a tool exists
     pub fn contains(&self, id: &str) -> bool {
-        self.tools.contains_key(id)
+        self.inner.contains(id)
     }
 
     /// Get the number of registered tools
     pub fn len(&self) -> usize {
-        self.tools.len()
+        self.inner.len()
     }
 
     /// Check if the registry is empty
     pub fn is_empty(&self) -> bool {
-        self.tools.is_empty()
+        self.inner.is_empty()
     }
 
     /// Create registry with all default tools (without batch)

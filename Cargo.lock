@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-tool-registry",
  "codetether-tui-navigation",
  "codetether-provider-registry",
  "codetether-provider-factory",
@@ -7396,6 +7397,15 @@ version = "0.1.0"
 dependencies = [
  "codetether-tui-models",
  "crossterm",
+]
+
+[[package]]
+name = "codetether-tool-registry"
+version = "0.1.0"
+dependencies = [
+ "codetether-tool-core",
+ "codetether-provider-core",
+ "codetether-plugin-verification",
 ]
 
 [[package]]
