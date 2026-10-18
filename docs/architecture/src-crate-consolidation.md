@@ -21900,3 +21900,18 @@ checks passed. Only the fallback package's search dependency edge is staged
 in the lockfile; unrelated working changes remain intact. Evidence:
 `artifacts/consolidation-mcp-fallback-search/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### MCP image-result tests with their converter
+
+Moved both native MCP image-result tests into the owning `codetether-mcp-core`
+crate, split into round-trip and legacy-compatibility modules beside the
+converter. Removed the native test module and its otherwise-unused conversion
+export. Tests now import the same canonical tool/result types and image helpers
+directly instead of through application aliases.
+
+Static comparisons preserve every test assertion and the complete production
+converter. Module/dependency checks cover 693 roots and 565 crates without
+missing modules or cycles. Direct rustfmt, native file-size limits and whitespace
+checks passed. No manifest or lockfile changes. Evidence:
+`artifacts/consolidation-mcp-image-tests/`. These tests were moved, not executed;
+no Cargo, rustc or Python ran. Full consolidation remains active.

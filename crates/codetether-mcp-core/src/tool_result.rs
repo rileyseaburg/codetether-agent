@@ -46,3 +46,6 @@ fn split(url: &str) -> Option<(&str, &str)> {
     let mime = header.strip_suffix(";base64")?;
     (mime.starts_with("image/") && !data.is_empty()).then_some((mime, data))
 }
+
+#[cfg(test)]
+mod tests;

@@ -28,7 +28,6 @@ mod policy_host;
 mod server;
 mod subprocess_policy;
 mod tool_policy;
-mod tool_result;
 mod transport;
 use codetether_mcp_core::types;
 
