@@ -28207,3 +28207,19 @@ formatting, whitespace and file-limit checks pass (725 roots, 617 crates).
 Evidence: artifacts/consolidation-agent-header/. No dependencies or unrelated
 working files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Direct agent-tree exports instead of root-generated helpers
+
+Removed src/tui/app/state/agent_tree.rs and agent_spawn_guard.rs. Their public
+module paths now re-export codetether-agent-tree directly. Display ordering,
+child depth and spawn validation therefore execute the existing generic crate
+functions without generating specialized root wrappers.
+
+Static verification confirms all three former wrappers delegated directly to
+those exports, SpawnedAgent<S> implements the required hierarchy trait, and
+AgentNode/MAX_AGENT_DEPTH remain available. Existing navigation calls and the
+crate algorithms are unchanged. Declaration, module/dependency, production-scope,
+formatting, whitespace and file-limit checks pass (725 roots, 617 crates).
+Evidence: artifacts/consolidation-agent-tree-reexports/. No dependencies or
+unrelated working files changed. No Cargo, rustc, Python, compilation or runtime
+tests ran. Full consolidation remains active and incomplete.

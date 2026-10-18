@@ -20,8 +20,8 @@
 //! - `message_cache` - render-line cache for performance
 
 pub mod agent_profile;
-pub mod agent_spawn_guard;
-pub mod agent_tree;
+pub use codetether_agent_tree as agent_spawn_guard;
+pub use codetether_agent_tree as agent_tree;
 pub mod approval_queue;
 #[path = "latency/chat.rs"]
 pub mod chat_latency;
