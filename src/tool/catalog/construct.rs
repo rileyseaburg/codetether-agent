@@ -13,7 +13,12 @@ impl Factories for Constructors {
         context::create(kind)
     }
     fn execution(&self, kind: NativeTool) -> Option<Arc<dyn Tool>> {
-        execution::create(kind)
+        codetether_tool_construction::application::execution::create::<
+            ralph::RalphTool,
+            undo::UndoTool,
+            swarm_execute::SwarmExecuteTool,
+            go::GoTool,
+        >(kind)
     }
     fn integrations(&self, kind: NativeTool) -> Option<Arc<dyn Tool>> {
         integrations::create(kind)

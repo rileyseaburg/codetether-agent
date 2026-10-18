@@ -4,7 +4,6 @@ use codetether_tool_registry::catalog::{Host, ToolKind};
 mod bindings;
 mod construct;
 mod context;
-mod execution;
 mod integrations;
 mod provider;
 pub(super) type Native<'a> =

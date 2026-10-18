@@ -24292,3 +24292,21 @@ checks passed. Only the required lockfile entries are staged; unrelated changes
 remain untouched. Evidence: artifacts/consolidation-editing-factory/. No Cargo,
 rustc, Python, compilation, tool construction or tests ran. Full consolidation
 remains active.
+
+### Execution-tool factory moved into the construction crate
+
+Moved execution-tool variant selection into
+codetether-tool-construction::application::execution. The native catalog selects
+the same Ralph, undo, swarm and go types as generic parameters. Each existing
+Default implementation delegates to the constructor previously used by the
+native factory, including the undo constant's new() construction. Removed
+src/tool/catalog/execution.rs. No dependencies changed.
+
+Static checks compare those defaults and preserve match variants, fallback and
+native type selection. An initial verifier attempted to format an expression
+as a whole Rust file; the corrected expression comparison retains its initial
+log. Module/dependency scans cover 692 roots and 573 crates without missing
+modules or cycles. Direct rustfmt, source file limits and whitespace checks
+passed. Unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-execution-factory/. No Cargo, rustc, Python, compilation,
+tool construction or tests ran. Full consolidation remains active.
