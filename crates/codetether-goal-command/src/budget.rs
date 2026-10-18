@@ -1,9 +1,10 @@
 //! Explicit user budget changes, independent of usage already incurred.
+use crate::Host;
 
-use crate::session::tasks::GoalEditAction;
 use anyhow::{Result, anyhow};
+use codetether_goal_core::GoalEditAction;
 
-pub(super) async fn run(session_id: &str, value: &str) -> Result<String> {
+pub(super) async fn run<H: Host>(session_id: &str, value: &str) -> Result<String> {
     let cap = match value {
         "none" | "off" | "unlimited" => None,
         _ => Some(
@@ -12,5 +13,5 @@ pub(super) async fn run(session_id: &str, value: &str) -> Result<String> {
                 .map_err(|_| anyhow!("usage: /goal budget <positive tokens|none>"))?,
         ),
     };
-    super::write::change(session_id, GoalEditAction::Edit, None, Some(cap)).await
+    super::write::change::<H>(session_id, GoalEditAction::Edit, None, Some(cap)).await
 }

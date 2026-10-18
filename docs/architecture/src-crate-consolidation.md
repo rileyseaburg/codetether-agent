@@ -17697,3 +17697,20 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-editor-viewport/`.
 - No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Human goal command routing and persistence
+
+- Moved the complete `/goal` subcommand parser and all 14 handlers into the
+  dedicated `codetether-goal-command` crate, with separate auto, budget, show,
+  status and write modules (set, edit, change and notes).
+- Native Host retains canonical journal-path resolution, runtime goal reads,
+  auto-adoption settings and the existing authenticated user-edit controller.
+  Native UI code preserves success/error display and the boolean outcome.
+- Verified full routing and handler bodies, revision/action/event fields,
+  native bindings and unchanged storage/controller implementations. Lexical
+  module/dependency graphs, direct rustfmt, file limits and whitespace passed.
+  The staged lock adds only the new package and root dependency; unrelated
+  working-copy changes are preserved.
+  Evidence: `artifacts/consolidation-goal-command/`.
+- No Cargo, rustc, Python, goal commands, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

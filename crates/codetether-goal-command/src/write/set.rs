@@ -1,14 +1,15 @@
 //! `/goal set` persistence.
+use crate::Host;
 
-use crate::session::tasks::{GoalSourceKind, TaskEvent, TaskLog};
 use anyhow::{Result, anyhow};
 use chrono::Utc;
+use codetether_goal_core::{GoalSourceKind, TaskEvent};
 
-pub(super) async fn run(session_id: &str, objective: &str) -> Result<String> {
+pub(super) async fn run<H: Host>(session_id: &str, objective: &str) -> Result<String> {
     if objective.is_empty() {
         return Err(anyhow!("usage: /goal set <objective>"));
     }
-    TaskLog::for_session(session_id)?
+    H::log(session_id)?
         .append(&TaskEvent::GoalSet {
             at: Utc::now(),
             goal_id: uuid::Uuid::new_v4().to_string(),

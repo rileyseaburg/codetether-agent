@@ -1387,6 +1387,7 @@ dependencies = [
  "codetether-webview-bars",
  "codetether-webview",
  "codetether-tui-render",
+ "codetether-goal-command",
  "codetether-agent-dashboard",
  "codetether-git-view",
  "codetether-protocol-view",
@@ -15954,4 +15955,15 @@ dependencies = [
  "codetether-provider-core",
  "codetether-swarm-view",
  "ratatui",
+]
+
+[[package]]
+name = "codetether-goal-command"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-goal-core",
+ "serde_json",
+ "uuid",
 ]

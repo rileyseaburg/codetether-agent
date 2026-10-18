@@ -1,18 +1,17 @@
 //! Apply explicit human goal edits through the native controller, not model tools.
+use crate::Host;
 
-use crate::session::tasks::{GoalEdit, GoalEditAction, control, runtime::answer_review};
 use anyhow::{Result, anyhow};
+use codetether_goal_core::{GoalEdit, GoalEditAction};
 
-pub(super) async fn run(
+pub(super) async fn run<H: Host>(
     session_id: &str,
     action: GoalEditAction,
     objective: Option<String>,
     token_budget: Option<Option<i64>>,
 ) -> Result<String> {
-    let goal = answer_review::read(session_id)?
-        .goal
-        .ok_or_else(|| anyhow!("no goal exists"))?;
-    let state = control::update_user(
+    let goal = H::goal(session_id)?.ok_or_else(|| anyhow!("no goal exists"))?;
+    let state = H::update_user(
         session_id,
         GoalEdit {
             goal_id: goal.id,

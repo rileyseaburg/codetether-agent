@@ -291,6 +291,7 @@ members = [
     "crates/codetether-webview-bars",
     "crates/codetether-webview",
     "crates/codetether-tui-render",
+    "crates/codetether-goal-command",
     "crates/codetether-agent-dashboard",
     "crates/codetether-worker-events",
     "crates/codetether-tui-worker",
@@ -786,6 +787,7 @@ codetether-workspace-view = { path = "crates/codetether-workspace-view", version
 codetether-webview-bars = { path = "crates/codetether-webview-bars", version = "0.1.0" }
 codetether-webview = { path = "crates/codetether-webview", version = "0.1.0" }
 codetether-tui-render = { path = "crates/codetether-tui-render", version = "0.1.0" }
+codetether-goal-command = { path = "crates/codetether-goal-command", version = "0.1.0" }
 codetether-agent-dashboard = { path = "crates/codetether-agent-dashboard", version = "0.1.0" }
 codetether-git-view = { path = "crates/codetether-git-view", version = "0.1.0" }
 codetether-protocol-view = { path = "crates/codetether-protocol-view", version = "0.1.0" }
