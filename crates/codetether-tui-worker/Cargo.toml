@@ -1,0 +1,22 @@
+[package]
+name = "codetether-tui-worker"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "TUI A2A worker bridge configuration, streams and lifecycle"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }
+codetether-a2a-worker-core = { path = "../codetether-a2a-worker-core", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-user-auth = { path = "../codetether-user-auth", version = "0.1.0" }
+codetether-worker-events = { path = "../codetether-worker-events", version = "0.1.0" }
+futures = "0.3"
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "stream", "rustls"] }
+tokio = { version = "1.53.1", features = ["rt", "sync", "time", "signal", "macros"] }
+tracing = "0.1"
+urlencoding = "2"

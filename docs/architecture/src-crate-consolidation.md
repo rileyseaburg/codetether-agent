@@ -11232,3 +11232,22 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-worker-events/` and tool history.
 - Compilation, runtime tests, event streams and HTTP operations were not run;
   no Cargo or rustc commands executed. Full consolidation remains active.
+
+### TUI worker bridge lifecycle extraction
+
+- Moved worker configuration resolution, identity, context initialization,
+  registration orchestration, heartbeat startup, SSE reconnect/consumption,
+  command selection and cleanup into `crates/codetether-tui-worker`.
+- Fifteen crate modules separate these responsibilities, with maximum module
+  size 37 code lines. Native bridge modules retain the public handle shape and
+  a small adapter to the canonical application worker-registration boundary.
+- The existing TUI spawn signature and handle fields remain available. Shared
+  worker-core, HTTP, bus, credentials and worker-events crates retain ownership
+  of their respective contracts. No access mode or registration policy changed.
+- Forty-six static checks cover command/handle shapes, configuration precedence,
+  SSE read behavior, request headers, reconnect interval, initialization,
+  startup/cleanup ordering and unchanged TUI startup/shutdown call sites.
+  Module reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-tui-worker/`. Compilation, runtime tests,
+  worker startup and networking were not run; no Cargo or rustc commands executed.
+- Full `src/` consolidation remains active.

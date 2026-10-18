@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-tui-worker",
  "codetether-worker-events",
  "codetether-workspace-snapshot",
  "codetether-git-view",
@@ -5801,6 +5802,25 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.20",
  "tracing",
+]
+
+[[package]]
+name = "codetether-tui-worker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-a2a-http",
+ "codetether-a2a-worker-core",
+ "codetether-bus-core",
+ "codetether-config",
+ "codetether-user-auth",
+ "codetether-worker-events",
+ "futures",
+ "reqwest 0.13.4",
+ "tokio",
+ "tracing",
+ "urlencoding",
 ]
 
 [[package]]
