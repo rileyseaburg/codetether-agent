@@ -27,3 +27,9 @@ pub struct SwarmExecutor {
     pub(super) delegation: Option<Arc<Mutex<DelegationState>>>,
     pub(super) control: Option<SwarmControl>,
 }
+
+impl From<SwarmConfig> for SwarmExecutor {
+    fn from(config: SwarmConfig) -> Self {
+        Self::new(config)
+    }
+}

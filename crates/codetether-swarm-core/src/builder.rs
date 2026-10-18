@@ -1,26 +1,32 @@
 //! Fluent construction of configured swarm executors.
 
-use super::SwarmExecutor;
-use crate::swarm::SwarmConfig;
+use crate::SwarmConfig;
+use std::marker::PhantomData;
 
-/// Builds a [`SwarmExecutor`] from common execution limits.
+/// Builds an executor from common execution limits.
 ///
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::swarm::executor::SwarmExecutorBuilder;
-/// let executor = SwarmExecutorBuilder::new().max_subagents(4).build();
-/// assert!(executor.control().is_none());
+/// use codetether_swarm_core::{SwarmConfig, builder::SwarmExecutorBuilder};
+/// struct Executor(SwarmConfig);
+/// impl From<SwarmConfig> for Executor {
+///     fn from(config: SwarmConfig) -> Self { Self(config) }
+/// }
+/// let executor = SwarmExecutorBuilder::<Executor>::new().max_subagents(4).build();
+/// assert_eq!(executor.0.max_subagents, 4);
 /// ```
-pub struct SwarmExecutorBuilder {
+pub struct SwarmExecutorBuilder<E> {
     config: SwarmConfig,
+    executor: PhantomData<fn() -> E>,
 }
 
-impl SwarmExecutorBuilder {
+impl<E: From<SwarmConfig>> SwarmExecutorBuilder<E> {
     /// Creates a builder backed by [`SwarmConfig::default`].
     pub fn new() -> Self {
         Self {
             config: SwarmConfig::default(),
+            executor: PhantomData,
         }
     }
 
@@ -55,12 +61,12 @@ impl SwarmExecutorBuilder {
     }
 
     /// Builds the configured executor.
-    pub fn build(self) -> SwarmExecutor {
-        SwarmExecutor::new(self.config)
+    pub fn build(self) -> E {
+        self.config.into()
     }
 }
 
-impl Default for SwarmExecutorBuilder {
+impl<E: From<SwarmConfig>> Default for SwarmExecutorBuilder<E> {
     fn default() -> Self {
         Self::new()
     }

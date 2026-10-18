@@ -21684,3 +21684,21 @@ native file-size limits, and whitespace checks passed. No dependency or lockfile
 changes. Evidence: `artifacts/consolidation-prompt-runner-state/`. No Cargo,
 rustc, or Python commands ran; compilation and runtime tests remain unverified.
 Full workspace consolidation remains active.
+
+### Shared swarm executor builder
+
+Moved the complete fluent executor builder into
+`codetether-swarm-core::builder`. The builder owns only `SwarmConfig` and a
+zero-sized executor marker. Its result type implements `From<SwarmConfig>`;
+the native executor's conversion calls the same existing `new` constructor.
+The previous public builder path is retained as a specialized type alias,
+and the native builder file is removed.
+
+Static full-token comparison preserves default configuration and every setter;
+only generic result construction and the marker are added. The native conversion
+and alias are checked separately. Source/dependency graphs across 692 roots and
+564 crates, direct rustfmt, native file-size limits, and whitespace checks passed.
+No dependency or lockfile changes. Evidence:
+`artifacts/consolidation-swarm-builder/`. No Cargo, rustc, or Python commands
+ran; compilation and runtime tests remain unverified. Full consolidation remains
+active.

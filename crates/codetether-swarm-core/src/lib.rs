@@ -77,3 +77,6 @@ pub mod model_defaults;
 
 /// Autonomous tool restrictions and advertised read-only definitions.
 pub mod tool_policy;
+
+/// Fluent configuration builder for a host-provided executor.
+pub mod builder;

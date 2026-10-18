@@ -22,7 +22,6 @@ macro_rules! executor_module {
 executor_module!(accessors => "executor_parts/accessors.rs");
 #[path = "executor_parts/agent_loop/mod.rs"]
 mod agent_loop;
-executor_module!(builder => "executor_parts/builder.rs");
 executor_module!(bus_publish => "bus_publish.rs");
 executor_module!(cache_api => "executor_parts/cache_api.rs");
 executor_module!(configure => "executor_parts/configure.rs");
@@ -47,6 +46,7 @@ pub use super::SwarmMessage;
 use super::subtask::SubTaskResult;
 pub(super) use super::{kubernetes_executor, tool_policy};
 pub use agent_loop::run_agent_loop;
-pub use builder::SwarmExecutorBuilder;
+/// Fluent builder using the application swarm executor.
+pub type SwarmExecutorBuilder = codetether_swarm_core::builder::SwarmExecutorBuilder<SwarmExecutor>;
 pub use exit::AgentLoopExit;
 pub use types::SwarmExecutor;
