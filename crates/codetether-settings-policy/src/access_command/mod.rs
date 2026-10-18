@@ -4,6 +4,7 @@
 //! updates the process override, reloads config and presents release status.
 use codetether_config::Config;
 use std::path::Path;
+mod binding;
 mod host;
 mod parse;
 mod policy;

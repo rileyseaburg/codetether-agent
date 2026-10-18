@@ -27689,3 +27689,19 @@ native production-scope, standalone formatting, file-limit and whitespace checks
 pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
 lock changes were needed. Evidence: artifacts/consolidation-approval-input/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Access-mode command frontend binding
+
+Moved frontend access-command state, config application and presentation into
+codetether-settings-policy::access_command::binding. Removed the root host and
+one-call verifier wrapper. The root selects existing types, approval release
+and the same model-picker verifier command directly.
+
+All eight moved function bodies and the host layout match after verifier path
+substitution; the removed wrapper was checked against its exact forwarded call.
+Shared access policy, mode values and verifier precedence are unchanged.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. Tests and
+unrelated files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-access-binding/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

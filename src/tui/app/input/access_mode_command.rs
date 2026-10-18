@@ -1,25 +1,11 @@
-//! Native bindings for shared access-mode command policy.
-use crate::{provider::ProviderRegistry, session::Session, tui::app::state::App};
-use std::{path::Path, sync::Arc};
-#[path = "access_mode_host.rs"]
-mod host;
-#[path = "verifier_model_command.rs"]
-mod verifier_model;
-pub(super) async fn run(
-    app: &mut App,
-    cwd: &Path,
-    session: &mut Session,
-    registry: Option<&Arc<ProviderRegistry>>,
-    prompt: &str,
-) -> bool {
-    codetether_settings_policy::access_command::run(
-        &mut host::Native {
-            app,
-            session,
-            registry,
-        },
-        cwd,
-        prompt,
-    )
-    .await
-}
+//! Frontend session and callback selection for access-mode commands.
+codetether_settings_policy::declare_frontend_access_command!(
+    crate::tui::app::state::App,
+    crate::session::Session,
+    crate::provider::ProviderRegistry,
+    crate::config::Config,
+    crate::tui::chat::message::ChatMessage,
+    crate::tui::chat::message::MessageType;
+    crate::tui::app::model_picker::verifier_command,
+    crate::tui::app::input::approval_command::release_all,
+);
