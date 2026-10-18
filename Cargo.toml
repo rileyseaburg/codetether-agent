@@ -4,6 +4,7 @@ members = [
     "crates/codetether-tui-tick",
     "crates/codetether-task-cli",
     "crates/codetether-computer-contract",
+    "crates/codetether-computer-capture",
     "crates/codetether-computer-shadow",
     "crates/codetether-a2a-core",
     "crates/codetether-http-error",
@@ -1058,6 +1059,7 @@ codetether-workspace-tools = { path = "crates/codetether-workspace-tools", versi
 codetether-tool-registry = { path = "crates/codetether-tool-registry", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-computer-contract = { path = "crates/codetether-computer-contract", version = "0.1.0" }
+codetether-computer-capture = { path = "crates/codetether-computer-capture", version = "0.1.0" }
 codetether-computer-shadow = { path = "crates/codetether-computer-shadow", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }

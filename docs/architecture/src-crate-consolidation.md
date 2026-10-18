@@ -17244,3 +17244,19 @@ Full workspace consolidation remains active.
 - Staged only the new package/root dependency in the committed lockfile baseline.
   No Cargo, rustc, Python, desktop actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Dedicated computer-capture preview crate
+
+- Moved capture/OCR input budgets, file-size validation, bounded preview
+  preparation and original-coordinate metadata into `codetether-computer-capture`.
+- Moved all four existing size/preview/encoding tests. Native modules re-export
+  the shared API, preserving Windows and Linux capture consumer imports.
+- Preserved small-PNG pass-through, resize/decode limits, JPEG quality, encoded
+  size gate, attachment encoding and coordinate-scale metadata.
+- Verification: complete constants, validation, struct and function bodies,
+  all original tests, native re-exports and unchanged platform consumers;
+  module/dependency graphs, direct rustfmt, file limits and whitespace.
+- Added only the new crate/root dependency to the staged lockfile baseline.
+  Evidence: `artifacts/consolidation-computer-capture/`. No Cargo, rustc,
+  Python, image processing, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

@@ -1,0 +1,14 @@
+[package]
+name = "codetether-computer-capture"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Computer-use capture budgets, bounded previews and coordinate metadata"
+
+[dependencies]
+anyhow = "1"
+codetether-platform = { path = "../codetether-platform", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+image = { version = "0.25", default-features = false, features = ["png", "bmp", "jpeg"] }
+serde_json = "1"

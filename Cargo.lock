@@ -1574,6 +1574,7 @@ dependencies = [
  "codetether-command-pty",
  "codetether-command-session",
  "codetether-command-shell",
+ "codetether-computer-capture",
  "codetether-computer-contract",
  "codetether-computer-shadow",
  "codetether-config",
@@ -2351,6 +2352,17 @@ dependencies = [
  "uuid",
  "windows-sys 0.61.2",
  "zeroize",
+]
+
+[[package]]
+name = "codetether-computer-capture"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-platform",
+ "codetether-tool-core",
+ "image",
+ "serde_json",
 ]
 
 [[package]]
