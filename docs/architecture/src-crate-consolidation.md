@@ -27763,3 +27763,18 @@ formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
 Unrelated files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-goal-input/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Human-answer input, journal and delivery bindings
+
+Moved frontend answer journal operations, question interception UI/actions,
+held-answer delivery and typed entry wrappers into codetether-goal-answer
+frontend modules. Removed five root host files. Existing module paths remain
+available for continuation code and the unchanged frontend tests.
+
+All twenty-three expanded function bodies and both borrowed host layouts match
+after journal/restart callback qualification. Answer and continuation test sources
+are unchanged. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Unrelated files are unchanged; no manifest or lock changes were
+needed. Evidence: artifacts/consolidation-answer-bindings/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.

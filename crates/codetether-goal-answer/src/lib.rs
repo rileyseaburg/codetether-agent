@@ -7,6 +7,7 @@
 mod agentic;
 mod answer;
 pub mod continuation;
+mod frontend;
 mod host;
 mod question;
 pub mod release;
