@@ -1,16 +1,8 @@
-//! ESLint JSON output types.
-
+//! One ESLint diagnostic and its stable validation display format.
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub(super) struct FileReport {
-    #[serde(rename = "filePath")]
-    file_path: String,
-    messages: Vec<Message>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Message {
+pub(super) struct Message {
     #[serde(rename = "ruleId")]
     rule_id: Option<String>,
     severity: u8,
@@ -19,18 +11,8 @@ struct Message {
     column: u32,
 }
 
-impl FileReport {
-    pub(super) fn render(self) -> Vec<String> {
-        let path = self.file_path;
-        self.messages
-            .into_iter()
-            .map(|message| message.render(&path))
-            .collect()
-    }
-}
-
 impl Message {
-    fn render(self, path: &str) -> String {
+    pub(super) fn render(self, path: &str) -> String {
         let severity = match self.severity {
             2 => "error",
             1 => "warning",

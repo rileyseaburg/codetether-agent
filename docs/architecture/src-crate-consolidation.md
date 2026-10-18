@@ -9863,3 +9863,19 @@ checks passed; the largest crate file has 38 code lines. Five original tests
 moved without execution. Evidence is in `artifacts/consolidation-validation/`.
 Compilation and runtime tests were not run; no validators were executed.
 No Cargo, rustc or Python ran. Full workspace consolidation remains active.
+
+### ESLint planning and rendering consolidated into validation
+
+Moved ESLint extension filtering, relative-path quoting, command construction,
+JSON decoding and diagnostic formatting into `codetether-validation::eslint`.
+Four modules separate request preparation, file reports, message reports and
+the public adapter. The native helper retains access-policy evaluation and
+sandbox command execution.
+
+Eleven static comparisons/checks cover exact request construction, quoting,
+serialized fields, diagnostic rendering, parse fallback, native authorization
+order and the required serde feature. Module/dependency graphs, file budgets
+and whitespace checks passed; the largest new module has 30 code lines.
+Evidence is in `artifacts/consolidation-eslint-validation/`. Compilation and
+runtime tests were not run; no validators were executed. No Cargo, rustc or
+Python ran. Full workspace consolidation remains active.

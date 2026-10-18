@@ -24,3 +24,6 @@ pub use scope::validation_scope;
 pub use touched::track_touched_files;
 #[cfg(test)]
 mod tests;
+
+/// Shared ESLint command preparation and output decoding.
+pub mod eslint;

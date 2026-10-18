@@ -4919,6 +4919,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "codetether-lsp-core",
+ "serde",
  "serde_json",
  "tokio",
 ]
