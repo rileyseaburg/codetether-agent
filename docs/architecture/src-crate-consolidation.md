@@ -11995,3 +11995,22 @@ Full workspace consolidation remains active.
   crate dependency checks, direct formatting, source limits and diff checks passed.
 - Evidence: artifacts/consolidation-status-assembly/. No Cargo, rustc, compilation,
   tests or terminal rendering ran. Full consolidation remains incomplete.
+
+### Composer textbox and autocomplete presentation
+
+- Moved input-box rendering, Unicode cursor positioning, input-title selection,
+  attachment suffixes, completion rows, usage-hint rendering and selected-row
+  style into codetether-composer-view. Nine modules contain at most 41 code lines.
+- Native code supplies a borrowed ComposerView and the current completion list.
+  Usage hints remain lazy and are queried only for an empty match list. Shared
+  clipboard environment detection supplies the same local/SSH paste shortcut.
+  Editing and command selection remain with the application controller.
+- Preserved input borders, wrapping, cursor clamping, compact/processing titles,
+  attachment text, match selection and usage-panel layout. The existing two
+  native input-title integration tests remain unchanged.
+- Verification: 12 static comparisons passed for moved render bodies, the split
+  usage-hint branch, native projections and unchanged tests. Full native
+  chat-view reachability, crate dependency cycles, direct formatting, source
+  limits and diff checks passed. Evidence: artifacts/consolidation-composer-view/.
+- No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
+  consolidation remains incomplete.

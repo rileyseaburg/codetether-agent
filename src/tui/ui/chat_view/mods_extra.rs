@@ -38,3 +38,5 @@ pub mod title;
 pub mod title_brand;
 pub mod title_labels;
 pub(crate) mod viewport;
+
+mod composer_view;

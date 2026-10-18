@@ -1,52 +1,33 @@
-//! User input textbox renderer.
-//!
-//! Renders a bordered [`Paragraph`] with a context-sensitive title.
-//! Delegates cursor placement to [`place_cursor`].
-
-use ratatui::{
-    Frame,
-    layout::Rect,
-    style::{Color, Style},
-    widgets::{Block, Borders, Paragraph, Wrap},
-};
-
-use super::cursor::place_cursor;
-use crate::tui::app::state::App;
-use crate::tui::color_palette::ColorPalette;
-use crate::tui::models::InputMode;
-use crate::tui::ui::chat_view::spinner::spinner_color;
-use crate::tui::ui::gradient::rgb_supported;
-
-/// Draw the input textbox and place the terminal cursor.
+//! Application adapter for composer rendering.
+use crate::tui::{app::state::App, color_palette::ColorPalette};
+use ratatui::{Frame, layout::Rect};
+/// Draw the textbox and its cursor using the current input state.
+///
+/// # Arguments
+/// * `f` - Destination frame.
+/// * `app` - Current input state.
+/// * `area` - Input rectangle.
+/// * `palette` - Border palette.
+/// * `suffix` - Input-title suffix.
+///
+/// # Returns
+/// Draws the component without modifying the input state.
 ///
 /// # Examples
-///
-/// ```rust,no_run
-/// # use codetether_agent::tui::ui::chat_view::input_area::render_input;
-/// # fn d(f:&mut ratatui::Frame,a:&codetether_agent::tui::app::state::App){ let p=codetether_agent::tui::color_palette::ColorPalette::marketing(); render_input(f,a,ratatui::layout::Rect::new(0,0,40,3),&p,""); }
+/// ```no_run
+/// use codetether_agent::tui::ui::chat_view::input_area::render_input;
+/// # fn draw(f: &mut ratatui::Frame, app: &codetether_agent::tui::app::state::App) {
+/// let area = f.area();
+/// let palette = codetether_agent::tui::color_palette::ColorPalette::marketing();
+/// render_input(f, app, area, &palette, "");
+/// # }
 /// ```
 pub fn render_input(f: &mut Frame, app: &App, area: Rect, palette: &ColorPalette, suffix: &str) {
-    let title = super::input_title::build(app, suffix, area.width);
-    let border_color = if app.state.processing {
-        // Pulse with the live neon hue while the agent works.
-        if rgb_supported() {
-            spinner_color()
-        } else {
-            Color::Yellow
-        }
-    } else if matches!(app.state.input_mode, InputMode::Command) {
-        Color::Magenta
-    } else {
-        palette.border
-    };
-    let input = Paragraph::new(app.state.input.as_str())
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(border_color))
-                .title(title),
-        )
-        .wrap(Wrap { trim: false });
-    f.render_widget(input, area);
-    place_cursor(f, app, area);
+    codetether_composer_view::render_input(
+        f,
+        &super::composer_view::projection(app),
+        area,
+        palette,
+        suffix,
+    );
 }

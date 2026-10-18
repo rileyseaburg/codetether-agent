@@ -1,62 +1,30 @@
-//! Slash-command autocomplete suggestions list.
-
-use ratatui::{
-    Frame,
-    layout::Rect,
-    style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, ListState},
-};
-
-use super::suggestion_style::highlight_style;
+//! Application adapter for command suggestion rendering.
 use crate::tui::app::state::App;
-
-/// Render the autocomplete suggestions panel in `area`.
+use ratatui::{Frame, layout::Rect};
+/// Draw command matches or the current command usage hint.
+///
+/// # Arguments
+/// * `f` - Destination frame.
+/// * `app` - Command matches, selection and usage hint.
+/// * `area` - Suggestion rectangle.
+///
+/// # Returns
+/// Draws the component without modifying the input state.
 ///
 /// # Examples
-///
-/// ```rust,no_run
-/// # use codetether_agent::tui::ui::chat_view::suggestions::render_suggestions;
-/// # fn d(f:&mut ratatui::Frame,a:&codetether_agent::tui::app::state::App){ render_suggestions(f,a,ratatui::layout::Rect::new(0,20,80,5)); }
+/// ```no_run
+/// use codetether_agent::tui::ui::chat_view::suggestions::render_suggestions;
+/// # fn draw(f: &mut ratatui::Frame, app: &codetether_agent::tui::app::state::App) {
+/// let area = f.area();
+/// render_suggestions(f, app, area);
+/// # }
 /// ```
 pub fn render_suggestions(f: &mut Frame, app: &App, area: Rect) {
-    let mut list_state = ListState::default();
-    if app.state.slash_suggestions.is_empty() {
-        let Some(hint) = app.state.current_slash_hint() else {
-            return;
-        };
-        let style = Style::default()
-            .fg(Color::DarkGray)
-            .add_modifier(Modifier::DIM);
-        let item = ListItem::new(Line::from(vec![
-            Span::raw("  "),
-            Span::styled(hint.to_string(), style),
-        ]));
-        let list =
-            List::new(vec![item]).block(Block::default().borders(Borders::ALL).title(" Usage "));
-        f.render_stateful_widget(list, area, &mut list_state);
-        return;
-    }
-    let items: Vec<ListItem<'static>> = app
-        .state
-        .slash_suggestions
-        .iter()
-        .enumerate()
-        .map(|(idx, cmd)| {
-            let prefix = if idx == app.state.selected_slash_suggestion {
-                "▶ "
-            } else {
-                "  "
-            };
-            ListItem::new(Line::from(vec![
-                Span::raw(prefix),
-                Span::styled(cmd.clone(), Style::default().fg(Color::Cyan).bold()),
-            ]))
-        })
-        .collect();
-    list_state.select(Some(app.state.selected_slash_suggestion));
-    let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title(" Commands "))
-        .highlight_style(highlight_style());
-    f.render_stateful_widget(list, area, &mut list_state);
+    codetether_composer_view::render_suggestions(
+        f,
+        &app.state.slash_suggestions,
+        app.state.selected_slash_suggestion,
+        area,
+        || app.state.current_slash_hint(),
+    );
 }
