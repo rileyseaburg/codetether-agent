@@ -20487,3 +20487,23 @@ ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-session-continuation/`. No dependencies changed.
 Cargo, rustc, Python, Rust tests and session continuation were not run;
 compilation and runtime remain unverified.
+
+### Direct root aliases for completed crate extractions
+
+Replaced nineteen one-line native facade modules with direct aliases in
+`src/lib.rs`: audit, browser, config, distill, event_stream, k8s,
+knowledge_graph, marketplace, mesh, moltbook, okr, platform,
+plugin_marketplace, provenance, secrets, tls, util, workspace_scan and
+worktree_stub. Removed their redundant source files.
+
+Each removed file contained only `pub use <owner>::*`. The replacement aliases
+the same owner under the same public module name, including the nested browser,
+truncate and workspace-scan modules. No crate implementation, dependency or
+application operation changed.
+
+Validation: exact facade export inspection, root alias name/target comparison,
+unchanged crate sources/manifests, module reachability (including all owners),
+dependency cycles, file-size ratchet, whitespace and direct formatting.
+Explicit audit roots for the removed facades were removed from the inventory.
+Evidence: `artifacts/consolidation-root-facades/`. Cargo, rustc, Python and Rust
+tests were not run; compilation and runtime remain unverified.
