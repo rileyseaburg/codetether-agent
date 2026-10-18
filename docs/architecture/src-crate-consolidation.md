@@ -18949,3 +18949,24 @@ reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-swarm-tool-type/`. No Cargo,
 rustc, Python, Rust tests or live swarm execution ran; compilation and runtime
 behavior remain unverified.
+
+### Provider-backed catalog ownership
+
+Moved provider-backed kind selection and provider/model ownership rules from
+`src/tool/catalog/provider.rs` into the provider module of
+`codetether-tool-construction`. The shared module exposes a typed factory
+selection; native code constructs the four application-bound tool types and
+registers the result. Factory identity and selection are separate modules.
+
+Summary, RLM and recall still clone the existing provider/model; Ralph still
+consumes the source via take. Unrelated kinds leave the source untouched and
+return to scalar construction. Missing providers retain the same panic text.
+The native dispatch and shared registry registration order are unchanged.
+
+Validation: all four complete constructor/ownership sequences, shared kind
+mapping and clone/take policy, native registration, unchanged dispatch and
+registration order, isolated provider-core dependency/lock delta, lexical module
+reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-provider-construction/`. No Cargo,
+rustc, Python, Rust tests or provider requests ran; compilation and runtime
+behavior remain unverified.

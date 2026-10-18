@@ -5467,6 +5467,7 @@ dependencies = [
  "codetether-plan",
  "codetether-podcast-tool",
  "codetether-prd-tool",
+ "codetether-provider-core",
  "codetether-question-tool",
  "codetether-relay-tool",
  "codetether-ripgrep-tool",

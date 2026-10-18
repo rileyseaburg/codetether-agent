@@ -37,3 +37,6 @@ pub fn create(kind: ToolKind, host: &impl Host) -> Option<Arc<dyn Tool>> {
         .or_else(|| search_tools::create(kind))
         .or_else(|| integrations::create(kind, host))
 }
+
+/// Provider-backed selection and ownership for application-bound tool factories.
+pub mod provider;

@@ -25,6 +25,7 @@ codetether-okr-tool = { path = "../codetether-okr-tool", version = "0.1.0" }
 codetether-plan = { path = "../codetether-plan", version = "0.1.0" }
 codetether-podcast-tool = { path = "../codetether-podcast-tool", version = "0.1.0" }
 codetether-prd-tool = { path = "../codetether-prd-tool", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 codetether-question-tool = { path = "../codetether-question-tool", version = "0.1.0" }
 codetether-relay-tool = { path = "../codetether-relay-tool", version = "0.1.0" }
 codetether-ripgrep-tool = { path = "../codetether-ripgrep-tool", version = "0.1.0" }
