@@ -1,7 +1,7 @@
 //! Claims racing with lag replay must not cause task redelivery.
 
 use super::{super::WorkerStream, fixtures};
-use crate::server::KnativeTaskQueue;
+use codetether_task_queue::KnativeTaskQueue;
 use futures::StreamExt;
 use tokio::sync::broadcast;
 

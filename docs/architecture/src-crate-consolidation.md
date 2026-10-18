@@ -13291,3 +13291,22 @@ Full workspace consolidation remains active.
   rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
   artifacts/consolidation-task-lifecycle/. No Cargo, rustc, compilation or
   Rust tests ran. The broader source consolidation remains incomplete.
+
+### Worker claim and notification delivery consolidation
+
+- Moved the WorkerStream state machine, authoritative queue delivery checks
+  and existing stream tests into codetether-task-api::worker_stream. The
+  native stream endpoint retains header extraction, subscription-before-
+  snapshot ordering and its 15-second keepalive configuration.
+- Moved the atomic worker claim operation and request contract into
+  codetether-task-api::worker_claim, reusing the shared A2A worker claim
+  response. Missing/nonpending errors and all response fields are unchanged.
+- Removed the undeclared native worker_stream/payload.rs duplicate; active
+  delivery.rs remains the single queue-backed event implementation. Original
+  source is retained in ignored verification artifacts.
+- Verification: 40 static source/body and module-size checks passed, along
+  with module reachability, local dependency DAG, direct rustfmt, file limits
+  and whitespace checks. Evidence: artifacts/consolidation-worker-delivery/.
+  Added explicit futures, Tokio sync and A2A worker-core dependencies; staged
+  only those lockfile entries. No Cargo, rustc, compilation or Rust tests ran.
+  Full consolidation remains incomplete.

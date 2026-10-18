@@ -1,8 +1,8 @@
 //! Queue and bus fixtures without external worker dependencies.
 
-use crate::a2a::types::TaskState;
-use crate::bus::{BusEnvelope, BusMessage};
-use crate::server::KnativeTask;
+use codetether_a2a_core::TaskState;
+use codetether_bus_core::{BusEnvelope, BusMessage};
+use codetether_task_queue::KnativeTask;
 
 pub(super) fn task() -> KnativeTask {
     KnativeTask {

@@ -1,7 +1,9 @@
 //! Notifications cannot substitute for authoritative queue state.
 
 use super::{super::delivery, fixtures};
-use crate::{a2a::types::TaskState, bus::BusMessage, server::KnativeTaskQueue};
+use codetether_a2a_core::TaskState;
+use codetether_bus_core::BusMessage;
+use codetether_task_queue::KnativeTaskQueue;
 
 #[tokio::test]
 async fn live_filters_unrelated_missing_and_claimed_tasks() {

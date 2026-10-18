@@ -1,7 +1,7 @@
 //! At-least-once notifications do not mutate task ownership.
 
 use super::{super::delivery, fixtures};
-use crate::server::KnativeTaskQueue;
+use codetether_task_queue::KnativeTaskQueue;
 
 #[tokio::test]
 async fn duplicate_notifications_are_at_least_once_not_claims() {

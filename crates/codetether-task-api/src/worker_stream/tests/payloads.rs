@@ -2,7 +2,7 @@
 
 use super::super::WorkerStream;
 use super::{body, fixtures};
-use crate::server::KnativeTaskQueue;
+use codetether_task_queue::KnativeTaskQueue;
 use tokio::sync::broadcast;
 
 #[tokio::test]

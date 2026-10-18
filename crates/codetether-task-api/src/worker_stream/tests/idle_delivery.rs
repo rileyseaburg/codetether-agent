@@ -1,7 +1,7 @@
 //! A subscribed idle stream wakes for work enqueued after its initial snapshot.
 
 use super::{super::WorkerStream, body, fixtures};
-use crate::server::KnativeTaskQueue;
+use codetether_task_queue::KnativeTaskQueue;
 use futures::StreamExt;
 use std::task::Poll;
 use tokio::sync::broadcast;

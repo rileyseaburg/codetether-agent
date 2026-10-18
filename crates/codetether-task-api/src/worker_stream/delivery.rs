@@ -1,9 +1,9 @@
 //! Resolve task notifications against the authoritative process-local queue.
 
-use crate::a2a::types::TaskState;
-use crate::bus::{BusEnvelope, BusMessage};
-use crate::server::{KnativeTask, KnativeTaskQueue};
 use axum::response::sse::Event;
+use codetether_a2a_core::TaskState;
+use codetether_bus_core::{BusEnvelope, BusMessage};
+use codetether_task_queue::{KnativeTask, KnativeTaskQueue};
 
 pub(super) async fn live(queue: &KnativeTaskQueue, envelope: BusEnvelope) -> Option<Event> {
     let BusMessage::TaskUpdate {

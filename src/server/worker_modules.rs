@@ -2,8 +2,6 @@
 
 #[path = "mux_realtime.rs"]
 mod mux_realtime;
-#[path = "worker_stream.rs"]
-mod worker_stream;
 #[path = "worker_task_claim.rs"]
 mod worker_task_claim;
 #[path = "worker_task_release.rs"]

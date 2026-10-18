@@ -1,7 +1,7 @@
 //! Lost notifications replay queued work, without claiming or reviving tasks.
 
 use super::{super::WorkerStream, body, fixtures};
-use crate::server::KnativeTaskQueue;
+use codetether_task_queue::KnativeTaskQueue;
 use tokio::sync::broadcast;
 
 #[tokio::test]

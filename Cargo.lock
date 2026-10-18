@@ -6597,6 +6597,8 @@ dependencies = [
  "tokio",
  "uuid",
  "tracing",
+ "futures",
+ "codetether-a2a-worker-core",
 ]
 
 [[package]]

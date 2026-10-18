@@ -1,7 +1,7 @@
 //! Lag is observable and closed channels do not fabricate task events.
 
 use super::{super::WorkerStream, body, fixtures};
-use crate::server::KnativeTaskQueue;
+use codetether_task_queue::KnativeTaskQueue;
 use futures::StreamExt;
 use tokio::sync::broadcast;
 

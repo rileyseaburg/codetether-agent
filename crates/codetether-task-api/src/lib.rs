@@ -41,3 +41,8 @@ pub mod output_ingest;
 pub mod output_poll;
 /// Worker terminal transitions and notifications.
 pub mod release;
+
+/// Atomic worker task claims.
+pub mod worker_claim;
+/// Queue-backed worker notification streaming.
+pub mod worker_stream;

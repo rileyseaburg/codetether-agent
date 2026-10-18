@@ -39,6 +39,7 @@ pub async fn worker_task_stream(
     let rx = state.bus.handle("worker_task_stream").into_receiver();
     let pending = state.knative_tasks.snapshot_pending().await;
 
-    let event_stream = super::worker_stream::WorkerStream::new(pending, rx, state.knative_tasks);
+    let event_stream =
+        codetether_task_api::worker_stream::WorkerStream::new(pending, rx, state.knative_tasks);
     Sse::new(event_stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15)))
 }

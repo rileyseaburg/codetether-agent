@@ -1,7 +1,7 @@
 //! Each lag recovery must consult current state, not retain previously queued work.
 
 use super::{super::WorkerStream, body, fixtures};
-use crate::server::KnativeTaskQueue;
+use codetether_task_queue::KnativeTaskQueue;
 use futures::StreamExt;
 use std::time::Duration;
 use tokio::sync::broadcast;

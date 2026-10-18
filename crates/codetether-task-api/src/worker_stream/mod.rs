@@ -1,22 +1,39 @@
-//! SSE stream state machine for [`worker_task_stream`](super::worker_task_stream).
+//! At-least-once worker task notifications with queue-backed lag recovery.
 
-#[path = "worker_stream/delivery.rs"]
 mod delivery;
 #[cfg(test)]
-#[path = "worker_stream/tests.rs"]
 mod tests;
 
-use crate::bus::BusEnvelope;
-use crate::server::{KnativeTask, KnativeTaskQueue};
 use axum::response::sse::Event;
+use codetether_bus_core::BusEnvelope;
+use codetether_task_queue::{KnativeTask, KnativeTaskQueue};
 use std::convert::Infallible;
 use tokio::sync::broadcast;
 
 /// At-least-once task notifications; claiming remains a separate queue operation.
 /// Broadcast lag replays current queued work, not durable history or worker claims.
-pub(crate) struct WorkerStream;
+/// # Examples
+/// ```
+/// let queue = codetether_task_queue::KnativeTaskQueue::new();
+/// let (_tx, rx) = tokio::sync::broadcast::channel(8);
+/// let _stream = codetether_task_api::worker_stream::WorkerStream::new(vec![], rx, queue);
+/// ```
+pub struct WorkerStream;
 
 impl WorkerStream {
+    /// Construct a stream from an initial snapshot and existing subscription.
+    /// # Arguments
+    /// * `pending` - Initial queued work, emitted in reverse vector order.
+    /// * `rx` - Bus subscription established before taking the snapshot.
+    /// * `queue` - Authoritative task state rechecked before delivery.
+    /// # Returns
+    /// Task and lag SSE events until the subscription closes.
+    /// # Examples
+    /// ```
+    /// let queue = codetether_task_queue::KnativeTaskQueue::new();
+    /// let (_tx, rx) = tokio::sync::broadcast::channel(8);
+    /// let _stream = codetether_task_api::worker_stream::WorkerStream::new(vec![], rx, queue);
+    /// ```
     pub fn new(
         pending: Vec<KnativeTask>,
         rx: broadcast::Receiver<BusEnvelope>,

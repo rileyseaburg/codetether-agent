@@ -1,7 +1,7 @@
 //! Reconnect delivery rechecks authoritative state, never stale snapshot data.
 
 use super::{super::WorkerStream, body, fixtures};
-use crate::server::KnativeTaskQueue;
+use codetether_task_queue::KnativeTaskQueue;
 use futures::StreamExt;
 use tokio::sync::broadcast;
 
