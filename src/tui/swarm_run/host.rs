@@ -1,34 +1,17 @@
-//! Bind shared swarm commands to the native executor and TUI.
-use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmControl, SwarmExecutor};
+//! Interactive swarm presentation and application backend selection.
 use crate::tui::{
     app::state::App,
     chat::message::{ChatMessage, MessageType},
     models::ViewMode,
 };
-use codetether_swarm_view::interactive::{Host, View};
-use codetether_swarm_view::{SwarmEvent, SwarmViewState};
-pub(super) struct Runtime;
-impl Host for Runtime {
-    async fn execute(
-        config: SwarmConfig,
-        control: SwarmControl,
-        events: tokio::sync::mpsc::Sender<SwarmEvent>,
-        task: String,
-        strategy: DecompositionStrategy,
-    ) -> Result<(), String> {
-        let mut executor = SwarmExecutor::new(config)
-            .with_event_tx(events)
-            .with_control(control);
-        if let Some(bus) = crate::bus::global::global() {
-            executor = executor.with_bus(bus);
-        }
-        executor
-            .execute(&task, strategy)
-            .await
-            .map(|_| ())
-            .map_err(|err| err.to_string())
-    }
-}
+use codetether_swarm_view::SwarmViewState;
+use codetether_swarm_view::interactive::View;
+pub(super) type Runtime = codetether_native_tui::runs::Swarm<
+    codetether_native_swarm::ExecutorHost<
+        crate::tool::registry_lifecycle::Native,
+        crate::agent::Agent,
+    >,
+>;
 impl View for App {
     fn swarm(&mut self) -> &mut SwarmViewState {
         &mut self.state.swarm

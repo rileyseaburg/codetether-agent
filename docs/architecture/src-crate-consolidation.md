@@ -26326,3 +26326,21 @@ Only the new package/root dependency are staged in Cargo.lock; unrelated working
 files remain untouched. Evidence: artifacts/consolidation-native-validation/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active and incomplete.
+
+### Native interactive task execution
+
+Moved TUI swarm and forage backend implementations into
+codetether-native-tui::runs. Swarm retains executor construction, event/control
+wiring, global bus attachment and the same execution error conversion. Forage
+retains the shared quiet-mode flag and the same application runtime. Root TUI
+modules select those backends through type aliases and keep only presentation
+operations on App. No view method or launch/monitor test body changed.
+
+Static comparisons preserve both execution bodies, all presentation methods,
+and the existing bus/quiet-mode identities. Module/dependency scans cover 729
+roots and 615 crates without missing modules, cycles or undeclared dependencies.
+Declaration, standalone formatting, file-limit and whitespace checks pass.
+Only native-tui execution dependencies are staged in Cargo.lock; unrelated
+working changes remain untouched. Evidence is retained in
+artifacts/consolidation-native-interactive/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active and incomplete.

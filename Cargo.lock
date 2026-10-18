@@ -4164,17 +4164,28 @@ dependencies = [
 name = "codetether-native-tui"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "codetether-agent-identity",
  "codetether-autochat-core",
+ "codetether-bus-core",
  "codetether-chat-layout",
  "codetether-chat-model",
  "codetether-chat-sync",
+ "codetether-cli-options",
  "codetether-file-picker",
  "codetether-file-share",
+ "codetether-forage-core",
+ "codetether-forage-interactive",
+ "codetether-forage-reporting",
+ "codetether-forage-runtime",
  "codetether-mermaid",
  "codetether-message-formatter",
  "codetether-model-failover",
  "codetether-relay-okr",
+ "codetether-session-control",
+ "codetether-swarm-core",
+ "codetether-swarm-runtime",
+ "codetether-swarm-view",
  "codetether-terminal-text",
  "codetether-tool-panel",
  "codetether-tool-preview",
@@ -4184,6 +4195,7 @@ dependencies = [
  "codetether-watchdog",
  "codetether-workspace-snapshot",
  "ratatui",
+ "tokio",
 ]
 
 [[package]]

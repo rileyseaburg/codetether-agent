@@ -27,5 +27,18 @@ codetether-watchdog = { path = "../codetether-watchdog", version = "0.1.0" }
 codetether-workspace-snapshot = { path = "../codetether-workspace-snapshot", version = "0.1.0" }
 ratatui = { version = "0.30.2", default-features = false }
 
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-forage-core = { path = "../codetether-forage-core", version = "0.1.0" }
+codetether-forage-interactive = { path = "../codetether-forage-interactive", version = "0.1.0" }
+codetether-forage-reporting = { path = "../codetether-forage-reporting", version = "0.1.0" }
+codetether-forage-runtime = { path = "../codetether-forage-runtime", version = "0.1.0" }
+codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-swarm-runtime = { path = "../codetether-swarm-runtime", version = "0.1.0" }
+codetether-swarm-view = { path = "../codetether-swarm-view", version = "0.1.0" }
+anyhow = "1"
+tokio = { version = "1", features = ["sync"] }
+
 [dev-dependencies]
 codetether-message-formatter = { path = "../codetether-message-formatter", version = "0.1.0" }
