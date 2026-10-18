@@ -12587,3 +12587,21 @@ Full workspace consolidation remains active.
 - Added a direct tracing dependency to the existing terminal crate; only its
   lockfile dependency change was staged. No terminal rendering, Cargo, rustc,
   compilation or Rust tests ran. Full consolidation remains incomplete.
+
+### Approval command core extraction
+
+- Moved approval command parsing, intent metadata/live-decision conversion,
+  ledger recording, session-grant calls and transcript text into
+  codetether-approval-core::command. Six modules contain at most 41 code lines.
+- Native command modules re-export the shared types/functions. Request target
+  resolution, live delivery, queue updates, release handling and UI effects
+  remain unchanged. The shared code calls the same core grant registries that
+  the native aliases already used; approval semantics are unchanged.
+- Verification: 23 source comparisons/checks passed for moved implementations,
+  native delegates and unchanged dispatch/order/queue/release/decision tests.
+  Module/dependency checks, direct rustfmt, source limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-approval-command/.
+- Added the shared slash-command dependency for exact command boundaries;
+  only that dependency was staged from Cargo.lock. No approval decisions,
+  Cargo, rustc, compilation or Rust tests were executed. Full consolidation
+  remains incomplete.

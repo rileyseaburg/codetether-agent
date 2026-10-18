@@ -2,7 +2,7 @@ use super::super::intent::ApprovalIntent;
 use super::{Action, action_from_rest};
 
 pub(super) fn parse(prompt: &str) -> Option<Action<'_>> {
-    let rest = crate::tui::app::text::command_with_optional_args(prompt, "/approve")?;
+    let rest = codetether_slash_command::command_with_optional_args(prompt, "/approve")?;
     let mut parts = rest.splitn(2, char::is_whitespace);
     let first = parts.next().unwrap_or("");
     let more = parts.next().unwrap_or("").trim();

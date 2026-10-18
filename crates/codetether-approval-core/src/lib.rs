@@ -48,3 +48,6 @@ pub mod interaction;
 pub mod session_command_grants;
 /// Process-local grants for exact tool/action/resource approval tuples.
 pub mod session_grants;
+
+/// Explicit approval command parsing, recording and result text.
+pub mod command;
