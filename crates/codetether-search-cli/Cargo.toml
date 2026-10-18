@@ -1,0 +1,15 @@
+[package]
+name = "codetether-search-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Search CLI arguments, router selection and result presentation"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.6.6", features = ["derive"] }
+codetether-memory-tool = { path = "../codetether-memory-tool", version = "0.1.0" }
+codetether-search = { path = "../codetether-search", version = "0.1.0" }
+codetether-search-router = { path = "../codetether-search-router", version = "0.1.0" }
+serde_json = "1"

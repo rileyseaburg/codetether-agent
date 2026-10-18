@@ -10838,3 +10838,18 @@ whitespace checks passed; modules have at most 38 code lines. Evidence is in
 `artifacts/consolidation-browser-cli/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, browser, offline probe or network operation ran.
 Full workspace consolidation remains active.
+
+### Search CLI extracted
+
+Moved search argument contracts, router override precedence, backend-count
+normalization and result formatting into `crates/codetether-search-cli`.
+Four modules use the existing search router and accept the caller's provider
+registry and automatic embedding policy. Native execution still initializes
+providers first and supplies the same application memory factory.
+
+Ten static comparisons/checks cover option schema, execution order, formatting
+and unchanged provider/memory bindings. Module/dependency graphs, file budgets
+and whitespace checks passed; modules have at most 24 code lines. Evidence is
+in `artifacts/consolidation-search-cli/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, provider initialization or search operation ran.
+Full workspace consolidation remains active.

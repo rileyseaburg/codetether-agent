@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-search-cli",
  "codetether-browser-cli",
  "codetether-oracle-cli",
  "codetether-connect-cli",
@@ -5578,6 +5579,18 @@ dependencies = [
  "codetether-browser",
  "codetether-browser-tool",
  "codetether-tool-core",
+ "serde_json",
+]
+
+[[package]]
+name = "codetether-search-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "codetether-memory-tool",
+ "codetether-search",
+ "codetether-search-router",
  "serde_json",
 ]
 
