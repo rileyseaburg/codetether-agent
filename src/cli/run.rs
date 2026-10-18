@@ -20,13 +20,8 @@ use codetether_relay_plan::{
     default_relay_okr_template, okr_from_planned_draft, truncate_with_ellipsis,
 };
 use codetether_relay_planner::plan_okr_draft_with_registry;
-use codetether_run_command::{
-    command_with_optional_args, is_easy_go_command, normalize_cli_go_command,
-    normalize_go_task_input, resolve_autochat_model, validate_easy_go_task,
-};
+use codetether_run_command::resolve_autochat_model;
 use uuid::Uuid;
-const AUTOCHAT_DEFAULT_AGENTS: usize = crate::autochat::AUTOCHAT_DEFAULT_AGENTS;
-const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
 
 pub use run_execute::execute;
 
@@ -73,41 +68,14 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
     // Protocol-first relay aliases in CLI:
     // - /go [count] <task>
     // - /autochat [count] <task>
-    let easy_go_requested = is_easy_go_command(&message);
-    let normalized = normalize_cli_go_command(&message);
-    if let Some(rest) = command_with_optional_args(&normalized, "/autochat") {
-        let Some(parsed) = crate::autochat::parse_autochat_request(
-            rest,
-            AUTOCHAT_DEFAULT_AGENTS,
-            AUTOCHAT_QUICK_DEMO_TASK,
-        ) else {
-            anyhow::bail!(
-                "Usage: /autochat [count] [--no-prd] <task>\nEasy mode: /go <task>\ncount range: 2-{} (default: {})",
-                AUTOCHAT_MAX_AGENTS,
-                AUTOCHAT_DEFAULT_AGENTS
-            );
-        };
-        let agent_count = parsed.agent_count;
-        let parsed_task = parsed.task;
-        let task = if easy_go_requested {
-            validate_easy_go_task(&parsed_task)?
-        } else {
-            normalize_go_task_input(&parsed_task)
-        };
-        let require_prd = easy_go_requested || !parsed.bypass_prd;
-        if require_prd && jsonl_output {
-            anyhow::bail!(
-                "--format jsonl does not support interactive /go approval; use /autochat --no-prd"
-            );
-        }
-
-        if !(2..=AUTOCHAT_MAX_AGENTS).contains(&agent_count) {
-            anyhow::bail!(
-                "Invalid relay size {}. count must be between 2 and {}",
-                agent_count,
-                AUTOCHAT_MAX_AGENTS
-            );
-        }
+    if let Some(request) = codetether_run_command::parse_relay_request(&message, jsonl_output)? {
+        let codetether_run_command::RelayRequest {
+            agent_count,
+            task,
+            require_prd,
+            easy_go_requested,
+            explicit_count,
+        } = request;
 
         let model = resolve_autochat_model(
             args.model.as_deref(),
@@ -120,7 +88,7 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
         if require_prd {
             // For /go, default to max concurrency (run all stories in parallel) unless
             // the user explicitly specified a count. /autochat keeps the requested count.
-            let max_concurrent = if easy_go_requested && !parsed.explicit_count {
+            let max_concurrent = if easy_go_requested && !explicit_count {
                 AUTOCHAT_MAX_AGENTS
             } else {
                 agent_count

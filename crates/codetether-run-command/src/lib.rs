@@ -14,3 +14,9 @@ pub use normalize::normalize_cli_go_command;
 pub use task::{normalize_go_task_input, validate_easy_go_task};
 #[cfg(test)]
 mod tests;
+
+mod relay_request;
+mod request;
+pub use relay_request::RelayRequest;
+pub use request::parse_relay_request;
+mod parsed;

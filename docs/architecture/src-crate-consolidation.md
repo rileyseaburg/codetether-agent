@@ -14052,3 +14052,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or execution/result output ran. Full workspace
   consolidation remains unfinished.
+
+### Relay request interpretation extraction
+
+- Moved relay alias recognition, parse errors, task normalization, approval-mode
+  validation and team-size validation into codetether-run-command. Separate
+  request and parsed-field modules return a typed RelayRequest.
+- Native execution consumes the normalized task, count, approval requirement,
+  easy-command flag and explicit-count flag. Model resolution, concurrency
+  selection and execution remain in their prior order after validation.
+- Verification: four static expanded-validation/returned-fields/native-body/size
+  checks passed, plus module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks. Evidence:
+  artifacts/consolidation-relay-request/.
+- No dependency or lockfile changes. No Cargo, rustc, Rust tests or command
+  execution ran. Full workspace consolidation remains unfinished.
