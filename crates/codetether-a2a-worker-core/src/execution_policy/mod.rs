@@ -13,6 +13,8 @@
 mod auto_approve;
 mod model_defaults;
 mod model_preferences;
+mod registry;
+pub use registry::Registry;
 mod task_agent_swarm_result;
 pub use auto_approve::{AutoApprove, parse_auto_approve};
 pub use model_defaults::default_model_for_provider;

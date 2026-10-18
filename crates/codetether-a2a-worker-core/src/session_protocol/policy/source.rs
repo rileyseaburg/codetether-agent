@@ -1,14 +1,6 @@
-use codetether_provider_core::{Message, Provider};
-use std::{future::Future, path::PathBuf, sync::Arc};
-/// Provider lookup used by the worker selection policy.
-/// # Implementors
-/// Native configured provider registries retain ordering and lookup semantics.
-pub trait Registry: Send + Sync {
-    /// Configured provider names.
-    fn list(&self) -> Vec<&str>;
-    /// Resolve a provider client by name.
-    fn get(&self, name: &str) -> Option<Arc<dyn Provider>>;
-}
+pub use crate::execution_policy::Registry;
+use codetether_provider_core::Message;
+use std::{future::Future, path::PathBuf};
 /// Native session state used to prepare a standard worker run.
 /// # Implementors
 /// Adapters retain credential loading, transcript provenance and title generation.

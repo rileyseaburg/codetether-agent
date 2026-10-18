@@ -20740,3 +20740,26 @@ checks, and whitespace checks passed. Evidence:
 `artifacts/consolidation-mcp-connect/`. No Cargo, rustc, or Python commands ran.
 No external MCP processes or Rust tests were executed. Compilation and runtime
 behavior remain unverified; broader consolidation remains in progress.
+
+### Worker model resolution and provider lookup ownership
+
+Moved explicit-model precedence, lazy registry loading, empty-registry handling,
+and tier-based swarm model resolution from native worker code into
+`codetether-a2a-worker-core::execution_policy::model_selection`. The native entry
+point supplies the existing shared Vault loader as a function value; it is
+invoked only after the nonblank explicit-model fast path. Provider ordering,
+default model selection, whitespace handling, and returned model text remain
+unchanged.
+
+Moved the worker registry contract from session execution into execution policy,
+preserving its original path through a re-export. Its native implementation now
+lives beside `ProviderRegistry` instead of in session preparation. The session
+source implementation itself is unchanged. No dependencies changed.
+
+Verification compares the complete selection body under the lazy-loader
+substitution, plus the registry contract, native registry implementation, and
+session source implementation. Direct rustfmt, source graph checks across 693
+roots, native file-size checks, and whitespace checks passed. Evidence:
+`artifacts/consolidation-worker-selection/`. No Cargo, rustc, or Python commands
+ran; no credential access or Rust tests were executed. Compilation and runtime
+behavior remain unverified. The broader workspace consolidation is still active.

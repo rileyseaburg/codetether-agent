@@ -11,9 +11,6 @@
 
 use crate::provider::ProviderRegistry;
 
-use super::model_defaults::default_model_for_provider;
-use super::model_preferences::choose_provider_for_tier;
-
 /// Resolves the effective swarm model from explicit or inferred settings.
 ///
 /// Explicit models win. Otherwise the worker loads the provider registry and
@@ -29,17 +26,10 @@ pub(super) async fn resolve_swarm_model(
     explicit_model: Option<String>,
     model_tier: Option<&str>,
 ) -> Option<String> {
-    if let Some(model) = explicit_model.filter(|value| !value.trim().is_empty()) {
-        return Some(model);
-    }
-    let registry = ProviderRegistry::shared_from_vault().await.ok()?;
-    let providers = registry.list();
-    if providers.is_empty() {
-        return None;
-    }
-    let provider = choose_provider_for_tier(providers.as_slice(), model_tier);
-    Some(format!(
-        "{provider}/{}",
-        default_model_for_provider(provider, model_tier)
-    ))
+    codetether_a2a_worker_core::execution_policy::model_selection::resolve_swarm_model(
+        explicit_model,
+        model_tier,
+        ProviderRegistry::shared_from_vault,
+    )
+    .await
 }

@@ -1,17 +1,9 @@
 use super::Native;
 use crate::{
-    provider::{Message, Provider, ProviderRegistry},
+    provider::{Message, ProviderRegistry},
     session::Session,
 };
-use std::{path::PathBuf, sync::Arc};
-impl codetether_a2a_worker_core::session_protocol::policy::Registry for ProviderRegistry {
-    fn list(&self) -> Vec<&str> {
-        ProviderRegistry::list(self)
-    }
-    fn get(&self, name: &str) -> Option<Arc<dyn Provider>> {
-        ProviderRegistry::get(self, name)
-    }
-}
+use std::path::PathBuf;
 impl codetether_a2a_worker_core::session_protocol::policy::Source for Native<'_> {
     type Registry = ProviderRegistry;
     async fn load(&mut self) -> anyhow::Result<ProviderRegistry> {

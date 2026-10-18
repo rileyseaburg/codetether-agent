@@ -6,9 +6,11 @@ use anyhow::Result;
 mod availability;
 mod parse;
 mod select;
+mod swarm;
 pub use availability::ensure_providers;
 use parse::parse_model;
 pub use select::select;
+pub use swarm::resolve_swarm_model;
 /// Provider and model chosen for a worker execution.
 
 pub struct ModelSelection {
