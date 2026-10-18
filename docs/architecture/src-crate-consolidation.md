@@ -17835,3 +17835,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-tui-reactor/`.
 - No Cargo, rustc, Python, event-loop execution, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Reactor event dispatch and post-event ordering
+
+- Moved event branching, terminal quit/error handling, session coalescing,
+  notice/reconnect/retry ordering, periodic-action ordering and post-event
+  draining/redraw updates into `codetether-tui-reactor::dispatch`.
+- Split native operations into state, event, notice, timer and after-event
+  adapters. Native code captures visible state before waiting, then supplies the
+  owned event to shared dispatch. Selector and timer implementations remain
+  unchanged.
+- Verified every native operation against the original handler bodies, the
+  complete shared sequence and early exits, snapshot/redraw behavior and
+  unchanged input sources. Module/dependency graphs, direct rustfmt, file limits
+  and whitespace passed. Added only the existing anyhow dependency to the
+  reactor package; unrelated working-copy changes remain untouched.
+  Evidence: `artifacts/consolidation-reactor-dispatch/`.
+- No Cargo, rustc, Python, event-loop execution, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

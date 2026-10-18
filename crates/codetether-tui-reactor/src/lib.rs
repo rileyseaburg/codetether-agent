@@ -11,3 +11,6 @@ pub use ready::Ready;
 pub use select::select;
 pub use sources::Sources;
 pub use timers::Timers;
+
+/// Event-handler ordering and post-event draining.
+pub mod dispatch;

@@ -9,3 +9,4 @@ description = "Terminal-first event selection and timer cadence for interactive 
 [dependencies]
 futures = "0.3"
 tokio = { version = "1", features = ["macros", "sync", "time"] }
+anyhow = "1"

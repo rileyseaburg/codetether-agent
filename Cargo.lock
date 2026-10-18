@@ -16025,6 +16025,7 @@ dependencies = [
 name = "codetether-tui-reactor"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "futures",
  "tokio",
 ]
