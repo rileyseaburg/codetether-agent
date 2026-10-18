@@ -16,7 +16,16 @@ pub fn touch(agent_id: &str) {
     STATE.touch(agent_id);
 }
 
-pub(crate) fn forget(agent_id: &str) {
+/// Remove an agent from the shared residency ledger.
+/// # Arguments
+/// * `agent_id` — Agent identity to remove.
+/// # Returns
+/// Unit; removing an absent identity has no effect.
+/// # Examples
+/// ```
+/// codetether_collaboration_state::residency::forget("docs-forgotten");
+/// ```
+pub fn forget(agent_id: &str) {
     STATE.forget(agent_id);
 }
 

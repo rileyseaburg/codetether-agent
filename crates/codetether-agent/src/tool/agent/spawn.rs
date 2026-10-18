@@ -19,7 +19,7 @@ mod session;
 #[path = "spawn/workspace.rs"]
 mod workspace;
 codetether_agent_spawn::declare_application_spawn!(
-    pub(super);
+    pub(super),
     crate::session::Session,
     crate::tool::agent::residency::reserve,
     crate::tool::agent::spawn::session::create,

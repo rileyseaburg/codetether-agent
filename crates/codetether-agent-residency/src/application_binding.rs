@@ -10,13 +10,13 @@
 /// # Examples
 /// ```text
 /// codetether_agent_residency::declare_application_residency!(
-///     pub(crate), pub(crate); Session, ClosedAgent, store, persistence,
+///     pub(crate), pub(crate), Session, ClosedAgent, store, persistence,
 ///     clear_trace, apply_overlay,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_application_residency {
-    ($agent_vis:vis, $tool_vis:vis; $session:ty, $prepared:ty, $store:path, $persistence:path, $clear:path, $overlay:path $(,)?) => {
+    ($agent_vis:vis, $tool_vis:vis, $session:ty, $prepared:ty, $store:path, $persistence:path, $clear:path, $overlay:path $(,)?) => {
         mod host {
             use $store as store;
             use $persistence as persistence;

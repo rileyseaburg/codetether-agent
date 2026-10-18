@@ -4,7 +4,7 @@
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __declare_registry_scope {
-    ($visibility:vis; $registry:ident, $resolve:path) => {
+    ($visibility:vis, $registry:ident, $resolve:path) => {
         $visibility mod scope {
             use super::{$registry, AgentEntry};
 

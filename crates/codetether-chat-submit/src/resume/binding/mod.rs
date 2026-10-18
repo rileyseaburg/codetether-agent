@@ -11,7 +11,7 @@ mod ui;
 /// See the frontend continuation module for concrete types and callback paths.
 #[macro_export]
 macro_rules! declare_frontend_continuation {
-    ($selection_visibility:vis;
+    ($selection_visibility:vis,
      $app:path, $slot:path, $registry:path, $bridge:path, $runtime:path,
      $session:path, $provider_message:path, $chat_message:path, $notification:path;
      $prompt:path, $publish:path, $dispatch:path;

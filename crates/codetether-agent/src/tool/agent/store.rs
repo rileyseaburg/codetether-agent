@@ -8,7 +8,7 @@ lazy_static::lazy_static! {
 }
 
 codetether_agent_registry::declare_application_registry!(
-    pub(super);
+    pub(super),
     Session, AGENT_STORE,
     crate::tool::agent::residency::touch,
     crate::tool::agent::residency::forget,

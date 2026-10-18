@@ -1,7 +1,7 @@
 //! Durable child loading with bounded LRU residency.
 
 codetether_agent_residency::declare_application_residency!(
-    pub(in crate::tool::agent), pub(in crate::tool);
+    pub(in crate::tool::agent), pub(in crate::tool),
     crate::session::Session,
     crate::tool::agent::persistence::ClosedAgent,
     crate::tool::agent::store,

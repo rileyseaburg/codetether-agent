@@ -2,7 +2,7 @@
 
 use codetether_agent_tree as query;
 codetether_agent_tree::declare_application_tree!(
-    pub(crate);
+    pub(crate),
     crate::tool::agent::store::AgentEntry,
     crate::tool::agent::store::entries_for_parent,
 );

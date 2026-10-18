@@ -9,12 +9,12 @@
 /// # Examples
 /// ```text
 /// codetether_agent_tree::declare_application_tree!(
-///     pub(crate); AgentEntry, entries_for_parent,
+///     pub(crate), AgentEntry, entries_for_parent,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_application_tree {
-    ($visibility:vis; $entry:ty, $snapshot:path $(,)?) => {
+    ($visibility:vis, $entry:ty, $snapshot:path $(,)?) => {
         $visibility use $crate::ListedAgent;
 
         mod host {

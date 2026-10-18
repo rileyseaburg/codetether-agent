@@ -28795,3 +28795,25 @@ result and verification limits are in consolidation-completion-audit.md.
 No Cargo, rustc, Python, Rust tests, doc tests or Docker builds ran. All authorized
 migration changes are committed; the source-consolidation objective is complete
 within the user's permitted static verification scope.
+
+## 2026-10-18 — Fix compiler-reported extraction errors
+
+The user supplied actual compiler failures after the static completion audit:
+residency `forget` was re-exported publicly with crate-only visibility, and
+exported macro matchers used a semicolon after `vis`, which Rust rejects.
+The prior completion conclusion was premature; the static expander had accepted
+invalid matcher grammar.
+
+Changed all 20 affected macro matchers, their application calls, forwarding
+calls and documentation examples to comma separators. Made both residency
+ledger cleanup and stale-overlay cleanup public for the existing cross-crate
+macro calls, with API documentation. Removed the three reported unused wildcard
+imports from plugin verification. Added single-visibility and paired-visibility
+negative probes to the declaration audit and scan all collected definitions for
+this invalid separator.
+
+Validation: seven declaration probes and 151 application expansions pass; nine
+Node regression tests, workspace/dependency audits, file limits, standalone
+rustfmt and Git whitespace checks pass. No Cargo, rustc or Python commands ran.
+Compilation and Rust tests remain unverified. Existing Cargo.lock and A2A edits
+are excluded from this fix commit.

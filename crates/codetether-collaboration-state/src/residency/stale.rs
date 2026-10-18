@@ -31,7 +31,16 @@ pub fn take(agent_id: &str) -> bool {
     lock().remove(agent_id)
 }
 
-pub(super) fn forget(agent_id: &str) {
+/// Clear an agent's pending resume-overlay marker.
+/// # Arguments
+/// * `agent_id` — Agent identity whose marker should be removed.
+/// # Returns
+/// Unit; removing an absent marker has no effect.
+/// # Examples
+/// ```
+/// codetether_collaboration_state::residency::stale::forget("docs-forgotten");
+/// ```
+pub fn forget(agent_id: &str) {
     lock().remove(agent_id);
 }
 

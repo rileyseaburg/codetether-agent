@@ -8,11 +8,11 @@
 ///
 /// # Examples
 /// ```text
-/// codetether_agent_view::declare_application_view!(pub(crate); Session, store);
+/// codetether_agent_view::declare_application_view!(pub(crate), Session, store);
 /// ```
 #[macro_export]
 macro_rules! declare_application_view {
-    ($visibility:vis; $session:ty, $store:path $(,)?) => {
+    ($visibility:vis, $session:ty, $store:path $(,)?) => {
         pub use $crate::{AgentOrigin, AgentSnapshot};
         pub(crate) use host::ApplicationHost;
 

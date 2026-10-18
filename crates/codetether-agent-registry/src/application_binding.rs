@@ -9,12 +9,12 @@
 /// # Examples
 /// ```text
 /// codetether_agent_registry::declare_application_registry!(
-///     pub(super); Session, REGISTRY, touch, forget, resolve_tree,
+///     pub(super), Session, REGISTRY, touch, forget, resolve_tree,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_application_registry {
-    ($visibility:vis; $session:ty, $registry:ident, $touch:path, $forget:path, $resolve:path $(,)?) => {
+    ($visibility:vis, $session:ty, $registry:ident, $touch:path, $forget:path, $resolve:path $(,)?) => {
         $visibility type AgentEntry = $crate::AgentEntry<$session>;
         $crate::impl_session_identity!($session);
 
@@ -56,6 +56,6 @@ macro_rules! declare_application_registry {
             $registry.reparent_owner(from, to);
         }
 
-        $crate::__declare_registry_scope!($visibility; $registry, $resolve);
+        $crate::__declare_registry_scope!($visibility, $registry, $resolve);
     };
 }

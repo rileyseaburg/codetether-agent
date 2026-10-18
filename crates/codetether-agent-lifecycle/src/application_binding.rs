@@ -9,12 +9,12 @@
 /// # Examples
 /// ```text
 /// codetether_agent_lifecycle::declare_application_lifecycle!(
-///     pub(super); Session, persistence, residency, store, clear_trace,
+///     pub(super), Session, persistence, residency, store, clear_trace,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_application_lifecycle {
-    ($visibility:vis; $session:ty, $persistence:path, $residency:path, $store:path, $clear:path $(,)?) => {
+    ($visibility:vis, $session:ty, $persistence:path, $residency:path, $store:path, $clear:path $(,)?) => {
         mod host {
             use $persistence as persistence;
             use $residency as residency;

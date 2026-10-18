@@ -1,7 +1,7 @@
 //! Same-turn and queued delivery for inter-agent messages.
 
 codetether_agent_communication::declare_application_communication!(
-    pub(crate);
+    pub(crate),
     crate::session::Session,
     crate::tool::agent::store,
     crate::session::helper::steering,

@@ -9,12 +9,12 @@
 /// # Examples
 /// ```text
 /// codetether_agent_spawn::declare_application_registration!(
-///     pub(super); Session, store, persistence,
+///     pub(super), Session, store, persistence,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_application_registration {
-    ($visibility:vis; $session:ty, $store:path, $persistence:path $(,)?) => {
+    ($visibility:vis, $session:ty, $store:path, $persistence:path $(,)?) => {
         mod host {
             use $store as store;
             use $persistence as persistence;

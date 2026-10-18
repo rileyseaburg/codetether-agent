@@ -1,5 +1,4 @@
 //! constant time eq for verified plugin registration.
-use super::*;
 
 /// Constant-time byte comparison.
 pub(super) fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {

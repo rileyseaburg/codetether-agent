@@ -19,7 +19,7 @@ macro_rules! declare_frontend_shell_view {
 /// See the frontend shell command module for invocation and visibility.
 #[macro_export]
 macro_rules! declare_frontend_shell_command {
-    ($visibility:vis; $app:path $(,)?) => {
+    ($visibility:vis, $app:path $(,)?) => {
         use $app as App;
         use ::std::path::Path;
         /// Consume shell input through the shared background command lifecycle.

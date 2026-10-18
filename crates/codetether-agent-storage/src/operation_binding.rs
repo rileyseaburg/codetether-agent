@@ -4,7 +4,7 @@
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __declare_storage_operations {
-    ($visibility:vis; $session:ty, $host:path) => {
+    ($visibility:vis, $session:ty, $host:path) => {
         pub(crate) mod atomic {
             pub(crate) use $crate::atomic::{read, remove, write};
         }

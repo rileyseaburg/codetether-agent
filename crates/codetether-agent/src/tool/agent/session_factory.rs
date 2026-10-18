@@ -1,7 +1,7 @@
 //! Application bindings for shared managed-child session lifecycle rules.
 
 codetether_agent_session::declare_session_factory!(
-    pub(super);
+    pub(super),
     crate::session::Session,
     crate::session::helper::runtime::prior_context_allowed_for_session,
 );

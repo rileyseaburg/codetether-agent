@@ -8,12 +8,12 @@
 /// # Examples
 /// ```text
 /// codetether_agent_session::declare_session_factory!(
-///     pub(super); Session, prior_context_allowed,
+///     pub(super), Session, prior_context_allowed,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_session_factory {
-    ($visibility:vis; $session:ty, $prior:path $(,)?) => {
+    ($visibility:vis, $session:ty, $prior:path $(,)?) => {
         $crate::impl_managed_session!($session, $prior);
 
         $visibility async fn create_agent_session(
@@ -46,11 +46,11 @@ macro_rules! declare_session_factory {
 ///
 /// # Examples
 /// ```text
-/// codetether_agent_session::declare_isolated_session!(pub(super); Session);
+/// codetether_agent_session::declare_isolated_session!(pub(super), Session);
 /// ```
 #[macro_export]
 macro_rules! declare_isolated_session {
-    ($visibility:vis; $session:ty) => {
+    ($visibility:vis, $session:ty) => {
         $visibility async fn create(
             params: &$crate::__private::Params,
             request: &$crate::__private::SpawnRequest<'_>,

@@ -3,11 +3,11 @@
 ///
 /// # Examples
 /// ```text
-/// codetether_tui_tick::declare_frontend_worker_sync!(pub(crate); App, Bridge, sync_agents);
+/// codetether_tui_tick::declare_frontend_worker_sync!(pub(crate), App, Bridge, sync_agents);
 /// ```
 #[macro_export]
 macro_rules! declare_frontend_worker_sync {
-    ($visibility:vis; $app:ty, $bridge:ty, $sync:path $(,)?) => {
+    ($visibility:vis, $app:ty, $bridge:ty, $sync:path $(,)?) => {
         $visibility fn before_draw(
     app: &mut $app,
     worker_bridge: &Option<$bridge>,

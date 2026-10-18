@@ -39,7 +39,24 @@ consolidation evidence directories.
 
 ## Verification limit
 
-This completes the requested source ownership and physical consolidation using
-the permitted checks. Static audits do not establish that Rust compiles or that
-runtime tests pass. Those results remain unverified under the explicit tooling
-restriction; this report does not claim otherwise.
+The source ownership and physical relocation checks above passed, but the
+subsequent user-supplied compiler output exposed errors that these checks had
+missed. Marking the overall goal complete was premature. Static audits do not
+establish that Rust compiles or that runtime tests pass.
+
+## Compiler-reported follow-up
+
+The user reported E0364 for the public residency `forget` re-export and invalid
+semicolon separators after macro visibility fragments. The follow-up makes
+both residency cleanup functions public because application macros invoke them
+across crate boundaries. It changes all 20 affected macro matchers and their
+callers/examples to comma separators, and removes three reported unused
+imports in plugin verification.
+
+The declaration audit now explicitly rejects semicolons after visibility
+fragments throughout the collected macro definitions. Both the single and
+paired visibility failure shapes have negative probes. Its seven probes and
+151 application expansions pass, as do the nine Node regression cases,
+workspace/dependency audits, file-limit check and standalone formatting check.
+These are static results only. Compilation and Rust tests have not been rerun;
+the no-Cargo, no-rustc and no-Python restrictions remain in force.

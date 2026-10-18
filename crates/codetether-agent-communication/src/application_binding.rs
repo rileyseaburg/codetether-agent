@@ -9,12 +9,12 @@
 /// # Examples
 /// ```text
 /// codetether_agent_communication::declare_application_communication!(
-///     pub(crate); Session, store, steering,
+///     pub(crate), Session, store, steering,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_application_communication {
-    ($visibility:vis; $session:ty, $store:path, $steering:path $(,)?) => {
+    ($visibility:vis, $session:ty, $store:path, $steering:path $(,)?) => {
         $visibility use $crate::Route;
 
         mod host {

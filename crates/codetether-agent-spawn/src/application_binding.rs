@@ -9,13 +9,13 @@
 /// # Examples
 /// ```text
 /// codetether_agent_spawn::declare_application_spawn!(
-///     pub(super); Session, reserve, create, persist, validate, identity,
+///     pub(super), Session, reserve, create, persist, validate, identity,
 ///     kick_off, ephemeral,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_application_spawn {
-    ($visibility:vis; $session:ty, $reserve:path, $create:path, $persist:path, $validate:path, $identity:path, $kickoff:path, $ephemeral:path $(,)?) => {
+    ($visibility:vis, $session:ty, $reserve:path, $create:path, $persist:path, $validate:path, $identity:path, $kickoff:path, $ephemeral:path $(,)?) => {
         mod host {
             pub struct ApplicationHost;
 

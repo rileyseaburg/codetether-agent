@@ -1,6 +1,6 @@
 //! Frontend continuation and session-picker resource selection.
 codetether_chat_submit::declare_frontend_continuation!(
-    pub(in crate::tui::app::input);
+    pub(in crate::tui::app::input),
     crate::tui::app::state::App,
     crate::tui::app::session_runtime::SessionSlot,
     crate::provider::ProviderRegistry,

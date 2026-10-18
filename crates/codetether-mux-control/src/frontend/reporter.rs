@@ -3,11 +3,11 @@
 ///
 /// # Examples
 /// ```text
-/// codetether_mux_control::declare_frontend_reporter!(pub(crate); App, SessionView);
+/// codetether_mux_control::declare_frontend_reporter!(pub(crate), App, SessionView);
 /// ```
 #[macro_export]
 macro_rules! declare_frontend_reporter {
-    ($visibility:vis; $app:path, $session:path $(,)?) => {
+    ($visibility:vis, $app:path, $session:path $(,)?) => {
         use $app as App;
         use $session as SessionView;
         #[derive(Default)]

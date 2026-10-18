@@ -4,11 +4,11 @@
 ///
 /// # Examples
 /// ```text
-/// codetether_spawn_policy::declare_identity_reservation!(pub(super); store, persistence);
+/// codetether_spawn_policy::declare_identity_reservation!(pub(super), store, persistence);
 /// ```
 #[macro_export]
 macro_rules! declare_identity_reservation {
-    ($visibility:vis; $store:path, $persistence:path $(,)?) => {
+    ($visibility:vis, $store:path, $persistence:path $(,)?) => {
         $visibility use $crate::Reservation;
         mod host {
             use $store as store;
@@ -39,12 +39,12 @@ macro_rules! declare_identity_reservation {
 /// # Examples
 /// ```text
 /// codetether_spawn_policy::declare_spawn_validation!(
-///     pub(super); SpawnRequest<'_>, lineage_for_session, get_registry,
+///     pub(super), SpawnRequest<'_>, lineage_for_session, get_registry,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_spawn_validation {
-    ($visibility:vis; $request:ty, $lineage:path, $registry:path $(,)?) => {
+    ($visibility:vis, $request:ty, $lineage:path, $registry:path $(,)?) => {
         /// Validate depth and return an optional advisory model-cost warning.
         $visibility async fn validate_spawn_request(
             request: &$request,

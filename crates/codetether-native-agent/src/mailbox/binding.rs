@@ -8,12 +8,12 @@
 /// # Examples
 /// ```text
 /// codetether_native_agent::declare_application_mailbox!(
-///     pub(crate); store, execute_message,
+///     pub(crate), store, execute_message,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_application_mailbox {
-    ($visibility:vis; $store:path, $execute:path $(,)?) => {
+    ($visibility:vis, $store:path, $execute:path $(,)?) => {
         use $store as store;
         pub(crate) use $crate::__private::child_mailbox::{Submission, pending};
 

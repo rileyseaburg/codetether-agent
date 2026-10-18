@@ -1,7 +1,7 @@
 //! Application bindings for shared durable-child lifecycle orchestration.
 
 codetether_agent_lifecycle::declare_application_lifecycle!(
-    pub(super);
+    pub(super),
     crate::session::Session,
     crate::tool::agent::persistence,
     crate::tool::agent::residency,

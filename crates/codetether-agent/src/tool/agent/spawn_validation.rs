@@ -11,7 +11,7 @@
 //! ```
 
 codetether_spawn_policy::declare_spawn_validation!(
-    pub(super);
+    pub(super),
     crate::tool::agent::spawn_request::SpawnRequest<'_>,
     crate::tool::agent::store::lineage_for_session,
     crate::tool::agent::registry::get_registry,

@@ -1,7 +1,7 @@
 //! Durable spawned-agent manifests and recovery orchestration.
 
 codetether_agent_storage::declare_application_storage!(
-    pub(in crate::tool::agent);
+    pub(in crate::tool::agent),
     crate::session::Session,
     crate::tool::agent::store,
     crate::tool::agent::collaboration_runtime::message_queue,

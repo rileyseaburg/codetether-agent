@@ -1,5 +1,4 @@
 //! registration policy for verified plugin registration.
-use super::*;
 
 pub(super) fn allow_unverified_content_registration() -> bool {
     std::env::var("CODETETHER_ALLOW_UNVERIFIED_PLUGIN_CONTENT")

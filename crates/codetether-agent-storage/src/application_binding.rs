@@ -10,15 +10,15 @@
 /// # Examples
 /// ```text
 /// codetether_agent_storage::declare_application_storage!(
-///     pub(crate); Session, live_registry, mailbox,
+///     pub(crate), Session, live_registry, mailbox,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_application_storage {
-    ($visibility:vis; $session:ty, $store:path, $mailbox:path $(,)?) => {
+    ($visibility:vis, $session:ty, $store:path, $mailbox:path $(,)?) => {
         mod host {
-            use $store as store;
             use $mailbox as message_queue;
+            use $store as store;
 
             pub struct ApplicationHost;
 
@@ -53,12 +53,16 @@ macro_rules! declare_application_storage {
                 fn dispatch_next(id: String) {
                     message_queue::dispatch_next(id);
                 }
-                async fn reparent_mailbox(id: &str, from: &str, to: &str) -> $crate::__private::Result<()> {
+                async fn reparent_mailbox(
+                    id: &str,
+                    from: &str,
+                    to: &str,
+                ) -> $crate::__private::Result<()> {
                     message_queue::reparent_owner(id, from, to).await
                 }
             }
         }
 
-        $crate::__declare_storage_operations!($visibility; $session, host::ApplicationHost);
+        $crate::__declare_storage_operations!($visibility, $session, host::ApplicationHost);
     };
 }
