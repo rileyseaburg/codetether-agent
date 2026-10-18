@@ -37,3 +37,12 @@ pub mod interactive;
 
 #[cfg(test)]
 mod legacy_tui_tests;
+
+mod application_binding;
+
+/// Types used by frontend goal-preparation declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use codetether_okr::OkrRepository;
+    pub use codetether_provider_core::Provider;
+}

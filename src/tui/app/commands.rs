@@ -3,8 +3,6 @@ use std::sync::Arc;
 
 #[path = "commands/a2a.rs"]
 mod a2a;
-#[path = "commands/go_host.rs"]
-mod go_host;
 #[path = "commands/goal/mod.rs"]
 pub(crate) mod goal;
 #[path = "commands/open_editor.rs"]
@@ -92,14 +90,14 @@ pub async fn handle_slash_command(
     .await;
 }
 
-async fn handle_go_command(
-    app: &mut App,
-    session: &mut Session,
-    _registry: Option<&Arc<ProviderRegistry>>,
-    rest: &str,
-) {
-    go_host::execute(app, session, rest).await;
-}
+codetether_relay_okr::declare_go_command!(
+    crate::tui::app::state::App,
+    crate::session::Session,
+    crate::provider::ProviderRegistry,
+    crate::autochat::model_rotation::resolve_provider_for_model_autochat,
+    crate::tui::app::commands::push_system_message,
+    crate::tui::constants::AUTOCHAT_DEFAULT_AGENTS,
+);
 
 fn handle_autochat_command(app: &mut App, rest: &str) {
     codetether_autochat_core::interactive::command::handle_autochat_command::<

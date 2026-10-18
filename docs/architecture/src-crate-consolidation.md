@@ -27186,3 +27186,18 @@ production-scope, standalone formatting, file-limit and whitespace checks pass
 for 725 roots and 617 crates. No dependency/lock changes were needed; unrelated
 working files remain untouched. Evidence: artifacts/consolidation-ralph-command-binding/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Interactive goal-preparation command binding
+
+Moved the /go session/view host, provider lookup adapter and command wrapper
+into codetether-relay-okr::declare_go_command. Removed go_host.rs and its provider
+module. Root selection retains App, Session, provider registry/model resolver,
+notice callback and default agent count. Registry loading, model assignment,
+error conversion, repository access and pending approval state are unchanged.
+
+All eleven expanded function bodies match the originals after callback/type path
+substitution. Tests are untouched. Declaration, module/dependency, native
+production-scope, standalone formatting, file-limit and whitespace checks pass
+for 725 roots and 617 crates. No dependency/lock changes were needed; unrelated
+working files remain untouched. Evidence: artifacts/consolidation-go-command-binding/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
