@@ -3847,6 +3847,9 @@ dependencies = [
  "codetether-provider-core",
  "codetether-rlm",
  "serde_json",
+ "codetether-build-policy",
+ "codetether-tool-core",
+ "tracing",
 ]
 
 [[package]]

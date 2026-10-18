@@ -1,9 +1,6 @@
 use crate::provider::Message;
 use crate::tool::ToolRegistry;
-use serde_json::json;
 use std::path::Path;
-
-use super::text::{extract_candidate_file_paths, latest_user_text, truncate_with_ellipsis};
 
 #[path = "router_candidates.rs"]
 mod router_candidates;
@@ -15,104 +12,13 @@ pub async fn build_proactive_lsp_context_message(
     session_messages: &[Message],
     workspace_dir: &Path,
 ) -> Option<Message> {
-    if step != 1 {
-        return None;
-    }
-
-    let Some(lsp_tool) = tool_registry.get("lsp") else {
-        return None;
-    };
-
-    let Some(user_text) = latest_user_text(session_messages) else {
-        return None;
-    };
-
-    let max_files = std::env::var("CODETETHER_PROACTIVE_LSP_MAX_FILES")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .filter(|v| *v > 0)
-        .unwrap_or(3);
-
-    let max_chars = std::env::var("CODETETHER_PROACTIVE_LSP_MAX_CHARS")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .filter(|v| *v > 0)
-        .unwrap_or(1600);
-
-    let paths = extract_candidate_file_paths(&user_text, workspace_dir, max_files);
-    if paths.is_empty() {
-        return None;
-    }
-
-    let mut sections: Vec<String> = Vec::new();
-    for path in paths {
-        let diagnostics_args = json!({
-            "action": "diagnostics",
-            "file_path": path,
-        });
-
-        match lsp_tool.execute(diagnostics_args).await {
-            Ok(result) if result.success => {
-                let output = result.output.trim();
-                if !output.is_empty() && output != "No diagnostics found" {
-                    sections.push(format!(
-                        "File: {}\n{}",
-                        path,
-                        truncate_with_ellipsis(output, max_chars)
-                    ));
-                    continue;
-                }
-            }
-            Ok(result) => {
-                tracing::debug!(
-                    file = %path,
-                    output = %truncate_with_ellipsis(&result.output, 200),
-                    "Proactive LSP diagnostics skipped file due to unsuccessful result"
-                );
-            }
-            Err(e) => {
-                tracing::debug!(file = %path, error = %e, "Proactive LSP diagnostics prefetch failed");
-            }
-        }
-
-        let symbol_args = json!({
-            "action": "documentSymbol",
-            "file_path": path,
-        });
-        match lsp_tool.execute(symbol_args).await {
-            Ok(result) if result.success => {
-                sections.push(format!(
-                    "File: {}\n{}",
-                    path,
-                    truncate_with_ellipsis(&result.output, max_chars / 2)
-                ));
-            }
-            Ok(result) => {
-                tracing::debug!(
-                    file = %path,
-                    output = %truncate_with_ellipsis(&result.output, 200),
-                    "Proactive LSP symbol recovery skipped file due to unsuccessful result"
-                );
-            }
-            Err(e) => {
-                tracing::debug!(file = %path, error = %e, "Proactive LSP symbol recovery failed");
-            }
-        }
-    }
-
-    if sections.is_empty() {
-        return None;
-    }
-
-    Some(Message {
-        role: crate::provider::Role::System,
-        content: vec![crate::provider::ContentPart::Text {
-            text: format!(
-                "Mandatory proactive LSP context (prefetched before first reply). Prioritize these real LSP diagnostics and errors over speculation. Do not call the lsp tool just to rediscover the same issues unless you need deeper navigation detail.\n\n{}",
-                sections.join("\n\n---\n\n")
-            ),
-        }],
-    })
+    codetether_proactive_context::lsp::build(
+        step,
+        || tool_registry.get("lsp"),
+        session_messages,
+        workspace_dir,
+    )
+    .await
 }
 
 pub fn known_good_router_candidates(provider: &str, failed_model: &str) -> Vec<String> {

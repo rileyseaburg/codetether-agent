@@ -15403,3 +15403,23 @@ Full workspace consolidation remains active.
   whitespace checks passed. Evidence: `artifacts/consolidation-swarm-integration/`.
 - No Cargo, rustc, Python, compilation or Rust tests ran. The broader workspace
   consolidation remains unfinished.
+
+### Proactive LSP context ownership
+
+- Moved first-turn LSP context prefetch from `src/session/helper/router.rs` into
+  the existing `codetether-proactive-context::lsp` module. Separated collection,
+  positive environment limits, diagnostics, symbol fallback, and message format.
+- Preserved step-one gating before tool lookup, latest-user path discovery,
+  per-file diagnostic preference, symbol fallback, logging, truncation budgets,
+  and the exact system-message text. Native routing and bandit policy are unchanged.
+- The crate was initially mistaken for a new destination; its existing manifest
+  and root were restored before adding the LSP module. All pre-existing source
+  modules and exports were then compared with HEAD and verified unchanged.
+- Verification: expanded the helper bodies and compared the complete prefetch
+  flow with its original token stream; checked native delegation, unchanged
+  router functions, existing proactive-context API/modules, and isolated lock
+  additions. Module reachability, dependency DAG, direct rustfmt, 50-line limits,
+  file-size ratchet and `git diff --check` passed. Evidence:
+  `artifacts/consolidation-proactive-context/`.
+- No Cargo, rustc, Python, compilation or Rust tests ran. Full consolidation
+  remains incomplete; provider failover policy still resides in the native router.

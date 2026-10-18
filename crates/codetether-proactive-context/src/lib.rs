@@ -13,3 +13,6 @@ pub use host::Host;
 pub use lifecycle::{prepare, register, remove, schedule};
 pub use merge::prepared_index;
 pub use source::Source;
+
+/// First-turn LSP diagnostic and symbol prefetch.
+pub mod lsp;

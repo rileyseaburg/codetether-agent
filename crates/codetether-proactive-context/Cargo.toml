@@ -16,3 +16,7 @@ codetether-proactive-worker = { path = "../codetether-proactive-worker", version
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
 serde_json = "1"
+
+codetether-build-policy = { path = "../codetether-build-policy", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+tracing = "0.1"
