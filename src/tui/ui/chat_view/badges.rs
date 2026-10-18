@@ -9,32 +9,6 @@ use crate::tui::ui::{
     trust_status::trust_status_badge_span,
 };
 use ratatui::text::Span;
-impl codetether_chat_status::BadgeSource for App {
-    fn auto_apply_spans(&self) -> Vec<Span<'static>> {
-        auto_apply_spans(self)
-    }
-    fn yolo_badge(&self) -> Option<Span<'static>> {
-        yolo_badge(self)
-    }
-    fn trust_status_badge_span(&self) -> Option<Span<'static>> {
-        trust_status_badge_span()
-    }
-    fn bus_status_badge_span(&self) -> Span<'static> {
-        bus_status_badge_span(self)
-    }
-    fn pending_images_badge(&self) -> Option<Span<'static>> {
-        pending_images_badge(self)
-    }
-    fn latency_badge_spans(&self) -> Option<Vec<Span<'static>>> {
-        latency_badge_spans(self)
-    }
-    fn turn_latency_badge(&self) -> Option<Span<'static>> {
-        turn_latency_badge(self)
-    }
-    fn agent_rail_spans(&self) -> Vec<Span<'static>> {
-        super::agent_rail::agent_rail_spans(self)
-    }
-}
 /// Assemble badges from live application providers.
 ///
 /// # Arguments
@@ -51,5 +25,18 @@ impl codetether_chat_status::BadgeSource for App {
 /// # }
 /// ```
 pub fn badge_spans(app: &App, session_label: &str) -> Vec<Span<'static>> {
-    codetether_chat_status::badge_spans(app, session_label)
+    codetether_chat_status::badge_spans(
+        &codetether_chat_status::BadgeProviders {
+            state: app,
+            auto_apply: auto_apply_spans,
+            yolo: yolo_badge,
+            trust: trust_status_badge_span,
+            bus: bus_status_badge_span,
+            images: pending_images_badge,
+            latency: latency_badge_spans,
+            turn: turn_latency_badge,
+            agents: super::agent_rail::agent_rail_spans,
+        },
+        session_label,
+    )
 }

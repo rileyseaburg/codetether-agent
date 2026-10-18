@@ -2,6 +2,7 @@
 pub use agent_rail::agent_rail_spans;
 pub use assembly::build_status_lines;
 pub use badge_assembly::badge_spans;
+pub use badge_providers::BadgeProviders;
 pub use badge_source::BadgeSource;
 pub use bus_badge::bus_status_badge_span;
 pub use bus_label::bus_status_label_and_color;
@@ -10,6 +11,7 @@ pub use clock_labels::{format_duration_ms, format_timestamp};
 pub use codetether_chat_layout::STACK_WIDTH_THRESHOLD;
 pub use elapsed_badge::elapsed_badge;
 pub use metric_assembly::metric_spans;
+pub use metric_providers::MetricProviders;
 pub use metric_source::MetricSource;
 pub use session_label::session_model_label;
 pub use streaming_header::streaming_header;

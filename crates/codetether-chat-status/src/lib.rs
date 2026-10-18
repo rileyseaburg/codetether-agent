@@ -30,9 +30,11 @@ mod timing_view;
 
 mod agent_rail;
 mod badge_assembly;
+mod badge_providers;
 mod badge_source;
 mod elapsed_badge;
 mod metric_assembly;
+mod metric_providers;
 mod metric_source;
 mod turn_badge;
 

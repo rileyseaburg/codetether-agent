@@ -28591,3 +28591,24 @@ file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
 Evidence: artifacts/consolidation-agent-transcript/. No dependencies or unrelated
 working files changed. Cargo, rustc, Python, compilation, doc tests and runtime
 tests were not run. Full consolidation remains active and incomplete.
+
+### Move badge and metric source implementations into chat-status
+
+Moved all fourteen BadgeSource and MetricSource method implementations out of
+src/tui/ui/chat_view/badges.rs and status_metrics.rs into
+codetether-chat-status::{BadgeProviders,MetricProviders}. The crate-owned
+adapters borrow frontend state and typed function pointers. Root functions now
+supply callback mappings and invoke the unchanged ordered assemblers.
+
+Callbacks remain lazy: constructing a provider performs no telemetry reads or
+rendering. Static comparisons verify every old function target and argument,
+every new callback body, and both root mappings. The badge/metric assemblers,
+traits and existing packing tests are unchanged. Public root badge_spans and
+metric_spans entry points remain; App no longer implements the two source
+traits because the crate-owned adapters now do so.
+
+Declaration, module/dependency, production-dependency, dependency-audit,
+file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
+Evidence: artifacts/consolidation-status-providers/. No dependencies or unrelated
+working files changed. Cargo, rustc, Python, compilation, doc tests and runtime
+tests were not run. Full consolidation remains active and incomplete.

@@ -5,26 +5,6 @@ use super::{
 };
 use crate::tui::app::state::App;
 use ratatui::text::Span;
-impl codetether_chat_status::MetricSource for App {
-    fn processing_badge(&self) -> Option<Span<'static>> {
-        super::processing_badge::processing_badge(self)
-    }
-    fn push_token_spans(&self, spans: &mut Vec<Span<'static>>) {
-        push_token_spans(spans)
-    }
-    fn context_gauge_spans(&self) -> Option<Vec<Span<'static>>> {
-        super::context_gauge::context_gauge_spans(self)
-    }
-    fn push_throughput_span(&self, spans: &mut Vec<Span<'static>>) {
-        push_throughput_span(spans, self)
-    }
-    fn sparkline_spans(&self) -> Option<Vec<Span<'static>>> {
-        super::throughput_sparkline::sparkline_spans(self)
-    }
-    fn status_text_span(&self) -> Span<'static> {
-        status_text_span(self)
-    }
-}
 /// Assemble metric spans while retaining native telemetry sampling.
 ///
 /// # Arguments
@@ -40,5 +20,13 @@ impl codetether_chat_status::MetricSource for App {
 /// # }
 /// ```
 pub fn metric_spans(app: &App) -> Vec<Span<'static>> {
-    codetether_chat_status::metric_spans(app)
+    codetether_chat_status::metric_spans(&codetether_chat_status::MetricProviders {
+        state: app,
+        processing: super::processing_badge::processing_badge,
+        tokens: push_token_spans,
+        context: super::context_gauge::context_gauge_spans,
+        throughput: push_throughput_span,
+        sparkline: super::throughput_sparkline::sparkline_spans,
+        status: status_text_span,
+    })
 }
