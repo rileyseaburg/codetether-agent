@@ -134,8 +134,6 @@ mod tick_event;
 mod tick_flush;
 #[path = "tick_idle_reap.rs"]
 mod tick_idle_reap;
-#[path = "tick_process.rs"]
-mod tick_process;
 #[path = "tick_progress.rs"]
 mod tick_progress;
 #[path = "tick_run.rs"]
@@ -144,8 +142,6 @@ mod tick_run;
 mod tick_snapshot;
 #[path = "tick_snapshot_meta.rs"]
 mod tick_snapshot_meta;
-#[path = "tick_test_phase.rs"]
-mod tick_test_phase;
 #[path = "tick_window.rs"]
 mod tick_window;
 
@@ -208,8 +204,6 @@ mod prompt_build;
 mod prompt_phase;
 #[path = "text_util.rs"]
 pub mod text_util;
-#[path = "thought_generate.rs"]
-mod thought_generate;
 #[path = "thought_result.rs"]
 mod thought_result;
 

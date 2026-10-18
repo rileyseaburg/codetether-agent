@@ -16667,3 +16667,19 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-cognition-tools/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared cognition phase-service wiring
+
+- Moved the default phase-service adapter into cognition-core, connecting the
+  shared thinker, belief extractor and tool dispatcher directly.
+- Updated the native tick adapter to use this shared service set and removed
+  four native forwarding files for phase processing, generation and tool-phase
+  dispatch. Kept the public belief extraction API and its existing test.
+- Preserved every forwarded argument, thinker/registry specialization, phase
+  pipeline and native persistence binding; no inference or tool policy changes.
+- Verification: complete old forwarding-hop expansion against new direct
+  bindings, unchanged shared implementations and public adapters, module and
+  dependency graphs, direct rustfmt, file budgets and whitespace. No dependency
+  changes. Evidence: `artifacts/consolidation-cognition-services/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

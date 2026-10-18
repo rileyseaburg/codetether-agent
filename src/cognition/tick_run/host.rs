@@ -1,11 +1,10 @@
-use crate::cognition::{
-    ThinkerClient, ThoughtWorkItem,
-    loop_ctx::LoopCtx,
-    tick_flush::persist,
-    tick_process::{TickOutput, process_work},
-};
+use crate::cognition::{ThinkerClient, ThoughtWorkItem, loop_ctx::LoopCtx, tick_flush::persist};
 use crate::tool::ToolRegistry;
 use chrono::{DateTime, Utc};
+use codetether_cognition_core::{
+    runtime::process::{ClientServices, process_work},
+    thought::TickOutput,
+};
 pub(super) struct Native;
 impl codetether_cognition_core::runtime::tick::Host<ThinkerClient, ToolRegistry> for Native {
     async fn process_work(
@@ -16,7 +15,7 @@ impl codetether_cognition_core::runtime::tick::Host<ThinkerClient, ToolRegistry>
         now: DateTime<Utc>,
         out: &mut TickOutput,
     ) {
-        process_work(ctx, work, active, now, out).await;
+        process_work(ctx, work, active, now, out, &ClientServices).await;
     }
     async fn persist(&self, ctx: &LoopCtx) {
         persist(ctx).await;

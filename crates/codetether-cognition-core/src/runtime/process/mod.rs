@@ -39,3 +39,6 @@ pub trait Host<T, R>: Sync {
         text: &str,
     ) -> impl Future<Output = Vec<ThoughtEvent>> + Send;
 }
+
+mod services;
+pub use services::ClientServices;
