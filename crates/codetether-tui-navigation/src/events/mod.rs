@@ -10,3 +10,6 @@ pub use repeat::dispatchable;
 pub use run::dispatch;
 /// Interrupt and modal handler priority.
 pub mod priority;
+
+/// Active-turn interrupt and idle-exit key policy.
+pub mod interrupt;

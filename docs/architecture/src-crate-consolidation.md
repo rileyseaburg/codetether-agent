@@ -19461,3 +19461,22 @@ Evidence: `artifacts/consolidation-approval-actions/`. During extraction, manual
 review corrected a mechanical status-assignment rewrite across a match arm;
 complete body comparisons then passed. No Cargo, rustc, Python, Rust tests or
 approval/clipboard execution ran; compilation and runtime remain unverified.
+
+### Active-turn interruption policy
+
+Moved priority interrupt-key admission and idle Ctrl+C exit behavior into
+`codetether-tui-navigation::events::interrupt`. The navigation crate now owns
+these decisions beside event priority. Native handlers bind processing/chat
+state, the existing runtime cancellation method and status updates.
+
+Preserved the processing guard, Control modifier matching, Escape-only-in-chat
+rule, cancellation-before-status order and both handlers' distinct return
+values. Runtime cancellation transport, priority callers and existing native
+regression tests remain unchanged. No dependencies changed.
+
+Validation: two complete translated function bodies, four native state/runtime
+bindings, two delegates, unchanged regression tests/callers/cancellation and
+manifests, lexical module reachability, dependency-cycle checks, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-interrupt/`. No Cargo, rustc, Python, Rust tests or
+runtime cancellation ran; compilation and runtime remain unverified.
