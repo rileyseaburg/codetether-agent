@@ -11,10 +11,13 @@
 /// Prepend this (with a trailing `;`) to any remote command string so the
 /// non-interactive shell finds the `cargo install`-produced binary first.
 ///
+/// # Returns
+/// A shell prefix that restores the existing login-tool search path.
+///
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::cli::connect::login_path_prefix;
+/// use codetether_connect_cli::login_path_prefix;
 ///
 /// let prefix = login_path_prefix();
 /// assert!(prefix.contains(".cargo/bin"));

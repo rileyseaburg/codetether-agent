@@ -7,6 +7,13 @@ use clap::Parser;
 /// Connects to a designated Ubuntu VM over SSH, forwards a dedicated local
 /// port to the remote auth callback, runs the remote device-code flow, and
 /// opens the verification URL in the local browser.
+///
+/// # Examples
+/// ```
+/// use clap::Parser;
+/// let args = codetether_connect_cli::ConnectArgs::parse_from(["connect", "--host", "vm.example"]);
+/// assert_eq!(args.port, 22);
+/// ```
 #[derive(Parser, Debug)]
 pub struct ConnectArgs {
     /// Hostname or IP of the Ubuntu VM on your network

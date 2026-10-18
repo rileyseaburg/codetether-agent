@@ -10792,3 +10792,19 @@ have at most 41 code lines. Evidence is in `artifacts/consolidation-auth-cli/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python, login,
 callback listener, token exchange or credential operation ran. Full workspace
 consolidation remains active.
+
+### SSH connect CLI extracted
+
+Moved remote-auth connection arguments, SSH command construction, binary
+preflight classification, output/URL scanning and local browser launch logic
+into `crates/codetether-connect-cli`. Eleven modules preserve the existing
+CLI behavior; the native connect module re-exports the interface. All ten
+existing SSH/preflight tests moved with the implementation.
+
+Fifteen static comparisons/checks cover complete modules, native exports and
+unchanged command consumers. Module/dependency graphs, file budgets and
+whitespace checks passed; modules have at most 42 code lines. Evidence is in
+`artifacts/consolidation-connect-cli/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, SSH, shell-profile sourcing or browser launch ran.
+Full workspace consolidation remains active. Undeclared onboarding source
+remains pending rather than being enabled by this extraction.

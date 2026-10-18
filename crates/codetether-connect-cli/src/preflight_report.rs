@@ -6,10 +6,17 @@
 /// Classify the probe report and return `Ok(())` when the binary is a valid
 /// executable, or `Err(message)` with a concrete remediation hint.
 ///
+/// # Arguments
+/// * `report` - Captured output from the remote binary probe.
+/// # Returns
+/// Unit for an executable report or a remediation description on failure.
+/// # Errors
+/// Returns a diagnostic when the probe reports a missing or unusable binary.
+///
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::cli::connect::validate;
+/// use codetether_connect_cli::validate;
 ///
 /// // A healthy ELF binary
 /// assert!(validate("PATH=/usr/local/bin/codetether\n\

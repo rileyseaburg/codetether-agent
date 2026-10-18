@@ -9,7 +9,20 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 
 use super::{args::ConnectArgs, browser, preflight, ssh, url_scan};
 
-/// Run the full connect → remote device-code → local browser pipeline.
+/// Run SSH connection, remote authentication and local URL presentation.
+///
+/// # Arguments
+/// * `args` - SSH endpoint, forwarding, authentication and browser options.
+/// # Returns
+/// Unit once the remote authentication process exits successfully.
+/// # Errors
+/// Returns failed preflight, SSH, output-stream or browser-launch errors.
+/// # Examples
+/// ```no_run
+/// # async fn example(args: codetether_connect_cli::ConnectArgs) -> anyhow::Result<()> {
+/// codetether_connect_cli::execute(args).await
+/// # }
+/// ```
 pub async fn execute(args: ConnectArgs) -> Result<()> {
     if !args.skip_preflight {
         preflight::check(&args).await?;

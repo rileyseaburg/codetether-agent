@@ -6,10 +6,15 @@
 
 /// Extract the first `https://` URL appearing in `line`, if any.
 ///
+/// # Arguments
+/// * `line` - One line of remote command output.
+/// # Returns
+/// The first HTTPS URL or None when the line contains none.
+///
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::cli::connect::scan_url;
+/// use codetether_connect_cli::scan_url;
 ///
 /// let line = "Open https://device.sso.us-east-1.amazonaws.com/?user_code=ABCD to continue";
 /// assert_eq!(
