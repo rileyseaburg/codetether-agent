@@ -35,9 +35,7 @@ pub fn render_webview_status(f: &mut Frame, app: &App, area: Rect) {
 }
 
 /// Rows the status bar needs at `width` (1 on wide terminals, 2 on phones).
-pub fn status_height(width: u16) -> u16 {
-    if width >= 140 { 1 } else { 2 }
-}
+pub use codetether_chat_layout::webview::status_height;
 
 /// Fallback message shown when terminal is too small for webview.
 pub fn render_too_small(f: &mut Frame, area: Rect) {

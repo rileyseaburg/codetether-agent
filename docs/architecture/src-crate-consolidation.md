@@ -17527,3 +17527,18 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-enter-routing/`.
 - No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared Webview layout geometry and mode
+
+- Moved chat layout mode/toggle, horizontal panel geometry, sidebar/inspector
+  visibility, vertical row geometry and status-height policy into
+  `codetether-chat-layout::webview`.
+- Native layout/mode modules re-export shared APIs; vertical layout supplies
+  only input text and suggestion visibility. Rendering stays unchanged.
+- Moved all three existing layout/mode tests. Verified complete functions,
+  enum, rectangles, thresholds, test bodies and native projection, plus
+  unchanged renderers, module/dependency graphs, direct rustfmt, file limits
+  and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-webview-layout/`.
+- No Cargo, rustc, Python, rendering actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

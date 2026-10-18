@@ -27,3 +27,6 @@ mod scroll_up;
 pub use scroll_state::ChatScrollState;
 /// Sentinel position used to follow the latest chat output.
 pub const SCROLL_BOTTOM: usize = 1_000_000;
+
+/// Responsive webview layout and layout-mode selection.
+pub mod webview;
