@@ -22,3 +22,6 @@ pub mod finish;
 
 /// Held-goal gating and provider dispatch preparation.
 pub mod dispatch;
+
+/// Owned prompt/session handoff with runtime rejection recovery.
+pub mod handoff;

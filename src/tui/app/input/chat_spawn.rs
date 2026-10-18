@@ -10,14 +10,15 @@
 //!
 //! The provider call itself is not performed here. Model execution, worktree
 //! creation, event streaming, and session persistence are handled by the
-//! runtime after it receives the [`PromptRequest`].
+//! runtime after it receives the [`PromptRequest`](crate::tui::app::session_runtime::PromptRequest).
 
+mod host;
 use std::path::Path;
 use std::sync::Arc;
 
 use crate::provider::ProviderRegistry;
 use crate::session::ImageAttachment;
-use crate::tui::app::session_runtime::{PromptRequest, SessionSlot, TuiSessionHandle};
+use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 
 /// Spawn the provider task with optional worktree isolation.
@@ -26,7 +27,7 @@ use crate::tui::app::state::App;
 /// clones the session, and spawns a background task.
 ///
 /// The active session is taken from `slot` and submitted to `runtime` as a
-/// [`PromptRequest`]. While the runtime owns the session, the TUI treats the
+/// [`PromptRequest`](crate::tui::app::session_runtime::PromptRequest). While the runtime owns the session, the TUI treats the
 /// slot as busy. If submission fails, the session is restored immediately so
 /// the user can retry without losing conversation state.
 ///
@@ -72,26 +73,16 @@ pub(super) async fn spawn_provider_task(
     pending_images: Vec<ImageAttachment>,
     runtime: &TuiSessionHandle,
 ) {
-    let Some(original_dir) = slot.borrow().map(|s| s.metadata.directory.clone()) else {
-        app.state.status = "Session is already running".to_string();
-        return;
-    };
-    let use_worktree = app.state.use_worktree;
-    if let Some(session) = slot.borrow_mut() {
-        session.metadata.auto_apply_edits = app.state.auto_apply_edits;
-        session.metadata.use_worktree = use_worktree;
-    }
-    let worktree_root = use_worktree.then(|| cwd.to_path_buf());
-    let Some(session) = slot.take_for_prompt() else {
-        return;
-    };
-    let request = PromptRequest::new(
-        session,
-        prompt.to_string(),
+    codetether_chat_submit::handoff::prepare(
+        &mut host::Native {
+            app,
+            slot,
+            registry,
+            runtime,
+        },
+        cwd,
+        prompt,
         pending_images,
-        Arc::clone(registry),
-        original_dir,
-        worktree_root,
-    );
-    super::chat_runtime_submit::submit(app, slot, runtime, request).await;
+    )
+    .await;
 }

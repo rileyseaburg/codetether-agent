@@ -16765,3 +16765,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-chat-dispatch/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared chat session handoff and recovery
+
+- Moved idle-session preparation and runtime transfer/rejection recovery into
+  `codetether-chat-submit::handoff`, split into preparation and transfer contracts
+  and their sequencing functions.
+- Core owns availability checks, worktree-root selection, request creation order,
+  steering reservation, failed-transfer cleanup and status selection. Native
+  bindings retain concrete session metadata, slot and runtime request operations.
+- Removed the native runtime-submit module. Preserved move-owned sessions,
+  provider Arc cloning at request construction, metadata updates before checkout,
+  restoration on busy/closed runtime paths and clear-steering order.
+- Verification: full preparation/transfer bodies, every native field and request
+  binding, unchanged queue/steering tests and runtime transport, module/dependency
+  graphs, direct rustfmt, file limits and whitespace. No dependency changes.
+  Evidence: `artifacts/consolidation-chat-handoff/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
