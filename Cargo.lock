@@ -6951,6 +6951,7 @@ dependencies = [
  "codetether-cli-options",
  "codetether-swarm-core",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]
@@ -7010,6 +7011,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tracing",
+ "codetether-cognition-core",
 ]
 
 [[package]]
@@ -7115,6 +7117,7 @@ dependencies = [
  "codetether-cli-options",
  "codetether-config",
  "codetether-runtime-policy",
+ "tracing",
 ]
 
 [[package]]

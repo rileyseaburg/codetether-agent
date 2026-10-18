@@ -6,3 +6,6 @@ mod files;
 mod knowledge;
 pub use files::with_attachments;
 pub use knowledge::refresh as refresh_knowledge;
+
+mod memory;
+pub use memory::load_memory;

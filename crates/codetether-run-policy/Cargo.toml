@@ -7,6 +7,7 @@ license = "MIT"
 description = "Run configuration and session policy application"
 
 [dependencies]
+tracing = "0.1"
 anyhow = "1"
 codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
 codetether-config = { path = "../codetether-config", version = "0.1.0" }

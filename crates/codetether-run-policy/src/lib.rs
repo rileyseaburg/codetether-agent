@@ -12,8 +12,13 @@ pub use session::apply_session_policy;
 /// # Implementors
 /// Native sessions update their existing metadata and step-budget fields.
 pub trait SessionPolicy {
+    /// Assign the selected model to session metadata.
+    fn set_model(&mut self, model: String);
     /// Enable automatic edit application.
     fn enable_auto_apply(&mut self);
     /// Set the optional step limit.
     fn set_max_steps(&mut self, max_steps: Option<usize>);
 }
+
+mod model;
+pub use model::apply_model;

@@ -14082,3 +14082,18 @@ Full workspace consolidation remains active.
 - Added only cli-options and tracing dependencies to the existing run-resume
   lockfile package. No Cargo, rustc, Rust tests or session-store operations ran.
   Full workspace consolidation remains unfinished.
+
+### Remaining run preparation extraction
+
+- Moved speculative branch preparation/reporting to codetether-swarm-cli,
+  ordinary-run model selection/application to codetether-run-policy, and
+  project belief availability reporting to codetether-run-context.
+- Each operation calls its existing core owner. Native model assignment is a
+  narrow session setter. Belief loading retains its prior read-and-log behavior;
+  this migration does not add prompt injection or speculative execution.
+- Verification: six static body/order/native-binding/size checks passed, plus
+  module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-run-preparation/.
+- Staged only the three required dependency additions in Cargo.lock. No Cargo,
+  rustc, Rust tests, branch preparation, model setup or memory lookup ran.
+  Full workspace consolidation remains unfinished.

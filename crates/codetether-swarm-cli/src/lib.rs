@@ -47,3 +47,6 @@ pub async fn execute<H: Host>(args: codetether_cli_options::SwarmArgs) -> anyhow
     let result = H::run(&executor, &args.task, strategy).await?;
     output::print(&result, args.json)
 }
+
+mod speculative;
+pub use speculative::prepare_speculative;

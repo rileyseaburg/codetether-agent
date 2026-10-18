@@ -37,29 +37,7 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
 
     tracing::info!("Running with message: {}", message);
 
-    if args.branches > 1 {
-        let runner = crate::swarm::speculative::SpeculativeRunner::new(
-            args.branches,
-            args.strategies.clone(),
-        );
-        let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-        let specs = runner.build_branches(&cwd, &message)?;
-        tracing::info!(branches = %runner.branch_count, "Many-worlds speculative mode enabled");
-        for spec in &specs {
-            tracing::info!(
-                branch = %spec.branch_name,
-                strategy = %spec.strategy_prompt,
-                "Speculative branch assigned"
-            );
-        }
-        if !jsonl_output {
-            println!(
-                "[speculative] {} parallel branches queued (collapse controller will race + prune)",
-                runner.branch_count
-            );
-        }
-        // TODO: wire through SwarmExecutor when parallel dispatch is ready
-    }
+    codetether_swarm_cli::prepare_speculative(&args, &message, jsonl_output)?;
 
     // Load configuration
     let config = super::run_config::load(&args).await;
@@ -188,25 +166,10 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
     }
 
     // Set model: CLI arg > env var > config default
-    let model = args
-        .model
-        .clone()
-        .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok())
-        .or(config.default_model);
-
-    if let Some(model) = model {
-        tracing::info!("Using model: {}", model);
-        session.metadata.model = Some(model);
-    }
+    codetether_run_policy::apply_model(&mut session, &args, config.default_model);
 
     // Load project memory palace
-    let beliefs = crate::memory::palace::load_project_beliefs(&workspace_dir);
-    if !beliefs.is_empty() {
-        let ctx = crate::memory::palace::belief_context(&beliefs);
-        if !ctx.is_empty() {
-            tracing::info!(beliefs = beliefs.len(), "Loaded project memory palace");
-        }
-    }
+    codetether_run_context::load_memory(&workspace_dir);
 
     session.metadata.knowledge_snapshot = knowledge_snapshot;
     super::run_config::apply_session_policy(&mut session, &args)?;
