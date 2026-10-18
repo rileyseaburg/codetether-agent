@@ -24948,3 +24948,27 @@ rustfmt, file limits and whitespace checks passed. Unrelated working changes
 remain untouched. Evidence: artifacts/consolidation-app-state-helpers/.
 No Cargo, rustc, Python, compiler expansion, queue mutation or tests ran. Full
 consolidation remains active.
+
+### CLI dispatch source moved into the startup crate
+
+Moved the 34-route command dispatch body from src/main.rs into
+crates/codetether-cli-startup/src/dispatch.rs. The native binary retains
+handler paths and type bindings. The owning module supplies the exhaustive
+match, MCP control-plane context preparation, argument borrowing and the
+no-command TUI route. No dependencies changed.
+
+This is a source relocation through a declaration macro: the function still
+expands in the native application. It is not completion of the separate goal
+of moving native types and dependency ownership into crates. Source relocation
+and completed crate ownership must not be reported interchangeably.
+
+The static expansion matches the previous implementation after normalizing
+expression-only match-arm braces and generic trailing commas. The initial
+comparison exposed rustfmt's expression-arm brace normalization; preserved
+comparison evidence records the bounded normalization. Declaration audit:
+51 calls, no unbound variables or duplicate inherent methods. Module and
+dependency scans report no missing modules or cycles; direct dependency audit,
+direct rustfmt, file limits and whitespace checks passed. Unrelated working
+changes remain untouched. Evidence: artifacts/consolidation-cli-dispatch/.
+No Cargo, rustc, Python, compiler expansion or runtime tests ran. Full
+consolidation remains active.

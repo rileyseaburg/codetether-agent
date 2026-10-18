@@ -10,3 +10,6 @@ pub mod lifecycle;
 pub mod logging;
 pub mod native;
 pub mod vault;
+
+/// Top-level command routing with application handler bindings.
+pub mod dispatch;

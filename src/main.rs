@@ -30,72 +30,40 @@ async fn main() -> anyhow::Result<()> {
     codetether_cli_startup::lifecycle::run::<application::Native>().await
 }
 
-async fn dispatch(cli: Cli) -> anyhow::Result<()> {
-    let mcp_control_plane_url = cli.server.clone();
-    let mcp_control_plane_token = cli.token.clone();
-    let (mcp_project_root, mcp_project_was_explicit) = (cli.project.clone(), cli.project.is_some());
-
-    match cli.command {
-        Some(Command::Bonsai(args)) => cli::bonsai::run(args).await,
-        Some(Command::Windows(args)) => cli::windows::run(args).await,
-        Some(Command::Tui(args)) => {
-            codetether_tui_cli::execute::<tui::app::run::Cli>(Some(args), cli.project, cli.yolo)
-                .await
-        }
-        Some(Command::Mux(args)) => mux::execute(args).await,
-        Some(Command::Serve(args)) => server::serve(args).await,
-        Some(Command::Run(args)) => cli::run::execute(args).await,
-        Some(Command::Pr(args)) => github_pr::run(args).await,
-        Some(Command::Approval(args)) => cli::approval::execute(args),
-        Some(Command::Clipboard(args)) => cli::clipboard::execute(args),
-        Some(Command::Models(args)) => cli::execute_models(args).await,
-        Some(Command::Index(args)) => indexer::run(args).await,
-        Some(Command::Auth(args)) => cli::auth::execute(args).await,
-        Some(Command::Vault(args)) => cli::vault::execute(args).await,
-        Some(Command::Connect(args)) => cli::connect::execute(args).await,
-        Some(Command::Forage(args)) => forage::execute(args).await,
-        Some(Command::Search(args)) => cli::search::execute(args).await,
-        Some(Command::Browserctl(args)) => cli::browserctl::execute(args).await,
-        Some(Command::Context(args)) => cli::context::execute(args).await,
-        Some(Command::Worker(args)) => worker_cli::execute(args).await,
-        Some(Command::GitCredentialHelper(args)) => {
-            a2a::git_credentials::run_git_credential_helper(&args).await
-        }
-        Some(Command::Spawn(args)) => a2a::spawn::run(args).await,
-        Some(Command::Config(args)) => cli::config::execute(args).await,
-        Some(Command::Swarm(args)) => {
-            codetether_swarm_cli::execute::<swarm::SwarmExecutor>(args).await
-        }
-        Some(Command::SwarmSubagent(args)) => swarm::remote_subtask::run_swarm_subagent(args).await,
-        Some(Command::Rlm(args)) => {
-            codetether_rlm_cli::execute::<provider::ProviderRegistry>(args).await
-        }
-        Some(Command::Oracle(args)) => cli::oracle::execute(args).await,
-        Some(Command::Ralph(args)) => {
-            codetether_ralph_cli::execute::<ralph_cli::NativeHost>(args).await
-        }
-        Some(Command::Mcp(args)) => {
-            codetether_mcp_cli::dispatch::<mcp_cli::NativeHost, mcp_cli::ServerHost>(
-                args,
-                &mcp_control_plane_url,
-                &mcp_control_plane_token,
-                &mcp_project_root,
-                mcp_project_was_explicit,
-            )
-            .await
-        }
-        Some(Command::Stats(args)) => codetether_telemetry_cli::execute(args),
-        Some(Command::Benchmark(args)) => {
-            codetether_benchmark_cli::execute::<benchmark::BenchmarkRunner>(args).await
-        }
-        Some(Command::Cleanup(args)) => cleanup_cli::run(args).await,
-        Some(Command::Worktree(args)) => worktree_cli::run(args).await,
-        Some(Command::Moltbook(args)) => codetether_moltbook_cli::execute(args).await,
-
-        // OKR commands
-        Some(Command::Okr(args)) => codetether_okr_cli::execute(args).await,
-        None => {
-            codetether_tui_cli::execute::<tui::app::run::Cli>(None, cli.project, cli.yolo).await
-        }
-    }
-}
+codetether_cli_startup::define_command_dispatch!(
+    dispatch, Cli, Command;
+    bonsai = cli::bonsai::run,
+    windows = cli::windows::run,
+    tui = codetether_tui_cli::execute::<tui::app::run::Cli>,
+    mux = mux::execute,
+    serve = server::serve,
+    run = cli::run::execute,
+    pr = github_pr::run,
+    approval = cli::approval::execute,
+    clipboard = cli::clipboard::execute,
+    models = cli::execute_models,
+    index = indexer::run,
+    auth = cli::auth::execute,
+    vault = cli::vault::execute,
+    connect = cli::connect::execute,
+    forage = forage::execute,
+    search = cli::search::execute,
+    browser = cli::browserctl::execute,
+    context = cli::context::execute,
+    worker = worker_cli::execute,
+    credential = a2a::git_credentials::run_git_credential_helper,
+    spawn = a2a::spawn::run,
+    config = cli::config::execute,
+    swarm = codetether_swarm_cli::execute::<swarm::SwarmExecutor>,
+    subagent = swarm::remote_subtask::run_swarm_subagent,
+    rlm = codetether_rlm_cli::execute::<provider::ProviderRegistry>,
+    oracle = cli::oracle::execute,
+    ralph = codetether_ralph_cli::execute::<ralph_cli::NativeHost>,
+    mcp = codetether_mcp_cli::dispatch::<mcp_cli::NativeHost, mcp_cli::ServerHost>,
+    stats = codetether_telemetry_cli::execute,
+    benchmark = codetether_benchmark_cli::execute::<benchmark::BenchmarkRunner>,
+    cleanup = cleanup_cli::run,
+    worktree = worktree_cli::run,
+    moltbook = codetether_moltbook_cli::execute,
+    okr = codetether_okr_cli::execute
+);
