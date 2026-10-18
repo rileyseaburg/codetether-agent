@@ -13531,3 +13531,16 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, signing probes or registry operations ran.
   Full workspace consolidation remains unfinished.
+
+### Worker status projection consolidation
+
+- Moved pod-backed connected-worker reporting from the server root into
+  codetether-k8s-api. The native handler supplies its existing manager.
+- Preserved the name filter, Running-phase connectivity flag, per-record
+  timestamp, response fields and empty-list fallback on pod-list errors.
+- Verification: 52 static worker/server-body checks passed, plus module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-worker-status/.
+- Staged only the two added dependencies for this crate from Cargo.lock.
+  No Cargo, rustc, Rust tests or Kubernetes requests ran. Full consolidation
+  remains unfinished.

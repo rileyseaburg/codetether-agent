@@ -21,3 +21,6 @@ pub use spawn::k8s_spawn_subagent;
 pub use status::get_k8s_status;
 /// Caller-owned mapping from manager errors to HTTP status and response text.
 pub type ErrorMapper = fn(anyhow::Error) -> (axum::http::StatusCode, String);
+
+mod workers;
+pub use workers::list_connected_workers;

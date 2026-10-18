@@ -6527,6 +6527,8 @@ dependencies = [
  "codetether-audit",
  "codetether-k8s",
  "serde",
+ "chrono",
+ "serde_json",
 ]
 
 [[package]]
