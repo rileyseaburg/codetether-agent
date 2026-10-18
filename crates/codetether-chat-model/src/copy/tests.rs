@@ -1,7 +1,7 @@
 //! Clipboard payload contracts; no OS clipboard is needed.
 
 use super::{Target, latest};
-use crate::tui::chat::message::{ChatMessage, MessageType};
+use crate::{ChatMessage, MessageType};
 
 #[path = "copy_target_tests.rs"]
 mod target_tests;

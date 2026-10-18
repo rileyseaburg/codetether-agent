@@ -1,7 +1,7 @@
 //! Explicit copy targets and non-tool error payloads.
 
 use super::super::{Target, latest, target};
-use crate::tui::chat::message::{ChatMessage, MessageType};
+use crate::{ChatMessage, MessageType};
 
 #[test]
 fn error_messages_are_copyable_without_chrome() {

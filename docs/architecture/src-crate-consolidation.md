@@ -11014,3 +11014,19 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-token-display/`. Compilation, runtime tests
   and rendering were not run; no Cargo or rustc commands executed.
 - Full `src/` consolidation remains active.
+
+### Chat model and payload policy extraction
+
+- Moved message data, usage attribution, timestamped construction, raw copy
+  selection and retained tool-payload policy from `src/tui/chat` into
+  `crates/codetether-chat-model`. Native message/copy/payload paths now re-export
+  shared APIs, preserving callers and serialized fields.
+- Thirteen modules separate message kind, usage, message construction, copy
+  targets/selection, payload truncation and feedback-envelope stripping.
+  Maximum module size is 42 code lines.
+- Seven existing tests moved with the implementation. Twenty-three static
+  assertions compare serialized types, construction, function bodies, limits,
+  moved tests and unchanged consumers. Module reachability, dependency DAG,
+  file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-chat-model/`. Compilation and tests were
+  not run; no Cargo or rustc commands executed. Full consolidation remains active.
