@@ -7,10 +7,12 @@
 mod converse;
 mod runtime_url;
 
-use crate::provider::bedrock::BedrockProvider;
-use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
+use crate::provider::BedrockProvider;
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_provider_core::{
+    CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk,
+};
 
 #[async_trait]
 impl Provider for BedrockProvider {

@@ -12,7 +12,7 @@ use reqwest::Client;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use codetether_agent::provider::bedrock::{AwsCredentials, BedrockProvider};
+/// use codetether_provider_bedrock::provider::{AwsCredentials, BedrockProvider};
 ///
 /// let creds = AwsCredentials::from_environment().unwrap();
 /// let p = BedrockProvider::with_credentials(creds, "us-east-1".into()).unwrap();

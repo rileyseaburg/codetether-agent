@@ -1,7 +1,7 @@
 //! Tests for Bedrock-hosted OpenAI model aliases.
 
 use super::resolve_openai_alias;
-use crate::provider::bedrock::BedrockProvider;
+use crate::provider::BedrockProvider;
 
 #[test]
 fn short_aliases_map_to_openai_prefix() {

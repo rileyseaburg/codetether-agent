@@ -19198,3 +19198,26 @@ verification also found remaining old-form sibling helper paths; these were
 made consistent and the failed check was retained. Evidence:
 `artifacts/consolidation-thinker-service/`. No Cargo, rustc, Python, Rust tests,
 credential loading or model requests ran; compilation and runtime are unverified.
+
+### Owning Bedrock provider consolidation
+
+Moved all 50 files of the native Bedrock provider subtree into the existing
+`codetether-provider-bedrock` crate's provider module. This places owned HTTP/
+auth/region state, construction, Provider implementation, routing, validation,
+recovery and their 16 existing tests beside shared request execution. The native
+Bedrock module is now one compatibility re-export. Protocol/auth/refresh facades
+remain separate modules with their original public paths through that facade.
+
+Preserved the shared HTTP singleton, credential selection and validation,
+Converse/InvokeModel routing, retry and refresh calls, trait signatures, state
+fields, redacted Debug output, diagnostic targets and test assertions. The owning
+provider now references shared secrets and refresh crates directly. Added test/
+doc runtime features without changing resolved dependency versions.
+
+Validation: complete token comparisons for all 50 files (44 functions and 16
+test cases), normalizing only import order and explicit path/target relocation;
+native facade and unchanged credentialed callers; isolated lock delta; lexical
+module reachability, dependency-cycle checks, file-size ratchet, whitespace and
+formatting. Evidence: `artifacts/consolidation-bedrock-provider/`. No Cargo,
+rustc, Python, Rust tests, AWS requests, Vault reads or refresh operations ran;
+compilation and runtime behavior remain unverified.

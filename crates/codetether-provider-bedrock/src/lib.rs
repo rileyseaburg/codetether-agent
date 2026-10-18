@@ -2,6 +2,8 @@
 //!
 //! [BedrockClient] borrows an existing HTTP client, auth state, and region.
 //! It does not load secrets or own token refresh policy.
+//! [provider::BedrockProvider] owns provider state and integrates construction,
+//! validation, protocol routing and credential recovery.
 use anyhow::{Context, Result};
 use codetether_bedrock_auth::BedrockAuth;
 use reqwest::Client;
@@ -58,3 +60,6 @@ impl BedrockClient<'_> {
         self.region
     }
 }
+
+/// Owning Bedrock provider, credentials, protocol facades and recovery integration.
+pub mod provider;

@@ -8,9 +8,9 @@
 //!
 //! Callers retry the original request exactly once when this returns `true`.
 
-use crate::provider::bedrock::{BedrockProvider, sso_refresh};
-use crate::secrets;
-pub(crate) use codetether_provider_bedrock::recovery::is_auth_failure;
+use crate::provider::{BedrockProvider, sso_refresh};
+pub(crate) use crate::recovery::is_auth_failure;
+use codetether_secrets as secrets;
 
 /// Try to replace the provider's bearer token. Returns `true` when a new
 /// token was installed and the caller should retry. SigV4 providers never
@@ -21,7 +21,7 @@ pub(crate) async fn recover(provider: &BedrockProvider) -> bool {
     };
     if let Some(newer) = newer_vault_key(&current).await {
         provider.auth.set_bearer(newer);
-        tracing::info!(
+        tracing::info!(target: "codetether_agent::provider::bedrock::exports::auth_recover",
             provider = "bedrock",
             "adopted refreshed Bedrock key from Vault"
         );
@@ -30,11 +30,11 @@ pub(crate) async fn recover(provider: &BedrockProvider) -> bool {
     match sso_refresh::refresh_now(true).await {
         Ok(refreshed) => {
             provider.auth.set_bearer(refreshed.token);
-            tracing::info!(provider = "bedrock", "refreshed bearer token mid-session");
+            tracing::info!(target: "codetether_agent::provider::bedrock::exports::auth_recover", provider = "bedrock", "refreshed bearer token mid-session");
             true
         }
         Err(e) => {
-            tracing::warn!(provider = "bedrock", error = %e, "mid-session refresh failed");
+            tracing::warn!(target: "codetether_agent::provider::bedrock::exports::auth_recover", provider = "bedrock", error = %e, "mid-session refresh failed");
             false
         }
     }

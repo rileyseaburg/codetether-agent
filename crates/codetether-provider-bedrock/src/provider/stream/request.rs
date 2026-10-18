@@ -1,5 +1,5 @@
 //! Delegate Bedrock execution to the client crate.
-use crate::provider::bedrock::BedrockProvider;
+use crate::provider::BedrockProvider;
 use anyhow::Result;
 use codetether_provider_core::StreamChunk;
 impl BedrockProvider {
@@ -11,7 +11,7 @@ impl BedrockProvider {
     /// Returns [`anyhow::Error`] if the initial HTTP request fails or the
     /// server responds non-200. Per-frame decode errors are emitted as
     /// [`StreamChunk::Error`] but do not abort the stream.
-    pub(in crate::provider::bedrock) async fn converse_stream(
+    pub(in crate::provider) async fn converse_stream(
         &self,
         model_id: &str,
         body: Vec<u8>,

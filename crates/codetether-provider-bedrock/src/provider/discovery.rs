@@ -17,8 +17,8 @@ impl BedrockProvider {
     ///
     /// ```rust,no_run
     /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-    /// use codetether_agent::provider::bedrock::{AwsCredentials, BedrockProvider};
-    /// use codetether_agent::provider::Provider;
+    /// use codetether_provider_bedrock::provider::{AwsCredentials, BedrockProvider};
+    /// use codetether_provider_core::Provider;
     ///
     /// let creds = AwsCredentials::from_environment().unwrap();
     /// let p = BedrockProvider::with_credentials(creds, "us-east-1".into()).unwrap();

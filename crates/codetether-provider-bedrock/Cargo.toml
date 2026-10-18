@@ -20,3 +20,9 @@ codetether-provider-core = { path = "../codetether-provider-core", version = "0.
 reqwest = { version = "0.13.2", default-features = false, features = ["json", "stream", "rustls"] }
 serde_json = "1.0.151"
 tracing = "0.1"
+
+codetether-bedrock-refresh = { path = "../codetether-bedrock-refresh", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros"] }

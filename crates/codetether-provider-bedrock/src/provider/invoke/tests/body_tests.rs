@@ -1,5 +1,5 @@
 //! Provider transport-routing regression.
-use crate::provider::bedrock::BedrockProvider;
+use crate::provider::BedrockProvider;
 
 #[test]
 fn fable_uses_invoke_model_adapter() {

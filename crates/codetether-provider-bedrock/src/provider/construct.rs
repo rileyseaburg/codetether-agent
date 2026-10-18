@@ -14,7 +14,7 @@ impl BedrockProvider {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_agent::provider::bedrock::BedrockProvider;
+    /// use codetether_provider_bedrock::provider::BedrockProvider;
     /// let p = BedrockProvider::new("token-abc".into()).unwrap();
     /// assert_eq!(p.region(), "us-east-1");
     /// ```
@@ -33,7 +33,7 @@ impl BedrockProvider {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_agent::provider::bedrock::BedrockProvider;
+    /// use codetether_provider_bedrock::provider::BedrockProvider;
     /// let p = BedrockProvider::with_region("token".into(), "eu-west-1".into()).unwrap();
     /// assert_eq!(p.region(), "eu-west-1");
     /// ```
@@ -48,14 +48,14 @@ impl BedrockProvider {
     /// # Errors
     /// Currently infallible; preserves the common constructor result type.
     pub fn with_region(api_key: String, region: String) -> Result<Self> {
-        tracing::debug!(
+        tracing::debug!(target: "codetether_agent::provider::bedrock::construct",
             provider = "bedrock",
             region = %region,
             auth = "bearer_token",
             "Creating Bedrock provider"
         );
         Ok(Self {
-            client: crate::provider::shared_http::shared_client().clone(),
+            client: codetether_provider_core::shared_http::shared_client().clone(),
             auth: BedrockAuth::bearer(api_key),
             region,
         })
@@ -66,7 +66,7 @@ impl BedrockProvider {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use codetether_agent::provider::bedrock::{AwsCredentials, BedrockProvider};
+    /// use codetether_provider_bedrock::provider::{AwsCredentials, BedrockProvider};
     /// let creds = AwsCredentials::from_environment().unwrap();
     /// let p = BedrockProvider::with_credentials(creds, "us-east-1".into()).unwrap();
     /// assert_eq!(p.region(), "us-east-1");
@@ -82,14 +82,14 @@ impl BedrockProvider {
     /// # Errors
     /// Currently infallible; preserves the common constructor result type.
     pub fn with_credentials(credentials: AwsCredentials, region: String) -> Result<Self> {
-        tracing::debug!(
+        tracing::debug!(target: "codetether_agent::provider::bedrock::construct",
             provider = "bedrock",
             region = %region,
             auth = "sigv4",
             "Creating Bedrock provider with AWS credentials"
         );
         Ok(Self {
-            client: crate::provider::shared_http::shared_client().clone(),
+            client: codetether_provider_core::shared_http::shared_client().clone(),
             auth: BedrockAuth::SigV4(credentials),
             region,
         })

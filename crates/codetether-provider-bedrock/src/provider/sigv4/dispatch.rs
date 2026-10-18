@@ -19,7 +19,7 @@ impl BedrockProvider {
     ///
     /// ```rust,no_run
     /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-    /// use codetether_agent::provider::bedrock::{AwsCredentials, BedrockProvider};
+    /// use codetether_provider_bedrock::provider::{AwsCredentials, BedrockProvider};
     /// let creds = AwsCredentials::from_environment().unwrap();
     /// let p = BedrockProvider::with_credentials(creds, "us-east-1".into()).unwrap();
     /// let url = "https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-micro-v1:0/converse";
@@ -32,7 +32,7 @@ impl BedrockProvider {
     }
 
     /// Send an HTTP request using whichever auth mode is configured.
-    pub(in crate::provider::bedrock) async fn send_request(
+    pub(in crate::provider) async fn send_request(
         &self,
         method: &str,
         url: &str,

@@ -22,7 +22,7 @@ impl BedrockProvider {
     ///
     /// # Examples
     /// ```
-    /// use codetether_agent::provider::bedrock::BedrockProvider;
+    /// use codetether_provider_bedrock::provider::BedrockProvider;
     /// assert_eq!(BedrockProvider::resolve_model_id("custom.model"), "custom.model");
     /// ```
     pub fn resolve_model_id(model: &str) -> &str {

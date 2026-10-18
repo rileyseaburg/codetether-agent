@@ -11,17 +11,17 @@ pub mod error;
 pub mod invoke_convert;
 pub mod invoke_msgconvert;
 pub mod response;
-pub(in crate::provider::bedrock) mod retention;
+pub(in crate::provider) mod retention;
 pub mod stream;
 
 #[cfg(test)]
 mod tests;
 
-use crate::provider::bedrock::BedrockProvider;
+use crate::provider::BedrockProvider;
 
 impl BedrockProvider {
     /// Whether `model_id` should route through the InvokeModel adapter.
-    pub(in crate::provider::bedrock) fn should_use_invoke_model(model_id: &str) -> bool {
+    pub(in crate::provider) fn should_use_invoke_model(model_id: &str) -> bool {
         model_id.to_ascii_lowercase().contains("claude-fable-5")
     }
 }
