@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-prompt-loop",
  "codetether-summary-producer",
  "codetether-policy-eval",
  "codetether-replay-oracle",
@@ -7498,6 +7499,18 @@ dependencies = [
  "codetether-rlm",
  "codetether-rlm-background",
  "codetether-summary-quality",
+ "uuid",
+]
+
+[[package]]
+name = "codetether-prompt-loop"
+version = "0.1.0"
+dependencies = [
+ "codetether-edit-policy",
+ "codetether-prompt-policy",
+ "codetether-runtime-policy",
+ "codetether-repeat-guard",
+ "serde_json",
  "uuid",
 ]
 

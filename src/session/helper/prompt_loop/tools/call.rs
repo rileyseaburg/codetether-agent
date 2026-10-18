@@ -2,26 +2,7 @@
 
 use super::super::Runner;
 use anyhow::Result;
-use serde_json::Value;
-
-/// Normalized provider tool call ready for policy checks and execution.
-pub(super) struct Call {
-    /// Provider-supplied call identifier.
-    pub id: String,
-    /// Canonical executable tool name.
-    pub name: String,
-    /// Normalized JSON input passed to the tool.
-    pub input: Value,
-}
-
-impl Call {
-    /// Normalizes a parsed provider tool-call tuple.
-    pub fn new(id: String, name: String, input: Value) -> Self {
-        let (name, input) =
-            super::super::super::edit::normalize_tool_call_for_execution(&name, &input);
-        Self { id, name, input }
-    }
-}
+pub(super) use codetether_prompt_loop::Call;
 
 /// Runs one normalized tool call through guards, execution, and publication.
 ///

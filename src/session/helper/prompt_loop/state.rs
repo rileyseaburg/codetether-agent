@@ -28,13 +28,4 @@ pub(crate) struct Runner<'a> {
     /// Watcher that injects completed sub-agent notices.
     pub subagents: super::super::prompt_events::subagent_watch::SubAgentWatch,
 }
-
-/// Decision returned after handling one completion response.
-pub(crate) enum StepFlow {
-    /// Continue with another provider step.
-    Continue,
-    /// Continue an active goal with a fresh per-turn step budget.
-    ContinueGoal,
-    /// Persist the session and return the accumulated answer.
-    Finish,
-}
+pub(crate) use codetether_prompt_loop::StepFlow;

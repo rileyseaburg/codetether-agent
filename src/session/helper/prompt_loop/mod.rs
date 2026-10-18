@@ -1,7 +1,6 @@
 //! Shared agentic loop used by streaming and non-streaming prompts.
 
 mod completion;
-mod decline_guard;
 mod finish;
 mod goal_recovery;
 mod input;

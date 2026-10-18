@@ -15587,3 +15587,22 @@ Full workspace consolidation remains active.
   whitespace. Evidence: `artifacts/consolidation-tool-events/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains unfinished.
+
+### Dedicated prompt-loop state and guard crate
+
+- Added `codetether-prompt-loop`, owning per-turn LoopState, workspace validation
+  state, StepFlow decisions, normalized Call data and pre-execution rejection
+  ordering. Native runner modules now import those shared types.
+- Preserved field initialization order, fresh UUID/timing state, repeat/decline
+  guard lifetime, call normalization and rejection precedence. Frontend
+  availability remains a deferred callback so it is evaluated only for an
+  interactive tool, as before.
+- Removed the now-unused native decline-guard alias module; its implementation
+  and tests already live in runtime-policy. Native tool execution and start-event
+  publication bodies were unchanged.
+- Verification: compared type layouts, initialization, call normalization,
+  guard bodies and flow variants; checked unchanged execution methods, module
+  reachability, dependency DAG, direct rustfmt, file budgets, isolated lock changes
+  and diff whitespace. Evidence: `artifacts/consolidation-prompt-loop/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete; the native runner still binds session/provider execution.
