@@ -1,20 +1,13 @@
-//! Concrete native services for the shared Agent state owner.
-//!
-//! Tool registries and sessions remain application types; their orchestration
-//! and public Agent API live in codetether-agent-runtime.
-use crate::{
-    agent::ToolUse,
-    provider::{Message, Usage},
-    session::Session,
-    tool::ToolResult,
-};
-use serde_json::Value;
-use std::path::Path;
-mod context;
-mod view;
-mod write;
-/// Native registry and session binding exposed by the public Agent alias.
+//! Application-local marker selecting native agent session services.
+/// Session operations bound to the application's existing runtime policies.
 pub struct SessionServices;
-/// Native registry/context services with application session bookkeeping.
+codetether_native_agent::impl_session_services!(
+    SessionServices,
+    crate::session::Session,
+    crate::session::helper::runtime::prior_context_tool_available_for_session,
+    crate::session::helper::runtime::block_serialized_prior_context_for_session,
+    crate::session::helper::runtime::enrich_tool_input_for_session,
+);
+/// Native registry and context services with application session bookkeeping.
 pub type Native =
     codetether_native_agent::Host<SessionServices, crate::tool::registry_lifecycle::Native>;

@@ -26560,3 +26560,22 @@ pass. Only three native-agent dependencies are staged in Cargo.lock. Unrelated
 working files remain untouched. Evidence: artifacts/consolidation-native-mailbox/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active and incomplete.
+
+### Native agent session-binding implementation
+
+Moved the concrete session view, write and input-enrichment implementation into
+native-agent::impl_session_services. The root retains its local SessionServices
+marker and names the application Session plus three prior-context/enrichment
+callbacks. This preserves Rust's local-type trait implementation boundary while
+removing the root view/write/context implementation files. The native Agent
+host specialization is unchanged.
+
+The declaration auditor expands the actual invocation; all eleven expanded
+method bodies match the original implementations after explicit type-path
+substitution. No separate transcript/accounting state or altered mutation path
+is introduced. Module/dependency scans cover 730 roots and 617 crates without
+missing modules, cycles or undeclared dependencies. Production dependency scope,
+declaration, standalone formatting, file-limit and whitespace checks pass.
+No manifest/lock changes are needed; unrelated working files are unchanged.
+Evidence: artifacts/consolidation-native-agent-binding/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
