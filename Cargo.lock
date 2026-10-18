@@ -1275,6 +1275,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-native-context",
  "codetether-native-session-runtime",
  "codetether-native-review",
  "codetether-native-goals",
@@ -3667,6 +3668,25 @@ dependencies = [
  "codetether-windows-cli",
  "codetether-worktree-cli",
  "reqwest 0.13.4",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-native-context"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-application-providers",
+ "codetether-context-compression",
+ "codetether-context-dispatch",
+ "codetether-context-legacy",
+ "codetether-context-policy",
+ "codetether-context-request",
+ "codetether-incremental-derivation",
+ "codetether-native-providers",
+ "codetether-provider-core",
+ "codetether-reset-derivation",
+ "codetether-session-events",
  "tokio",
 ]
 

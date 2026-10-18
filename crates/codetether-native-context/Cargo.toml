@@ -1,0 +1,22 @@
+[package]
+name = "codetether-native-context"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native context derivation hooks and provider request entrypoints"
+
+[dependencies]
+anyhow = "1"
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-context-compression = { path = "../codetether-context-compression", version = "0.1.0" }
+codetether-context-dispatch = { path = "../codetether-context-dispatch", version = "0.1.0" }
+codetether-context-legacy = { path = "../codetether-context-legacy", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-context-request = { path = "../codetether-context-request", version = "0.1.0" }
+codetether-incremental-derivation = { path = "../codetether-incremental-derivation", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-reset-derivation = { path = "../codetether-reset-derivation", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+tokio = { version = "1", features = ["sync"] }

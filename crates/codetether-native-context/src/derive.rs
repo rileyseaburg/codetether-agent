@@ -1,14 +1,14 @@
 //! Native specialization of shared legacy context derivation.
-use super::helpers::DerivedContext;
-use crate::provider::ToolDefinition;
-use crate::session::{Session, SessionEvent};
 use anyhow::Result;
+use codetether_context_policy::projection::helpers::DerivedContext;
+use codetether_provider_core::ToolDefinition;
+use codetether_session_events::SessionEvent;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
 /// Derive an ephemeral [`DerivedContext`] from `session`'s pure history.
 ///
-/// The canonical [`Session::messages`] buffer is never touched —
+/// The canonical the source message buffer buffer is never touched —
 /// `session` is borrowed immutably.
 ///
 /// # Arguments
@@ -27,21 +27,17 @@ use tokio::sync::mpsc;
 /// Propagates any error from the underlying compression pipeline that
 /// the recovery cascade cannot absorb.
 ///
-/// [`compress_messages_keep_last`]: crate::session::helper::compression::compress_messages_keep_last
-pub async fn derive_context(
-    session: &Session,
-    provider: Arc<dyn crate::provider::Provider>,
+/// [`compress_messages_keep_last`]: codetether_context_compression::compress_messages_keep_last
+pub async fn derive_context<S: codetether_context_legacy::Source>(
+    session: &S,
+    provider: Arc<dyn codetether_provider_core::Provider>,
     model: &str,
     system_prompt: &str,
     tools: &[ToolDefinition],
-    event_tx: Option<&mpsc::Sender<SessionEvent>>,
+    event_tx: Option<&mpsc::Sender<SessionEvent<S>>>,
     force_keep_last: Option<usize>,
 ) -> Result<DerivedContext> {
-    let hooks = codetether_context_legacy::Hooks {
-        apply: crate::session::helper::experimental::apply_all,
-        repair: crate::session::helper::experimental::pairing::repair_orphans,
-        resolver: crate::session::helper::rlm_background::Background::resolve_model,
-    };
+    let hooks = super::hooks::native();
     codetether_context_legacy::derive_context(
         session,
         provider,

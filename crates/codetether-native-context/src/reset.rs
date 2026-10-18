@@ -1,12 +1,12 @@
 //! Native bindings for shared reset-policy context derivation.
-use super::helpers::DerivedContext;
-use crate::provider::ToolDefinition;
-use crate::session::{Session, SessionEvent};
 use anyhow::Result;
+use codetether_context_policy::projection::helpers::DerivedContext;
+use codetether_provider_core::ToolDefinition;
+use codetether_session_events::SessionEvent;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
-/// [`DerivePolicy::Reset`](crate::session::derive_policy::DerivePolicy::Reset) implementation.
+/// [`DerivePolicy::Reset`](codetether_context_policy::derivation::DerivePolicy::Reset) implementation.
 ///
 /// When the token estimate exceeds `threshold_tokens`, summarise
 /// everything older than the active task tail via the RLM router and
@@ -15,20 +15,16 @@ use tokio::sync::mpsc;
 /// and "status?" do not orphan the real task request. Under threshold,
 /// return the full clone verbatim.
 #[allow(clippy::too_many_arguments)]
-pub(super) async fn derive_reset(
-    session: &Session,
-    provider: Arc<dyn crate::provider::Provider>,
+pub async fn derive_reset<S: codetether_reset_derivation::Source>(
+    session: &S,
+    provider: Arc<dyn codetether_provider_core::Provider>,
     model: &str,
     system_prompt: &str,
     tools: &[ToolDefinition],
     threshold_tokens: usize,
-    event_tx: Option<&mpsc::Sender<SessionEvent>>,
+    event_tx: Option<&mpsc::Sender<SessionEvent<S>>>,
 ) -> Result<DerivedContext> {
-    let hooks = codetether_context_legacy::Hooks {
-        apply: crate::session::helper::experimental::apply_all,
-        repair: crate::session::helper::experimental::pairing::repair_orphans,
-        resolver: crate::session::helper::rlm_background::Background::resolve_model,
-    };
+    let hooks = super::hooks::native();
     codetether_reset_derivation::derive_reset(
         session,
         provider,

@@ -25754,3 +25754,24 @@ direct rustfmt and whitespace checks pass. No manifest or lockfile changes
 were needed; unrelated files remain unchanged. Evidence:
 artifacts/consolidation-context-regressions/. No Cargo, rustc, Python or tests
 ran. Full consolidation remains active.
+
+### Native context derivation and request entrypoints
+
+Added codetether-native-context and moved legacy/reset/incremental/policy
+derivation adapters into it. Generic source traits preserve the application
+session and event type while one hook constructor owns native transforms and
+model resolution. Root request and completion APIs re-export the existing
+shared implementations. Concrete Session view/request bindings remain at the
+root application boundary; redundant root derivation and completion files
+are removed.
+
+Static comparisons preserve all four derivation bodies and argument order,
+with only hook construction centralized. The background model resolver body
+uses the provider policy and does not depend on its snapshot type parameter;
+the native hook therefore selects the same policy with unit snapshot type.
+Module/dependency scans cover 719 roots and 605 crates without missing modules,
+cycles or undeclared direct dependencies. Declaration, file-limit, direct
+rustfmt and whitespace checks pass. Only the new package/root dependency are
+staged in Cargo.lock; unrelated dirty files remain unchanged. Evidence:
+artifacts/consolidation-native-context/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.
