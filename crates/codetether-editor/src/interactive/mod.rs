@@ -2,10 +2,14 @@
 //!
 //! Implement [`View`] for client state. [`open_argument`] handles an `/edit`
 //! argument; [`open_finder`] and [`confirm_finder`] manage workspace selection.
+//! [`EditorView`] supplies the view traits from borrowed fields and a navigation
+//! callback when the frontend does not need a custom implementation.
 mod binding;
+mod borrowed_view;
 mod finder;
 mod open;
 mod view;
+pub use borrowed_view::EditorView;
 pub use finder::{confirm_finder, open_finder};
 pub use open::{open_argument, open_path};
 pub use view::View;

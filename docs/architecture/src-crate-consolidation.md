@@ -27957,3 +27957,26 @@ module/dependency, production-scope and file-limit checks pass for 725 roots and
 artifacts/consolidation-editor-keys/verify-binding.mjs and associated logs.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active.
+
+### Crate-owned editor/finder adapter
+
+Replaced src/tui/app/fuzzy_find/editor_host.rs with the ordinary EditorView
+struct and View/FinderView implementations in
+crates/codetether-editor/src/interactive/borrowed_view.rs. Unlike declaration
+macros, this type and its implementations are compiled in the editor crate.
+The root's borrow.rs assembles six field references and a navigation callback;
+it no longer owns an adapter type or the editor trait implementations.
+
+The callback preserves the existing view transition and saved-scroll inputs.
+The shared opening/finder routines only change finder/editor/status fields before
+calling it, so capturing chat/tool scroll values when assembling the view
+preserves the previous transition values. No dependencies were added.
+
+Static comparisons cover six adapter methods, five entry points, six field
+mappings and five navigation inputs. Declaration, module/dependency, production
+scope, standalone formatting, whitespace and file-limit checks passed (725
+module roots, 617 crates). Unrelated working files are unchanged. Evidence:
+artifacts/consolidation-editor-view/. The first verification log records a
+verifier slice-boundary error corrected before the passing comparison.
+No Cargo, rustc, Python, compilation or runtime tests ran. App/AppState and other
+root adapters still require consolidation; the full goal remains active.
