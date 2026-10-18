@@ -37,7 +37,6 @@ use codetether_repeat_guard as repeat_guard;
 pub mod request_state;
 use codetether_provider_policy as retry_error;
 pub(crate) mod rlm_background;
-mod rlm_model;
 pub mod router;
 pub mod runtime;
 pub mod steering;

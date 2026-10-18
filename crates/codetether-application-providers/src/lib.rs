@@ -58,3 +58,5 @@ pub mod search;
 pub mod editing;
 /// Provider-backed embedding resolution for source indexes.
 pub mod indexing;
+/// RLM model choices resolved through the application's cached providers.
+pub mod model_resolution;

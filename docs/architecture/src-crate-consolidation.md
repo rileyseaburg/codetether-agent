@@ -22823,3 +22823,21 @@ lockfile; the unrelated working lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-recall-synthesis/`.
 No recall query, synthesis, provider request, Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### RLM model resolution owned by application providers
+
+Moved configured and score-aware RLM model resolution into
+`codetether-application-providers::model_resolution`. The native model module
+and its declaration were removed. The background resolver callback binds the
+shared function to the same native provider application, retaining its boxed
+future and borrowed configuration lifetime.
+
+Static comparisons preserve all resolution arguments, score callback, shared
+Vault cache loader and the core model-choice/fallback policy. Background event
+mapping, context/route callers and core resolution implementations are unchanged.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+No manifest or lockfile changes were needed. Evidence:
+`artifacts/consolidation-rlm-model-provider/`.
+No background jobs, provider requests, Cargo, rustc or Python ran; compilation
+and runtime tests remain unverified. Full consolidation is active.

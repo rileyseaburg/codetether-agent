@@ -11,9 +11,11 @@ pub(crate) fn resolve<'a>(
     config: &'a RlmConfig,
     purpose: RlmModelPurpose,
 ) -> codetether_rlm_background::Resolution<'a> {
-    Box::pin(super::super::rlm_model::resolve(
-        provider, model, config, purpose,
-    ))
+    Box::pin(
+        codetether_application_providers::model_resolution::resolve::<
+            crate::provider::registry::application::Native,
+        >(provider, model, config, purpose),
+    )
 }
 pub(super) fn notify(notify: Option<super::Notify>) -> Option<codetether_rlm_background::Notify> {
     notify.map(|notify| {
