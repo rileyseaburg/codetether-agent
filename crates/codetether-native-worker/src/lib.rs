@@ -37,3 +37,6 @@ pub mod pending;
 pub mod reconnect;
 /// Resumable worker stream consumption using the native task dispatcher hook.
 pub mod stream;
+
+/// Standalone and HTTP-integrated worker startup orchestration.
+pub mod entrypoints;

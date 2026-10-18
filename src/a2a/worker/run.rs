@@ -1,13 +1,8 @@
-//! Standalone A2A worker entrypoint.
-
+//! Standalone A2A worker application binding.
+use super::{pending_tasks::Dispatcher, worker_init::Hooks};
+use crate::cli::A2aArgs;
 use anyhow::Result;
 
-use crate::cli::A2aArgs;
-
-use super::{bootstrap_worker, init_worker, run_worker_loop};
-
 pub async fn run(args: A2aArgs) -> Result<()> {
-    let context = init_worker(args).await?;
-    bootstrap_worker(&context).await?;
-    run_worker_loop(context).await
+    codetether_native_worker::entrypoints::run::<Hooks, Dispatcher>(args).await
 }

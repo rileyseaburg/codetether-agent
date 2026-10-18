@@ -3,7 +3,7 @@ use codetether_a2a_http::peer_handle::A2APeerHandle;
 use codetether_bus_core::{AgentBus, BusHandle};
 use codetether_cli_options::A2aArgs;
 use std::sync::Arc;
-pub(super) struct Native;
+pub(in crate::a2a::worker) struct Native;
 impl codetether_native_worker::initialization::Hooks for Native {
     fn announce(handle: &BusHandle) -> usize {
         super::super::worker_tool_catalog::announce(handle)

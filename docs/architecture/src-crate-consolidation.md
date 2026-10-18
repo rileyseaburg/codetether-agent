@@ -25533,3 +25533,24 @@ lockfile dependency additions are staged; unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-worker-stream/. No Cargo, rustc,
 Python, HTTP streams, heartbeats or runtime tests ran. Full consolidation remains
 active.
+
+### Worker lifecycle entrypoints moved into the worker crate
+
+Moved standalone and HTTP-integrated startup orchestration from
+src/a2a/worker/run.rs and run_with_state.rs into
+crates/codetether-native-worker/src/entrypoints.rs. Root public functions now
+only select the application catalog/peer Hooks and task Dispatcher. Removed
+the obsolete worker_bootstrap.rs, worker_loop.rs and worker_server_loop.rs
+forwarders and their re-exports; worker_init now exposes only its hook binding.
+No manifest or lockfile changes are needed.
+
+Token comparisons preserve both lifecycle bodies after explicit function-name
+and generic substitutions, including context attachment before bootstrap and
+connection-state reset before the server loop. Static checks cover 714 module
+roots and 600 dependency crates with no missing modules, dependency cycles or
+undeclared direct dependencies. Declaration, file-limit, direct rustfmt and
+whitespace checks pass. The three pre-existing dirty files remain byte-for-byte
+unchanged. Evidence: artifacts/consolidation-worker-entrypoints/. The first
+verification attempt had an incorrect relative tokenizer import; correcting
+the import allowed the checks to run. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

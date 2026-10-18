@@ -78,13 +78,10 @@ mod test_support;
 mod test_support_provider;
 #[cfg(test)]
 mod test_tool_schema_retry;
-mod worker_bootstrap;
 use codetether_native_worker::worker_context;
 use codetether_a2a_worker_core as worker_env;
 mod worker_init;
-mod worker_loop;
 mod worker_security;
-mod worker_server_loop;
 mod worker_tool_catalog;
 use codetether_native_worker::workspace_scope;
 use codetether_native_worker::workspace_sync;
