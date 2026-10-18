@@ -16537,3 +16537,24 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-thinker-client/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared cognition runtime and loop state ownership
+
+- Moved the cognition runtime state record, restored InitialState record,
+  assembly defaults and loop-context record/handle cloning into
+  `codetether-cognition-core::runtime`.
+- Core state is generic over thinker and tool-registry handles. Native
+  CognitionRuntime wraps that state, retains its application methods and
+  forwards field access/debug formatting. Native loop context is a type alias.
+- Removed the native loop-context builder. Preserved every store/handle field,
+  allocation and bound, restored-state mapping, shared handle cloning and
+  initial test-vs-production loading policy. Startup now snapshots core state
+  directly before spawning the unchanged native loop driver.
+- Enabled Tokio rt explicitly for the moved JoinHandle type; no lockfile change.
+- Verification: full field/assembly/handle comparisons, initial/default and both
+  restoration branches, native wrapper and startup bindings, unchanged query,
+  status, stop and loop implementations, module/dependency graphs, direct
+  rustfmt, file limits and whitespace. Evidence:
+  `artifacts/consolidation-cognition-state/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

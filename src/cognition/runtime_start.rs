@@ -4,7 +4,6 @@ use anyhow::{Result, anyhow};
 use chrono::Utc;
 use std::sync::atomic::Ordering;
 
-use super::loop_ctx::LoopCtx;
 use super::{
     CognitionRuntime, CognitionStatus, CreatePersonaRequest, StartCognitionRequest, defaults,
     loop_drive,
@@ -41,7 +40,7 @@ impl CognitionRuntime {
         self.running.store(true, Ordering::SeqCst);
         *self.started_at.write().await = Some(Utc::now());
 
-        let ctx = LoopCtx::from_runtime(self);
+        let ctx = self.state.loop_context();
         *self.loop_handle.lock().await = Some(tokio::spawn(loop_drive::drive(ctx)));
         Ok(self.status().await)
     }

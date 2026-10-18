@@ -51,3 +51,6 @@ pub mod driver;
 
 /// FunctionGemma prompt and tool-call interpretation policy.
 pub mod tool_routing;
+
+/// Shared cognition state and loop-handle ownership.
+pub mod runtime;
