@@ -27,3 +27,7 @@ codetether-session-fork = { path = "../codetether-session-fork", version = "0.1.
 codetether-session-http = { path = "../codetether-session-http", version = "0.1.0" }
 codetether-session-realtime = { path = "../codetether-session-realtime", version = "0.1.0" }
 codetether-session-recovery = { path = "../codetether-session-recovery", version = "0.1.0" }
+codetether-native-a2a = { path = "../codetether-native-a2a", version = "4.7.6-dev.38" }
+codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+tokio = { version = "1", features = ["sync"] }

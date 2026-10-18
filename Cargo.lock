@@ -3956,6 +3956,10 @@ dependencies = [
 name = "codetether-native-server"
 version = "0.1.0"
 dependencies = [
+ "codetether-native-a2a",
+ "codetether-session-metadata",
+ "codetether-session-events",
+ "tokio",
  "codetether-application-providers",
  "codetether-approval-http",
  "codetether-model-catalog",

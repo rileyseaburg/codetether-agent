@@ -20,7 +20,7 @@ impl codetether_native_server::Routes<crate::tool::registry_lifecycle::Native, {
         codetether_native_server::build_router::<
             crate::tool::registry_lifecycle::Native,
             crate::session::Session,
-            super::session_realtime::AppHost,
+            codetether_native_server::RealtimeHost<crate::session::Session>,
             { cfg!(test) },
         >(
             state,

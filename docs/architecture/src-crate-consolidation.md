@@ -26086,3 +26086,21 @@ file-limit, direct rustfmt and whitespace checks pass. Only four required
 native-A2A dependencies are staged in Cargo.lock; unrelated files remain
 unchanged. Evidence: artifacts/consolidation-native-a2a-session/. No Cargo,
 rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Native realtime session execution adapter
+
+Moved realtime provider loading, event-prompt execution and saving into
+codetether-native-server::RealtimeHost. RealtimeSession adds only strict loading
+and mutable metadata access to the existing native A2A session contract. The
+root implements those two operations, selects the native host in routing and
+removes the old prompt_run adapter file. Realtime loading still calls
+Session::load directly and never falls back to A2A context creation.
+
+Static comparisons preserve provider/prompt/save bodies and root loading and
+metadata operations; inherited prompt/save methods delegate to the same native
+Session methods. Module/dependency scans cover 722 roots and 608 crates without
+missing modules, cycles or undeclared dependencies. Declaration, file-limit,
+direct rustfmt and whitespace checks pass. Only the four required native-server
+dependencies are staged in Cargo.lock; unrelated files remain unchanged.
+Evidence: artifacts/consolidation-native-realtime/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
