@@ -19806,3 +19806,25 @@ at the semicolon in an array return type; corrected that parser and retained
 the failed log. Evidence: `artifacts/consolidation-access-command/`. No Cargo,
 rustc, Python, Rust tests or access-mode commands ran; compilation and runtime
 remain unverified.
+
+### Approval commands and bulk release
+
+Moved approval command dispatch, target resolution, decision presentation and
+bulk paused-request release into `codetether-approval-view::command`. The module
+uses existing approval-core parsing/storage functions directly. Native code
+supplies seven presentation bindings; command and release wrappers preserve the
+existing integration-test entry points. Removed six native implementation or
+re-export files.
+
+Preserved explicit/visible/latest target precedence, store error handling,
+record-before-live-delivery order, queue resolution, input/scroll updates and
+next-approval status. Bulk release still checks that each approval advances the
+target and returns the existing error status when it does not. No dependencies
+changed.
+
+Validation: seven complete translated function bodies, seven native bindings,
+two delegates, unchanged integration tests/live registry/manifests, module
+reachability, dependency cycles, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-approval-command/`. No Cargo,
+rustc, Python, Rust tests or approval commands ran; compilation and runtime
+remain unverified.

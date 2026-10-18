@@ -22,3 +22,6 @@ pub mod interactive;
 
 /// Incoming approval presentation and background-check dispatch.
 pub mod request;
+
+/// Approval command execution and paused-request release.
+pub mod command;
