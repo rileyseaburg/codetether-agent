@@ -20,8 +20,14 @@ pub use view_mode::ViewMode;
 mod session_view;
 pub use session_view::SessionView;
 
+mod legacy_environment;
 /// Legacy UI utility types and fallback behavior.
 pub mod legacy_helpers;
+
+#[cfg(test)]
+mod legacy_environment_tests;
+#[cfg(test)]
+mod view_mode_help_tests;
 
 /// Application state initialization with native component factories.
 pub mod app_defaults;

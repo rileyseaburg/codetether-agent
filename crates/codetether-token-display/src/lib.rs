@@ -27,6 +27,8 @@ pub use context::context_indicator;
 /// assert_eq!(display.get_context_limit(""), None);
 /// ```
 pub struct TokenDisplay;
+#[cfg(test)]
+mod minimax_pricing_tests;
 
 /// Context-window gauges with truecolor and named-color rendering.
 pub mod context_gauge;

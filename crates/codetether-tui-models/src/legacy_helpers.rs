@@ -1,7 +1,8 @@
 //! Legacy UI helper surface retained for compatibility.
 //!
 //! These marker types and fallback values preserve the original TUI utility
-//! API. They do not perform image handling, archive I/O or configuration loading.
+//! API. Environment classification uses the original explicit-flag precedence.
+pub use super::legacy_environment::is_secure_environment;
 /// Return the input unchanged, preserving the legacy helper behavior.
 /// # Arguments
 /// * `s` - Text to copy.
@@ -35,18 +36,6 @@ pub struct ChatSyncConfig;
 /// ```
 pub struct MinioClient;
 
-/// Return the legacy environment flag.
-/// # Arguments
-/// None.
-/// # Returns
-/// Always `false`; no environment inspection is performed.
-/// # Examples
-/// ```
-/// assert!(!codetether_tui_models::legacy_helpers::is_secure_environment());
-/// ```
-pub fn is_secure_environment() -> bool {
-    false
-}
 /// Return the legacy chat-sync configuration fallback.
 /// # Arguments
 /// None.

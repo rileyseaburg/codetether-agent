@@ -28752,3 +28752,26 @@ checks pass. Evidence: artifacts/consolidation-registered-tests/. No Cargo,
 rustc, Python or Rust tests ran. Six older unregistered utility cases still
 reference obsolete APIs; the full consolidation goal remains active for that
 remaining ownership audit.
+
+### Resolve the remaining unregistered utility regressions
+
+Mapped all six legacy TUI utility tests to their owners: view help and environment
+classification in tui-models, convergence normalization in autochat-core, and
+cost presentation in token-display. Removed the now-empty legacy test source.
+The help test uses the current registry count and current Sessions/Subagents
+labels rather than the obsolete nine-view list. The convergence test supplies
+the original 280-character bound explicitly.
+
+Recovered environment-flag precedence and boolean parsing from historical
+commit a3e9279c2^ and restored them behind the legacy helper API, which had been
+replaced by a constant false. Static token comparison verifies all four function
+bodies against that source. Restored the historical MiniMax regular/highspeed
+rate cases in the canonical provider-core pricing table; cost tests use the
+current TokenDisplay API and retain their original numerical assertions.
+
+Declaration, module/dependency, production-dependency, file-size, formatting and
+whitespace checks pass. The application library's only unreached files now belong
+to its separate binary target. Evidence: artifacts/consolidation-legacy-utilities/.
+No Cargo, rustc, Python, Rust tests or doc tests ran. User edits remain untouched.
+The physical relocation and legacy test mapping are complete; final workspace
+ownership and compatibility checks remain before closing the full goal.

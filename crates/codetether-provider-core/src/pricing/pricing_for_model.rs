@@ -51,6 +51,10 @@ pub fn pricing_for_model(model: &str) -> (f64, f64) {
         (1.25, 5.00)
     } else if m.contains("gemini") {
         (0.075, 0.30)
+    } else if m.contains("minimax") && m.contains("highspeed") {
+        (0.60, 2.40)
+    } else if m.contains("minimax") && m.contains("m2") {
+        (0.30, 1.20)
     } else if m.contains("glm-5") || m.contains("glm-4") {
         (0.50, 1.50)
     } else if m.contains("kimi") || m.contains("k1.6") {
