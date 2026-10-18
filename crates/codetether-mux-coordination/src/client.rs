@@ -5,7 +5,7 @@
 
 use anyhow::{Context, Result};
 
-pub(super) async fn connect() -> Result<Option<crate::mux::client::MuxConnection>> {
+pub(super) async fn connect() -> Result<Option<codetether_mux_client::MuxConnection>> {
     let Some(name) = std::env::var_os(super::SESSION_ENV) else {
         return Ok(None);
     };
@@ -13,10 +13,10 @@ pub(super) async fn connect() -> Result<Option<crate::mux::client::MuxConnection
         .into_string()
         .map_err(|_| anyhow::anyhow!("mux session identity is not valid UTF-8"))?;
     anyhow::ensure!(!name.is_empty(), "mux session identity is empty");
-    let target = crate::mux::registry::load(&name)
+    let target = codetether_mux_registry::load(&name)
         .await
         .with_context(|| format!("load inherited mux session {name}"))?;
-    crate::mux::client::MuxConnection::connect_server(&target.record)
+    codetether_mux_client::MuxConnection::connect_server(&target.record)
         .await
         .with_context(|| format!("connect to inherited mux session {name}"))
         .map(Some)

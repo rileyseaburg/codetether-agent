@@ -10285,3 +10285,19 @@ code lines. The pre-existing native `client/exec_tests.rs` orphan remains
 unchanged and recorded. Evidence is in `artifacts/consolidation-mux-client/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python, authentication
 or network calls ran. Full workspace consolidation remains active.
+
+### Dedicated mux coordinator client
+
+Moved inherited-session discovery, authenticated server connection, typed
+acquire/renew/release requests and advisory bus events into
+`crates/codetether-mux-coordination`. Five modules retain the original identity
+validation, wait budget, reply checks and quiet-event filtering. The native
+coordination module now re-exports these services and the shared environment key.
+
+Fifteen static comparisons cover imports, complete client/event/request bodies,
+public operation wrappers, constants and unchanged session/spawn consumers.
+Module/dependency graphs, file budgets and whitespace checks passed; new files
+contain at most 38 code lines. Evidence is in
+`artifacts/consolidation-mux-coordination/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python, registry lookup, network or bus operations ran.
+Full workspace consolidation remains active.

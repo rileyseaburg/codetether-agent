@@ -3,8 +3,8 @@
 use anyhow::{Result, bail};
 use std::path::{Path, PathBuf};
 
-use crate::mux::lease::{CoordinationReply, CoordinationRequest};
-use crate::mux::protocol::{ClientRequest, ServerResponse};
+use codetether_mux_protocol::{ClientRequest, ServerResponse};
+use codetether_worktree_lease::{CoordinationReply, CoordinationRequest};
 
 pub(super) async fn acquire(
     owner: &str,
@@ -17,7 +17,7 @@ pub(super) async fn acquire(
         agent: agent.into(),
         workspace: workspace.into(),
         paths,
-        wait_ms: crate::mux::lease::ACQUIRE_WAIT_MILLIS,
+        wait_ms: codetether_worktree_lease::ACQUIRE_WAIT_MILLIS,
     };
     send("acquire", owner, request).await
 }
