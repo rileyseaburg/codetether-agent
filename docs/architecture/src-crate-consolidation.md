@@ -23637,6 +23637,22 @@ pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
 lock changes were needed. Evidence: artifacts/consolidation-prompt-bindings/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
 
+### Chat input interception, routing and submission bindings
+
+Moved the chat Enter entry point and its interception, routing and submission
+host groups into codetether-chat-submit::frontend modules. Removed four root
+host implementation files; the root selects existing frontend resources and
+callback paths. The entry point's detailed documentation moves with its body.
+
+All twelve expanded function bodies and the borrowed host layout match their
+originals after callback qualification. Queue tests are byte-for-byte unchanged.
+Shared priority and early-return behavior are unchanged. Declaration,
+module/dependency, native production-scope, standalone formatting, file-limit and
+whitespace checks pass for 725 roots and 617 crates. Unrelated working files are
+unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-chat-routing/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
+
 ### Queued-prompt frontend bindings
 
 Moved queued-prompt command/answer delivery, input access, queue gates and the
