@@ -4,6 +4,7 @@
 //! source user message, creates a fresh identity and copies only prior context.
 mod error;
 mod host;
+pub mod interactive;
 mod metadata;
 mod repository;
 mod service;

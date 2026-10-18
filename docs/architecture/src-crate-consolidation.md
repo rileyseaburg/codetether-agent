@@ -14525,3 +14525,21 @@ Full workspace consolidation remains active.
 - Added anyhow, chrono and tracing to the owning crate, staging only its lock
   dependencies. No Cargo, rustc, Rust tests, persistence or TUI runtime ran.
   Full workspace consolidation remains unfinished.
+
+### Interactive trailing-turn fork ownership
+
+- Moved the TUI `/fork` lifecycle into codetether-session-fork::interactive.
+  Modules separate command guards, parent-save/child creation, independent
+  history cut points, history copying, selective metadata and final notices.
+- Preserved this command's existing semantics independently of edited-message
+  prefix branching: nine metadata fields, page reclassification fallback,
+  parent save before creation and child save before view changes.
+- Native bindings retain only field access/history installation, bus attachment
+  and presentation operations. Existing ForkSession supplies storage and IDs.
+- Verification: twelve static checks passed for copy fields, cut calculations,
+  history/title policy, persistence/view ordering, notices, native bindings,
+  module bounds and isolated lock additions. Module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-fork-command/.
+- Added existing chat-model and context-policy dependencies. No Cargo, rustc,
+  Rust tests, session creation or saves ran. Full consolidation is unfinished.

@@ -3,6 +3,10 @@ use std::sync::Arc;
 
 #[path = "commands/a2a.rs"]
 mod a2a;
+#[path = "commands/fork_session.rs"]
+mod fork_session;
+#[path = "commands/fork_view.rs"]
+mod fork_view;
 #[path = "commands/goal/mod.rs"]
 pub(crate) mod goal;
 #[path = "commands/open_editor.rs"]
@@ -88,126 +92,8 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
 /// - `/fork N` — fork keeping only the first (total - N) turns (i.e. undo N
 ///   turns in the *fork* while leaving the parent intact).
 async fn handle_fork_command(app: &mut App, _cwd: &Path, session: &mut Session, rest: &str) {
-    if app.state.processing {
-        push_system_message(
-            app,
-            "Cannot fork while a response is in progress. Press Esc to cancel first.",
-        );
-        return;
-    }
-
-    let drop_last_n: usize = match rest.trim() {
-        "" => 0,
-        s => match s.parse::<usize>() {
-            Ok(v) => v,
-            Err(_) => {
-                app.state.status =
-                    "Usage: /fork [N] (drop last N user turns from the fork; default 0)"
-                        .to_string();
-                return;
-            }
-        },
-    };
-
-    // Persist current session first — fork must not lose the parent's tail.
-    if let Err(error) = session.save().await {
-        app.state.status = format!("Fork aborted: failed to save current session: {error}");
-        return;
-    }
-
-    let parent_id = session.id.clone();
-
-    // Build the child session.
-    let mut child = match Session::new().await {
-        Ok(s) => s,
-        Err(err) => {
-            app.state.status = format!("Fork failed: {err}");
-            return;
-        }
-    };
-
-    // Compute cut for the fork's copy.
-    let session_user_idxs: Vec<usize> = session
-        .messages
-        .iter()
-        .enumerate()
-        .filter_map(|(i, m)| (m.role == crate::provider::Role::User).then_some(i))
-        .collect();
-    let session_cut = if drop_last_n == 0 || drop_last_n > session_user_idxs.len() {
-        session.messages.len()
-    } else {
-        session_user_idxs[session_user_idxs.len() - drop_last_n]
-    };
-
-    let tui_user_idxs: Vec<usize> = app
-        .state
-        .messages
-        .iter()
-        .enumerate()
-        .filter_map(|(i, m)| matches!(m.message_type, MessageType::User).then_some(i))
-        .collect();
-    let tui_cut = if drop_last_n == 0 || drop_last_n > tui_user_idxs.len() {
-        app.state.messages.len()
-    } else {
-        tui_user_idxs[tui_user_idxs.len() - drop_last_n]
-    };
-
-    child.messages = session.messages[..session_cut].to_vec().into();
-    child.pages = if session.pages.len() >= session_cut {
-        session.pages[..session_cut].to_vec().into()
-    } else {
-        crate::session::pages::classify_all(&child.messages).into()
-    };
-    child.metadata.auto_apply_edits = session.metadata.auto_apply_edits;
-    child.metadata.allow_network = session.metadata.allow_network;
-    child.metadata.slash_autocomplete = session.metadata.slash_autocomplete;
-    child.metadata.use_worktree = session.metadata.use_worktree;
-    child.metadata.model = session.metadata.model.clone();
-    child.metadata.rlm = session.metadata.rlm.clone();
-    child.metadata.context_policy = session.metadata.context_policy;
-    child.metadata.delegation = session.metadata.delegation.clone();
-    child.metadata.history_sink = session.metadata.history_sink.clone();
-    child.title = session
-        .title
-        .as_ref()
-        .map(|t| format!("{t} (fork)"))
-        .or_else(|| Some("fork".to_string()));
-
-    // Swap in the child session.
-    let child_id = child.id.clone();
-    *session = child;
-    session.attach_global_bus_if_missing();
-
-    if let Err(error) = session.save().await {
-        app.state.status = format!("Fork created but failed to persist: {error}");
-        return;
-    }
-
-    // Switch TUI state to the forked conversation.
-    let forked_tui = app.state.messages[..tui_cut].to_vec();
-    app.state.messages = forked_tui;
-    app.state.session_id = Some(session.id.clone());
-    app.state.clear_streaming_text();
-    app.state.clear_request_timing();
-    app.state.scroll_to_bottom();
-    app.state.set_view_mode(ViewMode::Chat);
-
-    let drop_note = if drop_last_n == 0 {
-        String::new()
-    } else {
-        format!(" (dropped last {drop_last_n} turn(s) from fork)")
-    };
-    push_system_message(
-        app,
-        format!(
-            "Forked session {}{}.\n  parent: {}\n  fork:   {}",
-            &child_id[..8.min(child_id.len())],
-            drop_note,
-            parent_id,
-            child_id,
-        ),
-    );
-    app.state.status = format!("Forked → {}", &child_id[..8.min(child_id.len())]);
+    codetether_session_fork::interactive::execute(&mut fork_view::CommandView(app), session, rest)
+        .await;
 }
 
 /// Parse and dispatch a `/ralph ...` subcommand.

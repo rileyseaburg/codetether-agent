@@ -6825,6 +6825,8 @@ dependencies = [
  "codetether-session-metadata",
  "codetether-provenance",
  "thiserror 2.0.20",
+ "codetether-chat-model",
+ "codetether-context-policy",
 ]
 
 [[package]]
