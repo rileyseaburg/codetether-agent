@@ -11,6 +11,7 @@ mod lines;
 mod log;
 mod render;
 mod sections;
+pub mod standard;
 mod state;
 mod status;
 mod style;

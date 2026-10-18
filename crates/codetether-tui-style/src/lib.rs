@@ -7,6 +7,7 @@ pub mod border_style;
 mod elapsed;
 pub mod gradient_rule;
 pub mod gradient_sweep;
+pub mod input_preview;
 pub mod mode_accent;
 pub mod spinner;
 pub mod status;

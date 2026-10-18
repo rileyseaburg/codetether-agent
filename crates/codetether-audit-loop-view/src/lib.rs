@@ -8,6 +8,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
+pub mod standard;
 
 #[path = "audit_loop_event.rs"]
 pub mod audit_loop_event;

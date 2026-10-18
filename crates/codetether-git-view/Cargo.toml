@@ -7,6 +7,7 @@ license = "MIT"
 description = "Workspace Git snapshots and terminal status presentation"
 
 [dependencies]
+codetether-tui-style = { path = "../codetether-tui-style", version = "0.1.0" }
 codetether-workspace-snapshot = { path = "../codetether-workspace-snapshot", version = "0.1.0" }
 chrono = "0.4"
 serde = { version = "1.0.229", features = ["derive"] }

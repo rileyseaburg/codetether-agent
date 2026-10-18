@@ -7,4 +7,5 @@ license = "MIT"
 description = "Audit-loop progress state, reducers and terminal rendering"
 
 [dependencies]
+codetether-tui-style = { path = "../codetether-tui-style", version = "0.1.0" }
 ratatui = { version = "0.30.2", default-features = false }

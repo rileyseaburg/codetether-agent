@@ -6879,6 +6879,7 @@ dependencies = [
  "chrono",
  "serde",
  "ratatui",
+ "codetether-tui-style",
 ]
 
 [[package]]
@@ -6964,6 +6965,7 @@ name = "codetether-audit-loop-view"
 version = "0.1.0"
 dependencies = [
  "ratatui",
+ "codetether-tui-style",
 ]
 
 [[package]]

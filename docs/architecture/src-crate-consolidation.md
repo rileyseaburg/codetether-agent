@@ -24117,3 +24117,20 @@ the new local package and root dependency are staged in Cargo.lock; unrelated
 working edits remain untouched. Evidence: artifacts/consolidation-basic-views/.
 No Cargo, rustc, Python, compilation, rendering or tests ran. Full consolidation
 remains active.
+
+### Input-preview and default overview composition moved into view crates
+
+Moved the input-preview renderer into tui-style::input_preview. Added standard
+Git and audit-loop view modules that supply that same renderer to their existing
+customizable render functions. Native TUI modules reexport these standard
+modules, removing input.rs, git_view.rs and audit_loop_view.rs while retaining
+the current render and audit-state paths. Both view crates now directly depend
+on tui-style.
+
+Static token comparisons preserve rendering bodies, callback arguments and
+exported audit types after import substitutions. Module/dependency scans cover
+692 roots and 573 crates without missing modules or cycles. Direct rustfmt,
+source file limits and whitespace checks passed. Only required dependency
+entries are staged in Cargo.lock; unrelated working edits remain untouched.
+Evidence: artifacts/consolidation-default-panels/. No Cargo, rustc, Python,
+compilation, rendering or tests ran. Full consolidation remains active.
