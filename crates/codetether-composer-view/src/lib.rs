@@ -35,3 +35,9 @@ mod edit_insert;
 mod edit_replace;
 mod input_edit;
 pub use input_edit::InputEdit;
+
+mod command_history;
+mod history_next;
+mod history_previous;
+mod history_push;
+pub use command_history::{CommandHistory, HistoryRecall};

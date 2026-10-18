@@ -6,7 +6,7 @@ impl super::AppState {
             codetether_composer_view::InputEdit::new(&mut self.input, &mut self.input_cursor)
                 .insert_char(c);
         if changed {
-            self.history_index = None;
+            self.history.history_index = None;
             self.refresh_slash_suggestions();
         }
     }
@@ -15,7 +15,7 @@ impl super::AppState {
             codetether_composer_view::InputEdit::new(&mut self.input, &mut self.input_cursor)
                 .insert_text(text);
         if changed {
-            self.history_index = None;
+            self.history.history_index = None;
             self.refresh_slash_suggestions();
         }
     }
@@ -24,7 +24,7 @@ impl super::AppState {
             codetether_composer_view::InputEdit::new(&mut self.input, &mut self.input_cursor)
                 .delete_backspace();
         if changed {
-            self.history_index = None;
+            self.history.history_index = None;
             self.refresh_slash_suggestions();
         }
     }
@@ -33,7 +33,7 @@ impl super::AppState {
             codetether_composer_view::InputEdit::new(&mut self.input, &mut self.input_cursor)
                 .delete_forward();
         if changed {
-            self.history_index = None;
+            self.history.history_index = None;
             self.refresh_slash_suggestions();
         }
     }
@@ -43,6 +43,6 @@ impl super::AppState {
         self.input_mode = InputMode::Normal;
         self.slash_suggestions.clear();
         self.selected_slash_suggestion = 0;
-        self.history_index = None;
+        self.history.history_index = None;
     }
 }

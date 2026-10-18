@@ -12212,3 +12212,19 @@ Full workspace consolidation remains active.
   checks, direct formatting, source limits and diff checks passed.
 - Evidence: artifacts/consolidation-composer-edit/. No Cargo, rustc, compilation
   or tests ran. Full workspace consolidation remains incomplete.
+
+### Composer command-history ownership
+
+- Moved command-history entries and recall index into CommandHistory in
+  codetether-composer-view. Shared operations own bounded insertion, prior/next
+  selection and the explicit end-of-history result. Four focused modules contain
+  at most 31 code lines; the existing entry/payload-limit test moved with insertion.
+- Native methods retain input assignment/clearing, cursor placement, input-mode
+  selection and completion refresh. Editing and file-share paths reset the new
+  owner's recall index. Empty/no-op and end-of-history behavior is preserved.
+- Verification: ten source comparisons passed for insertion/test code, selection,
+  native effects, fields and defaults. Full module/dependency checks, direct
+  formatting, source limits and diff checks passed. Evidence:
+  artifacts/consolidation-composer-history/.
+- No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
+  incomplete.

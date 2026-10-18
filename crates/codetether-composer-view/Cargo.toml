@@ -7,6 +7,7 @@ license = "MIT"
 description = "Chat input textbox, cursor, and autocomplete presentation"
 
 [dependencies]
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
 codetether-theme = { path = "../codetether-theme", version = "0.1.0", features = ["ratatui"] }
 codetether-tui-style = { path = "../codetether-tui-style", version = "0.1.0" }
 codetether-terminal-clipboard = { path = "../codetether-terminal-clipboard", version = "0.1.0" }

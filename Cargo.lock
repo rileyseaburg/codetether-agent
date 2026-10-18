@@ -6162,6 +6162,7 @@ dependencies = [
  "codetether-terminal-clipboard",
  "codetether-theme",
  "codetether-tui-style",
+ "codetether-util",
  "ratatui",
  "unicode-width",
 ]

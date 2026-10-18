@@ -41,7 +41,7 @@ pub fn attach_file_to_input(app: &mut App, workspace_dir: &Path, path: &Path) {
             app.state.input.push_str(&snippet);
             app.state.input_cursor = app.state.input.chars().count();
             app.state.input_mode = InputMode::Editing;
-            app.state.history_index = None;
+            app.state.history.history_index = None;
             app.state.refresh_slash_suggestions();
             app.state.set_view_mode(ViewMode::Chat);
             app.state.scroll_to_bottom();
