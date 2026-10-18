@@ -32,3 +32,14 @@ impl SessionLoopHost for ApplicationHost<'_, '_> {
         self.session.save().await
     }
 }
+
+impl codetether_a2a_worker_core::session_protocol::driver::ScopedHost for ApplicationHost<'_, '_> {
+    fn session_id(&self) -> &str {
+        &self.session.id
+    }
+    fn gate(session_id: &str) -> codetether_session_control::GateFuture<'_> {
+        Box::pin(crate::session::runtime::boundary::ensure_running(
+            session_id,
+        ))
+    }
+}

@@ -13,7 +13,7 @@ pub(super) async fn run(
     session: &mut Session,
     max_steps: usize,
 ) -> Result<SessionStepsOutcome> {
-    codetether_a2a_worker_core::session_protocol::driver::run(
+    codetether_a2a_worker_core::session_protocol::driver::run_scoped(
         &mut ApplicationHost { context, session },
         max_steps,
     )

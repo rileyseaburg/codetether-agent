@@ -32,8 +32,6 @@ pub(super) async fn run_session_steps(
     output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
     max_steps: usize,
 ) -> Result<SessionStepsOutcome> {
-    crate::session::runtime::boundary::ensure_running(&session.id).await?;
-    let mut control = crate::session::runtime::execution_scope::ExecutionScope::open(&session.id)?;
     let context = session_context::Context {
         provider,
         model,
@@ -47,11 +45,5 @@ pub(super) async fn run_session_steps(
             output_callback,
         },
     };
-    let result = control
-        .run(session_loop::run(&context, session, max_steps.max(1)))
-        .await;
-    if let Err(error) = &result {
-        session_failure::record_loop_halt(session, &error.to_string()).await;
-    }
-    result
+    session_loop::run(&context, session, max_steps).await
 }

@@ -16214,3 +16214,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-worker-transcript/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared scoped worker execution boundary
+
+- Moved initial gate evaluation, execution-scope ownership, minimum step budget
+  and post-loop error diagnostics into the worker driver's run_scoped path.
+  Native bindings supply the same durable gate and session identity.
+- Native code still packs the borrowed execution context; the shared boundary
+  then checks the gate before opening scope and running the loop. Initial
+  gate/acquisition failures do not append halt diagnostics; loop failures do.
+- Verification: native context construction comparison, shared boundary order,
+  native gate/identity bindings, unchanged loop effects and control/failure
+  tests, module/dependency graphs, direct rustfmt, file budgets, isolated lock
+  addition and whitespace. Evidence: `artifacts/consolidation-worker-scope/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

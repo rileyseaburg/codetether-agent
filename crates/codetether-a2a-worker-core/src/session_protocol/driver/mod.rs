@@ -6,3 +6,6 @@ mod host;
 mod run;
 pub use host::{Continuation, SessionLoopHost};
 pub use run::run;
+
+mod scoped;
+pub use scoped::{ScopedHost, run_scoped};

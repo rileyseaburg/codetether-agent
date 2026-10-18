@@ -1225,6 +1225,7 @@ dependencies = [
  "tracing",
  "codetether-provider-policy",
  "codetether-session-events",
+ "codetether-session-control",
 ]
 
 [[package]]

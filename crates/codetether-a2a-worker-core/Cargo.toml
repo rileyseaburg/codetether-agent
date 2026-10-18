@@ -32,5 +32,7 @@ codetether-provider-policy = { path = "../codetether-provider-policy", version =
 
 codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
 
+codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt"] }
