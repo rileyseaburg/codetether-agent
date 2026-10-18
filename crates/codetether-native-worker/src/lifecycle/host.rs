@@ -1,16 +1,16 @@
 //! Runtime effects for shared task handling.
 use super::*;
 #[async_trait::async_trait]
-impl TaskHandlerHost for ApplicationHost<'_> {
+impl<E: Executor> TaskHandlerHost for ApplicationHost<'_, E> {
     async fn sync_timeline(&self, timeline: &TaskTimeline) {
-        sync_timeline_to_runtime(timeline, self.0).await;
+        sync_timeline_to_runtime(timeline, self.runtime).await;
     }
     async fn claim(
         &self,
         task_id: &str,
         timeline: &mut TaskTimeline,
     ) -> Result<Option<ClaimedTaskData>> {
-        claim_task(self.0, task_id, timeline).await
+        claim_task(self.runtime, task_id, timeline).await
     }
     async fn execute(
         &self,
@@ -21,8 +21,8 @@ impl TaskHandlerHost for ApplicationHost<'_> {
         provider_keys: Option<serde_json::Value>,
         timeline: &mut TaskTimeline,
     ) -> TaskInner {
-        execute_claimed_task(
-            self.0,
+        E::execute(
+            self.runtime,
             task,
             task_id,
             title,
@@ -38,6 +38,6 @@ impl TaskHandlerHost for ApplicationHost<'_> {
         outcome: TaskOutcome,
         timeline: &mut TaskTimeline,
     ) -> Result<()> {
-        task_handler_release::release_handled_task(self.0, task_id, outcome, timeline).await
+        release::release_handled_task(self.runtime, task_id, outcome, timeline).await
     }
 }

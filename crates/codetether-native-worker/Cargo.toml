@@ -24,3 +24,4 @@ codetether-config = { path = "../codetether-config", version = "0.1.0" }
 serde_json = "1"
 codetether-a2a-stream = { path = "../codetether-a2a-stream", version = "0.1.0" }
 codetether-worker-http = { path = "../codetether-worker-http", version = "0.1.0" }
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }

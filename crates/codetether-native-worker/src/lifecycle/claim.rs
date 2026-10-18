@@ -1,5 +1,5 @@
 //! Adapt worker state to shared task claiming.
-use super::{WorkerTaskRuntime, task_timeline};
+use crate::{WorkerTaskRuntime, task_timeline};
 use anyhow::Result;
 use codetether_a2a_http::worker::claim::ClaimedTaskData;
 pub(super) async fn claim_task(

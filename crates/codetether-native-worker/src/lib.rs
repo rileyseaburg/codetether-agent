@@ -40,3 +40,6 @@ pub mod stream;
 
 /// Standalone and HTTP-integrated worker startup orchestration.
 pub mod entrypoints;
+
+/// Task admission, claim, progress and release with application execution hooks.
+pub mod lifecycle;

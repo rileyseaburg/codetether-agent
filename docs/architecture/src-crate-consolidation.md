@@ -25554,3 +25554,24 @@ unchanged. Evidence: artifacts/consolidation-worker-entrypoints/. The first
 verification attempt had an incorrect relative tokenizer import; correcting
 the import allowed the checks to run. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Native worker admission and claim/release lifecycle
+
+Moved the native claim and release adapters plus the task lifecycle host into
+codetether-native-worker::lifecycle. TaskDispatcher now connects both intake
+paths to the existing shared admission/slot-cleanup implementation and native
+lifecycle. The root retains a single Executor implementation forwarding the
+same claimed-task arguments to session-dependent execution, and a dispatcher
+type alias. Removed six root adapter files and unused pending-task wrappers.
+
+Static token comparisons preserve the claim/release and lifecycle host bodies
+with explicit runtime-field and execution-hook substitutions. Forwarding checks
+cover admission and execution arguments. Module/dependency scans cover 714
+roots and 600 crates without missing modules, cycles or undeclared direct
+workspace dependencies. Declaration, file-limit, direct rustfmt and whitespace
+checks pass. The first forwarding assertion was sensitive to rustfmt line
+wrapping; its token-based replacement passes. Evidence:
+artifacts/consolidation-worker-lifecycle/. The staged lockfile adds only the
+worker crate's provenance dependency; all three unrelated dirty files remain
+unchanged. No Cargo, rustc, Python, compilation or runtime tests ran. Full
+consolidation remains active.

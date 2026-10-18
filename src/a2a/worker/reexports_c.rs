@@ -5,7 +5,6 @@ pub(super) use super::{
     task_context::{TaskContext, build_task_context},
     task_data::{task_metadata, task_str, task_value},
     task_execute::execute_claimed_task,
-    task_handler::handle_task,
     task_output::build_output_callback,
     task_session::prepare_task_session,
     task_slot::reserve_task_slot,

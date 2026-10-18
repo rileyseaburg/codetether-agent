@@ -3920,6 +3920,7 @@ dependencies = [
 name = "codetether-native-worker"
 version = "0.1.0"
 dependencies = [
+ "codetether-provenance",
  "anyhow",
  "async-trait",
  "codetether-a2a-http",

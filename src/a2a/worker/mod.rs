@@ -41,11 +41,9 @@ mod swarm_policy;
 use codetether_swarm_core::worker_result as swarm_policy_result;
 mod task_agent;
 use codetether_a2a_worker_core::execution_policy as task_agent_swarm_result;
-mod task_claim;
 use codetether_a2a_worker_core::task_config as task_context;
 use codetether_a2a_worker_core::task_config as task_context_helpers;
 use codetether_a2a_worker_core::task_config as task_data;
-mod task_dispatch;
 #[rustfmt::skip]
 mod task_dispatch_special;
 mod task_execute;
@@ -54,8 +52,7 @@ mod task_execute_sink;mod task_execute_title;
 #[cfg(test)]
 mod task_execute_title_tests;
 mod task_handler;
-#[rustfmt::skip]
-mod task_handler_release;use codetether_a2a_http::worker::output_callback as task_output;
+use codetether_a2a_http::worker::output_callback as task_output;
 use codetether_a2a_worker_core::dispatch as task_handler_timeout;
 use codetether_a2a_worker_core::outcome as task_outcome;
 use codetether_a2a_worker_core::task_config::policy_args as task_policy_args;

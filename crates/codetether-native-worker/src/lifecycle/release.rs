@@ -1,11 +1,11 @@
 //! Adapt the worker runtime to shared task release handling.
-use super::{WorkerTaskRuntime, task_timeline};
+use crate::{WorkerTaskRuntime, task_timeline};
 use anyhow::Result;
 use codetether_a2a_http::worker::completion::{self, ReleaseTarget};
 pub(super) async fn release_handled_task(
     runtime: &WorkerTaskRuntime,
     task_id: &str,
-    outcome: super::task_outcome::TaskOutcome,
+    outcome: codetether_a2a_worker_core::outcome::TaskOutcome,
     timeline: &mut task_timeline::TaskTimeline,
 ) -> Result<()> {
     completion::release_handled_task(
