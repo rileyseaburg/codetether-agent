@@ -1,38 +1,6 @@
-//! User-facing session title normalization and labels.
-//!
-//! New titles are normalized before persistence, while labels also sanitize
-//! legacy titles so display code never renders injected bootstrap context.
-
-use super::super::types::Session;
-
-pub(in crate::session) fn normalize_title(raw: &str) -> Option<String> {
-    let mut title = String::with_capacity(raw.len());
-    for word in raw.split(|ch: char| ch.is_whitespace() || ch.is_control()) {
-        if word.is_empty() {
-            continue;
-        }
-        if !title.is_empty() {
-            title.push(' ');
-        }
-        title.push_str(word);
-    }
-    super::extract::is_title_candidate(&title).then_some(title)
-}
-
-pub(in crate::session) fn label(title: Option<&str>, id: &str) -> String {
-    title
-        .and_then(normalize_title)
-        .unwrap_or_else(|| short_id(id))
-}
-
-fn short_id(id: &str) -> String {
-    let id = id.trim();
-    if id.is_empty() {
-        "new".to_string()
-    } else {
-        id.chars().take(8).collect()
-    }
-}
+//! Native display-label method and shared title normalization.
+use crate::session::Session;
+pub(in crate::session) use codetether_session_title::{label, normalize_title};
 
 impl Session {
     /// Return a normalized title or a compact identifier for display.

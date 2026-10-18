@@ -1,47 +1,22 @@
-//! Title generation and context-change hooks.
-
+//! Native session title operations backed by the shared title crate.
 mod ai;
 mod ai_default;
-mod ai_model;
-mod ai_request;
 pub(super) mod display;
-mod extract;
-
-#[cfg(test)]
-#[path = "display_tests.rs"]
-mod display_tests;
-
-pub(crate) use extract::is_title_candidate;
-
-use anyhow::Result;
-use chrono::Utc;
-
+mod host;
 use super::types::Session;
-
+use anyhow::Result;
+pub(crate) use codetether_session_title::is_title_candidate;
 impl Session {
     /// Generate a title from the first user message if one is not already
     /// set.
     pub async fn generate_title(&mut self) -> Result<()> {
-        if self.title.is_some() {
-            return Ok(());
-        }
-        self.set_title_from_first_user_message();
-        Ok(())
+        codetether_session_title::generate(self).await
     }
-
     /// Regenerate the title from the first user message, even if already
     /// set.
     pub async fn regenerate_title(&mut self) -> Result<()> {
-        self.set_title_from_first_user_message();
-        Ok(())
+        codetether_session_title::regenerate(self).await
     }
-
-    fn set_title_from_first_user_message(&mut self) {
-        if let Some(title) = extract::title_from_first_user_message(self) {
-            self.set_title(title);
-        }
-    }
-
     /// Set a custom title for the session.
     ///
     /// Whitespace is collapsed before persistence; empty or injected bootstrap
@@ -51,24 +26,16 @@ impl Session {
     ///
     /// * `title` - Candidate user-facing title.
     pub fn set_title(&mut self, title: impl Into<String>) {
-        self.title = display::normalize_title(&title.into());
-        self.updated_at = Utc::now();
+        codetether_session_title::set(self, title);
     }
-
     /// Clear the title, allowing it to be regenerated on the next call to
     /// [`Session::generate_title`].
     pub fn clear_title(&mut self) {
-        self.title = None;
-        self.updated_at = Utc::now();
+        codetether_session_title::clear(self);
     }
-
     /// React to a context change (directory change, model change, etc.).
     /// Bumps `updated_at` and optionally regenerates the title.
     pub async fn on_context_change(&mut self, regenerate_title: bool) -> Result<()> {
-        self.updated_at = Utc::now();
-        if regenerate_title {
-            self.regenerate_title().await?;
-        }
-        Ok(())
+        codetether_session_title::context_change(self, regenerate_title).await
     }
 }

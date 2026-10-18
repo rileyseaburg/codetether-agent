@@ -1,0 +1,17 @@
+[package]
+name = "codetether-session-title"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Session title normalization, extraction and model-backed generation"
+
+[dependencies]
+anyhow = "1"
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+
+[dev-dependencies]
+async-trait = "0.1"
+futures = "0.3"
+tokio = { version = "1", features = ["macros", "rt"] }

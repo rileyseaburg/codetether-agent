@@ -1,3 +1,4 @@
+pub use codetether_context_policy::transcript::truncate_with_ellipsis;
 pub use codetether_context_policy::transcript::{
     extract_text_content, latest_user_text, role_label,
 };
@@ -28,27 +29,4 @@ pub fn extract_candidate_file_paths(text: &str, cwd: &Path, max_files: usize) ->
         }
     }
     out
-}
-
-/// Truncates a string to max_chars and adds an ellipsis if needed.
-pub fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
-    if max_chars == 0 {
-        return String::new();
-    }
-
-    let mut chars = value.chars();
-    let mut output = String::new();
-    for _ in 0..max_chars {
-        if let Some(c) = chars.next() {
-            output.push(c);
-        } else {
-            break;
-        }
-    }
-
-    if chars.next().is_some() {
-        format!("{output}...")
-    } else {
-        output
-    }
 }

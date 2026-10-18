@@ -38,3 +38,6 @@ pub fn messages_to_rlm_context(messages: &[Message]) -> String {
     }
     out
 }
+
+mod truncate;
+pub use truncate::truncate_with_ellipsis;

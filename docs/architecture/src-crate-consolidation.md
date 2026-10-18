@@ -8861,3 +8861,23 @@ at most 41 code lines. Evidence is in
 `artifacts/consolidation-checkpoint-storage/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The full source consolidation
 remains active.
+
+### Dedicated session-title crate
+
+Moved title normalization/labels, heuristic extraction, first-user seed selection,
+model request/response handling and title lifecycle coordination into
+`crates/codetether-session-title`. Twelve modules separate these responsibilities
+and their existing tests. A native title-session adapter owns only field writes
+and timestamp updates. Configured-provider/default-model selection remains in
+its existing native adapter and delegates to the shared title implementation.
+
+The Unicode-scalar truncation helper now belongs to the existing context-policy
+transcript module, with the application retaining its old re-export. Title limits,
+bootstrap filtering, request parameters, output cleaning, silent heuristic
+fallback and timestamp-update order remain unchanged. Thirty-two static checks
+cover moved bodies, native effects, truncation, provider selection and six moved
+tests. Module references, dependency cycles, code budgets and whitespace checks
+passed; title crate files contain at most 39 code lines. Evidence is in
+`artifacts/consolidation-session-title/`. Compilation and runtime tests were not
+run; no model requests occurred. No Cargo, rustc or Python commands ran. The full
+consolidation remains active.

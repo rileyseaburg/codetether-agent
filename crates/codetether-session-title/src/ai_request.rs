@@ -1,8 +1,8 @@
 //! Builds the `CompletionRequest` used for AI title synthesis.
 
-use crate::provider::{CompletionRequest, ContentPart, Message, Role};
+use codetether_provider_core::{CompletionRequest, ContentPart, Message, Role};
 
-use super::super::helper::text::truncate_with_ellipsis;
+use codetether_context_policy::transcript::truncate_with_ellipsis;
 
 /// System prompt instructing the model to emit only a terse title.
 const TITLE_SYSTEM: &str = "You name developer chat sessions. Reply with ONLY a concise \

@@ -1,6 +1,6 @@
-use crate::provider::*;
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_provider_core::*;
 use futures::stream::BoxStream;
 
 pub(super) struct SelectedProvider;

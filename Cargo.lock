@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-session-title",
  "codetether-run-checkpoint",
  "codetether-writeback-journal",
  "codetether-session-location",
@@ -4011,6 +4012,18 @@ dependencies = [
 name = "codetether-session-runtime"
 version = "0.1.0"
 dependencies = [
+ "futures",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-session-title"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-context-policy",
+ "codetether-provider-core",
  "futures",
  "tokio",
 ]
