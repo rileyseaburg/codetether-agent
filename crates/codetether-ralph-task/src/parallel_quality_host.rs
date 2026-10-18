@@ -1,17 +1,11 @@
 //! Application shell, verification and repair callbacks for shared retry sequencing.
 use super::parallel_execution_context::ParallelExecutionContext;
-use super::parallel_quality_state::QualityProgress;
 use super::*;
 use codetether_ralph_core::quality_repair::RepairHost;
 #[async_trait::async_trait]
-impl RepairHost for ParallelExecutionContext<'_> {
+impl<H: Host> RepairHost for ParallelExecutionContext<'_, H> {
     async fn check(&self, checks: &QualityChecks) -> (bool, String) {
-        codetether_ralph_core::quality::run_for_repair(
-            self.working_dir,
-            checks,
-            &quality::QualityHost,
-        )
-        .await
+        H::check(self.working_dir, checks).await
     }
     async fn verify(
         &self,

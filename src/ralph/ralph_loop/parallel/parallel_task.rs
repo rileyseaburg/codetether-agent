@@ -1,27 +1,3 @@
-//! Owned inputs retained by one spawned parallel story task.
-use super::*;
-pub(in crate::ralph::ralph_loop) struct ParallelTask {
-    pub(in crate::ralph::ralph_loop) sem: Arc<tokio::sync::Semaphore>,
-    pub(in crate::ralph::ralph_loop) provider: Arc<dyn Provider>,
-    pub(in crate::ralph::ralph_loop) model: String,
-    pub(in crate::ralph::ralph_loop) prd_info: (String, String),
-    pub(in crate::ralph::ralph_loop) working_dir: PathBuf,
-    pub(in crate::ralph::ralph_loop) worktree_mgr: Option<Arc<WorktreeManager>>,
-    pub(in crate::ralph::ralph_loop) prebuilt_worktree: Option<crate::worktree::WorktreeInfo>,
-    pub(in crate::ralph::ralph_loop) progress_path: String,
-    pub(in crate::ralph::ralph_loop) ralph_tx: Option<mpsc::Sender<RalphEvent>>,
-    pub(in crate::ralph::ralph_loop) stage_learnings: Vec<String>,
-    pub(in crate::ralph::ralph_loop) bus: Option<Arc<AgentBus>>,
-    pub(in crate::ralph::ralph_loop) relay_enabled: bool,
-    pub(in crate::ralph::ralph_loop) relay_max_agents: usize,
-    pub(in crate::ralph::ralph_loop) relay_max_rounds: usize,
-    pub(in crate::ralph::ralph_loop) registry: Option<Arc<ProviderRegistry>>,
-    pub(in crate::ralph::ralph_loop) max_steps_per_story: usize,
-    pub(in crate::ralph::ralph_loop) max_quality_retries: usize,
-    pub(in crate::ralph::ralph_loop) max_rate_limit_retries: usize,
-    pub(in crate::ralph::ralph_loop) rate_limit_base_delay_ms: u64,
-    pub(in crate::ralph::ralph_loop) quality_checks_enabled: bool,
-    pub(in crate::ralph::ralph_loop) quality_checks: QualityChecks,
-    pub(in crate::ralph::ralph_loop) delegation: Option<DelegationState>,
-    pub(in crate::ralph::ralph_loop) story: UserStory,
-}
+//! Native provider bindings for the shared owned parallel task.
+use super::host::Native;
+pub(in crate::ralph::ralph_loop) type ParallelTask = codetether_ralph_task::Task<Native>;

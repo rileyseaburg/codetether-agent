@@ -5,5 +5,4 @@
 use super::*;
 pub(super) mod host;
 mod model_direct;
-mod model_static;
 mod prompts;

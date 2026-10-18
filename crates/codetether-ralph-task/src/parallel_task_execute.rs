@@ -2,10 +2,10 @@
 use super::parallel_execution_context::ParallelExecutionContext;
 use super::parallel_task::ParallelTask;
 use super::*;
-impl ParallelTask {
-    pub(in crate::ralph::ralph_loop) async fn execute(
+impl<H: Host> ParallelTask<H> {
+    pub(crate) async fn execute(
         &self,
-        execution: &ParallelExecutionContext<'_>,
+        execution: &ParallelExecutionContext<'_, H>,
         prompt: &str,
     ) -> (anyhow::Result<String>, bool, Option<String>) {
         let call_result = codetether_ralph_core::rate_limit::retry(

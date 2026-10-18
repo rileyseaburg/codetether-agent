@@ -1,9 +1,21 @@
 //! Keep the semaphore permit and event bridge alive for the full task.
-use super::parallel_result_types::ParallelStoryResult;
+use super::StoryResult as ParallelStoryResult;
 use super::parallel_task::ParallelTask;
 use super::*;
-impl ParallelTask {
-    pub(in crate::ralph::ralph_loop) async fn run(mut self) -> ParallelStoryResult {
+impl<H: Host> ParallelTask<H> {
+    /// Run one story, retaining its permit and event bridge through completion.
+    /// # Returns
+    /// The task result in the native stage collector's field order.
+    /// # Panics
+    /// Panics if the shared semaphore was closed before acquisition.
+    /// # Examples
+    /// ```rust,no_run
+    /// # async fn example<H: codetether_ralph_task::Host>(task: codetether_ralph_task::Task<H>) {
+    /// let result = task.run().await;
+    /// let (_story, _model_ok, _progress, _worktree, _manager, _quality_ok, _failure) = result;
+    /// # }
+    /// ```
+    pub async fn run(mut self) -> ParallelStoryResult {
         let _permit = self.sem.acquire().await.expect("semaphore closed");
         let (story_working_dir, worktree_info) = if let Some(wt) = self.prebuilt_worktree.take() {
             (wt.path.clone(), Some(wt))
@@ -21,7 +33,7 @@ impl ParallelTask {
         let execution = self.execution_context(&story_working_dir, &bridge_tx);
         let (final_result, quality_passed, failure_reason) =
             self.execute(&execution, &prompt).await;
-        let entry = RalphLoop::parallel_progress_entry(
+        let entry = codetether_ralph_core::progress::parallel_entry(
             &self.story,
             &final_result,
             &story_working_dir,

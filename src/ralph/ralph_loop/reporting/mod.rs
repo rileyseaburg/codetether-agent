@@ -5,5 +5,4 @@
 use super::*;
 mod bus_collect;
 mod bus_publish;
-mod event_bridge;
 mod events;

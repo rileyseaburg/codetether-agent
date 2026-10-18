@@ -2,12 +2,12 @@
 use super::parallel_execution_context::ParallelExecutionContext;
 use super::parallel_task::ParallelTask;
 use super::*;
-impl ParallelTask {
-    pub(in crate::ralph::ralph_loop) fn execution_context<'a>(
+impl<H: Host> ParallelTask<H> {
+    pub(crate) fn execution_context<'a>(
         &'a self,
         story_working_dir: &'a PathBuf,
         bridge_tx: &'a Option<mpsc::Sender<SwarmEvent>>,
-    ) -> ParallelExecutionContext<'a> {
+    ) -> ParallelExecutionContext<'a, H> {
         parallel_execution_context::ParallelExecutionContext {
             provider: &self.provider,
             model: &self.model,

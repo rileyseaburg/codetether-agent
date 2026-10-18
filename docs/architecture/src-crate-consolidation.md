@@ -18497,3 +18497,30 @@ Ralph and Ralph core; dependency-cycle checks; file-size ratchet; whitespace and
 direct formatting checks. Evidence: `artifacts/consolidation-ralph-sequential/`.
 No Cargo, rustc, Python, Rust tests or live story execution ran. Compilation and
 runtime behavior remain unverified.
+
+### Parallel Ralph story task lifecycle
+
+Moved the owned parallel-story task, borrowed execution context, workspace
+selection, announcement, event bridge, rate-limit retries, relay selection,
+quality repair/verification and result assembly into `codetether-ralph-task`.
+The native stage factory constructs a specialized shared task; native callbacks
+provide the provider registry, relay runtime and policy-gated quality/verification
+services. Single-agent calls use the already extracted Ralph agent crate.
+Stage creation, collection and merge coordination remain separate responsibilities.
+
+Task and context fields retain their original order and borrowing relationships.
+The semaphore permit and bridge task handle retain the original scope. Repair
+still uses its twenty-step budget; relay fallback, retries, progress output and
+the seven-element result tuple are preserved. Removed the obsolete native
+single-agent and event-bridge forwarding methods after moving their last callers.
+
+Validation: complete function-body comparisons with explicit callback mappings,
+owned/borrowed field and result-order comparisons, unchanged stage factory,
+spawn/collection/merge and native execution services, native callback mappings,
+lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting checks. Evidence:
+`artifacts/consolidation-ralph-task/`. A verifier initially mistook documentation
+example braces for struct braces; the preserved failure log and corrected
+comment-aware token parser document that check correction. No Cargo, rustc,
+Python, Rust tests, live tasks or quality commands ran. Compilation and runtime
+behavior remain unverified.

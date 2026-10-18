@@ -1,14 +1,6 @@
 //! Existing task result shape and borrowed merge context.
 use super::*;
-pub(in crate::ralph::ralph_loop) type ParallelStoryResult = (
-    UserStory,
-    bool,
-    ProgressEntry,
-    Option<crate::worktree::WorktreeInfo>,
-    Option<Arc<WorktreeManager>>,
-    bool,
-    Option<String>,
-);
+pub(in crate::ralph::ralph_loop) use codetether_ralph_task::StoryResult as ParallelStoryResult;
 pub(in crate::ralph::ralph_loop) struct MergeContext<'a> {
     pub(in crate::ralph::ralph_loop) provider: &'a Arc<dyn Provider>,
     pub(in crate::ralph::ralph_loop) model: &'a str,

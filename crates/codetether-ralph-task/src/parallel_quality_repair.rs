@@ -1,9 +1,8 @@
 //! Execute one repair and append its output or stop on a repair failure.
 use super::parallel_execution_context::ParallelExecutionContext;
-use super::parallel_quality_state::QualityProgress;
 use super::*;
-impl ParallelExecutionContext<'_> {
-    pub(in crate::ralph::ralph_loop) async fn run_quality_repair(
+impl<H: Host> ParallelExecutionContext<'_, H> {
+    pub(crate) async fn run_quality_repair(
         &self,
         state: &mut QualityProgress,
         error_output: &str,
@@ -11,7 +10,7 @@ impl ParallelExecutionContext<'_> {
         max_quality_retries: usize,
     ) -> bool {
         state.remember_failure(error_output);
-        let repair_result = RalphLoop::repair_parallel_story(
+        let repair_result = crate::repair::repair_parallel_story::<H>(
             self.provider,
             self.model,
             self.story,
