@@ -17,3 +17,10 @@ async-trait = "0.1"
 codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
 codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
 codetether-native-swarm = { path = "../codetether-native-swarm", version = "0.1.0" }
+
+[dev-dependencies]
+chrono = "0.4"
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+codetether-native-approval = { path = "../codetether-native-approval", version = "0.1.0", features = ["test-support"] }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }

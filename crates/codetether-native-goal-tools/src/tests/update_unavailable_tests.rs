@@ -1,10 +1,8 @@
 //! Mocked verifier authentication failures are not substantive rejections.
 use super::{Scripted, args, run_with, seed, status};
-use crate::session::tasks::GoalStatus;
-use crate::tool::goal::{
-    attempt_cap, verdict_log,
-    verify::{VerificationRequest, VerifierAgent},
-};
+use crate::verdict_log;
+use codetether_goal_verification::{VerificationRequest, VerifierAgent, attempt_cap};
+use codetether_native_goals::GoalStatus;
 
 struct Expired;
 #[async_trait::async_trait]
@@ -16,7 +14,7 @@ impl VerifierAgent for Expired {
 
 #[tokio::test]
 async fn expired_credentials_never_consume_rejections_or_pause_the_goal() {
-    let _lock = crate::approval::test_env::lock_env();
+    let _lock = codetether_native_approval::test_env::lock_env();
     let temp = tempfile::tempdir().unwrap();
     unsafe { std::env::set_var("CODETETHER_DATA_DIR", temp.path()) };
     let session = "expired-verifier";

@@ -1,8 +1,8 @@
 //! A `blocked` claim is rejected unless controlled opposition confirms it.
 
 use super::run_with;
-use crate::approval::test_env::lock_env;
-use crate::session::tasks::GoalStatus;
+use codetether_native_approval::test_env::lock_env;
+use codetether_native_goals::GoalStatus;
 
 #[path = "update_run_fixtures.rs"]
 mod fixtures;

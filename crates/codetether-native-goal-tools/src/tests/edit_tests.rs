@@ -1,7 +1,7 @@
 //! Model tools expose explicit user editing, never terminal approval.
 
 use super::edit::EditGoalTool;
-use crate::tool::Tool;
+use codetether_tool_core::Tool;
 use serde_json::json;
 
 /// Model editing excludes budget control and terminal approval.

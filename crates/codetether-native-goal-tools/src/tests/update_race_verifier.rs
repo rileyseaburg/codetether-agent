@@ -1,6 +1,6 @@
 //! Deterministically change native goal state while verification is in flight.
-use crate::session::tasks::{GoalStatus, TaskEvent, TaskLog, control, runtime};
-use crate::tool::goal::verify::{VerificationRequest, VerifierAgent};
+use codetether_goal_verification::{VerificationRequest, VerifierAgent};
+use codetether_native_goals::{GoalStatus, TaskEvent, TaskLog, control, runtime};
 
 pub(super) struct Mutating(pub &'static str, pub &'static str);
 #[async_trait::async_trait]

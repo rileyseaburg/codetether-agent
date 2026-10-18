@@ -1,9 +1,9 @@
 //! Fixtures for `update_goal` verifier-gate tests.
 
-use crate::session::tasks::GoalStatus;
-use crate::tool::goal::update::Args;
-use crate::tool::goal::verify::{VerificationRequest, VerifierAgent};
 use async_trait::async_trait;
+use codetether_goal_tools::UpdateArgs as Args;
+use codetether_goal_verification::{VerificationRequest, VerifierAgent};
+use codetether_native_goals::GoalStatus;
 
 /// Verifier that returns a fixed report.
 pub(super) struct Scripted(pub &'static str);
@@ -28,12 +28,12 @@ pub(super) fn args(session: &str, status: &str) -> Args {
 
 /// Create an active goal for `session` through the real `create_goal` path.
 pub(super) async fn seed(session: &str) {
-    let create = crate::tool::goal::create::Args {
+    let create = codetether_goal_tools::CreateArgs {
         objective: "Ship export".into(),
         session_id: Some(session.into()),
     };
     assert!(
-        crate::tool::goal::create_run::run(create)
+        codetether_goal_tools::create::<crate::tests::TestHost>(create)
             .await
             .unwrap()
             .success
@@ -42,7 +42,7 @@ pub(super) async fn seed(session: &str) {
 
 /// Persisted status of the goal for `session`.
 pub(super) async fn status(session: &str) -> GoalStatus {
-    let (_, state) = crate::session::tasks::runtime::current(session)
+    let (_, state) = codetether_native_goals::runtime::current(session)
         .await
         .unwrap();
     state.goal.unwrap().status

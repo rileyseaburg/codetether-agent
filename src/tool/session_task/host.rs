@@ -15,13 +15,13 @@ impl codetether_session_task::Host for ApplicationHost {
         current_model: Option<String>,
         workspace: Option<String>,
     ) -> Result<ToolResult> {
-        let args = crate::tool::goal::update::Args {
+        let args = codetether_goal_tools::UpdateArgs {
             status: "complete".to_string(),
             evidence,
             session_id,
             current_model,
             workspace,
         };
-        crate::tool::goal::update_run::run(args).await
+        codetether_goal_tools::update::<crate::tool::goal::host::Native>(args).await
     }
 }

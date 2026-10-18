@@ -1,12 +1,12 @@
 //! A late PASS must not finish a replacement, edited, paused, or held goal.
 use super::{args, run_with, seed};
-use crate::session::tasks::{GoalStatus, runtime};
+use codetether_native_goals::{GoalStatus, runtime};
 #[path = "update_race_verifier.rs"]
 mod verifier;
 
 #[tokio::test]
 async fn delayed_pass_is_rejected_when_goal_identity_or_revision_changes() {
-    let _lock = crate::approval::test_env::lock_env();
+    let _lock = codetether_native_approval::test_env::lock_env();
     let temp = tempfile::tempdir().unwrap();
     unsafe { std::env::set_var("CODETETHER_DATA_DIR", temp.path()) };
     for case in ["replace", "edit", "pause", "hold"] {

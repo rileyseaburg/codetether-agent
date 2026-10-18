@@ -31,3 +31,6 @@ pub mod __private {
     pub use async_trait::async_trait;
     pub use codetether_goal_verification::{ReviewExecution, VerificationRequest, VerifierAgent};
 }
+
+#[cfg(test)]
+mod tests;

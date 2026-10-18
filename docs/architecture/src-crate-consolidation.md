@@ -26383,3 +26383,24 @@ formatting, file-limit and whitespace checks pass. Only four native-goal-tools
 dependencies are staged in Cargo.lock. Unrelated working files are unchanged.
 Evidence: artifacts/consolidation-native-verifier/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Native goal-tool regression ownership
+
+Moved eight edit-schema and audited-transition tests, plus their scripted
+verifiers and journal fixtures, into codetether-native-goal-tools::tests. The
+cases cover PASS/FAIL transitions, opposed/confirmed blocked claims, rejection
+caps, stale revisions and unavailable verifier credentials. All assertions and
+14 test/fixture bodies retain their operations after explicit import changes.
+Fixtures still use native create_goal, controller updates and verdict journals.
+The test host rejects accidental verifier construction; shared update_with
+uses the explicitly injected verifier.
+
+Removed the root create/update test adapters. The production session-task
+completion caller previously used the update wrapper; it now calls the same
+shared update function directly with the same native host and arguments.
+Module/dependency scans cover 730 roots and 616 crates without missing modules,
+cycles or undeclared dependencies. Declaration, standalone formatting,
+file-limit and whitespace checks pass. Only native-goal-tools test dependencies
+are staged in Cargo.lock; unrelated working changes are preserved. Evidence:
+artifacts/consolidation-native-goal-tests/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.

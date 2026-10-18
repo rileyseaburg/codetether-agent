@@ -3809,14 +3809,19 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "chrono",
  "codetether-application-registry",
  "codetether-goal-core",
  "codetether-goal-tools",
  "codetether-goal-verification",
+ "codetether-native-approval",
  "codetether-native-goals",
  "codetether-native-providers",
  "codetether-native-swarm",
+ "codetether-tool-core",
  "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
