@@ -1,52 +1,5 @@
-use crate::a2a::types::Part;
-use crate::bus::{BusEnvelope, BusMessage};
+//! Native entry to shared bus ingress policy.
 use crate::tui::app::state::App;
-use crate::tui::worker_bridge::IncomingTask;
-
-pub fn maybe_queue(app: &mut App, envelope: &BusEnvelope) {
-    if super::owned_result::render(app, envelope) {
-        return;
-    }
-    let BusMessage::AgentMessage { from, to, parts } = &envelope.message else {
-        return;
-    };
-    if should_ignore(app, envelope, from, to) {
-        return;
-    }
-    let message = text_parts(parts);
-    if !message.trim().is_empty() {
-        app.state.enqueue_worker_task(IncomingTask {
-            task_id: envelope
-                .correlation_id
-                .clone()
-                .unwrap_or_else(|| envelope.id.clone()),
-            message: super::prompt::untrusted(from, &message),
-            from_agent: Some(from.clone()),
-        });
-    }
-}
-
-fn should_ignore(app: &App, envelope: &BusEnvelope, from: &str, to: &str) -> bool {
-    !envelope.topic.starts_with("agent.")
-        || from == to
-        || matches!(from, "a2a" | "a2a-stream")
-        || !addressed_to_tui(app, to)
-}
-
-fn addressed_to_tui(app: &App, to: &str) -> bool {
-    let worker = &app.state.worker;
-    to == "tui"
-        || worker.worker_id.as_deref() == Some(to)
-        || worker.worker_bridge_registered_agents.contains(to)
-}
-
-fn text_parts(parts: &[Part]) -> String {
-    parts
-        .iter()
-        .filter_map(|part| match part {
-            Part::Text { text } => Some(text.as_str()),
-            Part::File { .. } | Part::Data { .. } => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+pub fn maybe_queue(app: &mut App, envelope: &crate::bus::BusEnvelope) {
+    codetether_bus_view::ingress::maybe_queue(&mut super::ingress_host::Native(app), envelope);
 }

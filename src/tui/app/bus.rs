@@ -4,8 +4,7 @@ pub mod inbox;
 #[cfg(test)]
 mod inbox_tests;
 pub mod ingest;
-mod owned_result;
-mod prompt;
+mod ingress_host;
 pub mod reply;
 pub mod tool_calls;
 pub mod tool_calls_query;

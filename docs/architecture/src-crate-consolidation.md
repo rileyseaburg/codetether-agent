@@ -19725,3 +19725,25 @@ reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-interlude/`. No Cargo, rustc,
 Python, Rust tests or game execution ran; compilation and runtime remain
 unverified.
+
+### Recorded bus ingress and message admission
+
+Moved recorder cursor draining, peer presence tracking, external-message
+admission, untrusted prompt wrapping and managed-child result presentation into
+`codetether-bus-view::ingress`. State and Effects contracts provide 13 native
+identity/observer/queue/presentation bindings. Removed native result and prompt
+implementations; existing public native entry points delegate to the crate.
+
+Preserved initial tail positioning, cursor advancement, observer order, agent
+registration/removal, address/topic/sender checks, correlation-ID fallback,
+text-part joining, managed-child ownership checks, control-character removal
+and bounded result display. Native inbox tests, ownership lookup and reply
+emission are unchanged. Refreshed the physical source-file inventory; it still
+includes tests and adapters and is not a completion claim.
+
+Validation: nine complete translated function bodies, 13 native bindings,
+three delegates, unchanged inbox tests/ownership/reply, isolated lockfile delta,
+lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-bus-ingress/`. No Cargo, rustc, Python, Rust tests or
+bus/task execution ran; compilation and runtime remain unverified.

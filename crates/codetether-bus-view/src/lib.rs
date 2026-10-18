@@ -10,3 +10,6 @@ pub use entry::BusLogEntry;
 pub use render::{render_bus_log, render_bus_log_with_summary};
 pub use state::BusLogState;
 pub use summary::ProtocolSummary;
+
+/// Cursor-based bus ingestion and safe external-message admission.
+pub mod ingress;

@@ -6664,6 +6664,7 @@ dependencies = [
  "codetether-bus-core",
  "codetether-theme",
  "codetether-view-retention",
+ "codetether-worker-events",
  "ratatui",
  "serde_json",
 ]

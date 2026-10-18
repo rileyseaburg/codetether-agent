@@ -7,6 +7,7 @@ license = "MIT"
 description = "Protocol bus-log state, bounded event conversion and terminal rendering"
 
 [dependencies]
+codetether-worker-events = { path = "../codetether-worker-events", version = "0.1.0" }
 codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
 codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
 codetether-theme = { path = "../codetether-theme", version = "0.1.0", features = ["ratatui"] }
