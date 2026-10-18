@@ -19111,3 +19111,23 @@ adding braces around the lengthened warning match arm. Evidence:
 `artifacts/consolidation-embedding-backends/`. No Cargo, rustc, Python, Rust tests,
 model downloads, inference or provider requests ran; compilation and runtime
 behavior remain unverified.
+
+### Cognition application storage
+
+Moved cognition's application data-path resolution, load/save entry points and
+load/save diagnostics into `codetether-cognition-storage`, separated into path,
+load, save and diagnostic modules. The native persistence module now re-exports
+the shared entry points and persisted state type; its implementation subtree is
+removed. Core capture, schema/size checks and atomic-write behavior remain in
+the existing cognition-core persistence module.
+
+Preserved the default path and fallback directory, callback and store argument
+order, load/save signatures, shared type identities, and original tracing target
+and diagnostic fields. Existing initial-state and tick-flush callers are unchanged.
+
+Validation: five complete function-body comparisons, signatures, shared imports,
+unchanged callers, removed native implementation, isolated dependency/lock delta,
+lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-cognition-storage/`. No Cargo, rustc, Python, Rust tests,
+persistence reads or writes ran; compilation and runtime remain unverified.

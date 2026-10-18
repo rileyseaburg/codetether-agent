@@ -1,0 +1,13 @@
+[package]
+name = "codetether-cognition-storage"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Application cognition persistence paths, entry points and diagnostics"
+
+[dependencies]
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+tokio = { version = "1", features = ["sync"] }
+tracing = "0.1"

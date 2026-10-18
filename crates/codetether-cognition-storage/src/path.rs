@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 /// Get the persistence file path.
 pub(super) fn state_path() -> PathBuf {
-    let base =
-        crate::config::Config::data_dir().unwrap_or_else(|| PathBuf::from("/tmp/codetether-agent"));
+    let base = codetether_config::Config::data_dir()
+        .unwrap_or_else(|| PathBuf::from("/tmp/codetether-agent"));
     base.join("cognition").join("state.json")
 }
