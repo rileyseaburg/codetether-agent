@@ -16,12 +16,10 @@ pub use submit::submit_spawn_form;
 
 /// Open the spawn form modal, resetting all fields.
 pub fn open_spawn_form(app: &mut crate::tui::app::state::App) {
-    app.state.spawn_form = Some(SpawnFormState::default());
-    app.state.status = "Spawn agent form — Tab: next field, Enter: submit, Esc: cancel".to_string();
+    codetether_spawn_form::lifecycle::open(&mut app.state.spawn_form, &mut app.state.status);
 }
 
 /// Close the spawn form modal without creating an agent.
 pub fn close_spawn_form(app: &mut crate::tui::app::state::App) {
-    app.state.spawn_form = None;
-    app.state.status = "Spawn form cancelled".to_string();
+    codetether_spawn_form::lifecycle::close(&mut app.state.spawn_form, &mut app.state.status);
 }

@@ -18095,3 +18095,26 @@ command bodies and integration-test source; module/dependency graph checks,
 file-limit ratchet and whitespace checks. Evidence:
 `artifacts/consolidation-agent-interactions/`. No live agent requests, Cargo,
 rustc, Python or Rust tests were run. Compilation remains unverified.
+
+### Spawn command and form submission ownership
+
+Moved spawn command validation, mission construction, dispatch and result
+sequencing from `src/tui/app/spawn_agent.rs` into
+`codetether-agent-command::spawn`. Its model snapshot policy now lives in the
+same crate's `model` module. The command directly uses the existing shared
+argument parser and identity prompt builder; their redundant native wrapper
+files were removed. Native bindings retain the session/workspace references,
+canonical child request executor and unchanged tested watch transition.
+
+Moved invalid-form restoration, spawn submission and post-dispatch closing into
+`codetether-spawn-form::submission`. Form opening/cancellation state updates
+now belong to that crate's `lifecycle` module. Native form entry points supply
+state and session callbacks. Keyboard input handling and existing form tests
+remain unchanged.
+
+Validation: full-body comparisons for command flow, model selection, form
+submission and lifecycle updates; native callback mappings; unchanged shared
+parsers, native watch test, canonical request executor and form-key handling;
+module/dependency graph checks, changed-source file limits and whitespace.
+Evidence: `artifacts/consolidation-spawn-command/`. No agent spawn, Cargo,
+rustc, Python or Rust tests were executed; compilation remains unverified.

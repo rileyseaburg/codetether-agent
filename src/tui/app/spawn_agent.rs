@@ -1,40 +1,13 @@
-//! `/spawn` adapter for the canonical managed-agent runtime.
-
+//! Bind managed spawn commands to native session/workspace context.
+use crate::{session::Session, tui::app::state::App};
 use std::path::Path;
-
-use crate::session::Session;
-use crate::tui::app::state::App;
-
-#[path = "spawn_agent_parse.rs"]
-mod args;
+#[path = "spawn_agent_host.rs"]
+mod host;
 #[path = "spawn_agent_model.rs"]
 pub mod model;
-#[path = "spawn_agent_prompt.rs"]
-mod prompt;
 #[path = "spawn_agent_watch.rs"]
 mod watch;
-
 /// Spawn and immediately dispatch a managed child agent.
 pub async fn handle_spawn_command(app: &mut App, session: &Session, cwd: &Path, rest: &str) {
-    let Some(args) = args::parse(rest) else {
-        app.state.status = "Usage: /spawn <name> [instructions]".to_string();
-        return;
-    };
-    if args.parent.is_some() {
-        app.state.status =
-            "Nested --parent spawning is not supported by the managed runtime".into();
-        return;
-    }
-    let instructions = prompt::system_prompt(&args.name, &args.instructions);
-    let result =
-        crate::tui::app::managed_agent::spawn(session, cwd, &args.name, &instructions).await;
-    if result.success {
-        watch::open(app, &args.name);
-    }
-    crate::tui::app::managed_agent::ui::present(
-        app,
-        &result,
-        format!("Managed sub-agent @{} started", args.name),
-        "Sub-agent spawn failed",
-    );
+    codetether_agent_command::spawn::handle(&mut host::Native { app, session, cwd }, rest).await;
 }

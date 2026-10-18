@@ -20,3 +20,6 @@ pub use chat_host::ChatHost;
 pub mod chat;
 pub mod presentation;
 pub mod request;
+
+pub mod model;
+pub mod spawn;
