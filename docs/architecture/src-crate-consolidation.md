@@ -14476,3 +14476,19 @@ Full workspace consolidation remains active.
 - Added Tokio runtime/sync support and staged only its Ralph CLI lock dependency.
   No Cargo, rustc, Rust tests, Ralph tasks or TUI sessions ran. Full workspace
   consolidation remains unfinished.
+
+### Interactive Ralph command ownership
+
+- Moved `/ralph` subcommand dispatch, run validation/provider selection and
+  progress-status formatting into codetether-ralph-cli::interactive. Focused
+  command, run and status modules use small registry and presentation interfaces.
+- Native TUI code supplies existing status/message/view operations and provider
+  resolution. Its command entry only forwards the working directory, model,
+  registry and raw arguments to shared policy.
+- Verification: five static checks passed for fully expanded command behavior,
+  native argument forwarding, all presentation bindings, provider selection and
+  bounded modules. Module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-ralph-command/.
+- No dependencies or lock entries changed. No Cargo, rustc, Rust tests, Ralph
+  loops or TUI sessions ran. Full workspace consolidation remains unfinished.

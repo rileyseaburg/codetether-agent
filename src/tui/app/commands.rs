@@ -9,9 +9,12 @@ pub(crate) mod goal;
 mod open_editor;
 #[path = "commands/ralph_host.rs"]
 mod ralph_host;
+#[path = "commands/ralph_registry.rs"]
+mod ralph_registry;
+#[path = "commands/ralph_view.rs"]
+mod ralph_view;
 #[path = "commands/session_ops.rs"]
 mod session_ops;
-use codetether_ralph_cli::interactive::{parse_ralph_run_args, resolve_prd_path};
 use open_editor::open_editor;
 
 use crate::provider::ProviderRegistry;
@@ -263,92 +266,13 @@ async fn handle_ralph_subcommand(
     registry: Option<&Arc<ProviderRegistry>>,
     rest: &str,
 ) -> bool {
-    let rest = rest.trim();
-    if rest.is_empty() {
-        // Bare `/ralph` — let caller open the monitor view.
-        return false;
-    }
-
-    let mut parts = rest.split_whitespace();
-    let verb = parts.next().unwrap_or("");
-    let args: Vec<&str> = parts.collect();
-
-    match verb {
-        "run" => {
-            let (prd_arg, max_iters) = parse_ralph_run_args(&args);
-
-            let Some(registry) = registry.cloned() else {
-                app.state.status = "Ralph run failed: no provider registry available".to_string();
-                return true;
-            };
-
-            let prd_path = resolve_prd_path(cwd, prd_arg);
-            if !prd_path.exists() {
-                app.state.status =
-                    format!("Ralph run failed: PRD not found at {}", prd_path.display());
-                return true;
-            }
-
-            let model_str = session
-                .metadata
-                .model
-                .as_deref()
-                .unwrap_or("claude-sonnet-4-5");
-            let (provider, model) = match registry.resolve_model(model_str) {
-                Ok(pair) => pair,
-                Err(err) => {
-                    app.state.status = format!("Ralph run failed: {err}");
-                    return true;
-                }
-            };
-
-            let (tx, rx) = tokio::sync::mpsc::channel(256);
-            app.state.ralph.attach_event_rx(rx);
-            app.state.set_view_mode(ViewMode::Ralph);
-            app.state.status = format!(
-                "Ralph running: {} (max {max_iters} iterations)",
-                prd_path.display()
-            );
-            push_system_message(
-                app,
-                format!(
-                    "Launching Ralph on `{}` via model `{model}` (max {max_iters} iterations).",
-                    prd_path.display()
-                ),
-            );
-
-            codetether_ralph_cli::interactive::spawn_ralph_run::<ralph_host::AppHost>(
-                prd_path, provider, model, max_iters, tx,
-            );
-            true
-        }
-        "status" => {
-            let stories = &app.state.ralph.stories;
-            if stories.is_empty() {
-                app.state.status = "No Ralph run attached".to_string();
-            } else {
-                let passed = stories
-                    .iter()
-                    .filter(|s| {
-                        matches!(s.status, crate::tui::ralph_view::RalphStoryStatus::Passed)
-                    })
-                    .count();
-                app.state.status = format!(
-                    "Ralph: {}/{} stories passed (iteration {}/{})",
-                    passed,
-                    stories.len(),
-                    app.state.ralph.current_iteration,
-                    app.state.ralph.max_iterations,
-                );
-            }
-            true
-        }
-        _ => {
-            app.state.status =
-                "Usage: /ralph [run <prd.json> [--iters N]] | /ralph status".to_string();
-            true
-        }
-    }
+    codetether_ralph_cli::interactive::handle::<ralph_host::AppHost, ProviderRegistry, _>(
+        &mut ralph_view::CommandView(app),
+        cwd,
+        session.metadata.model.as_deref(),
+        registry,
+        rest,
+    )
 }
 
 pub async fn handle_slash_command(
