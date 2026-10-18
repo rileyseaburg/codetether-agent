@@ -27940,3 +27940,20 @@ native production-scope, standalone formatting, file-limit and whitespace checks
 pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
 lock changes were needed. Evidence: artifacts/consolidation-approval-keys/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Editor-key and approval-editor frontend bindings
+
+Moved editor-key and approval-editor host implementations into
+codetether-editor::interactive::binding and
+codetether-approval-edit::interactive::binding. Removed three root implementation
+files; the remaining root declarations select concrete types and callbacks.
+These are source relocations through declaration macros, not transfers of App
+state ownership. That architectural consolidation remains unfinished.
+
+Static comparison confirms nineteen function bodies match after callback path
+qualification and both approval-editor test files are unchanged. Declaration,
+module/dependency, production-scope and file-limit checks pass for 725 roots and
+617 crates. Unrelated working files remain unchanged. Evidence:
+artifacts/consolidation-editor-keys/verify-binding.mjs and associated logs.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active.

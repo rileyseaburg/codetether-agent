@@ -2,6 +2,7 @@
 //!
 //! [handle] routes editor actions using a frontend [Host]. [apply] records the
 //! edited proposal and delivers the decision to the existing waiting tool.
+mod binding;
 mod close;
 mod finish;
 mod host;
