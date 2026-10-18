@@ -8306,8 +8306,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "codetether-application-providers",
  "codetether-autochat-core",
  "codetether-bus-core",
+ "codetether-bus-s3",
  "codetether-relay-okr",
  "codetether-relay-plan",
  "codetether-relay-planner",
@@ -8348,6 +8350,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-bus-core",
+ "codetether-bus-s3",
  "codetether-cli-options",
  "codetether-config",
  "codetether-provider-core",

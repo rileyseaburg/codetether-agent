@@ -5,18 +5,8 @@ use crate::{
     session::Session,
 };
 use std::sync::Arc;
-pub(super) struct NativeHost;
-#[async_trait::async_trait(?Send)]
-impl codetether_cli_relay::Host for NativeHost {
-    type Registry = ProviderRegistry;
-    type Session = Session;
-    fn spawn_bus_sink(bus: Arc<AgentBus>) {
-        crate::bus::s3_sink::spawn_bus_s3_sink(bus);
-    }
-    async fn load_registry() -> anyhow::Result<Arc<ProviderRegistry>> {
-        ProviderRegistry::shared_from_vault().await
-    }
-}
+pub(super) type NativeHost =
+    codetether_cli_relay::application::ApplicationHost<ProviderRegistry, Session>;
 #[async_trait::async_trait(?Send)]
 impl codetether_cli_relay::Session for Session {
     async fn new() -> anyhow::Result<Self> {

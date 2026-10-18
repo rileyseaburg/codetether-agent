@@ -3,6 +3,8 @@
 //! [run_protocol_first_relay] owns planning, correlated handoffs, refinement,
 //! dynamic spawning, progress recording and final reporting. [Host] supplies
 //! native provider loading and sink setup; [Session] supplies coding sessions.
+/// Cached application providers and configured bus archival for relay runs.
+pub mod application;
 mod convergence;
 mod execute;
 mod host;

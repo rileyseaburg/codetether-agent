@@ -9,3 +9,5 @@ mod turn;
 pub use execute::execute;
 pub use host::{Host, Session};
 pub use input::Input;
+/// Standard process-bus setup for application-bound sessions.
+pub mod application;

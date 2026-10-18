@@ -22745,3 +22745,23 @@ are staged in the lockfile; the unrelated working lockfile remains byte-identica
 Evidence: `artifacts/consolidation-go-application/`.
 No approved-task execution, provider requests, Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Ordinary and relay run service initialization in owning crates
+
+Moved ordinary-run bus creation/global installation/archival startup into
+`codetether-run-runtime::application`. Moved relay cached-provider loading and
+bus archival setup into `codetether-cli-relay::application`. Native run host
+names now alias these generic implementations with the original Session and
+ProviderRegistry types. Native session-field access and prompt implementations
+remain unchanged.
+
+Static comparisons preserve ordinary bus creation, global installation and
+sink order, relay cached Vault loading, relay sink setup and every native
+session method. The existing four-way run host selection is unchanged.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the run-runtime bus-s3 and CLI-relay application-providers/bus-s3 edges
+are staged in the lockfile; the unrelated working lockfile remains byte-identical.
+Evidence: `artifacts/consolidation-run-services/`.
+No run execution, provider requests, bus startup, Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.
