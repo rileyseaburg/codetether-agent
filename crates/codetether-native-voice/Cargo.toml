@@ -1,0 +1,11 @@
+[package]
+name = "codetether-native-voice"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native voice services for CodeTether"
+
+[dependencies]
+codetether-voice-core = { path = "../codetether-voice-core", version = "0.1.0" }
+cpal = "0.18.1"

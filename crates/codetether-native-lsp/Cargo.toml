@@ -1,0 +1,12 @@
+[package]
+name = "codetether-native-lsp"
+version = "4.7.6-dev.38"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native lsp services for CodeTether"
+
+[dependencies]
+codetether-lsp-client = { path = "../codetether-lsp-client", version = "0.1.0" }
+codetether-lsp-core = { path = "../codetether-lsp-core", version = "0.1.0" }
+tracing = "0.1"

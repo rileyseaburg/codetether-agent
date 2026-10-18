@@ -1,0 +1,11 @@
+[package]
+name = "codetether-native-image-clipboard"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native image clipboard services for CodeTether"
+
+[dependencies]
+codetether-clipboard = { path = "../codetether-clipboard", version = "0.1.0" }
+codetether-image = { path = "../codetether-image", version = "0.1.0" }

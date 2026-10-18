@@ -4,11 +4,11 @@ pub use codetether_voice_core::transport::*;
 
 /// Select a transport from the live process environment.
 ///
-/// Detects SSH via [`crate::voice::ssh_env`]; `has_audio_device` is
+/// Detects SSH via [`crate::ssh_env`]; `has_audio_device` is
 /// supplied by the caller's device probe.
 pub fn select_for_process(has_audio_device: bool) -> AudioTransport {
     select(SessionEnv {
-        is_ssh: crate::voice::ssh_env::is_ssh_session(),
+        is_ssh: crate::ssh_env::is_ssh_session(),
         has_audio_device,
     })
 }

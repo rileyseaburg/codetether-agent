@@ -1,0 +1,12 @@
+[package]
+name = "codetether-native-worker-server"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native worker server services for CodeTether"
+
+[dependencies]
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-worker-http = { path = "../codetether-worker-http", version = "0.1.0" }
+anyhow = "1"

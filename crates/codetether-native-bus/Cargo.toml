@@ -1,0 +1,11 @@
+[package]
+name = "codetether-native-bus"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native bus services for CodeTether"
+
+[dependencies]
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-bus-s3 = { path = "../codetether-bus-s3", version = "0.1.0" }

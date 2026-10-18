@@ -1931,6 +1931,14 @@ dependencies = [
  "codetether-native-approval",
  "codetether-native-runtime-policy",
  "codetether-native-mux",
+ "codetether-native-autochat",
+ "codetether-native-bus",
+ "codetether-native-github-pr",
+ "codetether-native-image-clipboard",
+ "codetether-native-lsp",
+ "codetether-native-telemetry",
+ "codetether-native-voice",
+ "codetether-native-worker-server",
 ]
 
 [[package]]
@@ -3561,6 +3569,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-native-autochat"
+version = "0.1.0"
+dependencies = [
+ "codetether-application-providers",
+ "codetether-autochat-core",
+ "codetether-relay-rlm",
+]
+
+[[package]]
+name = "codetether-native-bus"
+version = "0.1.0"
+dependencies = [
+ "codetether-bus-core",
+ "codetether-bus-s3",
+]
+
+[[package]]
+name = "codetether-native-github-pr"
+version = "0.1.0"
+dependencies = [
+ "codetether-github-pr",
+ "codetether-github-pr-cli",
+]
+
+[[package]]
+name = "codetether-native-image-clipboard"
+version = "0.1.0"
+dependencies = [
+ "codetether-clipboard",
+ "codetether-image",
+]
+
+[[package]]
 name = "codetether-native-indexer"
 version = "0.1.0"
 dependencies = [
@@ -3569,6 +3610,15 @@ dependencies = [
  "codetether-indexer",
  "codetether-indexer-cli",
  "codetether-native-providers",
+]
+
+[[package]]
+name = "codetether-native-lsp"
+version = "4.7.6-dev.38"
+dependencies = [
+ "codetether-lsp-client",
+ "codetether-lsp-core",
+ "tracing",
 ]
 
 [[package]]
@@ -3636,6 +3686,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-native-telemetry"
+version = "4.7.6-dev.38"
+dependencies = [
+ "codetether-telemetry",
+ "tokio",
+]
+
+[[package]]
 name = "codetether-native-vectordb"
 version = "0.1.0"
 dependencies = [
@@ -3647,6 +3705,23 @@ dependencies = [
  "codetether-vectordb",
  "futures",
  "tokio",
+]
+
+[[package]]
+name = "codetether-native-voice"
+version = "0.1.0"
+dependencies = [
+ "codetether-voice-core",
+ "cpal",
+]
+
+[[package]]
+name = "codetether-native-worker-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-cli-options",
+ "codetether-worker-http",
 ]
 
 [[package]]

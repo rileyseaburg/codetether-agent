@@ -1,0 +1,12 @@
+[package]
+name = "codetether-native-autochat"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native autochat services for CodeTether"
+
+[dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-autochat-core = { path = "../codetether-autochat-core", version = "0.1.0" }
+codetether-relay-rlm = { path = "../codetether-relay-rlm", version = "0.1.0" }

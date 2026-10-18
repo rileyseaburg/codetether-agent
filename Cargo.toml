@@ -1,5 +1,13 @@
 [workspace]
 members = [
+    "crates/codetether-native-lsp",
+    "crates/codetether-native-telemetry",
+    "crates/codetether-native-voice",
+    "crates/codetether-native-bus",
+    "crates/codetether-native-autochat",
+    "crates/codetether-native-image-clipboard",
+    "crates/codetether-native-github-pr",
+    "crates/codetether-native-worker-server",
     "crates/codetether-native-mux",
     "crates/codetether-native-approval",
     "crates/codetether-native-runtime-policy",
@@ -692,6 +700,14 @@ fips = [
 ]
 
 [dependencies]
+codetether-native-lsp = { path = "crates/codetether-native-lsp", version = "4.7.6-dev.38" }
+codetether-native-telemetry = { path = "crates/codetether-native-telemetry", version = "4.7.6-dev.38" }
+codetether-native-voice = { path = "crates/codetether-native-voice", version = "0.1.0" }
+codetether-native-bus = { path = "crates/codetether-native-bus", version = "0.1.0" }
+codetether-native-autochat = { path = "crates/codetether-native-autochat", version = "0.1.0" }
+codetether-native-image-clipboard = { path = "crates/codetether-native-image-clipboard", version = "0.1.0" }
+codetether-native-github-pr = { path = "crates/codetether-native-github-pr", version = "0.1.0" }
+codetether-native-worker-server = { path = "crates/codetether-native-worker-server", version = "0.1.0" }
 codetether-native-mux = { path = "crates/codetether-native-mux", version = "0.1.0" }
 codetether-native-approval = { path = "crates/codetether-native-approval", version = "0.1.0" }
 codetether-native-runtime-policy = { path = "crates/codetether-native-runtime-policy", version = "0.1.0" }

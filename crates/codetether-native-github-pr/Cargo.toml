@@ -1,0 +1,11 @@
+[package]
+name = "codetether-native-github-pr"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native github pr services for CodeTether"
+
+[dependencies]
+codetether-github-pr = { path = "../codetether-github-pr", version = "0.1.0" }
+codetether-github-pr-cli = { path = "../codetether-github-pr-cli", version = "0.1.0" }

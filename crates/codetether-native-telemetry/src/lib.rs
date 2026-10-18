@@ -16,7 +16,7 @@ mod tests;
 /// # Examples
 /// ```rust,no_run
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-/// codetether_agent::telemetry::install_memory_guards("/tmp/reports".into());
+/// codetether_native_telemetry::install_memory_guards("/tmp/reports".into());
 /// # });
 /// ```
 pub fn install_memory_guards(report_dir: std::path::PathBuf) {

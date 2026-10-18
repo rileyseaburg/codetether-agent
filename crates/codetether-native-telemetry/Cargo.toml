@@ -1,0 +1,13 @@
+[package]
+name = "codetether-native-telemetry"
+version = "4.7.6-dev.38"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native telemetry services for CodeTether"
+
+[dependencies]
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread"] }

@@ -6,7 +6,7 @@
 /// * `spool_dir` - Directory for allocator crash reports.
 /// # Examples
 /// ```rust,no_run
-/// codetether_agent::telemetry::alloc_guard_config::configure("/tmp/reports".into());
+/// codetether_native_telemetry::alloc_guard_config::configure("/tmp/reports".into());
 /// ```
 pub fn configure(spool_dir: std::path::PathBuf) {
     super::identity::register();

@@ -1,6 +1,6 @@
 //! Application CLI adapter for the shared worker HTTP server.
-use crate::cli::WorkerServerArgs;
 use anyhow::Result;
+use codetether_cli_options::WorkerServerArgs;
 pub use codetether_worker_http::WorkerServerState;
 /// Start the worker HTTP server with CLI-selected address and shared state.
 ///
@@ -13,8 +13,8 @@ pub use codetether_worker_http::WorkerServerState;
 /// # Examples
 /// ```rust,no_run
 /// # async fn example() -> anyhow::Result<()> {
-/// let args = codetether_agent::cli::WorkerServerArgs { hostname: "127.0.0.1".into(), port: 8080 };
-/// codetether_agent::worker_server::start_worker_server_with_state(args, Default::default()).await?;
+/// let args = codetether_cli_options::WorkerServerArgs { hostname: "127.0.0.1".into(), port: 8080 };
+/// codetether_native_worker_server::start_worker_server_with_state(args, Default::default()).await?;
 /// # Ok(())
 /// # }
 /// ```

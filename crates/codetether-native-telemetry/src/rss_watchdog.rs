@@ -11,7 +11,7 @@ pub use codetether_telemetry::rss_watchdog::{
 /// # Examples
 /// ```rust,no_run
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-/// codetether_agent::telemetry::rss_watchdog::spawn("/tmp/reports".into());
+/// codetether_native_telemetry::rss_watchdog::spawn("/tmp/reports".into());
 /// # });
 /// ```
 pub fn spawn(spool_dir: std::path::PathBuf) {

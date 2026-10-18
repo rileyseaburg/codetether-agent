@@ -25086,3 +25086,31 @@ checks passed. Only the new package and root dependency are staged for
 Cargo.lock; unrelated working content remains unchanged. Evidence:
 artifacts/consolidation-native-mux/. No Cargo, rustc, Python, compilation,
 daemon processes or runtime tests ran. Full consolidation remains active.
+
+### Standalone native service modules moved into dedicated crates
+
+Moved 17 files covering eight complete modules into separate native crates:
+LSP, telemetry, voice, worker-server, bus, autochat, image-clipboard and
+github-pr. The root re-exports each crate at its previous public module path.
+The former source directories and worker_server.rs no longer exist.
+
+LSP client identity/logging and telemetry version registration are unchanged;
+those two crate package versions match the application version 4.7.6-dev.38
+and must remain synchronized on release. Telemetry still re-exports the same
+shared process counters, and the root allocator declaration is byte-for-byte
+unchanged. Voice retains the same cpal probe and SSH policy. Worker HTTP startup
+uses the identical WorkerServerArgs type directly from cli-options. The other
+modules preserve their existing public compatibility exports and child modules.
+
+Seventeen exact source comparisons passed after explicit module-root/import and
+documentation changes plus direct formatting. Module scans cover 708 roots and
+dependency scans cover 590 crates without missing modules, dependency cycles or
+undeclared direct workspace imports. Declaration, file-limit, direct rustfmt and
+whitespace checks passed. Initial dependency discovery treated the LSP tracing
+target string as a crate import; it was excluded because it is a literal log
+identity, and the code/token dependency scan reports no application dependency.
+Only the eight new package entries and root dependencies are staged for
+Cargo.lock. Its unrelated working contents and the existing A2A changes remain
+unchanged. Evidence: artifacts/consolidation-native-services/. No Cargo, rustc,
+Python, compilation, hardware probing or runtime tests ran. The full workspace
+consolidation remains active.
