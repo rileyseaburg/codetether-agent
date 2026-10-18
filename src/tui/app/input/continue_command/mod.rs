@@ -18,10 +18,7 @@ use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
-mod continue_idle;
-mod continue_prompt;
-mod continue_stalled;
-
+mod host;
 /// Handle `/continue`. Returns `true` when `prompt` was the `/continue`
 /// command (and was handled); `false` otherwise so the caller keeps dispatching.
 pub(super) async fn run(
@@ -33,15 +30,16 @@ pub(super) async fn run(
     runtime: &TuiSessionHandle,
     prompt: &str,
 ) -> bool {
-    if prompt.trim() != "/continue" {
-        return false;
-    }
-    let prompt = continue_prompt::resolve(app, slot.borrow());
-    app.state.clear_input();
-    if app.state.processing || slot.borrow().is_none() {
-        continue_stalled::resume(app, prompt, runtime).await;
-    } else {
-        continue_idle::resume(app, cwd, slot, registry, worker_bridge, prompt, runtime).await;
-    }
-    true
+    codetether_chat_submit::resume::run(
+        &mut host::Native {
+            app,
+            cwd,
+            slot,
+            registry,
+            worker_bridge,
+            runtime,
+        },
+        prompt,
+    )
+    .await
 }

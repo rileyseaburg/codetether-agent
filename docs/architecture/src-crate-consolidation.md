@@ -16851,3 +16851,23 @@ Full workspace consolidation remains active.
   No dependency changes. Evidence: `artifacts/consolidation-slash-intake/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared manual continuation flow
+
+- Moved /continue recognition, prompt resolution, idle resubmission and stalled
+  request recovery into `codetether-chat-submit::resume`.
+- Separate prompt, idle and stalled modules own policy/order. Native source,
+  UI and runtime adapters retain session lookup, watchdog construction,
+  cancellation and actual provider dispatch. Removed three native continuation
+  implementation files.
+- Preserved in-flight/durable/transcript/default prompt precedence, command
+  input clearing, busy-session selection, zero-image idle dispatch, watchdog
+  budget reset and retry notification before cancelling the stalled request.
+- Added existing provider-core message contracts and staged only that package
+  dependency in the chat-submit lock entry, preserving unrelated changes.
+- Verification: full command/prompt/idle/stalled bodies, every native binding,
+  unchanged routing/dispatch/queue/steering code, module/dependency graphs,
+  direct rustfmt, file limits and whitespace. Evidence:
+  `artifacts/consolidation-chat-resume/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

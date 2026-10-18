@@ -10,3 +10,4 @@ description = "Ordered chat input interception, routing and submission"
 codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
 codetether-image = { path = "../codetether-image", version = "0.1.0" }
 tracing = "0.1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }

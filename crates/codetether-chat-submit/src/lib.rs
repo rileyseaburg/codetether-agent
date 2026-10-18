@@ -36,3 +36,6 @@ pub mod steering;
 
 /// Explicit mentions and focused-agent routing decoration.
 pub mod mention;
+
+/// Manual continuation prompt resolution, idle dispatch and stalled recovery.
+pub mod resume;
