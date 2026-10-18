@@ -3,7 +3,8 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 use std::path::PathBuf;
-pub(super) struct NativeHost;
+#[derive(Default)]
+pub(crate) struct NativeHost;
 #[async_trait]
 impl codetether_recall_store::Host for NativeHost {
     fn session_path(&self, id: &str) -> Result<PathBuf> {

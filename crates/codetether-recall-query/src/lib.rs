@@ -8,6 +8,8 @@ mod host;
 mod migrate;
 mod options;
 mod search;
+/// Recall-tool search adapter over the shared query engine.
+pub mod tool;
 mod workspace;
 pub use host::Host;
 pub use options::SearchOptions;

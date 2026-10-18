@@ -16,7 +16,7 @@ mod queue;
 pub(crate) use codetether_session_recall::render;
 pub(crate) mod search;
 mod session_io;
-mod storage_host;
+pub(crate) mod storage_host;
 mod worker_host;
 
 pub(crate) use queue::{remove, schedule};

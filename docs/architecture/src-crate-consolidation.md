@@ -24382,3 +24382,22 @@ whitespace checks passed. Only the required lockfile dependency entry is staged;
 unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-ralph-tool-host/. No Cargo, rustc, Python, compilation,
 checkout, loop execution or tests ran. Full consolidation remains active.
+
+### Recall-tool search adapter moved into the query crate
+
+Moved indexed-search argument translation from src/tool/session_recall/host.rs
+into codetether-recall-query::tool::IndexedSearch. The native tool host is now a
+type alias selecting the existing session bus and storage host. Made the unit
+storage host Default and visible within the native crate for that selection;
+its storage implementation is unchanged. Added a direct dependency from query
+to session-recall, already present transitively through recall-index. This
+placement avoids the reverse dependency cycle.
+
+Static comparisons preserve all query and option fields and verify the native
+query wrapper's identical storage call. Module/dependency scans cover 692 roots
+and 573 crates without missing modules or cycles. Direct dependency audit,
+direct rustfmt, source file limits and whitespace checks passed. Only the
+required lockfile dependency entry is staged; unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-recall-tool-search/. No Cargo,
+rustc, Python, compilation, search execution or tests ran. Full consolidation
+remains active.
