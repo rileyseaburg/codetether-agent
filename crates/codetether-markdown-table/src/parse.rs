@@ -14,13 +14,29 @@ pub(crate) fn split_cells(row: &str) -> Vec<String> {
 }
 
 /// True when a line looks like a table row (contains a pipe with content).
-pub(crate) fn is_table_row(line: &str) -> bool {
+/// # Arguments
+/// * `line` - Candidate Markdown row.
+/// # Returns
+/// Whether the line contains a pipe and nonempty text.
+/// # Examples
+/// ```
+/// assert!(codetether_markdown_table::is_table_row("|a|b|"));
+/// ```
+pub fn is_table_row(line: &str) -> bool {
     let t = line.trim();
     t.contains('|') && !t.is_empty()
 }
 
 /// True when a line is a GFM separator row, e.g. `|---|:--:|---:|`.
-pub(crate) fn is_separator_row(line: &str) -> bool {
+/// # Arguments
+/// * `line` - Candidate separator row.
+/// # Returns
+/// Whether all cells contain dashes with optional colons.
+/// # Examples
+/// ```
+/// assert!(codetether_markdown_table::is_separator_row("|---|---|"));
+/// ```
+pub fn is_separator_row(line: &str) -> bool {
     let cells = split_cells(line);
     if cells.is_empty() {
         return false;

@@ -11108,3 +11108,20 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-markdown-block/`. Compilation, runtime tests
   and rendering were not run; no Cargo or rustc commands executed.
 - Full consolidation remains active.
+
+### Markdown table extraction
+
+- Moved table detection, cell parsing, width calculation, alignment, clipping,
+  cell styling and drawing into `crates/codetether-markdown-table`.
+- Sixteen modules separate table concerns; column measurement, rule drawing
+  and data-row drawing were split after size checks identified oversized
+  combinations. Maximum module size is 37 code lines.
+- Native `flush` remains the unchanged bridge to formatter-specific prose
+  fallback for invalid candidates. Eight standalone tests moved; one formatter
+  integration test remains native.
+- Nineteen static comparisons verify moved files/function bodies, test
+  relocation, unchanged fallback and unchanged formatter state machine.
+  Module reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-markdown-table/`. Compilation, runtime tests
+  and rendering were not run; no Cargo or rustc commands executed.
+- Full consolidation remains active.

@@ -1,40 +1,8 @@
-//! GitHub-flavored markdown table detection and rendering.
-//!
-//! Detects pipe-delimited tables (a row, a `---|---` separator, then body
-//! rows) and renders them as a bordered, column-aligned box. Falls back to
-//! plain text when the buffered lines are not a valid table.
-
+//! Bridge shared Markdown table rendering to native prose fallback.
 use ratatui::text::Line;
-
 use super::MessageFormatter;
+pub use codetether_markdown_table::{is_separator_row, is_table_row, render_table};
 
-#[path = "message_formatter_table_parse.rs"]
-mod parse;
-#[path = "message_formatter_table_render.rs"]
-mod render;
-#[path = "message_formatter_table_util.rs"]
-mod util;
-
-#[cfg(test)]
-#[path = "message_formatter_table_feature_tests.rs"]
-mod feature_tests;
-#[cfg(test)]
-#[path = "message_formatter_table_tests.rs"]
-mod tests;
-
-pub(crate) use parse::{is_separator_row, is_table_row};
-
-/// Render buffered candidate lines as a table when valid.
-///
-/// Returns `Some(lines)` when `buf` forms a valid GFM table (header row,
-/// separator, optional body), otherwise `None` so the caller can fall back
-/// to plain rendering.
-pub(super) fn render_table(buf: &[String], max_width: usize) -> Option<Vec<Line<'static>>> {
-    if buf.len() < 2 || !is_separator_row(&buf[1]) {
-        return None;
-    }
-    render::table(buf, max_width)
-}
 
 /// Flush buffered table rows into `out`.
 ///
@@ -60,3 +28,6 @@ pub(super) fn flush(
     }
     buf.clear();
 }
+#[cfg(test)]
+#[path = "message_formatter_table_tests.rs"]
+mod tests;
