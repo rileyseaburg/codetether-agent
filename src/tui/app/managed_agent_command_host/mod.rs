@@ -3,9 +3,11 @@ use crate::tui::app::state::App;
 mod listing;
 mod registry;
 mod state;
-pub(super) struct Native<'a> {
+pub(in crate::tui::app::managed_agent) struct Native<'a> {
     pub app: &'a mut App,
     pub parent: Option<&'a str>,
 }
 
 mod selection;
+
+mod chat;

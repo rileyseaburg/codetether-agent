@@ -18071,3 +18071,27 @@ formatting, swarm selection and native bindings; unchanged chat, removal request
 presentation and integration-test source; module/dependency graph checks, file
 limits and whitespace. Evidence: `artifacts/consolidation-agent-command/`.
 No Cargo, rustc or Python commands ran. Rust compilation/tests remain unverified.
+
+### Managed-agent chat, requests and result presentation
+
+Extended `codetether-agent-command` to own the remaining interaction logic:
+`chat.rs` handles mention/focus routing and message-dispatch sequencing;
+`request.rs` builds canonical spawn/message/kill payloads and converts tool
+execution errors; `presentation.rs` produces result messages and status text.
+The native `managed_agent_chat.rs`, `managed_agent_request.rs` and
+`managed_agent_ui.rs` now bind those operations to the active session, actual
+AgentTool execution and TUI state. A focused chat host supplies parent identity,
+ownership checks, transcript insertion and input clearing.
+
+Preserved the slash/shell-input exclusion, mention-before-focus precedence,
+parent ownership check, user-message-before-dispatch order, focus/result/input
+updates, model-required spawn guard, detached message/spawn fields and both
+parent context fields on message requests. The native host is visible within
+its containing managed-agent module so the sibling chat adapter can reuse it.
+
+Validation: complete body comparisons of routing, dispatch, request payloads and
+presentation; native adapter and visibility inspection; unchanged previous
+command bodies and integration-test source; module/dependency graph checks,
+file-limit ratchet and whitespace checks. Evidence:
+`artifacts/consolidation-agent-interactions/`. No live agent requests, Cargo,
+rustc, Python or Rust tests were run. Compilation remains unverified.

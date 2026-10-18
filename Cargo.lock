@@ -1832,8 +1832,12 @@ dependencies = [
 name = "codetether-agent-command"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "codetether-agent-view",
+ "codetether-chat-model",
+ "codetether-chat-submit",
  "codetether-tool-core",
+ "serde_json",
 ]
 
 [[package]]

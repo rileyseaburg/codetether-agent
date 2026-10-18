@@ -14,3 +14,9 @@ pub use host::{Host, Listing, Registry, State};
 pub use listing::list;
 pub use remove::kill;
 pub use swarm::focus as focus_swarm;
+
+mod chat_host;
+pub use chat_host::ChatHost;
+pub mod chat;
+pub mod presentation;
+pub mod request;

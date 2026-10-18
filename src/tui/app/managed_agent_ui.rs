@@ -1,22 +1,9 @@
-//! Presentation of managed-agent tool outcomes in the TUI.
-
-use crate::tool::ToolResult;
-use crate::tui::app::state::App;
-use crate::tui::chat::message::{ChatMessage, MessageType};
-
+//! Apply shared child-tool presentation to the TUI.
+use crate::{tool::ToolResult, tui::app::state::App};
 pub(crate) fn present(app: &mut App, result: &ToolResult, success: String, failure: &str) {
-    let kind = if result.success {
-        MessageType::System
-    } else {
-        MessageType::Error
-    };
-    app.state
-        .messages
-        .push(ChatMessage::new(kind, result.output.clone()));
-    app.state.status = if result.success {
-        success
-    } else {
-        format!("{failure}: {}", result.output)
-    };
+    let (message, status) =
+        codetether_agent_command::presentation::prepare(result, success, failure);
+    app.state.messages.push(message);
+    app.state.status = status;
     app.state.scroll_to_bottom();
 }

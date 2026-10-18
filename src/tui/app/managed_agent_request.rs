@@ -1,45 +1,34 @@
-//! Managed-agent tool request construction and dispatch.
-
+//! Execute shared child-tool requests with the canonical native agent tool.
+use crate::{
+    session::Session,
+    tool::{Tool, ToolResult, agent::AgentTool},
+};
+use codetether_agent_command::request;
 use std::path::Path;
-
-use serde_json::{Value, json};
-
-use crate::session::Session;
-use crate::tool::agent::AgentTool;
-use crate::tool::{Tool, ToolResult};
-
-async fn execute(params: Value) -> ToolResult {
-    AgentTool::new()
-        .execute(params)
-        .await
-        .unwrap_or_else(|error| ToolResult::error(error.to_string()))
+struct Native;
+impl request::Host for Native {
+    async fn execute(params: serde_json::Value) -> anyhow::Result<ToolResult> {
+        AgentTool::new().execute(params).await
+    }
 }
-
 pub(crate) async fn spawn(
     session: &Session,
     cwd: &Path,
     name: &str,
     instructions: &str,
 ) -> ToolResult {
-    let Some(model) = session.metadata.model.as_deref() else {
-        return ToolResult::error("Select a model before spawning a sub-agent");
-    };
-    execute(json!({
-        "action": "spawn", "name": name, "instructions": instructions,
-        "model": model, "detach": true, "__ct_session_id": session.id,
-        "__ct_parent_workspace": cwd,
-    }))
+    request::spawn::<Native>(
+        &session.id,
+        session.metadata.model.as_deref(),
+        cwd,
+        name,
+        instructions,
+    )
     .await
 }
-
 pub(crate) async fn message(parent: &str, name: &str, message: &str) -> ToolResult {
-    execute(json!({
-        "action": "message", "name": name, "message": message, "detach": true,
-        "context_id": parent, "__ct_session_id": parent,
-    }))
-    .await
+    request::message::<Native>(parent, name, message).await
 }
-
 pub(crate) async fn kill(parent: &str, name: &str) -> ToolResult {
-    execute(json!({ "action": "kill", "name": name, "__ct_session_id": parent })).await
+    request::kill::<Native>(parent, name).await
 }
