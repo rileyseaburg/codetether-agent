@@ -20321,3 +20321,24 @@ dependency cycles, file-size ratchet, whitespace and direct formatting.
 Evidence: `artifacts/consolidation-composer-interaction/`. Cargo, rustc, Python,
 Rust tests and interactive input were not executed; compilation and runtime
 remain unverified.
+
+### Remove superseded test-only persistence implementation
+
+Removed the uncalled legacy JSON scan implementation from
+`src/session/persistence.rs`: index-assisted scan, direct tail loading,
+parallel byte-prefilter scan and mmap substring probing. All four helpers
+were private `cfg(test)` functions and their only references were within that
+unused helper group. Their imports were removed as well.
+
+The active public load/save/delete/resume methods already delegate to
+`codetether-session-store`; those bodies and all declared snapshot/journal
+regression modules are unchanged. Persistence source shrank from 408 to
+94 lines without adding another implementation owner.
+
+Validation: exact retained-prefix/public-implementation comparison, explicit
+cfg(test) helper inventory, repository-wide no-reference checks, unchanged
+lifecycle/location/snapshot modules and tests, module reachability, dependency
+cycles, file-size ratchet, whitespace and direct formatting. The removed
+source is retained in `artifacts/consolidation-persistence-cleanup/` with the
+verification evidence. No Cargo, rustc, Python, Rust tests or storage operations
+ran; compilation and runtime remain unverified.
