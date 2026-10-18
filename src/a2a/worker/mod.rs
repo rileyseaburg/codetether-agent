@@ -22,7 +22,6 @@ use codetether_a2a_worker_core::execution_policy as model_preferences;
 mod pending_tasks;
 use codetether_native_providers::worker_models as provider_models;
 mod public_api;
-mod reconnect_host;
 mod reexports;
 mod reexports_a;
 mod reexports_b;
@@ -63,10 +62,8 @@ use codetether_a2a_worker_core::task_config::policy_args as task_policy_args;
 mod task_session;
 mod task_session_resolve;
 use codetether_a2a_worker_core::dispatch as task_slot;
-mod task_stream;
 use codetether_a2a_http::worker as task_stream_error;
-#[rustfmt::skip]
-mod task_stream_request;use codetether_a2a_worker_core::dispatch as task_targeting;
+use codetether_a2a_worker_core::dispatch as task_targeting;
 use codetether_a2a_worker_core::task_config as task_timeout;
 pub(crate) use codetether_a2a_worker_core::task_timeline;
 #[rustfmt::skip]

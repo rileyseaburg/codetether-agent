@@ -32,3 +32,8 @@ pub mod initialization;
 pub mod bootstrap;
 /// Pending-task transport with application-supplied claim dispatch.
 pub mod pending;
+
+/// Standalone and HTTP-integrated reconnect loops.
+pub mod reconnect;
+/// Resumable worker stream consumption using the native task dispatcher hook.
+pub mod stream;

@@ -1,4 +1,4 @@
-use crate::worker_server::WorkerServerState;
+use codetether_worker_http::WorkerServerState;
 pub(super) trait Mode: Sync {
     fn server_state(&self) -> Option<&WorkerServerState>;
 }

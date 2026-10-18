@@ -25513,3 +25513,23 @@ the existing worker lockfile entry. Unrelated working changes remain untouched.
 Evidence: artifacts/consolidation-worker-bootstrap/. No Cargo, rustc, Python,
 bootstrap/network execution or runtime tests ran. Full consolidation remains
 active.
+
+### Worker stream and reconnect adapters moved into the worker crate
+
+Moved seven stream/reconnect files into codetether-native-worker. Stream request
+construction, HTTP error decoding, connection status, notification channels,
+heartbeat startup and standalone/integrated reconnect adapters now live with
+the worker runtime types. The existing Dispatcher hook routes stream frames
+and reconciliation through the same native claim handler as pending tasks.
+Root loop functions only select that dispatcher and forward their arguments.
+
+Transformed-source comparisons preserve six complete adapter files, the shared
+reconnect state declaration, and both loop entry-point bodies. Core cursor,
+backoff and event-ordering implementations remain the same shared calls.
+Static scans cover 714 module roots and 600 crates without missing modules,
+cycles or undeclared direct workspace dependencies. Declaration, file-limit,
+direct rustfmt and whitespace checks pass. Only the two required worker
+lockfile dependency additions are staged; unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-worker-stream/. No Cargo, rustc,
+Python, HTTP streams, heartbeats or runtime tests ran. Full consolidation remains
+active.

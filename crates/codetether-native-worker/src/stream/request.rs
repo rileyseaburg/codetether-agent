@@ -1,6 +1,6 @@
 //! Adapt worker runtime fields to the shared stream request builder.
-use super::WorkerTaskRuntime;
-use crate::a2a::stream::event_id::EventId;
+use crate::WorkerTaskRuntime;
+use codetether_a2a_stream::event_id::EventId;
 pub(super) fn build_stream_request(
     runtime: &WorkerTaskRuntime,
     name: &str,

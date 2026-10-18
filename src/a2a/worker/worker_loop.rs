@@ -1,9 +1,5 @@
-//! Native standalone worker loop binding.
-use super::{WorkerContext, reconnect_host::Native};
+//! Native task-dispatch selection for standalone worker reconnection.
+use super::{WorkerContext, pending_tasks::Dispatcher};
 pub(super) async fn run_worker_loop(context: WorkerContext) -> anyhow::Result<()> {
-    codetether_a2a_stream::worker_reconnect::run_worker_loop(&Native {
-        context: &context,
-        state: (),
-    })
-    .await
+    codetether_native_worker::reconnect::run_worker_loop::<Dispatcher>(context).await
 }

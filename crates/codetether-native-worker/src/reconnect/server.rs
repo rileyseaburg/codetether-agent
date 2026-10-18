@@ -1,8 +1,8 @@
 use super::Native;
-use crate::worker_server::WorkerServerState;
 use codetether_a2a_stream::worker_reconnect::Server;
+use codetether_worker_http::WorkerServerState;
 use tokio::sync::mpsc;
-impl Server for Native<'_, &WorkerServerState> {
+impl<D: crate::pending::Dispatcher> Server for Native<'_, D, &WorkerServerState> {
     fn server_url(&self) -> &str {
         &self.context.server
     }

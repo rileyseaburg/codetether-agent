@@ -9,7 +9,6 @@ pub(super) use super::{
     task_output::build_output_callback,
     task_session::prepare_task_session,
     task_slot::reserve_task_slot,
-    task_stream::connect_stream,
     task_timeout::task_timeout_secs,
     worker_bootstrap::{bootstrap_worker, register_current_worker},
     worker_context::WorkerContext,
