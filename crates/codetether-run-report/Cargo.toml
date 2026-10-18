@@ -1,0 +1,16 @@
+[package]
+name = "codetether-run-report"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Final CLI output for sessions, relays and Ralph runs"
+
+[dependencies]
+anyhow = "1"
+codetether-go-ralph = { path = "../codetether-go-ralph", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-relay-report = { path = "../codetether-relay-report", version = "0.1.0" }
+codetether-run-jsonl = { path = "../codetether-run-jsonl", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+serde_json = "1"

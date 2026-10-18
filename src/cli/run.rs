@@ -201,60 +201,13 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
             }
 
             // Display results
-            match args.format.as_str() {
-                "jsonl" => {
-                    let response = super::go_ralph::format_go_ralph_result(&ralph_result, &task);
-                    jsonl::write_completed(None, &response, None)?;
-                }
-                "json" => println!(
-                    "{}",
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "passed": ralph_result.passed,
-                        "total": ralph_result.total,
-                        "all_passed": ralph_result.all_passed,
-                        "iterations": ralph_result.iterations,
-                        "feature_branch": ralph_result.feature_branch,
-                        "prd_path": ralph_result.prd_path.display().to_string(),
-                        "status": format!("{:?}", ralph_result.status),
-                        "stories": ralph_result.stories.iter().map(|s| serde_json::json!({
-                            "id": s.id,
-                            "title": s.title,
-                            "passed": s.passed,
-                        })).collect::<Vec<_>>(),
-                    }))?
-                ),
-                _ => {
-                    println!(
-                        "{}",
-                        super::go_ralph::format_go_ralph_result(&ralph_result, &task)
-                    );
-                }
-            }
+            codetether_run_report::render_ralph(&args.format, &ralph_result, &task)?;
             return Ok(());
         }
 
         // Explicit tactical /autochat path (requires --no-prd)
         let relay_result = run_protocol_first_relay(agent_count, &task, &model, None, None).await?;
-        match args.format.as_str() {
-            "jsonl" => {
-                if let Some(failure) = &relay_result.failure {
-                    jsonl::write_failed_response(failure, Some(&relay_result.summary))?;
-                } else {
-                    jsonl::write_completed(None, &relay_result.summary, None)?;
-                }
-            }
-            "json" => println!("{}", serde_json::to_string_pretty(&relay_result)?),
-            _ => {
-                println!("{}", relay_result.summary);
-                if let Some(failure) = &relay_result.failure {
-                    eprintln!("\nFailure detail: {}", failure);
-                }
-                eprintln!(
-                    "\n[Relay: {} | Model: {}]",
-                    relay_result.relay_id, relay_result.model
-                );
-            }
-        }
+        codetether_run_report::render_relay(&args.format, &relay_result)?;
         return Ok(());
     }
 
@@ -349,24 +302,7 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
     };
 
     // Output based on format
-    match args.format.as_str() {
-        "jsonl" => jsonl::write_completed(
-            Some(result.session_id.as_str()),
-            &result.text,
-            jsonl::usage(&session.usage),
-        )?,
-        "json" => {
-            println!("{}", serde_json::to_string_pretty(&result)?);
-        }
-        _ => {
-            println!("{}", result.text);
-            // Show session ID for continuation
-            eprintln!(
-                "\n[Session: {} | Continue with: codetether run -c \"...\"]",
-                session.id
-            );
-        }
-    }
+    codetether_run_report::render_session(&args.format, &result, &session.usage, &session.id)?;
 
     Ok(())
 }

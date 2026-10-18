@@ -14037,3 +14037,18 @@ Full workspace consolidation remains active.
 - No dependencies or lockfile entries changed. No Cargo, rustc, Rust tests,
   interactive prompt or approval persistence ran. Full workspace consolidation
   remains unfinished.
+
+### Run result output extraction
+
+- Moved Ralph, tactical relay and ordinary-session output format branches into
+  codetether-run-report. Separate modules consume the existing shared result
+  types and render JSON, JSONL or default text.
+- Preserves field names, optional usage handling, failure rendering and distinct
+  session identities for JSONL output versus the continuation hint. Native code
+  now calls the renderers after its existing execution and persistence steps.
+- Verification: five static full-branch/expanded-native-source/size checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-run-report/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or execution/result output ran. Full workspace
+  consolidation remains unfinished.

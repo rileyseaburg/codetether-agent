@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-run-report",
  "codetether-run-policy",
  "codetether-cli-relay",
  "codetether-relay-report",
@@ -7112,6 +7113,19 @@ dependencies = [
  "codetether-cli-options",
  "codetether-config",
  "codetether-runtime-policy",
+]
+
+[[package]]
+name = "codetether-run-report"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-go-ralph",
+ "codetether-provider-core",
+ "codetether-relay-report",
+ "codetether-run-jsonl",
+ "codetether-session-events",
+ "serde_json",
 ]
 
 [[package]]
