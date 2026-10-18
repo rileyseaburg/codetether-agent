@@ -19,6 +19,7 @@ use task_output_ingest::agent_task_output;
 use task_output_poll::get_agent_task_output;
 mod task_queue;
 mod tool_contract;
+mod tool_discovery_host;
 mod worker_modules;
 
 use crate::a2a;
@@ -52,7 +53,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::{Mutex, broadcast};
 use tower_http::trace::TraceLayer;
 
@@ -74,8 +74,6 @@ use codetether_openai_wire::{
     OpenAiResponseToolCallFunction, OpenAiStop, OpenAiUsage, openai_stream_chunk,
 };
 use codetether_task_api::{CreateAgentTaskRequest, ListAgentTasksQuery};
-use codetether_tool_discovery::RegisterToolResponse;
-use codetether_tool_discovery::RegisteredToolView;
 pub use codetether_tool_discovery::{RegisterToolRequest, RegisteredTool, ToolRegistry};
 use codetether_voice_api::{CreateVoiceSessionRequest, get_voice_session_rest, list_voices_rest};
 use task_dispatch::dispatch_task;
@@ -206,15 +204,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     };
 
     // Spawn the tool reaper background task (runs every 15s to clean up expired tools)
-    let tool_registry = state.tool_registry.clone();
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(15));
-        loop {
-            interval.tick().await;
-            tool_registry.cleanup().await;
-            tracing::debug!("Tool reaper ran cleanup");
-        }
-    });
+    codetether_tool_discovery::spawn_reaper(state.tool_registry.clone());
 
     let app = approval_routes::router()
         // Health check (public — auth exempt)
@@ -284,11 +274,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Plugin registry API
         .route("/v1/plugins", get(list_plugins))
         // Tool registry API
-        .route("/v1/tools", get(list_tools))
-        .route("/v1/tools/register", post(register_tool))
-        .route("/v1/tools/{id}/heartbeat", post(tool_heartbeat))
-        // MCP compatibility alias (marketing site SDK expects /mcp/v1/tools)
-        .route("/mcp/v1/tools", get(list_tools))
+        .merge(codetether_tool_discovery::router::<AppState>())
         // Agent task APIs (compatibility surface for dashboard)
         .route(
             "/v1/agent/tasks",
@@ -693,21 +679,6 @@ async fn k8s_delete_subagent(
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
     codetether_k8s_api::k8s_delete_subagent(&state.k8s, id, internal_error).await
-}
-async fn list_tools(State(state): State<AppState>) -> Json<Vec<RegisteredToolView>> {
-    codetether_tool_discovery::list_tools(&state.tool_registry).await
-}
-async fn register_tool(
-    State(state): State<AppState>,
-    Json(req): Json<RegisterToolRequest>,
-) -> Result<Json<RegisterToolResponse>, (StatusCode, String)> {
-    codetether_tool_discovery::register_tool(&state.tool_registry, req).await
-}
-async fn tool_heartbeat(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Result<Json<RegisteredToolView>, (StatusCode, String)> {
-    codetether_tool_discovery::tool_heartbeat(&state.tool_registry, id).await
 }
 async fn list_plugins(
     State(state): State<AppState>,

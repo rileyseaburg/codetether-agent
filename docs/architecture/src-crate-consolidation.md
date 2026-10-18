@@ -14173,3 +14173,18 @@ Full workspace consolidation remains active.
 - Added only the listener's existing workspace dependencies to the lockfile;
   tokio's runtime feature is explicit. No Cargo, rustc, Rust tests, server startup
   or network listeners ran. Full workspace consolidation remains unfinished.
+
+### Tool-discovery HTTP and cleanup ownership
+
+- Moved discovery route assembly, typed HTTP handlers and periodic expiry
+  cleanup into codetether-tool-discovery. Native AppState supplies registry
+  access through HttpState; server startup merges the shared router and starts
+  the reaper.
+- Exact paths/methods, MCP list alias, operation delegation, cleanup interval
+  and global auth/audit/policy ordering remain unchanged.
+- Verification: seven static handler/route/reaper/expanded-server/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-tool-router/.
+- Tokio runtime/time features are explicit; no lockfile entries changed.
+  No Cargo, rustc, Rust tests, server or cleanup task ran. Full workspace
+  consolidation remains unfinished.
