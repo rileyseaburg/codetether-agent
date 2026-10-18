@@ -35,3 +35,17 @@ mod arguments;
 pub use arguments::{SpawnArgs, parse_spawn_args};
 #[cfg(test)]
 mod arguments_tests;
+
+mod application_binding;
+
+/// Dependencies used by application-local spawn declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use async_trait::async_trait;
+    pub use codetether_agent_input::{Params, SpawnRequest};
+    pub use codetether_child_workspace::Handoff;
+    pub use codetether_collaboration_state::residency::Slot;
+    pub use codetether_spawn_policy::Reservation;
+    pub use codetether_tool_core::ToolResult;
+}

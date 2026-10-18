@@ -5,10 +5,6 @@
 //! model turn is auto-started via [`super::spawn_run`] so the sub-agent begins
 //! working immediately instead of sitting idle (issue #295).
 
-use super::params::Params;
-use crate::tool::ToolResult;
-use anyhow::Result;
-
 #[path = "spawn/ephemeral.rs"]
 mod ephemeral;
 #[path = "spawn/ephemeral_host.rs"]
@@ -16,15 +12,20 @@ mod ephemeral_host;
 #[cfg(test)]
 #[path = "spawn/ephemeral_task.rs"]
 mod ephemeral_task;
-#[path = "spawn/host.rs"]
-mod host;
 #[path = "spawn/identity.rs"]
 mod identity;
 #[path = "spawn/session.rs"]
 mod session;
 #[path = "spawn/workspace.rs"]
 mod workspace;
-/// Spawn through shared orchestration using native runtime services.
-pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
-    codetether_agent_spawn::handle_spawn::<host::ApplicationHost>(params).await
-}
+codetether_agent_spawn::declare_application_spawn!(
+    pub(super);
+    crate::session::Session,
+    crate::tool::agent::residency::reserve,
+    crate::tool::agent::spawn::session::create,
+    crate::tool::agent::spawn_store::persist_spawned_agent,
+    crate::tool::agent::spawn_validation::validate_spawn_request,
+    crate::tool::agent::spawn::identity::reserve,
+    crate::tool::agent::spawn_run::kick_off,
+    crate::tool::agent::spawn::ephemeral::run,
+);

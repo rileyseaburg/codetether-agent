@@ -26819,3 +26819,19 @@ formatting, file-limit and whitespace checks pass for 729 roots and 617 crates.
 No dependency or lock changes were needed; unrelated working files are untouched.
 Evidence: artifacts/consolidation-session-factory-binding/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Spawn construction and runtime binding
+
+Moved Construction/Host implementations and the typed handle_spawn entry point
+into codetether-agent-spawn::declare_application_spawn. Removed spawn/host.rs and
+spawn/host/{construction,runtime}.rs. The root supplies its Session and unchanged
+capacity, creation, persistence, validation, identity, kickoff and ephemeral
+callbacks. Shared spawn sequencing and guard ownership are untouched.
+
+All eight expanded function bodies match the originals after callback-path
+substitution. Every remaining spawn module and test source is unchanged. Static
+declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 729 roots and 617 crates. No manifest
+or lock changes were needed, and unrelated working files remain untouched.
+Evidence: artifacts/consolidation-spawn-binding/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
