@@ -1,50 +1,11 @@
-//! Detail-row assembly for children spawned through the agent tool.
-
-use ratatui::style::Stylize;
-use ratatui::text::Line;
-
+//! Bind the parent session and native registry to tool-child detail formatting.
+mod host;
 use crate::tui::app::state::AppState;
-
+use ratatui::text::Line;
 pub(super) fn lines(state: &AppState, name: &str) -> Vec<Line<'static>> {
-    let Some(parent_id) = state.session_id.as_deref() else {
-        return missing(name);
-    };
-    let Some(agent) = crate::tool::agent::bridge::find_agent_tool_agent_for_parent(name, parent_id)
-    else {
-        return missing(name);
-    };
-    let messages = crate::tool::agent::bridge::agent_tool_transcript_for_parent(name, parent_id)
-        .unwrap_or_default();
-    let status = match (agent.is_processing, agent.failed) {
-        (true, _) => "working",
-        (false, true) => "failed",
-        (false, false) => "idle",
-    };
-    let remote = agent.origin.is_remote();
-    let mut rows = super::subagent_detail_metadata::lines_for_origin(
+    codetether_agent_dashboard::tool_detail::lines(
+        &host::Registry,
+        state.session_id.as_deref(),
         name,
-        status,
-        &agent.origin,
-        &agent.instructions,
-    );
-    if remote && agent.is_processing {
-        rows.push(Line::from(
-            "A2A request in flight; polling peer for completion…".yellow(),
-        ));
-        rows.push(Line::from(""));
-    }
-    let source = super::subagent_message_lines::Source::for_remote(remote);
-    super::subagent_message_lines::append(&mut rows, &messages, source);
-    if let Some(trace) =
-        crate::tool::agent::bridge::agent_tool_live_trace_for_parent(name, parent_id)
-    {
-        super::subagent_live_lines::append(&mut rows, &trace);
-    }
-    rows
-}
-
-fn missing(name: &str) -> Vec<Line<'static>> {
-    vec![Line::from(
-        format!("Agent @{name} is no longer available.").red(),
-    )]
+    )
 }

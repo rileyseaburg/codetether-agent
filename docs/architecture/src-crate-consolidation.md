@@ -17665,3 +17665,19 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-agent-dashboard-compose/`.
 - No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Parent-scoped agent details and panel selection
+
+- Moved tool-child detail assembly, missing-child hints, focused-child selection
+  and dashboard/detail-panel selection into `codetether-agent-dashboard`.
+- Native adapters supply the same owner-scoped registry reads, selected child,
+  managed-session rows and scroll state. Preserved lookup order (find, transcript,
+  live trace), managed-child precedence, remote in-flight hints and early exits.
+  Removed the obsolete native detail-panel adapter.
+- Verified full assembly and selection function bodies, missing-child output,
+  every reader/state binding, unchanged registry implementations, formatters and
+  integration tests. Module/dependency graphs, direct rustfmt, file limits and
+  whitespace checks passed. No manifest or lock changes.
+  Evidence: `artifacts/consolidation-agent-detail/`.
+- No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

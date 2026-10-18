@@ -21,3 +21,10 @@ pub mod managed_detail;
 mod managed_section;
 /// Dashboard and detail panel widgets.
 pub mod render;
+
+/// Focused-child detail selection.
+pub mod detail;
+/// Parent-scoped tool-child transcript assembly.
+pub mod tool_detail;
+/// Dashboard and detail-panel selection.
+pub mod view;
