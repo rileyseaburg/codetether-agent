@@ -18,7 +18,7 @@
 
 mod host;
 use codetether_approval_core::review as parse;
-pub mod prompt;
+pub use codetether_approval_core::review::prompt;
 mod run;
 pub mod runtime;
 mod tools;

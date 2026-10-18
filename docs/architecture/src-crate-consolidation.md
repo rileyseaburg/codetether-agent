@@ -23483,3 +23483,20 @@ whitespace checks passed. No manifests or lockfiles changed; unrelated working
 changes remain untouched. Evidence: artifacts/consolidation-tool-facades/.
 No tool execution, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Remaining public runtime forwarding files become direct aliases
+
+Replaced twenty-two single-re-export files across autochat, cognition storage,
+GitHub helpers, memory, mux, review prompts, server policy, swarm contracts and
+embedding selection with direct aliases in ten parent modules. All seventy
+previously exported symbol paths retain their original crate/module prefixes.
+
+The audit checked exact declaration matches and wildcard imports before editing.
+Parent token comparisons and the diff-scope check verify declaration-only
+changes; policy evaluation, orchestration and persistence implementations remain
+unchanged. Module/dependency scans cover 692 roots and 571 crates without
+missing modules or cycles. Direct rustfmt, file-size limits and whitespace
+checks passed. No manifests or lockfiles changed; unrelated working changes
+remain untouched. Evidence: artifacts/consolidation-runtime-facades/.
+No runtime operations, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

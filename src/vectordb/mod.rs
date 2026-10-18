@@ -30,7 +30,7 @@
 //! ```
 
 pub mod auto;
-pub mod provider;
+pub use codetether_embedding_backends as provider;
 pub use codetether_vectordb::{
     embed, embed_hash, embeddable, embedder, persist, record, similarity, store, store_mutate,
     store_search, tokenize, vector,

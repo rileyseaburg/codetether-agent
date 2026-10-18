@@ -8,26 +8,26 @@
 //! - **SubAgent**: A dynamically instantiated agent for executing a subtask
 //! - **SubTask**: A unit of work that can be executed in parallel
 //! - **Critical Path**: Latency-oriented metric for parallel execution
-pub use codetether_swarm_core::{StageStats, SwarmStats};
-pub mod actor_status;
 pub use codetether_swarm_cache as cache;
+pub use codetether_swarm_core as actor_status;
+pub use codetether_swarm_core::{StageStats, SwarmStats};
 pub use codetether_swarm_git as collapse_controller;
 pub mod control;
 pub mod delegation;
-pub mod delegation_outcome;
+pub use codetether_swarm_delegation as delegation_outcome;
 pub mod executor;
-pub mod k8s_result;
-pub mod kubernetes_executor;
 use codetether_swarm_bus as live_bus;
+pub use codetether_swarm_core::remote_protocol as k8s_result;
+pub use codetether_swarm_core::remote_protocol as kubernetes_executor;
 pub mod orchestrator;
 mod quality_shell;
 pub mod rate_limiter;
 pub mod remote_subtask;
-pub mod result_store;
-pub mod speculative;
-pub mod subtask;
-pub mod token_exhaustion;
-pub mod token_truncate;
+pub use codetether_swarm_core as subtask;
+pub use codetether_swarm_core::collapse::speculative;
+pub use codetether_swarm_core::context as token_exhaustion;
+pub use codetether_swarm_core::context as token_truncate;
+pub use codetether_swarm_core::result_store;
 pub(crate) mod tool_policy;
 pub mod validation;
 pub(crate) mod worktree_branch;

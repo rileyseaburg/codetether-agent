@@ -1,6 +1,6 @@
 //! Auto-chat application adapters and shared policy exports.
+pub use codetether_application_providers::rotation as model_rotation;
 pub use codetether_autochat_core::delegation;
-pub mod model_rotation;
 pub mod shared_context;
 pub use codetether_autochat_core::transport;
 pub use codetether_autochat_core::{

@@ -28,10 +28,10 @@ pub(crate) mod coordination;
 pub(crate) mod isolation;
 pub(crate) mod lease;
 mod model;
+pub use codetether_mux_cli::resume_name;
 use codetether_mux_protocol as protocol;
 use codetether_mux_pty as pty;
 use codetether_mux_registry as registry;
-pub mod resume_name;
 use codetether_mux_server as server;
 use codetether_mux_server::token;
 
