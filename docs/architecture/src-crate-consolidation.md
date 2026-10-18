@@ -13544,3 +13544,19 @@ Full workspace consolidation remains active.
 - Staged only the two added dependencies for this crate from Cargo.lock.
   No Cargo, rustc, Rust tests or Kubernetes requests ran. Full consolidation
   remains unfinished.
+
+### Server configuration and version status extraction
+
+- Moved loaded configuration, effective trust status, application version and
+  executable-hash handlers into codetether-server-status. Its router also
+  mounts the existing shared verifier settings routes.
+- Native startup supplies the same configuration Arc and its own compile-time
+  package name/version; the shared crate does not substitute its package
+  identity. Executable hashing remains per request with the same optional
+  fallback. Removed unused native version and verifier-router facade files.
+- Verification: 60 static response/server-body/size checks passed, plus module
+  reachability, dependency DAG, direct rustfmt, source file limits and
+  whitespace checks. Evidence: artifacts/consolidation-server-status/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, configuration requests or executable hashing
+  ran. Full workspace consolidation remains unfinished.

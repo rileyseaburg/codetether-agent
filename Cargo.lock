@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-server-status",
  "codetether-plugin-http",
  "codetether-session-fork",
  "codetether-session-http",
@@ -6788,6 +6789,17 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "codetether-plugin-verification",
+ "serde",
+]
+
+[[package]]
+name = "codetether-server-status"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "codetether-config",
+ "codetether-plugin-verification",
+ "codetether-verifier-http",
  "serde",
 ]
 

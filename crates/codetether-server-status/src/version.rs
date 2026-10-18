@@ -1,7 +1,7 @@
-//! Version endpoint handler.
-
-use crate::tool::hash_file;
-use axum::Json;
+//! Application package metadata and current executable content hash.
+use crate::state::StatusState;
+use axum::{Extension, Json};
+use codetether_plugin_verification::hash_file;
 use serde::Serialize;
 
 /// Version response body.
@@ -13,13 +13,13 @@ pub(super) struct VersionInfo {
 }
 
 /// Return package version and binary hash metadata.
-pub(super) async fn get_version() -> Json<VersionInfo> {
+pub(super) async fn get_version(Extension(state): Extension<StatusState>) -> Json<VersionInfo> {
     let binary_hash = std::env::current_exe()
         .ok()
         .and_then(|p| hash_file(&p).ok());
     Json(VersionInfo {
-        version: env!("CARGO_PKG_VERSION"),
-        name: env!("CARGO_PKG_NAME"),
+        version: state.version,
+        name: state.name,
         binary_hash,
     })
 }

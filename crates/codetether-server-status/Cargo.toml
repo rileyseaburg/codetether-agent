@@ -1,0 +1,14 @@
+[package]
+name = "codetether-server-status"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Application configuration, trust and version HTTP routes"
+
+[dependencies]
+axum = "0.8"
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-plugin-verification = { path = "../codetether-plugin-verification", version = "0.1.0" }
+codetether-verifier-http = { path = "../codetether-verifier-http", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }

@@ -20,7 +20,6 @@ use task_output_poll::get_agent_task_output;
 mod task_output_stream;
 mod task_queue;
 mod tool_contract;
-mod version_info;
 mod worker_modules;
 
 use crate::a2a;
@@ -280,7 +279,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // API routes
         .merge(session_routes::router())
         .merge(session_realtime::router())
-        .merge(config_status::router())
+        .merge(config_status::router(state.config.clone()))
         .route("/api/provider", get(list_providers))
         .route("/api/agent", get(list_agents))
         // OpenAI-compatible APIs
