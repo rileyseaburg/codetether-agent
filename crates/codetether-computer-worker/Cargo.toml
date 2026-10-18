@@ -1,0 +1,16 @@
+[package]
+name = "codetether-computer-worker"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Isolated computer-use worker framing, queueing and subprocess ownership"
+
+[dependencies]
+anyhow = "1"
+codetether-computer-contract = { path = "../codetether-computer-contract", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["process", "rt", "time", "sync", "io-util", "io-std", "macros"] }
+tracing = "0.1"

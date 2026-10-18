@@ -1,5 +1,5 @@
 //! Stable structured worker failure categories for callers and telemetry.
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Failure {

@@ -1,6 +1,6 @@
 //! Payload-free process observations; EOF alone never identifies an exit cause.
 use super::{failure::Failure, process::Process};
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 impl Process {
     pub(super) fn failed(&mut self, failure: Failure) -> ToolResult {

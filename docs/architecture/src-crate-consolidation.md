@@ -17297,3 +17297,19 @@ Full workspace consolidation remains active.
   dependency. Evidence: `artifacts/consolidation-computer-windows/`.
 - No Cargo, rustc, Python, Windows actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Dedicated computer-use worker transport crate
+
+- Moved 16 worker transport/lifecycle files and their 11 tests into
+  `codetether-computer-worker`, including framing, bounded serialization,
+  serialized request admission, subprocess ownership and failure reporting.
+- Child serving now accepts a platform-dispatch callback. The native server
+  wrapper provides direct platform dispatch and the native execute API re-exports
+  the crate function. No retry, timeout or process-lifetime policy changed.
+- Verification: complete moved-source comparisons, unchanged tests, server-body
+  comparison with callback substitution, native binding/caller checks,
+  module/dependency graphs, direct rustfmt, file limits and whitespace.
+- Staged lock changes add only the new crate and root dependency. Evidence:
+  `artifacts/consolidation-computer-worker/`.
+- No Cargo, rustc, Python, worker subprocesses, Rust compilation or Rust tests
+  ran. Full workspace consolidation remains incomplete.

@@ -1,6 +1,6 @@
 //! A single bounded request/response exchange.
 use super::{failure::Failure, framing, process::Process};
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use tokio::io::AsyncWriteExt;
 
 impl Process {

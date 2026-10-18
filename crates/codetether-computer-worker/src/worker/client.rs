@@ -1,6 +1,7 @@
 //! Parent lifecycle; a failed or cancelled exchange drops its child without retry.
 use super::{codec, failure::Failure, framing::REQUEST_LIMIT, process::Process, queue};
-use crate::tool::{ToolResult, computer_use::input::ComputerUseInput};
+use codetether_computer_contract::input::ComputerUseInput;
+use codetether_tool_core::ToolResult;
 use std::time::Duration;
 use tokio::time::timeout;
 
