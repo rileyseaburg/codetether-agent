@@ -20,3 +20,6 @@ pub use result::Output;
 mod plan_tests;
 
 mod finish;
+
+/// Ordered plan execution with sequential fallback and early stopping.
+pub mod dispatch;

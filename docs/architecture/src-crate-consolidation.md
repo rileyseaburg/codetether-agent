@@ -15903,3 +15903,18 @@ Full workspace consolidation remains active.
   whitespace. Evidence: `artifacts/consolidation-model-selection/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared ordered tool dispatch
+
+- Moved execution of planned tool batches and sequential fallback into
+  `codetether-tool-parallel::dispatch`, beside its scheduling planner.
+- Native hooks retain event-channel availability, parallel execution and
+  normalized single-call execution. Preserved plan ordering, declined-parallel
+  fallback, call-range boundaries and execution-requested early termination.
+- Verification: full batch/fallback body comparisons, all three native hooks,
+  normalized call construction, unchanged planner and its tests, unchanged
+  underlying executors and dependencies, module/dependency graphs, direct
+  rustfmt, file budgets and diff whitespace. Evidence:
+  `artifacts/consolidation-tool-dispatch/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
