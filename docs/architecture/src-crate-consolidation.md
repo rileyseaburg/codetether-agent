@@ -9686,3 +9686,18 @@ timing tests moved without execution. Evidence is in
 `artifacts/consolidation-stream-restart/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python or worker commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated cost-guard crate
+
+Moved request cost enforcement, its process-wide warning latch and read-only
+UI severity into `crates/codetether-cost-guard`. Five modules separate status
+types, threshold checks, enforcement and severity. Shared configuration and
+provider-metric counters remain the authoritative inputs; the native module
+now only re-exports the established API.
+
+Nine static comparisons cover hard-limit precedence, warning state, exact
+failure/log text, enum shapes and unchanged request-loop/TUI callers.
+Module/dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 29 code lines. Evidence is in `artifacts/consolidation-cost-guard/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or worker
+commands ran. Full workspace consolidation remains active.

@@ -1,0 +1,13 @@
+[package]
+name = "codetether-cost-guard"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Cost budget enforcement and non-mutating spend severity"
+
+[dependencies]
+anyhow = "1"
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-provider-metrics = { path = "../codetether-provider-metrics", version = "0.1.0" }
+tracing = "0.1"

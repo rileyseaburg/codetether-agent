@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-cost-guard",
  "codetether-stream-restart",
  "codetether-stream-drain",
  "codetether-stream-outcome",
@@ -2342,6 +2343,16 @@ dependencies = [
  "anyhow",
  "serde",
  "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-cost-guard"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-config",
+ "codetether-provider-metrics",
  "tracing",
 ]
 
