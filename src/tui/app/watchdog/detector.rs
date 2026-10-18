@@ -48,9 +48,9 @@ pub fn check_watchdog_stall(state: &AppState, timeout: Duration) -> Option<Watch
     // No-first-token: request started, nothing has arrived yet. Only meaningful
     // before the first activity event — once anything arrives, the inactivity
     // clause governs so active turns are never killed by the start clock.
+    let request_started_at = state.request_timing.processing_started_at;
     let no_first_token = !had_activity_since_start(state)
-        && state
-            .processing_started_at
+        && request_started_at
             .map(|t| now.duration_since(t) >= timeout)
             .unwrap_or(false);
     if !inactive && !no_first_token {

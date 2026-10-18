@@ -13,7 +13,7 @@ use crate::tui::{chat::message::ChatMessage, help::HelpScrollState};
 use crate::tui::{ralph_view::RalphViewState, swarm_view::SwarmViewState};
 use crate::tui::{symbol_search::SymbolSearchState, worker_bridge::IncomingTask};
 
-use super::{agent_profile::SpawnedAgent, chat_latency, context_health, git_state};
+use super::{agent_profile::SpawnedAgent, context_health, git_state};
 
 type ChatSyncRx = Option<UnboundedReceiver<crate::tui::chat::sync::ChatSyncUiEvent>>;
 type ShellRx = Option<UnboundedReceiver<crate::tui::app::input::shell_bg::ShellEvent>>;
@@ -59,8 +59,8 @@ pub struct AppState {
     pub completion: codetether_slash_command::CompletionState, pub history: codetether_composer_view::CommandHistory,
     pub worker_id: Option<String>, pub worker_name: Option<String>, pub a2a_connected: bool, pub peer_endpoint_ready: bool, pub recent_tasks: Vec<String>, pub worker_bridge_registered_agents: HashSet<String>, pub active_tasks: crate::tui::app::bus::active_tasks::ActiveTasks, pub tool_calls: crate::tui::app::bus::tool_calls::ToolCallTracker, pub bus_cursor: u64, pub worker_bridge_processing_state: Option<bool>, pub worker_task_queue: VecDeque<IncomingTask>, pub active_remote_task: Option<IncomingTask>, pub live_inbound: Option<crate::a2a::live_inbox::Inbound>,
     pub help_scroll: HelpScrollState, pub show_help: bool, pub model_picker: codetether_model_picker::ModelPickerState,
-    pub streaming: codetether_chat_model::StreamingState, pub processing_started_at: Option<Instant>, pub current_request_first_token_ms: Option<u64>, pub current_request_last_token_ms: Option<u64>, pub last_request_first_token_ms: Option<u64>, pub last_request_last_token_ms: Option<u64>, pub last_completion_model: Option<String>, pub last_completion_latency_ms: Option<u64>, pub last_completion_prompt_tokens: Option<usize>, pub last_completion_output_tokens: Option<usize>,
-    pub context_used: Option<usize>, pub context_budget: Option<usize>, pub context_health: context_health::ContextHealthState, pub last_tool_name: Option<String>, pub last_tool_latency_ms: Option<u64>, pub last_tool_success: Option<bool>, pub pending_tool_name: Option<String>, pub pending_tool_started_at: Option<Instant>, pub chat_latency: chat_latency::ChatLatencyStats,
+    pub streaming: codetether_chat_model::StreamingState, pub request_timing: codetether_telemetry::RequestTimingState, pub last_completion_model: Option<String>, pub last_completion_latency_ms: Option<u64>, pub last_completion_prompt_tokens: Option<usize>, pub last_completion_output_tokens: Option<usize>,
+    pub context_used: Option<usize>, pub context_budget: Option<usize>, pub context_health: context_health::ContextHealthState, pub tool_timing: codetether_telemetry::ToolTimingState,
     pub pending_images: Vec<ImageAttachment>, pub pending_text_pastes: Vec<PendingPaste>, pub auto_apply_edits: bool, pub allow_network: bool, pub slash_autocomplete: bool, pub use_worktree: bool, pub selected_settings_index: usize, pub current_turn_cancel: TurnCancel, pub last_key_at: Option<Instant>,
     pub mcp_registry: Arc<crate::tui::app::mcp::TuiMcpRegistry>, pub spawned_agents: HashMap<String, SpawnedAgent>, pub active_spawned_agent: Option<String>, pub subagent_detail_mode: bool, pub subagent_detail_scroll: u16, pub streaming_agent_texts: HashMap<String, String>, pub message_cache: codetether_message_cache::RenderedLineCache,
     pub watchdog_notification: WatchdogNotice, pub main_last_event_at: Option<Instant>, pub main_watchdog_restart_count: u32, pub main_inflight_prompt: Option<String>, pub okr_repository: Option<Arc<crate::okr::OkrRepository>>, pub pending_okr_approval: PendingOkr, pub pending_smart_switch_retry: SmartRetry, pub smart_switch_retry_count: u32, pub smart_switch_attempted_models: Vec<String>,

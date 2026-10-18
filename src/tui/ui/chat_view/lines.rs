@@ -69,7 +69,7 @@ fn store_and_take(
     max_width: usize,
     frozen_len: usize,
 ) -> DrawnLines {
-    let cacheable = app.state.pending_tool_started_at.is_none();
+    let cacheable = app.state.tool_timing.pending_tool_started_at.is_none();
     app.state
         .store_message_lines_with_frozen(lines, max_width, frozen_len);
     let lines = app.state.take_cached_message_lines();

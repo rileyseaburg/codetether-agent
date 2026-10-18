@@ -20,7 +20,7 @@ pub fn build(app: &App) -> Vec<Span<'static>> {
         ),
         Span::styled(" Ctrl+B Layout ", Style::default().fg(Color::DarkGray)),
     ];
-    if let Some(tool) = app.state.pending_tool_name.as_deref() {
+    if let Some(tool) = app.state.tool_timing.pending_tool_name.as_deref() {
         spans.push(badge(&format!(" TOOL {tool} "), Color::Yellow));
     }
     if let Some(request) = approval_queue::active() {

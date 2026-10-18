@@ -1,7 +1,6 @@
 //! State module tests covering cursor movement, scrolling, model picker, and timing.
 
 use super::{AppState, scroll::TOOL_PREVIEW_FOLLOW};
-use std::time::{Duration, Instant};
 
 #[test]
 fn utf8_cursor_moves_by_character_not_byte() {
@@ -106,35 +105,4 @@ fn tool_preview_scroll_auto_follow_and_clamp() {
     // Reducing max_scroll clamps.
     state.set_tool_preview_max_scroll(1);
     assert_eq!(state.tool_viewport.tool_preview_scroll, 1);
-}
-
-#[test]
-fn request_timing_captures_first_and_last_token() {
-    let mut state = AppState::default();
-    state.processing_started_at = Some(
-        Instant::now()
-            .checked_sub(Duration::from_millis(12))
-            .unwrap(),
-    );
-    state.note_text_token();
-    let first = state
-        .current_request_first_token_ms
-        .expect("first token should be recorded");
-    assert_eq!(state.current_request_last_token_ms, Some(first));
-    state.processing_started_at = Some(
-        Instant::now()
-            .checked_sub(Duration::from_millis(34))
-            .unwrap(),
-    );
-    state.note_text_token();
-    let last = state
-        .current_request_last_token_ms
-        .expect("last token should be recorded");
-    assert!(last >= first);
-    state.complete_request_timing();
-    assert_eq!(state.last_request_first_token_ms, Some(first));
-    assert_eq!(state.last_request_last_token_ms, Some(last));
-    assert!(state.processing_started_at.is_none());
-    assert!(state.current_request_first_token_ms.is_none());
-    assert!(state.current_request_last_token_ms.is_none());
 }

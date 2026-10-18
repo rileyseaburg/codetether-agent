@@ -32,16 +32,16 @@ pub(crate) fn sync_messages_from_source(
 }
 
 fn reset_metrics(app: &mut App) {
-    app.state.current_request_first_token_ms = None;
-    app.state.current_request_last_token_ms = None;
-    app.state.last_request_first_token_ms = None;
-    app.state.last_request_last_token_ms = None;
+    app.state.request_timing.current_request_first_token_ms = None;
+    app.state.request_timing.current_request_last_token_ms = None;
+    app.state.request_timing.last_request_first_token_ms = None;
+    app.state.request_timing.last_request_last_token_ms = None;
     app.state.last_completion_model = None;
     app.state.last_completion_latency_ms = None;
     app.state.last_completion_prompt_tokens = None;
     app.state.last_completion_output_tokens = None;
-    app.state.last_tool_name = None;
-    app.state.last_tool_latency_ms = None;
-    app.state.last_tool_success = None;
-    app.state.chat_latency.clear();
+    app.state.tool_timing.last_tool_name = None;
+    app.state.tool_timing.last_tool_latency_ms = None;
+    app.state.tool_timing.last_tool_success = None;
+    app.state.request_timing.chat_latency.clear();
 }

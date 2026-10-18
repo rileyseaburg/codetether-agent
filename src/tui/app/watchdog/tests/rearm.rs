@@ -12,7 +12,7 @@ use crate::tui::app::watchdog::detector::check_watchdog_stall;
 #[test]
 fn cleared_notification_rearms_watchdog() {
     let mut state = processing_state();
-    state.processing_started_at = Some(Instant::now() - Duration::from_secs(120));
+    state.request_timing.processing_started_at = Some(Instant::now() - Duration::from_secs(120));
     state.main_last_event_at = Some(Instant::now() - Duration::from_secs(120));
     // A pending notification suppresses further stall detection.
     state.watchdog_notification = Some(crate::tui::app::watchdog::WatchdogNotification::new(

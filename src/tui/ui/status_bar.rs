@@ -26,9 +26,9 @@ pub fn bus_status_badge_span(app: &App) -> Span<'static> {
 pub fn latency_badge_spans(app: &App) -> Option<Vec<Span<'static>>> {
     let timings = codetether_chat_status::RequestTimings {
         processing: app.state.processing,
-        current_first_token_ms: app.state.current_request_first_token_ms,
-        last_first_token_ms: app.state.last_request_first_token_ms,
-        last_last_token_ms: app.state.last_request_last_token_ms,
+        current_first_token_ms: app.state.request_timing.current_request_first_token_ms,
+        last_first_token_ms: app.state.request_timing.last_request_first_token_ms,
+        last_last_token_ms: app.state.request_timing.last_request_last_token_ms,
     };
     codetether_chat_status::latency_badge_spans(timings, || app.state.current_request_elapsed_ms())
 }

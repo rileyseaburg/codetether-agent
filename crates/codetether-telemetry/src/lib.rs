@@ -122,3 +122,15 @@ pub mod a2a_recording;
 
 /// Bounded rolling timing statistics for completed chat turns.
 pub mod chat_latency;
+
+mod request_timing_finish;
+mod request_timing_start;
+mod request_timing_state;
+mod request_timing_tokens;
+mod tool_timing_events;
+mod tool_timing_state;
+pub use request_timing_state::RequestTimingState;
+pub use tool_timing_state::ToolTimingState;
+
+#[cfg(test)]
+mod request_timing_tests;

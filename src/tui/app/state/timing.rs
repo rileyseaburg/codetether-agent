@@ -3,46 +3,27 @@
 //! First-token and last-token timestamps per request; completed timings
 //! are promoted to `last_request_*` fields for the UI.
 
-use std::time::Instant;
-
 impl super::AppState {
     pub fn begin_request_timing(&mut self) {
-        let now = Instant::now();
-        self.processing_started_at = Some(now);
-        self.current_request_first_token_ms = None;
-        self.current_request_last_token_ms = None;
-        // Re-baseline the watchdog activity clock. Without this, a fresh
-        // request inherits the previous turn's stale `main_last_event_at`,
-        // making the inactivity clause fire immediately (false "no events
-        // for Ns" stall) even though this request just started.
+        let now = self.request_timing.begin_request_timing();
+        // Synchronize watchdog activity with the exact request start instant.
         self.main_last_event_at = Some(now);
     }
 
     pub fn current_request_elapsed_ms(&self) -> Option<u64> {
-        self.processing_started_at
-            .map(|started| started.elapsed().as_millis() as u64)
+        self.request_timing.current_request_elapsed_ms()
     }
 
     pub fn note_text_token(&mut self) {
-        let Some(elapsed_ms) = self.current_request_elapsed_ms() else {
-            return;
-        };
-        if self.current_request_first_token_ms.is_none() {
-            self.current_request_first_token_ms = Some(elapsed_ms);
-        }
-        self.current_request_last_token_ms = Some(elapsed_ms);
+        self.request_timing.note_text_token();
     }
 
     pub fn complete_request_timing(&mut self) {
-        self.last_request_first_token_ms = self.current_request_first_token_ms;
-        self.last_request_last_token_ms = self.current_request_last_token_ms;
-        self.clear_request_timing();
+        self.request_timing.complete_request_timing();
     }
 
     pub fn clear_request_timing(&mut self) {
-        self.processing_started_at = None;
-        self.current_request_first_token_ms = None;
-        self.current_request_last_token_ms = None;
+        self.request_timing.clear_request_timing();
     }
 
     /// Finalize the current turn and record e2e latency stats.
@@ -50,11 +31,6 @@ impl super::AppState {
     /// Called when `SessionEvent::Done` fires — this is the full
     /// agentic loop (Enter → model calls → tool calls → done).
     pub fn complete_turn_timing(&mut self) {
-        let e2e_ms = self.current_request_elapsed_ms();
-        let ttft_ms = self.current_request_first_token_ms;
-        if let Some(e2e) = e2e_ms {
-            self.chat_latency.record(e2e, ttft_ms);
-        }
-        self.complete_request_timing();
+        self.request_timing.complete_turn_timing();
     }
 }

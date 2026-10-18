@@ -23,7 +23,7 @@ pub(super) async fn handle_event(
 
 async fn thinking(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
     handle_processing_started(app, worker_bridge).await;
-    if app.state.processing_started_at.is_none() {
+    if app.state.request_timing.processing_started_at.is_none() {
         app.state.begin_request_timing();
     }
     if app.state.streaming.streaming_start.is_none() {

@@ -27,9 +27,9 @@ pub(super) fn projection(state: &AppState) -> codetether_inspector_view::Inspect
         last_completion_prompt_tokens: state.last_completion_prompt_tokens,
         last_completion_output_tokens: state.last_completion_output_tokens,
         last_completion_latency_ms: state.last_completion_latency_ms,
-        last_tool_name: state.last_tool_name.as_deref(),
-        last_tool_latency_ms: state.last_tool_latency_ms,
-        last_tool_success: state.last_tool_success,
+        last_tool_name: state.tool_timing.last_tool_name.as_deref(),
+        last_tool_latency_ms: state.tool_timing.last_tool_latency_ms,
+        last_tool_success: state.tool_timing.last_tool_success,
         message_count: state.messages.len(),
         processing: state.processing,
     }

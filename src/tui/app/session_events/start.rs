@@ -30,7 +30,7 @@ pub(crate) async fn start(
 }
 
 fn ensure_timing(app: &mut App) {
-    if app.state.processing_started_at.is_none() {
+    if app.state.request_timing.processing_started_at.is_none() {
         app.state.begin_request_timing();
     }
     if app.state.streaming.streaming_start.is_none() {

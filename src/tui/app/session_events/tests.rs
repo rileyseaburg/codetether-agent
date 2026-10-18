@@ -17,3 +17,6 @@ async fn test_slot() -> crate::tui::app::session_runtime::SessionSlot {
     let session = crate::session::Session::new().await.expect("session");
     crate::tui::app::session_runtime::SessionSlot::new(session)
 }
+
+#[path = "tests_text_timing.rs"]
+mod tests_text_timing;

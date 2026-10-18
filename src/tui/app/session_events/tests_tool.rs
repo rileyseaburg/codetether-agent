@@ -35,7 +35,10 @@ async fn tool_completion_records_duration_for_chat_and_latency_view() {
         }
         other => panic!("expected tool result message, got {other:?}"),
     }
-    assert_eq!(app.state.last_tool_name.as_deref(), Some("read"));
-    assert_eq!(app.state.last_tool_latency_ms, Some(42));
-    assert_eq!(app.state.last_tool_success, Some(true));
+    assert_eq!(
+        app.state.tool_timing.last_tool_name.as_deref(),
+        Some("read")
+    );
+    assert_eq!(app.state.tool_timing.last_tool_latency_ms, Some(42));
+    assert_eq!(app.state.tool_timing.last_tool_success, Some(true));
 }

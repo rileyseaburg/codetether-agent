@@ -49,11 +49,11 @@ async fn notice_drain_flushes_done_before_notice() {
         .unwrap();
     tx.send(SessionEvent::Done).await.unwrap();
     let mut app = App::default();
-    app.state.processing_started_at = Some(std::time::Instant::now());
+    app.state.request_timing.processing_started_at = Some(std::time::Instant::now());
     let mut slot = slot().await;
 
     drain_before_notice(&mut app, &mut slot, &None, &mut rx).await;
 
     assert_eq!(app.state.status, "Ready");
-    assert!(app.state.processing_started_at.is_none());
+    assert!(app.state.request_timing.processing_started_at.is_none());
 }

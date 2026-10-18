@@ -18,7 +18,7 @@ use ratatui::text::Span;
 pub fn turn_latency_badge(app: &App) -> Option<Span<'static>> {
     codetether_chat_status::turn_latency_badge(
         app.state.processing,
-        || app.state.chat_latency.last_e2e_ms(),
-        || app.state.chat_latency.avg_e2e_ms(),
+        || app.state.request_timing.chat_latency.last_e2e_ms(),
+        || app.state.request_timing.chat_latency.avg_e2e_ms(),
     )
 }

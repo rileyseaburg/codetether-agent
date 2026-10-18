@@ -12284,3 +12284,23 @@ Full workspace consolidation remains active.
   whitespace checks passed. Evidence: artifacts/consolidation-completion-state/.
 - No dependency changes were required. No Cargo, rustc, compilation or Rust tests
   ran. Full workspace consolidation remains incomplete.
+
+### Request and tool timing ownership
+
+- Moved request clock, first/last token timings and rolling turn statistics into
+  RequestTimingState in codetether-telemetry. ToolTimingState separately owns
+  pending-tool timestamps and completed-tool outcomes. Six implementation
+  modules contain at most 20 code lines; the moved timing regression has 32.
+- Native timing methods delegate. Starting a request returns the captured
+  Instant so the application resets watchdog activity to the same clock value.
+  Status/inspector projections, event handlers, watchdog checks and test fixtures
+  read the shared owners. Application-only behavior remains in the host.
+- Moved the existing request-timing unit test with its implementation and split
+  the text-event timing integration test into a focused native file. This keeps
+  longer ownership paths within existing source limits without relaxing them.
+- Verification: 50 source comparisons/checks passed for the moved operations,
+  delegates, clock handoff, defaults, consumers and test relocations. Module and
+  dependency checks, direct rustfmt, source limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-timing-state/.
+- No dependencies or lockfile entries changed. No Cargo, rustc, compilation or
+  Rust tests ran. Full workspace consolidation remains incomplete.

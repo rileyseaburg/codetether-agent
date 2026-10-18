@@ -6,9 +6,10 @@ pub fn build(app: &App) -> Vec<Line<'static>> {
     let state = &app.state;
     let status = state.processing.then_some("Processing").unwrap_or("Idle");
     let tool = state
+        .tool_timing
         .pending_tool_name
         .as_deref()
-        .or(state.last_tool_name.as_deref())
+        .or(state.tool_timing.last_tool_name.as_deref())
         .unwrap_or("none");
     let model = state.last_completion_model.as_deref().unwrap_or("auto");
     let agent = state.active_spawned_agent.as_deref().unwrap_or("build");
