@@ -20825,3 +20825,21 @@ file-size checks, source graphs across 694 roots, dependency-cycle checks across
 staged in the lockfile. No Cargo, rustc, or Python commands ran. No provider calls
 or Rust tests were executed. Compilation and runtime behavior remain unverified;
 the broader consolidation is ongoing.
+
+### Prompt-loop write-progress ownership
+
+Moved file-writing tool detection, steps-since-write updates, threshold checking,
+warning emission, corrective guidance, and final counter reset into
+`codetether-prompt-loop::response::progress`. The native response driver now
+provides access to its existing `LoopState` and session message insertion. The
+shared driver interface and tool execution path remain unchanged; the original
+native progress implementation file was removed.
+
+Verification compares the entire tracking function after explicit state/message
+bindings, including the original tool-name set, threshold, nudge text, tracing
+target, and guidance-before-reset order. Native tool dispatch and message
+insertion bodies are unchanged. Direct rustfmt, source graph checks across 694
+roots, native file-size checks, and whitespace checks passed. Evidence:
+`artifacts/consolidation-write-progress/`. No dependencies changed. No Cargo,
+rustc, or Python commands ran. Rust tests and compilation remain unverified;
+the full workspace consolidation remains active.

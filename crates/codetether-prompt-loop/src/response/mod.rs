@@ -8,6 +8,7 @@ mod context;
 mod exhaustion;
 mod guidance;
 mod native;
+pub mod progress;
 mod thinking;
 pub use context::BuildContext;
 pub use guidance::message as corrective_message;

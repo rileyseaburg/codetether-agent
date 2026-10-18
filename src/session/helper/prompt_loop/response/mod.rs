@@ -9,7 +9,6 @@ pub mod narration;
 mod native_guard;
 pub(super) mod nudge;
 mod output;
-mod progress;
 mod terminal;
 mod thinking_only;
 mod truncation;
