@@ -16,3 +16,6 @@ pub use codetether_workspace_snapshot::{WorkspaceEntry, WorkspaceEntryKind, Work
 pub use input_mode::InputMode;
 pub use theme::Theme;
 pub use view_mode::ViewMode;
+
+mod session_view;
+pub use session_view::SessionView;

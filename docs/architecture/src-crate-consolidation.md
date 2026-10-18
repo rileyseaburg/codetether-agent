@@ -16118,3 +16118,18 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-runtime-execute/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared read-only session view
+
+- Moved SessionView fields, derives and ID accessor into
+  `codetether-tui-models`, generic over the principal metadata type. The native
+  view path specializes the shared type with RuntimePrincipal.
+- Kept native Session metadata projection in the existing ViewSource binding,
+  preserving all copied fields and principal construction without introducing
+  a session/provenance dependency into the TUI models crate.
+- Verification: exact field/derive and accessor comparison, full projection
+  comparison, native alias, unchanged slot implementation and ownership tests,
+  module/dependency graphs, direct rustfmt, file budgets and diff whitespace.
+  No dependencies changed. Evidence: `artifacts/consolidation-session-view/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
