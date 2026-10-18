@@ -13121,3 +13121,19 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   provider calls, streams, HTTP requests, Cargo, rustc or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### OpenAI provider selection and request options
+
+- Moved configured-provider selection, model parsing, request construction and
+  Codex tier/effort validation into codetether-openai-adapter. Six added modules
+  contain at most 37 code lines, including three existing option tests.
+- Native code retains registry acquisition, provider instance lookup and serving
+  dispatch. Provider precedence, option suffixes, error messages, stop handling
+  and max_completion_tokens precedence are unchanged. Shared Codex catalogs are
+  the same catalogs previously reached through native compatibility exports.
+- Verification: 87 static comparisons passed for selection, tier/effort rules,
+  request fields, moved tests and remaining native server items. Module and
+  dependency checks, direct rustfmt, file limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-openai-selection/.
+- No dependency changes were needed. No provider calls, Cargo, rustc or Rust
+  tests ran. Full consolidation remains incomplete.

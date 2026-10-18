@@ -23,3 +23,10 @@ mod message_tool;
 mod message_user;
 mod messages;
 pub use messages::convert_openai_messages;
+
+pub mod options;
+mod request;
+mod selection;
+mod selection_provider;
+pub use request::completion_request;
+pub use selection::select_request_model;

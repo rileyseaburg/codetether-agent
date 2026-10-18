@@ -684,72 +684,19 @@ async fn openai_chat_completions(
         })?;
 
     let providers = registry.list();
-    if providers.is_empty() {
-        return Err(openai_error(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "No providers are configured in Vault",
-            "server_error",
-            "no_providers",
-        ));
-    }
-
-    let normalized_model = normalize_model_reference(&req.model);
-    let (maybe_provider, model_id) = crate::provider::parse_model_string(&normalized_model);
-    let model_id = if maybe_provider.is_some() {
-        if model_id.trim().is_empty() {
-            return Err(openai_bad_request(
-                "Model must be in `provider/model` format",
-            ));
-        }
-        model_id.to_string()
-    } else {
-        req.model.trim().to_string()
-    };
-
-    let selected_provider = if let Some(provider_name) = maybe_provider {
-        let provider_name = canonicalize_provider_name(provider_name);
-        if providers.contains(&provider_name) {
-            provider_name.to_string()
-        } else {
-            return Err(openai_bad_request(format!(
-                "Provider `{provider_name}` is not configured in Vault"
-            )));
-        }
-    } else if providers.len() == 1 {
-        providers[0].to_string()
-    } else if providers.contains(&"openai") {
-        "openai".to_string()
-    } else {
-        return Err(openai_bad_request(
-            "When multiple providers are configured, use `provider/model`. See GET /v1/models.",
-        ));
-    };
-    let (tier, effort) = (req.service_tier.as_deref(), req.reasoning_effort.as_deref());
-    let model_id = openai_model_options::apply(&selected_provider, &model_id, tier, effort)
-        .map_err(openai_bad_request)?;
+    let (selected_provider, model_id) = codetether_openai_adapter::select_request_model(
+        &req.model,
+        &providers,
+        req.service_tier.as_deref(),
+        req.reasoning_effort.as_deref(),
+    )?;
     let provider = registry.get(&selected_provider).ok_or_else(|| {
         openai_internal_error(format!(
             "Provider `{selected_provider}` was available but could not be loaded"
         ))
     })?;
 
-    let messages = convert_openai_messages(&req.messages)?;
-    let tools = convert_openai_tools(&req.tools)?;
-    let stop = match req.stop {
-        Some(OpenAiStop::Single(stop)) => vec![stop],
-        Some(OpenAiStop::Multiple(stops)) => stops,
-        None => Vec::new(),
-    };
-
-    let completion_request = crate::provider::CompletionRequest {
-        messages,
-        tools,
-        model: model_id.clone(),
-        temperature: req.temperature,
-        top_p: req.top_p,
-        max_tokens: req.max_completion_tokens.or(req.max_tokens),
-        stop,
-    };
+    let completion_request = codetether_openai_adapter::completion_request(req, &model_id)?;
 
     codetether_openai_serving::serve(
         provider,
