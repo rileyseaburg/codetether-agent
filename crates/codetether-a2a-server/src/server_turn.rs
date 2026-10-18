@@ -1,10 +1,11 @@
 //! Application headless-session adapter for shared inbound-turn routing.
-use crate::a2a::types::Task;
+use super::Application;
 use anyhow::Result;
+use codetether_a2a_core::Task;
 use dashmap::DashMap;
 
 /// Run an inbound turn through the shared live/headless decision.
-pub(super) async fn execute_turn(
+pub(super) async fn execute_turn<H: Application>(
     tasks: &DashMap<String, Task>,
     task_id: &str,
     context_id: Option<&str>,
@@ -17,15 +18,15 @@ pub(super) async fn execute_turn(
         context_id,
         from,
         prompt,
-        headless(context_id, prompt),
+        headless::<H>(context_id, prompt),
     )
     .await
 }
 
-async fn headless(context_id: Option<&str>, prompt: &str) -> Result<String> {
-    let mut session = crate::a2a::session_resolve::resolve_session(context_id).await?;
-    crate::a2a::session_config::configure(&mut session).await;
-    let result = crate::a2a::prompt_runtime::run(&mut session, prompt).await?;
-    crate::a2a::session_config::persist(&session).await;
+async fn headless<H: Application>(context_id: Option<&str>, prompt: &str) -> Result<String> {
+    let mut session = H::resolve(context_id).await?;
+    H::configure(&mut session).await;
+    let result = H::prompt(&mut session, prompt).await?;
+    H::persist(&session).await;
     Ok(result.text)
 }

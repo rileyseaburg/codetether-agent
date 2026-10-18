@@ -1,7 +1,7 @@
 //! Bind shared admission to application bus, intro and execution operations.
 use super::*;
 #[async_trait::async_trait]
-impl codetether_a2a_http::admission::MessageAdmissionHost for A2AServer {
+impl<H: Application> codetether_a2a_http::admission::MessageAdmissionHost for A2AServer<H> {
     fn tasks(&self) -> &DashMap<String, Task> {
         &self.tasks
     }

@@ -1,6 +1,11 @@
 //! Clone execution state and schedule one stream task.
 use super::*;
-pub(in crate::a2a::server) fn spawn(server: &A2AServer, params: &MessageSendParams, task_id: &str, prompt: String) {
+pub(crate) fn spawn<H: Application>(
+    server: &A2AServer<H>,
+    params: &MessageSendParams,
+    task_id: &str,
+    prompt: String,
+) {
     // Spawn async processing with event streaming
     let tasks = server.tasks.clone();
     let context_id = params.message.context_id.clone();
@@ -8,6 +13,6 @@ pub(in crate::a2a::server) fn spawn(server: &A2AServer, params: &MessageSendPara
     let bus = server.bus.clone();
 
     tokio::spawn(async move {
-        run::run(tasks, context_id, spawn_task_id, bus, prompt).await;
+        run::run::<H>(tasks, context_id, spawn_task_id, bus, prompt).await;
     });
 }

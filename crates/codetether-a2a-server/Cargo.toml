@@ -1,0 +1,19 @@
+[package]
+name = "codetether-a2a-server"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Application-bound A2A server, admission, streaming and task lifecycle"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+axum = "0.8"
+codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
+codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+dashmap = "6"
+serde_json = "1"
+tokio = { version = "1", features = ["rt", "sync"] }

@@ -1,7 +1,7 @@
 //! Map session events to the existing observer JSON payloads.
 use super::*;
 use codetether_a2a_core::observer_payloads as payload;
-pub(super) fn data(event: &SessionEvent) -> Option<serde_json::Value> {
+pub(super) fn data<S>(event: &SessionEvent<S>) -> Option<serde_json::Value> {
     Some(match event {
         SessionEvent::Thinking
         | SessionEvent::ToolCallStart { .. }

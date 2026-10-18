@@ -1,7 +1,7 @@
 //! Adapt application state and message execution to shared HTTP routes.
 use super::*;
 #[async_trait::async_trait]
-impl codetether_a2a_http::server::ServerHost for A2AServer {
+impl<H: Application> codetether_a2a_http::server::ServerHost for A2AServer<H> {
     fn agent_card(&self) -> &AgentCard {
         &self.agent_card
     }

@@ -1,10 +1,10 @@
 //! A2A JSON payloads for selected session events.
 
-use crate::session::SessionEvent;
 use codetether_a2a_core::observer_payloads as payload;
+use codetether_session_events::SessionEvent;
 use serde_json::Value;
 
-pub(super) fn data(event: &SessionEvent) -> Value {
+pub(super) fn data<S>(event: &SessionEvent<S>) -> Value {
     match event {
         SessionEvent::Thinking => payload::thinking(),
         SessionEvent::ToolCallStart {

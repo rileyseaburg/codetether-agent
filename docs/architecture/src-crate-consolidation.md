@@ -22065,3 +22065,29 @@ whitespace checks passed. Four test dependency edges are staged for the picker
 crate; existing Tokio gains the macro feature for the relocated tests.
 Evidence: `artifacts/consolidation-model-picker-tests/`. The tests were moved,
 not executed; no Cargo, rustc or Python ran. Full consolidation remains active.
+
+### Dedicated application-bound A2A server
+
+Moved thirteen native A2A server implementation files into the dedicated
+`codetether-a2a-server` crate. Cohesive modules now own construction, agent-card
+metadata, authenticated router assembly, admission, task settlement, bus
+publication, streamed execution and event payload mapping. Native `A2AServer`
+is a type alias; the remaining application binding supplies session resolution,
+configuration, provider loading, prompt execution, persistence and version.
+
+Source comparisons preserve all moved implementations with generic application
+bindings. Router authentication still uses the same shared middleware function.
+The task table, card and bus retain their original clone behavior. Streaming
+uses the same session-event type and filtering; `SessionSync` remains excluded.
+Headless execution still resolves/configures, runs the prompt, persists and then
+returns the result text. Stream setup, provider-load failure handling and task
+settlement retain their existing shared drivers and sequencing.
+
+Module/dependency checks cover 696 roots and 568 crates without missing modules
+or cycles. Native callback bindings, clone fields, lifetime bounds and dependency
+package identities were checked. Direct rustfmt, native file-size limits and
+whitespace checks passed. Only the new package and root dependency are staged
+in the lockfile. Evidence: `artifacts/consolidation-a2a-server/`.
+No Cargo, rustc or Python ran; compilation and runtime tests, including the
+existing A2A HTTP integration tests, remain unverified. Full consolidation stays
+active.
