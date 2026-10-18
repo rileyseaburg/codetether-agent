@@ -3670,7 +3670,9 @@ name = "codetether-native-cli"
 version = "4.7.6-dev.38"
 dependencies = [
  "anyhow",
+ "async-trait",
  "clap",
+ "codetether-agent-core",
  "codetether-application-providers",
  "codetether-approval-cli",
  "codetether-auth-cli",
@@ -3694,8 +3696,10 @@ dependencies = [
  "codetether-run-policy",
  "codetether-run-resume",
  "codetether-search-cli",
+ "codetether-sol-workflow",
  "codetether-user-auth",
  "codetether-user-auth-cli",
+ "codetether-validation",
  "codetether-vault-cli",
  "codetether-windows-cli",
  "codetether-worktree-cli",

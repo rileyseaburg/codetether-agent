@@ -5,3 +5,6 @@
 //! crates. Session-running commands are bound by the embedding application.
 mod cli;
 pub use cli::*;
+
+/// Native Sol planner and stateful coding-worker integration.
+pub mod sol;

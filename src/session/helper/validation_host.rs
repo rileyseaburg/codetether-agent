@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+#[derive(Default)]
 pub(crate) struct NativeHost;
 #[async_trait]
 impl codetether_validation::Host for NativeHost {

@@ -26286,3 +26286,23 @@ standalone formatting, file-limit and whitespace checks pass. Only native-swarm
 test dependencies are staged in Cargo.lock; unrelated changes remain untouched.
 Evidence: artifacts/consolidation-native-swarm-tests/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Native Sol coding-worker ownership
+
+Moved the Sol worker state, configuration/model selection, resumable execution,
+planner provider binding and touched-file diagnostics into
+codetether-native-cli::sol. The root retains four concrete session methods and
+selects the existing validation adapter. That stateless adapter now derives
+Default so the generic native workflow can construct the same validator.
+Two root implementation files are removed; session construction still uses
+the existing SessionSource implementation and normal run policy.
+
+Static comparisons preserve worker setup/execution, planner completion,
+diagnostics and result identity behavior. Session ID lookup explicitly chooses
+SessionSource because the inherited checkpoint interface also defines id.
+Module/dependency scans cover 728 roots and 614 crates with no missing modules,
+cycles or undeclared dependencies. Declaration, standalone formatting,
+file-limit and whitespace checks pass. Only four native-cli dependencies are
+staged in Cargo.lock; unrelated working files remain unchanged. Evidence is
+retained in artifacts/consolidation-native-sol/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
