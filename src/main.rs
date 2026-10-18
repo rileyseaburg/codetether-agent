@@ -14,12 +14,8 @@ use clap::Parser;
 use cli::{Cli, Command};
 use codetether_agent::{
     a2a, benchmark, bus, cli, config, forage, github_pr, indexer, mcp, moltbook, mux, okr,
-    provider, ralph, rlm, server, swarm, telemetry, tool, tui, worker_server,
+    provider, ralph, server, swarm, telemetry, tool, tui, worker_server,
 };
-use codetether_rlm_cli::{
-    detect_rlm_content_type, gather_rlm_content, oracle_json_value, oracle_status_line,
-};
-use std::sync::Arc;
 use swarm::{DecompositionStrategy, ExecutionMode, SwarmExecutor};
 use telemetry::{TOKEN_USAGE, get_persistent_stats};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
@@ -30,216 +26,7 @@ mod startup_vault;
 mod worktree_cli;
 
 mod native_cli;
-
-async fn run_rlm_command(args: cli::RlmArgs) -> anyhow::Result<()> {
-    use provider::ProviderRegistry;
-
-    if args.consensus_runs == 0 {
-        anyhow::bail!("--consensus-runs must be at least 1");
-    }
-    if !(0.0..=1.0).contains(&args.consensus_threshold) {
-        anyhow::bail!("--consensus-threshold must be between 0.0 and 1.0");
-    }
-    if args.oracle_verify {
-        eprintln!(
-            "warning: --oracle-verify is deprecated, oracle verification is now always-on. \
-             Use --no-oracle-verify to disable."
-        );
-    }
-
-    let content = gather_rlm_content(&args)?;
-    let input_tokens = rlm::RlmChunker::estimate_tokens(&content);
-    let content_type = detect_rlm_content_type(&args, &content);
-    tracing::info!(input_tokens, "RLM: Analyzing content");
-
-    let registry = ProviderRegistry::from_vault().await.map_err(|e| {
-        anyhow::anyhow!(
-            "Failed to load providers for Oracle-First RLM: {}. \
-             Configure local_cuda or openrouter.",
-            e
-        )
-    })?;
-    let (provider, model, provider_name) =
-        codetether_rlm_selection::resolve(args.model.as_deref(), &|name| registry.get(name))?;
-    tracing::info!(provider = %provider_name, model = %model, "RLM provider resolved");
-
-    let run_count = args.consensus_runs;
-    let run_temperature =
-        args.analysis_temperature
-            .unwrap_or(if run_count > 1 { 0.75 } else { 0.3 });
-    let mut runs: Vec<(
-        rlm::RlmAnalysisResult,
-        Vec<rlm::TraceStep>,
-        rlm::context_trace::ContextTraceSummary,
-    )> = Vec::with_capacity(run_count);
-
-    for _ in 0..run_count {
-        let mut executor = rlm::RlmExecutor::new(content.clone(), provider.clone(), model.clone())
-            .with_temperature(run_temperature)
-            .with_verbose(args.verbose);
-        let mut result = executor.analyze(&args.query).await?;
-        if result.sub_queries.is_empty() {
-            result.sub_queries.push(rlm::SubQuery {
-                query: args.query.clone(),
-                context_slice: if args.file.len() == 1 {
-                    Some(args.file[0].to_string_lossy().to_string())
-                } else {
-                    None
-                },
-                response: result.answer.clone(),
-                tokens_used: result.stats.output_tokens,
-            });
-        }
-        runs.push((
-            result,
-            executor.trace_steps().to_vec(),
-            executor.context_trace_summary(),
-        ));
-    }
-
-    let result = runs
-        .first()
-        .map(|(r, _, _)| r.clone())
-        .ok_or_else(|| anyhow::anyhow!("No RLM runs executed"))?;
-    let source_path = if args.file.len() == 1 {
-        Some(args.file[0].to_string_lossy().to_string())
-    } else {
-        None
-    };
-
-    let oracle_enabled = !args.no_oracle_verify;
-    let mut oracle_json: serde_json::Value = serde_json::json!({
-        "status": "disabled",
-        "reason": "disabled via --no-oracle-verify",
-    });
-    let mut oracle_status = "[oracle: disabled —] verification disabled".to_string();
-
-    if oracle_enabled {
-        let validator =
-            rlm::TraceValidator::new().with_consensus_threshold(args.consensus_threshold);
-        let run_results: Vec<rlm::RlmAnalysisResult> =
-            runs.iter().map(|(r, _, _)| r.clone()).collect();
-        let trace_steps = runs.first().map(|(_, t, _)| t.clone()).unwrap_or_default();
-        let oracle_result = if run_results.len() > 1 {
-            validator.validate_with_consensus(
-                &run_results,
-                &content,
-                source_path.as_deref(),
-                None,
-                Some(trace_steps),
-            )
-        } else {
-            validator.validate(
-                &run_results[0],
-                &content,
-                source_path.as_deref(),
-                None,
-                Some(trace_steps),
-            )
-        };
-
-        let mut stats = rlm::oracle::BatchValidationStats::default();
-        match &oracle_result {
-            rlm::OracleResult::Golden(trace) => stats.golden.push(trace.clone()),
-            rlm::OracleResult::Consensus { trace, .. } => stats.consensus.push(trace.clone()),
-            rlm::OracleResult::Unverified { reason, trace } => {
-                stats.unverified.push((trace.clone(), reason.clone()));
-            }
-            rlm::OracleResult::Failed { reason, trace, .. } => {
-                stats.failed.push((trace.clone(), reason.clone()));
-            }
-        }
-
-        let split = if let Some(ref out_dir) = args.oracle_out_dir {
-            let out_dir_str = out_dir.to_str().ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Oracle output directory path is not valid UTF-8: {}",
-                    out_dir.display()
-                )
-            })?;
-            Some(stats.write_jsonl_split(out_dir_str, &args.oracle_prefix)?)
-        } else {
-            None
-        };
-
-        let storage = rlm::OracleTraceStorage::from_env_or_vault().await;
-        let persist = match storage.persist_result(&oracle_result).await {
-            Ok(p) => Some(p),
-            Err(e) => Some(rlm::OracleTracePersistResult {
-                verdict: oracle_result.to_record().verdict,
-                spooled_path: String::new(),
-                uploaded: false,
-                remote_key: None,
-                remote_url: None,
-                pending_count: 0,
-                warning: Some(format!("Failed to persist oracle record: {}", e)),
-            }),
-        };
-
-        oracle_status = oracle_status_line(&oracle_result);
-        oracle_json = oracle_json_value(&oracle_result, split, persist);
-    }
-
-    if args.json {
-        let trace_steps_json = runs
-            .first()
-            .map(|(_, t, _)| serde_json::to_value(t).unwrap_or_default())
-            .unwrap_or_else(|| serde_json::json!([]));
-        let context_trace_json = runs
-            .first()
-            .map(|(_, _, c)| serde_json::to_value(c).unwrap_or_default())
-            .unwrap_or_else(|| serde_json::json!({}));
-        let context_traces: Vec<serde_json::Value> = runs
-            .iter()
-            .map(|(_, _, c)| serde_json::to_value(c).unwrap_or_default())
-            .collect();
-        let output = serde_json::json!({
-            "query": args.query,
-            "provider": provider_name,
-            "model": model,
-            "content_type": format!("{:?}", content_type),
-            "input_tokens": input_tokens,
-            "answer": result.answer,
-            "iterations": result.iterations,
-            "sub_queries": result.sub_queries.len(),
-            "stats": result.stats,
-            "trace_steps": trace_steps_json,
-            "context_trace": context_trace_json,
-            "runs": run_count,
-            "context_traces": context_traces,
-            "oracle": oracle_json,
-        });
-        println!("{}", serde_json::to_string_pretty(&output)?);
-    } else {
-        println!("## RLM Analysis Result\n");
-        println!("**Query:** {}\n", args.query);
-        println!("**Answer:**\n{}\n", result.answer);
-        println!("{}", oracle_status);
-        println!("---");
-        println!(
-            "*Iterations: {} | Sub-queries: {} | Time: {}ms*",
-            result.iterations,
-            result.sub_queries.len(),
-            result.stats.elapsed_ms
-        );
-        if let Some((_, trace_steps, trace_summary)) = runs.first() {
-            println!(
-                "\n*Trace steps: {} | Context budget used: {:.1}%*",
-                trace_steps.len(),
-                trace_summary.budget_used_percent
-            );
-        }
-
-        if !result.sub_queries.is_empty() {
-            println!("\n### Sub-queries made:");
-            for (i, sq) in result.sub_queries.iter().enumerate() {
-                println!("{}. {} -> {} tokens", i + 1, sq.query, sq.tokens_used);
-            }
-        }
-    }
-
-    Ok(())
-}
+mod rlm_cli;
 
 #[tokio::main(worker_threads = 8)]
 async fn main() -> anyhow::Result<()> {
@@ -466,7 +253,7 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::SwarmSubagent(args)) => swarm::remote_subtask::run_swarm_subagent(args).await,
-        Some(Command::Rlm(args)) => run_rlm_command(args).await,
+        Some(Command::Rlm(args)) => rlm_cli::run(args).await,
         Some(Command::Oracle(args)) => cli::oracle::execute(args).await,
         Some(Command::Ralph(args)) => {
             use provider::ProviderRegistry;

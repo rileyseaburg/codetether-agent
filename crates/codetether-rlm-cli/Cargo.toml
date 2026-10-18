@@ -11,3 +11,7 @@ anyhow = "1"
 codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
 codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
 serde_json = "1"
+async-trait = "0.1"
+tracing = "0.1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-rlm-selection = { path = "../codetether-rlm-selection", version = "0.1.0" }

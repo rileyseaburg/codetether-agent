@@ -13654,3 +13654,21 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, input reads or model execution ran. Full source
   consolidation remains unfinished.
+
+### RLM command orchestration consolidation
+
+- Moved the complete RLM command sequence from src/main.rs into the existing
+  codetether-rlm-cli crate: validation, repeated analysis, oracle validation,
+  dataset splitting, persistence and text/JSON output each have focused modules.
+- ProviderSource supplies the native Vault initialization and existing selection
+  policy at the original point after input preparation. Analysis uses the exact
+  shared router_executor::RlmExecutor formerly re-exported by the native bridge.
+- Phase order, temperature selection, synthetic subquery fallback, oracle
+  failure receipts and output text/JSON fields remain unchanged. Native main
+  dispatches through a small provider adapter in src/rlm_cli.rs.
+- Verification: 29 static body/order/output/size checks passed, plus module
+  reachability, dependency DAG, direct rustfmt, source file limits and whitespace
+  checks. Evidence: artifacts/consolidation-rlm-command/.
+- Only this crate's four added dependencies were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, provider loading, model execution, dataset writes
+  or trace persistence ran. Full workspace consolidation remains unfinished.
