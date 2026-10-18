@@ -26,3 +26,6 @@ pub mod tick;
 
 /// Per-work-item cognition phase execution and state changes.
 pub mod process;
+
+mod reap;
+mod spawn;

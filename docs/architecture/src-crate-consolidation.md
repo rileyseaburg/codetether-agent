@@ -16683,3 +16683,17 @@ Full workspace consolidation remains active.
   changes. Evidence: `artifacts/consolidation-cognition-services/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared persona spawn and reap orchestration
+
+- Moved child persona creation and reap-event publication onto the core runtime
+  alongside its existing create/start/stop operations.
+- Native methods preserve public signatures and forward to the shared owner.
+  Child-request policy and reap mutation remain unchanged, including event
+  publication after lock release and returned count/identity ordering.
+- Verification: full method-body comparisons, native forwards, unchanged
+  persona regression tests and HTTP bindings, module/dependency graphs,
+  direct rustfmt, file limits and whitespace. No dependencies changed.
+  Evidence: `artifacts/consolidation-cognition-personas/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

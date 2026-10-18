@@ -1,7 +1,6 @@
 //! Publish lifecycle events after the shared reap mutation releases its lock.
 use super::{CognitionRuntime, ReapPersonaRequest, ReapPersonaResponse};
 use anyhow::Result;
-use codetether_cognition_core::persona::lifecycle::{prepare_reap, reaped_event};
 
 impl CognitionRuntime {
     /// Reap one persona or its full descendant tree.
@@ -14,14 +13,6 @@ impl CognitionRuntime {
         persona_id: &str,
         req: ReapPersonaRequest,
     ) -> Result<ReapPersonaResponse> {
-        let plan = prepare_reap(&self.personas, persona_id, req).await?;
-        for id in &plan.reaped_ids {
-            self.push_event(reaped_event(id, &plan.reason, plan.cascade, plan.now))
-                .await;
-        }
-        Ok(ReapPersonaResponse {
-            count: plan.reaped_ids.len(),
-            reaped_ids: plan.reaped_ids,
-        })
+        self.state.reap_persona(persona_id, req).await
     }
 }

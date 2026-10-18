@@ -16,9 +16,6 @@ impl CognitionRuntime {
         parent_id: &str,
         req: SpawnPersonaRequest,
     ) -> Result<PersonaRuntimeState> {
-        self.create_persona(
-            codetether_cognition_core::persona::lifecycle::child_request(parent_id, req),
-        )
-        .await
+        self.state.spawn_child(parent_id, req).await
     }
 }
