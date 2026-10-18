@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-plugin-http",
  "codetether-session-fork",
  "codetether-session-http",
  "codetether-session-recovery",
@@ -6777,6 +6778,15 @@ dependencies = [
  "codetether-session-metadata",
  "codetether-provenance",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "codetether-plugin-http"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "codetether-plugin-verification",
+ "serde",
 ]
 
 [[package]]

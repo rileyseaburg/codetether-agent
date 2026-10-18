@@ -1,0 +1,12 @@
+[package]
+name = "codetether-plugin-http"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Plugin registry HTTP discovery projection"
+
+[dependencies]
+axum = "0.8"
+codetether-plugin-verification = { path = "../codetether-plugin-verification", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }

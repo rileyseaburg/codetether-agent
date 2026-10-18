@@ -35,7 +35,7 @@ use crate::cognition::{
 };
 use crate::config::Config;
 use crate::k8s::K8sManager;
-use crate::tool::{PluginManifest, PluginRegistry as AgentPluginRegistry, hash_bytes};
+use crate::tool::{PluginRegistry as AgentPluginRegistry, hash_bytes};
 use anyhow::Result;
 use auth::AuthState;
 use axum::{
@@ -787,26 +787,10 @@ async fn tool_heartbeat(
 ) -> Result<Json<RegisteredToolView>, (StatusCode, String)> {
     codetether_tool_discovery::tool_heartbeat(&state.tool_registry, id).await
 }
-
-/// List registered plugins.
-async fn list_plugins(State(state): State<AppState>) -> Json<PluginListResponse> {
-    let test_sig =
-        state
-            .plugin_registry
-            .signing_key()
-            .sign("_probe", "0.0.0", &state.server_fingerprint);
-    Json(PluginListResponse {
-        server_fingerprint: state.server_fingerprint.clone(),
-        signing_available: !test_sig.is_empty(),
-        plugins: state.plugin_registry.list().await,
-    })
-}
-
-#[derive(Serialize)]
-struct PluginListResponse {
-    server_fingerprint: String,
-    signing_available: bool,
-    plugins: Vec<PluginManifest>,
+async fn list_plugins(
+    State(state): State<AppState>,
+) -> Json<codetether_plugin_http::PluginListResponse> {
+    codetether_plugin_http::list_plugins(&state.plugin_registry, &state.server_fingerprint).await
 }
 
 // ── Agent task compatibility surface ─────────────────────────────────────

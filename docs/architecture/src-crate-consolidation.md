@@ -13517,3 +13517,17 @@ Full workspace consolidation remains active.
   checks. Evidence: artifacts/consolidation-policy-middleware/.
 - No dependencies or lockfile changes were needed. No Cargo, rustc, Rust tests
   or live authorization requests ran. Full consolidation remains unfinished.
+
+### Plugin discovery HTTP extraction
+
+- Moved plugin-list response construction and its wire type from the server
+  root into codetether-plugin-http. The native handler supplies its existing
+  PluginRegistry and server fingerprint, then returns the shared response.
+- The signing probe remains _probe / 0.0.0 with the same fingerprint;
+  signing_available and manifest-list behavior are unchanged.
+- Verification: 55 static service/wire/server-body/size checks passed, plus
+  module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-plugin-http/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, signing probes or registry operations ran.
+  Full workspace consolidation remains unfinished.
