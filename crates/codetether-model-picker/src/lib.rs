@@ -30,3 +30,6 @@ mod refresh_direct;
 mod refresh_drain;
 mod refresh_finish;
 mod refresh_start;
+
+#[cfg(test)]
+mod refresh_tests;

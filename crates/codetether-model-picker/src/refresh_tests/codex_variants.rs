@@ -1,4 +1,5 @@
-// Pre-5.6 Codex models remain selectable with fast and reasoning variants.
+//! Verify discovered codex variants in the picker catalog.
+use super::*;
 #[tokio::test]
 async fn refresh_includes_pre_5_6_codex_models() {
     let mut registry = ProviderRegistry::new();
@@ -7,7 +8,7 @@ async fn refresh_includes_pre_5_6_codex_models() {
         models: vec![model("gpt-5.5", "openai-codex")],
     }));
     let registry = Arc::new(registry);
-    let mut state = super::super::AppState::default();
+    let mut state = ModelPickerState::default();
 
     let summary = state
         .refresh_available_models(Some(&registry))
@@ -15,7 +16,7 @@ async fn refresh_includes_pre_5_6_codex_models() {
         .expect("refresh should succeed");
 
     assert_eq!(
-        state.model_picker.available_models,
+        state.available_models,
         [
             "openai-codex/gpt-5.5",
             "openai-codex/gpt-5.5-fast",

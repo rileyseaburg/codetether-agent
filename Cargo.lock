@@ -6928,10 +6928,14 @@ name = "codetether-model-picker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "codetether-model-discovery",
  "codetether-model-store",
- "ratatui",
+ "codetether-provider-core",
+ "codetether-provider-registry",
  "codetether-slash-command",
+ "futures",
+ "ratatui",
  "tokio",
 ]
 

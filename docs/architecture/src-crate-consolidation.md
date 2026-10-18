@@ -22047,3 +22047,21 @@ Direct rustfmt, native file-size limits and whitespace checks passed. No
 manifest or lockfile changes. Evidence:
 `artifacts/consolidation-composer-cursor/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Model-refresh regression tests with the picker owner
+
+Moved the non-Codex discovery and legacy Codex-variant refresh tests from the
+native TUI state module into `codetether-model-picker`. Separate test modules
+cover each case; fixtures separately own the static provider, model descriptor
+and instrumented registry adapter. The tests use the same default picker that
+the native `AppState` constructor installs, and register providers through the
+same shared registry implementation. The native refresh adapter and shared
+production refresh implementation remain unchanged.
+
+Source comparisons preserve both test assertions, all mock-provider operations
+and model descriptors. Module/dependency checks cover 695 roots and 567 crates
+without missing modules or cycles. Direct rustfmt, native file-size limits and
+whitespace checks passed. Four test dependency edges are staged for the picker
+crate; existing Tokio gains the macro feature for the relocated tests.
+Evidence: `artifacts/consolidation-model-picker-tests/`. The tests were moved,
+not executed; no Cargo, rustc or Python ran. Full consolidation remains active.
