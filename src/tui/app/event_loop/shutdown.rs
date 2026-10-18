@@ -32,27 +32,5 @@ pub(super) async fn finish(
 /// deregister_bridge(&bridge);
 /// ```
 pub(super) async fn stop_bridge(bridge: Option<TuiWorkerBridge>) {
-    let Some(bridge) = bridge else {
-        return;
-    };
-    let _ = bridge
-        .cmd_tx
-        .send(
-            crate::tui::worker_bridge::WorkerBridgeCmd::DeregisterAgent {
-                name: "tui".to_string(),
-            },
-        )
-        .await;
-    let _ = bridge
-        .cmd_tx
-        .send(crate::tui::worker_bridge::WorkerBridgeCmd::Shutdown)
-        .await;
-    let mut handle = bridge.handle;
-    if tokio::time::timeout(std::time::Duration::from_secs(2), &mut handle)
-        .await
-        .is_err()
-    {
-        handle.abort();
-        let _ = handle.await;
-    }
+    codetether_tui_worker::shutdown_bridge(bridge.map(Into::into)).await;
 }

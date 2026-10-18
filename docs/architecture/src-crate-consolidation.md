@@ -16970,3 +16970,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-tui-redraw/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker-bridge shutdown
+
+- Moved owned bridge deregistration, shutdown signaling and bounded task join
+  into `codetether-tui-worker::shutdown_bridge`.
+- Added field-preserving ownership conversions between the native facade and
+  shared bridge, also replacing manual field transfer during native spawn.
+- Preserved deregister-before-shutdown order, ignored channel errors, two-second
+  join timeout, abort-and-join fallback and outer mux/bridge/runtime cleanup order.
+- Verification: full shutdown/spawn body comparisons, both ownership mappings,
+  unchanged bridge control and event loop, module/dependency graphs, direct
+  rustfmt, file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-bridge-shutdown/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

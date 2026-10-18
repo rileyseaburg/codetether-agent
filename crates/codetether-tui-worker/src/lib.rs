@@ -26,3 +26,7 @@ mod worker_queue;
 mod worker_recent;
 mod worker_state;
 pub use worker_state::WorkerState;
+
+mod shutdown;
+/// Ordered deregistration and bounded bridge-task shutdown.
+pub use shutdown::shutdown_bridge;

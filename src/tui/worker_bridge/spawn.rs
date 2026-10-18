@@ -18,12 +18,6 @@ impl TuiWorkerBridge {
         else {
             return Ok(None);
         };
-        Ok(Some(Self {
-            worker_id: bridge.worker_id,
-            worker_name: bridge.worker_name,
-            cmd_tx: bridge.cmd_tx,
-            task_rx: bridge.task_rx,
-            handle: bridge.handle,
-        }))
+        Ok(Some(bridge.into()))
     }
 }

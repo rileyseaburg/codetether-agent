@@ -1,5 +1,6 @@
 //! Native worker registration binding for the shared TUI bridge runtime.
 mod types;
+mod convert;
 mod registration;
 mod spawn;
 pub use types::TuiWorkerBridge;
