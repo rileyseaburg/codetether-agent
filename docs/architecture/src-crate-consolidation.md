@@ -13986,3 +13986,21 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, provider calls, S3 startup or relay execution ran.
   Full workspace consolidation remains unfinished.
+
+### CLI relay runtime module decomposition
+
+- Replaced the 300-line relay function with bootstrap, driver and finalization
+  phases. Private runtime/team state now connects focused modules for initial
+  profiles and sessions, sender selection, correlated receive, prompting,
+  convergence tracking, context publication and dynamic specialist attachment.
+- The driver remains responsible for ordering and termination. Startup creates
+  sessions before registration as before; bus/prompt failures retain their
+  status and session handling; convergence still stops only after the spawn
+  opportunity; shutdown precedes final progress and result assembly.
+- Verification: 13 static fragment/expanded-loop/initialization/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Largest runtime module is now 46 code lines;
+  the driver is 37. Evidence: artifacts/consolidation-cli-relay-modules/.
+- No dependency or lockfile changes. No Cargo, rustc, Rust tests, provider calls
+  or relay execution ran. This completes the recorded relay-function split;
+  full workspace consolidation remains unfinished.
