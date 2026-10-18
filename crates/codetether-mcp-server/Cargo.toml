@@ -1,0 +1,15 @@
+[package]
+name = "codetether-mcp-server"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "MCP server request dispatch and transport receive loop"
+
+[dependencies]
+anyhow = "1"
+codetether-mcp-core = { path = "../codetether-mcp-core", version = "0.1.0" }
+codetether-mcp-transport = { path = "../codetether-mcp-transport", version = "0.1.0" }
+serde_json = "1"
+tokio = { version = "1", features = ["sync"] }
+tracing = "0.1"

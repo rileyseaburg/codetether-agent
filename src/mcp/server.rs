@@ -14,7 +14,7 @@
 //! - ralph: Autonomous PRD-driven execution
 
 use super::bus_bridge::BusBridge;
-use super::transport::{McpMessage, StdioTransport, Transport};
+use super::transport::{StdioTransport, Transport};
 use super::types::*;
 use crate::bus::{AgentBus, BusMessage};
 use crate::tool::ToolRegistry;
@@ -43,13 +43,12 @@ pub struct McpServer {
 mod attachment;
 mod bus;
 mod construction;
-mod dispatch;
 mod fallback;
 mod invocation;
 mod prompt_catalog;
-mod protocol;
 mod registry;
 mod resource_catalog;
 mod run;
+mod runtime_host;
 mod setup;
 mod tool_catalog;

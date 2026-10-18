@@ -17750,3 +17750,20 @@ Full workspace consolidation remains active.
   working-copy changes remain. Evidence: `artifacts/consolidation-mcp-fallback/`.
 - No Cargo, rustc, Python, tool handlers, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### MCP server dispatch and receive loop
+
+- Moved JSON-RPC request routing, notification handling and the sequential
+  receive/respond loop into the dedicated `codetether-mcp-server` crate.
+- Shared code uses the existing catalog, transport, identity and initialized
+  flag. Native Host retains setup, tool invocation and approval handling.
+  Removed protocol wrappers whose bodies were only shared catalog/protocol calls.
+- Verified complete routing, notification and loop bodies, removed-wrapper
+  expansion, native field/call bindings, and unchanged invocation, approval and
+  initialization implementations. This preserves native catalog-lock lifetime
+  and tool bus-event ordering. Module/dependency graphs, direct rustfmt, file
+  limits and whitespace passed. Staged lock adds only the new package and root
+  dependency; unrelated working-copy changes remain untouched.
+  Evidence: `artifacts/consolidation-mcp-server/`.
+- No Cargo, rustc, Python, MCP server execution, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

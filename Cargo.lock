@@ -1390,6 +1390,7 @@ dependencies = [
  "codetether-goal-command",
  "codetether-mcp-bus",
  "codetether-mcp-fallback",
+ "codetether-mcp-server",
  "codetether-agent-dashboard",
  "codetether-git-view",
  "codetether-protocol-view",
@@ -15989,5 +15990,17 @@ dependencies = [
  "anyhow",
  "codetether-mcp-core",
  "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-mcp-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-mcp-core",
+ "codetether-mcp-transport",
+ "serde_json",
+ "tokio",
  "tracing",
 ]
