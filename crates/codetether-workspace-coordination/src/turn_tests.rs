@@ -7,6 +7,7 @@ async fn drop_aborts_renewal_task() {
     drop(LeaseTurn {
         owner: None,
         renewal: Some(renewal),
+        host: std::sync::Arc::new(crate::test_lease_host::InactiveHost),
     });
     tokio::task::yield_now().await;
     assert!(abort.is_finished());

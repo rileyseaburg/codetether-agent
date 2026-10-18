@@ -10207,3 +10207,20 @@ graphs, file budgets and whitespace checks passed; new files contain at most 40
 code lines. Evidence is in `artifacts/consolidation-workspace-coordination/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or coordinator
 calls ran. Full workspace consolidation remains active.
+
+### Coordination lease lifetime consolidated
+
+Moved prompt-owned lease construction, close/drop handling, periodic renewal and
+best-effort release into `codetether-workspace-coordination`. Nine new modules
+separate guard state, lifetime actions and the shared transport contract. The
+native LeaseTurn keeps its original open/close interface and delegates through
+the native mux host. Renewal remains every 30 seconds; cancellation stops renewal
+before release, with the original expiry fallback when no runtime is available.
+
+Twelve static comparisons cover lifecycle bodies, timing/logging, cancellation,
+native acquisition hooks and renewal/release callbacks. One original cancellation
+test moved with an inactive transport fixture. Module/dependency graphs, file
+budgets and whitespace checks passed; new modules contain at most 20 code lines.
+Evidence is in `artifacts/consolidation-coordination-lifetime/`. Compilation
+and runtime tests were not run. No Cargo, rustc, Python, renewal or release calls
+ran. Full workspace consolidation remains active.
