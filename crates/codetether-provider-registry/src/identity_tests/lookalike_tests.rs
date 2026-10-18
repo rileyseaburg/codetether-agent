@@ -1,8 +1,8 @@
 //! Caller-owned marker blocks are not harness identity messages.
 
 use super::{inject, message, request};
-use crate::provider::Role;
-use crate::provider::metrics::identity::{prompt, system_prompt};
+use codetether_provider_core::Role;
+use codetether_provider_core::request_identity::{prompt, system_prompt};
 
 #[test]
 fn harness_identity_preserves_dedicated_caller_lookalikes() {

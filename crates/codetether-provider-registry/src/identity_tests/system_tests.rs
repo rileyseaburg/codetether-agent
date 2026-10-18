@@ -1,7 +1,7 @@
 //! Regression coverage for identity carried alongside a caller system string.
 
 use super::{caller_prompt, system_prompt};
-use crate::provider::metrics::identity::prompt;
+use codetether_provider_core::request_identity::prompt;
 
 #[test]
 fn identity_system_prompt_preserves_caller_text() {

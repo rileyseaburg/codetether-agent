@@ -1,6 +1,6 @@
 //! Rewrapping must retain adapter identity resolution without duplicating metadata.
 use super::{MetricsProvider, Provider, mock, request, text};
-use crate::provider::metrics::identity::inject;
+use codetether_provider_core::request_identity::inject;
 use std::sync::{Arc, Mutex};
 
 #[tokio::test]

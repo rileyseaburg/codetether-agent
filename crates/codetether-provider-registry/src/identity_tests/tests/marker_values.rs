@@ -1,6 +1,6 @@
 //! Marker characters in routing values must not split generated metadata.
 use super::{inject, request};
-use crate::provider::metrics::identity::{caller_prompt, prompt, system_prompt};
+use codetether_provider_core::request_identity::{caller_prompt, prompt, system_prompt};
 
 #[test]
 fn harness_identity_refreshes_marker_values_without_losing_caller_content() {

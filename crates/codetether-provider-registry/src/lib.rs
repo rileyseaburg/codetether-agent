@@ -43,3 +43,6 @@ impl Default for ProviderRegistry {
 mod tenant_keys;
 pub use tenant_keys::PerTaskProviderKeys;
 pub mod task;
+
+#[cfg(test)]
+mod identity_tests;

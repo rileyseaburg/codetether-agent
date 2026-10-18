@@ -1,6 +1,6 @@
 //! Default routing and provider aliases must report the canonical provider identity.
 use super::{mock, request, text};
-use crate::provider::ProviderRegistry;
+use crate::ProviderRegistry;
 use std::sync::{Arc, Mutex};
 
 #[tokio::test]

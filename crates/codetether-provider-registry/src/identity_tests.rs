@@ -5,8 +5,8 @@ pub(crate) use codetether_provider_core::request_identity::{
     caller_prompt, inject, prompt, system_prompt,
 };
 #[cfg(test)]
-#[path = "identity/system_tests.rs"]
+#[path = "identity_tests/system_tests.rs"]
 mod system_tests;
 #[cfg(test)]
-#[path = "identity/tests.rs"]
+#[path = "identity_tests/tests.rs"]
 mod tests;

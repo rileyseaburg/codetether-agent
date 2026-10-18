@@ -1,6 +1,6 @@
 //! Injection preserves caller-owned conversation content and completion options.
 use super::{Role, inject, request, text};
-use crate::provider::ToolDefinition;
+use codetether_provider_core::ToolDefinition;
 
 #[test]
 fn harness_identity_preserves_prompt_and_request_options() {

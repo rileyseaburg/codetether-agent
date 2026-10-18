@@ -1,7 +1,7 @@
 //! Caller instructions between identity examples must not be removed wholesale.
 
 use super::{Role, inject, message, request, text};
-use crate::provider::metrics::identity::prompt;
+use codetether_provider_core::request_identity::prompt;
 
 #[test]
 fn harness_identity_preserves_combined_system_message() {

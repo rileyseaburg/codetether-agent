@@ -8353,6 +8353,9 @@ dependencies = [
 name = "codetether-provider-registry"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "futures",
+ "tokio",
  "anyhow",
  "codetether-provider-core",
  "codetether-provider-factory",

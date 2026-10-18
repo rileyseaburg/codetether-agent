@@ -1,6 +1,8 @@
 //! Captures requests at the actual provider boundary.
-use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
 use anyhow::Result;
+use codetether_provider_core::{
+    CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk,
+};
 use futures::stream::BoxStream;
 #[path = "mock/capture.rs"]
 mod capture;

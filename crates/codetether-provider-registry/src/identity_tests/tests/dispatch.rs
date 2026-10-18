@@ -1,7 +1,7 @@
 //! Identity reaching every provider dispatch path, without a network request.
 use super::{request, text};
-use crate::provider::Provider;
-use crate::provider::metrics::MetricsProvider;
+use codetether_provider_core::Provider;
+use codetether_provider_metrics::MetricsProvider;
 use std::sync::{Arc, Mutex};
 
 #[path = "dispatch/aliases.rs"]

@@ -1,6 +1,6 @@
 //! Request identity regression tests.
 use super::inject;
-use crate::provider::{CompletionRequest, ContentPart, Message, Role};
+use codetether_provider_core::{CompletionRequest, ContentPart, Message, Role};
 
 #[path = "tests/combined.rs"]
 mod combined;

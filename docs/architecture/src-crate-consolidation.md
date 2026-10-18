@@ -21485,3 +21485,24 @@ native file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-chat-image-tests/`. No Cargo, rustc, or Python commands
 ran. The relocated Rust tests were inspected but not executed. Compilation
 and runtime behavior remain unverified; full consolidation remains active.
+
+### Provider identity regressions in the registry crate
+
+Moved the 15-file/15-test request-identity suite into
+`codetether-provider-registry`. It covers shared identity text and request
+preservation, metrics-wrapped completion/stream paths, aliases, nested wrappers,
+and registry default/model resolution. The native identity module now directly
+aliases the core implementation instead of hosting tests and forwarding items.
+
+Full formatted-source comparisons preserve every test input, assertion and
+mock-provider operation; changes are restricted to owning imports and moved
+module paths. The registry test now calls the underlying shared registry that
+the old native wrapper directly delegated to. Added async-trait, futures and
+Tokio only as test dependencies. No production dependency changes.
+
+Source/dependency graphs across 698 roots and 564 crates, direct rustfmt,
+native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-provider-identity-tests/`. The staged lockfile adds
+only the three test dependency edges. No Cargo, rustc, or Python commands ran.
+Tests were relocated and inspected, not executed; compilation remains
+unverified. Full workspace consolidation remains active.

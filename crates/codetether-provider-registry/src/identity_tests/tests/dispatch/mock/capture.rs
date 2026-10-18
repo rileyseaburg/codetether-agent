@@ -1,5 +1,5 @@
 //! Request storage shared by the capture-provider dispatch methods.
-use crate::provider::CompletionRequest;
+use codetether_provider_core::CompletionRequest;
 use std::sync::{Arc, Mutex};
 
 type Calls = Vec<(CompletionRequest, Option<String>)>;

@@ -1,6 +1,6 @@
 //! Freshness, idempotence and caller-owned lookalike coverage.
 use super::{inject, message, request, text};
-use crate::provider::Role;
+use codetether_provider_core::Role;
 
 #[test]
 fn harness_identity_replaces_stale_context_on_model_and_provider_switch() {
