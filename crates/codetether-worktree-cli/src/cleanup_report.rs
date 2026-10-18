@@ -1,4 +1,6 @@
-use codetether_agent::worktree::maintenance::{WorktreeCleanupReport, WorktreeCleanupState};
+//! Per-worktree cleanup decisions and aggregate completion reporting.
+
+use codetether_worktree::maintenance::{WorktreeCleanupReport, WorktreeCleanupState};
 
 pub(super) fn print(report: &WorktreeCleanupReport, json: bool) -> anyhow::Result<()> {
     if json {

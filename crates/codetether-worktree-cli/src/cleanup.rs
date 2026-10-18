@@ -1,9 +1,7 @@
 //! `worktree cleanup` preview and apply handler.
 
-use codetether_agent::{
-    cli::worktree_args::WorktreeCleanupArgs,
-    worktree::{WorktreeManager, maintenance::WorktreeCleanupState},
-};
+use crate::WorktreeCleanupArgs;
+use codetether_worktree::{WorktreeManager, maintenance::WorktreeCleanupState};
 
 /// Preview cleanup by default, applying only when explicitly requested.
 pub async fn run(args: WorktreeCleanupArgs, mgr: &WorktreeManager) -> anyhow::Result<()> {

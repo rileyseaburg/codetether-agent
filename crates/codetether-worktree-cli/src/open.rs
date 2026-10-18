@@ -1,7 +1,8 @@
 //! `worktree open` handler.
 
+use crate::WorktreeOpenArgs;
 use anyhow::anyhow;
-use codetether_agent::{cli::WorktreeOpenArgs, worktree::WorktreeManager};
+use codetether_worktree::WorktreeManager;
 
 /// Open a named worktree in VS Code.
 pub async fn run(args: WorktreeOpenArgs, mgr: &WorktreeManager) -> anyhow::Result<()> {

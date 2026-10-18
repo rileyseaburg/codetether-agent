@@ -1,6 +1,7 @@
 //! `worktree list` handler.
 
-use codetether_agent::{cli::WorktreeListArgs, worktree::WorktreeManager};
+use crate::WorktreeListArgs;
+use codetether_worktree::WorktreeManager;
 
 /// List discovered worktrees as a table or JSON.
 pub async fn run(args: WorktreeListArgs, mgr: &WorktreeManager) -> anyhow::Result<()> {

@@ -1,6 +1,7 @@
 //! `worktree workspace` handler.
 
-use codetether_agent::{cli::WorktreeWorkspaceArgs, worktree::WorktreeManager};
+use crate::WorktreeWorkspaceArgs;
+use codetether_worktree::WorktreeManager;
 
 /// Write a multi-root `.code-workspace` file, optionally opening it.
 pub async fn run(args: WorktreeWorkspaceArgs, mgr: &WorktreeManager) -> anyhow::Result<()> {

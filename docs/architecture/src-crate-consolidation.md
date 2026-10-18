@@ -10578,3 +10578,18 @@ graphs, file budgets and whitespace checks passed; modules have at most 34 code
 lines. Evidence is in `artifacts/consolidation-cleanup-cli/`. Compilation and
 runtime tests were not run. No Cargo, rustc, Python, cleanup operation or
 filesystem/Git fixture ran. Full workspace consolidation remains active.
+
+### Worktree CLI extracted
+
+Moved worktree command dispatch, listing, editor opening, workspace-file
+creation and merged-worktree cleanup/reporting into
+`crates/codetether-worktree-cli`. Eleven modules include separately owned
+argument schemas. Native CLI and binary paths re-export the shared API;
+the existing worktree crate retains all repository and editor operations.
+
+Seventeen static comparisons/checks cover argument attributes, command bodies,
+preview/apply selection, reporting and compatibility exports. Module/dependency
+graphs, file budgets and whitespace checks passed; modules have at most 41 code
+lines. Evidence is in `artifacts/consolidation-worktree-cli/`. Compilation and
+runtime tests were not run. No Cargo, rustc, Python, worktree operation or editor
+launch ran. Full workspace consolidation remains active.
