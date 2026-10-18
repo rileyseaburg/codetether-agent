@@ -19580,3 +19580,20 @@ lexical module reachability, dependency-cycle checks, file-size ratchet,
 whitespace and direct formatting. Evidence:
 `artifacts/consolidation-context-events/`. No Cargo, rustc, Python, Rust tests
 or UI execution ran; compilation and runtime remain unverified.
+
+### Chat retention ownership
+
+Moved live-chat retention, expanded-limit selection and the existing limit
+regression test into `codetether-view-retention::chat`. Native code only borrows
+messages/scroll and provides the render-cache invalidation callback.
+
+Preserved both limits, oldest-message removal, cache clearing before scroll
+adjustment, saturating subtraction for manual scrolling and the unchanged
+bottom sentinel. No dependencies changed.
+
+Validation: complete trim and limit function comparisons, native field/cache
+bindings, migrated regression-test comparison, unchanged limits/caller and
+manifests, lexical module reachability, dependency-cycle checks, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-chat-retention/`. No Cargo, rustc, Python or Rust tests
+ran; compilation and runtime remain unverified.

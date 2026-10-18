@@ -1,5 +1,5 @@
 use super::retained_limit;
-use crate::tui::retained_payload::{CHAT_EXPANDED_MAX_ITEMS, CHAT_RETAINED_MAX_ITEMS};
+use crate::{CHAT_EXPANDED_MAX_ITEMS, CHAT_RETAINED_MAX_ITEMS};
 
 #[test]
 fn expanded_history_remains_bounded() {

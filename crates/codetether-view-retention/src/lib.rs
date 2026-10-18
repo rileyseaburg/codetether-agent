@@ -12,3 +12,6 @@ mod limits;
 pub use bounded::bounded;
 pub use items::push_capped;
 pub use limits::*;
+
+/// Bounded chat history retention with viewport preservation.
+pub mod chat;

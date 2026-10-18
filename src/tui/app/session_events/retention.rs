@@ -1,35 +1,13 @@
-//! Retain only a bounded chat window in live TUI memory.
-
+//! Native message/cache bindings for shared chat retention policy.
 use crate::tui::app::state::App;
-use crate::tui::retained_payload::{CHAT_EXPANDED_MAX_ITEMS, CHAT_RETAINED_MAX_ITEMS};
-
 pub(super) fn trim(app: &mut App) {
-    let max_items = retained_limit(app.state.history_page.expanded());
-    let len = app.state.messages.len();
-    if len <= max_items {
-        return;
-    }
-    let overflow = len - max_items;
-    app.state.messages.drain(0..overflow);
-    app.state.message_cache.clear();
-    // Preserve the auto-follow sentinel (SCROLL_BOTTOM = 1_000_000). If the user
-    // is at the sentinel, keep them there — the render clamp adjusts to the new
-    // max_scroll. For a manual scroll position, subtract the number of removed
-    // leading messages so the view stays on the same logical content.
-    if app.state.chat_viewport.chat_scroll < crate::tui::constants::SCROLL_BOTTOM {
-        app.state.chat_viewport.chat_scroll =
-            app.state.chat_viewport.chat_scroll.saturating_sub(overflow);
-    }
+    let state = &mut app.state;
+    let cache = &mut state.message_cache;
+    codetether_view_retention::chat::trim(
+        &mut state.messages,
+        state.history_page.expanded(),
+        &mut state.chat_viewport.chat_scroll,
+        crate::tui::constants::SCROLL_BOTTOM,
+        || cache.clear(),
+    );
 }
-
-fn retained_limit(expanded: bool) -> usize {
-    if expanded {
-        CHAT_EXPANDED_MAX_ITEMS
-    } else {
-        CHAT_RETAINED_MAX_ITEMS
-    }
-}
-
-#[cfg(test)]
-#[path = "retention_tests.rs"]
-mod tests;
