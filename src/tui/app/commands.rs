@@ -11,7 +11,6 @@ codetether_settings_policy::declare_setting_commands!(
     crate::tui::app::settings::set_network_access,
     crate::tui::app::settings::set_slash_autocomplete,
 );
-use codetether_settings_policy::command::Setting;
 use open_editor::open_editor;
 #[path = "commands/dispatch_host/mod.rs"]
 mod dispatch_host;

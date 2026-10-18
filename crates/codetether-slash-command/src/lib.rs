@@ -46,3 +46,5 @@ mod legacy_tui_tests;
 pub mod utility;
 
 mod application_binding;
+
+mod leading_binding;

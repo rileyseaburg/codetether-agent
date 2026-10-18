@@ -27217,3 +27217,20 @@ whitespace checks pass for 725 roots and 617 crates. No dependency/lock changes
 were needed; unrelated working files remain untouched. Evidence:
 artifacts/consolidation-slash-host-binding/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### Leading slash-command stage modules
+
+Moved the leading-command router and attachment, diagnostics, execution and
+settings stages into matching modules in codetether-slash-command. Removed five
+root implementation files; the root declares its existing dispatcher type, image
+presentation enum, setting enum and callback paths. Imports made obsolete by
+the move were removed after checking remaining nested-stage references.
+
+All five function bodies match their originals after path substitution and
+normalization of expression-only router match-arm blocks. Argument quote trimming,
+command groups, explicit returns and invalid-route panics are unchanged. Tests
+are untouched. Declaration, module/dependency, native production-scope, standalone
+formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
+No dependency/lock changes were needed; unrelated working files are unchanged.
+Evidence: artifacts/consolidation-leading-commands/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
