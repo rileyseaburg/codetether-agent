@@ -11,7 +11,16 @@ mod reject;
 mod rgba;
 pub use attachment::ImageAttachment;
 pub use data_url::attachment_from_data_url;
-pub use reject::{RejectReason,reject_reason};
+pub use reject::{RejectReason, reject_reason};
 pub use rgba::attachment_from_rgba;
 #[cfg(test)]
 mod tests;
+
+mod embedded;
+mod encoding;
+mod file;
+mod file_mime;
+pub use embedded::{ExtractedImage, extract_image_data_url};
+pub use encoding::{decoded_len, encode as encode_data_url};
+pub use file::attachment_from_file;
+pub use file_mime::{SUPPORTED_IMAGE_FORMATS, guess as guess_mime};

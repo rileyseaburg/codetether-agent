@@ -12536,3 +12536,19 @@ Full workspace consolidation remains active.
   artifacts/consolidation-paste-buffer/.
 - Only the new dependency and package record were staged from Cargo.lock.
   No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.
+
+### Image input helper consolidation
+
+- Moved data-URL encoding/decoded-size inspection, embedded image extraction,
+  extension-to-MIME lookup and image-file attachment construction into
+  codetether-image. Four focused modules contain at most 29 code lines.
+- Native helper files now re-export the shared APIs under their existing names.
+  The shared ImageAttachment type, file validation/error text, tracing event,
+  supported extensions and embedded-base64 boundaries remain unchanged.
+- Verification: 14 source comparisons passed for moved implementations,
+  compatibility exports and unchanged native image/paste integration tests.
+  Module/dependency checks, direct rustfmt, source limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-image-input/.
+- Existing dependencies cover the move; no lockfile changes were needed. No
+  image processing, file attachment loading, Cargo, rustc, compilation or Rust
+  tests ran. Full workspace consolidation remains incomplete.
