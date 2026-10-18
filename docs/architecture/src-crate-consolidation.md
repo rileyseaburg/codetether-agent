@@ -11062,3 +11062,18 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-mermaid/`. Compilation, test execution and
   rendering were not run; no Cargo or rustc commands executed.
 - Full consolidation remains active.
+
+### Code-block renderer extraction
+
+- Moved fenced block framing, Mermaid dispatch, body styling and unified-diff
+  line coloring into `crates/codetether-code-render`. The three native entry
+  points now re-export their existing APIs.
+- Five modules separate frame rendering, header sizing, body lines and diff
+  styles. Maximum module size is 30 code lines. The shared Mermaid renderer
+  remains responsible for supported diagrams.
+- Eleven static assertions compare all moved function bodies and aliases,
+  the shared Mermaid binding, unchanged message formatter and its integration
+  tests. Module reachability, dependency DAG, file limits and whitespace passed.
+- Evidence: `artifacts/consolidation-code-render/`. Compilation, tests and
+  rendering were not run; no Cargo or rustc commands executed.
+- Full consolidation remains active, including the formatter state machine.
