@@ -14,3 +14,6 @@ pub use host::Host;
 
 /// Session-independent human goal/task input and deferred continuation.
 pub mod input;
+
+/// Frontend result presentation for authorized human goal commands.
+pub mod presentation;

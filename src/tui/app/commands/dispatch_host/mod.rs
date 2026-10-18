@@ -24,7 +24,7 @@ impl Host for Dispatch<'_> {
         crate::tui::swarm_run::handle_swarm_command(self.app, self.session, rest)
     }
     async fn session(&mut self, normalized: &str) -> bool {
-        session_ops::dispatch(self.app, self.cwd, self.session, normalized).await
+        codetether_slash_command::pipeline::session::dispatch(self, normalized).await
     }
     async fn simple(&mut self, kind: SimpleCommand) {
         simple::run(self, kind).await;

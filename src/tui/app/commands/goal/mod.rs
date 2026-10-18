@@ -1,17 +1,14 @@
-//! Native UI projection for explicit human goal commands.
+//! Native goal authorization and result-presentation bindings.
 mod host;
 use crate::tui::app::state::App;
-pub(crate) async fn handle(app: &mut App, session_id: &str, raw: &str) -> bool {
-    let result = codetether_goal_command::run::<host::Native>(session_id, raw).await;
-    match result {
-        Ok(message) => {
-            super::push_system_message(app, message.clone());
-            app.state.status = message.lines().next().unwrap_or("Goal updated").to_string();
-            true
-        }
-        Err(error) => {
-            app.state.status = format!("/goal: {error}");
-            false
-        }
+impl codetether_goal_command::presentation::View for App {
+    fn push_system_message(&mut self, message: String) {
+        super::push_system_message(self, message);
     }
+    fn set_status(&mut self, status: String) {
+        self.state.status = status;
+    }
+}
+pub(crate) async fn handle(app: &mut App, session_id: &str, raw: &str) -> bool {
+    codetether_goal_command::presentation::handle::<host::Native>(app, session_id, raw).await
 }

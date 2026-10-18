@@ -1,37 +1,22 @@
-//! Native execution of shared session-command classifications.
-use crate::session::Session;
-use crate::tui::app::state::App;
-use codetether_slash_command::routing::{SessionCommand, session as classify};
-use std::path::Path;
-
-pub(super) async fn dispatch(
-    app: &mut App,
-    cwd: &Path,
-    session: &mut Session,
-    normalized: &str,
-) -> bool {
-    let Some((command, rest)) = classify(normalized) else {
-        return false;
-    };
-    match command {
-        SessionCommand::Forage => {
-            crate::tui::forage_run::handle_forage_command(app, session, rest);
-        }
-        SessionCommand::Goal => {
-            super::goal::handle(app, &session.id, rest).await;
-        }
-        SessionCommand::A2a => {
-            super::a2a::handle(app, rest);
-        }
-        SessionCommand::Undo => {
-            super::handle_undo_command(app, session, rest).await;
-        }
-        SessionCommand::Detach => {
-            crate::tui::app::detach::handle_detach_command(app, session, rest).await;
-        }
-        SessionCommand::Fork => {
-            super::handle_fork_command(app, cwd, session, rest).await;
-        }
+//! Native actions for the shared session-command dispatcher.
+use super::dispatch_host::Dispatch;
+impl codetether_slash_command::pipeline::session::Host for Dispatch<'_> {
+    fn forage(&mut self, rest: &str) {
+        crate::tui::forage_run::handle_forage_command(self.app, self.session, rest);
     }
-    true
+    async fn goal(&mut self, rest: &str) {
+        super::goal::handle(self.app, &self.session.id, rest).await;
+    }
+    fn a2a(&mut self, rest: &str) {
+        super::a2a::handle(self.app, rest);
+    }
+    async fn undo(&mut self, rest: &str) {
+        super::handle_undo_command(self.app, self.session, rest).await;
+    }
+    async fn detach(&mut self, rest: &str) {
+        crate::tui::app::detach::handle_detach_command(self.app, self.session, rest).await;
+    }
+    async fn fork(&mut self, rest: &str) {
+        super::handle_fork_command(self.app, self.cwd, self.session, rest).await;
+    }
 }

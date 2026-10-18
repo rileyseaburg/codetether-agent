@@ -73,3 +73,6 @@ pub async fn dispatch(host: &mut impl Host, command: &str) {
         host.unknown(&normalized);
     }
 }
+
+/// Dispatch of classified commands requiring active-session ownership.
+pub mod session;

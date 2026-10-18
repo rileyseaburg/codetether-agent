@@ -19849,3 +19849,22 @@ corrected it to target the application package and retained the initial file
 for audit. Evidence: `artifacts/consolidation-a2a-interactive/`. No Cargo,
 rustc, Python, Rust tests or A2A execution ran; compilation and runtime remain
 unverified.
+
+### Session command routing and goal-result presentation
+
+Moved the classified session-command dispatcher into
+`codetether-slash-command::pipeline::session` and human goal-result presentation
+into `codetether-goal-command::presentation`. Native code supplies six existing
+command actions and two chat/status effects. Goal persistence and authorized
+user-edit bindings remain in their existing native host.
+
+Preserved all six command branches, their synchronous/asynchronous calls,
+recognition return values, goal success message/status ordering and goal error
+text. No dependencies changed.
+
+Validation: complete dispatch and goal-result bodies, six native action
+bindings, two presentation bindings, native delegates, unchanged goal
+operation host/classifier/manifests, module reachability, dependency cycles,
+file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-session-commands/`. No Cargo, rustc, Python, Rust tests
+or goal commands ran; compilation and runtime remain unverified.
