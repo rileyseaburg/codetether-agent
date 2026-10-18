@@ -1,24 +1,14 @@
-use clap::{ArgAction, Parser, Subcommand};
+//! Browser-control subcommands.
+use crate::OfflineCommand;
+use clap::Subcommand;
 use std::path::PathBuf;
 
-use super::offline_args::OfflineCommand;
-
-#[derive(Parser, Debug)]
-#[command(
-    about = "Control a Chromium browser via the local DevTools Protocol",
-    long_about = "Control a local Chromium-family browser through Chrome DevTools Protocol.\n\nUse --ws-url with a ws://.../devtools/browser/... URL or http://127.0.0.1:9222. When omitted, Codetether probes local debug ports before launching a managed browser. Access is local-only and uses whatever browser profile/session that DevTools endpoint exposes."
-)]
-pub struct BrowserCtlArgs {
-    #[arg(long, global = true, env = "CODETETHER_BROWSER_WS_URL")]
-    pub ws_url: Option<String>,
-    #[arg(long, global = true)]
-    pub json: bool,
-    #[arg(long, global = true, default_value_t = true, action = ArgAction::Set)]
-    pub headless: bool,
-    #[command(subcommand)]
-    pub command: BrowserCtlCommand,
-}
-
+/// Supported browser-control operations.
+///
+/// # Examples
+/// ```
+/// let command = codetether_browser_cli::BrowserCtlCommand::Health;
+/// ```
 #[derive(Subcommand, Debug)]
 pub enum BrowserCtlCommand {
     /// Attach to an existing DevTools endpoint or launch a managed browser

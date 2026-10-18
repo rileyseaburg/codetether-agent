@@ -1,8 +1,25 @@
+//! Execute browser-control requests and render their outputs.
+
 use super::{BrowserCtlArgs, BrowserCtlCommand, offline, request};
-use crate::tool::{Tool, browserctl::BrowserCtlTool};
 use anyhow::{Result, bail};
+use codetether_browser_tool::BrowserCtlTool;
+use codetether_tool_core::Tool;
 use serde_json::Value;
 
+/// Execute browser-control or offline commands through the shared services.
+///
+/// # Arguments
+/// * `args` - Parsed browser options and operation.
+/// # Returns
+/// Unit after printing the requested output.
+/// # Errors
+/// Returns tool, offline-operation or request errors.
+/// # Examples
+/// ```no_run
+/// # async fn example(args: codetether_browser_cli::BrowserCtlArgs) -> anyhow::Result<()> {
+/// codetether_browser_cli::execute(args).await
+/// # }
+/// ```
 pub async fn execute(args: BrowserCtlArgs) -> Result<()> {
     if let BrowserCtlCommand::Offline { cmd } = &args.command {
         return offline::execute(cmd, args.json);
@@ -16,7 +33,7 @@ pub async fn execute(args: BrowserCtlArgs) -> Result<()> {
     Ok(())
 }
 
-async fn call(tool: &BrowserCtlTool, payload: Value) -> Result<crate::tool::ToolResult> {
+async fn call(tool: &BrowserCtlTool, payload: Value) -> Result<codetether_tool_core::ToolResult> {
     let result = tool.execute(payload).await?;
     if !result.success {
         bail!("{}", result.output);

@@ -1,6 +1,14 @@
+//! Offline browser investigation commands.
+
 use clap::Subcommand;
 use std::path::PathBuf;
 
+/// Supported offline investigation operations.
+///
+/// # Examples
+/// ```
+/// let command = codetether_browser_cli::OfflineCommand::Replay { capture: "capture.json".into() };
+/// ```
 #[derive(Subcommand, Debug)]
 pub enum OfflineCommand {
     /// Record an auth flow: redirect chain, Set-Cookie per hop, final URL

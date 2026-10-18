@@ -1,0 +1,15 @@
+[package]
+name = "codetether-browser-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Browser-control CLI schema, request mapping and offline dispatch"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.6.6", features = ["derive", "env"] }
+codetether-browser = { path = "../codetether-browser", version = "0.1.0" }
+codetether-browser-tool = { path = "../codetether-browser-tool", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"

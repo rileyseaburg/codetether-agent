@@ -1,7 +1,9 @@
+//! Dispatch offline browser investigations.
+
 use anyhow::Result;
 
 use super::offline_args::OfflineCommand;
-use crate::browser::offline::{auth_trace, cookie_diff, explain_cors, record, replay};
+use codetether_browser::browser::offline::{auth_trace, cookie_diff, explain_cors, record, replay};
 
 pub fn execute(cmd: &OfflineCommand, json: bool) -> Result<()> {
     let output = dispatch(cmd)?;

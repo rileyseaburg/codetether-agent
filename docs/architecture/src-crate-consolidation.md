@@ -10823,3 +10823,18 @@ have at most 41 code lines. Evidence is in
 `artifacts/consolidation-oracle-cli/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, Oracle validation, user-input read or storage-sync
 operation ran. Full workspace consolidation remains active.
+
+### Browser-control CLI extracted
+
+Moved browser-control and offline command schemas, attachment/request mapping,
+execution and output formatting into `crates/codetether-browser-cli`.
+Ten modules call the existing browser and browser-tool crates. Four
+command-specific tests moved and the full-CLI browser alias test remains native.
+The native browserctl module now re-exports the shared interface.
+
+Eighteen static comparisons/checks cover schemas, request dispatch, output,
+parser helper and retained tests. Module/dependency graphs, file budgets and
+whitespace checks passed; modules have at most 38 code lines. Evidence is in
+`artifacts/consolidation-browser-cli/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, browser, offline probe or network operation ran.
+Full workspace consolidation remains active.

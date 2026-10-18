@@ -1,12 +1,4 @@
-mod args;
-mod offline;
-mod offline_args;
-mod request;
-mod run;
-
-pub use args::{BrowserCtlArgs, BrowserCtlCommand};
-pub use offline_args::OfflineCommand;
-pub use run::execute;
-
+//! Shared browser-control CLI with native alias coverage.
+pub use codetether_browser_cli::{BrowserCtlArgs, BrowserCtlCommand, OfflineCommand, execute};
 #[cfg(test)]
 mod tests;

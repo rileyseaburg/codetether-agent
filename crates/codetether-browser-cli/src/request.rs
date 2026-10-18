@@ -1,18 +1,7 @@
+//! Translate browser-control commands into tool request payloads.
+
 use super::{BrowserCtlArgs, BrowserCtlCommand};
 use serde_json::{Value, json};
-
-pub fn needs_attach(command: &BrowserCtlCommand) -> bool {
-    use BrowserCtlCommand::*;
-    !matches!(command, Start { .. } | Stop | Health | Offline { .. })
-}
-
-pub fn attach(args: &BrowserCtlArgs) -> Value {
-    json!({
-        "action": "start",
-        "headless": args.headless,
-        "ws_url": args.ws_url,
-    })
-}
 
 pub fn command(args: &BrowserCtlArgs) -> Value {
     match &args.command {
@@ -49,3 +38,5 @@ pub fn command(args: &BrowserCtlArgs) -> Value {
         ),
     }
 }
+
+pub(super) use super::request_attach::{attach, needs_attach};

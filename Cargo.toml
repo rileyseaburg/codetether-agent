@@ -204,6 +204,7 @@ members = [
     "crates/codetether-auth-cli",
     "crates/codetether-connect-cli",
     "crates/codetether-oracle-cli",
+    "crates/codetether-browser-cli",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -516,6 +517,7 @@ codetether-codex-records = { path = "crates/codetether-codex-records", version =
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
+codetether-browser-cli = { path = "crates/codetether-browser-cli", version = "0.1.0" }
 codetether-oracle-cli = { path = "crates/codetether-oracle-cli", version = "0.1.0" }
 codetether-connect-cli = { path = "crates/codetether-connect-cli", version = "0.1.0" }
 codetether-auth-cli = { path = "crates/codetether-auth-cli", version = "0.1.0" }
