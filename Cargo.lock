@@ -3778,6 +3778,10 @@ dependencies = [
 name = "codetether-run-checkpoint"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
+ "serde_json",
+ "tokio",
  "chrono",
  "codetether-provider-core",
  "serde",

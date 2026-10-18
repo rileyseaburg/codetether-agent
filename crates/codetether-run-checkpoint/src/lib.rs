@@ -18,3 +18,6 @@ mod reason;
 pub use model::RunCheckpoint;
 pub use prompt::auto_resume_prompt;
 pub use reason::CheckpointReason;
+
+/// Checkpoint sidecars and native session metadata synchronization.
+pub mod storage;

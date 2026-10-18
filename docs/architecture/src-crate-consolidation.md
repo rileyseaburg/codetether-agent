@@ -8843,3 +8843,21 @@ crate files contain at most 41 code lines. Evidence is in
 `artifacts/consolidation-run-checkpoint/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The full consolidation remains
 active.
+
+### Run-checkpoint sidecar storage
+
+Moved checkpoint sidecar save/load/clear sequencing and sidecar path validation
+into `codetether-run-checkpoint::storage`. The native session implements a small
+storage contract for identity, embedded checkpoint metadata, session directory
+resolution and its existing save operation. Sidecar filenames and all error
+messages remain unchanged.
+
+The shared code retains early embedded-checkpoint reads, metadata updates before
+file writes/removal, missing-sidecar handling and the final native session save.
+Ten static comparisons cover each operation, path validation, native callbacks
+and both unchanged checkpoint tests. Module references, workspace dependencies,
+file budgets and whitespace checks passed; all 19 checkpoint crate modules have
+at most 41 code lines. Evidence is in
+`artifacts/consolidation-checkpoint-storage/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The full source consolidation
+remains active.
