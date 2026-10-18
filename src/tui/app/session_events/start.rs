@@ -33,16 +33,16 @@ fn ensure_timing(app: &mut App) {
     if app.state.processing_started_at.is_none() {
         app.state.begin_request_timing();
     }
-    if app.state.streaming_start.is_none() {
+    if app.state.streaming.streaming_start.is_none() {
         app.state.begin_streaming();
     }
 }
 
 fn flush_streaming(app: &mut App) {
-    if app.state.streaming_text.is_empty() {
+    if app.state.streaming.streaming_text.is_empty() {
         return;
     }
-    let text = std::mem::take(&mut app.state.streaming_text);
+    let text = std::mem::take(&mut app.state.streaming.streaming_text);
     app.state
         .messages
         .push(ChatMessage::new(MessageType::Assistant, text));

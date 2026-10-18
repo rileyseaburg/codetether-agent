@@ -23,7 +23,7 @@ impl Snapshot {
             messages: app.state.messages.len(),
             input: app.state.input.len(),
             status: app.state.status.len(),
-            streaming: app.state.streaming_text.len(),
+            streaming: app.state.streaming.streaming_text.len(),
             bus: app.state.bus_log.entries.len(),
             audit_tick: app.state.audit.refresh_counter,
             queue: app.state.worker_task_queue.len(),

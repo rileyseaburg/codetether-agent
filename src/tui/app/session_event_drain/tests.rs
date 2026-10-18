@@ -20,7 +20,7 @@ async fn batch_keeps_latest_cumulative_text_chunk() {
 
     drain_batch(&mut app, &mut slot, &None, &mut rx).await;
 
-    assert_eq!(app.state.streaming_text, "hello");
+    assert_eq!(app.state.streaming.streaming_text, "hello");
 }
 
 #[tokio::test]
@@ -37,7 +37,7 @@ async fn batch_leaves_later_events_for_redraw() {
     drain_batch(&mut app, &mut slot, &None, &mut rx).await;
 
     let expected = (DRAIN_BATCH_LIMIT - 1).to_string();
-    assert_eq!(app.state.streaming_text, expected);
+    assert_eq!(app.state.streaming.streaming_text, expected);
     assert!(matches!(rx.try_recv(), Ok(SessionEvent::TextChunk(_))));
 }
 

@@ -12150,3 +12150,21 @@ Full workspace consolidation remains active.
   direct formatting, source limits and diff checks passed.
 - Evidence: artifacts/consolidation-transcript-projection/. No Cargo, rustc,
   compilation, tests or benchmark execution ran. Full consolidation is incomplete.
+
+### Streaming text and counter ownership
+
+- Replaced AppState's streaming text, start instant and character counter with
+  codetether_chat_model::StreamingState. Three focused modules own the state,
+  clock/rate calculations and text updates. Each contains at most 20 code lines.
+- Native methods delegate begin/count/rate operations and retain rendered-cache
+  invalidation. Clearing reports whether text changed so invalidation happens
+  under the same condition as before. Session-event handlers, redraw tracking,
+  new-session setup, render adapters and existing tests use the new field owner.
+- Preserved saturating character accumulation, the 100 ms rate threshold,
+  four-characters-per-token estimate, start/reset semantics and clear behavior.
+- Verification: 22 source comparisons passed for moved methods, cache effects,
+  defaults and field-only consumer migrations. Full module/dependency graph,
+  direct formatting, source limits and diff checks passed. Evidence:
+  artifacts/consolidation-streaming-state/.
+- No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
+  incomplete; source comparison does not establish runtime correctness.

@@ -30,7 +30,7 @@ pub fn push_streaming_preview(
     codetether_tool_panel::push_streaming_preview(
         lines,
         state.processing,
-        &state.streaming_text,
+        &state.streaming.streaming_text,
         separator_width,
         formatter,
         || state.current_request_elapsed_ms(),

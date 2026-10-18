@@ -26,7 +26,7 @@ async fn thinking(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {
     if app.state.processing_started_at.is_none() {
         app.state.begin_request_timing();
     }
-    if app.state.streaming_start.is_none() {
+    if app.state.streaming.streaming_start.is_none() {
         app.state.begin_streaming();
     }
     app.state.status = "Thinking…".to_string();
@@ -37,7 +37,7 @@ async fn done(app: &mut App, slot: &SessionSlot, worker_bridge: &Option<TuiWorke
     crate::tui::app::inbox::live::settle_from_session(app, slot);
     app.state.clear_streaming_text();
     app.state.complete_turn_timing();
-    app.state.streaming_start = None;
+    app.state.streaming.streaming_start = None;
     app.state.interlude = None;
     // NOTE: do NOT reset main_watchdog_restart_count here. The count must
     // survive a completed turn so a pathological "completes-then-immediately-

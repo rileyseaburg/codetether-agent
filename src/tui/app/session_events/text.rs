@@ -13,7 +13,10 @@ pub(super) fn chunk(app: &mut App, chunk: String) {
     app.state
         .replace_streaming_text(super::text_bound::bounded_chunk(chunk));
     app.state.record_streaming_chars(chunk_len);
-    app.state.status = format!("Streaming reply… {} chars", app.state.streaming_text.len());
+    app.state.status = format!(
+        "Streaming reply… {} chars",
+        app.state.streaming.streaming_text.len()
+    );
 }
 
 pub(super) fn complete(app: &mut App, text: String) {

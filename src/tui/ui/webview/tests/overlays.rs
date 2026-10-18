@@ -21,7 +21,7 @@ fn webview_shows_slash_suggestions() {
 fn webview_shows_streaming_preview() {
     let mut app = App::default();
     app.state.processing = true;
-    app.state.streaming_text = "streaming-probe tokens".to_string();
+    app.state.streaming.streaming_text = "streaming-probe tokens".to_string();
     let text = draw(&mut app, 100, 30);
     assert!(
         text.contains("streaming-probe"),

@@ -5,7 +5,7 @@ use crate::session::SessionEvent;
 async fn stream_retry_clears_failed_preview_and_reports_reconnect() {
     let mut app = App::default();
     let mut slot = super::test_slot().await;
-    app.state.streaming_text = "discarded partial".into();
+    app.state.streaming.streaming_text = "discarded partial".into();
     handle_session_event(
         &mut app,
         &mut slot,
@@ -17,6 +17,6 @@ async fn stream_retry_clears_failed_preview_and_reports_reconnect() {
         }),
     )
     .await;
-    assert!(app.state.streaming_text.is_empty());
+    assert!(app.state.streaming.streaming_text.is_empty());
     assert_eq!(app.state.status, "Reconnecting… 2/3");
 }
