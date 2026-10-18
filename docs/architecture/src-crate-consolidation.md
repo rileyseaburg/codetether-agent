@@ -24930,3 +24930,21 @@ modules or cycles. Direct dependency audit, direct rustfmt, file limits and
 whitespace checks passed. Unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-app-history-view/. No Cargo, rustc, Python, compiler
 expansion, history loading or tests ran. Full consolidation remains active.
+
+### Remaining top-level AppState helper functions moved into owning crates
+
+Moved five helper functions into agent-tree (typed hierarchy entry points),
+session-steering (queued prompt UI flow), and approval-queue (live stale-entry
+reconciliation). Native files now provide the existing agent/App types, preview
+formatter and live-approval predicate. Public function names and signatures are
+preserved; no dependencies changed.
+
+Expanded comparisons preserve typed maps, depth validation, blank-prompt
+rejection, the 80-character preview, queue-before-clear/status ordering and the
+live approval predicate. The declaration audit covers 50 calls with no unbound
+variables or duplicate methods. Module/dependency scans cover 693 roots and
+574 crates without missing modules or cycles. Direct dependency audit, direct
+rustfmt, file limits and whitespace checks passed. Unrelated working changes
+remain untouched. Evidence: artifacts/consolidation-app-state-helpers/.
+No Cargo, rustc, Python, compiler expansion, queue mutation or tests ran. Full
+consolidation remains active.

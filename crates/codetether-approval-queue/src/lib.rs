@@ -23,3 +23,6 @@ static QUEUE: OnceLock<Mutex<VecDeque<ApprovalSnapshot>>> = OnceLock::new();
 fn queue() -> &'static Mutex<VecDeque<ApprovalSnapshot>> {
     QUEUE.get_or_init(|| Mutex::new(VecDeque::new()))
 }
+
+/// Application-local typed helper declarations.
+pub mod reconcile_binding;

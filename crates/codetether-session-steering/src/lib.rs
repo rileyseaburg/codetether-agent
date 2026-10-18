@@ -63,3 +63,6 @@ pub mod follow_up;
 /// Implementation support for application-local session binding.
 #[doc(hidden)]
 pub mod session_binding;
+
+/// Application-local typed helper declarations.
+pub mod queue_binding;

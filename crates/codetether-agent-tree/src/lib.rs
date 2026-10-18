@@ -24,3 +24,6 @@ pub use hierarchy_order::dfs_order;
 
 mod spawned;
 pub use spawned::SpawnedAgent;
+
+/// Application-local typed helper declarations.
+pub mod ui_bindings;
