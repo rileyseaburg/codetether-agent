@@ -18,7 +18,7 @@ pub(super) fn view(app: &App) -> View<'_> {
         registered: state.worker.worker_bridge_registered_agents.len(),
         context_used: state.context_used,
         context_budget: state.context_budget,
-        sync: state.chat_sync_status.as_deref(),
+        sync: state.chat_sync.status.as_deref(),
         session_id: state.session_id.as_deref(),
         message_count: state.messages.len(),
         agent_count: state.spawned_agents.len(),

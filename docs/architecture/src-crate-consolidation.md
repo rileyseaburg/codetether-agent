@@ -28043,3 +28043,21 @@ file-limit checks pass (725 roots, 617 crates). Evidence:
 artifacts/consolidation-editor-state/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Unrelated working files are unchanged. Full consolidation
 remains active and incomplete.
+
+### Crate-owned chat synchronization state
+
+Moved the chat-sync event receiver, three presentation strings and two upload
+counters into codetether-chat-sync::ChatSyncState. Removed the root receiver
+type alias and replaced six AppState fields with one component. The inspector
+now reads chat_sync.status. Derived Default preserves four None values and two
+zero counters, and the receiver retains the exact re-exported event type.
+
+The pre-move source had no other users of these fields; this ownership change
+does not introduce worker startup or event processing. Static comparison covers
+the root type, default initializer, inspector projection and the six owned
+fields. Scanned 1,213 root Rust files for obsolete field names. Declaration,
+module/dependency, production scope, formatting, whitespace and file-limit
+checks passed (725 module roots, 617 crates). Evidence:
+artifacts/consolidation-chat-sync-state/. No dependencies or unrelated working
+files changed. No Cargo, rustc, Python, compilation or runtime tests ran. Full
+consolidation remains active and incomplete.

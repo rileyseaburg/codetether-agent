@@ -17,6 +17,8 @@ pub mod worker;
 pub use config::parse_chat_sync_config;
 pub use types::ChatSyncUiEvent;
 pub use worker::run_chat_sync_worker;
+mod ui_state;
+pub use ui_state::ChatSyncState;
 
 mod batch_types;
 mod bucket;

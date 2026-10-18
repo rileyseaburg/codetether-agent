@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, atomic::AtomicBool};
 use std::time::Instant;
 
-use tokio::sync::{Notify, mpsc::UnboundedReceiver};
+use tokio::sync::Notify;
 
 use crate::session::ImageAttachment;
 use crate::tui::models::{InputMode, ViewMode};
@@ -15,7 +15,6 @@ use crate::tui::{ralph_view::RalphViewState, swarm_view::SwarmViewState};
 
 use super::{agent_profile::SpawnedAgent, context_health, git_state};
 
-type ChatSyncRx = Option<UnboundedReceiver<crate::tui::chat::sync::ChatSyncUiEvent>>;
 type PendingPaste = crate::tui::app::input::pasted_text::PendingTextPaste;
 type WatchdogNotice = Option<crate::tui::app::watchdog::WatchdogNotification>;
 type PendingOkr = Option<crate::tui::app::okr_gate::PendingOkrApproval>;
@@ -63,7 +62,7 @@ pub struct AppState {
     pub mcp_registry: Arc<crate::tui::app::mcp::TuiMcpRegistry>, pub spawned_agents: HashMap<String, SpawnedAgent>, pub active_spawned_agent: Option<String>, pub subagent_detail_mode: bool, pub subagent_detail_scroll: u16, pub streaming_agent_texts: HashMap<String, String>, pub message_cache: codetether_message_cache::RenderedLineCache,
     pub watchdog_notification: WatchdogNotice, pub main_last_event_at: Option<Instant>, pub main_watchdog_restart_count: u32, pub main_inflight_prompt: Option<String>, pub okr_repository: Option<Arc<crate::okr::OkrRepository>>, pub pending_okr_approval: PendingOkr, pub retry_state: codetether_model_failover::RetryState,
     pub stream_recovery: codetether_stream_recovery::StreamRecoveryState,
-    pub chat_sync_rx: ChatSyncRx, pub chat_sync_status: Option<String>, pub chat_sync_last_success: Option<String>, pub chat_sync_last_error: Option<String>, pub chat_sync_uploaded_bytes: u64, pub chat_sync_uploaded_batches: u64,
+    pub chat_sync: codetether_chat_sync::ChatSyncState,
     pub autochat: crate::tui::app::autochat::state::AutochatState, pub file_picker: crate::tui::app::file_picker::FilePickerState, pub workspace: crate::tui::models::WorkspaceSnapshot, pub goal_prompt: Option<crate::tui::app::goal_prompt::GoalPromptState>, pub(crate) answer_review_yes: bool, pub fuzzy_find: Option<crate::tui::app::fuzzy_find::FuzzyFindState>, pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
     pub recording_stop_flag: VoiceStopFlag, pub pending_voice_text: VoiceTextSlot, pub saved_scroll: codetether_tui_navigation::view_state::SavedScroll, pub forage: crate::tui::forage_run::ForageState, pub needs_redraw: bool, pub shell: codetether_chat_shell::State,
     /// Active editor document and its viewport offsets.
