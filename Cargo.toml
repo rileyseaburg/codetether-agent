@@ -114,6 +114,7 @@ members = [
     "crates/codetether-plugin-marketplace",
     "crates/codetether-provenance",
     "crates/codetether-provider-core",
+    "crates/codetether-provider-step",
     "crates/codetether-provider-metrics",
     "crates/codetether-provider-codex",
     "crates/codetether-provider-bedrock",
@@ -768,6 +769,7 @@ codetether-platform = { path = "crates/codetether-platform", version = "0.1.0" }
 codetether-plugin-marketplace = { path = "crates/codetether-plugin-marketplace", version = "0.1.0" }
 codetether-provenance = { path = "crates/codetether-provenance", version = "0.1.0" }
 codetether-provider-core = { path = "crates/codetether-provider-core", version = "0.1.0" }
+codetether-provider-step = { path = "crates/codetether-provider-step", version = "0.1.0" }
 codetether-provider-metrics = { path = "crates/codetether-provider-metrics", version = "0.1.0" }
 codetether-provider-codex = { path = "crates/codetether-provider-codex", version = "0.1.0" }
 codetether-provider-bedrock = { path = "crates/codetether-provider-bedrock", version = "0.1.0" }

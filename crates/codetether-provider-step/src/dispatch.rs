@@ -1,18 +1,18 @@
 //! Scoped selection between streaming and non-streaming provider calls.
 
-use super::super::stream::{RestartPolicy, run_with_restart};
-use crate::provider::{CompletionRequest, CompletionResponse, Provider};
-use crate::session::SessionEvent;
 use anyhow::Result;
+use codetether_provider_core::{CompletionRequest, CompletionResponse, Provider};
+use codetether_session_events::SessionEvent;
+use codetether_stream_restart::{RestartPolicy, run as run_with_restart};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
-pub(super) async fn run(
+pub(super) async fn run<S>(
     provider: &Arc<dyn Provider>,
     request: CompletionRequest,
     session_id: &str,
     supports_tools: bool,
-    event_tx: Option<&mpsc::Sender<SessionEvent>>,
+    event_tx: Option<&mpsc::Sender<SessionEvent<S>>>,
 ) -> Result<CompletionResponse> {
     if !supports_tools || !provider.supports_structured_streaming() {
         return provider.complete_scoped(request, session_id).await;

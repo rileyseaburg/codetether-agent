@@ -20802,3 +20802,26 @@ whitespace checks passed. Evidence: `artifacts/consolidation-cli-lifecycle/`.
 No Cargo, rustc, or Python commands ran; startup services and Rust tests were
 not executed. Compilation and runtime behavior remain unverified. The complete
 workspace migration remains active.
+
+### Dedicated provider completion-step crate
+
+Moved structured-stream selection, scoped non-streaming completion, per-step
+wall-clock deadline configuration, and timeout error construction into the new
+`codetether-provider-step` crate. It calls the existing stream-restart engine
+directly with the same default restart policy, preserving checkpoint-bearing
+errors and optional session events. The native completion entry point now
+forwards its session event type; checkpoint persistence remains unchanged.
+
+Behavior preserved: tool support and structured-stream support jointly select
+streaming; streams retain their activity/restart limits without an overall step
+timeout; non-streaming requests use the same positive environment override and
+300-second default; provider errors and timeout text are unchanged.
+
+Verification compares complete completion/dispatch/timeout bodies and confirms
+the former stream adapter was a direct delegation. Direct rustfmt, native
+file-size checks, source graphs across 694 roots, dependency-cycle checks across
+560 crates, and whitespace checks passed. Evidence:
+`artifacts/consolidation-provider-step/`. Only the new package/root edge is
+staged in the lockfile. No Cargo, rustc, or Python commands ran. No provider calls
+or Rust tests were executed. Compilation and runtime behavior remain unverified;
+the broader consolidation is ongoing.

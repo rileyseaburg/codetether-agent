@@ -1726,6 +1726,7 @@ dependencies = [
  "codetether-provider-codex",
  "codetether-provider-copilot",
  "codetether-provider-core",
+ "codetether-provider-step",
  "codetether-provider-deepseek",
  "codetether-provider-gemini-web",
  "codetether-provider-glm5",
@@ -4392,6 +4393,17 @@ dependencies = [
 [[package]]
 name = "codetether-prompt-policy"
 version = "0.1.0"
+
+[[package]]
+name = "codetether-provider-step"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
+ "codetether-session-events",
+ "codetether-stream-restart",
+ "tokio",
+]
 
 [[package]]
 name = "codetether-provenance"
