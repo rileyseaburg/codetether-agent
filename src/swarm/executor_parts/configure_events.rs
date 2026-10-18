@@ -9,13 +9,13 @@ use tokio::sync::mpsc;
 impl SwarmExecutor {
     /// Attaches the channel used for real-time swarm events.
     pub fn with_event_tx(mut self, tx: mpsc::Sender<SwarmEvent>) -> Self {
-        self.inner.event_tx = Some(tx);
+        self.inner = self.inner.with_event_tx(tx);
         self
     }
 
     /// Replaces the default telemetry collector.
     pub fn with_telemetry(mut self, telemetry: Arc<SwarmTelemetryCollector>) -> Self {
-        self.inner.telemetry = telemetry;
+        self.inner = self.inner.with_telemetry(telemetry);
         self
     }
 

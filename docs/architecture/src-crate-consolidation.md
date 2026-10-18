@@ -21816,3 +21816,20 @@ native file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-swarm-event-forward/`. No Cargo, rustc, or Python
 commands ran; compilation and runtime tests remain unverified. Full
 consolidation remains active.
+
+### Shared executor service attachment and access
+
+Moved seven service attachment methods and seven state/retry accessors onto
+`codetether-swarm-runtime::ExecutorState`. Native public method signatures remain
+unchanged and delegate to the shared state. Concrete cache construction stays
+at the native boundary; bus, control, coordinator, delegation, event channel,
+telemetry and cache-handle attachment now belong with their owned fields.
+
+Static comparisons preserve all setter/getter bodies, delegation Arc/Mutex
+construction, telemetry cloning, retry values, and the unchanged cache and
+executor constructors. Event publication is unchanged. Source/dependency graphs
+across 692 roots and 564 crates, direct rustfmt, native file-size limits, and
+whitespace checks passed. No dependency or lockfile changes. Evidence:
+`artifacts/consolidation-executor-services/`. No Cargo, rustc, or Python commands
+ran; compilation and runtime tests remain unverified. Full consolidation is
+still active.
