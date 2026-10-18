@@ -20362,3 +20362,23 @@ module reachability, dependency cycles, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-remote-probe/`. Cargo, rustc,
 Python, Rust tests and the observer were not run; compilation and runtime remain
 unverified.
+
+### Inline worker swarm execution ownership
+
+Moved worker swarm construction order, inline executor polling, optional event
+forwarding and startup feedback into `codetether-swarm-runtime::inline`.
+The native worker exposes five executor operations and delegates the run;
+startup feedback is now a direct compatibility export.
+
+Preserved control/bus/channel attachment order, the 256-event channel,
+conditional output forwarding, receiver closure handling, executor-result
+propagation and both startup messages. No task is spawned: the worker's
+existing cancellation monitor still owns and polls the same inline future.
+No dependencies changed.
+
+Validation: complete run/startup body comparisons, native construction and
+execution bindings, unchanged worker monitor and native executor methods,
+channel/no-spawn checks, module reachability, dependency cycles, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-inline-swarm/`. Cargo, rustc, Python, Rust tests and
+swarm execution were not run; compilation and runtime remain unverified.

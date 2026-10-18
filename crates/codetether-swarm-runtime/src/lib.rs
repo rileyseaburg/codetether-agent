@@ -56,3 +56,6 @@ pub async fn execute<H: Host>(
         }
     }
 }
+
+/// Inline worker execution and lifecycle event forwarding.
+pub mod inline;
