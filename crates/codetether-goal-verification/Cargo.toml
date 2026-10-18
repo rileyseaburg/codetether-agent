@@ -7,6 +7,11 @@ license = "MIT"
 description = "Goal verification protocol, charters, verdict journal and attempt accounting"
 
 [dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
+codetether-swarm-agent = { path = "../codetether-swarm-agent", version = "0.1.0" }
+codetether-swarm-tool = { path = "../codetether-swarm-tool", version = "0.1.0" }
+codetether-workspace-tools = { path = "../codetether-workspace-tools", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }

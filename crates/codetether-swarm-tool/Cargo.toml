@@ -7,6 +7,7 @@ license = "MIT"
 description = "Direct swarm invocation policy, isolated worktree lifecycle and result reporting"
 
 [dependencies]
+codetether-goal-runtime = { path = "../codetether-goal-runtime", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }

@@ -23045,3 +23045,28 @@ was staged in Cargo.lock; unrelated working changes were preserved. Evidence:
 artifacts/consolidation-local-provider-construction/.
 No CUDA construction, inference, tests, Cargo, rustc or Python ran. Compilation
 and runtime behavior remain unverified. Full consolidation remains active.
+
+### Verifier runtime and worker prompt composition owned by their crates
+
+Moved the verifier provider/tool/agent host into
+codetether-goal-verification::runtime::application. ApplicationHost<P, T, A, W>
+uses the same cached providers, verification workspace capability, definitions,
+observed request and shared agent loop. The native host now supplies only its
+four concrete type bindings. Verifier system prompt composition moved beside
+the host. Shared direct-worker prompt composition with mandatory goal-turn
+instructions moved into codetether-swarm-tool::prompt::application. Three
+native implementation files were removed, and existing module paths re-export
+the new implementations.
+
+Static comparisons preserve five host methods, all twelve agent-loop arguments,
+the direct-worker prompt arguments, goal-instruction callback and verifier
+charter assembly. The observed execution lifecycle and native LlmVerifier are
+unchanged. Module/dependency scans cover 699 roots and 571 crates with no missing
+modules or dependency cycles. An initial verification-script extraction tried
+to parse a call as a function body; corrected call-token comparison passed, and
+the initial output is retained. Direct rustfmt, file-size limits and whitespace
+checks passed. Only six new direct dependency edges were staged across the
+verifier and swarm-tool lock entries; unrelated working changes were preserved.
+Evidence: artifacts/consolidation-verifier-application/.
+No verifier agents, model calls, tests, Cargo, rustc or Python ran. Compilation
+and runtime behavior remain unverified. Full consolidation remains active.

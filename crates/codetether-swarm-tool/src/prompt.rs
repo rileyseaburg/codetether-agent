@@ -2,6 +2,8 @@
 
 use codetether_swarm_core::prompt_policy::{SystemPromptInput, system_prompt};
 use std::path::Path;
+/// Direct-worker prompts with the shared mandatory goal-turn instructions.
+pub mod application;
 
 /// Compose direct-worker instructions with repository and session policy.
 /// # Arguments

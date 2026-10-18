@@ -9,6 +9,8 @@ use crate::{ReviewExecution, VerificationRequest};
 pub use host::Host;
 pub use request::Run;
 use std::path::Path;
+/// Application-bound provider, workspace and agent-loop composition.
+pub mod application;
 /// Execute a verifier and retain the identity captured for that run.
 /// # Arguments
 /// * `worker_model` - Worker's model used when no verifier model is selected.
