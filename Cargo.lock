@@ -1726,6 +1726,7 @@ dependencies = [
  "codetether-ripgrep-tool",
  "codetether-rlm",
  "codetether-rlm-legacy",
+ "codetether-rlm-routing",
  "codetether-runtime-policy",
  "codetether-rustyroad-tool",
  "codetether-sandbox-bwrap",
@@ -4722,6 +4723,18 @@ dependencies = [
  "codetether-provider-core",
  "codetether-rlm",
  "tracing",
+]
+
+[[package]]
+name = "codetether-rlm-routing"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
+ "codetether-rlm",
+ "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

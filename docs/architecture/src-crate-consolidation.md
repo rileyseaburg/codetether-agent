@@ -18784,3 +18784,22 @@ entries were corrected before verification. Evidence:
 `artifacts/consolidation-rlm-legacy/`. No Cargo, rustc, Python, Rust tests,
 model loading or RLM execution ran; compilation and runtime behavior remain
 unverified.
+
+### RLM routing context and adaptation
+
+Moved the RlmRouter facade, owned auto-processing context and provider/event
+conversion into `codetether-rlm-routing`. The context is generic only over its
+event-bus type; the native alias supplies SessionBus. Native bus callbacks emit
+the same progress and completion session events. Provider handles use the same
+shared ProviderWrap, and conversion retains all input fields and no rewriter.
+The public unit router remains constructible through its native re-export.
+
+Validation: complete router/conversion bodies, context field types and order,
+provider adaptation, both event-delivery paths, native specialization,
+unchanged transport/core services, lexical module reachability,
+dependency-cycle checks, file-size ratchet, whitespace and formatting.
+The comparison helper was adjusted to skip trait method declarations when
+locating implementation bodies; its initial log is retained. Evidence:
+`artifacts/consolidation-rlm-routing/`. No Cargo, rustc, Python, Rust tests,
+RLM processing or event delivery ran; compilation and runtime behavior remain
+unverified.

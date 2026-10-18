@@ -118,6 +118,7 @@ members = [
     "crates/codetether-question",
     "crates/codetether-rlm",
     "crates/codetether-rlm-legacy",
+    "crates/codetether-rlm-routing",
     "crates/codetether-ripgrep-tool",
     "crates/codetether-relay-tool",
     "crates/codetether-ralph-core",
@@ -758,6 +759,7 @@ codetether-provider-openrouter = { path = "crates/codetether-provider-openrouter
 codetether-provider-zai = { path = "crates/codetether-provider-zai", version = "0.1.0" }
 codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.1" }
 codetether-rlm-legacy = { path = "crates/codetether-rlm-legacy", version = "0.1.0" }
+codetether-rlm-routing = { path = "crates/codetether-rlm-routing", version = "0.1.0" }
 codetether-secrets = { path = "crates/codetether-secrets", version = "0.1.0" }
 codetether-session-steering = { path = "crates/codetether-session-steering", version = "0.1.0" }
 codetether-codex-import = { path = "crates/codetether-codex-import", version = "0.1.0" }

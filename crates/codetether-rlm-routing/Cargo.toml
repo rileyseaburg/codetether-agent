@@ -1,0 +1,15 @@
+[package]
+name = "codetether-rlm-routing"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Application RLM routing context and provider/event conversion"
+
+[dependencies]
+anyhow = "1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
+serde_json = "1"
+tokio = { version = "1", features = ["sync"] }
+uuid = "1"
