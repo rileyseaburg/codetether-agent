@@ -25493,3 +25493,23 @@ checks pass. Only the two required worker dependencies are staged in Cargo.lock;
 unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-worker-initialization/. No Cargo, rustc, Python,
 worker initialization or runtime tests ran. Full consolidation remains active.
+
+### Pending-task transport and worker bootstrap moved behind a dispatch hook
+
+Moved pending-task HTTP retrieval and bootstrap host behavior into
+codetether-native-worker. A Dispatcher trait supplies only the native
+claim-gated task handler. The root pending adapter delegates to this service,
+and the root bootstrap host file is removed. Registration, workspace sync,
+initial pending-task fetch and periodic sync retain worker-core's existing
+sequence and error logging. Pending fetch/poll retain ordered task dispatch.
+
+Transformed-source comparisons preserve both original host implementations,
+including all transport arguments and context-field borrows. The root dispatch
+hook forwards to the same spawn_task_handler. Static module/dependency scans
+cover 714 roots and 600 crates without missing modules, cycles or undeclared
+direct workspace dependencies. Declaration, file-limit, direct rustfmt and
+whitespace checks pass. Only the required serde_json dependency is staged in
+the existing worker lockfile entry. Unrelated working changes remain untouched.
+Evidence: artifacts/consolidation-worker-bootstrap/. No Cargo, rustc, Python,
+bootstrap/network execution or runtime tests ran. Full consolidation remains
+active.

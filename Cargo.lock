@@ -3934,6 +3934,7 @@ dependencies = [
  "tokio",
  "codetether-bus-s3",
  "codetether-config",
+ "serde_json",
 ]
 
 [[package]]

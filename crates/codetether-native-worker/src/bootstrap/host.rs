@@ -1,12 +1,16 @@
-use crate::a2a::worker::{
-    WorkerContext, fetch_pending_tasks, start_workspace_sync, sync_workspaces_from_server,
+use crate::{
+    WorkerContext, pending::fetch_pending_tasks, workspace_sync::sync_workspaces_from_server,
+    workspace_sync_start::start_workspace_sync,
 };
 use codetether_a2a_worker_core::initialization::bootstrap::Host;
-pub(super) struct Native<'a>(pub &'a WorkerContext);
-impl Host for Native<'_> {
+pub(super) struct Native<'a, D> {
+    pub context: &'a WorkerContext,
+    pub dispatcher: std::marker::PhantomData<fn() -> D>,
+}
+impl<D: crate::pending::Dispatcher> Host for Native<'_, D> {
     type SyncHandle = tokio::task::JoinHandle<()>;
     async fn register(&self) -> anyhow::Result<()> {
-        super::register_current_worker(self.0).await
+        crate::register_current_worker(self.context).await
     }
     async fn sync_workspaces(&self) -> anyhow::Result<()> {
         sync_workspaces_from_server(

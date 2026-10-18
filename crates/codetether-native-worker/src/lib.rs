@@ -27,3 +27,8 @@ pub use worker_context::WorkerContext;
 
 /// Worker initialization with application-specific catalog and peer hooks.
 pub mod initialization;
+
+/// Registration, initial synchronization and pending-task bootstrap sequence.
+pub mod bootstrap;
+/// Pending-task transport with application-supplied claim dispatch.
+pub mod pending;
