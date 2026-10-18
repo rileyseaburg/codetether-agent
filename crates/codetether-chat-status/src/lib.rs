@@ -18,3 +18,21 @@ pub use assembly::build_status_lines;
 pub use codetether_chat_layout::STACK_WIDTH_THRESHOLD;
 #[cfg(test)]
 mod packing_tests;
+
+mod bus_badge;
+mod bus_label;
+mod bus_view;
+mod clock_labels;
+mod request_span;
+mod session_label;
+mod timing;
+mod timing_active;
+mod timing_idle;
+mod timing_view;
+pub use bus_badge::bus_status_badge_span;
+pub use bus_label::bus_status_label_and_color;
+pub use bus_view::BusStatus;
+pub use clock_labels::{format_duration_ms, format_timestamp};
+pub use session_label::session_model_label;
+pub use timing::latency_badge_spans;
+pub use timing_view::RequestTimings;

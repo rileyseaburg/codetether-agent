@@ -11961,3 +11961,21 @@ Full workspace consolidation remains active.
   direct formatting, source limits and diff checks passed.
 - Evidence: artifacts/consolidation-trust-status/. No Cargo, rustc, compilation
   or tests ran. Full workspace consolidation remains incomplete.
+
+### Bus status and request timing presentation
+
+- Moved bus label/color selection and badges, timestamp/duration formatting,
+  request-latency badge rendering and processing model labels from the native
+  status_bar module into codetether-chat-status. Ten additional focused modules
+  contain at most 27 code lines each.
+- Native adapters provide BusStatus and RequestTimings values. Elapsed request
+  time remains a lazy callback, invoked after the active first-token badge and
+  only in the processing branch. Bridge processing state retains precedence
+  over the local processing flag. Time units, fallback labels and colors are
+  unchanged.
+- Verification: 14 source comparisons passed for moved functions, active/idle
+  branch reconstruction, snapshot projection and native adapters. Expanded
+  native chat-view/module graphs, dependency cycles, direct formatting, source
+  limits and git diff --check passed. Evidence: artifacts/consolidation-status-timing/.
+- No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
+  consolidation remains incomplete.
