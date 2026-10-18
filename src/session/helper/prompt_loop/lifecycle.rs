@@ -2,8 +2,6 @@
 
 #[path = "lifecycle/begin.rs"]
 mod begin;
-#[path = "lifecycle/budget.rs"]
-mod budget;
 #[path = "lifecycle/steps.rs"]
 mod steps;
 

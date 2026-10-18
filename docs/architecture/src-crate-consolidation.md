@@ -15815,3 +15815,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-usage-accounting/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared prompt iteration lifecycle
+
+- Moved provider/tool iteration, completion-to-goal-recovery handoff and the
+  step-budget decision into `codetether-prompt-loop::lifecycle`. The lifecycle
+  calls the existing shared completion and goal-recovery drivers directly.
+- Native lifecycle effects retain step setup, response normalization/handling,
+  step-budget cleanup and final persistence. Outer execution-scope cancellation
+  and workspace lease acquisition/release remain unchanged.
+- Preserved all step-counter reset branches, explicit budget exhaustion,
+  continuation behavior and conditional budget clearing. Moved both existing
+  budget tests without executing them; no dependencies were added.
+- Verification: full loop and completion-handoff comparisons, exact budget and
+  test comparisons, all five native effects, unchanged scope/lease body and
+  underlying effects, module/dependency graphs, direct rustfmt, file budgets
+  and diff whitespace. Evidence: `artifacts/consolidation-loop-lifecycle/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

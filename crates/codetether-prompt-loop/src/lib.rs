@@ -44,3 +44,6 @@ pub mod completion;
 
 /// Provider metrics, goal consumption and live usage reporting.
 pub mod usage;
+
+/// Iterative provider/tool lifecycle and step-budget decisions.
+pub mod lifecycle;
