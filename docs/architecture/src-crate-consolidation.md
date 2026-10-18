@@ -12487,3 +12487,20 @@ Full workspace consolidation remains active.
   artifacts/consolidation-watchdog/.
 - Only the new crate's dependency and package record were staged from Cargo.lock.
   No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.
+
+### In-memory agent hierarchy extraction
+
+- Moved name-sorted depth-first traversal, AgentNode output, parent-depth lookup
+  and depth-cap validation into codetether-agent-tree. Four focused modules
+  contain at most 33 code lines. HierarchyEntry supplies parent/depth access
+  separately from the crate's durable registry Entry interface.
+- Native SpawnedAgent retains its Session and implements the small hierarchy
+  trait. Native typed wrappers keep the existing signatures while delegating
+  algorithms. Error text, maximum depth, sorting, recursion and arithmetic are
+  preserved.
+- Verification: 14 source comparisons/checks passed for data shape, traversal,
+  guard calculations, errors, host projections and delegates. Module/dependency
+  checks, direct rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-agent-hierarchy/.
+- No dependency or lockfile changes were needed. No Cargo, rustc, compilation or
+  Rust tests ran. Full workspace consolidation remains incomplete.

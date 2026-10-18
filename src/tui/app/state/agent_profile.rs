@@ -26,3 +26,12 @@ pub struct SpawnedAgent {
     pub is_processing: bool,
 }
 pub use codetether_agent_identity::agent_profile;
+
+impl codetether_agent_tree::HierarchyEntry for SpawnedAgent {
+    fn parent_name(&self) -> Option<&str> {
+        self.parent.as_deref()
+    }
+    fn depth(&self) -> u8 {
+        self.depth
+    }
+}
