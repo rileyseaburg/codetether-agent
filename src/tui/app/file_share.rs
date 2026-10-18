@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::Result;
+use codetether_file_share::{build_file_share_snippet, display_path_for_workspace};
 
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
@@ -74,91 +74,4 @@ fn push_system_message(app: &mut App, message: String, status: &str) {
         .push(ChatMessage::new(MessageType::System, message));
     app.state.status = status.to_string();
     app.state.scroll_to_bottom();
-}
-
-fn display_path_for_workspace(path: &Path, workspace_dir: &Path) -> String {
-    path.strip_prefix(workspace_dir)
-        .unwrap_or(path)
-        .display()
-        .to_string()
-}
-
-fn build_file_share_snippet(
-    path: &Path,
-    display_path: &str,
-    max_bytes: usize,
-) -> Result<(String, bool, bool)> {
-    let bytes = std::fs::read(path)?;
-
-    if bytes.contains(&0) {
-        let snippet = format!(
-            "Shared file: {display_path}\n[binary file, size: {}]",
-            format_bytes(bytes.len() as u64)
-        );
-        return Ok((snippet, false, true));
-    }
-
-    let mut text = String::from_utf8_lossy(&bytes).to_string();
-    let mut truncated = false;
-    if text.len() > max_bytes {
-        let mut end = max_bytes;
-        while end > 0 && !text.is_char_boundary(end) {
-            end -= 1;
-        }
-        text.truncate(end);
-        truncated = true;
-    }
-
-    let language = path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .filter(|ext| !ext.is_empty())
-        .unwrap_or("text");
-
-    let mut snippet = format!("Shared file: {display_path}\n~~~{language}\n{text}\n~~~");
-    if truncated {
-        snippet.push_str(&format!(
-            "\n[truncated to first {} bytes; original size: {}]",
-            max_bytes,
-            format_bytes(bytes.len() as u64)
-        ));
-    }
-
-    Ok((snippet, truncated, false))
-}
-
-fn format_bytes(bytes: u64) -> String {
-    const KB: f64 = 1024.0;
-    const MB: f64 = KB * 1024.0;
-    const GB: f64 = MB * 1024.0;
-
-    if bytes < 1024 {
-        format!("{bytes}B")
-    } else if (bytes as f64) < MB {
-        format!("{:.1}KB", bytes as f64 / KB)
-    } else if (bytes as f64) < GB {
-        format!("{:.1}MB", bytes as f64 / MB)
-    } else {
-        format!("{:.2}GB", bytes as f64 / GB)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn binary_file_share_uses_metadata_only() {
-        let dir = tempfile::tempdir().expect("tempdir should create");
-        let path = dir.path().join("blob.bin");
-        std::fs::write(&path, [0_u8, 1, 2, 3]).expect("binary fixture should write");
-
-        let (snippet, truncated, binary) =
-            build_file_share_snippet(&path, "blob.bin", FILE_SHARE_MAX_BYTES)
-                .expect("snippet should build");
-
-        assert!(binary);
-        assert!(!truncated);
-        assert!(snippet.contains("[binary file, size: 4B]"));
-    }
 }

@@ -1,0 +1,13 @@
+[package]
+name = "codetether-file-share"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bounded file attachment snippets and workspace-relative labels"
+
+[dependencies]
+anyhow = "1.0.104"
+
+[dev-dependencies]
+tempfile = "3"

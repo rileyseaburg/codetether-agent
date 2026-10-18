@@ -11,7 +11,7 @@ pub const TOOL_ARGS_PREVIEW_MAX_BYTES: usize = 6_000;
 pub const TOOL_OUTPUT_PREVIEW_MAX_LINES: usize = 5;
 pub const TOOL_OUTPUT_PREVIEW_MAX_BYTES: usize = 4_000;
 pub const FILE_PICKER_MAX_ENTRIES: usize = 500;
-pub const FILE_SHARE_MAX_BYTES: usize = 64 * 1024;
+pub use codetether_file_share::FILE_SHARE_MAX_BYTES;
 pub const FILE_PICKER_PREVIEW_MAX_BYTES: usize = 8 * 1024;
 pub const FILE_PICKER_PREVIEW_MAX_LINES: usize = 14;
 pub const FILE_PICKER_PREVIEW_DIR_ITEMS: usize = 10;

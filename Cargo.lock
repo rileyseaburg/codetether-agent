@@ -1259,6 +1259,7 @@ dependencies = [
  "codetether-paste-buffer",
  "codetether-session-resume",
  "codetether-chat-transcript",
+ "codetether-file-share",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6304,6 +6305,14 @@ dependencies = [
  "codetether-chat-model",
  "codetether-provider-core",
  "codetether-util",
+]
+
+[[package]]
+name = "codetether-file-share"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "tempfile",
 ]
 
 [[package]]

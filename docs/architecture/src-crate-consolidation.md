@@ -12687,3 +12687,19 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-chat-transcript/.
 - Only the new crate's dependency and package record were staged from Cargo.lock.
   No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.
+
+### File-sharing snippet ownership
+
+- Moved file reading, binary detection, UTF-8 decoding/truncation, fenced text
+  formatting, workspace-relative labels and file-size formatting from native
+  file_share into codetether-file-share. Six modules contain at most 33 code
+  lines; the existing binary regression test moved with the implementation.
+- Native composer mutation and system-message effects are unchanged. The
+  attachment byte limit now belongs to the crate and is re-exported natively.
+- Verification: nine static source comparisons passed, covering both native
+  handlers, moved functions, split text formatting, test and constant value.
+  Module/dependency checks, direct rustfmt, file limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-file-share/.
+- Only the new package/dependency changes were staged from Cargo.lock, preserving
+  unrelated working changes. No Cargo, rustc, compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
