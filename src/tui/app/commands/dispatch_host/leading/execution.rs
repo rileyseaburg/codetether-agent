@@ -10,18 +10,7 @@ pub(super) async fn run(host: &mut Dispatch<'_>, kind: LeadingCommand, rest: &st
             return;
         }
         codetether_slash_command::routing::LeadingCommand::Ask => {
-            let question = rest.trim();
-            if question.is_empty() {
-                app.state.status =
-                "Usage: /ask <question> — ephemeral side question (full context, no tools, not saved)"
-                    .to_string();
-                push_system_message(
-                    app,
-                    "`/ask <question>` runs an ephemeral side query with full context but no tools, and is not saved to the session.",
-                );
-                return;
-            }
-            super::ask::run_ask(app, session, registry, question).await;
+            crate::tui::app::ask::run_command(app, session, registry, rest).await;
             return;
         }
         _ => unreachable!("command routed to the wrong native adapter"),

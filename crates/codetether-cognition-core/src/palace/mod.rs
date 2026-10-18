@@ -11,3 +11,8 @@ pub use save::save_project_beliefs;
 
 /// File name for persisted project beliefs.
 const MEMORY_FILE: &str = ".codetether/memory.json";
+
+mod recall;
+pub use recall::recall_message;
+/// Interactive project-memory recall presentation.
+pub mod command;

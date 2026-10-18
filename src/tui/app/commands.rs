@@ -29,6 +29,8 @@ mod undo_session;
 #[path = "commands/undo_view.rs"]
 mod undo_view;
 use open_editor::open_editor;
+#[path = "commands/context_host.rs"]
+mod context_host;
 #[path = "commands/dispatch_host/mod.rs"]
 mod dispatch_host;
 
@@ -61,14 +63,7 @@ async fn handle_mcp_command(app: &mut App, raw: &str) {
 
 /// Dispatch a `/context ...` command for context/RLM health status.
 fn handle_context_command(app: &mut App, rest: &str) {
-    match rest.trim() {
-        "" | "status" => {
-            let body = crate::tui::app::context_status::render(&app.state);
-            push_system_message(app, body);
-            app.state.status = "Context status".to_string();
-        }
-        _ => app.state.status = "Usage: /context [status]".to_string(),
-    }
+    codetether_context_health::command::execute(app, rest);
 }
 
 /// Undo the last `n` user turns in both the TUI and the persisted session.

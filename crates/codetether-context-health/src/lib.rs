@@ -9,3 +9,6 @@ mod rlm;
 mod state;
 pub use render::render;
 pub use state::ContextHealthState;
+
+/// Interactive context status command.
+pub mod command;

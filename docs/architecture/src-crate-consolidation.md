@@ -15105,3 +15105,21 @@ Full workspace consolidation remains active.
   artifacts/consolidation-slash-pipeline/.
 - No dependencies changed. No command execution, Cargo, rustc or Rust tests ran.
   Full workspace consolidation remains unfinished.
+
+### Recall, context and ask command policy ownership
+
+- Moved recall filtering/report rendering and presentation sequencing into
+  codetether-cognition-core::palace. The recall-specific threshold remains 0.5,
+  with up to thirty beliefs in stored order and no additional status filter.
+- Moved context command parsing/report sequencing into codetether-context-health
+  and ask command trimming/usage presentation into codetether-side-question.
+  Native adapters expose current fields and existing chat output operations.
+- Corrected the stale relative super::ask path left by the dispatcher extraction;
+  its native adapter now explicitly invokes crate::tui::app::ask::run_command.
+- Verification: six static groups covered exact recall filtering/text, report
+  operation ordering, context branches, ask preflight, corrected path and native
+  presentation fields. Module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-command-leaves/.
+- No dependency changes. No memory-file loading, provider calls, command execution,
+  Cargo, rustc or Rust tests ran. Full consolidation remains unfinished.

@@ -9,3 +9,6 @@ mod host;
 mod run;
 pub use host::{Registry, View};
 pub use run::run_ask;
+
+/// Interactive ask argument and usage handling.
+pub mod command;

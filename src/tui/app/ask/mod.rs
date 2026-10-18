@@ -18,3 +18,20 @@ pub(super) async fn run_ask(
     )
     .await
 }
+
+/// Run ask command preflight through the shared side-question owner.
+pub(super) async fn run_command(
+    app: &mut App,
+    session: &Session,
+    registry: Option<&Arc<ProviderRegistry>>,
+    rest: &str,
+) {
+    codetether_side_question::command::execute(
+        &mut bindings::Output(app),
+        session.history(),
+        session.metadata.model.as_deref(),
+        registry,
+        rest,
+    )
+    .await;
+}
