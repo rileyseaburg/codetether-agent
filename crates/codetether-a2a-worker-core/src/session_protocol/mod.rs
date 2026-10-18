@@ -30,3 +30,6 @@ pub mod tool_call;
 
 /// Context-overflow fallback using compacted tool schemas.
 pub mod completion;
+
+/// Standard worker session preparation and execution orchestration.
+pub mod policy;

@@ -16166,3 +16166,21 @@ Full workspace consolidation remains active.
   and diff whitespace. Evidence: `artifacts/consolidation-worker-completion/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared standard worker-session policy
+
+- Moved standard worker-session preparation, selected-provider execution and
+  result assembly into `codetether-a2a-worker-core::session_protocol::policy`.
+  Separate modules own source/registry contracts, execution inputs, preparation,
+  selected execution and final result assembly.
+- Native bindings retain credential loading, delegated transcript mutation,
+  title generation, filtered-tool construction and the existing session loop.
+- Preserved provider validation/selection before transcript insertion, title
+  timing, workspace fallback, approval values, output observer, system prompt,
+  task step budget and result fields. Removed the native model-selection shim.
+- Verification: reconstructed complete policy sequence from the split functions,
+  all native service/registry bindings, unchanged credential/tool/loop services,
+  module/dependency graphs, direct rustfmt, file budgets, isolated lock addition
+  and diff whitespace. Evidence: `artifacts/consolidation-worker-policy/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
