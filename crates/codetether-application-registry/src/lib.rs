@@ -12,6 +12,7 @@ pub use application::Application;
 mod access;
 mod aliases;
 mod batch;
+pub mod catalog;
 mod cognition;
 mod construction;
 mod lifecycle;

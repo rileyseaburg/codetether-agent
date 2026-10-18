@@ -10,7 +10,7 @@ impl codetether_application_registry::Application for Native {
     fn populate(registry: &mut ToolRegistry, provider: Option<(Arc<dyn Provider>, String)>) {
         let provider_backed = provider.is_some();
         codetether_tool_registry::catalog::populate(
-            &mut catalog::Native { registry, provider },
+            &mut catalog::Native::new(registry, provider),
             provider_backed,
             cfg!(feature = "tetherscript"),
         );

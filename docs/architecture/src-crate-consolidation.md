@@ -22354,3 +22354,29 @@ dependency edges are staged in the lockfile; the unrelated working lockfile
 remains byte-identical. Evidence: `artifacts/consolidation-remote-agent/`.
 No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
 Full consolidation is active.
+
+### Catalog registration owned by the application registry crate
+
+Moved catalog group dispatch, scalar registration, compatibility aliases and
+provider-backed registration into `codetether-application-registry::catalog`.
+Four focused modules own catalog state/construction, the application factory
+contract, group/provider dispatch and alias registration. The native catalog
+host implementation file was removed, and native provider code now only
+constructs the selected concrete tool. Native bindings supply command-session
+construction, scripting feature selection and the existing constructor groups.
+
+Static comparisons preserve dispatch calls, alias construction, provider-first
+selection, provider/model consumption, scripting selection and command group
+registration. The file/context/execution/integration constructors are
+byte-identical. The shared factory default constructs the same stateless native
+unit constructor previously used directly. Registry initialization and group
+entry points now create the shared Catalog with the same registry/provider
+state; constructor visibility remains scoped to the native tool module.
+
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the application-registry crate's tool-construction dependency edge is
+staged in the lockfile; the unrelated working lockfile remains byte-identical.
+Evidence: `artifacts/consolidation-catalog-registration/`.
+No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
+Full consolidation is active.

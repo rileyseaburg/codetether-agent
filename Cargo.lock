@@ -2070,6 +2070,7 @@ dependencies = [
  "codetether-plugin-verification",
  "codetether-provider-core",
  "codetether-swarm-core",
+ "codetether-tool-construction",
  "codetether-tool-core",
  "codetether-tool-registry",
  "codetether-workspace-tools",

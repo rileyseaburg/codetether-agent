@@ -1,7 +1,8 @@
 //! Bind application factories to shared scalar tool construction.
 use super::*;
 use codetether_tool_construction::{NativeTool, application::Factories};
-struct Constructors;
+#[derive(Default)]
+pub(in crate::tool) struct Constructors;
 impl Factories for Constructors {
     fn files(&self, kind: NativeTool) -> Option<Arc<dyn Tool>> {
         files::create(kind)
@@ -21,7 +22,4 @@ impl Factories for Constructors {
     fn collaboration(&self, kind: ToolKind) -> Option<Arc<dyn Tool>> {
         collaboration::construct(kind)
     }
-}
-pub(super) fn create(kind: ToolKind) -> Arc<dyn Tool> {
-    codetether_tool_construction::application::create(kind, &Constructors)
 }
