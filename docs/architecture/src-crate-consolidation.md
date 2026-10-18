@@ -10471,3 +10471,24 @@ checks passed; modules contain at most 44 code lines. Evidence is in
 `artifacts/consolidation-mux-workspace/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python or worktree fixture operations ran. Full workspace
 consolidation remains active.
+
+### Authenticated mux server extracted
+
+Moved the workspace TCP listener, authentication, request routing, persistent
+server state, session lifecycle, agent/PTY request handlers and lease authority
+from `src/mux/server` into `crates/codetether-mux-server`. Fifty-one modules use
+the existing model, protocol, registry, workspace, PTY, task, lease and steering
+crates directly. Authentication, error rendering, task completion logging and
+program ownership guards are separate modules. The native server is now a
+re-export. Bootstrap token generation/validation moved with the server and is
+re-exported for native CLI startup.
+
+All twelve existing server/token tests moved, including the ignored idle
+benchmark. Sixty-one static comparisons/checks cover original modules, extracted
+function bodies, authentication order, program ownership, lifecycle methods,
+fixtures and public entry points. Module/dependency graphs, file budgets and
+whitespace checks passed; new modules have at most 44 code lines. A separate
+static assertion checks the authentication error helper import. Evidence is in
+`artifacts/consolidation-mux-server/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, server listener, process or benchmark ran.
+Full workspace consolidation remains active.
