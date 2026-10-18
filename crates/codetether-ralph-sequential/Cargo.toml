@@ -1,0 +1,13 @@
+[package]
+name = "codetether-ralph-sequential"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Sequential Ralph story lifecycle and completion handling"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }
+tracing = "0.1"

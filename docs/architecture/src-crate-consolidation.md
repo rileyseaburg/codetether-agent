@@ -18474,3 +18474,26 @@ and event bridge body comparisons, unchanged parallel bridge, lexical module
 reachability, dependency-cycle checks, file-size ratchet and whitespace checks.
 Evidence: `artifacts/consolidation-ralph-agent/`. No Cargo, rustc, Python, Rust
 tests or live agent execution ran; compilation remains unverified.
+
+### Sequential Ralph story lifecycle
+
+Moved seven sequential lifecycle handlers from `src/ralph/ralph_loop/sequential`
+into the dedicated `codetether-ralph-sequential` crate: iteration and ready-story
+selection, prompt enrichment, response processing, model-error reporting,
+quality failure, verified success and completion without quality checks.
+Modules separate these responsibilities; focused state, prompt, reporting and
+execution traits connect the existing native services.
+
+The crate runs through the existing shared scheduler. The public native
+`SequentialHost` implementation remains available and delegates to the same
+extracted handlers. Iteration persistence, event order, progress recording,
+verification even when quality checks are disabled, automatic commit gating,
+and the distinct PRD-save ordering in the two completion paths are preserved.
+
+Validation: full token/body comparisons for all seven handlers; native service
+mappings and both scheduler interfaces; unchanged model, quality, verification,
+persistence and caller sources; lexical module reachability including native
+Ralph and Ralph core; dependency-cycle checks; file-size ratchet; whitespace and
+direct formatting checks. Evidence: `artifacts/consolidation-ralph-sequential/`.
+No Cargo, rustc, Python, Rust tests or live story execution ran. Compilation and
+runtime behavior remain unverified.

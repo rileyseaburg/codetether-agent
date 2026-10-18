@@ -1709,6 +1709,7 @@ dependencies = [
  "codetether-question",
  "codetether-question-tool",
  "codetether-ralph-agent",
+ "codetether-ralph-sequential",
  "codetether-ralph-core",
  "codetether-relay-tool",
  "codetether-ripgrep-tool",
@@ -7283,6 +7284,16 @@ dependencies = [
  "codetether-ralph-core",
  "codetether-swarm-core",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-ralph-sequential"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-ralph-core",
  "tracing",
 ]
 
