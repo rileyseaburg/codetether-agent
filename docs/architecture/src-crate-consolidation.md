@@ -8953,3 +8953,21 @@ contain at most 36 code lines. Evidence is in
 `artifacts/consolidation-snapshot-io/`. Compilation and runtime tests were not
 run. No Cargo, rustc or Python commands ran. The full consolidation remains
 active.
+
+### Dedicated session-listing crate
+
+Moved cache-aware directory scanning, streamed message counting, JSON record
+parsing, workspace filtering, pagination and summary merging into
+`crates/codetether-session-listing`. Thirteen modules separate these duties.
+Nine implementation files were removed from `src/session/listing`; the native
+adapter supplies the existing storage directory, workspace-index filename and
+indexed database query. Public native entry points continue to delegate.
+
+Twenty-eight static comparisons cover moved logic, native bindings, unchanged
+integration test sources and removal of old implementations. The existing
+merge test moves with the crate; three native integration tests remain wired
+through the adapter. Module references, workspace dependency cycles, file
+budgets and whitespace checks passed; the largest crate file has 43 code
+lines. Evidence is in `artifacts/consolidation-session-listing/`. Compilation
+and runtime tests were not run. No Cargo, rustc or Python commands ran. The
+full workspace consolidation remains active.

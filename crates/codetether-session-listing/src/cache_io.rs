@@ -22,6 +22,6 @@ pub(super) async fn store(sessions_dir: &Path, cache: &ListingCache) {
         return;
     };
     if let Err(error) = fs::write(&path, bytes).await {
-        tracing::warn!(path = %path.display(), error = %error, "failed to write listing cache");
+        tracing::warn!(target: "codetether_agent::session::listing::cache_io", path = %path.display(), error = %error, "failed to write listing cache");
     }
 }

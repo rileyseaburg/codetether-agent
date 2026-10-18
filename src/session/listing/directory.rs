@@ -1,43 +1,21 @@
-use std::path::{Path, PathBuf};
-
+//! Native-source specialization of shared session listing entry points.
+use crate::session::SessionSummary;
 use anyhow::Result;
-
-use super::scan::scan;
-use super::summary::SessionSummary;
-use super::workspace::canonical;
-
-/// List all persisted sessions.
-///
-/// # Errors
-///
-/// Returns an error if the data directory cannot be read.
+use std::path::Path;
 pub async fn list_sessions() -> Result<Vec<SessionSummary>> {
-    scan(sessions_dir()?, None).await
+    codetether_session_listing::list_sessions::<super::host::ApplicationSource>().await
 }
-
-/// List sessions scoped to a workspace directory.
-///
-/// # Errors
-///
-/// Returns an error if the data directory cannot be read.
 pub async fn list_sessions_for_directory(dir: &Path) -> Result<Vec<SessionSummary>> {
-    scan(sessions_dir()?, Some(canonical(dir))).await
+    codetether_session_listing::list_sessions_for_directory::<super::host::ApplicationSource>(dir)
+        .await
 }
-
-/// List workspace sessions with pagination.
-///
-/// # Errors
-///
-/// Returns an error if the data directory cannot be read.
 pub async fn list_sessions_paged(
     dir: &Path,
     limit: usize,
     offset: usize,
 ) -> Result<Vec<SessionSummary>> {
-    let sessions = list_sessions_for_directory(dir).await?;
-    Ok(sessions.into_iter().skip(offset).take(limit).collect())
-}
-
-fn sessions_dir() -> Result<PathBuf> {
-    crate::session::Session::sessions_dir()
+    codetether_session_listing::list_sessions_paged::<super::host::ApplicationSource>(
+        dir, limit, offset,
+    )
+    .await
 }

@@ -20,9 +20,9 @@ pub(super) fn parse_summary(path: &Path) -> Option<SessionSummary> {
 }
 
 fn log_read(path: &Path) -> impl FnOnce(std::io::Error) {
-    |error| tracing::warn!(path = %path.display(), error = %error, "skipping unreadable session file")
+    |error| tracing::warn!(target: "codetether_agent::session::listing::parse", path = %path.display(), error = %error, "skipping unreadable session file")
 }
 
 fn log_malformed(path: &Path) -> impl FnOnce(serde_json::Error) {
-    |error| tracing::warn!(path = %path.display(), error = %error, "skipping malformed session file")
+    |error| tracing::warn!(target: "codetether_agent::session::listing::parse", path = %path.display(), error = %error, "skipping malformed session file")
 }

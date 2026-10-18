@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use super::count_seq::CountSeq;
 use super::summary::SessionSummary;
-use crate::session::SessionMetadata;
+use codetether_session_metadata::SessionMetadata;
 
 #[derive(Deserialize)]
 pub(super) struct SessionListingRecord {

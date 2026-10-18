@@ -1,48 +1,11 @@
-use std::path::{Path, PathBuf};
-
+//! Native-source specialization retained for listing integration tests.
+use crate::session::SessionSummary;
 use anyhow::Result;
-use tokio::fs;
-
-use super::cache::ListingCache;
-use super::cache_io::{load, store};
-use super::resolve::resolve_all;
-use super::summary::SessionSummary;
-use super::workspace::matches_workspace;
-
+use std::path::PathBuf;
 pub(super) async fn scan(
     sessions_dir: PathBuf,
     workspace: Option<PathBuf>,
 ) -> Result<Vec<SessionSummary>> {
-    if !sessions_dir.exists() {
-        return Ok(Vec::new());
-    }
-    let paths = collect_json_paths(&sessions_dir).await?;
-    let cache = load(&sessions_dir).await;
-    let resolved = resolve_all(paths, &cache).await;
-
-    let mut next = ListingCache::default();
-    let mut summaries =
-        crate::session::store::listing::list(&sessions_dir, workspace.clone()).await?;
-    for (key, entry) in resolved {
-        if matches_workspace(entry.summary.directory.as_deref(), workspace.as_deref()) {
-            summaries.push(entry.summary.clone());
-        }
-        next.entries.insert(key, entry);
-    }
-    store(&sessions_dir, &next).await;
-
-    summaries.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-    Ok(summaries)
-}
-
-async fn collect_json_paths(sessions_dir: &Path) -> Result<Vec<PathBuf>> {
-    let mut paths = Vec::new();
-    let mut entries = fs::read_dir(sessions_dir).await?;
-    while let Some(entry) = entries.next_entry().await? {
-        let path = entry.path();
-        if super::path::is_session_json(&path) {
-            paths.push(path);
-        }
-    }
-    Ok(paths)
+    codetether_session_listing::scan::<super::host::ApplicationSource>(sessions_dir, workspace)
+        .await
 }
