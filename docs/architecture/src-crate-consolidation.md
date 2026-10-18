@@ -25143,3 +25143,24 @@ tracked facade file is removed. Only the new package/root lock entries are
 staged; unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-native-tetherscript/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Bash and exec-command application tests moved to their owning crates
+
+Removed the two native wrappers in src/tool/bash.rs and
+src/tool/exec_command.rs. Command module wiring now directly re-exports
+codetether-bash-tool and codetether-exec-command. Their 12 wrapper/test files
+moved into each existing crate's native_tests module; no new crate was added.
+All 13 test functions remain. Test-only imports now name the same shared native
+approval, runtime-policy, configuration and sandbox crates directly. The
+approval test-support feature preserves the single shared environment lock.
+
+The existing tool implementations are byte-for-byte unchanged apart from the
+test-module declaration appended to each crate root. Source comparisons cover
+all moved files after import substitutions and formatting. Static scans cover
+707 module roots and 591 crates without missing modules, cycles or undeclared
+direct workspace dependencies. Declaration, file-limit, direct rustfmt and
+whitespace checks pass. Only the necessary test dependency additions are staged
+in the two existing lockfile package entries. Unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-command-tests/. No Cargo, rustc,
+Python, shell-tool execution or runtime tests ran. Full consolidation remains
+active.

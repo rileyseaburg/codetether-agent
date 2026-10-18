@@ -1,6 +1,6 @@
 use super::super::{BashTool, Tool};
-use crate::approval::test_env::{ScopedEnv, lock_env};
-use crate::config::AccessMode;
+use codetether_config::AccessMode;
+use codetether_native_approval::test_env::{ScopedEnv, lock_env};
 use serde_json::json;
 
 #[tokio::test]

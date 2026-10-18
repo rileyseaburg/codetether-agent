@@ -1,9 +1,9 @@
 use super::super::{BashTool, Tool};
-use crate::approval::{
+use codetether_config::{AccessMode, Config};
+use codetether_native_approval::{
     ApprovalStore,
     test_env::{ScopedEnv, lock_env},
 };
-use crate::config::{AccessMode, Config};
 use serde_json::json;
 
 #[tokio::test]
@@ -16,7 +16,7 @@ async fn approved_bash_keeps_sandbox_or_uses_approved_fallback() {
         "cwd": data.path().display().to_string(),
         "justification": "write the approval marker"
     });
-    let blocked = crate::runtime_policy::evaluate_tool_invocation_with_config(
+    let blocked = codetether_native_runtime_policy::evaluate_tool_invocation_with_config(
         &Config::default(),
         "bash",
         &args,
@@ -32,7 +32,7 @@ async fn approved_bash_keeps_sandbox_or_uses_approved_fallback() {
     let tool = BashTool::configured(10, true, None);
     let result = tool.execute(args).await.unwrap();
 
-    if crate::tool::sandbox::unavailable_reason().is_some() {
+    if codetether_sandbox_runtime::unavailable_reason().is_some() {
         assert!(result.success);
         assert_eq!(result.metadata.get("sandboxed"), Some(&json!(false)));
         assert_eq!(

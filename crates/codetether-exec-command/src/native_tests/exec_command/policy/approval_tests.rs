@@ -1,11 +1,11 @@
 //! Approval-to-backend handoff uses the real store and policy checks.
 
-use crate::approval::{
+use codetether_config::{AccessMode, Config, SandboxMode};
+use codetether_native_approval::{
     ApprovalStore,
     test_env::{ScopedEnv, lock_env},
 };
-use crate::config::{AccessMode, Config, SandboxMode};
-use crate::runtime_policy::{approved_invocation, evaluate_tool_invocation_with_config};
+use codetether_native_runtime_policy::{approved_invocation, evaluate_tool_invocation_with_config};
 use serde_json::json;
 
 #[test]

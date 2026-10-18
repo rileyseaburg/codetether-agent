@@ -48,3 +48,6 @@ impl ExecCommandTool {
         }
     }
 }
+
+#[cfg(test)]
+mod native_tests;

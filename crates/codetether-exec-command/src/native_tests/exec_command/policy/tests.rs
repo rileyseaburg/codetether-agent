@@ -1,5 +1,5 @@
 use super::{enabled, unapproved_escalation};
-use crate::config::{Config, SandboxMode};
+use codetether_config::{Config, SandboxMode};
 use serde_json::json;
 
 #[path = "approval_tests.rs"]

@@ -1,10 +1,10 @@
 // Shell-command tools and their shared persistent-session runtime.
 
-pub mod bash;
+pub use codetether_bash_tool as bash;
 pub mod collaboration;
 pub(crate) use codetether_command_pty as command_pty;
 pub(crate) mod command_session;
-pub mod exec_command;
+pub use codetether_exec_command as exec_command;
 use codetether_process_tree as process_tree;
 pub(crate) mod shell_command_guard;
 pub mod temp_write_guard;

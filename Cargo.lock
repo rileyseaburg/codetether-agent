@@ -2241,6 +2241,10 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "codetether-native-approval",
+ "codetether-native-runtime-policy",
+ "tempfile",
+ "codetether-config",
 ]
 
 [[package]]
@@ -3180,6 +3184,9 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+ "codetether-native-approval",
+ "codetether-native-runtime-policy",
+ "tempfile",
 ]
 
 [[package]]

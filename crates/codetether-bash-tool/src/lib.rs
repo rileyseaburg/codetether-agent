@@ -50,3 +50,6 @@ pub struct BashTool {
 }
 pub use bash_auth_risk::reason as interactive_auth_risk_reason;
 pub use helpers::{codetether_wrapped_command, looks_like_auth_prompt};
+
+#[cfg(test)]
+mod native_tests;
