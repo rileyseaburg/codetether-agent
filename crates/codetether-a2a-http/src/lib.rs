@@ -59,3 +59,5 @@ pub mod admission;
 
 /// Context-id validation and persistent conversation resolution.
 pub mod conversation;
+/// Attach process provenance claims to an A2A agent card.
+pub mod identity;

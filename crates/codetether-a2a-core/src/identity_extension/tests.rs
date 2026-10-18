@@ -1,16 +1,8 @@
-use super::{attach, attach_with_claims, from_card};
-use crate::a2a::server::A2AServer;
-
-#[test]
-fn card_round_trips_routable_identity() {
-    let mut card = A2AServer::default_card("http://127.0.0.1:8000");
-    attach(&mut card, "author-agent");
-    assert_eq!(from_card(&card).as_deref(), Some("author-agent"));
-}
-
+//! Preserve persona and SPIFFE claims in the identity extension.
+use super::attach_with_claims;
 #[test]
 fn card_carries_persona_and_spiffe_claims() {
-    let mut card = A2AServer::default_card("http://127.0.0.1:8000");
+    let mut card = crate::application_card::default_card("http://127.0.0.1:8000", "test");
     attach_with_claims(
         &mut card,
         "author-agent",

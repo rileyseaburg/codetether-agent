@@ -7,8 +7,8 @@
 //! - **JSON-RPC** (default) — `server.rs` / `client.rs`
 //! - **gRPC** — `grpc.rs` (tonic-based, compiled from `crates/codetether-a2a-grpc/proto/a2a/v1/a2a.proto`)
 
-pub(crate) mod agent_identity;
 pub use codetether_a2a_grpc::bridge;
+pub(crate) use codetether_a2a_http::identity as agent_identity;
 pub mod bus_emit;
 pub mod claim;
 pub mod client;

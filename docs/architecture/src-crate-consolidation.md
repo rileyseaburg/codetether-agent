@@ -22933,3 +22933,22 @@ checks passed. No manifest or lockfile changes were needed. Evidence:
 `artifacts/consolidation-credential-tests/`.
 No credential tests, Git fixture operations, Cargo, rustc or Python ran;
 compilation and runtime results remain unverified. Full consolidation is active.
+
+### A2A process identity attachment owned by the HTTP integration crate
+
+Moved persona/SPIFFE claim lookup and agent-card identity attachment into
+codetether-a2a-http::identity. The native A2A module re-exports that shared
+module, preserving existing card-builder and peer-route call sites. The native
+adapter and its test file were removed. Identity round-trip coverage now lives
+with the HTTP adapter, while explicit extension-claim coverage lives in A2A core.
+
+Static comparisons preserve both provenance lookups, extension construction
+and test assertions. Relocated tests use the same shared default-card factory
+with a test version instead of the native server wrapper. Existing native
+card-builder and peer-route test sources are unchanged. Module/dependency
+checks cover 699 roots and 571 crates without missing modules or cycles.
+Direct rustfmt, native file-size limits and whitespace checks passed. No
+manifest or lockfile changes were needed. Evidence:
+`artifacts/consolidation-a2a-identity/`.
+No identity tests, peer startup, Cargo, rustc or Python ran; compilation and
+runtime results remain unverified. Full consolidation is active.

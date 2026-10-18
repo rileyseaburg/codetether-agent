@@ -38,3 +38,5 @@ pub fn from_card(card: &AgentCard) -> Option<String> {
         .filter(|identity| !identity.is_empty())
         .map(ToString::to_string)
 }
+#[cfg(test)]
+mod tests;
