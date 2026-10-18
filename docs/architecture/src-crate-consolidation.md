@@ -26599,3 +26599,23 @@ lock index adds only this crate's required direct dependencies; the unrelated
 working lockfile and A2A edits remain byte-for-byte unchanged.
 Evidence: artifacts/consolidation-native-run-binding/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Native approval-review entry points
+
+Moved the root reviewer host selection, direct review entry point, read-only
+catalog construction and background dispatcher into native-review::declare_review.
+The root review module now supplies only the existing tool application and swarm
+agent loop and retains its module documentation and application integration tests.
+Deleted review/{host,run,tools,dispatch}.rs. Shared verdicts, prompt and runtime
+remain exported through the same public root paths.
+
+Static expansion compares all three function bodies with the originals after
+explicit path substitution and confirms the exact same host type arguments.
+All four integration-test source files remain byte-for-byte unchanged. Literal
+module/dependency checks cover 730 roots and 617 crates with no missing modules
+or dependency findings; the native production-scope checker also passes. Added
+only approval-core and approval-queue direct dependencies to native-review.
+Standalone formatting, file limits and whitespace checks pass; unrelated
+working changes remain untouched. Evidence: artifacts/consolidation-native-review-binding/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active.

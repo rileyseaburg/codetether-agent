@@ -13,3 +13,5 @@ codetether-native-providers = { path = "../codetether-native-providers", version
 codetether-native-goals = { path = "../codetether-native-goals", version = "0.1.0" }
 codetether-config = { path = "../codetether-config", version = "0.1.0" }
 codetether-swarm-agent = { path = "../codetether-swarm-agent", version = "0.1.0" }
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
+codetether-approval-queue = { path = "../codetether-approval-queue", version = "0.1.0" }

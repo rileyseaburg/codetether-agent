@@ -4048,6 +4048,8 @@ name = "codetether-native-review"
 version = "0.1.0"
 dependencies = [
  "codetether-application-registry",
+ "codetether-approval-core",
+ "codetether-approval-queue",
  "codetether-approval-review",
  "codetether-config",
  "codetether-native-goals",

@@ -16,21 +16,10 @@
 //! assert_eq!(verdict.outcome, ReviewOutcome::Approve);
 //! ```
 
-mod host;
-use codetether_approval_core::review as parse;
-pub use codetether_approval_core::review::prompt;
-mod run;
-pub use codetether_native_review::runtime;
-mod tools;
-use codetether_approval_core::review as verdict;
+codetether_native_review::declare_review!(
+    crate::tool::registry_lifecycle::Native,
+    crate::swarm::executor::LoopHost,
+);
 
 #[cfg(test)]
 mod tests;
-
-pub use parse::parse;
-pub use prompt::ReviewSubject;
-pub use run::review;
-pub use tools::read_only_tools;
-pub use verdict::{ReviewOutcome, ReviewVerdict};
-
-pub(crate) mod dispatch;
