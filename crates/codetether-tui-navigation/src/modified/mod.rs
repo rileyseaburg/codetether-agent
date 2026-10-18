@@ -3,6 +3,7 @@
 //! [dispatch] gives scroll and approval handlers priority, then selects UI
 //! effects through [Host]. Native code binds [Action] to concrete operations.
 mod action;
+mod binding;
 mod host;
 mod run;
 pub use action::Action;

@@ -27883,3 +27883,17 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 617 crates. Unrelated files are unchanged; no manifest or lock changes were
 needed. Evidence: artifacts/consolidation-safe-draw/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Modified-keyboard frontend bindings
+
+Moved shortcut state, input/view effects, fallback routing and the modified-key
+entry into codetether-tui-navigation::modified::binding modules. Removed five
+root host files; the root selects existing state enums and action callbacks.
+Production and test-specific voice callbacks remain unchanged in the root.
+
+All twelve expanded function bodies and the host layout match after callback
+and enum qualification. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Unrelated files are unchanged; no manifest or lock changes were
+needed. Evidence: artifacts/consolidation-modified-keys/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
