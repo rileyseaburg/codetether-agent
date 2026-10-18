@@ -266,6 +266,7 @@ members = [
     "crates/codetether-latency-view",
     "crates/codetether-token-display",
     "crates/codetether-chat-model",
+    "crates/codetether-chat-submit",
     "crates/codetether-terminal-text",
     "crates/codetether-mermaid",
     "crates/codetether-code-render",
@@ -778,6 +779,7 @@ codetether-code-render = { path = "crates/codetether-code-render", version = "0.
 codetether-mermaid = { path = "crates/codetether-mermaid", version = "0.1.0" }
 codetether-terminal-text = { path = "crates/codetether-terminal-text", version = "0.1.0" }
 codetether-chat-model = { path = "crates/codetether-chat-model", version = "0.1.0" }
+codetether-chat-submit = { path = "crates/codetether-chat-submit", version = "0.1.0" }
 codetether-token-display = { path = "crates/codetether-token-display", version = "0.1.0" }
 codetether-latency-view = { path = "crates/codetether-latency-view", version = "0.1.0" }
 codetether-terminal-clipboard = { path = "crates/codetether-terminal-clipboard", version = "0.1.0" }

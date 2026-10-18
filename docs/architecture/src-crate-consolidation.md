@@ -16711,3 +16711,23 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-thinker-init/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Dedicated chat-submission routing crate
+
+- Moved Enter-key chat submission sequencing into the dependency-free
+  `codetether-chat-submit` crate, separating interception, routing and final
+  steering/submission contracts.
+- Native UI adapters retain concrete goal/approval, history, managed-agent,
+  mention, continuation, slash-command and submission handlers. The native
+  entrypoint now delegates routing to the shared crate.
+- Preserved short-circuit order, prompt capture timing, mention transformation,
+  command priority during processing, steering and ordinary finalization.
+- Registered the new workspace member and root dependency; staged only the
+  new package/root dependency in a HEAD-derived lockfile, preserving unrelated
+  working-tree changes.
+- Verification: full routing-body comparison, every native handler argument,
+  unchanged queue/steering tests and finalization, module/dependency graphs,
+  direct rustfmt, file limits and whitespace. Evidence:
+  `artifacts/consolidation-chat-submit/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

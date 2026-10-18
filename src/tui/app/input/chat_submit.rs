@@ -17,6 +17,7 @@
 //! input left unhandled by those routes reaches active-turn steering or the
 //! normal submission path in [`super::chat_submit_finish::finish_submit`].
 
+mod host;
 use std::{path::Path, sync::Arc};
 
 use crate::provider::ProviderRegistry;
@@ -83,37 +84,13 @@ pub(super) async fn handle_enter_chat(
     worker_bridge: &Option<TuiWorkerBridge>,
     runtime: &TuiSessionHandle,
 ) {
-    if super::goal_answer::commands::intercept(app, slot, runtime).await
-        || super::goal_answer::intercept(app, slot, runtime).await
-        || super::approval_feedback::submit(app)
-    {
-        return;
-    }
-    let prompt = super::chat_submit_history::capture(app);
-    if crate::tui::app::managed_agent::chat::route(app, &prompt).await {
-        return;
-    }
-    let prompt =
-        super::mention_route::route_prompt(&prompt, app.state.active_spawned_agent.as_deref());
-    if super::continue_command::run(app, cwd, slot, registry, worker_bridge, runtime, &prompt).await
-    {
-        return;
-    }
-    if super::chat_submit_slash::run(app, cwd, slot, registry, &prompt).await {
-        return;
-    }
-    if app.state.processing {
-        super::chat_steer::submit(app, runtime, &prompt);
-        return;
-    }
-    super::chat_submit_finish::finish_submit(
+    codetether_chat_submit::submit(&mut host::Native {
         app,
         cwd,
         slot,
         registry,
         worker_bridge,
         runtime,
-        &prompt,
-    )
+    })
     .await;
 }

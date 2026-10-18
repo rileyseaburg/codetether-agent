@@ -1252,6 +1252,7 @@ dependencies = [
  "codetether-slash-command",
  "codetether-trust-status",
  "codetether-chat-status",
+ "codetether-chat-submit",
  "codetether-chat-layout",
  "codetether-message-cache",
  "codetether-answer-review-view",
@@ -5921,6 +5922,10 @@ dependencies = [
  "ratatui",
  "unicode-width",
 ]
+
+[[package]]
+name = "codetether-chat-submit"
+version = "0.1.0"
 
 [[package]]
 name = "codetether-chat-sync"
