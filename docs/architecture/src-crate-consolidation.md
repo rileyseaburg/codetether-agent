@@ -18142,3 +18142,24 @@ bindings; module/dependency graph checks, source-size ratchet and whitespace.
 Evidence: `artifacts/consolidation-cli-startup/`. Startup routines were not
 executed during validation. No Cargo, rustc or Python ran; compilation and Rust
 tests remain unverified.
+
+### Worker CLI coordination
+
+Extracted the worker command branch from `src/main.rs` into the dedicated
+`codetether-worker-cli` crate. `credentials.rs` owns the existing token fallback
+and normalized server comparison. `runtime.rs` owns optional HTTP startup,
+shared worker state, background HTTP error reporting and task abort after the
+worker finishes. Native `worker_cli.rs` only forwards the two worker entry
+points; main dispatch now calls that adapter.
+
+HTTP serving now invokes the existing worker-http crate directly, equivalent
+to the former native `WorkerServerArgs` forwarding wrapper. Explicit-token
+precedence, mismatched-server refusal, disabled-HTTP behavior, state sharing
+and the original shutdown/error order were preserved. Native A2A worker and
+HTTP route implementations were not modified.
+
+Validation: complete original worker-branch comparison, credential body and
+native callback checks, full-main comparison around the extraction, unchanged
+worker/HTTP sources, module/dependency graphs, file limits and whitespace.
+Evidence: `artifacts/consolidation-worker-cli/`. No worker/network operation,
+Cargo, rustc, Python or Rust tests ran; compilation remains unverified.

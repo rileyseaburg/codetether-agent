@@ -1746,6 +1746,7 @@ dependencies = [
  "codetether-voice-tool",
  "codetether-webfetch",
  "codetether-websearch",
+ "codetether-worker-cli",
  "codetether-worker-http",
  "codetether-worktree",
  "codetether-write-stdin",
@@ -6152,6 +6153,18 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "codetether-util",
+]
+
+[[package]]
+name = "codetether-worker-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-cli-options",
+ "codetether-user-auth",
+ "codetether-worker-http",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

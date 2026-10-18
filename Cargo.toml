@@ -505,6 +505,7 @@ members = [
     "crates/codetether-voice-core",
     "crates/codetether-vectordb",
     "crates/codetether-worker-http",
+    "crates/codetether-worker-cli",
     "crates/codetether-webfetch",
     "crates/codetether-websearch",
     "crates/codetether-worktree",
@@ -625,6 +626,7 @@ codetether-autochat-core = { path = "crates/codetether-autochat-core", version =
 codetether-bus-s3 = { path = "crates/codetether-bus-s3", version = "0.1.0" }
 codetether-bus-http = { path = "crates/codetether-bus-http", version = "0.1.0" }
 codetether-worker-http = { path = "crates/codetether-worker-http", version = "0.1.0" }
+codetether-worker-cli = { path = "crates/codetether-worker-cli", version = "0.1.0" }
 codetether-bus-core = { path = "crates/codetether-bus-core", version = "0.1.0" }
 codetether-bus-tool = { path = "crates/codetether-bus-tool", version = "0.1.0" }
 codetether-a2a-http = { path = "crates/codetether-a2a-http", version = "0.1.0" }

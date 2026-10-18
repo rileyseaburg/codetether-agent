@@ -14,11 +14,12 @@ use clap::Parser;
 use cli::{Cli, Command};
 use codetether_agent::{
     a2a, benchmark, bus, cli, forage, github_pr, indexer, mcp, mux, provider, ralph, server, swarm,
-    tool, tui, worker_server,
+    tool, tui,
 };
 
 mod cleanup_cli;
 mod startup_crash;
+mod worker_cli;
 mod worktree_cli;
 
 mod benchmark_cli;
@@ -115,48 +116,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Search(args)) => cli::search::execute(args).await,
         Some(Command::Browserctl(args)) => cli::browserctl::execute(args).await,
         Some(Command::Context(args)) => cli::context::execute(args).await,
-        Some(Command::Worker(mut args)) => {
-            // Auto-load saved credentials if no token provided
-            if args.token.is_none()
-                && let Some(creds) = cli::auth::load_saved_credentials()
-            {
-                let target = args.server.trim_end_matches('/');
-                let saved = creds.server.trim_end_matches('/');
-                if saved == target {
-                    tracing::info!(email = %creds.email, server = %saved, "Using saved credentials from `codetether auth login`");
-                    args.token = Some(creds.access_token);
-                } else {
-                    tracing::warn!(saved_server = %saved, target_server = %target, "Ignoring saved credentials for different server");
-                }
-            }
-
-            if args.no_http_server {
-                a2a::worker::run(args).await
-            } else {
-                // Create shared state for worker and HTTP server communication
-                let worker_state = worker_server::WorkerServerState::new();
-
-                let http_args = cli::WorkerServerArgs {
-                    hostname: args.hostname.clone(),
-                    port: args.port,
-                };
-                // Clone the state so both worker and HTTP server share the same underlying state
-                let shared_state = worker_state.clone();
-                let http_server_handle = tokio::spawn(async move {
-                    // Use the same state as the worker - it will receive updates via set_connected/set_worker_id
-                    if let Err(e) =
-                        worker_server::start_worker_server_with_state(http_args, shared_state).await
-                    {
-                        tracing::error!("Worker HTTP server error: {}", e);
-                    }
-                });
-
-                // Run the SSE worker with the shared state
-                let result = a2a::worker::run_with_state(args, worker_state).await;
-                http_server_handle.abort();
-                result
-            }
-        }
+        Some(Command::Worker(args)) => worker_cli::execute(args).await,
         Some(Command::GitCredentialHelper(args)) => {
             a2a::git_credentials::run_git_credential_helper(&args).await
         }
