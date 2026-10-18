@@ -1,59 +1,28 @@
+//! Native model-picker entry points over shared interaction policy.
+mod host;
+use crate::{provider::ProviderRegistry, session::Session, tui::app::state::App};
 use std::sync::Arc;
-
-use crate::provider::ProviderRegistry;
-use crate::session::Session;
-use crate::tui::app::session_sync::return_to_chat;
-use crate::tui::app::state::App;
-use crate::tui::models::ViewMode;
-
+/// Open and target the current session model.
 pub async fn open_model_picker(
     app: &mut App,
     session: &Session,
     registry: Option<&Arc<ProviderRegistry>>,
 ) {
-    app.state.open_model_picker();
-    app.state.set_view_mode(ViewMode::Model);
-    app.state.model_picker.model_picker_target_model = session.metadata.model.clone();
-
-    if let Some(current_model) = app.state.model_picker.model_picker_target_model.as_deref()
-        && let Some(index) = app
-            .state
-            .filtered_models()
-            .iter()
-            .position(|model| *model == current_model)
-    {
-        app.state.model_picker.selected_model_index = index;
-    }
-    if let Some(registry) = registry {
-        let cached_count = app.state.hydrate_models_from_store();
-        app.state.status = if cached_count == 0 {
-            "Loading models...".to_string()
-        } else {
-            format!("Model picker: refreshing {cached_count} cached models")
-        };
-        app.state.start_model_refresh(Arc::clone(registry));
-    } else {
-        app.state.model_picker.available_models.clear();
-        app.state.model_picker.model_refresh_in_flight = false;
-        app.state.model_picker.model_refresh_rx = None;
-        app.state.status = "No models available".to_string();
-    }
+    codetether_model_picker::interactive::open_for_session(
+        &mut host::Picker(app),
+        session.metadata.model.clone(),
+        registry,
+    );
 }
-
+/// Open the picker while the session is checked out by an active turn.
+pub(crate) fn open_without_session(app: &mut App, registry: Option<&Arc<ProviderRegistry>>) {
+    codetether_model_picker::interactive::open_without_session(&mut host::Picker(app), registry);
+}
+/// Close the picker through the existing chat-return behavior.
 pub fn close_model_picker(app: &mut App) {
-    app.state.close_model_picker();
-    app.state.model_picker.model_picker_target_model = None;
-    return_to_chat(app);
+    codetether_model_picker::interactive::close(&mut host::Picker(app));
 }
-
+/// Apply the selected model to the active session.
 pub fn apply_selected_model(app: &mut App, session: &mut Session) {
-    if let Some(model) = app.state.selected_model() {
-        session.metadata.model = Some(model.to_string());
-        app.state.status = format!("Model set: {model}");
-    } else {
-        app.state.status = "No model selected".to_string();
-    }
-    app.state.close_model_picker();
-    app.state.model_picker.model_picker_target_model = None;
-    return_to_chat(app);
+    codetether_model_picker::interactive::apply(&mut host::Picker(app), session);
 }

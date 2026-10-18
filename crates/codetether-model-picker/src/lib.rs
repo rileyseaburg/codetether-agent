@@ -9,6 +9,7 @@ mod data;
 mod filter;
 mod footer;
 mod header;
+pub mod interactive;
 mod list;
 mod render;
 mod selection;

@@ -5,26 +5,12 @@ use std::sync::Arc;
 
 use crate::provider::ProviderRegistry;
 use crate::tui::app::state::App;
-use crate::tui::models::ViewMode;
 
 /// Attach a file to the input, or open the file picker when `cleaned` is empty.
 pub(super) fn attach_file_command(app: &mut App, cwd: &Path, cleaned: &str) {
     crate::tui::app::file_share::command(app, cwd, cleaned);
 }
-
-/// Open the model picker view and kick off a background model refresh.
+/// Open the shared model picker without a session.
 pub(super) fn open_model_view(app: &mut App, registry: &Option<Arc<ProviderRegistry>>) {
-    app.state.open_model_picker();
-    app.state.set_view_mode(ViewMode::Model);
-    if let Some(registry) = registry {
-        let cached = app.state.hydrate_models_from_store();
-        app.state.status = if cached == 0 {
-            "Loading models...".to_string()
-        } else {
-            format!("Model picker: refreshing {cached} cached models")
-        };
-        app.state.start_model_refresh(Arc::clone(registry));
-    } else {
-        app.state.status = "No models available".to_string();
-    }
+    crate::tui::app::model_picker::open_without_session(app, registry.as_ref());
 }

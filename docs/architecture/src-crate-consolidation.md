@@ -14738,3 +14738,19 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-picker-refresh/.
 - Added anyhow and tracing to the picker crate. No Cargo, rustc, Rust tests or
   session scans ran. Full workspace consolidation remains unfinished.
+
+### Model picker interaction ownership
+
+- Moved session-targeted opening, session-free opening, refresh startup, close
+  behavior and model application into codetether-model-picker::interactive.
+  Modules separate shell contracts, opening, refresh and closing/application.
+- Native bindings expose the existing picker, view switching, chat return and
+  session model field. Preserved different no-registry behavior between normal
+  opening (clear catalog/refresh) and session-free opening (retain catalog).
+- Verification: six static checks passed for expanded opening/refresh paths,
+  close behavior, selection application, native targets and module bounds.
+  Module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence:
+  artifacts/consolidation-model-picker-interactive/.
+- No dependencies changed. No Cargo, rustc, Rust tests, cache reads or provider
+  refreshes ran. Full workspace consolidation remains unfinished.
