@@ -10,33 +10,12 @@
 //! let warning = validate_spawn_request(&request).await?;
 //! ```
 
-use super::spawn_request::SpawnRequest;
-use super::{registry, store};
-use crate::tool::ToolResult;
-
-/// Validates whether a requested sub-agent spawn is allowed.
-///
-/// Returns `Ok(Some(warning))` when the model is not free/subscription
-/// eligible (the spawn proceeds with a warning), `Ok(None)` when fully
-/// eligible, and `Err` for invalid depth or provider inspection failures.
-///
-/// # Examples
-///
-/// ```ignore
-/// let warning = validate_spawn_request(&request).await?;
-/// ```
-pub(super) async fn validate_spawn_request(
-    request: &SpawnRequest<'_>,
-) -> Result<Option<String>, ToolResult> {
-    let (_, depth) = store::lineage_for_session(request.parent_session_id);
-    codetether_spawn_policy::admission::validate(
-        request.name,
-        depth,
-        request.model,
-        registry::get_registry(),
-    )
-    .await
-}
+codetether_spawn_policy::declare_spawn_validation!(
+    pub(super);
+    crate::tool::agent::spawn_request::SpawnRequest<'_>,
+    crate::tool::agent::store::lineage_for_session,
+    crate::tool::agent::registry::get_registry,
+);
 
 #[cfg(test)]
 #[path = "spawn_validation_tests.rs"]

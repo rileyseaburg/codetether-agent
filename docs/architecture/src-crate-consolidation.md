@@ -26850,3 +26850,19 @@ file-limit and whitespace checks pass for 729 roots and 617 crates. No dependenc
 or lock changes were needed; unrelated working files remain untouched. Evidence:
 artifacts/consolidation-registration-binding/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### Spawn admission application bindings
+
+Moved the live/durable identity host, reservation entry point and lineage/provider
+validation wrapper into codetether-spawn-policy::application_binding. Removed
+spawn/identity/host.rs. Root declarations supply the same stores, request type,
+lineage lookup and provider future. Shared identity-claim ownership and depth
+before model-admission ordering remain unchanged.
+
+Four expanded function bodies match the originals after callback-path substitution.
+Owner-scope and model-warning test sources are unchanged. Declaration, module/
+dependency, native production-scope, standalone formatting, file-limit and
+whitespace checks pass for 729 roots and 617 crates. No manifest/lock changes
+were required, and unrelated working files remain untouched. Evidence:
+artifacts/consolidation-admission-binding/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.

@@ -23,3 +23,13 @@ mod policy_registry;
 pub use model::is_free_or_eligible;
 pub use model_registry::ModelRegistry;
 pub use model_warning::for_model as model_warning;
+
+mod application_binding;
+
+/// Dependencies used by application-local admission declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use async_trait::async_trait;
+    pub use codetether_tool_core::ToolResult;
+}
