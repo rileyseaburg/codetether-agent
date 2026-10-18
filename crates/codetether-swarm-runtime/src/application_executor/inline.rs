@@ -1,12 +1,12 @@
 //! Native executor construction and invocation for the inline worker loop.
-use crate::{
-    bus::AgentBus,
-    swarm::{DecompositionStrategy, SwarmConfig, SwarmControl, SwarmExecutor, SwarmResult},
-};
+use super::{ExecutorHost, SwarmExecutor};
+use codetether_bus_core::AgentBus;
+use codetether_session_control::ControlHandle as SwarmControl;
 use codetether_swarm_core::SwarmEvent;
+use codetether_swarm_core::{DecompositionStrategy, SwarmConfig, SwarmResult};
 use std::sync::Arc;
 use tokio::sync::mpsc;
-impl codetether_swarm_runtime::inline::Executor for SwarmExecutor {
+impl<H: ExecutorHost> crate::inline::Executor for SwarmExecutor<H> {
     type Bus = AgentBus;
     fn new(config: SwarmConfig) -> Self {
         SwarmExecutor::new(config)

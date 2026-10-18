@@ -1,18 +1,20 @@
 //! Construction and dependency attachment for [`SwarmExecutor`].
 
-use super::SwarmExecutor;
-use crate::agent::Agent;
-use crate::bus::AgentBus;
-use crate::session::delegation::DelegationState;
-use crate::swarm::{CacheConfig, SwarmCache, SwarmConfig, SwarmControl};
+use super::{ExecutorHost, SwarmExecutor};
 use anyhow::Result;
+use codetether_bus_core::AgentBus;
+use codetether_context_policy::delegation::DelegationState;
+use codetether_session_control::ControlHandle as SwarmControl;
+use codetether_swarm_cache::{CacheConfig, SwarmCache};
+use codetether_swarm_core::SwarmConfig;
 use std::sync::Arc;
 
-impl SwarmExecutor {
+impl<H: ExecutorHost> SwarmExecutor<H> {
     /// Creates an executor from a swarm configuration.
     pub fn new(config: SwarmConfig) -> Self {
         Self {
-            inner: codetether_swarm_runtime::ExecutorState::new(config),
+            application: super::PhantomData,
+            inner: crate::ExecutorState::new(config),
         }
     }
 
@@ -51,7 +53,7 @@ impl SwarmExecutor {
     }
 
     /// Attaches an agent used for swarm-level coordination.
-    pub fn with_coordinator_agent(mut self, agent: Arc<tokio::sync::Mutex<Agent>>) -> Self {
+    pub fn with_coordinator_agent(mut self, agent: Arc<tokio::sync::Mutex<H::Agent>>) -> Self {
         self.inner = self.inner.with_coordinator_agent(agent);
         self
     }

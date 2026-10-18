@@ -66,3 +66,6 @@ pub use executor_state::ExecutorState;
 
 mod executor_access;
 mod executor_configure;
+
+mod application_executor;
+pub use application_executor::{ExecutorHost, SwarmExecutor};

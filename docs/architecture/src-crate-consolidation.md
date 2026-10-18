@@ -22168,3 +22168,24 @@ native file-size limits and whitespace checks passed. No manifest or lockfile
 changes. Evidence: `artifacts/consolidation-worker-http/`. No Cargo, rustc or
 Python ran; compilation and runtime tests remain unverified. Full consolidation
 is active.
+
+### Application-bound swarm executor ownership
+
+Moved the native `SwarmExecutor` wrapper and its 21 methods into
+`codetether-swarm-runtime::application_executor`, with separate construction,
+service attachment, accessor, cache, execution and event modules. Moved the
+inline-worker executor implementation alongside the type. Six native
+implementation files were removed. The native public type is now an alias;
+its application binding supplies the coordinator-agent type and forwards task
+execution to the existing native stage adapters.
+
+The shared wrapper exposes its existing inner state for those adapters and
+retains the same cache implementation, constructors, service handles, retry
+values and event-publication helper. Static comparisons preserve every method
+and the inline implementation apart from generic types and the execution
+callback. Module/dependency checks cover 698 roots and 570 crates without
+missing modules or cycles. Direct rustfmt, native file-size limits and whitespace
+checks passed. Only the owning runtime's swarm-cache and swarm-bus dependency
+edges are staged in the lockfile. Evidence:
+`artifacts/consolidation-swarm-executor/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

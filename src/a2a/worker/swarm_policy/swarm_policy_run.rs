@@ -1,6 +1,4 @@
 //! Native executor binding for shared inline worker execution.
-#[path = "swarm_policy_run_host.rs"]
-mod host;
 use crate::{
     bus::AgentBus,
     swarm::{DecompositionStrategy, SwarmConfig, SwarmControl, SwarmExecutor, SwarmResult},

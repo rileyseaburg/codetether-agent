@@ -1,12 +1,13 @@
 //! Read-only access to executor collaborators and retry settings.
 
-use super::SwarmExecutor;
-use crate::bus::AgentBus;
-use crate::swarm::{ResultStore, SwarmControl};
-use crate::{agent::Agent, telemetry::SwarmTelemetryCollector};
+use super::{ExecutorHost, SwarmExecutor};
+use codetether_bus_core::AgentBus;
+use codetether_session_control::ControlHandle as SwarmControl;
+use codetether_swarm_core::result_store::ResultStore;
+use codetether_telemetry::SwarmTelemetryCollector;
 use std::sync::Arc;
 
-impl SwarmExecutor {
+impl<H: ExecutorHost> SwarmExecutor<H> {
     /// Returns the runtime control handle when configured.
     pub fn control(&self) -> Option<&SwarmControl> {
         self.inner.control()
@@ -18,7 +19,7 @@ impl SwarmExecutor {
     }
 
     /// Returns the coordinator agent when configured.
-    pub fn coordinator_agent(&self) -> Option<&Arc<tokio::sync::Mutex<Agent>>> {
+    pub fn coordinator_agent(&self) -> Option<&Arc<tokio::sync::Mutex<H::Agent>>> {
         self.inner.coordinator_agent()
     }
 

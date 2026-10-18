@@ -1,10 +1,10 @@
 //! Cache inspection and invalidation APIs.
 
-use super::SwarmExecutor;
-use crate::swarm::CacheStats;
+use super::{ExecutorHost, SwarmExecutor};
 use anyhow::Result;
+use codetether_swarm_core::CacheStats;
 
-impl SwarmExecutor {
+impl<H: ExecutorHost> SwarmExecutor<H> {
     /// Returns cache statistics when caching is enabled.
     pub async fn cache_stats(&self) -> Option<CacheStats> {
         self.inner.cache_stats().await

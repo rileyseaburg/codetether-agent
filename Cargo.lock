@@ -8614,6 +8614,8 @@ dependencies = [
  "anyhow",
  "async-trait",
  "codetether-session-control",
+ "codetether-swarm-bus",
+ "codetether-swarm-cache",
  "codetether-swarm-core",
  "codetether-swarm-orchestrator",
  "codetether-telemetry",

@@ -1,10 +1,10 @@
 //! Public task-execution entry points.
 
-use super::{SwarmExecutor, run};
-use crate::swarm::{DecompositionStrategy, SwarmResult};
+use super::{ExecutorHost, SwarmExecutor};
 use anyhow::Result;
+use codetether_swarm_core::{DecompositionStrategy, SwarmResult};
 
-impl SwarmExecutor {
+impl<H: ExecutorHost> SwarmExecutor<H> {
     /// Decomposes and executes a task using the configured swarm.
     ///
     /// # Errors
@@ -15,7 +15,7 @@ impl SwarmExecutor {
         task: &str,
         strategy: DecompositionStrategy,
     ) -> Result<SwarmResult> {
-        run::execute(self, task, strategy).await
+        H::execute(self, task, strategy).await
     }
 
     /// Executes a task without decomposition.
