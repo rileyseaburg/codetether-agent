@@ -13434,3 +13434,21 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, authority requests or session operations ran.
   Full workspace consolidation remains unfinished.
+
+### Durable recovery orchestration extraction
+
+- Moved recovery metadata application, workspace verification sequencing,
+  persistence ordering, optional prompting and response projection into
+  codetether-session-recovery. RecoverySession defines the application-owned
+  durable operations; the native adapter delegates directly to Session.
+- Recovery still checks recorded workspace before resume, rechecks the loaded
+  directory before mutation, saves metadata before prompting, and saves again
+  after prompt success or failure. Prompt errors remain response data; storage
+  errors remain failures. Existing native durable identity tests remain at
+  the native storage integration boundary.
+- Verification: 18 static service/body/adapter/size checks passed, plus module
+  reachability, local dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-session-recovery/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or live session operations ran. Full workspace
+  consolidation remains unfinished.

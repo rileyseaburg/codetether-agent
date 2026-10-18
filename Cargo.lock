@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-session-recovery",
  "codetether-session-access",
  "codetether-session-realtime",
  "codetether-mux-http",
@@ -6733,6 +6734,17 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-session-recovery"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-session-access",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
