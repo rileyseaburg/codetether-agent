@@ -40,3 +40,6 @@ pub fn create(kind: ToolKind, host: &impl Host) -> Option<Arc<dyn Tool>> {
 
 /// Provider-backed selection and ownership for application-bound tool factories.
 pub mod provider;
+
+/// Ordered application factory groups and goal/collaboration fallback policy.
+pub mod application;

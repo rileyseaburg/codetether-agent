@@ -21645,3 +21645,20 @@ passed. No dependency or lockfile changes. Evidence:
 `artifacts/consolidation-catalog-dispatch/`. No Cargo, rustc, or Python commands
 ran; compilation and runtime tests remain unverified. Full consolidation
 remains active.
+
+### Shared application constructor ordering
+
+Moved native constructor-group search and goal/collaboration fallback order into
+`codetether-tool-construction::application`. The application supplies six
+capability-group factories; the owning crate chooses which to try and when.
+Its adapter implements the existing scalar constructor host, preserving that
+API for other users.
+
+Static comparisons preserve the lazy file/context/execution/integration chain,
+shared-tool then goal/collaboration ordering, native factory calls, and both
+constructor failure messages. Source/dependency graphs across 692 roots and
+564 crates, direct rustfmt, native file-size limits, and whitespace checks
+passed. No dependency or lockfile changes. Evidence:
+`artifacts/consolidation-application-constructors/`. No Cargo, rustc, or Python
+commands ran; compilation and runtime tests remain unverified. Full workspace
+consolidation remains active.
