@@ -8672,3 +8672,27 @@ budgets and whitespace checks passed. The store crate now has 39 Rust modules,
 all below 45 code lines. Evidence is in `artifacts/consolidation-store-save/`.
 Compilation and runtime tests were not run. No Cargo, rustc or Python commands
 ran. Remaining hydration, import and other source ownership is still in scope.
+
+### Session-store indexed restoration
+
+Moved indexed load sequencing, message/tool hydration, missing-locator recovery,
+read-only consumer restoration and the bounded-load result into a dedicated
+`restoration` module within `codetether-session-store`. The public store API
+re-exports the restore contract and load functions. Native adapters provide
+header decoding, mutable tracked-vector access, summary assignment and sidecar
+normalization. Legacy import remains an explicit preparation callback.
+
+The restored window still comes from one SQLite snapshot, validates header
+identity, records absolute offsets and constraints, acknowledges loaded vector
+versions, restores bounded summaries and normalizes native sidecars in the same
+order. Consumer snapshots retain their read-only state and original range.
+Native `TailLoad` is a specialization of the shared result with unchanged fields.
+
+Twenty-nine static comparisons cover complete restore paths, native field
+bindings, result fields, recovery, unchanged persistence tests and removed
+implementations. All sixteen existing persistence tests remain unchanged.
+Module references, workspace dependencies, code budgets and whitespace checks
+passed. The store crate has 48 Rust modules, all below 45 code lines. Evidence
+is in `artifacts/consolidation-store-restore/`. Compilation and runtime tests
+were not run. No Cargo, rustc or Python commands ran. Legacy import and other
+native source ownership still require consolidation.

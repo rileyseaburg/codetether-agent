@@ -12,18 +12,8 @@ use anyhow::{Context, Result};
 
 use super::tail_seed::with_tail_cap;
 use super::types::Session;
-
-/// Result of a bounded session load.
-#[derive(Debug)]
-pub struct TailLoad {
-    /// The session with its message/tool_use vectors capped to the window.
-    pub session: Session,
-    /// Total number of messages + tool_use entries discarded from the tail
-    /// cap. Zero means the full transcript fit within the window.
-    pub dropped: usize,
-    /// Size of the session file on disk, in bytes.
-    pub file_bytes: u64,
-}
+/// Result of loading a bounded native session window.
+pub type TailLoad = codetether_session_store::TailLoad<Session>;
 
 impl Session {
     /// Load a session by UUID, keeping only the last `window` messages and

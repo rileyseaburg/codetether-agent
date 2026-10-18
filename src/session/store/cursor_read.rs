@@ -2,7 +2,6 @@
 use super::cursor::Delivery;
 use anyhow::Result;
 use std::path::Path;
-mod hydrate;
 pub(super) fn next(path: &Path, id: &str, name: &str, limit: usize) -> Result<Option<Delivery>> {
     codetether_session_store::cursor_read::next(
         path,
@@ -10,6 +9,6 @@ pub(super) fn next(path: &Path, id: &str, name: &str, limit: usize) -> Result<Op
         name,
         limit,
         super::migration::ensure,
-        hydrate::session,
+        codetether_session_store::restore_consumer::<crate::session::Session>,
     )
 }

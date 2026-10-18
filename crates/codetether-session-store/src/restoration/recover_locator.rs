@@ -12,10 +12,10 @@ pub(super) fn run(path: &Path) -> Result<()> {
         .file_stem()
         .and_then(|name| name.to_str())
         .ok_or_else(|| anyhow::anyhow!("invalid session path"))?;
-    super::id::validate(id)?;
-    let db = super::connection::open(path)?;
-    if super::read::contains(&db, id)? {
-        super::marker::create(path, id)?;
+    crate::id::validate(id)?;
+    let db = crate::connection::open(path)?;
+    if crate::read::contains(&db, id)? {
+        crate::marker::create(path, id)?;
     }
     Ok(())
 }

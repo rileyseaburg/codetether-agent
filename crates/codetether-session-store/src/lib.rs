@@ -44,3 +44,6 @@ pub use checkpoint::clean;
 pub use prepare::prepare;
 pub use save::save;
 pub use snapshot::Snapshot;
+
+mod restoration;
+pub use restoration::{Restore, TailLoad, load, load_sync, restore_consumer};
