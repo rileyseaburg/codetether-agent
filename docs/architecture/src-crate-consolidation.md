@@ -23520,3 +23520,15 @@ lockfiles changed, and unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-private-facades/.
 No runtime operations, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Correct the remaining native context-summary resolver reference
+
+Updated context_summarize/source.rs to pass Background::resolve_model after the
+background RLM binding moved into application-providers. The earlier extraction
+updated session callers but missed this tool caller. Only the resolver path
+changed; producer arguments, provider policy and execution order are unchanged.
+A repository-wide search found no remaining fully qualified calls to the old
+native background entry points. Direct rustfmt, file-size limits and whitespace
+checks passed. Evidence: artifacts/consolidation-summary-resolver-fix/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active.

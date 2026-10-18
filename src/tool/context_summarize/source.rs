@@ -30,7 +30,7 @@ impl codetether_context_summarize::SummarySource for Session {
             target,
             provider,
             model,
-            crate::session::helper::rlm_background::resolve_model,
+            crate::session::helper::rlm_background::Background::resolve_model,
         )
         .await
     }
