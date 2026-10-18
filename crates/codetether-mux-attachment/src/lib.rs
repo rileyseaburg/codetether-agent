@@ -22,3 +22,7 @@ mod program_request;
 mod program_start;
 pub use control::detach;
 pub use dispatch::execute as execute_command;
+
+mod attach;
+mod session;
+pub use attach::attach_session;

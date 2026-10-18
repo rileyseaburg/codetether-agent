@@ -5198,9 +5198,11 @@ name = "codetether-mux-attachment"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "codetether-command-prompt",
  "codetether-mux-client",
  "codetether-mux-input",
  "codetether-mux-protocol",
+ "codetether-mux-registry",
  "codetether-terminal-replay",
  "crossterm",
  "tokio",

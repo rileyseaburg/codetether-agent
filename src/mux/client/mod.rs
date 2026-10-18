@@ -1,15 +1,12 @@
-//! Network mux client connection and interactive command loop.
+//! Native clipboard adapter for shared mux session attachment.
 
-mod attach;
-mod connection;
+mod clipboard;
 pub(in crate::mux) mod handshake;
-pub(super) mod parse;
-mod program;
-mod proxy;
-mod render;
-mod session;
-mod state;
 
-pub(super) use attach::attach;
-pub(super) use connection::MuxConnection;
+pub(super) use codetether_mux_client::MuxConnection;
 pub(super) use handshake::probe;
+
+/// Attach using clipboard access supplied by the native application.
+pub(super) async fn attach(target: &crate::mux::registry::SessionTarget) -> anyhow::Result<()> {
+    codetether_mux_attachment::attach_session(target, clipboard::local_content).await
+}

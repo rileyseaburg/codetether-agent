@@ -8,6 +8,8 @@ description = "Mux PTY attachment loop, output polling and terminal restoration"
 
 [dependencies]
 anyhow = "1"
+codetether-command-prompt = { path = "../codetether-command-prompt", version = "0.1.0" }
+codetether-mux-registry = { path = "../codetether-mux-registry", version = "0.1.0" }
 codetether-mux-client = { path = "../codetether-mux-client", version = "0.1.0" }
 codetether-mux-input = { path = "../codetether-mux-input", version = "0.1.0" }
 codetether-mux-protocol = { path = "../codetether-mux-protocol", version = "0.1.0" }

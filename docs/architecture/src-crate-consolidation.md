@@ -10396,3 +10396,19 @@ contain at most 44 code lines. Evidence is in
 `artifacts/consolidation-command-prompt/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python, terminal input or filesystem test fixtures ran.
 Full workspace consolidation remains active.
+
+### Mux session orchestration moved into its owning crate
+
+Moved the initial session connection/snapshot/program attachment and the
+interactive command loop from `src/mux/client` into
+`crates/codetether-mux-attachment/src/{attach,session}.rs`. The crate calls the
+shared command prompt directly and accepts a lazy clipboard callback. Removed
+11 obsolete native files; only the application adapter, unchanged platform
+clipboard helper and handshake re-export remain in the native client directory.
+
+Thirteen static comparisons/checks cover the moved function bodies, callback
+wiring, retained platform behavior and deleted native files. Module/dependency
+graphs, file budgets and whitespace checks passed; the two new modules contain
+at most 24 code lines. Evidence is in `artifacts/consolidation-mux-session/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python, terminal
+input or clipboard operations ran. Full workspace consolidation remains active.
