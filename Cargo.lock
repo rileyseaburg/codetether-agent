@@ -6128,6 +6128,7 @@ dependencies = [
  "crossterm",
  "ratatui",
  "ropey",
+ "codetether-fuzzy-finder",
 ]
 
 [[package]]

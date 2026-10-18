@@ -1,31 +1,6 @@
-//! Opens a file in the in-TUI editor view.
-//!
-//! Resolves the requested path against the workspace cwd, loads it into a
-//! [`FileBuffer`](crate::tui::ui::editor::FileBuffer), and switches the app to
-//! [`ViewMode::Editor`](crate::tui::models::ViewMode::Editor). An empty
-//! argument opens the workspace fuzzy file finder instead.
-
-use std::path::Path;
-
+//! Native command entry for shared embedded editor opening.
 use crate::tui::app::state::App;
-use crate::tui::models::ViewMode;
-use crate::tui::ui::editor::FileBuffer;
-
-/// Opens `arg` (relative to `cwd`) in the editor; empty arg opens the finder.
+use std::path::Path;
 pub(super) fn open_editor(app: &mut App, cwd: &Path, arg: &str) {
-    if arg.is_empty() {
-        crate::tui::app::fuzzy_find::open_fuzzy_find(app, cwd);
-        return;
-    }
-    let path = cwd.join(arg);
-    match FileBuffer::open(&path) {
-        Ok(buf) => {
-            app.state.editor = Some(buf);
-            app.state.editor_scroll = 0;
-            app.state.editor_hscroll = 0;
-            app.state.set_view_mode(ViewMode::Editor);
-            app.state.status = format!("Editing {arg} — Ctrl+S save, Esc close");
-        }
-        Err(e) => app.state.status = format!("Cannot open {arg}: {e}"),
-    }
+    crate::tui::app::fuzzy_find::open_argument(app, cwd, arg);
 }

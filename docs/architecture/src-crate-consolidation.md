@@ -14655,3 +14655,20 @@ Full workspace consolidation remains active.
   artifacts/consolidation-file-command/.
 - No dependencies changed. No Cargo, rustc, Rust tests, attachment reads or TUI
   sessions ran. Full workspace consolidation remains unfinished.
+
+### Embedded editor opening ownership
+
+- Moved `/edit` path opening, fuzzy finder initialization, selection confirmation
+  and editor activation into codetether-editor::interactive. Modules separate
+  path/buffer opening, finder control and view contracts.
+- Native code supplies the editor buffer, scroll positions, finder slot and
+  status/view fields. Preserves empty-argument finder behavior, selected-path
+  labels, successful scroll resets and existing read-error messages.
+- Added the existing fuzzy-finder crate as an editor dependency and staged only
+  its lockfile entry. No external editor process is involved in this flow.
+- Verification: seven static checks passed for expanded opening behavior,
+  finder operations, native bindings, module bounds and isolated lock addition.
+  Module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence: artifacts/consolidation-editor-interactive/.
+- No Cargo, rustc, Rust tests, workspace scans or editor file reads ran. Full
+  workspace consolidation remains unfinished.

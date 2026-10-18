@@ -58,6 +58,8 @@ mod input_edit_tests;
 /// Tests for the key-event to editor-action mapping.
 #[cfg(test)]
 mod input_tests;
+/// Embedded editor opening and fuzzy-file selection through client state bindings.
+pub mod interactive;
 /// Renders editor content to ratatui lines.
 pub mod render;
 /// Cursor-follow scroll offset computation.

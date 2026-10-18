@@ -7,6 +7,7 @@ license = "MIT"
 description = "Editor backends, file buffers, highlighting, input and terminal rendering"
 
 [dependencies]
+codetether-fuzzy-finder = { path = "../codetether-fuzzy-finder", version = "0.1.0" }
 codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
 codetether-message-formatter = { path = "../codetether-message-formatter", version = "0.1.0" }
 crossterm = "0.29.0"
