@@ -32,3 +32,6 @@ pub use input_hint::current_slash_hint;
 
 /// Commands available without mutable session access.
 pub mod session_free;
+
+/// Interactive command sequencing with native execution callbacks.
+pub mod pipeline;

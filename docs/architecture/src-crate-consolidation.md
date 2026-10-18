@@ -15083,3 +15083,25 @@ Full workspace consolidation remains active.
   checks passed. Evidence: artifacts/consolidation-command-interaction/.
 - No dependency changes. No UI execution, Cargo, rustc or Rust tests ran.
   Full workspace consolidation remains unfinished.
+
+### Interactive slash-command pipeline ownership
+
+- Moved normalization, stage ordering, simple-command classification, conditional
+  Ralph/swarm fall-through, trailing agent-command routing and final unknown
+  suppression into codetether-slash-command::pipeline.
+- Native handlers receive typed leading/simple/trailing variants. Bindings are
+  grouped by attachments, execution, settings, diagnostics, session operations,
+  panel/view changes, inspection and memory. Existing command bodies remain
+  native where they still manipulate application-specific state.
+- Preserved all ten leading command bodies and twenty-four simple match groups,
+  aliases, empty-spawn form selection, session dispatch and trailing command
+  returns. The existing /agents dual action and post-handler unknown statuses
+  remain unchanged.
+- Verification: six static check groups covered native payloads, exact aliases,
+  stage ordering, complete typed routing and unchanged helpers; additional checks
+  covered all trailing operations, empty-spawn routing and conditional native
+  bindings. Module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-slash-pipeline/.
+- No dependencies changed. No command execution, Cargo, rustc or Rust tests ran.
+  Full workspace consolidation remains unfinished.
