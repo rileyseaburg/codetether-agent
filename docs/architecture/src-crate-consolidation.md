@@ -17407,3 +17407,19 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-mux-restart/`.
 - No Cargo, rustc, Python, process actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared keycode selection and Enter/Escape precedence
+
+- Moved the unmodified-key match and watchdog Escape precedence from native
+  keybinds into `codetether-tui-navigation::keys`.
+- Core reuses existing navigation policies through a borrowed navigation
+  adapter. Native state/input bindings provide symbol activation, model picker,
+  paste detection and submission; the original native Result API is retained.
+- Preserved symbol-search priority, Shift/Alt newline behavior, paste-newline
+  detection, character fallback and modifier-sensitive arrow navigation.
+- Verification: complete key/Escape body comparisons and every native binding,
+  unchanged navigation implementation/handlers/tests, module/dependency graphs,
+  direct rustfmt, file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-key-dispatch/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

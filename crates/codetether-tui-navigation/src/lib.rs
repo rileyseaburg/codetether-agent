@@ -23,3 +23,6 @@ pub mod focus;
 
 /// Terminal stream event routing and editor paste priority.
 pub mod terminal;
+
+/// Unmodified key dispatch and Enter/Escape priority rules.
+pub mod keys;

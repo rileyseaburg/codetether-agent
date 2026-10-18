@@ -7,7 +7,7 @@ mod lists;
 mod overlays;
 mod page_scroll;
 mod pane_scroll;
-pub(super) struct Navigation<'a>(pub &'a mut App);
+pub(crate) struct Navigation<'a>(pub &'a mut App);
 impl Host for Navigation<'_> {
     fn context(&self) -> Context {
         let app = &*self.0;

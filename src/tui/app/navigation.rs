@@ -7,6 +7,7 @@ use crossterm::event::KeyModifiers;
 mod agent_focus;
 #[path = "navigation/host.rs"]
 mod host;
+pub(crate) use host::Navigation;
 #[path = "navigation/symbol_enter.rs"]
 mod symbol_enter;
 #[cfg(test)]
