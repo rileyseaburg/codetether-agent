@@ -1,7 +1,7 @@
-//! Native bindings for shared context telemetry presentation.
-use crate::{session::SessionEvent, tui::app::state::App};
-#[path = "context_host.rs"]
-mod host;
-pub(super) fn handle_event(app: &mut App, evt: SessionEvent) {
-    codetether_context_health::events::handle_event(&mut host::Native(app), evt);
-}
+//! Frontend types for shared context telemetry presentation.
+codetether_context_health::declare_context_events!(
+    crate::tui::app::state::App,
+    crate::session::SessionEvent,
+    crate::tui::chat::message::ChatMessage,
+    crate::tui::chat::message::MessageType,
+);

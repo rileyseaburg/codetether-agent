@@ -15,3 +15,5 @@ pub use limits::*;
 
 /// Bounded chat history retention with viewport preservation.
 pub mod chat;
+
+mod application_binding;

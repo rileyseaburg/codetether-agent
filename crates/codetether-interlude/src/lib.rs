@@ -20,3 +20,5 @@ pub const ROWS: u8 = 7;
 
 /// Play-break activation and input redraw policy.
 pub mod interactive;
+
+mod application_binding;

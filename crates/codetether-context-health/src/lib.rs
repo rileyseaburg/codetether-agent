@@ -15,3 +15,5 @@ pub mod command;
 
 /// Context telemetry event handling and presentation.
 pub mod events;
+
+mod application_binding;

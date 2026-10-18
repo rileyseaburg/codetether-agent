@@ -27106,3 +27106,19 @@ scope, standalone formatting, file-limit and whitespace checks pass for 725 root
 and 617 crates. No dependency/lock changes were needed; unrelated working files
 remain untouched. Evidence: artifacts/consolidation-approval-view-binding/. No
 Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Remaining leaf event adapters
+
+Moved context telemetry fields/error-message construction, chat retention/cache
+invalidation and interlude event forwarding into their owning context-health,
+view-retention and interlude crates. Root files now select the existing frontend
+types, message types and scroll sentinel. Removed context_host.rs. No new
+dependencies between the owning crates were introduced.
+
+All eight expanded function bodies match the originals, including message kind,
+cache-clearing closure and redraw-state references. Remaining event/test sources
+are unchanged. Declaration, module/dependency, native production-scope, standalone
+formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
+No dependency/lock changes were needed; unrelated working files remain untouched.
+Evidence: artifacts/consolidation-event-leaf-bindings/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
