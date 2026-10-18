@@ -13416,3 +13416,21 @@ Full workspace consolidation remains active.
   whitespace checks. Evidence: artifacts/consolidation-realtime-turn/.
   No Cargo, rustc, Rust tests, sockets or prompt execution ran. Full source
   consolidation remains unfinished.
+
+### Session recovery access boundary extraction
+
+- Moved caller-credentialed workspace authority requests, response validation,
+  canonical path comparison and redacted recovery error classification into
+  codetether-session-access. Native recovery retains durable workspace lookup,
+  session resume, metadata updates, persistence and prompt execution.
+- Authority, path and storage-error mapping tests moved with the boundary;
+  native durable identity tests remain beside native session operations.
+  A token fixture was separated to keep every module below 45 code lines.
+- Request validation, redirect refusal, ten-second timeout, forwarded caller
+  token, matching absolute binding requirement and error statuses are unchanged.
+- Verification: 24 static source/test/size checks passed, plus module
+  reachability, local dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-session-access/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, authority requests or session operations ran.
+  Full workspace consolidation remains unfinished.

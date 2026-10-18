@@ -117,6 +117,7 @@ members = [
     "crates/codetether-session-catalog",
     "crates/codetether-session-events",
     "crates/codetether-session-realtime",
+    "crates/codetether-session-access",
     "crates/codetether-session-bus",
     "crates/codetether-rate-gate",
     "crates/codetether-thread-store",
@@ -814,6 +815,7 @@ codetether-rate-gate = { path = "crates/codetether-rate-gate", version = "0.1.0"
 codetether-session-bus = { path = "crates/codetether-session-bus", version = "0.1.0" }
 codetether-session-events = { path = "crates/codetether-session-events", version = "0.1.0" }
 codetether-session-realtime = { path = "crates/codetether-session-realtime", version = "0.1.0" }
+codetether-session-access = { path = "crates/codetether-session-access", version = "0.1.0" }
 codetether-session-catalog = { path = "crates/codetether-session-catalog", version = "0.1.0" }
 codetether-session-listing = { path = "crates/codetether-session-listing", version = "0.1.0" }
 codetether-snapshot-io = { path = "crates/codetether-snapshot-io", version = "0.1.0" }

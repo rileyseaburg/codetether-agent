@@ -43,9 +43,4 @@ pub(super) async fn authority(status: StatusCode, body: &str) -> Authority {
         task,
     }
 }
-
-pub(super) fn headers() -> HeaderMap {
-    let mut headers = HeaderMap::new();
-    headers.insert("authorization", "Bearer test-caller".parse().unwrap());
-    headers
-}
+pub(super) use super::headers::headers;
