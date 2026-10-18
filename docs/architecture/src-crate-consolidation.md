@@ -16035,3 +16035,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-completion-notice/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared move-based session slot
+
+- Moved SessionSlot ownership and view-refresh behavior into
+  `codetether-session-runtime::slot`, generic over a ViewSource session payload.
+  The TUI now uses a concrete alias and its existing SessionView conversion.
+- Preserved snapshot creation before checkout/restore, optional ownership while
+  a prompt runs, immutable/mutable borrowing and no-op view refresh when absent.
+  The full session is still moved rather than cloned.
+- Verification: complete generic state and implementation comparison, native
+  alias/snapshot binding, unchanged ownership/view tests and conversion,
+  module/dependency graphs, direct rustfmt, file budgets and diff whitespace.
+  No dependencies changed. Evidence: `artifacts/consolidation-session-slot/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

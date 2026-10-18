@@ -48,3 +48,6 @@ mod control_tests;
 mod inboxes_tests;
 #[cfg(test)]
 mod turn_tests;
+
+/// Session checkout/restore ownership with retained frontend views.
+pub mod slot;
