@@ -12356,3 +12356,21 @@ Full workspace consolidation remains active.
 - Added the existing crossterm dependency to this crate; only that lockfile
   change was staged. No Cargo, rustc, compilation or Rust tests ran. Full
   workspace consolidation remains incomplete.
+
+### Native spawn identity consolidation
+
+- Removed duplicate native profile tables and role lookup in favor of
+  codetether-agent-identity. All eight named profiles and four fallback profiles
+  were verified equal before replacement. Shared AgentProfile now preserves
+  the native type's Copy capability; fallback selection copies the same value.
+- Moved default/explicit spawn mission construction and its two existing tests
+  into codetether-agent-identity. Moved SpawnArgs parsing and its three existing
+  tests into codetether-agent-spawn. Native modules retain compatibility exports;
+  the application-owned SpawnedAgent session container remains unchanged.
+- Verification: 29 source comparisons/checks passed for metadata, lookup order,
+  fallback hashing, parser/prompt bodies, moved tests and native facades. Four
+  new modules contain at most 24 code lines. Module/dependency checks, direct
+  rustfmt, source limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-spawn-identity/.
+- No manifest or lockfile changes were needed. No Cargo, rustc, compilation or
+  Rust tests ran. Full workspace consolidation remains incomplete.

@@ -18,3 +18,8 @@ pub use format::{format_agent_identity, format_agent_profile_summary};
 pub use profile::AgentProfile;
 pub use profiles::agent_profile;
 pub use relay_format::{format_relay_handoff_line, format_relay_participant};
+
+mod mission;
+pub use mission::system_prompt;
+#[cfg(test)]
+mod mission_tests;

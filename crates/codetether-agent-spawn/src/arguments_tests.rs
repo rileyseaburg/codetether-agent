@@ -1,4 +1,5 @@
-use super::parse;
+//! Existing spawn argument regression coverage.
+use super::parse_spawn_args as parse;
 
 #[test]
 fn parses_supported_name_and_instructions() {

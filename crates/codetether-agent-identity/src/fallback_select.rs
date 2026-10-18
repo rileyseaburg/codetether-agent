@@ -10,7 +10,7 @@ pub(crate) fn fallback_profile(name: &str) -> AgentProfile {
         profile_kernel(),
     ];
     let hash = fnv1a(name);
-    profiles[hash as usize % profiles.len()].clone()
+    profiles[hash as usize % profiles.len()]
 }
 
 fn fnv1a(s: &str) -> u64 {

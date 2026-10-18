@@ -30,3 +30,8 @@ pub use ephemeral::run as run_ephemeral;
 pub use ephemeral_host::{EphemeralHost, EphemeralPolicy, EphemeralResources};
 pub use ephemeral_run::EphemeralRun;
 pub use ephemeral_setup::task::workspace_policy;
+
+mod arguments;
+pub use arguments::{SpawnArgs, parse_spawn_args};
+#[cfg(test)]
+mod arguments_tests;

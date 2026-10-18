@@ -1,3 +1,4 @@
+//! Existing mission-construction regression coverage.
 use super::system_prompt;
 
 #[test]

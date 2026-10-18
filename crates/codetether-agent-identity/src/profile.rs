@@ -7,7 +7,7 @@
 /// let profile = codetether_agent_identity::agent_profile("planner");
 /// assert_eq!(profile.codename, "Strategist");
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct AgentProfile {
     /// Short persona label.
     pub codename: &'static str,
