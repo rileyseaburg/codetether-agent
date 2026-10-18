@@ -4,7 +4,9 @@
 //! banner and history_source methods describe the result without owning sessions.
 mod absence;
 mod banner;
+pub mod continuation;
 mod load_status;
+pub mod loading;
 mod outcome;
 mod status;
 mod window;

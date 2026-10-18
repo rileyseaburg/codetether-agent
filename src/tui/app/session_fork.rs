@@ -1,26 +1,12 @@
+#[path = "session_fork_host.rs"]
+mod host;
 use crate::session::Session;
-
-/// Fork a truncated session and transfer its durable child ownership.
+/// Prepare a bounded native session using shared continuation policy.
 pub(super) async fn fork_if_truncated(
     session: &mut Session,
     dropped: usize,
 ) -> anyhow::Result<Option<String>> {
-    if dropped == 0 {
-        return Ok(None);
-    }
-    if session.storage.is_persisted() {
-        return Ok(Some(session.id.clone()));
-    }
-    let original = session.id.clone();
-    let title = session
-        .title
-        .clone()
-        .unwrap_or_else(|| "large session".to_string());
-    let continuation = uuid::Uuid::new_v4().to_string();
-    crate::tool::agent::persistence::reparent_owner(&original, &continuation).await?;
-    session.id = continuation;
-    session.title = Some(format!("{title} (continued)"));
-    Ok(Some(original))
+    codetether_session_resume::continuation::fork_if_truncated(session, dropped).await
 }
 
 /// Fork for an interactive load and surface migration failures in app status.

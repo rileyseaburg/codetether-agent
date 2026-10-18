@@ -14690,3 +14690,20 @@ Full workspace consolidation remains active.
   artifacts/consolidation-side-question/.
 - No Cargo, rustc, Rust tests, provider requests or session changes ran. Full
   workspace consolidation remains unfinished.
+
+### Bounded session loading and continuation ownership
+
+- Moved native-tail/archive-fallback loading and truncated-session identity
+  preparation into codetether-session-resume. Separate loading and continuation
+  modules expose native storage and ownership-transfer contracts.
+- Native adapters retain actual snapshot/import operations and child-owner
+  reparenting. The TUI keeps its existing failure status and integration tests.
+  Persisted truncated sessions retain identity; transient continuations change
+  ID/title only after ownership transfer succeeds.
+- Verification: seven static checks passed for continuation behavior, loader
+  fallback/error context, native bindings, unchanged UI/test sources, module
+  bounds and isolated lock additions. Module reachability, dependency DAG,
+  direct rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-session-loading/.
+- Added anyhow and UUID support to session-resume. No Cargo, rustc, Rust tests,
+  session loading/import or owner transfer ran. Full consolidation is unfinished.
