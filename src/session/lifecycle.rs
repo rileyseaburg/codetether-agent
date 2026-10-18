@@ -11,9 +11,6 @@ use crate::provider::{Message, Usage};
 use super::pages::PageKind;
 use super::types::Session;
 
-#[cfg(test)]
-#[path = "lifecycle/default_model.rs"]
-mod default_model;
 #[path = "lifecycle/normalize.rs"]
 mod normalize;
 #[path = "lifecycle/subcall_model.rs"]

@@ -24169,3 +24169,19 @@ No manifests or lockfiles changed; unrelated working edits remain untouched.
 Evidence: artifacts/consolidation-obsolete-runtime/. No Cargo, rustc, Python,
 compilation, provider/tool execution or tests ran. Full consolidation remains
 active.
+
+### Default-model regressions moved into the model-policy crate
+
+Moved the three default-model tests from the native session lifecycle into
+codetether-session-model-policy. They now exercise seed_default_model directly
+with SessionMetadata, retaining the same configured values and assertions for
+an unset model, an explicit model and a blank default. Removed the native test
+file and declaration. Native Session construction and apply_config remain
+unchanged; these are now synchronous unit tests of the owning policy.
+
+Static comparison verifies only the documented setup/API substitutions.
+Module/dependency scans cover 692 roots and 573 crates without missing modules
+or cycles. Direct rustfmt, source file limits and whitespace checks passed.
+No dependencies or lockfiles changed; unrelated working changes are preserved.
+Evidence: artifacts/consolidation-default-model-tests/. No tests, Cargo, rustc,
+Python or compilation ran. Full consolidation remains active.

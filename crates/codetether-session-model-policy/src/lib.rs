@@ -5,6 +5,8 @@
 //! provider-registry ownership outside the policy crate.
 mod apply;
 mod default_model;
+#[cfg(test)]
+mod default_model_tests;
 mod resolver;
 mod subcall;
 pub use apply::apply_config;
