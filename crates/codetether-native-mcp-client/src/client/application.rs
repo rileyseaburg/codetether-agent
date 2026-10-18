@@ -9,10 +9,10 @@ impl codetether_mcp_client::Application for Native {
         env!("CARGO_PKG_VERSION")
     }
     async fn authorize(command: &str, args: &[&str], approval_id: Option<&str>) -> Result<()> {
-        crate::mcp::subprocess_policy::guard(command, args, approval_id).await
+        crate::subprocess_policy::guard(command, args, approval_id).await
     }
     async fn blocked(name: &str, arguments: &Value) -> Option<String> {
-        crate::runtime_policy::evaluate_tool_invocation(name, arguments)
+        codetether_native_runtime_policy::evaluate_tool_invocation(name, arguments)
             .await
             .map(|result| result.output)
     }

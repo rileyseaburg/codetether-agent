@@ -25211,3 +25211,28 @@ are staged; existing version-qualified dependencies are preserved. Unrelated
 working changes remain untouched. Evidence: artifacts/consolidation-patch-lsp/.
 No Cargo, rustc, Python, patch execution, LSP process or runtime tests ran.
 Full consolidation remains active.
+
+### Native MCP client, policy and tool wrappers moved into a dedicated crate
+
+Moved 16 files into codetether-native-mcp-client: client/registry specialization,
+subprocess authorization, inbound tool policy, approval endpoints, fallback bash
+execution, transport exports and MCP bridge/tool-wrapper bindings. Root MCP and
+tool modules re-export the existing public paths. The server adapter remains
+native because it requires the full application tool registry; its approval and
+policy calls use the same functions through the new re-exports.
+
+All eight tests moved with the client and policy modules. The live-approval
+channel test now uses SessionEvent<()> rather than a native Session payload;
+the test only sends ApprovalRequest and never uses a session snapshot. Concrete
+client/registry aliases and manager wrapper types retain the same policy
+implementation. The package version matches the root application's
+4.7.6-dev.38 to preserve client identity and must stay synchronized on release.
+
+Source comparisons pass after documented import/visibility and test-payload
+changes. Static scans cover 706 module roots and 592 dependency crates without
+missing modules, cycles or undeclared direct workspace dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks passed. Only the
+new package/root lock entries are staged; unrelated working content remains
+unchanged. Evidence: artifacts/consolidation-native-mcp/. No Cargo, rustc,
+Python, MCP server/subprocess launch or runtime tests ran. Full consolidation
+remains active.

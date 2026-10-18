@@ -1,4 +1,4 @@
-use crate::approval::{
+use codetether_native_approval::{
     ApprovalStore, LiveApprovalDecision, LiveApprovalRequest, test_env::lock_env,
 };
 use serde_json::json;
@@ -27,7 +27,7 @@ async fn mcp_decision_resumes_live_approval_request() {
     let request = store
         .create_request("bash", "execute", "bash:abc", "needs approval")
         .expect("request");
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<crate::session::SessionEvent>(1);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<codetether_session_events::SessionEvent<()>>(1);
     let live = LiveApprovalRequest::new(
         request.id.clone(),
         "call-1".into(),
@@ -36,7 +36,8 @@ async fn mcp_decision_resumes_live_approval_request() {
         "bash:abc".into(),
         "needs approval".into(),
     );
-    let waiter = tokio::spawn(async move { crate::approval::live::request(&tx, live).await });
+    let waiter =
+        tokio::spawn(async move { codetether_native_approval::live::request(&tx, live).await });
     rx.recv().await.expect("live event");
     let response = super::handle(
         "approvals/decision",

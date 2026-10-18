@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/codetether-native-mcp-client",
     "crates/codetether-native-tetherscript",
     "crates/codetether-native-lsp",
     "crates/codetether-native-telemetry",
@@ -701,6 +702,7 @@ fips = [
 ]
 
 [dependencies]
+codetether-native-mcp-client = { path = "crates/codetether-native-mcp-client", version = "4.7.6-dev.38" }
 codetether-native-tetherscript = { path = "crates/codetether-native-tetherscript", version = "0.1.0", optional = true }
 codetether-native-lsp = { path = "crates/codetether-native-lsp", version = "4.7.6-dev.38" }
 codetether-native-telemetry = { path = "crates/codetether-native-telemetry", version = "4.7.6-dev.38" }

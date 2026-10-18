@@ -1,4 +1,4 @@
-use crate::approval::{ApprovalStore, session_command_grants, test_env::lock_env};
+use codetether_native_approval::{ApprovalStore, session_command_grants, test_env::lock_env};
 use serde_json::json;
 
 struct EnvGuard;

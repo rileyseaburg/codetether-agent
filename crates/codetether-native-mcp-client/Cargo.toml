@@ -1,0 +1,30 @@
+[package]
+name = "codetether-native-mcp-client"
+version = "4.7.6-dev.38"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native MCP client identity, authorization and tool bindings"
+
+[dependencies]
+codetether-mcp-client = { path = "../codetether-mcp-client", version = "0.1.0" }
+codetether-mcp-core = { path = "../codetether-mcp-core", version = "0.1.0" }
+codetether-mcp-approval = { path = "../codetether-mcp-approval", version = "0.1.0" }
+codetether-mcp-fallback = { path = "../codetether-mcp-fallback", version = "0.1.0" }
+codetether-mcp-transport = { path = "../codetether-mcp-transport", version = "0.1.0" }
+codetether-mcp-bridge = { path = "../codetether-mcp-bridge", version = "0.1.0" }
+codetether-mcp-tools = { path = "../codetether-mcp-tools", version = "0.1.0" }
+codetether-native-runtime-policy = { path = "../codetether-native-runtime-policy", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-bash-tool = { path = "../codetether-bash-tool", version = "0.1.0" }
+anyhow = "1"
+async-trait = "0.1"
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+
+[dev-dependencies]
+codetether-native-approval = { path = "../codetether-native-approval", version = "0.1.0", features = ["test-support"] }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "sync", "rt-multi-thread"] }

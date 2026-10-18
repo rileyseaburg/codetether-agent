@@ -1,6 +1,6 @@
 use super::{guard, policy_args};
-use crate::approval::{ApprovalStore, test_env::lock_env};
-use crate::config::{AccessMode, Config};
+use codetether_config::{AccessMode, Config};
+use codetether_native_approval::{ApprovalStore, test_env::lock_env};
 
 #[path = "subprocess_policy_alias_tests.rs"]
 mod alias;
@@ -37,7 +37,7 @@ async fn approved_mcp_receipt_allows_subprocess_spawn_gate() {
     let _env = EnvGuard::data_dir(data.path());
     let store = ApprovalStore::open(data.path().join("approvals")).expect("store");
     let args = policy_args("npx", &["server"], None);
-    let blocked = crate::runtime_policy::evaluate_tool_invocation("mcp", &args)
+    let blocked = codetether_native_runtime_policy::evaluate_tool_invocation("mcp", &args)
         .await
         .expect("approval required");
     let request_id = blocked.metadata["approval_request_id"]

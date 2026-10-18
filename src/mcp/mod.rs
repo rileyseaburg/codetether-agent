@@ -19,17 +19,15 @@
 //! codetether mcp connect "npx -y @modelcontextprotocol/server-filesystem /path"
 //! ```
 
-mod approval;
 pub use codetether_bus_http as bus_bridge;
 use codetether_mcp_server::payload as bus_payload;
-mod client;
-mod fallback_run_command;
-mod policy_host;
+use codetether_native_mcp_client as client;
+pub(crate) use codetether_native_mcp_client::approval;
+pub(crate) use codetether_native_mcp_client::fallback_run_command;
 mod server;
-mod subprocess_policy;
-mod tool_policy;
-mod transport;
 use codetether_mcp_core::types;
+pub(crate) use codetether_native_mcp_client::tool_policy;
+use codetether_native_mcp_client::transport;
 
 pub use bus_bridge::BusBridge;
 pub use client::{McpClient, McpRegistry};

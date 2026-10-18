@@ -40,7 +40,7 @@ pub use codetether_tool_core as invalid;
 include!("mcp_modules.rs");
 mod catalog;
 pub mod goal;
-pub mod mcp_tools;
+pub use codetether_native_mcp_client::mcp_tools;
 pub use codetether_native_memory as memory;
 pub mod morph_backend;
 pub mod multiedit;

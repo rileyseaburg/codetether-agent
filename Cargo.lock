@@ -1940,6 +1940,7 @@ dependencies = [
  "codetether-native-voice",
  "codetether-native-worker-server",
  "codetether-native-tetherscript",
+ "codetether-native-mcp-client",
 ]
 
 [[package]]
@@ -3636,6 +3637,29 @@ dependencies = [
  "codetether-lsp-core",
  "tracing",
  "codetether-lsp-tool",
+]
+
+[[package]]
+name = "codetether-native-mcp-client"
+version = "4.7.6-dev.38"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-bash-tool",
+ "codetether-config",
+ "codetether-mcp-approval",
+ "codetether-mcp-bridge",
+ "codetether-mcp-client",
+ "codetether-mcp-core",
+ "codetether-mcp-fallback",
+ "codetether-mcp-tools",
+ "codetether-mcp-transport",
+ "codetether-native-approval",
+ "codetether-native-runtime-policy",
+ "codetether-session-events",
+ "codetether-tool-core",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

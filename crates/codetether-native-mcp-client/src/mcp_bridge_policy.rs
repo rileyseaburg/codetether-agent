@@ -1,5 +1,5 @@
 //! Application-bound adapters for the existing bridge approval tests.
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 pub(super) async fn blocked(
     command: &str,

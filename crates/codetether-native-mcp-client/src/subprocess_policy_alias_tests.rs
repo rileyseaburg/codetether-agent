@@ -7,7 +7,7 @@ async fn approved_mcp_bridge_alias_allows_subprocess_spawn_gate() {
     let _env = EnvGuard::data_dir(data.path());
     let store = ApprovalStore::open(data.path().join("approvals")).expect("store");
     let args = policy_args("npx", &["server"], None);
-    let blocked = crate::runtime_policy::evaluate_tool_invocation("mcp_bridge", &args)
+    let blocked = codetether_native_runtime_policy::evaluate_tool_invocation("mcp_bridge", &args)
         .await
         .expect("approval required");
     let request_id = blocked.metadata["approval_request_id"]

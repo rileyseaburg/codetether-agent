@@ -1,9 +1,9 @@
 use super::{blocked, policy_args};
-use crate::approval::{
+use codetether_config::AccessMode;
+use codetether_native_approval::{
     ApprovalStore,
     test_env::{ScopedEnv, lock_env},
 };
-use crate::config::AccessMode;
 
 #[tokio::test]
 async fn bridge_policy_block_includes_approval_id() {
@@ -36,7 +36,7 @@ async fn bridge_policy_accepts_alias_approved_id() {
     let data = tempfile::tempdir().expect("tempdir");
     let _env = ScopedEnv::data_dir_with_access(data.path(), AccessMode::Ask);
     let args = policy_args("npx", &["github-mcp"], None);
-    let request = crate::runtime_policy::evaluate_tool_invocation("mcp_bridge", &args)
+    let request = codetether_native_runtime_policy::evaluate_tool_invocation("mcp_bridge", &args)
         .await
         .unwrap();
     let id = request.metadata["approval_request_id"].as_str().unwrap();
