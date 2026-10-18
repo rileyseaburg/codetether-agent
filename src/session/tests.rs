@@ -3,7 +3,6 @@ use super::helper::build::{
     build_request_requires_tool, looks_like_build_execution_request,
     should_force_build_tool_first_retry,
 };
-use super::helper::markup::normalize_textual_tool_calls;
 use super::helper::provider::{
     assistant_claims_imminent_tool_use, choose_default_provider,
     resolve_provider_for_session_request, should_retry_missing_native_tool_call,
@@ -77,72 +76,6 @@ async fn collect_stream_completion_reconstructs_tool_calls() {
         Some(ContentPart::ToolCall { id, name, arguments, .. })
             if id == "call_1" && name == "read" && arguments == "{\"path\":\"src/main.rs\"}"
     ));
-}
-
-#[test]
-fn normalize_textual_tool_calls_extracts_markup_into_structured_calls() {
-    let response = CompletionResponse {
-        message: Message {
-            role: Role::Assistant,
-            content: vec![ContentPart::Text {
-                text: "<tool_call>{\"name\":\"lsp\",\"arguments\":{\"action\":\"workspaceSymbol\",\"query\":\"Session\"}}</tool_call>".to_string(),
-            }],
-        },
-        usage: Usage::default(),
-        finish_reason: FinishReason::Stop,
-    };
-    let tools = vec![ToolDefinition {
-        name: "lsp".to_string(),
-        description: "LSP operations".to_string(),
-        parameters: json!({"type":"object"}),
-    }];
-
-    let normalized = normalize_textual_tool_calls(response, &tools);
-    assert_eq!(normalized.finish_reason, FinishReason::ToolCalls);
-    assert!(
-        normalized
-            .message
-            .content
-            .iter()
-            .any(|p| matches!(p, ContentPart::ToolCall { name, .. } if name == "lsp"))
-    );
-    assert!(
-        normalized
-            .message
-            .content
-            .iter()
-            .all(|p| !matches!(p, ContentPart::Text { text } if text.contains("<tool_call>")))
-    );
-}
-
-#[test]
-fn normalize_textual_tool_calls_ignores_unknown_tools() {
-    let response = CompletionResponse {
-        message: Message {
-            role: Role::Assistant,
-            content: vec![ContentPart::Text {
-                text: "<tool_call>{\"name\":\"not_a_tool\",\"arguments\":{}}</tool_call>"
-                    .to_string(),
-            }],
-        },
-        usage: Usage::default(),
-        finish_reason: FinishReason::Stop,
-    };
-    let tools = vec![ToolDefinition {
-        name: "bash".to_string(),
-        description: "shell".to_string(),
-        parameters: json!({"type":"object"}),
-    }];
-
-    let normalized = normalize_textual_tool_calls(response, &tools);
-    assert_eq!(normalized.finish_reason, FinishReason::Stop);
-    assert!(
-        normalized
-            .message
-            .content
-            .iter()
-            .all(|p| !matches!(p, ContentPart::ToolCall { .. }))
-    );
 }
 
 #[test]

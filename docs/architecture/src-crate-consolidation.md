@@ -9767,3 +9767,19 @@ crate file has 33 code lines. Evidence is in
 `artifacts/consolidation-edit-confirmation/`. Compilation and runtime tests
 were not run; no edit tools were executed. No Cargo, rustc or Python ran.
 Full workspace consolidation remains active.
+
+### Dedicated tool-call parser crate
+
+Moved bare-JSON salvage, tool-call markup extraction, response normalization and
+native argument parsing into `crates/codetether-tool-call-parser`. Twenty modules
+separate regex matching, parsing, visible-text handling, call-part construction
+and original regression cases. Native helper exports retain established APIs.
+
+Twenty-four static comparisons cover argument aliases, registered-tool filtering,
+native-call precedence, generated call IDs, malformed IDs, exact logs, moved
+tests and unchanged callers. Module/dependency graphs, file budgets and whitespace
+checks passed; the largest crate file has 42 code lines. Eight original tests
+moved without execution. Evidence is in
+`artifacts/consolidation-tool-call-parser/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python or tool execution ran. Full workspace
+consolidation remains active.

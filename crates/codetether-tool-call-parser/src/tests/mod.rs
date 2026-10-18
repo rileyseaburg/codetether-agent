@@ -1,0 +1,11 @@
+//! Original bare JSON, markup and native call parsing cases.
+mod bare_extract_bare_json_handles_keys_fences_and_rejections;
+mod bare_normalize_leaves_ordinary_prose_alone;
+mod bare_normalize_salvages_bare_json_without_markup;
+mod bare_support;
+mod markup_normalize_textual_tool_calls_extracts_markup_into_structured_calls;
+mod markup_normalize_textual_tool_calls_ignores_unknown_tools;
+mod native_cut_off_json_is_still_truncated;
+mod native_empty_arguments_parse_as_empty_object;
+mod native_parse_arguments_handles_blank_valid_and_cut_off;
+mod native_support;

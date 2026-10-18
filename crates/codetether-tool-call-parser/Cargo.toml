@@ -1,0 +1,14 @@
+[package]
+name = "codetether-tool-call-parser"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native and textual provider tool-call parsing"
+
+[dependencies]
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+regex = "1"
+serde_json = "1"
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }
