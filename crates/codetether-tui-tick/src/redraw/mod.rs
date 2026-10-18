@@ -3,6 +3,7 @@
 //! [draw_if_ready] delegates rendering through [Host] and clears dirty state
 //! only after a rendered frame. [ready] preserves the 66ms streaming cadence;
 //! [finish] records a completed draw without altering skipped frames.
+mod binding;
 mod policy;
 mod run;
 pub use policy::{finish, ready};

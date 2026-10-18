@@ -9,7 +9,7 @@ impl Host for Native<'_> {
         super::dirty::capture(self.0)
     }
     fn autochat(&mut self) {
-        super::super::autochat::drain_autochat(self.0);
+        codetether_autochat_core::interactive::drain::drain_autochat(&mut self.0.state);
     }
     fn voice(&mut self) {
         crate::tui::app::event_handlers::drain_voice_transcription(&mut self.0.state);

@@ -1,23 +1,14 @@
-//! Native rendering binding for shared streaming redraw policy.
-mod host;
-use crate::tui::app::{session_runtime::SessionView, state::App};
-use ratatui::{Terminal, backend::CrosstermBackend};
+//! Frontend selection for shared redraw policy.
+codetether_tui_tick::declare_frontend_redraw!(
+    crate::tui::app::state::App,
+    crate::tui::app::session_runtime::SessionView,
+    ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
+    crate::tui::app::safe_draw::draw_ui,
+);
+#[cfg(test)]
+use crate::tui::app::state::App;
+#[cfg(test)]
 use std::time::Instant;
-pub(super) fn draw_if_ready(
-    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
-    app: &mut App,
-    session: &SessionView,
-    last_draw: &mut Option<Instant>,
-) -> anyhow::Result<()> {
-    codetether_tui_tick::redraw::draw_if_ready(
-        &mut host::Native {
-            terminal,
-            app,
-            session,
-        },
-        last_draw,
-    )
-}
 #[cfg(test)]
 fn finish(app: &mut App, last_draw: &mut Option<Instant>, rendered: bool) {
     codetether_tui_tick::redraw::finish(&mut app.state.needs_redraw, last_draw, rendered);

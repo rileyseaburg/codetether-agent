@@ -27304,3 +27304,21 @@ file-limit and whitespace checks pass for 725 roots and 617 crates. No manifest
 or lock changes were needed; tests and unrelated files are unchanged. Evidence:
 artifacts/consolidation-reactor-driver/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Generic relay drain and frontend redraw binding
+
+Moved autochat queue draining into a normal generic function in
+codetether-autochat-core::interactive::drain. The existing View implementation
+supplies the same receiver and event handler; collection still finishes before
+events are applied. Moved the frontend redraw host and guarded draw entry point
+into codetether-tui-tick::redraw::binding. Removed two root implementation files;
+redraw test helpers and the test source remain unchanged.
+
+Eight function bodies match after the explicit relay accessor/handler
+substitutions. The tick caller changes only its drain target and passes the same
+AppState used by the previous wrapper. Declaration, module/dependency, native
+production-scope, standalone formatting, file-limit and whitespace checks pass
+for 725 roots and 617 crates. No dependency or lock changes were needed;
+unrelated files are unchanged. Evidence: artifacts/consolidation-redraw-relay/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active.

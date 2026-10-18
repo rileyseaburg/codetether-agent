@@ -4,7 +4,6 @@
 //! `tokio::select!` across terminal, session, result, watchdog
 //! and tick channels.
 
-mod autochat;
 mod bus_inbox;
 mod driver;
 mod io;

@@ -5,6 +5,7 @@
 //! this crate. Commands and workers share the same state and completion events.
 mod binding;
 pub mod command;
+pub mod drain;
 pub mod events;
 pub mod handler;
 pub mod host;
