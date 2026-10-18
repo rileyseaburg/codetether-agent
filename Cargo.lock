@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-validation",
  "codetether-build-policy",
  "codetether-provider-policy",
  "codetether-tool-call-parser",
@@ -4910,6 +4911,17 @@ dependencies = [
 [[package]]
 name = "codetether-util"
 version = "0.1.0"
+
+[[package]]
+name = "codetether-validation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-lsp-core",
+ "serde_json",
+ "tokio",
+]
 
 [[package]]
 name = "codetether-vectordb"

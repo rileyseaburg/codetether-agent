@@ -9846,3 +9846,20 @@ the two new modules contain at most 43 code lines. Evidence is in
 `artifacts/consolidation-storage-helpers/`. Compilation and runtime tests were
 not run; no uploads were executed. No Cargo, rustc or Python ran. Full workspace
 consolidation remains active.
+
+### Dedicated validation pipeline crate
+
+Moved touched-file tracking/scope, Git dirty-path capture, diagnostic collection,
+relative path formatting and continuation-report assembly into
+`crates/codetether-validation`. Sixteen modules separate tracking, metadata,
+paths, collection, rendering, orchestration and original tests. A native host
+provides the existing LSP manager, refactor guard and sandboxed ESLint results.
+Native validator invocation and access checks retain their existing code.
+
+Twenty-four static comparisons/checks cover touched-only scope, source ordering,
+deduplication, report limits, early refactor return, native host methods and
+unchanged ESLint handling. Module/dependency graphs, file budgets and whitespace
+checks passed; the largest crate file has 38 code lines. Five original tests
+moved without execution. Evidence is in `artifacts/consolidation-validation/`.
+Compilation and runtime tests were not run; no validators were executed.
+No Cargo, rustc or Python ran. Full workspace consolidation remains active.

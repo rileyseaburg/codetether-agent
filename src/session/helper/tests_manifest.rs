@@ -8,4 +8,3 @@ mod prompt_events_tests;
 mod prompt_steering_test_provider;
 mod prompt_steering_test_support;
 mod prompt_steering_tests;
-mod validation_tests;

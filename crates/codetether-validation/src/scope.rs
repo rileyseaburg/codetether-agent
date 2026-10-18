@@ -16,14 +16,19 @@ use std::path::PathBuf;
 ///
 /// `baseline_git_dirty_files` is accepted for call-site compatibility and to
 /// allow future scope tightening; it never widens the set.
-pub(crate) fn validation_scope(
+/// # Arguments
+/// Receives this turn’s touched paths and the baseline dirty set.
+/// # Returns
+/// A clone of touched paths; unrelated baseline paths never widen scope.
+/// # Examples
+/// ```
+/// let empty = std::collections::HashSet::new();
+/// assert!(codetether_validation::validation_scope(&empty, &empty).is_empty());
+/// ```
+pub fn validation_scope(
     touched_files: &HashSet<PathBuf>,
     baseline_git_dirty_files: &HashSet<PathBuf>,
 ) -> HashSet<PathBuf> {
     let _ = baseline_git_dirty_files;
     touched_files.clone()
 }
-
-#[cfg(test)]
-#[path = "validation_scope_tests.rs"]
-mod validation_scope_tests;

@@ -1,6 +1,6 @@
 //! Regression tests for validation scope isolation (cross-thread safety).
 
-use super::validation_scope;
+use crate::validation_scope;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
