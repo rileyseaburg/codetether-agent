@@ -12183,3 +12183,18 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-context-health/.
 - No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
   incomplete.
+
+### Composer cursor-operation extraction
+
+- Moved Unicode character counting/indexing, cursor clamping, character and
+  word movement, endpoints and horizontal visibility calculations into five
+  focused codetether-composer-view modules. Each contains at most 22 code lines.
+- AppState methods retain their API and assign returned cursor/scroll values,
+  while input storage, history and command suggestions remain in the application.
+  Existing input-state tests are unchanged.
+- Verification: 22 source comparisons passed for the original algorithms,
+  native delegates, helper results and unchanged tests. Full native/shared module
+  reachability, dependency cycles, direct formatting, source limits and diff
+  checks passed. Evidence: artifacts/consolidation-composer-cursor/.
+- No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
+  incomplete.

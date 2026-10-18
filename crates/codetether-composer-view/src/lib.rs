@@ -17,3 +17,14 @@ pub use input_title::build as build_title;
 pub use suggestion_style::highlight_style;
 pub use suggestions::render_suggestions;
 pub use view::ComposerView;
+
+/// Unicode-aware composer cursor indexing.
+pub mod cursor_index;
+/// Character and endpoint cursor movement.
+pub mod cursor_move;
+/// Horizontal cursor visibility.
+pub mod cursor_visibility;
+/// Word movement to the left.
+pub mod cursor_word_left;
+/// Word movement to the right.
+pub mod cursor_word_right;
