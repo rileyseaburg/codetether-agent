@@ -1384,6 +1384,7 @@ dependencies = [
  "codetether-worker-events",
  "codetether-workspace-snapshot",
  "codetether-workspace-view",
+ "codetether-webview-bars",
  "codetether-git-view",
  "codetether-protocol-view",
  "codetether-chat-sync",
@@ -15910,5 +15911,14 @@ version = "0.1.0"
 dependencies = [
  "codetether-util",
  "codetether-workspace-snapshot",
+ "ratatui",
+]
+
+[[package]]
+name = "codetether-webview-bars"
+version = "0.1.0"
+dependencies = [
+ "codetether-chat-layout",
+ "codetether-util",
  "ratatui",
 ]

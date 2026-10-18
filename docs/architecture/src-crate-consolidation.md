@@ -17573,3 +17573,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-workspace-view/`.
 - No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Webview header and status bar presentation
+
+- Moved header labels, truncation and bordered rendering, processing/tool/approval
+  badges, model/token span packing, and the small-terminal hint into the dedicated
+  `codetether-webview-bars` crate, with header, prefix and status modules.
+- Borrowed display structures replace App dependencies. Native adapters supply
+  session/agent/branch labels, message count, status and active approval values,
+  and the existing token summary. Approval storage and token collection remain
+  in their existing owners.
+- Verified full function bodies with explicit field/path substitutions, every
+  native value binding, unchanged token/approval/layout consumers, module and
+  dependency graphs, direct rustfmt, file limits and whitespace. Added the crate
+  to the workspace and root dependencies; staged lock changes include only this
+  package and dependency, preserving unrelated working-copy changes.
+  Evidence: `artifacts/consolidation-webview-bars/`.
+- No Cargo, rustc, Python, rendering actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

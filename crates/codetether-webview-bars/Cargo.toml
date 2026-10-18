@@ -1,0 +1,12 @@
+[package]
+name = "codetether-webview-bars"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Webview chat header, status badges and status bar presentation"
+
+[dependencies]
+codetether-chat-layout = { path = "../codetether-chat-layout", version = "0.1.0" }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
