@@ -41,7 +41,10 @@ macro_rules! declare_undo_command {
                     &mut self.0.state.messages
                 }
                 fn clear_streaming_text(&mut self) {
-                    self.0.state.clear_streaming_text();
+                    self.0
+                        .state
+                        .message_cache
+                        .clear_streaming_text(&mut self.0.state.streaming);
                 }
                 fn scroll_to_bottom(&mut self) {
                     self.0.state.scroll_to_bottom();

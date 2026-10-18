@@ -9,7 +9,10 @@ macro_rules! __impl_event_completion {
                 $settle(self.app, self.slot);
             }
             fn clear_streaming_text(&mut self) {
-                self.app.state.clear_streaming_text();
+                self.app
+                    .state
+                    .message_cache
+                    .clear_streaming_text(&mut self.app.state.streaming);
             }
             fn complete_turn_timing(&mut self) {
                 self.app.state.complete_turn_timing();

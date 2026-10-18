@@ -97,3 +97,4 @@ pub mod pipeline;
 
 /// Application-local render-cache methods.
 pub mod state_binding;
+mod streaming_state;

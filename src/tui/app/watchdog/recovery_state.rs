@@ -14,7 +14,7 @@ impl Ui for AppState {
         }
     }
     fn clear_streaming(&mut self) {
-        self.clear_streaming_text();
+        self.message_cache.clear_streaming_text(&mut self.streaming);
     }
     fn clear_timing(&mut self) {
         self.clear_request_timing();

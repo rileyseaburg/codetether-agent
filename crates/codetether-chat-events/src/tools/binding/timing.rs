@@ -22,7 +22,7 @@ macro_rules! __impl_tool_event_timing {
                 self.app.state.streaming.streaming_start.is_some()
             }
             fn begin_streaming(&mut self) {
-                self.app.state.begin_streaming();
+                self.app.state.streaming.begin_streaming();
             }
         }
     };

@@ -18,7 +18,9 @@ macro_rules! __frontend_modified_view {
                         app.state.messages.clear();
                     }
                     Action::ClearStreaming => {
-                        app.state.clear_streaming_text();
+                        app.state
+                            .message_cache
+                            .clear_streaming_text(&mut app.state.streaming);
                     }
                     Action::SaveScroll => {
                         app.state.save_scroll_state();

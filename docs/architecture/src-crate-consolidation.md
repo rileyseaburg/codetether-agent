@@ -28353,3 +28353,20 @@ file-limit checks pass (724 roots, 617 crates). Evidence:
 artifacts/consolidation-worker-methods/. No dependencies or unrelated working
 files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Crate-owned streaming/cache coordination
+
+Removed five root-generated streaming methods and the root streaming.rs
+wrapper. Timing and throughput callers now use StreamingState directly.
+RenderedLineCache owns text replacement and clear operations that coordinate
+streaming text with suffix invalidation. Replacement still invalidates every
+time; clearing invalidates only when content changed.
+
+Static comparisons cover fourteen changed caller/registration files and both
+cache-coordination bodies. Existing streaming clocks, text operations and
+cache invalidation primitives are unchanged. An initial verifier import-order
+mismatch was corrected and retained in evidence. Declaration, module/dependency,
+production-scope, formatting, whitespace and file-limit checks pass (724 roots,
+617 crates). Evidence: artifacts/consolidation-streaming-methods/.
+No dependencies or unrelated working files changed. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active and incomplete.

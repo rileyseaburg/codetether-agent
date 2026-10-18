@@ -14,11 +14,15 @@ fn idle_cache_is_reusable() {
 fn streaming_replacement_invalidates_cached_suffix() {
     let mut state = AppState::default();
     state.processing = true;
-    state.replace_streaming_text("first".to_string());
+    state
+        .message_cache
+        .replace_streaming_text(&mut state.streaming, "first".to_string());
     state.store_message_lines(vec![Line::from("first")], 80);
     assert!(state.is_message_cache_valid(80));
 
-    state.replace_streaming_text("other".to_string());
+    state
+        .message_cache
+        .replace_streaming_text(&mut state.streaming, "other".to_string());
     assert!(!state.is_message_cache_valid(80));
 }
 

@@ -15,10 +15,13 @@ macro_rules! __impl_chat_stream {
                 self.0.state.note_text_token();
             }
             fn replace_streaming_text(&mut self, text: String) {
-                self.0.state.replace_streaming_text(text);
+                self.0
+                    .state
+                    .message_cache
+                    .replace_streaming_text(&mut self.0.state.streaming, text);
             }
             fn record_streaming_chars(&mut self, count: usize) {
-                self.0.state.record_streaming_chars(count);
+                self.0.state.streaming.record_streaming_chars(count);
             }
             fn streaming_len(&self) -> usize {
                 self.0.state.streaming.streaming_text.len()
@@ -27,7 +30,10 @@ macro_rules! __impl_chat_stream {
                 $limit
             }
             fn clear_streaming_text(&mut self) {
-                self.0.state.clear_streaming_text();
+                self.0
+                    .state
+                    .message_cache
+                    .clear_streaming_text(&mut self.0.state.streaming);
             }
             fn reset_tool_preview_scroll(&mut self) {
                 self.0.state.reset_tool_preview_scroll();

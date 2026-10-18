@@ -48,7 +48,10 @@ macro_rules! declare_fork_command {
                     self.0.state.session_id = Some(id);
                 }
                 fn clear_streaming_text(&mut self) {
-                    self.0.state.clear_streaming_text();
+                    self.0
+                        .state
+                        .message_cache
+                        .clear_streaming_text(&mut self.0.state.streaming);
                 }
                 fn clear_request_timing(&mut self) {
                     self.0.state.clear_request_timing();

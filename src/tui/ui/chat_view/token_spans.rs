@@ -6,7 +6,7 @@ use ratatui::text::Span;
 pub fn push_throughput_span(spans: &mut Vec<Span<'static>>, app: &App) {
     codetether_token_display::token_spans::push_throughput_span(
         spans,
-        app.state.streaming_tok_per_sec(),
+        app.state.streaming.streaming_tok_per_sec(),
         app.state.processing,
     );
 }

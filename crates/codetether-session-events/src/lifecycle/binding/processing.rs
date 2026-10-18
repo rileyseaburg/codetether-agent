@@ -25,7 +25,7 @@ macro_rules! __impl_event_processing {
                 self.app.state.streaming.streaming_start.is_some()
             }
             fn begin_streaming(&mut self) {
-                self.app.state.begin_streaming();
+                self.app.state.streaming.begin_streaming();
             }
             fn set_status(&mut self, status: String) {
                 self.app.state.status = status;

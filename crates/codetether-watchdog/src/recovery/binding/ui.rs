@@ -20,7 +20,9 @@ macro_rules! __frontend_watchdog_ui {
                     }
                 }
                 fn clear_streaming(&mut self) {
-                    self.state.clear_streaming_text();
+                    self.state
+                        .message_cache
+                        .clear_streaming_text(&mut self.state.streaming);
                 }
                 fn clear_timing(&mut self) {
                     self.state.clear_request_timing();
