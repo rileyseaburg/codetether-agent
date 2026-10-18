@@ -10562,3 +10562,19 @@ Evidence is in `artifacts/consolidation-actor/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python or actor/bus operations ran.
 Full workspace consolidation remains active. Undeclared mux agent-control
 source remains pending review rather than being activated by this extraction.
+
+### Cleanup CLI extracted
+
+Moved worktree/build-artifact cleanup option parsing, operation dispatch,
+text/JSON previews and completion reporting into
+`crates/codetether-cleanup-cli`. Seven modules separate the argument contract,
+worktree preview, preview serialization, scope wording, artifact preview and
+completion messages. Native binary and CLI paths now re-export the shared API.
+The shared worktree crate retains all cleanup implementation.
+
+Thirteen static comparisons/checks cover option attributes, operation branches,
+preview and result text/JSON, and compatibility exports. Module/dependency
+graphs, file budgets and whitespace checks passed; modules have at most 34 code
+lines. Evidence is in `artifacts/consolidation-cleanup-cli/`. Compilation and
+runtime tests were not run. No Cargo, rustc, Python, cleanup operation or
+filesystem/Git fixture ran. Full workspace consolidation remains active.

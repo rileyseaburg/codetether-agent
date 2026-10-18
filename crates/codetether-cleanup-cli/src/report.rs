@@ -1,4 +1,6 @@
-use codetether_agent::cli::CleanupArgs;
+//! Cleanup completion output in text or JSON.
+
+use crate::CleanupArgs;
 
 pub fn done(args: CleanupArgs, count: usize) {
     if args.json {

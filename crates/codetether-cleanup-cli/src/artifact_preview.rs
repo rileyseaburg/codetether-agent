@@ -1,4 +1,6 @@
-use codetether_agent::cli::CleanupArgs;
+//! Build-artifact cleanup previews.
+
+use crate::CleanupArgs;
 use std::path::PathBuf;
 
 pub fn print(args: CleanupArgs, dirs: &[PathBuf]) -> anyhow::Result<()> {
