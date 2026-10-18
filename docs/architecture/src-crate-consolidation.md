@@ -8718,3 +8718,23 @@ passed; all 53 store crate modules remain below 45 code lines. Evidence is in
 `artifacts/consolidation-store-import/`. Compilation and runtime tests were not
 run. No Cargo, rustc or Python commands ran. Native header/listing, working-set
 management and other source areas remain in the consolidation goal.
+
+### Session-store working windows and metadata listing
+
+Moved working-set eviction and metadata-only listing SQL into the store crate's
+`window` and `metadata` modules. Native eviction passes disjoint references to
+the same checkpoint, tracked vectors and summary index, so the shared algorithm
+retains its lock scope without cloning state. Native listing retains only header
+to `SessionSummary` projection. The 1,000-record window constant now has one
+owner and remains re-exported from the application's store API.
+
+Eviction preserves clean-prefix limits, protected-constraint capture, message
+and tool offsets, and summary invalidation. Listing preserves absent-database
+behavior, workspace filtering, persisted message counts and descending update
+order. Nineteen static checks cover complete moved bodies, native bindings,
+constant ownership and all sixteen unchanged persistence tests. Module-reference,
+dependency, file-budget and whitespace checks passed; the store's 58 modules
+remain below 45 code lines each. Evidence is in
+`artifacts/consolidation-store-window/`. Compilation and runtime tests were not
+run. No Cargo, rustc or Python commands ran. Other native implementation remains
+part of the active whole-workspace consolidation goal.

@@ -49,3 +49,6 @@ mod restoration;
 pub use restoration::{Restore, TailLoad, load, load_sync, restore_consumer};
 
 pub mod legacy;
+
+pub mod metadata;
+pub mod window;

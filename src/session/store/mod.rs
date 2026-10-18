@@ -40,4 +40,4 @@ pub use state::State;
 mod tests;
 
 /// Maximum messages retained by interactive/background readers.
-pub const WINDOW: usize = 1_000;
+pub use codetether_session_store::window::WINDOW;
