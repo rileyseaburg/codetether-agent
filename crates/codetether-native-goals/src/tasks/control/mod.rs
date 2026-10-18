@@ -1,16 +1,16 @@
 //! User goal controls. Native replay owns the resulting state and accounting.
 
 mod snapshot;
-use crate::session::tasks::{GoalEdit, TaskLog};
+use crate::tasks::{GoalEdit, TaskLog};
 use codetether_goal_core::control as core;
-pub(crate) use codetether_goal_core::control::GoalControlError;
+pub use codetether_goal_core::control::GoalControlError;
 use serde_json::Value;
 
 /// Load a snapshot from native events without invoking a model.
 ///
 /// # Errors
 /// Returns storage errors without replacing them with an empty goal.
-pub(crate) async fn read(session_id: &str) -> Result<Value, GoalControlError> {
+pub async fn read(session_id: &str) -> Result<Value, GoalControlError> {
     let log = TaskLog::for_session(session_id)?;
     let state = core::read(&log).await?;
     Ok(snapshot::value(session_id, &state))
@@ -20,7 +20,7 @@ pub(crate) async fn read(session_id: &str) -> Result<Value, GoalControlError> {
 ///
 /// # Errors
 /// Returns validation, conflict, or storage errors; never retries a mutation.
-pub(crate) async fn update(session_id: &str, request: GoalEdit) -> Result<Value, GoalControlError> {
+pub async fn update(session_id: &str, request: GoalEdit) -> Result<Value, GoalControlError> {
     let log = TaskLog::for_session(session_id)?;
     let state = core::update(&log, request).await?;
     Ok(snapshot::value(session_id, &state))
@@ -30,10 +30,7 @@ pub(crate) async fn update(session_id: &str, request: GoalEdit) -> Result<Value,
 ///
 /// # Errors
 /// Rejects invalid input, replacement-goal identities, and storage failures.
-pub(crate) async fn update_user(
-    session_id: &str,
-    request: GoalEdit,
-) -> Result<Value, GoalControlError> {
+pub async fn update_user(session_id: &str, request: GoalEdit) -> Result<Value, GoalControlError> {
     let log = TaskLog::for_session(session_id)?;
     let state = core::update_user(&log, request).await?;
     Ok(snapshot::value(session_id, &state))

@@ -1,8 +1,8 @@
 //! Durable gate APIs must not offer tools a way to release a user hold.
 
-use super::*;
 use crate::session::tasks::answer_review_test_support::session;
 use crate::session::tasks::{AnswerReviewAction as Action, GoalStatus};
+use codetether_native_goals::runtime::answer_review::*;
 
 async fn decide(id: &str, action: Action) {
     let review = read(id).unwrap().answer_review.unwrap();
@@ -18,7 +18,7 @@ async fn answer_review_public_status_updates_cannot_resume() {
     assert!(held(&session.id));
     assert!(!ready(&session.id));
     assert!(
-        !super::super::set_status(&session.id, GoalStatus::Active)
+        !codetether_native_goals::runtime::set_status(&session.id, GoalStatus::Active)
             .await
             .unwrap()
     );

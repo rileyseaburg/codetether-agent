@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/codetether-native-goals",
     "crates/codetether-native-registry",
     "crates/codetether-native-a2a",
     "crates/codetether-native-worker",
@@ -713,6 +714,7 @@ fips = [
 
 [dependencies]
 codetether-native-a2a = { path = "crates/codetether-native-a2a", version = "4.7.6-dev.38" }
+codetether-native-goals = { path = "crates/codetether-native-goals", version = "0.1.0" }
 codetether-native-registry = { path = "crates/codetether-native-registry", version = "0.1.0" }
 codetether-native-worker = { path = "crates/codetether-native-worker", version = "0.1.0" }
 codetether-native-thinker = { path = "crates/codetether-native-thinker", version = "0.1.0" }

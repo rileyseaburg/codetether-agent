@@ -25673,3 +25673,27 @@ file-limit, direct rustfmt and whitespace checks pass. Unrelated dirty files
 remain unchanged. Evidence: artifacts/consolidation-native-regressions/.
 Tests were moved but not executed; no Cargo, rustc or Python ran. Full
 consolidation remains active.
+
+### Native session goal journals and execution runtime
+
+Added codetether-native-goals and moved task-log ownership, canonical task-log
+paths, cached state, user goal controls and projections, plus goal accounting,
+adoption, transitions, answer-review operations, prompt composition and
+continuation into it. Root tasks/runtime modules preserve their existing
+imports with re-exports. Session construction fixtures and two answer-review
+integration tests remain in the root and now call the crate APIs; the independent
+prompt-rendering test moved with its implementation.
+
+The journal path calls codetether-session-store::lifecycle::session_path, the
+same function used by the Session path declaration macro, then applies the
+unchanged tasks.jsonl extension. Seventeen moved files pass transformed-source
+comparisons with explicit owning paths and visibility changes. The retained
+answer-review test bodies and fixture are preserved. Initial comparisons needed
+normalization for rustfmt punctuation/import order and for the old path's
+occurrence in documentation; those failed checks remain in execution history.
+Module/dependency scans cover 716 roots and 602 crates without missing modules,
+cycles or undeclared direct dependencies. Declaration, file-limit, direct
+rustfmt and whitespace checks pass. The staged lockfile adds only the new
+package/root dependency; unrelated working changes remain unchanged. Evidence:
+artifacts/consolidation-native-goals/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

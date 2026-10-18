@@ -9,7 +9,7 @@ use std::path::PathBuf;
 ///
 /// # Examples
 /// ```
-/// use codetether_agent::session::tasks::TaskLog;
+/// use codetether_native_goals::TaskLog;
 /// let log = TaskLog::at("example.tasks.jsonl");
 /// assert_eq!(log.path().to_str(), Some("example.tasks.jsonl"));
 /// ```

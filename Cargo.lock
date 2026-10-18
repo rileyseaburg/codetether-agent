@@ -1275,6 +1275,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-native-goals",
  "codetether-native-registry",
  "codetether-context-health",
  "codetether-native-indexer",
@@ -3701,6 +3702,19 @@ version = "0.1.0"
 dependencies = [
  "codetether-github-pr",
  "codetether-github-pr-cli",
+]
+
+[[package]]
+name = "codetether-native-goals"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-goal-core",
+ "codetether-goal-runtime",
+ "codetether-provider-core",
+ "codetether-session-store",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]

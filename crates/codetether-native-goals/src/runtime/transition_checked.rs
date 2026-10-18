@@ -1,6 +1,6 @@
 //! Native session specialization of revision-checked goal transitions.
-use crate::session::tasks::{Goal, GoalStatus};
-pub(crate) async fn set_status_if_current(
+use crate::tasks::{Goal, GoalStatus};
+pub async fn set_status_if_current(
     session: &str,
     expected: &Goal,
     status: GoalStatus,

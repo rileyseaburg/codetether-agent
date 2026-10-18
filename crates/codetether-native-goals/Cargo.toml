@@ -1,0 +1,18 @@
+[package]
+name = "codetether-native-goals"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native session goal journals, controls and continuation runtime"
+
+[dependencies]
+anyhow = "1"
+codetether-goal-core = { path = "../codetether-goal-core", version = "0.1.0" }
+codetether-goal-runtime = { path = "../codetether-goal-runtime", version = "0.1.0" }
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+serde_json = "1"
+
+[dev-dependencies]
+uuid = { version = "1.24.0", features = ["v4"] }

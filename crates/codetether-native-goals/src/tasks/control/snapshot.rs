@@ -1,6 +1,6 @@
 //! Native goal projection shared by the goal-control HTTP handlers.
 
-use crate::session::tasks::TaskState;
+use crate::tasks::TaskState;
 use serde_json::{Value, json};
 
 /// Return authoritative state; no UI request fields are echoed as success.

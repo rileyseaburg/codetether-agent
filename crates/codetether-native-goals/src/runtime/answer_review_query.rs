@@ -1,10 +1,13 @@
 //! Native session specialization of fail-closed answer-review queries.
-pub(crate) fn read(session: &str) -> anyhow::Result<crate::session::tasks::TaskState> {
+/// Read the durable goal state without suppressing journal errors.
+pub fn read(session: &str) -> anyhow::Result<crate::tasks::TaskState> {
     codetether_goal_runtime::answer_review::read::<super::super::journal::NativeJournal>(session)
 }
-pub(crate) fn held(session: &str) -> bool {
+/// Check whether an answer-review hold blocks goal continuation.
+pub fn held(session: &str) -> bool {
     codetether_goal_runtime::answer_review::held::<super::super::journal::NativeJournal>(session)
 }
-pub(crate) fn ready(session: &str) -> bool {
+/// Check whether the held answer is ready for user review.
+pub fn ready(session: &str) -> bool {
     codetether_goal_runtime::answer_review::ready::<super::super::journal::NativeJournal>(session)
 }

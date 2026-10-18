@@ -1,7 +1,7 @@
 //! Goal instruction injection for sessions with no persisted goal.
 
 use super::compose;
-use crate::session::tasks::TaskLog;
+use crate::tasks::TaskLog;
 
 #[test]
 fn goal_less_session_gets_turn_instructions_without_creating_a_goal() {

@@ -1,5 +1,6 @@
 //! Native session specialization of shared goal usage accounting.
-pub(crate) async fn record_usage(
+/// Append token and elapsed-time usage to the session goal.
+pub async fn record_usage(
     session_id: &str,
     tokens: usize,
     elapsed: std::time::Duration,

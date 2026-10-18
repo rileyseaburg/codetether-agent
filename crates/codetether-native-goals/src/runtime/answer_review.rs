@@ -1,15 +1,17 @@
 //! Native session specialization of user-only answer-review operations.
-use crate::session::tasks::AnswerReviewAction;
+use crate::tasks::AnswerReviewAction;
 #[path = "answer_review_query.rs"]
 mod query;
-pub(crate) use query::{held, read, ready};
-pub(crate) async fn begin(session: &str, question: &str) -> anyhow::Result<bool> {
+pub use query::{held, read, ready};
+/// Begin or update a user-requested answer-review hold.
+pub async fn begin(session: &str, question: &str) -> anyhow::Result<bool> {
     codetether_goal_runtime::answer_review::begin::<super::journal::NativeJournal>(
         session, question,
     )
     .await
 }
-pub(crate) async fn record(
+/// Record an explicit user decision for the matching goal and review.
+pub async fn record(
     session: &str,
     goal_id: &str,
     review_id: &str,
@@ -20,6 +22,3 @@ pub(crate) async fn record(
     )
     .await
 }
-#[cfg(test)]
-#[path = "answer_review_tests.rs"]
-mod tests;
