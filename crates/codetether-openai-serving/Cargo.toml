@@ -1,0 +1,20 @@
+[package]
+name = "codetether-openai-serving"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "OpenAI-compatible provider completion response serving"
+
+[dependencies]
+async-stream = "0.3"
+axum = "0.8"
+chrono = "0.4"
+codetether-openai-adapter = { path = "../codetether-openai-adapter", version = "0.1.0" }
+codetether-openai-stream = { path = "../codetether-openai-stream", version = "0.1.0" }
+codetether-openai-wire = { path = "../codetether-openai-wire", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+futures = "0.3"
+serde_json = "1"
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }

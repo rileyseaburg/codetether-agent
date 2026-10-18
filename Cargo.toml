@@ -283,6 +283,7 @@ members = [
     "crates/codetether-k8s-api",
     "crates/codetether-audit-http",
     "crates/codetether-openai-stream",
+    "crates/codetether-openai-serving",
     "crates/codetether-tui-style",
     "crates/codetether-answer-review-view",
     "crates/codetether-message-cache",
@@ -640,6 +641,7 @@ codetether-event-replay = { path = "crates/codetether-event-replay", version = "
 codetether-k8s-api = { path = "crates/codetether-k8s-api", version = "0.1.0" }
 codetether-audit-http = { path = "crates/codetether-audit-http", version = "0.1.0" }
 codetether-openai-stream = { path = "crates/codetether-openai-stream", version = "0.1.0" }
+codetether-openai-serving = { path = "crates/codetether-openai-serving", version = "0.1.0" }
 codetether-session-resume = { path = "crates/codetether-session-resume", version = "0.1.0" }
 codetether-paste-buffer = { path = "crates/codetether-paste-buffer", version = "0.1.0" }
 codetether-task-tracker = { path = "crates/codetether-task-tracker", version = "0.1.0" }

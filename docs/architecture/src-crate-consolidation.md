@@ -13105,3 +13105,19 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   provider streams, HTTP requests, Cargo, rustc or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### OpenAI completion serving extraction
+
+- Moved selected-provider completion calls, generated response metadata, complete
+  JSON envelopes and SSE transport into codetether-openai-serving. Five modules
+  contain at most 41 code lines.
+- Native code retains provider lookup, model selection and request validation.
+  Provider error logging/mapping, streaming keepalive, error termination, DONE
+  markers, completion metadata and usage fields preserve their prior behavior.
+- Verification: 86 static comparisons passed for serving branches, response
+  construction, metadata, native validation and remaining server items. Module
+  and dependency checks, direct rustfmt, file limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-openai-serving/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  provider calls, streams, HTTP requests, Cargo, rustc or Rust tests ran.
+  Full workspace consolidation remains incomplete.

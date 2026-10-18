@@ -1279,6 +1279,7 @@ dependencies = [
  "codetether-k8s-api",
  "codetether-audit-http",
  "codetether-openai-stream",
+ "codetether-openai-serving",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6527,6 +6528,23 @@ dependencies = [
  "codetether-openai-wire",
  "codetether-provider-core",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-openai-serving"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "axum",
+ "chrono",
+ "codetether-openai-adapter",
+ "codetether-openai-stream",
+ "codetether-openai-wire",
+ "codetether-provider-core",
+ "futures",
+ "serde_json",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

@@ -751,85 +751,14 @@ async fn openai_chat_completions(
         stop,
     };
 
-    let chat_id = format!("chatcmpl-{}", uuid::Uuid::new_v4());
-    let now = chrono::Utc::now().timestamp();
-    let openai_model = make_openai_model_id(&selected_provider, &model_id);
-
-    if is_stream {
-        let mut provider_stream =
-            provider
-                .complete_stream(completion_request)
-                .await
-                .map_err(|error| {
-                    tracing::warn!(
-                        provider = %selected_provider,
-                        model = %model_id,
-                        error = %error,
-                        "Streaming completion request failed"
-                    );
-                    openai_internal_error(error.to_string())
-                })?;
-
-        let (stream_id, stream_model) = (chat_id.clone(), openai_model.clone());
-        let event_stream = async_stream::stream! {
-            let mut encoder = codetether_openai_stream::Encoder::new(stream_id, now, stream_model);
-            yield Ok::<Event, Infallible>(encoder.start());
-            while let Some(chunk) = provider_stream.next().await {
-                match encoder.push(chunk) {
-                    codetether_openai_stream::Emission::Skip => {},
-                    codetether_openai_stream::Emission::Event(event) => yield Ok(event),
-                    codetether_openai_stream::Emission::Error(event) => {
-                        yield Ok(event);
-                        yield Ok(Event::default().data("[DONE]"));
-                        return;
-                    }
-                }
-            }
-            yield Ok(encoder.finish());
-            yield Ok(Event::default().data("[DONE]"));
-        };
-
-        return Ok(Sse::new(event_stream)
-            .keep_alive(KeepAlive::new().interval(Duration::from_secs(15)))
-            .into_response());
-    }
-
-    let completion = provider
-        .complete(completion_request)
-        .await
-        .map_err(|error| {
-            tracing::warn!(
-                provider = %selected_provider,
-                model = %model_id,
-                error = %error,
-                "Completion request failed"
-            );
-            openai_internal_error(error.to_string())
-        })?;
-
-    let (content, tool_calls) = convert_response_message(&completion.message);
-
-    Ok(Json(OpenAiChatCompletionResponse {
-        id: chat_id,
-        object: "chat.completion".to_string(),
-        created: now,
-        model: openai_model,
-        choices: vec![OpenAiChatCompletionChoice {
-            index: 0,
-            message: OpenAiChatCompletionMessage {
-                role: "assistant".to_string(),
-                content,
-                tool_calls,
-            },
-            finish_reason: convert_finish_reason(completion.finish_reason).to_string(),
-        }],
-        usage: OpenAiUsage {
-            prompt_tokens: completion.usage.prompt_tokens,
-            completion_tokens: completion.usage.completion_tokens,
-            total_tokens: completion.usage.total_tokens,
-        },
-    })
-    .into_response())
+    codetether_openai_serving::serve(
+        provider,
+        completion_request,
+        is_stream,
+        selected_provider,
+        model_id,
+    )
+    .await
 }
 
 async fn start_cognition(
