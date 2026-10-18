@@ -23292,3 +23292,22 @@ unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-worker-swarm-binding/.
 No swarm tasks, provider loads, tests, Cargo, rustc or Python ran. Compilation
 and runtime behavior remain unverified. Full consolidation remains active.
+
+### Worker resource adapters owned by HTTP and provider crates
+
+Moved heartbeat startup from shared WorkerContext into the A2A HTTP crate.
+The native caller supplies a token projection, while the shared helper retains
+the original client/server/token/state cloning order and heartbeat entry point.
+Added ProviderRegistry::for_session in application-providers to map persisted
+session metadata into the existing task-key loader. Native worker policy now
+calls that method directly. Two native adapter files were removed.
+
+Static comparisons preserve heartbeat arguments and copy order, token lookup,
+task-key input and fallback. Heartbeat scheduling and task-provider loading
+implementations remain unchanged. Module/dependency scans cover 699 roots and
+571 crates without missing modules or cycles. Direct rustfmt, file-size limits
+and whitespace checks passed. Existing dependencies cover these operations;
+no manifests or lockfiles changed, and unrelated working changes remain intact.
+Evidence: artifacts/consolidation-worker-resources/.
+No heartbeat tasks, credential loads, tests, Cargo, rustc or Python ran.
+Compilation and runtime behavior remain unverified. Full consolidation is active.

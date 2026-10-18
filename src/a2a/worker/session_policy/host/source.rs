@@ -7,7 +7,7 @@ use std::path::PathBuf;
 impl codetether_a2a_worker_core::session_protocol::policy::Source for Native<'_> {
     type Registry = ProviderRegistry;
     async fn load(&mut self) -> anyhow::Result<ProviderRegistry> {
-        super::super::super::load_task_provider_registry(self.session).await
+        ProviderRegistry::for_session(&self.session.metadata).await
     }
     fn model(&self) -> Option<&str> {
         self.session.metadata.model.as_deref()

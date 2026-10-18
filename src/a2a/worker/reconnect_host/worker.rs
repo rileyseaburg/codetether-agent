@@ -1,8 +1,5 @@
 use super::{Native, mode::Mode};
-use crate::a2a::worker::{
-    connect_stream, connection_setup::start_connection_heartbeat, fetch_pending_tasks,
-    register_current_worker,
-};
+use crate::a2a::worker::{connect_stream, fetch_pending_tasks, register_current_worker};
 use codetether_a2a_stream::{ingest::StreamDisconnectReason, worker_reconnect::Worker};
 use tokio::{sync::mpsc, task::JoinHandle};
 impl<S: Mode> Worker for Native<'_, S> {
@@ -16,7 +13,9 @@ impl<S: Mode> Worker for Native<'_, S> {
         fetch_pending_tasks(&self.context.task_runtime).await
     }
     fn heartbeat(&self) -> JoinHandle<()> {
-        start_connection_heartbeat(self.context)
+        codetether_a2a_http::worker::start_connection_heartbeat(self.context, |args| {
+            args.token.clone()
+        })
     }
     async fn connect(
         &self,

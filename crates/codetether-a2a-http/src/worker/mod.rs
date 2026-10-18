@@ -48,7 +48,7 @@ pub use heartbeat_post::post_heartbeat;
 pub mod heartbeat_snapshot;
 
 mod heartbeat_loop;
-pub use heartbeat_loop::start_heartbeat;
+pub use heartbeat_loop::{start_connection_heartbeat, start_heartbeat};
 
 /// Claim response handling and progress transitions.
 pub mod claim;

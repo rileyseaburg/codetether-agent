@@ -22,4 +22,6 @@ mod submit;
 use extended::send_extended_task_heartbeat;
 pub use start::start_heartbeat;
 mod configuration;
+mod context;
 mod failures;
+pub use context::start_connection_heartbeat;

@@ -14,6 +14,7 @@ mod config;
 mod convert;
 mod create;
 mod integrations;
+mod session;
 mod task;
 pub mod task_factory;
 mod vault;

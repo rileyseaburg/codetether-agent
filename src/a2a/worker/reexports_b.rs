@@ -8,7 +8,6 @@ pub(super) use super::{
     runtime_state::{TaskReservation, WorkerTaskRuntime},
     server_state::attach_server_state,
     session_policy::execute_session_with_policy,
-    session_registry::load_task_provider_registry,
     session_steps::run_session_steps,
     swarm_policy::execute_swarm_with_policy,
 };

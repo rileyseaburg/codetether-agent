@@ -10,8 +10,6 @@ mod extended_heartbeat;
 mod forage_task;
 #[cfg(test)]
 mod git_branch_tests;
-#[rustfmt::skip]
-mod connection_setup;
 mod git_hook_gate;
 use codetether_a2a_http::worker as heartbeat_loop;
 use codetether_a2a_http::worker as http_client;
@@ -39,7 +37,6 @@ mod server_state;
 use codetether_a2a_worker_core::events as session_event;
 use codetether_a2a_worker_core::events::sink as session_event_sink;
 mod session_policy;
-mod session_registry;
 use codetether_a2a_worker_core::task_config as session_step_budget;
 mod session_steps;
 use codetether_swarm_core::worker_output as swarm_event_output;
