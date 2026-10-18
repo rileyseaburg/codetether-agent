@@ -16277,3 +16277,18 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-worktree-finalization/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared isolated prompt worktree creation
+
+- Moved prompt checkout creation into `codetether-worktree::prompt`, with
+  callbacks for existing branch lookup and native session-directory mutation.
+- Moved the owned manager/checkout/base-branch tuple to the worktree crate;
+  GitHub PR and native API paths retain compatibility re-exports.
+- Preserved TUI naming, manager options, branch lookup timing, workspace-stub
+  injection, logging, successful directory update and failure fallback.
+- Verification: complete creation-body comparison, directory callback binding,
+  state re-export, unchanged branch/executor/finalization code, module/dependency
+  graphs, direct rustfmt, file budgets and diff whitespace. No dependencies
+  changed. Evidence: `artifacts/consolidation-prompt-worktree/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

@@ -3,8 +3,6 @@
 //! then cleans up the isolated worktree. [WorktreeState] carries its ownership.
 mod merge;
 mod result;
-use codetether_worktree::{WorktreeInfo, WorktreeManager};
-pub use result::handle_worktree_result;
 /// Owned worktree manager, checkout and original target branch.
 /// # Examples
 /// ```no_run
@@ -13,4 +11,5 @@ pub use result::handle_worktree_result;
 /// assert!(state.2.is_none());
 /// # }
 /// ```
-pub type WorktreeState = (WorktreeManager, WorktreeInfo, Option<String>);
+pub use codetether_worktree::prompt::WorktreeState;
+pub use result::handle_worktree_result;

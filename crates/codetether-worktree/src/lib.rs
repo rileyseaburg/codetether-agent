@@ -62,3 +62,6 @@ pub mod repository;
 
 /// Swarm branch preparation, patch checks, and artifact inventory.
 pub mod swarm;
+
+/// Prompt-specific isolated checkout creation and cleanup state.
+pub mod prompt;
