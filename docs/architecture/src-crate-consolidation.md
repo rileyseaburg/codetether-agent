@@ -24364,3 +24364,21 @@ and whitespace checks passed. Only four required lockfile dependency entries
 are staged; unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-provider-factory/. No Cargo, rustc, Python, compilation,
 tool construction or tests ran. Full consolidation remains active.
+
+### Ralph tool execution host moved into the runtime crate
+
+Moved Ralph tool loop creation, execution and checkout delegation from
+src/tool/ralph/host.rs into codetether-ralph-runtime::tool. The native host is now
+a type alias selecting the existing runtime. Checkout uses that runtime's Git
+associated type, which resolves to the same GitPolicy<Native> specialization
+used by the removed src/ralph/git_policy.rs wrapper. Added the direct Ralph tool
+dependency to the runtime crate.
+
+Static comparisons preserve the loop construction, execution and error context;
+source inspection verifies the unchanged concrete Git policy type. Module and
+dependency scans cover 692 roots and 573 crates without missing modules or
+cycles. Direct workspace dependency audit, direct rustfmt, file limits and
+whitespace checks passed. Only the required lockfile dependency entry is staged;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-ralph-tool-host/. No Cargo, rustc, Python, compilation,
+checkout, loop execution or tests ran. Full consolidation remains active.

@@ -7,6 +7,8 @@
 pub mod application;
 mod cli;
 mod host;
+/// Tool-facing execution and checkout using the selected runtime host.
+pub mod tool;
 use codetether_bus_core::AgentBus;
 use codetether_context_policy::delegation::DelegationState;
 use codetether_provider_core::Provider;

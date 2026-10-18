@@ -8210,6 +8210,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "codetether-ralph-tool",
 ]
 
 [[package]]

@@ -7,7 +7,6 @@
 //! and uses RLM to compress progress when context gets too large.
 
 mod delegation;
-pub(crate) mod git_policy;
 mod ralph_loop;
 pub(crate) mod runtime_host;
 use codetether_ralph_core as types;
