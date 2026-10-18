@@ -26729,3 +26729,22 @@ whitespace checks pass; module scans cover 730 roots and 617 crates. No dependen
 or lock changes were needed. Unrelated working files remain untouched. Evidence:
 artifacts/consolidation-communication-binding/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### Agent status and lifecycle publication modules
+
+Moved complete application status/publication modules into
+codetether-agent-status::declare_application_status. The root agent module now
+selects the original bus_publish/status names and existing store. Deleted
+status.rs, bus_publish.rs, bus_publish/host.rs and lifecycle.rs. Live-agent field
+projection, message counts, session-based task mapping and publication calls
+remain unchanged; callers retain their existing module paths.
+
+All eight expanded function bodies match the originals after the equivalent
+status-host path substitution. No test sources changed. Declaration, dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass. Module scanning covers 729 roots and 617 crates; the obsolete explicit root
+for the deleted bus_publish adapter was removed after confirming the owning
+status crate remains fully scanned. The initial stale-root failure is retained.
+No manifest/lock changes were required; unrelated working files remain untouched.
+Evidence: artifacts/consolidation-status-binding/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

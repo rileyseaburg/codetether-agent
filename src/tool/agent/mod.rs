@@ -12,7 +12,9 @@
 //! ```
 
 pub mod bridge;
-mod bus_publish;
+codetether_agent_status::declare_application_status!(
+    bus_publish, status; crate::tool::agent::store
+);
 pub(crate) mod collaboration_runtime;
 pub(crate) mod communication;
 #[cfg(test)]
@@ -34,7 +36,6 @@ use codetether_agent_input as spawn_request;
 mod spawn_run;
 mod spawn_store;
 mod spawn_validation;
-mod status;
 mod store;
 use codetether_child_events as text;
 mod thread_lifecycle;

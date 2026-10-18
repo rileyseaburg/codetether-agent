@@ -27,3 +27,11 @@ mod terminal_messages;
 pub use publish_host::{PublishHost, PublishedAgent};
 pub use task_identity::{task_id, task_to_agent};
 pub use terminal_messages::{result_message, terminal_summary};
+
+mod application_binding;
+
+/// Dependency used by application status declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use codetether_tool_core::ToolResult;
+}
