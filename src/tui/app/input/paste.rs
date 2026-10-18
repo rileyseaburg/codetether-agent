@@ -11,11 +11,10 @@
 
 use crate::tui::app::state::App;
 use crate::tui::app::symbols::{schedule_refresh, symbol_search_active};
-use crate::tui::models::{InputMode, ViewMode};
+use crate::tui::models::ViewMode;
 
-#[path = "paste_summarise.rs"]
-mod summarise;
-use summarise::attach_summarised_paste;
+#[path = "paste_host.rs"]
+mod host;
 
 /// Handle pasted text from the terminal.
 ///
@@ -66,36 +65,5 @@ fn paste_chars_no_newlines(text: &str, mut f: impl FnMut(char)) {
 /// path so both get identical image-data-URL extraction and sidecar
 /// summarisation behavior. Expects line endings already normalised.
 pub fn paste_into_chat(app: &mut App, normalized: &str) {
-    if super::image_data_paste::try_attach_data_url(app, normalized) {
-        return;
-    }
-    // A data URL pasted alongside caption text (or by a terminal that mixes
-    // it into the buffer) is extracted here so it is not diverted into the
-    // large-paste text sidecar and lost as an image.
-    if let Some(found) = super::image_data_paste::extract_image_data_url(normalized) {
-        if super::image_data_paste::try_attach_data_url(app, &found.data_url) {
-            if !found.remainder.is_empty() {
-                paste_into_chat(app, &found.remainder);
-            }
-            return;
-        }
-    }
-    if super::pasted_text::should_summarize(normalized) {
-        attach_summarised_paste(app, normalized);
-        return;
-    }
-    app.state.input_mode = if app.state.input.is_empty() && normalized.starts_with('/') {
-        InputMode::Command
-    } else if app.state.input.starts_with('/') {
-        InputMode::Command
-    } else {
-        InputMode::Editing
-    };
-    app.state.insert_text(normalized);
-    let line_count = normalized.lines().count();
-    app.state.status = if line_count > 1 {
-        format!("Pasted {line_count} lines into input")
-    } else {
-        "Pasted into input".to_string()
-    };
+    codetether_paste_buffer::input::paste_into_chat(app, normalized);
 }

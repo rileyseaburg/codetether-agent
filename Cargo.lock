@@ -6404,6 +6404,9 @@ dependencies = [
 [[package]]
 name = "codetether-paste-buffer"
 version = "0.1.0"
+dependencies = [
+ "codetether-image",
+]
 
 [[package]]
 name = "codetether-session-resume"

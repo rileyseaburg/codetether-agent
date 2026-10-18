@@ -5,3 +5,6 @@ edition = "2024"
 rust-version = "1.85"
 license = "MIT"
 description = "Large-text paste buffers, placeholders, and prompt expansion"
+
+[dependencies]
+codetether-image = { path = "../codetether-image", version = "0.1.0" }

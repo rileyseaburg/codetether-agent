@@ -15954,3 +15954,19 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-image-paste/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared chat-paste routing and sidecar insertion
+
+- Moved chat paste sequencing and summarized sidecar insertion into
+  `codetether-paste-buffer::input`. Native bindings retain image consumption,
+  cursor-aware text insertion, input modes and the application's sidecar list.
+- Preserved standalone/embedded image precedence, caption recursion before
+  summarization, slash-command mode decisions, placeholder ordering and exact
+  status messages. View-specific filter routing stays in its native adapter.
+- Removed native paste_summarise.rs. Verification covers both complete moved
+  bodies, all six native bindings, unchanged outer paste routing, unchanged
+  image/sidecar implementations, module/dependency graphs, direct rustfmt,
+  file budgets, isolated lock addition and diff whitespace. Evidence:
+  `artifacts/consolidation-chat-paste/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

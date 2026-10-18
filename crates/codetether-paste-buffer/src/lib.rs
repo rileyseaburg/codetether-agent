@@ -17,3 +17,6 @@ pub use size::format_size;
 pub use summarize::should_summarize;
 #[cfg(test)]
 mod tests;
+
+/// Image-first chat paste ingestion and native composer integration.
+pub mod input;
