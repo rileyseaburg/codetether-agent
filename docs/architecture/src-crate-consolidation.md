@@ -10364,3 +10364,19 @@ contain at most 44 code lines. Evidence is in
 `artifacts/consolidation-mux-attachment/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python, network, clipboard or terminal operations ran.
 Full workspace consolidation remains active.
+
+### Mux program and command execution consolidated
+
+Moved server program startup, reconnect handling, parsed-command dispatch,
+control-response recording and best-effort detachment into
+`codetether-mux-attachment`. Seven modules separate request creation, start and
+attach flows, program outcomes and command dispatch. The native command prompt
+retains its input editor and provides the existing clipboard callback.
+
+Eleven static comparisons cover original startup/reconnect responses, offsets,
+control branches, output text and unchanged prompt/attach callers.
+Module/dependency graphs, file budgets and whitespace checks passed; new files
+contain at most 40 code lines. Evidence is in
+`artifacts/consolidation-mux-programs/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, terminal or program operations ran.
+Full workspace consolidation remains active.

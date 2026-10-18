@@ -2,9 +2,9 @@
 
 use anyhow::{Result, bail};
 
-use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
+use codetether_mux_protocol::{ClientRequest, ProgramRequest, ServerResponse};
 
-use super::connection::MuxConnection;
+use codetether_mux_client::MuxConnection;
 
 pub(super) async fn start(
     connection: &mut MuxConnection,

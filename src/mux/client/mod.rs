@@ -2,7 +2,6 @@
 
 mod attach;
 mod connection;
-mod exec;
 pub(in crate::mux) mod handshake;
 pub(super) mod parse;
 mod program;

@@ -1,45 +1,10 @@
-//! Start and reconnect flows for server-owned terminal programs.
-
-use anyhow::{Result, bail};
-
-use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
-
+//! Native clipboard adapter for shared program reconnect.
 use super::connection::MuxConnection;
-
-pub(super) async fn start(
-    connection: &mut MuxConnection,
-    id: u64,
-    command: String,
-) -> Result<super::proxy::Outcome> {
-    let offset = super::exec::start(connection, id, command).await?;
-    super::proxy::run(connection, id, offset, offset, false).await
-}
-
+use anyhow::Result;
 pub(super) async fn attach(
     connection: &mut MuxConnection,
     id: u64,
 ) -> Result<Option<super::proxy::Outcome>> {
-    let (columns, rows) = crossterm::terminal::size().unwrap_or((80, 24));
-    let response = connection
-        .request(ClientRequest::Program {
-            request: ProgramRequest::Attach {
-                window_id: id,
-                columns,
-                rows,
-            },
-        })
-        .await?;
-    match response {
-        ServerResponse::ProgramAttached {
-            offset,
-            replay_until,
-            alternate_screen,
-            ..
-        } => Ok(Some(
-            super::proxy::run(connection, id, offset, replay_until, alternate_screen).await?,
-        )),
-        ServerResponse::Error { message } if message.contains("no running program") => Ok(None),
-        ServerResponse::Error { message } => bail!(message),
-        _ => bail!("mux server returned an invalid program-attach response"),
-    }
+    codetether_mux_attachment::program::attach(connection, id, super::proxy::clipboard_content)
+        .await
 }

@@ -12,3 +12,13 @@ pub use outcome::Outcome;
 pub use run::run;
 
 mod output_event;
+
+mod control;
+mod dispatch;
+pub mod program;
+mod program_attach;
+mod program_dispatch;
+mod program_request;
+mod program_start;
+pub use control::detach;
+pub use dispatch::execute as execute_command;
