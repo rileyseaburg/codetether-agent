@@ -22785,3 +22785,22 @@ staged in the lockfile; the unrelated working lockfile remains byte-identical.
 Evidence: `artifacts/consolidation-sol-services/`.
 No planning requests, diagnostics, Cargo, rustc or Python ran; compilation and
 runtime tests remain unverified. Full consolidation is active.
+
+### RLM tool context and router integration owned by the tool crate
+
+Moved the RLM tool's context construction and router Host implementation into
+`codetether-rlm-tool::application`. Three focused modules own the host type,
+processing context and router invocation. Two native implementation files and
+their declarations were removed. The native tool alias selects the shared
+host with its original SessionBus type.
+
+Static comparisons preserve all context fields, the rlm-tool session identity,
+UUID generation, absent bus/cancellation/progress/subcall values, and the exact
+shared router call arguments. Native bus adaptation and catalog construction
+are unchanged. Module/dependency checks cover 699 roots and 571 crates without
+missing modules or cycles. Direct rustfmt, native file-size limits and
+whitespace checks passed. Only the RLM tool's rlm-routing and uuid dependency
+edges are staged in the lockfile; the unrelated working lockfile remains
+byte-identical. Evidence: `artifacts/consolidation-rlm-tool-host/`.
+No RLM processing, provider requests, Cargo, rustc or Python ran; compilation
+and runtime tests remain unverified. Full consolidation is active.

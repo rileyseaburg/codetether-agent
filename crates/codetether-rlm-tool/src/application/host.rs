@@ -1,14 +1,12 @@
-//! Delegate RLM processing to the application's existing router.
-use crate::{
-    provider::Provider,
-    rlm::{RlmConfig, RlmResult, RlmRouter},
-};
+//! Execute the tool's request through the shared RLM router.
+use super::{ApplicationHost, context};
+use codetether_provider_core::Provider;
+use codetether_rlm::{RlmConfig, RlmResult};
+use codetether_rlm_routing::{Bus, RlmRouter};
 use serde_json::Value;
 use std::sync::Arc;
-/// Existing application router and concrete context adapter.
-pub struct ApplicationHost;
 #[async_trait::async_trait]
-impl codetether_rlm_tool::Host for ApplicationHost {
+impl<B: Bus> crate::Host for ApplicationHost<B> {
     async fn process(
         content: &str,
         action: &str,
@@ -19,7 +17,7 @@ impl codetether_rlm_tool::Host for ApplicationHost {
     ) -> anyhow::Result<RlmResult> {
         RlmRouter::auto_process(
             content,
-            super::ctx::auto(provider, model, action, tool_args),
+            context::auto::<B>(provider, model, action, tool_args),
             config,
         )
         .await

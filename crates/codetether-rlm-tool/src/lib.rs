@@ -14,3 +14,5 @@ mod tool;
 mod tool_impl;
 pub use host::Host;
 pub use tool::RlmTool;
+/// Application routing context and shared RLM processing for the tool.
+pub mod application;

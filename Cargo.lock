@@ -3955,10 +3955,12 @@ dependencies = [
  "async-trait",
  "codetether-provider-core",
  "codetether-rlm",
+ "codetether-rlm-routing",
  "codetether-tool-core",
  "serde_json",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

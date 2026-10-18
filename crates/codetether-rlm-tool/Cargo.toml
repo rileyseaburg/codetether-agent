@@ -7,6 +7,8 @@ license = "MIT"
 description = "Bounded-content RLM analysis tool with deterministic fallback responses"
 
 [dependencies]
+codetether-rlm-routing = { path = "../codetether-rlm-routing", version = "0.1.0" }
+uuid = { version = "1", features = ["v4"] }
 anyhow = "1"
 async-trait = "0.1"
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
