@@ -8,3 +8,5 @@ mod identity;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub type CopilotProvider = codetether_provider_copilot::application::CopilotProvider<identity::App>;
+
+pub(in crate::provider) use identity::App as ApplicationIdentity;

@@ -32,3 +32,6 @@ pub use registry::Registry;
 pub mod config;
 pub mod environment;
 pub mod vault;
+
+/// Shared constructors with caller-provided identity and local runtime hooks.
+pub mod application;

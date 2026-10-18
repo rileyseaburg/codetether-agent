@@ -19241,3 +19241,25 @@ caller and provider factory, unchanged manifests, lexical module reachability,
 dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
 Evidence: `artifacts/consolidation-copilot-identity/`. No Cargo, rustc, Python,
 Rust tests or Copilot requests ran; compilation and runtime remain unverified.
+
+### Shared application provider constructors
+
+Moved Bedrock refresh/construction and Copilot construction from the native
+provider-factory host into `codetether-provider-factory::application`. The
+ApplicationHost combines the existing application Copilot identity with a
+LocalProvider adapter. Native code now contains only the feature-selected local
+CUDA constructors and the alias selecting these two bindings.
+
+Preserved best-effort Bedrock refresh, credentials and region arguments,
+Copilot public/custom/enterprise construction and application version identity,
+local-model artifact arguments, and all returned provider/error values. The
+original factory trait, dispatch policy, registry initialization and caching
+callers are unchanged.
+
+Validation: six full shared constructor bodies, two unchanged native local
+constructor bodies, delegation and identity aliases, unchanged dispatch and
+registry callers, minimal dependency/lock delta, lexical module reachability,
+dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
+Evidence: `artifacts/consolidation-provider-constructors/`. No Cargo, rustc,
+Python, Rust tests, credential refresh or provider construction ran; compilation
+and runtime behavior remain unverified.

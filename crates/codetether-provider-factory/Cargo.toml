@@ -31,3 +31,6 @@ codetether-provider-bonsai = { path = "../codetether-provider-bonsai", version =
 codetether-config = { path = "../codetether-config", version = "0.1.0" }
 futures = "0.3.34"
 serde_json = "1"
+
+codetether-provider-bedrock = { path = "../codetether-provider-bedrock", version = "0.1.0" }
+codetether-provider-copilot = { path = "../codetether-provider-copilot", version = "0.1.0" }

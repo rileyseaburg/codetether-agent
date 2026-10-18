@@ -8136,6 +8136,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "tracing",
+ "codetether-provider-copilot",
  "codetether-provider-core",
  "codetether-secrets",
  "codetether-codex-auth",
@@ -8147,6 +8148,7 @@ dependencies = [
  "codetether-provider-openai",
  "codetether-provider-glm5",
  "codetether-provider-anthropic",
+ "codetether-provider-bedrock",
  "codetether-provider-google",
  "codetether-provider-stepfun",
  "codetether-provider-openrouter",
