@@ -2,6 +2,7 @@
 //!
 //! [run] gives access-mode commands precedence, then routes status, diff, copy,
 //! review and session aliases through [Host]. Review composition lives in [review].
+mod binding;
 mod host;
 pub mod review;
 mod run;

@@ -27705,3 +27705,17 @@ file-limit and whitespace checks pass for 725 roots and 617 crates. Tests and
 unrelated files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-access-binding/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Session utility command and review bindings
+
+Moved frontend utility routing, its typed entry and review composer effects into
+codetether-slash-command::utility::binding. Removed two root host files. The root
+retains access/status/diff/copy module selection and selects the same callbacks.
+
+All fourteen expanded function bodies and the borrowed host layout match after
+callback qualification. Command tests are byte-for-byte unchanged. Declaration,
+module/dependency, native production-scope, standalone formatting, file-limit
+and whitespace checks pass for 725 roots and 617 crates. Unrelated files are
+unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-utility-input/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
