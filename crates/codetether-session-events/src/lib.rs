@@ -39,3 +39,9 @@ pub mod pipeline;
 
 /// Ordered frontend lifecycle transitions for session events.
 pub mod lifecycle;
+
+/// Dependencies used by application-local event declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use tokio::sync::mpsc;
+}

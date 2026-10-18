@@ -11,3 +11,5 @@ pub use run::run;
 pub const BATCH_LIMIT: usize = 64;
 /// Maximum events consumed before applying a session completion notice.
 pub const NOTICE_LIMIT: usize = 1024;
+
+mod binding;

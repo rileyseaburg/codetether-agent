@@ -26992,3 +26992,20 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 while the history crate remains covered. No dependencies/lock changes or
 unrelated working edits were made. Evidence: artifacts/consolidation-agent-adapter-cleanup/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### TUI session-event drain binding
+
+Moved the frontend event-drain handler and two typed drain entry points into
+codetether-session-events::drain::binding. Root selection retains Session,
+SessionEvent, App, SessionSlot, worker bridge and the existing event handler.
+Removed session_event_drain/host.rs. Bounded batches, cumulative-text coalescing
+and notice flushing remain owned by the existing drain core.
+
+All three expanded function bodies match their originals, and all selected
+frontend types are unchanged. The existing drain integration-test source is
+byte-for-byte unchanged, with its required root imports retained under cfg(test).
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. No dependency/
+lock changes were needed; unrelated working files remain untouched. Evidence:
+artifacts/consolidation-tui-drain-binding/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.
