@@ -9,3 +9,4 @@ description = "CLI option schemas independent of command execution"
 [dependencies]
 clap = { version = "4.6.6", features = ["derive", "env"] }
 codetether-a2a-worker-core = { path = "../codetether-a2a-worker-core", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }

@@ -27,3 +27,8 @@ mod stats_args;
 mod swarm_args;
 mod worker_server_args;
 pub use exports::*;
+mod run_args;
+mod swarm_subagent_args;
+mod tui_args;
+mod windows_args;
+mod windows_command;

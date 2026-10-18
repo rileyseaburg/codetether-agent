@@ -13594,3 +13594,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or CLI parsing commands ran. Full source
   consolidation remains unfinished.
+
+### Runtime and Windows CLI option consolidation
+
+- Moved RunArgs, TuiArgs, SwarmSubagentArgs, WindowsArgs and WindowsCommand
+  into codetether-cli-options. Native paths re-export the schemas, and Windows
+  diagnostic execution remains in its existing module.
+- Fields, Clap attributes and defaults are unchanged. Run/TUI parsers refer
+  directly to the same shared AccessMode type. Existing root CLI and Windows
+  integration tests remain attached to the native command wiring.
+- Verification: 13 static schema/native-execution/size checks passed, plus
+  module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-cli-runtime-options/.
+- Only the option crate's config dependency was staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or CLI execution ran. Full workspace consolidation
+  remains unfinished.
