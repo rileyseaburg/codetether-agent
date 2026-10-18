@@ -27,5 +27,7 @@ pub use format::format_go_ralph_result;
 pub use host::Host;
 pub use result::GoRalphResult;
 pub use story::StoryResult;
+/// Ralph runtime construction and service attachment.
+pub mod runtime;
 #[cfg(test)]
 mod tests;

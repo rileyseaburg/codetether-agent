@@ -21410,3 +21410,21 @@ direct rustfmt, native file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-watchdog-check/`. No dependency or lockfile changes.
 No Cargo, rustc, or Python commands ran; compilation/runtime tests remain
 unverified. Full consolidation remains active.
+
+### Shared Go-to-Ralph runtime setup
+
+Moved Ralph initialization error handling, optional bus and registry attachment,
+HTTP state-store attachment, execution, and execution error handling into
+`codetether-go-ralph::runtime`. The native adapter supplies its existing
+specialized `RalphLoop::new` future and passes the same optional services.
+The shared function uses the same runtime and state-store types already exposed
+by native aliases.
+
+Static body comparison preserves attachment order, lazy constructor execution,
+HTTP store creation timing, and both error-context strings. Source/dependency
+graphs across 698 roots and 564 crates, direct rustfmt, native file-size limits,
+and whitespace checks passed. Added only the direct ralph-runtime dependency;
+the staged lockfile contains that single owning-package edge. Evidence:
+`artifacts/consolidation-go-ralph-runtime/`. No Cargo, rustc, or Python commands
+ran; compilation and runtime tests remain unverified. Full consolidation is
+still active.
