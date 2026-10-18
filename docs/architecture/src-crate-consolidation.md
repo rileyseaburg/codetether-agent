@@ -20117,3 +20117,24 @@ cycles, file-size ratchet, whitespace and direct formatting. Evidence:
 frame geometry before borrowing the frame for drawing. Cargo, rustc, Python,
 Rust tests and terminal rendering were not run; compilation and runtime remain
 unverified.
+
+### Unified agent header ownership
+
+Moved agent-header assembly, local depth-first ordering, tool-agent name
+deduplication, swarm tabs, compact identity labels and selected/unselected
+styling into `codetether-agent-dashboard::bar`. Native entry points now delegate
+through a registry projection and session-ID binding. Removed the native swarm
+tab implementation; retained public tab/style paths as compatibility exports.
+
+Preserved parent-scoped tool snapshots (including global fallback), local/tool/
+swarm ordering, visibility short-circuiting, model lookup timing, main selection,
+remote lineage labels, character-based model/session shortening and identity
+colors. The dashboard crate now directly depends on the shared theme and swarm
+contracts; the dependency graph remains acyclic.
+
+Validation: complete translated tab/label/style/local/tool/swarm/render/visibility
+bodies, native registry projections and delegates, unchanged source operations,
+module reachability, dependency cycles, isolated lock delta, file-size ratchet,
+whitespace and direct formatting. Evidence: `artifacts/consolidation-agent-bar/`.
+Cargo, rustc, Python, Rust tests and terminal rendering were not run; compilation
+and runtime remain unverified.

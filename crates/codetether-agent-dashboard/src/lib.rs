@@ -31,3 +31,6 @@ pub mod view;
 
 /// Display projection of generic spawned-agent metadata.
 pub mod spawned;
+
+/// Unified main, local, tool and swarm header tabs.
+pub mod bar;

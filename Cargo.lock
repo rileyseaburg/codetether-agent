@@ -16750,6 +16750,8 @@ dependencies = [
 name = "codetether-agent-dashboard"
 version = "0.1.0"
 dependencies = [
+ "codetether-swarm-core",
+ "codetether-theme",
  "codetether-agent-tree",
  "codetether-agent-trace",
  "codetether-agent-view",
