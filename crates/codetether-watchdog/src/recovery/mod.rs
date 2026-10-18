@@ -2,6 +2,7 @@
 //!
 //! [apply] records a detected stall. [execute] retries only the actual in-flight
 //! prompt after session return. [give_up] stops retries at the shared budget.
+mod binding;
 mod cancel;
 mod check;
 mod give_up;

@@ -12,6 +12,6 @@ pub(crate) async fn check_and_retry(
     runtime: &TuiSessionHandle,
     interval: std::time::Duration,
 ) {
-    super::check(app, runtime, interval).await;
+    super::super::watchdog::check_tick(app, runtime, interval).await;
     super::super::smart_retry::execute_smart_switch_retry(app, slot, registry, runtime).await;
 }

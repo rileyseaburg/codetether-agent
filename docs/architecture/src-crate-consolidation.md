@@ -23587,6 +23587,24 @@ are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-smart-retry/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
 
+### Watchdog frontend checks, feedback and recovery transfer
+
+Moved the watchdog UI/CheckHost implementations, timer and per-tick checks,
+retry host and retry entry point into codetether-watchdog::recovery::binding
+modules. Root declarations select existing state, runtime, timeout, detector,
+session and request types. Removed three root implementation files. The tick
+retry caller now addresses the per-tick check in the watchdog module directly.
+
+All fifteen expanded function bodies match after the timeout alias and per-tick
+entry name changes. The changed caller otherwise matches its original body.
+Timer checks retain their in-flight gate; per-tick checks remain ungated.
+Cancellation ordering, request construction and rejected-request restoration
+are unchanged. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Tests and unrelated files are unchanged; no manifest or lock changes
+were needed. Evidence: artifacts/consolidation-watchdog-bindings/. No Cargo,
+rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
 ### Storage callers use the owning API names directly
 
 Removed the native projection and summary forwarding files after updating five
