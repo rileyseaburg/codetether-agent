@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-stream-outcome",
  "codetether-stream-bounds",
  "codetether-prompt-policy",
  "codetether-runtime-input",
@@ -4569,6 +4570,14 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-util",
+]
+
+[[package]]
+name = "codetether-stream-outcome"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
 ]
 
 [[package]]

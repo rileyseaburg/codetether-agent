@@ -23,7 +23,6 @@ mod accept;
 #[cfg(test)]
 mod drain_end_tests;
 mod drain_state;
-mod fault;
 mod finalize;
 mod idle_drain;
 mod idle_fault;
@@ -44,8 +43,6 @@ mod restart_policy_tests;
 mod restart_test_provider;
 #[cfg(test)]
 mod restart_tests;
-#[cfg(test)]
-mod srp_tests;
 #[cfg(test)]
 mod stall_restart_tests;
 #[cfg(test)]

@@ -1,6 +1,6 @@
 //! Unit tests for transient stream-fault classification.
 
-use super::{display_message, is_transient};
+use crate::{display_message, is_transient};
 
 #[test]
 fn permanent_markers_override_transient_markers() {

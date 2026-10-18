@@ -1,0 +1,11 @@
+[package]
+name = "codetether-stream-outcome"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Stream completion assembly, stop classification and acceptance policy"
+
+[dependencies]
+anyhow = "1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }

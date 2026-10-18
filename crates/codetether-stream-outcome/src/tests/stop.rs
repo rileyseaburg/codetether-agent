@@ -1,6 +1,6 @@
 //! Unit tests for SRP stop classification.
 
-use super::outcome::StreamStop;
+use crate::StreamStop;
 
 #[test]
 fn cold_stall_and_transient_fault_are_restart_eligible() {

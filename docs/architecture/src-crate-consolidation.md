@@ -9634,3 +9634,20 @@ graphs, file budgets and whitespace checks passed; the largest crate file has
 in `artifacts/consolidation-stream-bounds/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python or worker commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated stream-outcome crate
+
+Moved stream response assembly, stop/result types, restart eligibility, terminal
+acceptance, idle deadline and transient/permanent fault classification into
+`crates/codetether-stream-outcome`. Thirteen modules separate assembly, types,
+classification, acceptance, marker vocabulary and tests. Native draining and
+restart orchestration retain their existing APIs and use shared result types.
+
+Twenty-seven static comparisons cover content ordering, finish reasons,
+acceptance/rejection precedence, restart eligibility, exact errors, fault
+markers, idle deadline, moved tests and unchanged drain/restart callers.
+Module/dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 44 code lines. Six original classification tests moved without
+execution. Evidence is in `artifacts/consolidation-stream-outcome/`. Compilation
+and runtime tests were not run. No Cargo, rustc, Python or worker commands ran.
+Full workspace consolidation remains active.

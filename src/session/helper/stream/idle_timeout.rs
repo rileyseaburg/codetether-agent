@@ -8,18 +8,13 @@
 use crate::provider::StreamChunk;
 use crate::session::SessionEvent;
 use futures::stream::BoxStream;
-use std::time::Duration;
 
 use super::drain_state::DrainState;
 use super::idle_drain::apply;
 use super::idle_fault::fault_from;
 use super::idle_keepalive::{Next, next_with_keepalive};
 use super::outcome::{DrainOutcome, StreamStop};
-
-/// Maximum gap between consecutive stream chunks before the stream is
-/// considered stalled. GLM-5.2 can think 60-90 s before the first token,
-/// Codex uses a five-minute per-activity timeout for Responses streams.
-pub(super) const IDLE_TIMEOUT: Duration = Duration::from_secs(300);
+pub(super) use codetether_stream_outcome::IDLE_TIMEOUT;
 
 /// Drain `stream`, classifying the stop reason. Never errors on its own; a
 /// terminal error chunk is reported as [`StreamStop::Fault`] for the caller.
