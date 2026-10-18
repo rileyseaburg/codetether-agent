@@ -1,17 +1,9 @@
-//! Per-tick execution of delayed smart-switch retries.
-
-use crate::provider::ProviderRegistry;
-use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
-use crate::tui::app::state::App;
-use std::sync::Arc;
-
-pub(crate) async fn check_and_retry(
-    app: &mut App,
-    slot: &mut SessionSlot,
-    registry: &Option<Arc<ProviderRegistry>>,
-    runtime: &TuiSessionHandle,
-    interval: std::time::Duration,
-) {
-    super::super::watchdog::check_tick(app, runtime, interval).await;
-    super::super::smart_retry::execute_smart_switch_retry(app, slot, registry, runtime).await;
-}
+//! Frontend resource selection for per-tick recovery ordering.
+codetether_tui_tick::declare_frontend_tick_retry!(
+    crate::tui::app::state::App,
+    crate::tui::app::session_runtime::SessionSlot,
+    crate::provider::ProviderRegistry,
+    crate::tui::app::session_runtime::TuiSessionHandle;
+    crate::tui::app::event_loop::watchdog::check_tick,
+    crate::tui::app::event_loop::smart_retry::execute_smart_switch_retry,
+);

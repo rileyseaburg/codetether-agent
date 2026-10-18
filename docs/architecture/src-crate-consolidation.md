@@ -23605,6 +23605,22 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 were needed. Evidence: artifacts/consolidation-watchdog-bindings/. No Cargo,
 rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
 
+### Event-loop entry and tick retry ordering
+
+Moved the remaining event-loop entry body into reactor lifecycle bindings and
+the per-tick watchdog/smart-switch sequence into tick bindings. The root selects
+resource types, setup, driver and recovery callbacks. Removed root imports made
+unused by these moves. The event-loop directory now has function definitions
+only in test code and test helpers; its production files select crate bindings.
+
+Both expanded function bodies match after the explicit driver type alias and
+callback-path substitutions. Resource construction and recovery ordering remain
+unchanged. Declaration, module/dependency, native production-scope, standalone
+formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
+Unrelated files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-loop-entry/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
+
 ### Queued-prompt frontend bindings
 
 Moved queued-prompt command/answer delivery, input access, queue gates and the

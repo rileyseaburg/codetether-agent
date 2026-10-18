@@ -1,6 +1,7 @@
 //! Frontend bindings for periodic updates and visible-state tracking.
 mod approval;
 mod host;
+mod retry;
 mod snapshot;
 mod worker;
 
