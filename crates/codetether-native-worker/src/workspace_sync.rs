@@ -4,7 +4,7 @@ use anyhow::Result;
 use reqwest::Client;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-pub(super) async fn sync_workspaces_from_server(
+pub async fn sync_workspaces_from_server(
     client: &Client,
     server: &str,
     token: &Option<String>,

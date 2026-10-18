@@ -1,11 +1,26 @@
-//! Native worker registration and terminal bridge composition.
+//! Native worker startup state, registration and workspace synchronization.
 //!
 //! [register_worker] submits the shared A2A payload using cached native provider
 //! discovery. [bridge::TuiWorkerBridge] uses that same registration function
 //! when the terminal starts a worker.
 mod registration;
-pub use registration::register_worker;
+pub use registration::{register_current_worker, register_worker};
 pub mod bridge;
 
 /// Shared default models and temperature policy for worker execution.
 pub mod model_policy;
+
+/// Shared task runtime using native HTTP and bus types.
+pub mod runtime_state;
+/// Concrete startup context using shared command, bus and peer types.
+pub mod worker_context;
+/// Workspace lookup and task-progress synchronization.
+pub mod workspace_scope;
+/// Repository-authenticated workspace synchronization.
+pub mod workspace_sync;
+/// Periodic workspace synchronization startup.
+pub mod workspace_sync_start;
+use codetether_a2a_worker_core::task_timeline;
+use codetether_worktree::repository::credentials as workspace_sync_git;
+pub use runtime_state::WorkerTaskRuntime;
+pub use worker_context::WorkerContext;

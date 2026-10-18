@@ -25454,3 +25454,22 @@ required worker dependencies are staged in Cargo.lock. Unrelated working
 changes remain untouched. Evidence: artifacts/consolidation-native-a2a/.
 No Cargo, rustc, Python, discovery broadcasts, credential requests or runtime
 tests ran. Full consolidation remains active.
+
+### Native worker context and workspace synchronization consolidated
+
+Moved five files into codetether-native-worker: concrete WorkerContext and
+WorkerTaskRuntime aliases plus workspace synchronization, scheduling and
+progress synchronization. Their CLI, bus and peer handle arguments resolve to
+the same existing types. Current-worker registration was extracted from the
+root bootstrap adapter into the native worker registration module with the
+same captured fields and provider-model future. Task execution callbacks remain
+native and are not counted as migrated.
+
+Source comparisons cover all moved files and the extracted registration body.
+Static scans cover 714 module roots and 600 crates without missing modules,
+cycles or undeclared direct workspace dependencies. Declaration, file-limit,
+direct rustfmt and whitespace checks pass. Only the required dependency additions
+to the existing worker lockfile entry are staged; unrelated working changes are
+untouched. Evidence: artifacts/consolidation-worker-context/. No Cargo, rustc,
+Python, workspace synchronization, registration requests or runtime tests ran.
+Full consolidation remains active.

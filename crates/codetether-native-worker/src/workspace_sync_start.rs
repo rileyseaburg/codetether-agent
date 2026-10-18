@@ -2,7 +2,7 @@
 use reqwest::Client;
 use std::sync::Arc;
 use tokio::{sync::Mutex, task::JoinHandle};
-pub(super) fn start_workspace_sync(
+pub fn start_workspace_sync(
     client: Client,
     server: String,
     token: Option<String>,

@@ -1,8 +1,8 @@
 //! Application progress synchronization and shared workspace routing.
 use super::{WorkerTaskRuntime, task_timeline};
-pub(super) use codetether_a2a_http::workspace::resolve_and_log_workspace_ids;
+pub use codetether_a2a_http::workspace::resolve_and_log_workspace_ids;
 
-pub(super) async fn sync_timeline_to_runtime(
+pub async fn sync_timeline_to_runtime(
     timeline: &task_timeline::TaskTimeline,
     runtime: &WorkerTaskRuntime,
 ) {

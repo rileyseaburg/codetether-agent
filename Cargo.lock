@@ -3928,6 +3928,10 @@ dependencies = [
  "reqwest 0.13.4",
  "codetether-a2a-worker-core",
  "codetether-provider-policy",
+ "codetether-cli-options",
+ "codetether-bus-core",
+ "codetether-worktree",
+ "tokio",
 ]
 
 [[package]]
