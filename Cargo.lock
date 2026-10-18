@@ -7354,6 +7354,7 @@ dependencies = [
  "codetether-chat-transcript",
  "codetether-view-retention",
  "tokio",
+ "codetether-session-store",
 ]
 
 [[package]]

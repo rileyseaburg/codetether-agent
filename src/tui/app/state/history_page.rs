@@ -1,11 +1,10 @@
 //! Native storage and view bindings for shared backward pagination.
-#[path = "history_page/source.rs"]
-mod source;
 #[path = "history_page/view.rs"]
 mod view;
 use crate::tui::app::state::{App, AppState};
-pub(crate) type HistoryPageState =
-    codetether_history_page::interactive::HistoryPageState<source::NativeSource>;
+pub(crate) type HistoryPageState = codetether_history_page::interactive::HistoryPageState<
+    codetether_history_page::store::Source<crate::session::Session>,
+>;
 /// Apply one completed page, if available.
 pub(crate) fn drain(app: &mut App) -> bool {
     codetether_history_page::interactive::drain(&mut app.state)

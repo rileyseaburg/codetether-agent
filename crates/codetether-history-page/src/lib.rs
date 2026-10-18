@@ -8,6 +8,7 @@ mod indexed;
 mod load;
 pub mod select;
 mod source;
+pub mod store;
 mod types;
 pub use load::run as load;
 pub use source::HistorySource;

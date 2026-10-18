@@ -23858,3 +23858,25 @@ or cycles. Direct rustfmt, source file limits and whitespace checks passed.
 Only the required lockfile dependency is staged; unrelated working changes are
 preserved. Evidence: artifacts/consolidation-context-transforms/. No Cargo,
 rustc, Python, compilation or tests ran. Full consolidation remains active.
+
+### History pagination storage adapter moved into the history crate
+
+Moved the native history-page source into codetether-history-page::store::Source,
+parameterized by the existing session-store lifecycle and legacy contracts.
+The native history state selects Source<Session>; its source file is removed.
+Added a direct history-page -> session-store dependency without a cycle.
+
+The old tail adapter returned a TrackedVec where HistorySource requires a Vec.
+The shared adapter explicitly takes the loaded tracked messages and consumes
+its iterator into the required vector, preserving message order without cloning
+messages. Indexed reads, limits, identity checks and error text retain their
+existing paths. This addresses the source-level mismatch; no compiler was run.
+
+Static comparisons preserve both method bodies with the documented store-path
+and conversion substitutions. The initial parent-alias comparison differed by
+a formatting comma; its output is retained. Module/dependency scans cover 691
+roots and 572 crates without missing modules or cycles. Direct rustfmt, source
+file limits and whitespace checks passed. Only the required lockfile dependency
+is staged; unrelated changes remain untouched. Evidence:
+artifacts/consolidation-history-store/. No Cargo, rustc, Python, compilation,
+storage operations or tests ran. Full consolidation remains active.
