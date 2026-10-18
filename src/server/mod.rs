@@ -62,6 +62,7 @@ use tonic_web::GrpcWebLayer;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
+use codetether_audit_http::AuditQuery;
 use codetether_authorization_policy::routes::required_permission;
 use codetether_event_replay::{list_session_event_files, replay_session_events};
 use codetether_k8s_api::{ScaleRequest, SpawnSubagentRequest};
@@ -97,48 +98,12 @@ pub struct AppState {
     pub plugin_registry: AgentPluginRegistry,
     pub server_fingerprint: String,
 }
-
-/// Audit middleware — logs every request/response to the audit trail.
 async fn audit_middleware(
     State(state): State<AppState>,
     request: Request<Body>,
     next: Next,
 ) -> Response {
-    let method = request.method().clone();
-    let path = request.uri().path().to_string();
-    let started = std::time::Instant::now();
-
-    let response = next.run(request).await;
-
-    let duration_ms = started.elapsed().as_millis() as u64;
-    let status = response.status().as_u16();
-    let outcome = if status < 400 {
-        AuditOutcome::Success
-    } else if status == 401 || status == 403 {
-        AuditOutcome::Denied
-    } else {
-        AuditOutcome::Failure
-    };
-
-    state
-        .audit_log
-        .record(audit::AuditEntry {
-            id: uuid::Uuid::new_v4().to_string(),
-            timestamp: chrono::Utc::now(),
-            category: AuditCategory::Api,
-            action: format!("{} {}", method, path),
-            principal: None,
-            outcome,
-            detail: Some(serde_json::json!({ "status": status })),
-            duration_ms: Some(duration_ms),
-            okr_id: None,
-            okr_run_id: None,
-            relay_id: None,
-            session_id: None,
-        })
-        .await;
-
-    response
+    codetether_audit_http::audit_middleware(&state.audit_log, request, next).await
 }
 
 /// Policy authorization middleware for Axum.
@@ -1211,45 +1176,11 @@ async fn get_persona(
         .map(Json)
         .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Persona not found: {}", id)))
 }
-
-// ── Audit trail endpoints ──
-
-#[derive(Deserialize)]
-struct AuditQuery {
-    limit: Option<usize>,
-    category: Option<String>,
-}
-
 async fn list_audit_entries(
     State(state): State<AppState>,
     Query(query): Query<AuditQuery>,
 ) -> Result<Json<Vec<audit::AuditEntry>>, (StatusCode, String)> {
-    let limit = query.limit.unwrap_or(100).min(1000);
-
-    let entries = if let Some(ref cat) = query.category {
-        let category = match cat.as_str() {
-            "api" => AuditCategory::Api,
-            "tool" | "tool_execution" => AuditCategory::ToolExecution,
-            "session" => AuditCategory::Session,
-            "cognition" => AuditCategory::Cognition,
-            "swarm" => AuditCategory::Swarm,
-            "auth" => AuditCategory::Auth,
-            "k8s" => AuditCategory::K8s,
-            "sandbox" => AuditCategory::Sandbox,
-            "config" => AuditCategory::Config,
-            _ => {
-                return Err((
-                    StatusCode::BAD_REQUEST,
-                    format!("Unknown category: {}", cat),
-                ));
-            }
-        };
-        state.audit_log.by_category(category, limit).await
-    } else {
-        state.audit_log.recent(limit).await
-    };
-
-    Ok(Json(entries))
+    codetether_audit_http::list_audit_entries(&state.audit_log, query).await
 }
 
 // ── K8s self-deployment endpoints ──

@@ -1277,6 +1277,7 @@ dependencies = [
  "codetether-bus-sse",
  "codetether-event-replay",
  "codetether-k8s-api",
+ "codetether-audit-http",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6503,6 +6504,18 @@ dependencies = [
  "codetether-audit",
  "codetether-k8s",
  "serde",
+]
+
+[[package]]
+name = "codetether-audit-http"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "chrono",
+ "codetether-audit",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]

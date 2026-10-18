@@ -13075,3 +13075,17 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   Kubernetes calls, Cargo, rustc or Rust tests ran. Full consolidation remains
   incomplete.
+
+### HTTP audit integration extraction
+
+- Moved request audit logging and history query behavior into codetether-audit-http.
+  Four modules contain at most 33 code lines; native handlers supply their log.
+- Response timing/classification, event fields, category aliases, default/capped
+  limits and unknown-category errors preserve the original behavior.
+- Verification: 83 static comparisons passed for moved logic/query records and
+  remaining native server functions/tests. Module/dependency checks, direct
+  rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-audit-http/.
+- Only new package/root dependency entries were staged from Cargo.lock. No audit
+  writes/queries, HTTP requests, Cargo, rustc or Rust tests ran. Full consolidation
+  remains incomplete.
