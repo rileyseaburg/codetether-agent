@@ -23,3 +23,6 @@ pub use tool_calls::{
 };
 #[cfg(test)]
 mod tests;
+
+mod defaults;
+pub use defaults::default_model_for_provider;

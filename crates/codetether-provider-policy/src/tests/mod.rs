@@ -1,6 +1,7 @@
 //! Original provider selection, request-settings and retry cases.
 mod assistant_claims_imminent_tool_use_detects_minimax_style_prose;
 mod default_provider_prefers_openai;
+mod defaults;
 mod explicit_provider_is_used_when_available;
 mod explicit_provider_must_not_fallback_when_unavailable;
 mod retry_auth_failures_are_not_retryable;

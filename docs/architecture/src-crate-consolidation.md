@@ -9815,3 +9815,19 @@ crate file has 35 code lines. Ten original tests moved without execution.
 Evidence is in `artifacts/consolidation-build-policy/`. Compilation and runtime
 tests were not run. No Cargo, rustc, Python or tool execution ran. Full workspace
 consolidation remains active.
+
+### Remaining defaults and loop policy moved to existing crates
+
+Moved provider default-model selection into `codetether-provider-policy` and
+prompt-loop limits/nudges into `codetether-prompt-policy`. This extends their
+existing responsibilities without introducing another package. Native helpers
+now re-export the shared policy. Model strings, local environment precedence,
+retry limits and every continuation message remain unchanged.
+
+Nineteen static comparisons cover default selection, all loop constants, original
+tests and eight unchanged caller modules. Module/dependency graphs, file budgets
+and whitespace checks passed. Three new Rust modules contain at most 23 code
+lines; five existing default-model tests moved without execution. Evidence is
+in `artifacts/consolidation-policy-residuals/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python or provider execution ran. Full workspace
+consolidation remains active.

@@ -15,3 +15,6 @@ pub use search_result::is_codesearch_no_match_output;
 pub use selection::prefers_light_system_prompt;
 #[cfg(test)]
 mod tests;
+
+/// Limits and continuation messages used by the native prompt loop.
+pub mod loop_constants;
