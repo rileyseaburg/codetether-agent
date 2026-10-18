@@ -1,16 +1,17 @@
-//! Application policy gate and BashTool adapter for shared verification.
-use crate::tool::{Tool, bash::BashTool};
+//! Story-verification shell execution, retaining command-specific denial errors.
+use super::Verification;
 use anyhow::{Result, bail};
+use codetether_application_registry::Application;
+use codetether_bash_tool::BashTool;
 use codetether_ralph_core::verification::{ShellExecutor, ShellOutput};
+use codetether_tool_core::Tool;
 use serde_json::json;
 use std::path::Path;
-pub(super) struct HostShell;
 #[async_trait::async_trait]
-impl ShellExecutor for HostShell {
+impl<A: Application> ShellExecutor for Verification<A> {
     async fn execute(&self, cwd: &Path, command: &str) -> Result<ShellOutput> {
         let args = json!({ "command": command, "cwd": cwd.display().to_string() });
-        if let Some(blocked) = crate::runtime_policy::evaluate_tool_invocation("bash", &args).await
-        {
+        if let Some(blocked) = A::evaluate("bash", &args).await {
             bail!("command `{command}` blocked by policy: {}", blocked.output);
         }
         let result = BashTool::new().execute(args).await?;

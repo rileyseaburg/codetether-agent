@@ -8,7 +8,6 @@
 
 mod delegation;
 pub(crate) mod git_policy;
-mod quality_shell;
 mod ralph_loop;
 mod runtime_host;
 use codetether_ralph_core as types;

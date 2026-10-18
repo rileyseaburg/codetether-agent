@@ -6,7 +6,6 @@ use crate::provider::ProviderRegistry;
 use codetether_ralph_core::UserStory;
 use std::path::Path;
 mod agent;
-mod quality;
 mod relay;
 /// Native service binding exposed through the public RalphLoop type alias.
 pub struct Native;
@@ -16,7 +15,7 @@ impl codetether_ralph_runtime::Host for Native {
     type Agent = agent::Native;
     type Relay = relay::Native;
     type Git = crate::ralph::git_policy::Native;
-    type Quality = quality::QualityHost;
+    type Quality = codetether_ralph_agent::shell::Quality<crate::tool::registry_lifecycle::Native>;
     async fn verify(root: &Path, story: &UserStory) -> anyhow::Result<()> {
         crate::ralph::verification::run_story_verification(root, story).await
     }

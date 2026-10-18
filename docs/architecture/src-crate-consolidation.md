@@ -22681,3 +22681,24 @@ or lockfile changes were needed. Evidence:
 `artifacts/consolidation-server-assembly/`.
 No server startup, provider requests, Cargo, rustc or Python ran; compilation
 and runtime tests remain unverified. Full consolidation is active.
+
+### Ralph shell policy adapters owned by the agent crate
+
+Moved policy-gated quality and story-verification Bash execution into
+`codetether-ralph-agent::shell`. Separate Quality and Verification executors
+retain their distinct policy-denial outcomes: unsuccessful output for quality
+checks and the original command-specific error for story verification.
+Both bind the same native registry application's evaluate callback, which
+calls the original runtime-policy function. Three native implementation files
+and their module declarations were removed.
+
+Static source comparisons preserve command/cwd arguments, policy-before-tool
+ordering, error text, BashTool execution and output mapping. Three native
+verification test files remain byte-identical. Module/dependency checks cover
+699 roots and 571 crates without missing modules or cycles. Direct rustfmt,
+native file-size limits and whitespace checks passed. Only the Ralph agent
+crate's bash-tool, tool-core and serde_json dependency edges are staged in the
+lockfile; the unrelated working lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-ralph-shell/`.
+No quality commands, tests, Cargo, rustc or Python ran; compilation and runtime
+behavior remain unverified. Full consolidation is active.

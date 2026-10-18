@@ -7,6 +7,9 @@ license = "MIT"
 description = "Ralph story/conflict agent execution and event forwarding"
 
 [dependencies]
+codetether-bash-tool = { path = "../codetether-bash-tool", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
 codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
 codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
 codetether-swarm-agent = { path = "../codetether-swarm-agent", version = "0.1.0" }
