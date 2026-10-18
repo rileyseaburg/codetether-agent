@@ -23,5 +23,5 @@ fn prepend_preserves_view_when_user_moved_down() {
     state.history_page.pending_old_lines = Some(100);
     state.history_page.pending_old_scroll = 20;
     state.apply_pending_history_anchor(160);
-    assert_eq!(state.chat_scroll, 80);
+    assert_eq!(state.chat_viewport.chat_scroll, 80);
 }

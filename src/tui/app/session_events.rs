@@ -96,7 +96,7 @@ pub(crate) async fn handle_session_event(
 /// Mutates `app.state.main_last_event_at` and may mutate the chat scroll state.
 fn note_event(app: &mut App) {
     app.state.main_last_event_at = Some(std::time::Instant::now());
-    if app.state.chat_auto_follow {
+    if app.state.chat_viewport.chat_auto_follow {
         app.state.scroll_to_bottom();
     }
 }

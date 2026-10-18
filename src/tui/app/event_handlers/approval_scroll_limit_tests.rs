@@ -35,7 +35,7 @@ fn approval_end_then_up_moves_immediately_and_wheel_stays_in_modal() {
     }
     assert!(super::wheel(&mut app, KeyCode::Up, 3));
     assert_eq!(app.state.approval_preview_scroll, 12);
-    assert_eq!(app.state.chat_scroll, 0);
+    assert_eq!(app.state.chat_viewport.chat_scroll, 0);
     app.state.show_help = true;
     assert!(!super::wheel(&mut app, KeyCode::Down, 3));
     app.state.show_help = false;

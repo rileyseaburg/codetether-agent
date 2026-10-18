@@ -5,7 +5,7 @@ use crate::tui::app::text::truncate_preview;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
 pub(super) fn chunk(app: &mut App, chunk: String) {
-    if app.state.chat_auto_follow {
+    if app.state.chat_viewport.chat_auto_follow {
         app.state.scroll_to_bottom();
     }
     app.state.note_text_token();
@@ -26,7 +26,7 @@ pub(super) fn complete(app: &mut App, text: String) {
         .messages
         .push(ChatMessage::new(MessageType::Assistant, text));
     app.state.status = "Assistant replied".to_string();
-    if app.state.chat_auto_follow {
+    if app.state.chat_viewport.chat_auto_follow {
         app.state.scroll_to_bottom();
     }
 }
@@ -43,7 +43,7 @@ pub(super) fn thinking_complete(app: &mut App, text: String) {
     app.state
         .messages
         .push(ChatMessage::new(MessageType::Thinking(text.clone()), text));
-    if app.state.chat_auto_follow {
+    if app.state.chat_viewport.chat_auto_follow {
         app.state.scroll_to_bottom();
     }
 }

@@ -2,11 +2,7 @@
 
 impl super::AppState {
     pub(super) fn manual_chat_scroll(&self) -> usize {
-        if self.chat_scroll >= crate::tui::constants::SCROLL_BOTTOM {
-            self.chat_last_max_scroll
-        } else {
-            self.chat_scroll
-        }
+        self.chat_viewport.manual_chat_scroll()
     }
 
     pub(crate) fn page_up(&mut self) {

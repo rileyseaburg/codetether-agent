@@ -16,8 +16,9 @@ pub(super) fn trim(app: &mut App) {
     // is at the sentinel, keep them there — the render clamp adjusts to the new
     // max_scroll. For a manual scroll position, subtract the number of removed
     // leading messages so the view stays on the same logical content.
-    if app.state.chat_scroll < crate::tui::constants::SCROLL_BOTTOM {
-        app.state.chat_scroll = app.state.chat_scroll.saturating_sub(overflow);
+    if app.state.chat_viewport.chat_scroll < crate::tui::constants::SCROLL_BOTTOM {
+        app.state.chat_viewport.chat_scroll =
+            app.state.chat_viewport.chat_scroll.saturating_sub(overflow);
     }
 }
 

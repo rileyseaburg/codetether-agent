@@ -8,15 +8,15 @@
 impl super::AppState {
     /// Save chat scroll state before leaving Chat view.
     pub fn save_scroll_state(&mut self) {
-        self.saved_chat_scroll = self.chat_scroll;
-        self.saved_chat_auto_follow = self.chat_auto_follow;
-        self.saved_tool_preview_scroll = self.tool_preview_scroll;
+        self.saved_chat_scroll = self.chat_viewport.chat_scroll;
+        self.saved_chat_auto_follow = self.chat_viewport.chat_auto_follow;
+        self.saved_tool_preview_scroll = self.tool_viewport.tool_preview_scroll;
     }
 
     /// Restore chat scroll state when returning to Chat view.
     pub fn restore_scroll_state(&mut self) {
-        self.chat_scroll = self.saved_chat_scroll;
-        self.chat_auto_follow = self.saved_chat_auto_follow;
-        self.tool_preview_scroll = self.saved_tool_preview_scroll;
+        self.chat_viewport.chat_scroll = self.saved_chat_scroll;
+        self.chat_viewport.chat_auto_follow = self.saved_chat_auto_follow;
+        self.tool_viewport.tool_preview_scroll = self.saved_tool_preview_scroll;
     }
 }

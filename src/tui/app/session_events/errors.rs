@@ -39,7 +39,7 @@ async fn handle(
         .messages
         .push(ChatMessage::new(MessageType::Error, err));
     app.state.status = "Error".to_string();
-    if app.state.chat_auto_follow {
+    if app.state.chat_viewport.chat_auto_follow {
         app.state.scroll_to_bottom();
     }
 }

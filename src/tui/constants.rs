@@ -1,6 +1,6 @@
 /// Sentinel value meaning "follow the latest message at the bottom of chat".
 /// Kept as a legacy name to avoid touching many call sites.
-pub const SCROLL_BOTTOM: usize = 1_000_000;
+pub use codetether_chat_layout::SCROLL_BOTTOM;
 
 // Tool-call / tool-result rendering can carry very large JSON payloads (e.g. patches, file blobs).
 // If we pretty-print + split/collect that payload on every frame, the TUI can appear to “stop

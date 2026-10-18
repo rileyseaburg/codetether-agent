@@ -9,8 +9,8 @@ impl AppState {
             return;
         };
         let anchored = inserted.saturating_add(old_scroll);
-        self.chat_scroll = anchored.saturating_sub(rewind);
-        self.chat_auto_follow = false;
+        self.chat_viewport.chat_scroll = anchored.saturating_sub(rewind);
+        self.chat_viewport.chat_auto_follow = false;
         let remaining = rewind.saturating_sub(anchored);
         if remaining > 0 {
             self.history_page

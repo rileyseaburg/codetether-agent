@@ -28,3 +28,8 @@ pub use streaming_preview::push_streaming_preview;
 
 mod transcript;
 pub use transcript::build_transcript;
+
+mod scroll_bounds;
+mod scroll_navigation;
+mod scroll_state;
+pub use scroll_state::ToolPreviewScrollState;

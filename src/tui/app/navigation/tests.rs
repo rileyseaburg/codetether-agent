@@ -20,7 +20,7 @@ fn help_overlay_consumes_chat_arrow_navigation() {
     handle_down(&mut app, KeyModifiers::NONE);
 
     assert_eq!(app.state.help_scroll.offset, 1);
-    assert_eq!(app.state.chat_scroll, 1_000_000);
+    assert_eq!(app.state.chat_viewport.chat_scroll, 1_000_000);
 }
 
 #[test]

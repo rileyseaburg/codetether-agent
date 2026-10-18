@@ -50,7 +50,7 @@ pub(super) fn handle_copy_transcript(app: &mut App) {
     match copy_text(&transcript) {
         Ok(method) => {
             app.state.status = format!("Copied transcript: {turns} turns ({method}).");
-            app.state.chat_scroll = SCROLL_BOTTOM;
+            app.state.chat_viewport.chat_scroll = SCROLL_BOTTOM;
         }
         Err(err) => {
             tracing::warn!(error = %err, "Copy transcript to clipboard failed");

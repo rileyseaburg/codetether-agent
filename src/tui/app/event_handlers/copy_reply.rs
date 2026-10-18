@@ -35,7 +35,7 @@ pub(super) fn handle_copy_reply(app: &mut App) {
     match copy_text(&text) {
         Ok(method) => {
             app.state.status = format!("Copied latest reply ({method}).");
-            app.state.chat_scroll = SCROLL_BOTTOM;
+            app.state.chat_viewport.chat_scroll = SCROLL_BOTTOM;
         }
         Err(err) => {
             tracing::warn!(error = %err, "Copy to clipboard failed");

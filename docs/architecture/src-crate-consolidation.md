@@ -12248,3 +12248,23 @@ Full workspace consolidation remains active.
   Cargo.lock; preexisting lockfile drift and unrelated A2A edits were preserved.
 - No Cargo or rustc commands, compilation, or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Chat and tool-preview scroll ownership
+
+- Moved chat scroll position, measured bounds, follow mode, manual-position
+  resolution and scrolling calculations into ChatScrollState in
+  codetether-chat-layout. Moved tool-preview position, bounds, clamping and
+  follow-sentinel calculations into ToolPreviewScrollState in
+  codetether-tool-panel. Seven new modules contain at most 22 code lines each.
+- AppState now holds these owners. Native delegates retain older-history
+  requests and viewport paging. Rendering, history anchoring, event handling,
+  view save/restore and existing integration tests use the new field owners.
+  Default positions and independent follow-mode behavior remain unchanged.
+- Verification: 48 source comparisons passed for moved algorithms, native
+  delegates, defaults, consumers and the sentinel compatibility export. Module
+  reachability, dependency-cycle checks, direct rustfmt, the native file-limit
+  ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-scroll-state/.
+- No dependency or lockfile changes were needed. Unrelated working-tree changes
+  were preserved. No Cargo, rustc, compilation or Rust tests ran. The full
+  workspace consolidation remains incomplete.

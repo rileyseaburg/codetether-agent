@@ -71,10 +71,10 @@ pub fn clamp_scroll(app: &mut App, messages_rect: Rect, lines: &[Line<'_>]) -> u
     app.state.apply_pending_history_anchor(total);
     let max_scroll = total.saturating_sub(visible);
     app.state.set_chat_max_scroll(max_scroll);
-    let scroll = if app.state.chat_scroll >= SCROLL_BOTTOM {
+    let scroll = if app.state.chat_viewport.chat_scroll >= SCROLL_BOTTOM {
         max_scroll
     } else {
-        app.state.chat_scroll.min(max_scroll)
+        app.state.chat_viewport.chat_scroll.min(max_scroll)
     };
     scroll.min(u16::MAX as usize) as u16
 }

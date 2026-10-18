@@ -17,12 +17,12 @@ pub fn drain(app: &mut App) -> bool {
 }
 
 fn apply(app: &mut App, page: super::Page) {
-    let follow_latest = app.state.chat_scroll >= crate::tui::constants::SCROLL_BOTTOM;
+    let follow_latest = app.state.chat_viewport.chat_scroll >= crate::tui::constants::SCROLL_BOTTOM;
     let old_scroll = app.state.manual_chat_scroll();
     let old_lines = app.state.message_cache.cached_message_lines.len().max(
         app.state
             .history_page
-            .known_total_lines(app.state.chat_last_max_scroll),
+            .known_total_lines(app.state.chat_viewport.chat_last_max_scroll),
     );
     let mut older =
         crate::tui::app::message_text::provider_messages_to_chat_messages(page.messages.iter());

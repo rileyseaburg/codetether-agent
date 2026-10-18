@@ -6,7 +6,7 @@ impl super::AppState {
         codetether_message_cache::RenderInputs {
             pending_tool: self.pending_tool_started_at.is_some(),
             messages_len: self.messages.len(),
-            tool_preview_scroll: self.tool_preview_scroll,
+            tool_preview_scroll: self.tool_viewport.tool_preview_scroll,
             processing: self.processing,
         }
     }

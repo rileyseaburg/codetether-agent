@@ -19,3 +19,11 @@ pub const STACK_WIDTH_THRESHOLD: u16 = 180;
 
 mod hit;
 pub use hit::ChatHit;
+
+mod scroll_down;
+mod scroll_position;
+mod scroll_state;
+mod scroll_up;
+pub use scroll_state::ChatScrollState;
+/// Sentinel position used to follow the latest chat output.
+pub const SCROLL_BOTTOM: usize = 1_000_000;

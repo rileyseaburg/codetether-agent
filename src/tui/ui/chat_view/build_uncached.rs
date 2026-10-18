@@ -14,7 +14,7 @@ pub(super) fn build_uncached(
         &app.state.messages,
         separator_width,
         panel_width,
-        app.state.tool_preview_scroll,
+        app.state.tool_viewport.tool_preview_scroll,
         app.state.pending_tool_snapshot(),
         formatter,
         palette,

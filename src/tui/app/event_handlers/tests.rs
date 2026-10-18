@@ -48,7 +48,7 @@ mod tests {
         )
         .await;
 
-        assert_eq!(app.state.chat_scroll, 22);
+        assert_eq!(app.state.chat_viewport.chat_scroll, 22);
     }
 
     #[tokio::test]

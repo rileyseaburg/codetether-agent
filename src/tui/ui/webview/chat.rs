@@ -17,6 +17,7 @@ pub fn render_webview_chat_center(f: &mut Frame, app: &App, area: Rect, lines: &
     let visible = area.height.saturating_sub(2) as usize;
     let scroll = app
         .state
+        .chat_viewport
         .chat_scroll
         .min(lines.len().saturating_sub(visible));
     let block = Block::default()
