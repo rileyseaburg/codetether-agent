@@ -1,6 +1,6 @@
 use super::{Cli, Command};
-use crate::config::AccessMode;
 use clap::Parser;
+use codetether_config::AccessMode;
 
 #[test]
 fn run_yolo_resolves_to_full_access_mode() {

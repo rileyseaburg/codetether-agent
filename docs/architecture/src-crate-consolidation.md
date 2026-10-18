@@ -25303,3 +25303,28 @@ root dependency are staged in Cargo.lock; unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-native-tui/. No Cargo, rustc,
 Python, UI rendering process or runtime tests ran. Full consolidation remains
 active.
+
+### Standalone native CLI surface moved into a dedicated crate
+
+Moved 23 files into codetether-native-cli: root parser metadata, argument/schema
+exports, mux argument coverage, auth/Vault/browser handlers and provider-backed
+model/search commands. Root src/cli now contains only its shared re-export and
+native session-dependent context/run/Go-Ralph bindings. The parser's package
+version and description match the application, retaining help/version text;
+these metadata fields must remain synchronized on release.
+
+All 21 existing tests moved with the parsing and standalone command surface.
+The access-mode test uses the same run-policy function directly through a
+small test-only alias. Provider selection uses the identical native registry
+specialization. No native Session or root application dependency was introduced
+into the new crate. Source comparisons cover all moved files after explicit
+provider/config paths and module wiring changes. Version and description
+identity are also checked statically.
+
+Static scans cover 710 module roots and 596 crates without missing modules,
+cycles or undeclared direct workspace dependencies. Declaration, file-limit,
+direct rustfmt and whitespace checks pass. Only the new package/root dependency
+entries are staged in Cargo.lock, preserving existing version-qualified
+external dependency references. Unrelated working changes remain untouched.
+Evidence: artifacts/consolidation-native-cli/. No Cargo, rustc, Python, CLI
+execution or runtime tests ran. Full consolidation remains active.

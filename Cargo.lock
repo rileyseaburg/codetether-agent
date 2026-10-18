@@ -1944,6 +1944,7 @@ dependencies = [
  "codetether-native-edit",
  "codetether-native-rustyroad",
  "codetether-native-tui",
+ "codetether-native-cli",
 ]
 
 [[package]]
@@ -3605,6 +3606,44 @@ version = "0.1.0"
 dependencies = [
  "codetether-bus-core",
  "codetether-bus-s3",
+]
+
+[[package]]
+name = "codetether-native-cli"
+version = "4.7.6-dev.38"
+dependencies = [
+ "anyhow",
+ "clap",
+ "codetether-application-providers",
+ "codetether-approval-cli",
+ "codetether-auth-cli",
+ "codetether-bedrock-auth-cli",
+ "codetether-bonsai-cli",
+ "codetether-browser-cli",
+ "codetether-cleanup-cli",
+ "codetether-cli-command",
+ "codetether-cli-options",
+ "codetether-clipboard-cli",
+ "codetether-config",
+ "codetether-config-cli",
+ "codetether-connect-cli",
+ "codetether-context-cli",
+ "codetether-cookie-auth-cli",
+ "codetether-indexer-cli",
+ "codetether-models-cli",
+ "codetether-mux-cli",
+ "codetether-native-providers",
+ "codetether-oracle-cli",
+ "codetether-run-policy",
+ "codetether-run-resume",
+ "codetether-search-cli",
+ "codetether-user-auth",
+ "codetether-user-auth-cli",
+ "codetether-vault-cli",
+ "codetether-windows-cli",
+ "codetether-worktree-cli",
+ "reqwest 0.13.4",
+ "tokio",
 ]
 
 [[package]]

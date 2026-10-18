@@ -6,7 +6,7 @@ use crate::cli::SearchArgs;
 /// Returns provider initialization or search errors.
 pub async fn execute(args: SearchArgs) -> anyhow::Result<()> {
     codetether_application_providers::cli::search::execute::<
-        crate::provider::registry::application::Native,
+        codetether_native_providers::registry::application::Native,
     >(args)
     .await
 }

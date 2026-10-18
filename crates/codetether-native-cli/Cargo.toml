@@ -1,0 +1,43 @@
+[package]
+name = "codetether-native-cli"
+version = "4.7.6-dev.38"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "A2A-native AI coding agent for the CodeTether ecosystem"
+
+[dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-approval-cli = { path = "../codetether-approval-cli", version = "0.1.0" }
+codetether-auth-cli = { path = "../codetether-auth-cli", version = "0.1.0" }
+codetether-bedrock-auth-cli = { path = "../codetether-bedrock-auth-cli", version = "0.1.0" }
+codetether-bonsai-cli = { path = "../codetether-bonsai-cli", version = "0.1.0" }
+codetether-browser-cli = { path = "../codetether-browser-cli", version = "0.1.0" }
+codetether-cleanup-cli = { path = "../codetether-cleanup-cli", version = "0.1.0" }
+codetether-cli-command = { path = "../codetether-cli-command", version = "0.1.0" }
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-clipboard-cli = { path = "../codetether-clipboard-cli", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-config-cli = { path = "../codetether-config-cli", version = "0.1.0" }
+codetether-connect-cli = { path = "../codetether-connect-cli", version = "0.1.0" }
+codetether-context-cli = { path = "../codetether-context-cli", version = "0.1.0" }
+codetether-cookie-auth-cli = { path = "../codetether-cookie-auth-cli", version = "0.1.0" }
+codetether-indexer-cli = { path = "../codetether-indexer-cli", version = "0.1.0" }
+codetether-models-cli = { path = "../codetether-models-cli", version = "0.1.0" }
+codetether-mux-cli = { path = "../codetether-mux-cli", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-oracle-cli = { path = "../codetether-oracle-cli", version = "0.1.0" }
+codetether-run-policy = { path = "../codetether-run-policy", version = "0.1.0" }
+codetether-run-resume = { path = "../codetether-run-resume", version = "0.1.0" }
+codetether-search-cli = { path = "../codetether-search-cli", version = "0.1.0" }
+codetether-user-auth = { path = "../codetether-user-auth", version = "0.1.0" }
+codetether-user-auth-cli = { path = "../codetether-user-auth-cli", version = "0.1.0" }
+codetether-vault-cli = { path = "../codetether-vault-cli", version = "0.1.0" }
+codetether-windows-cli = { path = "../codetether-windows-cli", version = "0.1.0" }
+codetether-worktree-cli = { path = "../codetether-worktree-cli", version = "0.1.0" }
+anyhow = "1"
+reqwest = { version = "0.13.2", features = ["json", "stream", "rustls", "multipart", "form", "blocking"], default-features = false }
+
+[dev-dependencies]
+clap = { version = "4.6.6", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

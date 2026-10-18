@@ -3,7 +3,7 @@ pub use codetether_models_cli::ModelsArgs;
 
 pub async fn execute(args: ModelsArgs) -> anyhow::Result<()> {
     codetether_application_providers::cli::models::execute::<
-        crate::provider::registry::application::Native,
+        codetether_native_providers::registry::application::Native,
     >(args)
     .await
 }
