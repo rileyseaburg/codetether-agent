@@ -7523,6 +7523,8 @@ dependencies = [
  "codetether-tool-core",
  "codetether-tool-recovery",
  "codetether-tool-reporting",
+ "codetether-tool-call-parser",
+ "codetether-context-policy",
 ]
 
 [[package]]

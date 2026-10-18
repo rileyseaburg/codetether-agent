@@ -27,3 +27,6 @@ tokio = { version = "1", features = ["sync"] }
 codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
 codetether-tool-recovery = { path = "../codetether-tool-recovery", version = "0.1.0" }
 codetether-tool-reporting = { path = "../codetether-tool-reporting", version = "0.1.0" }
+
+codetether-tool-call-parser = { path = "../codetether-tool-call-parser", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }

@@ -22,3 +22,6 @@ pub mod output;
 
 /// Ordered transcript repair after truncated provider tool calls.
 pub mod repair;
+
+/// Sequencing of response guards, publication, repair and tool execution.
+pub mod driver;

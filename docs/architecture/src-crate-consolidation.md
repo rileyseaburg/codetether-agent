@@ -15658,3 +15658,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-truncation-repair/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared normalized-response driver
+
+- Moved the response-flow sequence from the native prompt loop into
+  `codetether-prompt-loop::driver`. The driver owns parsing, guard order,
+  recovery placement and all early-return branches.
+- Native guard/effect/tool adapters retain session control, model fields,
+  transcript insertion, terminal validation and actual tool execution.
+- Preserved control checks before parsing, build guard before prose recovery,
+  native-call guard before output, thinking-only handling after publication,
+  terminal/truncation branching, progress tracking, transcript append and tool
+  execution order.
+- Verification: full sequence comparison, recovery input mapping and all eleven
+  native binding methods; unchanged effect implementations; module/dependency
+  graphs, direct rustfmt, file budgets, isolated lock changes and diff whitespace.
+  Evidence: `artifacts/consolidation-response-driver/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains unfinished.
