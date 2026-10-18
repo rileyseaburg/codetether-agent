@@ -20989,3 +20989,21 @@ limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-swarm-tool-batch/`. No dependencies changed. No Cargo,
 rustc, or Python commands ran. Rust tests and compilation remain unverified;
 complete workspace consolidation is still active.
+
+### Raw sub-agent tool execution ownership
+
+Moved deadline-bound raw tool execution, unknown-tool/error handling, timing
+and preview diagnostics, image extraction, and raw result construction into
+`codetether-swarm-core::agent_loop::tools::raw`. Native code resolves the tool
+and supplies the deadline/configured timeout. It re-exports `RawResult` under
+the existing private result name, preserving single-call consumers. The old
+native result implementation file was removed.
+
+Verification compares the entire execution body, result fields, result methods,
+and native input bindings. Error text, timeout classification, image metadata
+conversion, and original tracing targets are unchanged. Existing image tests
+remain unchanged. Direct rustfmt, source graphs across 694 roots, native
+file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-swarm-raw-tool/`. No dependencies changed. No Cargo,
+rustc, or Python commands ran. No tools or Rust tests were executed; compilation
+and runtime behavior remain unverified. The complete consolidation is active.

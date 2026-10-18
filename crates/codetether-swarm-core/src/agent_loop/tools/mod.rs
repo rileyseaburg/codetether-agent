@@ -10,6 +10,9 @@ use codetether_provider_core::{ContentPart, Message, Role};
 pub use completed::Completed;
 pub use host::Host;
 
+/// Deadline-bound raw tool execution and image-bearing results.
+pub mod raw;
+
 /// Execute an ordered batch of tool calls and record each result.
 /// # Arguments
 /// * `host` — Readiness, single-call execution, and transcript bindings.
