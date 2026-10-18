@@ -12413,6 +12413,23 @@ Full workspace consolidation remains active.
   No terminal lifecycle functions or panic hooks were executed during checks.
   No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.
 
+### Clipboard transcript export extraction
+
+- Moved conversation export and individual clipboard payload formatting from
+  native copy event handlers into codetether-chat-transcript, in separate
+  export and clipboard modules. Seven existing regression tests moved into
+  the crate alongside the implementations.
+- Native handlers import the shared formatters and retain their original
+  message selection, clipboard writes, status updates and scroll effects.
+  No dependency or lockfile changes were needed for this extraction.
+- Verification: 17 static source comparisons passed for the two formatters,
+  unchanged handlers, moved tests and native imports. Module reachability,
+  dependency cycles, direct rustfmt, file limits and whitespace checks passed.
+  The crate's modules contain at most 33 code lines. Evidence:
+  artifacts/consolidation-chat-export/.
+- No Cargo, rustc, compilation or Rust tests ran. Full consolidation remains
+  incomplete.
+
 ### Stream recovery policy extraction
 
 - Moved disconnect/permanent-error classification, reconnect count and pending
