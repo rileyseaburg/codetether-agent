@@ -18762,3 +18762,25 @@ initial diagnostic logs are retained. Evidence:
 `artifacts/consolidation-agent-runtime/`. No Cargo, rustc, Python, Rust tests,
 session creation or swarm execution ran. Compilation and runtime behavior remain
 unverified.
+
+### Legacy RLM executor ownership
+
+Moved the legacy RLM executor wrapper, environment-derived context budget,
+optional FunctionGemma construction, builder methods, trace access and analysis
+entry point into `codetether-rlm-legacy`. The native repl module re-exports the
+same executor and REPL contracts. All concrete dependencies were already shared
+crates, so no new application host interface is needed.
+
+A local RouterRewriter wraps the shared ToolCallRouter to implement the shared
+RLM ResponseRewriter trait with valid ownership. It forwards the identical
+method call and retains the same optional Arc lifetime. Configuration order,
+default budget, router failure handling and original log target are preserved.
+
+Validation: eight full function-body/signature comparisons, state layout,
+facade and unchanged router/executor services, module reachability,
+dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
+The manifest guard identified the current RLM version as 0.1.1; dependency
+entries were corrected before verification. Evidence:
+`artifacts/consolidation-rlm-legacy/`. No Cargo, rustc, Python, Rust tests,
+model loading or RLM execution ran; compilation and runtime behavior remain
+unverified.

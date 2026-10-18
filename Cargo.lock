@@ -1725,6 +1725,7 @@ dependencies = [
  "codetether-relay-tool",
  "codetether-ripgrep-tool",
  "codetether-rlm",
+ "codetether-rlm-legacy",
  "codetether-runtime-policy",
  "codetether-rustyroad-tool",
  "codetether-sandbox-bwrap",
@@ -4709,6 +4710,18 @@ dependencies = [
  "codetether-rlm-background",
  "codetether-session-events",
  "tokio",
+]
+
+[[package]]
+name = "codetether-rlm-legacy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-cognition-native",
+ "codetether-provider-core",
+ "codetether-rlm",
+ "tracing",
 ]
 
 [[package]]

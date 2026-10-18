@@ -21,7 +21,7 @@ impl RlmExecutor {
             let cfg = ToolRouterConfig::from_env();
             ToolCallRouter::from_config(&cfg)
                 .inspect_err(|e| {
-                    tracing::debug!(error = %e, "FunctionGemma router unavailable for RLM");
+                    tracing::debug!(target: "codetether_agent::rlm::repl::executor_construct",error = %e, "FunctionGemma router unavailable for RLM");
                 })
                 .ok()
                 .flatten()
@@ -33,7 +33,8 @@ impl RlmExecutor {
                 provider,
                 model,
                 context_budget_tokens,
-                tool_router.map(|router| Arc::new(router) as Arc<dyn ResponseRewriter>),
+                tool_router
+                    .map(|router| Arc::new(RouterRewriter(router)) as Arc<dyn ResponseRewriter>),
             ),
         }
     }

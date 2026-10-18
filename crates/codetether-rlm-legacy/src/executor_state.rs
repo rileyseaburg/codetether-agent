@@ -15,8 +15,8 @@ use super::*;
 ///
 /// # Examples
 /// ```no_run
-/// # fn example(provider: std::sync::Arc<dyn codetether_agent::provider::Provider>) {
-/// let executor = codetether_agent::rlm::repl::RlmExecutor::new(
+/// # fn example(provider: std::sync::Arc<dyn codetether_provider_core::Provider>) {
+/// let executor = codetether_rlm_legacy::RlmExecutor::new(
 ///     "context".into(), provider, "model".into(),
 /// );
 /// assert!(executor.trace_steps().is_empty());

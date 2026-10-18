@@ -1,0 +1,15 @@
+[package]
+name = "codetether-rlm-legacy"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Legacy RLM executor construction and optional response rewriting"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-cognition-native = { path = "../codetether-cognition-native", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
+tracing = "0.1"
