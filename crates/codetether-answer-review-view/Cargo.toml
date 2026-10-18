@@ -7,5 +7,7 @@ license = "MIT"
 description = "Answer-satisfaction popup and explicit keyboard selection"
 
 [dependencies]
+anyhow = "1"
+codetether-goal-core = { path = "../codetether-goal-core", version = "0.1.0" }
 crossterm = "0.29.0"
 ratatui = { version = "0.30.2", default-features = false }

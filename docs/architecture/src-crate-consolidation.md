@@ -20629,3 +20629,25 @@ rustfmt, source graph inspection across 691 roots, native file-size checks, and
 whitespace checks passed. Evidence: `artifacts/consolidation-worker-models/`.
 No Cargo, rustc, or Python commands ran. Rust compilation and runtime tests were
 not performed. The full workspace consolidation remains incomplete.
+
+### Durable answer-review interaction ownership
+
+Moved ready-review gating, command/scroll passthrough, explicit satisfaction
+selection, decision sequencing, and post-decision feedback into
+`codetether-answer-review-view::interactive`. Native bindings read and record
+through the existing goal runtime and supply composer/selection/status fields.
+The write still completes before selection/input/status reset. Removed the
+native passthrough and choice facades; the original acceptance, hold, command
+access, and continuation tests stay connected to the native entry point.
+
+Added direct `anyhow` and `codetether-goal-core` dependencies for error handling
+and existing durable review types. Only the owning package's two new lockfile
+edges are staged; unrelated working lockfile changes are preserved.
+
+Verification statically compares the complete decision sequence and passthrough
+expression after explicit host substitutions, checks native storage bindings,
+and confirms all existing integration-test sources are unchanged. Direct
+rustfmt, source graph/dependency checks, native file limits, and whitespace
+checks passed. Evidence: `artifacts/consolidation-answer-review/`. No Cargo,
+rustc, or Python commands ran. Rust tests and compilation remain unverified;
+this extraction does not complete the broader consolidation goal.

@@ -1,13 +1,12 @@
 //! Keyboard, mouse and paste event dispatch for the TUI.
 
 mod alt_scroll;
-mod answer_review_choice;
 mod answer_review_key;
 mod approval_key;
 #[cfg(test)]
 mod approval_key_tests;
-mod click_open;
 mod chat_clipboard_host;
+mod click_open;
 mod clipboard;
 mod copy_reply;
 mod copy_transcript;

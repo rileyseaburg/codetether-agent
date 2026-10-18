@@ -1,10 +1,8 @@
-//! A user can always reach slash commands without accepting an answer or tool.
-
-use crate::tui::app::state::App;
+//! Keys that retain command and scroll access during answer review.
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-pub(super) fn allowed(app: &App, key: KeyEvent) -> bool {
-    !app.state.input.trim().is_empty()
+pub(super) fn allowed(input: &str, key: KeyEvent) -> bool {
+    !input.trim().is_empty()
         || matches!(key.code, KeyCode::Char('/' | 'c' | 'C' | 'r' | 'R'))
         || matches!(key.code, KeyCode::PageUp | KeyCode::PageDown)
         || (matches!(key.code, KeyCode::Char('c' | 'q'))

@@ -6953,6 +6953,8 @@ dependencies = [
 name = "codetether-answer-review-view"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "codetether-goal-core",
  "crossterm",
  "ratatui",
 ]
