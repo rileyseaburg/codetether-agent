@@ -19,6 +19,9 @@ mod ralph_registry;
 mod ralph_view;
 #[path = "commands/session_ops.rs"]
 mod session_ops;
+#[path = "commands/settings_command.rs"]
+mod settings_command;
+use codetether_settings_policy::command::Setting;
 #[path = "commands/undo_session.rs"]
 mod undo_session;
 #[path = "commands/undo_view.rs"]
@@ -28,10 +31,6 @@ use open_editor::open_editor;
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use crate::tui::app::session_sync::{refresh_sessions, return_to_chat};
-use crate::tui::app::settings::{
-    autocomplete_status_message, network_access_status_message, set_network_access,
-    set_slash_autocomplete,
-};
 use crate::tui::app::spawn_agent::handle_spawn_command;
 use crate::tui::app::state::App;
 use crate::tui::app::text::{
@@ -186,66 +185,17 @@ pub async fn handle_slash_command(
         return;
     }
     if let Some(rest) = command_with_optional_args(&normalized, "/autoapply") {
-        let action = rest.trim().to_ascii_lowercase();
-        let current = app.state.auto_apply_edits;
-        let desired = match action.as_str() {
-            "" | "toggle" => Some(!current),
-            "status" => None,
-            "on" | "true" | "yes" | "enable" | "enabled" => Some(true),
-            "off" | "false" | "no" | "disable" | "disabled" => Some(false),
-            _ => {
-                app.state.status = "Usage: /autoapply [on|off|toggle|status]".to_string();
-                return;
-            }
-        };
-
-        if let Some(next) = desired {
-            set_auto_apply_edits(app, session, next).await;
-        } else {
-            app.state.status = auto_apply_status_message(current);
-        }
+        settings_command::execute(app, session, Setting::AutoApply, rest).await;
         return;
     }
 
     if let Some(rest) = command_with_optional_args(&normalized, "/network") {
-        let current = app.state.allow_network;
-        let desired = match rest.trim().to_ascii_lowercase().as_str() {
-            "" | "toggle" => Some(!current),
-            "status" => None,
-            "on" | "true" | "yes" | "enable" | "enabled" => Some(true),
-            "off" | "false" | "no" | "disable" | "disabled" => Some(false),
-            _ => {
-                app.state.status = "Usage: /network [on|off|toggle|status]".to_string();
-                return;
-            }
-        };
-
-        if let Some(next) = desired {
-            set_network_access(app, session, next).await;
-        } else {
-            app.state.status = network_access_status_message(current);
-        }
+        settings_command::execute(app, session, Setting::Network, rest).await;
         return;
     }
 
     if let Some(rest) = command_with_optional_args(&normalized, "/autocomplete") {
-        let current = app.state.slash_autocomplete;
-        let desired = match rest.trim().to_ascii_lowercase().as_str() {
-            "" | "toggle" => Some(!current),
-            "status" => None,
-            "on" | "true" | "yes" | "enable" | "enabled" => Some(true),
-            "off" | "false" | "no" | "disable" | "disabled" => Some(false),
-            _ => {
-                app.state.status = "Usage: /autocomplete [on|off|toggle|status]".to_string();
-                return;
-            }
-        };
-
-        if let Some(next) = desired {
-            set_slash_autocomplete(app, session, next).await;
-        } else {
-            app.state.status = autocomplete_status_message(current);
-        }
+        settings_command::execute(app, session, Setting::Autocomplete, rest).await;
         return;
     }
 

@@ -6,6 +6,7 @@
 mod access;
 mod bedrock;
 mod boolean;
+pub mod command;
 mod reasoning;
 pub use access::{access_label, next_access_mode};
 pub use bedrock::{

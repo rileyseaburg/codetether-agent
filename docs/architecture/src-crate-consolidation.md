@@ -14543,3 +14543,18 @@ Full workspace consolidation remains active.
   artifacts/consolidation-fork-command/.
 - Added existing chat-model and context-policy dependencies. No Cargo, rustc,
   Rust tests, session creation or saves ran. Full consolidation is unfinished.
+
+### Boolean preference command ownership
+
+- Moved shared on/off/toggle/status interpretation and command dispatch for
+  autoapply, network and autocomplete into codetether-settings-policy::command.
+  Focused modules own setting identity, parsing, dispatch and the native contract.
+- Native adapters read the same application flags and call the existing setters,
+  preserving persistence and network-environment handling. The remaining slash
+  dispatcher is unchanged outside these three call sites.
+- Verification: seven static checks passed for alias parity, command replacement,
+  status/mutation routing, native getter/setter targets and bounded modules.
+  Module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence: artifacts/consolidation-settings-command/.
+- No dependency or lockfile changes. No Cargo, rustc, Rust tests, preference
+  mutation or TUI session ran. Full workspace consolidation remains unfinished.
