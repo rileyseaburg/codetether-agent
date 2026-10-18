@@ -9077,3 +9077,21 @@ crate file has 27 code lines. Evidence is in
 `artifacts/consolidation-session-catalog/`. Compilation and runtime tests
 were not run. No Cargo, rustc or Python commands ran. The full workspace
 consolidation remains active.
+
+### Dedicated session-event contracts crate
+
+Moved streaming event variants, durability classification, compaction/token
+payloads, terminal results and retry records into
+`crates/codetether-session-events`. Thirteen modules separate these contracts
+and computations. The shared event enum is generic over its session snapshot;
+the native alias retains Session. Approval and RLM payloads reference their
+existing owning crates. Five old native event implementation files were
+removed, while compaction/token modules now re-export shared types.
+
+Nineteen static comparisons cover every moved payload/type implementation,
+the complete variant schema, unchanged durability rules, native alias and
+unchanged native durability tests. Module/dependency graphs, file budgets
+and whitespace checks passed; the largest crate file has 34 code lines.
+Evidence is in `artifacts/consolidation-session-events/`. Compilation and
+runtime tests were not run. No Cargo, rustc or Python commands ran.
+Full workspace consolidation remains active.

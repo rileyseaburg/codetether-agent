@@ -5,7 +5,7 @@
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::session::StreamRetryEvent;
+/// use codetether_session_events::StreamRetryEvent;
 ///
 /// let retry = StreamRetryEvent {
 ///     attempt: 1,

@@ -2,13 +2,13 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Result returned from [`Session::prompt`](crate::session::Session::prompt)
+/// Result returned from a successful session prompt
 /// and related prompt entry points.
 ///
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::session::SessionResult;
+/// use codetether_session_events::SessionResult;
 ///
 /// let result = SessionResult {
 ///     text: "done".into(),

@@ -1,14 +1,14 @@
 //! Durability classification for session events.
 
-use super::types::SessionEvent;
+use crate::SessionEvent;
 
-impl SessionEvent {
+impl<S> SessionEvent<S> {
     /// Returns `true` when the event must reach the durable sink.
     ///
     /// # Examples
     ///
     /// ```
-    /// use codetether_agent::session::{SessionEvent, TokenDelta, TokenSource};
+    /// use codetether_session_events::{SessionEvent, TokenDelta, TokenSource};
     ///
     /// let delta = TokenDelta {
     ///     source: TokenSource::Root,
@@ -17,8 +17,8 @@ impl SessionEvent {
     ///     completion_tokens: 1,
     ///     duration_ms: 0,
     /// };
-    /// assert!(SessionEvent::TokenUsage(delta).is_durable());
-    /// assert!(!SessionEvent::Thinking.is_durable());
+    /// assert!(SessionEvent::<()>::TokenUsage(delta).is_durable());
+    /// assert!(!SessionEvent::<()>::Thinking.is_durable());
     /// ```
     pub fn is_durable(&self) -> bool {
         matches!(

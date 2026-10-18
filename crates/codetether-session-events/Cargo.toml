@@ -1,0 +1,14 @@
+[package]
+name = "codetether-session-events"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Shared session event and telemetry payload contracts"
+
+[dependencies]
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["serde"] }

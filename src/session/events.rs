@@ -1,17 +1,6 @@
-//! Session prompt result and streaming event facade.
-//!
-//! [`SessionResult`] is the terminal value returned from a successful prompt.
-//! [`SessionEvent`] is streamed to UIs and durable sinks for live progress,
-//! usage accounting, compaction telemetry, and error reporting.
-
-mod durable;
-mod result;
-mod stream_retry;
-mod types;
-
-pub use result::SessionResult;
-pub use stream_retry::StreamRetryEvent;
-pub use types::SessionEvent;
-
+//! Native specialization of shared session events and results.
+pub use codetether_session_events::{SessionResult, StreamRetryEvent};
+/// Streaming events carrying native session snapshots.
+pub type SessionEvent = codetether_session_events::SessionEvent<super::Session>;
 #[cfg(test)]
 mod durable_tests;
