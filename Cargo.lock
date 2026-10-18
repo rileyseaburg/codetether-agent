@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-mcp-cli",
  "codetether-swarm-cli",
  "codetether-ralph-cli",
  "codetether-benchmark-cli",
@@ -6936,6 +6937,21 @@ dependencies = [
  "codetether-cli-options",
  "codetether-swarm-core",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-mcp-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-cli-options",
+ "codetether-mcp-connections",
+ "codetether-mcp-core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

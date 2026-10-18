@@ -24,6 +24,7 @@ mod startup_vault;
 mod worktree_cli;
 
 mod benchmark_cli;
+mod mcp_cli;
 mod native_cli;
 mod ralph_cli;
 mod rlm_cli;
@@ -215,24 +216,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Mcp(args)) => {
             // Resolve the target MCP server command from either `--command "cmd args"`
             // (flag form) or trailing positional args (e.g. `connect npx -y @x/foo /path`).
-            let resolved_command: Option<(String, Vec<String>)> = {
-                if !args.command_args.is_empty() {
-                    let mut parts = args.command_args.iter().cloned();
-                    let cmd = parts.next().unwrap();
-                    Some((cmd, parts.collect()))
-                } else if let Some(s) = args.command.as_ref() {
-                    let parts: Vec<String> = s.split_whitespace().map(str::to_string).collect();
-                    if parts.is_empty() {
-                        None
-                    } else {
-                        let mut it = parts.into_iter();
-                        let cmd = it.next().unwrap();
-                        Some((cmd, it.collect()))
-                    }
-                } else {
-                    None
-                }
-            };
+            let resolved_command = codetether_mcp_cli::resolve_command(&args);
             match args.action.as_str() {
                 "serve" => {
                     tracing::info!("Starting MCP server over stdio...");
@@ -374,155 +358,7 @@ async fn main() -> anyhow::Result<()> {
                     server.run().await?;
                     Ok(())
                 }
-                "connect" => {
-                    let (cmd, cmd_args) = resolved_command.as_ref().ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "command required for connect action (pass it positionally, e.g. `codetether mcp connect npx -y @modelcontextprotocol/server-filesystem /path`, or via --command)"
-                        )
-                    })?;
-                    let cmd_arg_refs: Vec<&str> = cmd_args.iter().map(String::as_str).collect();
-
-                    tracing::info!("Connecting to MCP server: {} {}", cmd, cmd_args.join(" "));
-                    let client = mcp::McpClient::connect_subprocess(cmd, &cmd_arg_refs).await?;
-
-                    // List available tools
-                    let tools = client.tools().await;
-
-                    if args.json {
-                        println!("{}", serde_json::to_string_pretty(&tools)?);
-                    } else {
-                        println!("# Connected to MCP Server\n");
-                        println!("## Available Tools ({})\n", tools.len());
-                        for tool in &tools {
-                            println!(
-                                "- **{}**: {}",
-                                tool.name,
-                                tool.description.as_deref().unwrap_or("")
-                            );
-                        }
-                    }
-
-                    // Keep connection alive briefly to show it works
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                    client.close().await?;
-
-                    Ok(())
-                }
-                "list-tools" => {
-                    if let Some((cmd, cmd_args)) = resolved_command.as_ref() {
-                        // Connect to external MCP server and list its tools
-                        let cmd_arg_refs: Vec<&str> = cmd_args.iter().map(String::as_str).collect();
-                        let client = mcp::McpClient::connect_subprocess(cmd, &cmd_arg_refs).await?;
-                        let tools = client.tools().await;
-                        if args.json {
-                            println!("{}", serde_json::to_string_pretty(&tools)?);
-                        } else {
-                            println!("# Available MCP Tools\n");
-                            for tool in &tools {
-                                println!(
-                                    "- **{}**: {}",
-                                    tool.name,
-                                    tool.description.as_deref().unwrap_or("")
-                                );
-                            }
-                        }
-                        client.close().await?;
-                    } else {
-                        // List built-in tools from the MCP server registry
-                        let registry = std::sync::Arc::new(tool::ToolRegistry::with_defaults());
-                        let server = mcp::McpServer::new_local().with_tool_registry(registry);
-                        server.setup_tools_public().await;
-                        let tools = server.get_all_tool_metadata().await;
-                        if args.json {
-                            println!("{}", serde_json::to_string_pretty(&tools)?);
-                        } else {
-                            println!("# Available MCP Tools\n");
-                            for tool in &tools {
-                                println!(
-                                    "- **{}**: {}",
-                                    tool.name,
-                                    tool.description.as_deref().unwrap_or("")
-                                );
-                            }
-                        }
-                    }
-                    Ok(())
-                }
-                "call" => {
-                    let tool = args
-                        .tool
-                        .as_ref()
-                        .ok_or_else(|| anyhow::anyhow!("--tool required for call action"))?;
-                    let arguments: serde_json::Value = args
-                        .arguments
-                        .as_ref()
-                        .map(|s| serde_json::from_str(s))
-                        .transpose()?
-                        .unwrap_or(serde_json::json!({}));
-
-                    if let Some((cmd, cmd_args)) = resolved_command.as_ref() {
-                        // Call tool on external MCP server
-                        let cmd_arg_refs: Vec<&str> = cmd_args.iter().map(String::as_str).collect();
-                        let client = mcp::McpClient::connect_subprocess(cmd, &cmd_arg_refs).await?;
-                        let result = client.call_tool(tool, arguments).await?;
-                        client.close().await?;
-
-                        let output: String = result
-                            .content
-                            .iter()
-                            .map(|c| match c {
-                                mcp::ToolContent::Text { text } => text.clone(),
-                                mcp::ToolContent::Image { data, mime_type } => {
-                                    format!("[image: {} ({} bytes)]", mime_type, data.len())
-                                }
-                                mcp::ToolContent::Resource { resource } => {
-                                    serde_json::to_string(resource).unwrap_or_default()
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                            .join("\n");
-
-                        if result.is_error {
-                            eprintln!("Error: {}", output);
-                        } else {
-                            println!("{}", output);
-                        }
-                    } else {
-                        // Call built-in tool directly via MCP server
-                        let registry = std::sync::Arc::new(tool::ToolRegistry::with_defaults());
-                        let server = mcp::McpServer::new_local().with_tool_registry(registry);
-                        server.setup_tools_public().await;
-                        let result = server.call_tool_direct(tool, arguments).await?;
-
-                        let output: String = result
-                            .content
-                            .iter()
-                            .map(|c| match c {
-                                mcp::ToolContent::Text { text } => text.clone(),
-                                mcp::ToolContent::Image { data, mime_type } => {
-                                    format!("[image: {} ({} bytes)]", mime_type, data.len())
-                                }
-                                mcp::ToolContent::Resource { resource } => {
-                                    serde_json::to_string(resource).unwrap_or_default()
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                            .join("\n");
-
-                        if result.is_error {
-                            eprintln!("Error: {}", output);
-                        } else {
-                            println!("{}", output);
-                        }
-                    }
-                    Ok(())
-                }
-                _ => {
-                    anyhow::bail!(
-                        "Unknown action: {}. Use serve, connect, list-tools, or call",
-                        args.action
-                    );
-                }
+                _ => mcp_cli::execute(args, resolved_command).await,
             }
         }
         Some(Command::Stats(args)) => codetether_telemetry_cli::execute(args),

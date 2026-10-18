@@ -13762,3 +13762,19 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, swarm execution or sub-agent spawning ran.
   Full workspace consolidation remains unfinished.
+
+### MCP client CLI extraction
+
+- Moved subprocess command resolution, connect/list-tools/call dispatch and
+  tool/result presentation from src/main.rs into codetether-mcp-cli. Eight
+  modules separate command handling, command resolution and output schemas.
+- Native src/mcp_cli.rs supplies local tool registry setup and the existing
+  policy-aware client. Native serve setup is retained for a later extraction.
+  ToolMetadata and McpTool serialization, errors, connection close order and
+  the connection demonstration delay remain unchanged.
+- Verification: 13 static expanded-action/resolution/serve-body/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-mcp-cli/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, MCP subprocesses or tool execution ran.
+  Full workspace consolidation remains unfinished.
