@@ -5,7 +5,20 @@ use super::title::derive_title_from_text;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
-pub(crate) fn summarize_codex_session_from_path(
+/// Read a session summary without building a native transcript.
+/// # Arguments
+/// * `path` — Archive JSONL file to summarize.
+/// * `title_override` — Preferred indexed title, when present.
+/// # Returns
+/// Identity, timestamps, message count, title and workspace metadata.
+/// # Errors
+/// Propagates file and record decoding errors or missing metadata.
+/// # Examples
+/// ```no_run
+/// let result = codetether_codex_discovery::summarize_codex_session_from_path(std::path::Path::new("rollout.jsonl"), None);
+/// assert!(result.is_ok());
+/// ```
+pub fn summarize_codex_session_from_path(
     path: &Path,
     title_override: Option<&str>,
 ) -> Result<CodexSessionInfo> {
@@ -34,7 +47,7 @@ fn directory_from_cwd(cwd: &str) -> Option<PathBuf> {
         match raw.canonicalize() {
             Ok(canon) => canon,
             Err(_) => {
-                tracing::warn!(path = %cwd, "Codex import: cwd does not resolve, storing as-is");
+                tracing::warn!(target: "codetether_agent::session::codex_import::summary", path = %cwd, "Codex import: cwd does not resolve, storing as-is");
                 raw
             }
         }

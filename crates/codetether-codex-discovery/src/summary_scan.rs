@@ -1,17 +1,12 @@
-use super::legacy::normalize_line;
+use super::scan_state::CodexSummaryScan;
 use super::summary_count::count_response_item;
 use super::summary_text::first_user_text;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
+use codetether_codex_records::normalize_line;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-
-pub(crate) struct CodexSummaryScan {
-    pub(crate) updated_at: Option<DateTime<Utc>>,
-    pub(crate) message_count: usize,
-    pub(crate) first_user_text: Option<String>,
-}
 
 pub(crate) fn scan_codex_summary(
     path: &Path,

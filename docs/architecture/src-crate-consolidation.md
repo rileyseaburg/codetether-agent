@@ -9004,3 +9004,22 @@ file budgets and whitespace checks passed; the largest crate file contains
 38 code lines. Evidence is in `artifacts/consolidation-codex-records/`.
 Compilation and runtime tests were not run. No Cargo, rustc or Python commands
 ran. The full workspace consolidation remains active.
+
+### Dedicated Codex archive-discovery crate
+
+Moved archive-home resolution, recursive discovery, ID lookup, title-index
+loading, metadata recovery and streamed summary construction into
+`crates/codetether-codex-discovery`. Eighteen modules separate traversal,
+candidate filtering, initial metadata decoding, legacy directory recovery,
+message/reasoning counts, title derivation and summary state. Native import
+code re-exports shared operations and retains native construction/persistence.
+Four former native summary implementation files were removed.
+
+Thirty static checks compare the moved bodies, helper extraction boundaries,
+Serde-independent summary shapes and unchanged import/integration sources.
+Original warning targets, skip behavior and title/timestamp precedence are
+preserved. Module references, dependency cycles, file budgets and whitespace
+checks passed; the largest crate file has 41 code lines. Evidence is in
+`artifacts/consolidation-codex-discovery/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. Full consolidation remains
+active.
