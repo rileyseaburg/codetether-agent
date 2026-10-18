@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-go-cli",
  "codetether-run-runtime",
  "codetether-run-report",
  "codetether-run-policy",
@@ -7150,6 +7151,23 @@ dependencies = [
  "codetether-run-report",
  "codetether-run-resume",
  "codetether-session-events",
+]
+
+[[package]]
+name = "codetether-go-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-autochat-core",
+ "codetether-bus-core",
+ "codetether-go-ralph",
+ "codetether-okr",
+ "codetether-relay-okr",
+ "codetether-relay-plan",
+ "codetether-relay-planner",
+ "codetether-run-report",
+ "uuid",
 ]
 
 [[package]]

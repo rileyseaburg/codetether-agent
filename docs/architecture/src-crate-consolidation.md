@@ -14112,3 +14112,20 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, session operations or event/output execution ran.
   Full workspace consolidation remains unfinished.
+
+### PRD-backed CLI workflow extraction
+
+- Moved the remaining objective-draft/approval/Ralph branch into codetether-go-cli.
+  Modules separate validated input, draft fallback, approval, pipeline execution
+  and host services. The existing application Ralph host is reused directly.
+- Preserves implicit-go concurrency, draft-provider reuse, denial return,
+  approved-run persistence, provider resolution, ten-iteration execution limit,
+  training-bus setup and final output. Native code only loads providers and
+  starts the bus through the added host contract.
+- Verification: seven static expanded-body/phase-order/native-binding/input-
+  mapping/size checks passed, plus module reachability, dependency DAG, direct
+  rustfmt, file-limit ratchet and whitespace checks. Evidence:
+  artifacts/consolidation-go-cli/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, provider requests, approval prompts or workflow
+  execution ran. Full workspace consolidation remains unfinished.
