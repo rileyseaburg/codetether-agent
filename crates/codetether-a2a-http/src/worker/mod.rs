@@ -36,6 +36,8 @@ mod registration;
 pub use registration::register_worker_payload;
 mod register;
 pub use register::register_worker;
+mod register_context;
+pub use register_context::register_context;
 mod release_request;
 pub use release_request::build_release_request;
 

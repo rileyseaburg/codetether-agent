@@ -23820,3 +23820,22 @@ was edited without reformatting its unrelated existing content. The working
 lockfile and unrelated A2A edits remain untouched. Evidence:
 artifacts/consolidation-worker-state/. No Cargo, rustc, Python, compilation,
 worker startup or runtime tests ran. Full consolidation remains active.
+
+### Worker registration preparation moved into owning crates
+
+Moved the worker model-discovery host onto the application provider registry,
+removing src/a2a/worker/provider_models/host.rs. The existing process-wide Catalog
+stays at its native call site and now loads through ProviderRegistry directly.
+Moved the registration codebase snapshot and context field selection into
+codetether-a2a-http::worker::register_context. The native bootstrap binding
+supplies token, public URL and the same model-loading future. The separate
+public registration entry remains unchanged. No dependencies changed.
+
+Static comparisons preserve shared Vault/config fallback bodies, the Catalog
+instance and loading path, plus all context snapshot and registration inputs.
+Module/dependency scans cover 691 roots and 572 crates without missing modules
+or cycles. Direct rustfmt, source file limits and whitespace checks passed.
+The working lockfile and unrelated A2A edits remain untouched. Evidence:
+artifacts/consolidation-registration-context/. No Cargo, rustc, Python,
+compilation, provider requests, registration or runtime tests ran. Full
+consolidation remains active.
