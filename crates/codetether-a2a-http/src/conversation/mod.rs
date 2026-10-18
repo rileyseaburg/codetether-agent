@@ -8,3 +8,5 @@ mod validate;
 pub use resolve::resolve_session;
 pub use store::ConversationStore;
 pub use validate::usable_as_session_id;
+/// Model configuration and best-effort conversation persistence.
+pub mod lifecycle;

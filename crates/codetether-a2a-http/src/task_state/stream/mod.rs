@@ -27,3 +27,6 @@ pub mod events;
 
 /// Ordered execution and settlement over application session hooks.
 pub mod driver;
+
+/// Provider initialization and task-state failure handling.
+pub mod registry;

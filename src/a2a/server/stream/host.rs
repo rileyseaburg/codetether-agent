@@ -29,7 +29,7 @@ impl StreamSessionHost for Host<'_> {
         );
     }
     async fn registry(&mut self) -> Option<Arc<ProviderRegistry>> {
-        registry::load(self.tasks, self.task_id).await
+        super::load_registry(self.tasks, self.task_id).await
     }
     async fn execute(
         &mut self,

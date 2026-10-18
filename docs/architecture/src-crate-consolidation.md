@@ -20864,3 +20864,25 @@ across 694 roots, native file-size checks, and whitespace checks passed. Evidenc
 `artifacts/consolidation-worker-dispatch/`. No Cargo, rustc, or Python commands ran;
 no task handlers or Rust tests were executed. Compilation and runtime behavior
 remain unverified. The full workspace consolidation remains active.
+
+### A2A session setup and failure policy ownership
+
+Moved streaming provider-load failure settlement into
+`codetether-a2a-http::task_state::stream::registry`, including the existing error
+log, failed-task state, and timestamp. The native stream module supplies the
+provider loader through a small binding; its former registry implementation
+file was removed. Moved configured-model application and best-effort save
+handling into `conversation::lifecycle`, with native session wrappers supplying
+the model field, configuration future, session identifier, and save future.
+
+All failure/return behavior and original tracing targets are preserved. No
+new dependencies were needed. The initial file-size check caught an enlarged
+native host implementation; the loader binding was moved to the small parent
+module and the corrected check passed. Initial evidence is retained.
+
+Verification compares the complete moved bodies after explicit future/field
+substitutions, and checks native bindings. Direct rustfmt, source graphs across
+694 roots, native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-a2a-session-policy/`. No Cargo, rustc, or Python commands
+ran; no provider or persistence operations and no Rust tests were executed.
+Compilation and runtime behavior remain unverified. Consolidation remains active.
