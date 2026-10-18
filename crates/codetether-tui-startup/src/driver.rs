@@ -1,0 +1,109 @@
+//! Terminal user-interface driver for CodeTether.
+//!
+//! This module coordinates startup for the interactive TUI: entering the target
+//! project directory, configuring the terminal, starting collaboration services,
+//! hydrating application state, and finally handing control to the event loop.
+//! It intentionally keeps orchestration in one place while delegating terminal,
+//! project, session, configuration, and event handling responsibilities to
+//! focused submodules.
+
+use crate::Host;
+use codetether_config::AccessMode;
+/// Starts and runs the interactive terminal UI until the user exits.
+///
+/// The driver performs the full TUI lifecycle:
+/// - enters the selected project directory with the requested network policy;
+/// - switches the terminal into the runtime mode required by the TUI;
+/// - starts the agent bus and optional A2A peer services;
+/// - creates and hydrates the session-backed application state;
+/// - draws the initial UI before slower startup work completes;
+/// - loads workspace, configuration, registry, and worker bridge state;
+/// - runs the event loop until shutdown;
+/// - restores the cursor before returning.
+///
+/// # Parameters
+///
+/// * `project` - Optional project directory to enter before launching the TUI.
+///   When `None`, the current working directory is used by the project entry
+///   logic.
+/// * `allow_network` - Whether startup and runtime components may enable
+///   network-backed features such as peer collaboration and remote providers.
+/// * `a2a_options` - Optional spawn configuration for starting or connecting to
+///   an A2A peer for collaboration.
+/// * `access_mode` - Optional access mode override applied to the session
+///   configuration during startup.
+/// * `yolo` - Full-auto mode: forces `AccessMode::Full` and auto-applies edits
+///   without prompting.
+/// * `session_id` - Exact durable session to resume, when supplied.
+///
+/// # Returns
+///
+/// Returns `Ok(())` after the TUI exits cleanly and the terminal cursor has been
+/// restored.
+///
+/// # Errors
+///
+/// Returns an error if project entry fails, terminal setup fails, session
+/// creation fails, drawing fails, the event loop returns an error, or cursor
+/// restoration fails.
+///
+/// # Side Effects
+///
+/// This function may change the process working directory, place the terminal in
+/// TUI mode for the duration of the session, start background bus/peer services,
+/// read configuration and workspace state from disk, and write session updates
+/// through the event loop.
+pub async fn run<H: Host>(
+    project: Option<std::path::PathBuf>,
+    allow_network: bool,
+    a2a_options: Option<codetether_a2a_http::peer_startup::SpawnOptions>,
+    access_mode: Option<AccessMode>,
+    yolo: bool,
+    session_id: Option<String>,
+) -> anyhow::Result<()> {
+    crate::project::enter(project, allow_network)?;
+    let mut terminal_runtime = codetether_terminal_runtime::enter()?;
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let mut app = H::draw(&mut terminal_runtime.terminal, &cwd, allow_network)?;
+    let bus = crate::bus::start();
+    let peer = H::peer(a2a_options, bus.clone()).await;
+
+    // Resolve the durable session before hydrating the session-backed frame.
+    // This prevents a blank placeholder from being allocated and discarded.
+    let mut startup = crate::load::<H>(&cwd, bus.clone(), session_id.as_deref()).await;
+    let resolved = H::resolve(startup.session_load.take(), &bus).await?;
+    let mut session = resolved.session;
+
+    H::initial(
+        &mut app,
+        &cwd,
+        allow_network,
+        H::peer_ready(&peer),
+        &session,
+    );
+    H::policies(&mut session, &mut startup, access_mode, yolo);
+    H::complete(
+        &mut app,
+        allow_network,
+        &mut session,
+        startup.worker_bridge.as_ref(),
+        resolved.outcome,
+        startup.workspace,
+    );
+
+    let bus_recorder = std::sync::Arc::clone(&bus.recorder);
+    let channels = H::channels();
+    H::run_loop(
+        &mut terminal_runtime.terminal,
+        &mut app,
+        &cwd,
+        startup.registry,
+        session,
+        bus_recorder,
+        startup.worker_bridge,
+        channels,
+    )
+    .await?;
+    terminal_runtime.terminal.show_cursor()?;
+    Ok(())
+}

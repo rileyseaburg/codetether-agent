@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::tui::models::WorkspaceSnapshot;
+use codetether_workspace_snapshot::WorkspaceSnapshot;
 
 pub(super) async fn capture(cwd: PathBuf) -> WorkspaceSnapshot {
     match tokio::task::spawn_blocking({

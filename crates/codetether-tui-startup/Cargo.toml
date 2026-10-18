@@ -1,0 +1,21 @@
+[package]
+name = "codetether-tui-startup"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "TUI startup sequencing and concurrent dependency loading"
+
+[dependencies]
+anyhow = "1"
+codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-bus-s3 = { path = "../codetether-bus-s3", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+codetether-session-resume = { path = "../codetether-session-resume", version = "0.1.0" }
+codetether-terminal-runtime = { path = "../codetether-terminal-runtime", version = "0.1.0" }
+codetether-workspace-snapshot = { path = "../codetether-workspace-snapshot", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
+tokio = { version = "1", features = ["macros", "rt"] }
+tracing = "0.1"

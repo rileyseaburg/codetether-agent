@@ -1368,6 +1368,7 @@ dependencies = [
  "codetether-fuzzy-finder",
  "codetether-help-view",
  "codetether-tui-cli",
+ "codetether-tui-startup",
  "codetether-tui-models",
  "codetether-model-store",
  "codetether-model-discovery",
@@ -6202,6 +6203,24 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.20",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-tui-startup"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-a2a-http",
+ "codetether-bus-core",
+ "codetether-bus-s3",
+ "codetether-config",
+ "codetether-secrets",
+ "codetether-session-resume",
+ "codetether-terminal-runtime",
+ "codetether-workspace-snapshot",
+ "ratatui",
+ "tokio",
  "tracing",
 ]
 

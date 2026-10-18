@@ -18431,3 +18431,26 @@ journal mapping checks, unchanged reviewer/queue source, module/dependency graph
 file-size ratchet and whitespace. Evidence:
 `artifacts/consolidation-approval-interaction/`. No live approval, reviewer,
 Cargo, rustc, Python or Rust tests were executed; compilation remains unverified.
+
+### TUI startup lifecycle and dependency loading
+
+Moved startup sequencing and concurrent dependency loading into
+`codetether-tui-startup`, with shared startup/result containers and focused
+loading, frame and runtime interfaces. Project validation/entry, global bus/S3
+setup, workspace capture and Vault initialization now belong to that crate.
+Native startup code specializes the containers and supplies provider/worker
+loaders, session resolution, hydration, access policy, peer and event-loop calls.
+The obsolete native terminal-forwarding module was removed.
+
+Preserved immediate loading-frame timing, startup future construction/poll order,
+session resolution before hydration, policy-before-final-hydration ordering and
+terminal/peer guard lifetimes. Native worker loading forwards its original future
+directly so identity construction retains its original timing. Existing session
+resolution, hydration, policy and peer implementations remain unchanged apart
+from the shared resolved-result type alias.
+
+Validation: full driver/loader comparisons, startup field order and native
+callback checks, unchanged helper-source checks, module/dependency graphs,
+file limits, direct rustfmt-check and whitespace. Evidence:
+`artifacts/consolidation-tui-startup/`. No TUI, provider, network startup, Cargo,
+rustc, Python or Rust-test execution occurred; compilation remains unverified.
