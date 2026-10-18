@@ -1,3 +1,4 @@
+//! Item lifecycle and text event conversion.
 use super::{RunEvent, event_value};
 
 #[test]

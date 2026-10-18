@@ -1,6 +1,6 @@
 //! JSONL conversion for command thread events.
 
-use crate::session::thread_store::ThreadEvent;
+use codetether_thread_store::ThreadEvent;
 
 use super::{event::RunEvent, thread::field};
 

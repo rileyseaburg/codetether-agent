@@ -13793,3 +13793,20 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, discovery requests or MCP server execution ran.
   Full workspace consolidation remains unfinished.
+
+### Run JSONL presentation extraction
+
+- Moved the entire src/cli/run/jsonl implementation and its regression tests
+  into codetether-run-jsonl. The native module is now a compatibility re-export.
+  The crate owns lifecycle output, wire event schemas, newline serialization,
+  thread-event conversion and Codex-shaped records.
+- Uses Usage from provider-core and ThreadEvent from thread-store directly.
+  Wire names, optional fields, unsupported-event handling, output behavior,
+  timestamp conversion and payload identity fields are unchanged. Added public
+  API documentation and kept all pre-existing test bodies.
+- Verification: 29 static item/import/schema/test-body/size checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-run-jsonl/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc or Rust tests ran. Full workspace consolidation remains
+  unfinished.

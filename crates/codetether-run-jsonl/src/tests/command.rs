@@ -1,3 +1,4 @@
+//! JSONL output regression tests.
 use super::{RunEvent, event_value};
 
 #[test]

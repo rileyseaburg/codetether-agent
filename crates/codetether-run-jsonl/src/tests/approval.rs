@@ -1,5 +1,6 @@
+//! JSONL output regression tests.
 use super::{RunEvent, event_value};
-use crate::session::thread_store::ThreadEvent;
+use codetether_thread_store::ThreadEvent;
 
 #[test]
 fn approval_requested_has_ids_and_tool() {

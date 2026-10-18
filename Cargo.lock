@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-run-jsonl",
  "codetether-mcp-target",
  "codetether-mcp-cli",
  "codetether-swarm-cli",
@@ -6962,6 +6963,18 @@ dependencies = [
  "anyhow",
  "codetether-bus-http",
  "codetether-cli-options",
+]
+
+[[package]]
+name = "codetether-run-jsonl"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-provider-core",
+ "codetether-thread-store",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

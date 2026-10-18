@@ -1,3 +1,4 @@
+//! JSONL output regression tests.
 use super::event::RunEvent;
 use serde_json::Value;
 
@@ -22,3 +23,5 @@ fn event_bytes(event: &RunEvent<'_>) -> Vec<u8> {
     super::writer::write_event(&mut out, event).unwrap();
     out
 }
+
+mod tool_metadata;

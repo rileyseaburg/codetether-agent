@@ -1,3 +1,4 @@
+//! Newline-delimited JSON serialization.
 use super::event::RunEvent;
 use anyhow::Result;
 use std::io::{self, Write};

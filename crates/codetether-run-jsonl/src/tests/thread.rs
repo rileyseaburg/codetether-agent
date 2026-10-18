@@ -1,4 +1,5 @@
-use crate::session::thread_store::ThreadEvent;
+//! Durable thread event dispatch.
+use codetether_thread_store::ThreadEvent;
 
 use super::super::thread::write_thread_event_to;
 

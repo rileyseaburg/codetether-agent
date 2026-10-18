@@ -1,3 +1,4 @@
+//! Patch approval output.
 use super::{RunEvent, event_value};
 
 #[test]

@@ -1,4 +1,5 @@
-use crate::provider::Usage;
+//! JSONL wire event schema.
+use codetether_provider_core::Usage;
 use serde::Serialize;
 
 #[derive(Serialize)]
