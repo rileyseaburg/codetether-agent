@@ -11806,3 +11806,23 @@ Full workspace consolidation remains active.
   artifacts/consolidation-question-view/.
 - No Cargo, rustc, compilation, integration tests or rendering ran. Full workspace
   consolidation remains incomplete.
+
+### Goal-setup prompt extraction
+
+- Moved goal prompt state, text editing, one-shot response delivery, keyboard
+  handling, modal geometry and line rendering into codetether-goal-prompt.
+  Thirteen focused modules contain at most 42 code lines each. The existing
+  three state/response tests moved with their implementation.
+- Native goal-prompt state and rendering modules now re-export the crate. The
+  keyboard adapter applies explicit Inactive/Updated/Finished outcomes to the
+  existing status and redraw fields. Response delivery still happens before
+  the saved-status update, and only active prompts consume keys.
+- Preserved whitespace trimming, empty-line completion, character deletion,
+  ignored-key consumption, Escape behavior, one-shot sender consumption and
+  all overlay labels, colors, dimensions and line order.
+- Verification: 19 source comparisons passed for state/methods, original tests,
+  keyboard transformations, response delivery, native outcomes and rendering.
+  Module reachability, dependency-cycle checks, direct formatting, source file
+  limits and git diff --check passed. Evidence: artifacts/consolidation-goal-prompt/.
+- No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
+  consolidation remains incomplete.

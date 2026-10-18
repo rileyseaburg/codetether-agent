@@ -1,0 +1,15 @@
+[package]
+name = "codetether-goal-prompt"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Interactive goal collection state and terminal modal"
+
+[dependencies]
+crossterm = "0.29.0"
+ratatui = { version = "0.30.2", default-features = false }
+tokio = { version = "1", features = ["sync"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros","rt"] }

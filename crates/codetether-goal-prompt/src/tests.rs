@@ -1,6 +1,7 @@
 //! Tests for the goal-setup prompt state machine.
 
 use super::*;
+use tokio::sync::oneshot;
 
 #[test]
 fn typing_and_submitting_collects_goals() {
