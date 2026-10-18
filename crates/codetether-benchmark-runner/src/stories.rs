@@ -1,6 +1,6 @@
 //! Map Ralph progress entries into per-story benchmark results.
-use crate::ralph::RalphState;
 use codetether_benchmark::StoryBenchmarkResult;
+use codetether_ralph_core::RalphState;
 pub(super) fn story_results(state: &RalphState) -> Vec<StoryBenchmarkResult> {
     // Build per-story results from Ralph's state
     let per_story: Vec<StoryBenchmarkResult> = state

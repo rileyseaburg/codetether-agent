@@ -41,6 +41,7 @@ members = [
     "crates/codetether-bedrock-refresh",
     "crates/codetether-browser",
     "crates/codetether-benchmark",
+    "crates/codetether-benchmark-runner",
     "crates/codetether-bus-core",
     "crates/codetether-bus-tool",
     "crates/codetether-bus-http",
@@ -725,6 +726,7 @@ codetether-ralph-git = { path = "crates/codetether-ralph-git", version = "0.1.0"
 codetether-ralph-run = { path = "crates/codetether-ralph-run", version = "0.1.0" }
 codetether-ralph-runtime = { path = "crates/codetether-ralph-runtime", version = "0.1.0" }
 codetether-benchmark = { path = "crates/codetether-benchmark", version = "0.1.0" }
+codetether-benchmark-runner = { path = "crates/codetether-benchmark-runner", version = "0.1.0" }
 codetether-github-pr = { path = "crates/codetether-github-pr", version = "0.1.0" }
 codetether-github-pr-cli = { path = "crates/codetether-github-pr-cli", version = "0.1.0" }
 codetether-crash = { path = "crates/codetether-crash", version = "0.1.0" }

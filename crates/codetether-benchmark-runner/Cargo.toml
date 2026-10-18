@@ -1,0 +1,17 @@
+[package]
+name = "codetether-benchmark-runner"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Application-bound PRD benchmarks with isolated workspaces and measurements"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-benchmark = { path = "../codetether-benchmark", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
+tempfile = "3"
+tracing = "0.1"

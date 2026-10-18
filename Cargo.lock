@@ -1621,6 +1621,7 @@ dependencies = [
  "codetether-bedrock-protocol",
  "codetether-bedrock-refresh",
  "codetether-benchmark",
+ "codetether-benchmark-runner",
  "codetether-browser",
  "codetether-browser-tool",
  "codetether-bus-core",
@@ -2308,6 +2309,20 @@ dependencies = [
  "regex",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-benchmark-runner"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-benchmark",
+ "codetether-provider-core",
+ "codetether-ralph-core",
+ "codetether-telemetry",
+ "tempfile",
+ "tracing",
 ]
 
 [[package]]

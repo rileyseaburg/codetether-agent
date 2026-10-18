@@ -22091,3 +22091,24 @@ in the lockfile. Evidence: `artifacts/consolidation-a2a-server/`.
 No Cargo, rustc or Python ran; compilation and runtime tests, including the
 existing A2A HTTP integration tests, remain unverified. Full consolidation stays
 active.
+
+### Dedicated benchmark execution runner
+
+Moved `BenchmarkRunner` and its nine implementation modules into the dedicated
+`codetether-benchmark-runner` crate. The shared runner owns model preparation,
+Ralph configuration, workspace lifetime, timing and token snapshots, quality
+checks, story/result conversion and suite dispatch. Native `BenchmarkRunner`
+is an alias; the remaining application binding supplies provider loading and
+lookup, Ralph construction/execution and the application version.
+
+Static comparisons preserve all nine moved modules with generic application
+bindings. Prepared registries remain alive across a model's PRDs; workspace and
+Ralph-loop handles remain alive through result construction. Timing, global
+token counters, cost calculation, final quality-check ordering and the original
+workspace log target are preserved. Module/dependency checks cover 697 roots
+and 569 crates without missing modules or cycles. Direct rustfmt, native
+file-size limits and whitespace checks passed. Only the new package and root
+dependency are staged in the lockfile. Evidence:
+`artifacts/consolidation-benchmark-runner/`. No benchmarks or underlying quality
+commands ran; no Cargo, rustc or Python ran. Compilation and runtime behavior
+remain unverified. Full consolidation stays active.

@@ -1,23 +1,21 @@
 //! Run Ralph between the original timing and token snapshot boundaries.
 use super::{
-    BenchmarkRunner,
+    Application, BenchmarkRunner,
     measurements::{self, Measurements},
 };
-use crate::{
-    provider::Provider,
-    ralph::{RalphLoop, RalphState},
-    telemetry::TOKEN_USAGE,
-};
 use codetether_benchmark::pricing::ModelPricing;
+use codetether_provider_core::Provider;
+use codetether_ralph_core::RalphState;
+use codetether_telemetry::TOKEN_USAGE;
 use std::{path::PathBuf, sync::Arc, time::Instant};
-impl BenchmarkRunner {
+impl<H: Application> BenchmarkRunner<H> {
     pub(super) async fn execute_prd(
         &self,
         workspace_prd_path: &PathBuf,
         provider: Arc<dyn Provider>,
         model: &str,
         pricing: &Option<ModelPricing>,
-    ) -> anyhow::Result<(RalphLoop, RalphState, Measurements)> {
+    ) -> anyhow::Result<(H::Loop, RalphState, Measurements)> {
         // Snapshot token usage before
         let tokens_before = TOKEN_USAGE.global_snapshot();
 
@@ -25,7 +23,7 @@ impl BenchmarkRunner {
 
         let config = self.ralph_config(workspace_prd_path);
         // RalphLoop::new reads the PRD and uses its parent as working_dir
-        let mut ralph_loop = RalphLoop::new(
+        let mut ralph_loop = H::start(
             workspace_prd_path.clone(),
             provider,
             model.to_string(),
@@ -33,7 +31,7 @@ impl BenchmarkRunner {
         )
         .await?;
 
-        let state = ralph_loop.run().await?;
+        let state = H::run(&mut ralph_loop).await?;
         let duration = start.elapsed();
 
         let measurements = measurements::finish(tokens_before, duration, pricing);

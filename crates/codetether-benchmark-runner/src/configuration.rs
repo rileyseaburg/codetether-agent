@@ -1,8 +1,8 @@
 //! Configure Ralph for one isolated benchmark workspace.
-use super::BenchmarkRunner;
-use crate::ralph::RalphConfig;
+use super::{Application, BenchmarkRunner};
+use codetether_ralph_core::RalphConfig;
 use std::path::Path;
-impl BenchmarkRunner {
+impl<H: Application> BenchmarkRunner<H> {
     pub(super) fn ralph_config(&self, workspace_prd_path: &Path) -> RalphConfig {
         // Configure Ralph to run in the benchmark workspace
         let config = RalphConfig {

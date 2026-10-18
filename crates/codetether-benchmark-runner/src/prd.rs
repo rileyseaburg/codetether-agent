@@ -1,10 +1,11 @@
 //! Retain the isolated workspace while executing and reporting one PRD.
-use super::BenchmarkRunner;
-use crate::{provider::Provider, ralph::Prd};
+use super::{Application, BenchmarkRunner};
 use codetether_benchmark::{PrdBenchmarkResult, pricing::ModelPricing};
+use codetether_provider_core::Provider;
+use codetether_ralph_core::Prd;
 use std::{path::Path, sync::Arc};
 use tracing::info;
-impl BenchmarkRunner {
+impl<H: Application> BenchmarkRunner<H> {
     pub(super) async fn run_single_prd(
         &self,
         prd_path: &Path,
@@ -29,6 +30,7 @@ impl BenchmarkRunner {
             .ok_or_else(|| anyhow::anyhow!("Invalid workspace PRD path"))?;
 
         info!(
+            target: "codetether_agent::benchmark::runner::prd",
             "Benchmark workspace ready at {:?} for PRD '{}'",
             workspace_dir, prd_feature
         );

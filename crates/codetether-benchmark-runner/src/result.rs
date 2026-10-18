@@ -1,9 +1,9 @@
 //! Combine Ralph outcomes, measurements and final quality-gate results.
-use super::{BenchmarkRunner, measurements::Measurements};
-use crate::ralph::{QualityChecks, RalphState};
+use super::{Application, BenchmarkRunner, measurements::Measurements};
 use codetether_benchmark::PrdBenchmarkResult;
+use codetether_ralph_core::{QualityChecks, RalphState};
 use std::path::Path;
-impl BenchmarkRunner {
+impl<H: Application> BenchmarkRunner<H> {
     pub(super) fn finish_prd(
         state: &RalphState,
         prd_id: String,

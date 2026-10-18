@@ -1,6 +1,6 @@
 //! Capture global token deltas and benchmark cost after Ralph returns.
-use crate::telemetry::{GlobalTokenSnapshot, TOKEN_USAGE};
 use codetether_benchmark::pricing::{ModelPricing, calculate_cost};
+use codetether_telemetry::{GlobalTokenSnapshot, TOKEN_USAGE};
 use std::time::Duration;
 pub(super) struct Measurements {
     pub(super) duration: Duration,

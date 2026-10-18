@@ -1,8 +1,8 @@
 //! Translate a Ralph PRD into shared workspace inputs.
-use super::BenchmarkRunner;
-use crate::ralph::Prd;
+use super::{Application, BenchmarkRunner};
+use codetether_ralph_core::Prd;
 use std::path::{Path, PathBuf};
-impl BenchmarkRunner {
+impl<H: Application> BenchmarkRunner<H> {
     pub(super) fn scaffold_workspace(
         prd_path: &Path,
         prd: &Prd,
