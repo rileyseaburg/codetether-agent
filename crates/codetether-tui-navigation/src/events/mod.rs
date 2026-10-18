@@ -2,6 +2,7 @@
 //!
 //! [dispatch] preserves the priority of native [Layers], [Review] and [Dispatch]
 //! handlers. [dispatchable] filters key releases and unwanted repeated keys.
+mod binding;
 mod host;
 mod repeat;
 mod run;

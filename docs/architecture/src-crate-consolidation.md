@@ -27897,3 +27897,17 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 617 crates. Unrelated files are unchanged; no manifest or lock changes were
 needed. Evidence: artifacts/consolidation-modified-keys/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Ordered key-event frontend dispatch bindings
+
+Moved key-event dispatch, modal layers and review/resume host operations into
+codetether-tui-navigation::events::binding modules. Removed four root host files;
+the root selects concrete session/event types and existing handler callbacks.
+
+All eleven expanded function bodies and the borrowed host layout match after
+callback qualification. Shared admission and handler priority remain unchanged.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. Unrelated
+files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-key-dispatch/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
