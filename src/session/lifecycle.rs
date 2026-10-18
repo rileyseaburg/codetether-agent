@@ -8,7 +8,7 @@ use chrono::Utc;
 use crate::provenance::ClaimProvenance;
 use crate::provider::{Message, Usage};
 
-use super::pages::{PageKind, classify, classify_all};
+use super::pages::PageKind;
 use super::types::Session;
 
 #[cfg(test)]
@@ -139,11 +139,7 @@ impl Session {
 
     /// Append a message to the transcript and bump `updated_at`.
     pub fn add_message(&mut self, message: Message) {
-        if self.pages.len() != self.messages.len() {
-            self.pages = classify_all(&self.messages).into();
-        }
-        self.pages.push(classify(&message));
-        super::index_produce::notify::appended(self, message);
+        super::store::append::message(self, message);
         self.updated_at = Utc::now();
     }
 

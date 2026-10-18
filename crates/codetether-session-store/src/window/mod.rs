@@ -8,3 +8,7 @@ pub use evict::before_append;
 pub use view::WorkingSet;
 /// Maximum messages retained by interactive and background readers.
 pub const WINDOW: usize = 1_000;
+
+mod append;
+/// Transcript append with page repair and persisted-prefix eviction.
+pub use append::append;

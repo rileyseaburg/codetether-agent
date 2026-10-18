@@ -16476,3 +16476,22 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-session-initial/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared session transcript append lifecycle
+
+- Moved transcript page repair/classification, pre-append eviction, message
+  insertion and summary-index advancement into
+  `codetether-session-store::window::append`, alongside the working-set view
+  and persistence eviction implementation it uses.
+- Native Session::add_message now supplies the existing disjoint-field view
+  and updates the session timestamp after shared mutation returns. Removed
+  append logic from the native proactive-summary notification module and
+  renamed its native eviction adapter to reflect full append responsibility.
+- Preserved classification-before-eviction ordering, current-window insertion
+  indexing, eviction policy, timestamp timing and other lifecycle operations.
+- Verification: reconstructed full append/notification sequence, exact native
+  field projection, unchanged eviction/window definitions and other methods,
+  module/dependency graphs, direct rustfmt, file limits and whitespace. No
+  dependencies changed. Evidence: `artifacts/consolidation-session-append/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
