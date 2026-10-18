@@ -12638,3 +12638,18 @@ Full workspace consolidation remains active.
 - Only this crate's dependency and package record were staged from Cargo.lock.
   No session loading, Cargo, rustc, compilation or Rust tests were executed.
   Full workspace consolidation remains incomplete.
+
+### Queued follow-up ownership
+
+- Moved the process-wide single-slot queued prompt and its store/take/pending
+  operations into codetether-session-steering::follow_up. The native store
+  wrapper retains blank-input rejection, preview construction, input clearing
+  and status updates in their original order.
+- Replacement semantics, destructive take, initial empty state and mutex-poison
+  handling are unchanged; queue ownership is no longer in native AppState code.
+- Verification: eight source comparisons passed, including unchanged native
+  submission/steering tests and queued-prompt execution. Module/dependency
+  checks, direct rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-follow-up/.
+- No dependencies or lockfile changes were needed. No queue operations, Cargo,
+  rustc, compilation or Rust tests ran. Full consolidation remains incomplete.

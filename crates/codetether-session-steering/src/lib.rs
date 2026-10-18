@@ -56,3 +56,6 @@ pub async fn send(session_id: &str, text: &str) -> anyhow::Result<bool> {
 }
 
 pub use transcript::Transcript;
+
+/// Process-wide follow-up prompt queued for a later turn.
+pub mod follow_up;
