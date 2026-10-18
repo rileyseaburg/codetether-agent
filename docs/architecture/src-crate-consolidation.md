@@ -18294,3 +18294,18 @@ file-limit, direct rustfmt-check and whitespace checks. Evidence:
 `artifacts/consolidation-local-stage/`. The existing cancellation test moved
 with its module but was not run. No runtime worktree provisioning, model execution,
 Cargo, rustc or Python was executed; Rust compilation/tests remain unverified.
+
+### Local Git observations for swarm collapse
+
+Moved the local collapse adapter and its Git/probe/thread helpers into
+`codetether-swarm-git`. Native `collapse_controller.rs` now reexports the shared
+implementation. The local-stage crate calls this backend directly, removing
+its native controller-construction and sampling callbacks. Agent execution
+remains a native boundary.
+
+Git arguments, working directories, changed-path/line parsing, probe failure
+behavior, thread join order and the shared scoring policy are unchanged.
+Validation: complete moved-source comparisons, stage callback replacement
+checks, module/dependency graphs, source-size limits and whitespace. Evidence:
+`artifacts/consolidation-swarm-git/`. The Git probe functions and Rust tests were
+not executed. No Cargo, rustc or Python ran; compilation remains unverified.

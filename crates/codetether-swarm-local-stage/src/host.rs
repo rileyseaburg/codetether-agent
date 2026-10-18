@@ -3,9 +3,7 @@ use codetether_bus_core::AgentBus;
 use codetether_provider_core::Provider;
 use codetether_session_control::ControlHandle;
 use codetether_swarm_core::{
-    SubTask, SubTaskResult, SwarmConfig, SwarmEvent,
-    collapse::{BranchRuntimeState, CollapseTick},
-    result_store::ResultStore,
+    SubTask, SubTaskResult, SwarmConfig, SwarmEvent, result_store::ResultStore,
 };
 use codetether_swarm_local_job::Job;
 use std::{future::Future, sync::Arc};
@@ -78,20 +76,6 @@ pub trait Cache {
 /// # Implementors
 /// Preserve existing native state access and operation semantics.
 pub trait Execution {
-    /// Native local-Git collapse observer.
-    type Controller: Send;
-
-    /// Create the native collapse observer with default policy.
-    fn controller() -> Self::Controller;
-
-    /// Collect local observations and apply the shared collapse policy.
-    /// # Errors
-    /// Returns native observation errors.
-    fn sample(
-        controller: &mut Self::Controller,
-        branches: &[BranchRuntimeState],
-    ) -> anyhow::Result<CollapseTick>;
-
     /// Run one owned child job in the native agent runtime.
     fn run_job(
         job: Job,

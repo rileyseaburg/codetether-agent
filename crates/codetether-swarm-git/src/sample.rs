@@ -1,6 +1,18 @@
 use super::git::{collect_changed_files, collect_changed_lines};
 use super::*;
 impl CollapseController {
+    /// Sample each branch using Git and evaluate the collected observations.
+    /// # Arguments
+    /// `branches` identifies worktrees and subtask IDs for concurrent probing.
+    /// # Returns
+    /// The shared policy's promotions and termination decisions.
+    /// # Errors
+    /// Returns Git launch errors or a branch sampling thread panic.
+    /// # Examples
+    /// ```
+    /// let mut controller = codetether_swarm_git::CollapseController::new(Default::default());
+    /// assert!(controller.sample(&[]).unwrap().kills.is_empty());
+    /// ```
     pub fn sample(&mut self, branches: &[BranchRuntimeState]) -> Result<CollapseTick> {
         if branches.is_empty() {
             return Ok(CollapseTick::default());

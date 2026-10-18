@@ -1,0 +1,11 @@
+[package]
+name = "codetether-swarm-git"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Local Git observations for swarm branch collapse policy"
+
+[dependencies]
+anyhow = "1"
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }

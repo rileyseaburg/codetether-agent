@@ -1,6 +1,7 @@
 //! Concurrent completion and collapse sampling loop.
 
 use super::{collapse, completion, state::State};
+use codetether_swarm_git::{CollapseController, CollapsePolicy};
 use futures::StreamExt;
 use tokio::time::{Duration, MissedTickBehavior};
 
@@ -13,7 +14,7 @@ pub(super) async fn all<H: crate::Host>(state: &mut State<'_, H>) {
     let enabled = state.executor.config().collapse_enabled
         && state.manager.is_some()
         && state.active_worktrees.len() > 1;
-    let mut controller = enabled.then(H::controller);
+    let mut controller = enabled.then(|| CollapseController::new(CollapsePolicy::default()));
     let mut tick = tokio::time::interval(Duration::from_secs(SAMPLE_SECONDS));
     tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
     tick.tick().await;

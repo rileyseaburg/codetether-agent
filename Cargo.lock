@@ -1726,6 +1726,7 @@ dependencies = [
  "codetether-session-runtime",
  "codetether-skill-tool",
  "codetether-swarm-core",
+ "codetether-swarm-git",
  "codetether-swarm-k8s",
  "codetether-swarm-local-job",
  "codetether-swarm-local-stage",
@@ -7674,6 +7675,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-swarm-git"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-swarm-core",
+]
+
+[[package]]
 name = "codetether-swarm-k8s"
 version = "0.1.0"
 dependencies = [
@@ -7710,6 +7719,7 @@ dependencies = [
  "codetether-provider-core",
  "codetether-session-control",
  "codetether-swarm-core",
+ "codetether-swarm-git",
  "codetether-swarm-local-job",
  "codetether-workspace-tools",
  "codetether-worktree",
