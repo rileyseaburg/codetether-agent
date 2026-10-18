@@ -1275,6 +1275,7 @@ dependencies = [
  "codetether-openai-adapter",
  "codetether-tool-discovery",
  "codetether-bus-sse",
+ "codetether-event-replay",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6479,6 +6480,15 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-event-replay"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

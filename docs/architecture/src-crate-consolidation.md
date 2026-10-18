@@ -13028,3 +13028,19 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   streams, HTTP requests, Cargo, rustc or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Event archive replay extraction
+
+- Moved the replay and file-index HTTP handlers into codetether-event-replay,
+  with separate directory resolution, filename ranges, file scanning, JSONL
+  reading and query/metadata types. Eight modules contain at most 31 code lines.
+- Native routes import the shared handlers. Archive configuration, missing-path
+  errors, filename acceptance, byte-overlap filtering, malformed-line skipping,
+  tool filtering, sorting and limits preserve the previous behavior.
+- Verification: 95 static comparisons passed for split logic, wire records,
+  remaining server functions and tests. Module/dependency checks, direct rustfmt,
+  file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-event-replay/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  archives, HTTP endpoints, Cargo, rustc or Rust tests were executed.
+  Full consolidation remains incomplete.
