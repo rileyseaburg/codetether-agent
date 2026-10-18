@@ -23194,3 +23194,23 @@ manifest or lockfile changes were needed. Evidence:
 artifacts/consolidation-tui-constants/.
 No TUI, tests, Cargo, rustc or Python ran. Compilation and runtime behavior
 remain unverified. Full consolidation remains active.
+
+### Remove obsolete native routing and mux fragments
+
+Removed four unreferenced native files: the old combined code-search guard,
+temporary model-router implementation, and the retired mux-control adapter
+and its schema test. Declaration scans found no incoming module references;
+source symbol search found only the obsolete mux adapter's own declarations
+and test. Original contents and reference evidence are retained in the task
+artifact and Git history.
+
+The active code-search guard still uses prompt-loop state, the router still
+re-exports model-failover selection, and collaboration tests still assert that
+mux_control is neither registered nor executable. All these active sources
+remain byte-identical. Module/dependency scans pass across 699 roots and 571
+crates without missing modules or cycles; expected obsolete-file inventories
+were updated to match the removals. File-size limits and whitespace checks
+passed. No manifests or lockfile changes were needed. Evidence:
+artifacts/consolidation-obsolete-routing/.
+No runtime operations, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.
