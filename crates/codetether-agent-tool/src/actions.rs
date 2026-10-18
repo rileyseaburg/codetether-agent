@@ -9,10 +9,10 @@
 //! let result = unknown_action_result("oops");
 //! ```
 
-use super::handlers;
-use super::params::Params;
-use crate::tool::ToolResult;
+use crate::Host;
 use anyhow::{Context, Result};
+use codetether_agent_input::Params;
+use codetether_tool_core::ToolResult;
 
 /// Validates and executes the `kill` action for a named sub-agent.
 ///
@@ -21,22 +21,22 @@ use anyhow::{Context, Result};
 /// ```ignore
 /// let result = execute_kill(&params)?;
 /// ```
-pub(super) async fn execute_kill(params: &Params) -> Result<ToolResult> {
+pub(super) async fn execute_kill<H: Host>(params: &Params) -> Result<ToolResult> {
     let name = params.name.as_deref().context("name required for kill")?;
-    handlers::handle_kill(name, params.parent_session_id.as_deref()).await
+    H::kill(name, params.parent_session_id.as_deref()).await
 }
 
 /// Interrupts a running turn while preserving the spawned agent.
-pub(super) async fn execute_interrupt(params: &Params) -> Result<ToolResult> {
+pub(super) async fn execute_interrupt<H: Host>(params: &Params) -> Result<ToolResult> {
     let name = params
         .name
         .as_deref()
         .context("name required for interrupt")?;
-    let marker_enabled = crate::config::Config::load()
+    let marker_enabled = codetether_config::Config::load()
         .await?
         .agents
         .interrupt_message_enabled();
-    handlers::handle_interrupt(name, params.parent_session_id.as_deref(), marker_enabled).await
+    H::interrupt(name, params.parent_session_id.as_deref(), marker_enabled).await
 }
 
 /// Formats the fallback error result for unsupported actions.

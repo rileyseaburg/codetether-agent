@@ -8377,3 +8377,20 @@ crate modules contain at most 38 code lines. Evidence is in
 `artifacts/consolidation-agent-control/`. Compilation and runtime tests were not
 run; no agent was interrupted or removed. No Cargo, rustc or Python commands ran.
 The full consolidation goal remains active.
+
+### Dedicated agent-tool contract and dispatch
+
+Moved the agent tool implementation, JSON schema, parse/hydrate/dispatch sequence,
+action target validation, interrupt configuration lookup and unknown-action
+messages into `crates/codetether-agent-tool`. Nine Rust modules separate the tool
+value, trait implementation, host interface, routing, action helpers and schema
+regressions. The application exports a specialization retaining `AgentTool::new()`
+and a unit-style compatibility value; native host methods forward existing actions.
+
+Thirty-three static preservation checks cover metadata, exact schema, hydration
+ordering, action/owner arguments, configuration errors, native forwarding and
+unchanged consumers. Four schema tests moved; two native dispatch tests remain
+unchanged. Module/dependency, file-budget and whitespace checks passed; crate
+files contain at most 28 code lines. Evidence is in
+`artifacts/consolidation-agent-tool/`. Compilation and runtime tests were not run.
+No Cargo, rustc or Python commands ran. The full consolidation goal remains active.

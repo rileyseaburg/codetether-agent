@@ -11,11 +11,11 @@
 //! assert_eq!(tool.id(), "agent");
 //! ```
 
-mod actions;
 pub mod bridge;
 mod bus_publish;
 pub(crate) mod collaboration_runtime;
 pub(crate) mod communication;
+#[cfg(test)]
 mod dispatch;
 mod event_loop;
 mod execution_state;
@@ -40,7 +40,6 @@ mod store;
 mod text;
 mod thread_lifecycle;
 mod tool_impl;
-mod tool_schema;
 mod turn_host;
 
 #[cfg(test)]

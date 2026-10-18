@@ -25,3 +25,7 @@ pub(super) fn agent_tool_parameters() -> Value {
 #[cfg(test)]
 #[path = "tool_schema_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "remote_schema_tests.rs"]
+mod remote_tests;

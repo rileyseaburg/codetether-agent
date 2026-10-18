@@ -1324,6 +1324,7 @@ dependencies = [
  "codetether-ralph-tool",
  "codetether-session-task",
  "codetether-collaboration-input",
+ "codetether-agent-tool",
  "codetether-child-turn",
  "codetether-agent-status",
  "codetether-agent-trace",
@@ -2452,6 +2453,19 @@ dependencies = [
  "anyhow",
  "codetether-collaboration-state",
  "serde",
+]
+
+[[package]]
+name = "codetether-agent-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-agent-input",
+ "codetether-agent-lifecycle",
+ "codetether-config",
+ "codetether-tool-core",
+ "serde_json",
 ]
 
 [[package]]
