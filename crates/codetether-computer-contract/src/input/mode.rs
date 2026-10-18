@@ -5,7 +5,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tool::computer_use::input::InputMode;
+/// use codetether_computer_contract::input::InputMode;
 /// assert_eq!(InputMode::default(), InputMode::Physical);
 /// match InputMode::Shadow {
 ///     InputMode::Physical => unreachable!(),

@@ -9,7 +9,7 @@ use std::path::PathBuf;
 ///
 /// # Examples
 /// ```rust
-/// use codetether_agent::tool::computer_use::input::OcrInput;
+/// use codetether_computer_contract::input::OcrInput;
 /// let options = OcrInput::default();
 /// assert!(options.path.is_none() && options.language.is_none());
 /// ```
@@ -23,7 +23,18 @@ pub struct OcrInput {
 
 impl OcrInput {
     /// Reject empty user-supplied selectors before WinRT calls.
-    pub(crate) fn validate(&self, hwnd: Option<i64>) -> anyhow::Result<()> {
+    ///
+    /// # Arguments
+    /// * `hwnd` - Optional capture window handle.
+    /// # Returns
+    /// Unit when supplied selectors are valid.
+    /// # Errors
+    /// Rejects a zero window handle, empty path or blank language.
+    /// # Examples
+    /// ```
+    /// assert!(codetether_computer_contract::input::OcrInput::default().validate(None).is_ok());
+    /// ```
+    pub fn validate(&self, hwnd: Option<i64>) -> anyhow::Result<()> {
         anyhow::ensure!(hwnd != Some(0), "ocr hwnd must be nonzero");
         if let Some(path) = &self.path {
             anyhow::ensure!(!path.as_os_str().is_empty(), "ocr path must not be empty");

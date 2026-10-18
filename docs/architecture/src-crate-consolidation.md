@@ -17208,3 +17208,20 @@ Full workspace consolidation remains active.
   No dependency changes. Evidence: `artifacts/consolidation-completion-success/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Dedicated computer-use contract crate
+
+- Added `codetether-computer-contract` for computer-use action/input types, OCR
+  selector validation, advertised schema/examples and result formatting.
+  Moved both schema/validation tests with the contract implementation.
+- Native input, schema and response modules now re-export the shared API.
+  OS-specific execution and existing call sites retain their imports.
+  OCR validation is public across the new crate boundary.
+- Verification: complete type/serde, validation, schema/example, response and
+  test comparisons; native re-exports and unchanged execution consumers;
+  module/dependency graphs, direct rustfmt, file limits and whitespace.
+- Added the crate member/root dependency and staged only their lock entries
+  from HEAD, preserving unrelated working-copy changes. Evidence:
+  `artifacts/consolidation-computer-contract/`.
+- No Cargo, rustc, Python, OS automation, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

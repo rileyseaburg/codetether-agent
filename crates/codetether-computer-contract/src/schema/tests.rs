@@ -1,6 +1,6 @@
 //! Advertised OCR and shadow input fields match their typed request contract.
 
-use crate::tool::computer_use::input::{ComputerUseAction, ComputerUseInput, InputMode};
+use crate::input::{ComputerUseAction, ComputerUseInput, InputMode};
 use serde_json::json;
 
 #[test]
@@ -24,13 +24,8 @@ fn native_ocr_and_shadow_are_discoverable_without_python_packages() {
 #[test]
 fn ocr_empty_source_language_and_zero_hwnd_are_rejected() {
     for value in [json!({"path":""}), json!({"language":" "})] {
-        let input: crate::tool::computer_use::input::OcrInput =
-            serde_json::from_value(value).unwrap();
+        let input: crate::input::OcrInput = serde_json::from_value(value).unwrap();
         assert!(input.validate(None).is_err());
     }
-    assert!(
-        crate::tool::computer_use::input::OcrInput::default()
-            .validate(Some(0))
-            .is_err()
-    );
+    assert!(crate::input::OcrInput::default().validate(Some(0)).is_err());
 }

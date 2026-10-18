@@ -1574,6 +1574,7 @@ dependencies = [
  "codetether-command-pty",
  "codetether-command-session",
  "codetether-command-shell",
+ "codetether-computer-contract",
  "codetether-config",
  "codetether-confirm-edit",
  "codetether-confirm-multiedit",
@@ -2349,6 +2350,16 @@ dependencies = [
  "uuid",
  "windows-sys 0.61.2",
  "zeroize",
+]
+
+[[package]]
+name = "codetether-computer-contract"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-tool-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

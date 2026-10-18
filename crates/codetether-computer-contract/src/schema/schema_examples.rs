@@ -2,7 +2,8 @@
 
 use serde_json::{Value, json};
 
-pub fn examples() -> Value {
+/// Return the established advertised request examples.
+pub(super) fn examples() -> Value {
     json!([
         {"action": "snapshot"}, {"action": "list_apps"},
         {"action": "bring_to_front", "hwnd": 123456},
