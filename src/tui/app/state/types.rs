@@ -53,7 +53,7 @@ pub struct AppState {
     pub worker: codetether_tui_worker::WorkerState, pub peer_endpoint_ready: bool, pub active_tasks: crate::tui::app::bus::active_tasks::ActiveTasks, pub tool_calls: crate::tui::app::bus::tool_calls::ToolCallTracker, pub bus_cursor: u64, pub live_inbound: Option<crate::a2a::live_inbox::Inbound>,
     pub help_scroll: HelpScrollState, pub show_help: bool, pub model_picker: codetether_model_picker::ModelPickerState,
     pub streaming: codetether_chat_model::StreamingState, pub request_timing: codetether_telemetry::RequestTimingState, pub last_completion: codetether_telemetry::CompletionSummary,
-    pub context_used: Option<usize>, pub context_budget: Option<usize>, pub context_health: context_health::ContextHealthState, pub tool_timing: codetether_telemetry::ToolTimingState,
+    pub context_health: context_health::ContextHealthState, pub tool_timing: codetether_telemetry::ToolTimingState,
     pub pending_images: Vec<ImageAttachment>, pub pending_text_pastes: Vec<PendingPaste>, pub preferences: codetether_settings_policy::persistence::Preferences, pub selected_settings_index: usize, pub current_turn_cancel: TurnCancel, pub last_key_at: Option<Instant>,
     pub mcp_registry: Arc<crate::tui::app::mcp::TuiMcpRegistry>, pub agent_tree: codetether_agent_tree::AgentTreeState<crate::session::Session>, pub message_cache: codetether_message_cache::RenderedLineCache,
     pub watchdog_notification: WatchdogNotice, pub main_last_event_at: Option<Instant>, pub main_watchdog_restart_count: u32, pub main_inflight_prompt: Option<String>, pub okr_repository: Option<Arc<crate::okr::OkrRepository>>, pub pending_okr_approval: PendingOkr, pub retry_state: codetether_model_failover::RetryState,

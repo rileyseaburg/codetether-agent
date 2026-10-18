@@ -17,7 +17,7 @@ use crate::tui::app::state::AppState;
 pub fn render(state: &AppState) -> String {
     codetether_context_health::render(
         &state.context_health,
-        state.context_used,
-        state.context_budget,
+        state.context_health.used_tokens,
+        state.context_health.token_budget,
     )
 }

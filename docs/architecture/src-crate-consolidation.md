@@ -28139,3 +28139,20 @@ Changed Rust files were formatted; app/tests.rs retains the preexisting unrelate
 long-line formatting. Evidence: artifacts/consolidation-agent-tree-state/.
 No dependencies or unrelated working files changed. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active and incomplete.
+
+### Context usage owned with context health
+
+Moved context token usage and model budget into the existing
+codetether-context-health::ContextHealthState as used_tokens and token_budget.
+Removed both loose AppState fields and their redundant root default entries.
+Updated event writes, status/command projections, gauges and inspector readers.
+The context-status regression test uses the same values inside the component.
+
+Static comparisons cover all ten changed existing call-site/default files and
+the two added state fields. Both values still default to None. Scanned 1,213
+root Rust files for obsolete accesses. Existing context-event and rendering
+policies are unchanged. Declaration, module/dependency, production-scope,
+formatting, whitespace and file-limit checks passed (725 roots, 617 crates).
+Evidence: artifacts/consolidation-context-state/. No dependencies or unrelated
+working files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.

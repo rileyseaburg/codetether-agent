@@ -8,8 +8,11 @@ mod tests {
     #[test]
     fn render_includes_usage_and_recent_events() {
         let mut state = AppState {
-            context_used: Some(50),
-            context_budget: Some(100),
+            context_health: codetether_context_health::ContextHealthState {
+                used_tokens: Some(50),
+                token_budget: Some(100),
+                ..Default::default()
+            },
             ..Default::default()
         };
         state.context_health.last_rlm = Some("done".to_string());

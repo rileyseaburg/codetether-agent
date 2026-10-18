@@ -14,7 +14,7 @@ pub fn push_throughput_span(spans: &mut Vec<Span<'static>>, app: &App) {
 pub fn push_context_budget_span(spans: &mut Vec<Span<'static>>, app: &App) {
     codetether_token_display::token_spans::push_context_budget_span(
         spans,
-        app.state.context_used,
-        app.state.context_budget,
+        app.state.context_health.used_tokens,
+        app.state.context_health.token_budget,
     );
 }

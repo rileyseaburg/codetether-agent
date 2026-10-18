@@ -20,10 +20,10 @@ macro_rules! declare_context_events {
                     &mut self.0.state.context_health
                 }
                 fn set_used(&mut self, tokens: usize) {
-                    self.0.state.context_used = Some(tokens);
+                    self.0.state.context_health.used_tokens = Some(tokens);
                 }
                 fn set_budget(&mut self, tokens: usize) {
-                    self.0.state.context_budget = Some(tokens);
+                    self.0.state.context_health.token_budget = Some(tokens);
                 }
                 fn set_status(&mut self, status: String) {
                     self.0.state.status = status;

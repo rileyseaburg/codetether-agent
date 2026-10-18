@@ -45,8 +45,6 @@ impl ::core::default::Default for $state {
             streaming: ::core::default::Default::default(),
             request_timing: ::core::default::Default::default(),
             last_completion: ::core::default::Default::default(),
-            context_used: None,
-            context_budget: None,
             context_health: ::core::default::Default::default(),
             tool_timing: ::core::default::Default::default(),
             pending_images: ::std::vec::Vec::new(),

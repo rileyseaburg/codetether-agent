@@ -18,8 +18,8 @@ macro_rules! declare_context_command {
                 fn context(&self) -> (&$crate::ContextHealthState, Option<usize>, Option<usize>) {
                     (
                         &self.state.context_health,
-                        self.state.context_used,
-                        self.state.context_budget,
+                        self.state.context_health.used_tokens,
+                        self.state.context_health.token_budget,
                     )
                 }
                 fn push_system_message(&mut self, text: String) {
