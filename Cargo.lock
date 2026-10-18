@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-verifier-state",
  "codetether-approval-http",
  "codetether-cognition-api",
  "codetether-voice-api",
@@ -6654,6 +6655,20 @@ dependencies = [
  "tempfile",
  "tokio",
  "tower",
+]
+
+[[package]]
+name = "codetether-verifier-state"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-config",
+ "parking_lot",
+ "serde",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

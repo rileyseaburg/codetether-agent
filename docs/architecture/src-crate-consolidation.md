@@ -13329,3 +13329,21 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from the lockfile.
   No Cargo, rustc, Rust tests, environment mutation or approval decisions ran.
   Full source consolidation remains incomplete.
+
+### Verifier state and model policy extraction
+
+- Moved verifier selection, model resolution, self-review detection, verdict
+  parsing, observation storage and attempt tickets from src/tool/goal into
+  codetether-verifier-state. Native verifier modules now re-export the shared
+  implementation so the runner and settings API use the same static stores.
+- Existing observation and verdict tests moved with their implementations.
+  All modules remain below 45 code lines. Model precedence, strict final-line
+  verdict parsing, captured routing identity, cancellation and latest-attempt
+  publication rules are unchanged.
+- Verification: 26 static source/size/facade checks passed, together with
+  module reachability, local dependency DAG, direct rustfmt, the source file
+  ratchet and whitespace checks. Evidence:
+  artifacts/consolidation-verifier-state/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, provider invocation or verifier execution ran.
+  The full consolidation remains incomplete; verifier HTTP is still native.
