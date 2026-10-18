@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-server-runtime",
  "codetether-server-router",
  "codetether-http-error",
  "codetether-server-cors",
@@ -7240,6 +7241,29 @@ dependencies = [
  "codetether-tool-discovery",
  "codetether-voice-api",
  "tower-http 0.7.1",
+]
+
+[[package]]
+name = "codetether-server-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "codetether-a2a-core",
+ "codetether-a2a-grpc",
+ "codetether-audit",
+ "codetether-bus-core",
+ "codetether-bus-s3",
+ "codetether-cognition-api",
+ "codetether-config",
+ "codetether-http-auth",
+ "codetether-k8s",
+ "codetether-plugin-verification",
+ "codetether-task-queue",
+ "codetether-tool-discovery",
+ "codetether-util",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

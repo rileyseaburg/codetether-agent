@@ -4,6 +4,7 @@ members = [
     "crates/codetether-a2a-core",
     "crates/codetether-http-error",
     "crates/codetether-server-router",
+    "crates/codetether-server-runtime",
     "crates/codetether-a2a-discovery",
     "crates/codetether-a2a-grpc",
     "crates/codetether-a2a-http",
@@ -601,6 +602,7 @@ codetether-a2a-worker-core = { path = "crates/codetether-a2a-worker-core", versi
 codetether-agent-core = { path = "crates/codetether-agent-core", version = "0.1.0" }
 codetether-http-error = { path = "crates/codetether-http-error", version = "0.1.0" }
 codetether-server-router = { path = "crates/codetether-server-router", version = "0.1.0" }
+codetether-server-runtime = { path = "crates/codetether-server-runtime", version = "0.1.0" }
 codetether-audit = { path = "crates/codetether-audit", version = "0.1.0" }
 codetether-bedrock-auth = { path = "crates/codetether-bedrock-auth", version = "0.1.0" }
 codetether-bedrock-protocol = { path = "crates/codetether-bedrock-protocol", version = "0.1.0" }

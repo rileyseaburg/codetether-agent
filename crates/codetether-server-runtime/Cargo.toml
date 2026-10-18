@@ -1,0 +1,26 @@
+[package]
+name = "codetether-server-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "HTTP server startup and service lifecycle orchestration"
+
+[dependencies]
+anyhow = "1"
+axum = "0.8"
+codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
+codetether-a2a-grpc = { path = "../codetether-a2a-grpc", version = "0.1.0" }
+codetether-audit = { path = "../codetether-audit", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-bus-s3 = { path = "../codetether-bus-s3", version = "0.1.0" }
+codetether-cognition-api = { path = "../codetether-cognition-api", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-http-auth = { path = "../codetether-http-auth", version = "0.1.0" }
+codetether-k8s = { path = "../codetether-k8s", version = "0.1.0" }
+codetether-plugin-verification = { path = "../codetether-plugin-verification", version = "0.1.0" }
+codetether-task-queue = { path = "../codetether-task-queue", version = "0.1.0" }
+codetether-tool-discovery = { path = "../codetether-tool-discovery", version = "0.1.0" }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+tokio = { version = "1.53.1", features = ["net"] }
+tracing = "0.1"

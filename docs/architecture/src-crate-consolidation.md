@@ -14403,3 +14403,24 @@ Full workspace consolidation remains active.
   artifacts/consolidation-server-router/.
 - No Cargo, rustc, Rust tests or server startup ran. Full consolidation remains
   unfinished; native startup and other source modules still need migration.
+
+### Server startup lifecycle ownership
+
+- Moved configuration loading, audit/Kubernetes/auth/bus initialization,
+  cognition autostart, background task launch and HTTP binding into the new
+  codetether-server-runtime crate. Modules separate preparation, cognition,
+  system services, state parts, orchestration and transport.
+- Native Host bindings retain only tool installation, existing A2A construction,
+  concrete AppState assembly and router adaptation. The public serve function
+  passes CLI hostname/port and the executable package version to shared startup.
+- Preserved initialization order, optional autostart handling, gRPC-before-state
+  sequencing, reaper launch, listener error propagation and version fingerprint.
+  The new lockfile package/root additions were staged independently of unrelated
+  working lockfile edits.
+- Verification: 13 static checks passed for startup phase bodies and order,
+  native bindings, state forwarding, CLI/version forwarding, module sizes and
+  isolated lock additions. Module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-server-runtime/.
+- No Cargo, rustc, Rust tests, background tasks or server startup ran. Full
+  workspace consolidation remains unfinished.
