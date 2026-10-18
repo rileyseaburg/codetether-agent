@@ -11164,3 +11164,19 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-chat-sync/`. Compilation, tests, Vault
   access, archive operations and uploads were not run. No Cargo or rustc commands
   executed. Full consolidation remains active.
+
+### Protocol registry view extraction
+
+- Moved sorted agent-card construction, list/detail widgets, capability text,
+  empty state and split-pane rendering from `src/tui/protocol_registry_view.rs`
+  into `crates/codetether-protocol-view`.
+- Nine modules separate borrowed view input, card projection, list rows,
+  details, formatting and layout; maximum module size is 36 code lines.
+  The native function supplies only registered names, worker identity,
+  selection and scroll from application state.
+- Seventeen static comparisons verify all moved bodies, card defaults,
+  state-field bindings and unchanged main-view dispatch. Module reachability,
+  dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-protocol-view/`. Compilation, runtime tests
+  and rendering were not run; no Cargo or rustc commands executed.
+- Full consolidation remains active.

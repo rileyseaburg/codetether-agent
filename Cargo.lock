@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-protocol-view",
  "codetether-chat-sync",
  "codetether-message-formatter",
  "codetether-markdown-table",
@@ -5757,6 +5758,14 @@ dependencies = [
  "minio",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-protocol-view"
+version = "0.1.0"
+dependencies = [
+ "codetether-a2a-core",
+ "ratatui",
 ]
 
 [[package]]
