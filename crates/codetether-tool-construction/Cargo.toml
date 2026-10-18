@@ -10,6 +10,9 @@ description = "Scalar tool construction grouped by runtime responsibility"
 tetherscript = []
 
 [dependencies]
+codetether-edit = { path = "../codetether-edit", version = "0.1.0" }
+codetether-multiedit = { path = "../codetether-multiedit", version = "0.1.0" }
+codetether-morph-backend = { path = "../codetether-morph-backend", version = "0.1.0" }
 codetether-avatar-tool = { path = "../codetether-avatar-tool", version = "0.1.0" }
 codetether-browser-tool = { path = "../codetether-browser-tool", version = "0.1.0" }
 codetether-bus-tool = { path = "../codetether-bus-tool", version = "0.1.0" }

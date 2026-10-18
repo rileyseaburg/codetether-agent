@@ -5,7 +5,6 @@ mod bindings;
 mod construct;
 mod context;
 mod execution;
-mod files;
 mod integrations;
 mod provider;
 pub(super) type Native<'a> =

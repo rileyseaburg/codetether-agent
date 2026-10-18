@@ -5950,6 +5950,9 @@ dependencies = [
  "codetether-webfetch",
  "codetether-websearch",
  "codetether-youtube-tool",
+ "codetether-edit",
+ "codetether-multiedit",
+ "codetether-morph-backend",
 ]
 
 [[package]]

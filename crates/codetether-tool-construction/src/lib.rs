@@ -7,6 +7,7 @@ use codetether_tool_core::Tool;
 use codetether_tool_registry::catalog::ToolKind;
 use std::sync::Arc;
 mod context;
+pub mod editing;
 mod execution;
 mod files;
 mod integrations;

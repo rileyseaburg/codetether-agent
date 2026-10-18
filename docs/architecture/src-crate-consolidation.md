@@ -24275,3 +24275,20 @@ modules or cycles. Only the required run-cli lockfile dependency is staged;
 source code, unrelated working lockfile changes and A2A edits remain untouched.
 Evidence: artifacts/consolidation-dependency-audit/. No Cargo, rustc, Python,
 compilation or tests ran. Full consolidation remains active.
+
+### Edit-tool factories moved into the construction crate
+
+Moved edit and multi-edit catalog construction into
+codetether-tool-construction::editing. The native catalog selects its existing
+application Morph editor type and delegates construction, removing
+src/tool/catalog/files.rs. Added direct dependencies on the edit, multiedit and
+Morph backend crates; no construction order or provider policy changed.
+
+Static comparison preserves the match arms, tool types and fallback behavior
+after explicit generic type substitution. The native editor implementation is
+byte-identical. Module/dependency scans cover 692 roots and 573 crates without
+missing modules or cycles. Direct rustfmt, source file limits and whitespace
+checks passed. Only the required lockfile entries are staged; unrelated changes
+remain untouched. Evidence: artifacts/consolidation-editing-factory/. No Cargo,
+rustc, Python, compilation, tool construction or tests ran. Full consolidation
+remains active.

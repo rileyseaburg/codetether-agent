@@ -5,7 +5,9 @@ use codetether_tool_construction::{NativeTool, application::Factories};
 pub(in crate::tool) struct Constructors;
 impl Factories for Constructors {
     fn files(&self, kind: NativeTool) -> Option<Arc<dyn Tool>> {
-        files::create(kind)
+        codetether_tool_construction::editing::create::<
+            super::super::morph_backend::ApplicationEditor,
+        >(kind)
     }
     fn context(&self, kind: NativeTool) -> Option<Arc<dyn Tool>> {
         context::create(kind)
