@@ -12,7 +12,7 @@ fn routed_identity_matches_bedrock_dispatch_resolution() {
     ] {
         assert_eq!(
             resolve("bedrock", model),
-            crate::provider::bedrock::BedrockProvider::resolve_model_id(model)
+            codetether_provider_bedrock::provider::BedrockProvider::resolve_model_id(model)
         );
     }
     assert_ne!(resolve("bedrock", "nova-pro"), "nova-pro");

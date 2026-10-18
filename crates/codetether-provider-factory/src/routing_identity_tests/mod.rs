@@ -1,7 +1,6 @@
 //! Routing identity mirrors adapter model normalization without credentials or HTTP.
-use super::resolve;
+use codetether_provider_core::model_identity::resolve;
 
-#[path = "tests/adapters.rs"]
 mod adapters;
 
 #[test]

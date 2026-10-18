@@ -54,9 +54,9 @@ mod init_env;
 mod parse;
 mod registry;
 mod tenant_keys;
-mod tool_call;
-mod traits;
-mod types;
+use codetether_provider_core as tool_call;
+use codetether_provider_core as traits;
+use codetether_provider_core as types;
 
 // ── Public re-exports (preserve the original API surface) ───────────
 

@@ -21506,3 +21506,21 @@ native file-size limits, and whitespace checks passed. Evidence:
 only the three test dependency edges. No Cargo, rustc, or Python commands ran.
 Tests were relocated and inspected, not executed; compilation remains
 unverified. Full workspace consolidation remains active.
+
+### Provider routing tests and core aliases
+
+Moved the five routing-identity regressions into
+`codetether-provider-factory`, including comparison with the Bedrock adapter.
+The factory already depends on every implementation exercised. Removed the
+native test-only resolver wrapper and replaced three private provider contract
+forwarding files (`traits`, `types`, `tool_call`) with aliases to provider-core.
+Existing public re-exports and the registry's private trait path are retained.
+
+Full source comparisons preserve test inputs/assertions and permit only owning
+imports and module-path changes. The old resolver and Bedrock aliases were
+verified to delegate to the same functions now called directly. Source/dependency
+graphs across 698 roots and 564 crates, direct rustfmt, native file-size limits,
+and whitespace checks passed. No dependency or lockfile changes. Evidence:
+`artifacts/consolidation-routing-boundary/`. No Cargo, rustc, or Python commands
+ran; compilation and relocated tests remain unverified. Full consolidation is
+still active.

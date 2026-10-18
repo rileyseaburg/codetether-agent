@@ -38,3 +38,6 @@ pub mod application;
 
 #[cfg(test)]
 mod chat_image_tests;
+
+#[cfg(test)]
+mod routing_identity_tests;
