@@ -26903,3 +26903,20 @@ Declarations, native production scope, standalone formatting, file limits and
 whitespace checks pass. No dependency/lock changes were needed; unrelated working
 files are unchanged. Evidence: artifacts/consolidation-turn-entrypoints/. No
 Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Agent-tool action binding and hydration result
+
+Moved the action host and public AgentTool type/constant specialization into
+codetether-agent-tool::declare_application_tool. The root selects the same six
+service modules; removed tool_host.rs. Eight action bodies and the constructor
+contract are unchanged. Corrected a concrete source mismatch during extraction:
+Host::hydrate requires Result<()>, while persistence::hydrate_parent returns
+Result<usize>. The binding now maps successful counts to (), preserving errors.
+This correction is established from the two declarations, not a compilation claim.
+
+Static comparison covers unchanged actions, the corrected hydration expression,
+constructor and type alias. No test sources changed. Declaration, module/dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass for 727 roots and 617 crates. No dependency/lock changes were needed; unrelated
+working files are untouched. Evidence: artifacts/consolidation-agent-tool-binding/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

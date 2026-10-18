@@ -12,3 +12,15 @@ mod tool_impl;
 pub use dispatch::execute as dispatch;
 pub use host::Host;
 pub use tool::AgentTool;
+
+mod application_binding;
+
+/// Dependencies used by application-local agent-tool declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use async_trait::async_trait;
+    pub use codetether_agent_input::Params;
+    pub use codetether_agent_lifecycle::ResumeConfig;
+    pub use codetether_tool_core::ToolResult;
+}
