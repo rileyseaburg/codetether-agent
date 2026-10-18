@@ -91,3 +91,6 @@ pub use drawn_lines::DrawnLines;
 
 mod streaming;
 pub use streaming::{cached_streaming_format, reset_stream_parse_cache};
+
+/// Focus selection and full-frame chat-line assembly.
+pub mod pipeline;

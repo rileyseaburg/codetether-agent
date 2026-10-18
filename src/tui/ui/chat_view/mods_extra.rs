@@ -7,7 +7,6 @@ pub(crate) mod approval_overlay_content;
 pub mod bubble_assistant;
 pub mod bubble_mods;
 pub mod context_gauge_heat;
-pub(crate) mod focused_lines;
 pub(crate) mod input_title;
 #[cfg(test)]
 #[path = "input_title_tests.rs"]

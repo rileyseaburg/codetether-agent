@@ -2,7 +2,7 @@
 use ratatui::text::Line;
 mod frozen;
 impl super::AppState {
-    pub(super) fn render_cache_inputs(&self) -> codetether_message_cache::RenderInputs {
+    pub(crate) fn render_cache_inputs(&self) -> codetether_message_cache::RenderInputs {
         codetether_message_cache::RenderInputs {
             pending_tool: self.tool_timing.pending_tool_started_at.is_some(),
             messages_len: self.messages.len(),

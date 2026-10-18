@@ -20072,3 +20072,25 @@ delta, module reachability, dependency cycles, file-size ratchet, whitespace
 and direct formatting. Evidence: `artifacts/consolidation-detach/`. No Cargo,
 rustc, Python, Rust tests or session persistence operations were executed;
 compilation and runtime remain unverified.
+
+### Chat-line assembly ownership
+
+Moved focused-transcript priority, full-frame cache reuse, frozen-prefix
+reassembly, cold rebuild selection and store/take ownership into
+`codetether-message-cache::pipeline`. The crate already owns the underlying
+cache and DrawnLines restore behavior. Removed the native focused-lines policy
+file; the line-builder entry now delegates through six rendering/cache bindings.
+
+Preserved swarm-before-agent priority, focus-before-cache ordering, width
+calculations, fresh cache-input projection at each former wrapper call,
+streaming suffix placement, pending-tool cacheability and return ownership.
+Native transcript renderers, terminal/webview consumers and existing tests are
+unchanged. The cache-input projection is now crate-visible for the adapter;
+its body and all existing cache wrapper behavior remain unchanged.
+
+Validation: full translated build/focus/store bodies, six native bindings,
+cache projection/wrapper equivalence, unchanged renderers/consumers/tests,
+module reachability, dependency cycles, file-size ratchet, whitespace and direct
+formatting. No dependencies changed. Evidence:
+`artifacts/consolidation-chat-line-pipeline/`. Cargo, rustc, Python, Rust tests
+and rendering were not executed; compilation and runtime remain unverified.
