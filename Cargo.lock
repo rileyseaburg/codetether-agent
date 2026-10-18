@@ -3635,6 +3635,7 @@ dependencies = [
  "codetether-lsp-client",
  "codetether-lsp-core",
  "tracing",
+ "codetether-lsp-tool",
 ]
 
 [[package]]
@@ -4639,6 +4640,8 @@ dependencies = [
  "codetether-tool-core",
  "serde_json",
  "tempfile",
+ "codetether-native-approval",
+ "tokio",
 ]
 
 [[package]]
@@ -5479,6 +5482,7 @@ dependencies = [
  "hex",
  "serde_json",
  "sha2 0.11.0",
+ "codetether-native-approval",
 ]
 
 [[package]]

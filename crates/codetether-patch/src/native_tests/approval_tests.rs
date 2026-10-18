@@ -1,7 +1,7 @@
 //! Tests for approval-gated patch execution.
 
 use super::test_support::{EnvGuard, ORIGINAL, execute, sample_patch, seed};
-use crate::approval::test_env::lock_env;
+use codetether_native_approval::test_env::lock_env;
 use serde_json::json;
 
 #[tokio::test]

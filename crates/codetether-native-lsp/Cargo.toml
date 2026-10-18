@@ -10,3 +10,4 @@ description = "Native lsp services for CodeTether"
 codetether-lsp-client = { path = "../codetether-lsp-client", version = "0.1.0" }
 codetether-lsp-core = { path = "../codetether-lsp-core", version = "0.1.0" }
 tracing = "0.1"
+codetether-lsp-tool = { path = "../codetether-lsp-tool", version = "0.1.0" }

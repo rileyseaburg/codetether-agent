@@ -16,3 +16,6 @@ pub use client::LspManager;
 pub use codetether_lsp_core::{tetherscript, transport, types, uri, workspace_folder};
 pub use types::*;
 pub use uri::{path_to_uri, uri_to_path};
+
+/// LSP tool binding with the shared native client identity and manager cache.
+pub mod tool;

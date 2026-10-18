@@ -1,6 +1,6 @@
 //! Shared patch tool with application approval regression tests.
-pub(crate) use codetether_patch::proposed;
-pub use codetether_patch::{ApplyPatchTool, approval_resource_from_patch};
+pub(crate) use crate::proposed;
+pub use crate::{ApplyPatchTool, approval_resource_from_patch};
 #[cfg(test)]
 mod approval_tests;
 #[cfg(test)]

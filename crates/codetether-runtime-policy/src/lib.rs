@@ -45,3 +45,6 @@ pub mod decline;
 
 /// Configuration loading and native prior-context/sandbox evaluation hooks.
 pub mod evaluation;
+
+#[cfg(test)]
+mod native_readonly_tests;

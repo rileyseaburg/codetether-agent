@@ -25189,3 +25189,25 @@ dependencies in the existing registry lockfile entry are staged; unrelated
 working content remains unchanged. Evidence:
 artifacts/consolidation-command-session/. No Cargo, rustc, Python, subprocesses
 under test or runtime tests ran. Full consolidation remains active.
+
+### Patch, read-only policy and LSP tool wrappers consolidated
+
+Moved seven files into existing owning crates. Patch approval/preview tests now
+live in codetether-patch, read-only classification tests in
+codetether-runtime-policy, and the concrete LSP tool and manager cache in
+codetether-native-lsp. The redundant read-only wrapper was removed. Root tool
+paths now directly re-export the corresponding implementations.
+
+All five test functions are preserved with direct imports of the same shared
+configuration, tool types, approval store and environment lock. The LSP tool
+uses the same concrete native client and retains one process-wide manager
+state. Source comparisons cover every moved file after explicit path changes
+and formatting. Static scans cover 705 module roots and 591 dependency crates
+without missing modules, cycles or undeclared direct workspace dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks pass.
+
+Only required dependency additions to three existing lockfile package entries
+are staged; existing version-qualified dependencies are preserved. Unrelated
+working changes remain untouched. Evidence: artifacts/consolidation-patch-lsp/.
+No Cargo, rustc, Python, patch execution, LSP process or runtime tests ran.
+Full consolidation remains active.

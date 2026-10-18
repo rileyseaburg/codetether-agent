@@ -27,3 +27,6 @@ mod types;
 /// Return the approval resource string for a unified diff patch.
 pub use codetether_tool_core::patch::approval_resource_from_patch;
 pub use tool::ApplyPatchTool;
+
+#[cfg(test)]
+mod native_tests;

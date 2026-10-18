@@ -1,7 +1,7 @@
 //! Shared tests helpers for apply_patch.
 
 use super::ApplyPatchTool;
-use crate::tool::{Tool, ToolResult};
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 use std::path::Path;
 

@@ -1,7 +1,7 @@
 //! Tests for store-backed patch approval verification.
 
 use super::test_support::{EnvGuard, ORIGINAL, execute, sample_patch, seed};
-use crate::approval::{ApprovalStore, test_env::lock_env};
+use codetether_native_approval::{ApprovalStore, test_env::lock_env};
 use serde_json::json;
 
 #[tokio::test]
