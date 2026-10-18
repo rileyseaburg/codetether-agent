@@ -1,0 +1,12 @@
+[package]
+name = "codetether-chat-transcript"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Provider message projection into visible chat transcripts and plain text"
+
+[dependencies]
+codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }

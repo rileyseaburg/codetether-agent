@@ -1,191 +1,19 @@
-use std::collections::HashMap;
-
-use crate::provider::{ContentPart, Message, Role};
-use crate::tui::app::text::truncate_preview;
-use crate::tui::chat::message::{ChatMessage, MessageType};
-
+//! Native session synchronization with shared transcript projection.
 #[path = "message_text/sync.rs"]
 mod sync;
+pub use codetether_chat_transcript::extract_message_text;
+pub(crate) use codetether_chat_transcript::provider_messages_to_chat_messages;
 pub use sync::sync_messages_from_session;
 pub(crate) use sync::sync_messages_from_source;
 
-pub fn extract_message_text(content: &[ContentPart]) -> String {
-    let mut out = String::new();
-    for part in content {
-        match part {
-            ContentPart::Text { text } | ContentPart::Thinking { text, .. } => {
-                push_line(&mut out, text)
-            }
-            ContentPart::ToolCall {
-                name, arguments, ..
-            } => push_line(&mut out, &format!("Tool call: {name} {arguments}")),
-            ContentPart::ToolResult { content, .. } => push_line(&mut out, content),
-            ContentPart::Image { url, .. } => push_line(&mut out, &format!("[image: {url}]")),
-            ContentPart::File { path, .. } => push_line(&mut out, &format!("[file: {path}]")),
-        }
-    }
-    out
-}
-
-pub(crate) fn provider_messages_to_chat_messages<'a>(
-    messages: impl IntoIterator<Item = &'a Message>,
-) -> Vec<ChatMessage> {
-    let mut chat_messages = Vec::new();
-    let mut tool_call_names = HashMap::new();
-
-    for message in messages {
-        if is_hidden_context_marker(message) {
-            continue;
-        }
-        chat_messages.extend(chat_messages_from_provider_message(
-            message,
-            &mut tool_call_names,
-        ));
-    }
-
-    chat_messages
-}
-
-fn is_hidden_context_marker(message: &Message) -> bool {
-    matches!(
-        (&message.role, message.content.as_slice()),
-        (
-            Role::Assistant,
-            [ContentPart::Text { text }]
-        ) if text.starts_with("[AUTO CONTEXT COMPRESSION]")
-            || text.starts_with("[CONTEXT TRUNCATED]")
-    )
-}
-
-fn chat_messages_from_provider_message(
-    message: &Message,
-    tool_call_names: &mut HashMap<String, String>,
-) -> Vec<ChatMessage> {
-    let mut chat_messages = Vec::new();
-    let mut text_buffer = String::new();
-
-    for part in &message.content {
-        match part {
-            ContentPart::Text { text } => push_line(&mut text_buffer, text),
-            ContentPart::Thinking { text, .. } => {
-                flush_text_buffer(message.role, &mut text_buffer, &mut chat_messages);
-                chat_messages.push(ChatMessage::new(
-                    MessageType::Thinking(text.clone()),
-                    truncate_preview(text, 600),
-                ));
-            }
-            ContentPart::ToolCall {
-                id,
-                name,
-                arguments,
-                ..
-            } => {
-                flush_text_buffer(message.role, &mut text_buffer, &mut chat_messages);
-                tool_call_names.insert(id.clone(), name.clone());
-                chat_messages.push(ChatMessage::new(
-                    MessageType::ToolCall {
-                        name: name.clone(),
-                        arguments: crate::tui::chat::payload::tool_arguments(arguments),
-                    },
-                    format!("{name}: {}", truncate_preview(arguments, 240)),
-                ));
-            }
-            ContentPart::ToolResult {
-                tool_call_id,
-                content,
-            } => {
-                flush_text_buffer(message.role, &mut text_buffer, &mut chat_messages);
-                let name = tool_call_names
-                    .get(tool_call_id)
-                    .cloned()
-                    .unwrap_or_else(|| "tool".to_string());
-                let success = !content.trim_start().starts_with("Error:");
-                chat_messages.push(ChatMessage::new(
-                    MessageType::ToolResult {
-                        name: name.clone(),
-                        output: crate::tui::chat::payload::tool_output(content),
-                        success,
-                        duration_ms: None,
-                    },
-                    format!("{name}: {}", truncate_preview(content, 600)),
-                ));
-            }
-            ContentPart::Image { url, .. } => {
-                flush_text_buffer(message.role, &mut text_buffer, &mut chat_messages);
-                chat_messages.push(ChatMessage::new(
-                    MessageType::Image { url: url.clone() },
-                    url.clone(),
-                ));
-            }
-            ContentPart::File { path, .. } => {
-                flush_text_buffer(message.role, &mut text_buffer, &mut chat_messages);
-                chat_messages.push(ChatMessage::new(
-                    MessageType::File {
-                        path: path.clone(),
-                        size: None,
-                    },
-                    path.clone(),
-                ));
-            }
-        }
-    }
-
-    flush_text_buffer(message.role, &mut text_buffer, &mut chat_messages);
-    chat_messages
-}
-
-fn flush_text_buffer(role: Role, text_buffer: &mut String, chat_messages: &mut Vec<ChatMessage>) {
-    if text_buffer.trim().is_empty() {
-        text_buffer.clear();
-        return;
-    }
-
-    chat_messages.push(ChatMessage::new(
-        message_type(role),
-        std::mem::take(text_buffer),
-    ));
-}
-
-fn push_line(out: &mut String, text: &str) {
-    if !out.is_empty() {
-        out.push('\n');
-    }
-    out.push_str(text);
-}
-
-fn message_type(role: Role) -> MessageType {
-    match role {
-        Role::User => MessageType::User,
-        Role::Assistant => MessageType::Assistant,
-        Role::System | Role::Developer | Role::Tool => MessageType::System,
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{extract_message_text, sync_messages_from_session};
+    use super::sync_messages_from_session;
     use crate::provider::{ContentPart, Message, Role};
     use crate::session::Session;
     use crate::tui::app::state::App;
     use crate::tui::chat::message::MessageType;
     use chrono::Utc;
-
-    #[test]
-    fn extract_message_text_keeps_tool_markers_for_plain_export() {
-        let content = vec![
-            ContentPart::Text {
-                text: "hello".to_string(),
-            },
-            ContentPart::ToolCall {
-                id: "call_1".to_string(),
-                name: "read".to_string(),
-                arguments: "{\"path\":\"src/main.rs\"}".to_string(),
-                thought_signature: None,
-            },
-        ];
-
-        assert!(extract_message_text(&content).contains("Tool call: read"));
-    }
 
     #[tokio::test]
     async fn sync_messages_from_session_preserves_tool_entries() {

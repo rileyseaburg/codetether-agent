@@ -12653,3 +12653,20 @@ Full workspace consolidation remains active.
   artifacts/consolidation-follow-up/.
 - No dependencies or lockfile changes were needed. No queue operations, Cargo,
   rustc, compilation or Rust tests ran. Full consolidation remains incomplete.
+
+### Chat transcript projection extraction
+
+- Moved provider-message conversion and plain-text export from native
+  message_text into codetether-chat-transcript. Twelve modules contain at most
+  30 code lines, separating text buffering, hidden markers, thinking, tool
+  calls/results and file/image projection.
+- The projection retains one tool-name map across messages and flushes text
+  at the same part boundaries. Native session synchronization remains unchanged
+  and calls the shared converter through compatibility exports. The existing
+  plain-export test moved; the native synchronization test remains intact.
+- Verification: 19 source comparisons passed for conversion order, every part
+  handler, buffering, final flush, tests and native synchronization. Module and
+  dependency checks, direct rustfmt, file limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-chat-transcript/.
+- Only the new crate's dependency and package record were staged from Cargo.lock.
+  No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.
