@@ -1,11 +1,11 @@
-//! Choice list scrolls the current selection into view on small terminals.
+//! Choice rows and scrolling selection.
 use codetether_question::Draft;
 use ratatui::{
     Frame,
     layout::Rect,
     style::{Style, Stylize},
     text::Line,
-    widgets::{List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{List, ListItem, ListState},
 };
 
 pub(super) fn render(frame: &mut Frame, area: Rect, draft: &Draft) {
@@ -35,13 +35,4 @@ pub(super) fn render(frame: &mut Frame, area: Rect, draft: &Draft) {
         .highlight_style(Style::new().cyan().bold());
     let mut selected = ListState::default().with_selected(Some(draft.cursor()));
     frame.render_stateful_widget(list, area, &mut selected);
-}
-
-pub(super) fn help(frame: &mut Frame, area: Rect, multiple: bool) {
-    let help = if multiple {
-        "↑↓/Tab move · Space toggle · Enter next/submit\nType custom answer · Shift+Tab back · Esc dismiss · Ctrl+C cancel turn"
-    } else {
-        "↑↓/Tab move · Enter choose/next\nType custom answer · Shift+Tab back · Esc dismiss · Ctrl+C cancel turn"
-    };
-    frame.render_widget(Paragraph::new(help).dim().wrap(Wrap { trim: true }), area);
 }

@@ -11788,3 +11788,21 @@ Full workspace consolidation remains active.
   git diff --check passed. Evidence: artifacts/consolidation-inspector/.
 - No Cargo, rustc, compilation, runtime tests or terminal rendering ran. Full
   workspace consolidation remains incomplete.
+
+### Question terminal interaction extraction
+
+- Moved question modal layout, option rows, help, keyboard dispatch and paste
+  handling into codetether-question-view. Validation and session-scoped pending
+  questions remain owned by codetether-question. The six presentation/input
+  modules contain at most 42 nonblank, noncomment code lines.
+- Native wrappers provide the active session ID and disjoint references for
+  redraw/activity callbacks. Shared input invokes redraw before ordinary key
+  handling and activity after runtime edits, preserving control-key bypass,
+  Escape dismissal and paste redraw behavior. Existing native integration tests
+  are unchanged, including narrow-terminal rendering and composer isolation.
+- Verification: 10 static comparisons passed for moved bodies, callback timing,
+  native projections and unchanged tests. Module/path-dependency graph checks,
+  direct rustfmt, source limits and git diff --check passed. Evidence:
+  artifacts/consolidation-question-view/.
+- No Cargo, rustc, compilation, integration tests or rendering ran. Full workspace
+  consolidation remains incomplete.
