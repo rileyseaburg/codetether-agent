@@ -1,6 +1,6 @@
 //! Registration of the events MCP tool and its argument schema.
 use super::*;
-pub(super) async fn register(server: &McpServer, bridge: &Arc<BusBridge>) {
+pub(super) async fn register(server: &ServerCatalog, bridge: &Arc<BusBridge>) {
     let b = Arc::clone(bridge);
     server.register_tool(
             "bus_events",

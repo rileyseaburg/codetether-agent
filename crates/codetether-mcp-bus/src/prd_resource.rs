@@ -1,6 +1,6 @@
 //! Registration and reading of the Ralph PRD resource.
 use super::*;
-pub(super) async fn register(server: &McpServer) {
+pub(super) async fn register(server: &ServerCatalog) {
     server
         .register_resource(
             "codetether://ralph/prd",

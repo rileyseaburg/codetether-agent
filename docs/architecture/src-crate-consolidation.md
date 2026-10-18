@@ -17714,3 +17714,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-goal-command/`.
 - No Cargo, rustc, Python, goal commands, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### MCP bus monitoring and Ralph resources
+
+- Moved the complete bus-aware MCP adapter module into the dedicated
+  `codetether-mcp-bus` crate: event/status tools, Ralph status, recent-event
+  resource, PRD resource and progress resource, with their registrations.
+- Shared registration accepts the existing ServerCatalog and BusBridge.
+  Native code only forwards its catalog and bridge. Preserved synchronous
+  handler execution, event limits, schemas, URIs, file reads, fallback text
+  and registration order/logs.
+- Verified all nine moved child modules by complete token comparison, both
+  registration bodies, native catalog delegation and unchanged catalog/bridge
+  implementations. Module/dependency graphs, direct rustfmt, file limits and
+  whitespace passed. Staged lock adds only the new package/root dependency;
+  unrelated working-copy changes remain untouched.
+  Evidence: `artifacts/consolidation-mcp-bus/`.
+- No Cargo, rustc, Python, MCP handler calls, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

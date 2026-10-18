@@ -1388,6 +1388,7 @@ dependencies = [
  "codetether-webview",
  "codetether-tui-render",
  "codetether-goal-command",
+ "codetether-mcp-bus",
  "codetether-agent-dashboard",
  "codetether-git-view",
  "codetether-protocol-view",
@@ -15966,4 +15967,16 @@ dependencies = [
  "codetether-goal-core",
  "serde_json",
  "uuid",
+]
+
+[[package]]
+name = "codetether-mcp-bus"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-bus-http",
+ "codetether-mcp-core",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]

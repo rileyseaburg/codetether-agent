@@ -1,6 +1,6 @@
 //! Registration of the ralph_status MCP tool and its argument schema.
 use super::*;
-pub(super) async fn register(server: &McpServer) {
+pub(super) async fn register(server: &ServerCatalog) {
     server
         .register_tool(
             "ralph_status",

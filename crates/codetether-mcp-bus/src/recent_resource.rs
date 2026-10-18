@@ -1,6 +1,6 @@
 //! Registration and reading of the recent bus events resource.
 use super::*;
-pub(super) async fn register(server: &McpServer, bridge: &Arc<BusBridge>) {
+pub(super) async fn register(server: &ServerCatalog, bridge: &Arc<BusBridge>) {
     let b = Arc::clone(bridge);
     server
         .register_resource(
