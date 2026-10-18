@@ -35,3 +35,6 @@ pub use state::SessionPickerState;
 
 mod label;
 pub use label::session_label;
+
+/// Compact recent-session sidebar rendering.
+pub mod recent;

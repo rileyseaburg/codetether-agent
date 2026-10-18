@@ -2,7 +2,7 @@
 
 use ratatui::prelude::*;
 
-use crate::session::SessionSummary;
+use codetether_session_metadata::SessionSummary;
 
 pub(super) fn title(idx: usize, selected: usize, summary: &SessionSummary) -> Line<'static> {
     let marker = if idx == selected { "●" } else { "○" };
@@ -12,7 +12,7 @@ pub(super) fn title(idx: usize, selected: usize, summary: &SessionSummary) -> Li
         Style::default().fg(Color::Gray)
     };
     let label = summary.display_label();
-    let label = crate::util::truncate_bytes_safe(&label, 22);
+    let label = codetether_util::truncate_bytes_safe(&label, 22);
     Line::from(Span::styled(format!("{marker} {label}"), style))
 }
 

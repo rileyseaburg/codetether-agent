@@ -17542,3 +17542,17 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-webview-layout/`.
 - No Cargo, rustc, Python, rendering actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared recent-session sidebar panel
+
+- Moved recent-session panel rendering and title/metadata rows into
+  `codetether-session-picker::recent`, using its existing SessionPickerState.
+- Native Webview code supplies the shared picker state directly. Preserved
+  selection clamping, bounded rows, title truncation, styling, metadata and
+  empty-state output.
+- Verification: complete renderer/row comparisons, native projection, unchanged
+  list bounds/labels/consumers, module/dependency graphs, direct rustfmt, file
+  limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-recent-sessions/`.
+- No Cargo, rustc, Python, rendering actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
