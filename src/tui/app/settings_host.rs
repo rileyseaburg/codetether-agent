@@ -1,10 +1,14 @@
 //! Native preference fields and save operations for shared settings policy.
+mod access;
 mod cycles;
 mod session;
 mod view;
 use crate::session::Session;
 use crate::tui::app::state::App;
 pub(super) use codetether_settings_policy::persistence::Preference;
+pub(super) async fn cycle_access(app: &mut App, session: &mut Session) {
+    access::cycle(app, session).await;
+}
 pub(super) async fn set(app: &mut App, session: &mut Session, preference: Preference, next: bool) {
     codetether_settings_policy::persistence::set(
         &mut view::Settings(app),

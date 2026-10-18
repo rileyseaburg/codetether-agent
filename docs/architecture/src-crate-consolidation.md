@@ -14592,3 +14592,17 @@ Full workspace consolidation remains active.
   artifacts/consolidation-provider-cycles/.
 - No dependencies changed. No Cargo, rustc, Rust tests, provider mutation or
   persistence ran. Full workspace consolidation remains unfinished.
+
+### Access-mode transition ownership
+
+- Moved access-mode cycling, process override, configuration reload and final
+  result formatting into codetether-settings-policy::access_update.
+- Native bindings retain trust/session configuration application and the
+  existing paused-request release operation. Current-mode lookup/default and
+  full-mode release behavior remain unchanged.
+- Verification: four static checks passed for expanded transition behavior,
+  current-mode lookup, all native bindings and module bounds. Module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and whitespace
+  checks passed. Evidence: artifacts/consolidation-access-update/.
+- No dependencies changed. No Cargo, rustc, Rust tests, access-mode changes or
+  approval releases ran. Full workspace consolidation remains unfinished.

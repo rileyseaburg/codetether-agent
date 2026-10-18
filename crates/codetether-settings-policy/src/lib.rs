@@ -1,9 +1,10 @@
-//! Pure settings labels and cycle policies, independent of UI and persistence.
+//! Settings labels, cycle policies and host-driven preference updates.
 //!
 //! Call these functions with current provider values, then let the application
 //! apply the returned setting and persist its session. Provider-specific cycles
 //! remain distinct, including their handling of unknown overrides.
 mod access;
+pub mod access_update;
 mod bedrock;
 mod boolean;
 pub mod command;
