@@ -21046,3 +21046,21 @@ sources are unchanged. Evidence:
 `artifacts/consolidation-controlled-completion/`. No Cargo, rustc, or Python
 commands ran. No provider/journal operations or Rust tests were executed.
 Compilation and runtime behavior remain unverified; consolidation is active.
+
+### Single sub-agent tool lifecycle ownership
+
+Moved per-call orchestration and completed-result assembly into
+`codetether-swarm-core::agent_loop::tools::call`. Native hooks supply call
+count/start tracing, input preparation, raw execution, completion events,
+full-output bus publication, and rendering. The shared sequence preserves
+rejected-input handling, publication before rendering, image attachments, and
+combination of execution/result-processing timeout flags.
+
+Verification compares the full lifecycle and all six native hooks against the
+original operations. Existing input/raw/output/event implementations and image
+tests are unchanged. Direct rustfmt, source graphs across 694 roots, native
+file-size limits, and whitespace checks passed. Optional trailing argument
+commas are normalized in comparison; initial evidence is retained. Evidence:
+`artifacts/consolidation-swarm-tool-call/`. No dependencies changed. No Cargo,
+rustc, or Python commands ran. Rust tests and compilation remain unverified;
+the broader consolidation goal remains active.

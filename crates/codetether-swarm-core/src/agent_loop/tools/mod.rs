@@ -16,6 +16,9 @@ pub mod raw;
 /// Argument parsing, policy checking, and runtime context enrichment.
 pub mod input;
 
+/// Full lifecycle ordering for an individual tool call.
+pub mod call;
+
 /// Execute an ordered batch of tool calls and record each result.
 /// # Arguments
 /// * `host` — Readiness, single-call execution, and transcript bindings.
