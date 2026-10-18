@@ -27,5 +27,8 @@ pub use hook::Hook;
 pub use plugin_decision::read as read_decision;
 pub use report::Report;
 pub use types::{FileStatus, GuardFile, GuardReport, GuardViolation};
+
+/// Optional repository plugin invocation and decision handling.
+pub mod plugin;
 #[cfg(test)]
 mod tests;

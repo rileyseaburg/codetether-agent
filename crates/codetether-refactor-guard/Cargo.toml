@@ -7,6 +7,7 @@ license = "MIT"
 description = "Refactor line-budget checks and displaced-code detection"
 
 [dependencies]
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 glob = "0.3.4"

@@ -21167,3 +21167,20 @@ Direct rustfmt, source graphs across 694 roots, native file-size checks, and
 whitespace checks passed. Evidence: `artifacts/consolidation-swarm-state/`.
 No Cargo, rustc, or Python commands ran. Rust tests and compilation remain
 unverified; the full workspace consolidation remains active.
+
+### Refactor-guard plugin policy ownership
+
+Moved hook discovery, report argument construction, two-second timeout input,
+unsuccessful-result conversion, and returned-decision parsing into
+`codetether-refactor-guard::plugin`. Native code retains feature gating and
+execution with the rooted TetherScript tool. The disabled-feature path is
+unchanged. The rooted tool constructor only stores its root and marker, so its
+relocation into the native execution callback introduces no I/O.
+
+Added a direct tool-core dependency for the existing result contract. Static
+full-body comparison, native execution/feature checks, source/dependency graphs,
+direct rustfmt, native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-refactor-plugin/`. Only the owning-package dependency
+edge is staged in the lockfile. No Cargo, rustc, or Python commands ran. No
+plugins or Rust tests were executed. Compilation and runtime behavior remain
+unverified; complete consolidation remains active.
