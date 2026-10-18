@@ -25595,3 +25595,23 @@ rustfmt and whitespace checks pass. Only three worker dependency additions are
 staged in the lockfile; unrelated working changes remain unchanged. Evidence:
 artifacts/consolidation-worker-effects/. No Cargo, rustc, Python, runtime
 execution or tests ran. Full src consolidation remains active.
+
+### Claimed-task composition moved into the native worker crate
+
+Moved claimed-task host composition and event/special adapters into
+codetether-native-worker::claimed. Its Executor plugs directly into the native
+lifecycle and dispatcher. A SessionFactory borrows the application's unchanged
+session adapter; the application now supplies session operations and the
+existing forage hook. Removed the root lifecycle executor adapter, claimed
+execution forwarding function, event host and special host. No dependency or
+lockfile changes are required.
+
+Static comparisons preserve every event method, the complete root session
+adapter, the forage executor call and the claimed driver's argument order.
+The generic session delegation preserves prepare/preseed/execute calls and
+returns. Module/dependency scans cover 714 roots and 600 crates without missing
+modules, cycles or undeclared direct dependencies. Declaration, file-limit,
+direct rustfmt and whitespace checks pass. All three pre-existing dirty files
+remain unchanged. Evidence: artifacts/consolidation-worker-claimed/. No Cargo,
+rustc, Python, compilation or runtime tests ran. Full consolidation remains
+active.

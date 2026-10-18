@@ -48,3 +48,6 @@ pub mod lifecycle;
 pub mod event_sink;
 /// Policy-gated clone and forage dispatch with application forage hooks.
 pub mod special;
+
+/// Claimed-task composition using application session and forage hooks.
+pub mod claimed;
