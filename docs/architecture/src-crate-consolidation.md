@@ -17096,3 +17096,18 @@ Full workspace consolidation remains active.
   No dependency changes. Evidence: `artifacts/consolidation-worker-sync/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Remove the obsolete native Oracle validation implementation
+
+- Removed the unreferenced `src/cli/oracle/validate.rs` copy after verifying
+  that all five functions already live in `codetether-oracle-cli`.
+- `src/cli/oracle.rs` already delegates execution to that crate. The crate's
+  input, synthetic-analysis, validation/persistence and output modules remain
+  the sole implementations; no command behavior or crate code changed.
+- Verification: all five function bodies mapped to their crate equivalents,
+  including input errors, synthetic statistics, validator arguments,
+  persistence and text/JSON output; native module declarations/references,
+  unchanged crate sources, module/dependency graphs, file limits and whitespace.
+  Evidence: `artifacts/consolidation-oracle-cleanup/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
