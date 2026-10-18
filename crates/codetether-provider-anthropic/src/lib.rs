@@ -31,6 +31,8 @@ mod parse_content;
 mod parse_response;
 mod parse_usage;
 mod provider_impl;
+#[cfg(test)]
+mod request_cache_tests;
 mod response;
 mod sanitize;
 mod sse_block_parser;

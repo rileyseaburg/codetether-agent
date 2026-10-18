@@ -1,6 +1,6 @@
 //! Wire-format regression for changing optional recall and prompt caching.
-use crate::provider::{CompletionRequest, ContentPart, Message, Role};
-use crate::session::context::request_guard::finish;
+use codetether_context_request::finish;
+use codetether_provider_core::{CompletionRequest, ContentPart, Message, Role};
 
 fn text(role: Role, value: &str) -> Message {
     Message {
@@ -27,8 +27,8 @@ fn changing_recall_preserves_the_anthropic_system_and_history_prefix() {
     };
     let first = finish(request.clone(), vec![text(Role::System, "recall one")]).unwrap();
     let second = finish(request, vec![text(Role::System, "recall two")]).unwrap();
-    let (first_system, first_messages) = super::super::convert::messages(&first.messages, true);
-    let (second_system, second_messages) = super::super::convert::messages(&second.messages, true);
+    let (first_system, first_messages) = super::encode_messages(&first.messages, true);
+    let (second_system, second_messages) = super::encode_messages(&second.messages, true);
     assert_eq!(first_system, second_system);
     assert_eq!(first_messages[..2], second_messages[..2]);
     assert_ne!(first_messages[2], second_messages[2]);

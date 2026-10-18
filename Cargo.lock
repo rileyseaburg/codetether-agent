@@ -4455,6 +4455,7 @@ dependencies = [
  "async-trait",
  "base64 0.23.1",
  "bytes",
+ "codetether-context-request",
  "codetether-image",
  "codetether-provider-core",
  "futures",

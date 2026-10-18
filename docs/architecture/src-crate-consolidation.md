@@ -21448,3 +21448,22 @@ Static comparisons, source/dependency graphs across 698 roots and 564 crates,
 direct rustfmt, native file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-cuda-thinker/`. No Cargo, rustc, or Python commands ran;
 CUDA compilation and inference remain unverified. Full consolidation is active.
+
+### Complete the Anthropic provider boundary
+
+Moved the cache-prefix/request-preparation regression into
+`codetether-provider-anthropic`. Its only dependencies were the shared request
+guard and Anthropic encoder; both now use their owning crate paths directly.
+Removed the native provider directory and test-only forwarding modules, replacing
+the provider declaration with a direct crate alias. Existing provider and image
+helper paths continue to resolve through that alias.
+
+Full formatted-source comparison confirms unchanged inputs, ordering and test
+assertions, with only imports/encoder qualification changed. Verified that the
+old aliases referred to these exact shared functions. Source/dependency graphs
+across 698 roots and 564 crates, direct rustfmt, native file-size limits, and
+whitespace checks passed. Added the request-guard crate only as a dev dependency;
+the lock change stages only that provider-package edge. Evidence:
+`artifacts/consolidation-anthropic-boundary/`. No Cargo, rustc, or Python commands
+ran. The moved test was inspected but not executed; compilation and runtime
+behavior remain unverified. Full consolidation remains active.

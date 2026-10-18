@@ -19,7 +19,7 @@
 
 // ── Sub-module declarations ─────────────────────────────────────────
 
-pub mod anthropic;
+pub use codetether_provider_anthropic as anthropic;
 pub use codetether_provider_bedrock::provider as bedrock;
 pub use codetether_provider_core::body_cap;
 pub mod codex_reasoning;

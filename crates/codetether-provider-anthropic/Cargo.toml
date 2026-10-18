@@ -20,4 +20,5 @@ serde_json = "1.0.151"
 tracing = "0.1"
 
 [dev-dependencies]
+codetether-context-request = { path = "../codetether-context-request", version = "0.1.0" }
 tokio = { version = "1.53.1", features = ["macros", "rt"] }
