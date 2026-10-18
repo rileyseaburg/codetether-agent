@@ -13,7 +13,7 @@ export CARGO_TARGET_DIR="$PWD/target" CARGO_BUILD_BUILD_DIR="$PWD/target"
 export CUDA_ROOT=/usr CUDA_PATH=/usr CUDA_HOME=/usr CUDA_COMPUTE_CAP=75
 export NVCC_CCBIN=/usr/bin/g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12
 export CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
-bash script/install-dev.sh install --path . --force --locked --features candle-cuda --jobs 1
+bash script/install-dev.sh install --path crates/codetether-agent --force --locked --features candle-cuda --jobs 1
 cargo test --locked --release --features candle-cuda --test bonsai_protocol --jobs 1 -- --test-threads=1
 cargo test --locked --release --features candle-cuda --lib provider::bonsai:: --jobs 1 -- --test-threads=1
 cargo test --locked --release --features candle-cuda --lib provider::bonsai::native::cuda_ --jobs 1 -- --ignored --test-threads=1 --nocapture

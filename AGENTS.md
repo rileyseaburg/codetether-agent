@@ -24,7 +24,7 @@ cargo clippy --all-features
 cargo build --release
 
 # Install locally
-cargo install --path .
+cargo install --path crates/codetether-agent
 
 # Run the TUI
 codetether tui
@@ -54,7 +54,7 @@ codetether worker --server http://localhost:8001 --codebases /path/to/project --
 ## Project Structure
 
 ```
-src/
+crates/codetether-agent/src/
 ├── main.rs          # CLI entry point (clap-based)
 ├── lib.rs           # Library root - re-exports all modules
 ├── a2a/             # A2A protocol client/server/worker
@@ -85,7 +85,7 @@ src/
 
 ## Adding a New Tool
 
-1. Create `src/tool/your_tool.rs`:
+1. Create `crates/codetether-agent/src/tool/your_tool.rs`:
 
 ```rust
 use super::{Tool, ToolDefinition, ToolResult};
@@ -143,7 +143,7 @@ impl Tool for YourTool {
 }
 ```
 
-2. Register in `src/tool/mod.rs`:
+2. Register in `crates/codetether-agent/src/tool/mod.rs`:
    - Add `pub mod your_tool;`
    - Add to `ToolRegistry::new()` or `ToolRegistry::with_provider_arc()`
 
@@ -196,7 +196,7 @@ Available builtins: `js_eval`, `browser_render`, `browser_eval_js`,
 ### TetherScript diagnostics
 
 `.tether` and `.kl` files are checked automatically by the `tetherscript`
-language server (`tetherscript lsp`), registered in `src/lsp/tetherscript.rs`
+language server (`tetherscript lsp`), registered in `crates/codetether-agent/src/lsp/tetherscript.rs`
 on both resolution paths:
 
 - as a **linter** (`[lsp.linters.tetherscript]`), so edits flow through the
@@ -220,7 +220,7 @@ If the `tetherscript` binary is not on `PATH` it is skipped; the install hint is
 
 ## Adding a New Provider
 
-1. Create `src/provider/your_provider.rs` implementing `Provider` trait:
+1. Create `crates/codetether-agent/src/provider/your_provider.rs` implementing `Provider` trait:
 
 ```rust
 #[async_trait]
@@ -232,7 +232,7 @@ impl Provider for YourProvider {
 }
 ```
 
-2. Register in `src/provider/mod.rs` within `ProviderRegistry::from_vault()`
+2. Register in `crates/codetether-agent/src/provider/mod.rs` within `ProviderRegistry::from_vault()`
 
 3. Add Vault secret path: `secret/codetether/providers/yourprovider`
 
@@ -293,7 +293,7 @@ cargo test -- --nocapture
 - Use `#[tokio::test]` for async tests
 - Use `tempfile::tempdir()` for file system tests
 - Mock providers for unit tests, use real providers in integration tests
-- Integration tests go in `tests/` directory
+- Integration tests go in `crates/codetether-agent/tests/` directory
 
 ## Rustdoc & Documentation Standards
 
@@ -654,8 +654,8 @@ When implementing swarm sub-agents:
 ## Ralph (Autonomous Loop)
 
 Ralph implements PRD-driven development. Key files:
-- `src/ralph/ralph_loop.rs` - Main loop
-- `src/ralph/types.rs` - PRD structures
+- `crates/codetether-agent/src/ralph/ralph_loop.rs` - Main loop
+- `crates/codetether-agent/src/ralph/types.rs` - PRD structures
 
 ### PRD Structure
 
@@ -707,19 +707,19 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
 
 ## Security Modules
 
-### Authentication (`src/server/auth.rs`)
+### Authentication (`crates/codetether-agent/src/server/auth.rs`)
 - Mandatory Bearer token middleware — **cannot be disabled**
 - Auto-generates HMAC-SHA256 token if `CODETETHER_AUTH_TOKEN` env var not set
 - Only `/health` is exempt from auth
 - Integrate by adding `AuthLayer` to the axum router
 
-### Audit Trail (`src/audit/mod.rs`)
+### Audit Trail (`crates/codetether-agent/src/audit/mod.rs`)
 - Global `AUDIT_LOG` singleton initialized at server startup
 - Log events with `log_event(actor, action, resource, outcome, metadata)`
 - Query with `query_audit_log(filters)` — filter by actor, action, resource, time range
 - Backend: append-only JSON Lines file
 
-### Policy Engine (`src/server/policy.rs` + `mod.rs`)
+### Policy Engine (`crates/codetether-agent/src/server/policy.rs` + `mod.rs`)
 - **OPA integration**: `check_policy()` sends authz queries to OPA sidecar via HTTP, falls back to `evaluate_local()` with compiled-in `data.json`
 - **Structs**: `PolicyUser` (sub, roles, tenant_id, auth_source, scopes), `PolicyResource` (resource_type, resource_id, owner, tenant_id)
 - **Middleware**: `policy_middleware()` in `mod.rs` intercepts requests, maps path+method to a permission string via `POLICY_ROUTES`, and calls `check_policy()`
@@ -729,20 +729,20 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
 - **Env vars**: `OPA_URL` (default `http://localhost:8181`), `OPA_ENABLED` (default `true`)
 - **Testing**: `cargo test policy` runs 9 unit tests covering role-based access, API key scopes, and tenant isolation
 
-### Plugin Sandbox (`src/tool/sandbox.rs`)
+### Plugin Sandbox (`crates/codetether-agent/src/tool/sandbox.rs`)
 - `ToolManifest`: tool_id, version, sha256_hash, signature, allowed_resources, limits
 - `ToolSandbox::execute()`: validates manifest signature (Ed25519), checks SHA-256 integrity, enforces resource policy
 - `ManifestStore`: registry for signed tool manifests
 - Sandbox policies: `Default`, `Restricted`, `Custom`
 
-### Kubernetes Manager (`src/k8s/mod.rs`)
+### Kubernetes Manager (`crates/codetether-agent/src/k8s/mod.rs`)
 - `K8sManager::detect_cluster()` checks for `KUBERNETES_SERVICE_HOST`
 - `ensure_deployment()` creates or updates Deployments
 - `scale(replicas)` adjusts replica count
 - `reconcile_loop()` runs every 30s in background
 - All ops use the `kube` crate with in-cluster config
 
-### Approval Justification (`src/runtime_policy/justification.rs`)
+### Approval Justification (`crates/codetether-agent/src/runtime_policy/justification.rs`)
 - In access mode `ask`, mutating tools (`bash`, `exec_command`, `apply_patch`)
   are blocked with `TOOL_JUSTIFICATION_REQUIRED` until the model supplies a
   non-empty `justification` argument; only then is an approval request created
@@ -752,7 +752,7 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
   rewording it on retry does not invalidate an approval
 - `approve` and `full` modes never demand a justification
 
-### Sandbox Toolchains (`src/tool/sandbox_toolchain.rs`)
+### Sandbox Toolchains (`crates/codetether-agent/src/tool/sandbox_toolchain.rs`)
 - The command sandbox resets `PATH` and only mounts system roots, so per-user
   runtimes (nvm Node, pnpm, cargo, bun, ...) are exposed read-only from
   well-known `$HOME` locations and their host `PATH` entries are kept in order
@@ -771,7 +771,7 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
 
 5. **Session must call `.save()` after modifications** - Persist to disk for session continuity
 
-6. **Auth is mandatory** - The `AuthLayer` in `src/server/auth.rs` cannot be conditionally removed. All endpoints except `/health` require a Bearer token.
+6. **Auth is mandatory** - The `AuthLayer` in `crates/codetether-agent/src/server/auth.rs` cannot be conditionally removed. All endpoints except `/health` require a Bearer token.
 
 7. **Audit log must be initialized before serving** - Call `init_audit_log()` in `serve()` before binding the router. The `AUDIT_LOG` OnceCell can only be set once.
 
@@ -791,7 +791,7 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
 1. `cargo fmt` - Format code when Rust formatting is required.
 2. Run focused tests for the changed behavior (for example,
    `cargo test turn_undo --lib`).
-3. Run `./check_file_limits.sh` for changed `src/**/*.rs` files.
+3. Run `./check_file_limits.sh` for changed `crates/codetether-agent/src/**/*.rs` files.
 4. Do **not** run broad local builds (`cargo build`, `cargo check`,
    `cargo build --release`) unless the user explicitly asks; CI owns full
    build/type coverage.
@@ -905,7 +905,7 @@ RUST_LOG=codetether::session=trace codetether run "test"
 - Use `Arc` for shared provider state
 - Prefer streaming responses for large outputs
 
-## Forage System (`src/forage/mod.rs`)
+## Forage System (`crates/codetether-agent/src/forage/mod.rs`)
 
 Forage is an autonomous OKR-driven work selection and execution system that
 selects high-value work items from active OKRs and optionally executes them
@@ -969,7 +969,7 @@ codetether forage --codebases /path/to/project --loop --moonshot "Build AI tools
 - **WHEN** a file exceeds 50 lines, **MUST** split into smaller modules
 - **IF** you're at 45+ lines, proactively refactor before hitting the limit
 - **FILES** should be focused: one struct, one function group, or one concern
-- **ENFORCEMENT** runs globally for changed `src/**/*.rs` files via `./check_file_limits.sh`
+- **ENFORCEMENT** runs globally for changed `crates/codetether-agent/src/**/*.rs` files via `./check_file_limits.sh`
 - **OVERSIZED LEGACY FILES** are grandfathered only as a ratchet: do not add lines before splitting them
 
 ### **Type Safety Enforcement**

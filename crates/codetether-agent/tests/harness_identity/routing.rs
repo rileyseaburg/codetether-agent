@@ -28,7 +28,7 @@ fn resolve(provider: &str, model: &str) -> String {
     AdapterIdentity(provider).resolved_model_identity(model)
 }
 
-#[path = "../../src/provider/routing_identity/tests.rs"]
+#[path = "../../../codetether-provider-factory/src/routing_identity_tests/mod.rs"]
 mod tests;
 
 #[test]

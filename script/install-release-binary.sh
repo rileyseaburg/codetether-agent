@@ -5,7 +5,9 @@ cargo_cmd=${1:-cargo}
 user_binary=${CODETETHER_USER_BIN:-"$HOME/.cargo/bin/codetether"}
 system_binary=${CODETETHER_SYSTEM_BIN:-/usr/local/bin/codetether}
 
-"$cargo_cmd" install --path . --force
+package_path=crates/codetether-agent
+[[ -f "$package_path/Cargo.toml" ]] || package_path=.
+"$cargo_cmd" install --path "$package_path" --force
 
 if [ ! -x "$user_binary" ]; then
   echo "Error: release binary was not installed at $user_binary" >&2

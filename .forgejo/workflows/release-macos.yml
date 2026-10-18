@@ -28,7 +28,7 @@ jobs:
       - id: version
         shell: bash
         run: |
-          version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)
+          version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' crates/codetether-agent/Cargo.toml | head -1)
           test -n "$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Prepare native dependencies

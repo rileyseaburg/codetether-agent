@@ -17,6 +17,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
+MANIFEST="crates/codetether-agent/Cargo.toml"
+[[ -f "$MANIFEST" ]] || MANIFEST="Cargo.toml"
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 CARGO_CMD="${CODETETHER_CARGO_CMD:-$SCRIPT_DIR/script/cargo-sccache.sh}"
 # Tests share process-wide environment, approval stores, and session registries.
@@ -24,9 +26,9 @@ CARGO_CMD="${CODETETHER_CARGO_CMD:-$SCRIPT_DIR/script/cargo-sccache.sh}"
 VERIFY_CMD="${CODETETHER_RELEASE_VERIFY_CMD:-$CARGO_CMD test --quiet --lib --tests -- --test-threads=1}"
 
 # Read current version from Cargo.toml
-CURRENT_VERSION="$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')"
+CURRENT_VERSION="$(grep '^version = ' "$MANIFEST" | head -1 | sed 's/version = "\(.*\)"/\1/')"
 if [ -z "$CURRENT_VERSION" ]; then
-    echo "Error: Could not read version from Cargo.toml"
+    echo "Error: Could not read version from $MANIFEST"
     exit 1
 fi
 
@@ -139,7 +141,7 @@ COMMITS="$(git log --oneline --no-merges "$COMMIT_RANGE" 2>/dev/null || git log 
 DIFFSTAT="$(git diff --stat "$LAST_TAG" HEAD 2>/dev/null || git diff --stat HEAD~5 HEAD 2>/dev/null || echo 'N/A')"
 
 # Step 3: Update version in Cargo.toml
-sed -i "s|^version = \".*\"|version = \"${new_version}\"|" Cargo.toml
+sed -i "s|^version = \".*\"|version = \"${new_version}\"|" "$MANIFEST"
 
 # Regenerate Cargo.lock
 "$CARGO_CMD" generate-lockfile --quiet
@@ -148,12 +150,12 @@ sed -i "s|^version = \".*\"|version = \"${new_version}\"|" Cargo.toml
 echo "==> Running release verification: $VERIFY_CMD"
 if ! bash -lc "$VERIFY_CMD"; then
     echo "Error: release verification failed after version bump. Reverting."
-    git restore Cargo.toml Cargo.lock
+    git restore -- "$MANIFEST" Cargo.lock
     exit 1
 fi
 
 "$SCRIPT_DIR/script/install-release-binary.sh" "$CARGO_CMD"
-git add Cargo.toml Cargo.lock
+git add -- "$MANIFEST" Cargo.lock
 git commit -m "chore: bump version to $new_version"
 git push origin "$CURRENT_BRANCH"
 

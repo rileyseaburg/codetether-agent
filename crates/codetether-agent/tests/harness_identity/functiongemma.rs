@@ -1,11 +1,8 @@
 //! Exercise raw-router identity without loading a model or enabling Candle.
 
-#[path = "../../src/cognition/tool_router/config.rs"]
-mod config;
-#[path = "../../src/cognition/tool_router/identity_prompt.rs"]
-mod identity_prompt;
-#[path = "../../src/cognition/tool_router/router_config.rs"]
-mod router_config;
+use codetether_cognition_core::tool_routing as config;
+use codetether_cognition_core::tool_routing as identity_prompt;
+use codetether_cognition_core::tool_routing as router_config;
 use config::ToolRouterConfig;
 
 #[test]

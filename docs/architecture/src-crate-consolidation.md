@@ -28706,3 +28706,29 @@ The first failed test run is retained. The concrete remaining package move and
 its manifest, Docker, release, test-fixture and example-path requirements are
 recorded in application-package-relocation.md. This prepares the move; source
 files have not been relocated in this commit. No Cargo, rustc or Python ran.
+
+### Relocate the application package into crates
+
+Moved the application package to crates/codetether-agent and made the root
+manifest a virtual workspace with that package as its default member. Library
+and binary names, package version, features and dependency versions are preserved;
+local dependency paths are rebased. Workspace profiles and vendor patches remain
+at the root. Moved source, integration tests and the three Rust examples together.
+
+Updated Docker copy inputs, native install paths, release/version readers,
+Windows MSI version lookup, source documentation and test fixture paths. The
+version script retains a legacy-layout fallback for its test fixtures. Fixed
+stale integration-test includes to address current owning crate sources/APIs.
+The naive dependency scan initially misclassified crate::codetether_agent in a
+worker-core test module as an external dependency; the corrected evidence scan
+excludes explicit crate/self/super-qualified local paths.
+
+The relocation verifier accounts for 1,281 source/test files: 1,273 byte-identical,
+eight explicit path/import fixes. Three Rust examples are byte-identical. The two
+preexisting source edits retain their bytes at the new paths and remain unstaged;
+Cargo.lock is untouched. Five Node layout/line-budget tests and the shell version
+regression pass. Declaration, module/dependency, production-dependency, file-size,
+formatting and whitespace checks pass (724 module roots, 618 packages). Evidence:
+artifacts/consolidation-application-package/. Initial failed checks are retained.
+No Cargo, rustc, Python, Rust tests, doc tests or Docker builds ran. The root src
+and tests directories are gone. Full consolidation remains active for final audit.

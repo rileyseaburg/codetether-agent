@@ -60,10 +60,12 @@ export CARGO_BUILD_BUILD_DIR="$PWD/target"
 tmp=$(mktemp)
 trap 'printf "Build output retained: %s\n" "$tmp"' EXIT
 
-# Default to install --path . if no args given
+# Default to installing the application workspace member.
 args=("$@")
 if [ ${#args[@]} -eq 0 ]; then
-  args=(install --path . --force)
+  package_path=crates/codetether-agent
+  [[ -f "$package_path/Cargo.toml" ]] || package_path=.
+  args=(install --path "$package_path" --force)
 fi
 
 version=$(./script/bump-dev-version.sh) || exit 1

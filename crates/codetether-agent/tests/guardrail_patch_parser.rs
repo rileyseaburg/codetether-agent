@@ -1,11 +1,6 @@
 //! Focused contracts for multi-file patches used by approval preflight.
 
-#[path = "../src/tool/patch/hunk_builder.rs"]
-mod hunk_builder;
-#[path = "../src/tool/patch/parser.rs"]
-mod parser;
-#[path = "../src/tool/patch/types.rs"]
-mod types;
+use codetether_tool_core::patch as parser;
 
 #[test]
 fn multi_file_headers_do_not_corrupt_or_retarget_hunks() {

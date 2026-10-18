@@ -1,0 +1,872 @@
+[package]
+name = "codetether-agent"
+version = "4.7.6-dev.38"
+
+
+edition = "2024"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+description = "A2A-native AI coding agent for the CodeTether ecosystem"
+license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
+exclude = [
+    "npm/",
+    "dist/",
+    "target/",
+    "vendor/",
+    "doc/",
+    "codetether-bin",
+    "docs/tui-screenshot.png",
+    "prd*.json",
+    "ui-prd.json",
+    "worktree-prd.json",
+    "feature_*.json",
+    "benchmark_results.json",
+    "subtask*.json",
+    "subtask*.md",
+    "*.txt",
+    "*.py",
+    "post.md",
+    "gap-inventory.md",
+    "content_inventory_document.md",
+    "static_analysis_report.md",
+    "provider_fields_analysis.md",
+    "research_interactive_file_editing_cli_tools.md",
+    "test_confirmation.md",
+    "test_history_navigation.md",
+    "test_theme.toml",
+    "DOCUMENTATION_UPDATE_SUMMARY.md",
+    "IMPLEMENTATION_ANALYSIS.md",
+    "TECHNOLOGY_ASSESSMENT.md",
+    "TUI_MODULE_DOCUMENTATION.md",
+    "RALPH_DOCUMENTATION.md",
+    "docs/assessment_config_main_lib.md",
+    "docs/gaps-closing.json",
+    "docs/mcp_metadata_storage_design.md",
+    "docs/mcp_metadata_storage_implementation.rs",
+    "docs/mcp_metadata_storage_summary.md",
+    "docs/perpetual_persona_swarms.md",
+    "docs/session-message-management-design.md",
+    "docs/subtask_*.md",
+    "docs/tool_registration_design.md",
+    "docs/tui_framework_brief.md",
+    "docs/tui_technical_specs.json",
+    "docs/agent-swarm-integration-*.md",
+    "docs/agent-swarm-integration-*.rs",
+    "docs/PROJECT_CONSTRAINTS_ANALYSIS.md",
+    "docs/RISK_ASSESSMENT_AND_MITIGATION.md",
+    "docs/TECHNICAL_REQUIREMENTS_SUMMARY.md",
+    ".codetether-todos.json",
+]
+
+[lib]
+name = "codetether_agent"
+path = "src/lib.rs"
+
+[[bin]]
+name = "codetether"
+path = "src/main.rs"
+
+[features]
+default = ["tetherscript"]
+tetherscript = ["codetether-native-validation/tetherscript", "codetether-native-swarm/tetherscript", "codetether-native-forage/tetherscript", "dep:codetether-native-tetherscript","codetether-native-providers/tetherscript","codetether-reasoning-repair/tetherscript", "codetether-forage-scoring/tetherscript", "codetether-tool-construction/tetherscript", "dep:codetether-tetherscript-computer", "dep:codetether-tetherscript-tool", "dep:tetherscript", "codetether-browser/tetherscript", "dep:codetether-tetherscript-values", "dep:codetether-provider-tetherscript", "codetether-provider-bonsai/tetherscript"]
+# Local in-process inference via Candle. Off by default: the agent leads with
+# remote/HTTP providers unless a local model backend is explicitly requested.
+candle = [
+    "codetether-native-thinker/candle",
+    "codetether-native-vectordb/candle",
+    "codetether-native-providers/candle",
+    "codetether-thinker-service/candle",
+    "codetether-embedding-backends/candle",
+    "codetether-cognition-native/candle",
+    "codetether-provider-bonsai/candle",
+    "dep:candle-core",
+    "dep:candle-nn",
+    "dep:candle-transformers",
+    "dep:tokenizers",
+]
+candle-cuda = ["codetether-native-providers/candle-cuda","codetether-thinker-service/candle-cuda", "codetether-embedding-backends/candle-cuda", "codetether-provider-local-cuda/candle-cuda", "codetether-cognition-native/candle-cuda", "candle", "codetether-provider-bonsai/candle-cuda", "candle-core/cuda", "candle-transformers/cuda"]
+candle-cudnn = ["codetether-thinker-service/candle-cudnn", "codetether-embedding-backends/candle-cudnn", "codetether-cognition-native/candle-cudnn", "candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
+candle-accelerate = ["codetether-thinker-service/candle-accelerate", "codetether-embedding-backends/candle-accelerate", "codetether-cognition-native/candle-accelerate", "candle", "candle-core/accelerate", "candle-transformers/accelerate"]
+candle-mkl = ["codetether-thinker-service/candle-mkl", "codetether-embedding-backends/candle-mkl", "codetether-cognition-native/candle-mkl", "candle", "candle-core/mkl", "candle-transformers/mkl"]
+functiongemma = ["codetether-native-thinker/functiongemma","codetether-cognition-native/functiongemma", "candle"]
+# Opt-in QUIC worker transport (server listener + worker dial path). The QUIC
+# primitive stack always compiles; this gates the live wiring.
+quic-transport = []
+# FIPS 140-3 build: link the NIST-validated AWS-LC FIPS module (aws-lc-fips-sys)
+# instead of stock AWS-LC, and refuse to start unless FIPS mode is active.
+# Requires CMake, Go, and a C compiler at build time.
+fips = [
+    "codetether-tls/fips",
+    "codetether-a2a-stream/fips",
+    "rustls/fips",
+    "aws-lc-rs/fips",
+    "quinn/rustls-aws-lc-rs-fips",
+]
+
+[dependencies]
+codetether-native-a2a = { path = "../codetether-native-a2a", version = "4.7.6-dev.38" }
+codetether-native-mcp-server = { path = "../codetether-native-mcp-server", version = "0.1.0" }
+codetether-native-goal-tools = { path = "../codetether-native-goal-tools", version = "0.1.0" }
+codetether-native-validation = { path = "../codetether-native-validation", version = "0.1.0" }
+codetether-native-session-store = { path = "../codetether-native-session-store", version = "0.1.0" }
+codetether-native-proactive = { path = "../codetether-native-proactive", version = "0.1.0" }
+codetether-native-swarm = { path = "../codetether-native-swarm", version = "0.1.0" }
+codetether-native-recall = { path = "../codetether-native-recall", version = "0.1.0" }
+codetether-native-ralph = { path = "../codetether-native-ralph", version = "0.1.0" }
+codetether-native-agent = { path = "../codetether-native-agent", version = "0.1.0" }
+codetether-native-server = { path = "../codetether-native-server", version = "0.1.0" }
+codetether-native-cognition = { path = "../codetether-native-cognition", version = "0.1.0" }
+codetether-native-forage = { path = "../codetether-native-forage", version = "0.1.0" }
+codetether-native-context = { path = "../codetether-native-context", version = "0.1.0" }
+codetether-native-session-runtime = { path = "../codetether-native-session-runtime", version = "0.1.0" }
+codetether-native-review = { path = "../codetether-native-review", version = "0.1.0" }
+codetether-native-goals = { path = "../codetether-native-goals", version = "0.1.0" }
+codetether-native-registry = { path = "../codetether-native-registry", version = "0.1.0" }
+codetether-native-worker = { path = "../codetether-native-worker", version = "0.1.0" }
+codetether-native-thinker = { path = "../codetether-native-thinker", version = "0.1.0" }
+codetether-native-crash = { path = "../codetether-native-crash", version = "4.7.6-dev.38" }
+codetether-native-cli = { path = "../codetether-native-cli", version = "4.7.6-dev.38" }
+codetether-native-tui = { path = "../codetether-native-tui", version = "0.1.0" }
+codetether-native-edit = { path = "../codetether-native-edit", version = "0.1.0" }
+codetether-native-rustyroad = { path = "../codetether-native-rustyroad", version = "4.7.6-dev.38" }
+codetether-native-mcp-client = { path = "../codetether-native-mcp-client", version = "4.7.6-dev.38" }
+codetether-native-tetherscript = { path = "../codetether-native-tetherscript", version = "0.1.0", optional = true }
+codetether-native-lsp = { path = "../codetether-native-lsp", version = "4.7.6-dev.38" }
+codetether-native-telemetry = { path = "../codetether-native-telemetry", version = "4.7.6-dev.38" }
+codetether-native-voice = { path = "../codetether-native-voice", version = "0.1.0" }
+codetether-native-bus = { path = "../codetether-native-bus", version = "0.1.0" }
+codetether-native-autochat = { path = "../codetether-native-autochat", version = "0.1.0" }
+codetether-native-image-clipboard = { path = "../codetether-native-image-clipboard", version = "0.1.0" }
+codetether-native-github-pr = { path = "../codetether-native-github-pr", version = "0.1.0" }
+codetether-native-worker-server = { path = "../codetether-native-worker-server", version = "0.1.0" }
+codetether-native-mux = { path = "../codetether-native-mux", version = "0.1.0" }
+codetether-native-approval = { path = "../codetether-native-approval", version = "0.1.0" }
+codetether-native-runtime-policy = { path = "../codetether-native-runtime-policy", version = "0.1.0" }
+codetether-native-indexer = { path = "../codetether-native-indexer", version = "0.1.0" }
+codetether-native-vectordb = { path = "../codetether-native-vectordb", version = "0.1.0" }
+codetether-native-memory = { path = "../codetether-native-memory", version = "0.1.0" }
+codetether-native-search = { path = "../codetether-native-search", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-a2a-inbox = { path = "../codetether-a2a-inbox", version = "0.1.0" }
+codetether-a2a-interactive = { path = "../codetether-a2a-interactive", version = "0.1.0" }
+codetether-a2a-worker-clone = { path = "../codetether-a2a-worker-clone", version = "0.1.0" }
+codetether-cognition-native = { path = "../codetether-cognition-native", version = "0.1.0" }
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+codetether-cognition-api = { path = "../codetether-cognition-api", version = "0.1.0" }
+codetether-voice-core = { path = "../codetether-voice-core", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-reasoning-repair = { path = "../codetether-reasoning-repair", version = "0.1.0" }
+codetether-autochat-core = { path = "../codetether-autochat-core", version = "0.1.0" }
+codetether-bus-s3 = { path = "../codetether-bus-s3", version = "0.1.0" }
+codetether-bus-http = { path = "../codetether-bus-http", version = "0.1.0" }
+codetether-worker-http = { path = "../codetether-worker-http", version = "0.1.0" }
+codetether-worker-cli = { path = "../codetether-worker-cli", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-bus-tool = { path = "../codetether-bus-tool", version = "0.1.0" }
+codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }
+codetether-a2a-server = { path = "../codetether-a2a-server", version = "0.1.0" }
+codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
+codetether-a2a-grpc = { path = "../codetether-a2a-grpc", version = "0.1.0" }
+codetether-a2a-discovery = { path = "../codetether-a2a-discovery", version = "0.1.0" }
+codetether-a2a-stream = { path = "../codetether-a2a-stream", version = "0.1.0" }
+codetether-swarm-monitor = { path = "../codetether-swarm-monitor", version = "0.1.0" }
+codetether-swarm-tool = { path = "../codetether-swarm-tool", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-swarm-cache = { path = "../codetether-swarm-cache", version = "0.1.0" }
+codetether-swarm-remote-runtime = { path = "../codetether-swarm-remote-runtime", version = "0.1.0" }
+codetether-swarm-validation = { path = "../codetether-swarm-validation", version = "0.1.0" }
+codetether-swarm-output = { path = "../codetether-swarm-output", version = "0.1.0" }
+codetether-swarm-bus = { path = "../codetether-swarm-bus", version = "0.1.0" }
+codetether-swarm-orchestrator = { path = "../codetether-swarm-orchestrator", version = "0.1.0" }
+codetether-swarm-k8s = { path = "../codetether-swarm-k8s", version = "0.1.0" }
+codetether-swarm-local-job = { path = "../codetether-swarm-local-job", version = "0.1.0" }
+codetether-swarm-local-stage = { path = "../codetether-swarm-local-stage", version = "0.1.0" }
+codetether-swarm-git = { path = "../codetether-swarm-git", version = "0.1.0" }
+codetether-swarm-delegation = { path = "../codetether-swarm-delegation", version = "0.1.0" }
+codetether-swarm-runtime = { path = "../codetether-swarm-runtime", version = "0.1.0" }
+codetether-swarm-agent = { path = "../codetether-swarm-agent", version = "0.1.0" }
+codetether-swarm-share = { path = "../codetether-swarm-share", version = "0.1.0" }
+codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }
+codetether-ralph-agent = { path = "../codetether-ralph-agent", version = "0.1.0" }
+codetether-ralph-sequential = { path = "../codetether-ralph-sequential", version = "0.1.0" }
+codetether-ralph-task = { path = "../codetether-ralph-task", version = "0.1.0" }
+codetether-ralph-stage = { path = "../codetether-ralph-stage", version = "0.1.0" }
+codetether-ralph-merge = { path = "../codetether-ralph-merge", version = "0.1.0" }
+codetether-ralph-relay = { path = "../codetether-ralph-relay", version = "0.1.0" }
+codetether-ralph-git = { path = "../codetether-ralph-git", version = "0.1.0" }
+codetether-ralph-run = { path = "../codetether-ralph-run", version = "0.1.0" }
+codetether-ralph-runtime = { path = "../codetether-ralph-runtime", version = "0.1.0" }
+codetether-benchmark = { path = "../codetether-benchmark", version = "0.1.0" }
+codetether-benchmark-runner = { path = "../codetether-benchmark-runner", version = "0.1.0" }
+codetether-github-pr = { path = "../codetether-github-pr", version = "0.1.0" }
+codetether-github-pr-cli = { path = "../codetether-github-pr-cli", version = "0.1.0" }
+codetether-crash = { path = "../codetether-crash", version = "0.1.0" }
+codetether-moltbook = { path = "../codetether-moltbook", version = "0.1.0" }
+codetether-search = { path = "../codetether-search", version = "0.1.0" }
+codetether-question = { path = "../codetether-question", version = "0.1.0" }
+rusqlite = { version = "0.32", features = ["bundled"] }
+# Workspace crates
+codetether-a2a-worker-core = { path = "../codetether-a2a-worker-core", version = "0.1.0" }
+codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
+codetether-agent-replay = { path = "../codetether-agent-replay", version = "0.1.0" }
+codetether-agent-completion = { path = "../codetether-agent-completion", version = "0.1.0" }
+codetether-agent-tools = { path = "../codetether-agent-tools", version = "0.1.0" }
+codetether-agent-runtime = { path = "../codetether-agent-runtime", version = "0.1.0" }
+codetether-http-error = { path = "../codetether-http-error", version = "0.1.0" }
+codetether-server-router = { path = "../codetether-server-router", version = "0.1.0" }
+codetether-server-runtime = { path = "../codetether-server-runtime", version = "0.1.0" }
+codetether-server-state = { path = "../codetether-server-state", version = "0.1.0" }
+codetether-turn-undo = { path = "../codetether-turn-undo", version = "0.1.0" }
+codetether-side-question = { path = "../codetether-side-question", version = "0.1.0" }
+codetether-new-session = { path = "../codetether-new-session", version = "0.1.0" }
+codetether-audit = { path = "../codetether-audit", version = "0.1.0" }
+codetether-bedrock-auth = { path = "../codetether-bedrock-auth", version = "0.1.0" }
+codetether-bedrock-protocol = { path = "../codetether-bedrock-protocol", version = "0.1.0" }
+codetether-bedrock-refresh = { path = "../codetether-bedrock-refresh", version = "0.1.0" }
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
+codetether-approval-session = { path = "../codetether-approval-session", version = "0.1.0" }
+codetether-approval-http = { path = "../codetether-approval-http", version = "0.1.0" }
+codetether-browser = { path = "../codetether-browser", version = "0.1.1" }
+codetether-runtime-policy = { path = "../codetether-runtime-policy", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-codex-auth = { path = "../codetether-codex-auth", version = "0.1.0" }
+codetether-codex-protocol = { path = "../codetether-codex-protocol", version = "0.1.0" }
+codetether-distill = { path = "../codetether-distill", version = "0.1.0" }
+codetether-event-stream = { path = "../codetether-event-stream", version = "0.1.0" }
+codetether-goal-runtime = { path = "../codetether-goal-runtime", version = "0.1.0" }
+codetether-goal-core = { path = "../codetether-goal-core", version = "0.1.0" }
+codetether-verifier-state = { path = "../codetether-verifier-state", version = "0.1.0" }
+codetether-verifier-http = { path = "../codetether-verifier-http", version = "0.1.0" }
+codetether-server-status = { path = "../codetether-server-status", version = "0.1.0" }
+codetether-indexer = { path = "../codetether-indexer", version = "0.1.0" }
+codetether-image = { path = "../codetether-image", version = "0.1.0" }
+codetether-google-auth = { path = "../codetether-google-auth", version = "0.1.0" }
+codetether-k8s = { path = "../codetether-k8s", version = "0.1.0" }
+codetether-knowledge-graph = { path = "../codetether-knowledge-graph", version = "0.1.0" }
+codetether-lsp-core = { path = "../codetether-lsp-core", version = "0.1.0" }
+codetether-lsp-client = { path = "../codetether-lsp-client", version = "0.1.0" }
+codetether-marketplace = { path = "../codetether-marketplace", version = "0.1.0" }
+codetether-mesh = { path = "../codetether-mesh", version = "0.1.0" }
+codetether-model-catalog = { path = "../codetether-model-catalog", version = "0.1.0" }
+codetether-forage-interactive = { path = "../codetether-forage-interactive", version = "0.1.0" }
+codetether-forage-core = { path = "../codetether-forage-core", version = "0.1.0" }
+codetether-okr = { path = "../codetether-okr", version = "0.1.0" }
+codetether-paths = { path = "../codetether-paths", version = "0.1.0" }
+codetether-platform = { path = "../codetether-platform", version = "0.1.0" }
+codetether-plugin-marketplace = { path = "../codetether-plugin-marketplace", version = "0.1.0" }
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-provider-step = { path = "../codetether-provider-step", version = "0.1.0" }
+codetether-provider-metrics = { path = "../codetether-provider-metrics", version = "0.1.0" }
+codetether-provider-codex = { path = "../codetether-provider-codex", version = "0.1.0" }
+codetether-provider-bedrock = { path = "../codetether-provider-bedrock", version = "0.1.0" }
+codetether-provider-registry = { path = "../codetether-provider-registry", version = "0.1.0" }
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-provider-factory = { path = "../codetether-provider-factory", version = "0.1.0" }
+codetether-provider-local-cuda = { path = "../codetether-provider-local-cuda", version = "0.1.0" }
+codetether-provider-bonsai = { path = "../codetether-provider-bonsai", version = "0.1.0" }
+codetether-provider-copilot = { path = "../codetether-provider-copilot", version = "0.1.0" }
+codetether-provider-anthropic = { path = "../codetether-provider-anthropic", version = "0.1.0" }
+codetether-provider-deepseek = { path = "../codetether-provider-deepseek", version = "0.1.0" }
+codetether-provider-google = { path = "../codetether-provider-google", version = "0.1.0" }
+codetether-provider-gemini-web = { path = "../codetether-provider-gemini-web", version = "0.1.0" }
+codetether-provider-glm5 = { path = "../codetether-provider-glm5", version = "0.1.0" }
+codetether-provider-moonshot = { path = "../codetether-provider-moonshot", version = "0.1.0" }
+codetether-provider-stepfun = { path = "../codetether-provider-stepfun", version = "0.1.0" }
+codetether-provider-vertex-anthropic = { path = "../codetether-provider-vertex-anthropic", version = "0.1.0" }
+codetether-provider-vertex-glm = { path = "../codetether-provider-vertex-glm", version = "0.1.0" }
+codetether-provider-openai = { path = "../codetether-provider-openai", version = "0.1.0" }
+codetether-provider-tetherscript = { path = "../codetether-provider-tetherscript", version = "0.1.0", optional = true }
+codetether-provider-openrouter = { path = "../codetether-provider-openrouter", version = "0.1.0" }
+codetether-provider-zai = { path = "../codetether-provider-zai", version = "0.1.0" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
+codetether-rlm-legacy = { path = "../codetether-rlm-legacy", version = "0.1.0" }
+codetether-rlm-routing = { path = "../codetether-rlm-routing", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+codetether-session-steering = { path = "../codetether-session-steering", version = "0.1.0" }
+codetether-codex-import = { path = "../codetether-codex-import", version = "0.1.0" }
+codetether-codex-transcript = { path = "../codetether-codex-transcript", version = "0.1.0" }
+codetether-codex-discovery = { path = "../codetether-codex-discovery", version = "0.1.0" }
+codetether-codex-records = { path = "../codetether-codex-records", version = "0.1.0" }
+codetether-workspace-index = { path = "../codetether-workspace-index", version = "0.1.0" }
+codetether-tool-recovery = { path = "../codetether-tool-recovery", version = "0.1.0" }
+codetether-command-prompt = { path = "../codetether-command-prompt", version = "0.1.0" }
+codetether-agent-identity = { path = "../codetether-agent-identity", version = "0.1.0" }
+codetether-context-health = { path = "../codetether-context-health", version = "0.1.0" }
+codetether-tool-panel = { path = "../codetether-tool-panel", version = "0.1.0" }
+codetether-message-bubbles = { path = "../codetether-message-bubbles", version = "0.1.0" }
+codetether-slash-command = { path = "../codetether-slash-command", version = "0.1.0" }
+codetether-composer-view = { path = "../codetether-composer-view", version = "0.1.0" }
+codetether-trust-status = { path = "../codetether-trust-status", version = "0.1.0" }
+codetether-chat-status = { path = "../codetether-chat-status", version = "0.1.0" }
+codetether-chat-layout = { path = "../codetether-chat-layout", version = "0.1.0" }
+codetether-message-cache = { path = "../codetether-message-cache", version = "0.1.0" }
+codetether-answer-review-view = { path = "../codetether-answer-review-view", version = "0.1.0" }
+codetether-tui-style = { path = "../codetether-tui-style", version = "0.1.0" }
+codetether-chat-transcript = { path = "../codetether-chat-transcript", version = "0.1.0" }
+codetether-file-share = { path = "../codetether-file-share", version = "0.1.0" }
+codetether-mcp-connections = { path = "../codetether-mcp-connections", version = "0.1.0" }
+codetether-mcp-command = { path = "../codetether-mcp-command", version = "0.1.0" }
+codetether-settings-policy = { path = "../codetether-settings-policy", version = "0.1.0" }
+codetether-approval-queue = { path = "../codetether-approval-queue", version = "0.1.0" }
+codetether-approval-edit = { path = "../codetether-approval-edit", version = "0.1.0" }
+codetether-approval-diff = { path = "../codetether-approval-diff", version = "0.1.0" }
+codetether-approval-view = { path = "../codetether-approval-view", version = "0.1.0" }
+codetether-proposed-content = { path = "../codetether-proposed-content", version = "0.1.0" }
+codetether-approval-diagnostics = { path = "../codetether-approval-diagnostics", version = "0.1.0" }
+codetether-relay-okr = { path = "../codetether-relay-okr", version = "0.1.0" }
+codetether-authorization-policy = { path = "../codetether-authorization-policy", version = "0.1.0" }
+codetether-openai-wire = { path = "../codetether-openai-wire", version = "0.1.0" }
+codetether-openai-adapter = { path = "../codetether-openai-adapter", version = "0.1.0" }
+codetether-tool-discovery = { path = "../codetether-tool-discovery", version = "0.1.0" }
+codetether-bus-sse = { path = "../codetether-bus-sse", version = "0.1.0" }
+codetether-event-replay = { path = "../codetether-event-replay", version = "0.1.0" }
+codetether-k8s-api = { path = "../codetether-k8s-api", version = "0.1.0" }
+codetether-audit-http = { path = "../codetether-audit-http", version = "0.1.0" }
+codetether-openai-stream = { path = "../codetether-openai-stream", version = "0.1.0" }
+codetether-openai-serving = { path = "../codetether-openai-serving", version = "0.1.0" }
+codetether-task-queue = { path = "../codetether-task-queue", version = "0.1.0" }
+codetether-task-ingest = { path = "../codetether-task-ingest", version = "0.1.0" }
+codetether-task-api = { path = "../codetether-task-api", version = "0.1.0" }
+codetether-voice-api = { path = "../codetether-voice-api", version = "0.1.0" }
+codetether-http-auth = { path = "../codetether-http-auth", version = "0.1.0" }
+codetether-session-resume = { path = "../codetether-session-resume", version = "0.1.0" }
+codetether-paste-buffer = { path = "../codetether-paste-buffer", version = "0.1.0" }
+codetether-task-tracker = { path = "../codetether-task-tracker", version = "0.1.0" }
+codetether-watchdog = { path = "../codetether-watchdog", version = "0.1.0" }
+codetether-tool-tracker = { path = "../codetether-tool-tracker", version = "0.1.0" }
+codetether-model-failover = { path = "../codetether-model-failover", version = "0.1.0" }
+codetether-stream-recovery = { path = "../codetether-stream-recovery", version = "0.1.0" }
+codetether-terminal-runtime = { path = "../codetether-terminal-runtime", version = "0.1.0" }
+codetether-spawn-form = { path = "../codetether-spawn-form", version = "0.1.0" }
+codetether-goal-prompt = { path = "../codetether-goal-prompt", version = "0.1.0" }
+codetether-question-view = { path = "../codetether-question-view", version = "0.1.0" }
+codetether-inspector-view = { path = "../codetether-inspector-view", version = "0.1.0" }
+codetether-interlude = { path = "../codetether-interlude", version = "0.1.0" }
+codetether-tool-preview = { path = "../codetether-tool-preview", version = "0.1.0" }
+codetether-session-picker = { path = "../codetether-session-picker", version = "0.1.0" }
+codetether-editor-lsp = { path = "../codetether-editor-lsp", version = "0.1.0" }
+codetether-editor = { path = "../codetether-editor", version = "0.1.0" }
+codetether-file-picker = { path = "../codetether-file-picker", version = "0.1.0" }
+codetether-fuzzy-finder = { path = "../codetether-fuzzy-finder", version = "0.1.0" }
+codetether-help-view = { path = "../codetether-help-view", version = "0.1.0" }
+codetether-tui-navigation = { path = "../codetether-tui-navigation", version = "0.1.0" }
+codetether-tui-models = { path = "../codetether-tui-models", version = "0.1.0" }
+codetether-model-store = { path = "../codetether-model-store", version = "0.1.0" }
+codetether-model-discovery = { path = "../codetether-model-discovery", version = "0.1.0" }
+codetether-model-picker = { path = "../codetether-model-picker", version = "0.1.0" }
+codetether-settings-view = { path = "../codetether-settings-view", version = "0.1.0" }
+codetether-swarm-view = { path = "../codetether-swarm-view", version = "0.1.0" }
+codetether-ralph-view = { path = "../codetether-ralph-view", version = "0.1.0" }
+codetether-symbol-mention = { path = "../codetether-symbol-mention", version = "0.1.0" }
+codetether-symbol-runtime = { path = "../codetether-symbol-runtime", version = "0.1.0" }
+codetether-symbol-search = { path = "../codetether-symbol-search", version = "0.1.0" }
+codetether-audit-view = { path = "../codetether-audit-view", version = "0.1.0" }
+codetether-bus-view = { path = "../codetether-bus-view", version = "0.1.0" }
+codetether-view-retention = { path = "../codetether-view-retention", version = "0.1.0" }
+codetether-audit-loop-view = { path = "../codetether-audit-loop-view", version = "0.1.0" }
+codetether-tui-worker = { path = "../codetether-tui-worker", version = "0.1.0" }
+codetether-worker-events = { path = "../codetether-worker-events", version = "0.1.0" }
+codetether-workspace-snapshot = { path = "../codetether-workspace-snapshot", version = "0.1.0" }
+codetether-workspace-view = { path = "../codetether-workspace-view", version = "0.1.0" }
+codetether-webview-bars = { path = "../codetether-webview-bars", version = "0.1.0" }
+codetether-webview = { path = "../codetether-webview", version = "0.1.0" }
+codetether-tui-render = { path = "../codetether-tui-render", version = "0.1.0" }
+codetether-goal-command = { path = "../codetether-goal-command", version = "0.1.0" }
+codetether-goal-answer = { path = "../codetether-goal-answer", version = "0.1.0" }
+codetether-goal-editor = { path = "../codetether-goal-editor", version = "0.1.0" }
+codetether-mcp-bus = { path = "../codetether-mcp-bus", version = "0.1.0" }
+codetether-mcp-fallback = { path = "../codetether-mcp-fallback", version = "0.1.0" }
+codetether-mcp-server = { path = "../codetether-mcp-server", version = "0.1.0" }
+codetether-mcp-approval = { path = "../codetether-mcp-approval", version = "0.1.0" }
+codetether-tui-reactor = { path = "../codetether-tui-reactor", version = "0.1.0" }
+codetether-git-credential-helper = { path = "../codetether-git-credential-helper", version = "0.1.0" }
+codetether-goal-verification = { path = "../codetether-goal-verification", version = "0.1.0" }
+codetether-approval-review = { path = "../codetether-approval-review", version = "0.1.0" }
+codetether-goal-tools = { path = "../codetether-goal-tools", version = "0.1.0" }
+codetether-agent-dashboard = { path = "../codetether-agent-dashboard", version = "0.1.0" }
+codetether-git-view = { path = "../codetether-git-view", version = "0.1.0" }
+codetether-protocol-view = { path = "../codetether-protocol-view", version = "0.1.0" }
+codetether-chat-sync = { path = "../codetether-chat-sync", version = "0.1.0" }
+codetether-message-formatter = { path = "../codetether-message-formatter", version = "0.1.0" }
+codetether-markdown-table = { path = "../codetether-markdown-table", version = "0.1.0" }
+codetether-markdown-block = { path = "../codetether-markdown-block", version = "0.1.0" }
+codetether-math-text = { path = "../codetether-math-text", version = "0.1.0" }
+codetether-code-render = { path = "../codetether-code-render", version = "0.1.0" }
+codetether-mermaid = { path = "../codetether-mermaid", version = "0.1.0" }
+codetether-terminal-text = { path = "../codetether-terminal-text", version = "0.1.0" }
+codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
+codetether-chat-submit = { path = "../codetether-chat-submit", version = "0.1.0" }
+codetether-tui-tick = { path = "../codetether-tui-tick", version = "0.1.0" }
+codetether-token-display = { path = "../codetether-token-display", version = "0.1.0" }
+codetether-latency-view = { path = "../codetether-latency-view", version = "0.1.0" }
+codetether-terminal-clipboard = { path = "../codetether-terminal-clipboard", version = "0.1.0" }
+codetether-clipboard-cli = { path = "../codetether-clipboard-cli", version = "0.1.0" }
+codetether-clipboard = { path = "../codetether-clipboard", version = "0.1.0" }
+codetether-bonsai-cli = { path = "../codetether-bonsai-cli", version = "0.1.0" }
+codetether-context-cli = { path = "../codetether-context-cli", version = "0.1.0" }
+codetether-search-cli = { path = "../codetether-search-cli", version = "0.1.0" }
+codetether-browser-cli = { path = "../codetether-browser-cli", version = "0.1.0" }
+codetether-oracle-cli = { path = "../codetether-oracle-cli", version = "0.1.0" }
+codetether-connect-cli = { path = "../codetether-connect-cli", version = "0.1.0" }
+codetether-auth-cli = { path = "../codetether-auth-cli", version = "0.1.0" }
+codetether-user-auth-cli = { path = "../codetether-user-auth-cli", version = "0.1.0" }
+codetether-device-auth = { path = "../codetether-device-auth", version = "0.1.0" }
+codetether-oauth-callback = { path = "../codetether-oauth-callback", version = "0.1.0" }
+codetether-cookie-auth-cli = { path = "../codetether-cookie-auth-cli", version = "0.1.0" }
+codetether-user-auth = { path = "../codetether-user-auth", version = "0.1.0" }
+codetether-bedrock-auth-cli = { path = "../codetether-bedrock-auth-cli", version = "0.1.0" }
+codetether-config-cli = { path = "../codetether-config-cli", version = "0.1.0" }
+codetether-vault-cli = { path = "../codetether-vault-cli", version = "0.1.0" }
+codetether-approval-cli = { path = "../codetether-approval-cli", version = "0.1.0" }
+codetether-indexer-cli = { path = "../codetether-indexer-cli", version = "0.1.0" }
+codetether-models-cli = { path = "../codetether-models-cli", version = "0.1.0" }
+codetether-worktree-cli = { path = "../codetether-worktree-cli", version = "0.1.0" }
+codetether-cleanup-cli = { path = "../codetether-cleanup-cli", version = "0.1.0" }
+codetether-actor = { path = "../codetether-actor", version = "0.1.0" }
+codetether-mux-cli = { path = "../codetether-mux-cli", version = "0.1.0" }
+codetether-mux-lifecycle = { path = "../codetether-mux-lifecycle", version = "0.1.0" }
+codetether-mux-control = { path = "../codetether-mux-control", version = "0.1.0" }
+codetether-mux-tool = { path = "../codetether-mux-tool", version = "0.1.0" }
+codetether-mux-command = { path = "../codetether-mux-command", version = "0.1.0" }
+codetether-mux-http = { path = "../codetether-mux-http", version = "0.1.0" }
+codetether-mux-server = { path = "../codetether-mux-server", version = "0.1.0" }
+codetether-mux-workspace = { path = "../codetether-mux-workspace", version = "0.1.0" }
+codetether-mux-agent-task = { path = "../codetether-mux-agent-task", version = "0.1.0" }
+codetether-mux-pty = { path = "../codetether-mux-pty", version = "0.1.0" }
+codetether-mux-attachment = { path = "../codetether-mux-attachment", version = "0.1.0" }
+codetether-terminal-replay = { path = "../codetether-terminal-replay", version = "0.1.0" }
+codetether-mux-input = { path = "../codetether-mux-input", version = "0.1.0" }
+codetether-mux-coordination = { path = "../codetether-mux-coordination", version = "0.1.0" }
+codetether-mux-client = { path = "../codetether-mux-client", version = "0.1.0" }
+codetether-mux-registry = { path = "../codetether-mux-registry", version = "0.1.0" }
+codetether-mux-protocol = { path = "../codetether-mux-protocol", version = "0.1.0" }
+codetether-mux-model = { path = "../codetether-mux-model", version = "0.1.0" }
+codetether-workspace-coordination = { path = "../codetether-workspace-coordination", version = "0.1.0" }
+codetether-worktree-lease = { path = "../codetether-worktree-lease", version = "0.1.0" }
+codetether-mutation-scope = { path = "../codetether-mutation-scope", version = "0.1.0" }
+codetether-request-preparation = { path = "../codetether-request-preparation", version = "0.1.0" }
+codetether-evidence-runtime = { path = "../codetether-evidence-runtime", version = "0.1.0" }
+codetether-evidence-ledger = { path = "../codetether-evidence-ledger", version = "0.1.0" }
+codetether-evidence-prompt = { path = "../codetether-evidence-prompt", version = "0.1.0" }
+codetether-evidence-core = { path = "../codetether-evidence-core", version = "0.1.0" }
+codetether-tool-outcome = { path = "../codetether-tool-outcome", version = "0.1.0" }
+codetether-tool-catalog = { path = "../codetether-tool-catalog", version = "0.1.0" }
+codetether-tool-parallel = { path = "../codetether-tool-parallel", version = "0.1.0" }
+codetether-tool-execution = { path = "../codetether-tool-execution", version = "0.1.0" }
+codetether-lsp-preflight = { path = "../codetether-lsp-preflight", version = "0.1.0" }
+codetether-tool-approval = { path = "../codetether-tool-approval", version = "0.1.0" }
+codetether-tool-reporting = { path = "../codetether-tool-reporting", version = "0.1.0" }
+codetether-validation = { path = "../codetether-validation", version = "0.1.0" }
+codetether-build-policy = { path = "../codetether-build-policy", version = "0.1.0" }
+codetether-provider-policy = { path = "../codetether-provider-policy", version = "0.1.0" }
+codetether-tool-call-parser = { path = "../codetether-tool-call-parser", version = "0.1.0" }
+codetether-edit-confirmation = { path = "../codetether-edit-confirmation", version = "0.1.0" }
+codetether-edit-policy = { path = "../codetether-edit-policy", version = "0.1.0" }
+codetether-refactor-guard = { path = "../codetether-refactor-guard", version = "0.1.0" }
+codetether-repeat-guard = { path = "../codetether-repeat-guard", version = "0.1.0" }
+codetether-cost-guard = { path = "../codetether-cost-guard", version = "0.1.0" }
+codetether-stream-restart = { path = "../codetether-stream-restart", version = "0.1.0" }
+codetether-stream-drain = { path = "../codetether-stream-drain", version = "0.1.0" }
+codetether-stream-outcome = { path = "../codetether-stream-outcome", version = "0.1.0" }
+codetether-stream-bounds = { path = "../codetether-stream-bounds", version = "0.1.0" }
+codetether-prompt-policy = { path = "../codetether-prompt-policy", version = "0.1.0" }
+codetether-runtime-input = { path = "../codetether-runtime-input", version = "0.1.0" }
+codetether-prior-context-access = { path = "../codetether-prior-context-access", version = "0.1.0" }
+codetether-prior-context-policy = { path = "../codetether-prior-context-policy", version = "0.1.0" }
+codetether-recall-context = { path = "../codetether-recall-context", version = "0.1.0" }
+codetether-recall-worker = { path = "../codetether-recall-worker", version = "0.1.0" }
+codetether-recall-query = { path = "../codetether-recall-query", version = "0.1.0" }
+codetether-recall-store = { path = "../codetether-recall-store", version = "0.1.0" }
+codetether-recall-index = { path = "../codetether-recall-index", version = "0.1.0" }
+codetether-proactive-context = { path = "../codetether-proactive-context", version = "0.1.0" }
+codetether-proactive-worker = { path = "../codetether-proactive-worker", version = "0.1.0" }
+codetether-proactive-runtime = { path = "../codetether-proactive-runtime", version = "0.1.0" }
+codetether-summary-quality = { path = "../codetether-summary-quality", version = "0.1.0" }
+codetether-proactive-planning = { path = "../codetether-proactive-planning", version = "0.1.0" }
+codetether-prepared-context = { path = "../codetether-prepared-context", version = "0.1.0" }
+codetether-context-dispatch = { path = "../codetether-context-dispatch", version = "0.1.0" }
+codetether-incremental-derivation = { path = "../codetether-incremental-derivation", version = "0.1.0" }
+codetether-reset-derivation = { path = "../codetether-reset-derivation", version = "0.1.0" }
+codetether-context-request = { path = "../codetether-context-request", version = "0.1.0" }
+codetether-context-legacy = { path = "../codetether-context-legacy", version = "0.1.0" }
+codetether-context-enforcement = { path = "../codetether-context-enforcement", version = "0.1.0" }
+codetether-context-compression = { path = "../codetether-context-compression", version = "0.1.0" }
+codetether-rlm-foreground = { path = "../codetether-rlm-foreground", version = "0.1.0" }
+codetether-rlm-background = { path = "../codetether-rlm-background", version = "0.1.0" }
+codetether-request-tokens = { path = "../codetether-request-tokens", version = "0.1.0" }
+codetether-step-limit = { path = "../codetether-step-limit", version = "0.1.0" }
+codetether-session-model-policy = { path = "../codetether-session-model-policy", version = "0.1.0" }
+codetether-session-history = { path = "../codetether-session-history", version = "0.1.0" }
+codetether-thread-events = { path = "../codetether-thread-events", version = "0.1.0" }
+codetether-thread-store = { path = "../codetether-thread-store", version = "0.1.0" }
+codetether-rate-gate = { path = "../codetether-rate-gate", version = "0.1.0" }
+codetether-session-bus = { path = "../codetether-session-bus", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+codetether-session-realtime = { path = "../codetether-session-realtime", version = "0.1.0" }
+codetether-session-access = { path = "../codetether-session-access", version = "0.1.0" }
+codetether-session-recovery = { path = "../codetether-session-recovery", version = "0.1.0" }
+codetether-session-http = { path = "../codetether-session-http", version = "0.1.0" }
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-cli-command = { path = "../codetether-cli-command", version = "0.1.0" }
+codetether-cli-startup = { path = "../codetether-cli-startup", version = "0.1.0" }
+codetether-tui-cli = { path = "../codetether-tui-cli", version = "0.1.0" }
+codetether-tui-startup = { path = "../codetether-tui-startup", version = "0.1.0" }
+codetether-moltbook-cli = { path = "../codetether-moltbook-cli", version = "0.1.0" }
+codetether-telemetry-cli = { path = "../codetether-telemetry-cli", version = "0.1.0" }
+codetether-okr-cli = { path = "../codetether-okr-cli", version = "0.1.0" }
+codetether-benchmark-cli = { path = "../codetether-benchmark-cli", version = "0.1.0" }
+codetether-ralph-cli = { path = "../codetether-ralph-cli", version = "0.1.0" }
+codetether-swarm-cli = { path = "../codetether-swarm-cli", version = "0.1.0" }
+codetether-mcp-cli = { path = "../codetether-mcp-cli", version = "0.1.0" }
+codetether-mcp-target = { path = "../codetether-mcp-target", version = "0.1.0" }
+codetether-run-jsonl = { path = "../codetether-run-jsonl", version = "0.1.0" }
+codetether-run-events = { path = "../codetether-run-events", version = "0.1.0" }
+codetether-run-context = { path = "../codetether-run-context", version = "0.1.0" }
+codetether-sol-workflow = { path = "../codetether-sol-workflow", version = "0.1.0" }
+codetether-run-resume = { path = "../codetether-run-resume", version = "0.1.0" }
+codetether-relay-plan = { path = "../codetether-relay-plan", version = "0.1.0" }
+codetether-run-command = { path = "../codetether-run-command", version = "0.1.0" }
+codetether-relay-planner = { path = "../codetether-relay-planner", version = "0.1.0" }
+codetether-relay-rlm = { path = "../codetether-relay-rlm", version = "0.1.0" }
+codetether-relay-report = { path = "../codetether-relay-report", version = "0.1.0" }
+codetether-cli-relay = { path = "../codetether-cli-relay", version = "0.1.0" }
+codetether-run-policy = { path = "../codetether-run-policy", version = "0.1.0" }
+codetether-run-report = { path = "../codetether-run-report", version = "0.1.0" }
+codetether-run-runtime = { path = "../codetether-run-runtime", version = "0.1.0" }
+codetether-go-cli = { path = "../codetether-go-cli", version = "0.1.0" }
+codetether-run-cli = { path = "../codetether-run-cli", version = "0.1.0" }
+codetether-server-cors = { path = "../codetether-server-cors", version = "0.1.0" }
+codetether-rlm-selection = { path = "../codetether-rlm-selection", version = "0.1.0" }
+codetether-rlm-cli = { path = "../codetether-rlm-cli", version = "0.1.0" }
+codetether-session-fork = { path = "../codetether-session-fork", version = "0.1.0" }
+codetether-session-catalog = { path = "../codetether-session-catalog", version = "0.1.0" }
+codetether-session-listing = { path = "../codetether-session-listing", version = "0.1.0" }
+codetether-snapshot-io = { path = "../codetether-snapshot-io", version = "0.1.0" }
+codetether-session-codec = { path = "../codetether-session-codec", version = "0.1.0" }
+codetether-session-schema = { path = "../codetether-session-schema", version = "0.1.0" }
+codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
+codetether-session-title = { path = "../codetether-session-title", version = "0.1.0" }
+codetether-run-checkpoint = { path = "../codetether-run-checkpoint", version = "0.1.0" }
+codetether-writeback-journal = { path = "../codetether-writeback-journal", version = "0.1.0" }
+codetether-session-location = { path = "../codetether-session-location", version = "0.1.0" }
+codetether-history-sink = { path = "../codetether-history-sink", version = "0.1.0" }
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
+codetether-tracked-vec = { path = "../codetether-tracked-vec", version = "0.1.0" }
+codetether-session-orchestration = { path = "../codetether-session-orchestration", version = "0.1.0" }
+codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }
+codetether-session-runtime = { path = "../codetether-session-runtime", version = "0.1.0" }
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
+codetether-theme = { path = "../codetether-theme", version = "0.1.0", features = ["ratatui"] }
+codetether-tls = { path = "../codetether-tls", version = "0.1.0" }
+codetether-mcp-transport = { path = "../codetether-mcp-transport", version = "0.1.0" }
+codetether-mcp-client = { path = "../codetether-mcp-client", version = "0.1.0" }
+codetether-mcp-core = { path = "../codetether-mcp-core", version = "0.1.0" }
+codetether-plan = { path = "../codetether-plan", version = "0.1.0" }
+codetether-file-diff = { path = "../codetether-file-diff", version = "0.1.0" }
+codetether-file-inspect = { path = "../codetether-file-inspect", version = "0.1.0" }
+codetether-k8s-tool = { path = "../codetether-k8s-tool", version = "0.1.0" }
+codetether-ripgrep-tool = { path = "../codetether-ripgrep-tool", version = "0.1.0" }
+codetether-grep-tool = { path = "../codetether-grep-tool", version = "0.1.0" }
+codetether-file-tools = { path = "../codetether-file-tools", version = "0.1.0" }
+codetether-file-tool-catalog = { path = "../codetether-file-tool-catalog", version = "0.1.0" }
+codetether-tool-construction = { path = "../codetether-tool-construction", version = "0.1.0" }
+codetether-worker-tools = { path = "../codetether-worker-tools", version = "0.1.0" }
+codetether-forage-execution = { path = "../codetether-forage-execution", version = "0.1.0" }
+codetether-forage-reporting = { path = "../codetether-forage-reporting", version = "0.1.0" }
+codetether-forage-runtime = { path = "../codetether-forage-runtime", version = "0.1.0" }
+codetether-forage-clarify = { path = "../codetether-forage-clarify", version = "0.1.0" }
+codetether-forage-scoring = { path = "../codetether-forage-scoring", version = "0.1.0" }
+codetether-embedding-backends = { path = "../codetether-embedding-backends", version = "0.1.0" }
+codetether-cognition-storage = { path = "../codetether-cognition-storage", version = "0.1.0" }
+codetether-cognition-runtime = { path = "../codetether-cognition-runtime", version = "0.1.0" }
+codetether-thinker-service = { path = "../codetether-thinker-service", version = "0.1.0" }
+codetether-voice-capture = { path = "../codetether-voice-capture", version = "0.1.0" }
+codetether-chat-files = { path = "../codetether-chat-files", version = "0.1.0" }
+codetether-chat-clipboard = { path = "../codetether-chat-clipboard", version = "0.1.0" }
+codetether-chat-events = { path = "../codetether-chat-events", version = "0.1.0" }
+codetether-chat-shell = { path = "../codetether-chat-shell", version = "0.1.0" }
+codetether-github-auth = { path = "../codetether-github-auth", version = "0.1.0" }
+codetether-webfetch = { path = "../codetether-webfetch", version = "0.1.0" }
+codetether-websearch = { path = "../codetether-websearch", version = "0.1.0" }
+codetether-code-search = { path = "../codetether-code-search", version = "0.1.0" }
+codetether-git-tool = { path = "../codetether-git-tool", version = "0.1.0" }
+codetether-okr-tool = { path = "../codetether-okr-tool", version = "0.1.0" }
+codetether-relay-tool = { path = "../codetether-relay-tool", version = "0.1.0" }
+codetether-question-tool = { path = "../codetether-question-tool", version = "0.1.0" }
+codetether-token-count = { path = "../codetether-token-count", version = "0.1.0" }
+codetether-image-tool = { path = "../codetether-image-tool", version = "0.1.0" }
+codetether-prd-tool = { path = "../codetether-prd-tool", version = "0.1.0" }
+codetether-task-tool = { path = "../codetether-task-tool", version = "0.1.0" }
+codetether-process-capture = { path = "../codetether-process-capture", version = "0.1.0" }
+codetether-process-tree = { path = "../codetether-process-tree", version = "0.1.0" }
+codetether-command-environment = { path = "../codetether-command-environment", version = "0.1.0" }
+codetether-command-guard = { path = "../codetether-command-guard", version = "0.1.0" }
+codetether-command-pty = { path = "../codetether-command-pty", version = "0.1.0" }
+codetether-command-session = { path = "../codetether-command-session", version = "0.1.0" }
+codetether-command-shell = { path = "../codetether-command-shell", version = "0.1.0" }
+codetether-write-stdin = { path = "../codetether-write-stdin", version = "0.1.0" }
+codetether-plugin-verification = { path = "../codetether-plugin-verification", version = "0.1.0" }
+codetether-plugin-http = { path = "../codetether-plugin-http", version = "0.1.0" }
+codetether-sandbox-environment = { path = "../codetether-sandbox-environment", version = "0.1.0" }
+codetether-sandbox-landlock = { path = "../codetether-sandbox-landlock", version = "0.1.0" }
+codetether-sandbox-bwrap = { path = "../codetether-sandbox-bwrap", version = "0.1.0" }
+codetether-sandbox-policy = { path = "../codetether-sandbox-policy", version = "0.1.0" }
+codetether-sandbox-runner = { path = "../codetether-sandbox-runner", version = "0.1.0" }
+codetether-sandbox-runtime = { path = "../codetether-sandbox-runtime", version = "0.1.0" }
+codetether-sandbox-seccomp = { path = "../codetether-sandbox-seccomp", version = "0.1.0" }
+codetether-sandbox-seatbelt = { path = "../codetether-sandbox-seatbelt", version = "0.1.0" }
+codetether-avatar-tool = { path = "../codetether-avatar-tool", version = "0.1.0" }
+codetether-podcast-tool = { path = "../codetether-podcast-tool", version = "0.1.0" }
+codetether-youtube-tool = { path = "../codetether-youtube-tool", version = "0.1.0" }
+codetether-tetherscript-computer = { path = "../codetether-tetherscript-computer", version = "0.1.0", optional = true }
+codetether-agent-communication = { path = "../codetether-agent-communication", version = "0.1.0" }
+codetether-agent-view = { path = "../codetether-agent-view", version = "0.1.0" }
+codetether-agent-command = { path = "../codetether-agent-command", version = "0.1.0" }
+codetether-peer-agent = { path = "../codetether-peer-agent", version = "0.1.0" }
+codetether-agent-tool = { path = "../codetether-agent-tool", version = "0.1.0" }
+codetether-child-turn = { path = "../codetether-child-turn", version = "0.1.0" }
+codetether-agent-status = { path = "../codetether-agent-status", version = "0.1.0" }
+codetether-agent-trace = { path = "../codetether-agent-trace", version = "0.1.0" }
+codetether-child-events = { path = "../codetether-child-events", version = "0.1.0" }
+codetether-agent-spawn = { path = "../codetether-agent-spawn", version = "0.1.0" }
+codetether-child-workspace = { path = "../codetether-child-workspace", version = "0.1.0" }
+codetether-agent-session = { path = "../codetether-agent-session", version = "0.1.0" }
+codetether-agent-input = { path = "../codetether-agent-input", version = "0.1.0" }
+codetether-spawn-policy = { path = "../codetether-spawn-policy", version = "0.1.0" }
+codetether-agent-messages = { path = "../codetether-agent-messages", version = "0.1.0" }
+codetether-agent-residency = { path = "../codetether-agent-residency", version = "0.1.0" }
+codetether-agent-lifecycle = { path = "../codetether-agent-lifecycle", version = "0.1.0" }
+codetether-agent-registry = { path = "../codetether-agent-registry", version = "0.1.0" }
+codetether-agent-tree = { path = "../codetether-agent-tree", version = "0.1.0" }
+codetether-agent-storage = { path = "../codetether-agent-storage", version = "0.1.0" }
+codetether-child-mailbox = { path = "../codetether-child-mailbox", version = "0.1.0" }
+codetether-collaboration-history = { path = "../codetether-collaboration-history", version = "0.1.0" }
+codetether-collaboration-state = { path = "../codetether-collaboration-state", version = "0.1.0" }
+codetether-collaboration-tools = { path = "../codetether-collaboration-tools", version = "0.1.0" }
+codetether-collaboration-input = { path = "../codetether-collaboration-input", version = "0.1.0" }
+codetether-session-task = { path = "../codetether-session-task", version = "0.1.0" }
+codetether-ralph-tool = { path = "../codetether-ralph-tool", version = "0.1.0" }
+codetether-rlm-tool = { path = "../codetether-rlm-tool", version = "0.1.0" }
+codetether-go-ralph = { path = "../codetether-go-ralph", version = "0.1.0" }
+codetether-go-prd = { path = "../codetether-go-prd", version = "0.1.0" }
+codetether-go-tool = { path = "../codetether-go-tool", version = "0.1.0" }
+codetether-go-monitor = { path = "../codetether-go-monitor", version = "0.1.0" }
+codetether-image-generation = { path = "../codetether-image-generation", version = "0.1.0" }
+codetether-session-recall = { path = "../codetether-session-recall", version = "0.1.0" }
+codetether-context-browse = { path = "../codetether-context-browse", version = "0.1.0" }
+codetether-context-summarize = { path = "../codetether-context-summarize", version = "0.1.0" }
+codetether-context-pin = { path = "../codetether-context-pin", version = "0.1.0" }
+codetether-context-budget = { path = "../codetether-context-budget", version = "0.1.0" }
+codetether-context-reset = { path = "../codetether-context-reset", version = "0.1.0" }
+codetether-history-page = { path = "../codetether-history-page", version = "0.1.0" }
+codetether-context-loader = { path = "../codetether-context-loader", version = "0.1.0" }
+codetether-tetherscript-tool = { path = "../codetether-tetherscript-tool", version = "0.1.0", optional = true }
+codetether-tool-progress = { path = "../codetether-tool-progress", version = "0.1.0" }
+codetether-application-mcp = { path = "../codetether-application-mcp", version = "0.1.0" }
+codetether-rustyroad-tool = { path = "../codetether-rustyroad-tool", version = "0.1.0" }
+codetether-mcp-bridge = { path = "../codetether-mcp-bridge", version = "0.1.0" }
+codetether-mcp-tools = { path = "../codetether-mcp-tools", version = "0.1.0" }
+codetether-search-router = { path = "../codetether-search-router", version = "0.1.0" }
+codetether-undo-tool = { path = "../codetether-undo-tool", version = "0.1.0" }
+codetether-voice-input-tool = { path = "../codetether-voice-input-tool", version = "0.1.0" }
+codetether-voice-stream-tool = { path = "../codetether-voice-stream-tool", version = "0.1.0" }
+codetether-voice-tool = { path = "../codetether-voice-tool", version = "0.1.0" }
+codetether-lsp-tool = { path = "../codetether-lsp-tool", version = "0.1.0" }
+codetether-browser-tool = { path = "../codetether-browser-tool", version = "0.1.0" }
+codetether-batch-tool = { path = "../codetether-batch-tool", version = "0.1.0" }
+codetether-memory-tool = { path = "../codetether-memory-tool", version = "0.1.0" }
+codetether-memory-core = { path = "../codetether-memory-core", version = "0.1.0" }
+codetether-skill-tool = { path = "../codetether-skill-tool", version = "0.1.0" }
+codetether-confirm-multiedit = { path = "../codetether-confirm-multiedit", version = "0.1.0" }
+codetether-confirm-edit = { path = "../codetether-confirm-edit", version = "0.1.0" }
+codetether-patch = { path = "../codetether-patch", version = "0.1.0" }
+codetether-edit = { path = "../codetether-edit", version = "0.1.0" }
+codetether-multiedit = { path = "../codetether-multiedit", version = "0.1.0" }
+codetether-morph-backend = { path = "../codetether-morph-backend", version = "0.1.0" }
+codetether-advanced-edit = { path = "../codetether-advanced-edit", version = "0.1.0" }
+codetether-bash-tool = { path = "../codetether-bash-tool", version = "0.1.0" }
+codetether-bash-policy = { path = "../codetether-bash-policy", version = "0.1.0" }
+codetether-exec-command = { path = "../codetether-exec-command", version = "0.1.0" }
+codetether-summary-producer = { path = "../codetether-summary-producer", version = "0.1.0" }
+codetether-prompt-loop = { path = "../codetether-prompt-loop", version = "0.1.0" }
+codetether-policy-eval = { path = "../codetether-policy-eval", version = "0.1.0" }
+codetether-replay-oracle = { path = "../codetether-replay-oracle", version = "0.1.0" }
+codetether-workspace-tools = { path = "../codetether-workspace-tools", version = "0.1.0" }
+codetether-tool-registry = { path = "../codetether-tool-registry", version = "0.1.0" }
+codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-computer-tool = { path = "../codetether-computer-tool", version = "0.1.0" }
+codetether-rlm-view = { path = "../codetether-rlm-view", version = "0.1.0" }
+codetether-windows-cli = { path = "../codetether-windows-cli", version = "0.1.0" }
+codetether-todo = { path = "../codetether-todo", version = "0.1.0" }
+codetether-tetherscript-values = { path = "../codetether-tetherscript-values", version = "0.1.0", optional = true }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+codetether-vectordb = { path = "../codetether-vectordb", version = "0.1.0" }
+codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
+codetether-worktree-isolation = { path = "../codetether-worktree-isolation", version = "0.1.0" }
+
+# Async runtime
+# Keep this on async-std's major version so the S3 executor cap configures the
+# same global pool used by MinIO instead of starting a second, unused pool.
+async-global-executor = "2.4.1"
+unicode-width = "0.2"
+tokio = { version = "1.53.1", features = ["full"] }
+tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-native-roots"] }
+
+# Clipboard support
+arboard = "3.4"
+
+# CLI
+clap = { version = "4.6.6", features = ["derive", "env"] }
+
+# HTTP server/client
+axum = { version = "0.8", features = ["ws", "macros"] }
+bytes = "1.12.1"
+reqwest = { version = "0.13.2", features = ["json", "stream", "rustls", "multipart", "form", "blocking"], default-features = false }
+http = "1.5.0"
+minio = "0.4.0"
+# All TLS uses aws-lc-rs; `ring` has no FIPS validation and must stay out of
+# the normal dependency graph (see src/tls.rs and the `fips` feature).
+rustls = { version = "0.23.43", default-features = false, features = ["aws_lc_rs", "std", "tls12", "logging"] }
+aws-lc-rs = { version = "1.18.1", default-features = false, features = ["aws-lc-sys", "alloc", "prebuilt-nasm"] }
+quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-aws-lc-rs"] }
+tower = "0.5"
+tower-http = { version = "0.7.0", features = ["cors", "trace", "auth"] }
+
+# Serialization
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+
+# AI providers
+async-openai = { version = "0.41.3", features = ["chat-completion"] }
+
+# A2A/MCP protocols
+jsonrpc-core = "18"
+
+# gRPC transport (A2A protocol)
+tonic = "0.14.3"
+tonic-prost = "0.14.3"
+tonic-web = "0.14"
+prost = "0.14.3"
+prost-types = "0.14.3"
+async-stream = "0.3"
+tokio-stream = { version = "0.1.19", features = ["sync"] }
+tokio-util = { version = "0.7.19", features = ["rt"] }
+
+# TUI
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm", "underline-color", "macros", "unstable-rendered-line-info"] }
+crossterm = { version = "0.29.0", features = ["event-stream"] }
+
+# Config
+config = "0.15"
+directories = "6"
+toml = "1.1.4+spec-1.1.0"
+dotenvy = "0.15"
+
+# Secrets (HashiCorp Vault)
+vaultrs = "0.8.0"
+
+# Kubernetes self-deployment
+kube = { version = "4.2.0", default-features = false, features = ["runtime", "client", "derive", "config", "rustls-tls", "aws-lc-rs"] }
+k8s-openapi = { version = "0.28.0", features = ["latest"] }
+
+# Plugin signing & sandboxing
+# See docs/tetherscript_dependency.md for the build requirement.
+tetherscript = { version = "0.1.0-alpha.30", features = ["tera", "openssl-tls"], optional = true }
+sha2 = "0.11.0"
+hmac = "0.13.0"
+hex = "0.4"
+
+# Image encoding
+base64 = "0.23.1"
+image = { version = "0.25", default-features = false, features = ["png", "bmp", "jpeg"] }
+
+# JWT token minting
+jsonwebtoken = { version = "11.0.0", features = ["aws_lc_rs"] }
+
+# Voice input (microphone capture + WAV encoding)
+cpal = "0.18.1"
+hound = "3.5"
+
+# Utilities
+anyhow = "1.0.104"
+thiserror = "2.0.20"
+tracing = "0.1"
+urlencoding = "2"
+rand = "0.10.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1.24.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3.34"
+async-trait = "0.1.92"
+lazy_static = "1.4"
+once_cell = "1.19"
+parking_lot = "0.12"
+dashmap = "6"
+glob = "0.3.4"
+html-escape = "0.2.15"
+ignore = "0.4.33"
+walkdir = "2"
+which = "8.0.5"
+regex = "1.13.1"
+memchr = "2.8.3"
+memmap2 = "0.9"
+similar = "3.1.2"
+lsp-types = "0.97.0"
+syntect = { version = "5", default-features = false, features = ["default-syntaxes", "default-themes", "regex-fancy"] }
+open = "5.4.1"
+tempfile = "3.25.0"
+candle-core = { version = "0.11.0", optional = true }
+candle-transformers = { version = "0.11.0", optional = true }
+candle-nn = { version = "0.11.0", optional = true }
+tokenizers = { version = "0.23.1", optional = true }
+hf-hub = { version = "1.0.0", default-features = false, features = ["socks", "blocking", "rustls-tls"] }
+sysinfo = "0.39.6"
+
+# Ropey rope buffer powers the TUI editor backend. This is the same rope type
+# Helix re-exports as `helix_core::Rope`, but depending on it directly avoids
+# pulling helix-core's vendored tree-sitter (`tree-house-bindings`), which
+# collides at link time with our standalone `tree-sitter` C symbols.
+ropey = "1.6"
+streaming-iterator = "0.1.9"
+mdns-sd = "0.20.3"
+gethostname = "1"
+if-addrs = "0.15.0"
+socket2 = "0.6.5"
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = [
+    "Foundation",
+    "Globalization",
+    "Graphics_Imaging",
+    "Media_Ocr",
+    "Storage_Streams",
+    "Win32_System_WinRT",
+    "Win32_Storage_Packaging_Appx",
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Com",
+    "Win32_System_DataExchange",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Memory",
+    "Win32_System_Registry", "Win32_Security_Cryptography",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+    "Win32_Security",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.189"
+
+[dev-dependencies]
+codetether-native-agent = { path = "../codetether-native-agent", version = "0.1.0", features = ["test-support"] }
+codetether-native-approval = { path = "../codetether-native-approval", version = "0.1.0", features = ["test-support"] }
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0", features = ["test-support"] }
+async-std = "1.13.2"
+tokio-test = "0.4"
+tempfile = "3"
+insta = "1"
+rcgen = { version = "0.14.9", default-features = false, features = ["crypto", "pem", "aws_lc_rs"] }

@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 fn root() -> io::Result<PathBuf> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
         .join("artifacts")
         .join("test-fixtures");
     std::fs::create_dir_all(&path)?;

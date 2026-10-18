@@ -128,7 +128,7 @@ jobs:
         if: ${{ steps.version.outputs.current != steps.version.outputs.next }}
         run: |
           set -euo pipefail
-          cargo set-version "${{ steps.version.outputs.next }}"
+          cargo set-version -p codetether-agent "${{ steps.version.outputs.next }}"
           cargo check
 
       - name: Commit and tag
@@ -137,7 +137,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Cargo.toml
+          git add crates/codetether-agent/Cargo.toml
           # Only stage Cargo.lock when the repository tracks it.
           # Some repos intentionally ignore lockfiles.
           if git ls-files --error-unmatch Cargo.lock >/dev/null 2>&1; then

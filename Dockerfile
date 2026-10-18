@@ -22,7 +22,6 @@ RUN sh /usr/local/share/codetether/apt-https.sh && apt-get update && apt-get ins
 
 # Copy source, workspace crates (including protobuf schema), policies, and examples
 COPY Cargo.toml Cargo.lock ./
-COPY src ./src
 COPY crates ./crates
 COPY vendor ./vendor
 COPY policies ./policies

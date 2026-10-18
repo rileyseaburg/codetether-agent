@@ -6,7 +6,7 @@ from .author import author
 from .tools import native_available
 
 def prepare(root: pathlib.Path, evidence: pathlib.Path) -> tuple[pathlib.Path, pathlib.Path, str]:
-    match = re.search(r'^version\s*=\s*"([^"]+)"', (root / 'Cargo.toml').read_text(), re.MULTILINE)
+    match = re.search(r'^version\s*=\s*"([^"]+)"', (root / 'crates' / 'codetether-agent' / 'Cargo.toml').read_text(), re.MULTILINE)
     if match is None: raise ValueError('Cargo package version is missing')
     version = match.group(1)
     payload = evidence / 'payload'

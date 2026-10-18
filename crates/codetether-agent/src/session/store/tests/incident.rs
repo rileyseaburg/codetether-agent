@@ -3,7 +3,7 @@ use super::super::{load, save};
 #[tokio::test]
 #[ignore = "requires the locally preserved incident fixture"]
 async fn migrate_incident_copy_without_touching_original() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let root = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
     let source = root.join(
         "artifacts/session-storage-84ee5af3/original/84ee5af3-841d-4741-81b3-7549c2420b31.json",
     );

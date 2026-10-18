@@ -44,7 +44,7 @@ jobs:
           elif [ -n "${{ github.event.inputs.version }}" ]; then
             ver="${{ github.event.inputs.version }}"
           else
-            ver=$(grep '^version' ../../Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
+            ver=$(grep '^version' ../../crates/codetether-agent/Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
           fi
           ver="${ver#v}"
           echo "Publishing version: $ver"

@@ -11,7 +11,7 @@ async fn rustyroad_mock_roundtrip_preserves_success_and_errors_and_reaps_child()
         let mut command = tokio::process::Command::new("sh");
         command.arg(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../tests/fixtures/rustyroad_mcp.sh"
+            "/../codetether-agent/tests/fixtures/rustyroad_mcp.sh"
         ));
         let mut process = Process::spawn_command(command).await.unwrap();
         let mut params: Params = serde_json::from_value(json!({"action":"call_tool",

@@ -1,16 +1,16 @@
-# Remaining application package relocation
+# Application package relocation
 
-The component crates own the extracted domain implementations. The root package
-still assembles their native adapters in `src/`, so the requested physical
-consolidation is incomplete. Moving a few more forwarding methods does not remove
-that remaining package boundary.
+The application package now lives in `crates/codetether-agent`; the repository
+root is a virtual workspace. Its source, integration tests and Rust examples moved
+together. Component implementations retain their dedicated owning crates.
+The remaining work is the final ownership and stale-reference audit.
 
-The next package-level change is to move `codetether-agent` into
-`crates/codetether-agent`. Keep its library name `codetether_agent`, binary name
+The package-level change moved `codetether-agent` into
+`crates/codetether-agent`. It preserves its library name `codetether_agent`, binary name
 `codetether`, features and dependency versions unchanged. This is the application
 composition crate; domain implementations retain their existing owning crates.
 
-## Concrete changes required
+## Relocation checklist
 
 1. Split the existing root manifest. Keep workspace membership, profiles and
    registry patches at the repository root. Move package, library, binary,
@@ -53,3 +53,17 @@ They do not compile Rust or prove Rust type correctness.
 
 Cargo, rustc and Python remain prohibited. The full consolidation goal remains
 active until the relocation and remaining ownership audit are actually complete.
+
+## Validation status
+
+The relocation verifier accounts for 1,281 moved source/test files and three
+Rust examples. Of the source/test files, 1,273 retain identical bytes; eight have
+explicit path or stale-import fixes. Source hashes preserve the two preexisting
+uncommitted edits at their relocated paths, and their index entries retain the
+original committed content. Cargo.lock is unchanged.
+
+Five Node layout/line-budget tests and the shell version-bump regression pass.
+The latter now tests both root-package and virtual-workspace layouts. Module and
+dependency scans pass with 618 packages. No Cargo, rustc, Python, Rust tests or
+Docker builds ran. Directory relocation is complete; the full consolidation goal
+still requires its final audit.

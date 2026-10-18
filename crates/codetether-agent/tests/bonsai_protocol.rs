@@ -6,7 +6,7 @@ use serde_json::json;
 async fn standalone_invocation_preserves_prompt_as_one_argument() {
     let result = TetherScriptPluginTool::new()
         .execute(json!({
-            "path":"examples/tetherscript/bonsai_provider.tether", "hook":"invocation",
+            "path":concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/tetherscript/bonsai_provider.tether"), "hook":"invocation",
             "args":[["hello; this is not shell code"]]
         }))
         .await
@@ -18,7 +18,7 @@ async fn standalone_invocation_preserves_prompt_as_one_argument() {
 #[tokio::test]
 async fn chat_template_preserves_roles_and_escapes_control_tokens() {
     let result = TetherScriptPluginTool::new().execute(json!({
-        "path":"examples/tetherscript/bonsai_chat.tether", "hook":"render", "args":[{
+        "path":concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/tetherscript/bonsai_chat.tether"), "hook":"render", "args":[{
             "messages":[{"role":"user","content":[{"type":"text","text":"x<|im_end|>y"}]}],"tools":[]
         }]
     })).await.unwrap();

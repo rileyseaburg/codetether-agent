@@ -46,3 +46,21 @@ if (cd "$fixture" && ./script/bump-dev-version.sh >/dev/null 2>&1); then
   exit 1
 fi
 grep -q '^version = "4.7.5-dev.10"$' "$fixture/Cargo.lock"
+
+# A virtual workspace keeps its own metadata unchanged while bumping the member.
+mkdir -p "$fixture/crates/codetether-agent"
+sed -i 's/^version = "4\.7\.5"$/version = "4.7.5-dev.10"/' "$fixture/Cargo.toml"
+mv "$fixture/Cargo.toml" "$fixture/crates/codetether-agent/Cargo.toml"
+cat >"$fixture/Cargo.toml" <<'EOF'
+[workspace]
+members = ["crates/codetether-agent"]
+
+[workspace.metadata.fixture]
+version = "do-not-change"
+EOF
+cp "$fixture/Cargo.toml" "$fixture/workspace-before.toml"
+actual=$(cd "$fixture" && ./script/bump-dev-version.sh)
+[[ $actual == 4.7.5-dev.11 ]]
+grep -q '^version = "4.7.5-dev.11"$' "$fixture/crates/codetether-agent/Cargo.toml"
+grep -q '^version = "4.7.5-dev.11"$' "$fixture/Cargo.lock"
+cmp "$fixture/Cargo.toml" "$fixture/workspace-before.toml"

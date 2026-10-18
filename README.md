@@ -68,17 +68,17 @@ From a checkout:
 ```sh
 git clone https://github.com/rileyseaburg/codetether-agent.git
 cd codetether-agent
-cargo install --path .
+cargo install --path crates/codetether-agent
 ```
 
 Optional features are explicit. The default feature set includes TetherScript.
 Local model, QUIC, and FIPS builds opt in separately:
 
 ```sh
-cargo install --path . --features candle
-cargo install --path . --features candle-cuda
-cargo install --path . --features quic-transport
-cargo install --path . --features fips
+cargo install --path crates/codetether-agent --features candle
+cargo install --path crates/codetether-agent --features candle-cuda
+cargo install --path crates/codetether-agent --features quic-transport
+cargo install --path crates/codetether-agent --features fips
 ```
 
 FIPS builds require CMake, Go, and a C compiler. See [FIPS](docs/fips.md).
@@ -249,7 +249,7 @@ model, QUIC, and FIPS feature sets may require extra system toolchains.
 Repository shape:
 
 ```text
-src/      main application, providers, tools, TUI, sessions, server, swarm
+crates/codetether-agent/  application composition, CLI and integration tests
 crates/   workspace support crates
 docs/     installation, security, plugin, transport, and operations guides
 vendor/   vendored build dependencies used by selected workflows

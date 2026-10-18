@@ -2,7 +2,8 @@
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-manifest="$root/Cargo.toml"
+manifest="$root/crates/codetether-agent/Cargo.toml"
+[[ -f "$manifest" ]] || manifest="$root/Cargo.toml"
 current=$(awk '
   /^\[package\][[:space:]]*$/ { package = 1; next }
   package && /^\[/ { package = 0 }

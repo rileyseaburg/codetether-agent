@@ -8,7 +8,7 @@ pub(super) fn project() -> tempfile::TempDir {
     let project = tempfile::tempdir().unwrap();
     let fixture = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../tests/fixtures/rustyroad_config.toml"
+        "/../codetether-agent/tests/fixtures/rustyroad_config.toml"
     ));
     for (file, name) in [
         ("rustyroad.toml", "dev_fixture"),
