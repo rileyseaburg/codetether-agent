@@ -17048,3 +17048,19 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-stream-retry/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared incoming-worker task ingestion and presentation
+
+- Moved background worker-task ingestion and idle-time presentation into
+  `codetether-tui-worker::tasks`, beside the existing worker queue owner.
+- Core drains ready bridge tasks, retains recent-task previews, applies the
+  existing bounded enqueue operation and constructs status/message content.
+  Native code binds the optional receiver and inserts/scrolls the chat view.
+- Preserved the idle gate before dequeue, task order, unknown-sender fallback,
+  message/status text, queue cap and recent-task history behavior.
+- Verification: full ingestion/presentation body comparisons, native bindings,
+  unchanged queue/history/state code, module/dependency graphs, direct
+  rustfmt, file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-worker-presentation/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

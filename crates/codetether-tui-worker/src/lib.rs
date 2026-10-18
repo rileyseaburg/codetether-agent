@@ -30,3 +30,6 @@ pub use worker_state::WorkerState;
 mod shutdown;
 /// Ordered deregistration and bounded bridge-task shutdown.
 pub use shutdown::shutdown_bridge;
+
+/// Incoming task ingestion and idle-time presentation.
+pub mod tasks;
