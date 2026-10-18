@@ -2,17 +2,8 @@
 
 use super::types::Session;
 
-codetether_session_store::impl_session_lifecycle_host!(
-    Session;
-    super::store::load,
-    super::listing::list_sessions_for_directory,
-    super::list_sessions,
-    super::index::recall::schedule,
-    super::index_produce::notify::saved,
-    super::store::archive::schedule,
-    super::index_produce::notify::removed,
-    super::index::recall::remove
-);
+codetether_native_session_store::impl_session_lifecycle!(Session);
+
 #[cfg(test)]
 mod location;
 #[cfg(test)]

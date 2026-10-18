@@ -1279,6 +1279,7 @@ dependencies = [
  "codetether-native-recall",
  "codetether-native-swarm",
  "codetether-native-proactive",
+ "codetether-native-session-store",
  "codetether-native-agent",
  "codetether-native-server",
  "codetether-native-cognition",
@@ -4023,6 +4024,21 @@ dependencies = [
  "codetether-search",
  "codetether-search-router",
  "codetether-tool-core",
+]
+
+[[package]]
+name = "codetether-native-session-store"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-history-sink",
+ "codetether-native-proactive",
+ "codetether-native-recall",
+ "codetether-provider-core",
+ "codetether-session-listing",
+ "codetether-session-store",
+ "serde",
 ]
 
 [[package]]

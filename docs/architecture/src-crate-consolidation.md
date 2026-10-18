@@ -26221,3 +26221,26 @@ checks pass. Only the new package/root dependency are staged in Cargo.lock;
 unrelated working files remain unchanged. Evidence is retained in
 artifacts/consolidation-native-proactive/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full workspace consolidation remains active and incomplete.
+
+### Native session persistence service ownership
+
+Moved persistence lifecycle service selection, native indexed loading and
+history archive construction into codetether-native-session-store. The crate
+owns loading/listing and recall/proactive/archive callbacks; its application
+bridge preserves the existing Session lifecycle trait required by schema
+methods. The root retains only history-sink field access and its concrete loader.
+Shared save, import and batch operations are re-exported directly; five old
+store adapter files are removed. Existing concrete persistence tests remain
+unchanged. The native Session contract explicitly requires deserializable tool
+records for indexed loading.
+
+Static comparisons cover protected migration, bounded loading, directory
+listing, archive message/identity/configuration access, consumer reads and each
+lifecycle bridge method. Shared lifecycle code still orders post-commit and
+removal callbacks. Declaration expansion covers the new bridge with no unbound
+variables or duplicate inherent methods. Module/dependency scans cover 728 roots
+and 614 crates without missing modules, cycles or undeclared dependencies.
+Standalone formatting, file-limit and whitespace checks pass. Only the new
+package/root dependency are staged in Cargo.lock; unrelated working files stay
+unchanged. Evidence: artifacts/consolidation-native-session-store/. No Cargo,
+rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
