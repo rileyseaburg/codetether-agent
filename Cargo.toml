@@ -124,6 +124,7 @@ members = [
     "crates/codetether-provider-local-cuda",
     "crates/codetether-provider-factory",
     "crates/codetether-provider-registry",
+    "crates/codetether-application-providers",
     "crates/codetether-provider-copilot",
     "crates/codetether-provider-anthropic",
     "crates/codetether-provider-deepseek",
@@ -784,6 +785,7 @@ codetether-provider-metrics = { path = "crates/codetether-provider-metrics", ver
 codetether-provider-codex = { path = "crates/codetether-provider-codex", version = "0.1.0" }
 codetether-provider-bedrock = { path = "crates/codetether-provider-bedrock", version = "0.1.0" }
 codetether-provider-registry = { path = "crates/codetether-provider-registry", version = "0.1.0" }
+codetether-application-providers = { path = "crates/codetether-application-providers", version = "0.1.0" }
 codetether-provider-factory = { path = "crates/codetether-provider-factory", version = "0.1.0" }
 codetether-provider-local-cuda = { path = "crates/codetether-provider-local-cuda", version = "0.1.0" }
 codetether-provider-bonsai = { path = "crates/codetether-provider-bonsai", version = "0.1.0" }

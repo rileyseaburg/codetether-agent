@@ -1,16 +1,8 @@
 //! Application registry adapter for shared auto-chat model selection.
 use crate::provider::{Provider, ProviderRegistry};
+use codetether_autochat_core::model_rotation;
 pub use codetether_autochat_core::model_rotation::RelayModelRotation;
-use codetether_autochat_core::model_rotation::{self, ModelRegistry};
 use std::sync::Arc;
-impl ModelRegistry for ProviderRegistry {
-    fn get(&self, name: &str) -> Option<Arc<dyn Provider>> {
-        ProviderRegistry::get(self, name)
-    }
-    fn list(&self) -> Vec<&str> {
-        ProviderRegistry::list(self)
-    }
-}
 /// Build rotation using the existing initialized application registry.
 pub async fn build_round_robin_model_rotation(
     registry: &Arc<ProviderRegistry>,

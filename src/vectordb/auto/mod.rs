@@ -6,7 +6,6 @@ pub use codetether_embedding_backends::auto::{bert_embedder, bert_forward, local
 pub use codetether_embedding_backends::auto::{catalog, hf_download, resources};
 use std::sync::Arc;
 pub mod provider_pick;
-mod registry;
 
 /// Select local or cloud embeddings, retaining the hashing fallback on failure.
 pub async fn auto_embedder(registry: &ProviderRegistry) -> Option<Arc<dyn TextEmbedder>> {

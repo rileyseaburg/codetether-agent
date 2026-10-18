@@ -1,7 +1,7 @@
-//! Read-only binding to the application's configured provider registry.
-use crate::provider::{Provider, ProviderRegistry};
+//! go provider registry integration.
+use crate::{Application, Provider, ProviderRegistry};
 use std::sync::Arc;
-impl codetether_go_tool::Registry for ProviderRegistry {
+impl<H: Application> codetether_go_tool::Registry for ProviderRegistry<H> {
     fn get(&self, name: &str) -> Option<Arc<dyn Provider>> {
         ProviderRegistry::get(self, name)
     }

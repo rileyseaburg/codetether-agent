@@ -2,14 +2,6 @@
 use crate::provider::{Provider, ProviderRegistry};
 pub use codetether_search_router::model::DEFAULT_ROUTER_MODEL;
 use std::sync::Arc;
-impl codetether_search_router::Registry for ProviderRegistry {
-    fn get(&self, name: &str) -> Option<Arc<dyn Provider>> {
-        ProviderRegistry::get(self, name)
-    }
-    fn list(&self) -> Vec<&str> {
-        ProviderRegistry::list(self)
-    }
-}
 /// Resolve a router model using the shared resolver and existing registry.
 ///
 /// # Arguments

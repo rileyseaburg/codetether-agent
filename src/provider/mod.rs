@@ -9,8 +9,8 @@
 //! - [`traits`] — the `Provider` trait and `ModelInfo`
 //! - [`registry`] — `ProviderRegistry` (name → provider map)
 //! - [`parse`] — model-string parser (`"openai/gpt-4o"` → `(provider, model)`)
-//! - [`init_vault`] — Vault-based provider initialization
-//! - [`init_config`] — TOML-config-based initialization
+//! - [`codetether_application_providers::ProviderRegistry`] — shared Vault,
+//!   configuration and task-key initialization using the native factory
 //! - [`init_env`] — environment-variable fallback
 //! - [`init_dispatch`] / [`init_dispatch_impl`] — per-provider constructors
 //!
@@ -71,6 +71,3 @@ pub use types::{
 };
 
 // ── Initialisation modules (impls on ProviderRegistry) ──────────────
-
-mod init_config;
-mod init_vault;

@@ -1,8 +1,7 @@
-//! Worker provider lookup bound to the application's configured registry.
-use super::{Provider, ProviderRegistry};
+//! openai provider registry integration.
+use crate::{Application, Provider, ProviderRegistry};
 use std::sync::Arc;
-
-impl codetether_a2a_worker_core::execution_policy::Registry for ProviderRegistry {
+impl<H: Application> codetether_openai_serving::http::Registry for ProviderRegistry<H> {
     fn list(&self) -> Vec<&str> {
         ProviderRegistry::list(self)
     }

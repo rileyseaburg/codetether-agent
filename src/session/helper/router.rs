@@ -2,8 +2,6 @@ use crate::provider::Message;
 use crate::tool::ToolRegistry;
 use std::path::Path;
 
-#[path = "router_registry.rs"]
-mod registry;
 pub use codetether_model_failover::router::known_good_router_candidates;
 
 pub async fn build_proactive_lsp_context_message(

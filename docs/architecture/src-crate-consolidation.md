@@ -21960,3 +21960,33 @@ cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
 No manifest or lockfile changes. Evidence:
 `artifacts/consolidation-provider-task-keys/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Dedicated application provider registry
+
+Moved the native provider-registry wrapper into
+`codetether-application-providers`, with separate collection, construction,
+configuration, Vault/cache, task-selection and conversion modules. Native
+`ProviderRegistry` is now an alias to the shared type bound to the existing
+factory. The native binding owns the same process-wide `OnceCell`; shared code
+retains the existing `get_or_try_init` sequence, Arc reuse and retry-on-failure
+behavior. Clone still clones the existing collection without re-registering
+or re-wrapping providers.
+
+Moved eighteen consumer trait implementations for model selection, discovery,
+worker requests, HTTP serving, search, embedding, spawn, side questions, Ralph,
+Go, RLM and forage into focused integration modules. Native UI/HTTP/factory
+hooks remain; twelve obsolete implementation files are removed. The side
+question implementation calls the same shared rotation resolver formerly
+reached through the native forwarding function. The task-key alias is preserved;
+its registry conversion now belongs to the new owning crate. Platform fallback
+clones the same inner registry through a borrowed accessor.
+
+Source comparisons preserve four collection methods, four constructors,
+Debug/Default, clone behavior, all eighteen integration implementations and the
+native cache configuration. Module/dependency checks cover 695 roots and 567
+crates with no missing modules or cycles. Manifest package names and versions
+match their owning crates. Direct rustfmt, native file-size limits and whitespace
+checks passed. Staged lock changes contain only the new package and its root
+dependency; unrelated working changes are intact. Evidence:
+`artifacts/consolidation-application-providers/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

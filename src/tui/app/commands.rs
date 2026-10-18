@@ -17,8 +17,6 @@ pub(crate) mod goal;
 mod open_editor;
 #[path = "commands/ralph_host.rs"]
 mod ralph_host;
-#[path = "commands/ralph_registry.rs"]
-mod ralph_registry;
 #[path = "commands/ralph_view.rs"]
 mod ralph_view;
 #[path = "commands/session_ops.rs"]

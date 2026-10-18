@@ -5,7 +5,6 @@ use std::sync::Arc;
 use crate::provider::{Provider, ProviderRegistry};
 use crate::rlm::{RlmConfig, RlmModelPurpose};
 #[path = "rlm_model/registry.rs"]
-mod registry;
 
 /// Resolve the configured RLM model for a call surface.
 pub(crate) async fn resolve(

@@ -1,0 +1,19 @@
+//! Runtime consumers of the application-bound provider registry.
+mod catalog;
+mod discovery;
+mod embedding;
+mod factory;
+mod failover;
+mod forage;
+mod go;
+mod openai;
+mod prd;
+mod question;
+mod ralph;
+mod rlm;
+mod rotation;
+mod search;
+mod session_model;
+mod spawn;
+mod swarm;
+mod worker;

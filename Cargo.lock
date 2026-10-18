@@ -1589,6 +1589,7 @@ dependencies = [
  "codetether-agent-runtime",
  "codetether-agent-replay",
  "codetether-application-mcp",
+ "codetether-application-providers",
  "codetether-application-registry",
  "codetether-approval-core",
  "codetether-approval-session",
@@ -2001,6 +2002,37 @@ dependencies = [
  "reqwest 0.13.4",
  "serde_json",
  "uuid",
+]
+
+[[package]]
+name = "codetether-application-providers"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-a2a-worker-core",
+ "codetether-autochat-core",
+ "codetether-config",
+ "codetether-embedding-backends",
+ "codetether-forage-execution",
+ "codetether-go-prd",
+ "codetether-go-tool",
+ "codetether-model-catalog",
+ "codetether-model-discovery",
+ "codetether-model-failover",
+ "codetether-openai-serving",
+ "codetether-provider-core",
+ "codetether-provider-factory",
+ "codetether-provider-registry",
+ "codetether-ralph-cli",
+ "codetether-rlm",
+ "codetether-search-router",
+ "codetether-secrets",
+ "codetether-session-model-policy",
+ "codetether-side-question",
+ "codetether-spawn-policy",
+ "codetether-swarm-tool",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

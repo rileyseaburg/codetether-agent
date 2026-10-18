@@ -1,7 +1,7 @@
-//! Supply configured application providers to shared catalog discovery.
-use crate::provider::{Provider, ProviderRegistry};
+//! catalog provider registry integration.
+use crate::{Application, Provider, ProviderRegistry};
 use std::sync::Arc;
-impl codetether_model_discovery::Registry for ProviderRegistry {
+impl<H: Application> codetether_model_catalog::discovery::CatalogRegistry for ProviderRegistry<H> {
     fn list(&self) -> Vec<&str> {
         ProviderRegistry::list(self)
     }
