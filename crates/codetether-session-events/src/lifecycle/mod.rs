@@ -16,3 +16,5 @@ pub use sync::{Session, Sync};
 /// Automatically implemented for types implementing all three lifecycle traits.
 pub trait Host: Processing + Completion + Sync {}
 impl<T: Processing + Completion + Sync> Host for T {}
+
+mod binding;
