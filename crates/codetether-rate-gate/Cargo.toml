@@ -1,0 +1,11 @@
+[package]
+name = "codetether-rate-gate"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Shared model request and token rate gating"
+
+[dependencies]
+once_cell = "1"
+tracing = "0.1"

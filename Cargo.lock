@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-rate-gate",
  "codetether-session-bus",
  "codetether-session-events",
  "codetether-session-catalog",
@@ -3789,6 +3790,14 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-rate-gate"
+version = "0.1.0"
+dependencies = [
+ "once_cell",
  "tracing",
 ]
 

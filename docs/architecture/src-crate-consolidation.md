@@ -9112,3 +9112,17 @@ graphs, file budgets and whitespace checks passed; the largest crate file
 has 21 code lines. Evidence is in `artifacts/consolidation-session-bus/`.
 Compilation and runtime tests were not run. No Cargo, rustc or Python
 commands ran. Full workspace consolidation remains active.
+
+### Dedicated model rate-gate crate
+
+Moved provider/model request and token gating into `crates/codetether-rate-gate`.
+Fourteen modules separate configured limits, shared state, routing, rolling
+window storage, eviction, accounting, cooldown and four existing tests. The
+native rate-gate module now only re-exports the shared API and singleton.
+
+Twenty static comparisons cover limits, gate operations, substitute order,
+shared initialization, window operations and unchanged test bodies. Module
+references, dependency graphs, file budgets and whitespace checks passed;
+the largest crate file has 32 code lines. Evidence is in
+`artifacts/consolidation-rate-gate/`. Compilation and runtime tests were not
+run. No Cargo, rustc or Python commands ran. Full consolidation remains active.
