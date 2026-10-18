@@ -11405,3 +11405,23 @@ Full workspace consolidation remains active.
   file-limit checks and git diff --check passed.
 - Evidence: artifacts/consolidation-ralph-view-state/. No Cargo, rustc,
   compilation or runtime tests were run. Full consolidation remains incomplete.
+
+### Ralph terminal renderer extraction
+
+- Moved all remaining renderer implementation from src/tui/ralph_view.rs into
+  crates/codetether-ralph-view. The native file now re-exports the public API.
+  No dependency additions were needed; the crate already owns Ralph state.
+- Added focused modules for run overview, header identity/counts/style, progress,
+  story list and row decorations, selected-story header rows, tool history and
+  previews, conversation, output, merge/error sections, scrolling and key hints.
+- Preserved labels, colors, layout constraints, empty states, selection and
+  scrolling behavior, 10-line message / 20-line output limits, and UTF-8-safe
+  preview truncation. Status-label extraction retains its static lifetime.
+- Verification: 50 static comparisons cover extracted helper bodies, reversals
+  of the renderer splits against every original rendering function, and all
+  unchanged state modules. The crate has 44 modules total (30 for presentation),
+  with a maximum of 39 nonblank/noncomment code lines per module. Lexical module
+  reachability, dependency-cycle checks, direct rustfmt, native file limits and
+  git diff --check passed. Evidence: artifacts/consolidation-ralph-render/.
+- No Cargo, rustc, compilation, runtime tests or terminal rendering were run.
+  Full workspace consolidation remains incomplete.

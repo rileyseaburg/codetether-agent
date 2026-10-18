@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
-description = "Ralph run view state and event reduction"
+description = "Ralph run state, event reduction and terminal presentation"
 
 [dependencies]
 codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }

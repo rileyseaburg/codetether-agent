@@ -1,8 +1,9 @@
-//! Ralph run state and event reduction for terminal views.
+//! Ralph run state, event reduction and terminal presentation.
 //!
 //! [RalphViewState] owns stories, selection and the optional event receiver.
 //! Attach a receiver, drain its events, and use the progress/navigation methods
 //! to present the run. Events use the shared [RalphEvent] schema.
+//! [render_ralph_view] draws either the overview or the selected story details.
 pub use codetether_ralph_core::events::{RalphEvent, RalphStoryInfo, RalphStoryStatus};
 mod detail_scroll;
 mod event_rx;
@@ -19,3 +20,6 @@ mod story_results;
 pub use state::RalphViewState;
 
 mod story_messages;
+
+mod view;
+pub use view::render_ralph_view;
