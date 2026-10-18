@@ -10,11 +10,6 @@ impl CognitionRuntime {
     /// Returns an error when the proposal is unknown, is not Critical risk, or
     /// has not yet reached Verified status.
     pub async fn approve_proposal(&self, proposal_id: &str) -> Result<()> {
-        codetether_cognition_core::proposal::dispatch::approve_proposal(
-            &self.proposals,
-            &self.pending_approvals,
-            proposal_id,
-        )
-        .await
+        self.state.approve_proposal(proposal_id).await
     }
 }

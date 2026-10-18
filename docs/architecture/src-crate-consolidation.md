@@ -16558,3 +16558,22 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-cognition-state/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared cognition state operations
+
+- Moved runtime reads, tool attachment, status projection, bounded event
+  publication, lineage lookup and approval delegation into the core runtime
+  that owns their state.
+- Split read operations into events, beliefs and workspace modules; status,
+  lineage and approval each have a focused module. Native methods retain their
+  signatures and forward to core state, preserving qualified application and
+  HTTP-adapter calls.
+- Preserved all read/clone behavior, status lock order, active-persona counting,
+  event buffer limits and existing approval/lineage policy calls.
+- Verification: all 16 method bodies compared to originals, every native
+  signature and forwarding call checked, unchanged lifecycle/HTTP callers,
+  state/buffer implementations, module/dependency graphs, direct rustfmt,
+  file limits and whitespace. No dependencies changed. Evidence:
+  `artifacts/consolidation-cognition-query/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

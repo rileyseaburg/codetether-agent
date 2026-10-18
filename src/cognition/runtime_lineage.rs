@@ -6,7 +6,6 @@ impl CognitionRuntime {
     ///
     /// Nodes and roots are sorted by persona ID for stable output.
     pub async fn lineage_graph(&self) -> LineageGraph {
-        let personas = self.personas.read().await;
-        codetether_cognition_core::persona::graph::lineage_graph(&personas)
+        self.state.lineage_graph().await
     }
 }
