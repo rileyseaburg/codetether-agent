@@ -16028,4 +16028,5 @@ dependencies = [
  "anyhow",
  "futures",
  "tokio",
+ "tracing",
 ]

@@ -14,3 +14,6 @@ pub use timers::Timers;
 
 /// Event-handler ordering and post-event draining.
 pub mod dispatch;
+
+/// Draw-event loop and resource shutdown ordering.
+pub mod driver;

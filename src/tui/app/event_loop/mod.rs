@@ -7,9 +7,9 @@
 mod autochat;
 mod bus_inbox;
 mod coalesce;
+mod driver;
 mod io;
 mod redraw;
-mod resilient;
 mod select_args;
 mod select_loop;
 mod setup;
@@ -44,35 +44,25 @@ pub(crate) async fn run_event_loop(
     registry: Option<Arc<ProviderRegistry>>,
     slot: &mut SessionSlot,
     bus_recorder: Arc<BusRecorder>,
-    mut worker_bridge: Option<TuiWorkerBridge>,
-    mut event_rx: mpsc::Receiver<SessionEvent>,
+    worker_bridge: Option<TuiWorkerBridge>,
+    event_rx: mpsc::Receiver<SessionEvent>,
     runtime: TuiSessionHandle,
-    mut notice_rx: mpsc::Receiver<SessionNotice>,
+    notice_rx: mpsc::Receiver<SessionNotice>,
 ) -> anyhow::Result<()> {
-    let mut setup = setup::create();
-    let mut last_draw = None;
-    loop {
-        tick::before_draw(app, &worker_bridge, &mut setup.worker_sync_cursor);
-        setup.mux_status.update(app, slot.view()).await;
-        redraw::draw_if_ready(terminal, app, slot.view(), &mut last_draw)?;
-        let mut io = LoopIo::new(&mut event_rx, &mut notice_rx, &mut setup.shutdown_rx);
-        let mut args = SelectArgs {
-            reader: &mut setup.reader,
-            app,
-            cwd,
-            slot,
-            registry: &registry,
-            worker_bridge: &mut worker_bridge,
-            runtime: &runtime,
-            io: &mut io,
-            timers: &mut setup.timers,
-            bus_recorder: &bus_recorder,
-        };
-        if resilient::run_resilient(&mut args).await {
-            break;
-        }
-    }
-
-    shutdown::finish(worker_bridge, &runtime, setup.mux_status).await;
-    Ok(())
+    let setup = setup::create();
+    codetether_tui_reactor::driver::run(driver::Native {
+        terminal,
+        app,
+        cwd,
+        registry,
+        slot,
+        bus_recorder,
+        worker_bridge,
+        event_rx,
+        runtime,
+        notice_rx,
+        setup,
+        last_draw: None,
+    })
+    .await
 }

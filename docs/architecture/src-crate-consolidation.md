@@ -17853,3 +17853,20 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-reactor-dispatch/`.
 - No Cargo, rustc, Python, event-loop execution, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Outer TUI driver and recoverable event errors
+
+- Moved the outer pre-draw/mux/draw/event loop and recoverable iteration-error
+  handling into `codetether-tui-reactor::driver`.
+- Native Prepare, Cycle and Finish adapters retain terminal/session resources,
+  exact channel borrows and existing setup/shutdown helpers. The shared driver
+  preserves early draw-error returns, redraw requests after event errors and
+  normal-quit cleanup order.
+- Verified full recovery logic, outer phase order, native callbacks, channel
+  mappings and shutdown ownership. Existing setup, redraw tests, event selector,
+  dispatch and cleanup remain unchanged. Module/dependency graphs, direct
+  rustfmt, file limits and whitespace passed. Added only the existing tracing
+  dependency to the reactor package; unrelated working-copy changes remain.
+  Evidence: `artifacts/consolidation-reactor-driver/`.
+- No Cargo, rustc, Python, TUI execution, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
