@@ -1,13 +1,10 @@
-//! Application redraw adapter for Tether Catch keys.
+//! Native play-break state binding for key input.
 use crate::tui::app::state::App;
 use crossterm::event::KeyEvent;
 pub(super) fn handle(app: &mut App, key: KeyEvent) -> bool {
-    let Some(game) = app.state.interlude.as_mut() else {
-        return false;
-    };
-    if !codetether_interlude::handle_key(game, key) {
-        return false;
-    }
-    app.state.needs_redraw = true;
-    true
+    codetether_interlude::interactive::handle(
+        &mut app.state.interlude,
+        &mut app.state.needs_redraw,
+        key,
+    )
 }

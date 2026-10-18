@@ -19707,3 +19707,21 @@ and manifests, lexical module reachability, dependency-cycle checks, file-size
 ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-error-events/`. No Cargo, rustc, Python, Rust tests or
 retry execution ran; compilation and runtime remain unverified.
+
+### Play-break activation and key handling
+
+Moved session play-break activation/deactivation and active-game key/redraw
+policy into `codetether-interlude::interactive`, alongside the existing game
+state and input rules. Native handlers now lend the optional game and redraw
+flag. The interlude crate depends on the shared session-event contract.
+
+Preserved fresh game creation, deactivation, unrelated-event passthrough,
+inactive-key rejection and redraw only after handled input. Existing game
+state and input implementations and both callers remain unchanged.
+
+Validation: two complete translated function bodies, native field bindings,
+unchanged game state/input/callers, isolated lockfile delta, lexical module
+reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-interlude/`. No Cargo, rustc,
+Python, Rust tests or game execution ran; compilation and runtime remain
+unverified.

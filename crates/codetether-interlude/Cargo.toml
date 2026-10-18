@@ -9,3 +9,4 @@ description = "Tether Catch play-break state, input, and terminal display"
 [dependencies]
 crossterm = "0.29.0"
 ratatui = { version = "0.30.2", default-features = false }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }

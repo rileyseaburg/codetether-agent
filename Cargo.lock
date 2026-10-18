@@ -6869,6 +6869,7 @@ dependencies = [
 name = "codetether-interlude"
 version = "0.1.0"
 dependencies = [
+ "codetether-session-events",
  "crossterm",
  "ratatui",
 ]

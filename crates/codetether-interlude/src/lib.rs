@@ -1,7 +1,7 @@
 //! Tether Catch play-break state, scoring, input, and terminal rendering.
 //!
 //! Create [InterludeState], apply [handle_key], and call [render] while active.
-//! The host owns activation and redraw scheduling.
+//! [interactive] handles activation and redraw through borrowed frontend fields.
 mod area;
 mod board;
 mod clock;
@@ -17,3 +17,6 @@ pub use state::InterludeState;
 pub const LANES: u8 = 5;
 /// Number of rows a falling star traverses.
 pub const ROWS: u8 = 7;
+
+/// Play-break activation and input redraw policy.
+pub mod interactive;
