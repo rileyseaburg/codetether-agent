@@ -15,7 +15,7 @@ macro_rules! __frontend_inbox_live {
                     &mut self.state.live_inbound
                 }
                 fn enqueue_task(&mut self, task: IncomingTask) {
-                    self.state.enqueue_worker_task(task);
+                    self.state.worker.enqueue_worker_task(task);
                 }
             }
             pub(crate) fn admit(app: &mut App) {

@@ -27,7 +27,7 @@ fn direct_message_to_tui_queues_untrusted_task() {
     let mut app = App::default();
     maybe_queue(&mut app, &envelope("tui"));
 
-    let task = app.state.dequeue_worker_task().expect("queued task");
+    let task = app.state.worker.dequeue_worker_task().expect("queued task");
     assert_eq!(task.task_id, "corr-1");
     assert_eq!(task.from_agent.as_deref(), Some("tester"));
     assert!(task.message.contains("untrusted user input"));
@@ -39,5 +39,5 @@ fn message_to_other_agent_is_ignored() {
     let mut app = App::default();
     maybe_queue(&mut app, &envelope("other"));
 
-    assert!(app.state.dequeue_worker_task().is_none());
+    assert!(app.state.worker.dequeue_worker_task().is_none());
 }

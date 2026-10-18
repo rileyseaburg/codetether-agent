@@ -11,8 +11,9 @@ impl codetether_tui_startup::hydrate::Effects<Session> for Native<'_> {
         if let Some(bridge) = worker {
             self.0
                 .state
+                .worker
                 .set_worker_bridge(bridge.worker_id.clone(), bridge.worker_name.clone());
-            self.0.state.register_worker_agent("tui".to_string());
+            self.0.state.worker.register_worker_agent("tui".to_string());
         }
     }
     fn refresh_suggestions(&mut self) {

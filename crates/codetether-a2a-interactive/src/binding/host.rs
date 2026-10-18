@@ -30,7 +30,7 @@ macro_rules! __frontend_inbox_host {
                     self.app.state.processing
                 }
                 fn dequeue_task(&mut self) -> Option<IncomingTask> {
-                    self.app.state.dequeue_worker_task()
+                    self.app.state.worker.dequeue_worker_task()
                 }
                 fn set_active_task(&mut self, task: IncomingTask) {
                     self.app.state.worker.active_remote_task = Some(task);

@@ -54,7 +54,7 @@ pub mod streaming;
 pub mod timing;
 pub mod types;
 pub mod view_save;
-pub mod worker_bridge;
+pub use codetether_tui_worker as worker_bridge;
 
 #[cfg(test)]
 mod tests;

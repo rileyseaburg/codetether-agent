@@ -14,7 +14,7 @@ impl codetether_bus_view::ingress::Effects for Native<'_> {
         self.0.state.bus_log.ingest(envelope);
     }
     fn enqueue_task(&mut self, task: IncomingTask) {
-        self.0.state.enqueue_worker_task(task);
+        self.0.state.worker.enqueue_worker_task(task);
     }
     fn owns_agent(&self, parent: &str, agent: &str) -> bool {
         crate::tui::app::managed_agent::owned(parent, agent)

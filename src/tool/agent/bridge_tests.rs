@@ -44,6 +44,6 @@ async fn owned_session_result_is_rendered_without_becoming_a_prompt() {
             .iter()
             .any(|message| message.content == "done")
     );
-    assert!(app.state.dequeue_worker_task().is_none());
+    assert!(app.state.worker.dequeue_worker_task().is_none());
     store::remove(&child_id);
 }

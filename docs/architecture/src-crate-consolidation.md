@@ -28337,3 +28337,19 @@ file-limit checks pass (724 roots, 617 crates). Evidence:
 artifacts/consolidation-session-picker-methods/. No dependencies or unrelated
 working files changed. No Cargo, rustc, Python, compilation or runtime tests ran;
 the moved tests were not executed. Full consolidation remains active and incomplete.
+
+### Direct worker-state operations
+
+Removed the root worker_bridge.rs declaration and its six generated AppState
+methods. Worker identity initialization, registration and inbox queue callers
+now invoke WorkerState directly. The former state::worker_bridge module path
+re-exports codetether-tui-worker.
+
+Static comparison covers all seven changed caller/registration files and verifies
+that the six former wrappers directly delegated to the same crate methods.
+Identity, recent-task and bounded-queue implementations are unchanged.
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks pass (724 roots, 617 crates). Evidence:
+artifacts/consolidation-worker-methods/. No dependencies or unrelated working
+files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.
