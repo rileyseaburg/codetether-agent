@@ -19639,3 +19639,26 @@ lexical module reachability, dependency-cycle checks, file-size ratchet,
 whitespace and direct formatting. Evidence:
 `artifacts/consolidation-session-lifecycle/`. No Cargo, rustc, Python, Rust
 tests or lifecycle execution ran; compilation and runtime remain unverified.
+
+### Tool event presentation and completion hints
+
+Moved tool start/completion/heartbeat routing, pending-tool presentation,
+stream-preview flushing and structured status hints into
+`codetether-chat-events::tools`. Separate start, complete, approval-hint and
+block-hint modules retain their responsibilities. Native timing/view adapters
+supply 14 operations; approval requests still enter the unchanged native
+analysis/review path. Moved the block-hint regression tests with their helper.
+
+Preserved worker notification before timing setup, accumulated assistant text
+flush before the tool-call message, bounded raw payloads, timing records and
+scroll/status ordering. Failed completions still prefer approval guidance,
+then known block reasons, then the generic result preview. Trust guidance is
+requested lazily only after an approval identifier is found.
+
+Validation: ten complete translated function bodies, 14 native bindings,
+unchanged moved block tests and existing tool-event integration tests,
+unchanged approval delivery/pipeline, isolated lockfile changes, lexical module
+reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-tool-events/`. No Cargo, rustc,
+Python, Rust tests or tool/approval execution ran; compilation and runtime
+remain unverified.

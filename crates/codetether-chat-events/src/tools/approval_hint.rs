@@ -2,9 +2,13 @@
 
 use serde_json::Value;
 
-pub(super) fn status_text(tool: &str, output: &str) -> Option<String> {
+pub(super) fn status_text(
+    tool: &str,
+    output: &str,
+    guidance: impl FnOnce() -> String,
+) -> Option<String> {
     let id = approval_id(output)?;
-    let guidance = crate::tui::ui::trust_status::approval_guidance();
+    let guidance = guidance();
     Some(format!(
         "Approval required for `{tool}`. Ctrl+A approves, Ctrl+D denies. Slash: `/approve {id}` or `/deny {id}`. {guidance}"
     ))

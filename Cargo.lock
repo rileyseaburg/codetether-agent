@@ -2284,9 +2284,11 @@ dependencies = [
 name = "codetether-chat-events"
 version = "0.1.0"
 dependencies = [
+ "codetether-approval-core",
  "codetether-chat-model",
  "codetether-session-events",
  "codetether-util",
+ "serde_json",
 ]
 
 [[package]]

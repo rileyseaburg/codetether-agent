@@ -15,3 +15,6 @@ pub use attach::attach_usage_to_last_completion_message;
 pub use dispatch::handle_event as handle_text_event;
 pub use stream_view::StreamView;
 pub use usage_view::UsageView;
+
+/// Tool-call messages, timing and structured completion status.
+pub mod tools;
