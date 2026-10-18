@@ -1,6 +1,6 @@
 //! Classify the source of a selection using the harness's precedence.
 use super::types::Source;
-use crate::tool::goal::verify::is_self_review;
+use codetether_verifier_state::is_self_review;
 
 pub(super) fn classify(
     runtime: Option<&str>,

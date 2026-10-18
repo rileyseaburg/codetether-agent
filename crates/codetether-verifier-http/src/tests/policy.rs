@@ -4,12 +4,12 @@
 fn verifier_model_api_policy_requires_agent_write_for_mutations() {
     let path = "/api/config/verifier-model";
     assert_eq!(
-        crate::server::match_policy_rule(path, "GET"),
+        codetether_authorization_policy::routes::match_policy_rule(path, "GET"),
         Some("agent:read")
     );
     for method in ["PUT", "DELETE"] {
         assert_eq!(
-            crate::server::match_policy_rule(path, method),
+            codetether_authorization_policy::routes::match_policy_rule(path, method),
             Some("agent:write")
         );
     }

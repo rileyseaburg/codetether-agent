@@ -1,7 +1,7 @@
 //! Use verifier precedence for configuration, separately from observed execution.
 
 use super::{defaults::Defaults, types::Settings};
-use crate::tool::goal::verify::{observation::Observation, select_verifier_model};
+use codetether_verifier_state::{observation::Observation, select_verifier_model};
 
 fn clean(value: Option<String>) -> Option<String> {
     value

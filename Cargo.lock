@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-verifier-http",
  "codetether-verifier-state",
  "codetether-approval-http",
  "codetether-cognition-api",
@@ -6669,6 +6670,22 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-verifier-http"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "codetether-config",
+ "codetether-verifier-state",
+ "codetether-http-auth",
+ "codetether-authorization-policy",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
 ]
 
 [[package]]

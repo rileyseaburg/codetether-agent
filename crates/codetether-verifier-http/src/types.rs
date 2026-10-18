@@ -1,6 +1,6 @@
 //! Typed verifier settings and harness-reported execution identity.
 
-use crate::tool::goal::verify::observation::Observation;
+use codetether_verifier_state::observation::Observation;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]

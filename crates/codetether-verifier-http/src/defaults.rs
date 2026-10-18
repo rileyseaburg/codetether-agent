@@ -9,8 +9,8 @@ pub(super) struct Defaults {
 impl Defaults {
     pub(super) async fn load() -> anyhow::Result<Self> {
         Ok(Self {
-            environment: std::env::var(crate::tool::goal::verify::VERIFIER_MODEL_ENV).ok(),
-            configured: crate::config::Config::load().await?.default_model,
+            environment: std::env::var(codetether_verifier_state::VERIFIER_MODEL_ENV).ok(),
+            configured: codetether_config::Config::load().await?.default_model,
         })
     }
 }

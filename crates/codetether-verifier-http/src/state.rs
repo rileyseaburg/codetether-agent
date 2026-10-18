@@ -1,7 +1,7 @@
 //! Configuration service state shared with the verifier harness, not an HTTP-only copy.
 
 use super::{defaults::Defaults, types::Settings};
-use crate::tool::goal::verify::{
+use codetether_verifier_state::{
     VerifierSelection,
     observation::{ObservationStore, shared_observations},
     shared_selection,

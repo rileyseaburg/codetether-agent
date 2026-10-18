@@ -42,6 +42,7 @@ members = [
     "crates/codetether-event-stream",
     "crates/codetether-goal-core",
     "crates/codetether-verifier-state",
+    "crates/codetether-verifier-http",
     "crates/codetether-goal-runtime",
     "crates/codetether-grep-tool",
     "crates/codetether-github-pr",
@@ -575,6 +576,7 @@ codetether-event-stream = { path = "crates/codetether-event-stream", version = "
 codetether-goal-runtime = { path = "crates/codetether-goal-runtime", version = "0.1.0" }
 codetether-goal-core = { path = "crates/codetether-goal-core", version = "0.1.0" }
 codetether-verifier-state = { path = "crates/codetether-verifier-state", version = "0.1.0" }
+codetether-verifier-http = { path = "crates/codetether-verifier-http", version = "0.1.0" }
 codetether-indexer = { path = "crates/codetether-indexer", version = "0.1.0" }
 codetether-image = { path = "crates/codetether-image", version = "0.1.0" }
 codetether-google-auth = { path = "crates/codetether-google-auth", version = "0.1.0" }

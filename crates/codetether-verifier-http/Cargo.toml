@@ -1,0 +1,21 @@
+[package]
+name = "codetether-verifier-http"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "HTTP configuration and observation of the goal verifier"
+
+[dependencies]
+anyhow = "1"
+axum = "0.8"
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-verifier-state = { path = "../codetether-verifier-state", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+codetether-http-auth = { path = "../codetether-http-auth", version = "0.1.0" }
+codetether-authorization-policy = { path = "../codetether-authorization-policy", version = "0.1.0" }
+serde_json = "1"
+tokio = { version = "1.53.1", features = ["macros", "rt"] }
+tower = { version = "0.5", features = ["util"] }

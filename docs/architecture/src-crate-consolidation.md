@@ -13347,3 +13347,22 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, provider invocation or verifier execution ran.
   The full consolidation remains incomplete; verifier HTTP is still native.
+
+### Verifier settings HTTP extraction
+
+- Moved verifier settings configuration loading, validation, source/identity
+  projection, HTTP handlers and existing tests from src/server/verifier_model
+  into codetether-verifier-http. The native module now re-exports its router.
+- Both API and runner use codetether-verifier-state's process-wide selection
+  and observations. Authentication and policy remain outer server layers;
+  moved tests use the same shared auth implementation and policy table.
+- GET/PUT/DELETE behavior, unknown-field rejection, source precedence and
+  distinction between selected settings and observed execution are unchanged.
+  Authentication and input-validation tests were split into separate modules
+  so every module remains below 45 code lines.
+- Verification: 37 static source/fixture/size checks passed, plus module
+  reachability, local dependency DAG, direct rustfmt, source file limits and
+  whitespace checks. Evidence: artifacts/consolidation-verifier-http/.
+- Only this package and the root dependency were staged from Cargo.lock.
+  No Cargo, rustc, compilation, Rust tests or live configuration changes ran.
+  The broader consolidation remains incomplete.

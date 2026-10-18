@@ -2,9 +2,9 @@
 
 use super::super::{ApiState, defaults::Defaults};
 pub(super) use super::request::call;
-use crate::server::auth::{AuthState, require_auth};
-use crate::tool::goal::verify::{VerifierSelection, observation::ObservationStore};
 use axum::{Extension, Router, middleware};
+use codetether_http_auth::{AuthState, require_auth};
+use codetether_verifier_state::{VerifierSelection, observation::ObservationStore};
 use std::sync::Arc;
 
 pub(super) fn setup() -> (Router, Arc<VerifierSelection>, Arc<ObservationStore>) {

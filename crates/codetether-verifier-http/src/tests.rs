@@ -6,3 +6,5 @@ mod request;
 mod settings;
 mod support;
 mod validation;
+
+mod authentication;
