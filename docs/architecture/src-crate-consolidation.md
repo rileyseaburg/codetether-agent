@@ -27855,3 +27855,17 @@ and whitespace checks pass for 725 roots and 617 crates. Tests and unrelated
 files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-runtime-session/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Clipboard event-handler frontend bindings
+
+Moved clipboard host state and keyboard paste/copy wrappers into
+codetether-chat-clipboard::frontend. Removed four root implementation files;
+the root selects the same message/image types, paste callback, scroll sentinel
+and transcript helper. Generated module names retain existing keyboard callers.
+
+All eight expanded function bodies match their originals, and the transcript
+helper export resolves to the same function. Declaration, module/dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
+lock changes were needed. Evidence: artifacts/consolidation-clipboard-bindings/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

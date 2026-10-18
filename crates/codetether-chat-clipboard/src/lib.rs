@@ -8,6 +8,7 @@ mod clipboard;
 mod command_binding;
 mod copy_reply;
 mod copy_transcript;
+mod frontend;
 mod host;
 pub use clipboard::handle_clipboard_paste;
 pub use copy_reply::handle_copy_reply;

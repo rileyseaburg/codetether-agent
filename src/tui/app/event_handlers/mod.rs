@@ -5,11 +5,7 @@ mod answer_review_key;
 mod approval_key;
 #[cfg(test)]
 mod approval_key_tests;
-mod chat_clipboard_host;
 mod click_open;
-mod clipboard;
-mod copy_reply;
-mod copy_transcript;
 mod ctrl_c;
 mod editor_click;
 mod editor_key;
@@ -42,3 +38,12 @@ pub(crate) mod voice;
 mod exports;
 pub(crate) use exports::{drain_voice_transcription, handle_event};
 pub use exports::{handle_mouse_event, handle_paste_event};
+
+codetether_chat_clipboard::declare_frontend_chat_clipboard!(
+    crate::tui::app::state::App,
+    codetether_chat_model::ChatMessage,
+    codetether_image::ImageAttachment;
+    crate::tui::constants::SCROLL_BOTTOM,
+    crate::tui::app::input::paste_into_chat,
+    codetether_chat_transcript::build_transcript,
+);
