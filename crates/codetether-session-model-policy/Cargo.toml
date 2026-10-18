@@ -1,0 +1,14 @@
+[package]
+name = "codetether-session-model-policy"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Session default model selection and RLM subcall resolution"
+
+[dependencies]
+anyhow = "1"
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
+tracing = "0.1"

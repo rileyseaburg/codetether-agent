@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-session-model-policy",
  "codetether-session-history",
  "codetether-thread-events",
  "codetether-thread-store",
@@ -4149,6 +4150,17 @@ dependencies = [
  "codetether-session-title",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-session-model-policy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-config",
+ "codetether-provider-core",
+ "codetether-session-metadata",
+ "tracing",
 ]
 
 [[package]]

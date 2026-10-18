@@ -9175,3 +9175,18 @@ whitespace checks passed; the largest crate file has 18 code lines. Evidence
 is in `artifacts/consolidation-session-history/`. Compilation and runtime
 tests were not run. No Cargo, rustc or Python commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated session model-policy crate
+
+Moved default-model seeding, ordered configuration application and RLM
+subcall-cache reset/resolution into `crates/codetether-session-model-policy`.
+Five modules separate the policy steps and model-resolver boundary. Native
+Session methods delegate, and the existing provider registry implements the
+resolver trait. The three native configuration tests are retained unchanged.
+
+Eight static comparisons cover the policy bodies, default precedence,
+reset order, logging and native bindings. Module/dependency graphs, file
+budgets and whitespace checks passed; the largest crate file has 29 code
+lines. Evidence is in `artifacts/consolidation-session-model-policy/`.
+Compilation and runtime tests were not run. No Cargo, rustc or Python
+commands ran. Full workspace consolidation remains active.

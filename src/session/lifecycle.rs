@@ -12,6 +12,7 @@ use crate::provider::{Message, Usage};
 use super::pages::{PageKind, classify, classify_all};
 use super::types::{Session, SessionMetadata};
 
+#[cfg(test)]
 #[path = "lifecycle/default_model.rs"]
 mod default_model;
 #[path = "lifecycle/normalize.rs"]
@@ -118,9 +119,7 @@ impl Session {
         config: &crate::config::Config,
         registry: Option<&crate::provider::ProviderRegistry>,
     ) {
-        self.metadata.rlm = config.rlm.clone();
-        self.seed_default_model(config);
-        self.apply_subcall_model(registry);
+        codetether_session_model_policy::apply_config(&mut self.metadata, config, registry);
     }
 
     /// Set the agent persona owning this session. Also updates the
