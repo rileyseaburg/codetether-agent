@@ -18930,3 +18930,22 @@ isolated lockfile delta, lexical module reachability, dependency-cycle checks,
 file-size ratchet, whitespace and direct formatting. Evidence is in
 `artifacts/consolidation-worker-tools/`. No Cargo, rustc, Python, Rust tests or
 worker execution ran; compilation and runtime behavior remain unverified.
+
+### Direct-swarm executable tool ownership
+
+Moved the SwarmExecuteTool type, construction/default behavior, metadata,
+schema entry point and executable Tool implementation into the existing
+`codetether-swarm-tool` crate. Construction and execution are separate modules.
+The type is generic over the existing runtime Host and retains no runtime state;
+a function-pointer PhantomData marker avoids requiring host values in each tool.
+The native module now exposes the application-bound alias and retains its
+provider, registry, prompt and frontend-observer adapters.
+
+Validation: identical identity/description/schema bodies, unchanged execution
+argument and result delegation, equivalent Default behavior, stateless generic
+construction, exact native alias, unchanged native runtime implementations and
+catalog caller, minimal async-trait dependency/lock delta, lexical module
+reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-swarm-tool-type/`. No Cargo,
+rustc, Python, Rust tests or live swarm execution ran; compilation and runtime
+behavior remain unverified.

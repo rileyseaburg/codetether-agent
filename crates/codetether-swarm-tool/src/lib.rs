@@ -1,9 +1,10 @@
-//! Direct swarm invocation contracts and policy.
+//! Direct swarm tool, invocation contracts and execution policy.
 //!
 //! Parse tool JSON with [input::parse_tasks] and [execution_config::ExecutionConfig],
 //! resolve the requested model with [model_selection::resolve], and serialize
 //! worker results with [aggregate_response::build] and [aggregate::result].
-//! Runtime execution, provider loading, and UI observation belong to adapters.
+//! [SwarmExecuteTool] executes through the shared [runtime], using
+//! [runtime::Host] adapters for providers, worker registries and UI observation.
 /// Map an aggregate response into the tool success/failure envelope.
 pub mod aggregate;
 /// Serialize worker results and requested aggregation status.
@@ -54,3 +55,8 @@ pub mod runtime;
 pub mod prompt;
 /// Registry lookup and provider-error reporting for direct workers.
 pub mod provider_setup;
+
+mod tool;
+mod tool_impl;
+/// Direct-swarm tool using the application runtime selected by its type parameter.
+pub use tool::SwarmExecuteTool;

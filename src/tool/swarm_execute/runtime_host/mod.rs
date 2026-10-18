@@ -6,7 +6,8 @@ use codetether_swarm_tool::runtime::{Host, LoopInput, SelectedProvider, WorkerCo
 use codetether_swarm_tool::task_input::TaskInput;
 use std::sync::Arc;
 mod worker;
-pub(super) struct Native;
+/// Application runtime selected by the public swarm tool alias.
+pub struct Native;
 impl Host for Native {
     type Registry = ToolRegistry;
     type Observer = tui_bridge::Observer;
