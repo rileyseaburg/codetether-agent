@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-bonsai-cli",
  "codetether-context-cli",
  "codetether-search-cli",
  "codetether-browser-cli",
@@ -5607,6 +5608,18 @@ dependencies = [
  "codetether-context-reset",
  "codetether-provider-core",
  "codetether-tool-core",
+ "serde_json",
+]
+
+[[package]]
+name = "codetether-bonsai-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "codetether-provider-bonsai",
+ "codetether-provider-core",
+ "futures",
  "serde_json",
 ]
 

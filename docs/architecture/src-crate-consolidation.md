@@ -10871,3 +10871,22 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-context-cli/`. Compilation, runtime tests
   and session operations were not run; no Cargo or rustc commands were executed.
 - This extraction is one increment. Full `src/` consolidation remains active.
+
+### Bonsai CLI extraction
+
+- Moved direct native-generation argument definitions, user-only request
+  construction, repeated execution, text streaming and timing output from
+  `src/cli/bonsai` into `crates/codetether-bonsai-cli`.
+- Five modules separate arguments, request construction, execution and stream
+  presentation, with a maximum of 24 code lines per module.
+- Native CLI module now re-exports the public API. Existing early dispatch,
+  provider registration and root feature wiring are unchanged; shared request
+  identity and the existing Bonsai provider remain the implementation owners.
+- Stream presentation borrows the existing stream, preserving its lifetime
+  through timing output and loop exit.
+- Ten static assertions compare argument schemas, request and execution bodies,
+  native bindings and feature wiring. Module reachability, workspace dependency
+  DAG, file-limit ratchet and whitespace checks passed.
+- Evidence: `artifacts/consolidation-bonsai-cli/`. Compilation, runtime tests and
+  inference were not run. No Cargo or rustc commands were executed.
+- Full `src/` consolidation remains active; this is another extraction increment.

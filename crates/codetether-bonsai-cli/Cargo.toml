@@ -1,0 +1,15 @@
+[package]
+name = "codetether-bonsai-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Direct native Bonsai CLI request construction and streaming"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.6.6", features = ["derive"] }
+codetether-provider-bonsai = { path = "../codetether-provider-bonsai", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+futures = "0.3"
+serde_json = "1"

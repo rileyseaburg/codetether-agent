@@ -1,9 +1,7 @@
 //! Native CLI execution without provider discovery or an agent loop.
-use crate::provider::bonsai::{BonsaiConfig, BonsaiProvider};
-use crate::provider::{Provider, StreamChunk};
 use anyhow::{Result, ensure};
-use futures::StreamExt;
-use std::io::Write;
+use codetether_provider_bonsai::{BonsaiConfig, BonsaiProvider};
+use codetether_provider_core::Provider;
 /// Run requests directly, streaming text and printing separate phase timings to stderr.
 /// # Arguments
 /// * `args` — Prompt and generation options.
@@ -19,29 +17,13 @@ pub async fn execute(args: super::BonsaiArgs) -> Result<()> {
     ensure!((1..=10).contains(&args.repeat), "repeat must be 1..=10");
     let provider = BonsaiProvider::new(BonsaiConfig::from_environment()?)?;
     for run in 1..=args.repeat {
-        let request = crate::provider::metrics::identity::inject(
+        let request = codetether_provider_core::request_identity::inject(
             super::request::from_args(&args),
             provider.name(),
-            crate::provider::bonsai::MODEL,
+            codetether_provider_bonsai::MODEL,
         );
         let mut stream = provider.complete_stream(request).await?;
-        let mut done = false;
-        while let Some(chunk) = stream.next().await {
-            match chunk {
-                StreamChunk::Text(text) => {
-                    print!("{text}");
-                    std::io::stdout().flush()?;
-                }
-                StreamChunk::Done { .. } => {
-                    done = true;
-                    break;
-                }
-                StreamChunk::Error(error) => anyhow::bail!(error),
-                StreamChunk::KeepAlive => {}
-                other => anyhow::bail!("Unexpected Bonsai event: {other:?}"),
-            }
-        }
-        ensure!(done, "Bonsai stream ended without completion");
+        super::stream::consume(&mut stream).await?;
         println!();
         if let Some(timing) = provider.last_timing() {
             eprintln!(
