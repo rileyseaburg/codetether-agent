@@ -56,3 +56,7 @@ impl<H: Host> Client<H> {
         &self.config
     }
 }
+
+mod initialize;
+/// Construct an enabled thinker, logging and retaining fallback on failure.
+pub use initialize::initialize;

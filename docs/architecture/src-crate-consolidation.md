@@ -16697,3 +16697,17 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-cognition-personas/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared best-effort thinker initialization
+
+- Moved configured thinker initialization beside the shared client. The native
+  wrapper supplies its concrete client type while core owns disabled handling,
+  construction, startup diagnostics and nonfatal fallback.
+- Preserved configuration consumption, enabled check, successful Arc ownership,
+  exact log fields/messages and failure-to-None behavior.
+- Verification: full function-body comparison, native binding, unchanged runtime
+  constructor/backend builder, module/dependency graphs, direct rustfmt, file
+  limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-thinker-init/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
