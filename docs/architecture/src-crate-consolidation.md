@@ -11913,3 +11913,18 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-token-gauges/.
 - No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
   consolidation remains incomplete.
+
+### Full chat-view module wiring correction
+
+- Expanded the lexical module audit to the complete native chat-view root,
+  including declarations spliced through mods_extra.rs. This found direct
+  spinner_hue and context_gauge_heat paths in addition to the nested public
+  paths already preserved during the earlier extractions.
+- Restored both direct paths as re-exports of the shared crate implementations.
+  No duplicated implementation was introduced. The expanded audit now reports
+  no missing module files. It records the existing, unused mods_a.rs declaration
+  file separately; pre-extraction copies establish that it was already unused.
+- Evidence: artifacts/consolidation-chat-view-module-audit/. Source file limits
+  and diff checks passed. No Cargo, rustc, compilation or tests ran. The earlier
+  narrower module checks did not cover this native root; full consolidation
+  remains incomplete.
