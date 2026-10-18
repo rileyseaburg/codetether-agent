@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-tool-recovery",
  "codetether-tool-reporting",
  "codetether-validation",
  "codetether-build-policy",
@@ -4891,6 +4892,18 @@ dependencies = [
 [[package]]
 name = "codetether-tool-progress"
 version = "0.1.0"
+
+[[package]]
+name = "codetether-tool-recovery"
+version = "0.1.0"
+dependencies = [
+ "codetether-provider-core",
+ "codetether-provider-policy",
+ "regex",
+ "serde_json",
+ "tracing",
+ "uuid",
+]
 
 [[package]]
 name = "codetether-tool-reporting"

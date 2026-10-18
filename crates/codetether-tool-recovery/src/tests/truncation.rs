@@ -1,6 +1,6 @@
 //! Tests for truncation recovery messaging.
 
-use super::{error_content, retry_prompt};
+use crate::{error_content, retry_prompt};
 
 #[test]
 fn batch_recovery_forbids_batch_retry() {

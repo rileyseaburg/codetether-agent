@@ -9911,3 +9911,19 @@ usage module and extended payload module contain at most 18 code lines.
 Evidence is in `artifacts/consolidation-telemetry-helpers/`. Compilation and
 runtime tests were not run. No Cargo, rustc, Python or provider execution ran.
 Full workspace consolidation remains active.
+
+### Dedicated tool-recovery crate
+
+Moved missing-native-call prose extraction, synthetic call construction and
+truncated-call recovery guidance into `crates/codetether-tool-recovery`.
+Fourteen modules separate narrated command extraction, provider-gated recovery,
+retry text, tool-specific guidance and original regression cases. Native helper
+exports retain the existing call sites and behavior.
+
+Fifteen static comparisons cover extraction patterns, existing-call guards,
+synthetic IDs, response updates, exact recovery messages, tests and unchanged
+callers. Module/dependency graphs, file budgets and whitespace checks passed;
+the largest crate file has 30 code lines. Eight existing tests moved without
+execution. Evidence is in `artifacts/consolidation-tool-recovery/`. Compilation
+and runtime tests were not run. No Cargo, rustc, Python or tool execution ran.
+Full workspace consolidation remains active.

@@ -1,0 +1,15 @@
+[package]
+name = "codetether-tool-recovery"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Prose tool-call recovery and truncated-call retry guidance"
+
+[dependencies]
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-provider-policy = { path = "../codetether-provider-policy", version = "0.1.0" }
+regex = "1"
+serde_json = "1"
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }

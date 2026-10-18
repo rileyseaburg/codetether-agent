@@ -14,9 +14,6 @@ pub(in crate::session::helper) mod tool_exec;
 pub(in crate::session::helper) mod tool_extraction;
 #[path = "tool_extraction_bash.rs"]
 pub(in crate::session::helper) mod tool_extraction_bash;
-#[cfg(test)]
-#[path = "tool_extraction_tests.rs"]
-mod tool_extraction_tests;
 #[path = "tool_metadata_event.rs"]
 pub(in crate::session::helper) mod tool_metadata_event;
 #[path = "tool_output.rs"]
