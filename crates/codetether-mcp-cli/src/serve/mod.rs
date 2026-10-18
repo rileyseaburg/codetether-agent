@@ -2,6 +2,8 @@
 //!
 //! [serve] creates the local event bus, selects provider-aware tools, resolves
 //! remote target precedence, then runs the application-supplied MCP transport.
+/// Shared provider, tool-registry and stdio-server application bindings.
+pub mod application;
 mod host;
 mod providers;
 use codetether_cli_options::McpArgs;

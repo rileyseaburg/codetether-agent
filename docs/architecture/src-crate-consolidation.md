@@ -22641,3 +22641,24 @@ working lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-peer-application/` (initial verifier syntax error kept).
 No peer server, archival task, Cargo, rustc or Python ran; compilation and
 runtime tests remain unverified. Full consolidation is active.
+
+### MCP stdio application assembly owned by the CLI crate
+
+Moved provider discovery, tool-registry construction and MCP stdio server
+assembly into `codetether-mcp-cli::serve::application`. Three focused modules
+own the application binding type, provider/tools integration and server/bus
+integration. The binary's native host file is now a type alias selecting the
+same public provider registry, tool registry and MCP server. Its separate
+server implementation file was removed.
+
+Static comparisons preserve Vault provider loading, provider lookup, default
+and provider-backed catalogs, stdio construction, local bus attachment, remote
+bus authentication and server execution. Provider selection/fallback code is
+unchanged. Module/dependency checks cover 699 roots and 571 crates without
+missing modules or cycles. Direct rustfmt, native file-size limits and
+whitespace checks passed. Only the MCP CLI crate's application-providers,
+application-registry and mcp-server dependency edges are staged in the lockfile;
+the unrelated working lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-mcp-serving/`.
+No MCP server, provider request, Cargo, rustc or Python ran; compilation and
+runtime tests remain unverified. Full consolidation is active.
