@@ -115,7 +115,7 @@ mod tests {
             "? should be inserted into chat input, not toggle help"
         );
         assert!(
-            !app.state.show_help,
+            !app.state.help.visible,
             "Help should not toggle when typing ? in chat"
         );
     }

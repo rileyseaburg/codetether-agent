@@ -39,3 +39,5 @@ pub use centered_rect::centered_rect;
 pub use context::HelpContext;
 pub use render::render_help_overlay;
 pub use scroll::HelpScrollState;
+mod state;
+pub use state::HelpState;

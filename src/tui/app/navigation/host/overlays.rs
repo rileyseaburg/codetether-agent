@@ -10,10 +10,10 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.status = value.clone();
         }
         Action::SetHelp(value) => {
-            app.state.show_help = *value;
+            app.state.help.visible = *value;
         }
         Action::HelpReset => {
-            app.state.help_scroll.offset = 0;
+            app.state.help.scroll.offset = 0;
         }
         Action::CloseModelPicker => {
             crate::tui::app::model_picker::close_model_picker(app);

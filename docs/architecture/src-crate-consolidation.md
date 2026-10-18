@@ -28223,3 +28223,21 @@ formatting, whitespace and file-limit checks pass (725 roots, 617 crates).
 Evidence: artifacts/consolidation-agent-tree-reexports/. No dependencies or
 unrelated working files changed. No Cargo, rustc, Python, compilation or runtime
 tests ran. Full consolidation remains active and incomplete.
+
+### Crate-owned help overlay state
+
+Moved help visibility and the existing HelpScrollState into
+codetether-help-view::HelpState. AppState contains one help component and its
+initialization selects the new crate-owned default. Updated rendering, navigation,
+approval-overlay and slash-command bindings to use the component. The original
+HelpScrollState type and its public compatibility re-export remain available.
+
+Static comparison covers all thirteen modified existing files and confirms the
+hidden/zero-scroll defaults. Scanned 1,210 root Rust files for obsolete accesses.
+An initial verifier mismatch from rustfmt's import reordering was corrected and
+the failed log retained. Shared help rendering and scroll behavior are unchanged.
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks pass (725 roots, 617 crates). Evidence:
+artifacts/consolidation-help-state/. No dependencies or unrelated working files
+changed. No Cargo, rustc, Python, compilation or runtime tests ran. Full
+consolidation remains active and incomplete.

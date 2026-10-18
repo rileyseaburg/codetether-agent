@@ -16,7 +16,7 @@ macro_rules! __frontend_approval_keys_host {
                     Preview {
                         chat: self.0.state.view_mode == ViewMode::Chat,
                         editing: self.0.state.approval_edit.is_some(),
-                        help: self.0.state.show_help,
+                        help: self.0.state.help.visible,
                         input: &self.0.state.composer.input,
                         scroll: &mut self.0.state.approval_preview_scroll,
                     }

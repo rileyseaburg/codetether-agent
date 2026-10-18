@@ -6,10 +6,10 @@ use std::time::Instant;
 use tokio::sync::Notify;
 
 use crate::session::ImageAttachment;
+use crate::tui::chat::message::ChatMessage;
 use crate::tui::models::ViewMode;
 use crate::tui::symbol_search::SymbolSearchState;
 use crate::tui::{audit_view::AuditViewState, bus_log::BusLogState};
-use crate::tui::{chat::message::ChatMessage, help::HelpScrollState};
 use crate::tui::{ralph_view::RalphViewState, swarm_view::SwarmViewState};
 
 use super::{context_health, git_state};
@@ -50,7 +50,7 @@ pub struct AppState {
     pub protocol_selected: usize, pub protocol_scroll: usize, pub status: String, pub processing: bool, pub approval_waiting: bool, pub session_id: Option<String>, pub session_picker: codetether_session_picker::SessionPickerState, pub cwd_display: String,
     pub bus_log: BusLogState, pub swarm: SwarmViewState, pub audit: AuditViewState, pub git: git_state::GitViewState, pub ralph: RalphViewState, pub audit_loop: crate::tui::audit_loop_view::audit_loop_state::AuditLoopState, pub symbol_search: SymbolSearchState,
     pub worker: codetether_tui_worker::WorkerState, pub peer_endpoint_ready: bool, pub active_tasks: crate::tui::app::bus::active_tasks::ActiveTasks, pub tool_calls: crate::tui::app::bus::tool_calls::ToolCallTracker, pub bus_cursor: u64, pub live_inbound: Option<crate::a2a::live_inbox::Inbound>,
-    pub help_scroll: HelpScrollState, pub show_help: bool, pub model_picker: codetether_model_picker::ModelPickerState,
+    pub help: codetether_help_view::HelpState, pub model_picker: codetether_model_picker::ModelPickerState,
     pub streaming: codetether_chat_model::StreamingState, pub request_timing: codetether_telemetry::RequestTimingState, pub last_completion: codetether_telemetry::CompletionSummary,
     pub context_health: context_health::ContextHealthState, pub tool_timing: codetether_telemetry::ToolTimingState,
     pub pending_images: Vec<ImageAttachment>, pub pending_text_pastes: Vec<PendingPaste>, pub preferences: codetether_settings_policy::persistence::Preferences, pub selected_settings_index: usize, pub current_turn_cancel: TurnCancel, pub last_key_at: Option<Instant>,

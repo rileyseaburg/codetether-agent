@@ -4,10 +4,10 @@ use codetether_tui_navigation::Action;
 pub(super) fn apply(app: &mut App, action: &Action) -> bool {
     match action {
         Action::HelpUp(value) => {
-            app.state.help_scroll.scroll_up(*value);
+            app.state.help.scroll.scroll_up(*value);
         }
         Action::HelpDown(value, limit) => {
-            app.state.help_scroll.scroll_down(*value, *limit);
+            app.state.help.scroll.scroll_down(*value, *limit);
         }
         Action::ChatUp(value) => {
             app.state.scroll_up(*value);

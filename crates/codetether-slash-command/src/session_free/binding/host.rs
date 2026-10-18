@@ -26,8 +26,8 @@ macro_rules! __frontend_session_free_host {
                     super::helpers::open_model_view(self.app, self.registry);
                 }
                 fn open_help(&mut self) {
-                    self.app.state.show_help = true;
-                    self.app.state.help_scroll.offset = 0;
+                    self.app.state.help.visible = true;
+                    self.app.state.help.scroll.offset = 0;
                     self.app.state.status = "Help".to_string();
                 }
             }

@@ -13,7 +13,7 @@ impl Host for Navigation<'_> {
         let app = &*self.0;
         Context {
             view_mode: app.state.view_mode.clone(),
-            show_help: app.state.show_help,
+            show_help: app.state.help.visible,
             symbols_active: crate::tui::app::symbols::symbol_search_active(app),
             model_picker_active: app.state.model_picker.model_picker_active,
             swarm_detail: app.state.swarm.detail_mode,

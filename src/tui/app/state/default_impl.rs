@@ -8,7 +8,7 @@ codetether_tui_models::impl_app_state_default!(
     ralph = crate::tui::ralph_view::RalphViewState::new,
     audit_loop = crate::tui::audit_loop_view::audit_loop_state::AuditLoopState::new,
     symbols = crate::tui::symbol_search::SymbolSearchState::new,
-    help = crate::tui::help::HelpScrollState::default,
+    help = codetether_help_view::HelpState::default,
     models = codetether_model_picker::ModelPickerState::default,
     mcp = crate::tui::app::mcp::TuiMcpRegistry::new,
     autochat = super::super::autochat::state::AutochatState::default,

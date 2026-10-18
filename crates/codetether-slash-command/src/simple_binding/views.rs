@@ -12,8 +12,8 @@ macro_rules! __simple_views {
                 let app = &mut *host.app;
                 match kind {
                     SimpleCommand::Help => {
-                        app.state.show_help = true;
-                        app.state.help_scroll.offset = 0;
+                        app.state.help.visible = true;
+                        app.state.help.scroll.offset = 0;
                         app.state.status = "Help".to_string();
                     }
                     SimpleCommand::Swarm => $swarm(app),

@@ -16,10 +16,10 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     codetether_help_view::build_help_lines(&context)
 }
 pub fn render_help_overlay_if_needed(f: &mut Frame, app_state: &mut AppState) {
-    if !app_state.show_help {
+    if !app_state.help.visible {
         return;
     }
     let area = centered_rect(60, 60, f.area());
     let lines = build_help_lines(app_state);
-    codetether_help_view::render_help_overlay(f, area, lines, &mut app_state.help_scroll);
+    codetether_help_view::render_help_overlay(f, area, lines, &mut app_state.help.scroll);
 }
