@@ -25060,3 +25060,29 @@ Only the new package/root dependency entries are staged in Cargo.lock; its
 working content and unrelated A2A modifications remain unchanged. Evidence:
 artifacts/consolidation-native-policy/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full workspace consolidation remains active.
+
+### Native mux moved into its dedicated crate
+
+Moved all 26 files from src/mux/ into codetether-native-mux. The new crate owns
+CLI host bindings, clipboard normalization, session projection access, mux
+controls and the existing multiprocess proof tests. The root re-exports it as
+mux. Control, coordination and runtime-status exports remain available to the
+native TUI and session code through documented-hidden public interfaces.
+
+Workspace resolution now directly invokes the exact session_path and metadata
+workspace functions previously invoked by Session::recorded_workspace; their
+call order and error propagation are unchanged. Projection and clipboard
+calls resolve to the same owning crates as the former application re-exports.
+The private mux module is retained inside the new crate so the hard-coded
+mux::tests::multiprocess::child::daemon test-process selector stays valid.
+The shared approval environment-test lock is supplied through test-support.
+
+All 26 moved files match after explicit import, visibility and workspace-call
+expansion changes and formatting. Six test functions, including the ignored
+child-process helper, remain present. Static scans cover 700 module roots and
+582 dependency crates without missing modules, cycles or undeclared direct
+workspace dependencies. Declaration, file-limit, direct rustfmt and whitespace
+checks passed. Only the new package and root dependency are staged for
+Cargo.lock; unrelated working content remains unchanged. Evidence:
+artifacts/consolidation-native-mux/. No Cargo, rustc, Python, compilation,
+daemon processes or runtime tests ran. Full consolidation remains active.

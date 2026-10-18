@@ -23,8 +23,10 @@ use codetether_mux_agent_task as agent_task;
 use codetether_mux_lifecycle::backoff;
 mod client;
 mod command;
-pub(crate) mod control;
-pub(crate) use codetether_mux_coordination as coordination;
+#[doc(hidden)]
+pub mod control;
+#[doc(hidden)]
+pub use codetether_mux_coordination as coordination;
 pub(crate) use codetether_mux_workspace as isolation;
 pub(crate) mod lease;
 mod model;
@@ -35,9 +37,10 @@ use codetether_mux_registry as registry;
 use codetether_mux_server as server;
 use codetether_mux_server::token;
 
-pub(crate) use model::MuxRuntimeStatus;
+#[doc(hidden)]
+pub use model::MuxRuntimeStatus;
 
-use crate::cli::command::mux_args::MuxArgs;
+use codetether_mux_cli::MuxArgs;
 
 /// Execute a network mux lifecycle command.
 ///
@@ -58,10 +61,10 @@ use crate::cli::command::mux_args::MuxArgs;
 ///
 /// ```rust,no_run
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-/// use codetether_agent::cli::command::mux_args::{MuxArgs, MuxCommand};
+/// use codetether_mux_cli::{MuxArgs, MuxCommand};
 ///
 /// let args = MuxArgs { command: MuxCommand::List { json: true } };
-/// codetether_agent::mux::execute(args).await.unwrap();
+/// codetether_native_mux::execute(args).await.unwrap();
 /// # });
 /// ```
 pub async fn execute(args: MuxArgs) -> anyhow::Result<()> {

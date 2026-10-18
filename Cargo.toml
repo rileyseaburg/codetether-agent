@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/codetether-native-mux",
     "crates/codetether-native-approval",
     "crates/codetether-native-runtime-policy",
     "crates/codetether-native-indexer",
@@ -691,6 +692,7 @@ fips = [
 ]
 
 [dependencies]
+codetether-native-mux = { path = "crates/codetether-native-mux", version = "0.1.0" }
 codetether-native-approval = { path = "crates/codetether-native-approval", version = "0.1.0" }
 codetether-native-runtime-policy = { path = "crates/codetether-native-runtime-policy", version = "0.1.0" }
 codetether-native-indexer = { path = "crates/codetether-native-indexer", version = "0.1.0" }

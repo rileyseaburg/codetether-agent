@@ -1,0 +1,33 @@
+[package]
+name = "codetether-native-mux"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native mux lifecycle, controls, clipboard and session storage bindings"
+
+[dependencies]
+codetether-mux-agent-task = { path = "../codetether-mux-agent-task", version = "0.1.0" }
+codetether-mux-attachment = { path = "../codetether-mux-attachment", version = "0.1.0" }
+codetether-mux-cli = { path = "../codetether-mux-cli", version = "0.1.0" }
+codetether-mux-client = { path = "../codetether-mux-client", version = "0.1.0" }
+codetether-mux-control = { path = "../codetether-mux-control", version = "0.1.0" }
+codetether-mux-coordination = { path = "../codetether-mux-coordination", version = "0.1.0" }
+codetether-mux-lifecycle = { path = "../codetether-mux-lifecycle", version = "0.1.0" }
+codetether-mux-model = { path = "../codetether-mux-model", version = "0.1.0" }
+codetether-mux-protocol = { path = "../codetether-mux-protocol", version = "0.1.0" }
+codetether-mux-pty = { path = "../codetether-mux-pty", version = "0.1.0" }
+codetether-mux-registry = { path = "../codetether-mux-registry", version = "0.1.0" }
+codetether-mux-server = { path = "../codetether-mux-server", version = "0.1.0" }
+codetether-mux-workspace = { path = "../codetether-mux-workspace", version = "0.1.0" }
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
+codetether-terminal-clipboard = { path = "../codetether-terminal-clipboard", version = "0.1.0" }
+codetether-worktree-lease = { path = "../codetether-worktree-lease", version = "0.1.0" }
+anyhow = "1"
+async-trait = "0.1"
+serde_json = "1"
+
+[dev-dependencies]
+codetether-native-approval = { path = "../codetether-native-approval", version = "0.1.0", features = ["test-support"] }
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs", "time", "process"] }

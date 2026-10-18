@@ -1930,6 +1930,7 @@ dependencies = [
  "codetether-session-schema",
  "codetether-native-approval",
  "codetether-native-runtime-policy",
+ "codetether-native-mux",
 ]
 
 [[package]]
@@ -3577,6 +3578,33 @@ dependencies = [
  "codetether-application-providers",
  "codetether-memory-tool",
  "codetether-native-providers",
+]
+
+[[package]]
+name = "codetether-native-mux"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-mux-agent-task",
+ "codetether-mux-attachment",
+ "codetether-mux-cli",
+ "codetether-mux-client",
+ "codetether-mux-control",
+ "codetether-mux-coordination",
+ "codetether-mux-lifecycle",
+ "codetether-mux-model",
+ "codetether-mux-protocol",
+ "codetether-mux-pty",
+ "codetether-mux-registry",
+ "codetether-mux-server",
+ "codetether-mux-workspace",
+ "codetether-native-approval",
+ "codetether-session-store",
+ "codetether-terminal-clipboard",
+ "codetether-worktree-lease",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
