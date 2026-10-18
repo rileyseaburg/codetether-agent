@@ -38,6 +38,7 @@ pub mod invalid;
 pub mod k8s_tool;
 pub mod lsp;
 include!("mcp_modules.rs");
+mod catalog;
 pub mod goal;
 pub mod mcp_tools;
 pub mod memory;
@@ -174,162 +175,28 @@ impl ToolRegistry {
     /// Create registry with all default tools (without batch)
     pub fn with_defaults() -> Self {
         let mut registry = Self::new();
-
-        registry.register(Arc::new(file::ReadTool::new()));
-        registry.register(Arc::new(file::WriteTool::new()));
-        registry.register(Arc::new(file::ListTool::new()));
-        registry.register(Arc::new(file::GlobTool::new()));
-        registry.register(Arc::new(file_extras::TreeTool::new()));
-        registry.register(Arc::new(file_extras::FileInfoTool::new()));
-        registry.register(Arc::new(file_extras::HeadTailTool::new()));
-        registry.register(Arc::new(file_extras::DiffTool::new()));
-        registry.register(Arc::new(git::GitTool::new()));
-        register_search_tools::register(&mut registry);
-        registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
-        registry.register(Arc::new(edit::EditTool::new()));
-        command_session::register(&mut registry, None);
-        registry.register(Arc::new(lsp::LspTool::with_root(
-            std::env::current_dir()
-                .map(|p| format!("file://{}", p.display()))
-                .unwrap_or_default(),
-        )));
-        registry.register(Arc::new(webfetch::WebFetchTool::new()));
-        registry.register(Arc::new(multiedit::MultiEditTool::new()));
-        registry.register(Arc::new(websearch::WebSearchTool::new()));
-        registry.register(Arc::new(browserctl::BrowserCtlTool::new()));
-        registry.register(Arc::new(patch::ApplyPatchTool::new()));
-        registry.register(Arc::new(todo::TodoReadTool::new()));
-        registry.register(Arc::new(todo::TodoWriteTool::new()));
-        goal::register(&mut registry);
-        registry.register(Arc::new(context_reset::ContextResetTool));
-        registry.register(Arc::new(context_browse::ContextBrowseTool));
-        registry.register(Arc::new(context_budget::ContextBudgetTool));
-        registry.register(Arc::new(context_pin::ContextPinTool));
-        registry.register(Arc::new(
-            context_summarize::ContextSummarizeTool::cached_only(),
-        ));
-        registry.register(Arc::new(question::QuestionTool::new()));
-        registry.register(Arc::new(task::TaskTool::new()));
-        registry.register(Arc::new(plan::PlanEnterTool::new()));
-        registry.register(Arc::new(plan::PlanExitTool::new()));
-        registry.register(Arc::new(skill::SkillTool::new()));
-        registry.register(Arc::new(memory::MemoryTool::new()));
-        registry.register(Arc::new(ralph::RalphTool::new()));
-        registry.register(Arc::new(prd::PrdTool::new()));
-        registry.register(Arc::new(undo::UndoTool));
-        registry.register(Arc::new(voice::VoiceTool::new()));
-        registry.register(Arc::new(voice_input::VoiceInputTool::new()));
-        registry.register(Arc::new(voice_stream::VoiceStreamTool::new()));
-        register_media::register(&mut registry);
-        // Edit tools with confirmation (diff display before applying)
-        registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
-        registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
-        // Swarm result sharing between sub-agents
-        registry.register(Arc::new(swarm_share::SwarmShareTool::with_defaults()));
-        // Register the invalid tool handler for graceful error handling
-        registry.register(Arc::new(invalid::InvalidTool::new()));
-        // Agent orchestration tool
-        collaboration::register(&mut registry);
-        // Swarm execution tool for parallel task execution
-        registry.register(Arc::new(swarm_execute::SwarmExecuteTool::new()));
-        // Relay autochat tool for autonomous agent communication
-        registry.register(Arc::new(relay_autochat::RelayAutoChatTool::new()));
-        // Go tool for autonomous OKR→PRD→Ralph pipeline
-        registry.register(Arc::new(go::GoTool::new()));
-        // Kubernetes management tool
-        registry.register(Arc::new(k8s_tool::K8sTool::new()));
-        // TetherScript plugin runtime for project-local extension hooks
-        #[cfg(feature = "tetherscript")]
-        tetherscript::register(&mut registry);
-        registry.register_compat_aliases();
-
+        codetether_tool_registry::catalog::populate(
+            &mut catalog::Native {
+                registry: &mut registry,
+                provider: None,
+            },
+            false,
+            cfg!(feature = "tetherscript"),
+        );
         registry
     }
 
     /// Create registry with provider for tools that need it (like RalphTool)
     pub fn with_provider(provider: Arc<dyn Provider>, model: String) -> Self {
         let mut registry = Self::new();
-
-        registry.register(Arc::new(file::ReadTool::new()));
-        registry.register(Arc::new(file::WriteTool::new()));
-        registry.register(Arc::new(file::ListTool::new()));
-        registry.register(Arc::new(file::GlobTool::new()));
-        registry.register(Arc::new(file_extras::TreeTool::new()));
-        registry.register(Arc::new(file_extras::FileInfoTool::new()));
-        registry.register(Arc::new(file_extras::HeadTailTool::new()));
-        registry.register(Arc::new(file_extras::DiffTool::new()));
-        registry.register(Arc::new(git::GitTool::new()));
-        register_search_tools::register(&mut registry);
-        registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
-        registry.register(Arc::new(edit::EditTool::new()));
-        command_session::register(&mut registry, None);
-        registry.register(Arc::new(lsp::LspTool::with_root(
-            std::env::current_dir()
-                .map(|p| format!("file://{}", p.display()))
-                .unwrap_or_default(),
-        )));
-        registry.register(Arc::new(webfetch::WebFetchTool::new()));
-        registry.register(Arc::new(multiedit::MultiEditTool::new()));
-        registry.register(Arc::new(websearch::WebSearchTool::new()));
-        registry.register(Arc::new(browserctl::BrowserCtlTool::new()));
-        registry.register(Arc::new(patch::ApplyPatchTool::new()));
-        registry.register(Arc::new(todo::TodoReadTool::new()));
-        registry.register(Arc::new(todo::TodoWriteTool::new()));
-        goal::register(&mut registry);
-        registry.register(Arc::new(context_reset::ContextResetTool));
-        registry.register(Arc::new(context_browse::ContextBrowseTool));
-        registry.register(Arc::new(context_budget::ContextBudgetTool));
-        registry.register(Arc::new(context_pin::ContextPinTool));
-        registry.register(Arc::new(context_summarize::ContextSummarizeTool::new(
-            Arc::clone(&provider),
-            model.clone(),
-        )));
-        registry.register(Arc::new(question::QuestionTool::new()));
-        registry.register(Arc::new(task::TaskTool::new()));
-        registry.register(Arc::new(plan::PlanEnterTool::new()));
-        registry.register(Arc::new(plan::PlanExitTool::new()));
-        registry.register(Arc::new(skill::SkillTool::new()));
-        registry.register(Arc::new(memory::MemoryTool::new()));
-        registry.register(Arc::new(rlm::RlmTool::new(
-            Arc::clone(&provider),
-            model.clone(),
-            crate::rlm::RlmConfig::default(),
-        )));
-        registry.register(Arc::new(session_recall::SessionRecallTool::new(
-            Arc::clone(&provider),
-            model.clone(),
-            crate::rlm::RlmConfig::default(),
-        )));
-        // RalphTool with provider for autonomous execution
-        registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
-        registry.register(Arc::new(prd::PrdTool::new()));
-        registry.register(Arc::new(undo::UndoTool));
-        registry.register(Arc::new(voice::VoiceTool::new()));
-        registry.register(Arc::new(voice_input::VoiceInputTool::new()));
-        registry.register(Arc::new(voice_stream::VoiceStreamTool::new()));
-        register_media::register(&mut registry);
-        // Edit tools with confirmation (diff display before applying)
-        registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
-        registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
-        // Swarm result sharing between sub-agents
-        registry.register(Arc::new(swarm_share::SwarmShareTool::with_defaults()));
-        // Register the invalid tool handler for graceful error handling
-        registry.register(Arc::new(invalid::InvalidTool::new()));
-        // Agent orchestration tool
-        collaboration::register(&mut registry);
-        // Swarm execution tool for parallel task execution
-        registry.register(Arc::new(swarm_execute::SwarmExecuteTool::new()));
-        // Relay autochat tool for autonomous agent communication
-        registry.register(Arc::new(relay_autochat::RelayAutoChatTool::new()));
-        // Go tool for autonomous OKR→PRD→Ralph pipeline
-        registry.register(Arc::new(go::GoTool::new()));
-        // Kubernetes management tool
-        registry.register(Arc::new(k8s_tool::K8sTool::new()));
-        // TetherScript plugin runtime for project-local extension hooks
-        #[cfg(feature = "tetherscript")]
-        tetherscript::register(&mut registry);
-        registry.register_compat_aliases();
-
+        codetether_tool_registry::catalog::populate(
+            &mut catalog::Native {
+                registry: &mut registry,
+                provider: Some((provider, model)),
+            },
+            true,
+            cfg!(feature = "tetherscript"),
+        );
         registry
     }
 

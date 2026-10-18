@@ -29,3 +29,6 @@ impl std::fmt::Debug for ToolRegistry {
             .finish()
     }
 }
+
+/// Shared ordered application tool registration catalog.
+pub mod catalog;

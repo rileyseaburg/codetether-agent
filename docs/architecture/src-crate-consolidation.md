@@ -15140,3 +15140,21 @@ Full workspace consolidation remains active.
 - Staged lockfile changes contain only the new crate and root dependency.
   No plugin initialization, tool execution, Cargo, rustc or Rust tests ran.
   Full workspace consolidation remains unfinished.
+
+### Ordered tool catalog ownership
+
+- Moved default/provider-aware registration order into
+  codetether-tool-registry::catalog. Shared prefix, common tools and suffix are
+  registered once in policy; provider-backed summarization/RLM/recall/Ralph and
+  scripting are selected explicitly at their original positions.
+- Native constructors are grouped by file, context, execution, media and
+  provider capabilities. Provider and model clones retain their original order;
+  Ralph receives ownership last. Registration-group calls remain unchanged.
+- Verification: all four provider/scripting configurations expand to the
+  original catalog order. Every constructor/group has one binding; provider
+  ownership transfer, native wrappers, batch weak-reference setup, compatibility
+  aliases and scripting gates were checked. Module reachability, dependency DAG,
+  direct rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-tool-catalog/.
+- No dependencies changed. No tool construction, Cargo, rustc or Rust tests ran.
+  Full workspace consolidation remains unfinished.
