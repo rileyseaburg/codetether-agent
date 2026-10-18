@@ -1,13 +1,12 @@
-//! Session/provider adapter for shared reset preparation and finalization.
-use super::derive::derive_context;
+//! Native bindings for shared reset-policy context derivation.
 use super::helpers::DerivedContext;
 use crate::provider::ToolDefinition;
-use crate::session::helper::token::estimate_request_tokens;
 use crate::session::{Session, SessionEvent};
 use anyhow::Result;
-use codetether_context_policy::derivation::reset::{self, ResetPreparation};
 use std::sync::Arc;
 use tokio::sync::mpsc;
+#[path = "reset_host.rs"]
+mod host;
 
 /// [`DerivePolicy::Reset`](crate::session::derive_policy::DerivePolicy::Reset) implementation.
 ///
@@ -27,26 +26,20 @@ pub(super) async fn derive_reset(
     threshold_tokens: usize,
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
-    let origin_len = session.messages.len();
-    let messages = session.messages.to_vec();
-    match reset::prepare(messages, origin_len, threshold_tokens, |messages| {
-        estimate_request_tokens(system_prompt, messages, tools)
-    }) {
-        ResetPreparation::Ready(context) => Ok(context),
-        ResetPreparation::Legacy => {
-            derive_context(
-                session,
-                provider,
-                model,
-                system_prompt,
-                tools,
-                event_tx,
-                None,
-            )
-            .await
-        }
-        ResetPreparation::Summarize(plan) => {
-            super::reset_finish::finish(session, plan, provider, model, event_tx).await
-        }
-    }
+    let hooks = codetether_context_legacy::Hooks {
+        apply: crate::session::helper::experimental::apply_all,
+        repair: crate::session::helper::experimental::pairing::repair_orphans,
+        resolver: crate::session::helper::rlm_background::resolve_model,
+    };
+    codetether_reset_derivation::derive_reset(
+        session,
+        provider,
+        model,
+        system_prompt,
+        tools,
+        threshold_tokens,
+        event_tx,
+        hooks,
+    )
+    .await
 }

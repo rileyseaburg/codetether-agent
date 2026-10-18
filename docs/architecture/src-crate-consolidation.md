@@ -9320,3 +9320,20 @@ checks passed; the largest crate file has 43 code lines. Evidence is in
 `artifacts/consolidation-context-request/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python or provider calls ran. Full workspace
 consolidation remains active.
+
+### Dedicated reset-policy derivation crate
+
+Moved reset preparation, legacy fallback, prefix summarization, reconstruction
+and provenance finalization into `crates/codetether-reset-derivation`. Seven
+modules separate read-only inputs, policy execution, cached-summary retrieval
+and rebuilding. Native adapters expose runtime subcall fields and the existing
+transforms/model resolver.
+
+Nine static comparisons cover branch order, cloned configuration, summary
+cache lookup, deterministic fallback, TOC/rebuild, provenance and native
+bindings. Threshold tests and helper sources remain unchanged. Module and
+dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 40 code lines. Evidence is in
+`artifacts/consolidation-reset-derivation/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python or model calls ran. Full workspace
+consolidation remains active.
