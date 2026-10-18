@@ -1,0 +1,30 @@
+[package]
+name = "codetether-provider-factory"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Provider secret dispatch and credential fallback policy"
+
+[dependencies]
+anyhow = "1.0.104"
+tracing = "0.1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+codetether-codex-auth = { path = "../codetether-codex-auth", version = "0.1.0" }
+codetether-bedrock-auth = { path = "../codetether-bedrock-auth", version = "0.1.0" }
+codetether-provider-codex = { path = "../codetether-provider-codex", version = "0.1.0" }
+codetether-provider-vertex-glm = { path = "../codetether-provider-vertex-glm", version = "0.1.0" }
+codetether-provider-vertex-anthropic = { path = "../codetether-provider-vertex-anthropic", version = "0.1.0" }
+codetether-provider-gemini-web = { path = "../codetether-provider-gemini-web", version = "0.1.0" }
+codetether-provider-openai = { path = "../codetether-provider-openai", version = "0.1.0" }
+codetether-provider-glm5 = { path = "../codetether-provider-glm5", version = "0.1.0" }
+codetether-provider-anthropic = { path = "../codetether-provider-anthropic", version = "0.1.0" }
+codetether-provider-google = { path = "../codetether-provider-google", version = "0.1.0" }
+codetether-provider-stepfun = { path = "../codetether-provider-stepfun", version = "0.1.0" }
+codetether-provider-openrouter = { path = "../codetether-provider-openrouter", version = "0.1.0" }
+codetether-provider-moonshot = { path = "../codetether-provider-moonshot", version = "0.1.0" }
+codetether-provider-zai = { path = "../codetether-provider-zai", version = "0.1.0" }
+codetether-provider-deepseek = { path = "../codetether-provider-deepseek", version = "0.1.0" }
+codetether-provider-tetherscript = { path = "../codetether-provider-tetherscript", version = "0.1.0" }
+codetether-provider-bonsai = { path = "../codetether-provider-bonsai", version = "0.1.0" }

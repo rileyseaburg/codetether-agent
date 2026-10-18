@@ -14925,3 +14925,24 @@ Full workspace consolidation remains active.
 - Staged Cargo.lock changes contain only the new crate and root dependency;
   unrelated worktree lock changes remain unstaged. No CUDA initialization,
   inference, Cargo, rustc or Rust tests ran. Full consolidation is unfinished.
+
+### Provider secret factory ownership
+
+- Moved Vault provider dispatch, alias matching, API-key gates, special secret
+  parsing, endpoint defaults and constructor-error handling into the dedicated
+  codetether-provider-factory crate. Each special provider owns a focused module.
+- Moved Codex credential construction, Cerebras construction, Bonsai Vault
+  construction and credential fallback flags/tests into that crate. Native
+  environment/config/Vault loading workflows remain for subsequent extraction.
+- The native Host retains seven constructors for Bedrock's application HTTP
+  pool, Copilot's application identity and local CUDA's thinker runtime. Other
+  provider constructors use the same existing workspace types directly.
+- Verification: nine static check groups covered dispatcher order, registration
+  macro, ten special functions, model dispatch, Codex/Cerebras/fallback functions
+  and tests, Bonsai paths, seven native constructors and compatibility wiring.
+  Formatter-only closure/match-arm block changes were normalized explicitly.
+  Module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence: artifacts/consolidation-provider-factory/.
+- Staged lockfile changes contain only the new factory package and its root
+  dependency. No provider initialization, network access, Cargo, rustc or Rust
+  tests ran. Full workspace consolidation remains unfinished.

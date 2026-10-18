@@ -1,0 +1,22 @@
+//! Special provider credential and endpoint construction paths.
+pub use crate::codex;
+mod dispatch_bedrock;
+pub(super) use dispatch_bedrock::dispatch_bedrock;
+mod dispatch_vertex_glm;
+pub(super) use dispatch_vertex_glm::dispatch_vertex_glm;
+mod dispatch_vertex_anthropic;
+pub(super) use dispatch_vertex_anthropic::dispatch_vertex_anthropic;
+mod dispatch_gemini_web;
+pub(super) use dispatch_gemini_web::dispatch_gemini_web;
+mod dispatch_local_cuda;
+pub(super) use dispatch_local_cuda::dispatch_local_cuda;
+mod dispatch_huggingface;
+pub(super) use dispatch_huggingface::dispatch_huggingface;
+mod dispatch_copilot;
+pub(super) use dispatch_copilot::dispatch_copilot;
+mod dispatch_copilot_enterprise;
+pub(super) use dispatch_copilot_enterprise::dispatch_copilot_enterprise;
+mod dispatch_glm5;
+pub(super) use dispatch_glm5::dispatch_glm5;
+mod dispatch_openai_compat;
+pub(super) use dispatch_openai_compat::dispatch_openai_compat;

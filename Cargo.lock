@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-provider-factory",
  "codetether-provider-local-cuda",
  "codetether-forage-interactive",
  "codetether-new-session",
@@ -7339,6 +7340,33 @@ dependencies = [
  "tokio",
  "tracing",
  "candle-core",
+]
+
+[[package]]
+name = "codetether-provider-factory"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "tracing",
+ "codetether-provider-core",
+ "codetether-secrets",
+ "codetether-codex-auth",
+ "codetether-bedrock-auth",
+ "codetether-provider-codex",
+ "codetether-provider-vertex-glm",
+ "codetether-provider-vertex-anthropic",
+ "codetether-provider-gemini-web",
+ "codetether-provider-openai",
+ "codetether-provider-glm5",
+ "codetether-provider-anthropic",
+ "codetether-provider-google",
+ "codetether-provider-stepfun",
+ "codetether-provider-openrouter",
+ "codetether-provider-moonshot",
+ "codetether-provider-zai",
+ "codetether-provider-deepseek",
+ "codetether-provider-tetherscript",
+ "codetether-provider-bonsai",
 ]
 
 [[package]]
