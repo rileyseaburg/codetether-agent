@@ -1,12 +1,13 @@
-//! Native entry point for shared dashboard Enter-key navigation.
-use crate::tui::app::state::App;
+//! Frontend type and callback selection for dashboard Enter handling.
 #[cfg(test)]
 use crate::tui::models::ViewMode;
-#[path = "enter_subagents_host.rs"]
-mod host;
-pub(super) fn dispatch(app: &mut App) {
-    codetether_agent_dashboard::interaction::enter(app);
-}
+codetether_agent_dashboard::declare_frontend_dashboard_input!(
+    crate::tui::app::state::App,
+    crate::tui::models::ViewMode,
+    codetether_swarm_view::SwarmViewState;
+    crate::tool::agent::bridge::find_agent_tool_agent_for_parent,
+    crate::tui::app::navigation::cycle_agent_focus,
+);
 #[cfg(test)]
 #[path = "enter_swarm_tests.rs"]
 mod swarm_tests;

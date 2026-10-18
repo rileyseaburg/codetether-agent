@@ -27644,3 +27644,18 @@ for 725 roots and 617 crates. Tests and unrelated files are unchanged; no
 manifest or lock changes were needed. Evidence:
 artifacts/consolidation-enter-bindings/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Dashboard Enter selection frontend binding
+
+Moved dashboard selection state and Enter dispatch into
+codetether-agent-dashboard::interaction::binding. Removed the root host file;
+the root selects frontend/view/swarm types and parent-scoped lookup/focus
+callbacks. Both existing dashboard test files are byte-for-byte unchanged.
+
+All eleven expanded function bodies match after expression-only closure-block
+normalization. The graph inventory now omits the deleted host and still audits
+the root wrapper, its tests and the owning crate. Declaration, module/dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
+lock changes were needed. Evidence: artifacts/consolidation-dashboard-input/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
