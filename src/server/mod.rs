@@ -17,6 +17,7 @@ mod session_realtime;
 mod session_recovery;
 mod session_routes;
 mod task_http_state;
+mod task_ingest_state;
 mod task_queue;
 mod tool_contract;
 mod tool_discovery_host;
@@ -41,13 +42,12 @@ use auth::AuthState;
 use axum::{
     extract::Path,
     extract::{Query, State},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     middleware,
     response::sse::{Event, Sse},
     response::{IntoResponse, Json, Response},
     routing::{get, post},
 };
-use codetether_task_ingest::CloudEventResponse;
 use futures::StreamExt;
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -195,7 +195,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Health check (public — auth exempt)
         .route("/health", get(health))
         // CloudEvent receiver for Knative Eventing (public — auth exempt)
-        .route("/task", post(receive_task_event))
+        .merge(codetether_task_ingest::http::router::<AppState>())
         // Knative task queue APIs
         .merge(codetether_task_api::http::queue_routes::<AppState>())
         // API routes
@@ -300,19 +300,6 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
 /// Health check response
 async fn health() -> &'static str {
     "ok"
-}
-async fn receive_task_event(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Json(body): Json<serde_json::Value>,
-) -> Result<Json<CloudEventResponse>, (StatusCode, String)> {
-    codetether_task_ingest::receive_task_event(
-        &state.knative_tasks,
-        &state.audit_log,
-        headers,
-        body,
-    )
-    .await
 }
 
 /// List providers

@@ -6,6 +6,7 @@ mod cancelled;
 mod created;
 mod dispatch;
 mod fields;
+pub mod http;
 mod parse;
 mod receive;
 mod updated;

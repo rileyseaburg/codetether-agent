@@ -14295,3 +14295,16 @@ Full workspace consolidation remains active.
   artifacts/consolidation-bus-http/.
 - No Cargo, rustc, Rust tests, live streams or server startup ran. Full workspace
   consolidation remains unfinished.
+
+### Task-ingress HTTP ownership
+
+- Moved task-event HTTP extraction and the POST /task route into
+  codetether-task-ingest::http, beside the existing parser, audit and dispatch
+  operations. Modules separate state access, handler extraction and routing.
+- Native state only binds the existing queue and audit log. Header/body
+  delegation and the route's outer middleware order remain unchanged.
+- Verification: five static checks passed, plus module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks. Evidence:
+  artifacts/consolidation-task-ingest-http/.
+- No dependencies or lockfile changes. No Cargo, rustc, Rust tests, task events
+  or server startup ran. Full workspace consolidation remains unfinished.
