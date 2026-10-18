@@ -69,3 +69,6 @@ pub mod model_resolution;
 pub mod thinker;
 /// Worker swarm settings using the application provider cache.
 pub mod worker_swarm;
+
+/// Shared provider loader for the OpenAI-compatible HTTP route adapter.
+pub use integrations::openai::OpenAiHttpHost;

@@ -25947,3 +25947,19 @@ acyclic. Declaration, file-limit, direct rustfmt and whitespace checks pass.
 All three unrelated dirty files remain unchanged. Evidence:
 artifacts/consolidation-worker-policy-cleanup/. No Cargo, rustc, Python,
 compilation or tests ran. Full consolidation remains active.
+
+### OpenAI HTTP provider loader moved to registry integration
+
+Moved the OpenAI-compatible HTTP provider host from src/server into
+codetether-application-providers beside its existing OpenAI registry integration.
+The generic OpenAiHttpHost selects the application's existing registry factory
+and cache. The server router supplies its original native provider policy
+directly; the root host file and module declaration are removed. No dependency
+or lockfile changes are needed.
+
+Static body comparison preserves the shared_from_vault loader and error type.
+Module/dependency scans cover 719 roots and 605 crates without missing modules,
+cycles or undeclared dependencies. Declaration, file-limit, direct rustfmt and
+whitespace checks pass. Unrelated dirty files remain unchanged. Evidence:
+artifacts/consolidation-openai-provider-host/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

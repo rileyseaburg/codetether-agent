@@ -7,7 +7,7 @@ mod factory;
 mod failover;
 mod forage;
 mod go;
-mod openai;
+pub mod openai;
 mod prd;
 mod question;
 mod ralph;
