@@ -20026,3 +20026,26 @@ isolated lockfile delta, module reachability, dependency cycles, file-size
 ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-startup-resources/`. No Cargo, rustc, Python, Rust tests
 or terminal rendering ran; compilation and runtime remain unverified.
+
+### Background chat shell ownership
+
+Moved the `!command` feature into `codetether-chat-shell`, with modules for
+command routing, subprocess execution, result events, lifecycle state, output
+truncation and presentation. Removed five implementation files from native
+`shell_bg`; its remaining adapter binds transcript/input operations. The native
+shell command entry point now delegates the entire command policy.
+
+The crate's `State` owns the result receiver and running flag, replacing those
+independent AppState fields. Preserved prefix/usage/busy handling, message and
+status ordering, the existing SHELL fallback and subprocess options, 120-second
+wait timeout, 64-KiB UTF-8 output truncation, latest-result draining and receiver
+reset before presentation. No shell commands were launched for validation.
+
+Validation: token comparisons of original execution/truncation/event structure,
+full translated command/spawn/drain/presentation bodies, five native bindings,
+state/default transformations, unchanged shell test bodies, removal of native
+implementation files, workspace registration and isolated lockfile delta.
+Module reachability, dependency cycle checks, source file-size ratchet,
+whitespace and direct rustfmt checks passed. Evidence lives in
+`artifacts/consolidation-chat-shell/`. Cargo, rustc, Python and Rust tests were
+not run; compilation and runtime behavior remain unverified.

@@ -1427,6 +1427,7 @@ dependencies = [
  "codetether-mermaid",
  "codetether-terminal-text",
  "codetether-chat-model",
+ "codetether-chat-shell",
  "codetether-token-display",
  "codetether-latency-view",
  "codetether-terminal-clipboard",
@@ -6536,6 +6537,14 @@ dependencies = [
  "codetether-math-text",
  "ratatui",
  "unicode-width",
+]
+
+[[package]]
+name = "codetether-chat-shell"
+version = "0.1.0"
+dependencies = [
+ "codetether-chat-model",
+ "tokio",
 ]
 
 [[package]]

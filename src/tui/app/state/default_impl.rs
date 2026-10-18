@@ -91,8 +91,8 @@ impl Default for super::AppState {
             saved_scroll: Default::default(),
             forage: crate::tui::forage_run::ForageState::new(),
             needs_redraw: true,
-            shell_rx: None,
-            shell_running: false, editor: None, goal_editor: None, approval_edit: None, editor_scroll: 0, editor_hscroll: 0, chat_hit: Default::default(), editor_lsp: Default::default(),
+            shell: Default::default(),
+            editor: None, goal_editor: None, approval_edit: None, editor_scroll: 0, editor_hscroll: 0, chat_hit: Default::default(), editor_lsp: Default::default(),
             spawn_form: None, interlude: None,
         }
     }

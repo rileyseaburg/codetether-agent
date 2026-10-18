@@ -106,6 +106,7 @@ members = [
     "crates/codetether-chat-files",
     "crates/codetether-chat-clipboard",
     "crates/codetether-chat-events",
+    "crates/codetether-chat-shell",
     "crates/codetether-paths",
     "crates/codetether-platform",
     "crates/codetether-plan",
@@ -1086,6 +1087,7 @@ codetether-voice-capture = { path = "crates/codetether-voice-capture", version =
 codetether-chat-files = { path = "crates/codetether-chat-files", version = "0.1.0" }
 codetether-chat-clipboard = { path = "crates/codetether-chat-clipboard", version = "0.1.0" }
 codetether-chat-events = { path = "crates/codetether-chat-events", version = "0.1.0" }
+codetether-chat-shell = { path = "crates/codetether-chat-shell", version = "0.1.0" }
 codetether-github-auth = { path = "crates/codetether-github-auth", version = "0.1.0" }
 codetether-webfetch = { path = "crates/codetether-webfetch", version = "0.1.0" }
 codetether-websearch = { path = "crates/codetether-websearch", version = "0.1.0" }
