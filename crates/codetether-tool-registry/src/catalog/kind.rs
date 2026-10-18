@@ -140,4 +140,36 @@ pub enum ToolKind {
     BusInspect,
     /// Register the ComputerUse capability.
     ComputerUse,
+    /// Register the SessionTask tool.
+    SessionTask,
+    /// Register the GetGoal tool.
+    GetGoal,
+    /// Register the CreateGoal tool.
+    CreateGoal,
+    /// Register the UpdateGoal tool.
+    UpdateGoal,
+    /// Register the EditGoal tool.
+    EditGoal,
+    /// Register the Agent tool.
+    Agent,
+    /// Register the SpawnAgent tool.
+    SpawnAgent,
+    /// Register the FollowupTask tool.
+    FollowupTask,
+    /// Register the ListAgents tool.
+    ListAgents,
+    /// Register the WaitAgent tool.
+    WaitAgent,
+    /// Register the InterruptAgent tool.
+    InterruptAgent,
+    /// Register the CloseAgent tool.
+    CloseAgent,
+    /// Register the ResumeAgent tool.
+    ResumeAgent,
+    /// Register the SendInput tool.
+    SendInput,
+    /// Register the SendMessage tool.
+    SendMessage,
+    /// Register the TetherScript tool.
+    TetherScript,
 }

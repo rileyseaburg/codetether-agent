@@ -43,13 +43,12 @@ pub mod verdict_log;
 pub mod verify;
 
 use super::ToolRegistry;
-use std::sync::Arc;
+use codetether_tool_registry::catalog::ToolKind;
+#[path = "goal/catalog_construct.rs"]
+mod catalog_construct;
+pub(crate) use catalog_construct::construct;
 
 /// Register goal lifecycle tools and the backward-compatible task tool.
 pub fn register(registry: &mut ToolRegistry) {
-    registry.register(Arc::new(session_task::SessionTaskTool::new()));
-    registry.register(Arc::new(get::GetGoalTool));
-    registry.register(Arc::new(create::CreateGoalTool));
-    registry.register(Arc::new(update::UpdateGoalTool));
-    registry.register(Arc::new(edit::EditGoalTool));
+    super::catalog::register_group(registry, ToolKind::GoalGroup);
 }

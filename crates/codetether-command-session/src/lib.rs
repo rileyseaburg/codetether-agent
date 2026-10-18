@@ -21,3 +21,6 @@ pub use spawn::spawn_direct;
 
 mod create;
 pub use create::spawn;
+
+/// Native command-tool assembly over a shared process registry.
+pub mod tool_registration;

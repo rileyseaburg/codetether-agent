@@ -15174,3 +15174,19 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-tool-groups/.
 - No dependencies changed. No tool construction/execution, Cargo, rustc or Rust
   tests ran. Full workspace consolidation remains unfinished.
+
+### Remaining tool registration group ownership
+
+- Moved goal, collaboration and scripting registration order into the shared
+  tool catalog. Native modules retain scalar constructors and compatibility
+  entry points; scripting construction remains feature-gated.
+- Moved command-tool assembly into codetether-command-session. Bash is constructed
+  first with its optional directory; exec and stdin receive the same new process
+  registry with the original Arc clone/transfer sequence.
+- Verification: eight static check groups covered group order, fifteen native
+  constructors, scripting gating, command construction and registry sharing,
+  native callbacks, catalog routing and unchanged main builders. Module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and whitespace
+  checks passed. Evidence: artifacts/consolidation-registration-groups/.
+- No dependencies changed. No tool execution, Cargo, rustc or Rust tests ran.
+  Full workspace consolidation remains unfinished.

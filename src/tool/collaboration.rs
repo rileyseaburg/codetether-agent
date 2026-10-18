@@ -35,20 +35,14 @@ mod messaging_host;
 mod wait_host;
 
 use super::ToolRegistry;
-use std::sync::Arc;
+use codetether_tool_registry::catalog::ToolKind;
+#[path = "collaboration/catalog_construct.rs"]
+mod catalog_construct;
+pub(crate) use catalog_construct::construct;
 
 /// Register the legacy agent tool and first-class collaboration operations.
 pub fn register(registry: &mut ToolRegistry) {
-    registry.register(Arc::new(super::agent::AgentTool::new()));
-    registry.register(Arc::new(spawn::SpawnAgentTool));
-    registry.register(Arc::new(followup::FollowupTaskTool));
-    registry.register(Arc::new(list::ListAgentsTool));
-    registry.register(Arc::new(wait::WaitAgentTool));
-    registry.register(Arc::new(interrupt::InterruptAgentTool));
-    registry.register(Arc::new(close::CloseAgentTool));
-    registry.register(Arc::new(resume::ResumeAgentTool));
-    registry.register(Arc::new(send_input::SendInputTool));
-    registry.register(Arc::new(send_message::SendMessageTool));
+    super::catalog::register_group(registry, ToolKind::CollaborationGroup);
 }
 
 #[cfg(test)]

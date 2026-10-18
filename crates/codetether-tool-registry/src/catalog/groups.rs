@@ -79,3 +79,74 @@ pub fn compatibility(host: &mut impl Host) {
     }
     host.register(ToolKind::ComputerUse);
 }
+
+/// Register the goals tool group in its original order.
+///
+/// # Arguments
+/// * `host` — Native tool construction and registration bindings.
+/// # Returns
+/// Registers the group in its existing order.
+/// # Examples
+/// ```no_run
+/// # fn setup(host: &mut impl codetether_tool_registry::catalog::Host) {
+/// codetether_tool_registry::catalog::groups::goals(host);
+/// # }
+/// ```
+pub fn goals(host: &mut impl Host) {
+    for kind in [
+        ToolKind::SessionTask,
+        ToolKind::GetGoal,
+        ToolKind::CreateGoal,
+        ToolKind::UpdateGoal,
+        ToolKind::EditGoal,
+    ] {
+        host.register(kind);
+    }
+}
+
+/// Register the collaboration tool group in its original order.
+///
+/// # Arguments
+/// * `host` — Native tool construction and registration bindings.
+/// # Returns
+/// Registers the group in its existing order.
+/// # Examples
+/// ```no_run
+/// # fn setup(host: &mut impl codetether_tool_registry::catalog::Host) {
+/// codetether_tool_registry::catalog::groups::collaboration(host);
+/// # }
+/// ```
+pub fn collaboration(host: &mut impl Host) {
+    for kind in [
+        ToolKind::Agent,
+        ToolKind::SpawnAgent,
+        ToolKind::FollowupTask,
+        ToolKind::ListAgents,
+        ToolKind::WaitAgent,
+        ToolKind::InterruptAgent,
+        ToolKind::CloseAgent,
+        ToolKind::ResumeAgent,
+        ToolKind::SendInput,
+        ToolKind::SendMessage,
+    ] {
+        host.register(kind);
+    }
+}
+
+/// Register the scripting tool group in its original order.
+///
+/// # Arguments
+/// * `host` — Native tool construction and registration bindings.
+/// # Returns
+/// Registers the group in its existing order.
+/// # Examples
+/// ```no_run
+/// # fn setup(host: &mut impl codetether_tool_registry::catalog::Host) {
+/// codetether_tool_registry::catalog::groups::scripting(host);
+/// # }
+/// ```
+pub fn scripting(host: &mut impl Host) {
+    for kind in [ToolKind::TetherScript] {
+        host.register(kind);
+    }
+}

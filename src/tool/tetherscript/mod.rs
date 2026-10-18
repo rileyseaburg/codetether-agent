@@ -2,7 +2,6 @@
 pub mod convert;
 mod host;
 mod input;
-mod partner;
 /// Application backend used by plugin computer grants.
 pub use host::ApplicationHost;
 /// Plugin tool using the application's computer backend and policy.
@@ -13,7 +12,6 @@ pub use host::ApplicationHost;
 /// ```
 pub type TetherScriptPluginTool =
     codetether_tetherscript_tool::TetherScriptPluginTool<ApplicationHost>;
-pub(crate) use partner::register;
 #[cfg(test)]
 #[path = "runner/process_arity_tests.rs"]
 mod process_arity_tests;

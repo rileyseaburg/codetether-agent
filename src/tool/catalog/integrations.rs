@@ -14,6 +14,10 @@ pub(super) fn create(kind: ToolKind) -> Option<Arc<dyn Tool>> {
         ToolKind::Okr => Arc::new(okr::OkrTool::new()) as Arc<dyn Tool>,
         ToolKind::BusInspect => Arc::new(bus_inspect::BusInspectTool) as Arc<dyn Tool>,
         ToolKind::ComputerUse => Arc::new(computer_use::ComputerUseTool::new()) as Arc<dyn Tool>,
+        #[cfg(feature = "tetherscript")]
+        ToolKind::TetherScript => {
+            Arc::new(tetherscript::TetherScriptPluginTool::new()) as Arc<dyn Tool>
+        }
         _ => return None,
     })
 }
