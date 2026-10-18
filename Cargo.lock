@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-session-picker",
  "codetether-editor-lsp",
  "codetether-editor",
  "codetether-file-picker",
@@ -6025,6 +6026,17 @@ dependencies = [
  "ratatui",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-session-picker"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-session-metadata",
+ "codetether-theme",
+ "codetether-util",
+ "ratatui",
 ]
 
 [[package]]

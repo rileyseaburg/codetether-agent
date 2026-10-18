@@ -1,45 +1,33 @@
-//! Session picker layout orchestration.
-//!
-//! Header, visible-list, and help-bar rendering live in focused child modules.
-
-use ratatui::{
-    Frame,
-    layout::{Constraint, Direction, Layout},
-};
-
+//! Application projection into the shared session picker.
 use crate::tui::app::state::App;
-
-mod header;
-mod help;
-mod item;
-mod list;
-pub(super) mod window;
-
-/// Render the session picker into the current terminal frame.
+use ratatui::Frame;
+pub(super) mod window {
+    pub(crate) use codetether_session_picker::bounds;
+}
+/// Render sessions from the application and supply its live bus status.
 ///
 /// # Arguments
+/// * `f` - Destination terminal frame.
+/// * `app` - Application containing session metadata and status.
 ///
-/// * `f` - Terminal frame receiving the picker widgets.
-/// * `app` - Application state containing session summaries and selection.
+/// # Returns
+/// Draws the session picker into the frame.
 ///
 /// # Examples
-///
-/// ```rust,no_run
-/// use codetether_agent::tui::ui::sessions::render_sessions_view;
-/// # fn render(f: &mut ratatui::Frame, app: &mut codetether_agent::tui::app::state::App) {
-/// render_sessions_view(f, app);
+/// ```no_run
+/// # fn draw(f: &mut ratatui::Frame, app: &mut codetether_agent::tui::app::state::App) {
+/// codetether_agent::tui::ui::sessions::render_sessions_view(f, app);
 /// # }
 /// ```
 pub fn render_sessions_view(f: &mut Frame, app: &mut App) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3),
-            Constraint::Min(8),
-            Constraint::Length(3),
-        ])
-        .split(f.area());
-    header::render(f, app, chunks[0]);
-    list::render(f, app, chunks[1]);
-    help::render(f, app, chunks[2]);
+    let view = codetether_session_picker::PickerView {
+        sessions: &app.state.sessions,
+        filter: &app.state.session_filter,
+        selected: app.state.selected_session,
+        active_session: app.state.session_id.as_deref(),
+        status: &app.state.status,
+    };
+    codetether_session_picker::render_sessions_view(f, &view, || {
+        crate::tui::ui::status_bar::bus_status_badge_span(app)
+    });
 }

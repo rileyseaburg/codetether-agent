@@ -2,7 +2,21 @@
 
 use std::ops::Range;
 
-pub(crate) fn bounds(selected: usize, total: usize, rows: usize) -> Range<usize> {
+/// Return a viewport range containing the clamped selection.
+///
+/// # Arguments
+/// * `selected` - Selected row index.
+/// * `total` - Total filtered rows.
+/// * `rows` - Visible row capacity.
+///
+/// # Returns
+/// A range within the collection, empty when no rows can be displayed.
+///
+/// # Examples
+/// ```
+/// assert_eq!(codetether_session_picker::bounds(50, 100, 9), 46..55);
+/// ```
+pub fn bounds(selected: usize, total: usize, rows: usize) -> Range<usize> {
     if total == 0 || rows == 0 {
         return 0..0;
     }

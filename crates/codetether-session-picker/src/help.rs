@@ -8,10 +8,7 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-use crate::tui::app::state::App;
-use crate::tui::ui::status_bar::bus_status_badge_span;
-
-pub(super) fn render(f: &mut Frame, app: &App, area: Rect) {
+pub(super) fn render(f: &mut Frame, bus_badge: Span<'static>, area: Rect) {
     let key = Style::default().fg(Color::Yellow);
     let line = Line::from(vec![
         Span::styled(
@@ -29,7 +26,7 @@ pub(super) fn render(f: &mut Frame, app: &App, area: Rect) {
         Span::raw(": Edit "),
         Span::styled("Esc", key),
         Span::raw(": Cancel | "),
-        bus_status_badge_span(app),
+        bus_badge,
     ]);
     f.render_widget(Paragraph::new(line), area);
 }

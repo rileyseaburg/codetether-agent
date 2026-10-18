@@ -11698,3 +11698,23 @@ Full workspace consolidation remains active.
 - Evidence: artifacts/consolidation-editor-lsp/. No Cargo, rustc, compilation,
   runtime tests or language-server requests were run. Full consolidation is
   still incomplete.
+
+### Session picker filtering and presentation extraction
+
+- Moved session fuzzy filtering, stable ranking, viewport bounds, age colors,
+  row formatting, list-item construction and header/list/help rendering from
+  src/tui into crates/codetether-session-picker. Fifteen focused modules contain
+  at most 35 nonblank, noncomment code lines each.
+- The application now supplies a borrowed PickerView and a lazy bus-status
+  badge callback. Native modules retain compatibility exports and application
+  navigation; session persistence and loading remain application responsibilities.
+- Preserved title/id ranking and tie order, active-session marking, timestamp
+  labels, true-color fallback, visible-row bounds, selection clamping, empty
+  messages and the existing screen layout. Six existing row/viewport tests
+  moved with the implementation; native filter integration tests remain.
+- Verification: 26 static comparisons passed, including moved function bodies,
+  existing tests, native projection and unchanged navigation. Module reachability,
+  local dependency cycle checks, direct rustfmt, source line limits and
+  git diff --check passed. Evidence: artifacts/consolidation-session-picker/.
+- Cargo, rustc, compilation and runtime tests were not run. These checks do not
+  establish that the Rust tests pass. Full workspace consolidation is incomplete.

@@ -7,17 +7,14 @@ use ratatui::{
     widgets::{Block, Borders, List, ListState},
 };
 
-use crate::tui::app::state::App;
+use crate::PickerView;
 
-pub(super) fn render(f: &mut Frame, app: &App, area: Rect) {
-    let filtered = app.state.filtered_sessions();
+pub(super) fn render(f: &mut Frame, view: &PickerView<'_>, area: Rect) {
+    let filtered = crate::filtered_sessions(view.sessions, view.filter);
     let rows = area.height.saturating_sub(2) as usize;
-    let selected = app
-        .state
-        .selected_session
-        .min(filtered.len().saturating_sub(1));
+    let selected = view.selected.min(filtered.len().saturating_sub(1));
     let range = super::window::bounds(selected, filtered.len(), rows);
-    let items = super::item::items(app, &filtered, range.clone());
+    let items = super::item::items(view, &filtered, range.clone());
     let title = if filtered.is_empty() {
         " Available Sessions ".to_string()
     } else {

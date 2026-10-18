@@ -246,6 +246,7 @@ members = [
     "crates/codetether-file-picker",
     "crates/codetether-editor",
     "crates/codetether-editor-lsp",
+    "crates/codetether-session-picker",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -558,6 +559,7 @@ codetether-codex-records = { path = "crates/codetether-codex-records", version =
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
+codetether-session-picker = { path = "crates/codetether-session-picker", version = "0.1.0" }
 codetether-editor-lsp = { path = "crates/codetether-editor-lsp", version = "0.1.0" }
 codetether-editor = { path = "crates/codetether-editor", version = "0.1.0" }
 codetether-file-picker = { path = "crates/codetether-file-picker", version = "0.1.0" }
