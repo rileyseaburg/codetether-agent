@@ -7,7 +7,6 @@ mod channels;
 mod config;
 mod driver;
 mod host;
-mod full_auto;
 mod hydrate;
 mod hydrate_host;
 mod hydrate_initial;

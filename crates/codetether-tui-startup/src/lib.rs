@@ -22,3 +22,6 @@ pub mod hydrate;
 
 /// Explicit-session scanning and startup session resolution.
 pub mod resolve;
+
+/// Startup trust/reviewer/session configuration ordering.
+pub mod configuration;

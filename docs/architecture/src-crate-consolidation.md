@@ -19986,3 +19986,23 @@ ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-session-resolution/`. No Cargo, rustc, Python, Rust
 tests or session-resolution execution ran; compilation and runtime remain
 unverified.
+
+### Startup configuration policy ordering
+
+Moved startup config consumption, access override resolution, reviewer/session
+application order and final full-auto flag application into
+`codetether-tui-startup::configuration`. Four native bindings retain trust
+publication, reviewer installation and session mutation. Removed the native
+full-auto helper.
+
+Preserved config-error behavior, default config fallback, process/config
+access overrides before reviewer/session setup, and applying the full-auto
+session flag last. No dependencies changed and no settings were applied during
+validation.
+
+Validation: five complete translated function bodies, four native bindings,
+wrapper delegation, unchanged reviewer/caller/tests/manifests, module
+reachability, dependency cycles, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-startup-config/`. No Cargo,
+rustc, Python, Rust tests or startup policy execution ran; compilation and
+runtime remain unverified.
