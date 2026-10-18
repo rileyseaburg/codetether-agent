@@ -1,5 +1,5 @@
 //! Small provider-request fixtures for budget guard tests.
-use crate::provider::{CompletionRequest, ContentPart, Message, Role};
+use codetether_provider_core::{CompletionRequest, ContentPart, Message, Role};
 
 pub(super) fn text(role: Role, text: &str) -> Message {
     Message {

@@ -1,0 +1,18 @@
+[package]
+name = "codetether-context-request"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Derived-context request construction, budget guarding and completion retries"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-request-tokens = { path = "../codetether-request-tokens", version = "0.1.0" }
+tracing = "0.1"
+
+[dev-dependencies]
+serde_json = "1"

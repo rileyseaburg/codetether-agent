@@ -9303,3 +9303,20 @@ and whitespace checks passed; the largest crate file has 40 code lines.
 Evidence is in `artifacts/consolidation-context-legacy/`. Compilation and
 runtime tests were not run. No Cargo, rustc, Python or model calls ran.
 Full workspace consolidation remains active.
+
+### Dedicated context-request orchestration crate
+
+Moved context-aware request construction, final input-budget guarding and
+provider completion/recovery into `crates/codetether-context-request`.
+Fourteen modules separate synchronous session inputs, async derivation and
+recall, request assembly, budget validation, retry decisions and four
+existing request-budget tests. Native adapters retain proactive preparation,
+policy dispatch and recall behavior.
+
+Fifteen static comparisons cover orchestration order, provider call scoping,
+retry option transitions, budget/log behavior, test fixtures/bodies and
+native bindings. Module/dependency graphs, file budgets and whitespace
+checks passed; the largest crate file has 43 code lines. Evidence is in
+`artifacts/consolidation-context-request/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python or provider calls ran. Full workspace
+consolidation remains active.

@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-context-request",
  "codetether-context-legacy",
  "codetether-context-enforcement",
  "codetether-context-compression",
@@ -2240,6 +2241,19 @@ dependencies = [
  "sha2 0.10.9",
  "thiserror 2.0.20",
  "tokio",
+]
+
+[[package]]
+name = "codetether-context-request"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-request-tokens",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]
