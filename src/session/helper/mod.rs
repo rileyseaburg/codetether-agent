@@ -32,7 +32,6 @@ pub(crate) mod prompt_too_long;
 pub use codetether_provider_policy as provider;
 pub(crate) mod publish_user_prompt;
 pub mod recall_context;
-mod refactor_guard;
 use codetether_repeat_guard as repeat_guard;
 pub mod request_state;
 use codetether_provider_policy as retry_error;

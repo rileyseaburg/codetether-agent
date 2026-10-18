@@ -1280,6 +1280,7 @@ dependencies = [
  "codetether-native-swarm",
  "codetether-native-proactive",
  "codetether-native-session-store",
+ "codetether-native-validation",
  "codetether-native-agent",
  "codetether-native-server",
  "codetether-native-cognition",
@@ -4183,6 +4184,23 @@ dependencies = [
  "codetether-watchdog",
  "codetether-workspace-snapshot",
  "ratatui",
+]
+
+[[package]]
+name = "codetether-native-validation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-bash-tool",
+ "codetether-lsp-core",
+ "codetether-native-lsp",
+ "codetether-native-runtime-policy",
+ "codetether-native-tetherscript",
+ "codetether-refactor-guard",
+ "codetether-tool-core",
+ "codetether-validation",
+ "serde_json",
 ]
 
 [[package]]

@@ -1,25 +1,5 @@
-//! Native services for the shared touched-file validation pipeline.
-use anyhow::Result;
-pub use codetether_validation::{ValidationReport, capture_git_dirty_files, track_touched_files};
-use std::{
-    collections::HashSet,
-    path::{Path, PathBuf},
+//! Native touched-file validation services.
+pub(crate) use codetether_native_validation::NativeHost as ApplicationValidation;
+pub use codetether_native_validation::{
+    ValidationReport, build_validation_report, capture_git_dirty_files, track_touched_files,
 };
-#[path = "validation_host.rs"]
-mod host;
-pub(crate) use host::NativeHost as ApplicationValidation;
-#[path = "validation_eslint.rs"]
-mod validation_eslint;
-pub async fn build_validation_report(
-    workspace_dir: &Path,
-    touched_files: &HashSet<PathBuf>,
-    baseline_git_dirty_files: &HashSet<PathBuf>,
-) -> Result<Option<ValidationReport>> {
-    codetether_validation::build_validation_report(
-        workspace_dir,
-        touched_files,
-        baseline_git_dirty_files,
-        &host::NativeHost,
-    )
-    .await
-}

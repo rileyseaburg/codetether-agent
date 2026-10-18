@@ -9,8 +9,12 @@ struct Native;
 
 #[cfg(feature = "tetherscript")]
 impl codetether_refactor_guard::plugin::Runtime for Native {
-    async fn execute(root: &Path, args: serde_json::Value) -> Result<crate::tool::ToolResult> {
-        use crate::tool::{Tool, tetherscript::TetherScriptPluginTool};
+    async fn execute(
+        root: &Path,
+        args: serde_json::Value,
+    ) -> Result<codetether_tool_core::ToolResult> {
+        use codetether_native_tetherscript::TetherScriptPluginTool;
+        use codetether_tool_core::Tool;
         let tool = TetherScriptPluginTool::with_root(root.to_path_buf());
         tool.execute(args).await
     }

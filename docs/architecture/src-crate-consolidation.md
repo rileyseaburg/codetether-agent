@@ -26306,3 +26306,23 @@ file-limit and whitespace checks pass. Only four native-cli dependencies are
 staged in Cargo.lock; unrelated working files remain unchanged. Evidence is
 retained in artifacts/consolidation-native-sol/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Native validation service ownership
+
+Moved the native validation host, sandboxed ESLint adapter, refactor report
+mapping and optional TetherScript hook into codetether-native-validation.
+The root validation API now re-exports that crate, including the same stateless
+Default validation host used by Sol. Five root implementation files are removed.
+Root TetherScript feature forwarding preserves enabled and disabled plugin
+behavior. ESLint still checks runtime policy before invoking the Bash tool;
+LSP still uses the same native client and manager cache.
+
+Static comparisons preserve all service bodies and both plugin branches after
+explicit native import substitutions. The graph audit's explicit refactor
+module root now points to the moved module. Module/dependency scans cover 729
+roots and 615 crates without missing modules, cycles or undeclared dependencies.
+Declaration, standalone formatting, file-limit and whitespace checks pass.
+Only the new package/root dependency are staged in Cargo.lock; unrelated working
+files remain untouched. Evidence: artifacts/consolidation-native-validation/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active and incomplete.

@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/codetether-native-validation",
     "crates/codetether-native-session-store",
     "crates/codetether-native-proactive",
     "crates/codetether-native-swarm",
@@ -689,7 +690,7 @@ path = "src/main.rs"
 
 [features]
 default = ["tetherscript"]
-tetherscript = ["codetether-native-swarm/tetherscript", "codetether-native-forage/tetherscript", "dep:codetether-native-tetherscript","codetether-native-providers/tetherscript","codetether-reasoning-repair/tetherscript", "codetether-forage-scoring/tetherscript", "codetether-tool-construction/tetherscript", "dep:codetether-tetherscript-computer", "dep:codetether-tetherscript-tool", "dep:tetherscript", "codetether-browser/tetherscript", "dep:codetether-tetherscript-values", "dep:codetether-provider-tetherscript", "codetether-provider-bonsai/tetherscript"]
+tetherscript = ["codetether-native-validation/tetherscript", "codetether-native-swarm/tetherscript", "codetether-native-forage/tetherscript", "dep:codetether-native-tetherscript","codetether-native-providers/tetherscript","codetether-reasoning-repair/tetherscript", "codetether-forage-scoring/tetherscript", "codetether-tool-construction/tetherscript", "dep:codetether-tetherscript-computer", "dep:codetether-tetherscript-tool", "dep:tetherscript", "codetether-browser/tetherscript", "dep:codetether-tetherscript-values", "dep:codetether-provider-tetherscript", "codetether-provider-bonsai/tetherscript"]
 # Local in-process inference via Candle. Off by default: the agent leads with
 # remote/HTTP providers unless a local model backend is explicitly requested.
 candle = [
@@ -726,6 +727,7 @@ fips = [
 
 [dependencies]
 codetether-native-a2a = { path = "crates/codetether-native-a2a", version = "4.7.6-dev.38" }
+codetether-native-validation = { path = "crates/codetether-native-validation", version = "0.1.0" }
 codetether-native-session-store = { path = "crates/codetether-native-session-store", version = "0.1.0" }
 codetether-native-proactive = { path = "crates/codetether-native-proactive", version = "0.1.0" }
 codetether-native-swarm = { path = "crates/codetether-native-swarm", version = "0.1.0" }
