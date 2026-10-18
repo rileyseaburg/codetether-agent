@@ -18163,3 +18163,23 @@ native callback checks, full-main comparison around the extraction, unchanged
 worker/HTTP sources, module/dependency graphs, file limits and whitespace.
 Evidence: `artifacts/consolidation-worker-cli/`. No worker/network operation,
 Cargo, rustc, Python or Rust tests ran; compilation remains unverified.
+
+### MCP stdio startup
+
+Moved the MCP `serve` branch from `src/main.rs` into
+`codetether-mcp-cli::serve`. Separate modules own provider fallback/tool selection,
+startup coordination and native operation contracts. The shared startup creates
+the existing local bus/S3 sink, resolves the existing target policy and attaches
+the optional authenticated remote bus before running the server.
+
+Native `mcp_serve` bindings preserve Vault registry construction, default versus
+provider-aware tool constructors, stdio transport creation and bus attachment.
+The exact provider fallback order and default model names were retained. Client
+MCP command dispatch remains unchanged in its existing adapter.
+
+Validation: full provider-selection and startup-flow comparisons, full-main
+comparison around the extracted branch, native callback mappings, unchanged
+provider/tool/transport construction sources, module/dependency graphs, file
+limits and whitespace checks. Evidence: `artifacts/consolidation-mcp-serve/`.
+No provider discovery, MCP server, network operation, Cargo, rustc, Python or Rust
+test was executed. Compilation remains unverified.

@@ -7250,9 +7250,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "codetether-bus-core",
+ "codetether-bus-s3",
  "codetether-cli-options",
  "codetether-mcp-connections",
  "codetether-mcp-core",
+ "codetether-mcp-target",
+ "codetether-provider-core",
  "serde",
  "serde_json",
  "tokio",

@@ -54,3 +54,6 @@ pub async fn execute<H: Host>(
         ),
     }
 }
+
+/// Stdio server startup and provider/bus coordination.
+pub mod serve;

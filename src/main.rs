@@ -24,6 +24,7 @@ mod worktree_cli;
 
 mod benchmark_cli;
 mod mcp_cli;
+mod mcp_serve;
 mod native_cli;
 mod ralph_cli;
 mod rlm_cli;
@@ -133,75 +134,14 @@ async fn main() -> anyhow::Result<()> {
             let resolved_command = codetether_mcp_cli::resolve_command(&args);
             match args.action.as_str() {
                 "serve" => {
-                    tracing::info!("Starting MCP server over stdio...");
-
-                    // Create agent bus + S3 sink so tool calls sync to MinIO
-                    let bus = bus::AgentBus::new().into_arc();
-                    codetether_agent::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
-
-                    // Try to load provider from Vault so tools like Ralph can execute autonomously
-                    let registry = match provider::ProviderRegistry::from_vault().await {
-                        Ok(provider_registry) => {
-                            let fallbacks = [
-                                "zai",
-                                "openai",
-                                "github-copilot",
-                                "anthropic",
-                                "openrouter",
-                                "novita",
-                                "moonshotai",
-                                "google",
-                            ];
-                            let provider_and_model = fallbacks
-                                .iter()
-                                .find_map(|name| provider_registry.get(name).map(|p| (p, name)));
-                            match provider_and_model {
-                                Some((provider, name)) => {
-                                    let model = match *name {
-                                        "zai" => "glm-5".to_string(),
-                                        "anthropic" => "claude-sonnet-4-20250514".to_string(),
-                                        "openai" => "gpt-4.1".to_string(),
-                                        _ => "default".to_string(),
-                                    };
-                                    tracing::info!(provider = %name, model = %model, "MCP server loaded provider from Vault");
-                                    std::sync::Arc::new(tool::ToolRegistry::with_provider(
-                                        provider, model,
-                                    ))
-                                }
-                                None => {
-                                    tracing::warn!(
-                                        "Vault connected but no known provider found, Ralph/Go will be limited"
-                                    );
-                                    std::sync::Arc::new(tool::ToolRegistry::with_defaults())
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!(error = %e, "Failed to load providers from Vault, Ralph/Go will be limited");
-                            std::sync::Arc::new(tool::ToolRegistry::with_defaults())
-                        }
-                    };
-                    let server = mcp::McpServer::new_stdio()
-                        .with_tool_registry(registry)
-                        .with_agent_bus(bus);
-                    let resolved_bus_url = codetether_mcp_target::resolve(
+                    mcp_serve::serve(
                         &args,
                         &mcp_control_plane_url,
                         &mcp_control_plane_token,
                         &mcp_project_root,
                         mcp_project_was_explicit,
                     )
-                    .await?;
-                    let server = if let Some(bus_url) = resolved_bus_url {
-                        tracing::info!(bus_url = %bus_url, "Connecting MCP server to agent bus");
-                        server
-                            .with_bus_auth(bus_url, mcp_control_plane_token.clone())
-                            .await
-                    } else {
-                        server
-                    };
-                    server.run().await?;
-                    Ok(())
+                    .await
                 }
                 _ => mcp_cli::execute(args, resolved_command).await,
             }
