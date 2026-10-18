@@ -12118,3 +12118,19 @@ Full workspace consolidation remains active.
   checks passed. Evidence: artifacts/consolidation-entry-assembly/.
 - No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
   consolidation remains incomplete.
+
+### Streaming preview and parse-cache ownership
+
+- Moved cumulative-stream parse caching and explicit reset into
+  codetether-message-cache. Moved streaming preview line assembly into
+  codetether-tool-panel, alongside the ordinary message renderer.
+- The native adapter supplies text, processing state and lazy elapsed-time
+  sampling. The shared status renderer still constructs the header in the
+  original order. The 256-byte growth threshold, length-based reuse, owned-line
+  cloning and thread-local cache behavior are unchanged.
+- Verification: six source comparisons passed for moved bodies, cache constant,
+  thread-local state and native projection. Full native/shared module graphs,
+  dependency cycles, direct formatting, source limits and diff checks passed.
+  Evidence: artifacts/consolidation-streaming-preview/.
+- No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
+  consolidation remains incomplete.

@@ -88,3 +88,6 @@ pub use render_state::RenderedLineCache;
 
 mod drawn_lines;
 pub use drawn_lines::DrawnLines;
+
+mod streaming;
+pub use streaming::{cached_streaming_format, reset_stream_parse_cache};

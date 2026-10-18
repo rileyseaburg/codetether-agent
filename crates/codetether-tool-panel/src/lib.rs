@@ -22,3 +22,6 @@ pub use entry_result::EntryAppendResult;
 pub use separator::push_separator;
 
 mod entry_panel;
+
+mod streaming_preview;
+pub use streaming_preview::push_streaming_preview;
