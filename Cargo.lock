@@ -16041,3 +16041,14 @@ dependencies = [
  "codetether-cli-options",
  "tracing",
 ]
+
+[[package]]
+name = "codetether-onboarding"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-user-auth",
+ "codetether-user-auth-cli",
+ "reqwest 0.13.4",
+ "serde_json",
+]

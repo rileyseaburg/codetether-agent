@@ -298,6 +298,7 @@ members = [
     "crates/codetether-mcp-approval",
     "crates/codetether-tui-reactor",
     "crates/codetether-git-credential-helper",
+    "crates/codetether-onboarding",
     "crates/codetether-agent-dashboard",
     "crates/codetether-worker-events",
     "crates/codetether-tui-worker",

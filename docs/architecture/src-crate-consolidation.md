@@ -17886,3 +17886,20 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-git-credential-helper/`.
 - No Cargo, rustc, Python, credential helper, GitHub CLI, Rust compilation or
   Rust tests ran. Full workspace consolidation remains incomplete.
+
+### Standalone interactive onboarding
+
+- Moved the three undeclared native onboarding files into the dedicated
+  `codetether-onboarding` workspace crate, split into entry, login, registration
+  and prompt modules. No CLI route or root application dependency was added.
+- Shared user-auth/client/cache and password-prompt code remain their owners.
+  The new API accepts the application version explicitly instead of calling a
+  native version-stamping wrapper.
+- Verified complete flows, prompt I/O, validation, request payloads, messages,
+  default endpoint and cache calls under that explicit version substitution.
+  CLI routing and authentication implementations remain unchanged. Module and
+  dependency graphs, direct rustfmt, file limits and whitespace passed. Staged
+  lock only adds the workspace package; unrelated working-copy changes remain.
+  Evidence: `artifacts/consolidation-onboarding/`.
+- No Cargo, rustc, Python, onboarding/login calls, network calls, Rust compilation
+  or Rust tests ran. Full workspace consolidation remains incomplete.
