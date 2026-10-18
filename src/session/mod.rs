@@ -90,5 +90,3 @@ pub use exports::*;
 
 #[cfg(test)]
 mod checkpoint_tests;
-#[cfg(test)]
-mod tests;

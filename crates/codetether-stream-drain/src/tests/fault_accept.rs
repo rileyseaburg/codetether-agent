@@ -2,8 +2,8 @@
 
 use futures::stream;
 
-use super::super::collect_stream_completion_with_events;
-use crate::provider::StreamChunk;
+use super::collect_stream_completion_with_events;
+use codetether_provider_core::StreamChunk;
 
 #[tokio::test]
 async fn partial_text_is_not_accepted_after_terminal_fault() {

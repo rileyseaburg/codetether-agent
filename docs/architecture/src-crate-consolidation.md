@@ -23156,3 +23156,22 @@ working changes remain unchanged. Evidence:
 artifacts/consolidation-thinker-provider-binding/.
 No credential reads, model loads, requests, tests, Cargo, rustc or Python ran.
 Compilation and runtime behavior remain unverified. Full consolidation is active.
+
+### Stream collector regression tests owned by stream-drain
+
+Moved incremental text/usage, tool-call reconstruction and terminal-fault
+acceptance tests into codetether-stream-drain::tests. The tests use the existing
+shared collector test adapter and its unit snapshot event type; all event
+variants checked by these tests are independent of native Session snapshots.
+The original text extraction helper is imported from its owning context-policy
+crate. Three native test-only files and their module declarations were removed.
+
+Static token comparisons preserve every test body and assertion. Collector
+implementation, existing shared tests and native restart adapter remain
+unchanged. Module/dependency scans cover 699 roots and 571 crates with no
+missing modules or cycles. Direct rustfmt, file-size limits and whitespace
+checks passed. Only the context-policy test dependency edge was staged in the
+stream-drain lock entry; unrelated working changes were preserved. Evidence:
+artifacts/consolidation-stream-collector-tests/.
+No provider streams, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

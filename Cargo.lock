@@ -5638,6 +5638,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-codex-protocol",
+ "codetether-context-policy",
  "codetether-provider-core",
  "codetether-session-events",
  "codetether-stream-bounds",

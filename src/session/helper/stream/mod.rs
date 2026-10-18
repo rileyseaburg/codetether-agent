@@ -19,7 +19,6 @@ use crate::provider::StreamChunk;
 use anyhow::Result;
 use futures::stream::BoxStream;
 
-mod accept;
 mod restart;
 #[cfg(test)]
 mod restart_checkpoint_tests;
