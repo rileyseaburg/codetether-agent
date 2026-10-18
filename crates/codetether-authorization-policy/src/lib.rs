@@ -19,3 +19,6 @@ mod tests;
 
 /// Ordered route mapping and fail-closed permission lookup.
 pub mod routes;
+
+/// Authenticated HTTP request identity projection.
+pub mod user;

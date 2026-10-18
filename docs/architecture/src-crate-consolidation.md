@@ -13220,3 +13220,19 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   tokens were generated; no auth requests, Cargo, rustc or Rust tests ran.
   Full consolidation remains incomplete.
+
+### Authorization identity projection extraction
+
+- Moved authenticated-request projection, claim mapping, static identity defaults
+  and the existing claim test into codetether-authorization-policy::user. Four
+  modules contain at most 18 code lines. Boolean environment parsing now has
+  one shared implementation in codetether-util, re-exported for server startup.
+- Claim precedence, fallback labels, role/scope copying, cached static-token
+  admin opt-in and the boolean parser's accepted values are unchanged.
+- Verification: 80 static comparisons passed for the moved functions/test and
+  unchanged native server items. Module/dependency checks, direct rustfmt,
+  file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-policy-user/.
+- Only the policy crate's two added dependencies were staged from Cargo.lock.
+  No authentication requests, environment mutations, Cargo, rustc or Rust tests
+  ran. Full consolidation remains incomplete.

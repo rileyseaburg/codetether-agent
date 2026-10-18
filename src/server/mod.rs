@@ -982,17 +982,7 @@ fn internal_error(error: anyhow::Error) -> (StatusCode, String) {
     }
     (StatusCode::INTERNAL_SERVER_ERROR, message)
 }
-
-fn env_bool(name: &str, default: bool) -> bool {
-    std::env::var(name)
-        .ok()
-        .and_then(|v| match v.to_ascii_lowercase().as_str() {
-            "1" | "true" | "yes" | "on" => Some(true),
-            "0" | "false" | "no" | "off" => Some(false),
-            _ => None,
-        })
-        .unwrap_or(default)
-}
+use codetether_util::environment::env_bool;
 
 #[cfg(test)]
 mod tests {

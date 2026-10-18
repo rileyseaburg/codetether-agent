@@ -6446,6 +6446,8 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+ "codetether-http-auth",
+ "codetether-util",
 ]
 
 [[package]]

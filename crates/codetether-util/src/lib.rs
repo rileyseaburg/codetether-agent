@@ -27,3 +27,6 @@ pub mod text_preview;
 
 /// Character-count limited display previews.
 pub mod preview_chars;
+
+/// Environment-value parsing shared by startup and policy adapters.
+pub mod environment;
