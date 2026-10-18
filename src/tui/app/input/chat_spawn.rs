@@ -1,88 +1,10 @@
-//! Provider task submission with optional worktree isolation.
-//!
-//! Creates an isolated git worktree when enabled, then moves
-//! the checked-out session into the TUI session runtime.
-//!
-//! This module is responsible for handing an idle TUI session to the
-//! asynchronous session runtime. It records the current UI execution settings
-//! on the session metadata, prepares the prompt request, and restores the
-//! session if the runtime cannot accept the work.
-//!
-//! The provider call itself is not performed here. Model execution, worktree
-//! creation, event streaming, and session persistence are handled by the
-//! runtime after it receives the [`PromptRequest`](crate::tui::app::session_runtime::PromptRequest).
-
-mod host;
-use std::path::Path;
-use std::sync::Arc;
-
-use crate::provider::ProviderRegistry;
-use crate::session::ImageAttachment;
-use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
-use crate::tui::app::state::App;
-
-/// Spawn the provider task with optional worktree isolation.
-///
-/// Sets up the worktree (if `use_worktree` is enabled),
-/// clones the session, and spawns a background task.
-///
-/// The active session is taken from `slot` and submitted to `runtime` as a
-/// [`PromptRequest`](crate::tui::app::session_runtime::PromptRequest). While the runtime owns the session, the TUI treats the
-/// slot as busy. If submission fails, the session is restored immediately so
-/// the user can retry without losing conversation state.
-///
-/// # Parameters
-///
-/// * `app` - TUI application state. The function reads `auto_apply_edits` and
-///   `use_worktree` from `app.state`, and writes a status message when the
-///   session cannot be submitted.
-/// * `cwd` - Current working directory used as the worktree root when worktree
-///   isolation is enabled.
-/// * `slot` - Holder for the active session. The session must be idle and
-///   available to be moved into the runtime.
-/// * `registry` - Shared provider registry used by the runtime to resolve the
-///   selected model provider.
-/// * `prompt` - Prompt text entered by the user.
-/// * `pending_images` - Image attachments to send with the prompt.
-/// * `runtime` - Session runtime handle that accepts prompt requests for
-///   background execution.
-///
-/// # Side Effects
-///
-/// Updates session metadata, may remove the session from `slot`, submits work
-/// to the runtime, and updates `app.state.status` when the session is already
-/// running or the runtime is unavailable.
-///
-/// # Errors
-///
-/// This function does not return an error. Runtime submission failure is handled
-/// by restoring the session into `slot` and setting a user-visible status
-/// message.
-///
-/// # Preconditions
-///
-/// `slot` should contain an idle session. If the slot cannot be borrowed, the
-/// function assumes a prompt is already running and returns without submitting
-/// new work.
-pub(super) async fn spawn_provider_task(
-    app: &mut App,
-    cwd: &Path,
-    slot: &mut SessionSlot,
-    registry: &Arc<ProviderRegistry>,
-    prompt: &str,
-    pending_images: Vec<ImageAttachment>,
-    runtime: &TuiSessionHandle,
-) {
-    codetether_chat_submit::handoff::prepare(
-        &mut host::Native {
-            app,
-            slot,
-            registry,
-            runtime,
-        },
-        cwd,
-        prompt,
-        pending_images,
-    )
-    .await;
-}
+//! Frontend type selection for owned-session provider handoff.
+codetether_chat_submit::declare_frontend_handoff!(
+    crate::tui::app::state::App,
+    crate::tui::app::session_runtime::SessionSlot,
+    crate::provider::ProviderRegistry,
+    crate::tui::app::session_runtime::TuiSessionHandle,
+    crate::session::Session,
+    crate::tui::app::session_runtime::PromptRequest,
+    crate::session::ImageAttachment,
+);

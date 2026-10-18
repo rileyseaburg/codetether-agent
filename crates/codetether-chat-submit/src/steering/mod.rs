@@ -2,6 +2,7 @@
 //!
 //! [submit] sends expanded text and cloned images to the active run. Failed
 //! sends retain attachments and queue text; accepted sends clear pending state.
+mod binding;
 mod input;
 mod run;
 mod view;

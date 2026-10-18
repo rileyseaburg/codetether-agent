@@ -23637,6 +23637,23 @@ pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
 lock changes were needed. Evidence: artifacts/consolidation-prompt-bindings/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
 
+### Active-turn steering and owned-session handoff bindings
+
+Moved frontend steering input/view effects and provider handoff preparation/
+transfer into codetether-chat-submit::steering::binding and ::handoff::binding.
+Removed six root host implementation files. Root declarations select concrete
+state, runtime, session/request, message and image types plus paste expansion
+and queued-input callbacks. The handoff entry's documentation moves with its body.
+
+All twenty-three expanded function bodies and both borrowed host layouts match
+after callback qualification. Session checkout/restoration, steering activation,
+worktree metadata and pending-attachment handling retain their original code.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. Unrelated
+files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-steering-handoff/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
+
 ### Chat input interception, routing and submission bindings
 
 Moved the chat Enter entry point and its interception, routing and submission
