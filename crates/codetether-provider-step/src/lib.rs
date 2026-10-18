@@ -3,6 +3,8 @@
 //! [complete_step] uses the shared restart engine for structured streaming.
 //! Other requests use scoped completion with a configurable wall-clock limit.
 //! Stream failures retain their checkpoint data for application persistence.
+/// Delegated completion cancellation and parent-session accounting.
+pub mod controlled;
 mod dispatch;
 mod timeout;
 use anyhow::Result;

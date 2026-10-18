@@ -3,28 +3,25 @@
 use super::state::State;
 use crate::provider::{CompletionRequest, CompletionResponse};
 
+struct Native;
+impl codetether_provider_step::controlled::Accounting for Native {
+    async fn record(
+        session_id: &str,
+        tokens: usize,
+        elapsed: std::time::Duration,
+    ) -> anyhow::Result<()> {
+        crate::session::runtime::goals::record_usage(session_id, tokens, elapsed).await
+    }
+}
+
 pub(super) async fn run(
     state: &State,
     request: CompletionRequest,
 ) -> anyhow::Result<CompletionResponse> {
-    let response = match &state.control {
-        Some(control) => tokio::select! {
-            biased;
-            _ = control.cancelled() => anyhow::bail!("Session execution cancelled"),
-            result = state.provider.complete(request) => result?,
-        },
-        None => state.provider.complete(request).await?,
-    };
-    if let Some(id) = state
-        .control
-        .as_ref()
-        .and_then(|control| control.session_id())
-    {
-        let tokens = response
-            .usage
-            .prompt_tokens
-            .saturating_add(response.usage.completion_tokens);
-        crate::session::runtime::goals::record_usage(id, tokens, std::time::Duration::ZERO).await?;
-    }
-    Ok(response)
+    codetether_provider_step::controlled::complete::<Native>(
+        &state.provider,
+        request,
+        state.control.as_ref(),
+    )
+    .await
 }

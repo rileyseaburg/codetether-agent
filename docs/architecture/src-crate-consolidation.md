@@ -21027,3 +21027,22 @@ limits, and whitespace checks passed. Evidence:
 staged in the lockfile. No Cargo, rustc, or Python commands ran; no policy/tool
 operations or Rust tests were executed. Compilation and runtime behavior remain
 unverified. Full workspace consolidation remains active.
+
+### Controlled delegated completion ownership
+
+Moved cancellation-aware provider completion and parent-goal accounting
+sequencing into `codetether-provider-step::controlled`. The shared function uses
+the existing `ControlHandle`; native code supplies the unchanged durable-goal
+accounting callback. Biased cancellation priority, cancellation text, provider
+errors, saturating prompt/completion token summation, zero elapsed increment,
+and accounting-after-success order are preserved.
+
+Added the session-control dependency and explicitly enabled Tokio's macros
+feature for the moved select operation. Only the owning package's new dependency
+edge is staged in the lockfile. Static full-body comparisons, native binding
+checks, source/dependency graphs, direct rustfmt, native file-size checks, and
+whitespace checks passed. Existing cancellation and parent-goal regression
+sources are unchanged. Evidence:
+`artifacts/consolidation-controlled-completion/`. No Cargo, rustc, or Python
+commands ran. No provider/journal operations or Rust tests were executed.
+Compilation and runtime behavior remain unverified; consolidation is active.

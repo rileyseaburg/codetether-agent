@@ -4398,6 +4398,7 @@ version = "0.1.0"
 name = "codetether-provider-step"
 version = "0.1.0"
 dependencies = [
+ "codetether-session-control",
  "anyhow",
  "codetether-provider-core",
  "codetether-session-events",
