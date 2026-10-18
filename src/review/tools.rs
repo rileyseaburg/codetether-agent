@@ -7,7 +7,7 @@ use crate::tool::ToolRegistry;
 /// Delegates to the swarm read-only policy so the reviewer and read-only
 /// swarm sub-agents can never drift apart on what "read-only" means.
 pub fn read_only_tools() -> ToolRegistry {
-    let mut registry = ToolRegistry::with_defaults();
-    crate::swarm::tool_policy::restrict_registry(&mut registry, true);
-    registry
+    codetether_approval_review::application::read_only_tools::<
+        crate::tool::registry_lifecycle::Native,
+    >()
 }

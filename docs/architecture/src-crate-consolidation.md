@@ -22380,3 +22380,31 @@ staged in the lockfile; the unrelated working lockfile remains byte-identical.
 Evidence: `artifacts/consolidation-catalog-registration/`.
 No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
 Full consolidation is active.
+
+### Reviewer application integration owned by the review crate
+
+Moved reviewer model resolution, read-only tool construction, definition
+collection, agent-loop argument mapping and dispatch forwarding into
+`codetether-approval-review::application`. Five focused modules own the
+reviewer type, application contract, direct execution, background dispatch and
+restricted catalog construction. The native review host now binds the same
+provider/tool/agent application types and retains only installed runtime and
+session-goal lookup. Native direct review and dispatch entry points select the
+shared Reviewer type; the public read-only tools function delegates to its
+shared implementation.
+
+Static source comparisons preserve all twelve agent-loop arguments, model
+resolution, definitions, Arc ownership, the shared read-only restriction
+policy, enabled-runtime lookup and session-goal projection. Native reviewer
+test/fixture files and the public native loop wrapper remain byte-identical.
+Provider application modules and the loop-host alias are now crate-visible so
+the reviewer can bind the original concrete application types.
+
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the review crate's application-providers, application-registry and
+swarm-agent dependency edges are staged in the lockfile; the unrelated working
+lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-review-application/`.
+No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
+Full consolidation is active.

@@ -1,42 +1,17 @@
-//! Native provider and read-only tool bindings for approval review.
-use crate::{provider::ProviderRegistry, tool::ToolRegistry};
-use codetether_approval_review::{Host, Run};
-use codetether_provider_core::{Provider, ToolDefinition};
-use codetether_swarm_core::agent_retry::AgentLoopExit;
-use std::sync::Arc;
-pub(super) struct Native;
-impl Host for Native {
-    type Registry = ProviderRegistry;
-    type Tools = ToolRegistry;
-    fn resolve(
-        registry: &ProviderRegistry,
-        selector: &str,
-    ) -> anyhow::Result<(Arc<dyn Provider>, String)> {
-        registry.resolve_model(selector)
+//! Native application identities, installed runtime and goal journal lookup.
+use crate::session::tasks::{TaskLog, TaskState, governance_block};
+pub(super) type Native = codetether_approval_review::application::Reviewer<Application>;
+pub(super) struct Application;
+impl codetether_approval_review::application::Application for Application {
+    type Tools = crate::tool::registry_lifecycle::Native;
+    type Providers = crate::provider::registry::application::Native;
+    type Agent = crate::swarm::executor::LoopHost;
+    fn enabled() -> Option<super::runtime::ReviewRuntime> {
+        super::runtime::enabled()
     }
-    fn tools() -> Arc<ToolRegistry> {
-        Arc::new(super::tools::read_only_tools())
-    }
-    fn definitions(tools: &ToolRegistry) -> Vec<ToolDefinition> {
-        tools.definitions()
-    }
-    async fn execute(
-        run: Run<'_, ToolRegistry>,
-    ) -> anyhow::Result<(String, usize, usize, AgentLoopExit)> {
-        crate::swarm::run_agent_loop(
-            run.provider,
-            run.model,
-            run.system,
-            run.user,
-            run.definitions,
-            run.tools,
-            run.max_steps,
-            run.timeout_secs,
-            None,
-            run.id,
-            None,
-            Some(run.workspace),
-        )
-        .await
+    async fn goal(session_id: Option<&str>) -> Option<String> {
+        let log = TaskLog::for_session(session_id?).ok()?;
+        let events = log.read_all().await.ok()?;
+        governance_block(&TaskState::from_log(&events))
     }
 }

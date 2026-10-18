@@ -2099,11 +2099,14 @@ name = "codetether-approval-review"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "codetether-application-providers",
+ "codetether-application-registry",
  "codetether-approval-core",
  "codetether-approval-queue",
  "codetether-config",
  "codetether-proposed-content",
  "codetether-provider-core",
+ "codetether-swarm-agent",
  "codetether-swarm-core",
  "tokio",
  "tracing",

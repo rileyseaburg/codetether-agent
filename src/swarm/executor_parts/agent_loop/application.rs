@@ -2,7 +2,7 @@
 use crate::tool::{Tool, ToolRegistry};
 use serde_json::Value;
 use std::sync::Arc;
-pub(in crate::swarm) struct Native;
+pub(crate) struct Native;
 impl codetether_swarm_agent::Host for Native {
     type Registry = ToolRegistry;
     fn get(registry: &ToolRegistry, name: &str) -> Option<Arc<dyn Tool>> {

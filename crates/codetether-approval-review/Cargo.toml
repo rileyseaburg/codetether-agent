@@ -7,6 +7,9 @@ license = "MIT"
 description = "Bounded approval reviewer execution and process runtime state"
 
 [dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
+codetether-swarm-agent = { path = "../codetether-swarm-agent", version = "0.1.0" }
 anyhow = "1"
 codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
 codetether-config = { path = "../codetether-config", version = "0.1.0" }

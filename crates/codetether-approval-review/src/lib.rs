@@ -12,5 +12,7 @@ pub use host::Host;
 pub use request::Run;
 pub use run::review;
 
+/// Application registry integration and shared reviewer agent execution.
+pub mod application;
 /// Background dispatch for queued tool approvals.
 pub mod dispatch;
