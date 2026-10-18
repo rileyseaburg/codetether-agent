@@ -44,3 +44,6 @@ pub mod enter;
 
 /// Mouse wheel priorities, view scrolling and click routing.
 pub mod mouse;
+
+/// Saved viewport state and chat-view transition policy.
+pub mod view_state;

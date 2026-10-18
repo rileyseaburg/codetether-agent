@@ -19925,3 +19925,22 @@ and tests, isolated lockfile delta, module reachability, dependency cycles,
 file-size ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-spawned-agent/`. No Cargo, rustc, Python or Rust tests
 ran; compilation and runtime remain unverified.
+
+### Saved viewport state ownership
+
+Moved saved chat position, auto-follow and tool-preview position into
+`codetether-tui-navigation::view_state::SavedScroll`, together with capture,
+restore and the transition-away-from-chat rule. Native AppState now owns one
+snapshot value in place of three separate saved fields and delegates through
+its existing methods.
+
+Preserved default values (0, true, 0), saved-value assignment order, restoration
+without changing the snapshot, and capture only when leaving Chat. Existing
+settings navigation is unchanged. No dependencies changed.
+
+Validation: full save/restore/transition body comparisons, default and exact
+native-field migration checks, viewport bindings, unchanged navigation/tests
+and manifests, module reachability, dependency cycles, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-saved-scroll/`. No Cargo, rustc, Python or Rust tests
+ran; compilation and runtime remain unverified.
