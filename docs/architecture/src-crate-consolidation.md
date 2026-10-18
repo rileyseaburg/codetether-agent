@@ -10301,3 +10301,19 @@ contain at most 38 code lines. Evidence is in
 `artifacts/consolidation-mux-coordination/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python, registry lookup, network or bus operations ran.
 Full workspace consolidation remains active.
+
+### Mux client parsing and rendering consolidated
+
+Moved interactive command parsing, argument validation, typed parsed commands,
+response/help rendering and snapshot listing into `codetether-mux-client`.
+Seven new modules separate parsing and rendering from authenticated transport.
+Native client adapters retain existing dispatch and terminal behavior. Three
+active parser regressions moved, along with the previously unreferenced program
+command test, which is now declared in the shared crate.
+
+Sixteen static comparisons cover parser branches, command preservation, output
+text, four existing tests and unchanged dispatch callers. Module/dependency
+graphs, file budgets and whitespace checks passed; new files contain at most 29
+code lines. Evidence is in `artifacts/consolidation-mux-client-policy/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python, terminal
+output or program execution ran. Full workspace consolidation remains active.

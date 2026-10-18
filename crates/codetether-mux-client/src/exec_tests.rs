@@ -1,4 +1,4 @@
-use crate::mux::client::parse::{ParsedCommand, parse};
+use crate::{ParsedCommand, parse};
 
 #[test]
 fn program_command_is_preserved_for_server_startup() {

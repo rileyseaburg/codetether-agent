@@ -11,3 +11,15 @@ mod request;
 mod state;
 pub use connection::MuxConnection;
 pub use state::ClientState;
+
+mod command;
+mod parse;
+mod parse_args;
+pub mod render;
+mod render_snapshot;
+pub use command::ParsedCommand;
+pub use parse::parse;
+#[cfg(test)]
+mod exec_tests;
+#[cfg(test)]
+mod parse_tests;

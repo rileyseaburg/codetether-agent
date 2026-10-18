@@ -8,7 +8,6 @@ pub(super) mod parse;
 mod program;
 mod proxy;
 mod render;
-mod render_snapshot;
 mod session;
 mod state;
 mod terminal;

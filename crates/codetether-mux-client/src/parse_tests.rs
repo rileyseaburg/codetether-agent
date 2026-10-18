@@ -1,5 +1,5 @@
-use crate::mux::client::parse::{ParsedCommand, parse};
-use crate::mux::protocol::ClientRequest;
+use crate::{ParsedCommand, parse};
+use codetether_mux_protocol::ClientRequest;
 
 #[test]
 fn new_command_preserves_workspace_with_spaces() {

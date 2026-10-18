@@ -2,5 +2,4 @@
 
 mod model;
 mod multiprocess;
-mod parse;
 mod token;

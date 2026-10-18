@@ -1,6 +1,6 @@
 //! Snapshot listing for the attached session.
 
-use crate::mux::model::MuxSnapshot;
+use codetether_mux_model::MuxSnapshot;
 
 /// Print the attached session's windows; sibling sessions are listed by name only.
 pub(super) fn print(state: &MuxSnapshot, session: &str) {
