@@ -1,23 +1,9 @@
-//! Thin wrapper to start an autochat relay worker thread.
-
-use tokio::sync::mpsc;
-
-use super::events::AutochatUiEvent;
-
-/// Start the autochat relay in a background task.
-///
-/// Returns the receiver end of the UI event channel. The caller
-/// (event loop) drains events from this channel on each tick.
+//! Application binding for shared autochat background launch.
+use super::{events::AutochatUiEvent, host::Runtime};
+/// Start a relay and return its UI event receiver.
 pub fn start_autochat_relay(
     task: String,
     model: String,
-) -> mpsc::UnboundedReceiver<AutochatUiEvent> {
-    let (ui_tx, ui_rx) = mpsc::unbounded_channel();
-    let _ = ui_tx.send(AutochatUiEvent::Progress(format!(
-        "Starting autochat relay for: {task}"
-    )));
-    tokio::spawn(async move {
-        super::run::run_relay(task, model, ui_tx).await;
-    });
-    ui_rx
+) -> tokio::sync::mpsc::UnboundedReceiver<AutochatUiEvent> {
+    codetether_autochat_core::interactive::worker::start_autochat_relay::<Runtime, _>(task, model)
 }

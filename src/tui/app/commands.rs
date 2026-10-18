@@ -377,18 +377,8 @@ async fn handle_go_command(
 }
 
 fn handle_autochat_command(app: &mut App, rest: &str) {
-    let task = rest.trim().to_string();
-    if task.is_empty() {
-        app.state.status = "Usage: /autochat <task description>".to_string();
-        return;
-    }
-    if app.state.autochat.running {
-        app.state.status = "Autochat relay already running.".to_string();
-        return;
-    }
-    let model = app.state.last_completion_model.clone().unwrap_or_default();
-    let rx = super::autochat::worker::start_autochat_relay(task, model);
-    app.state.autochat.running = true;
-    app.state.autochat.rx = Some(rx);
-    app.state.status = "Autochat relay started.".to_string();
+    codetether_autochat_core::interactive::command::handle_autochat_command::<
+        super::autochat::host::Runtime,
+        _,
+    >(&mut app.state, rest);
 }

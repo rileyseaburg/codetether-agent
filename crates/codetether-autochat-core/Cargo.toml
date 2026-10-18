@@ -13,7 +13,7 @@ codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
 anyhow = "1.0.104"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
-tokio = { version = "1.53.1", features = ["time"] }
+tokio = { version = "1.53.1", features = ["time", "rt", "sync"] }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 
 codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }

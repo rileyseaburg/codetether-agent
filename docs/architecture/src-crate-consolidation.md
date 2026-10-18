@@ -14825,3 +14825,23 @@ Full workspace consolidation remains active.
   artifacts/consolidation-swarm-interactive/.
 - Enabled Tokio's rt feature on the existing dependency; no lockfile package
   changes. No Cargo, rustc or Rust tests ran. Full consolidation is unfinished.
+
+### Interactive autochat relay ownership
+
+- Moved the TUI autochat workflow into codetether-autochat-core::interactive:
+  persona definitions and ranking, process-wide posterior state, request
+  builders, provider step execution, response summaries, relay sequencing,
+  completion notifications, worker launch, command validation and event handling.
+- Events and receiver state are generic over the native session-event payload.
+  Native aliases retain the existing application types. A native registry
+  wrapper supplies provider loading/resolution, and a View implementation
+  supplies AppState updates. Existing paths re-export shared implementations.
+- Moved persona-ranking tests with the implementation, preserving assertions.
+  Preserved provider resolution failures, exact prompts and request settings,
+  baton ordering, progress/completion messages, ranking updates and UI actions.
+- Verification: sixteen static checks compared migrated modules and workflow
+  bodies after explicit host/type substitutions. Module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-autochat-interactive/.
+- Enabled rt/sync on the existing Tokio dependency; no lockfile packages changed.
+  No Cargo, rustc or Rust tests ran. Full src consolidation remains unfinished.

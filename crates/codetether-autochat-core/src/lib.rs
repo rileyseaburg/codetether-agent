@@ -32,3 +32,6 @@ pub mod model_rotation;
 
 /// Stable posterior-based ordering of auto-chat model candidates.
 pub mod delegation;
+
+/// Interactive persona relay, launch lifecycle and event handling.
+pub mod interactive;

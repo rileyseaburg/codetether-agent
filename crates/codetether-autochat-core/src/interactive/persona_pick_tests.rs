@@ -2,8 +2,8 @@
 
 use super::super::persona::default_chain;
 use super::{rank_chain, relay_bucket};
-use crate::session::delegation::{DelegationConfig, DelegationState};
-use crate::session::delegation_skills::AUTOCHAT_PERSONA;
+use codetether_context_policy::delegation::skills::AUTOCHAT_PERSONA;
+use codetether_context_policy::delegation::{DelegationConfig, DelegationState};
 
 #[test]
 fn disabled_returns_static_chain() {

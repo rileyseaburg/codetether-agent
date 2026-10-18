@@ -15,3 +15,5 @@ pub mod summary;
 pub mod worker;
 
 pub use handler::handle_autochat_event;
+
+pub(crate) mod host;
