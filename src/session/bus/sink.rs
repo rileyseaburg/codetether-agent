@@ -7,8 +7,6 @@
 //!
 //! [`SessionEvent::is_durable`]: crate::session::SessionEvent::is_durable
 
-use std::sync::Arc;
-
 use crate::session::SessionEvent;
 
 /// A write-ahead sink for durable [`SessionEvent`]s.
@@ -74,6 +72,3 @@ impl DurableSink for NoopSink {
         Ok(())
     }
 }
-
-/// Type alias for the shared sink handle used inside [`crate::session::SessionBus`].
-pub(crate) type SharedSink = Arc<dyn DurableSink>;

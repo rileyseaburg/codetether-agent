@@ -9095,3 +9095,20 @@ and whitespace checks passed; the largest crate file has 34 code lines.
 Evidence is in `artifacts/consolidation-session-events/`. Compilation and
 runtime tests were not run. No Cargo, rustc or Python commands ran.
 Full workspace consolidation remains active.
+
+### Dedicated session-event bus crate
+
+Moved bus state, construction, subscriptions, durable callback delivery,
+legacy mpsc forwarding and broadcast emission into
+`crates/codetether-session-bus`. Six modules separate transport state,
+configuration and delivery. The native wrapper preserves its existing API
+and adapts the native DurableSink trait to the shared synchronous callback.
+The native sink trait and NoopSink remain unchanged.
+
+Fifteen static comparisons cover moved method bodies, native delegation
+and unchanged sink implementations. Durable write, legacy forwarding and
+broadcast order and original log targets are preserved. Module/dependency
+graphs, file budgets and whitespace checks passed; the largest crate file
+has 21 code lines. Evidence is in `artifacts/consolidation-session-bus/`.
+Compilation and runtime tests were not run. No Cargo, rustc or Python
+commands ran. Full workspace consolidation remains active.

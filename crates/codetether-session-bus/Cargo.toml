@@ -1,0 +1,15 @@
+[package]
+name = "codetether-session-bus"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Session event broadcast, durable callback and legacy forwarding"
+
+[dependencies]
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+tokio = { version = "1", features = ["sync"] }
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread"] }
