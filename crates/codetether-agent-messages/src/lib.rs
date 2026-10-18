@@ -17,3 +17,6 @@ mod contract_tests;
 mod result_tests;
 #[cfg(test)]
 mod system_tests;
+
+/// Parent-scoped collection and insertion of child-result notices.
+pub mod notice;

@@ -3078,6 +3078,10 @@ dependencies = [
  "codetether-swarm-core",
  "codetether-tool-core",
  "serde_json",
+ "codetether-a2a-core",
+ "codetether-bus-core",
+ "codetether-provider-core",
+ "tracing",
 ]
 
 [[package]]

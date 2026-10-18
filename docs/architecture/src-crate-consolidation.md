@@ -15501,3 +15501,22 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-summary-producer/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared child-result notice delivery
+
+- Moved parent-scoped bus collection, envelope/text filtering, transcript marker
+  checks and watcher injection from native prompt helpers into
+  `codetether-agent-messages::notice`.
+- The shared watcher owns its seen-ID set and uses the same process-wide bus.
+  A native Session adapter exposes identity, immutable history and the existing
+  delegated-message insertion path; prompt-loop callers remain unchanged.
+- Preserved the recent-envelope limit, parent topic, seen-ID update order,
+  durable marker format, textual-part filtering, Role::User notice envelope
+  and insertion through `add_delegated_message`.
+- Verification: complete body comparisons for four helpers and watcher injection,
+  state-layout comparison, native adapter and shared bus/type identity checks,
+  unchanged callers, module/dependency graphs, direct rustfmt, file budgets,
+  isolated lock changes and diff whitespace. Evidence:
+  `artifacts/consolidation-child-notice/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.
