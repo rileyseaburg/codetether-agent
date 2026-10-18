@@ -14,13 +14,14 @@ use crate::bus::AgentBus;
 use crate::okr::{ApprovalDecision, Okr, OkrRepository, OkrRun};
 use crate::session::{Session, import_codex_session_by_id};
 use anyhow::Result;
+use codetether_autochat_core::AUTOCHAT_MAX_AGENTS;
 use codetether_relay_plan::{
     default_relay_okr_template, okr_from_planned_draft, truncate_with_ellipsis,
 };
 use codetether_relay_planner::plan_okr_draft_with_registry;
 use codetether_run_command::{
     command_with_optional_args, is_easy_go_command, normalize_cli_go_command,
-    resolve_autochat_model, validate_easy_go_task,
+    normalize_go_task_input, resolve_autochat_model, validate_easy_go_task,
 };
 use std::io::Write;
 use uuid::Uuid;
