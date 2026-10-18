@@ -2,10 +2,6 @@
 
 #[path = "collaboration/context.rs"]
 mod context;
-#[path = "collaboration/ensure.rs"]
-mod ensure;
-#[path = "collaboration/legacy.rs"]
-mod legacy;
 #[cfg(test)]
 #[path = "collaboration/list.rs"]
 mod list;

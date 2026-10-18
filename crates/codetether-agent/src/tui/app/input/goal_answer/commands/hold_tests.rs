@@ -27,6 +27,6 @@ async fn live_goal_commands_override_and_complete_a_review_hold() {
         answer_review::read(&id).unwrap().goal.unwrap().status,
         GoalStatus::Complete
     );
-    assert!(super::super::pending::take(&id));
+    assert!(super::super::pending::take_pending(&id));
     runtime.shutdown().await;
 }

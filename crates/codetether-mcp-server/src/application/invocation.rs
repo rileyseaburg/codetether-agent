@@ -7,6 +7,6 @@ impl<H: Application> ApplicationServer<H> {
         &self,
         params: Option<Value>,
     ) -> Result<Value, JsonRpcError> {
-        crate::invoke(&self.inner.catalog, self.inner.agent_bus.as_deref(), params).await
+        crate::invoke(&self.inner.catalog, self.inner.agent_bus.as_ref(), params).await
     }
 }

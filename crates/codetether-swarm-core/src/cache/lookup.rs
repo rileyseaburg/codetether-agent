@@ -25,7 +25,7 @@ impl SwarmCache {
                 tracing::debug!(key = %key, "Cache entry expired");
                 self.stats.expired_removed += 1;
                 self.index.remove(&key);
-                let _ = self.remove_from_disk(&key);
+                let _ = self.remove_from_disk(&key).await;
                 self.stats.record_miss();
                 return None;
             }
@@ -35,7 +35,7 @@ impl SwarmCache {
             if entry.content_hash != current_hash {
                 tracing::debug!(key = %key, "Content hash mismatch, cache invalid");
                 self.index.remove(&key);
-                let _ = self.remove_from_disk(&key);
+                let _ = self.remove_from_disk(&key).await;
                 self.stats.record_miss();
                 return None;
             }

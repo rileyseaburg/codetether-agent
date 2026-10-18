@@ -6,7 +6,10 @@ use crate::session::Session;
 #[test]
 fn edit_fork_requires_execute_authority() {
     assert_eq!(
-        crate::server::match_policy_rule("/api/session/test/fork", "POST"),
+        codetether_authorization_policy::routes::match_policy_rule(
+            "/api/session/test/fork",
+            "POST"
+        ),
         Some("agent:execute")
     );
 }

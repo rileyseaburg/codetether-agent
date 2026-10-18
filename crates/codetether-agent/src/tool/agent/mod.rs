@@ -20,7 +20,6 @@ pub(crate) mod communication;
 #[cfg(test)]
 mod dispatch;
 mod event_loop;
-use codetether_collaboration_state::execution as execution_state;
 mod handlers;
 mod helpers;
 mod message;
@@ -29,7 +28,6 @@ codetether_child_turn::declare_turn_entrypoints!(
     crate::session::Session,
     crate::session::SessionEvent,
 );
-use codetether_agent_input as params;
 pub(crate) mod persistence;
 mod registry;
 pub(crate) mod residency;
@@ -39,7 +37,6 @@ use codetether_agent_input as spawn_request;
 mod spawn_store;
 mod spawn_validation;
 mod store;
-use codetether_child_events as text;
 mod thread_lifecycle;
 mod tool_impl;
 mod turn_host;
@@ -48,3 +45,6 @@ mod turn_host;
 mod spawn_tests;
 
 pub use tool_impl::AgentTool;
+
+#[cfg(test)]
+include!("mod_test_imports.rs");

@@ -31,8 +31,6 @@ executor_module!(pub(crate) workspace_registry => "workspace_registry/mod.rs");
 
 pub use super::SwarmMessage;
 
-use super::subtask::SubTaskResult;
-pub(super) use super::{kubernetes_executor, tool_policy};
 pub(crate) use agent_loop::LoopHost;
 pub use agent_loop::run_agent_loop;
 /// Fluent builder using the application swarm executor.

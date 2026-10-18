@@ -9,7 +9,6 @@ mod click_open;
 mod editor_click;
 mod editor_key;
 mod editor_lsp;
-mod editor_lsp_hover;
 mod editor_lsp_key;
 mod event_dispatch;
 mod event_priority;

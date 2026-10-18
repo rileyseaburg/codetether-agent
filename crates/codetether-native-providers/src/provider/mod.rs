@@ -22,7 +22,6 @@
 pub use codetether_provider_anthropic as anthropic;
 pub use codetether_provider_bedrock::provider as bedrock;
 pub use codetether_provider_core::body_cap;
-pub mod codex_reasoning;
 pub mod copilot;
 pub use codetether_provider_deepseek as deepseek;
 mod fallback_policy;
@@ -49,8 +48,6 @@ pub mod zai;
 // ── Internal split modules ──────────────────────────────────────────
 
 mod init_dispatch;
-use codetether_provider_factory as init_dispatch_impl;
-mod init_env;
 mod parse;
 #[doc(hidden)]
 pub mod registry;

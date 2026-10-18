@@ -7,10 +7,10 @@ use std::sync::Arc;
 /// Native provider registry and external event sink setup.
 /// # Implementors
 /// Applications retain credential loading and S3 configuration.
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 pub trait Host {
     /// Initialized model registry implementation.
-    type Registry: ModelRegistry;
+    type Registry: ModelRegistry + Send + Sync;
     /// Application session retained for each relay specialist.
     type Session: Session;
     /// Start the configured bus sink, if available.
@@ -23,8 +23,8 @@ pub trait Host {
 /// Session operations required by a relay specialist.
 /// # Implementors
 /// Native sessions preserve their own policy and persistence behavior.
-#[async_trait::async_trait(?Send)]
-pub trait Session: Sized {
+#[async_trait::async_trait]
+pub trait Session: Sized + Send {
     /// Create a session with the application defaults.
     /// # Errors
     /// Returns native session creation errors.

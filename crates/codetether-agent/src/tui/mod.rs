@@ -8,7 +8,6 @@ pub use codetether_terminal_clipboard as clipboard_text;
 pub mod help;
 pub use codetether_tui_style::input_preview as input;
 pub mod latency;
-pub mod latency_chat_turn;
 pub use codetether_native_tui::lsp;
 pub mod model_picker;
 pub use codetether_tui_models as models;

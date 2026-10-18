@@ -28,7 +28,7 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.swarm.detail_scroll_down(*value);
         }
         Action::SubagentScroll(value) => {
-            app.state.agent_tree.detail_scroll = *value;
+            app.state.agent_tree.detail_scroll = u16::try_from(*value).unwrap_or(u16::MAX);
         }
         _ => return false,
     }

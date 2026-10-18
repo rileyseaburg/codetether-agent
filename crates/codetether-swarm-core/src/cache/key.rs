@@ -41,7 +41,7 @@ impl SwarmCache {
     }
 
     /// Generate a content hash for verification
-    fn generate_content_hash(task: &SubTask) -> String {
+    pub(super) fn generate_content_hash(task: &SubTask) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 

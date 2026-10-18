@@ -12,7 +12,7 @@ use std::{marker::PhantomData, sync::Arc};
 /// # }
 /// ```
 pub struct ApplicationHost<P, S>(PhantomData<fn() -> (P, S)>);
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 impl<P: Application, S: Session> Host for ApplicationHost<ProviderRegistry<P>, S> {
     type Registry = ProviderRegistry<P>;
     type Session = S;

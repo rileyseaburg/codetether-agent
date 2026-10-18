@@ -44,10 +44,4 @@ codetether_session_events::declare_event_pipeline!(
 );
 
 #[cfg(test)]
-use crate::session::SessionEvent;
-#[cfg(test)]
-use crate::tui::app::session_runtime::SessionSlot;
-#[cfg(test)]
 use crate::tui::app::state::App;
-#[cfg(test)]
-use crate::tui::worker_bridge::TuiWorkerBridge;

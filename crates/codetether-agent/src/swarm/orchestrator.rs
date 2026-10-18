@@ -3,5 +3,3 @@
 pub type Orchestrator =
     codetether_swarm_orchestrator::Orchestrator<codetether_native_swarm::Providers>;
 pub use codetether_swarm_orchestrator::{OrchestratorMessage, SubAgentMessage};
-
-pub(crate) use codetether_native_swarm::Providers as NativeProvider;

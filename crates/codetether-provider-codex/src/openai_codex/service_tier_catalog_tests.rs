@@ -12,7 +12,7 @@ fn recognizes_new_codex_fast_models() {
 }
 
 #[test]
-fn ultrafast_is_astra_only_and_sol61_has_fast() {
+fn ultrafast_includes_astra_and_sol61() {
     assert_eq!(super::suffixes("gpt-6-astra"), vec!["-fast", "-ultrafast"]);
-    assert_eq!(super::suffixes("gpt-6.1-sol"), vec!["-fast"]);
+    assert_eq!(super::suffixes("gpt-6.1-sol"), vec!["-fast", "-ultrafast"]);
 }

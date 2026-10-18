@@ -22,8 +22,6 @@ pub fn lines(item: &ApprovalSnapshot) -> Vec<Line<'static>> {
         item.preview.as_deref().unwrap_or(&item.resource),
     ));
     lines.extend(crate::lsp::lines(&item.report));
-    lines.extend(codetether_approval_core::review::lines(
-        item.review.as_ref(),
-    ));
+    lines.extend(crate::review::lines(item.review.as_ref()));
     lines
 }

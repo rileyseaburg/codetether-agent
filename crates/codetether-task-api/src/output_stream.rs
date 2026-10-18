@@ -26,7 +26,7 @@ pub async fn stream_task_output(
     tasks: &codetether_task_queue::KnativeTaskQueue,
     bus: &std::sync::Arc<codetether_bus_core::AgentBus>,
     task_id: String,
-) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
+) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>> + use<>>, (StatusCode, String)> {
     tasks
         .get(&task_id)
         .await

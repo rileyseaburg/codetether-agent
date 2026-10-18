@@ -1,6 +1,6 @@
 //! Compose UDP fallback, mDNS advertisement and local peer intake.
 use super::*;
-pub(super) async fn start(
+pub(in crate::peer_startup) async fn start(
     opts: &SpawnOptions,
     bus: &Arc<AgentBus>,
     public_host: &str,

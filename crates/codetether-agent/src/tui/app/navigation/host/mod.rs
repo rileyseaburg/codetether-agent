@@ -25,7 +25,7 @@ impl Host for Navigation<'_> {
                 .composer
                 .slash_suggestions_navigable(&app.state.view.mode, app.state.processing),
             subagent_detail: app.state.agent_tree.detail_mode,
-            subagent_scroll: app.state.agent_tree.detail_scroll,
+            subagent_scroll: usize::from(app.state.agent_tree.detail_scroll),
             protocol_scroll: app.state.protocol_registry.scroll,
         }
     }

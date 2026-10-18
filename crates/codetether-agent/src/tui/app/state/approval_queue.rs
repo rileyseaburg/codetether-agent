@@ -4,8 +4,9 @@ pub(crate) use codetether_approval_edit as edit_session;
 mod reconcile;
 #[cfg(test)]
 pub(crate) use codetether_approval_queue::reset;
-pub(crate) use codetether_approval_queue::{
-    ApprovalReport, ApprovalReportState, ApprovalSnapshot, active, active_id, cycle,
-    feedback_input, len, push, resolve, set_report, set_review, set_scroll_limit,
-};
+#[cfg(not(test))]
+pub(crate) use codetether_approval_queue::{active, active_id, len};
 pub(crate) use reconcile::remove_stale;
+
+#[cfg(test)]
+include!("approval_queue_test_imports.rs");

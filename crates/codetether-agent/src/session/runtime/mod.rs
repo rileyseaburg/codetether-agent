@@ -18,13 +18,9 @@
 pub(crate) mod goals;
 pub mod steering;
 
-/// One process-wide owner for frontend reservations and session executors.
-pub(crate) use codetether_session_control::CONTROL;
-
 codetether_session_orchestration::impl_session_transcript!(crate::session::Session);
-pub(crate) use codetether_native_session_runtime::{
-    RunGuard, boundary, continuation, execution_scope, swarm_monitor,
-};
+#[cfg(not(test))]
+pub(crate) use codetether_native_session_runtime::{boundary, continuation, execution_scope};
 use codetether_session_control as handle;
 pub use handle::ControlHandle;
 #[cfg(test)]
@@ -35,3 +31,6 @@ mod execution_scope_tests;
 mod handle_spawn_tests;
 #[cfg(test)]
 mod swarm_monitor_tests;
+
+#[cfg(test)]
+include!("mod_test_imports.rs");

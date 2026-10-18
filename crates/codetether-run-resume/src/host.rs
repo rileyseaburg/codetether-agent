@@ -8,10 +8,10 @@ use tokio::sync::mpsc;
 /// Session execution and fields required by the resume loop.
 /// # Implementors
 /// Applications implement this on their durable session alongside [Storage].
-#[async_trait::async_trait(?Send)]
-pub trait RunSession: Storage + Sized {
+#[async_trait::async_trait]
+pub trait RunSession: Storage + Sized + Send + Sync {
     /// Native registry shared across streaming attempts.
-    type Registry;
+    type Registry: Send + Sync;
     /// Current transcript used to detect progress and build checkpoints.
     fn messages(&self) -> &[Message];
     /// Update the step limit for the next attempt.

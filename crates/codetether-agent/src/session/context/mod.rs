@@ -6,21 +6,14 @@ pub(crate) mod active_tail;
 mod helpers;
 mod incremental;
 mod incremental_budget_config;
-use codetether_context_policy::projection::incremental_coverage;
-use codetether_context_policy::projection::incremental_insert;
-use codetether_context_policy::projection::incremental_repair;
-use codetether_context_policy::projection::incremental_repair_drop;
-use codetether_context_policy::projection::incremental_repair_inject;
-use codetether_context_policy::projection::incremental_types;
-use codetether_incremental_derivation as incremental_clamp;
 pub(crate) mod input_budget;
 
 use codetether_context_policy::derivation::options;
 mod policy;
 mod request;
-use codetether_context_policy::derivation::reset::markers as reset_helpers;
-pub(crate) use codetether_context_request as request_guard;
+#[cfg(test)]
 mod state_header;
+#[cfg(test)]
 mod state_header_pins;
 
 #[cfg(test)]

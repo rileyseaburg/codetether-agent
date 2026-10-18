@@ -1,9 +1,10 @@
 //! Application session bindings and regression coverage for native worker steps.
-mod session_failure;
-mod session_step_tools;
-pub(super) use codetether_a2a_worker_core::session_protocol::SessionStepsOutcome;
-pub(super) use codetether_native_worker::run_session_steps;
 #[cfg(test)]
 mod session_control_tests;
+mod session_failure;
 #[cfg(test)]
 mod session_failure_tests;
+mod session_step_tools;
+
+#[cfg(test)]
+include!("session_steps_test_imports.rs");

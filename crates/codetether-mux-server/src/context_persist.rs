@@ -1,7 +1,7 @@
 //! Durable mux discovery-record persistence.
 
 use super::context::ServerContext;
-use codetether_mux_registry::{self, MuxRecord};
+use codetether_mux_registry::{self as registry, MuxRecord};
 
 impl ServerContext {
     pub(super) async fn persist(&self) -> anyhow::Result<()> {

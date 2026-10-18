@@ -5,7 +5,7 @@ use std::sync::Arc;
 /// # Implementors
 /// Reuse the application Ralph host; its registry must also implement the
 /// autochat ModelRegistry contract when calling the CLI executor.
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 pub trait Host: codetether_go_ralph::Host {
     /// Load the existing provider registry.
     /// # Errors

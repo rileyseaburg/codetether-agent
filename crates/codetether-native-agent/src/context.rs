@@ -2,6 +2,7 @@
 use super::{Host, SessionServices};
 use codetether_agent_completion::Request;
 use codetether_application_registry::Application;
+use codetether_context_request::Source;
 use codetether_native_context::{ContextHost, RequestOptions};
 use serde_json::Value;
 use std::path::Path;

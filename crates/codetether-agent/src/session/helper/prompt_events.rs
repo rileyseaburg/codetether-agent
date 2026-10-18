@@ -14,8 +14,6 @@ use crate::session::{ImageAttachment, Session, SessionEvent, SessionResult};
 #[path = "prompt_subagent_watch.rs"]
 pub(super) mod subagent_watch;
 
-pub(super) use super::tool_exec::execute_tool;
-
 /// Executes a prompt and streams lifecycle events to `event_tx`.
 ///
 /// # Errors

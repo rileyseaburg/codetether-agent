@@ -28,7 +28,8 @@ fn default_timeout_ms() -> u64 {
 }
 
 impl WaitArgs {
-    pub(super) fn requested_targets(&self) -> Vec<String> {
+    /// Return legacy target selectors in their original order.
+    pub fn requested_targets(&self) -> Vec<String> {
         let mut targets = self.targets.clone();
         if let Some(target) = &self.target {
             targets.push(target.clone());

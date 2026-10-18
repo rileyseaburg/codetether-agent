@@ -14,8 +14,10 @@ codetether_goal_editor::declare_frontend_goal_editor!(
     crate::session::tasks::control::update_user,
     crate::tui::app::input::goal_answer::commands::restart,
 );
+#[cfg(test)]
+pub(crate) use self::open::close;
+pub(crate) use self::open::open;
 pub(crate) use keys::handle;
-pub(crate) use open::{close, open};
 pub(crate) use paste::paste;
 #[cfg(test)]
 mod tests;

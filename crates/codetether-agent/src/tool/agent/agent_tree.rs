@@ -1,6 +1,5 @@
 //! Application snapshots for shared root-scoped agent-tree queries.
 
-use codetether_agent_tree as query;
 codetether_agent_tree::declare_application_tree!(
     pub(crate),
     crate::tool::agent::store::AgentEntry,
@@ -13,3 +12,6 @@ mod test_support;
 #[cfg(test)]
 #[path = "agent_tree/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+include!("agent_tree_test_imports.rs");

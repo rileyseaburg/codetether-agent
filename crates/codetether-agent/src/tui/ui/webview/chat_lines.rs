@@ -22,7 +22,8 @@ pub(super) fn render_center(f: &mut Frame, app: &mut App, center_area: Rect) {
     let drawn = build_chat_lines(app, max_w, max_w, &formatter, &palette);
     let vis = center_area.height.saturating_sub(2) as usize;
     app.state
+        .chat_viewport
         .set_chat_max_scroll(drawn.as_slice().len().saturating_sub(vis));
     super::chat::render_webview_chat_center(f, app, center_area, drawn.as_slice());
-    drawn.restore(app, max_w);
+    drawn.restore(&mut app.state.message_cache, max_w);
 }

@@ -19,22 +19,25 @@
 //! codetether mux kill-all
 //! ```
 
-use codetether_mux_agent_task as agent_task;
-use codetether_mux_lifecycle::backoff;
 mod client;
 mod command;
 #[doc(hidden)]
 pub mod control;
 #[doc(hidden)]
 pub use codetether_mux_coordination as coordination;
+#[cfg(test)]
 pub(crate) use codetether_mux_workspace as isolation;
+#[cfg(test)]
 pub(crate) mod lease;
 mod model;
 pub use codetether_mux_cli::resume_name;
+#[cfg(test)]
 use codetether_mux_protocol as protocol;
-use codetether_mux_pty as pty;
+#[cfg(test)]
 use codetether_mux_registry as registry;
+#[cfg(test)]
 use codetether_mux_server as server;
+#[cfg(test)]
 use codetether_mux_server::token;
 
 #[doc(hidden)]

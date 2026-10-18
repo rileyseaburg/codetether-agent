@@ -1,8 +1,7 @@
 //! CLI lifecycle operations for mux servers.
 
+#[cfg(test)]
 pub(in crate::mux) mod kill_all;
-pub(in crate::mux) mod spawn;
-pub(in crate::mux) mod startup;
 
 mod host;
 

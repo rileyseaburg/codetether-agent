@@ -10,6 +10,7 @@ use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 
 use super::stream_reconnect::reset_on_success;
+#[path = "stream_reconnect_execute/host/mod.rs"]
 mod host;
 
 /// Re-submit the pending prompt after a stream disconnect.

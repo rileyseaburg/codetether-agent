@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 /// Provider, worker construction and host-collected diagnostics.
 /// # Implementors
 /// The application supplies its existing provider and session integration.
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 pub trait Host {
     /// Stateful worker retained across implementation and repair turns.
     type Worker: Worker;
@@ -26,8 +26,8 @@ pub trait Host {
 /// Stateful worker operations and final result identifiers.
 /// # Implementors
 /// The application adapts its session-backed coding worker.
-#[async_trait::async_trait(?Send)]
-pub trait Worker {
+#[async_trait::async_trait]
+pub trait Worker: Send + Sync {
     /// Current worker model, or an empty string when unset.
     fn model(&self) -> String;
     /// Identity of the worker session.

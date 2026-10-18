@@ -6,7 +6,7 @@ use anyhow::Result;
 mod tests;
 pub(super) fn serialize(session: &Session) -> Result<Vec<u8>> {
     codetether_session_codec::serialize(codetether_session_codec::SnapshotView {
-        header: super::codec::header(session),
+        header: crate::session::codec::header(session),
         messages: &session.messages,
         pages: &session.pages,
         summary_index: &session.summary_index,

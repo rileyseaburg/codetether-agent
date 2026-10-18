@@ -5,7 +5,7 @@ pub(crate) mod provider {
     pub use codetether_agent::provider::*;
 
     pub(crate) mod metrics {
-        pub(crate) use crate::identity;
+
         pub use codetether_agent::provider::metrics::*;
     }
 }
@@ -13,9 +13,7 @@ pub(crate) mod provider {
 use codetether_agent::cognition::ThinkerConfig;
 pub(crate) use codetether_cognition_core::thinker;
 
-pub(crate) mod cognition {
-    pub use codetether_agent::cognition::{CandleDevicePreference, ThinkerBackend, ThinkerConfig};
-}
+pub(crate) mod cognition {}
 
 #[path = "../../codetether-cognition-core/src/thinker/protocol/bedrock_request.rs"]
 mod bedrock_request;

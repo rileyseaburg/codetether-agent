@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use anyhow::{Result, bail};
 use tokio::net::TcpListener;
 
-use codetether_mux_registry;
+use codetether_mux_registry as registry;
 
 use super::client_tasks::ClientTasks;
 

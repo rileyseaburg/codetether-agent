@@ -1,6 +1,7 @@
 //! Reusable mux lifecycle controls for CLI and TUI front ends.
 
 mod agent_read;
+#[cfg(test)]
 pub(in crate::mux) mod start_join;
 pub use agent_read::read_agent_output;
 
@@ -10,5 +11,4 @@ pub use codetether_mux_control::{
     subscribe_live_output, watch_agent,
 };
 
-pub(in crate::mux) use codetether_mux_lifecycle::start_target;
 pub use codetether_mux_lifecycle::{start_managed_session, start_session};

@@ -30,11 +30,6 @@ use codetether_cognition_core::thinker as output;
 #[path = "thinker/client.rs"]
 mod client;
 
-use codetether_cognition_native::dispatch as candle_dispatch;
-
-#[cfg(not(feature = "candle"))]
-use codetether_cognition_native as candle_disabled;
-
 #[cfg(feature = "candle")]
 use codetether_cognition_native as candle;
 
@@ -48,9 +43,6 @@ pub use output::ThinkerOutput;
 
 #[cfg(feature = "candle")]
 use candle::CandleThinker;
-#[cfg(not(feature = "candle"))]
-use candle_disabled::CandleThinker;
-
 /// Candle runtime handle for crate-internal consumers such as the tool router.
 #[cfg(feature = "candle")]
 #[doc(hidden)]

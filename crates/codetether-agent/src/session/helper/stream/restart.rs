@@ -4,7 +4,6 @@ use crate::{
     session::SessionEvent,
 };
 pub(crate) use codetether_stream_restart::RestartPolicy;
-pub(in crate::session::helper) use codetether_stream_restart::checkpointed_content;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 pub(crate) async fn run(

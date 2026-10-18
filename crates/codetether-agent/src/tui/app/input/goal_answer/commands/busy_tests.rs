@@ -17,15 +17,15 @@ async fn live_goal_commands_edit_a_checked_out_session_without_tool_approval() {
         "revised goal"
     );
     assert!(app.state.approval_waiting);
-    assert!(super::super::pending::take(&id));
+    assert!(super::super::pending::take_pending(&id));
     fixture::submit(&mut app, &mut slot, &runtime, "/goal budget none").await;
     assert_eq!(
         answer_review::read(&id).unwrap().goal.unwrap().token_budget,
         None
     );
-    assert!(super::super::pending::take(&id));
+    assert!(super::super::pending::take_pending(&id));
     fixture::submit(&mut app, &mut slot, &runtime, "/goal budget -1").await;
-    assert!(!super::super::pending::take(&id));
+    assert!(!super::super::pending::take_pending(&id));
     assert!(app.state.status.contains("budget must be positive"));
     slot.restore(session);
     runtime.shutdown().await;

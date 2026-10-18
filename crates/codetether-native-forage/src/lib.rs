@@ -19,7 +19,7 @@ mod services;
 pub trait Execution {
     /// Swarm executor retained through bounded execution.
     type Swarm: codetether_forage_execution::Swarm + Send + Sync;
-    /// Execute prepared CLI options.
+    /// Execute prepared CLI options in a future usable by background forage tasks.
     fn run(args: RunArgs) -> impl Future<Output = anyhow::Result<()>> + Send;
     /// Construct the concrete swarm executor using the supplied configuration.
     fn swarm(config: SwarmConfig) -> Self::Swarm;

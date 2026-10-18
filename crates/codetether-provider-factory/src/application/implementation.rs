@@ -2,7 +2,7 @@
 use super::{ApplicationHost, Arc, Identity, LocalProvider, Provider};
 use codetether_provider_bedrock::provider as bedrock;
 use codetether_provider_copilot::application::CopilotProvider;
-impl<I: Identity, L: LocalProvider> crate::Host for ApplicationHost<I, L> {
+impl<I: Identity + 'static, L: LocalProvider> crate::Host for ApplicationHost<I, L> {
     async fn ensure_bedrock_fresh() {
         let _ = bedrock::sso_refresh::ensure_fresh().await;
     }

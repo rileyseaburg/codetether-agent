@@ -1,5 +1,4 @@
 //! truncate for web content fetching.
-use super::*;
 pub(super) fn truncate(content: String, max_chars: usize) -> (String, bool) {
     let mut out = content;
     let truncated = if out.chars().count() > max_chars {

@@ -1,6 +1,4 @@
 //! Native session bindings for shared read-only agent views.
-#[cfg(test)]
-use super::store;
 codetether_agent_view::declare_application_view!(
     pub(in crate::tool::agent),
     crate::session::Session, crate::tool::agent::store,

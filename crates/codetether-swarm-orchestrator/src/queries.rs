@@ -1,7 +1,7 @@
 use super::*;
 impl<H: Host> Orchestrator<H> {
     /// Get maximum stage number
-    fn max_stage(&self) -> usize {
+    pub(super) fn max_stage(&self) -> usize {
         self.state.max_stage()
     }
 

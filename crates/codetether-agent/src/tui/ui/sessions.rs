@@ -1,9 +1,7 @@
 //! Application projection into the shared session picker.
 use crate::tui::app::state::App;
 use ratatui::Frame;
-pub(super) mod window {
-    pub(crate) use codetether_session_picker::bounds;
-}
+pub(super) mod window {}
 /// Render sessions from the application and supply its live bus status.
 ///
 /// # Arguments

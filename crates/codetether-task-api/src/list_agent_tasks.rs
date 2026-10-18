@@ -1,7 +1,7 @@
-use crate::ListAgentTasksQuery;
 //! list agent tasks queue API operation.
-use axum::{Json, http::StatusCode};
-use codetether_task_queue::{KnativeTask, KnativeTaskQueue};
+use crate::ListAgentTasksQuery;
+use axum::Json;
+use codetether_task_queue::KnativeTaskQueue;
 
 // ── Agent task compatibility surface ─────────────────────────────────────
 // These handlers provide the /v1/agent/tasks/* surface the marketing-site

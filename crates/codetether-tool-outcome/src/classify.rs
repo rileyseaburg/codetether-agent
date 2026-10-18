@@ -22,6 +22,6 @@ pub(super) fn classify(
     }
     let duration_ms = started.elapsed().as_millis() as u64;
     let missed =
-        codetether_prompt_policy::is_codesearch_no_match_output(&call.name, success, rendered);
+        codetether_prompt_policy::is_codesearch_no_match_output(context.tool, success, rendered);
     (duration_ms, missed)
 }

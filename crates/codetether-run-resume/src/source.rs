@@ -3,8 +3,8 @@ use std::path::Path;
 /// Native session import, resume and creation operations.
 /// # Implementors
 /// Applications delegate to their durable session store and import adapter.
-#[async_trait::async_trait(?Send)]
-pub trait SessionSource: Sized {
+#[async_trait::async_trait]
+pub trait SessionSource: Sized + Send {
     /// Identity used by selection logging.
     fn id(&self) -> &str;
     /// Create a new session.

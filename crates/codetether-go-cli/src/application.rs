@@ -5,7 +5,7 @@ use codetether_bus_core::AgentBus;
 use codetether_go_ralph::application::ApplicationHost;
 use codetether_ralph_runtime::{Host as RuntimeHost, RalphLoop};
 use std::sync::Arc;
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 impl<P, H> Host for ApplicationHost<ProviderRegistry<P>, RalphLoop<H>>
 where
     P: Application,

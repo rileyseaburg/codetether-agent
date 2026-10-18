@@ -1,12 +1,9 @@
 //! File browser and read-only content viewer for TUI attachments.
 
-use codetether_file_picker as filter;
 mod host;
 mod nav_attach;
 mod open;
-use codetether_file_picker as preview;
 mod render;
-use codetether_file_picker as scan;
 use codetether_file_picker as types;
 
 #[cfg(test)]

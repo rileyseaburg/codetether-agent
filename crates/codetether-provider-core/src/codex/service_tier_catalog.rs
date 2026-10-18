@@ -18,7 +18,11 @@ pub fn supports_fast(model: &str) -> bool {
 }
 /// Whether the model supports the Ultrafast service tier.
 pub fn supports_ultrafast(model: &str) -> bool {
-    supports(model, "ultrafast", base_model(model) == "gpt-6-astra")
+    supports(
+        model,
+        "ultrafast",
+        matches!(base_model(model), "gpt-6-astra" | "gpt-6.1-sol"),
+    )
 }
 fn supports(model: &str, tier: &str, seed: bool) -> bool {
     super::model_discovery::model(base_model(model)).map_or(seed, |entry| {

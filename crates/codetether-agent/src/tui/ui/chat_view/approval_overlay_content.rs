@@ -1,2 +1,4 @@
 //! Shared approval popup content projection.
-pub(super) use codetether_approval_view::content_lines as lines;
+
+#[cfg(test)]
+include!("approval_overlay_content_test_imports.rs");

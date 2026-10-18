@@ -23,6 +23,6 @@ mod session_start_tests;
 mod session_status;
 mod startup;
 use codetether_cli_startup::logging as tui_log;
-pub use tui_log::open as open_tui_log;
+pub use tui_log::open_tui_log;
 
 pub use driver::{Cli, run};

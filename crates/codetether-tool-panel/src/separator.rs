@@ -6,7 +6,7 @@ use ratatui::{
 };
 
 use crate::RenderEntry;
-use crate::tui::ui::tool_panel::separator_pattern;
+use crate::separator_pattern;
 use codetether_theme::gradient::rgb_supported;
 use codetether_tui_style::gradient_rule::gradient_rule;
 

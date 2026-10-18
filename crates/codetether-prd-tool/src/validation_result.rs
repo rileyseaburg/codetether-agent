@@ -1,5 +1,4 @@
 //! validation result for PRD construction and validation.
-use super::*;
 
 pub(super) struct ValidationResult {
     pub(super) is_valid: bool,

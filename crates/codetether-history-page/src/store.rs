@@ -4,7 +4,7 @@
 //! while returning chronological message vectors for pagination.
 use crate::HistorySource;
 use codetether_provider_core::Message;
-use codetether_session_store::{Restore, legacy::Legacy, lifecycle::Host};
+use codetether_session_store::{legacy::Legacy, lifecycle::Host};
 use std::marker::PhantomData;
 
 /// Bind history pagination to a session's persistence implementation.

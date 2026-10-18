@@ -1,14 +1,13 @@
 //! Correlated tool execution while retaining the catalog read guard.
 use codetether_bus_core::{AgentBus, BusMessage};
-use codetether_mcp_core::{
-    server_catalog::ServerCatalog,
-    types::{CallToolParams, JsonRpcError},
-};
+use codetether_mcp_core::{server_catalog::ServerCatalog, types::JsonRpcError};
 use serde_json::Value;
+use std::sync::Arc;
+mod parameters;
 /// Invoke a catalog tool and publish its correlated bus events.
 /// # Arguments
 /// * `catalog` - Catalog whose read guard remains held through execution.
-/// * `bus` - Optional existing event bus.
+/// * `bus` - Optional shared event bus used to create a scoped sender.
 /// * `params` - JSON-RPC tool call parameters.
 /// # Returns
 /// The normalized tool result for the wire response.
@@ -23,14 +22,10 @@ use serde_json::Value;
 /// ```
 pub async fn invoke(
     catalog: &ServerCatalog,
-    bus: Option<&AgentBus>,
+    bus: Option<&Arc<AgentBus>>,
     params: Option<Value>,
 ) -> Result<Value, JsonRpcError> {
-    let params: CallToolParams = if let Some(p) = params {
-        serde_json::from_value(p).map_err(|e| JsonRpcError::invalid_params(e.to_string()))?
-    } else {
-        return Err(JsonRpcError::invalid_params("Missing params"));
-    };
+    let params = parameters::parse(params)?;
 
     // Publish ToolRequest to the agent bus (picked up by S3 sink)
     let request_id = uuid::Uuid::new_v4().to_string();

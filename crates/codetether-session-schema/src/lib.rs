@@ -28,7 +28,7 @@ pub mod __private {
     pub use chrono::{DateTime, Utc};
     pub use codetether_agent_core::ToolUse;
     pub use codetether_bus_core::AgentBus;
-    pub use codetether_bus_core::global;
+    pub use codetether_bus_core::global::global;
     pub use codetether_config as config;
     pub use codetether_context_browse as context_browse;
     pub use codetether_context_budget as context_budget;

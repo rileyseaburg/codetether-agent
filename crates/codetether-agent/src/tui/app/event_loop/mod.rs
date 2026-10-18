@@ -15,11 +15,11 @@ mod shutdown;
 mod smart_retry;
 mod terminal;
 mod tick;
-use codetether_tui_reactor as timers;
 mod watchdog;
 mod watchdog_retry;
 
-pub(crate) use {io::LoopIo, select_args::SelectArgs, timers::Timers as LoopTimers};
+#[cfg(not(test))]
+pub(crate) use {io::LoopIo, select_args::SelectArgs};
 
 codetether_tui_reactor::declare_frontend_loop_entry!(
     ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
@@ -34,3 +34,6 @@ codetether_tui_reactor::declare_frontend_loop_entry!(
     crate::tui::app::event_loop::setup::create,
     crate::tui::app::event_loop::driver::Native,
 );
+
+#[cfg(test)]
+include!("mod_test_imports.rs");

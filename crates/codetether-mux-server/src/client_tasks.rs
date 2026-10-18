@@ -2,6 +2,7 @@
 
 use std::future::Future;
 
+use crate::client_report::report;
 use tokio::task::JoinSet;
 
 pub(super) struct ClientTasks {

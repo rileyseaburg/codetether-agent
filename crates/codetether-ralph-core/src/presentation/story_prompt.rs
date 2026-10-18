@@ -21,7 +21,6 @@ pub fn build_story_prompt(
     prd_info: &(String, String),
     working_dir: &Path,
 ) -> String {
-    let wd = working_dir.display();
     format!(
         include_str!("story_prompt.txt"),
         prd_info.0,
@@ -37,6 +36,7 @@ pub fn build_story_prompt(
             .join("\n"),
         super::verification_steps::format_verification_steps(story),
         story.id,
-        story.id
+        story.id,
+        wd = working_dir.display(),
     )
 }

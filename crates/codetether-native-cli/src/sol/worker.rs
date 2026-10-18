@@ -11,7 +11,7 @@ use codetether_sol_workflow as model;
 /// # Examples
 /// Create workers through the native Sol host, which applies run policy first.
 /// ```no_run
-/// # async fn example<S: codetether_native_cli::sol::Session, V: codetether_validation::Host + Default>(args: &codetether_cli_options::RunArgs) -> anyhow::Result<()> {
+/// # async fn example<S: codetether_native_cli::sol::Session, V: codetether_validation::Host + Default + Send>(args: &codetether_cli_options::RunArgs) -> anyhow::Result<()> {
 /// use codetether_sol_workflow::Host;
 /// let worker = codetether_native_cli::sol::Host::<S, V>::start(args, ".".into()).await?;
 /// # Ok(()) }

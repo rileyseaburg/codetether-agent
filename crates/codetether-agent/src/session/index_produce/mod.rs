@@ -4,6 +4,7 @@
 //! structure lives in [`super::index`]; this file owns the async
 //! call through the RLM router to materialise a summary.
 
+#[cfg(test)]
 pub(crate) mod notify;
 mod observability;
 #[path = "../proactive_rlm/mod.rs"]

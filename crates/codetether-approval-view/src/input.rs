@@ -18,7 +18,7 @@ pub struct Preview<'a> {
     /// Composer input used to exclude approval feedback entry.
     pub input: &'a str,
     /// Current preview scroll position.
-    pub scroll: &'a mut usize,
+    pub scroll: &'a mut u16,
 }
 /// Apply queue navigation or bounded scrolling to an active preview.
 /// # Arguments
@@ -49,14 +49,15 @@ pub fn handle(state: Preview<'_>, key: KeyEvent) -> bool {
         return true;
     }
     let scroll = state.scroll;
-    *scroll = (*scroll).min(item.scroll_limit);
+    let limit = item.scroll_limit;
+    *scroll = (*scroll).min(limit);
     match key.code {
         KeyCode::Up => *scroll = scroll.saturating_sub(1),
-        KeyCode::Down => *scroll = scroll.saturating_add(1).min(item.scroll_limit),
+        KeyCode::Down => *scroll = scroll.saturating_add(1).min(limit),
         KeyCode::PageUp => *scroll = scroll.saturating_sub(10),
-        KeyCode::PageDown => *scroll = scroll.saturating_add(10).min(item.scroll_limit),
+        KeyCode::PageDown => *scroll = scroll.saturating_add(10).min(limit),
         KeyCode::Home => *scroll = 0,
-        KeyCode::End => *scroll = item.scroll_limit,
+        KeyCode::End => *scroll = limit,
         _ => return false,
     }
     true

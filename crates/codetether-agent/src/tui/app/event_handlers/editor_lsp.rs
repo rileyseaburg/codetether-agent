@@ -4,7 +4,6 @@ use crate::{
     tui::{app::state::App, models::ViewMode},
 };
 use codetether_editor_lsp::interactive::Controls;
-use std::path::Path;
 
 pub(super) fn controls(app: &mut App) -> Controls<'_, LspClient> {
     Controls {
@@ -18,7 +17,4 @@ pub(super) fn controls(app: &mut App) -> Controls<'_, LspClient> {
         status: &mut app.state.status,
         needs_redraw: &mut app.state.needs_redraw,
     }
-}
-pub(crate) async fn goto_definition(app: &mut App, cwd: &Path) {
-    codetether_editor_lsp::interactive::goto_definition(&mut controls(app), cwd).await;
 }

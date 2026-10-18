@@ -2,7 +2,6 @@
 
 use anyhow::{Result, bail};
 
-use super::MuxSessionSummary;
 use codetether_mux_client::MuxConnection;
 use codetether_mux_protocol::{ClientRequest, ProgramRequest, ServerResponse};
 

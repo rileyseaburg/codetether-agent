@@ -1,5 +1,4 @@
 //! State owned by the legacy RLM host executor.
-use super::*;
 
 /// LLM-powered RLM executor
 ///

@@ -12,9 +12,6 @@
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
-/// Maximum same-model reconnect attempts before giving up.
-pub use codetether_stream_recovery::MAX_RECONNECT_ATTEMPTS;
-
 /// Schedule a stream-reconnect retry if the error is a transient disconnect
 /// and the budget has not been exhausted.
 ///

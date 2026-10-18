@@ -1,4 +1,5 @@
 //! Native presentation adapter for shared transcript synchronization.
+#[path = "view/metrics.rs"]
 mod metrics;
 use crate::tui::app::state::App;
 use codetether_chat_model::ChatMessage;

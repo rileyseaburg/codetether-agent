@@ -1,9 +1,13 @@
 //! Native registry and policy adapter for shared tool execution.
 #[path = "tool_exec_host.rs"]
 mod host;
+#[cfg(test)]
 use crate::session::SessionEvent;
+#[cfg(test)]
 use crate::tool::ToolRegistry;
+#[cfg(test)]
 use tokio::sync::mpsc;
+#[cfg(test)]
 pub(in crate::session::helper) async fn execute_tool(
     tool_registry: &ToolRegistry,
     tool_name: &str,

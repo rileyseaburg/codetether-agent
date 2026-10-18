@@ -8,4 +8,3 @@
 /// # Ok(()) }
 /// ```
 pub type RalphLoop = codetether_ralph_runtime::RalphLoop<super::runtime_host::Native>;
-pub use codetether_ralph_runtime::create_prd_template;

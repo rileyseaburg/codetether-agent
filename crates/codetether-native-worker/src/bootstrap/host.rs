@@ -14,22 +14,22 @@ impl<D: crate::pending::Dispatcher> Host for Native<'_, D> {
     }
     async fn sync_workspaces(&self) -> anyhow::Result<()> {
         sync_workspaces_from_server(
-            &self.0.task_runtime.client,
-            &self.0.server,
-            &self.0.args.token,
-            &self.0.shared_codebases,
+            &self.context.task_runtime.client,
+            &self.context.server,
+            &self.context.args.token,
+            &self.context.shared_codebases,
         )
         .await
     }
     async fn fetch_pending(&self) -> anyhow::Result<()> {
-        fetch_pending_tasks(&self.0.task_runtime).await
+        fetch_pending_tasks::<D>(&self.context.task_runtime).await
     }
     fn start_workspace_sync(&self) -> Self::SyncHandle {
         start_workspace_sync(
-            self.0.task_runtime.client.clone(),
-            self.0.server.clone(),
-            self.0.args.token.clone(),
-            self.0.shared_codebases.clone(),
+            self.context.task_runtime.client.clone(),
+            self.context.server.clone(),
+            self.context.args.token.clone(),
+            self.context.shared_codebases.clone(),
         )
     }
 }

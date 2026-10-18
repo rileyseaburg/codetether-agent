@@ -24,20 +24,10 @@ mod enter;
 mod enter_subagents;
 pub(crate) mod image;
 mod image_data_paste;
-use codetether_image as image_data_url;
-use codetether_image as image_file;
-use codetether_image as image_mime;
 mod image_sidecar_recover;
 pub(crate) use codetether_chat_submit::mention as mention_route;
 mod paste;
 pub(crate) mod pasted_text;
-use codetether_github_pr::worktree as pr;
-use codetether_github_pr::worktree::body as pr_body;
-use codetether_github_pr::worktree::command as pr_command;
-use codetether_github_pr::worktree::description as pr_description;
-use codetether_github_pr::worktree::helpers as pr_helpers;
-use codetether_github_pr::worktree::request as pr_request;
-use codetether_github_pr::worktree::title as pr_title;
 pub(crate) mod sessions;
 pub(crate) mod shell_bg;
 pub(crate) mod worktree;
@@ -49,3 +39,6 @@ mod tests_all;
 mod chat_submit_history;
 mod exports;
 pub use exports::*;
+
+#[cfg(test)]
+include!("mod_test_imports.rs");

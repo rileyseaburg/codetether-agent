@@ -1,5 +1,5 @@
 use anyhow::Result;
-use codetether_provider_core::{ContentPart, Message, Role};
+use codetether_provider_core::{ContentPart, Message};
 use serde_json::Value;
 
 use crate::payloads::CodexResponseMessagePayload;

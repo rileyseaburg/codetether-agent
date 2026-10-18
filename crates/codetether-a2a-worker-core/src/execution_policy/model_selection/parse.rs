@@ -1,5 +1,4 @@
 //! Worker model parse policy.
-use super::*;
 use codetether_provider_core::routing::parse_model_string;
 
 pub(super) fn parse_model(model: &str) -> (Option<String>, String) {

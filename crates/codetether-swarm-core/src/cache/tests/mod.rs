@@ -5,6 +5,7 @@ mod basic_operations;
 mod bypass;
 mod clear;
 mod different_tasks;
+mod disk_removal;
 mod failed_results_not_cached;
 
 fn create_test_task(name: &str, instruction: &str) -> SubTask {

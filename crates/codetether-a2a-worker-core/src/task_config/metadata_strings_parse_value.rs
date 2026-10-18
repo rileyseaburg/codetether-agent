@@ -1,5 +1,4 @@
 //! parse value metadata parsing.
-use super::*;
 
 pub(super) fn parse_value(value: &serde_json::Value) -> Option<Vec<String>> {
     value

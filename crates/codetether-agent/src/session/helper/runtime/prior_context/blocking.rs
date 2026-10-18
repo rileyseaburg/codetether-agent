@@ -1,6 +1,5 @@
 //! Native session binding for shared prior-context tool rejection.
 use crate::{session::Session, tool::ToolResult};
-pub(crate) use codetether_prior_context_access::runtime_context;
 #[cfg(test)]
 pub(crate) use codetether_prior_context_access::{for_messages, serialized_messages};
 pub(crate) fn serialized_session(session: &Session, name: &str, args: &str) -> Option<ToolResult> {
@@ -10,3 +9,6 @@ pub(crate) fn serialized_session(session: &Session, name: &str, args: &str) -> O
         args,
     )
 }
+
+#[cfg(test)]
+include!("blocking_test_imports.rs");

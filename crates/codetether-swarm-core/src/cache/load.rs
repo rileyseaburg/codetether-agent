@@ -1,7 +1,7 @@
 use super::*;
 impl SwarmCache {
     /// Load index from disk
-    async fn load_index(&mut self) -> Result<()> {
+    pub(super) async fn load_index(&mut self) -> Result<()> {
         let ttl = Duration::from_secs(self.config.ttl_secs);
 
         let mut entries = match fs::read_dir(&self.cache_dir).await {

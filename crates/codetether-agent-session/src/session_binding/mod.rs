@@ -4,7 +4,7 @@ mod runtime;
 pub use anyhow;
 pub use async_trait::async_trait;
 pub use chrono::Utc;
-pub use codetether_bus_core::global;
+pub use codetether_bus_core::global::global;
 pub use codetether_context_policy::summary_index::SummaryIndex;
 pub use codetether_provider_core::Message;
 

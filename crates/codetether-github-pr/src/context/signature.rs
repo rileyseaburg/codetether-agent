@@ -1,5 +1,4 @@
 //! GitHub PR signature context.
-use super::*;
 
 #[derive(Clone, Debug)]
 /// PR SignatureContext data.

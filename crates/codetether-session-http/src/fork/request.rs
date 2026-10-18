@@ -4,6 +4,6 @@ use serde::Deserialize;
 /// Bind the edit to the exact message observed by the client.
 #[derive(Deserialize)]
 pub(super) struct ForkRequest {
-    before_message: usize,
-    expected_text: String,
+    pub(super) before_message: usize,
+    pub(super) expected_text: String,
 }

@@ -2,7 +2,7 @@
 use super::*;
 use crate::{QualityChecks, RalphConfig, UserStory};
 mod fixtures;
-use fixtures::{test_prd, test_run_state};
+use fixtures::test_run_state;
 mod test_complete_run;
 mod test_create_and_get_run;
 mod test_get_nonexistent_run;

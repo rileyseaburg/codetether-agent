@@ -39,7 +39,6 @@ use parallel_finish_stage::finish_parallel_stage;
 pub use parallel_plan::{parallel_stages, parallel_worktree_manager};
 use parallel_spawn::spawn_parallel_stage;
 pub use parallel_stage::begin_parallel_stage;
-use parallel_stage_state::ParallelStage;
 use parallel_task_create::prepare_parallel_task;
 use parallel_worktrees::precreate_stage_worktrees;
 use reporting::{

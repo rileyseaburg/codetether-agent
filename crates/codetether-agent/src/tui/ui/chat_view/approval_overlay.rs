@@ -1,11 +1,6 @@
 //! Pending approval popup for the chat view.
 
 use crate::tui::app::state::App;
-use ratatui::{
-    Frame,
-    layout::{Constraint, Layout, Rect},
-    widgets::{Block, Borders, Clear},
-};
 pub(crate) fn render(f: &mut ratatui::Frame, app: &mut App, area: ratatui::layout::Rect) {
     codetether_approval_view::render(
         f,

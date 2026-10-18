@@ -1,14 +1,7 @@
 //! Worker helper re-exports, group A.
 
-pub(super) use super::{
-    a2a_peer::maybe_start_worker_a2a_peer,
-    auto_approve::parse_auto_approve,
-    clone_target::prepare_clone_target,
-    completion_retry::complete_worker_step_with_context_fallback,
-    extended_heartbeat::send_extended_task_heartbeat,
-    http_client::build_worker_http_client,
-    metadata_flags::metadata_bool,
-    metadata_lookup::metadata_lookup,
-    metadata_numbers::{metadata_u64, metadata_usize},
-    metadata_strings::metadata_str,
-};
+#[cfg(not(test))]
+pub(super) use super::a2a_peer::maybe_start_worker_a2a_peer;
+
+#[cfg(test)]
+include!("reexports_a_test_imports.rs");

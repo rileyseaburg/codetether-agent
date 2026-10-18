@@ -11,7 +11,7 @@ use anyhow::Result;
 /// Returns an error when the selected provider is absent from the registry.
 pub(super) fn apply(runner: &mut Runner<'_>, bucket: Bucket) -> Result<bool> {
     let Some((name, model_id)) = super::super::super::router::choose_router_target_bandit(
-        &runner.inner.registry,
+        runner.inner.registry.as_ref(),
         &runner.inner.session.metadata.delegation,
         bucket,
         &runner.inner.model.provider_name,

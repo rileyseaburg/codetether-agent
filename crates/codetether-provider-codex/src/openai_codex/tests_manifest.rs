@@ -1,4 +1,5 @@
 include!("tests_parts/allows_fast_alias_for_chatgpt_backend.rs");
+include!("tests_parts/ultrafast_alias_wire.rs");
 include!("tests_parts/allows_pro_model_for_api_key_backend.rs");
 include!("tests_parts/assert_tool_checkpoint.rs");
 include!("tests_parts/assert_tool_completion.rs");

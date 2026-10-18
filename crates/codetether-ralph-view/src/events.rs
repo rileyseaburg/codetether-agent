@@ -27,7 +27,7 @@ impl RalphViewState {
             event @ (RalphEvent::StageComplete { .. }
             | RalphEvent::Complete { .. }
             | RalphEvent::Error(..)) => self.apply_run_end(event),
-            event @ (RalphEvent::StoryMessage { .. }) => self.apply_story_messages(event),
+            event @ RalphEvent::StoryMessage { .. } => self.apply_story_messages(event),
         }
     }
 }

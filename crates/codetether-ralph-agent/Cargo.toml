@@ -7,6 +7,7 @@ license = "MIT"
 description = "Ralph story/conflict agent execution and event forwarding"
 
 [dependencies]
+async-trait = "0.1"
 codetether-ralph-git = { path = "../codetether-ralph-git", version = "0.1.0" }
 codetether-bash-tool = { path = "../codetether-bash-tool", version = "0.1.0" }
 codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }

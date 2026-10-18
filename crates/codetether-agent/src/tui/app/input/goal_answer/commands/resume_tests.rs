@@ -47,6 +47,6 @@ async fn live_goal_commands_resume_only_after_cancellation_with_new_objective() 
             .unwrap()
             .contains("new user objective")
     );
-    assert!(!super::super::pending::take(slot.view().id()));
+    assert!(!super::super::pending::take_pending(slot.view().id()));
     runtime.shutdown().await;
 }

@@ -26,6 +26,7 @@ pub(super) async fn resolve(command: &str, args: &Value, cwd: &Path) -> Option<S
         ..SandboxPolicy::default()
     })
 }
+#[path = "policy/enabled.rs"]
 mod enabled;
 pub use enabled::enabled;
 

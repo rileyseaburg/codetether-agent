@@ -20,7 +20,7 @@ pub trait Host {
     type Registry: Providers + Send;
     /// Swarm executor retained through its bounded execution.
     type Swarm: Swarm + Send + Sync;
-    /// Execute prepared run options.
+    /// Execute prepared run options in a future usable by background tasks.
     fn run(args: RunArgs) -> impl Future<Output = Result<()>> + Send;
     /// Construct a swarm executor with the prepared configuration.
     fn swarm(config: SwarmConfig) -> Self::Swarm;

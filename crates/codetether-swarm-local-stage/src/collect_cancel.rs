@@ -2,7 +2,7 @@ use codetether_session_control::ControlHandle;
 use std::collections::HashMap;
 use tokio::task::AbortHandle;
 
-pub(super) async fn requested(control: Option<&SwarmControl>) {
+pub(super) async fn requested(control: Option<&ControlHandle>) {
     match control {
         Some(control) => control.cancelled().await,
         None => std::future::pending().await,

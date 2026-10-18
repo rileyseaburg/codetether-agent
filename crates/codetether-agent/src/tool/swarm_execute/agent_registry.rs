@@ -3,7 +3,6 @@
 use crate::swarm::{executor::workspace_registry, result_store::ResultStore};
 #[cfg(test)]
 use crate::tool::ToolRegistry;
-pub(crate) use codetether_native_swarm::direct::registry::standard;
 #[cfg(test)]
 use std::{path::Path, sync::Arc};
 #[cfg(test)]

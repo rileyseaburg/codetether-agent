@@ -2,7 +2,21 @@
 use crate::wrap_state::WrapState;
 use ratatui::text::{Line, Span};
 impl crate::MessageFormatter {
-    pub(crate) fn wrap_line(&self, spans: Vec<Span<'static>>, width: usize) -> Vec<Line<'static>> {
+    /// Wrap styled spans into rows using terminal display widths.
+    ///
+    /// # Arguments
+    /// * `spans` - Styled text to wrap without losing span styles.
+    /// * `width` - Maximum display columns; zero preserves the input row.
+    ///
+    /// # Returns
+    /// Wrapped rows, or one empty row when no spans are supplied.
+    ///
+    /// # Examples
+    /// ```
+    /// let formatter = codetether_message_formatter::MessageFormatter::new(80);
+    /// assert_eq!(formatter.wrap_line(vec![], 20).len(), 1);
+    /// ```
+    pub fn wrap_line(&self, spans: Vec<Span<'static>>, width: usize) -> Vec<Line<'static>> {
         if spans.is_empty() {
             return vec![Line::from("")];
         }

@@ -10,5 +10,4 @@
 //! let registry = helpers::get_registry().await?;
 //! ```
 
-pub(super) use super::params::Params;
 pub(super) use super::registry::get_registry;

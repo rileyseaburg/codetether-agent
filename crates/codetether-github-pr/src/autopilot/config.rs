@@ -1,5 +1,4 @@
 //! PR autopilot configuration and defaults.
-use super::*;
 
 /// Configuration for a PR auto-pilot run.
 #[derive(Debug, Clone)]

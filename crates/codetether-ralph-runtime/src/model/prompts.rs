@@ -1,15 +1,6 @@
 //! Supply story and application context to shared prompt helpers.
 use super::*;
 impl<H: Host> RalphLoop<H> {
-    /// Build prompt for a story (static version for parallel execution)
-    pub(crate) fn build_story_prompt(
-        story: &UserStory,
-        prd_info: &(String, String),
-        working_dir: &Path,
-    ) -> String {
-        codetether_ralph_core::presentation::build_story_prompt(story, prd_info, working_dir)
-    }
-
     /// Build the prompt for a story
     pub(crate) fn build_prompt(&self, story: &UserStory) -> String {
         let progress = self.load_progress().unwrap_or_default();

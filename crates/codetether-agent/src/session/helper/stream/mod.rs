@@ -19,14 +19,12 @@ use crate::provider::StreamChunk;
 use anyhow::Result;
 use futures::stream::BoxStream;
 
+#[cfg(test)]
 mod restart;
 #[cfg(test)]
 mod restart_checkpoint_tests;
 #[cfg(test)]
 mod restart_test_provider;
-
-pub(super) use restart::checkpointed_content;
-pub(crate) use restart::{RestartPolicy, run as run_with_restart};
 
 /// Collect a streaming completion into a [`CompletionResponse`](crate::provider::CompletionResponse),
 /// optionally forwarding incremental events.

@@ -2,6 +2,7 @@
 //!
 //! A Rust implementation of an AI coding agent with first-class support for
 //! the A2A (Agent-to-Agent) protocol and the CodeTether ecosystem.
+#![recursion_limit = "256"]
 
 /// Process-wide capacity-guarding allocator. Catches a single runaway
 /// allocation (a corrupted capacity hint reserving tens of GiB) and aborts
@@ -61,7 +62,6 @@ pub mod tui;
 pub use codetether_native_vectordb as vectordb;
 pub use codetether_native_voice as voice;
 pub use codetether_native_worker_server as worker_server;
-pub use codetether_util::truncate as util;
-pub use codetether_util::workspace_scan;
+pub use codetether_util::{truncate as util, workspace_scan};
 pub use codetether_worktree as worktree;
 pub use codetether_worktree_isolation as worktree_stub;

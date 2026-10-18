@@ -31,7 +31,7 @@ async fn assert_marker(enabled: bool, expected: bool) {
         assert_eq!(session.pages[0], PageKind::Bootstrap);
         assert!(
             matches!(&session.messages[0].content[0], ContentPart::Text { text }
-            if text == super::marker::TEXT)
+            if text == super::marker::INTERRUPTION_MARKER)
         );
     }
     support::cleanup(entry.id());

@@ -2,7 +2,7 @@
 use super::*;
 
 pub(super) async fn register(
-    bus: &AgentBus,
+    bus: &Arc<AgentBus>,
     discovered: &Mutex<HashSet<String>>,
     endpoint: String,
     card: AgentCard,
@@ -25,7 +25,7 @@ pub(super) async fn register(
     routes::register(&card, &endpoint, None);
 
     if is_new {
-        presence::emit_discovered(&bus, &card.name, &endpoint);
+        presence::emit_discovered(bus, &card.name, &endpoint);
         tracing::info!(target: "codetether_agent::a2a::spawn",
             agent = %agent_name,
             peer_name = %card.name,

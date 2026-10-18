@@ -1,8 +1,6 @@
 //! Direct-swarm tool bound to application worker execution and TUI observation.
-pub(crate) use codetether_swarm_tool::prompt::application as agent_prompt;
 pub(crate) mod agent_registry;
 pub(crate) use codetether_swarm_monitor as tui_bridge;
-pub(crate) use codetether_swarm_tool::support;
 
 /// Shared swarm tool using the application's provider, registry and observer.
 ///

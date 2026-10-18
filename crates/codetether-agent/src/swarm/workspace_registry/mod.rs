@@ -1,26 +1,19 @@
 //! Workspace-scoped tool registries for swarm participants.
 
-use crate::{provider::Provider, tool::ToolRegistry};
-use std::{path::Path, sync::Arc};
+#[cfg(test)]
+#[cfg(not(test))]
+use crate::tool::ToolRegistry;
+#[cfg(test)]
+#[cfg(not(test))]
+use std::path::Path;
 
 mod host;
-pub(crate) use host::Native as RegistryHost;
+#[cfg(test)]
 mod local;
+pub(crate) use host::Native as RegistryHost;
 
+#[cfg(test)]
 pub(crate) use codetether_workspace_tools::Capability;
-pub(crate) use codetether_workspace_tools::resolve_root;
-pub(crate) use local::for_agent;
-
-pub(crate) fn with_provider(
-    provider: Arc<dyn Provider>,
-    model: String,
-    root: &Path,
-    capability: Capability,
-) -> ToolRegistry {
-    codetether_workspace_tools::composition::with_provider::<host::Native>(
-        provider, model, root, capability,
-    )
-}
 
 #[cfg(test)]
 pub(crate) fn with_defaults(root: &Path, capability: Capability) -> ToolRegistry {
@@ -30,3 +23,6 @@ pub(crate) fn with_defaults(root: &Path, capability: Capability) -> ToolRegistry
 #[cfg(test)]
 #[path = "../workspace_registry_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+include!("mod_test_imports.rs");

@@ -10,8 +10,8 @@ use std::path::{Path, PathBuf};
 /// let _: Option<codetether_native_cli::sol::Host<(), ()>> = None;
 /// ```
 pub struct Host<S, V>(PhantomData<fn() -> (S, V)>);
-#[async_trait::async_trait(?Send)]
-impl<S: Session, V: codetether_validation::Host + Default> codetether_sol_workflow::Host
+#[async_trait::async_trait]
+impl<S: Session, V: codetether_validation::Host + Default + Send> codetether_sol_workflow::Host
     for Host<S, V>
 {
     type Worker = Worker<S>;
@@ -36,7 +36,7 @@ impl<S: Session, V: codetether_validation::Host + Default> codetether_sol_workfl
         .await
     }
 }
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 impl<S: Session> codetether_sol_workflow::Worker for Worker<S> {
     fn model(&self) -> String {
         self.session.model()

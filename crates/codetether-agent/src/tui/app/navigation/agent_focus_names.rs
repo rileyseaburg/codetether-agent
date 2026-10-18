@@ -3,7 +3,7 @@
 use crate::tool::agent::bridge::AgentSnapshot;
 use crate::tui::app::state::App;
 
-pub(super) fn agent_names(app: &App) -> Vec<String> {
+pub(in crate::tui::app::navigation) fn agent_names(app: &App) -> Vec<String> {
     let tools = app
         .state
         .session_id

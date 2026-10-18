@@ -1,14 +1,22 @@
 //! Native preference fields and save operations for shared settings policy.
+#[path = "settings_host/access.rs"]
 mod access;
+#[path = "settings_host/cycles.rs"]
 mod cycles;
+#[path = "settings_host/session.rs"]
 mod session;
 use crate::session::Session;
 use crate::tui::app::state::App;
-pub(super) use codetether_settings_policy::persistence::Preference;
+pub(in crate::tui::app) use codetether_settings_policy::persistence::Preference;
 pub(super) async fn cycle_access(app: &mut App, session: &mut Session) {
     access::cycle(app, session).await;
 }
-pub(super) async fn set(app: &mut App, session: &mut Session, preference: Preference, next: bool) {
+pub(in crate::tui::app) async fn set(
+    app: &mut App,
+    session: &mut Session,
+    preference: Preference,
+    next: bool,
+) {
     codetether_settings_policy::persistence::set(&mut view(app), session, preference, next).await;
 }
 pub(super) async fn cycle(

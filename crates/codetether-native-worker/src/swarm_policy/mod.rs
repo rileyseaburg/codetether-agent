@@ -7,7 +7,7 @@ use codetether_a2a_worker_core::session_protocol::policy;
 use codetether_application_registry::{Application, ToolRegistry};
 use codetether_native_providers::ProviderRegistry;
 use codetether_session_events::SessionResult;
-use std::{future::Future, sync::Arc};
+use std::future::Future;
 mod context;
 mod execute;
 mod finish;

@@ -11,7 +11,7 @@
 #[macro_export]
 macro_rules! impl_run_session {
     ($session:ty, $import:path, $max_steps:path $(,)?) => {
-        #[$crate::__private::async_trait(?Send)]
+        #[$crate::__private::async_trait]
         impl $crate::__private::RunSession for $session {
             type Registry = $crate::__private::ProviderRegistry;
             fn messages(&self) -> &[$crate::__private::Message] {
@@ -43,7 +43,7 @@ macro_rules! impl_run_session {
                 <$session>::prompt_with_events(self, message, events, registry).await
             }
         }
-        #[$crate::__private::async_trait(?Send)]
+        #[$crate::__private::async_trait]
         impl $crate::__private::SessionSource for $session {
             fn id(&self) -> &str {
                 &self.id
@@ -85,7 +85,7 @@ macro_rules! impl_run_session {
                 self.max_steps = max_steps;
             }
         }
-        #[$crate::__private::async_trait(?Send)]
+        #[$crate::__private::async_trait]
         impl $crate::__private::RelaySession for $session {
             async fn new() -> $crate::__private::Result<Self> {
                 <$session>::new().await

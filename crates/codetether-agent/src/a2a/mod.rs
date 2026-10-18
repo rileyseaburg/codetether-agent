@@ -8,11 +8,8 @@
 //! - **gRPC** — shared gRPC service (tonic-based, compiled from `crates/codetether-a2a-grpc/proto/a2a/v1/a2a.proto`)
 
 pub use codetether_a2a_discovery::address as mdns_addr;
-pub(crate) use codetether_a2a_discovery::collaboration_token;
 pub use codetether_a2a_discovery::lan;
 pub use codetether_a2a_discovery::liveness as peer_liveness;
-pub(crate) use codetether_a2a_discovery::local_identity;
-pub(crate) use codetether_a2a_discovery::peer_prompt;
 pub use codetether_a2a_discovery::presence as mdns_liveness;
 pub use codetether_a2a_grpc::bridge;
 pub use codetether_a2a_grpc::server as grpc;

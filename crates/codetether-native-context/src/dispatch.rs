@@ -1,7 +1,7 @@
 //! Native specialization of shared context-policy execution.
 use anyhow::Result;
 use codetether_context_policy::{derivation::DerivePolicy, projection::helpers::DerivedContext};
-use codetether_provider_core::{Provider, ToolDefinition};
+use codetether_provider_core::ToolDefinition;
 use codetether_session_events::SessionEvent;
 use std::sync::Arc;
 use tokio::sync::mpsc;

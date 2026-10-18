@@ -3145,6 +3145,7 @@ dependencies = [
  "codetether-a2a-core",
  "codetether-a2a-worker-core",
  "codetether-config",
+ "serde_json",
 ]
 
 [[package]]
@@ -5644,6 +5645,7 @@ dependencies = [
  "codetether-application-registry",
  "codetether-child-mailbox",
  "codetether-collaboration-state",
+ "codetether-context-request",
  "codetether-native-context",
  "codetether-native-goals",
  "codetether-native-providers",
@@ -7290,6 +7292,7 @@ name = "codetether-ralph-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "codetether-agent-core",
  "codetether-application-registry",
  "codetether-bash-tool",

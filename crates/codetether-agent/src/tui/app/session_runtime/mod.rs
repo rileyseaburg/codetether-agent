@@ -17,7 +17,8 @@ mod completion_tests;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use command::{PromptRequest, SessionCommand};
+#[cfg(not(test))]
+pub(crate) use command::PromptRequest;
 pub(crate) use handle::TuiSessionHandle;
 pub(crate) use notice::SessionNotice;
 pub(crate) use runtime::spawn;
@@ -49,3 +50,6 @@ codetether_session_runtime::declare_frontend_runtime_dispatch!(
     crate::session::tasks::runtime::answer_review::held,
     crate::tui::app::session_runtime::execute::run,
 );
+
+#[cfg(test)]
+include!("mod_test_imports.rs");

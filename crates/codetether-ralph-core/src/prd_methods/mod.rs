@@ -2,7 +2,7 @@
 //!
 //! Methods are implemented on Prd, so callers use its public methods directly.
 use crate::{Prd, UserStory};
-use std::path::PathBuf;
+use std::path::Path;
 mod dependencies;
 mod load;
 mod progress;

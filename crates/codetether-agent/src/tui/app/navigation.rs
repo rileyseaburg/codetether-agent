@@ -5,7 +5,7 @@ use crate::tui::models::ViewMode;
 use crossterm::event::KeyModifiers;
 #[path = "navigation/agent_focus.rs"]
 mod agent_focus;
-#[path = "navigation/host.rs"]
+#[path = "navigation/host/mod.rs"]
 mod host;
 pub(crate) use host::Navigation;
 #[path = "navigation/symbol_enter.rs"]

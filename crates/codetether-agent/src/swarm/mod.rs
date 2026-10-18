@@ -16,7 +16,6 @@ pub mod control;
 pub mod delegation;
 pub use codetether_swarm_delegation as delegation_outcome;
 pub mod executor;
-use codetether_swarm_bus as live_bus;
 pub use codetether_swarm_core::remote_protocol as k8s_result;
 pub use codetether_swarm_core::remote_protocol as kubernetes_executor;
 pub mod orchestrator;

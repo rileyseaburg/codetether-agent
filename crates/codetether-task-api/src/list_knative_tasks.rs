@@ -1,5 +1,5 @@
 //! list knative tasks queue API operation.
-use axum::{Json, http::StatusCode};
+use axum::Json;
 use codetether_task_queue::{KnativeTask, KnativeTaskQueue};
 
 /// List all Knative tasks in queue

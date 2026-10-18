@@ -1,6 +1,6 @@
 //! Protobuf A2A message conversion through the shared wire bridge.
 
-use crate::{ActorEnvelope, ActorId};
+use crate::ActorEnvelope;
 use codetether_a2a_grpc::{bridge, proto};
 
 /// Converts generated A2A protobuf messages into actor mailbox envelopes.

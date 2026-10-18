@@ -6,6 +6,7 @@ pub(crate) mod approval_overlay_content;
 pub use codetether_message_bubbles as bubble_mods;
 pub use codetether_message_bubbles::bubble_assistant;
 pub use codetether_token_display::context_gauge::context_gauge_heat;
+#[cfg(test)]
 pub(crate) mod input_title;
 #[cfg(test)]
 #[path = "input_title_tests.rs"]
@@ -21,6 +22,5 @@ pub use codetether_tui_style::thinking_pulse;
 pub mod title;
 pub use codetether_chat_status::title_brand;
 pub mod title_labels;
-pub(crate) use codetether_chat_layout as viewport;
 
 mod composer_view;

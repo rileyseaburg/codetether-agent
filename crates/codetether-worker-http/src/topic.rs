@@ -1,5 +1,4 @@
 //! Exact and prefix wildcard topic filtering.
-use super::*;
 
 /// Wildcard topic matching (supports `*` and `prefix.*` patterns).
 pub(super) fn bus_topic_matches(topic: &str, pattern: &str) -> bool {

@@ -1,5 +1,3 @@
-use super::*;
-
 /// Deterministic kill decision.
 #[derive(Debug, Clone)]
 ///

@@ -1,5 +1,6 @@
 //! Local-image paths use the trusted parent workspace, not the process cwd.
-use super::super::{args::Args, input};
+use super::super::input;
+use codetether_collaboration_tools::SendInputArgs as Args;
 use serde_json::json;
 
 #[tokio::test]

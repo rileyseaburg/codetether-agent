@@ -20,7 +20,6 @@
 //! ```
 
 pub use codetether_bus_http as bus_bridge;
-use codetether_mcp_server::payload as bus_payload;
 use codetether_native_mcp_client as client;
 mod server;
 use codetether_mcp_core::types;

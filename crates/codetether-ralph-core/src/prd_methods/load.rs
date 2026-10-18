@@ -10,13 +10,13 @@ impl Prd {
     /// # Examples
     /// ```no_run
     /// # async fn example() -> anyhow::Result<()> {
-    /// let prd = codetether_ralph_core::Prd::load(&"prd.json".into()).await?;
+    /// let prd = codetether_ralph_core::Prd::load(std::path::Path::new("prd.json")).await?;
     /// assert!(!prd.project.is_empty());
     /// # Ok(()) }
     /// ```
 
     /// Load a PRD from a JSON file
-    pub async fn load(path: &PathBuf) -> anyhow::Result<Self> {
+    pub async fn load(path: &Path) -> anyhow::Result<Self> {
         let content = tokio::fs::read_to_string(path).await?;
         let prd: Prd = serde_json::from_str(&content)?;
         Ok(prd)

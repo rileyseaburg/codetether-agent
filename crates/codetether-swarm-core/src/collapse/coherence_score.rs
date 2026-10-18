@@ -1,5 +1,3 @@
-use super::*;
-
 /// Multi-dimensional coherence score for a branch.
 #[derive(Debug, Clone, Copy, PartialEq)]
 ///

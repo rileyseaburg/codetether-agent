@@ -22,7 +22,7 @@ impl SwarmViewState {
             event @ (SwarmEvent::AgentToolCall { .. }
             | SwarmEvent::AgentToolCallDetail { .. }
             | SwarmEvent::AgentMessage { .. }) => self.apply_agent_activity(event),
-            event @ (SwarmEvent::AgentComplete { .. }) => self.apply_agent_complete(event),
+            event @ SwarmEvent::AgentComplete { .. } => self.apply_agent_complete(event),
             event @ (SwarmEvent::AgentOutput { .. } | SwarmEvent::AgentError { .. }) => {
                 self.apply_agent_results(event)
             }

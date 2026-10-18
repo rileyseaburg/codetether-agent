@@ -1,5 +1,3 @@
-pub(crate) use tool_modules::image_tool_message_for_test;
-
 // Unit-test module declarations for session helpers.
 
 mod image_recording_fixture;

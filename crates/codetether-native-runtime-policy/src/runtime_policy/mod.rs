@@ -7,14 +7,12 @@ mod approval_gate;
 mod command;
 mod invocation;
 mod invocation_scope;
-use codetether_runtime_policy::justification;
 mod justification_schema;
 use codetether_runtime_policy as policy;
 mod result;
 mod sandbox_preflight;
 use codetether_runtime_policy as tool_kind;
 mod types;
-use codetether_runtime_policy::workspace;
 
 #[doc(hidden)]
 pub use approval_gate::approval_binding;

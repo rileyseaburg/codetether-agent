@@ -18,8 +18,6 @@ pub(in crate::session::helper) mod tool_extraction_bash;
 pub(in crate::session::helper) mod tool_metadata_event;
 #[path = "tool_output.rs"]
 pub(in crate::session::helper) mod tool_output;
-#[cfg(test)]
-pub(crate) use tool_output::tool_result_with_metadata as image_tool_message_for_test;
 
 #[path = "tool_parallel/mod.rs"]
 pub(in crate::session::helper) mod tool_parallel;
