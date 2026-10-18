@@ -27,114 +27,6 @@ mod startup_vault;
 mod worktree_cli;
 
 mod native_cli;
-mod provider_cli_alias;
-use provider_cli_alias::normalize_provider_alias;
-
-fn local_cuda_runtime_configured() -> bool {
-    let model_path = std::env::var("LOCAL_CUDA_MODEL_PATH")
-        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL_PATH"))
-        .ok();
-    let tokenizer_path = std::env::var("LOCAL_CUDA_TOKENIZER_PATH")
-        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_TOKENIZER_PATH"))
-        .ok();
-    model_path.is_some() && tokenizer_path.is_some()
-}
-
-fn local_cuda_model_name() -> String {
-    std::env::var("LOCAL_CUDA_MODEL")
-        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
-        .unwrap_or_else(|_| "qwen3.5-9b".to_string())
-}
-
-fn default_openrouter_rlm_model() -> String {
-    std::env::var("CODETETHER_RLM_DEFAULT_MODEL")
-        .or_else(|_| std::env::var("OPENROUTER_RLM_MODEL"))
-        .unwrap_or_else(|_| "qwen/qwen3.5-35b-a3b".to_string())
-}
-
-fn resolve_rlm_provider_and_model(
-    model_arg: Option<&str>,
-    registry: &provider::ProviderRegistry,
-) -> anyhow::Result<(Arc<dyn provider::Provider>, String, String)> {
-    if let Some(model_ref) = model_arg {
-        let (provider_name, model_name) = provider::parse_model_string(model_ref);
-        if let Some(provider_name) = provider_name {
-            let normalized = normalize_provider_alias(provider_name);
-            if normalized == "local_cuda" {
-                let provider = registry.get("local_cuda").ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "local_cuda selected explicitly but provider is unavailable. \
-                         Build/install with CUDA support \
-                         (--features candle-cuda) and set \
-                         LOCAL_CUDA_MODEL_PATH + LOCAL_CUDA_TOKENIZER_PATH."
-                    )
-                })?;
-                if !local_cuda_runtime_configured() {
-                    anyhow::bail!(
-                        "local_cuda selected explicitly but runtime is not configured. \
-                         Set LOCAL_CUDA_MODEL_PATH and LOCAL_CUDA_TOKENIZER_PATH \
-                         (or CODETETHER_LOCAL_CUDA_MODEL_PATH / CODETETHER_LOCAL_CUDA_TOKENIZER_PATH)."
-                    );
-                }
-                return Ok((provider, model_name.to_string(), "local_cuda".to_string()));
-            }
-
-            let provider = registry.get(normalized).ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Requested provider '{}' is not available. Configure it in Vault or env.",
-                    normalized
-                )
-            })?;
-            return Ok((provider, model_name.to_string(), normalized.to_string()));
-        }
-
-        // Unqualified model: local_cuda first when usable, then openrouter.
-        if local_cuda_runtime_configured() {
-            if let Some(provider) = registry.get("local_cuda") {
-                return Ok((provider, model_ref.to_string(), "local_cuda".to_string()));
-            }
-            anyhow::bail!(
-                "Local CUDA is configured but unavailable. \
-                 Fix local CUDA setup (CUDA-enabled binary + valid LOCAL_CUDA_MODEL_PATH and \
-                 LOCAL_CUDA_TOKENIZER_PATH) or explicitly select OpenRouter with \
-                 --model openrouter/<model>."
-            );
-        }
-        if let Some(provider) = registry.get("openrouter") {
-            return Ok((provider, model_ref.to_string(), "openrouter".to_string()));
-        }
-        anyhow::bail!(
-            "No provider available for model '{}'. Configure local_cuda or openrouter.",
-            model_ref
-        );
-    }
-
-    // No explicit model: prefer local_cuda when usable, otherwise openrouter.
-    if local_cuda_runtime_configured() {
-        if let Some(provider) = registry.get("local_cuda") {
-            return Ok((provider, local_cuda_model_name(), "local_cuda".to_string()));
-        }
-        anyhow::bail!(
-            "Local CUDA is configured but unavailable. \
-             Fix local CUDA setup (CUDA-enabled binary + valid LOCAL_CUDA_MODEL_PATH and \
-             LOCAL_CUDA_TOKENIZER_PATH) or disable local CUDA env vars to use OpenRouter fallback."
-        );
-    }
-
-    if let Some(provider) = registry.get("openrouter") {
-        return Ok((
-            provider,
-            default_openrouter_rlm_model(),
-            "openrouter".to_string(),
-        ));
-    }
-
-    anyhow::bail!(
-        "No usable RLM provider found. Configure local CUDA \
-         (LOCAL_CUDA_MODEL_PATH + LOCAL_CUDA_TOKENIZER_PATH) \
-         or OpenRouter credentials."
-    );
-}
 
 fn gather_rlm_content(args: &cli::RlmArgs) -> anyhow::Result<String> {
     use std::io::Read;
@@ -286,7 +178,7 @@ async fn run_rlm_command(args: cli::RlmArgs) -> anyhow::Result<()> {
         )
     })?;
     let (provider, model, provider_name) =
-        resolve_rlm_provider_and_model(args.model.as_deref(), &registry)?;
+        codetether_rlm_selection::resolve(args.model.as_deref(), &|name| registry.get(name))?;
     tracing::info!(provider = %provider_name, model = %model, "RLM provider resolved");
 
     let run_count = args.consensus_runs;

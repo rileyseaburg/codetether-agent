@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-rlm-selection",
  "codetether-cli-command",
  "codetether-cli-options",
  "codetether-server-status",
@@ -6837,6 +6838,14 @@ dependencies = [
  "codetether-vault-cli",
  "codetether-worktree-cli",
  "codetether-cli-options",
+]
+
+[[package]]
+name = "codetether-rlm-selection"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
 ]
 
 [[package]]

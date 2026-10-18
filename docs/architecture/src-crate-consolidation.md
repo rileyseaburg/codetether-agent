@@ -13624,3 +13624,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or command execution ran. Full workspace
   consolidation remains unfinished.
+
+### RLM CLI provider selection extraction
+
+- Moved the RLM provider/model selection policy and environment readers from
+  src/main.rs into codetether-rlm-selection. Separate modules own explicit,
+  unqualified and default selection paths, aliases and environment defaults.
+- The binary still loads the native provider registry and supplies lookup;
+  the crate does not initialize providers. Alias mapping, branch precedence,
+  configured-but-unavailable failures and error text are unchanged.
+- Verification: 19 static branch/environment/binary-body/size checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-rlm-selection/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, provider loading or model execution ran.
+  Full workspace consolidation remains unfinished.

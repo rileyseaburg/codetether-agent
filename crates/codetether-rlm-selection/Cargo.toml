@@ -1,0 +1,11 @@
+[package]
+name = "codetether-rlm-selection"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "RLM CLI provider selection and environment precedence"
+
+[dependencies]
+anyhow = "1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
