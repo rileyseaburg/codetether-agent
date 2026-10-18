@@ -13687,3 +13687,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, network requests, registrations, posts or comments
   ran. Full workspace consolidation remains unfinished.
+
+### Telemetry CLI reporting extraction
+
+- Moved the Stats command from src/main.rs into codetether-telemetry-cli.
+  Modules separately own JSON output, summary/breakdown output, recent tools,
+  recent files, token-model output and filtered records.
+- The command reads the same shared persistent-statistics API and token
+  counters in the same order. Existing output text/fields, sorting, limits and
+  conditional sections remain unchanged.
+- Verification: 14 static output/main-body/size checks passed, plus module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-telemetry-cli/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or telemetry command execution ran. Full workspace
+  consolidation remains unfinished.

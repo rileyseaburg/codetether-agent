@@ -1,0 +1,13 @@
+[package]
+name = "codetether-telemetry-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Telemetry statistics CLI output and filtering"
+
+[dependencies]
+anyhow = "1"
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
+serde_json = "1"

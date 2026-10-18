@@ -14,10 +14,9 @@ use clap::Parser;
 use cli::{Cli, Command};
 use codetether_agent::{
     a2a, benchmark, bus, cli, config, forage, github_pr, indexer, mcp, mux, okr, provider, ralph,
-    server, swarm, telemetry, tool, tui, worker_server,
+    server, swarm, tool, tui, worker_server,
 };
 use swarm::{DecompositionStrategy, ExecutionMode, SwarmExecutor};
-use telemetry::{TOKEN_USAGE, get_persistent_stats};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod cleanup_cli;
@@ -656,151 +655,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         }
-        Some(Command::Stats(args)) => {
-            // Show telemetry statistics - use persistent data
-            let persistent = get_persistent_stats();
-            let token_snapshot = TOKEN_USAGE.global_snapshot();
-
-            if args.json {
-                let mut output = serde_json::json!({
-                    "tool_executions": persistent.stats,
-                    "token_usage": {
-                        "total_input": persistent.stats.total_input_tokens,
-                        "total_output": persistent.stats.total_output_tokens,
-                        "requests": persistent.stats.total_requests,
-                    }
-                });
-
-                if args.tools || args.all {
-                    let recent: Vec<_> = persistent.recent(args.limit).into_iter().collect();
-                    output["recent_executions"] = serde_json::json!(recent);
-                }
-
-                if args.files || args.all {
-                    let changes = persistent.all_file_changes();
-                    let recent_changes: Vec<_> = changes.iter().rev().take(args.limit).collect();
-                    output["recent_file_changes"] = serde_json::json!(recent_changes);
-                }
-
-                if let Some(ref tool_name) = args.tool {
-                    let tool_execs = persistent.by_tool(tool_name);
-                    output["tool_filter"] = serde_json::json!(tool_execs);
-                }
-
-                if let Some(ref file_path) = args.file {
-                    let file_execs = persistent.by_file(file_path);
-                    output["file_filter"] = serde_json::json!(file_execs);
-                }
-
-                println!("{}", serde_json::to_string_pretty(&output)?);
-            } else {
-                println!("# CodeTether Telemetry\n");
-
-                // Summary
-                println!("## Summary\n");
-                println!("**Tool Executions:** {}", persistent.summary());
-                println!("**Token Usage:** {}", token_snapshot.summary());
-
-                // Tool breakdown
-                if !persistent.stats.executions_by_tool.is_empty() {
-                    println!("\n## Tool Breakdown\n");
-                    let mut tools: Vec<_> = persistent.stats.executions_by_tool.iter().collect();
-                    tools.sort_by(|a, b| b.1.cmp(a.1));
-                    for (tool, count) in tools.iter().take(10) {
-                        println!("- **{}**: {} executions", tool, count);
-                    }
-                }
-
-                // Files modified
-                if !persistent.stats.files_modified.is_empty() {
-                    println!("\n## Files Modified\n");
-                    let mut files: Vec<_> = persistent.stats.files_modified.iter().collect();
-                    files.sort_by(|a, b| b.1.cmp(a.1));
-                    for (path, count) in files.iter().take(10) {
-                        println!("- **{}**: {} changes", path, count);
-                    }
-                }
-
-                // Recent executions
-                if args.tools || args.all {
-                    let recent = persistent.recent(args.limit);
-                    if !recent.is_empty() {
-                        println!("\n## Recent Tool Executions\n");
-                        for exec in recent {
-                            let status = if exec.success { "✓" } else { "✗" };
-                            let files_str = if exec.file_changes.is_empty() {
-                                String::new()
-                            } else {
-                                format!(
-                                    " → {}",
-                                    exec.file_changes
-                                        .iter()
-                                        .map(|f: &telemetry::FileChange| f.summary())
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                )
-                            };
-                            println!(
-                                "- {} **{}** ({}ms){}",
-                                status, exec.tool_name, exec.duration_ms, files_str
-                            );
-                        }
-                    }
-                }
-
-                // Recent file changes
-                if args.files || args.all {
-                    let changes = persistent.all_file_changes();
-                    if !changes.is_empty() {
-                        println!("\n## Recent File Changes\n");
-                        for (exec_id, change) in changes.iter().rev().take(args.limit) {
-                            println!("- [#{}] {}", exec_id, change.summary());
-                        }
-                    }
-                }
-
-                // Token usage by model
-                if args.tokens || args.all {
-                    let model_snapshots = TOKEN_USAGE.model_snapshots();
-                    if !model_snapshots.is_empty() {
-                        println!("\n## Token Usage by Model\n");
-                        for snapshot in &model_snapshots {
-                            println!("- **{}**: {}", snapshot.name, snapshot.summary());
-                        }
-                    }
-                }
-
-                // Filtered results
-                if let Some(ref tool_name) = args.tool {
-                    let tool_execs = persistent.by_tool(tool_name);
-                    if !tool_execs.is_empty() {
-                        println!("\n## Executions of '{}'\n", tool_name);
-                        for exec in tool_execs.iter().take(args.limit) {
-                            let status = if exec.success { "✓" } else { "✗" };
-                            println!("- {} ({}ms)", status, exec.duration_ms);
-                        }
-                    }
-                }
-
-                if let Some(ref file_path) = args.file {
-                    let file_execs = persistent.by_file(file_path);
-                    if !file_execs.is_empty() {
-                        println!("\n## Changes to '{}'\n", file_path);
-                        for exec in file_execs.iter().take(args.limit) {
-                            println!("- **{}** ({}ms)", exec.tool_name, exec.duration_ms);
-                            for change in &exec.file_changes {
-                                if change.path == *file_path
-                                    && let Some((start, end)) = change.line_range
-                                {
-                                    println!("  Lines {}-{}", start, end);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Ok(())
-        }
+        Some(Command::Stats(args)) => codetether_telemetry_cli::execute(args),
         Some(Command::Benchmark(args)) => {
             if args.models.is_empty() {
                 anyhow::bail!("At least one model is required (--models provider:model)");
