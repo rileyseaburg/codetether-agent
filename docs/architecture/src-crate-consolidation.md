@@ -12014,3 +12014,21 @@ Full workspace consolidation remains active.
   limits and diff checks passed. Evidence: artifacts/consolidation-composer-view/.
 - No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
   consolidation remains incomplete.
+
+### Full-frame rendered cache ownership
+
+- Replaced AppState's seven rendered-cache fields with an owned RenderedLineCache
+  in codetether-message-cache. Shared methods now implement full-cache validation,
+  take/restore and clone access, frozen-prefix reuse, metadata recording, clearing
+  and streaming-suffix invalidation. RenderInputs carries current application
+  values without depending on AppState.
+- Updated session-history reads, retention, explicit invalidation, streaming text
+  changes and native test field accesses to use the new owner. Application-facing
+  methods remain adapters, preserving existing renderer call sites and tests.
+- Verification: 27 source comparisons passed for original method bodies under
+  explicit input projection, native delegates, state/default migration and the
+  field-only or invalidation-only consumer changes. All 11 cache crate modules
+  contain at most 43 code lines. Module/dependency graphs, direct formatting,
+  source limits and diff checks passed. Evidence: artifacts/consolidation-rendered-cache/.
+- No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
+  incomplete; this does not establish that existing tests pass.

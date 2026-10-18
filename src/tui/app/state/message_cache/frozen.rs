@@ -1,11 +1,5 @@
-//! Frozen-prefix cache helpers for streaming chat rendering.
-//!
-//! While an assistant response streams, the beginning of the rendered chat
-//! buffer often remains unchanged. These helpers let the renderer reuse that
-//! stable prefix and rebuild only the suffix that contains live streaming text.
-
+//! Frozen-prefix adapters for the shared rendered-line cache.
 use ratatui::text::Line;
-
 impl super::super::AppState {
     /// Takes the cached prefix that is unaffected by streaming output.
     ///
@@ -14,21 +8,8 @@ impl super::super::AppState {
     /// timer changes every frame. Returns `None` when there is no reusable
     /// prefix or when the cache metadata no longer matches the current state.
     pub(crate) fn take_frozen_prefix(&mut self, max_width: usize) -> Option<Vec<Line<'static>>> {
-        if self.pending_tool_started_at.is_some()
-            || self.cached_frozen_len == 0
-            || self.cached_messages_len != self.messages.len()
-            || self.cached_tool_preview_scroll != self.tool_preview_scroll
-            || self.cached_max_width != max_width
-        {
-            return None;
-        }
-        let mut frozen = std::mem::take(&mut self.cached_message_lines);
-        frozen.truncate(self.cached_frozen_len);
-        if frozen.is_empty() {
-            None
-        } else {
-            Some(frozen)
-        }
+        let inputs = self.render_cache_inputs();
+        self.message_cache.take_frozen_prefix(max_width, inputs)
     }
 
     /// Stores rebuilt chat lines and records the reusable prefix length.
@@ -41,7 +22,8 @@ impl super::super::AppState {
         max_width: usize,
         frozen_len: usize,
     ) {
-        self.cached_frozen_len = frozen_len;
-        self.store_message_lines(lines, max_width);
+        let inputs = self.render_cache_inputs();
+        self.message_cache
+            .store_message_lines_with_frozen(lines, max_width, frozen_len, inputs)
     }
 }

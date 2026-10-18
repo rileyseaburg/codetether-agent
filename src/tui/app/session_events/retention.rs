@@ -11,9 +11,7 @@ pub(super) fn trim(app: &mut App) {
     }
     let overflow = len - max_items;
     app.state.messages.drain(0..overflow);
-    app.state.cached_message_lines.clear();
-    app.state.cached_messages_len = 0;
-    app.state.cached_frozen_len = 0;
+    app.state.message_cache.clear();
     // Preserve the auto-follow sentinel (SCROLL_BOTTOM = 1_000_000). If the user
     // is at the sentinel, keep them there — the render clamp adjusts to the new
     // max_scroll. For a manual scroll position, subtract the number of removed

@@ -18,14 +18,14 @@ impl super::AppState {
     /// Replace the cumulative preview and invalidate only its rendered suffix.
     pub fn replace_streaming_text(&mut self, text: String) {
         self.streaming_text = text;
-        self.cached_streaming_current = false;
+        self.message_cache.invalidate_streaming();
     }
 
     /// Clear the cumulative preview and invalidate its rendered suffix.
     pub fn clear_streaming_text(&mut self) {
         if !self.streaming_text.is_empty() {
             self.streaming_text.clear();
-            self.cached_streaming_current = false;
+            self.message_cache.invalidate_streaming();
         }
     }
 

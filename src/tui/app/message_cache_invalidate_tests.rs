@@ -12,9 +12,9 @@ async fn session_sync_clears_render_cache() {
         content: vec![ContentPart::Text { text: "old".into() }],
     }]
     .into();
-    app.state.cached_messages_len = 99;
-    app.state.cached_frozen_len = 99;
+    app.state.message_cache.cached_messages_len = 99;
+    app.state.message_cache.cached_frozen_len = 99;
     sync_messages_from_session(&mut app, &session);
-    assert_eq!(app.state.cached_messages_len, 0);
-    assert_eq!(app.state.cached_frozen_len, 0);
+    assert_eq!(app.state.message_cache.cached_messages_len, 0);
+    assert_eq!(app.state.message_cache.cached_frozen_len, 0);
 }

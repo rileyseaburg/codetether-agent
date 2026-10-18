@@ -1,4 +1,7 @@
-//! Per-message formatted-line cache.
+//! Per-message formatting and full-frame rendered-line caches.
+//!
+//! [RenderedLineCache] owns the UI frame and frozen streaming prefix.
+//! [RenderInputs] supplies only the state needed to validate those cached lines.
 //!
 //! Thread-local cache keyed by `(timestamp_nanos, content_address, content_len,
 //! max_width,
@@ -73,3 +76,12 @@ pub fn format_message_cached(
 pub fn reset_format_cache() {
     FORMAT_CACHE.with(|cache| cache.borrow_mut().clear());
 }
+
+mod render_access;
+mod render_frozen;
+mod render_inputs;
+mod render_state;
+mod render_store;
+mod render_validity;
+pub use render_inputs::RenderInputs;
+pub use render_state::RenderedLineCache;

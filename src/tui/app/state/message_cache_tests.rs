@@ -33,5 +33,5 @@ fn frozen_prefix_is_moved_without_retaining_streaming_suffix() {
 
     let frozen = state.take_frozen_prefix(80).expect("frozen prefix");
     assert_eq!(frozen.len(), 1);
-    assert!(state.cached_message_lines.is_empty());
+    assert!(state.message_cache.cached_message_lines.is_empty());
 }
