@@ -13,7 +13,6 @@ mod forage_task;
 mod git_branch_tests;
 #[rustfmt::skip]
 mod connection_setup;
-mod frame_handler;
 mod git_hook_gate;
 mod git_refspec;
 mod heartbeat_loop;
@@ -73,7 +72,6 @@ mod task_session;
 mod task_session_resolve;
 mod task_slot;
 mod task_stream;
-mod task_stream_buffer;
 mod task_stream_error;
 #[rustfmt::skip]
 mod task_stream_request;mod task_targeting;

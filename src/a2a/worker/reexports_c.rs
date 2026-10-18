@@ -10,7 +10,6 @@ pub(super) use super::{
     task_session::prepare_task_session,
     task_slot::reserve_task_slot,
     task_stream::connect_stream,
-    task_stream_buffer::StreamDisconnectReason,
     task_timeout::task_timeout_secs,
     worker_bootstrap::{bootstrap_worker, register_current_worker},
     worker_context::WorkerContext,

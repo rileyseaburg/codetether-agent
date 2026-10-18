@@ -16378,3 +16378,26 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-worker-reconnect/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker stream connection consumption
+
+- Moved the SSE connection loop and cursor-path/ingestion glue into
+  `codetether-a2a-stream::worker_connection`, split into host contracts,
+  connection consumption and frame-ingestion modules.
+- The stream crate now owns durable cursor loading, response acceptance,
+  notification/periodic polling, bounded byte ingestion and disconnect results.
+  Native hooks retain request metadata, HTTP rejection formatting, actual task
+  dispatch/reconciliation and optional server connected-state updates.
+- Removed native frame-handler and stream-buffer adapters; connection ingestion
+  now invokes shared frame dispatch directly. Preserved request ordering,
+  connected-state timing, cursor filename, poll cadence, staging limit and all
+  existing notification/stream/error branches.
+- Declared futures, reqwest stream and Tokio macros for moved implementation.
+  Staged only the futures entry in the stream crate's HEAD-derived lockfile;
+  existing unrelated working-tree lockfile changes were preserved.
+- Verification: full connection/ingestion body comparisons, native bindings,
+  unchanged request/error/poll/dispatch implementations, module/dependency
+  graphs, direct rustfmt, file limits and diff whitespace. Evidence:
+  `artifacts/consolidation-worker-connection/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

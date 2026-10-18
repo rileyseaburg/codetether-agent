@@ -44,3 +44,6 @@ pub mod dispatch;
 
 /// Standalone and HTTP-integrated worker reconnect sequences.
 pub mod worker_reconnect;
+
+/// Resumable worker connection consumption and reconciliation.
+pub mod worker_connection;
