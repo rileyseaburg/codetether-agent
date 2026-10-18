@@ -1727,6 +1727,7 @@ dependencies = [
  "codetether-skill-tool",
  "codetether-swarm-core",
  "codetether-swarm-k8s",
+ "codetether-swarm-local-job",
  "codetether-swarm-orchestrator",
  "codetether-swarm-share",
  "codetether-task-tool",
@@ -7683,6 +7684,19 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-swarm-local-job"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-bus-core",
+ "codetether-provider-core",
+ "codetether-session-control",
+ "codetether-swarm-core",
+ "tokio",
 ]
 
 [[package]]

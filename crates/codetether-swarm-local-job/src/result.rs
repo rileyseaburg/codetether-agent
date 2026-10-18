@@ -1,7 +1,7 @@
 //! Host metadata passed to shared agent-outcome conversion.
 use super::{job::Job, retry::Outcome};
-use crate::swarm::{SubTaskResult, SubTaskStatus};
 use codetether_swarm_core::agent_result::{ExecutionSpec, from_agent};
+use codetether_swarm_core::{SubTaskResult, SubTaskStatus};
 use std::time::Duration;
 pub(super) fn build(
     job: &Job,

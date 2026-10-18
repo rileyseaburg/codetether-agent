@@ -1,8 +1,9 @@
 //! One invocation attempt of a local sub-agent loop.
 
-use super::super::run_agent_loop;
-use super::{job::Job, retry::Outcome};
+use crate::swarm::run_agent_loop;
 use crate::{provider::ToolDefinition, tool::ToolRegistry};
+use codetether_swarm_core::agent_retry::AgentOutcome as Outcome;
+use codetether_swarm_local_job::Job;
 use std::sync::Arc;
 
 pub(super) async fn execute(

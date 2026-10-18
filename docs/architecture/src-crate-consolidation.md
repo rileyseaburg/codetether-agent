@@ -18249,3 +18249,23 @@ missed-tick handling, cancellation/input rules, pod budget, timeout checks,
 event order, result ordering and cleanup behavior. Evidence:
 `artifacts/consolidation-swarm-k8s/`. No Kubernetes, provider, Cargo, rustc,
 Python or Rust-test execution occurred; compilation remains unverified.
+
+### Local swarm job lifecycle
+
+Moved eight local-job modules into `codetether-swarm-local-job`: owned job inputs,
+parent-runtime scoping, stagger/semaphore handling, prompt assembly, bounded
+retry attempts, outcome conversion and start/completion events. The native job
+type is now a reexport; existing stage builders construct the same public fields
+and existing launch/collection code consumes the same results.
+
+Native `job_host` callbacks retain workspace capability selection, tool-registry
+construction, session-aware system prompt generation and the original agent-loop
+argument mapping. Retry attempts reuse the same registry and definitions, and
+the semaphore permit spans execution and final events as before. Local stage
+worktree allocation, scheduling and integration remain to be consolidated.
+
+Validation: complete token comparisons of the eight moved modules and job fields,
+all native registry/prompt/agent-loop arguments, unchanged job builder and stage
+collection sources, module/dependency graphs, file limits and whitespace checks.
+Evidence: `artifacts/consolidation-local-job/`. No job, provider, Cargo, rustc,
+Python or Rust-test execution occurred; compilation remains unverified.

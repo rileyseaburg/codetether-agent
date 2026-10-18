@@ -1,11 +1,11 @@
 //! System and user prompts for a local sub-agent.
 
 use super::job::Job;
-use crate::swarm::tool_policy;
+use codetether_swarm_core::prompt_policy::SystemPromptInput;
 
-pub(super) fn build(job: &Job) -> (String, String) {
+pub(super) fn build<H: crate::Host>(job: &Job) -> (String, String) {
     let directory = job.workspace.display().to_string();
-    let system = tool_policy::system_prompt(tool_policy::SystemPromptInput {
+    let system = H::system_prompt(SystemPromptInput {
         specialty: &job.specialty,
         subtask_id: &job.id,
         working_dir: &directory,

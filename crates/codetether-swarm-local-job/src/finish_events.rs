@@ -1,8 +1,8 @@
 //! Completion and failure events for a local sub-agent.
 
 use super::job::Job;
-use crate::swarm::{SubTaskResult, SubTaskStatus};
 use codetether_swarm_core::SwarmEvent;
+use codetether_swarm_core::{SubTaskResult, SubTaskStatus};
 
 pub(super) fn emit(job: &Job, result: &SubTaskResult, status: SubTaskStatus) {
     let Some(events) = &job.events else { return };

@@ -1,7 +1,7 @@
 //! Events emitted when a local sub-agent starts.
 
 use super::job::Job;
-use crate::swarm::SubTaskStatus;
+use codetether_swarm_core::SubTaskStatus;
 use codetether_swarm_core::SwarmEvent;
 
 pub(super) fn emit(job: &Job) {
