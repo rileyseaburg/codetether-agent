@@ -64,6 +64,7 @@ use tower_http::trace::TraceLayer;
 
 use codetether_audit_http::AuditQuery;
 use codetether_authorization_policy::routes::required_permission;
+use codetether_cognition_api::BeliefFilter;
 use codetether_event_replay::{list_session_event_files, replay_session_events};
 use codetether_k8s_api::{ScaleRequest, SpawnSubagentRequest};
 use codetether_openai_adapter::{
@@ -600,26 +601,7 @@ async fn get_cognition_status(
 async fn stream_cognition(
     State(state): State<AppState>,
 ) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
-    let rx = state.cognition.subscribe_events();
-
-    let event_stream = stream::unfold(rx, |mut rx| async move {
-        match rx.recv().await {
-            Ok(event) => {
-                let payload = serde_json::to_string(&event).unwrap_or_else(|_| "{}".to_string());
-                let sse_event = Event::default().event("cognition").data(payload);
-                Some((Ok(sse_event), rx))
-            }
-            Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                let lag_event = Event::default()
-                    .event("lag")
-                    .data(format!("skipped {}", skipped));
-                Some((Ok(lag_event), rx))
-            }
-            Err(tokio::sync::broadcast::error::RecvError::Closed) => None,
-        }
-    });
-
-    Sse::new(event_stream).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
+    codetether_cognition_api::stream_cognition(state.cognition.subscribe_events())
 }
 
 /// Stream bus events as SSE, filtered by JWT topic claims.
@@ -650,10 +632,7 @@ async fn stream_bus_events(
 async fn get_latest_snapshot(
     State(state): State<AppState>,
 ) -> Result<Json<MemorySnapshot>, (StatusCode, String)> {
-    match state.cognition.latest_snapshot().await {
-        Some(snapshot) => Ok(Json(snapshot)),
-        None => Err((StatusCode::NOT_FOUND, "No snapshots available".to_string())),
-    }
+    codetether_cognition_api::latest_snapshot(state.cognition.latest_snapshot().await)
 }
 
 async fn create_persona(
@@ -707,47 +686,18 @@ async fn get_swarm_lineage(
     Ok(Json(state.cognition.lineage_graph().await))
 }
 
-// ── Belief, Attention, Governance, Workspace handlers ──
-
-#[derive(Deserialize)]
-struct BeliefFilter {
-    status: Option<String>,
-    persona: Option<String>,
-}
-
 async fn list_beliefs(
     State(state): State<AppState>,
     Query(filter): Query<BeliefFilter>,
 ) -> Result<Json<Vec<Belief>>, (StatusCode, String)> {
-    let beliefs = state.cognition.get_beliefs().await;
-    let mut result: Vec<Belief> = beliefs.into_values().collect();
-
-    if let Some(status) = &filter.status {
-        result.retain(|b| {
-            let s = serde_json::to_string(&b.status).unwrap_or_default();
-            s.contains(status)
-        });
-    }
-    if let Some(persona) = &filter.persona {
-        result.retain(|b| &b.asserted_by == persona);
-    }
-
-    result.sort_by(|a, b| {
-        b.confidence
-            .partial_cmp(&a.confidence)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    Ok(Json(result))
+    codetether_cognition_api::list_beliefs(state.cognition.get_beliefs().await, filter)
 }
 
 async fn get_belief(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<Belief>, (StatusCode, String)> {
-    match state.cognition.get_belief(&id).await {
-        Some(belief) => Ok(Json(belief)),
-        None => Err((StatusCode::NOT_FOUND, format!("Belief not found: {}", id))),
-    }
+    codetether_cognition_api::belief(state.cognition.get_belief(&id).await, &id)
 }
 
 async fn list_attention(
@@ -759,10 +709,7 @@ async fn list_attention(
 async fn list_proposals(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Proposal>>, (StatusCode, String)> {
-    let proposals = state.cognition.get_proposals().await;
-    let mut result: Vec<Proposal> = proposals.into_values().collect();
-    result.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-    Ok(Json(result))
+    codetether_cognition_api::list_proposals(state.cognition.get_proposals().await)
 }
 
 async fn approve_proposal(
@@ -799,12 +746,7 @@ async fn get_persona(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<crate::cognition::PersonaRuntimeState>, (StatusCode, String)> {
-    state
-        .cognition
-        .get_persona(&id)
-        .await
-        .map(Json)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Persona not found: {}", id)))
+    codetether_cognition_api::persona(state.cognition.get_persona(&id).await, &id)
 }
 async fn list_audit_entries(
     State(state): State<AppState>,

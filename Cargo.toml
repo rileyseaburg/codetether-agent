@@ -30,6 +30,7 @@ members = [
     "crates/codetether-runtime-policy",
     "crates/codetether-context-policy",
     "crates/codetether-cognition-core",
+    "crates/codetether-cognition-api",
     "crates/codetether-cognition-native",
     "crates/codetether-crash",
     "crates/codetether-code-search",
@@ -529,6 +530,7 @@ codetether-a2a-inbox = { path = "crates/codetether-a2a-inbox", version = "0.1.0"
 codetether-a2a-worker-clone = { path = "crates/codetether-a2a-worker-clone", version = "0.1.0" }
 codetether-cognition-native = { path = "crates/codetether-cognition-native", version = "0.1.0" }
 codetether-cognition-core = { path = "crates/codetether-cognition-core", version = "0.1.0" }
+codetether-cognition-api = { path = "crates/codetether-cognition-api", version = "0.1.0" }
 codetether-voice-core = { path = "crates/codetether-voice-core", version = "0.1.0" }
 codetether-context-policy = { path = "crates/codetether-context-policy", version = "0.1.0" }
 codetether-autochat-core = { path = "crates/codetether-autochat-core", version = "0.1.0" }

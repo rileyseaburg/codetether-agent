@@ -13254,3 +13254,20 @@ Full workspace consolidation remains active.
 - Only the catalog's three added dependencies were staged from Cargo.lock. No
   provider lookups/listings, Cargo, rustc or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Cognition HTTP projection extraction
+
+- Moved cognition event SSE, belief query filtering, proposal ordering and
+  optional-record HTTP responses from src/server/mod.rs into the dedicated
+  codetether-cognition-api crate. Six modules separate query parameters,
+  filtering, ordering, records and transport; each is below 45 code lines.
+- Native handlers retain runtime reads and delegate response construction.
+  The crate depends on shared cognition contracts, never the native runtime.
+  Status substring matching, exact persona matching, descending ordering,
+  404 messages, lag notifications and 15-second keepalives are preserved.
+- Verification: 19 static checks compare moved behavior and delegation;
+  module/dependency graph checks, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence: artifacts/consolidation-cognition-api/.
+- The lockfile was updated by staging only this crate and its root dependency
+  against HEAD, preserving unrelated working edits. No Cargo, rustc, Rust
+  tests or live cognition requests ran. Full consolidation remains incomplete.

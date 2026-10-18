@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-cognition-api",
  "codetether-voice-api",
  "codetether-http-auth",
  "codetether-question-view",
@@ -6622,6 +6623,18 @@ dependencies = [
  "tower",
  "tracing",
  "urlencoding",
+]
+
+[[package]]
+name = "codetether-cognition-api"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "codetether-cognition-core",
+ "futures",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
