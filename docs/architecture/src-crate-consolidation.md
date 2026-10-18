@@ -23551,3 +23551,22 @@ changes remain untouched. Evidence:
 artifacts/consolidation-storage-renamed-facades/.
 No storage operations, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Server composition delegated to session HTTP and provider crates
+
+Moved the ordered fork/goal/persisted-session route composition into
+codetether-session-http::all_routes. Native server routing now selects Session
+and AppState directly. Added the model-catalog HTTP host implementation to the
+application provider registry, replacing the native model-host file. Native
+session storage, goal and fork trait bindings remain unchanged.
+
+Static comparisons preserve route merge order, all outer router inputs and
+the shared Vault-backed provider cache. The initial body-comparison helper
+passed an expression fragment to rustfmt; wrapping that fragment as a function
+body corrected the verifier, with the original output retained. Module and
+dependency scans cover 691 roots and 571 crates without missing modules or
+cycles. Direct rustfmt, file-size limits and whitespace checks passed. No
+manifests or lockfiles changed; unrelated working changes remain untouched.
+Evidence: artifacts/consolidation-server-composition/.
+No server startup, requests, tests, Cargo, rustc or Python ran. Compilation and
+runtime behavior remain unverified. Full consolidation remains active.

@@ -1,7 +1,6 @@
 //! Native runtime adapter routes supplied to the shared application router.
 use super::{
-    AppState, approval_routes, config_status, models_catalog, openai_http_host, session_realtime,
-    session_routes, worker_modules,
+    AppState, approval_routes, config_status, openai_http_host, session_realtime, worker_modules,
 };
 use axum::Router;
 use codetether_server_router::{Extensions, Transports};
@@ -11,13 +10,16 @@ pub(super) fn build(state: &AppState, root: Router, nested: Router) -> Router {
         state.clone(),
         Extensions {
             approval: approval_routes::router(),
-            sessions: session_routes::router(),
+            sessions: codetether_session_http::all_routes::<crate::session::Session, AppState>(),
             realtime: codetether_session_realtime::http::router::<
                 session_realtime::AppHost,
                 AppState,
             >(),
             status: config_status::router(state.inner.config.clone()),
-            models: codetether_model_catalog::http::router::<models_catalog::AppHost, AppState>(),
+            models: codetether_model_catalog::http::router::<
+                crate::provider::ProviderRegistry,
+                AppState,
+            >(),
             completions: codetether_openai_serving::http::router::<
                 openai_http_host::AppHost,
                 AppState,

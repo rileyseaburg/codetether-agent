@@ -6,7 +6,6 @@ use codetether_approval_http as approval_routes;
 pub use codetether_http_auth as auth;
 mod config_status;
 mod http_router;
-mod models_catalog;
 mod openai_http_host;
 pub use codetether_authorization_policy as policy;
 use codetether_openai_adapter::options as openai_model_options;

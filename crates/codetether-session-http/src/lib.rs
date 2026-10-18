@@ -33,3 +33,5 @@ pub use goal::{GoalHost, router as goal_router};
 
 mod fork;
 pub use fork::router as fork_router;
+mod all_routes;
+pub use all_routes::all_routes;

@@ -1,5 +1,6 @@
 //! Runtime consumers of the application-bound provider registry.
 mod catalog;
+mod catalog_http;
 mod discovery;
 mod embedding;
 mod factory;
