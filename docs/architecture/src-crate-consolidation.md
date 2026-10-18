@@ -20189,3 +20189,26 @@ both closures. Those files are inspection candidates, not proven dead code;
 none were deleted based solely on the inventory. Initial audit limitations
 (main-file resolution and a module macro) were corrected with logs retained.
 Evidence: `artifacts/consolidation-source-audit/`.
+
+### Remove orphaned compatibility duplicates
+
+Removed eight files outside both the library and binary module closures:
+`src/actor/mod.rs`, the old native CORS analysis helper, and six unused provider
+model/type/retry export files. Actor behavior remains in `codetether-actor`;
+provider contracts/retries remain in `codetether-provider-core`; the CORS helper
+is byte-for-byte identical to its owner in `codetether-browser`.
+
+Active native exports and all crate implementations are unchanged. The full
+source audit retains 2,920 reachable library files and 15 reachable binary
+files, with no missing module targets. Unreferenced candidates decrease from
+29 to 21. Remaining candidates need individual ownership and compatibility
+review before changes.
+
+Validation: pre-removal module-closure membership, exact CORS comparison,
+unchanged owners and live facades/manifests, equal reachable counts, exact
+candidate-set subtraction, dependency cycles, file-size ratchet and whitespace.
+The inventory's explicit actor-facade target was removed with that orphan;
+initial path-check failures were corrected before the final verification.
+Evidence: `artifacts/consolidation-orphan-facades/` and the updated
+`artifacts/consolidation-source-audit/`. No Cargo, rustc, Python or Rust tests
+ran; compilation and runtime remain unverified.
