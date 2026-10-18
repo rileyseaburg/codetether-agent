@@ -27,12 +27,12 @@ pub mod approval_queue;
 pub mod chat_latency;
 pub use codetether_context_health as context_health;
 pub mod default_impl;
+pub use codetether_composer_view::state_binding::history;
 pub use codetether_git_view as git_state;
-pub mod history;
 pub mod history_page;
-pub mod input_cursor;
+pub use codetether_composer_view::state_binding::cursor as input_cursor;
 pub mod input_edit;
-pub mod input_replace;
+pub use codetether_composer_view::state_binding::replace as input_replace;
 #[path = "../interlude.rs"]
 pub(crate) mod interlude;
 pub mod message_cache;
@@ -53,9 +53,9 @@ pub mod session_nav;
 #[cfg(test)]
 mod session_test_fixtures;
 pub mod settings_nav;
+pub use codetether_composer_view::state_binding::completion as slash_suggest;
 pub use codetether_slash_command as slash_commands;
 pub use codetether_slash_command as slash_hints;
-pub mod slash_suggest;
 pub mod streaming;
 pub mod timing;
 pub mod types;

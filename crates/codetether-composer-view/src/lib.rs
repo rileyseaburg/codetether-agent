@@ -44,3 +44,6 @@ pub use command_history::{CommandHistory, HistoryRecall};
 
 /// Coordinated edit, history and completion state transitions.
 pub mod interactive;
+
+/// Application-local composer adapters for cursor, edits, history and completion.
+pub mod state_binding;

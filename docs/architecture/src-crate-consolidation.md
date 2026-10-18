@@ -24830,3 +24830,24 @@ cycles. Direct dependency audit, direct rustfmt, file limits and whitespace
 checks passed. Unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-tui-default-state/. No Cargo, rustc, Python, compiler
 expansion, TUI construction or tests ran. Full consolidation remains active.
+
+### AppState composer methods moved into the composer crate
+
+Moved twenty-eight AppState methods into focused composer-view state-binding
+modules: cursor movement, editing, range replacement, command history and slash
+completion. The native input_edit child module invokes the shared declaration,
+preserving the composer accessor's parent visibility. Removed native
+input_cursor.rs, input_replace.rs, history.rs, history_push.rs and
+slash_suggest.rs; public module paths remain through re-exports.
+
+Full expanded-implementation comparison preserves all methods, field accesses
+and delegations after type-path substitution. Empty top-level macro separators
+and optional trailing parameter commas are normalized; the initial comparison
+failure is documented. The declaration checker now tracks target types when
+detecting duplicate methods, reporting 46 Session and 28 AppState methods across
+33 calls. Module/dependency scans cover 693 roots and 574 crates without missing
+modules or cycles. Direct dependency audit, direct rustfmt, file limits and
+whitespace checks passed. Dependencies, native tests and unrelated working
+changes are unchanged. Evidence: artifacts/consolidation-app-composer/.
+No Cargo, rustc, Python, compiler expansion, UI interaction or tests ran. Full
+consolidation remains active.
