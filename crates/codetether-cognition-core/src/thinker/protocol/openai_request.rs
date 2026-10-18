@@ -49,3 +49,7 @@ pub fn body(config: &ThinkerConfig, system_prompt: &str, user_prompt: &str) -> O
         stream: false,
     }
 }
+
+#[cfg(test)]
+#[path = "openai_request_tests.rs"]
+mod tests;

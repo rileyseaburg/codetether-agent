@@ -71,3 +71,7 @@ pub fn url(config: &ThinkerConfig) -> String {
         config.bedrock_region, config.model
     )
 }
+
+#[cfg(test)]
+#[path = "bedrock_request_tests.rs"]
+mod tests;

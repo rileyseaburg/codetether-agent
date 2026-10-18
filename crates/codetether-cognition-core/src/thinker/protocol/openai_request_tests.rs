@@ -1,6 +1,7 @@
 //! Outgoing identity and prompt-preservation regressions for direct HTTP thinking.
-use super::{ThinkerConfig, body};
-use crate::provider::metrics::identity::prompt;
+use super::body;
+use crate::thinker::ThinkerConfig;
+use codetether_provider_core::request_identity::prompt;
 
 #[test]
 fn thinker_identity_openai_preserves_request_and_refreshes_model() {

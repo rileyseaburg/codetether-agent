@@ -78,3 +78,15 @@ fn message(role: Role, text: &str) -> Message {
         content: vec![ContentPart::Text { text: text.into() }],
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::validate_model;
+
+    #[test]
+    fn accepts_gpt_56_from_multiple_providers() {
+        assert!(validate_model("gpt-5.6-sol-fast:max").is_ok());
+        assert!(validate_model("openai.gpt-5.6-sol").is_ok());
+        assert!(validate_model("claude-sonnet-4").is_err());
+    }
+}

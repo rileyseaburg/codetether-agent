@@ -1,6 +1,7 @@
 //! Request-level regressions for direct Bedrock thinking, without credentials.
-use super::{ThinkerConfig, body, url};
-use crate::provider::metrics::identity::prompt;
+use super::{body, url};
+use crate::thinker::ThinkerConfig;
+use codetether_provider_core::request_identity::prompt;
 
 #[test]
 fn thinker_identity_bedrock_refreshes_and_preserves_converse_fields() {

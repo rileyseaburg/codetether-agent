@@ -31,3 +31,7 @@ pub fn is_transient_http_error(status: u16) -> bool {
 pub fn is_transient_reqwest_error(e: &reqwest::Error) -> bool {
     e.is_timeout() || e.is_connect() || e.is_request()
 }
+
+#[cfg(test)]
+#[path = "retry_tests.rs"]
+mod tests;

@@ -34,24 +34,8 @@ mod output;
 #[path = "thinker/client.rs"]
 mod client;
 
-#[path = "thinker/openai_backend_request.rs"]
-mod openai_backend_request;
-#[path = "thinker/openai_wire/mod.rs"]
-mod openai_wire;
-#[path = "thinker/retry.rs"]
-mod retry;
-
-#[path = "thinker/bedrock_request.rs"]
-mod bedrock_request;
-#[path = "thinker/bedrock_response.rs"]
-mod bedrock_response;
-
 #[path = "thinker/provider.rs"]
 mod provider;
-#[path = "thinker/provider_output.rs"]
-mod provider_output;
-#[path = "thinker/provider_request.rs"]
-mod provider_request;
 
 #[path = "thinker/candle_dispatch.rs"]
 mod candle_dispatch;

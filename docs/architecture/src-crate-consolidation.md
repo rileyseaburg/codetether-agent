@@ -20547,3 +20547,22 @@ Direct rustfmt, source/module graph checks, git whitespace checks, and the nativ
 file-size ratchet passed. Evidence is in `artifacts/consolidation-tab-routing/`.
 No Cargo, rustc, or Python commands ran. Compilation and runtime tests remain
 unverified; this extraction does not complete the broader consolidation goal.
+
+### Thinker transport regression ownership
+
+Moved seven native regression tests into `codetether-cognition-core`, beside
+Bedrock/OpenAI request construction, HTTP retry classification, and provider
+model validation. The test bodies and assertions are unchanged; imports now
+refer directly to the crate's thinker configuration and provider-core identity
+helpers. Each destination implementation connects its tests under `cfg(test)`.
+Removed ten obsolete native facade/test files and their private module entries.
+Native credential construction, provider-registry access, and thinker-client
+integration remain connected through their existing adapters. No dependencies
+or runtime implementation bodies changed.
+
+Verification: exact formatted-source comparisons account for every moved test
+and every changed owner module. The source graph has no missing declared files;
+direct formatting, native file-limit, and whitespace checks passed. Evidence:
+`artifacts/consolidation-thinker-regressions/`. No Cargo, rustc, or Python commands
+ran. The relocated Rust tests were not executed, and compilation is unverified.
+The full workspace consolidation remains incomplete.
