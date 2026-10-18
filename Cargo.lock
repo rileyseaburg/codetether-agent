@@ -1619,6 +1619,7 @@ dependencies = [
  "codetether-github-auth",
  "codetether-github-pr",
  "codetether-goal-core",
+ "codetether-goal-editor",
  "codetether-google-auth",
  "codetether-grep-tool",
  "codetether-image",
@@ -2960,6 +2961,17 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
+]
+
+[[package]]
+name = "codetether-goal-editor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-editor",
+ "codetether-goal-core",
+ "codetether-terminal-text",
+ "crossterm",
 ]
 
 [[package]]

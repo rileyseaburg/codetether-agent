@@ -18389,3 +18389,25 @@ cursor/history ordering checks, existing test-source comparisons, module and
 dependency graphs, file-size ratchet and whitespace. Evidence:
 `artifacts/consolidation-goal-answer/`. No question/goal transition, provider,
 Cargo, rustc, Python or Rust test was executed; compilation remains unverified.
+
+### Virtual goal editor ownership
+
+Moved draft snapshots/conflict checks, virtual-buffer opening/discard, keyboard
+and paste routing, and user-authorized save sequencing into
+`codetether-goal-editor`. The crate uses the existing shared editor engine and
+paste normalization. Native bindings expose current UI buffers, ordered view
+updates, session identity, journal reads/user updates and deferred restart.
+The native draft path remains a compatibility reexport for application state.
+
+Preserved conflict comparisons (without treating live usage as a semantic edit),
+same-session validation, no-change saves, unsaved-draft retention on errors,
+Ctrl+C/Ctrl+Q passthrough, virtual-file isolation and close-before-restart order.
+Existing editor integration test sources remain unchanged and exercise the
+native entrypoints that now delegate to the shared implementation.
+
+Validation: complete body comparisons for draft/open/close/paste/key/save paths,
+native buffer/journal/session mappings, unchanged test-source checks,
+module/dependency graphs, file limits, direct rustfmt-check and whitespace.
+Evidence: `artifacts/consolidation-goal-editor/`. No editor interaction, goal
+update, Cargo, rustc, Python or Rust test was executed; compilation remains
+unverified.

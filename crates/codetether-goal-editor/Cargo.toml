@@ -1,0 +1,14 @@
+[package]
+name = "codetether-goal-editor"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "In-memory goal drafts, conflict-safe save and editor interaction"
+
+[dependencies]
+anyhow = "1"
+codetether-editor = { path = "../codetether-editor", version = "0.1.0" }
+codetether-goal-core = { path = "../codetether-goal-core", version = "0.1.0" }
+codetether-terminal-text = { path = "../codetether-terminal-text", version = "0.1.0" }
+crossterm = "0.29.0"
