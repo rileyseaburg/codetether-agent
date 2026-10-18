@@ -7,6 +7,8 @@ mod detector;
 mod labels;
 mod notification;
 mod source;
+mod source_view;
+pub use source_view::DetectorView;
 mod state;
 pub use detector::check_watchdog_stall;
 pub use notification::render_watchdog_notification;
@@ -24,3 +26,6 @@ pub mod recovery;
 pub mod interaction;
 /// Main-session inactivity budget.
 pub mod limits;
+
+#[cfg(test)]
+mod source_tests;

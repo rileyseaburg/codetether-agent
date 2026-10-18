@@ -28632,3 +28632,24 @@ file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
 Evidence: artifacts/consolidation-attachment-state/. Unrelated working files are
 unchanged. Cargo, rustc, Python, compilation, doc tests and runtime tests were
 not run. Full consolidation remains active and incomplete.
+
+### Move watchdog detector source and regressions into its crate
+
+Moved the six WatchdogSource methods from the root AppState implementation into
+codetether-watchdog::DetectorView. Native detection now supplies monitoring state,
+open tool calls, request timing, processing, approval and session values. The
+user-question wait gate also moved into this view and still queries the question
+runtime only inside the detector's original early gate. The detector algorithm
+and notification timing logic are unchanged.
+
+Moved five no-first-token, notification-rearm and approval-wait regression tests
+from src/tui/app/watchdog/tests/ into the watchdog crate. A minimal fixture supplies
+the same fields without depending on the full native application. The three bus
+runtime-budget integration tests and their existing native fixture remain in src.
+
+Static comparisons verify all six method mappings, native field projections and
+the five moved test bodies. Declaration, module/dependency, production-dependency,
+dependency-audit, file-limit, formatting and whitespace checks pass (724 roots,
+617 crates). Evidence: artifacts/consolidation-watchdog-source/. No dependencies
+or unrelated working files changed. Cargo, rustc, Python, compilation, doc tests
+and runtime tests were not run. Full consolidation remains active and incomplete.

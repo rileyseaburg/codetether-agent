@@ -2,8 +2,8 @@
 
 use std::time::{Duration, Instant};
 
+use super::shared::check_watchdog_stall;
 use super::shared::{TIMEOUT, processing_state};
-use crate::tui::app::watchdog::detector::check_watchdog_stall;
 
 #[test]
 fn pending_approval_suppresses_watchdog_restart() {
