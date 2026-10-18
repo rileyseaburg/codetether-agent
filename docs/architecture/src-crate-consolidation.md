@@ -23709,3 +23709,23 @@ and whitespace checks passed. Only the required lockfile dependency is staged;
 unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-search-cli/. No Cargo, rustc, Python, compilation,
 provider requests or runtime tests ran. Full consolidation remains active.
+
+### Windows diagnostics and worker startup moved into a dedicated crate
+
+Created codetether-windows-cli with separate readiness and worker modules.
+Moved Windows OCR command execution from src/cli/windows.rs and worker startup
+from src/cli/windows_worker.rs. The latter file is removed; native CLI exports
+retain the existing paths. The non-Windows readiness regression now lives with
+the implementation, while the application parser regression stays native.
+Added the crate to the workspace and root dependencies.
+
+Static comparisons preserve both execution bodies after path substitutions and
+both existing test bodies. The initial comparison encountered a rustfmt-added
+trailing comma; formatting both sources before token comparison corrected the
+check, with initial output preserved. Module/dependency scans cover 692 roots
+and 572 crates without missing modules or cycles. Direct rustfmt, source file
+limits and whitespace checks passed. Lockfile staging adds only the new local
+package and root dependency; unrelated working changes remain untouched.
+Evidence: artifacts/consolidation-windows-cli/. No Cargo, rustc, Python,
+compilation, OCR operations, workers or tests ran. Full consolidation remains
+active.

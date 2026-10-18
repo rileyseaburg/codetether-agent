@@ -10,6 +10,7 @@ members = [
     "crates/codetether-computer-windows",
     "crates/codetether-computer-worker",
     "crates/codetether-computer-tool",
+    "crates/codetether-windows-cli",
     "crates/codetether-a2a-core",
     "crates/codetether-http-error",
     "crates/codetether-server-router",
@@ -1228,6 +1229,7 @@ codetether-tool-registry = { path = "crates/codetether-tool-registry", version =
 codetether-application-registry = { path = "crates/codetether-application-registry", version = "0.1.0" }
 codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0" }
 codetether-computer-tool = { path = "crates/codetether-computer-tool", version = "0.1.0" }
+codetether-windows-cli = { path = "crates/codetether-windows-cli", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }
 codetether-util = { path = "crates/codetether-util", version = "0.1.0" }

@@ -1920,6 +1920,7 @@ dependencies = [
  "walkdir",
  "which 8.0.6",
  "windows",
+ "codetether-windows-cli",
 ]
 
 [[package]]
@@ -6139,6 +6140,17 @@ dependencies = [
  "reqwest 0.13.4",
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "codetether-windows-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-cli-options",
+ "codetether-computer-tool",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

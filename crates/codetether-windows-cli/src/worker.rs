@@ -15,5 +15,5 @@
 /// codetether windows computer-use-worker
 /// ```
 pub async fn run() -> anyhow::Result<()> {
-    crate::tool::computer_use::worker::serve().await
+    codetether_computer_tool::worker::serve().await
 }
