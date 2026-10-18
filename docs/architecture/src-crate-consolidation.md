@@ -9701,3 +9701,19 @@ Module/dependency graphs, file budgets and whitespace checks passed; the largest
 crate file has 29 code lines. Evidence is in `artifacts/consolidation-cost-guard/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or worker
 commands ran. Full workspace consolidation remains active.
+
+### Dedicated repeat-edit guard crate
+
+Moved per-turn edit repetition tracking, tool/threshold configuration and
+recursive input canonicalization into `crates/codetether-repeat-guard`.
+Eleven modules separate the guard, signatures, volatile-field filtering,
+constants and five original regression cases. Native prompt-loop state retains
+its existing type binding through a re-export.
+
+Fourteen static comparisons cover state shape, exact counter/threshold behavior,
+rejection text, canonicalization, constants, original tests and unchanged caller
+state. Module/dependency graphs, file budgets and whitespace checks passed;
+the largest crate file has 27 code lines. Five tests moved without execution.
+Evidence is in `artifacts/consolidation-repeat-guard/`. Compilation and runtime
+tests were not run. No Cargo, rustc, Python or worker commands ran. Full workspace
+consolidation remains active.

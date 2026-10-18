@@ -1,0 +1,10 @@
+[package]
+name = "codetether-repeat-guard"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Per-turn repeated edit detection using stable input signatures"
+
+[dependencies]
+serde_json = "1"
