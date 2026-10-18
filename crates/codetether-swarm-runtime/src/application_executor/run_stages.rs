@@ -1,26 +1,26 @@
 //! Forward stage execution to the existing native backend adapters.
-use super::Native;
-use crate::swarm::{Orchestrator, SubTask, SubTaskResult};
+use super::{ExecutionHost, SwarmExecutor};
+use codetether_swarm_core::{SubTask, SubTaskResult};
+use codetether_swarm_orchestrator::Orchestrator;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
-impl codetether_swarm_runtime::Stages for Native<'_> {
+impl<H: ExecutionHost> crate::Stages for SwarmExecutor<H> {
     async fn local(
         &self,
-        orchestrator: &Orchestrator,
+        orchestrator: &Orchestrator<H::Planning>,
         tasks: Vec<SubTask>,
         completed: Arc<RwLock<HashMap<String, String>>>,
         swarm: &str,
     ) -> anyhow::Result<Vec<SubTaskResult>> {
-        super::super::super::local_stage::execute(self.0, orchestrator, tasks, completed, swarm)
-            .await
+        super::local::execute(self, orchestrator, tasks, completed, swarm).await
     }
     async fn kubernetes(
         &self,
-        orchestrator: &Orchestrator,
+        orchestrator: &Orchestrator<H::Planning>,
         tasks: Vec<SubTask>,
         completed: Arc<RwLock<HashMap<String, String>>>,
         swarm: &str,
     ) -> anyhow::Result<Vec<SubTaskResult>> {
-        super::super::super::k8s_stage::execute(self.0, orchestrator, tasks, completed, swarm).await
+        super::kubernetes::execute(self, orchestrator, tasks, completed, swarm).await
     }
 }

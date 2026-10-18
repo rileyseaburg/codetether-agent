@@ -12,7 +12,7 @@ mod configure_events;
 mod execute_api;
 mod host;
 mod inline;
-pub use host::ExecutorHost;
+pub use host::{ExecutionHost, ExecutorHost};
 /// Swarm executor with application-supplied coordinator and stage bindings.
 /// # Examples
 /// ```no_run
@@ -38,3 +38,6 @@ pub mod kubernetes;
 
 /// Local-stage scheduling over shared executor services.
 pub mod local;
+
+mod run_services;
+mod run_stages;

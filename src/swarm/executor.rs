@@ -24,13 +24,10 @@ mod agent_loop;
 executor_module!(dependency_failure => "dependency_failure.rs");
 executor_module!(executor_trace => "executor_trace.rs");
 executor_module!(exit => "executor_parts/exit.rs");
-use codetether_swarm_runtime::kubernetes as k8s_stage;
 #[path = "executor_parts/local_stage/mod.rs"]
 mod local_stage;
 executor_module!(pub loop_step => "loop_step.rs");
 executor_module!(path_guard => "path_guard/mod.rs");
-#[path = "executor_parts/run/mod.rs"]
-mod run;
 executor_module!(types => "executor_parts/types.rs");
 executor_module!(application_host => "executor_parts/application_host.rs");
 executor_module!(pub(crate) workspace_registry => "workspace_registry/mod.rs");

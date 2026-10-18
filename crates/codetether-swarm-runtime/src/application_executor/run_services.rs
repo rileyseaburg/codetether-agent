@@ -1,26 +1,25 @@
 //! Shared native executor resources for swarm-run coordination.
-use super::SwarmExecutor;
-use crate::swarm::{SwarmConfig, SwarmControl};
+use super::{ExecutionHost, SwarmExecutor};
+use codetether_session_control::ControlHandle as SwarmControl;
+use codetether_swarm_core::SwarmConfig;
 use codetether_swarm_core::{SwarmEvent, result_store::ResultStore};
 use codetether_telemetry::SwarmTelemetryCollector;
 use std::sync::Arc;
-mod stages;
-pub(super) struct Native<'a>(pub &'a SwarmExecutor);
-impl codetether_swarm_runtime::Services for Native<'_> {
-    type Planning = crate::swarm::orchestrator::NativeProvider;
+impl<H: ExecutionHost> crate::Services for SwarmExecutor<H> {
+    type Planning = H::Planning;
     fn config(&self) -> &SwarmConfig {
-        &self.0.inner.config
+        &self.inner.config
     }
     fn control(&self) -> Option<&SwarmControl> {
-        self.0.inner.control.as_ref()
+        self.inner.control.as_ref()
     }
     fn result_store(&self) -> &Arc<ResultStore> {
-        &self.0.inner.result_store
+        &self.inner.result_store
     }
     fn telemetry(&self) -> &Arc<SwarmTelemetryCollector> {
-        &self.0.inner.telemetry
+        &self.inner.telemetry
     }
     fn try_send_event(&self, event: SwarmEvent) {
-        self.0.try_send_event(event);
+        SwarmExecutor::try_send_event(self, event);
     }
 }

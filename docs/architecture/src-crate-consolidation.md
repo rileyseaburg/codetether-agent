@@ -22227,3 +22227,20 @@ or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
 Only four owning-runtime dependency edges are staged in the lockfile. Evidence:
 `artifacts/consolidation-local-stage/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Swarm run coordination on the shared executor
+
+Moved the run-level `Services` and `Stages` implementations from native wrapper
+modules onto the shared application executor. `ExecutionHost` selects the same
+planner host and constrains it to the local-stage provider registry. Native
+execution now calls the shared run lifecycle directly; local and Kubernetes
+methods forward to the shared adapters introduced by the preceding extractions.
+Three native run-adapter files and an unused Kubernetes module alias were removed.
+
+Static comparisons preserve all five service accessors, both stage argument
+lists, event forwarding and the native planner selection. Module/dependency
+checks cover 698 roots and 570 crates without missing modules or cycles. Direct
+rustfmt, native file-size limits and whitespace checks passed. No manifest or
+lockfile changes. Evidence: `artifacts/consolidation-swarm-run-host/`.
+No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
+Full consolidation is active.

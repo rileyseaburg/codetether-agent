@@ -10,7 +10,7 @@ impl codetether_swarm_runtime::ExecutorHost for Native {
         task: &str,
         strategy: DecompositionStrategy,
     ) -> anyhow::Result<SwarmResult> {
-        super::run::execute(executor, task, strategy).await
+        codetether_swarm_runtime::execute(executor, task, strategy).await
     }
 }
 
@@ -32,4 +32,8 @@ impl codetether_swarm_runtime::LocalStageHost for Native {
     + 'static {
         super::local_stage::job_run::execute(job)
     }
+}
+
+impl codetether_swarm_runtime::ExecutionHost for Native {
+    type Planning = crate::swarm::orchestrator::NativeProvider;
 }

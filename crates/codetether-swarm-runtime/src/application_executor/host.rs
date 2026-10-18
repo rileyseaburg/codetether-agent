@@ -18,3 +18,11 @@ pub trait ExecutorHost: Sized + Send + Sync + 'static {
         strategy: DecompositionStrategy,
     ) -> impl Future<Output = Result<SwarmResult>> + Send;
 }
+
+/// Planning services for the shared run lifecycle and its stage backends.
+/// # Implementors
+/// Applications select the existing planner host that uses their local-stage registry.
+pub trait ExecutionHost: super::local::LocalStageHost {
+    /// Planner whose provider registry is shared with local-stage execution.
+    type Planning: codetether_swarm_orchestrator::Host<Providers = Self::Providers>;
+}

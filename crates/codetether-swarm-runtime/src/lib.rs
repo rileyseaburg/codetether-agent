@@ -68,7 +68,7 @@ mod executor_access;
 mod executor_configure;
 
 mod application_executor;
-pub use application_executor::{ExecutorHost, SwarmExecutor};
+pub use application_executor::{ExecutionHost, ExecutorHost, SwarmExecutor};
 
 pub use application_executor::kubernetes;
 
