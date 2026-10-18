@@ -15985,3 +15985,20 @@ Full workspace consolidation remains active.
   and diff whitespace. Evidence: `artifacts/consolidation-paste-routing/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared submission-time image recovery
+
+- Moved inline-first and text-sidecar image recovery into
+  `codetether-paste-buffer::image_recovery`, reusing the shared image composer
+  fields. Native code now supplies the five borrowed application fields.
+- Removed the unused native raw-placeholder expansion re-export module.
+- Preserved inline-before-sidecar ordering, verbatim placeholder expansion,
+  invalid-image stopping, sidecar clearing only after recovery, remaining input,
+  character cursor position and exact status text.
+- Verification: complete recovery and sidecar body comparisons, native field
+  mapping, unchanged chunked-paste test and submission caller, unchanged image
+  and expansion functions, module/dependency graphs, direct rustfmt, file budgets
+  and diff whitespace. No dependencies changed. Evidence:
+  `artifacts/consolidation-image-recovery/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

@@ -23,3 +23,6 @@ pub mod input;
 
 /// View-aware paste routing and single-line filter ingestion.
 pub mod routing;
+
+/// Submission-time recovery of images split across text sidecars.
+pub mod image_recovery;

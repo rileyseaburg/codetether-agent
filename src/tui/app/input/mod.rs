@@ -35,7 +35,6 @@ pub(crate) mod mention_route;
 mod merge;
 mod model_apply;
 mod paste;
-mod paste_expand_raw;
 pub(crate) mod pasted_text;
 mod pr;
 mod pr_body;
