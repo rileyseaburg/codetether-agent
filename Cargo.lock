@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-server-cors",
  "codetether-run-cli",
  "codetether-go-cli",
  "codetether-run-runtime",
@@ -7191,6 +7192,14 @@ dependencies = [
  "codetether-run-runtime",
  "codetether-run-report",
  "codetether-sol-workflow",
+]
+
+[[package]]
+name = "codetether-server-cors"
+version = "0.1.0"
+dependencies = [
+ "http",
+ "tower-http 0.7.1",
 ]
 
 [[package]]

@@ -1,0 +1,11 @@
+[package]
+name = "codetether-server-cors"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "HTTP and gRPC-Web server CORS policies"
+
+[dependencies]
+http = "1.5.0"
+tower-http = { version = "0.7.0", features = ["cors"] }

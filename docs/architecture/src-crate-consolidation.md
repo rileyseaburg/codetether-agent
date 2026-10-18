@@ -14145,3 +14145,17 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or command execution ran. Full workspace
   consolidation remains unfinished.
+
+### Server CORS policy extraction
+
+- Moved HTTP and gRPC-Web CORS construction from src/server/mod.rs into
+  codetether-server-cors, with separate modules for the two listener policies.
+- Exact origin lists, method/header rules, credentials, exposed gRPC headers
+  and server layer ordering are unchanged. Native startup obtains the layers
+  from the new crate.
+- Verification: four static exact-builder/expanded-server-body/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-server-cors/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, server startup or access-setting changes ran.
+  Full workspace consolidation remains unfinished.

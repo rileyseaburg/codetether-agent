@@ -40,7 +40,7 @@ use axum::{
     body::Body,
     extract::Path,
     extract::{Query, State},
-    http::{HeaderMap, Method, Request, StatusCode},
+    http::{HeaderMap, Request, StatusCode},
     middleware::{self, Next},
     response::sse::{Event, KeepAlive, Sse},
     response::{IntoResponse, Json, Response},
@@ -48,7 +48,6 @@ use axum::{
 };
 use codetether_task_ingest::CloudEventResponse;
 use futures::{StreamExt, stream};
-use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -56,7 +55,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Mutex, broadcast};
 use tonic_web::GrpcWebLayer;
-use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use codetether_audit_http::AuditQuery;
@@ -205,22 +203,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         tracing::info!(addr = %grpc_addr, "Starting gRPC A2A server");
 
         // Configure CORS for marketing site (production + local dev)
-        let allowed_origins = [
-            HeaderValue::from_static("https://codetether.run"),
-            HeaderValue::from_static("https://api.codetether.run"),
-            HeaderValue::from_static("https://docs.codetether.run"),
-            HeaderValue::from_static("https://codetether.com"),
-            HeaderValue::from_static("http://localhost:3000"),
-            HeaderValue::from_static("http://localhost:3001"),
-        ];
-        let cors = CorsLayer::new()
-            .allow_origin(AllowOrigin::list(allowed_origins))
-            .allow_methods(AllowMethods::any())
-            .allow_headers(AllowHeaders::any())
-            .expose_headers(tower_http::cors::ExposeHeaders::list([
-                http::header::HeaderName::from_static("grpc-status"),
-                http::header::HeaderName::from_static("grpc-message"),
-            ]));
+        let cors = codetether_server_cors::grpc();
 
         if let Err(error) = tonic::transport::Server::builder()
             .accept_http1(true)
@@ -379,40 +362,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .layer(axum::Extension(state.auth.clone()))
         // CORS + tracing — explicit origin allowlist so headers are present on
         // ALL responses (including 4xx/5xx) and not dependent on request mirroring.
-        .layer(
-            CorsLayer::new()
-                .allow_origin([
-                    "https://codetether.run".parse::<HeaderValue>().unwrap(),
-                    "https://api.codetether.run".parse::<HeaderValue>().unwrap(),
-                    "https://docs.codetether.run"
-                        .parse::<HeaderValue>()
-                        .unwrap(),
-                    "https://codetether.com".parse::<HeaderValue>().unwrap(),
-                    "http://localhost:3000".parse::<HeaderValue>().unwrap(),
-                    "http://localhost:3001".parse::<HeaderValue>().unwrap(),
-                    "http://localhost:8000".parse::<HeaderValue>().unwrap(),
-                ])
-                .allow_credentials(true)
-                .allow_methods([
-                    Method::GET,
-                    Method::POST,
-                    Method::PUT,
-                    Method::PATCH,
-                    Method::DELETE,
-                    Method::OPTIONS,
-                ])
-                .allow_headers([
-                    http::header::AUTHORIZATION,
-                    http::header::CONTENT_TYPE,
-                    http::header::ACCEPT,
-                    http::header::ORIGIN,
-                    http::header::CACHE_CONTROL,
-                    http::header::HeaderName::from_static("x-worker-id"),
-                    http::header::HeaderName::from_static("x-agent-name"),
-                    http::header::HeaderName::from_static("x-workspaces"),
-                    http::header::HeaderName::from_static("x-requested-with"),
-                ]),
-        )
+        .layer(codetether_server_cors::http())
         .layer(TraceLayer::new_for_http());
 
     tracing::info!(
