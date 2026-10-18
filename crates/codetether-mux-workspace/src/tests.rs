@@ -1,3 +1,5 @@
+//! Workspace naming and isolation policy regressions.
+
 use super::worktree::primary_checkout;
 use std::path::Path;
 

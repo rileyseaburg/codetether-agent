@@ -1,0 +1,19 @@
+[package]
+name = "codetether-mux-workspace"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Shared checkout and managed worktree allocation for mux windows"
+
+[dependencies]
+anyhow = "1"
+codetether-mux-model = { path = "../codetether-mux-model", version = "0.1.0" }
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
+codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
+tokio = { version = "1", features = ["fs"] }
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt"] }

@@ -1,6 +1,6 @@
 //! Behavioral coverage for both mux workspace isolation policies.
 
-use crate::mux::isolation::{Isolation, workspace};
+use crate::{Isolation, workspace};
 use std::path::Path;
 
 #[tokio::test]

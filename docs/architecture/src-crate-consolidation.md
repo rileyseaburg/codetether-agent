@@ -10455,3 +10455,19 @@ passed; new modules contain at most 39 code lines. Evidence is in
 `artifacts/consolidation-mux-agent-task/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, agent process or cancellation operation ran.
 Full workspace consolidation remains active.
+
+### Mux workspace allocation extracted
+
+Moved workspace canonicalization, shared-checkout selection, managed Git
+worktree allocation and primary-checkout resolution into
+`crates/codetether-mux-workspace`. Five modules retain the shared model's
+isolation policy and use the existing provenance and worktree crates directly.
+The native isolation module is a re-export; server and command consumers are
+unchanged. All five existing tests moved with the implementation.
+
+Thirteen static checks compare the original modules, exports, native adapter
+and unchanged consumers. Module/dependency graphs, file budgets and whitespace
+checks passed; modules contain at most 44 code lines. Evidence is in
+`artifacts/consolidation-mux-workspace/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python or worktree fixture operations ran. Full workspace
+consolidation remains active.

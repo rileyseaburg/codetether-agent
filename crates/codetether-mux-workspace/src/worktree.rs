@@ -8,14 +8,14 @@ use std::path::{Path, PathBuf};
 /// Non-repository directories are returned unchanged because there is no
 /// repository to branch from.
 pub(super) async fn allocate(session: &str, slot: u64, requested: PathBuf) -> Result<PathBuf> {
-    let Some(repo) = crate::provenance::repo_root(&requested)? else {
+    let Some(repo) = codetether_provenance::repo_root(&requested)? else {
         return Ok(requested);
     };
     let relative = requested.strip_prefix(&repo).unwrap_or(Path::new(""));
     let repo = primary_checkout(&repo);
     let suffix = &uuid::Uuid::new_v4().simple().to_string()[..8];
     let name = format!("mux-{session}-{slot}-{suffix}");
-    let manager = crate::worktree::WorktreeManager::for_repo(repo).without_vscode_auto_open();
+    let manager = codetether_worktree::WorktreeManager::for_repo(repo).without_vscode_auto_open();
     let worktree = manager.create(&name).await?;
     Ok(worktree.path.join(relative))
 }
