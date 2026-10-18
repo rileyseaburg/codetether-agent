@@ -19885,3 +19885,23 @@ reachability, dependency cycles, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-mcp-presentation/`. No Cargo,
 rustc, Python, Rust tests or MCP commands ran; compilation and runtime remain
 unverified.
+
+### File-picker opening and attachment workflow
+
+Moved browser/viewer activation, preview-first attachment selection, image
+attachment presentation and text-file delegation into
+`codetether-file-picker::interactive`. Native code provides nine picker,
+view, composer and message bindings. Removed the native attachment
+implementation and unused image re-export.
+
+Preserved preview/selection precedence, file-existence checks, direct view-mode
+assignments, image success/error notices, scrolling and returning to chat after
+an attachment attempt. Existing navigation tests and image/text attachment
+services remain unchanged.
+
+Validation: seven complete translated function bodies, nine native bindings,
+unchanged navigation tests and attachment services, isolated lockfile delta,
+module reachability, dependency cycles, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-file-picker/`. No Cargo, rustc,
+Python, Rust tests or attachment operations ran; compilation and runtime remain
+unverified.

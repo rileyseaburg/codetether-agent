@@ -6827,6 +6827,7 @@ dependencies = [
 name = "codetether-file-picker"
 version = "0.1.0"
 dependencies = [
+ "codetether-image",
  "ratatui",
  "tempfile",
 ]

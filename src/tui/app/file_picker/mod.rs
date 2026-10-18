@@ -1,8 +1,7 @@
 //! File browser and read-only content viewer for TUI attachments.
 
-mod attach;
 mod filter;
-mod image;
+mod host;
 mod nav;
 mod nav_attach;
 mod nav_filter;

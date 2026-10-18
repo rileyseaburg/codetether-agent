@@ -35,3 +35,6 @@ mod tests;
 mod binary_lines;
 mod render_list;
 mod render_preview;
+
+/// Frontend browser opening and attachment workflow.
+pub mod interactive;
