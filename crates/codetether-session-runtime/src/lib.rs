@@ -57,3 +57,6 @@ pub mod request;
 
 /// Owned command submission, cancellation and active-turn steering handles.
 pub mod handle;
+
+/// Command-loop dispatch and ordered submission gates.
+pub mod dispatch;

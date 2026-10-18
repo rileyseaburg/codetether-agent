@@ -63,14 +63,15 @@ pub(crate) fn spawn(
 /// awaits until a command requests termination, all command senders are dropped,
 /// or the internal select loop otherwise reaches channel closure.
 async fn run(
-    mut cmd_rx: mpsc::Receiver<SessionCommand>,
+    cmd_rx: mpsc::Receiver<SessionCommand>,
     event_tx: mpsc::Sender<SessionEvent>,
     notice_tx: mpsc::Sender<SessionNotice>,
     active_cancel: ActiveCancel,
 ) {
-    while let Some(command) = cmd_rx.recv().await {
-        if super::loop_step::handle(command, &active_cancel, &event_tx, &notice_tx).await {
-            break;
-        }
-    }
+    let mut host = super::dispatch_host::Native {
+        cancel: &active_cancel,
+        event_tx: &event_tx,
+        notice_tx: &notice_tx,
+    };
+    codetether_session_runtime::dispatch::run(&mut host, cmd_rx).await;
 }

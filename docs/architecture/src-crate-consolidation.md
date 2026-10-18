@@ -16084,3 +16084,20 @@ Full workspace consolidation remains active.
   changed. Evidence: `artifacts/consolidation-runtime-handle/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared runtime command dispatch and submission
+
+- Moved command receiver iteration, per-command branching and ordered prompt
+  submission into `codetether-session-runtime::dispatch`. Native hooks retain
+  review gates, reservation changes, notices and actual executor spawning.
+- Removed native loop_step.rs. Existing submission tests keep a native entry
+  adapter while production command dispatch calls the shared sequence.
+- Preserved review rejection before notifier allocation, busy rejection before
+  start notification, start-before-spawn ordering, cancellation notification and
+  shutdown-only loop termination. The spawn entry point is unchanged.
+- Verification: complete submission/dispatch/receiver-loop comparisons, all
+  seven native effects, unchanged review tests/cancellation/executor, module and
+  dependency graphs, direct rustfmt, file budgets and diff whitespace. No
+  dependencies changed. Evidence: `artifacts/consolidation-runtime-dispatch/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
