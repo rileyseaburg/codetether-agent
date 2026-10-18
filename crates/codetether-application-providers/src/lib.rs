@@ -49,3 +49,6 @@ pub mod embedding;
 pub mod rotation;
 /// Router model resolution through the application registry.
 pub mod routing;
+
+/// Search orchestration using the application provider and memory policies.
+pub mod search;

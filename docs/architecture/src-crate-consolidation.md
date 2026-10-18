@@ -22012,3 +22012,22 @@ The owning crate gained async-trait, memory-tool and vectordb dependencies;
 only these three package edges are staged in the lockfile. Evidence:
 `artifacts/consolidation-provider-routing/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Search orchestration in the application provider crate
+
+Moved the native search-engine entry point into
+`codetether-application-providers::search`, with the application binding inferred
+from its provider registry. Native search now re-exports this engine and the
+existing routing module, and directly aliases the shared parse, prompt,
+request, result and type modules. Seven native forwarding files were removed.
+The backend-dispatch binding remains unchanged because its standalone API has
+no provider registry from which to infer the application type.
+
+Static comparison preserves the orchestration call, its four arguments and the
+same specialized automatic embedding factory. Existing search module paths
+remain available through re-exports. Module/dependency checks cover 695 roots
+and 567 crates without missing modules or cycles. Direct rustfmt, native
+file-size limits and whitespace checks passed. Only the owning crate's new
+search dependency edge is staged in the lockfile. Evidence:
+`artifacts/consolidation-search-ownership/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation stays active.

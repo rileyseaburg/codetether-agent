@@ -35,3 +35,4 @@ codetether-swarm-tool = { path = "../codetether-swarm-tool", version = "0.1.0" }
 async-trait = "0.1"
 codetether-memory-tool = { path = "../codetether-memory-tool", version = "0.1.0" }
 codetether-vectordb = { path = "../codetether-vectordb", version = "0.1.0" }
+codetether-search = { path = "../codetether-search", version = "0.1.0" }

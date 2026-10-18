@@ -21,13 +21,13 @@
 //! ```
 
 pub mod dispatch;
-pub mod engine;
-pub mod model;
-pub mod parse;
-pub mod prompt;
-pub mod request;
-pub mod result;
-pub mod types;
+pub use codetether_application_providers::routing as model;
+pub use codetether_application_providers::search as engine;
+pub use codetether_search::parse;
+pub use codetether_search::prompt;
+pub use codetether_search::request;
+pub use codetether_search::result;
+pub use codetether_search::types;
 
 pub use engine::run_router_search;
 pub use result::{BackendRun, RouterResult};

@@ -2027,6 +2027,7 @@ dependencies = [
  "codetether-provider-registry",
  "codetether-ralph-cli",
  "codetether-rlm",
+ "codetether-search",
  "codetether-search-router",
  "codetether-secrets",
  "codetether-session-model-policy",
