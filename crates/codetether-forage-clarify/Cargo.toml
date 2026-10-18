@@ -1,0 +1,13 @@
+[package]
+name = "codetether-forage-clarify"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Terminal goal clarification and persistence for empty forage queues"
+
+[dependencies]
+anyhow = "1"
+codetether-forage-core = { path = "../codetether-forage-core", version = "0.1.0" }
+codetether-forage-reporting = { path = "../codetether-forage-reporting", version = "0.1.0" }
+codetether-okr = { path = "../codetether-okr", version = "0.1.0" }

@@ -1621,6 +1621,7 @@ dependencies = [
  "codetether-file-inspect",
  "codetether-file-tool-catalog",
  "codetether-file-tools",
+ "codetether-forage-clarify",
  "codetether-forage-core",
  "codetether-forage-execution",
  "codetether-forage-reporting",
@@ -2968,6 +2969,16 @@ dependencies = [
  "ignore",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-forage-clarify"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-forage-core",
+ "codetether-forage-reporting",
+ "codetether-okr",
 ]
 
 [[package]]

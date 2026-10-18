@@ -19044,3 +19044,22 @@ whitespace and direct formatting. Evidence:
 `artifacts/consolidation-forage-runtime/`. No Cargo, rustc, Python, Rust tests,
 forage execution, interactive prompts or S3 operations ran; compilation and
 runtime behavior remain unverified.
+
+### Terminal forage goal clarification
+
+Moved empty-queue classification, terminal eligibility, goal input and goal
+persistence into `codetether-forage-clarify`. The existing two classification
+tests move unchanged with the implementation. Native clarification is now a
+single entrypoint re-export; the runtime host still calls that same entrypoint.
+The existing interactive crate continues to own TUI launch/update lifecycle.
+
+Preserved shared quiet-mode gating, stdin/stdout TTY checks, prompt text,
+whitespace trimming, EOF/blank-line termination and save-before-rescan behavior.
+Shared reporting supplies the same quiet-gated macro and audit-independent output.
+
+Validation: five full function-body comparisons, unchanged test source, native
+entrypoint/caller, shared output gate, declared dependencies, minimal lockfile
+delta, lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-forage-clarify/`. No Cargo, rustc, Python, Rust tests,
+interactive input or OKR persistence ran; compilation and runtime remain unverified.

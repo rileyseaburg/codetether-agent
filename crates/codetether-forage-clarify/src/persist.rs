@@ -3,8 +3,8 @@
 use anyhow::Result;
 use std::io::{self, Write};
 
-use crate::forage_println;
-use crate::okr::OkrRepository;
+use codetether_forage_reporting::forage_println;
+use codetether_okr::OkrRepository;
 
 use super::EmptyReason;
 
