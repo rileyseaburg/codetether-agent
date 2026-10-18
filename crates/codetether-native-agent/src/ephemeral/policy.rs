@@ -1,17 +1,17 @@
 //! Preserve direct-worker intent classification and prompt instructions.
-use super::ApplicationHost;
+use super::{Application, Ephemeral};
 use codetether_agent_input::SpawnRequest;
 use codetether_agent_spawn::EphemeralPolicy;
 use std::path::Path;
-impl EphemeralPolicy for ApplicationHost {
+impl<T: Application, const MAX_STEPS: usize> EphemeralPolicy for Ephemeral<T, MAX_STEPS> {
     fn intent(request: &SpawnRequest<'_>) -> (bool, bool) {
-        let read_only = crate::tool::swarm_execute::support::is_read_only(
+        let read_only = codetether_swarm_tool::support::is_read_only(
             request.name,
             request.instructions,
             None,
             None,
         );
-        let expects_changes = crate::tool::swarm_execute::support::expects_changes(
+        let expects_changes = codetether_swarm_tool::support::expects_changes(
             request.name,
             request.instructions,
             None,
@@ -26,7 +26,7 @@ impl EphemeralPolicy for ApplicationHost {
         read_only: bool,
         expects_changes: bool,
     ) -> String {
-        crate::tool::swarm_execute::agent_prompt::build(
+        codetether_swarm_tool::prompt::application::build(
             request.name,
             None,
             workspace,

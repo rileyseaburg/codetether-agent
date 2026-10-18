@@ -1486,6 +1486,7 @@ windows = { version = "0.62.2", features = [
 libc = "0.2.189"
 
 [dev-dependencies]
+codetether-native-agent = { path = "crates/codetether-native-agent", version = "0.1.0", features = ["test-support"] }
 codetether-native-approval = { path = "crates/codetether-native-approval", version = "0.1.0", features = ["test-support"] }
 codetether-approval-core = { path = "crates/codetether-approval-core", version = "0.1.0", features = ["test-support"] }
 async-std = "1.13.2"

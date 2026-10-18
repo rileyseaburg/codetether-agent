@@ -1,18 +1,15 @@
 //! Resolve current providers and build the native autonomous tool registry.
-use super::ApplicationHost;
-use crate::{
-    provider::Provider,
-    tool::{ToolRegistry, agent::helpers},
-};
+use super::{Application, Ephemeral, ToolRegistry};
 use anyhow::Result;
 use async_trait::async_trait;
 use codetether_agent_spawn::EphemeralResources;
+use codetether_provider_core::Provider;
 use std::{path::Path, sync::Arc};
 #[async_trait]
-impl EphemeralResources for ApplicationHost {
-    type Registry = ToolRegistry;
+impl<T: Application, const MAX_STEPS: usize> EphemeralResources for Ephemeral<T, MAX_STEPS> {
+    type Registry = ToolRegistry<T>;
     async fn resolve(model: &str) -> Result<(Arc<dyn Provider>, String)> {
-        let providers = helpers::get_registry().await?;
+        let providers = crate::provider_cache::get_registry().await?;
         providers.resolve_model(model)
     }
     fn registry(
@@ -21,8 +18,8 @@ impl EphemeralResources for ApplicationHost {
         workspace: &Path,
         provider: Arc<dyn Provider>,
         model: String,
-    ) -> Arc<ToolRegistry> {
-        crate::tool::swarm_execute::agent_registry::standard(
+    ) -> Arc<ToolRegistry<T>> {
+        codetether_native_swarm::direct::registry::standard::<T>(
             read_only,
             verification,
             workspace,

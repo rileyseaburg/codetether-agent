@@ -1,6 +1,5 @@
-//! Native resources and agent-loop bindings for shared ephemeral execution.
-mod policy;
-mod resources;
-mod run;
-/// Application services for a synchronous one-shot child.
-pub struct ApplicationHost;
+//! Native one-shot runtime with the application's tool catalog and step limit.
+pub type ApplicationHost = codetether_native_agent::Ephemeral<
+    crate::tool::registry_lifecycle::Native,
+    { crate::session::DEFAULT_MAX_STEPS },
+>;

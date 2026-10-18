@@ -26523,3 +26523,22 @@ file-limit and whitespace checks pass. Only two native-swarm dependencies are
 staged in Cargo.lock; unrelated working files remain unchanged. Evidence:
 artifacts/consolidation-native-direct-swarm/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### Native ephemeral agent services and provider-cache ownership
+
+Moved agent-tool provider cache ownership and ephemeral child intent, registry
+and execution adapters into codetether-native-agent. The root selects its
+catalog and passes DEFAULT_MAX_STEPS as a const parameter; the 300-second limit
+and all loop arguments remain unchanged. Three old ephemeral implementation
+files are removed. Existing root callers share the moved cache through
+re-exports, including the once-only test initializer behind a test-support
+feature enabled only by the root dev dependency.
+
+Static comparisons preserve classification, prompts, model resolution,
+autonomous registry construction, loop limits and both cache operations.
+Module/dependency scans cover 730 roots and 617 crates without missing modules,
+cycles or undeclared dependencies. Production dependency-scope, declaration,
+standalone formatting, file-limit and whitespace checks pass. Only native-agent
+service dependencies are staged in Cargo.lock; unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-native-ephemeral/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
