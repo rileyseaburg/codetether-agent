@@ -20,3 +20,14 @@ pub trait VerifierFactory: codetether_goal_verification::VerifierAgent + Sized {
 /// let _: Option<codetether_native_goal_tools::Host<()>> = None;
 /// ```
 pub struct Host<F>(PhantomData<fn() -> F>);
+
+mod declaration;
+/// Independent native verifier runtime and review dispatch.
+pub mod verification;
+/// Types used by the application-local declaration macro.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use async_trait::async_trait;
+    pub use codetether_goal_verification::{ReviewExecution, VerificationRequest, VerifierAgent};
+}

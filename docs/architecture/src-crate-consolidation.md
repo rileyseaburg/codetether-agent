@@ -26364,3 +26364,22 @@ whitespace checks pass. Only the new package/root dependency are staged in
 Cargo.lock; unrelated changes are unchanged. Evidence is retained in
 artifacts/consolidation-native-goal-tools/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active and incomplete.
+
+### Native verifier declaration and execution ownership
+
+Moved LlmVerifier's declaration implementation, review methods and factory into
+a native-goal-tools declaration macro; root code retains only the invocation.
+The macro preserves the public name, two public fields, Clone/Debug derives,
+identity text and struct-literal construction. Native runtime composition now
+selects the same provider policy, swarm agent and workspace factory in the
+crate; the old root runtime-host adapter is removed.
+
+The declaration auditor now covers declare_verifier. Its matcher accepts the
+optional separator inserted by standalone rustfmt. Static comparisons cover
+the fields, factory, identity, report extraction, review inputs and native
+runtime aliases. Module/dependency scans cover 730 roots and 616 crates without
+missing modules, cycles or undeclared dependencies. Declaration, standalone
+formatting, file-limit and whitespace checks pass. Only four native-goal-tools
+dependencies are staged in Cargo.lock. Unrelated working files are unchanged.
+Evidence: artifacts/consolidation-native-verifier/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

@@ -55,8 +55,6 @@ use codetether_verifier_state as model;
 pub(crate) mod observation;
 use codetether_goal_verification as request;
 use codetether_goal_verification::runtime::application::prompt;
-#[path = "verify_runtime_host.rs"]
-mod runtime_host;
 #[path = "verify_selection.rs"]
 mod selection;
 use codetether_verifier_state as self_review;

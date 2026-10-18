@@ -3808,10 +3808,14 @@ name = "codetether-native-goal-tools"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "codetether-application-registry",
  "codetether-goal-core",
  "codetether-goal-tools",
  "codetether-goal-verification",
  "codetether-native-goals",
+ "codetether-native-providers",
+ "codetether-native-swarm",
  "serde_json",
 ]
 
