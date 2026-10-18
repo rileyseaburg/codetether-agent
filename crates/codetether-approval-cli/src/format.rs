@@ -1,4 +1,6 @@
-use crate::approval::{ApprovalDecision, ApprovalRequest, ApprovalStatus};
+//! Human-readable approval request and decision fields.
+
+use codetether_approval_core::{ApprovalDecision, ApprovalRequest, ApprovalStatus};
 
 pub(crate) fn print_request(request: &ApprovalRequest, status: ApprovalStatus) {
     println!("id: {}", request.id);

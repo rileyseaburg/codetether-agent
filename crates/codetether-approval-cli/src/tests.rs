@@ -1,3 +1,5 @@
+//! Approval CLI parsing, decision and output regressions.
+
 mod decide;
 mod display;
 mod json;

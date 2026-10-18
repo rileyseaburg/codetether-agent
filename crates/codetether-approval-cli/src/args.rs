@@ -1,6 +1,15 @@
+//! Command schemas for approval inspection and decisions.
+
 use clap::{Parser, Subcommand};
 
-/// Arguments for `codetether approval`.
+/// Arguments for the approval command.
+///
+/// # Examples
+/// ```
+/// use clap::Parser;
+/// let args = codetether_approval_cli::ApprovalArgs::parse_from(["approval", "list"]);
+/// assert!(matches!(args.command, codetether_approval_cli::ApprovalCommand::List { json: false }));
+/// ```
 #[derive(Parser, Debug)]
 pub struct ApprovalArgs {
     /// Approval store operation to run.
@@ -8,7 +17,16 @@ pub struct ApprovalArgs {
     pub command: ApprovalCommand,
 }
 
-/// Approval store subcommands.
+/// Approval store subcommands for viewing records and recording decisions.
+///
+/// # Examples
+/// ```
+/// let command = codetether_approval_cli::ApprovalCommand::List { json: true };
+/// match command {
+///     codetether_approval_cli::ApprovalCommand::List { json } => assert!(json),
+///     _ => unreachable!(),
+/// }
+/// ```
 #[derive(Subcommand, Debug)]
 pub enum ApprovalCommand {
     /// List approval requests.
@@ -23,6 +41,7 @@ pub enum ApprovalCommand {
     },
     /// Show one approval request and its decision.
     Show {
+        /// Approval request identifier.
         id: String,
         /// Emit JSON instead of `key: value` lines.
         #[arg(long)]
@@ -34,7 +53,15 @@ pub enum ApprovalCommand {
     Deny(ApprovalDecisionArgs),
 }
 
-/// Arguments shared by approval decisions.
+/// Arguments shared by approve and deny operations.
+///
+/// # Examples
+/// ```
+/// let args = codetether_approval_cli::ApprovalDecisionArgs {
+///     id: "request-id".into(), actor: Some("operator".into()), reason: None,
+/// };
+/// assert_eq!(args.actor.as_deref(), Some("operator"));
+/// ```
 #[derive(Parser, Debug)]
 pub struct ApprovalDecisionArgs {
     /// Approval request id.

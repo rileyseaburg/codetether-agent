@@ -1,3 +1,5 @@
+//! Operator identity and decision-reason defaults.
+
 pub(crate) fn actor(actor: Option<String>) -> String {
     actor.unwrap_or_else(|| {
         std::env::var("USER")

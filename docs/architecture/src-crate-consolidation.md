@@ -10627,3 +10627,18 @@ have at most 31 code lines. Evidence is in
 `artifacts/consolidation-indexer-cli/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, index creation or embedding request ran.
 Full workspace consolidation remains active.
+
+### Approval CLI extracted
+
+Moved operator-facing approval arguments, default actor/reason selection,
+list/show/approve/deny dispatch, ledger projection, and text/JSON rendering
+into `crates/codetether-approval-cli`. Fourteen modules use the shared approval
+store directly; the native CLI module now only re-exports the public interface.
+All eight existing parsing, display, JSON and decision tests moved with it.
+
+Seventeen static comparisons/checks cover the original modules, operation
+bodies and compatibility exports. Module/dependency graphs, file budgets and
+whitespace checks passed; modules have at most 44 code lines. Evidence is in
+`artifacts/consolidation-approval-cli/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, live approval store or decision operation ran.
+Full workspace consolidation remains active.

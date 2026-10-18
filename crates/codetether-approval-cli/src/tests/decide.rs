@@ -1,6 +1,8 @@
+//! Approve and deny command persistence regressions.
+
 use super::super::{ApprovalArgs, execute_with_store};
-use crate::approval::{ApprovalStatus, ApprovalStore};
 use clap::Parser;
+use codetether_approval_core::{ApprovalStatus, ApprovalStore};
 
 fn temp_store() -> (tempfile::TempDir, ApprovalStore) {
     let dir = tempfile::tempdir().expect("tempdir");

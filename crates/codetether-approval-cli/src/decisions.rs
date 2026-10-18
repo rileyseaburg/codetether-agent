@@ -1,7 +1,9 @@
+//! Approve or deny through the shared store and print the decision receipt.
+
 use super::args::ApprovalDecisionArgs;
 use super::defaults;
-use crate::approval::ApprovalStore;
 use anyhow::Result;
+use codetether_approval_core::ApprovalStore;
 
 pub(crate) fn approve(store: &ApprovalStore, args: ApprovalDecisionArgs) -> Result<()> {
     let actor = defaults::actor(args.actor);

@@ -1,3 +1,5 @@
+//! Operator command parsing regressions.
+
 use super::super::args::{ApprovalArgs, ApprovalCommand};
 use clap::Parser;
 

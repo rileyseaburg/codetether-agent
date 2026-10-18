@@ -1,6 +1,8 @@
+//! Machine-readable approval records and derived status.
+
 use super::records::ApprovalRecord;
-use crate::approval::ApprovalStatus;
 use anyhow::Result;
+use codetether_approval_core::ApprovalStatus;
 use serde_json::{Value, json};
 
 /// Serialize records as a JSON array for `approval list --json`.

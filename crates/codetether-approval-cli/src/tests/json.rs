@@ -1,5 +1,7 @@
+//! Approval JSON schema and empty-store coverage.
+
 use super::super::{json, records};
-use crate::approval::ApprovalStore;
+use codetether_approval_core::ApprovalStore;
 use serde_json::Value;
 
 /// Parse the `list --json` output for a freshly created store.

@@ -1,7 +1,9 @@
-use crate::approval::{
+//! Project the event ledger into ordered requests and decisions.
+
+use anyhow::Result;
+use codetether_approval_core::{
     ApprovalDecision, ApprovalEvent, ApprovalRequest, ApprovalStatus, ApprovalStore,
 };
-use anyhow::Result;
 
 #[derive(Debug, Clone)]
 pub(crate) struct ApprovalRecord {

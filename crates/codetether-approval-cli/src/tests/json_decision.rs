@@ -1,6 +1,8 @@
+//! Decision serialization and resource-path regressions.
+
 use super::super::{json, records};
 use super::json::list_json;
-use crate::approval::ApprovalStore;
+use codetether_approval_core::ApprovalStore;
 
 /// The whole reason `--json` was added: a resource containing a space survives,
 /// where splitting the text table's columns would truncate it at the space.

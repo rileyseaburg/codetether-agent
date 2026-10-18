@@ -1,6 +1,8 @@
+//! Human-readable approval display smoke coverage.
+
 use super::super::{ApprovalArgs, execute_with_store};
-use crate::approval::ApprovalStore;
 use clap::Parser;
+use codetether_approval_core::ApprovalStore;
 
 #[test]
 fn list_and_show_existing_request_succeed() {

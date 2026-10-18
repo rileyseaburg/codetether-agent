@@ -1,6 +1,6 @@
 use super::{format, json, records};
-use crate::approval::ApprovalStore;
 use anyhow::{Result, anyhow};
+use codetether_approval_core::ApprovalStore;
 
 /// Print every approval request.
 ///

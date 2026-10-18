@@ -1,0 +1,16 @@
+[package]
+name = "codetether-approval-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Approval store CLI arguments, decisions and reporting"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.6.6", features = ["derive"] }
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
