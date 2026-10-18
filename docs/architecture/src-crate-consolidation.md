@@ -16819,3 +16819,19 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-chat-steering/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared agent-mention parsing and routing
+
+- Moved explicit mention parsing and focused-agent prompt decoration into
+  `codetether-chat-submit::mention`, with separate parser, routing and test
+  modules. Native mention routing is now a compatibility re-export.
+- Moved the existing three parser tests unchanged. Preserved explicit-mention
+  precedence, focused-agent fallback, command/empty-input pass-through, text
+  formatting and diagnostic message fields.
+- Added the existing tracing dependency and staged only its chat-submit lock
+  entry. Verification: token-identical functions/tests, compatibility exports,
+  unchanged submission callers, module/dependency graphs, direct rustfmt,
+  file limits and whitespace. A moved module-doc placement was corrected after
+  the formatter rejected it. Evidence: `artifacts/consolidation-chat-mention/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

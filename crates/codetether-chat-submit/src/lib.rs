@@ -33,3 +33,6 @@ pub mod publication;
 
 /// Active-turn steering and retained-input fallback.
 pub mod steering;
+
+/// Explicit mentions and focused-agent routing decoration.
+pub mod mention;
