@@ -18454,3 +18454,23 @@ callback checks, unchanged helper-source checks, module/dependency graphs,
 file limits, direct rustfmt-check and whitespace. Evidence:
 `artifacts/consolidation-tui-startup/`. No TUI, provider, network startup, Cargo,
 rustc, Python or Rust-test execution occurred; compilation remains unverified.
+
+### Ralph story agent execution
+
+Moved instance-story execution, parallel-story execution, conflict resolution,
+autonomous tool filtering, exit reporting and the story event bridge into
+`crates/codetether-ralph-agent`. These are separate cohesive modules within one
+crate; native Ralph methods delegate through a small prompt/registry/loop host.
+The native parallel task bridge retains its existing method contract.
+
+The original story budgets (30 steps/180 seconds, configured steps/180 seconds,
+and 15 steps/120 seconds), event channel capacity, bridge-handle lifetime, log
+targets and failure propagation are preserved. Native callbacks retain concrete
+tool construction and the existing agent-loop implementation.
+
+Validation: full execution-body token comparisons with explicit host mappings,
+native method signatures, preparation/filtering, loop argument forwarding, exit
+and event bridge body comparisons, unchanged parallel bridge, lexical module
+reachability, dependency-cycle checks, file-size ratchet and whitespace checks.
+Evidence: `artifacts/consolidation-ralph-agent/`. No Cargo, rustc, Python, Rust
+tests or live agent execution ran; compilation remains unverified.

@@ -116,6 +116,7 @@ members = [
     "crates/codetether-ripgrep-tool",
     "crates/codetether-relay-tool",
     "crates/codetether-ralph-core",
+    "crates/codetether-ralph-agent",
     "crates/codetether-swarm-core",
     "crates/codetether-swarm-orchestrator",
     "crates/codetether-swarm-k8s",
@@ -657,6 +658,7 @@ codetether-swarm-delegation = { path = "crates/codetether-swarm-delegation", ver
 codetether-swarm-runtime = { path = "crates/codetether-swarm-runtime", version = "0.1.0" }
 codetether-swarm-share = { path = "crates/codetether-swarm-share", version = "0.1.0" }
 codetether-ralph-core = { path = "crates/codetether-ralph-core", version = "0.1.0" }
+codetether-ralph-agent = { path = "crates/codetether-ralph-agent", version = "0.1.0" }
 codetether-benchmark = { path = "crates/codetether-benchmark", version = "0.1.0" }
 codetether-github-pr = { path = "crates/codetether-github-pr", version = "0.1.0" }
 codetether-crash = { path = "crates/codetether-crash", version = "0.1.0" }

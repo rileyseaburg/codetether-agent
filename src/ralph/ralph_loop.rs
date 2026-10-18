@@ -12,7 +12,6 @@ use crate::provenance::{
 use crate::provider::{ContentPart, Message, Provider, ProviderRegistry, Role};
 use crate::session::delegation::DelegationState;
 use crate::session::{Session, SessionEvent};
-use crate::swarm::{executor::AgentLoopExit, run_agent_loop};
 use crate::tool::ToolRegistry;
 use crate::worktree::WorktreeManager;
 use codetether_ralph_core::events::{RalphEvent, RalphStoryInfo};

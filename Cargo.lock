@@ -1708,6 +1708,7 @@ dependencies = [
  "codetether-provider-zai",
  "codetether-question",
  "codetether-question-tool",
+ "codetether-ralph-agent",
  "codetether-ralph-core",
  "codetether-relay-tool",
  "codetether-ripgrep-tool",
@@ -7270,6 +7271,19 @@ dependencies = [
  "codetether-benchmark",
  "codetether-cli-options",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-ralph-agent"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-bus-core",
+ "codetether-provider-core",
+ "codetether-ralph-core",
+ "codetether-swarm-core",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
