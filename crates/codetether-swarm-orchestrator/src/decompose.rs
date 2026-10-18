@@ -1,7 +1,21 @@
 use super::*;
 use codetether_swarm_core::planning::decomposition_prompt;
-impl Orchestrator {
-    /// Decompose a complex task into subtasks
+impl<H: Host> Orchestrator<H> {
+    /// Decompose a task and install the generated plan in the coordinator.
+    /// # Arguments
+    /// `task` is the original task text; `strategy` selects planning behavior.
+    /// # Returns
+    /// Generated subtasks, or one main task when decomposition is disabled.
+    /// # Errors
+    /// Returns missing-provider, completion, invalid-plan or repair errors.
+    /// # Examples
+    /// ```no_run
+    /// async fn plan<H: codetether_swarm_orchestrator::Host>(planner: &mut codetether_swarm_orchestrator::Orchestrator<H>) -> anyhow::Result<()> {
+    ///     let tasks = planner.decompose("inspect", codetether_swarm_core::DecompositionStrategy::None).await?;
+    ///     assert_eq!(tasks.len(), 1);
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn decompose(
         &mut self,
         task: &str,
@@ -24,9 +38,7 @@ impl Orchestrator {
             parallel_required,
         );
 
-        let provider = self
-            .providers
-            .get(&self.provider)
+        let provider = H::get(&self.providers, &self.provider)
             .ok_or_else(|| anyhow::anyhow!("Provider {} not found", self.provider))?;
 
         let temperature = completion::temperature(&self.model);

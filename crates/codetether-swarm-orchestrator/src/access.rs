@@ -1,5 +1,5 @@
 use super::*;
-impl Orchestrator {
+impl<H: Host> Orchestrator<H> {
     /// Get statistics
     pub fn stats(&self) -> &SwarmStats {
         self.state.stats()
@@ -11,7 +11,7 @@ impl Orchestrator {
     }
 
     /// Get the provider registry
-    pub fn providers(&self) -> &ProviderRegistry {
+    pub fn providers(&self) -> &H::Providers {
         &self.providers
     }
 

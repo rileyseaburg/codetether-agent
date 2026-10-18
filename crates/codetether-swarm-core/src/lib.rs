@@ -71,3 +71,6 @@ pub mod worker_output;
 pub mod worker_result;
 /// Worker strategy-name aliases.
 pub mod worker_strategy;
+
+/// Historical model defaults shared by planning and direct swarm workers.
+pub mod model_defaults;

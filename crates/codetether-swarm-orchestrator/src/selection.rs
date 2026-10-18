@@ -1,5 +1,5 @@
 use super::*;
-use crate::provider::parse_model_string;
+use codetether_provider_core::routing::parse_model_string;
 pub(super) fn select_model(
     config: &SwarmConfig,
     provider_list: &[&str],

@@ -1,5 +1,5 @@
 use super::*;
-impl Orchestrator {
+impl<H: Host> Orchestrator<H> {
     /// Get maximum stage number
     fn max_stage(&self) -> usize {
         self.state.max_stage()

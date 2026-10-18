@@ -1,7 +1,7 @@
 //! Provider request for swarm plan generation and repair.
 
-use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
 use anyhow::Result;
+use codetether_provider_core::{CompletionRequest, ContentPart, Message, Provider, Role};
 
 pub(super) async fn complete(
     provider: &dyn Provider,

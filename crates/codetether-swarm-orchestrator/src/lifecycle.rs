@@ -1,5 +1,5 @@
 use super::*;
-impl Orchestrator {
+impl<H: Host> Orchestrator<H> {
     /// Create a sub-agent for a subtask
     pub fn create_subagent(&mut self, subtask: &SubTask) -> SubAgent {
         self.state

@@ -1,0 +1,15 @@
+[package]
+name = "codetether-swarm-orchestrator"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Swarm provider selection, decomposition and task coordination"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-provider-policy = { path = "../codetether-provider-policy", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+tracing = "0.1"

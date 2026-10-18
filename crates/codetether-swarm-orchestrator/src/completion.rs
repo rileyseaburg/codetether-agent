@@ -2,7 +2,7 @@ use super::*;
 use async_trait::async_trait;
 use codetether_swarm_core::planning::PlanCompletion;
 pub(super) struct ProviderCompletion<'a> {
-    pub(super) provider: &'a dyn crate::provider::Provider,
+    pub(super) provider: &'a dyn codetether_provider_core::Provider,
     pub(super) model: &'a str,
     pub(super) temperature: f32,
 }
@@ -15,7 +15,7 @@ impl PlanCompletion for ProviderCompletion<'_> {
 }
 
 pub(super) fn temperature(model: &str) -> f32 {
-    if crate::session::helper::provider::prefers_temperature_one(model) {
+    if codetether_provider_policy::prefers_temperature_one(model) {
         1.0
     } else {
         0.7

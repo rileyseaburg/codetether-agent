@@ -18203,3 +18203,25 @@ unchanged runtime/parser sources, module/dependency graphs, file-size ratchet
 and whitespace checks. Evidence: `artifacts/consolidation-tui-cli/`. No TUI or
 peer was launched. No Cargo, rustc, Python or Rust tests ran; compilation remains
 unverified.
+
+### Swarm orchestrator ownership
+
+Moved the entire nine-module implementation from `src/swarm/orchestrator/`
+into the dedicated `codetether-swarm-orchestrator` crate. It owns model/provider
+selection, decomposition request construction, planner completion, task-state
+updates and coordinator accessors. The native `Orchestrator` name is a type alias
+bound to a small Vault/provider-registry host, preserving the concrete native
+registry returned to stage execution callers. Provider initialization and worker
+execution remain native boundaries.
+
+Moved historical swarm model defaults from the tool crate into swarm-core and
+left the original tool path as a compatibility reexport. This keeps planning
+independent of tool implementations. Provider registry ownership/lifetime,
+selection order and aliases, request temperature/token limits, no-decomposition
+behavior and state updates are preserved.
+
+Validation: token comparisons of all moved modules and struct fields, native
+provider callback checks, unchanged stage execution callers and shared planning
+state, dependency/module graph checks, source-size ratchet and whitespace.
+Evidence: `artifacts/consolidation-swarm-orchestrator/`. No provider/model calls,
+Cargo, rustc, Python or Rust tests were executed; compilation remains unverified.
