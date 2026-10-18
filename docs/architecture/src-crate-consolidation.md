@@ -20843,3 +20843,24 @@ roots, native file-size checks, and whitespace checks passed. Evidence:
 `artifacts/consolidation-write-progress/`. No dependencies changed. No Cargo,
 rustc, or Python commands ran. Rust tests and compilation remain unverified;
 the full workspace consolidation remains active.
+
+### Incoming worker dispatch ownership
+
+Moved incoming task-id extraction, explicit-target/scope admission, capacity
+reservation outcomes, background handler spawning, failure logging, and
+post-handler slot release into
+`codetether-a2a-worker-core::dispatch::incoming`. The native entry point delegates
+with an execution hook that invokes the unchanged `handle_task`. Runtime/task
+cloning and cleanup task-id selection retain the original behavior. The native
+reservation implementation file and its module registration were removed.
+Tokio's existing runtime feature is now explicitly enabled by worker-core for
+its owned spawn operation; dependency edges did not change.
+
+Verification compares complete admission, reservation, and spawn/cleanup bodies
+after explicit handler substitutions and preserves original tracing targets.
+Formatting of a logging match arm required formatting the expected source before
+comparison; initial evidence is retained. Direct rustfmt, source graph checks
+across 694 roots, native file-size checks, and whitespace checks passed. Evidence:
+`artifacts/consolidation-worker-dispatch/`. No Cargo, rustc, or Python commands ran;
+no task handlers or Rust tests were executed. Compilation and runtime behavior
+remain unverified. The full workspace consolidation remains active.

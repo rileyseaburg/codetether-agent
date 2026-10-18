@@ -18,3 +18,6 @@ mod timeout_tests;
 
 /// Ordered startup and periodic pending-task dispatch.
 pub mod pending;
+
+/// Incoming-task admission, capacity reservation, and execution cleanup.
+pub mod incoming;
