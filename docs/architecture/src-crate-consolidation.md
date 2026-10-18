@@ -24792,3 +24792,22 @@ direct rustfmt, file limits and whitespace checks passed. Unrelated working
 changes remain untouched. Evidence:
 artifacts/consolidation-prepared-storage-bindings/. No Cargo, rustc, Python,
 compiler expansion, storage I/O or tests ran. Full consolidation remains active.
+
+### Reusable static audit for the new session declarations
+
+Added script/architecture/check_session_declarations.mjs and its Rust token
+scanner. Run it from the repository root with Node. It resolves the supported
+single-arm declaration macros, checks ident/type/path/visibility arguments and
+optional matcher groups, expands nested declaration helpers as tokens, checks
+balanced delimiters and unbound variables, and rejects duplicate inherent
+Session methods. It also checks that referenced macros are exported.
+
+The current audit covers 31 native declaration calls, 79 discovered macro
+definitions, 9,363 expanded tokens and 46 inherent Session methods. Four
+in-memory rejection probes passed, including the former formatted recall-host
+mismatch. Expanded tokens and method inventory are retained under
+artifacts/consolidation-declaration-audit/. No source mutations occur during
+the audit. This is a deliberately limited macro-grammar check, not Rust type
+checking: it does not execute derives, async-trait, functions or tests and
+cannot validate type bounds or runtime behavior. No Cargo, rustc or Python ran.
+The overall migration remains active and incomplete.
