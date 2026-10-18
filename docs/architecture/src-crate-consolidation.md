@@ -11313,3 +11313,19 @@ Full workspace consolidation remains active.
   checks passed.
 - Evidence: `artifacts/consolidation-bus-view/`. Compilation, tests and rendering
   were not run; no Cargo or rustc commands executed. Full consolidation is active.
+### Audit-log view extraction
+
+- Moved `src/tui/audit_view.rs` implementation and its four list/row/text/test
+  files into `crates/codetether-audit-view`; the native module now only re-exports
+  `AuditFilter`, `AuditViewState`, snapshot refresh and rendering.
+- The crate owns filtering, cached state, cursor navigation, refresh, layout,
+  visible-window list rendering, row formatting and selected-entry details.
+  It depends directly on the existing audit crate, ratatui and serde_json.
+- Split responsibilities across 16 Rust modules, each at most 38 nonblank,
+  noncomment code lines. Preserved the three existing list/text tests.
+- Verification: 25 static comparisons of definitions, method bodies, unchanged
+  list modules and reconstructed detail rendering; lexical module reachability,
+  workspace path-dependency cycle checks, direct rustfmt, file-limit ratchet and
+  `git diff --check` passed. Evidence: `artifacts/consolidation-audit-view/`.
+- No Cargo, rustc, compilation or runtime tests were run. The full `src/` to
+  `crates/` consolidation remains incomplete.

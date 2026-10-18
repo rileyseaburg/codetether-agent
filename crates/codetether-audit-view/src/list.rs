@@ -9,7 +9,7 @@ use ratatui::{
 
 use super::AuditViewState;
 
-#[path = "audit_view_list_row.rs"]
+#[path = "list_row.rs"]
 mod row;
 
 pub(super) fn render(f: &mut Frame, state: &AuditViewState, area: Rect) {
@@ -41,5 +41,5 @@ fn visible_range(len: usize, selected: usize, count: usize) -> (usize, usize) {
 }
 
 #[cfg(test)]
-#[path = "audit_view_list_tests.rs"]
+#[path = "list_tests.rs"]
 mod tests;

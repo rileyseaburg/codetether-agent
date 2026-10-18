@@ -3,9 +3,9 @@ use ratatui::{
     text::{Line, Span},
 };
 
-use crate::audit::{AuditEntry, AuditOutcome};
+use codetether_audit::{AuditEntry, AuditOutcome};
 
-#[path = "audit_view_list_text.rs"]
+#[path = "list_text.rs"]
 mod text;
 
 pub(super) fn format(entry: &AuditEntry) -> Line<'static> {

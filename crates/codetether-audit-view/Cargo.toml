@@ -1,0 +1,12 @@
+[package]
+name = "codetether-audit-view"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Cached audit-log inspection and terminal presentation"
+
+[dependencies]
+codetether-audit = { path = "../codetether-audit", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
+serde_json = "1.0.151"

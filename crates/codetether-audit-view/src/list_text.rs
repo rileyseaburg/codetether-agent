@@ -1,4 +1,4 @@
-use crate::audit::AuditCategory;
+use codetether_audit::AuditCategory;
 
 pub(super) fn category(value: AuditCategory) -> &'static str {
     match value {
