@@ -9,7 +9,7 @@ use sha2::{Digest, Sha256};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tool::goal::verdict_log::VerdictRecord;
+/// use codetether_goal_verification::VerdictRecord;
 ///
 /// let r = VerdictRecord::new("g1", "complete", false, "bedrock/m", "VERDICT: FAIL");
 /// assert!(!r.passed && !r.escalated);
@@ -45,6 +45,19 @@ pub struct VerdictRecord {
 
 impl VerdictRecord {
     /// Build a record for a completed verification.
+    /// # Arguments
+    /// * `goal` - Reviewed goal identifier.
+    /// * `claimed` - Requested terminal status.
+    /// * `passed` - Whether verification passed.
+    /// * `verifier` - Captured execution identity.
+    /// * `report` - Full verifier report used for hashing and failure feedback.
+    /// # Returns
+    /// A timestamped record with default escalation and availability flags.
+    /// # Examples
+    /// ```
+    /// let record = codetether_goal_verification::VerdictRecord::new("g", "complete", true, "model", "VERDICT: PASS");
+    /// assert!(record.passed);
+    /// ```
     pub fn new(goal: &str, claimed: &str, passed: bool, verifier: &str, report: &str) -> Self {
         Self {
             at: Utc::now(),

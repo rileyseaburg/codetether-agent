@@ -17903,3 +17903,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-onboarding/`.
 - No Cargo, rustc, Python, onboarding/login calls, network calls, Rust compilation
   or Rust tests ran. Full workspace consolidation remains incomplete.
+
+### Goal verification protocol and verdict accounting
+
+- Moved verifier request/execution types and trait, report/identity evaluation,
+  charter text, user-prompt formatting, verdict records, attempt accounting and
+  path-parameterized verdict journal I/O into `codetether-goal-verification`.
+- Native paths re-export the same protocol types, resolve session journal paths
+  and retain provider execution/system-prompt context. Goal transition and
+  escalation code remains unchanged.
+- Moved three existing identity/accounting tests. Verified complete code bodies,
+  all charter bytes, record serialization/hash behavior, journal operations,
+  native wrappers and unchanged provider/transition callers. Kept the existing
+  SHA-256 dependency version. Module/dependency graphs, direct rustfmt, file
+  limits and whitespace passed. Staged lock adds only the package and root
+  dependency; unrelated working-copy changes remain untouched.
+  Evidence: `artifacts/consolidation-goal-verification/`.
+- No Cargo, rustc, Python, verifier calls, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

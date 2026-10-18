@@ -1,7 +1,7 @@
 //! Verification audits use the execution identity, not a later settings lookup.
 
 use super::*;
-use crate::tool::goal::verify::ReviewExecution;
+use crate::ReviewExecution;
 use async_trait::async_trait;
 
 struct Captured;
@@ -27,7 +27,7 @@ async fn verifier_identity_gate_uses_only_captured_routing() {
         objective: "test".into(),
         success_criteria: vec![],
         forbidden: vec![],
-        claimed: crate::session::tasks::GoalStatus::Complete,
+        claimed: codetether_goal_core::GoalStatus::Complete,
         evidence: "fixture".into(),
     };
     let (verdict, identity) = verify_with_identity(&Captured, &request).await;

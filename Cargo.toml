@@ -299,6 +299,7 @@ members = [
     "crates/codetether-tui-reactor",
     "crates/codetether-git-credential-helper",
     "crates/codetether-onboarding",
+    "crates/codetether-goal-verification",
     "crates/codetether-agent-dashboard",
     "crates/codetether-worker-events",
     "crates/codetether-tui-worker",
@@ -801,6 +802,7 @@ codetether-mcp-server = { path = "crates/codetether-mcp-server", version = "0.1.
 codetether-mcp-approval = { path = "crates/codetether-mcp-approval", version = "0.1.0" }
 codetether-tui-reactor = { path = "crates/codetether-tui-reactor", version = "0.1.0" }
 codetether-git-credential-helper = { path = "crates/codetether-git-credential-helper", version = "0.1.0" }
+codetether-goal-verification = { path = "crates/codetether-goal-verification", version = "0.1.0" }
 codetether-agent-dashboard = { path = "crates/codetether-agent-dashboard", version = "0.1.0" }
 codetether-git-view = { path = "crates/codetether-git-view", version = "0.1.0" }
 codetether-protocol-view = { path = "crates/codetether-protocol-view", version = "0.1.0" }

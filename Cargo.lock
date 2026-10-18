@@ -1394,6 +1394,7 @@ dependencies = [
  "codetether-mcp-approval",
  "codetether-tui-reactor",
  "codetether-git-credential-helper",
+ "codetether-goal-verification",
  "codetether-agent-dashboard",
  "codetether-git-view",
  "codetether-protocol-view",
@@ -16051,4 +16052,20 @@ dependencies = [
  "codetether-user-auth-cli",
  "reqwest 0.13.4",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-goal-verification"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "codetether-goal-core",
+ "codetether-verifier-state",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tokio",
 ]

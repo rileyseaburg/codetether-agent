@@ -1,6 +1,6 @@
 //! Infrastructure failures are audited without consuming or resetting rejection counts.
 use super::rejections_since_reset;
-use crate::tool::goal::verdict_log::VerdictRecord;
+use crate::VerdictRecord;
 
 #[test]
 fn unavailable_attempts_do_not_consume_or_erase_real_rejections() {
