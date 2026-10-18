@@ -23,8 +23,6 @@ macro_rules! executor_module {
 mod agent_loop;
 executor_module!(dependency_failure => "dependency_failure.rs");
 executor_module!(exit => "executor_parts/exit.rs");
-#[path = "executor_parts/local_stage/mod.rs"]
-mod local_stage;
 executor_module!(pub loop_step => "loop_step.rs");
 executor_module!(path_guard => "path_guard/mod.rs");
 executor_module!(types => "executor_parts/types.rs");

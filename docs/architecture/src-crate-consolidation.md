@@ -22265,3 +22265,24 @@ whitespace checks passed. Only the new package and root dependency are staged
 in the lockfile. Evidence: `artifacts/consolidation-swarm-agent/`.
 No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
 Full consolidation is active.
+
+### Local jobs bound directly to the shared sub-agent loop
+
+Moved prepared-job capability selection, workspace registry construction and
+agent-loop argument mapping into `codetether-swarm-agent::job`. `JobHost` selects
+the original native workspace factory and system-instruction policy. The shared
+adapter implements the existing local-job lifecycle interface and forwards
+attempts to the same application-bound sub-agent loop. The executor's native
+job callback now selects this adapter directly. Four native local-stage/job
+adapter files and their module declaration were removed.
+
+Source comparisons preserve all job fields passed to the loop, capability
+flags, workspace/result-store ownership, registry factory and prompt policy.
+The native loop host is re-exported only within the executor to retain the same
+runtime denial and parent-accounting implementation. Module/dependency checks
+cover 699 roots and 571 crates without missing modules or cycles. Direct
+rustfmt, native file-size limits and whitespace checks passed. Only the
+swarm-agent crate's local-job and workspace-tools dependency edges are staged
+in the lockfile. Evidence: `artifacts/consolidation-swarm-job/`.
+No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
+Full consolidation is active.

@@ -30,7 +30,7 @@ impl codetether_swarm_runtime::LocalStageHost for Native {
     ) -> impl std::future::Future<Output = (String, anyhow::Result<crate::swarm::SubTaskResult>)>
     + Send
     + 'static {
-        super::local_stage::job_run::execute(job)
+        codetether_swarm_agent::job::execute::<super::agent_loop::LoopHost>(job)
     }
 }
 

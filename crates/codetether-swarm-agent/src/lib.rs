@@ -27,3 +27,6 @@ pub mod tools;
 pub use api::run_agent_loop;
 use codetether_swarm_core::agent_retry::AgentLoopExit;
 pub use host::Host;
+
+/// Prepared local jobs executed through the shared sub-agent loop.
+pub mod job;

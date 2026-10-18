@@ -31,3 +31,5 @@ mod image_test_state;
 mod image_test_tool;
 #[cfg(test)]
 mod image_tests;
+
+pub(super) use application::Native as LoopHost;

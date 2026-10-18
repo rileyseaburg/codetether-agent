@@ -22,3 +22,5 @@ codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
 serde_json = "1"
 tokio = { version = "1", features = ["sync"] }
 tracing = "0.1"
+codetether-swarm-local-job = { path = "../codetether-swarm-local-job", version = "0.1.0" }
+codetether-workspace-tools = { path = "../codetether-workspace-tools", version = "0.1.0" }
