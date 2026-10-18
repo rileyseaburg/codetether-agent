@@ -3,7 +3,8 @@
 The application package now lives in `crates/codetether-agent`; the repository
 root is a virtual workspace. Its source, integration tests and Rust examples moved
 together. Component implementations retain their dedicated owning crates.
-The remaining work is the final ownership and stale-reference audit.
+The completed ownership and stale-reference audit is recorded in
+`consolidation-completion-audit.md`.
 
 The package-level change moved `codetether-agent` into
 `crates/codetether-agent`. It preserves its library name `codetether_agent`, binary name
@@ -66,4 +67,4 @@ Five Node layout/line-budget tests and the shell version-bump regression pass.
 The latter now tests both root-package and virtual-workspace layouts. Module and
 dependency scans pass with 618 packages. No Cargo, rustc, Python, Rust tests or
 Docker builds ran. Directory relocation is complete; the full consolidation goal
-still requires its final audit.
+is covered by the completed ownership audit in `consolidation-completion-audit.md`.

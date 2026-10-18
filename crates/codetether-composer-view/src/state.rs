@@ -12,7 +12,7 @@ use codetether_tui_models::InputMode;
 /// ```
 /// let mut state = codetether_composer_view::ComposerState::default();
 /// state.borrow().insert_text("hello");
-/// assert_eq!(state.composer.input, "hello");
+/// assert_eq!(state.input, "hello");
 /// assert_eq!(state.cursor, 5);
 /// ```
 pub struct ComposerState {

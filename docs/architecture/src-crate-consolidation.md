@@ -28775,3 +28775,23 @@ to its separate binary target. Evidence: artifacts/consolidation-legacy-utilitie
 No Cargo, rustc, Python, Rust tests or doc tests ran. User edits remain untouched.
 The physical relocation and legacy test mapping are complete; final workspace
 ownership and compatibility checks remain before closing the full goal.
+
+### Final workspace ownership audit
+
+Added a repeatable whole-workspace layout audit covering all 620 package members,
+local dependency identities and paths, production/build dependency cycles,
+application target paths and literal integration-test includes. Added four Node
+regressions for alias handling, cycles, identity mismatch and missing test sources;
+together with the relocation checks, nine Node tests pass. The shell version-bump
+regression also passes for both supported package layouts. Fixed the stale
+ComposerState documentation example to use its actual input field.
+
+The final audit records 2,791 production/build dependency edges, 62 development
+path edges, 724 module roots with no missing paths, and no application source
+unreachable from the library/binary target union. Root src/tests are absent.
+Unrelated Cargo.lock and A2A changes retain their hashes and remain uncommitted.
+Evidence: artifacts/consolidation-final-audit/. The requirement-by-requirement
+result and verification limits are in consolidation-completion-audit.md.
+No Cargo, rustc, Python, Rust tests, doc tests or Docker builds ran. All authorized
+migration changes are committed; the source-consolidation objective is complete
+within the user's permitted static verification scope.
