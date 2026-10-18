@@ -12895,3 +12895,18 @@ Full workspace consolidation remains active.
 - Only chrono was added to this package's staged Cargo.lock dependencies. No
   provider calls, lifecycle operations, Cargo, rustc or Rust tests ran.
   Full consolidation remains incomplete.
+
+### Temporary fallback policy extraction
+
+- Moved Codex overload preparation, cooldown status text and delayed restoration
+  request construction into codetether-model-failover::temporary_fallback.
+  Four modules contain at most 22 code lines.
+- Native code supplies available models and keeps session model changes, retry
+  execution and attempt recording. Timer calculations, fallback model selection,
+  restoration fields and status strings preserve the prior behavior.
+- Verification: eight static comparisons passed for shared functions and
+  unchanged native scheduling/restoration paths. Module/dependency checks,
+  direct rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-temporary-fallback/.
+- No dependency changes were required. No model changes, timer execution,
+  Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.

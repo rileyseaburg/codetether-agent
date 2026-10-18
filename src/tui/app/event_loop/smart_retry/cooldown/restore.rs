@@ -37,15 +37,4 @@ pub(crate) async fn restore(
     app.state.status = format!("Codex overload cooldown ended; restored {original}");
     true
 }
-
-pub(crate) fn after_fallback(pending: &PendingSmartSwitchRetry) -> Option<PendingSmartSwitchRetry> {
-    let original = pending.restore_model.as_ref()?.clone();
-    Some(PendingSmartSwitchRetry {
-        prompt: pending.prompt.clone(),
-        target_model: original.clone(),
-        not_before: pending.restore_at,
-        restore_from: Some(pending.target_model.clone()),
-        restore_at: None,
-        restore_model: Some(original),
-    })
-}
+pub(crate) use codetether_model_failover::temporary_fallback::after_fallback;

@@ -35,3 +35,6 @@ pub use retry::{PendingSmartSwitchRetry, maybe_schedule_smart_switch_retry};
 
 pub mod constants;
 mod overload_fallback;
+
+/// Temporary overload fallback planning and restoration metadata.
+pub mod temporary_fallback;
