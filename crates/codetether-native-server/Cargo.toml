@@ -16,3 +16,14 @@ codetether-plugin-verification = { path = "../codetether-plugin-verification", v
 codetether-server-runtime = { path = "../codetether-server-runtime", version = "0.1.0" }
 codetether-server-state = { path = "../codetether-server-state", version = "0.1.0" }
 anyhow = "1"
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-approval-http = { path = "../codetether-approval-http", version = "0.1.0" }
+codetether-model-catalog = { path = "../codetether-model-catalog", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-openai-serving = { path = "../codetether-openai-serving", version = "0.1.0" }
+codetether-server-router = { path = "../codetether-server-router", version = "0.1.0" }
+codetether-server-status = { path = "../codetether-server-status", version = "0.1.0" }
+codetether-session-fork = { path = "../codetether-session-fork", version = "0.1.0" }
+codetether-session-http = { path = "../codetether-session-http", version = "0.1.0" }
+codetether-session-realtime = { path = "../codetether-session-realtime", version = "0.1.0" }
+codetether-session-recovery = { path = "../codetether-session-recovery", version = "0.1.0" }

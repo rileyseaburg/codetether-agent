@@ -37,3 +37,6 @@ pub trait Routes<T: Application, const EMPTY_STATE: bool> {
 /// # }
 /// ```
 pub struct Host<T, A, const EMPTY_STATE: bool>(PhantomData<fn() -> (T, A)>);
+
+mod router;
+pub use router::build_router;

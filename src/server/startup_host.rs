@@ -17,6 +17,17 @@ impl codetether_native_server::Routes<crate::tool::registry_lifecycle::Native, {
         crate::a2a::server::A2AServer::startup_routers(address, bus)
     }
     fn router(state: &super::AppState, root: Router, nested: Router) -> Router {
-        super::http_router::build(state, root, nested)
+        codetether_native_server::build_router::<
+            crate::tool::registry_lifecycle::Native,
+            crate::session::Session,
+            super::session_realtime::AppHost,
+            { cfg!(test) },
+        >(
+            state,
+            root,
+            nested,
+            env!("CARGO_PKG_VERSION"),
+            env!("CARGO_PKG_NAME"),
+        )
     }
 }

@@ -2,10 +2,8 @@
 //!
 //! Main API server for the CodeTether Agent
 
-use codetether_approval_http as approval_routes;
-pub use codetether_http_auth as auth;
-mod http_router;
 pub use codetether_authorization_policy as policy;
+pub use codetether_http_auth as auth;
 use codetether_openai_adapter::options as openai_model_options;
 use codetether_openai_wire::stream as openai_stream;
 mod session_realtime;

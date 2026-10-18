@@ -3952,6 +3952,17 @@ dependencies = [
 name = "codetether-native-server"
 version = "0.1.0"
 dependencies = [
+ "codetether-application-providers",
+ "codetether-approval-http",
+ "codetether-model-catalog",
+ "codetether-native-providers",
+ "codetether-openai-serving",
+ "codetether-server-router",
+ "codetether-server-status",
+ "codetether-session-fork",
+ "codetether-session-http",
+ "codetether-session-realtime",
+ "codetether-session-recovery",
  "anyhow",
  "axum",
  "codetether-a2a-core",

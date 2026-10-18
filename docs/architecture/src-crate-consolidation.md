@@ -26051,3 +26051,20 @@ checks pass. Only the new package/root dependency are staged in Cargo.lock;
 unrelated dirty files remain unchanged. Evidence:
 artifacts/consolidation-native-server/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Native HTTP router composition
+
+Moved the complete typed HTTP route composition from src/server/http_router.rs
+into codetether-native-server::build_router. The root startup callback supplies
+its session/realtime bindings and executable package identity. Native provider
+routes, state cloning, A2A transport insertion and authentication state stay in
+the same shared router call and order. The root router file is removed.
+
+Static transformed-source comparison preserves the full router body. Package
+identity and the A2A callback are unchanged. Module/dependency scans cover 722
+roots and 608 crates without missing modules, cycles or undeclared dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks pass. Only the
+native server's required dependencies are staged in Cargo.lock; unrelated
+working files remain unchanged. Evidence:
+artifacts/consolidation-native-server-router/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
