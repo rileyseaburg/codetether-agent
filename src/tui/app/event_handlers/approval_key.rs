@@ -1,24 +1,9 @@
-//! Approval keyboard shortcuts for pending tool requests.
-
-#[path = "approval_copy_key.rs"]
-mod copy_key;
-#[path = "approval_edit_key.rs"]
-mod edit_key;
-#[path = "approval_scroll_key.rs"]
-mod scroll_key;
-#[path = "approval_scroll_wheel.rs"]
-mod scroll_wheel;
-
-#[path = "approval_decision_key.rs"]
-mod decision_key;
+//! Native approval action bindings and regression coverage.
+#[path = "approval_action_host.rs"]
+mod host;
 use crate::tui::app::state::App;
-use decision_key::decide;
-
-pub(super) use copy_key::copy_preview;
-pub(super) use edit_key::open as edit;
-pub(super) use scroll_key::handle as scroll;
-pub(super) use scroll_wheel::handle as wheel;
-
+use crossterm::event::{KeyCode, KeyEvent};
+use std::path::Path;
 #[cfg(test)]
 #[path = "approval_navigation_key_tests.rs"]
 mod navigation_tests;
@@ -36,12 +21,18 @@ mod hidden_tests;
 #[path = "approval_scroll_key_tests.rs"]
 mod scroll_tests;
 
-pub(super) fn handle(app: &mut App, character: char, cwd: &std::path::Path) -> bool {
-    match character {
-        'a' => decide(app, "/approve"),
-        'd' => decide(app, "/deny"),
-        'e' => edit(app, cwd),
-        'y' => copy_preview(app),
-        _ => false,
-    }
+pub(super) fn handle(app: &mut App, character: char, cwd: &Path) -> bool {
+    codetether_approval_view::interactive::handle(&mut host::Native(app), character, cwd)
+}
+pub(super) fn copy_preview(app: &mut App) -> bool {
+    codetether_approval_view::interactive::copy_preview(&mut host::Native(app))
+}
+pub(super) fn edit(app: &mut App, cwd: &Path) -> bool {
+    codetether_approval_view::interactive::open(&mut host::Native(app), cwd)
+}
+pub(super) fn scroll(app: &mut App, key: KeyEvent) -> bool {
+    codetether_approval_view::interactive::scroll(&mut host::Native(app), key)
+}
+pub(super) fn wheel(app: &mut App, direction: KeyCode, amount: usize) -> bool {
+    codetether_approval_view::interactive::wheel(&mut host::Native(app), direction, amount)
 }

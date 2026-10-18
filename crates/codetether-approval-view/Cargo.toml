@@ -7,6 +7,9 @@ license = "MIT"
 description = "Terminal popup rendering for pending approval requests"
 
 [dependencies]
+codetether-approval-edit = { path = "../codetether-approval-edit", version = "0.1.0" }
+codetether-editor = { path = "../codetether-editor", version = "0.1.0" }
+codetether-terminal-clipboard = { path = "../codetether-terminal-clipboard", version = "0.1.0" }
 codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
 codetether-approval-queue = { path = "../codetether-approval-queue", version = "0.1.0" }
 codetether-approval-diff = { path = "../codetether-approval-diff", version = "0.1.0" }

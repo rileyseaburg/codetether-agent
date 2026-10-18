@@ -7157,8 +7157,11 @@ name = "codetether-approval-view"
 version = "0.1.0"
 dependencies = [
  "codetether-approval-core",
+ "codetether-approval-edit",
  "codetether-approval-diff",
  "codetether-approval-queue",
+ "codetether-editor",
+ "codetether-terminal-clipboard",
  "crossterm",
  "ratatui",
 ]

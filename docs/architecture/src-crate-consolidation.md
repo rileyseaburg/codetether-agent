@@ -19437,3 +19437,27 @@ addition, lexical module reachability, dependency-cycle checks, file-size
 ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-chat-clipboard/`. No Cargo, rustc, Python, Rust tests
 or real clipboard operations ran; compilation and runtime remain unverified.
+
+### Approval popup actions
+
+Moved approval character dispatch, pending-only decision routing, clean-preview
+copying, patch-editor opening/activation and wheel-step routing into
+`codetether-approval-view::interactive`. The crate now owns actions alongside
+its existing preview navigation and rendering. Native code binds seven state,
+view and command operations; five standalone native implementation files were
+removed. Existing regression tests remain in their original module.
+
+Preserved queue-first pending lookup with live-request fallback, patch-only
+editing, missing-preview handling, editor activation order, copy status text,
+preview guards, wheel-step behavior and the application's approval-command
+callback. The existing preview navigation implementation and external callers
+are unchanged.
+
+Validation: seven complete translated function bodies, seven native bindings,
+five delegates, five unchanged native regression-test files, unchanged preview
+navigation/callers, isolated lockfile changes, lexical module reachability,
+dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
+Evidence: `artifacts/consolidation-approval-actions/`. During extraction, manual
+review corrected a mechanical status-assignment rewrite across a match arm;
+complete body comparisons then passed. No Cargo, rustc, Python, Rust tests or
+approval/clipboard execution ran; compilation and runtime remain unverified.

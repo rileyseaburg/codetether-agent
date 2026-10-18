@@ -16,3 +16,6 @@ pub use render::render;
 
 /// Preview keyboard navigation and bounded scrolling.
 pub mod input;
+
+/// Pending-approval shortcuts and editor/copy actions.
+pub mod interactive;
