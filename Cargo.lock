@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-inspector-view",
  "codetether-interlude",
  "codetether-agent-identity",
  "codetether-tool-preview",
@@ -6059,6 +6060,13 @@ name = "codetether-interlude"
 version = "0.1.0"
 dependencies = [
  "crossterm",
+ "ratatui",
+]
+
+[[package]]
+name = "codetether-inspector-view"
+version = "0.1.0"
+dependencies = [
  "ratatui",
 ]
 

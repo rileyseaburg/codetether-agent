@@ -1,0 +1,10 @@
+[package]
+name = "codetether-inspector-view"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Completion and tool activity inspector panels"
+
+[dependencies]
+ratatui = { version = "0.30.2", default-features = false }

@@ -11771,3 +11771,20 @@ Full workspace consolidation remains active.
   passed. Evidence: artifacts/consolidation-interlude/.
 - No Cargo, rustc, compilation, runtime tests or terminal rendering ran. Full
   workspace consolidation remains incomplete.
+
+### Inspector presentation extraction
+
+- Moved inspector layout, completion metrics, recent-tool history, status rows
+  and footer into codetether-inspector-view. The crate receives a borrowed
+  InspectorView instead of depending on AppState. Its ten modules contain at
+  most 41 nonblank, noncomment code lines.
+- Existing native inspector entry points remain as projection adapters. Model
+  and tool strings are borrowed; numeric metrics, outcomes, message count and
+  processing status are copied. All labels, missing-value defaults, colors,
+  row order, panel dimensions and wrapping behavior are preserved.
+- Verification: 15 static comparisons passed for moved function bodies, split
+  history construction, native projections and adapters. Module reachability,
+  path-dependency cycle checks, direct formatting, source line limits and
+  git diff --check passed. Evidence: artifacts/consolidation-inspector/.
+- No Cargo, rustc, compilation, runtime tests or terminal rendering ran. Full
+  workspace consolidation remains incomplete.
