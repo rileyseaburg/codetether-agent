@@ -11,6 +11,12 @@
 use std::path::PathBuf;
 
 /// Filesystem-backed cache of the available model identifiers.
+///
+/// # Examples
+/// ```
+/// let store = codetether_model_store::ModelStore::with_base("cache");
+/// assert!(store.path().ends_with("model-store/models.json"));
+/// ```
 #[derive(Debug, Clone)]
 pub struct ModelStore {
     path: PathBuf,
@@ -18,12 +24,16 @@ pub struct ModelStore {
 
 impl ModelStore {
     /// Create a store at the default agent data location, if resolvable.
+    ///
+    /// Uses the same data-directory resolution as the application configuration.
     pub fn open_default() -> Option<Self> {
-        let base = crate::config::Config::data_dir()?;
+        let base = codetether_config::Config::data_dir()?;
         Some(Self::with_base(base))
     }
 
     /// Create a store rooted at `base` (primarily for tests).
+    ///
+    /// The backing file is `model-store/models.json` beneath `base`.
     pub fn with_base(base: impl Into<PathBuf>) -> Self {
         let path = base.into().join("model-store").join("models.json");
         Self { path }

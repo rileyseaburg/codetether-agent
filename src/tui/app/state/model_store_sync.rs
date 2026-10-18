@@ -1,7 +1,6 @@
 //! `AppState` integration helpers for the local model store.
 
 use super::AppState;
-use super::model_store::ModelStore;
 
 impl AppState {
     /// Populate `available_models` from the on-disk store when empty and
@@ -10,27 +9,14 @@ impl AppState {
     /// Lets the picker render instantly while a fresh list loads in the
     /// background. No-op when models are already loaded or the store is empty.
     pub fn hydrate_models_from_store(&mut self) -> usize {
-        if self.model_picker.available_models.is_empty()
-            && let Some(store) = ModelStore::open_default()
-        {
-            let cached = store.load();
-            if !cached.is_empty() {
-                self.set_available_models(cached);
-            }
-        }
-        self.model_picker.available_models.len()
+        self.model_picker.hydrate_models_from_store()
     }
 
     /// Persist the current `available_models` to the on-disk store.
     ///
     /// No-op when the list is empty or the store path cannot be resolved.
     pub fn persist_models_to_store(&self) {
-        if self.model_picker.available_models.is_empty() {
-            return;
-        }
-        if let Some(store) = ModelStore::open_default() {
-            store.store(&self.model_picker.available_models);
-        }
+        self.model_picker.persist_models_to_store();
     }
 
     /// Apply a freshly fetched model list, clear the in-flight refresh state,

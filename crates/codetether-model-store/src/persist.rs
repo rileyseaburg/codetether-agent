@@ -4,6 +4,12 @@ use super::store::ModelStore;
 
 impl ModelStore {
     /// Load the cached model list. Returns an empty vec on any failure.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// let store = codetether_model_store::ModelStore::with_base("cache");
+    /// let models = store.load();
+    /// ```
     pub fn load(&self) -> Vec<String> {
         let Ok(bytes) = std::fs::read(self.path()) else {
             return Vec::new();
@@ -12,6 +18,12 @@ impl ModelStore {
     }
 
     /// Persist the model list. Errors are logged and otherwise ignored.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// let store = codetether_model_store::ModelStore::with_base("cache");
+    /// store.store(&["provider/model".into()]);
+    /// ```
     pub fn store(&self, models: &[String]) {
         if let Some(parent) = self.path().parent() {
             if let Err(error) = std::fs::create_dir_all(parent) {

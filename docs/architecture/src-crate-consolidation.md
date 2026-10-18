@@ -11544,3 +11544,22 @@ Full workspace consolidation remains active.
   files, native file limits and git diff --check passed.
 - Evidence: artifacts/consolidation-model-picker-state/. No Cargo, rustc,
   compilation or runtime tests were run. Full consolidation remains incomplete.
+
+### Model catalog cache extraction
+
+- Moved the model-store implementation and its three persistence tests from
+  src/tui/app/state/model_store into crates/codetether-model-store. The native
+  module is now a compatibility re-export.
+- The store resolves the same shared Config::data_dir, uses the same
+  model-store/models.json path and JSON representation, returns an empty list
+  on read/decode failure, and logs/ignores write failures as before.
+- Moved cache hydration and persistence methods into ModelPickerState. Native
+  AppState methods delegate to the picker, while finish_model_refresh still
+  owns application refresh-channel cleanup with its original implementation.
+- Verification: ten static comparisons cover every store source file, all
+  existing tests, moved methods, wrappers and unchanged refresh finishing.
+  The new crate has four modules, at most 25 code lines each. Lexical module
+  reachability, dependency cycles, direct rustfmt, native file limits and
+  git diff --check passed. Evidence: artifacts/consolidation-model-store/.
+- No Cargo, rustc, compilation, runtime tests or cache reads/writes were run.
+  Full workspace consolidation remains incomplete.

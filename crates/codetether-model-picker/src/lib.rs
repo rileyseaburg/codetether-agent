@@ -20,3 +20,5 @@ mod state_catalog;
 mod state_lifecycle;
 mod state_navigation;
 pub use state::ModelPickerState;
+
+mod state_store;

@@ -1,0 +1,15 @@
+[package]
+name = "codetether-model-store"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Filesystem cache of selectable model identifiers"
+
+[dependencies]
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+serde_json = "1"
+tracing = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
