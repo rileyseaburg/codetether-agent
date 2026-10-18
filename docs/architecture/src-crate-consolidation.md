@@ -11280,3 +11280,17 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-color-palette/`. No dependency or lockfile
   changes needed. Compilation, tests and rendering were not run; no Cargo or
   rustc commands executed. Full consolidation remains active.
+
+### Retained view data extraction
+
+- Moved live-view text bounds, capped item buffers, agent-detail retention and
+  compact bus payloads into `crates/codetether-view-retention`.
+- Seven modules separate limits, byte truncation, item capping and the agent/bus
+  adapters. Maximum module size is 20 code lines. Native paths re-export the
+  existing API; chat-specific payload truncation remains separate.
+- Fourteen static comparisons verify limits, complete helper bodies, the
+  shared UTF-8 truncator and unchanged native retention logic/test. Module
+  reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-view-retention/`. Compilation and Rust
+  tests were not run; no Cargo or rustc commands executed. Full consolidation
+  remains active.

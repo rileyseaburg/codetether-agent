@@ -1,0 +1,10 @@
+[package]
+name = "codetether-view-retention"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bounded text and item retention for live terminal views"
+
+[dependencies]
+codetether-util = { path = "../codetether-util", version = "0.1.0" }

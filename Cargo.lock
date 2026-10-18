@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-view-retention",
  "codetether-audit-loop-view",
  "codetether-tui-worker",
  "codetether-worker-events",
@@ -5829,6 +5830,13 @@ name = "codetether-audit-loop-view"
 version = "0.1.0"
 dependencies = [
  "ratatui",
+]
+
+[[package]]
+name = "codetether-view-retention"
+version = "0.1.0"
+dependencies = [
+ "codetether-util",
 ]
 
 [[package]]
