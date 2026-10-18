@@ -1,18 +1,19 @@
 //! Bash adapter that always executes from its assigned workspace.
 
-use crate::tool::{Tool, ToolResult, bash::BashTool};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_bash_tool::BashTool;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 use std::path::PathBuf;
 
-pub(super) struct ScopedBashTool {
+pub(crate) struct ScopedBashTool {
     inner: BashTool,
     root: PathBuf,
 }
 
 impl ScopedBashTool {
-    pub(super) fn new(root: PathBuf) -> Self {
+    pub(crate) fn new(root: PathBuf) -> Self {
         Self {
             inner: BashTool::with_cwd(root.clone()),
             root,

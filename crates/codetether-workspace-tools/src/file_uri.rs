@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-pub(super) fn build(path: &Path) -> String {
+pub(crate) fn build(path: &Path) -> String {
     let raw = path.to_string_lossy().replace('\\', "/");
     format!(
         "file://{}",

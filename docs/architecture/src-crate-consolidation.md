@@ -15339,3 +15339,28 @@ Full workspace consolidation remains active.
 - Cargo, rustc, Python, Rust compilation and Rust tests were not run. The broader
   goal remains incomplete, including native registry construction and other
   implementation still under `src/`.
+
+### Dedicated workspace tool policy crate
+
+- Added `crates/codetether-workspace-tools` and moved capability classification,
+  workspace/root URI helpers, rooted alias registration, shell/Git wrappers,
+  read-only verifier sandbox execution, rooted tool installation, and capability
+  filtering out of `src/swarm/workspace_registry/`.
+- The shared `finish` operation canonicalizes the root, installs rooted instances,
+  then filters the registry in the original order. A native host supplies only
+  application-specific LSP and optional TetherScript constructors; registry
+  storage operations delegate to the existing application registry.
+- Preserved verification's fail-closed read-only shell, Git commit denial,
+  explicit mutation precedence, removed workflow tool IDs, compatibility aliases,
+  and scripting feature gating. Split Git invocation enforcement from its tool
+  adapter to keep each new source file within 50 code lines.
+- Native provider-aware construction, coordination extensions, and existing
+  integration tests remain connected to the shared policy through the native
+  adapter. The integration tests were not modified.
+- Verification: 14 Node comparison groups checked moved bodies, rooted wrappers,
+  sandbox execution, installation order, shared finish, native factories,
+  untouched integration tests, and isolated lock additions. Module reachability,
+  dependency DAG, direct rustfmt, file-limit ratchet, and `git diff --check` passed.
+  Evidence: `artifacts/consolidation-workspace-tools/`.
+- No Cargo, rustc, Python, Rust compilation, or Rust tests ran. Full consolidation
+  remains incomplete; this moves workspace policy ownership into its own crate.

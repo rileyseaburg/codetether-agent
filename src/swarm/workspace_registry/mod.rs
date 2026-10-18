@@ -3,20 +3,12 @@
 use crate::{provider::Provider, tool::ToolRegistry};
 use std::{path::Path, sync::Arc};
 
-mod aliases;
-mod capability;
-mod file_uri;
+mod host;
 mod local;
-mod policy;
-mod readonly_bash;
-mod root;
-mod scoped_bash;
-mod scoped_git;
-mod scoped_tools;
 
-pub(crate) use capability::Capability;
+pub(crate) use codetether_workspace_tools::Capability;
+pub(crate) use codetether_workspace_tools::resolve_root;
 pub(crate) use local::for_agent;
-pub(crate) use root::resolve_root;
 
 pub(crate) fn with_provider(
     provider: Arc<dyn Provider>,
@@ -36,11 +28,8 @@ pub(crate) fn with_defaults(root: &Path, capability: Capability) -> ToolRegistry
     finish(ToolRegistry::with_defaults(), root, capability)
 }
 
-fn finish(mut registry: ToolRegistry, root: &Path, capability: Capability) -> ToolRegistry {
-    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-    scoped_tools::install(&mut registry, &root, capability);
-    policy::apply(&mut registry, capability);
-    registry
+fn finish(registry: ToolRegistry, root: &Path, capability: Capability) -> ToolRegistry {
+    codetether_workspace_tools::finish::<host::Native>(registry, root, capability)
 }
 
 #[cfg(test)]

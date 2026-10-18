@@ -5,22 +5,23 @@
 //! bubblewrap/Seatbelt mount the workspace read-only. When no real sandbox
 //! backend is available the command is refused instead of running unconfined.
 
-use crate::tool::{Tool, ToolResult, bash::BashTool};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_bash_tool::BashTool;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 use std::path::PathBuf;
 
 #[path = "readonly_bash_run.rs"]
 mod run;
 
-pub(super) struct ReadOnlyBashTool {
+pub(crate) struct ReadOnlyBashTool {
     inner: BashTool,
     root: PathBuf,
 }
 
 impl ReadOnlyBashTool {
-    pub(super) fn new(root: PathBuf) -> Self {
+    pub(crate) fn new(root: PathBuf) -> Self {
         Self {
             inner: BashTool::with_cwd(root.clone()),
             root,

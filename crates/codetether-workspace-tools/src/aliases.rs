@@ -1,9 +1,12 @@
 //! Workspace-rooted compatibility aliases.
 
-use crate::tool::{ToolRegistry, alias::AliasTool, patch, todo};
+use crate::Registry;
+use codetether_patch as patch;
+use codetether_todo as todo;
+use codetether_tool_core::AliasTool;
 use std::{path::Path, sync::Arc};
 
-pub(super) fn install(registry: &mut ToolRegistry, root: &Path) {
+pub(crate) fn install(registry: &mut impl Registry, root: &Path) {
     registry.register(Arc::new(AliasTool::new(
         "patch",
         Arc::new(patch::ApplyPatchTool::with_root(root.to_path_buf())),

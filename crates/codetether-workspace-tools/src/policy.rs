@@ -1,12 +1,13 @@
 //! Capability filtering for workspace-scoped swarm tools.
 
 use super::Capability;
-use crate::tool::{ToolRegistry, readonly};
+use crate::Registry;
+use codetether_tool_core::readonly;
 
 #[path = "policy_unscoped.rs"]
 mod unscoped;
 
-pub(super) fn apply(registry: &mut ToolRegistry, capability: Capability) {
+pub(crate) fn apply(registry: &mut impl Registry, capability: Capability) {
     for id in unscoped::IDS {
         registry.unregister(id);
     }

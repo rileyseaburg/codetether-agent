@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-workspace-tools",
  "codetether-swarm-monitor",
  "codetether-swarm-tool",
  "codetether-tool-registry",
@@ -7439,6 +7440,24 @@ dependencies = [
  "codetether-swarm-view",
  "lazy_static",
  "tokio",
+]
+
+[[package]]
+name = "codetether-workspace-tools"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "serde_json",
+ "codetether-tool-core",
+ "codetether-bash-tool",
+ "codetether-git-tool",
+ "codetether-sandbox-policy",
+ "codetether-sandbox-runtime",
+ "codetether-code-search",
+ "codetether-file-tools",
+ "codetether-patch",
+ "codetether-todo",
 ]
 
 [[package]]

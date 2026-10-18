@@ -1,6 +1,6 @@
 //! Tools unavailable inside workspace-scoped swarm execution.
 
-pub(super) const IDS: &[&str] = &[
+pub(crate) const IDS: &[&str] = &[
     "question",
     "confirm_edit",
     "confirm_multiedit",

@@ -1,19 +1,23 @@
 //! Git adapter that roots operations and gates commits by capability.
 
-use crate::tool::{Tool, ToolResult, git::GitTool};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_git_tool::GitTool;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 use std::path::PathBuf;
 
-pub(super) struct ScopedGitTool {
+#[path = "scoped_git_run.rs"]
+mod run;
+
+pub(crate) struct ScopedGitTool {
     inner: GitTool,
     root: PathBuf,
     allow_commit: bool,
 }
 
 impl ScopedGitTool {
-    pub(super) fn new(root: PathBuf, allow_commit: bool) -> Self {
+    pub(crate) fn new(root: PathBuf, allow_commit: bool) -> Self {
         Self {
             inner: GitTool::new(),
             root,
@@ -36,15 +40,7 @@ impl Tool for ScopedGitTool {
     fn parameters(&self) -> Value {
         self.inner.parameters()
     }
-    async fn execute(&self, mut args: Value) -> Result<ToolResult> {
-        if !self.allow_commit && args.get("op").and_then(Value::as_str) == Some("commit") {
-            return Ok(ToolResult::error(
-                "git commit is unavailable for this swarm task",
-            ));
-        }
-        if let Some(fields) = args.as_object_mut() {
-            fields.insert("cwd".into(), Value::String(self.root.display().to_string()));
-        }
-        self.inner.execute(args).await
+    async fn execute(&self, args: Value) -> Result<ToolResult> {
+        run::execute(self, args).await
     }
 }

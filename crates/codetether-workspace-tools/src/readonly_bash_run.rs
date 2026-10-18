@@ -1,8 +1,9 @@
 //! Execution of one verifier shell command with a read-only workspace.
 
-use crate::tool::ToolResult;
-use crate::tool::sandbox::{SandboxPolicy, execute_sandboxed, unavailable_reason};
 use anyhow::Result;
+use codetether_sandbox_policy::SandboxPolicy;
+use codetether_sandbox_runtime::{execute_sandboxed, unavailable_reason};
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 use std::path::Path;
 
@@ -13,7 +14,7 @@ use std::path::Path;
 /// # Errors
 ///
 /// Propagates sandbox setup failures.
-pub(super) async fn run(root: &Path, args: &Value) -> Result<ToolResult> {
+pub(crate) async fn run(root: &Path, args: &Value) -> Result<ToolResult> {
     if let Some(reason) = unavailable_reason() {
         return Ok(ToolResult::error(format!(
             "read-only sandbox unavailable ({reason})"
