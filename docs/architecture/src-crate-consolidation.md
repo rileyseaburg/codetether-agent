@@ -11386,3 +11386,22 @@ Full workspace consolidation remains active.
   git diff --check passed. Evidence: artifacts/consolidation-symbol-mention/.
 - No Cargo, rustc, compilation or runtime tests were run. Full consolidation
   remains incomplete.
+
+### Ralph view state extraction
+
+- Moved RalphViewState and all state methods out of src/tui/ralph_view.rs into
+  crates/codetether-ralph-view. The native renderer now uses the shared state
+  through a compatibility re-export; renderer extraction remains pending.
+- Separated state schema, lifecycle, event receiver draining, navigation, detail
+  scrolling, progress counts and event dispatch. Reducers own run startup/end,
+  story activity, quality results, output/error/merge results and messages.
+- All 14 original event variants retain their actions, ordering and payloads.
+  Retained history/output uses codetether-view-retention directly. The existing
+  channel close/empty behavior, selection resets and progress formula remain.
+- Verification: 41 static comparisons cover the complete state schema, all
+  original methods, all event arms, dispatch coverage and every untouched
+  renderer function. Fourteen crate modules contain at most 39 code lines.
+  Lexical module reachability, dependency-cycle checks, direct rustfmt, native
+  file-limit checks and git diff --check passed.
+- Evidence: artifacts/consolidation-ralph-view-state/. No Cargo, rustc,
+  compilation or runtime tests were run. Full consolidation remains incomplete.
