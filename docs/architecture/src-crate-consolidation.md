@@ -15724,3 +15724,22 @@ Full workspace consolidation remains active.
   and diff whitespace. Evidence: `artifacts/consolidation-tool-publication/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared completion-attempt request construction
+
+- Moved prompt-loop request assembly and provider reasoning compatibility from
+  native completion modules into `codetether-context-request::attempt`, alongside
+  the existing request budget owner. Native Host bindings retain model settings,
+  proactive context, derived history and session preparation services.
+- Preserved system-message creation before preparation, optional context order,
+  derived-history insertion, Codex reasoning filtering on provider changes,
+  sampling/tool settings and the final request-budget guard.
+- Moved the existing reasoning compatibility test into the crate unchanged apart
+  from its provider import. It was not executed.
+- Verification: full transformed request-body comparison, all four native Host
+  bindings, filter-body and test comparisons; unchanged preparation, budget and
+  send implementations; module/dependency graphs, direct rustfmt, file budgets,
+  isolated lock addition and diff whitespace. Evidence:
+  `artifacts/consolidation-request-attempt/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. The workspace-wide
+  consolidation remains incomplete.

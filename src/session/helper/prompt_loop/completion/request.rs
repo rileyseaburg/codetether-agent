@@ -1,36 +1,12 @@
-//! Construction of one provider completion request.
-
+//! Native adapter for shared completion-attempt request construction.
+mod host;
 use super::{super::Runner, context::Attempt};
-use crate::provider::{CompletionRequest, ContentPart, Message, Role};
+use crate::provider::CompletionRequest;
 
 /// Builds the provider request for the current completion attempt.
 pub(super) async fn build(
     runner: &mut Runner<'_>,
     attempt: &mut Attempt,
 ) -> anyhow::Result<CompletionRequest> {
-    let mut messages = vec![Message {
-        role: Role::System,
-        content: vec![ContentPart::Text {
-            text: runner.model.system_prompt.clone(),
-        }],
-    }];
-    let mut extras: Vec<Message> = attempt.proactive.iter().cloned().collect();
-    super::super::super::step_model_restore::step_prepare::prepare_messages(
-        &mut extras,
-        runner.session,
-        &mut attempt.derived.messages,
-    )
-    .await;
-    messages.extend(attempt.derived.messages.clone());
-    super::reasoning_context::sanitize(&mut messages, &runner.model.provider_name);
-    let request = CompletionRequest {
-        messages,
-        tools: runner.model.advertised.clone(),
-        model: runner.model.model_id.clone(),
-        temperature: runner.model.temperature,
-        top_p: None,
-        max_tokens: Some(super::super::super::token::session_completion_max_tokens()),
-        stop: Vec::new(),
-    };
-    crate::session::context::request_guard::finish(request, extras)
+    codetether_context_request::attempt::build(&mut host::Native { runner, attempt }).await
 }

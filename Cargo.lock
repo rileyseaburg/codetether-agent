@@ -2521,6 +2521,7 @@ dependencies = [
  "codetether-request-tokens",
  "serde_json",
  "tracing",
+ "codetether-codex-protocol",
 ]
 
 [[package]]

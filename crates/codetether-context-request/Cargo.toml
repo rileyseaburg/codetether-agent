@@ -16,3 +16,7 @@ tracing = "0.1"
 
 [dev-dependencies]
 serde_json = "1"
+
+[dependencies.codetether-codex-protocol]
+path = "../codetether-codex-protocol"
+version = "0.1.0"

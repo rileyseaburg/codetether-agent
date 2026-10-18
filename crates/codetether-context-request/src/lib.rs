@@ -20,3 +20,6 @@ pub use source::Source;
 mod tests;
 
 mod recover;
+
+/// Prepared prompt-loop request construction and reasoning compatibility.
+pub mod attempt;

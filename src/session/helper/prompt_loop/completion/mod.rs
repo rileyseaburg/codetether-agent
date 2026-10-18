@@ -4,7 +4,6 @@ mod context;
 mod derived;
 mod failover;
 mod interlude;
-mod reasoning_context;
 mod recovery;
 mod request;
 mod retry_after;
