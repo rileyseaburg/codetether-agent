@@ -2,7 +2,7 @@
 
 use ratatui::{style::Style, text::Span};
 
-use crate::tui::ui::gradient::lerp_rgb;
+use codetether_theme::gradient::lerp_rgb;
 
 const GREEN: (u8, u8, u8) = (40, 200, 80);
 const RED: (u8, u8, u8) = (230, 40, 40);
@@ -12,7 +12,7 @@ const RED: (u8, u8, u8) = (230, 40, 40);
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::ui::chat_view::context_gauge::context_gauge_heat::heat_gradient_spans;
+/// use codetether_token_display::context_gauge::context_gauge_heat::heat_gradient_spans;
 /// let spans = heat_gradient_spans(4, 8, 50);
 /// assert_eq!(spans.len(), 8 + 2);
 /// ```

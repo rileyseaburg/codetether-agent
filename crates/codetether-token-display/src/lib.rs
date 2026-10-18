@@ -27,3 +27,16 @@ pub use context::context_indicator;
 /// assert_eq!(display.get_context_limit(""), None);
 /// ```
 pub struct TokenDisplay;
+
+/// Context-window gauges with truecolor and named-color rendering.
+pub mod context_gauge;
+mod gauge_value;
+/// Colored normalized sparkline samples.
+pub mod sparkline_paint;
+/// Throughput samples and their terminal sparkline.
+pub mod throughput_sparkline;
+mod token_budget_span;
+mod token_rate_span;
+/// Status span construction from token, throughput and context data.
+pub mod token_spans;
+mod token_usage_spans;

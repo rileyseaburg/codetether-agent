@@ -11895,3 +11895,21 @@ Full workspace consolidation remains active.
   git diff --check passed. Evidence: artifacts/consolidation-chat-layout/.
 - No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
   consolidation remains incomplete.
+
+### Token gauges and throughput presentation ownership
+
+- Moved context gauges and heat gradients, throughput sparkline sampling/paint,
+  live token spans, token-rate badges and context-budget badges into the existing
+  codetether-token-display crate. Nine new modules contain at most 38 code lines.
+- Native adapters supply context counts, processing state and token rate. The
+  sparkline receives a lazy callback so idle calls clear retained samples before
+  any throughput lookup, matching the original execution order. Token-rate
+  badges retain their original lookup-before-processing-guard behavior.
+- Preserved the 20-sample thread-local buffer, normalization, Unicode blocks,
+  thresholds/colors, context arithmetic and live token presenter integration.
+- Verification: 15 source comparisons passed for moved bodies and native
+  projections, including lazy sampling. Module reachability, dependency-cycle
+  checks, direct formatting, source limits and git diff --check passed.
+  Evidence: artifacts/consolidation-token-gauges/.
+- No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
+  consolidation remains incomplete.
