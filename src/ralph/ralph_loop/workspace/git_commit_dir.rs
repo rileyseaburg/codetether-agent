@@ -1,20 +1,11 @@
-//! commit_in_dir application policy and provenance integration.
+//! Bind the shared policy-gated Git operation to the current Ralph run.
 use super::*;
 impl RalphLoop {
-    /// Commit changes in a specific directory
     pub(in crate::ralph::ralph_loop) fn commit_in_dir(
         &self,
         dir: &PathBuf,
         story: &UserStory,
     ) -> anyhow::Result<()> {
-        git_policy::guard(dir, "git add -A")?;
-
-        // Commit with story reference
-        let msg = format!("feat({}): {}", story.id.to_lowercase(), story.title);
-        let provenance = self.commit_provenance();
-        git_policy::guard(dir, &format!("git commit -m {msg}"))?;
-        let _ = git_commit_with_provenance_blocking(dir, &msg, Some(&provenance));
-
-        Ok(())
+        codetether_ralph_git::commit_in_dir::<git_policy::Native>(dir, &self.run_id, story)
     }
 }

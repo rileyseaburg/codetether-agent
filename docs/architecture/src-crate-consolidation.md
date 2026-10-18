@@ -18597,3 +18597,26 @@ checks, file-size ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-ralph-relay/`. No Cargo, rustc, Python, Rust tests,
 model requests or live relay execution ran; compilation and runtime behavior
 remain unverified.
+
+### Ralph policy-gated Git operations
+
+Moved the synchronous/asynchronous runtime policy bridge, guarded checkout,
+branch-creation fallback, story commits and run provenance into
+`codetether-ralph-git`. A native callback evaluates the existing bash invocation
+policy. Native loop methods and the Ralph tool's checkout entry point forward
+to the shared operations without changing their signatures.
+
+The existing-runtime and newly-created-runtime policy paths retain their
+original behavior. Policy checks precede the same Git commands; run provenance
+is constructed at the same point. Main-story commits retain their detailed
+logging, while isolated-workspace commits retain their ignored Git-result
+handling. The original provenance forwarding module is removed after its
+callers move.
+
+Validation: complete guard, runtime bridge, checkout, commit and provenance body
+comparisons; native callback and method signatures; unchanged tool/lifecycle
+callers and policy/provenance implementations; lexical module reachability,
+dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
+Evidence: `artifacts/consolidation-ralph-git/`. No extracted Git helper, Cargo,
+rustc, Python or Rust test was executed. Compilation and runtime behavior remain
+unverified.

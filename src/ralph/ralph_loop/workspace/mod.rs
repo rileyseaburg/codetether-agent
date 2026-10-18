@@ -8,4 +8,3 @@ mod git_commit;
 mod git_commit_dir;
 mod host;
 mod merge_story;
-mod provenance;

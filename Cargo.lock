@@ -1711,6 +1711,7 @@ dependencies = [
  "codetether-ralph-agent",
  "codetether-ralph-sequential",
  "codetether-ralph-merge",
+ "codetether-ralph-git",
  "codetether-ralph-relay",
  "codetether-ralph-stage",
  "codetether-ralph-task",
@@ -7359,6 +7360,20 @@ dependencies = [
  "codetether-context-policy",
  "codetether-ralph-core",
  "codetether-session-events",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-ralph-git"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-provenance",
+ "codetether-ralph-core",
+ "codetether-tool-core",
+ "serde_json",
  "tokio",
  "tracing",
 ]
