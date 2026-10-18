@@ -23978,3 +23978,23 @@ without missing modules or cycles. Direct rustfmt, source file limits and
 whitespace checks passed. Unrelated working changes remain untouched.
 Evidence: artifacts/consolidation-spawn-admission/. No Cargo, rustc, Python,
 compilation, provider requests or tests ran. Full consolidation remains active.
+
+### Obsolete native spawn implementation removed
+
+Removed spawn_agent_create.rs, spawn_agent_message.rs and spawn_agent_register.rs
+from the native TUI. This undeclared module tree had no callers and retained an
+older independent session/agent registration implementation. The active /spawn
+path already delegates to codetether-agent-command and managed-agent operations.
+The removed source is preserved in Git and the evidence snapshot.
+
+The declaration graph contains none of the removed files as active parents or
+targets; a source reference scan found no remaining references. Active module
+reachability and dependency reports are identical before and after removal,
+with 691 roots and 572 crates and no missing modules or cycles. The initial
+whole-report comparison included tracked-file unreferenced inventories, which
+change for deleted files before staging; the verifier now compares active
+reachability separately. Active spawn command, host and managed request files
+remain byte-identical. Source file limits and whitespace checks passed. No
+manifests or lockfiles changed; unrelated working edits are preserved. Evidence:
+artifacts/consolidation-obsolete-spawn/. No Cargo, rustc, Python, compilation,
+spawning or tests ran. Full consolidation remains active.
