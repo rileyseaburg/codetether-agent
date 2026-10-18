@@ -17767,3 +17767,20 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-mcp-server/`.
 - No Cargo, rustc, Python, MCP server execution, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### MCP tool invocation and registry exposure
+
+- Moved correlated tool invocation, bounded MCP response payloads and registry
+  filtering/registration into `codetether-mcp-server` modules.
+- Native code supplies its catalog/event bus and constructs the same
+  policy-checked executable handlers. Preserved request publication before
+  lookup, catalog read-guard lifetime, result normalization, response publication
+  and the exact excluded-tool list.
+- Verified complete invocation/payload/registration bodies, the policy closure,
+  native bindings and unchanged policy/catalog implementations and integration
+  tests. Module/dependency graphs, direct rustfmt, file limits and whitespace
+  passed. Added only existing bus/tool/UUID dependencies to the server package;
+  unrelated working-copy lock and source changes remain untouched.
+  Evidence: `artifacts/consolidation-mcp-invocation/`.
+- No Cargo, rustc, Python, tool handler calls, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

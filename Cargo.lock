@@ -15998,9 +15998,12 @@ name = "codetether-mcp-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "codetether-bus-core",
  "codetether-mcp-core",
  "codetether-mcp-transport",
+ "codetether-tool-core",
  "serde_json",
  "tokio",
  "tracing",
+ "uuid",
 ]

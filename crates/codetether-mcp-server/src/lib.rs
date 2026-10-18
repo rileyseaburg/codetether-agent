@@ -11,3 +11,10 @@ pub use host::Host;
 pub use notification::notification;
 pub use request::request;
 pub use run::run;
+
+mod invocation;
+pub use invocation::invoke;
+/// Bounded MCP bus payloads.
+pub mod payload;
+/// Application tool registration and filtering.
+pub mod registry;

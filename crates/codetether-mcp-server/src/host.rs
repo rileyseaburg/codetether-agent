@@ -10,8 +10,8 @@ use tokio::sync::RwLock;
 
 /// Server state and application-specific invocation policy.
 /// # Implementors
-/// Native servers expose their existing transport and catalog and keep tool
-/// execution, bus publication and approval handling in their current owners.
+/// Native servers expose their existing transport and catalog, connect shared
+/// invocation to their configured bus, and retain application approval handling.
 pub trait Host: Sync {
     /// Existing transport used for receiving and responding.
     fn transport(&self) -> &dyn Transport;

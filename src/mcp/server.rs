@@ -16,7 +16,7 @@
 use super::bus_bridge::BusBridge;
 use super::transport::{StdioTransport, Transport};
 use super::types::*;
-use crate::bus::{AgentBus, BusMessage};
+use crate::bus::AgentBus;
 use crate::tool::ToolRegistry;
 use anyhow::Result;
 use codetether_mcp_core::server_catalog::{

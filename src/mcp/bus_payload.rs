@@ -1,5 +1,2 @@
-//! Compact MCP tool results before live bus broadcast.
-
-pub fn tool_response(output: &str) -> String {
-    crate::bus::payload::bounded(output, "\n\n[truncated in MCP bus payload: tool response]")
-}
+//! Shared MCP bus tool-response truncation.
+pub use codetether_mcp_server::payload::tool_response;
