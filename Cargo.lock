@@ -3997,6 +3997,10 @@ dependencies = [
 name = "codetether-native-worker"
 version = "0.1.0"
 dependencies = [
+ "codetether-swarm-runtime",
+ "codetether-swarm-core",
+ "codetether-session-events",
+ "codetether-application-providers",
  "codetether-native-lsp",
  "codetether-native-edit",
  "codetether-worker-tools",

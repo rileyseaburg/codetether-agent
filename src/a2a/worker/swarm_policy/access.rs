@@ -1,17 +1,7 @@
-//! Prior-context safety gate for worker swarm execution.
-
-use crate::session::Session;
-use anyhow::{Result, bail};
-
-pub(super) fn ensure(session: &Session) -> Result<()> {
-    if crate::session::helper::runtime::prior_context_allowed_for_session(session) {
-        return Ok(());
-    }
-    bail!(
-        "Swarm execution is disabled while prior memory/session/history access is denied; use session execution so the user's source restriction remains enforced"
-    )
+//! Application integration tests for the native swarm permission gate.
+fn ensure(session: &crate::session::Session) -> anyhow::Result<()> {
+    codetether_native_worker::swarm_policy::ensure_allowed(session)
 }
-
 #[cfg(test)]
 mod tests {
     #[tokio::test]

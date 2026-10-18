@@ -40,3 +40,7 @@ codetether-worker-tools = { path = "../codetether-worker-tools", version = "0.1.
 codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
 codetether-native-lsp = { path = "../codetether-native-lsp", version = "4.7.6-dev.38" }
 codetether-native-edit = { path = "../codetether-native-edit", version = "0.1.0" }
+codetether-swarm-runtime = { path = "../codetether-swarm-runtime", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }

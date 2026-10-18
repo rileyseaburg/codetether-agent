@@ -76,3 +76,6 @@ pub mod session_policy;
 
 /// Native registry/workspace tool construction with application workflows.
 pub mod tool_registry;
+
+/// Controlled swarm execution, result persistence and standard-session handoff.
+pub mod swarm_policy;

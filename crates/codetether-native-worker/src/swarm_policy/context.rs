@@ -1,10 +1,9 @@
 //! Worker envelope retained across swarm execution and session continuation.
-
-use crate::{a2a::worker::AutoApprove, bus::AgentBus, session::Session};
+use codetether_a2a_worker_core::execution_policy::AutoApprove;
+use codetether_bus_core::AgentBus;
 use std::sync::Arc;
-
-pub(super) struct Context<'a> {
-    pub session: &'a mut Session,
+pub(super) struct Context<'a, S> {
+    pub session: &'a mut S,
     pub prompt: &'a str,
     pub auto_approve: AutoApprove,
     pub model_tier: Option<&'a str>,

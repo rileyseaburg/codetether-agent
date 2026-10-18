@@ -25895,3 +25895,23 @@ Declaration, file-limit, direct rustfmt and whitespace checks pass. Only the two
 required worker dependencies are staged in Cargo.lock; unrelated dirty files
 remain unchanged. Evidence: artifacts/consolidation-worker-registry/. No Cargo,
 rustc, Python, compilation or tests ran. Full consolidation remains active.
+
+### Native worker swarm policy lifecycle
+
+Moved worker swarm context, preparation, guarded inline execution, result
+persistence and standard-session handoff into codetether-native-worker::swarm_policy.
+Existing shared metadata/transcript/context contracts provide session operations;
+the root supplies its permission predicate, title-generation path and concrete
+swarm executor. The three application permission-gate tests remain unchanged.
+
+Static inspection found that the old preparation adapter called inline::emit,
+while the shared module exports inline::emit_start. The moved adapter calls the
+actual exported startup formatter with the same arguments. Transformed-source
+comparisons otherwise preserve preparation, execution, save/error handling and
+handoff bodies, including the full continuation prompt. Module/dependency scans
+cover 719 roots and 605 crates with no missing modules, cycles or undeclared
+dependencies. Declaration, file-limit, direct rustfmt and whitespace checks pass.
+Only four required worker dependencies are staged in Cargo.lock; unrelated
+files remain unchanged. Evidence: artifacts/consolidation-worker-swarm/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active.

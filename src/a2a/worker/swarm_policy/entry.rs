@@ -1,6 +1,5 @@
 //! Adapt the stable worker call to a structured execution envelope.
 
-use super::context::Context;
 use crate::{
     a2a::worker::AutoApprove,
     bus::AgentBus,
@@ -21,7 +20,12 @@ pub(in crate::a2a::worker) async fn execute_swarm_with_policy(
     bus: Option<&Arc<AgentBus>>,
     output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> anyhow::Result<(SessionResult, bool)> {
-    super::execute::run(Context {
+    codetether_native_worker::swarm_policy::execute::<
+        _,
+        crate::tool::registry_lifecycle::Native,
+        crate::a2a::worker_tool_registry::Native,
+        crate::swarm::SwarmExecutor,
+    >(
         session,
         prompt,
         auto_approve,
@@ -32,7 +36,7 @@ pub(in crate::a2a::worker) async fn execute_swarm_with_policy(
         worker_personality,
         target_agent_name,
         bus,
-        output: output_callback,
-    })
+        output_callback,
+    )
     .await
 }
