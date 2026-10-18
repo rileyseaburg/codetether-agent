@@ -1,0 +1,13 @@
+[package]
+name = "codetether-approval-diagnostics"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Language-server diagnostics for proposed approval file contents"
+
+[dependencies]
+codetether-approval-queue = { path = "../codetether-approval-queue", version = "0.1.0" }
+codetether-lsp-core = { path = "../codetether-lsp-core", version = "0.1.0" }
+codetether-proposed-content = { path = "../codetether-proposed-content", version = "0.1.0" }
+serde_json = "1"

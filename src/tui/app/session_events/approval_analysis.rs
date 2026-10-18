@@ -2,8 +2,6 @@
 
 use std::{path::PathBuf, sync::Arc};
 
-use serde_json::{Value, json};
-
 use crate::lsp::LspManager;
 use crate::tui::app::state::{
     App,
@@ -35,15 +33,4 @@ pub(super) fn start(app: &mut App, item: &ApprovalSnapshot) {
         approval_queue::set_report(&id, report);
     });
 }
-
-/// Raw arguments, or a patch-only shape for requests from older runtimes.
-fn arguments(item: &ApprovalSnapshot) -> Option<Value> {
-    if let Some(arguments) = &item.arguments {
-        return Some(arguments.clone());
-    }
-    let legacy_patch = matches!(item.tool.as_str(), "apply_patch" | "patch");
-    legacy_patch
-        .then(|| item.preview.as_ref())
-        .flatten()
-        .map(|patch| json!({"patch": patch}))
-}
+use codetether_approval_diagnostics::arguments;

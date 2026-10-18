@@ -1268,6 +1268,7 @@ dependencies = [
  "codetether-approval-diff",
  "codetether-approval-view",
  "codetether-proposed-content",
+ "codetether-approval-diagnostics",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6395,6 +6396,16 @@ dependencies = [
  "codetether-tool-core",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-approval-diagnostics"
+version = "0.1.0"
+dependencies = [
+ "codetether-approval-queue",
+ "codetether-lsp-core",
+ "codetether-proposed-content",
+ "serde_json",
 ]
 
 [[package]]

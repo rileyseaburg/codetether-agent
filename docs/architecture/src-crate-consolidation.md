@@ -12844,3 +12844,20 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   proposed-file operations, Cargo, rustc, compilation or Rust tests ran.
   Full consolidation remains incomplete.
+
+### Approval diagnostics execution extraction
+
+- Moved proposed-file diagnostics, legacy argument recovery and report formatting
+  into codetether-approval-diagnostics. Four modules contain at most 38 code lines.
+- The runner accepts the existing generic LspManager/ManagedClient contract.
+  Native code retains manager creation, background task spawning and queue
+  publication. File order, early errors, diagnostic formatting, report states and
+  the three-message limit are unchanged.
+- Verification: ten static checks passed for the split runner/report/argument
+  functions, native orchestration, client initialization and existing diagnostic
+  tests. The formatter's DiagnosticInfo input was verified against the shared
+  LSP result type. Module/dependency checks, direct rustfmt, file limits and
+  whitespace checks passed. Evidence: artifacts/consolidation-approval-diagnostics/.
+- Only the new package/root dependency entries were staged from Cargo.lock.
+  No language servers, diagnostics, Cargo, rustc, compilation or Rust tests ran.
+  Full consolidation remains incomplete.
