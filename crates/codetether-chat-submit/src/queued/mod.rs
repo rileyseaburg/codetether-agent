@@ -2,6 +2,7 @@
 //!
 //! [drain] delivers pending goal input before checking whether a queued prompt
 //! can run. In-memory gates precede the native held-goal check and queue take.
+mod binding;
 mod host;
 mod run;
 pub use host::{Commands, Input, Queue, State};

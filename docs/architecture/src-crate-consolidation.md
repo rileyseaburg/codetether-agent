@@ -23605,6 +23605,22 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 were needed. Evidence: artifacts/consolidation-watchdog-bindings/. No Cargo,
 rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
 
+### Queued-prompt frontend bindings
+
+Moved queued-prompt command/answer delivery, input access, queue gates and the
+drain entry into codetether-chat-submit::queued::binding modules. The root
+selects existing application/session/runtime types and callbacks. Removed four
+root host implementation files while retaining the deferred-submit module path.
+
+All nine expanded function bodies and the host's borrowed resource fields match
+their originals after callback-path substitution. Held-goal checks and queue
+consumption retain their original order through the unchanged shared policy.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. Tests and
+unrelated working files are unchanged; no manifest or lock changes were needed.
+Evidence: artifacts/consolidation-queued-prompt/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
+
 ### Storage callers use the owning API names directly
 
 Removed the native projection and summary forwarding files after updating five
