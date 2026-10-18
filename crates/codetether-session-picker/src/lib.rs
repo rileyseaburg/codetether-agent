@@ -6,6 +6,7 @@ mod age_color;
 mod filter;
 mod header;
 mod help;
+mod input_binding;
 mod item;
 mod list;
 mod list_item;

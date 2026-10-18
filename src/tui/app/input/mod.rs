@@ -30,7 +30,6 @@ use codetether_image as image_file;
 use codetether_image as image_mime;
 mod image_sidecar_recover;
 pub(crate) use codetether_chat_submit::mention as mention_route;
-mod model_apply;
 mod paste;
 pub(crate) mod pasted_text;
 use codetether_github_pr::worktree as pr;

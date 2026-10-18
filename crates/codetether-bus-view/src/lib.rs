@@ -16,5 +16,6 @@ pub mod ingress;
 
 /// Bus monitor filter and selection actions.
 pub mod input;
+mod input_binding;
 /// Completion replies for remotely submitted work.
 pub mod reply;

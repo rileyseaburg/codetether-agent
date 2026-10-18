@@ -8,7 +8,7 @@ codetether_tui_navigation::declare_frontend_enter!(
     crate::tui::models::ViewMode;
     crate::tui::app::file_picker::file_picker_enter,
     crate::tui::app::input::bus::handle_enter_bus_filter,
-    crate::tui::app::input::model_apply::selected,
+    crate::tui::app::model_picker::apply_selection,
     crate::tui::app::input::enter_subagents::dispatch;
     crate::tui::app::input::sessions::handle_enter_sessions,
     crate::tui::app::settings::toggle_selected_setting,

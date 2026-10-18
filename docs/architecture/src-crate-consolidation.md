@@ -27659,3 +27659,18 @@ native production-scope, standalone formatting, file-limit and whitespace checks
 pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
 lock changes were needed. Evidence: artifacts/consolidation-dashboard-input/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Bus and session-picker input bindings
+
+Moved bus monitor input handlers into codetether-bus-view and session-filter/
+selection input handlers into codetether-session-picker. Root files select the
+frontend types and session-selection callback. Removed the one-call model_apply
+adapter and bound Enter directly to the same model-picker function.
+
+All six expanded function bodies match after callback qualification. The removed
+forwarder and rewritten caller preserve the target and arguments. Declaration,
+module/dependency, native production-scope, standalone formatting, file-limit
+and whitespace checks pass for 725 roots and 617 crates. Tests and unrelated
+files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-view-input/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
