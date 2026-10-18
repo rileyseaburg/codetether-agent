@@ -27,3 +27,6 @@ pub use encoding::{decoded_len, encode as encode_data_url};
 pub use file::attachment_from_file;
 pub use file_mime::{SUPPORTED_IMAGE_FORMATS, guess as guess_mime};
 pub use summary::image_summary;
+
+/// Standalone and embedded image ingestion for text composers.
+pub mod paste;

@@ -15935,3 +15935,22 @@ Full workspace consolidation remains active.
   whitespace. Evidence: `artifacts/consolidation-user-input/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared image-paste ingestion
+
+- Refreshed the src inventory: 3,438 Rust files, including wrappers, tests and
+  dormant sources. Raw function matching identified 2,403 candidate files;
+  this is an inventory heuristic, not proof of remaining active implementation.
+  Confirmed cli/task.rs and tui/app/tool_error.rs are currently undeclared;
+  left them dormant while selecting active image-paste code for this move.
+- Moved image-paste attachment/rejection handling and embedded-image draining
+  into `codetether-image::paste`. Native wrappers supply borrowed composer
+  fields; existing TUI integration tests remain in place and were not run.
+- Preserved malformed-base64 deferral, consumed rejection semantics, status
+  text, attachment order, remaining input and character-count cursor updates.
+- Verification: both complete body comparisons, native wrappers and field
+  bindings, unchanged parser and TUI tests, module/dependency graphs, direct
+  rustfmt, file budgets and diff whitespace. No dependencies changed. Evidence:
+  `artifacts/consolidation-image-paste/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

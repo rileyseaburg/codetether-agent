@@ -24,44 +24,20 @@ mod reject_tests;
 /// keeps megabytes of base64 out of the large-paste text sidecar, where the
 /// failure would otherwise be silent.
 pub(crate) fn try_attach_data_url(app: &mut App, text: &str) -> bool {
-    let Some(image) = crate::image_clipboard::attachment_from_data_url(text) else {
-        let Some(reason) = crate::image_clipboard::reject_reason(text) else {
-            return false;
-        };
-        // A terminal may deliver the remaining base64 in later paste events.
-        // Preserve incomplete content for sidecar reassembly at submission.
-        if reason == crate::image_clipboard::RejectReason::MalformedBase64 {
-            return false;
-        }
-        app.state.status = reason.message();
-        return true;
-    };
-    app.state.pending_images.push(image);
-    let count = app.state.pending_images.len();
-    app.state.status = if count == 1 {
-        "Attached pasted image. Press Enter to send, or add text first.".to_string()
-    } else {
-        format!("Attached {count} pasted images. Press Enter to send, or add text first.")
-    };
-    true
+    codetether_image::paste::try_attach_data_url(&mut state(app), text)
 }
 
 /// Pull every embedded image data URL out of `app.state.input`, attach each,
 /// and replace the input with the remaining text. Returns the count attached.
 pub(crate) fn drain_embedded_images(app: &mut App) -> usize {
-    let mut attached = 0;
-    while let Some(found) = extract_image_data_url(&app.state.input) {
-        let Some(image) = crate::image_clipboard::attachment_from_data_url(&found.data_url) else {
-            break;
-        };
-        app.state.pending_images.push(image);
-        app.state.input = found.remainder;
-        app.state.input_cursor = app.state.input.chars().count();
-        attached += 1;
+    codetether_image::paste::drain_embedded_images(&mut state(app))
+}
+
+fn state(app: &mut App) -> codetether_image::paste::State<'_> {
+    codetether_image::paste::State {
+        images: &mut app.state.pending_images,
+        input: &mut app.state.input,
+        cursor: &mut app.state.input_cursor,
+        status: &mut app.state.status,
     }
-    if attached > 0 {
-        let total = app.state.pending_images.len();
-        app.state.status = format!("Attached {total} pasted image(s) from clipboard.");
-    }
-    attached
 }
