@@ -2,9 +2,9 @@
 
 use anyhow::{Result, bail};
 
-use crate::mux::client::MuxConnection;
-use crate::mux::protocol::{ClientRequest, ProgramRequest, ServerResponse};
-use crate::mux::registry::SessionTarget;
+use codetether_mux_client::MuxConnection;
+use codetether_mux_protocol::{ClientRequest, ProgramRequest, ServerResponse};
+use codetether_mux_registry::SessionTarget;
 
 pub(super) async fn submit_idle(target: &SessionTarget, message: &str) -> Result<()> {
     let mut connection = MuxConnection::connect(target).await?;

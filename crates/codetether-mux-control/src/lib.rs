@@ -26,4 +26,4 @@ mod runtime_reporter;
 pub use runtime_reporter::RuntimeReporter;
 
 mod agents;
-pub use agents::{agent_sessions, is_agent_route};
+pub use agents::{agent_sessions, interact_agent, is_agent_route, send_agent_message, watch_agent};

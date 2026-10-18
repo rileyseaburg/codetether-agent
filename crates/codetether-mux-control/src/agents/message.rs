@@ -3,16 +3,27 @@
 use anyhow::{Result, bail};
 use serde_json::json;
 
-#[path = "agent_message/delivery.rs"]
+#[path = "message/delivery.rs"]
 mod delivery;
 
 /// Submit one message to the active TUI window of a named mux session.
 ///
+/// # Arguments
+/// * `name` - Mux session route ID.
+/// * `message` - User text to steer or submit.
+/// # Returns
+/// An acceptance envelope, or `None` when the target is absent.
+/// # Examples
+/// ```no_run
+/// # async fn example() -> anyhow::Result<()> {
+/// let _ = codetether_mux_control::send_agent_message("work", "continue").await?;
+/// # Ok(()) }
+/// ```
 /// # Errors
 ///
 /// Returns an error unless the owning TUI semantically accepts the message.
-pub(crate) async fn send_agent_message(name: &str, message: &str) -> Result<Option<String>> {
-    let Some(target) = super::agent_target::load(name).await? else {
+pub async fn send_agent_message(name: &str, message: &str) -> Result<Option<String>> {
+    let Some(target) = super::target::load(name).await? else {
         return Ok(None);
     };
     let Some(runtime) = target.runtime().cloned() else {

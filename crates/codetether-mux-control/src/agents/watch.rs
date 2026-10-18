@@ -3,11 +3,26 @@
 use anyhow::Result;
 use serde_json::json;
 
-pub(crate) async fn watch_agent(name: &str, timeout_ms: u64) -> Result<Option<String>> {
-    if super::agent_target::load(name).await?.is_none() {
+/// Wait for matching output and include a fresh semantic status snapshot.
+///
+/// # Arguments
+/// * `name` - Mux session route ID.
+/// * `timeout_ms` - Wait budget, clamped to 250–30,000 milliseconds.
+/// # Returns
+/// A JSON event/status envelope, or `None` when the target is absent.
+/// # Errors
+/// Returns discovery or status-listing errors.
+/// # Examples
+/// ```no_run
+/// # async fn example() -> anyhow::Result<()> {
+/// let _ = codetether_mux_control::watch_agent("work", 1000).await?;
+/// # Ok(()) }
+/// ```
+pub async fn watch_agent(name: &str, timeout_ms: u64) -> Result<Option<String>> {
+    if super::target::load(name).await?.is_none() {
         return Ok(None);
     }
-    let mut output = super::subscribe_live_output();
+    let mut output = crate::subscribe_live_output();
     let wait = async {
         while let Some(frame) = output.recv().await {
             if frame.session == name {

@@ -17360,3 +17360,18 @@ Full workspace consolidation remains active.
   dependency. Evidence: `artifacts/consolidation-mux-agents/`.
 - No Cargo, rustc, Python, network calls, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared mux-agent messaging and watch operations
+
+- Moved mux-agent watch, pending-input interaction and message delivery into
+  `codetether-mux-control::agents`, retaining separate target lookup and
+  acknowledged terminal delivery modules.
+- Native control now re-exports those operations. Preserved bounded wait,
+  per-session event filtering, fresh roster lookup, semantic-state validation,
+  processing-dependent steer/submit choice and all acknowledgement checks.
+- Moved the terminal newline/submission encoding test unchanged. Verified every
+  moved source body, native caller files, discovery/subscription implementations,
+  module/dependency graphs, direct rustfmt, file limits and whitespace.
+- No dependency changes. Evidence: `artifacts/consolidation-mux-interaction/`.
+  No Cargo, rustc, Python, mux commands, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
