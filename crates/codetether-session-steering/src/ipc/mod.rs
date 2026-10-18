@@ -7,8 +7,8 @@ mod path;
 mod server;
 mod wire;
 
-pub(super) use client::send;
-pub(in crate::session::runtime) use endpoint::Endpoint;
+pub(crate) use client::send;
+pub use endpoint::Endpoint;
 
 #[cfg(test)]
 mod tests;

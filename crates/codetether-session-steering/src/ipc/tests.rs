@@ -1,5 +1,5 @@
 use super::{client, endpoint::Endpoint};
-use crate::session::runtime::steering::{SteeringInput, clear, queue};
+use crate::{SteeringInput, clear, queue};
 
 #[tokio::test]
 async fn routes_text_to_the_active_session_owner() {

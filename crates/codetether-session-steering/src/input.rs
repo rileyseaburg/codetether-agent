@@ -1,14 +1,19 @@
 //! One user input submitted while a prompt run is active.
 
-use crate::provider::{ContentPart, Message, Role};
-use crate::session::ImageAttachment;
+use codetether_image::ImageAttachment;
+use codetether_provider_core::{ContentPart, Message, Role};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_ACTIVITY_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Text and images to inject before the active run's next model step.
+/// # Examples
+/// ```rust
+/// let input = codetether_session_steering::SteeringInput::new("Review this".into(), vec![]);
+/// # let _ = input;
+/// ```
 #[derive(Debug, Clone)]
-pub(crate) struct SteeringInput {
+pub struct SteeringInput {
     activity_id: u64,
     text: String,
     images: Vec<ImageAttachment>,
@@ -16,7 +21,16 @@ pub(crate) struct SteeringInput {
 
 impl SteeringInput {
     /// Create a steering input from expanded text and image attachments.
-    pub(crate) fn new(text: String, images: Vec<ImageAttachment>) -> Self {
+    /// # Arguments
+    /// `text` is expanded user text; `images` are ordered image attachments.
+    /// # Returns
+    /// An input with a fresh process-local activity identity.
+    /// # Examples
+    /// ```rust
+    /// let input = codetether_session_steering::SteeringInput::new("Continue".into(), vec![]);
+    /// # let _ = input;
+    /// ```
+    pub fn new(text: String, images: Vec<ImageAttachment>) -> Self {
         Self {
             activity_id: NEXT_ACTIVITY_ID.fetch_add(1, Ordering::Relaxed),
             text,
@@ -24,12 +38,12 @@ impl SteeringInput {
         }
     }
 
-    pub(super) fn activity_id(&self) -> u64 {
+    pub(crate) fn activity_id(&self) -> u64 {
         self.activity_id
     }
 
     /// Convert the input into a trusted user-role transcript message.
-    pub(super) fn into_message(self) -> (Message, String) {
+    pub(crate) fn into_message(self) -> (Message, String) {
         let mut content = vec![ContentPart::Text {
             text: self.text.clone(),
         }];

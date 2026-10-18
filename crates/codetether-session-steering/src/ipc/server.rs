@@ -10,7 +10,7 @@ pub(super) async fn run(listener: UnixListener, session_id: String) {
         let session_id = session_id.clone();
         tokio::spawn(async move {
             if let Err(error) = super::connection::handle(stream, session_id).await {
-                tracing::warn!(%error, "Session steering connection failed");
+                tracing::warn!(target: "codetether_agent::session::runtime::steering::ipc::server", %error, "Session steering connection failed");
             }
         });
     }

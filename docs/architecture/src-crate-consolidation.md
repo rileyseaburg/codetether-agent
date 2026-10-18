@@ -8468,3 +8468,31 @@ tests and facades, so its line counts are not a measure of remaining business
 logic. Large source areas remain, notably TUI (1,214 Rust files), session (915),
 tool (671), CLI (202) and server (213). These require continued ownership review
 and migration; the whole-workspace consolidation goal remains active.
+
+### Dedicated session-steering crate
+
+Moved typed steering inputs, inbox ownership, pending activity accounting,
+FIFO draining, and Unix socket client/server lifecycle from
+`src/session/runtime/steering` into `crates/codetether-session-steering`.
+Fourteen Rust modules separate input conversion, queue operations, cleanup,
+transcript draining, transport framing, socket paths, endpoint ownership and
+connections. Native session code now implements a three-method transcript
+contract for identity, human-message insertion and user-prompt publication.
+Existing agent and TUI callers retain their application API paths.
+
+The shared inbox registry and activity-ID allocator each have a single owner
+in the new crate. Its queue still uses `codetether-session-runtime::Inboxes`,
+and its activity updates use the existing collaboration-state registry.
+The original Unix socket path/permission rules, stale-owner handling, wire
+messages, text bounds, and non-Unix `send` fallback remain unchanged. Logging
+keeps the original targets. Generic drains take queued input before borrowing
+the transcript mutably, preserving queue and publication order.
+
+Forty static checks cover the moved bodies, state declarations, payload fields,
+transport logic, native bindings, public exports and retained tests. Two IPC
+tests moved to the crate; four native transcript/activity tests remain unchanged.
+Module references, dependency cycles, file budgets and whitespace checks passed.
+Crate files contain at most 38 code lines. Evidence is in
+`artifacts/consolidation-session-steering/`. Compilation and runtime tests were
+not run; no Cargo, rustc or Python commands ran. The workspace consolidation
+is still incomplete.

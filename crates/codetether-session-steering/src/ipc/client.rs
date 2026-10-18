@@ -9,10 +9,7 @@ use tokio::net::UnixStream;
 
 use super::wire::{Reply, Request};
 
-pub(in crate::session::runtime::steering) async fn send(
-    session_id: &str,
-    text: &str,
-) -> Result<bool> {
+pub(crate) async fn send(session_id: &str, text: &str) -> Result<bool> {
     ensure!(!text.trim().is_empty(), "steering text is empty");
     ensure!(text.len() <= 64 * 1024, "steering text exceeds 64 KiB");
     send_to(&super::path::for_session(session_id)?, text).await

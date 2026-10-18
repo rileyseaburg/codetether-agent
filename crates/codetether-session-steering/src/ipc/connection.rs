@@ -5,7 +5,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
 use super::wire::{Reply, Request};
-use crate::session::runtime::steering::SteeringInput;
+use crate::SteeringInput;
 
 pub(super) async fn handle(stream: UnixStream, session_id: String) -> Result<()> {
     let (reader, mut writer) = stream.into_split();
