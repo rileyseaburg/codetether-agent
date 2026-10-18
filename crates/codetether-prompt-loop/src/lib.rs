@@ -19,3 +19,6 @@ pub mod response;
 
 /// Assistant stream events, bus publication and final-answer accumulation.
 pub mod output;
+
+/// Ordered transcript repair after truncated provider tool calls.
+pub mod repair;

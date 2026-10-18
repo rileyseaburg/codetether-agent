@@ -23,3 +23,7 @@ tracing = "0.1"
 codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
 codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
 tokio = { version = "1", features = ["sync"] }
+
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-tool-recovery = { path = "../codetether-tool-recovery", version = "0.1.0" }
+codetether-tool-reporting = { path = "../codetether-tool-reporting", version = "0.1.0" }

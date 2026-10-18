@@ -15643,3 +15643,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-assistant-output/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared truncated-tool-call repair
+
+- Moved truncated-call transcript repair from the native response helper into
+  `codetether-prompt-loop::repair`. Native bindings expose session insertion,
+  event delivery and answer-buffer clearing.
+- Preserved no-op behavior for an empty truncation list, assistant-message
+  insertion only when complete calls are absent, event-before-result ordering,
+  synthetic failure content, retry prompt insertion and output clearing.
+- Verification: complete repair-body comparison after host projection, native
+  field/effect bindings, unchanged response-flow caller, module/dependency graph,
+  direct rustfmt, file budgets, isolated lock additions and diff whitespace.
+  Evidence: `artifacts/consolidation-truncation-repair/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.

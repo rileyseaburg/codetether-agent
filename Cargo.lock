@@ -7520,6 +7520,9 @@ dependencies = [
  "codetether-bus-core",
  "codetether-session-events",
  "tokio",
+ "codetether-tool-core",
+ "codetether-tool-recovery",
+ "codetether-tool-reporting",
 ]
 
 [[package]]
