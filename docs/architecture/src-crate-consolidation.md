@@ -11213,3 +11213,22 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-workspace-snapshot/`. Compilation, tests,
   filesystem snapshots and Git capture were not run. No Cargo or rustc commands
   executed. Full consolidation remains active.
+
+### Worker event transport extraction
+
+- Moved incoming-task schema, bounded SSE reassembly, event parsing and
+  selected bus-event forwarding into `crates/codetether-worker-events`.
+- Nine modules separate schema/errors, buffering/parsing and HTTP payload
+  selection/transport. Maximum module size is 34 code lines. Three existing
+  SSE regression tests moved unchanged; the buffer also exposes Default.
+- The native bridge retains unchanged startup, heartbeat and lifecycle code,
+  referencing shared task types, buffering and forwarding.
+- Twelve static comparisons verify schemas, buffer/error behavior, event
+  parsing, reconstructed forwarding payloads/HTTP body and unchanged native
+  lifecycle. Module reachability, dependency DAG, file-limit and whitespace
+  checks passed.
+- The first extraction left a pattern fragment in the agent-message helper;
+  direct formatting exposed it and it was corrected before verification.
+  Evidence: `artifacts/consolidation-worker-events/` and tool history.
+- Compilation, runtime tests, event streams and HTTP operations were not run;
+  no Cargo or rustc commands executed. Full consolidation remains active.

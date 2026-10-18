@@ -1,8 +1,8 @@
 //! Parse one complete SSE event into an incoming worker task.
 
-use super::IncomingTask;
+use crate::IncomingTask;
 
-pub(super) fn parse(event: &str) -> Option<IncomingTask> {
+pub(crate) fn parse(event: &str) -> Option<IncomingTask> {
     let data = event
         .lines()
         .find_map(|line| line.strip_prefix("data:"))?

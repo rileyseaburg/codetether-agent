@@ -10,21 +10,18 @@
 use crate::a2a::worker::{
     CognitionHeartbeatConfig, HeartbeatState, WorkerStatus, register_worker, start_heartbeat,
 };
-use crate::bus::{AgentBus, BusEnvelope, BusMessage};
+use crate::bus::AgentBus;
 use crate::cli::auth::load_saved_credentials;
 use crate::config::Config;
 use anyhow::Result;
 use futures::StreamExt;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc};
 
 #[path = "worker_bridge_sse.rs"]
 mod sse_buffer;
-#[path = "worker_bridge_sse_event.rs"]
-mod sse_event;
 
 /// Command sent to the worker bridge to register/deregister sub-agents
 #[derive(Debug, Clone)]
@@ -37,15 +34,7 @@ pub enum WorkerBridgeCmd {
     SetProcessing(bool),
     /// Stop the bridge and its heartbeat/SSE child tasks.
     Shutdown,
-}
-
-/// Incoming task from the A2A server via SSE
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IncomingTask {
-    pub task_id: String,
-    pub message: String,
-    pub from_agent: Option<String>,
-}
+}pub use codetether_worker_events::IncomingTask;
 
 /// Result of worker bridge initialization
 pub struct TuiWorkerBridge {
@@ -300,78 +289,4 @@ impl TuiWorkerBridge {
             handle,
         }))
     }
-}
-
-/// Forward bus events to the A2A server for observability
-async fn forward_bus_event(
-    client: &Client,
-    server: &str,
-    token: &str,
-    worker_id: &str,
-    envelope: &BusEnvelope,
-) -> Result<()> {
-    // Only forward certain event types
-    let payload = match &envelope.message {
-        BusMessage::AgentReady {
-            agent_id,
-            capabilities,
-        } => {
-            serde_json::json!({
-                "type": "agent_ready",
-                "worker_id": worker_id,
-                "agent_id": agent_id,
-                "capabilities": capabilities,
-            })
-        }
-        BusMessage::TaskUpdate {
-            task_id,
-            state,
-            message,
-        } => {
-            serde_json::json!({
-                "type": "task_update",
-                "worker_id": worker_id,
-                "task_id": task_id,
-                "state": format!("{:?}", state),
-                "message": message,
-            })
-        }
-        BusMessage::AgentMessage { from, to, parts } => {
-            let text = parts
-                .iter()
-                .filter_map(|p| {
-                    if let crate::a2a::types::Part::Text { text } = p {
-                        Some(text.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
-
-            serde_json::json!({
-                "type": "agent_message",
-                "worker_id": worker_id,
-                "from": from,
-                "to": to,
-                "text": text,
-            })
-        }
-        // Skip other event types for now
-        _ => return Ok(()),
-    };
-
-    let url = format!("{}/v1/agent/workers/{}/events", server, worker_id);
-    let res = client
-        .post(&url)
-        .bearer_auth(token)
-        .json(&payload)
-        .send()
-        .await?;
-
-    if !res.status().is_success() {
-        tracing::debug!("Failed to forward bus event: {}", res.status());
-    }
-
-    Ok(())
-}
+}use codetether_worker_events::forward_bus_event;
