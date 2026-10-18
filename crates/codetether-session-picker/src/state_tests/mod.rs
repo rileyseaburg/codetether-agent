@@ -1,6 +1,7 @@
 //! Tests for fuzzy session filtering in the session picker.
 
-use super::session_test_fixtures::{state_with, summary};
+mod fixtures;
+use fixtures::{state_with, summary};
 
 #[test]
 fn filtered_sessions_fuzzy_matches_by_id() {

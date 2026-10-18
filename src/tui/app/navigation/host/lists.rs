@@ -10,10 +10,10 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.symbol_search.select_next();
         }
         Action::SessionPrevious => {
-            app.state.sessions_select_prev();
+            app.state.session_picker.sessions_select_prev();
         }
         Action::SessionNext => {
-            app.state.sessions_select_next();
+            app.state.session_picker.sessions_select_next();
         }
         Action::ModelPrevious => {
             app.state.model_picker.model_select_prev();

@@ -44,12 +44,8 @@ pub use codetether_telemetry::state_binding::tool as pending_tool;
 pub mod prompt_queue;
 pub mod scroll;
 pub mod scroll_page;
+pub use codetether_session_picker as session_nav;
 pub use codetether_util::fuzzy as session_fuzzy;
-#[cfg(test)]
-mod session_fuzzy_tests;
-pub mod session_nav;
-#[cfg(test)]
-mod session_test_fixtures;
 pub mod settings_nav;
 pub use codetether_composer_view::state_binding::completion as slash_suggest;
 pub use codetether_slash_command as slash_commands;

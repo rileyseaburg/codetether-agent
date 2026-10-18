@@ -11,7 +11,7 @@ impl State for Native<'_> {
                 crate::tui::app::file_picker::file_picker_attach(self.app);
             }
             Action::FilterBackspace => {
-                self.app.state.session_filter_backspace();
+                self.app.state.session_picker.session_filter_backspace();
             }
             Action::BusG => {
                 input::handle_bus_g(self.app);

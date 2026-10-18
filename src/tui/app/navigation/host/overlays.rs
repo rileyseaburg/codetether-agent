@@ -19,7 +19,7 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             crate::tui::app::model_picker::close_model_picker(app);
         }
         Action::ClearSessionFilter => {
-            app.state.clear_session_filter();
+            app.state.session_picker.clear_session_filter();
         }
         Action::ReturnToChat => {
             crate::tui::app::session_sync::return_to_chat(app);

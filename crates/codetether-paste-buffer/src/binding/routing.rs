@@ -40,7 +40,7 @@ macro_rules! __frontend_paste_routing {
                     self.state.model_picker.model_filter_push(ch);
                 }
                 fn session_char(&mut self, ch: char) {
-                    self.state.session_filter_push(ch);
+                    self.state.session_picker.session_filter_push(ch);
                 }
             }
         }

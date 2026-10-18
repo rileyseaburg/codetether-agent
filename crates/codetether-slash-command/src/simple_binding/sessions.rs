@@ -15,7 +15,7 @@ macro_rules! __simple_sessions {
                 match kind {
                     SimpleCommand::Sessions => {
                         $refresh(app, cwd).await;
-                        app.state.clear_session_filter();
+                        app.state.session_picker.clear_session_filter();
                         app.state.set_view_mode(ViewMode::Sessions);
                         app.state.status = "Session picker".to_string();
                     }

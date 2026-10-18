@@ -28319,3 +28319,21 @@ Declaration, module/dependency, production-scope, formatting, whitespace and
 file-limit checks pass. Evidence: artifacts/consolidation-model-picker-methods/.
 No dependencies or unrelated working files changed. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active and incomplete.
+
+### Session-picker direct methods and crate-owned regression tests
+
+Removed six root-generated session-picker methods; callers use the existing
+SessionPickerState operations directly. Removed the root session_nav.rs wrapper
+and retained its public module path as a crate re-export. Moved the three fuzzy
+filter regression tests and their fixture into codetether-session-picker::state_tests.
+The fixture now constructs SessionPickerState with the same session/filter values
+instead of creating a complete AppState with that component.
+
+Static source comparisons confirm unchanged test assertions and fixture summary
+values, plus all caller rewrites. Two verifier import-order mismatches were
+corrected and their logs retained. Filtering/navigation algorithms are unchanged.
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks pass (724 roots, 617 crates). Evidence:
+artifacts/consolidation-session-picker-methods/. No dependencies or unrelated
+working files changed. No Cargo, rustc, Python, compilation or runtime tests ran;
+the moved tests were not executed. Full consolidation remains active and incomplete.

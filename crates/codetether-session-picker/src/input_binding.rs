@@ -29,7 +29,7 @@ macro_rules! declare_frontend_session_input {
         pub fn handle_sessions_char(app: &mut App, modifiers: KeyModifiers, c: char) {
             if !modifiers.contains(KeyModifiers::CONTROL) && !modifiers.contains(KeyModifiers::ALT)
             {
-                app.state.session_filter_push(c);
+                app.state.session_picker.session_filter_push(c);
             }
         }
 

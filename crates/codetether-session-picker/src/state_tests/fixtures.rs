@@ -1,8 +1,8 @@
 //! Shared test fixtures for session picker tests.
 
-use super::AppState;
-use crate::session::SessionSummary;
+use crate::SessionPickerState;
 use chrono::Utc;
+use codetether_session_metadata::SessionSummary;
 
 /// Build a minimal [`SessionSummary`] for tests.
 pub fn summary(id: &str, title: &str) -> SessionSummary {
@@ -17,10 +17,10 @@ pub fn summary(id: &str, title: &str) -> SessionSummary {
     }
 }
 
-/// Build an [`AppState`] preloaded with `sessions` and `filter`.
-pub fn state_with(sessions: Vec<SessionSummary>, filter: &str) -> AppState {
-    let mut state = AppState::default();
-    state.session_picker.sessions = sessions;
-    state.session_picker.session_filter = filter.to_string();
+/// Build an [`SessionPickerState`] preloaded with `sessions` and `filter`.
+pub fn state_with(sessions: Vec<SessionSummary>, filter: &str) -> SessionPickerState {
+    let mut state = SessionPickerState::default();
+    state.sessions = sessions;
+    state.session_filter = filter.to_string();
     state
 }

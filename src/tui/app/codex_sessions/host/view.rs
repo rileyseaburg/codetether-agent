@@ -21,7 +21,7 @@ impl codetether_session_resume::interactive::View<Session> for App {
         crate::tui::app::session_sync::refresh_sessions(self, cwd).await;
     }
     fn clear_filter(&mut self) {
-        self.state.clear_session_filter();
+        self.state.session_picker.clear_session_filter();
     }
     fn return_to_chat(&mut self) {
         crate::tui::app::session_sync::return_to_chat(self);

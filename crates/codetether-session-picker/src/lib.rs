@@ -47,3 +47,6 @@ pub mod summary;
 
 /// Application-local state method declarations.
 pub mod state_binding;
+
+#[cfg(test)]
+mod state_tests;
