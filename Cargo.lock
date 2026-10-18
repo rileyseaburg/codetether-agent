@@ -5655,10 +5655,12 @@ name = "codetether-stream-restart"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "codetether-provider-core",
  "codetether-session-events",
  "codetether-stream-drain",
  "codetether-stream-outcome",
+ "futures",
  "thiserror 2.0.20",
  "tokio",
  "tracing",

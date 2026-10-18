@@ -3,8 +3,8 @@ async fn whole_request_restart_honors_provider_delay() {
     let concrete = std::sync::Arc::new(super::restart_test_provider::RetryAfterProvider {
         calls: std::sync::atomic::AtomicUsize::new(0),
     });
-    let provider: std::sync::Arc<dyn crate::provider::Provider> = concrete.clone();
-    let request = crate::provider::CompletionRequest {
+    let provider: std::sync::Arc<dyn codetether_provider_core::Provider> = concrete.clone();
+    let request = codetether_provider_core::CompletionRequest {
         messages: Vec::new(),
         tools: Vec::new(),
         model: "mock".into(),
@@ -14,12 +14,15 @@ async fn whole_request_restart_honors_provider_delay() {
         stop: Vec::new(),
     };
     let started = tokio::time::Instant::now();
-    super::restart::run(&provider, request, "test-session", None, &RestartPolicy::default())
-        .await
-        .unwrap();
-    assert_eq!(
-        concrete.calls.load(std::sync::atomic::Ordering::SeqCst),
-        2
-    );
+    crate::run::<()>(
+        &provider,
+        request,
+        "test-session",
+        None,
+        &RestartPolicy::default(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(concrete.calls.load(std::sync::atomic::Ordering::SeqCst), 2);
     assert!(started.elapsed() >= std::time::Duration::from_secs(35));
 }

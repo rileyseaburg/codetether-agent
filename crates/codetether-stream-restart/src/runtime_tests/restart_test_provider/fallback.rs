@@ -5,13 +5,15 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use anyhow::Result;
 use futures::stream::{self, BoxStream};
 
-use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
+use codetether_provider_core::{
+    CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk,
+};
 
-pub(in crate::session::helper::stream) struct FallbackProvider {
-    pub(in crate::session::helper::stream) calls: AtomicUsize,
-    pub(in crate::session::helper::stream) begins: AtomicUsize,
-    pub(in crate::session::helper::stream) fallback: AtomicBool,
-    pub(in crate::session::helper::stream) allow_fallback: bool,
+pub(in crate::runtime_tests) struct FallbackProvider {
+    pub(in crate::runtime_tests) calls: AtomicUsize,
+    pub(in crate::runtime_tests) begins: AtomicUsize,
+    pub(in crate::runtime_tests) fallback: AtomicBool,
+    pub(in crate::runtime_tests) allow_fallback: bool,
 }
 
 #[async_trait::async_trait]

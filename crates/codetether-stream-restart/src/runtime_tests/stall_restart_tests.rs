@@ -4,9 +4,9 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
-use super::restart::{RestartPolicy, run};
 use super::stall_test_provider::StallThenCompleteProvider;
-use crate::provider::{CompletionRequest, ContentPart, Provider};
+use crate::{RestartPolicy, run};
+use codetether_provider_core::{CompletionRequest, ContentPart, Provider};
 
 #[tokio::test(start_paused = true)]
 async fn mid_stream_stall_discards_partial_and_restarts() {
@@ -27,7 +27,7 @@ async fn mid_stream_stall_discards_partial_and_restarts() {
         base_backoff: Duration::ZERO,
         multiplier: 1,
     };
-    let response = run(&provider, request, "test-session", None, &policy)
+    let response = run::<()>(&provider, request, "test-session", None, &policy)
         .await
         .unwrap();
 

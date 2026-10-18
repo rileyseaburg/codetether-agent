@@ -1,4 +1,4 @@
-//! Integration test for the SRP restart engine ([`super::restart::run`]).
+//! Integration test for the SRP restart engine ([`crate::run`]).
 //!
 //! Verifies that a premature end (byte stream closes before `Done`) discards a
 //! committed partial and re-requests a fresh stream.
@@ -7,9 +7,9 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
-use super::restart::{RestartPolicy, run};
 use super::restart_test_provider::FlakyThenCompleteProvider;
-use crate::provider::{CompletionRequest, ContentPart, Provider};
+use crate::{RestartPolicy, run};
+use codetether_provider_core::{CompletionRequest, ContentPart, Provider};
 
 fn empty_request() -> CompletionRequest {
     CompletionRequest {
@@ -36,7 +36,7 @@ async fn premature_end_discards_partial_and_restarts() {
     let provider: Arc<dyn Provider> = Arc::new(FlakyThenCompleteProvider {
         calls: AtomicUsize::new(0),
     });
-    let resp = run(
+    let resp = run::<()>(
         &provider,
         empty_request(),
         "test-session",

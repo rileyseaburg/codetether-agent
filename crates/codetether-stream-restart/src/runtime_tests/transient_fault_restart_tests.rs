@@ -2,10 +2,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-use super::restart::{RestartPolicy, run};
 use super::restart_test_provider::TransientFaultThenCompleteProvider;
-use crate::provider::{CompletionRequest, ContentPart, Provider};
-use crate::session::SessionEvent;
+use crate::{RestartPolicy, run};
+use codetether_provider_core::{CompletionRequest, ContentPart, Provider};
+use codetether_session_events::SessionEvent;
 
 #[tokio::test]
 async fn transient_fault_after_partial_restarts_whole_request() {
@@ -28,7 +28,7 @@ async fn transient_fault_after_partial_restarts_whole_request() {
         multiplier: 1,
     };
     let (tx, mut rx) = tokio::sync::mpsc::channel(8);
-    let response = run(&provider, request, "test-session", Some(&tx), &policy)
+    let response = run::<()>(&provider, request, "test-session", Some(&tx), &policy)
         .await
         .unwrap();
     assert_eq!(concrete.calls.load(Ordering::SeqCst), 2);
@@ -41,7 +41,7 @@ async fn transient_fault_after_partial_restarts_whole_request() {
     assert!(matches!(
         rx.recv().await,
         Some(SessionEvent::StreamRetry(
-            crate::session::StreamRetryEvent { attempt: 1, .. }
+            codetether_session_events::StreamRetryEvent { attempt: 1, .. }
         ))
     ));
     assert!(

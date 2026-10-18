@@ -15,3 +15,8 @@ codetether-stream-outcome = { path = "../codetether-stream-outcome", version = "
 thiserror = "2"
 tokio = { version = "1", features = ["sync", "time"] }
 tracing = "0.1"
+
+[dev-dependencies]
+async-trait = "0.1"
+futures = "0.3"
+tokio = { version = "1", features = ["macros", "rt", "test-util"] }

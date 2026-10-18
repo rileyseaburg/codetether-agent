@@ -24,21 +24,7 @@ mod restart;
 #[cfg(test)]
 mod restart_checkpoint_tests;
 #[cfg(test)]
-mod restart_exhaustion_tests;
-#[cfg(test)]
-mod restart_fallback_tests;
-#[cfg(test)]
-mod restart_policy_tests;
-#[cfg(test)]
 mod restart_test_provider;
-#[cfg(test)]
-mod restart_tests;
-#[cfg(test)]
-mod stall_restart_tests;
-#[cfg(test)]
-mod stall_test_provider;
-#[cfg(test)]
-mod transient_fault_restart_tests;
 
 pub(super) use restart::checkpointed_content;
 pub(crate) use restart::{RestartPolicy, run as run_with_restart};

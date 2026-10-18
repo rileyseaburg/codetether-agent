@@ -1,6 +1,6 @@
 use super::{provider, request};
-use crate::provider::{ContentPart, StreamChunk};
-use crate::session::helper::stream::restart::{RestartPolicy, run};
+use crate::{RestartPolicy, run};
+use codetether_provider_core::{ContentPart, StreamChunk};
 
 #[tokio::test(start_paused = true)]
 async fn completed_text_is_sent_on_retry_and_committed_once() {
@@ -20,7 +20,7 @@ async fn completed_text_is_sent_on_retry_and_committed_once() {
             StreamChunk::Done { usage: None },
         ],
     ]);
-    let response = run(
+    let response = run::<()>(
         &provider,
         request(),
         "session",

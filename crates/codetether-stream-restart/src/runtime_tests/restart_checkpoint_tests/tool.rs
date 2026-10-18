@@ -1,6 +1,6 @@
 use super::{provider, request};
-use crate::provider::{ContentPart, StreamChunk};
-use crate::session::helper::stream::restart::{RestartPolicy, run};
+use crate::{RestartPolicy, run};
+use codetether_provider_core::{ContentPart, StreamChunk};
 
 #[tokio::test(start_paused = true)]
 async fn completed_tool_returns_without_replaying_side_effect() {
@@ -14,7 +14,7 @@ async fn completed_tool_returns_without_replaying_side_effect() {
         StreamChunk::OutputItemDone { content: tool },
         StreamChunk::Error("codex-retryable: reset".into()),
     ]]);
-    let response = run(
+    let response = run::<()>(
         &provider,
         request(),
         "session",

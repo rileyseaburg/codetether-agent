@@ -1,7 +1,7 @@
 use super::{provider, request};
-use crate::provider::{ContentPart, StreamChunk};
-use crate::session::helper::stream::checkpointed_content;
-use crate::session::helper::stream::restart::{RestartPolicy, run};
+use crate::checkpointed_content;
+use crate::{RestartPolicy, run};
+use codetether_provider_core::{ContentPart, StreamChunk};
 
 #[tokio::test(start_paused = true)]
 async fn exhaustion_carries_completed_content() {
@@ -16,7 +16,7 @@ async fn exhaustion_carries_completed_content() {
         max_restarts: 0,
         ..RestartPolicy::default()
     };
-    let error = run(&provider, request(), "session", None, &policy)
+    let error = run::<()>(&provider, request(), "session", None, &policy)
         .await
         .unwrap_err();
     assert!(

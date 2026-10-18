@@ -12,4 +12,6 @@ pub use checkpoint::content_from_error as checkpointed_content;
 pub use engine::run;
 pub use policy::RestartPolicy;
 #[cfg(test)]
+mod runtime_tests;
+#[cfg(test)]
 mod tests;

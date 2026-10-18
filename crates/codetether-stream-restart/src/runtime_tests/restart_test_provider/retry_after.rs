@@ -2,10 +2,12 @@ use anyhow::Result;
 use futures::stream::{self, BoxStream};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
+use codetether_provider_core::{
+    CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk,
+};
 
-pub(in crate::session::helper::stream) struct RetryAfterProvider {
-    pub(in crate::session::helper::stream) calls: AtomicUsize,
+pub(in crate::runtime_tests) struct RetryAfterProvider {
+    pub(in crate::runtime_tests) calls: AtomicUsize,
 }
 
 #[async_trait::async_trait]

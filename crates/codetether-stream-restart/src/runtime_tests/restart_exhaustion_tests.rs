@@ -1,22 +1,22 @@
-//! WebSocket retry-budget and HTTP fallback integration test.
+//! Stream retry-budget exhaustion integration test.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use super::restart::{RestartPolicy, run};
 use super::restart_test_provider::FallbackProvider;
-use crate::provider::{CompletionRequest, ContentPart, Provider};
+use crate::{RestartPolicy, run};
+use codetether_provider_core::{CompletionRequest, Provider};
 
 #[tokio::test(start_paused = true)]
-async fn fallback_starts_after_five_reconnects_are_exhausted() {
+async fn default_budget_makes_six_attempts_without_fallback() {
     let concrete = Arc::new(FallbackProvider {
         calls: AtomicUsize::new(0),
         begins: AtomicUsize::new(0),
         fallback: AtomicBool::new(false),
-        allow_fallback: true,
+        allow_fallback: false,
     });
     let provider: Arc<dyn Provider> = concrete.clone();
-    let response = run(
+    let error = run::<()>(
         &provider,
         CompletionRequest {
             messages: Vec::new(),
@@ -32,8 +32,7 @@ async fn fallback_starts_after_five_reconnects_are_exhausted() {
         &RestartPolicy::default(),
     )
     .await
-    .unwrap();
-    assert_eq!(concrete.calls.load(Ordering::SeqCst), 7);
-    assert_eq!(concrete.begins.load(Ordering::SeqCst), 1);
-    assert!(matches!(&response.message.content[0], ContentPart::Text { text } if text == "http"));
+    .unwrap_err();
+    assert_eq!(concrete.calls.load(Ordering::SeqCst), 6);
+    assert!(error.to_string().contains("stream retry limit exhausted"));
 }

@@ -23089,3 +23089,26 @@ No manifests or lockfile changes were needed; unrelated working changes remain
 unchanged. Evidence: artifacts/consolidation-session-message-read/.
 No database operations, tests, Cargo, rustc or Python ran. Compilation and
 runtime behavior remain unverified. Full consolidation remains active.
+
+### Stream restart regression tests owned by the restart crate
+
+Moved nine runtime regression tests for premature EOF, exhausted retry budgets,
+transport fallback, stalls, transient faults, provider-directed delay and
+completed-output checkpoints into codetether-stream-restart::runtime_tests.
+Their mock provider fixtures moved alongside them. Fifteen native files were
+removed. The native Session checkpoint persistence test remains unchanged with
+its own minimal checkpoint fixture, since it exercises application storage.
+
+Static token comparisons preserve all moved assertions, mock responses, retry
+policies and call arguments. Shared tests specialize the event snapshot type
+to () instead of native Session; their checked event variants carry no session
+snapshot. The restart engine, native adapter and existing shared policy tests
+are unchanged. Module/dependency scans cover 699 roots and 571 crates with no
+missing modules or cycles. Direct rustfmt, file-size limits and whitespace
+checks passed. Added only async-trait/futures test dependency edges to the
+staged lock; native and shared Tokio configuration retains paused-clock support.
+The initial lock staging helper assumed an outdated thiserror version; its
+assertion stopped before staging, and the corrected helper preserves the
+existing version. Evidence: artifacts/consolidation-stream-restart-tests/.
+No recovery streams, native persistence, tests, Cargo, rustc or Python ran.
+Compilation and runtime behavior remain unverified. Full consolidation is active.

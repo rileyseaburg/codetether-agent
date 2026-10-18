@@ -6,14 +6,8 @@ use std::sync::{Arc, Mutex};
 use super::restart_test_provider::CheckpointProvider;
 use crate::provider::{CompletionRequest, Provider, StreamChunk};
 
-#[path = "restart_checkpoint_tests/exhaustion.rs"]
-mod exhaustion;
 #[path = "restart_checkpoint_tests/persistence.rs"]
 mod persistence;
-#[path = "restart_checkpoint_tests/text.rs"]
-mod text;
-#[path = "restart_checkpoint_tests/tool.rs"]
-mod tool;
 
 fn request() -> CompletionRequest {
     CompletionRequest {
