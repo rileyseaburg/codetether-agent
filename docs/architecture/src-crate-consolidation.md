@@ -14308,3 +14308,17 @@ Full workspace consolidation remains active.
   artifacts/consolidation-task-ingest-http/.
 - No dependencies or lockfile changes. No Cargo, rustc, Rust tests, task events
   or server startup ran. Full workspace consolidation remains unfinished.
+
+### Plugin discovery HTTP ownership
+
+- Moved plugin-list HTTP extraction and the GET /v1/plugins route into
+  codetether-plugin-http::http. State access, handler and routing each have a
+  focused module beside the existing response projection and signing probe.
+- Native state only exposes its existing verified registry and fingerprint;
+  response construction, signing behavior and outer middleware order remain
+  unchanged.
+- Verification: five static checks passed, plus module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks. Evidence:
+  artifacts/consolidation-plugin-router/.
+- No dependencies or lockfile changes. No Cargo, rustc, Rust tests, signing
+  probes or server startup ran. Full workspace consolidation is unfinished.

@@ -12,6 +12,7 @@ mod models_catalog;
 mod openai_http_host;
 mod openai_model_options;
 mod openai_stream;
+mod plugin_http_state;
 pub mod policy;
 mod session_realtime;
 mod session_recovery;
@@ -245,7 +246,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // K8s self-deployment APIs
         .merge(codetether_k8s_api::http::router::<AppState>())
         // Plugin registry API
-        .route("/v1/plugins", get(list_plugins))
+        .merge(codetether_plugin_http::http::router::<AppState>())
         // Tool registry API
         .merge(codetether_tool_discovery::router::<AppState>())
         // Agent task APIs (compatibility surface for dashboard)
@@ -472,11 +473,6 @@ async fn get_persona(
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<crate::cognition::PersonaRuntimeState>, (StatusCode, String)> {
     codetether_cognition_api::persona(state.cognition.get_persona(&id).await, &id)
-}
-async fn list_plugins(
-    State(state): State<AppState>,
-) -> Json<codetether_plugin_http::PluginListResponse> {
-    codetether_plugin_http::list_plugins(&state.plugin_registry, &state.server_fingerprint).await
 }
 
 // ── Session resume ──────────────────────────────────────────────────────
