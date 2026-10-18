@@ -16736,6 +16736,7 @@ dependencies = [
 name = "codetether-agent-dashboard"
 version = "0.1.0"
 dependencies = [
+ "codetether-agent-tree",
  "codetether-agent-trace",
  "codetether-agent-view",
  "codetether-chat-transcript",

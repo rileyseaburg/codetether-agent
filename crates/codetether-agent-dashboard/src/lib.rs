@@ -28,3 +28,6 @@ pub mod detail;
 pub mod tool_detail;
 /// Dashboard and detail-panel selection.
 pub mod view;
+
+/// Display projection of generic spawned-agent metadata.
+pub mod spawned;

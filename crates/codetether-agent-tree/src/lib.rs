@@ -21,3 +21,6 @@ pub use hierarchy_depth::{child_depth, validate_spawn};
 pub use hierarchy_entry::HierarchyEntry;
 pub use hierarchy_node::{AgentNode, MAX_AGENT_DEPTH};
 pub use hierarchy_order::dfs_order;
+
+mod spawned;
+pub use spawned::SpawnedAgent;

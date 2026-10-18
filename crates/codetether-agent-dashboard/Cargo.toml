@@ -13,3 +13,4 @@ codetether-provider-core = { path = "../codetether-provider-core", version = "0.
 codetether-chat-transcript = { path = "../codetether-chat-transcript", version = "0.1.0" }
 codetether-swarm-view = { path = "../codetether-swarm-view", version = "0.1.0" }
 ratatui = { version = "0.30.2", default-features = false }
+codetether-agent-tree = { path = "../codetether-agent-tree", version = "0.1.0" }

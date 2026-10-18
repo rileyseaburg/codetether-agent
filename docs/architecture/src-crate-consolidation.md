@@ -19905,3 +19905,23 @@ module reachability, dependency cycles, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-file-picker/`. No Cargo, rustc,
 Python, Rust tests or attachment operations ran; compilation and runtime remain
 unverified.
+
+### Spawned-agent model ownership
+
+Moved the owned spawned-agent record into
+`codetether-agent-tree::SpawnedAgent<S>`, parameterized by its application-owned
+session. The native name is now an alias using the existing Session type.
+Moved hierarchy methods with the record and the Child display implementation
+into `codetether-agent-dashboard`, which owns that trait. Native row rendering
+delegates to the shared generic renderer.
+
+Preserved all seven fields, hierarchy values, row projection and rendering.
+No foreign trait implementation remains on the native alias. Existing spawn,
+detach, navigation and row-test constructors are unchanged.
+
+Validation: all model fields, hierarchy and display function comparisons,
+generic implementation checks, native alias/delegate, unchanged constructors
+and tests, isolated lockfile delta, module reachability, dependency cycles,
+file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-spawned-agent/`. No Cargo, rustc, Python or Rust tests
+ran; compilation and runtime remain unverified.
