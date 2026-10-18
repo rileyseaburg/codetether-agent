@@ -21,7 +21,17 @@ use crossterm::{
 /// # Returns
 ///
 /// An I/O error if any mode transition cannot be written.
-pub(in crate::tui::app) fn enter(writer: &mut impl Write) -> std::io::Result<()> {
+///
+/// # Errors
+/// Returns the first terminal-write error.
+///
+/// # Examples
+/// ```
+/// let mut output = Vec::new();
+/// codetether_terminal_runtime::enter_display_mode(&mut output).unwrap();
+/// assert!(!output.is_empty());
+/// ```
+pub fn enter(writer: &mut impl Write) -> std::io::Result<()> {
     execute!(
         writer,
         EnterAlternateScreen,
@@ -39,7 +49,17 @@ pub(in crate::tui::app) fn enter(writer: &mut impl Write) -> std::io::Result<()>
 /// # Returns
 ///
 /// An I/O error if any mode transition cannot be written.
-pub(super) fn leave(writer: &mut impl Write) -> std::io::Result<()> {
+///
+/// # Errors
+/// Returns the first terminal-write error.
+///
+/// # Examples
+/// ```
+/// let mut output = Vec::new();
+/// codetether_terminal_runtime::leave_display_mode(&mut output).unwrap();
+/// assert!(!output.is_empty());
+/// ```
+pub fn leave(writer: &mut impl Write) -> std::io::Result<()> {
     execute!(
         writer,
         Show,

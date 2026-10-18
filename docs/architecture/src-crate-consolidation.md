@@ -12394,3 +12394,21 @@ Full workspace consolidation remains active.
 - Only this crate's root dependency and package record were staged from
   Cargo.lock. No Cargo, rustc, compilation or Rust tests ran. The full workspace
   consolidation remains incomplete.
+
+### Terminal runtime extraction
+
+- Moved interactive terminal entry, display-mode commands, best-effort teardown,
+  terminal lifetime guard, panic-hook guard, recoverable-render scope and
+  shutdown-signal listener into codetether-terminal-runtime. Thirteen modules
+  contain at most 30 code lines, including three existing regression tests.
+- Native terminal-state, panic-cleanup, startup-terminal and signal modules now
+  re-export the shared implementation. The shared worktree TUI-active flag uses
+  the same owner, and terminal/guard field order and startup call order remain
+  unchanged. The UI retains its event loop and render recovery decisions.
+- Verification: 20 source comparisons passed for startup/teardown commands,
+  guards, panic and signal behavior, moved tests and native facades. Module
+  reachability, dependency-cycle checks, direct rustfmt, source limits and
+  whitespace checks passed. Evidence: artifacts/consolidation-terminal-runtime/.
+- Only the new dependency and package record were staged from Cargo.lock.
+  No terminal lifecycle functions or panic hooks were executed during checks.
+  No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.

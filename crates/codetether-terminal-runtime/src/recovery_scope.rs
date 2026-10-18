@@ -7,16 +7,30 @@ thread_local! {
 }
 
 /// Resets the recoverable-render marker when the render attempt ends.
-pub(in crate::tui::app) struct Guard;
+///
+/// # Examples
+/// ```
+/// let _guard = codetether_terminal_runtime::begin_render_recovery();
+/// ```
+pub struct Guard;
 
 /// Mark the current thread's render panic as locally recoverable.
-pub(in crate::tui::app) fn enter() -> Guard {
+///
+/// # Returns
+/// A guard that clears the marker when dropped.
+///
+/// # Examples
+/// ```
+/// let guard = codetether_terminal_runtime::begin_render_recovery();
+/// drop(guard);
+/// ```
+pub fn enter() -> Guard {
     ACTIVE.set(true);
     Guard
 }
 
 /// Return whether the current thread is inside a recoverable render attempt.
-pub(in crate::tui::app) fn active() -> bool {
+pub(crate) fn active() -> bool {
     ACTIVE.get()
 }
 

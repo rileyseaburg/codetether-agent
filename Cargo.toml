@@ -254,6 +254,7 @@ members = [
     "crates/codetether-question-view",
     "crates/codetether-goal-prompt",
     "crates/codetether-spawn-form",
+    "crates/codetether-terminal-runtime",
     "crates/codetether-tui-style",
     "crates/codetether-answer-review-view",
     "crates/codetether-message-cache",
@@ -590,6 +591,7 @@ codetether-chat-layout = { path = "crates/codetether-chat-layout", version = "0.
 codetether-message-cache = { path = "crates/codetether-message-cache", version = "0.1.0" }
 codetether-answer-review-view = { path = "crates/codetether-answer-review-view", version = "0.1.0" }
 codetether-tui-style = { path = "crates/codetether-tui-style", version = "0.1.0" }
+codetether-terminal-runtime = { path = "crates/codetether-terminal-runtime", version = "0.1.0" }
 codetether-spawn-form = { path = "crates/codetether-spawn-form", version = "0.1.0" }
 codetether-goal-prompt = { path = "crates/codetether-goal-prompt", version = "0.1.0" }
 codetether-question-view = { path = "crates/codetether-question-view", version = "0.1.0" }

@@ -1250,6 +1250,7 @@ dependencies = [
  "codetether-tui-style",
  "codetether-goal-prompt",
  "codetether-spawn-form",
+ "codetether-terminal-runtime",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6224,6 +6225,17 @@ dependencies = [
  "async-trait",
  "codetether-provider-core",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-terminal-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-worktree",
+ "crossterm",
+ "ratatui",
+ "tokio",
 ]
 
 [[package]]
