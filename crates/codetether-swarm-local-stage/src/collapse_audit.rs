@@ -1,9 +1,9 @@
 //! Audit records for local branch promotion and termination.
 
-use crate::audit::{AuditCategory, AuditOutcome};
+use codetether_audit::{AuditCategory, AuditOutcome};
 
 pub(super) async fn promotion(swarm: &str, subtask: &str) {
-    let Some(audit) = crate::audit::try_audit_log() else {
+    let Some(audit) = codetether_audit::try_audit_log() else {
         return;
     };
     audit
@@ -22,7 +22,7 @@ pub(super) async fn promotion(swarm: &str, subtask: &str) {
 }
 
 pub(super) async fn kill(swarm: &str, subtask: &str, branch: &str, reason: &str) {
-    let Some(audit) = crate::audit::try_audit_log() else {
+    let Some(audit) = codetether_audit::try_audit_log() else {
         return;
     };
     audit

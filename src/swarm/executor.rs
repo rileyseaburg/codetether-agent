@@ -49,8 +49,6 @@ mod run;
 executor_module!(stage_dispatch => "executor_parts/stage_dispatch.rs");
 executor_module!(types => "executor_parts/types.rs");
 executor_module!(pub(crate) workspace_registry => "workspace_registry/mod.rs");
-executor_module!(worktree_failure => "worktree_failure.rs");
-executor_module!(worktree_setup => "worktree_setup.rs");
 
 pub use super::SwarmMessage;
 

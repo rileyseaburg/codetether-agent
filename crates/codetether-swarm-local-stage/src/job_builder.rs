@@ -1,10 +1,14 @@
 //! Translation of a subtask into an owned local-agent job.
 
 use super::{context, delegation, job::Job, state::State};
-use crate::swarm::{SubTask, tool_policy};
+use codetether_swarm_core::SubTask;
 use std::sync::Arc;
 
-pub(super) async fn build(state: &mut State<'_>, task: SubTask, index: usize) -> Job {
+pub(super) async fn build(
+    state: &mut State<'_, impl crate::Host>,
+    task: SubTask,
+    index: usize,
+) -> Job {
     let (provider_name, model, provider) = delegation::select(state, &task);
     let specialty = task.specialty.clone().unwrap_or_else(|| "General".into());
     state
@@ -18,7 +22,7 @@ pub(super) async fn build(state: &mut State<'_>, task: SubTask, index: usize) ->
         .as_ref()
         .map(|item| item.path.clone())
         .unwrap_or_else(|| state.workspace.clone());
-    let read_only = tool_policy::is_read_only_task(&task);
+    let read_only = task.is_read_only();
     let verification = task.is_verification();
     let expects_changes = task.expects_file_changes();
     Job {
@@ -33,16 +37,16 @@ pub(super) async fn build(state: &mut State<'_>, task: SubTask, index: usize) ->
         verification,
         expects_changes,
         workspace,
-        result_store: Arc::clone(&state.executor.result_store),
-        bus: state.executor.bus.clone(),
-        events: state.executor.event_tx.clone(),
+        result_store: Arc::clone(state.executor.result_store()),
+        bus: state.executor.bus().clone(),
+        events: state.executor.events().clone(),
         semaphore: Arc::clone(&state.semaphore),
-        stagger_ms: state.executor.config.request_delay_ms * index as u64,
-        max_steps: state.executor.config.max_steps_per_subagent,
-        timeout_secs: state.executor.config.subagent_timeout_secs,
-        max_retries: state.executor.config.max_retries,
-        base_delay_ms: state.executor.config.base_delay_ms,
-        max_delay_ms: state.executor.config.max_delay_ms,
+        stagger_ms: state.executor.config().request_delay_ms * index as u64,
+        max_steps: state.executor.config().max_steps_per_subagent,
+        timeout_secs: state.executor.config().subagent_timeout_secs,
+        max_retries: state.executor.config().max_retries,
+        base_delay_ms: state.executor.config().base_delay_ms,
+        max_delay_ms: state.executor.config().max_delay_ms,
         control: state.executor.control().cloned(),
     }
 }

@@ -1,9 +1,12 @@
 //! Sampling and application of local branch-collapse decisions.
 
 use super::{collapse_audit, collapse_kill, state::State};
-use crate::swarm::{BranchRuntimeState, CollapseController};
+use codetether_swarm_core::collapse::BranchRuntimeState;
 
-pub(super) async fn sample(state: &mut State<'_>, controller: &mut CollapseController) {
+pub(super) async fn sample<H: crate::Host>(
+    state: &mut State<'_, H>,
+    controller: &mut H::Controller,
+) {
     let branches = state
         .active_worktrees
         .iter()
@@ -13,7 +16,7 @@ pub(super) async fn sample(state: &mut State<'_>, controller: &mut CollapseContr
             worktree_path: worktree.path.clone(),
         })
         .collect::<Vec<_>>();
-    let tick = match controller.sample(&branches) {
+    let tick = match H::sample(controller, &branches) {
         Ok(tick) => tick,
         Err(error) => {
             tracing::warn!(%error, "Collapse controller sampling failed");

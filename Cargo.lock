@@ -1728,6 +1728,7 @@ dependencies = [
  "codetether-swarm-core",
  "codetether-swarm-k8s",
  "codetether-swarm-local-job",
+ "codetether-swarm-local-stage",
  "codetether-swarm-orchestrator",
  "codetether-swarm-share",
  "codetether-task-tool",
@@ -7697,6 +7698,25 @@ dependencies = [
  "codetether-session-control",
  "codetether-swarm-core",
  "tokio",
+]
+
+[[package]]
+name = "codetether-swarm-local-stage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-audit",
+ "codetether-bus-core",
+ "codetether-provider-core",
+ "codetether-session-control",
+ "codetether-swarm-core",
+ "codetether-swarm-local-job",
+ "codetether-workspace-tools",
+ "codetether-worktree",
+ "futures",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

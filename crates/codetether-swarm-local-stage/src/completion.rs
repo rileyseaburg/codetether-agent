@@ -3,8 +3,11 @@
 use super::{delegation_outcome, failure, state::State};
 
 pub(super) fn record(
-    state: &mut State<'_>,
-    joined: Result<(String, anyhow::Result<crate::swarm::SubTaskResult>), tokio::task::JoinError>,
+    state: &mut State<'_, impl crate::Host>,
+    joined: Result<
+        (String, anyhow::Result<codetether_swarm_core::SubTaskResult>),
+        tokio::task::JoinError,
+    >,
 ) {
     let (id, result) = match joined {
         Ok((id, Ok(result))) => (id, result),

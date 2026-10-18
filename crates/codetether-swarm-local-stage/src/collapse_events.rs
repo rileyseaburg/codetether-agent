@@ -1,11 +1,11 @@
 //! User-facing events for locally collapsed branches.
 
 use super::state::State;
-use crate::swarm::SubTaskStatus;
+use codetether_swarm_core::SubTaskStatus;
 use codetether_swarm_core::SwarmEvent;
 
-pub(super) fn killed(state: &State<'_>, id: &str, reason: &str) {
-    let Some(events) = &state.executor.event_tx else {
+pub(super) fn killed(state: &State<'_, impl crate::Host>, id: &str, reason: &str) {
+    let Some(events) = &*state.executor.events() else {
         return;
     };
     let _ = events.try_send(SwarmEvent::SubTaskUpdate {

@@ -1,9 +1,9 @@
 //! Application of local collapse-controller kill decisions.
 
 use super::{collapse_audit, collapse_events, state::State};
-use crate::swarm::collapse_controller::KillDecision;
+use codetether_swarm_core::collapse::KillDecision;
 
-pub(super) async fn apply(state: &mut State<'_>, kill: KillDecision) {
+pub(super) async fn apply(state: &mut State<'_, impl crate::Host>, kill: KillDecision) {
     if state.kill_reasons.contains_key(&kill.subtask_id) {
         return;
     }

@@ -1,9 +1,9 @@
 //! Mutable resources used while executing one local stage.
 
-use super::super::SwarmExecutor;
-use crate::provider::Provider;
-use crate::swarm::{SubTask, SubTaskResult};
-use crate::worktree::{WorktreeInfo, WorktreeManager};
+use crate::Host;
+use codetether_provider_core::Provider;
+use codetether_swarm_core::{SubTask, SubTaskResult};
+use codetether_worktree::{WorktreeInfo, WorktreeManager};
 use futures::stream::FuturesUnordered;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -12,11 +12,11 @@ use tokio::task::{AbortHandle, JoinHandle};
 
 pub(super) type AgentJoin = JoinHandle<(String, anyhow::Result<SubTaskResult>)>;
 
-pub(super) struct State<'a> {
-    pub executor: &'a SwarmExecutor,
+pub(super) struct State<'a, H: Host> {
+    pub executor: &'a H,
     pub swarm_id: &'a str,
     pub prior_results: Arc<RwLock<HashMap<String, String>>>,
-    pub providers: &'a crate::provider::ProviderRegistry,
+    pub providers: &'a H::Providers,
     pub fallback_provider: Arc<dyn Provider>,
     pub provider_name: String,
     pub model: String,
@@ -38,7 +38,7 @@ pub(super) struct State<'a> {
     pub semaphore: Arc<tokio::sync::Semaphore>,
 }
 
-impl Drop for State<'_> {
+impl<H: Host> Drop for State<'_, H> {
     fn drop(&mut self) {
         for abort in self.aborts.values() {
             abort.abort();

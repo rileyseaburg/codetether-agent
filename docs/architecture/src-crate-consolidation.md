@@ -18269,3 +18269,28 @@ all native registry/prompt/agent-loop arguments, unchanged job builder and stage
 collection sources, module/dependency graphs, file limits and whitespace checks.
 Evidence: `artifacts/consolidation-local-job/`. No job, provider, Cargo, rustc,
 Python or Rust-test execution occurred; compilation remains unverified.
+
+### Complete local swarm-stage coordinator
+
+Moved remaining local-stage scheduling into `codetether-swarm-local-stage`,
+including state construction, cache filtering/storage, provider assignment,
+worktree preparation, job construction/launch, cancellation/collection,
+collapse decisions/auditing, deterministic result integration and failed-work
+retention. Concurrent worktree provisioning and preflight failure construction
+moved with the stage; their unused native module declarations were removed.
+The existing local-job runtime remains a separate dependency.
+
+Native bindings are split by responsibility: executor services, provider
+selection/outcome feedback, cache operations and job/collapse execution.
+Native provider delegation and cache operations retain their original locks.
+The stage's Drop implementation still aborts every remaining child handle.
+Shared worktree operations are called directly, while native Git observation
+remains behind the collapse callback.
+
+Validation: complete moved-module comparisons with explicit host/type
+substitutions; independent checks of native cache/delegation locking and
+callbacks; unchanged job runtime and stage dispatch; module/dependency graph,
+file-limit, direct rustfmt-check and whitespace checks. Evidence:
+`artifacts/consolidation-local-stage/`. The existing cancellation test moved
+with its module but was not run. No runtime worktree provisioning, model execution,
+Cargo, rustc or Python was executed; Rust compilation/tests remain unverified.

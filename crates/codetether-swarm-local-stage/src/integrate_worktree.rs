@@ -1,16 +1,20 @@
 //! Integration policy for one completed local worktree.
 
-use super::super::merge_outcome;
 use super::{killed_worktree, state::State};
-use crate::swarm::SubTaskResult;
-use crate::worktree::WorktreeInfo;
+use codetether_swarm_core::SubTaskResult;
+use codetether_worktree::WorktreeInfo;
+use codetether_worktree::swarm::integration as merge_outcome;
 
-pub(super) async fn apply(state: &State<'_>, result: &mut SubTaskResult, worktree: &WorktreeInfo) {
+pub(super) async fn apply(
+    state: &State<'_, impl crate::Host>,
+    result: &mut SubTaskResult,
+    worktree: &WorktreeInfo,
+) {
     record_artifacts(result, worktree).await;
     if let Some(reason) = state.kill_reasons.get(&result.subtask_id) {
         return killed_worktree::apply(state, result, worktree, reason).await;
     }
-    if result.success && state.executor.config.worktree_auto_merge {
+    if result.success && state.executor.config().worktree_auto_merge {
         if let Some(manager) = &state.manager {
             let expects = state
                 .change_expectations
@@ -28,7 +32,7 @@ pub(super) async fn apply(state: &State<'_>, result: &mut SubTaskResult, worktre
 async fn record_artifacts(result: &mut SubTaskResult, worktree: &WorktreeInfo) {
     if result.artifacts.is_empty() {
         result.artifacts =
-            crate::swarm::worktree_commit::inventory::written_files(&worktree.path).await;
+            codetether_worktree::swarm::commit::inventory::written_files(&worktree.path).await;
     }
 }
 

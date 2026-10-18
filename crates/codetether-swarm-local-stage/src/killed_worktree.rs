@@ -1,11 +1,11 @@
 //! Cleanup and result annotation for a collapsed local worktree.
 
 use super::state::State;
-use crate::swarm::SubTaskResult;
-use crate::worktree::WorktreeInfo;
+use codetether_swarm_core::SubTaskResult;
+use codetether_worktree::WorktreeInfo;
 
 pub(super) async fn apply(
-    state: &State<'_>,
+    state: &State<'_, impl crate::Host>,
     result: &mut SubTaskResult,
     worktree: &WorktreeInfo,
     reason: &str,

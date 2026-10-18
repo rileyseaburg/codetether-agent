@@ -1,35 +1,27 @@
-//! # Local Stage Execution
-//!
-//! Runs one dependency stage as concurrent local sub-agents with optional Git
-//! worktree isolation. `State` tracks launched tasks, worktrees, collapse
-//! decisions, and cached results across the stage lifecycle.
-//!
-//! The parent executor calls `execute`; preparation, launch, collection,
-//! integration, and caching are delegated to focused child modules.
-
-mod cache_filter;
-mod cache_store;
-mod collapse;
-mod collapse_audit;
-mod collapse_events;
-mod collapse_kill;
-mod collect;
-mod completion;
-mod context;
-mod create;
-mod create_resources;
-mod delegation;
-mod delegation_outcome;
-mod failure;
-mod integrate;
-mod integrate_worktree;
+//! Native bindings for shared local-stage scheduling and worktree integration.
+mod host;
 mod job;
-mod job_builder;
 mod job_host;
 mod job_run;
-mod killed_worktree;
-mod launch;
-mod runner;
-mod state;
-mod worktrees;
-pub(super) use runner::execute;
+use super::SwarmExecutor;
+use crate::swarm::{Orchestrator, SubTask, SubTaskResult};
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::RwLock;
+pub(super) async fn execute(
+    executor: &SwarmExecutor,
+    orchestrator: &Orchestrator,
+    tasks: Vec<SubTask>,
+    completed: Arc<RwLock<HashMap<String, String>>>,
+    swarm: &str,
+) -> anyhow::Result<Vec<SubTaskResult>> {
+    codetether_swarm_local_stage::execute(
+        &host::Native(executor),
+        orchestrator.providers(),
+        orchestrator.provider(),
+        orchestrator.model(),
+        tasks,
+        completed,
+        swarm,
+    )
+    .await
+}

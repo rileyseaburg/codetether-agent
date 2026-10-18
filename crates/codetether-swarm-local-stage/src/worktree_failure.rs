@@ -1,6 +1,6 @@
 //! Failed result construction for required worktree preflight.
 
-use crate::swarm::{SubTask, SubTaskResult};
+use codetether_swarm_core::{SubTask, SubTaskResult};
 
 pub(super) fn required(subtask: &SubTask) -> SubTaskResult {
     let error = "Failed to create required isolated worktree".to_string();

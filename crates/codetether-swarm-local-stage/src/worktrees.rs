@@ -1,11 +1,14 @@
 //! Concurrent worktree provisioning for mutating subtasks.
 
-use super::super::{worktree_failure, worktree_setup};
 use super::state::State;
-use crate::swarm::SubTask;
+use crate::{worktree_failure, worktree_setup};
+use codetether_swarm_core::SubTask;
 use std::sync::Arc;
 
-pub(super) async fn prepare(state: &mut State<'_>, pending: Vec<SubTask>) -> Vec<SubTask> {
+pub(super) async fn prepare(
+    state: &mut State<'_, impl crate::Host>,
+    pending: Vec<SubTask>,
+) -> Vec<SubTask> {
     let Some(manager) = &state.manager else {
         return pending;
     };

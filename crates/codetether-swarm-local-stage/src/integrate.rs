@@ -1,9 +1,9 @@
 //! Deterministic integration of completed local subtask results.
 
 use super::{cache_store, integrate_worktree, state::State};
-use crate::swarm::SubTaskResult;
+use codetether_swarm_core::SubTaskResult;
 
-pub(super) async fn all(state: &mut State<'_>) -> Vec<SubTaskResult> {
+pub(super) async fn all(state: &mut State<'_, impl crate::Host>) -> Vec<SubTaskResult> {
     if let Some(promoted) = &state.promoted {
         state
             .completed

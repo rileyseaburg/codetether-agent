@@ -1,18 +1,18 @@
 //! Cache short-circuiting before local agent launch.
 
-use super::super::cache_result;
 use super::state::State;
-use crate::swarm::{SubTask, SubTaskStatus};
 use codetether_swarm_core::SwarmEvent;
+use codetether_swarm_core::cache as cache_result;
+use codetether_swarm_core::{SubTask, SubTaskStatus};
 
-pub(super) async fn pending(state: &mut State<'_>, tasks: Vec<SubTask>) -> Vec<SubTask> {
+pub(super) async fn pending(
+    state: &mut State<'_, impl crate::Host>,
+    tasks: Vec<SubTask>,
+) -> Vec<SubTask> {
     let mut pending = Vec::with_capacity(tasks.len());
     for task in tasks {
         let cached = if task.is_read_only() {
-            match &state.executor.cache {
-                Some(cache) => cache.lock().await.get(&task).await,
-                None => None,
-            }
+            state.executor.cache_get(&task).await
         } else {
             None
         };

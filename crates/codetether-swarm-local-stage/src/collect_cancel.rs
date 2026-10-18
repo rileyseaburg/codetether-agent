@@ -1,4 +1,4 @@
-use crate::swarm::SwarmControl;
+use codetether_session_control::ControlHandle;
 use std::collections::HashMap;
 use tokio::task::AbortHandle;
 

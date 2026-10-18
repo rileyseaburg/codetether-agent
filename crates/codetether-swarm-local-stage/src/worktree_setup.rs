@@ -1,6 +1,6 @@
 //! Concurrent, fail-closed worktree provisioning for swarm subtasks.
 
-use crate::worktree::{WorktreeInfo, WorktreeManager};
+use codetether_worktree::{WorktreeInfo, WorktreeManager};
 use futures::stream::{self, StreamExt};
 use std::{collections::HashMap, sync::Arc};
 
