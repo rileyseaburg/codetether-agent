@@ -16647,3 +16647,23 @@ Full workspace consolidation remains active.
   dependencies changed. Evidence: `artifacts/consolidation-cognition-generation/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared cognition tool request execution
+
+- Moved thinker-based tool-request extraction, serial request dispatch and
+  Test-phase allowance/progress handling into
+  `codetether-cognition-core::execution::dispatch`.
+- Added a narrow registry lookup contract using the existing Tool trait; native
+  registries return their existing tool objects. Native executor/phase functions
+  now forward to shared code, and two native implementation modules were removed.
+- Preserved allowlist, lookup, schema, lease and execution order; argument
+  cloning; output trimming and failure strings; serial event order; and progress
+  marking for each returned event. Concrete tools and access policy are unchanged.
+- Added the existing tool-core dependency and staged only its entry in the
+  cognition-core package's HEAD-derived lockfile, preserving unrelated changes.
+- Verification: full extraction/execution/progress body comparisons, exact
+  registry/caller bindings, unchanged no-thinker test/tool registry/lease/event
+  contracts, module/dependency graphs, direct rustfmt, file limits and whitespace.
+  Evidence: `artifacts/consolidation-cognition-tools/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

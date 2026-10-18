@@ -10,3 +10,6 @@ pub use lease::CapabilityLease;
 pub use records::{DecisionReceipt, ExecutionOutcome, ToolInvocation};
 #[cfg(test)]
 mod tests;
+
+/// Request extraction, policy gates and serial tool execution.
+pub mod dispatch;

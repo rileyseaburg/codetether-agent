@@ -2189,6 +2189,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "codetether-provider-core",
+ "codetether-tool-core",
  "codetether-util",
  "regex",
  "reqwest 0.13.4",

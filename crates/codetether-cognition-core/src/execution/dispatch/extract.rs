@@ -1,12 +1,16 @@
-//! Live thinker invocation followed by serial tool-request dispatch.
-use super::*;
-
+use super::Registry;
+use crate::{
+    ThoughtEvent,
+    execution::requests,
+    thinker::client::{Client, Host},
+};
+use std::sync::Arc;
 /// Execute tool requests extracted from a Test-phase thought.
 ///
 /// Returns ThoughtEvents for each tool execution result.
-pub async fn execute_tool_requests(
-    thinker: Option<&ThinkerClient>,
-    tool_registry: &Arc<ToolRegistry>,
+pub async fn execute_tool_requests<H: Host, R: Registry + ?Sized>(
+    thinker: Option<&Client<H>>,
+    tool_registry: &Arc<R>,
     persona_id: &str,
     thought_text: &str,
     allowed_tools: &[String],

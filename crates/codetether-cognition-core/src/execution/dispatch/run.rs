@@ -1,11 +1,15 @@
-//! Ordered allowlist, registry, schema and lease checks before a tool call.
-use super::*;
-use crate::cognition::text_util::trim_for_storage;
-use codetether_cognition_core::execution::{CapabilityLease, events};
-use requests::{ExtractedToolRequest, validate_tool_args};
-
-pub(super) async fn execute_request(
-    tool_registry: &Arc<ToolRegistry>,
+use super::Registry;
+use crate::{
+    ThoughtEvent,
+    execution::{
+        CapabilityLease, events,
+        requests::{ExtractedToolRequest, validate_tool_args},
+    },
+    text::trim_for_storage,
+};
+use std::sync::Arc;
+pub(super) async fn execute_request<R: Registry + ?Sized>(
+    tool_registry: &Arc<R>,
     persona_id: &str,
     allowed_tools: &[String],
     request: ExtractedToolRequest,
