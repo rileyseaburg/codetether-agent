@@ -1,6 +1,6 @@
 //! Apply an explicit client model before resolving a realtime turn's provider.
 
-use crate::session::SessionMetadata;
+use codetether_session_metadata::SessionMetadata;
 
 /// Keep older clients compatible; explicit qualified model selectors replace the default.
 pub(super) fn apply(metadata: &mut SessionMetadata, model: Option<String>) {

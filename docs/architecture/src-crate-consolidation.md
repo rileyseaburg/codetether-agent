@@ -14424,3 +14424,20 @@ Full workspace consolidation remains active.
   artifacts/consolidation-server-runtime/.
 - No Cargo, rustc, Rust tests, background tasks or server startup ran. Full
   workspace consolidation remains unfinished.
+
+### Realtime session HTTP and prompt lifecycle ownership
+
+- Moved WebSocket route/upgrade setup and the owned prompt task lifecycle into
+  codetether-session-realtime. The crate now owns session load, explicit model
+  selection, provider lookup sequencing, event-channel creation, prompt and save.
+- Native Host methods delegate storage and provider operations. Moved the model
+  selection helper and both existing tests into the crate, using the same shared
+  SessionMetadata type. The old native helper file was removed.
+- Preserved the 64 KiB WebSocket message limit, 256-event channel, cancellation
+  ownership, string error conversion, route position and save-after-success rule.
+- Verification: nine static checks passed, plus module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks. Updated the src
+  inventory for subsequent extractions. Evidence: artifacts/consolidation-realtime-host/.
+- Staged only the realtime crate's anyhow and session-metadata lock dependencies.
+  No Cargo, rustc, Rust tests or WebSocket sessions ran. Full consolidation is
+  unfinished.

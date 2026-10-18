@@ -14,7 +14,10 @@ pub(super) fn build(state: &AppState, root: Router, nested: Router) -> Router {
         Extensions {
             approval: approval_routes::router(),
             sessions: session_routes::router(),
-            realtime: session_realtime::router(),
+            realtime: codetether_session_realtime::http::router::<
+                session_realtime::AppHost,
+                AppState,
+            >(),
             status: config_status::router(state.config.clone()),
             models: codetether_model_catalog::http::router::<models_catalog::AppHost, AppState>(),
             completions: codetether_openai_serving::http::router::<

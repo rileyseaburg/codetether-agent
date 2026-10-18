@@ -15,9 +15,14 @@ pub mod turn_input;
 pub mod wire;
 
 mod connection;
+pub mod execution;
+mod host;
+pub mod http;
+mod prompt_model;
 mod prompt_run;
 mod turn;
 mod turn_start;
 mod turn_step;
 pub use connection::run;
+pub use host::Host;
 pub use prompt_run::{PromptOutcome, PromptRun, PromptStarter};

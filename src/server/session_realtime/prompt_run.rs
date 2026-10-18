@@ -1,36 +1,31 @@
-//! Native session execution callback for the shared realtime turn loop.
+//! Native session and provider bindings for shared realtime execution.
 use crate::provider::ProviderRegistry;
-use crate::session::{Session, SessionEvent, SessionResult};
+use crate::session::{Session, SessionEvent, SessionMetadata, SessionResult};
+use std::sync::Arc;
 use tokio::sync::mpsc;
-#[path = "prompt_model.rs"]
-mod prompt_model;
-type PromptRun = codetether_session_realtime::PromptRun<Session>;
 
-/// Start a prompt without blocking WebSocket steering input.
-pub(super) fn start(session_id: String, message: String, model: Option<String>) -> PromptRun {
-    let (event_tx, events) = mpsc::channel(256);
-    let task = tokio::spawn(execute(session_id, message, model, event_tx));
-    PromptRun { events, task }
-}
-
-/// Load, execute, and persist one session prompt.
-async fn execute(
-    session_id: String,
-    message: String,
-    model: Option<String>,
-    event_tx: mpsc::Sender<SessionEvent>,
-) -> Result<SessionResult, String> {
-    let mut session = Session::load(&session_id)
-        .await
-        .map_err(|error| error.to_string())?;
-    prompt_model::apply(&mut session.metadata, model);
-    let registry = ProviderRegistry::shared_from_vault()
-        .await
-        .map_err(|error| error.to_string())?;
-    let result = session
-        .prompt_with_events(&message, event_tx, registry)
-        .await
-        .map_err(|error| error.to_string())?;
-    session.save().await.map_err(|error| error.to_string())?;
-    Ok(result)
+pub(in crate::server) struct AppHost;
+impl codetether_session_realtime::Host for AppHost {
+    type Session = Session;
+    type Registry = ProviderRegistry;
+    async fn load(id: &str) -> anyhow::Result<Session> {
+        Session::load(id).await
+    }
+    fn metadata(session: &mut Session) -> &mut SessionMetadata {
+        &mut session.metadata
+    }
+    async fn load_registry() -> anyhow::Result<Arc<ProviderRegistry>> {
+        ProviderRegistry::shared_from_vault().await
+    }
+    async fn prompt(
+        session: &mut Session,
+        message: &str,
+        events: mpsc::Sender<SessionEvent>,
+        registry: Arc<ProviderRegistry>,
+    ) -> anyhow::Result<SessionResult> {
+        session.prompt_with_events(message, events, registry).await
+    }
+    async fn save(session: &Session) -> anyhow::Result<()> {
+        session.save().await
+    }
 }

@@ -7,6 +7,8 @@ license = "MIT"
 description = "Session WebSocket framing, steering and ordered event transport"
 
 [dependencies]
+anyhow = "1"
+codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
 axum = { version = "0.8", features = ["ws"] }
 codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
 codetether-session-steering = { path = "../codetether-session-steering", version = "0.1.0" }
