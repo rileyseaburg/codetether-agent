@@ -1,8 +1,9 @@
 //! Top-level CodeTether subcommand schema without application dispatch.
 //!
-//! The native root parser embeds Command and owns application-version metadata.
+//! The root parser embeds Command and accepts application-version metadata.
 //! Argument schemas remain owned by their dedicated option and command crates.
 include!("imports.rs");
+pub mod root;
 /// Available CodeTether CLI operations and their typed argument payloads.
 /// # Examples
 /// ```

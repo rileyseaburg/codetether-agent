@@ -7,7 +7,7 @@ license = "MIT"
 description = "CodeTether top-level subcommand schema"
 
 [dependencies]
-clap = { version = "4.6.6", features = ["derive"] }
+clap = { version = "4.6.6", features = ["derive", "env"] }
 codetether-approval-cli = { path = "../codetether-approval-cli", version = "0.1.0" }
 codetether-auth-cli = { path = "../codetether-auth-cli", version = "0.1.0" }
 codetether-bonsai-cli = { path = "../codetether-bonsai-cli", version = "0.1.0" }

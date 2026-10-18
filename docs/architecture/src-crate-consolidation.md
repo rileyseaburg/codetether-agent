@@ -23570,3 +23570,24 @@ manifests or lockfiles changed; unrelated working changes remain untouched.
 Evidence: artifacts/consolidation-server-composition/.
 No server startup, requests, tests, Cargo, rustc or Python ran. Compilation and
 runtime behavior remain unverified. Full consolidation remains active.
+
+### Root CLI parser schema moved into the command crate
+
+Moved the root argument schema from src/cli/root_args.rs into
+crates/codetether-cli-command/src/root.rs. The command crate now owns both the
+root options and subcommand schema. A small ApplicationMetadata contract keeps
+version and description supplied by the native application package; the native
+file binds that contract and retains the integration test module. Enabled clap's
+env feature in the owning crate for the existing environment-backed arguments.
+
+Static token comparisons preserve the argument fields and attributes, with
+explicit substitutions for the metadata contract and shared help path. Existing
+access-mode and Vault help tests remain unchanged. Added an application identity
+regression test, but did not execute it. The initial literal-construction audit
+mistook a function return signature for construction; the corrected audit found
+no struct literal callers. Its initial output is preserved in the evidence.
+Module/dependency scans cover 691 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, file-size limits and whitespace checks passed. The
+working lockfile and unrelated A2A edits remain unchanged. Evidence:
+artifacts/consolidation-root-cli/. No Cargo, rustc, Python, compilation or runtime
+tests ran. Full consolidation remains active.
