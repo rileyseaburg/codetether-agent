@@ -19,3 +19,6 @@ pub mod worker_sync;
 
 /// Keyboard-responsive streaming redraw rate limiting.
 pub mod redraw;
+
+/// Background source ordering and completion-notice delivery.
+pub mod background;

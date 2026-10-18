@@ -11807,6 +11807,20 @@ Full workspace consolidation remains active.
 - No Cargo, rustc, compilation, integration tests or rendering ran. Full workspace
   consolidation remains incomplete.
 
+### Shared background update sequencing
+
+- Moved background-source ordering and completion-notice draining from
+  `src/tui/app/background.rs` into `codetether-tui-tick::background`.
+- Core owns model/bus/worker/event ordering, ready-notice iteration and the
+  drain-events-before-notice rule shared by direct and queued notices.
+  Native modules bind concrete state, receivers and existing notice handlers.
+- Verification: complete sequencing-body comparisons, every native binding
+  and both entry-point argument mappings; unchanged event/notice handlers,
+  module/dependency graphs, direct rustfmt, file limits and whitespace.
+  No dependency changes. Evidence: `artifacts/consolidation-background/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
+
 ### Goal-setup prompt extraction
 
 - Moved goal prompt state, text editing, one-shot response delivery, keyboard

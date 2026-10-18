@@ -8,6 +8,9 @@ use crate::tui::app::session_runtime::{SessionNotice, SessionSlot};
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
+#[path = "background/host/mod.rs"]
+mod host;
+
 #[path = "background_notice.rs"]
 mod notice;
 #[path = "background_retry.rs"]
@@ -30,32 +33,16 @@ pub(crate) async fn drain_background_updates(
     event_rx: &mut mpsc::Receiver<SessionEvent>,
     notice_rx: &mut mpsc::Receiver<SessionNotice>,
 ) {
-    app.state.drain_model_refresh();
-    crate::tui::app::bus::ingest::drain(app, bus_recorder);
-    worker_tasks::queue_worker_tasks(app, worker_bridge);
-    worker_tasks::display_next_worker_task(app);
-    crate::tui::app::session_event_drain::drain_batch(app, slot, worker_bridge, event_rx).await;
-    apply_completed_sessions(app, cwd, slot, worker_bridge, event_rx, notice_rx).await;
-}
-
-async fn apply_completed_sessions(
-    app: &mut App,
-    cwd: &Path,
-    slot: &mut SessionSlot,
-    worker_bridge: &mut Option<TuiWorkerBridge>,
-    event_rx: &mut mpsc::Receiver<crate::session::SessionEvent>,
-    notice_rx: &mut mpsc::Receiver<SessionNotice>,
-) {
-    while let Ok(notice) = notice_rx.try_recv() {
-        crate::tui::app::session_event_drain::drain_before_notice(
-            app,
-            slot,
-            worker_bridge,
-            event_rx,
-        )
-        .await;
-        notice::apply(app, cwd, slot, worker_bridge, notice).await;
-    }
+    codetether_tui_tick::background::drain(&mut host::Native {
+        app,
+        cwd,
+        slot,
+        bus_recorder: Some(bus_recorder),
+        worker_bridge,
+        event_rx,
+        notice_rx: Some(notice_rx),
+    })
+    .await;
 }
 
 /// Process a single completed session result.
@@ -67,7 +54,17 @@ pub(crate) async fn apply_single_notice(
     event_rx: &mut mpsc::Receiver<crate::session::SessionEvent>,
     notice: SessionNotice,
 ) {
-    crate::tui::app::session_event_drain::drain_before_notice(app, slot, worker_bridge, event_rx)
-        .await;
-    notice::apply(app, cwd, slot, worker_bridge, notice).await;
+    codetether_tui_tick::background::apply_notice(
+        &mut host::Native {
+            app,
+            cwd,
+            slot,
+            bus_recorder: None,
+            worker_bridge,
+            event_rx,
+            notice_rx: None,
+        },
+        notice,
+    )
+    .await;
 }
