@@ -1,6 +1,5 @@
 //! Application model-refresh tasks and state updates.
 pub use codetether_model_discovery::{ModelRefreshEvent, ModelRefreshSummary};
-mod catalog_registry;
 use std::sync::Arc;
 
 use crate::provider::ProviderRegistry;

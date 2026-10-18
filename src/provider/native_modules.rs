@@ -1,5 +1,6 @@
 // Native-provider catalog and feature-gated implementations.
 pub mod bonsai;
+mod model_discovery;
 pub use codetether_provider_core::local::catalog as local_catalog;
 #[cfg(feature = "candle-cuda")]
 pub mod local_cuda;

@@ -16,3 +16,6 @@ pub use event::ModelRefreshEvent;
 pub use load::load_available_models;
 pub use registry::Registry;
 pub use summary::ModelRefreshSummary;
+
+/// Cached provider inventories for worker registration.
+pub mod worker;

@@ -20606,3 +20606,26 @@ Direct rustfmt, source graph checks across 691 roots, native file-size limits,
 and whitespace checks passed. Evidence: `artifacts/consolidation-approval-handoff/`.
 No Cargo, rustc, or Python commands ran. Compilation and runtime behavior remain
 unverified. The broader workspace consolidation remains active.
+
+### Worker model inventory ownership
+
+Moved worker provider-inventory cache management, primary/fallback selection,
+sequential model enumeration, and omission of failed/empty provider results into
+`codetether-model-discovery::worker`. Its `Catalog` owns the asynchronous once
+cell; the native entry point holds one process-static catalog and supplies Vault
+and config loading through `Host`. Successful results, including empty catalogs,
+remain cached; initialization failures remain retryable. The catalog continues
+returning a clone of the stored inventory.
+
+Moved the existing `Registry for ProviderRegistry` implementation unchanged from
+TUI model-picker state to `src/provider/model_discovery.rs`, where both worker
+and UI discovery can use it. Enabled Tokio's `sync` feature explicitly in the
+owning discovery crate for `OnceCell`; dependency edges did not change.
+
+Verification: exact comparisons after explicit host substitutions cover the
+original enumeration and fallback bodies, and checks account for once-cell
+initialization/return behavior and the unchanged registry adapter. Direct
+rustfmt, source graph inspection across 691 roots, native file-size checks, and
+whitespace checks passed. Evidence: `artifacts/consolidation-worker-models/`.
+No Cargo, rustc, or Python commands ran. Rust compilation and runtime tests were
+not performed. The full workspace consolidation remains incomplete.
