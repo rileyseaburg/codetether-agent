@@ -23880,3 +23880,15 @@ file limits and whitespace checks passed. Only the required lockfile dependency
 is staged; unrelated changes remain untouched. Evidence:
 artifacts/consolidation-history-store/. No Cargo, rustc, Python, compilation,
 storage operations or tests ran. Full consolidation remains active.
+
+### History view follows the extracted storage source
+
+Fixed a missed native view import after the history-source extraction. The
+AppState history View implementation now specializes the same shared
+Source<Session> type used by HistoryPageState. The previous module declaration
+scan checked file reachability, but could not detect the stale Rust import.
+A targeted source scan found no remaining source::NativeSource or
+history_page::source references. All view method bodies remain unchanged.
+Direct rustfmt, source file limits and whitespace checks passed. Evidence:
+artifacts/consolidation-history-source-reference/. No Cargo, rustc, Python,
+compilation or tests ran. Full consolidation remains active.

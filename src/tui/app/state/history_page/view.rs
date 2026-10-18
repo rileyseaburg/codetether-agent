@@ -1,8 +1,12 @@
 //! Application UI projection for backward-history page application.
-use super::{HistoryPageState, source::NativeSource};
+use super::HistoryPageState;
 use crate::tui::app::state::AppState;
 use codetether_chat_model::ChatMessage;
-impl codetether_history_page::interactive::View<NativeSource> for AppState {
+impl
+    codetether_history_page::interactive::View<
+        codetether_history_page::store::Source<crate::session::Session>,
+    > for AppState
+{
     fn pager(&mut self) -> &mut HistoryPageState {
         &mut self.history_page
     }
