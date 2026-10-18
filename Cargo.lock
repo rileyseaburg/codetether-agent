@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-tui-navigation",
  "codetether-provider-registry",
  "codetether-provider-factory",
  "codetether-provider-local-cuda",
@@ -7387,6 +7388,14 @@ dependencies = [
  "codetether-config",
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "codetether-tui-navigation"
+version = "0.1.0"
+dependencies = [
+ "codetether-tui-models",
+ "crossterm",
 ]
 
 [[package]]

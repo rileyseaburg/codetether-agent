@@ -15029,3 +15029,24 @@ Full workspace consolidation remains active.
 - Added existing session-location and tracing dependencies; only those dependency
   edges are staged in Cargo.lock. No storage operations, Cargo, rustc or Rust
   tests ran. Full workspace consolidation remains unfinished.
+
+### TUI keyboard navigation policy ownership
+
+- Moved Escape/help priority, arrow-key routing, page movement, cursor editing,
+  Home/End behavior and subagent detail scrolling into the dedicated
+  codetether-tui-navigation crate. Modules separate overlays, arrows, paging,
+  editing, boundaries and subagent behavior.
+- Host supplies read-only navigation context and applies typed actions. Native
+  bindings are grouped by overlays, list selection, agent selection, pane
+  scrolling, page scrolling and editing. Agent focus-ring policy and symbol
+  confirmation remain native for later extraction.
+- Preserved symbol/help/model overlay ordering, file-picker Escape handling,
+  Control-before-Shift precedence, scroll amounts and limits, view-specific
+  fall-through and status strings. Existing native navigation tests are unchanged.
+- Verification: all sixteen moved handler bodies expand to their original
+  operations; each of sixty-three native effects is mapped exactly once. Context
+  field projections and file-picker Escape binding were checked. Module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and whitespace
+  checks passed. Evidence: artifacts/consolidation-tui-navigation/.
+- Staged lockfile changes contain only the new crate and its root dependency.
+  No Cargo, rustc, UI execution or Rust tests ran. Full consolidation is unfinished.

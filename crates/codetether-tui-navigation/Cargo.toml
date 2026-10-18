@@ -1,0 +1,11 @@
+[package]
+name = "codetether-tui-navigation"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Terminal keyboard navigation policy and native effect contracts"
+
+[dependencies]
+codetether-tui-models = { path = "../codetether-tui-models", version = "0.1.0" }
+crossterm = "0.29.0"
