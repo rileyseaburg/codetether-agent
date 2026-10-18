@@ -20953,3 +20953,22 @@ call order. Direct rustfmt, source graph checks, native file-size limits, and
 whitespace checks passed. Evidence: `artifacts/consolidation-cli-early/`.
 No Cargo, rustc, or Python commands ran. No CLI commands, startup services, or
 Rust tests were executed. Compilation remains unverified; consolidation is active.
+
+### Sub-agent event and preview ownership
+
+Moved live tool-start/detail event construction, assistant-output accumulation
+and publication, and UTF-8-safe preview truncation into
+`codetether-swarm-core::agent_loop::events`. Native wrappers now supply only the
+optional sender, subtask ID, step, and output buffer. Log previews call the same
+shared truncation function. The original UTF-8 preview regression test moved
+unchanged into the owning crate; its native implementation/test files were
+removed.
+
+Verification compares complete event, output, and truncation bodies after
+explicit field substitutions and preserves original logging targets. Payloads,
+200/500-byte event preview limits, 400-byte log previews, newline behavior, and
+nonblocking channel handling are unchanged. Direct rustfmt, source graph checks
+across 694 roots, native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-swarm-events/`. No dependencies changed. No Cargo, rustc,
+or Python commands ran. Rust tests were not executed; compilation and runtime
+behavior remain unverified. Full workspace consolidation remains active.

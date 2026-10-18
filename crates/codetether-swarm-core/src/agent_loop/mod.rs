@@ -20,3 +20,6 @@ mod contract;
 pub use contract::AgentRuntime;
 mod driver;
 pub use driver::execute;
+
+/// Live sub-agent event publication and output accumulation.
+pub mod events;

@@ -22,7 +22,7 @@ pub(super) async fn execute(state: &State, name: &str, args: Value) -> Result {
         Ok(Ok(result)) => {
             tracing::info!(tool = %name, success = result.success,
                 duration_ms = started.elapsed().as_millis() as u64,
-                output = %super::preview::text(&result.output, 400),
+                output = %codetether_swarm_core::agent_loop::events::preview(&result.output, 400),
                 "Tool execution completed");
             Result::from_tool(result)
         }

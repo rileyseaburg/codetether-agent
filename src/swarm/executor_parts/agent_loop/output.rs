@@ -1,29 +1,12 @@
-//! Accumulation and event publication of assistant text.
-
-use super::{preview, state::State};
-use codetether_agent_core::events::AgentMessageEntry;
-use codetether_swarm_core::SwarmEvent;
+//! Native output-buffer and event bindings for shared assistant publication.
+use super::state::State;
 
 pub(super) fn record(state: &mut State, text: &str) {
-    if text.is_empty() {
-        return;
-    }
-    if !state.output.is_empty() {
-        state.output.push('\n');
-    }
-    state.output.push_str(text);
-    tracing::info!(
-        step = state.steps,
-        output_len = state.output.len(),
-        "Sub-agent text output"
+    codetether_swarm_core::agent_loop::events::record_output(
+        &mut state.output,
+        state.steps,
+        state.events.as_ref(),
+        &state.subtask_id,
+        text,
     );
-    let Some(events) = &state.events else { return };
-    let _ = events.try_send(SwarmEvent::AgentMessage {
-        subtask_id: state.subtask_id.clone(),
-        entry: AgentMessageEntry {
-            role: "assistant".into(),
-            content: preview::text(text, 500),
-            is_tool_call: false,
-        },
-    });
 }
