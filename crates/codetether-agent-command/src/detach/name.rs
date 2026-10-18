@@ -1,15 +1,15 @@
 //! Unique background-agent name selection for `/detach`.
 
-use crate::tui::app::state::App;
+use super::Host;
 
 /// Choose a unique agent name from `rest`, defaulting to `detached-N`.
-pub(super) fn pick_name(app: &App, rest: &str) -> String {
+pub(super) fn pick_name(app: &impl Host, rest: &str) -> String {
     let base = rest.trim();
-    if !base.is_empty() && !app.state.spawned_agents.contains_key(base) {
+    if !base.is_empty() && !app.contains_name(base) {
         return base.to_string();
     }
     (1..)
         .map(|n| format!("detached-{n}"))
-        .find(|c| !app.state.spawned_agents.contains_key(c))
+        .find(|c| !app.contains_name(c))
         .unwrap_or_else(|| "detached".to_string())
 }

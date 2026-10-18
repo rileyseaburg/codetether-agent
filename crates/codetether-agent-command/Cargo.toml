@@ -17,3 +17,6 @@ codetether-chat-submit = { path = "../codetether-chat-submit", version = "0.1.0"
 
 codetether-agent-spawn = { path = "../codetether-agent-spawn", version = "0.1.0" }
 codetether-agent-identity = { path = "../codetether-agent-identity", version = "0.1.0" }
+
+codetether-agent-tree = { path = "../codetether-agent-tree", version = "0.1.0" }
+codetether-session-fork = { path = "../codetether-session-fork", version = "0.1.0" }

@@ -20049,3 +20049,26 @@ Module reachability, dependency cycle checks, source file-size ratchet,
 whitespace and direct rustfmt checks passed. Evidence lives in
 `artifacts/consolidation-chat-shell/`. Cargo, rustc, Python and Rust tests were
 not run; compilation and runtime behavior remain unverified.
+
+### Detached conversation ownership
+
+Moved detached-session snapshot construction and tail selection into
+`codetether-session-fork::detached`. Moved `/detach` validation, persistence
+ordering, unique-name selection and background-agent construction into
+`codetether-agent-command::detach`. Removed native naming and registration
+implementation files. Native adapters supply session field/bus operations,
+agent storage, current-model selection and presentation.
+
+Preserved the processing guard, parent save before naming and copying, fresh
+identity before lazy resume-window lookup, bounded working-tail copy, page
+classification, inherited metadata, raw detached agent label, title suffix,
+bus attachment and child save before registration. Existing snapshot tests
+now exercise the shared tail helper without changing their bodies.
+
+Validation: full translated command/name/registration/snapshot/tail bodies,
+eight frontend bindings, three snapshot bindings, reused session storage
+bindings, unchanged tail tests, removed native implementations, isolated lock
+delta, module reachability, dependency cycles, file-size ratchet, whitespace
+and direct formatting. Evidence: `artifacts/consolidation-detach/`. No Cargo,
+rustc, Python, Rust tests or session persistence operations were executed;
+compilation and runtime remain unverified.

@@ -1892,6 +1892,8 @@ dependencies = [
 name = "codetether-agent-command"
 version = "0.1.0"
 dependencies = [
+ "codetether-agent-tree",
+ "codetether-session-fork",
  "anyhow",
  "codetether-agent-identity",
  "codetether-agent-spawn",

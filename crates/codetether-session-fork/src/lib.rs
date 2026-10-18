@@ -12,3 +12,6 @@ pub use error::ForkError;
 pub use host::ForkSession;
 pub use repository::create as create_persisted;
 pub use service::create;
+
+/// Persisted snapshots for detached background conversations.
+pub mod detached;

@@ -23,3 +23,6 @@ pub mod request;
 
 pub mod model;
 pub mod spawn;
+
+/// Persist the current conversation as a detached background agent.
+pub mod detach;
