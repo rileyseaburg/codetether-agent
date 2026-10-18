@@ -3,6 +3,7 @@
 //! [command::handle] controls live attachment. [live::admit] queues parked
 //! turns, [trigger_next] sends work through the frontend, and [live::settle]
 //! resolves its waiting peer. Frontends retain provider/session ownership.
+mod binding;
 pub mod command;
 mod dispatch;
 mod host;

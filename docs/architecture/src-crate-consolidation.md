@@ -23652,6 +23652,23 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 needed. Evidence: artifacts/consolidation-terminal-binding/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
 
+### Interactive inbox frontend bindings
+
+Moved peer-task dispatch, chat presentation, live-turn admission/settlement and
+the event-loop inbox step into codetether-a2a-interactive::binding modules.
+Removed three root implementation files; the root selects existing frontend,
+message, task and session types and the prompt-dispatch callback. Admission
+still precedes task dispatch and settlement retains the same session message view.
+
+All eighteen expanded function bodies and the host's borrowed fields match
+after prompt-callback qualification. Source comparison caught and corrected a
+mechanical method-name substitution before commit; the initial generated file
+is retained in the evidence directory. Declaration, module/dependency, native
+production-scope, standalone formatting, file-limit and whitespace checks pass
+for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or lock
+changes were needed. Evidence: artifacts/consolidation-inbox-bindings/. No Cargo,
+rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
 ### Storage callers use the owning API names directly
 
 Removed the native projection and summary forwarding files after updating five
