@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-session-metadata",
  "codetether-session-title",
  "codetether-run-checkpoint",
  "codetether-writeback-journal",
@@ -3980,6 +3981,22 @@ dependencies = [
  "directories 6.0.0",
  "tempfile",
  "tracing",
+]
+
+[[package]]
+name = "codetether-session-metadata"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-context-policy",
+ "codetether-history-sink",
+ "codetether-provider-core",
+ "codetether-provenance",
+ "codetether-rlm",
+ "codetether-run-checkpoint",
+ "codetether-session-title",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

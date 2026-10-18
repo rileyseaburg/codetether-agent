@@ -1,6 +1,6 @@
 //! Redacted history-sink projection for metadata debug output.
 
-use super::super::SessionMetadata;
+use crate::SessionMetadata;
 
 pub(super) fn history_sink(metadata: &SessionMetadata) -> Option<(&str, &str, &str)> {
     metadata.history_sink.as_ref().map(|config| {

@@ -4,7 +4,6 @@ mod cache;
 mod cache_io;
 mod count_seq;
 mod directory;
-mod label;
 mod merge;
 mod parse;
 mod path;

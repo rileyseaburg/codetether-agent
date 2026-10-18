@@ -8881,3 +8881,21 @@ passed; title crate files contain at most 39 code lines. Evidence is in
 `artifacts/consolidation-session-title/`. Compilation and runtime tests were not
 run; no model requests occurred. No Cargo, rustc or Python commands ran. The full
 consolidation remains active.
+
+### Dedicated session-metadata crate
+
+Moved `SessionMetadata`, serde defaults, credential-safe Debug formatting,
+`SessionSummary` and summary display methods into
+`crates/codetether-session-metadata`. Seven modules separate data shape, default
+values, debug projections and listing presentation. Native session paths now
+re-export the shared types. Referenced provenance, RLM, policy, history-sink,
+checkpoint, title and provider types come from their existing owning crates.
+
+All metadata fields, skip/default attributes, field order, Debug field order,
+redaction and summary label behavior are preserved. Fourteen static comparisons
+cover those contracts and unchanged native checkpoint integration tests.
+Module references, workspace dependency cycles, code budgets and whitespace
+checks passed; new crate files contain at most 44 code lines. Evidence is in
+`artifacts/consolidation-session-metadata/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The complete workspace
+consolidation remains active.

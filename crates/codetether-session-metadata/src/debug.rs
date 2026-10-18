@@ -1,6 +1,6 @@
 //! Redacted debug formatting for session metadata.
 
-use super::super::SessionMetadata;
+use crate::SessionMetadata;
 
 impl std::fmt::Debug for SessionMetadata {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -28,7 +28,7 @@ impl std::fmt::Debug for SessionMetadata {
             .field("context_policy", &self.context_policy)
             .field("delegation", &self.delegation)
             .field("run_checkpoint", &self.run_checkpoint)
-            .field("history_sink", &super::sink::history_sink(self))
+            .field("history_sink", &crate::debug_sink::history_sink(self))
             .field(
                 "provider_keys",
                 &self.provider_keys.as_ref().map(|_| "<redacted>"),
