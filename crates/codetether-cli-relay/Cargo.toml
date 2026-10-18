@@ -1,0 +1,21 @@
+[package]
+name = "codetether-cli-relay"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Protocol-first CLI relay runtime orchestration"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-autochat-core = { path = "../codetether-autochat-core", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-relay-plan = { path = "../codetether-relay-plan", version = "0.1.0" }
+codetether-relay-planner = { path = "../codetether-relay-planner", version = "0.1.0" }
+codetether-relay-report = { path = "../codetether-relay-report", version = "0.1.0" }
+codetether-relay-rlm = { path = "../codetether-relay-rlm", version = "0.1.0" }
+codetether-relay-okr = { path = "../codetether-relay-okr", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+tracing = "0.1"
+uuid = "1"

@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-cli-relay",
  "codetether-relay-report",
  "codetether-relay-rlm",
  "codetether-relay-planner",
@@ -7082,6 +7083,24 @@ version = "0.1.0"
 dependencies = [
  "codetether-relay-plan",
  "serde",
+]
+
+[[package]]
+name = "codetether-cli-relay"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-autochat-core",
+ "codetether-bus-core",
+ "codetether-relay-okr",
+ "codetether-relay-plan",
+ "codetether-relay-planner",
+ "codetether-relay-report",
+ "codetether-relay-rlm",
+ "codetether-session-events",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

@@ -13968,3 +13968,21 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or relay execution ran. Full workspace
   consolidation remains unfinished.
+
+### CLI relay runtime migration
+
+- Moved the complete protocol-first relay orchestrator from src/cli/run.rs into
+  codetether-cli-relay. Native relay_host modules now only bind provider loading,
+  bus sink startup, session creation/configuration and prompt execution.
+- Planning, model rotation, correlated handoff transport, RLM refinement,
+  dynamic spawning, convergence, OKR progress and final reporting now execute
+  from the crate with their previous call order and failure handling.
+- Verification: eight static full-runtime/native-binding/remaining-code checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-cli-relay/.
+- This is an intermediate migration: execute.rs still has 300 code lines and
+  needs decomposition into cohesive orchestration modules. Host and convergence
+  modules are separate already. Do not treat this as completed module cleanup.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, provider calls, S3 startup or relay execution ran.
+  Full workspace consolidation remains unfinished.
