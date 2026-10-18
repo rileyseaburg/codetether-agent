@@ -49,3 +49,6 @@ pub mod worker_stream;
 
 mod output_stream;
 pub use output_stream::stream_task_output;
+
+/// Task route groups over application-owned queue and bus state.
+pub mod http;

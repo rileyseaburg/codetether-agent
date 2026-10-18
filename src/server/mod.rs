@@ -12,11 +12,7 @@ pub mod policy;
 mod session_realtime;
 mod session_recovery;
 mod session_routes;
-mod task_dispatch;
-mod task_output_ingest;
-mod task_output_poll;
-use task_output_ingest::agent_task_output;
-use task_output_poll::get_agent_task_output;
+mod task_http_state;
 mod task_queue;
 mod tool_contract;
 mod tool_discovery_host;
@@ -48,7 +44,7 @@ use axum::{
     routing::{get, post},
 };
 use codetether_task_ingest::CloudEventResponse;
-use futures::{StreamExt, stream};
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -73,10 +69,8 @@ use codetether_openai_wire::{
     OpenAiRequestToolCallFunction, OpenAiRequestToolDefinition, OpenAiResponseToolCall,
     OpenAiResponseToolCallFunction, OpenAiStop, OpenAiUsage, openai_stream_chunk,
 };
-use codetether_task_api::{CreateAgentTaskRequest, ListAgentTasksQuery};
 pub use codetether_tool_discovery::{RegisterToolRequest, RegisteredTool, ToolRegistry};
 use codetether_voice_api::{CreateVoiceSessionRequest, get_voice_session_rest, list_voices_rest};
-use task_dispatch::dispatch_task;
 pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
 
 /// Server state shared across handlers
@@ -212,16 +206,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // CloudEvent receiver for Knative Eventing (public — auth exempt)
         .route("/task", post(receive_task_event))
         // Knative task queue APIs
-        .route("/v1/knative/tasks", get(list_knative_tasks))
-        .route("/v1/knative/tasks/{task_id}", get(get_knative_task))
-        .route(
-            "/v1/knative/tasks/{task_id}/claim",
-            post(claim_knative_task),
-        )
-        .route(
-            "/v1/knative/tasks/{task_id}/complete",
-            post(complete_knative_task),
-        )
+        .merge(codetether_task_api::http::queue_routes::<AppState>())
         // API routes
         .merge(session_routes::router())
         .merge(session_realtime::router())
@@ -276,23 +261,11 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Tool registry API
         .merge(codetether_tool_discovery::router::<AppState>())
         // Agent task APIs (compatibility surface for dashboard)
-        .route(
-            "/v1/agent/tasks",
-            get(list_agent_tasks).post(create_agent_task),
-        )
-        .route("/v1/agent/tasks/{task_id}", get(get_agent_task))
-        .route(
-            "/v1/agent/tasks/{task_id}/output",
-            get(get_agent_task_output).post(agent_task_output),
-        )
-        .route(
-            "/v1/agent/tasks/{task_id}/output/stream",
-            get(stream_agent_task_output),
-        )
+        .merge(codetether_task_api::http::agent_routes::<AppState>())
         // Worker lifecycle and Rust-native mux realtime
         .merge(worker_modules::router())
         // Task dispatch (Knative-backed)
-        .route("/v1/tasks/dispatch", post(dispatch_task))
+        .merge(codetether_task_api::http::dispatch_routes::<AppState>())
         // Voice REST bridge (dashboard expects REST, server has gRPC)
         .route("/v1/voice/sessions", post(create_voice_session_rest))
         .route(
@@ -344,35 +317,6 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
 /// Health check response
 async fn health() -> &'static str {
     "ok"
-}
-
-/// List all Knative tasks in queue
-async fn list_knative_tasks(State(state): State<AppState>) -> Json<Vec<KnativeTask>> {
-    codetether_task_api::list_knative_tasks(&state.knative_tasks).await
-}
-
-/// Get a specific Knative task by ID
-async fn get_knative_task(
-    State(state): State<AppState>,
-    Path(task_id): Path<String>,
-) -> Result<Json<KnativeTask>, (StatusCode, String)> {
-    codetether_task_api::get_knative_task(&state.knative_tasks, task_id).await
-}
-
-/// Claim/start processing a Knative task
-async fn claim_knative_task(
-    State(state): State<AppState>,
-    Path(task_id): Path<String>,
-) -> Result<Json<KnativeTask>, (StatusCode, String)> {
-    codetether_task_api::claim_knative_task(&state.knative_tasks, task_id).await
-}
-
-/// Complete a Knative task
-async fn complete_knative_task(
-    State(state): State<AppState>,
-    Path(task_id): Path<String>,
-) -> Result<Json<KnativeTask>, (StatusCode, String)> {
-    codetether_task_api::complete_knative_task(&state.knative_tasks, task_id).await
 }
 async fn receive_task_event(
     State(state): State<AppState>,
@@ -684,42 +628,6 @@ async fn list_plugins(
     State(state): State<AppState>,
 ) -> Json<codetether_plugin_http::PluginListResponse> {
     codetether_plugin_http::list_plugins(&state.plugin_registry, &state.server_fingerprint).await
-}
-
-// ── Agent task compatibility surface ─────────────────────────────────────
-// These handlers provide the /v1/agent/tasks/* surface the marketing-site
-// dashboard expects, backed by the existing KnativeTaskQueue.
-
-/// List all agent tasks (wraps Knative task queue)
-async fn list_agent_tasks(
-    State(state): State<AppState>,
-    Query(params): Query<ListAgentTasksQuery>,
-) -> Json<serde_json::Value> {
-    codetether_task_api::list_agent_tasks(&state.knative_tasks, params).await
-}
-
-/// Create a new agent task
-async fn create_agent_task(
-    State(state): State<AppState>,
-    Json(req): Json<CreateAgentTaskRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    codetether_task_api::create_agent_task(&state.knative_tasks, req).await
-}
-
-/// Get a single agent task by ID
-async fn get_agent_task(
-    State(state): State<AppState>,
-    Path(task_id): Path<String>,
-) -> Result<Json<KnativeTask>, (StatusCode, String)> {
-    codetether_task_api::get_agent_task(&state.knative_tasks, task_id).await
-}
-
-/// Stream task output as SSE events
-async fn stream_agent_task_output(
-    State(state): State<AppState>,
-    Path(task_id): Path<String>,
-) -> Result<Sse<impl stream::Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
-    codetether_task_api::stream_task_output(&state.knative_tasks, &state.bus, task_id).await
 }
 async fn list_connected_workers(
     State(state): State<AppState>,

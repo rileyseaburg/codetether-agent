@@ -14188,3 +14188,18 @@ Full workspace consolidation remains active.
 - Tokio runtime/time features are explicit; no lockfile entries changed.
   No Cargo, rustc, Rust tests, server or cleanup task ran. Full workspace
   consolidation remains unfinished.
+
+### Task API route ownership extraction
+
+- Moved queue, agent-task, output and dispatch HTTP extraction into
+  codetether-task-api::http. Separate route groups preserve their original
+  positions in server assembly; a small native HttpState binding exposes only
+  the existing queue and bus.
+- Removed five forwarding files for dispatch/output. All eleven handler
+  operations and route methods/paths remain unchanged, including output SSE.
+- Verification: 17 static handler/route/state/expanded-server/size checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-task-router/.
+- No dependencies or lockfile entries changed. No Cargo, rustc, Rust tests,
+  task operations or server startup ran. Full workspace consolidation remains
+  unfinished.
