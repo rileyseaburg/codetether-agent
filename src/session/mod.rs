@@ -51,7 +51,6 @@ mod event_compaction;
 use codetether_rlm::events as event_rlm;
 use codetether_session_events as event_token;
 mod events;
-mod header;
 mod lifecycle;
 include!("storage_modules.rs");
 mod prompt_api;
@@ -60,8 +59,6 @@ mod tail_load;
 use codetether_tracked_vec::tail_seed;
 mod title;
 pub mod types;
-mod workspace_index;
-mod workspace_index_io;
 
 pub mod codex_import;
 pub mod context;

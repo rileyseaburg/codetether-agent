@@ -22434,3 +22434,23 @@ lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-lsp-regressions/`.
 No tests, language servers, Cargo, rustc or Python ran; compilation and runtime
 behavior remain unverified. Full consolidation is active.
+
+### Remove obsolete session migration remnants
+
+Removed the private legacy SessionHeader and the native workspace-index load
+and upsert adapters. Reference inspection across source, tests, examples and
+crates found no callers of their types/functions. The sole remaining use of
+the workspace-index module was its re-exported filename constant; session
+listing now uses that same constant directly from codetether-workspace-index.
+The shared index read/write implementation remains unchanged.
+
+Three obsolete native files and their module declarations were removed. The
+session metadata documentation no longer links the unused header type. Token
+comparison confirms identical Session fields and serde attributes. Follow-up
+reference checks found no remaining references to the removed native modules.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+No manifest or lockfile changes were needed. Evidence:
+`artifacts/consolidation-session-remnants/`.
+No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
+Full consolidation is active.

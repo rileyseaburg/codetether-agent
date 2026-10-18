@@ -38,9 +38,8 @@ pub struct Session {
     pub updated_at: DateTime<Utc>,
     /// Durable session configuration.
     ///
-    /// Serialized *before* [`Self::messages`] so cheap workspace-match
-    /// prefiltering (see [`crate::session::header::SessionHeader`]) can
-    /// avoid lexing past the transcript.
+    /// Serialized *before* [`Self::messages`] so metadata readers can identify
+    /// the workspace before reaching the transcript.
     pub metadata: SessionMetadata,
     /// Name of the agent persona that owns this session.
     pub agent: String,

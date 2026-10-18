@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 pub(in crate::session) struct ApplicationSource;
 #[async_trait]
 impl Source for ApplicationSource {
-    const INDEX_FILENAME: &'static str = crate::session::workspace_index::INDEX_FILENAME;
+    const INDEX_FILENAME: &'static str = codetether_workspace_index::INDEX_FILENAME;
     fn sessions_dir() -> Result<PathBuf> {
         Session::sessions_dir()
     }
