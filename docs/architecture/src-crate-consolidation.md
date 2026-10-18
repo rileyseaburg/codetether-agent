@@ -10239,3 +10239,18 @@ Module/dependency graphs, file budgets and whitespace checks passed; new files
 contain at most 39 code lines. Evidence is in `artifacts/consolidation-mux-model/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or mux/worktree
 operations ran. Full workspace consolidation remains active.
+
+### Dedicated mux protocol crate
+
+Moved client/server message schemas, agent/PTY operations and bounded JSON-lines
+framing into `crates/codetether-mux-protocol`. Fifteen modules separate message
+families, reading/writing and original wire regressions. Native protocol exports
+retain the same model/lease contracts, version 8 and one-megabyte frame cap.
+
+Nineteen static comparisons cover complete wire schemas, defaults, framing
+functions, protocol constants, seven moved tests and unchanged transport callers.
+Module/dependency graphs, file budgets and whitespace checks passed; new files
+contain at most 43 code lines. Evidence is in
+`artifacts/consolidation-mux-protocol/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, network or mux operations ran. Full workspace
+consolidation remains active.

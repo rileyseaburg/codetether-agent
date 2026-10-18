@@ -173,6 +173,7 @@ members = [
     "crates/codetether-worktree-lease",
     "crates/codetether-workspace-coordination",
     "crates/codetether-mux-model",
+    "crates/codetether-mux-protocol",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
     "crates/codetether-codex-records",
@@ -483,6 +484,7 @@ codetether-codex-discovery = { path = "crates/codetether-codex-discovery", versi
 codetether-codex-records = { path = "crates/codetether-codex-records", version = "0.1.0" }
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
+codetether-mux-protocol = { path = "crates/codetether-mux-protocol", version = "0.1.0" }
 codetether-mux-model = { path = "crates/codetether-mux-model", version = "0.1.0" }
 codetether-workspace-coordination = { path = "crates/codetether-workspace-coordination", version = "0.1.0" }
 codetether-worktree-lease = { path = "crates/codetether-worktree-lease", version = "0.1.0" }

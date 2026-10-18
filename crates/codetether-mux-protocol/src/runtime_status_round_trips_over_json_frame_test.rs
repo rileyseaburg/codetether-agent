@@ -1,6 +1,6 @@
-use crate::mux::MuxRuntimeStatus;
-use crate::mux::protocol::{ClientRequest, read_frame, write_frame};
-
+//! Original mux wire-roundtrip regression.
+use crate::{ClientRequest, read_frame, write_frame};
+use codetether_mux_model::MuxRuntimeStatus;
 #[tokio::test]
 async fn runtime_status_round_trips_over_json_frame() {
     let request = ClientRequest::ReportRuntime {
@@ -12,7 +12,7 @@ async fn runtime_status_round_trips_over_json_frame() {
             current_tool: Some("apply_patch".into()),
             needs_interaction: true,
             lagging: false,
-            principal: crate::provenance::RuntimePrincipal {
+            principal: codetether_provenance::RuntimePrincipal {
                 agent_name: "Morgan".into(),
                 agent_identity_id: Some("ctagent_manager".into()),
                 persona_id: Some("executive-vp".into()),
