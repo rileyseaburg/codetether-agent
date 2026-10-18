@@ -1,16 +1,6 @@
+//! Bind symbol confirmation to the native composer.
 use crate::tui::app::state::App;
-
+/// Confirm the active symbol selection or mention.
 pub fn handle(app: &mut App) {
-    if crate::tui::app::symbols::mention::confirm(app) {
-        return;
-    }
-    if let Some(symbol) = app.state.symbol_search.selected_symbol() {
-        let location = symbol
-            .line
-            .map(|line| format!("at line {line}"))
-            .unwrap_or_default();
-        app.state.status = format!("Selected symbol {} {location}", symbol.name);
-    }
-    crate::tui::app::symbols::cancel_refresh();
-    app.state.symbol_search.close();
+    codetether_symbol_mention::confirm_selection(app);
 }

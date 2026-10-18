@@ -29,3 +29,6 @@ mod completion_state;
 mod input_hint;
 pub use completion_state::CompletionState;
 pub use input_hint::current_slash_hint;
+
+/// Commands available without mutable session access.
+pub mod session_free;

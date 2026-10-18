@@ -15,3 +15,6 @@ pub use host::Composer;
 pub use open::open;
 #[cfg(test)]
 mod boundary_tests;
+
+mod selection;
+pub use selection::confirm_selection;

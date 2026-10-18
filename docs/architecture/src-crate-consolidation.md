@@ -15068,3 +15068,18 @@ Full workspace consolidation remains active.
   whitespace checks passed. Evidence: artifacts/consolidation-agent-focus/.
 - No dependency changes. No UI execution, Cargo, rustc or Rust tests ran.
   Full workspace consolidation remains unfinished.
+
+### Remaining symbol and session-free command interaction
+
+- Moved standalone symbol confirmation into codetether-symbol-mention, sharing
+  the existing Composer interface and mention-first handling. Native navigation
+  delegates confirmation; runtime cancellation and picker closure remain ordered.
+- Moved session-free slash normalization, file/image argument cleaning and the
+  busy-session command allowlist into codetether-slash-command::session_free.
+  Native bindings retain only attachment and view operations.
+- Verification: four static check groups covered confirmation, complete
+  session-free dispatch, five native bindings and symbol delegation. Module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and whitespace
+  checks passed. Evidence: artifacts/consolidation-command-interaction/.
+- No dependency changes. No UI execution, Cargo, rustc or Rust tests ran.
+  Full workspace consolidation remains unfinished.
