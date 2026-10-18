@@ -11485,3 +11485,21 @@ Full workspace consolidation remains active.
   limits and git diff --check passed. Evidence: artifacts/consolidation-settings-view/.
 - No Cargo, rustc, compilation, runtime tests or terminal rendering were run.
   Full workspace consolidation remains incomplete.
+
+### Model picker presentation and filtering extraction
+
+- Moved model picker rendering and whitespace-tokenized matching from native
+  TUI modules into crates/codetether-model-picker. Native code now supplies a
+  borrowed PickerView; AppState filtering uses the shared matching re-export.
+- Split borrowed view data, filtering, filter tests, layout, header, model list,
+  current selection and footer into nine modules, at most 34 code lines each.
+- Preserved catalog order, case-insensitive all-term matching, loading/empty
+  text, selection clamping, session-model/auto fallback and keyboard hints.
+  Provider discovery, navigation and model application remain native and
+  unchanged; they remain part of the broader unfinished consolidation.
+- Verification: 17 static comparisons cover original rendering sections,
+  filtering and both existing filter tests, adapter fields and unchanged
+  navigation/provider/application modules. Lexical module reachability,
+  dependency cycles, direct rustfmt, file limits and git diff --check passed.
+- Evidence: artifacts/consolidation-model-picker/. No Cargo, rustc,
+  compilation, runtime tests or terminal rendering were run.

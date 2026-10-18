@@ -1,0 +1,10 @@
+[package]
+name = "codetether-model-picker"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Model catalog query matching and terminal picker presentation"
+
+[dependencies]
+ratatui = { version = "0.30.2", default-features = false }

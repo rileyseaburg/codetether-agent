@@ -237,6 +237,7 @@ members = [
     "crates/codetether-ralph-view",
     "crates/codetether-swarm-view",
     "crates/codetether-settings-view",
+    "crates/codetether-model-picker",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -549,6 +550,7 @@ codetether-codex-records = { path = "crates/codetether-codex-records", version =
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
+codetether-model-picker = { path = "crates/codetether-model-picker", version = "0.1.0" }
 codetether-settings-view = { path = "crates/codetether-settings-view", version = "0.1.0" }
 codetether-swarm-view = { path = "crates/codetether-swarm-view", version = "0.1.0" }
 codetether-ralph-view = { path = "crates/codetether-ralph-view", version = "0.1.0" }
