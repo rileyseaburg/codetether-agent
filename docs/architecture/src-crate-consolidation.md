@@ -25932,3 +25932,18 @@ dependencies. Declaration, file-limit, direct rustfmt and whitespace checks pass
 No manifest/lockfile changes were needed; unrelated dirty files remain unchanged.
 Evidence: artifacts/consolidation-worker-agent/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Remove obsolete root policy entrypoints after native agent migration
+
+Removed the root standard/swarm policy forwarding functions and their private
+re-exports. A repository-wide source inventory confirmed each name occurred
+only in its definition and export declarations, with no remaining caller.
+Native agent selection already calls the owning crate implementations directly.
+The root modules retain their required session trait bindings and permission
+tests. No native implementation or API used by callers changed.
+
+Module scans cover 719 roots with no missing modules; the 605-crate graph remains
+acyclic. Declaration, file-limit, direct rustfmt and whitespace checks pass.
+All three unrelated dirty files remain unchanged. Evidence:
+artifacts/consolidation-worker-policy-cleanup/. No Cargo, rustc, Python,
+compilation or tests ran. Full consolidation remains active.
