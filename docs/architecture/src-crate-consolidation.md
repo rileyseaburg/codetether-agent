@@ -21080,3 +21080,17 @@ limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-swarm-agent-bus/`. No dependencies changed. No Cargo,
 rustc, or Python commands ran. Bus operations and Rust tests were not executed;
 compilation and runtime behavior remain unverified. Consolidation remains active.
+
+### Delegated control helper ownership
+
+Moved optional-control readiness and steering-input consumption into
+`codetether-session-control::delegated`. Native sub-agent code only supplies the
+handle, reader cursor, and message buffer. Missing control still leaves state
+unchanged; accepted input still advances only this reader's cursor and appends
+messages in publication order.
+
+Exact function-body comparisons, direct rustfmt, source graph checks, native
+file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-delegated-control/`. No dependencies changed. No Cargo,
+rustc, or Python commands ran. Rust tests and compilation remain unverified;
+the broader workspace consolidation remains active.

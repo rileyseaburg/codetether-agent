@@ -3,18 +3,13 @@
 use super::state::State;
 
 pub(super) async fn ready(state: &State) -> anyhow::Result<()> {
-    if let Some(control) = &state.control {
-        control.ready().await?;
-    }
-    Ok(())
+    codetether_session_control::delegated::ready(state.control.as_ref()).await
 }
 
 pub(super) fn apply_input(state: &mut State) -> bool {
-    let Some(control) = &state.control else {
-        return false;
-    };
-    let pending = control.inputs_since(&mut state.steering_cursor);
-    let received = !pending.is_empty();
-    state.messages.extend(pending);
-    received
+    codetether_session_control::delegated::apply_input(
+        state.control.as_ref(),
+        &mut state.steering_cursor,
+        &mut state.messages,
+    )
 }

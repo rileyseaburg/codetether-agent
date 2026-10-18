@@ -25,3 +25,6 @@ pub use plane::CONTROL;
 
 mod active;
 pub use active::ActiveCancel;
+
+/// Optional control and per-delegate steering consumption.
+pub mod delegated;
