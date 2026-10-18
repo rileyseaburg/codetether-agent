@@ -40,14 +40,13 @@ use axum::{
     http::StatusCode,
     middleware,
     response::{IntoResponse, Json, Response},
-    routing::{get, post},
+    routing::post,
 };
 use futures::StreamExt;
 use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 
 use codetether_authorization_policy::policy_middleware;
-use codetether_event_replay::{list_session_event_files, replay_session_events};
 use codetether_openai_adapter::{
     OpenAiApiResult, canonicalize_provider_name, convert_finish_reason, convert_openai_messages,
     convert_openai_tools, convert_response_message, make_openai_model_id,
@@ -208,8 +207,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Audit trail API
         .merge(codetether_audit_http::http::router::<AppState>())
         // Event stream replay API (for SOC 2, FedRAMP, ATO compliance)
-        .route("/v1/audit/replay", get(replay_session_events))
-        .route("/v1/audit/replay/index", get(list_session_event_files))
+        .merge(codetether_event_replay::router::<AppState>())
         // K8s self-deployment APIs
         .merge(codetether_k8s_api::http::router::<AppState>())
         // Plugin registry API

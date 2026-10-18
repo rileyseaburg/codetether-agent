@@ -14359,3 +14359,13 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-server-metadata/.
 - No Cargo, rustc, Rust tests or HTTP server ran. Full consolidation remains
   unfinished.
+
+### Event archive route ownership
+
+- Moved replay and event-file-index route assembly into codetether-event-replay,
+  beside its existing archive handlers. Native server now merges the route group.
+- Static expansion confirms identical paths, handler selection and middleware
+  ordering. Module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks passed. Evidence: artifacts/consolidation-replay-router/.
+- No dependencies changed. No Cargo, rustc, Rust tests, archive reads or server
+  startup ran. Full consolidation remains unfinished.

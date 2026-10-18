@@ -7,10 +7,12 @@ mod index;
 mod range;
 mod read;
 mod replay;
+mod routes;
 mod scan;
 mod types;
 pub use index::list_session_event_files;
 pub use replay::replay_session_events;
+pub use routes::router;
 pub use types::{EventFileMeta, ReplayQuery};
 /// HTTP status and message returned when an archive operation fails.
 pub type ReplayError = (axum::http::StatusCode, String);
