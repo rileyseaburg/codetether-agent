@@ -12032,3 +12032,18 @@ Full workspace consolidation remains active.
   source limits and diff checks passed. Evidence: artifacts/consolidation-rendered-cache/.
 - No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
   incomplete; this does not establish that existing tests pass.
+
+### Message bubble and timeline extraction
+
+- Moved right-aligned user bubbles, assistant gradient gutters and anchor/rail
+  line formatting into codetether-message-bubbles. Six modules separate layout,
+  user-border styling, row padding, assistant coloring and timeline prefixes.
+- Preserved native bubble, bubble_mods, bubble_assistant and timeline export paths,
+  including the nested assistant/timeline paths. The shared crate reuses theme
+  gradient primitives and Unicode display widths.
+- Verification: 15 source comparisons passed for every moved function, the user
+  border color and compatibility exports. All modules contain at most 26 code
+  lines. Full native chat-view reachability, dependency cycles, direct formatting,
+  source limits and diff checks passed. Evidence: artifacts/consolidation-message-bubbles/.
+- No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
+  consolidation remains incomplete.

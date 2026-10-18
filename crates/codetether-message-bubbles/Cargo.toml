@@ -1,0 +1,12 @@
+[package]
+name = "codetether-message-bubbles"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "User message bubbles and styled assistant timeline gutters"
+
+[dependencies]
+codetether-theme = { path = "../codetether-theme", version = "0.1.0", features = ["ratatui"] }
+ratatui = { version = "0.30.2", default-features = false }
+unicode-width = "0.2"
