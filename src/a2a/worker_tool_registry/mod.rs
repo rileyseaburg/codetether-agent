@@ -4,6 +4,7 @@
 //! out of the main worker loop.
 
 mod build;
+mod host;
 mod mutating;
 mod policy;
 mod safe;

@@ -1,4 +1,3 @@
-use super::{register_edit_tools, register_go_tool, register_model_tools, register_task_tools};
 use crate::provider::Provider;
 use crate::tool::ToolRegistry;
 use std::path::PathBuf;
@@ -35,8 +34,11 @@ pub fn register_mutating_tools(
     root_path: PathBuf,
     completion_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) {
-    register_edit_tools(registry, root_path);
-    register_task_tools(registry);
-    register_model_tools(registry, provider, model);
-    register_go_tool(registry, completion_callback);
+    codetether_worker_tools::register_mutating_tools::<super::super::host::Native>(
+        registry,
+        provider,
+        model,
+        root_path,
+        completion_callback,
+    )
 }

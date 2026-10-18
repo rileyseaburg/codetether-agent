@@ -1,4 +1,4 @@
-use crate::tool::{ToolRegistry, go};
+use crate::tool::ToolRegistry;
 use std::sync::Arc;
 
 /// Register the background `go` tool, optionally wiring a completion callback.
@@ -18,8 +18,8 @@ pub fn register_go_tool(
     registry: &mut ToolRegistry,
     completion_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) {
-    registry.register(Arc::new(match completion_callback {
-        Some(callback) => go::GoTool::with_callback(callback),
-        None => go::GoTool::new(),
-    }));
+    codetether_worker_tools::register_go_tool::<super::super::host::Native>(
+        registry,
+        completion_callback,
+    )
 }

@@ -1778,6 +1778,7 @@ dependencies = [
  "codetether-webfetch",
  "codetether-websearch",
  "codetether-worker-cli",
+ "codetether-worker-tools",
  "codetether-worker-http",
  "codetether-worktree",
  "codetether-write-stdin",
@@ -5676,6 +5677,30 @@ version = "0.1.0"
 dependencies = [
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-worker-tools"
+version = "0.1.0"
+dependencies = [
+ "codetether-a2a-worker-core",
+ "codetether-advanced-edit",
+ "codetether-bash-tool",
+ "codetether-code-search",
+ "codetether-confirm-edit",
+ "codetether-confirm-multiedit",
+ "codetether-file-tools",
+ "codetether-grep-tool",
+ "codetether-patch",
+ "codetether-plan",
+ "codetether-prd-tool",
+ "codetether-provider-core",
+ "codetether-skill-tool",
+ "codetether-task-tool",
+ "codetether-todo",
+ "codetether-tool-core",
+ "codetether-webfetch",
+ "codetether-websearch",
 ]
 
 [[package]]

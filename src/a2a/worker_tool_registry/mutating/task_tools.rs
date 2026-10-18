@@ -1,5 +1,4 @@
-use crate::tool::{ToolRegistry, mcp_bridge, plan, prd, task};
-use std::sync::Arc;
+use crate::tool::ToolRegistry;
 
 /// Register non-provider workflow tools for mutable worker tasks.
 ///
@@ -17,9 +16,5 @@ use std::sync::Arc;
 /// assert!(registry.contains("prd"));
 /// ```
 pub fn register_task_tools(registry: &mut ToolRegistry) {
-    registry.register(Arc::new(task::TaskTool::new()));
-    registry.register(Arc::new(plan::PlanEnterTool::new()));
-    registry.register(Arc::new(plan::PlanExitTool::new()));
-    registry.register(Arc::new(prd::PrdTool::new()));
-    registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
+    codetether_worker_tools::register_task_tools::<super::super::host::Native>(registry)
 }

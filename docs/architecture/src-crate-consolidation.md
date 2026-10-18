@@ -18908,3 +18908,25 @@ CodeSearch import paths. The verifier's initial identifier regex omitted digits
 in k8s_tool; corrected that check and retained its failure log. Evidence lives in
 `artifacts/consolidation-tool-construction/`. No Cargo, rustc, Python or Rust tests
 ran; compilation and runtime behavior remain unverified.
+
+### Worker tool registry assembly
+
+Moved A2A worker tool assembly into `codetether-worker-tools`. Safe tools,
+workspace editing, task workflows, model-backed tools, background completion
+callbacks and the overall approval-mode selection each retain their own module.
+The native entry points now forward to shared assembly; native adapters supply
+the existing registry and seven tools bound to application session/execution
+interfaces. Concrete shared tools are constructed directly by the new crate.
+
+Preserved the exact safe and mutating registration order, workspace roots,
+provider/model cloning and ownership transfer, and optional completion callback.
+Only AutoApprove::All enables mutating groups; the invalid-tool fallback is still
+registered last. Worker approval policy itself is unchanged.
+
+Validation: complete body comparisons for seven assembly functions, unchanged
+native signatures, all native forwarding arguments, nine adapter methods,
+registration order and approval gate, dependency declarations and versions,
+isolated lockfile delta, lexical module reachability, dependency-cycle checks,
+file-size ratchet, whitespace and direct formatting. Evidence is in
+`artifacts/consolidation-worker-tools/`. No Cargo, rustc, Python, Rust tests or
+worker execution ran; compilation and runtime behavior remain unverified.

@@ -1,7 +1,6 @@
-use super::{register_mutating_tools, register_safe_tools};
 use crate::a2a::worker::AutoApprove;
 use crate::provider::Provider;
-use crate::tool::{ToolRegistry, invalid};
+use crate::tool::ToolRegistry;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -74,18 +73,11 @@ pub fn create_filtered_registry(
     workspace_dir: &Path,
     completion_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> ToolRegistry {
-    let mut registry = ToolRegistry::new();
-    let root_path = workspace_dir.to_path_buf();
-    register_safe_tools(&mut registry, workspace_dir, &root_path);
-    if matches!(auto_approve, AutoApprove::All) {
-        register_mutating_tools(
-            &mut registry,
-            provider,
-            model,
-            root_path,
-            completion_callback,
-        );
-    }
-    registry.register(Arc::new(invalid::InvalidTool::new()));
-    registry
+    codetether_worker_tools::create_filtered_registry::<super::host::Native>(
+        provider,
+        model,
+        auto_approve,
+        workspace_dir,
+        completion_callback,
+    )
 }

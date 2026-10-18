@@ -1,9 +1,5 @@
-use crate::tool::{
-    ToolRegistry, advanced_edit, bash, confirm_edit, confirm_multiedit, file, multiedit, patch,
-    todo, undo,
-};
+use crate::tool::ToolRegistry;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 /// Register workspace-scoped editing tools.
 ///
@@ -22,15 +18,5 @@ use std::sync::Arc;
 /// assert!(registry.contains("confirm_edit"));
 /// ```
 pub fn register_edit_tools(registry: &mut ToolRegistry, root_path: PathBuf) {
-    registry.register(Arc::new(file::WriteTool::new()));
-    registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
-    registry.register(Arc::new(bash::BashTool::with_cwd(root_path.clone())));
-    registry.register(Arc::new(multiedit::MultiEditTool::new()));
-    registry.register(Arc::new(patch::ApplyPatchTool::with_root(
-        root_path.clone(),
-    )));
-    registry.register(Arc::new(todo::TodoWriteTool::with_root(root_path)));
-    registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
-    registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
-    registry.register(Arc::new(undo::UndoTool));
+    codetether_worker_tools::register_edit_tools::<super::super::host::Native>(registry, root_path)
 }

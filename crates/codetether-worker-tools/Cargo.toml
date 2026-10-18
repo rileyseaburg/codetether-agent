@@ -1,0 +1,27 @@
+[package]
+name = "codetether-worker-tools"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Workspace-scoped A2A worker tool assembly and approval-mode selection"
+
+[dependencies]
+codetether-a2a-worker-core = { path = "../codetether-a2a-worker-core", version = "0.1.0" }
+codetether-advanced-edit = { path = "../codetether-advanced-edit", version = "0.1.0" }
+codetether-bash-tool = { path = "../codetether-bash-tool", version = "0.1.0" }
+codetether-code-search = { path = "../codetether-code-search", version = "0.1.0" }
+codetether-confirm-edit = { path = "../codetether-confirm-edit", version = "0.1.0" }
+codetether-confirm-multiedit = { path = "../codetether-confirm-multiedit", version = "0.1.0" }
+codetether-file-tools = { path = "../codetether-file-tools", version = "0.1.0" }
+codetether-grep-tool = { path = "../codetether-grep-tool", version = "0.1.0" }
+codetether-patch = { path = "../codetether-patch", version = "0.1.0" }
+codetether-plan = { path = "../codetether-plan", version = "0.1.0" }
+codetether-prd-tool = { path = "../codetether-prd-tool", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-skill-tool = { path = "../codetether-skill-tool", version = "0.1.0" }
+codetether-task-tool = { path = "../codetether-task-tool", version = "0.1.0" }
+codetether-todo = { path = "../codetether-todo", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-webfetch = { path = "../codetether-webfetch", version = "0.1.0" }
+codetether-websearch = { path = "../codetether-websearch", version = "0.1.0" }

@@ -1,6 +1,5 @@
-use crate::tool::{ToolRegistry, codesearch, file, lsp, search, skill, todo, webfetch, websearch};
+use crate::tool::ToolRegistry;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 /// Register the worker's read-only tools against the current workspace root.
 ///
@@ -19,19 +18,9 @@ use std::sync::Arc;
 /// assert!(registry.contains("todoread"));
 /// ```
 pub fn register_safe_tools(registry: &mut ToolRegistry, workspace_dir: &Path, root_path: &PathBuf) {
-    registry.register(Arc::new(file::ReadTool::new()));
-    registry.register(Arc::new(file::ListTool::new()));
-    registry.register(Arc::new(file::GlobTool::with_root(root_path.clone())));
-    registry.register(Arc::new(search::GrepTool::new()));
-    registry.register(Arc::new(lsp::LspTool::with_root(format!(
-        "file://{}",
-        workspace_dir.display()
-    ))));
-    registry.register(Arc::new(webfetch::WebFetchTool::new()));
-    registry.register(Arc::new(websearch::WebSearchTool::new()));
-    registry.register(Arc::new(codesearch::CodeSearchTool::with_root(
-        root_path.clone(),
-    )));
-    registry.register(Arc::new(todo::TodoReadTool::with_root(root_path.clone())));
-    registry.register(Arc::new(skill::SkillTool::new()));
+    codetether_worker_tools::register_safe_tools::<super::host::Native>(
+        registry,
+        workspace_dir,
+        root_path,
+    )
 }
