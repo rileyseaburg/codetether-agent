@@ -14458,3 +14458,21 @@ Full workspace consolidation remains active.
 - Added Axum to the recovery crate and staged only its lock dependency. No
   Cargo, rustc, Rust tests, authority requests or session recovery ran. Full
   workspace consolidation remains unfinished.
+
+### Interactive Ralph launch ownership
+
+- Moved interactive run-argument parsing, PRD path resolution and detached
+  background launch from the large TUI commands module into
+  codetether-ralph-cli::interactive. Separate modules own arguments, paths,
+  launch sequencing and the native-loop host contract.
+- Native TUI code retains view updates and a small RalphLoop adapter. Preserves
+  option defaults, path behavior, config construction, event attachment and
+  initialization/execution error events.
+- Verification: seven static checks passed for moved bodies, launch expansion,
+  unchanged TUI dispatch, native loop bindings, module bounds and isolated lock
+  addition. Module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-ralph-interactive/.
+- Added Tokio runtime/sync support and staged only its Ralph CLI lock dependency.
+  No Cargo, rustc, Rust tests, Ralph tasks or TUI sessions ran. Full workspace
+  consolidation remains unfinished.

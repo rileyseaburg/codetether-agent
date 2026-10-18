@@ -7,8 +7,11 @@ mod a2a;
 pub(crate) mod goal;
 #[path = "commands/open_editor.rs"]
 mod open_editor;
+#[path = "commands/ralph_host.rs"]
+mod ralph_host;
 #[path = "commands/session_ops.rs"]
 mod session_ops;
+use codetether_ralph_cli::interactive::{parse_ralph_run_args, resolve_prd_path};
 use open_editor::open_editor;
 
 use crate::provider::ProviderRegistry;
@@ -314,7 +317,9 @@ async fn handle_ralph_subcommand(
                 ),
             );
 
-            spawn_ralph_run(prd_path, provider, model, max_iters, tx);
+            codetether_ralph_cli::interactive::spawn_ralph_run::<ralph_host::AppHost>(
+                prd_path, provider, model, max_iters, tx,
+            );
             true
         }
         "status" => {
@@ -344,86 +349,6 @@ async fn handle_ralph_subcommand(
             true
         }
     }
-}
-
-/// Parse positional / flag arguments for `/ralph run`.
-///
-/// Accepts: `[prd_path] [--iters N]` in either order.
-fn parse_ralph_run_args<'a>(args: &[&'a str]) -> (Option<&'a str>, usize) {
-    let mut prd: Option<&str> = None;
-    let mut iters: usize = 10;
-    let mut i = 0;
-    while i < args.len() {
-        match args[i] {
-            "--iters" | "--max-iterations" => {
-                if let Some(v) = args.get(i + 1).and_then(|s| s.parse().ok()) {
-                    iters = v;
-                    i += 2;
-                    continue;
-                }
-            }
-            other if !other.starts_with("--") && prd.is_none() => {
-                prd = Some(other);
-            }
-            _ => {}
-        }
-        i += 1;
-    }
-    (prd, iters)
-}
-
-/// Resolve a user-provided PRD path against the working directory.
-fn resolve_prd_path(cwd: &Path, arg: Option<&str>) -> std::path::PathBuf {
-    let raw = arg.unwrap_or("prd.json");
-    let path = Path::new(raw);
-    if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        cwd.join(path)
-    }
-}
-
-/// Spawn a background task that drives a [`RalphLoop`] to completion and
-/// streams events into the TUI through `event_tx`. The sender is dropped on
-/// task exit, which the TUI notices via a disconnected `try_recv` and uses
-/// to detach the receiver.
-fn spawn_ralph_run(
-    prd_path: std::path::PathBuf,
-    provider: Arc<dyn crate::provider::Provider>,
-    model: String,
-    max_iters: usize,
-    event_tx: tokio::sync::mpsc::Sender<crate::tui::ralph_view::RalphEvent>,
-) {
-    tokio::spawn(async move {
-        use crate::ralph::{RalphConfig, RalphLoop};
-
-        let config = RalphConfig {
-            prd_path: prd_path.to_string_lossy().to_string(),
-            max_iterations: max_iters,
-            model: Some(model.clone()),
-            ..Default::default()
-        };
-
-        let mut ralph = match RalphLoop::new(prd_path.clone(), provider, model, config).await {
-            Ok(r) => r.with_event_tx(event_tx.clone()),
-            Err(err) => {
-                let _ = event_tx
-                    .send(crate::tui::ralph_view::RalphEvent::Error(format!(
-                        "Failed to initialise Ralph: {err}"
-                    )))
-                    .await;
-                return;
-            }
-        };
-
-        if let Err(err) = ralph.run().await {
-            let _ = event_tx
-                .send(crate::tui::ralph_view::RalphEvent::Error(format!(
-                    "Ralph loop errored: {err}"
-                )))
-                .await;
-        }
-    });
 }
 
 pub async fn handle_slash_command(

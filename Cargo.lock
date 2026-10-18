@@ -6958,6 +6958,7 @@ dependencies = [
  "codetether-provider-core",
  "serde_json",
  "tracing",
+ "tokio",
 ]
 
 [[package]]
