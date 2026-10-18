@@ -23330,3 +23330,23 @@ unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-forage-worker/.
 No forage runs, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Bus facade paths point directly to owning crate modules
+
+Replaced fourteen native bus re-export files with direct module aliases in the
+bus facade. Bus/runtime types, process-global state, durable log storage,
+payload bounds, recorder, agent registry, relay, speech, tool catalogs and S3
+sink paths now reference their owning crates without intermediate source files.
+The private publication-effect adapter remains unchanged.
+
+Static comparisons confirm that all twenty-two previously exported symbol
+paths resolve through the same crate/module prefixes. Shared bus implementation
+and S3 implementation are unchanged. Module/dependency scans cover 699 roots
+and 571 crates without missing modules or cycles. The verification helper's
+initial alias-map filename collided with the module-report output; the original
+failure is retained and the corrected helper uses a separate alias-map file.
+Direct rustfmt, file-size limits and whitespace checks passed. No manifests or
+lockfiles changed; unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-bus-facades/.
+No bus runtime, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.
