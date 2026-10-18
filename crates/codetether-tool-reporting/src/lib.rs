@@ -33,3 +33,6 @@ pub use unknown::unknown_tool;
 mod error_tests;
 #[cfg(test)]
 mod heartbeat_tests;
+
+mod registration;
+pub use registration::register_progress;

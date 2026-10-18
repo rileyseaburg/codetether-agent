@@ -9980,3 +9980,21 @@ the largest new crate file has 42 code lines. Two original cooldown tests moved
 without execution. Evidence is in `artifacts/consolidation-lsp-preflight/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or language
 server execution ran. Full workspace consolidation remains active.
+
+### Dedicated tool-execution crate
+
+Moved registry lookup, ordered runtime-policy and workspace-coordination gates,
+scoped progress registration, invocation and success auditing into
+`crates/codetether-tool-execution`. Five modules separate the host contract,
+execution sequence, result mapping and success reporting. The native adapter
+retains the existing registry and policy implementations. Shared progress-event
+registration now lives in `codetether-tool-reporting` and the native progress
+module re-exports it.
+
+Fifteen static comparisons/checks cover execution order, authorization short
+circuits, progress lifetime and payloads, audit semantics, full error routing,
+native delegation and unchanged serial/parallel callers. Module/dependency
+graphs, file budgets and whitespace checks passed; new modules contain at most
+26 code lines. Evidence is in `artifacts/consolidation-tool-execution/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or tool
+execution ran. Full workspace consolidation remains active.

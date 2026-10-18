@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-tool-execution",
  "codetether-lsp-preflight",
  "codetether-tool-approval",
  "codetether-tool-recovery",
@@ -4911,6 +4912,7 @@ dependencies = [
 name = "codetether-tool-reporting"
 version = "0.1.0"
 dependencies = [
+ "codetether-tool-progress",
  "anyhow",
  "codetether-audit",
  "codetether-session-events",
@@ -4946,6 +4948,20 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-tool-execution"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "codetether-audit",
+ "codetether-session-events",
+ "codetether-tool-core",
+ "codetether-tool-reporting",
+ "serde_json",
  "tokio",
  "tracing",
 ]

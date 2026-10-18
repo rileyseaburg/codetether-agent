@@ -7,6 +7,7 @@ license = "MIT"
 description = "Tool lifecycle events, metadata events and audit details"
 
 [dependencies]
+codetether-tool-progress = { path = "../codetether-tool-progress", version = "0.1.0" }
 anyhow = "1"
 codetether-audit = { path = "../codetether-audit", version = "0.1.0" }
 codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
