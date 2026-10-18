@@ -1,16 +1,10 @@
-//! GitHub Copilot application adapter.
-//!
-//! [CopilotProvider] supplies the application version in the User-Agent and
-//! delegates catalog discovery and completions to the workspace provider crate.
-//! Construct it with [CopilotProvider::new] or [CopilotProvider::enterprise].
+//! Copilot provider bound to the CodeTether application identity.
 pub use codetether_provider_copilot::{enterprise_base_url, normalize_enterprise_domain};
-mod construct;
-mod delegate;
-/// Copilot provider carrying the CodeTether application identity.
-///
+mod identity;
+/// Copilot provider using the application's package version in its User-Agent.
 /// # Examples
 /// ```no_run
-/// let provider = codetether_agent::provider::copilot::CopilotProvider::new("token".into())?;
+/// let _provider = codetether_agent::provider::copilot::CopilotProvider::new("token".into())?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-pub struct CopilotProvider(codetether_provider_copilot::CopilotProvider);
+pub type CopilotProvider = codetether_provider_copilot::application::CopilotProvider<identity::App>;

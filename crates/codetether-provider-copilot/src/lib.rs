@@ -45,3 +45,6 @@ pub struct CopilotProvider {
 #[cfg(test)]
 mod tests;
 mod trait_impl;
+
+/// Caller-identity wrapper retaining application User-Agent behavior.
+pub mod application;

@@ -19221,3 +19221,23 @@ module reachability, dependency-cycle checks, file-size ratchet, whitespace and
 formatting. Evidence: `artifacts/consolidation-bedrock-provider/`. No Cargo,
 rustc, Python, Rust tests, AWS requests, Vault reads or refresh operations ran;
 compilation and runtime behavior remain unverified.
+
+### Copilot application identity wrapper
+
+Moved Copilot's application wrapper, constructors, provider delegation and image
+message conversion into the existing provider crate's application module. The
+wrapper is parameterized by an Identity provider, with a zero-sized function
+marker that does not add identity-value ownership or thread-safety constraints.
+Native code supplies only the original application-version User-Agent and a
+compatibility type alias.
+
+Preserved public/enterprise/custom endpoint construction, User-Agent evaluation,
+provider names, streaming support and message conversion. Crucially, the version
+still comes from the application package rather than the provider crate.
+
+Validation: three complete constructor bodies, original identity formatting,
+six provider/conversion bodies, native alias and marker, unchanged image-test
+caller and provider factory, unchanged manifests, lexical module reachability,
+dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
+Evidence: `artifacts/consolidation-copilot-identity/`. No Cargo, rustc, Python,
+Rust tests or Copilot requests ran; compilation and runtime remain unverified.
