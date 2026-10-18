@@ -16955,3 +16955,18 @@ Full workspace consolidation remains active.
 - Verification: two-expression-only diff inspection, caller search, file limits
   and whitespace. No Cargo, rustc, Python, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared streaming redraw policy
+
+- Moved redraw readiness, successful-frame bookkeeping and gated draw sequencing
+  into `codetether-tui-tick::redraw`.
+- Native code retains terminal rendering and scalar state access. Test-only
+  compatibility wrappers preserve the four existing redraw tests unchanged.
+- Preserved 66ms streaming rate limit, first/idle/input bypass, error propagation,
+  and dirty/timestamp updates only when a frame was actually rendered.
+- Verification: complete driver/readiness/completion bodies, native rendering
+  bindings, unchanged redraw tests, module/dependency graphs, direct rustfmt,
+  file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-tui-redraw/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

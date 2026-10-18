@@ -16,3 +16,6 @@ pub use snapshot::Snapshot;
 pub mod approval;
 /// Cursor-gated worker roster updates.
 pub mod worker_sync;
+
+/// Keyboard-responsive streaming redraw rate limiting.
+pub mod redraw;
