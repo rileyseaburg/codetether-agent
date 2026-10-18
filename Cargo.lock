@@ -1275,6 +1275,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-native-review",
  "codetether-native-goals",
  "codetether-native-registry",
  "codetether-context-health",
@@ -3820,6 +3821,18 @@ dependencies = [
  "codetether-tool-core",
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "codetether-native-review"
+version = "0.1.0"
+dependencies = [
+ "codetether-application-registry",
+ "codetether-approval-review",
+ "codetether-config",
+ "codetether-native-goals",
+ "codetether-native-providers",
+ "codetether-swarm-agent",
 ]
 
 [[package]]

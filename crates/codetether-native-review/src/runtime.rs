@@ -1,6 +1,7 @@
 //! Process-wide approval reviewer state bound to native provider handles.
-use crate::{config::ReviewConfig, provider::ProviderRegistry};
 use codetether_approval_review::runtime::RuntimeStore;
+use codetether_config::ReviewConfig;
+use codetether_native_providers::ProviderRegistry;
 use std::sync::Arc;
 /// Installed native reviewer settings and providers.
 pub type ReviewRuntime = codetether_approval_review::runtime::ReviewRuntime<ProviderRegistry>;

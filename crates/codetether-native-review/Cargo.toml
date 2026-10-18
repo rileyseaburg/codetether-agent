@@ -1,0 +1,15 @@
+[package]
+name = "codetether-native-review"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native approval reviewer runtime, goal lookup and application binding"
+
+[dependencies]
+codetether-approval-review = { path = "../codetether-approval-review", version = "0.1.0" }
+codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-native-goals = { path = "../codetether-native-goals", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-swarm-agent = { path = "../codetether-swarm-agent", version = "0.1.0" }

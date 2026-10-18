@@ -25697,3 +25697,22 @@ rustfmt and whitespace checks pass. The staged lockfile adds only the new
 package/root dependency; unrelated working changes remain unchanged. Evidence:
 artifacts/consolidation-native-goals/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Native approval reviewer runtime and goal lookup
+
+Added codetether-native-review to own the installed reviewer runtime and native
+provider/goal binding. Its Application and Reviewer types accept the existing
+tool catalog and agent loop as type parameters; the root host now only selects
+those types. The root runtime module is a re-export. Review, background dispatch,
+read-only-tool construction and application-level tests retain their existing
+entry points and bodies.
+
+Static comparisons preserve the runtime singleton and install/enabled/reset
+operations, plus enabled/goal lookup bodies. Native providers and goals resolve
+to the same underlying registry and journal types. Module/dependency scans cover
+717 roots and 603 crates without missing modules, dependency cycles or undeclared
+direct dependencies. Declaration, file-limit, direct rustfmt and whitespace
+checks pass. Only the new package and root dependency are staged in Cargo.lock;
+unrelated working files remain unchanged. Evidence:
+artifacts/consolidation-native-review/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

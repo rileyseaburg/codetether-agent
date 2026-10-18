@@ -20,7 +20,7 @@ mod host;
 use codetether_approval_core::review as parse;
 pub use codetether_approval_core::review::prompt;
 mod run;
-pub mod runtime;
+pub use codetether_native_review::runtime;
 mod tools;
 use codetether_approval_core::review as verdict;
 
