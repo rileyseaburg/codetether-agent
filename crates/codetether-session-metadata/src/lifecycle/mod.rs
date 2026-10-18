@@ -7,3 +7,6 @@ mod initial;
 mod provenance;
 pub use initial::InitialSession;
 pub use provenance::{attach_claim, attach_worker_task, set_agent_name};
+
+mod hydrate;
+pub use hydrate::hydrate;

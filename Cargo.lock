@@ -4786,6 +4786,7 @@ dependencies = [
  "codetether-rlm",
  "codetether-run-checkpoint",
  "codetether-session-title",
+ "codetether-tracked-vec",
  "serde",
  "serde_json",
  "uuid",

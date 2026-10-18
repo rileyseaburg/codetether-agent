@@ -16495,3 +16495,21 @@ Full workspace consolidation remains active.
   dependencies changed. Evidence: `artifacts/consolidation-session-append/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared loaded-session hydration
+
+- Moved loaded-session page repair, missing history-sink restoration and runtime
+  provenance identity refresh into `codetether-session-metadata::lifecycle`.
+- Native normalization now attaches the process bus first, then provides
+  borrowed metadata/messages/page fields to the shared hydration function.
+- Preserved lazy history-sink loading, existing configured values, page repair
+  only on length mismatch and identity updates only with existing provenance.
+- Added the existing tracked-vector crate for the mutation-aware page sidecar;
+  staged only that dependency in a HEAD-derived metadata lock entry, preserving
+  unrelated working-tree changes.
+- Verification: complete hydration-body comparison, native ordering/field
+  binding, unchanged persistence/defaults/runtime identity, module/dependency
+  graphs, direct rustfmt, file limits and whitespace. Evidence:
+  `artifacts/consolidation-session-hydration/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
