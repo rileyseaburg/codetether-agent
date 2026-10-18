@@ -8899,3 +8899,21 @@ checks passed; new crate files contain at most 44 code lines. Evidence is in
 `artifacts/consolidation-session-metadata/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The complete workspace
 consolidation remains active.
+
+### Session-store recorded workspace resolution
+
+Moved persisted workspace lookup into
+`codetether-session-store::metadata::workspace`. Three modules separate the
+workspace-only projection, lookup/fallback logic and existing tests. The native
+`Session::recorded_workspace` method retains session-ID/path validation before
+calling the shared implementation.
+
+The shared resolver preserves indexed-header reads, legacy file fallback,
+compatibility with missing metadata fields, preference for an existing recorded
+directory and fallback to the snapshot's enclosing workspace. Seven static
+comparisons cover these bodies, projection defaults, the native adapter and
+three tests moved unchanged. Module references, dependency checks, file budgets
+and whitespace checks passed. Evidence is in
+`artifacts/consolidation-store-workspace/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The full consolidation remains
+active.
