@@ -11503,3 +11503,25 @@ Full workspace consolidation remains active.
   dependency cycles, direct rustfmt, file limits and git diff --check passed.
 - Evidence: artifacts/consolidation-model-picker/. No Cargo, rustc,
   compilation, runtime tests or terminal rendering were run.
+
+### Provider model discovery extraction
+
+- Moved concurrent provider model loading, timeout/failure accounting, model
+  reference validation, reasoning/service-tier expansion and refresh result
+  types into crates/codetether-model-discovery. A two-method Registry interface
+  preserves the application's provider instances and lookup behavior.
+- The pre-existing codetether-model-catalog remains unchanged. An initial name
+  collision was caught before staging; its manifest and library root were
+  restored byte-for-byte from HEAD, with execution evidence retained.
+- Preserved four-second per-provider timeouts, concurrent fetching, sorted
+  deduplication, successful-provider counting and summary status strings.
+  Native TUI channel handling and selection updates continue through the shared
+  loader; two existing application integration tests remain at that boundary.
+- Five existing policy/variant tests moved. Twelve crate modules contain at
+  most 36 nonblank/noncomment code lines. Twenty static comparisons cover the
+  schema, methods, reconstructed loader, policy/variant code, existing tests,
+  native methods and restoration of the pre-existing catalog.
+- Lexical module reachability, dependency cycles, direct rustfmt, native file
+  limits and git diff --check passed. Evidence: artifacts/consolidation-model-catalog/.
+  No Cargo, rustc, compilation, runtime tests or provider requests were run.
+  Full workspace consolidation remains incomplete.

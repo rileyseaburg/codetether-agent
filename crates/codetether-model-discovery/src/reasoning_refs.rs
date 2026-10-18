@@ -1,6 +1,6 @@
 //! OpenAI Codex reasoning variants shown by the TUI model picker.
 
-use crate::provider::openai_codex::{reasoning_catalog, service_tier_catalog};
+use codetether_provider_core::codex::{reasoning_catalog, service_tier_catalog};
 
 pub(super) fn expand(provider: &str, model_ref: String) -> Vec<String> {
     if provider != "openai-codex" {

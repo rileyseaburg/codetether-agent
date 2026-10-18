@@ -1,0 +1,14 @@
+[package]
+name = "codetether-model-discovery"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Concurrent provider model discovery and selectable catalog variants"
+
+[dependencies]
+anyhow = "1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+futures = "0.3"
+tokio = { version = "1", features = ["time"] }
+tracing = "0.1"

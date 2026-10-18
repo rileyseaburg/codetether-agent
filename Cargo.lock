@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-model-discovery",
  "codetether-model-picker",
  "codetether-settings-view",
  "codetether-swarm-view",
@@ -5934,6 +5935,17 @@ name = "codetether-model-picker"
 version = "0.1.0"
 dependencies = [
  "ratatui",
+]
+
+[[package]]
+name = "codetether-model-discovery"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
+ "futures",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
