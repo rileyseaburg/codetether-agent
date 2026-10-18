@@ -1,60 +1,15 @@
-//! Terminal event dispatch (key, paste, mouse, resize).
-//!
-//! Unwraps the crossterm `Event` and routes it to the
-//! appropriate handler.  Returns `Ok(true)` when the user
-//! requests quit.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! if handle_terminal_event(&mut app, cwd, &mut session,
-//!     &reg, &bridge, &tx, &rtx, maybe).await? { break; }
-//! ```
-
-use std::path::Path;
-use std::sync::Arc;
-
-use crossterm::event::Event;
-
-use crate::provider::ProviderRegistry;
-use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
-use crate::tui::app::state::App;
-use crate::tui::worker_bridge::TuiWorkerBridge;
-
-mod host;
-
-/// Dispatch a single terminal event.
-///
-/// Returns `Ok(true)` when the user presses quit, `Ok(false)`
-/// otherwise, or propagates errors.
-///
-/// # Examples
-///
-/// ```ignore
-/// let quit = handle_terminal_event(
-///     &mut app, cwd, &mut session, &reg,
-///     &bridge, &tx, &rtx, maybe,
-/// ).await?;
-/// ```
-pub(super) async fn handle_terminal_event(
-    app: &mut App,
-    cwd: &Path,
-    slot: &mut SessionSlot,
-    registry: &Option<Arc<ProviderRegistry>>,
-    worker_bridge: &Option<TuiWorkerBridge>,
-    runtime: &TuiSessionHandle,
-    maybe: Option<Result<Event, std::io::Error>>,
-) -> anyhow::Result<bool> {
-    codetether_tui_navigation::terminal::dispatch(
-        &mut host::Native {
-            app,
-            cwd,
-            slot,
-            registry,
-            worker_bridge,
-            runtime,
-        },
-        maybe,
-    )
-    .await
-}
+//! Frontend type and handler selection for terminal events.
+codetether_tui_navigation::declare_frontend_terminal!(
+    crate::tui::app::state::App,
+    crate::tui::app::session_runtime::SessionSlot,
+    crate::provider::ProviderRegistry,
+    crate::tui::worker_bridge::TuiWorkerBridge,
+    crate::tui::app::session_runtime::TuiSessionHandle;
+    crossterm::event::Event,
+    crossterm::event::KeyEvent,
+    crossterm::event::MouseEvent;
+    crate::tui::app::event_handlers::handle_event,
+    crate::tui::app::input::goal_answer::editor::paste,
+    crate::tui::app::event_handlers::handle_paste_event,
+    crate::tui::app::event_handlers::handle_mouse_event,
+);

@@ -23638,6 +23638,20 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 needed. Evidence: artifacts/consolidation-loop-lifecycle/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
 
+### Terminal event frontend binding
+
+Moved the terminal context, key/paste/mouse host and event entry point into
+codetether-tui-navigation::terminal::binding modules. The root selects concrete
+frontend/event types and handler callbacks. Removed the root terminal host file.
+
+All five expanded function bodies and host fields match their originals after
+callback-path substitution. Shared terminal routing, including editor-paste
+priority, is unchanged. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Unrelated files are unchanged; no manifest or lock changes were
+needed. Evidence: artifacts/consolidation-terminal-binding/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
+
 ### Storage callers use the owning API names directly
 
 Removed the native projection and summary forwarding files after updating five
