@@ -23839,3 +23839,22 @@ The working lockfile and unrelated A2A edits remain untouched. Evidence:
 artifacts/consolidation-registration-context/. No Cargo, rustc, Python,
 compilation, provider requests, registration or runtime tests ran. Full
 consolidation remains active.
+
+### Pre-compression transform pipeline moved into the compression crate
+
+Moved the complete experimental context module and both regression files from
+src/session/helper/experimental into codetether-context-compression. Native
+session helpers reexport that module, preserving public paths for all transform
+exports and apply_all. The pipeline still composes the same reasoning-repair
+hook, reports the same statistics and preserves its original tracing target.
+Added a direct reasoning-repair dependency; existing feature selection continues
+to control the same repair implementation.
+
+Static token comparisons preserve the pipeline and both test files after the
+provider import substitution and explicit original tracing target. Formatting
+both sources handles import reordering; the initial comparison log is retained.
+Module/dependency scans cover 691 roots and 572 crates without missing modules
+or cycles. Direct rustfmt, source file limits and whitespace checks passed.
+Only the required lockfile dependency is staged; unrelated working changes are
+preserved. Evidence: artifacts/consolidation-context-transforms/. No Cargo,
+rustc, Python, compilation or tests ran. Full consolidation remains active.

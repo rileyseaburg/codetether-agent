@@ -7,6 +7,7 @@ license = "MIT"
 description = "Buffer-level context compression with foreground and background RLM"
 
 [dependencies]
+codetether-reasoning-repair = { path = "../codetether-reasoning-repair", version = "0.1.0" }
 anyhow = "1"
 codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }

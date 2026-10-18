@@ -1,5 +1,5 @@
 use super::apply_all;
-use crate::provider::{ContentPart, Message, Role};
+use codetether_provider_core::{ContentPart, Message, Role};
 
 fn user(text: &str) -> Message {
     Message {

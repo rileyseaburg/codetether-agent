@@ -20,7 +20,7 @@
 //! [`apply_all`] runs every strategy in a fixed order against the live
 //! [`Message`] buffer, mutating in place. Callers (the two prompt loops)
 //! invoke it immediately before
-//! [`enforce_context_window`](super::compression::enforce_context_window)
+//! context-window enforcement
 //! so the RLM compaction pass sees the already-shrunken buffer. The
 //! returned [`ExperimentalStats`] is logged at `info` level for
 //! observability.
@@ -35,8 +35,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use codetether_agent::provider::{ContentPart, Message, Role};
-//! use codetether_agent::session::helper::experimental::apply_all;
+//! use codetether_provider_core::{ContentPart, Message, Role};
+//! use codetether_context_compression::experimental::apply_all;
 //!
 //! let tool_result = ContentPart::ToolResult {
 //!     tool_call_id: "call_a".into(),
@@ -69,8 +69,8 @@ pub use codetether_context_policy::transforms::thinking_prune;
 pub use codetether_context_policy::transforms::tool_call_dedup;
 pub use codetether_reasoning_repair as tetherscript_repair;
 
-use crate::provider::Message;
 pub use codetether_context_policy::transforms::ExperimentalStats;
+use codetether_provider_core::Message;
 /// Apply the shared pipeline and retain application-scoped logging.
 pub fn apply_all(messages: &mut Vec<Message>) -> ExperimentalStats {
     let stats = codetether_context_policy::transforms::pipeline::apply_all(
@@ -79,6 +79,7 @@ pub fn apply_all(messages: &mut Vec<Message>) -> ExperimentalStats {
     );
     if stats.total_bytes_saved > 0 {
         tracing::info!(
+            target: "codetether_agent::session::helper::experimental",
             dedup_hits = stats.dedup_hits,
             snippet_hits = stats.snippet_hits,
             bytes_saved = stats.total_bytes_saved,

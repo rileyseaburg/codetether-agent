@@ -2909,6 +2909,7 @@ dependencies = [
  "codetether-rlm-background",
  "codetether-rlm-foreground",
  "tracing",
+ "codetether-reasoning-repair",
 ]
 
 [[package]]

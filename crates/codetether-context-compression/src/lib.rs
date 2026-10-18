@@ -4,6 +4,7 @@
 //! [compress_messages_keep_last] preserves the active tail while summarizing
 //! its prefix. [compress_last_message_if_oversized] bounds a large final message.
 mod context;
+pub mod experimental;
 mod install;
 mod keep_last;
 mod oversized;
