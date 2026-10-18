@@ -23998,3 +23998,20 @@ remain byte-identical. Source file limits and whitespace checks passed. No
 manifests or lockfiles changed; unrelated working edits are preserved. Evidence:
 artifacts/consolidation-obsolete-spawn/. No Cargo, rustc, Python, compilation,
 spawning or tests ran. Full consolidation remains active.
+
+### Spawn-form key routing moved into the form crate
+
+Moved modal key routing, cancellation and completed-form extraction into
+codetether-spawn-form::key_dispatch. Its Outcome distinguishes an inactive
+modal, a consumed key and a form ready to submit. The native handler retains
+session borrowing, busy-session restoration and managed submission. No
+dependencies changed.
+
+Static checks preserve the native submission branch after its form extraction
+moves to the crate, and confirm cancellation still calls the same lifecycle
+operation on the same form/status fields. Native submission/lifecycle files
+remain unchanged. Module/dependency scans cover 691 roots and 572 crates with
+no missing modules or cycles. Direct rustfmt, source file limits and whitespace
+checks passed. Unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-spawn-form-keys/. No Cargo, rustc, Python, compilation,
+form interaction or tests ran. Full consolidation remains active.

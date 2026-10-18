@@ -8,6 +8,7 @@ mod arguments;
 mod edit;
 mod field;
 mod focus;
+pub mod key_dispatch;
 mod keys;
 mod render;
 mod row;

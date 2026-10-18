@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
-use codetether_spawn_form::FormAction;
+use codetether_spawn_form::key_dispatch::{Outcome, dispatch};
 use crossterm::event::KeyEvent;
 
 use crate::tui::app::session_runtime::SessionSlot;
-use crate::tui::app::spawn_form::{close_spawn_form, submit_spawn_form};
+use crate::tui::app::spawn_form::submit_spawn_form;
 use crate::tui::app::state::App;
 
 /// Handle a key press while the spawn form is active.
@@ -20,16 +20,10 @@ pub(crate) async fn handle_spawn_form_key(
     slot: &SessionSlot,
     key: KeyEvent,
 ) -> bool {
-    let Some(form) = app.state.spawn_form.as_mut() else {
-        return false;
-    };
-    match form.handle_key(key) {
-        FormAction::Cancel => {
-            close_spawn_form(app);
-            true
-        }
-        FormAction::Submit => {
-            let form = app.state.spawn_form.take().unwrap();
+    match dispatch(&mut app.state.spawn_form, &mut app.state.status, key) {
+        Outcome::Inactive => false,
+        Outcome::Consumed => true,
+        Outcome::Submit(form) => {
             let Some(session) = slot.borrow() else {
                 app.state.status = "Session is busy; spawn was not run".to_string();
                 app.state.spawn_form = Some(form);
@@ -38,6 +32,5 @@ pub(crate) async fn handle_spawn_form_key(
             submit_spawn_form(app, session, cwd, form).await;
             true
         }
-        FormAction::Continue => true,
     }
 }
