@@ -1,9 +1,11 @@
+//! Denial results and approval metadata access.
+
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use crate::session::helper::tool_policy::ToolTuple;
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
+use codetether_tool_reporting::ToolTuple;
 
 pub(super) fn tuple(result: ToolResult) -> ToolTuple {
     (result.output, result.success, Some(result.metadata))

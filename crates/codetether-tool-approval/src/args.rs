@@ -1,3 +1,5 @@
+//! Argument merging and receipt attachment for approved tool calls.
+
 use serde_json::Value;
 
 pub(super) fn with_approval(mut args: Value, approval_id: &str) -> Value {

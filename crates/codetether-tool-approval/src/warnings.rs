@@ -1,12 +1,22 @@
 //! Surface unavailable automatic verification without misreporting the patch outcome.
 
-use crate::session::helper::tool_policy::ToolTuple;
+use codetether_tool_reporting::ToolTuple;
 use serde_json::json;
 
-pub(in crate::session::helper) fn annotate(
-    mut result: ToolTuple,
-    warnings: Vec<String>,
-) -> ToolTuple {
+/// Append verification warnings while preserving the tool's success status.
+///
+/// # Arguments
+/// `result` is the execution output; `warnings` describes unavailable checks.
+///
+/// # Returns
+/// The original result with warning text and structured metadata when needed.
+///
+/// # Examples
+/// ```
+/// let result = ("saved".into(), true, None);
+/// assert_eq!(codetether_tool_approval::annotate(result.clone(), vec![]), result);
+/// ```
+pub fn annotate(mut result: ToolTuple, warnings: Vec<String>) -> ToolTuple {
     if warnings.is_empty() {
         return result;
     }

@@ -1,5 +1,7 @@
-use crate::approval::{ExecPolicyAmendment, LiveApprovalRequest};
-use crate::tool::ToolResult;
+//! Translate policy metadata into a live approval request.
+
+use codetether_approval_core::interaction::{ExecPolicyAmendment, LiveApprovalRequest};
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 
 use super::result::text;

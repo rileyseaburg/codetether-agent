@@ -9943,3 +9943,22 @@ crate file has 34 code lines. Three original regression tests moved without
 execution. Evidence is in `artifacts/consolidation-tool-reporting-runtime/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or tool
 execution ran. Full workspace consolidation remains active.
+
+### Dedicated tool-approval crate
+
+Moved approval sequencing, request construction, approved argument revisions,
+denial results, outcome types and diagnostic warning annotation from
+`src/session/helper/tool_approval` into `crates/codetether-tool-approval`.
+Twelve modules separate these responsibilities and their original regression
+tests. A native Host adapter connects the unchanged preflight checker, runtime
+policy evaluator and live approval channel. Shared approval records and result
+tuples retain their existing types. The new crate depends on approval-core,
+tool-core and tool-reporting without introducing a dependency cycle.
+
+Twenty-six static comparisons cover the original decision flow, metadata,
+argument merging, warning semantics, host delegation, nine moved tests and
+unchanged callers. Module/dependency graphs, file budgets and whitespace checks
+passed; the largest new crate file has 40 code lines. Evidence is in
+`artifacts/consolidation-tool-approval/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python or tool execution ran. Full workspace consolidation
+remains active.

@@ -1,5 +1,5 @@
-use crate::approval::ReviewDecision;
-use crate::tool::ToolResult;
+use codetether_approval_core::interaction::ReviewDecision;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 #[test]

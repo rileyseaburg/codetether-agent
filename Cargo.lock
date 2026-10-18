@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-tool-approval",
  "codetether-tool-recovery",
  "codetether-tool-reporting",
  "codetether-validation",
@@ -4918,6 +4919,17 @@ dependencies = [
  "serde_json",
  "sha2 0.11.0",
  "tokio",
+]
+
+[[package]]
+name = "codetether-tool-approval"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "codetether-approval-core",
+ "codetether-tool-core",
+ "codetether-tool-reporting",
+ "serde_json",
 ]
 
 [[package]]
