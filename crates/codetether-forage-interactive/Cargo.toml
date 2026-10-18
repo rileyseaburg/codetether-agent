@@ -1,0 +1,13 @@
+[package]
+name = "codetether-forage-interactive"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Interactive forage command lifecycle and background updates"
+
+[dependencies]
+anyhow = "1.0.104"
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-forage-core = { path = "../codetether-forage-core", version = "0.1.0" }
+tokio = { version = "1.53.1", features = ["rt", "sync"] }

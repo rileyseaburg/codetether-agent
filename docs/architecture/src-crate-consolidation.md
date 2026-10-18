@@ -14771,3 +14771,22 @@ Full workspace consolidation remains active.
   artifacts/consolidation-slash-routing/.
 - No dependency changes. No Cargo, rustc, Rust tests or command execution ran.
   Full workspace consolidation remains unfinished.
+
+### Interactive forage lifecycle ownership
+
+- Moved argument defaults, command parsing and launch sequencing, background
+  task execution, and receiver/update state from src/tui/forage_run into the
+  dedicated codetether-forage-interactive crate. Native files retain execution
+  and chat bindings, plus compatibility re-exports; update rendering remains
+  native for a later extraction.
+- The interactive crate depends on CLI option schemas and forage core. Placing
+  it inside forage core was rejected by the dependency check because the CLI
+  schema already depends on worker core, which consumes forage core.
+- Preserved the channel capacity, quiet-mode timing, scan/execution completion
+  distinction, argument parsing tests, session model selection and UI order.
+- Verification: eight static comparisons/assertions, module reachability,
+  dependency DAG, direct rustfmt, file-limit ratchet and whitespace checks
+  passed. Evidence: artifacts/consolidation-forage-interactive/.
+- Cargo.lock staged changes include only this crate and its root dependency;
+  unrelated worktree lock changes remain unstaged. No Cargo, rustc or Rust
+  tests ran. Full workspace consolidation remains unfinished.

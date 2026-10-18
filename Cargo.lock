@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-forage-interactive",
  "codetether-new-session",
  "codetether-side-question",
  "codetether-turn-undo",
@@ -7307,6 +7308,16 @@ dependencies = [
  "anyhow",
  "codetether-session-metadata",
  "tracing",
+]
+
+[[package]]
+name = "codetether-forage-interactive"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-cli-options",
+ "codetether-forage-core",
+ "tokio",
 ]
 
 [[package]]

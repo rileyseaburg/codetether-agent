@@ -71,6 +71,7 @@ members = [
     "crates/codetether-okr",
     "crates/codetether-okr-tool",
     "crates/codetether-forage-core",
+    "crates/codetether-forage-interactive",
     "crates/codetether-file-diff",
     "crates/codetether-file-inspect",
     "crates/codetether-file-tools",
@@ -636,6 +637,7 @@ codetether-lsp-core = { path = "crates/codetether-lsp-core", version = "0.1.0" }
 codetether-marketplace = { path = "crates/codetether-marketplace", version = "0.1.0" }
 codetether-mesh = { path = "crates/codetether-mesh", version = "0.1.0" }
 codetether-model-catalog = { path = "crates/codetether-model-catalog", version = "0.1.0" }
+codetether-forage-interactive = { path = "crates/codetether-forage-interactive", version = "0.1.0" }
 codetether-forage-core = { path = "crates/codetether-forage-core", version = "0.1.0" }
 codetether-okr = { path = "crates/codetether-okr", version = "0.1.0" }
 codetether-paths = { path = "crates/codetether-paths", version = "0.1.0" }
