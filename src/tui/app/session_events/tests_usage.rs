@@ -18,10 +18,10 @@ async fn usage_report_updates_latency_snapshot() {
     )
     .await;
     assert_eq!(
-        app.state.last_completion_model.as_deref(),
+        app.state.last_completion.model.as_deref(),
         Some("openai/gpt-5.4")
     );
-    assert_eq!(app.state.last_completion_latency_ms, Some(1_250));
-    assert_eq!(app.state.last_completion_prompt_tokens, Some(120));
-    assert_eq!(app.state.last_completion_output_tokens, Some(64));
+    assert_eq!(app.state.last_completion.latency_ms, Some(1_250));
+    assert_eq!(app.state.last_completion.prompt_tokens, Some(120));
+    assert_eq!(app.state.last_completion.output_tokens, Some(64));
 }

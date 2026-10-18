@@ -131,6 +131,8 @@ mod tool_timing_events;
 mod tool_timing_state;
 pub use request_timing_state::RequestTimingState;
 pub use tool_timing_state::ToolTimingState;
+mod completion_summary;
+pub use completion_summary::CompletionSummary;
 
 #[cfg(test)]
 mod request_timing_tests;

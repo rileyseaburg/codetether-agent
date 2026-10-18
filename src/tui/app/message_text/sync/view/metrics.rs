@@ -5,9 +5,9 @@ pub(super) fn fields(state: &mut AppState) -> Metrics<'_> {
     Metrics {
         request: &mut state.request_timing,
         tool: &mut state.tool_timing,
-        model: &mut state.last_completion_model,
-        latency: &mut state.last_completion_latency_ms,
-        prompt_tokens: &mut state.last_completion_prompt_tokens,
-        output_tokens: &mut state.last_completion_output_tokens,
+        model: &mut state.last_completion.model,
+        latency: &mut state.last_completion.latency_ms,
+        prompt_tokens: &mut state.last_completion.prompt_tokens,
+        output_tokens: &mut state.last_completion.output_tokens,
     }
 }

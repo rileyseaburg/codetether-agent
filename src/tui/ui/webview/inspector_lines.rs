@@ -13,7 +13,7 @@ pub(super) fn view(app: &App) -> View<'_> {
         processing: state.processing,
         pending_tool: state.tool_timing.pending_tool_name.as_deref(),
         last_tool: state.tool_timing.last_tool_name.as_deref(),
-        model: state.last_completion_model.as_deref(),
+        model: state.last_completion.model.as_deref(),
         active_agent: state.active_spawned_agent.as_deref(),
         registered: state.worker.worker_bridge_registered_agents.len(),
         context_used: state.context_used,

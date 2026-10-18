@@ -23,10 +23,10 @@ pub fn render_inspector_view(f: &mut ratatui::Frame, app: &App) {
 }
 pub(super) fn projection(state: &AppState) -> codetether_inspector_view::InspectorView<'_> {
     codetether_inspector_view::InspectorView {
-        last_completion_model: state.last_completion_model.as_deref(),
-        last_completion_prompt_tokens: state.last_completion_prompt_tokens,
-        last_completion_output_tokens: state.last_completion_output_tokens,
-        last_completion_latency_ms: state.last_completion_latency_ms,
+        last_completion_model: state.last_completion.model.as_deref(),
+        last_completion_prompt_tokens: state.last_completion.prompt_tokens,
+        last_completion_output_tokens: state.last_completion.output_tokens,
+        last_completion_latency_ms: state.last_completion.latency_ms,
         last_tool_name: state.tool_timing.last_tool_name.as_deref(),
         last_tool_latency_ms: state.tool_timing.last_tool_latency_ms,
         last_tool_success: state.tool_timing.last_tool_success,

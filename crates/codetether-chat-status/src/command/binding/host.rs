@@ -24,9 +24,9 @@ macro_rules! __frontend_status_command_host {
                         slash_autocomplete: self.app.state.preferences.slash_autocomplete,
                         context_used: self.app.state.context_used,
                         context_budget: self.app.state.context_budget,
-                        last_completion_model: self.app.state.last_completion_model.as_deref(),
-                        last_completion_prompt_tokens: self.app.state.last_completion_prompt_tokens,
-                        last_completion_output_tokens: self.app.state.last_completion_output_tokens,
+                        last_completion_model: self.app.state.last_completion.model.as_deref(),
+                        last_completion_prompt_tokens: self.app.state.last_completion.prompt_tokens,
+                        last_completion_output_tokens: self.app.state.last_completion.output_tokens,
                     }
                 }
                 fn push_system(&mut self, text: String) {

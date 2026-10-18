@@ -28079,3 +28079,20 @@ file-limit checks passed (725 module roots, 617 crates). Evidence:
 artifacts/consolidation-voice-state/. No dependencies or unrelated working files
 changed. No Cargo, rustc, Python, audio capture, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Crate-owned completion summary
+
+Moved the last completion's model identifier, duration, input tokens and output
+tokens into codetether-telemetry::CompletionSummary. AppState now owns one
+summary component. Updated event assignments, transcript reset borrows, spawned
+agent model selection, approval/autochat projections, latency and inspector
+readers. View-only DTO fields keep their existing names and formats.
+
+Static token comparisons cover all thirteen changed state/default/call-site
+files. All four fields retain their optional types and None defaults. Scanned
+1,213 root Rust files for stale direct field reads. Existing request timing and
+transcript reset policies are unchanged. Declaration, module/dependency,
+production-scope, formatting, whitespace and file-limit checks passed (725
+roots, 617 crates). Evidence: artifacts/consolidation-completion-summary/.
+No dependencies or unrelated working files changed. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active and incomplete.

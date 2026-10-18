@@ -49,7 +49,7 @@ macro_rules! declare_request_view {
                 $dispatch(item, || ReviewContext {
                     workspace: ::std::path::PathBuf::from(&app.state.cwd_display),
                     session_id: app.state.session_id.clone(),
-                    session_model: app.state.last_completion_model.clone(),
+                    session_model: app.state.last_completion.model.clone(),
                 });
             }
         }

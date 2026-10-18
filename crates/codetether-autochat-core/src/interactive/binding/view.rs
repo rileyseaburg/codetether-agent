@@ -14,7 +14,7 @@ macro_rules! __autochat_view {
                 &mut self.autochat
             }
             fn last_completion_model(&self) -> Option<String> {
-                self.last_completion_model.clone()
+                self.last_completion.model.clone()
             }
             fn set_status(&mut self, status: String) {
                 self.status = status;

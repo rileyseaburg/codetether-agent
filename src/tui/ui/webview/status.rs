@@ -12,7 +12,7 @@ pub fn render_webview_status(f: &mut Frame, app: &App, area: Rect) {
         f,
         status_line,
         prefix,
-        app.state.last_completion_model.as_deref(),
+        app.state.last_completion.model.as_deref(),
         area,
     );
 }
