@@ -3,7 +3,7 @@
 ///
 /// # Examples
 /// ```rust
-/// let _tool = codetether_agent::tool::multiedit::MultiEditTool::new();
+/// let _tool = codetether_native_edit::multiedit::MultiEditTool::new();
 /// ```
 pub type MultiEditTool =
     codetether_multiedit::MultiEditTool<super::morph_backend::ApplicationEditor>;

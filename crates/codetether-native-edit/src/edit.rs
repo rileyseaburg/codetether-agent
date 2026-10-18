@@ -3,7 +3,8 @@
 ///
 /// # Examples
 /// ```rust
-/// let _tool = codetether_agent::tool::edit::EditTool::new();
+/// let _tool = codetether_native_edit::edit::EditTool::new();
 /// ```
 pub type EditTool = codetether_edit::EditTool<super::morph_backend::ApplicationEditor>;
-pub(crate) use codetether_edit::proposed;
+#[doc(hidden)]
+pub use codetether_edit::proposed;

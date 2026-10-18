@@ -6,7 +6,10 @@ use std::path::Path;
 
 pub(super) fn project() -> tempfile::TempDir {
     let project = tempfile::tempdir().unwrap();
-    let fixture = include_str!("../../../../tests/fixtures/rustyroad_config.toml");
+    let fixture = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../tests/fixtures/rustyroad_config.toml"
+    ));
     for (file, name) in [
         ("rustyroad.toml", "dev_fixture"),
         ("rustyroad.test.toml", "test_fixture"),

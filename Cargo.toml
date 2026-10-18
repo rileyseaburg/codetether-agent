@@ -1,5 +1,7 @@
 [workspace]
 members = [
+    "crates/codetether-native-edit",
+    "crates/codetether-native-rustyroad",
     "crates/codetether-native-mcp-client",
     "crates/codetether-native-tetherscript",
     "crates/codetether-native-lsp",
@@ -702,6 +704,8 @@ fips = [
 ]
 
 [dependencies]
+codetether-native-edit = { path = "crates/codetether-native-edit", version = "0.1.0" }
+codetether-native-rustyroad = { path = "crates/codetether-native-rustyroad", version = "4.7.6-dev.38" }
 codetether-native-mcp-client = { path = "crates/codetether-native-mcp-client", version = "4.7.6-dev.38" }
 codetether-native-tetherscript = { path = "crates/codetether-native-tetherscript", version = "0.1.0", optional = true }
 codetether-native-lsp = { path = "crates/codetether-native-lsp", version = "4.7.6-dev.38" }

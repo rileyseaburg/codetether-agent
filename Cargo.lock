@@ -1941,6 +1941,8 @@ dependencies = [
  "codetether-native-worker-server",
  "codetether-native-tetherscript",
  "codetether-native-mcp-client",
+ "codetether-native-edit",
+ "codetether-native-rustyroad",
 ]
 
 [[package]]
@@ -3603,6 +3605,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-native-edit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-application-providers",
+ "codetether-edit",
+ "codetether-morph-backend",
+ "codetether-multiedit",
+ "codetether-native-providers",
+]
+
+[[package]]
 name = "codetether-native-github-pr"
 version = "0.1.0"
 dependencies = [
@@ -3708,6 +3722,20 @@ dependencies = [
  "codetether-provider-core",
  "codetether-runtime-policy",
  "codetether-sandbox-runtime",
+ "codetether-tool-core",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-native-rustyroad"
+version = "4.7.6-dev.38"
+dependencies = [
+ "async-trait",
+ "codetether-config",
+ "codetether-native-approval",
+ "codetether-native-runtime-policy",
+ "codetether-rustyroad-tool",
  "codetether-tool-core",
  "tempfile",
  "tokio",

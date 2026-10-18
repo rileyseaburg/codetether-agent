@@ -1,7 +1,7 @@
 //! Morph editing adapter using the application-owned provider registry.
-use crate::provider::ProviderRegistry;
 use anyhow::Result;
 pub use codetether_morph_backend::should_use_morph_backend;
+use codetether_native_providers::ProviderRegistry;
 /// Apply an edit through Morph using the application's shared provider registry.
 ///
 /// # Arguments
@@ -14,7 +14,7 @@ pub use codetether_morph_backend::should_use_morph_backend;
 /// # Examples
 /// ```rust,no_run
 /// # async fn example() -> anyhow::Result<()> {
-/// let _updated = codetether_agent::tool::morph_backend::apply_edit_with_morph(
+/// let _updated = codetether_native_edit::morph_backend::apply_edit_with_morph(
 ///     "old", "replace old", "new",
 /// ).await?;
 /// # Ok(())
@@ -22,7 +22,7 @@ pub use codetether_morph_backend::should_use_morph_backend;
 /// ```
 pub async fn apply_edit_with_morph(code: &str, instruction: &str, update: &str) -> Result<String> {
     codetether_application_providers::editing::apply_edit_with_morph::<
-        crate::provider::registry::application::Native,
+        codetether_native_providers::registry::application::Native,
     >(code, instruction, update)
     .await
 }
@@ -31,7 +31,7 @@ pub async fn apply_edit_with_morph(code: &str, instruction: &str, update: &str) 
 ///
 /// # Examples
 /// ```rust
-/// let _editor = codetether_agent::tool::morph_backend::ApplicationEditor;
+/// let _editor = codetether_native_edit::morph_backend::ApplicationEditor;
 /// ```
 pub type ApplicationEditor = codetether_application_providers::editing::Editor<ProviderRegistry>;
 /// Stateless value preserving the native unit-like editor construction.

@@ -5,15 +5,9 @@ use super::smoke_helpers;
 use crate::{
     approval::test_env::{ScopedEnv, lock_env},
     config::AccessMode,
-    tool::{Tool, ToolRegistry},
+    tool::Tool,
 };
 use serde_json::{Value, json};
-
-#[test]
-fn rustyroad_is_registered_in_standard_registries() {
-    let registry = ToolRegistry::with_defaults();
-    assert!(registry.get("rustyroad").is_some());
-}
 
 #[tokio::test]
 #[ignore = "requires rustyroad-mcp on PATH; config only, no database connection"]

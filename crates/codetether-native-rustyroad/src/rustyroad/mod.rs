@@ -1,11 +1,11 @@
 //! Bind RustyRoad to the application's workspace policy and handshake identity.
 /// RustyRoad adapter using the application's existing authorization hook.
-pub(crate) type RustyRoadTool = codetether_rustyroad_tool::RustyRoadTool<ApplicationHost>;
+pub type RustyRoadTool = codetether_rustyroad_tool::RustyRoadTool<ApplicationHost>;
 /// Preserve the existing unit-like tool construction used by the registries.
 #[allow(non_upper_case_globals)]
-pub(crate) const RustyRoadTool: RustyRoadTool = codetether_rustyroad_tool::RustyRoadTool::new();
+pub const RustyRoadTool: RustyRoadTool = codetether_rustyroad_tool::RustyRoadTool::new();
 /// Workspace authorization and application package identity.
-pub(crate) struct ApplicationHost;
+pub struct ApplicationHost;
 #[async_trait::async_trait]
 impl codetether_rustyroad_tool::Host for ApplicationHost {
     const CLIENT_VERSION: &'static str = env!("CARGO_PKG_VERSION");

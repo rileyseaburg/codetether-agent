@@ -1,0 +1,15 @@
+[package]
+name = "codetether-native-edit"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native edit tool bindings"
+
+[dependencies]
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-morph-backend = { path = "../codetether-morph-backend", version = "0.1.0" }
+codetether-edit = { path = "../codetether-edit", version = "0.1.0" }
+codetether-multiedit = { path = "../codetether-multiedit", version = "0.1.0" }
+anyhow = "1"

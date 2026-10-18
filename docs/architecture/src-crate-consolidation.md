@@ -25236,3 +25236,28 @@ new package/root lock entries are staged; unrelated working content remains
 unchanged. Evidence: artifacts/consolidation-native-mcp/. No Cargo, rustc,
 Python, MCP server/subprocess launch or runtime tests ran. Full consolidation
 remains active.
+
+### Native edit and RustyRoad bindings moved into dedicated crates
+
+Moved eight files into codetether-native-edit and codetether-native-rustyroad.
+The editing crate groups the single-file and multi-file tool aliases with their
+shared Morph adapter and native provider registry. Root tool paths re-export
+these modules, preserving both type aliases and the stateless editor constant.
+RustyRoad owns its backend identity, workspace authorization, policy tests and
+ignored installed-backend smoke test. Its registry assertion now lives in
+root integration tests/rustyroad_registration.rs.
+
+All four existing test functions remain. The compile-time RustyRoad fixture
+path resolves to the same repository file from the new crate. Its version
+matches the application's 4.7.6-dev.38 identity and must stay synchronized on
+release. The policy hook, provider choices and permission semantics are
+unchanged after resolving aliases.
+
+Source comparisons pass for all moved files after documented path, visibility
+and integration-test changes. Static scans cover 708 module roots and 594 crates
+without missing modules, cycles or undeclared direct workspace dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks pass. Only the
+new package/root lock entries are staged. Unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-native-edit-road/. No Cargo,
+rustc, Python, edit execution, RustyRoad backend or runtime tests ran. Full
+consolidation remains active.
