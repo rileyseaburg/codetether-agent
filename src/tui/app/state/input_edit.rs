@@ -41,8 +41,7 @@ impl super::AppState {
         codetether_composer_view::InputEdit::new(&mut self.input, &mut self.input_cursor).clear();
         self.input_scroll = 0;
         self.input_mode = InputMode::Normal;
-        self.slash_suggestions.clear();
-        self.selected_slash_suggestion = 0;
+        self.completion.clear();
         self.history.history_index = None;
     }
 }

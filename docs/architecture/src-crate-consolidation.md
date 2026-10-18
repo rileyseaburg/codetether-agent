@@ -12268,3 +12268,19 @@ Full workspace consolidation remains active.
 - No dependency or lockfile changes were needed. Unrelated working-tree changes
   were preserved. No Cargo, rustc, compilation or Rust tests ran. The full
   workspace consolidation remains incomplete.
+
+### Completion state ownership
+
+- Moved completion candidates and their selected index into CompletionState in
+  codetether-slash-command, alongside its existing catalog and matching logic.
+  Four modules own refresh/clamping, navigation, clearing and first-token usage
+  hints; each contains at most 18 code lines.
+- Native AppState now holds the shared owner. Visibility policy and applying a
+  selected command to the input remain application responsibilities. Clearing
+  input delegates completion reset to the shared owner; rendering reads it.
+- Verification: 20 source comparisons/checks passed for the moved algorithms,
+  delegates, input-clear effects, default values, rendering and absence of stale
+  field accesses. Module/dependency checks, direct rustfmt, file limits and
+  whitespace checks passed. Evidence: artifacts/consolidation-completion-state/.
+- No dependency changes were required. No Cargo, rustc, compilation or Rust tests
+  ran. Full workspace consolidation remains incomplete.

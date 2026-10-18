@@ -6,15 +6,7 @@ use crate::tui::models::InputMode;
 
 impl super::AppState {
     pub fn refresh_slash_suggestions(&mut self) {
-        if !self.input.starts_with('/') {
-            self.slash_suggestions.clear();
-            self.selected_slash_suggestion = 0;
-            return;
-        }
-        self.slash_suggestions = codetether_slash_command::suggestions(&self.input);
-        if self.selected_slash_suggestion >= self.slash_suggestions.len() {
-            self.selected_slash_suggestion = self.slash_suggestions.len().saturating_sub(1);
-        }
+        self.completion.refresh_slash_suggestions(&self.input);
     }
 
     pub fn slash_suggestions_visible(&self) -> bool {
@@ -31,7 +23,7 @@ impl super::AppState {
     /// [`AppState::slash_suggestions_visible`], which also returns true
     /// when the panel is showing a usage hint with no list to navigate.
     pub fn slash_suggestions_navigable(&self) -> bool {
-        self.slash_suggestions_visible() && !self.slash_suggestions.is_empty()
+        self.slash_suggestions_visible() && !self.completion.slash_suggestions.is_empty()
     }
 
     /// Usage hint for the currently-typed slash command, if any.
@@ -40,27 +32,19 @@ impl super::AppState {
     /// [`super::slash_hints`]. Used by the chat-view suggestions panel to
     /// render `<args>` documentation once the prefix-match list is empty.
     pub fn current_slash_hint(&self) -> Option<&'static str> {
-        let cmd = self.input.split_whitespace().next()?;
-        super::slash_hints::usage_hint(cmd)
+        codetether_slash_command::current_slash_hint(&self.input)
     }
 
     pub fn select_prev_slash_suggestion(&mut self) {
-        if !self.slash_suggestions.is_empty() {
-            self.selected_slash_suggestion = self.selected_slash_suggestion.saturating_sub(1);
-        }
+        self.completion.select_prev_slash_suggestion();
     }
 
     pub fn select_next_slash_suggestion(&mut self) {
-        if !self.slash_suggestions.is_empty() {
-            self.selected_slash_suggestion =
-                (self.selected_slash_suggestion + 1).min(self.slash_suggestions.len() - 1);
-        }
+        self.completion.select_next_slash_suggestion();
     }
 
     pub fn selected_slash_suggestion(&self) -> Option<&str> {
-        self.slash_suggestions
-            .get(self.selected_slash_suggestion)
-            .map(String::as_str)
+        self.completion.selected_slash_suggestion()
     }
 
     pub fn apply_selected_slash_suggestion(&mut self) -> bool {

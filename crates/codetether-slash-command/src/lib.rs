@@ -21,3 +21,10 @@ pub use normalize::normalize_slash_command;
 pub use usage::usage_hint;
 #[cfg(test)]
 mod tests;
+
+mod completion_navigation;
+mod completion_refresh;
+mod completion_state;
+mod input_hint;
+pub use completion_state::CompletionState;
+pub use input_hint::current_slash_hint;
