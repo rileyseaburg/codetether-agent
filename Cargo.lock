@@ -6391,6 +6391,8 @@ dependencies = [
  "codetether-chat-model",
  "codetether-provider-core",
  "codetether-util",
+ "codetether-telemetry",
+ "codetether-view-retention",
 ]
 
 [[package]]

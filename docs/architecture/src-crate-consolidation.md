@@ -14863,3 +14863,22 @@ Full workspace consolidation remains active.
   whitespace checks passed. Evidence: artifacts/consolidation-session-selection/.
 - No dependency changes. No Cargo, rustc or Rust tests ran. Full workspace
   consolidation remains unfinished.
+
+### Loaded transcript synchronization ownership
+
+- Moved retained message selection, provider-to-chat projection sequencing,
+  history boundary/reset policy and completed-turn metric clearing into
+  codetether-chat-transcript::sync. Native adapters borrow UI fields and pass
+  session history/counts without owning the synchronization policy.
+- Preserved the shared retention cap, three-message boundary, older-source flag,
+  saturating history offset, cache clearing and tool/chat scroll reset order.
+  Metric projection resets exactly the original fields, leaving pending tool
+  and request timing state untouched.
+- Verification: six static checks covered the full projection sequence, window
+  selection, exact metric reset assignments, view operations, field bindings
+  and native inputs. Module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-transcript-sync/.
+- Added existing telemetry and view-retention dependencies. Staged lockfile
+  changes contain only these dependency edges; unrelated lockfile edits remain
+  unstaged. No Cargo, rustc or Rust tests ran. Full consolidation is unfinished.

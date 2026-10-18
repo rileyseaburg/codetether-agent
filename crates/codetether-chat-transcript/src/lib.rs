@@ -39,3 +39,6 @@ pub use clipboard::clipboard_text;
 mod assistant_clipboard_text_has_no_render_artifacts;
 #[cfg(test)]
 mod thinking_clipboard_text_uses_inner_text;
+
+/// Loaded-transcript projection, pagination initialization and metric reset.
+pub mod sync;

@@ -1,47 +1,22 @@
-//! Synchronize canonical provider messages into the live chat viewport.
-
-use crate::provider::Message;
-use crate::session::Session;
-use crate::tui::app::state::App;
-
+//! Native session binding for shared transcript synchronization.
+mod view;
+use crate::{session::Session, tui::app::state::App};
+/// Synchronize a session using its own storage identity as history source.
 pub fn sync_messages_from_session(app: &mut App, session: &Session) {
     sync_messages_from_source(app, session, &session.id, false);
 }
-
+/// Synchronize a loaded session whose older history may live in another source.
 pub(crate) fn sync_messages_from_source(
     app: &mut App,
     session: &Session,
     source_id: &str,
     source_has_older: bool,
 ) {
-    let visible: Vec<_> = crate::tui::app::message_window::recent(session).collect();
-    let boundary: Vec<Message> = visible.iter().take(3).map(|item| (*item).clone()).collect();
-    let has_older = source_has_older || session.message_count() > visible.len();
-    app.state.messages = super::provider_messages_to_chat_messages(visible.iter().copied());
-    app.state
-        .history_page
-        .reset(source_id.to_string(), &boundary, visible.len(), has_older);
-    app.state
-        .history_page
-        .set_before(session.message_count().saturating_sub(visible.len()));
-    crate::tui::app::message_cache_invalidate::clear(&mut app.state);
-    reset_metrics(app);
-    app.state.reset_tool_preview_scroll();
-    app.state.set_tool_preview_max_scroll(0);
-    app.state.scroll_to_bottom();
-}
-
-fn reset_metrics(app: &mut App) {
-    app.state.request_timing.current_request_first_token_ms = None;
-    app.state.request_timing.current_request_last_token_ms = None;
-    app.state.request_timing.last_request_first_token_ms = None;
-    app.state.request_timing.last_request_last_token_ms = None;
-    app.state.last_completion_model = None;
-    app.state.last_completion_latency_ms = None;
-    app.state.last_completion_prompt_tokens = None;
-    app.state.last_completion_output_tokens = None;
-    app.state.tool_timing.last_tool_name = None;
-    app.state.tool_timing.last_tool_latency_ms = None;
-    app.state.tool_timing.last_tool_success = None;
-    app.state.request_timing.chat_latency.clear();
+    codetether_chat_transcript::sync::sync_messages_from_source(
+        app,
+        session.history(),
+        session.message_count(),
+        source_id,
+        source_has_older,
+    );
 }

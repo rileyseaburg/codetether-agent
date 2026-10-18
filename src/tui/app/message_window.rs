@@ -1,14 +1,6 @@
-//! Live chat window selection.
-
-use crate::provider::Message;
-use crate::session::Session;
-use crate::tui::retained_payload::CHAT_RETAINED_MAX_ITEMS;
-
+//! Native session binding for shared retained-message selection.
+use crate::{provider::Message, session::Session};
+/// Select the retained chronological tail of the session history.
 pub fn recent(session: &Session) -> impl DoubleEndedIterator<Item = &Message> {
-    session
-        .history()
-        .iter()
-        .rev()
-        .take(CHAT_RETAINED_MAX_ITEMS)
-        .rev()
+    codetether_chat_transcript::sync::recent(session.history())
 }
