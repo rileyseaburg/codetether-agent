@@ -3609,6 +3609,7 @@ dependencies = [
  "codetether-child-events",
  "lazy_static",
  "parking_lot",
+ "codetether-session-events",
 ]
 
 [[package]]

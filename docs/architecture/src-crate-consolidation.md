@@ -23945,3 +23945,19 @@ whitespace checks passed. Only the required lockfile dependency is staged;
 unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-tool-latency/. No Cargo, rustc, Python, compilation,
 rendering or tests ran. Full consolidation remains active.
+
+### Live-trace session-event projection moved into its owning crate
+
+Moved the complete native event mapper into codetether-agent-trace, generic over
+the session snapshot carried by SessionEvent. Added observe_session to compose
+projection with the existing trace store; the native live-trace module now
+reexports it as observe. Removed src/tool/agent/live_trace_event.rs. Added the
+direct session-events dependency without a cycle.
+
+Static comparisons preserve every match arm, borrowed field, ignored-event
+case and observation call. Module/dependency scans cover 691 roots and 572
+crates without missing modules or cycles. Direct rustfmt, source file limits
+and whitespace checks passed. Only the required lockfile dependency is staged;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-trace-events/. No Cargo, rustc, Python, compilation,
+event processing or tests ran. Full consolidation remains active.

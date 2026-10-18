@@ -6,6 +6,8 @@
 mod entry;
 mod event;
 mod record;
+mod session_event;
+pub use session_event::{observe_session, project};
 mod snapshot;
 mod store;
 mod tool;
