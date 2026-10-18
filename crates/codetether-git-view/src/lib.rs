@@ -6,6 +6,7 @@
 mod branch_label;
 mod branches;
 mod capture;
+mod command_binding;
 mod diff;
 mod lines;
 mod log;

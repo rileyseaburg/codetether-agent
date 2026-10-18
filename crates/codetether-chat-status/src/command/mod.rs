@@ -2,6 +2,7 @@
 //!
 //! [show] refreshes workspace trust policy, formats a [Snapshot], and publishes
 //! the report through [View]. Native code retains field and message access.
+mod binding;
 mod lines;
 mod policy;
 mod show;

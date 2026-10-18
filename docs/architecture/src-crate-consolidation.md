@@ -27719,3 +27719,17 @@ and whitespace checks pass for 725 roots and 617 crates. Unrelated files are
 unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-utility-input/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Status, copy and working-tree report frontend bindings
+
+Moved session/UI status projection and report entry into codetether-chat-status,
+copy-command view/entry into codetether-chat-clipboard, and working-tree report
+view/entry into codetether-git-view. Root command modules select existing types;
+the separate root status host file is removed.
+
+All fifteen expanded function bodies and the status host layout match their
+originals. Copy tests are byte-for-byte unchanged. Declaration, module/dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
+lock changes were needed. Evidence: artifacts/consolidation-utility-views/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

@@ -5,6 +5,7 @@
 //! prefers normalized text and falls back to image attachments. A [Host]
 //! supplies frontend state and the application's existing text-paste path.
 mod clipboard;
+mod command_binding;
 mod copy_reply;
 mod copy_transcript;
 mod host;
