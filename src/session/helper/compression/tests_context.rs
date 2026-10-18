@@ -26,6 +26,6 @@ fn compress_context_from_session_snapshot_is_independent() {
         max_steps: None,
         ..Default::default()
     };
-    let snapshot = CompressContext::from_session(&session);
+    let snapshot = CompressContext::new(&session.id, &session.metadata.rlm);
     assert_eq!(snapshot.session_id, "session-42");
 }

@@ -49,7 +49,6 @@ mod enforce_terminal_overrun;
 mod keep_last;
 mod keep_last_session;
 mod oversized;
-mod oversized_text;
 mod terminal;
 mod terminal_drop;
 

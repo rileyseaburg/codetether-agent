@@ -32,7 +32,7 @@ pub async fn enforce_context_window(
     tools: &[ToolDefinition],
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<()> {
-    let ctx = CompressContext::from_session(session);
+    let ctx = CompressContext::new(&session.id, &session.metadata.rlm);
     let before_len = session.messages.len();
     enforce_on_messages(
         &mut session.messages,

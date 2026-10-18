@@ -5,7 +5,7 @@ use crate::{
     session::SessionEvent,
 };
 use std::sync::Arc;
-pub(super) fn resolve<'a>(
+pub(crate) fn resolve<'a>(
     provider: Arc<dyn Provider>,
     model: &'a str,
     config: &'a RlmConfig,

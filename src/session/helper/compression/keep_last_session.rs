@@ -24,7 +24,7 @@ pub async fn compress_history_keep_last(
     keep_last: usize,
     reason: &str,
 ) -> Result<bool> {
-    let ctx = CompressContext::from_session(session);
+    let ctx = CompressContext::new(&session.id, &session.metadata.rlm);
     let did = compress_messages_keep_last(
         &mut session.messages,
         &ctx,

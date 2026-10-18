@@ -9253,3 +9253,20 @@ largest crate file has 38 code lines. Evidence is in
 `artifacts/consolidation-rlm-foreground/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python or model calls ran. Full workspace
 consolidation remains active.
+
+### Dedicated buffer context-compression crate
+
+Moved owned compression settings, keep-last prefix summarization and
+oversized-final-message replacement into `crates/codetether-context-compression`.
+Seven modules separate context snapshots, prefix compression, installation,
+threshold checks, replacement construction and text extraction. Shared
+foreground/background RLM crates supply summarization; native wrappers
+retain session timestamp updates and model-resolution binding.
+
+Thirteen static comparisons cover tail selection, empty-prefix restoration,
+summary installation, thresholds, cached/deterministic fallback, context
+clone order and native constructor updates. Module/dependency graphs, file
+budgets and whitespace checks passed; the largest crate file has 44 code
+lines. Evidence is in `artifacts/consolidation-context-compression/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or model
+calls ran. Full workspace consolidation remains active.

@@ -48,7 +48,7 @@ pub async fn derive_context(
 ) -> Result<DerivedContext> {
     let origin_len = session.messages.len();
     let mut messages = session.messages.to_vec();
-    let ctx = CompressContext::from_session(session);
+    let ctx = CompressContext::new(&session.id, &session.metadata.rlm);
 
     let step0 =
         compress_last_message_if_oversized(&mut messages, &ctx, Arc::clone(&provider), model)
