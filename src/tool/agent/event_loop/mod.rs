@@ -9,10 +9,13 @@
 //! let result = run("reviewer", &mut rx, handle).await;
 //! ```
 
-mod approve;
-#[cfg(test)]
-mod collect;
-mod host;
+codetether_child_events::declare_application_collector!(
+    crate::session::Session,
+    crate::session::SessionEvent,
+    crate::approval::LiveApprovalRequest,
+    crate::tool::agent::event_loop::live_trace::observe,
+    crate::approval::approve_autonomous_child,
+);
 #[path = "../live_trace.rs"]
 pub(super) mod live_trace;
 #[cfg(test)]
@@ -23,18 +26,3 @@ mod live_trace_flow_tests;
 mod live_trace_tests;
 #[cfg(test)]
 mod tests;
-
-use crate::session::{Session, SessionEvent};
-use serde_json::Value;
-use tokio::sync::mpsc;
-
-pub(super) use host::ApplicationHost;
-pub(super) type ChildTask = codetether_child_events::ChildTask<Session>;
-/// Collect native events through the shared child-output collector.
-pub(super) async fn run(
-    agent_name: &str,
-    rx: &mut mpsc::Receiver<SessionEvent>,
-    handle: ChildTask,
-) -> (String, String, Vec<Value>, Option<String>, Option<Session>) {
-    codetether_child_events::run::<host::ApplicationHost, Session>(agent_name, rx, handle).await
-}

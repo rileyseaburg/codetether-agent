@@ -19,3 +19,12 @@ pub use run::run;
 pub use state::EventLoopState;
 pub use task::ChildTask;
 pub use text::truncate_preview;
+
+mod application_binding;
+
+/// Dependencies used by application-local event collector declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use serde_json::Value;
+    pub use tokio::sync::mpsc;
+}

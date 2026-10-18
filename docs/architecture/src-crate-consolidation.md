@@ -26748,3 +26748,22 @@ status crate remains fully scanned. The initial stale-root failure is retained.
 No manifest/lock changes were required; unrelated working files remain untouched.
 Evidence: artifacts/consolidation-status-binding/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Child event collector and approval callback
+
+Moved native event projection, collector host, typed task runner and test timeout
+entry point into codetether-child-events::declare_application_collector. The root
+selects its Session, SessionEvent, approval payload, trace observer and existing
+child-approval callback. Moved that callback unchanged to native-approval::child,
+exported as approve_autonomous_child. Removed event_loop/{host,collect,approve}.rs;
+the root retains its trace exports and integration tests. No approval behavior or
+access settings changed.
+
+Six function bodies match the originals after explicit path substitution; event
+variant mapping, observation order, ignored events, approval decision and task
+result shape are preserved. Timeout and live-trace tests are byte-for-byte
+unchanged. Declaration, module/dependency, native production-scope, standalone
+formatting, file-limit and whitespace checks pass for 729 module roots and 617
+crates. No manifest/lock changes were needed; unrelated working files are
+untouched. Evidence: artifacts/consolidation-child-events-binding/. No Cargo,
+rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

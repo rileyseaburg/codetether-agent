@@ -8,3 +8,6 @@
 use codetether_config as config;
 mod approval;
 pub use approval::*;
+
+mod child;
+pub use child::approve_autonomous_child;
