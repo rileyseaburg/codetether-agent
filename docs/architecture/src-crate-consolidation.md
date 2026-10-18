@@ -11425,3 +11425,23 @@ Full workspace consolidation remains active.
   git diff --check passed. Evidence: artifacts/consolidation-ralph-render/.
 - No Cargo, rustc, compilation, runtime tests or terminal rendering were run.
   Full workspace consolidation remains incomplete.
+
+### Swarm view state extraction
+
+- Moved SwarmViewState, event reduction, receiver draining, attachment, navigation
+  and progress calculations from src/tui/swarm_view.rs and swarm_view_attach.rs
+  into crates/codetether-swarm-view. The renderer currently remains native and
+  consumes the shared type through a re-export; its extraction remains pending.
+- The control field uses codetether-session-control::ControlHandle directly,
+  which is the identical type behind the existing SwarmControl alias chain.
+  The crate depends on shared swarm contracts and retention policies.
+- Separated run startup/progress, agent startup/activity/completion/results,
+  receiver handling, attachment and navigation. All 13 event variants preserve
+  their actions, including elapsed-time freezing and wraparound selection.
+- Verification: 42 static comparisons cover the schema, methods, every event
+  arm and route, unchanged renderer functions, control alias identity and the
+  relocated new-run attachment test. Fifteen modules contain at most 37 code
+  lines each. Lexical module reachability, dependency cycles, direct rustfmt,
+  native file limits and git diff --check passed.
+- Evidence: artifacts/consolidation-swarm-view-state/. No Cargo, rustc,
+  compilation or runtime tests were run. Full consolidation remains incomplete.

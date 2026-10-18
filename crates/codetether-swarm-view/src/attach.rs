@@ -1,7 +1,7 @@
 //! New-run attachment and state reset for the swarm monitor.
 
-use super::SwarmViewState;
-use crate::tui::swarm_view::SwarmEvent;
+use crate::SwarmEvent;
+use crate::SwarmViewState;
 use tokio::sync::mpsc;
 
 impl SwarmViewState {
