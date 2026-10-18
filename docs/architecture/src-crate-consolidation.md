@@ -9751,3 +9751,19 @@ Seven existing tests moved without execution. Evidence is in
 `artifacts/consolidation-edit-policy/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python or edit-tool execution ran. Full workspace
 consolidation remains active.
+
+### Dedicated edit-confirmation crate
+
+Moved confirmation flag checks, pending/auto-applied result formatting and
+confirmation-tool dispatch into `crates/codetether-edit-confirmation`. Four
+modules separate metadata, rendering and execution. Shared edit policy builds
+the request; existing confirmation-tool crates execute it. Native callers
+retain their auto-apply policy checks and original helper APIs.
+
+Ten static comparisons/checks cover exact function bodies, tool selection,
+metadata fallback, result text, exports and unchanged prompt-loop callers.
+Module/dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 33 code lines. Evidence is in
+`artifacts/consolidation-edit-confirmation/`. Compilation and runtime tests
+were not run; no edit tools were executed. No Cargo, rustc or Python ran.
+Full workspace consolidation remains active.
