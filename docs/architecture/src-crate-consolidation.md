@@ -26446,3 +26446,23 @@ standalone formatting, file-limit and whitespace checks pass. Only the added
 tool-registry lock dependency is staged; unrelated working files are unchanged.
 Evidence: artifacts/consolidation-native-goal-catalog/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Production dependency-scope audit
+
+Added script/architecture/check_native_dependencies.mjs after the goal-tool
+extraction exposed a production import covered only by a dev dependency. The
+new allowed Node check follows literal native-crate modules/includes, excludes
+explicit test gates and checks direct workspace references against normal
+rather than dev dependencies. It reports unsupported traversal and missing or
+dev-only dependencies as failures. Feature/target dependencies form a
+conservative union; this does not expand macros, resolve Rust names or type-check.
+
+The current tree passes across 42 native crates and 334 production-source
+files. A retained negative probe removes tool-core from the native-goal-tools
+normal dependency set in memory and confirms a failing result identifying
+session_task.rs and catalog.rs. Self-checks cover manifest sections, explicit
+test gates and cfg(test)-guarded include calls. The initial include false
+positive was corrected, not worked around by changing a manifest. Evidence:
+artifacts/consolidation-production-dependencies/. Node syntax and whitespace
+checks pass. No Cargo, rustc, Python, compilation or Rust tests ran. This improves
+verification of ongoing extractions; the full consolidation goal remains active.
