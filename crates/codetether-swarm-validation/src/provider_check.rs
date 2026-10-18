@@ -1,13 +1,13 @@
 use super::{IssueCategory, IssueSeverity, ProviderStatus, SwarmValidator, ValidationIssue};
-use crate::provider::ProviderRegistry;
 use anyhow::Result;
+use codetether_model_discovery::Registry;
 
-impl SwarmValidator {
+impl<H: crate::Host> SwarmValidator<H> {
     pub(super) async fn validate_provider(
         &self,
         issues: &mut Vec<ValidationIssue>,
     ) -> Result<ProviderStatus> {
-        let registry = match ProviderRegistry::from_vault().await {
+        let registry = match H::registry().await {
             Ok(registry) => registry,
             Err(error) => return Ok(self.provider_registry_error(issues, error)),
         };

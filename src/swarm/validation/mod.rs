@@ -2,15 +2,10 @@
 //!
 //! [SwarmValidator] gathers provider/workspace state, then the shared policy
 //! assembles and formats the validation report.
-mod git_status;
-mod provider_check;
-mod provider_model;
-mod validator;
-mod workspace_check;
-mod workspace_issues;
-mod workspace_status_build;
-pub use codetether_swarm_core::validation::{
+mod host;
+pub use codetether_swarm_validation::{
     IssueCategory, IssueSeverity, ProviderStatus, TokenEstimate, ValidationIssue, ValidationReport,
     WorkspaceStatus,
 };
-pub use validator::SwarmValidator;
+/// Swarm preflight validation using the application's provider registry.
+pub type SwarmValidator = codetether_swarm_validation::SwarmValidator<host::Native>;

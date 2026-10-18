@@ -20651,3 +20651,27 @@ rustfmt, source graph/dependency checks, native file limits, and whitespace
 checks passed. Evidence: `artifacts/consolidation-answer-review/`. No Cargo,
 rustc, or Python commands ran. Rust tests and compilation remain unverified;
 this extraction does not complete the broader consolidation goal.
+
+### Dedicated swarm preflight validation crate
+
+Moved all seven native preflight implementation files into the new
+`codetether-swarm-validation` crate: validator orchestration, provider checks,
+model context lookup, Git probes, workspace status construction, workspace
+issue selection, and issue messages. The crate consumes existing swarm-core
+contracts and pure validation policy. A generic registry-loading host is its
+only application hook; native `src/swarm/validation` now supplies the Vault
+loader and preserves the public type names with an alias and re-exports.
+
+The move preserves provider-before-workspace sequencing, registry-error reports,
+128,000-token model fallback, Git command arguments/output handling, conditional
+probe execution, issue ordering, and all existing message text. Added workspace
+membership, a root dependency, and one lockfile package with existing dependency
+versions. Unrelated working lockfile edits remain untouched.
+
+Verification compares each complete moved implementation against its original
+after explicit generic-host substitutions and marker initialization. Direct
+rustfmt, native file-size checks, source graphs across 692 roots, dependency-cycle
+checks across 558 crates, and whitespace checks passed. Evidence is retained in
+`artifacts/consolidation-swarm-validation/`. No Cargo, rustc, or Python commands
+ran; no Rust tests or runtime Git probes were executed. Compilation remains
+unverified. The complete workspace consolidation is still in progress.

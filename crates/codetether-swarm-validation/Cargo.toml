@@ -1,0 +1,13 @@
+[package]
+name = "codetether-swarm-validation"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Swarm provider and workspace preflight validation"
+
+[dependencies]
+anyhow = "1"
+codetether-model-discovery = { path = "../codetether-model-discovery", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }

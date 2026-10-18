@@ -1774,6 +1774,7 @@ dependencies = [
  "codetether-skill-tool",
  "codetether-swarm-bus",
  "codetether-swarm-core",
+ "codetether-swarm-validation",
  "codetether-swarm-delegation",
  "codetether-swarm-git",
  "codetether-swarm-k8s",
@@ -6754,6 +6755,16 @@ dependencies = [
  "codetether-view-retention",
  "ratatui",
  "tokio",
+]
+
+[[package]]
+name = "codetether-swarm-validation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-model-discovery",
+ "codetether-provider-core",
+ "codetether-swarm-core",
 ]
 
 [[package]]

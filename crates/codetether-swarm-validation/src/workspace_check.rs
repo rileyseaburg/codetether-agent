@@ -3,7 +3,7 @@ use super::workspace_status_build::workspace_status;
 use super::{SwarmValidator, ValidationIssue, WorkspaceStatus};
 use anyhow::Result;
 
-impl SwarmValidator {
+impl<H: crate::Host> SwarmValidator<H> {
     pub(super) fn validate_workspace(
         &self,
         issues: &mut Vec<ValidationIssue>,

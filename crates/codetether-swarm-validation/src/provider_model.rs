@@ -1,8 +1,8 @@
 use super::{IssueCategory, IssueSeverity, SwarmValidator, ValidationIssue};
-use crate::provider::ProviderRegistry;
+use codetether_model_discovery::Registry;
 
-impl SwarmValidator {
-    pub(super) async fn context_window(&self, registry: &ProviderRegistry) -> usize {
+impl<H: crate::Host> SwarmValidator<H> {
+    pub(super) async fn context_window(&self, registry: &H::Registry) -> usize {
         let Some(provider) = registry.get(&self.provider) else {
             return 128_000;
         };
@@ -31,7 +31,10 @@ impl SwarmValidator {
     }
 }
 
-fn model_context_window(models: &[crate::provider::ModelInfo], model_id: &str) -> Option<usize> {
+fn model_context_window(
+    models: &[codetether_provider_core::ModelInfo],
+    model_id: &str,
+) -> Option<usize> {
     models
         .iter()
         .find(|model| model.id == model_id)
