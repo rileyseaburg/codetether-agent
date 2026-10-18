@@ -2,7 +2,7 @@
 
 use super::*;
 
-pub(in crate::indexer) fn text_summary(index: &CodebaseIndex, output_path: &Path) {
+pub(super) fn text_summary(index: &CodebaseIndex, output_path: &Path) {
     println!("# Codebase Index Built\n");
     println!("- Root: {}", index.root);
     println!("- Output: {}", output_path.display());

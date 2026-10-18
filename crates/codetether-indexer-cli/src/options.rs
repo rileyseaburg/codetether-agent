@@ -2,7 +2,7 @@
 
 use super::*;
 
-pub(in crate::indexer) fn options(args: &crate::cli::IndexArgs) -> BuildOptions {
+pub(super) fn options(args: &IndexArgs) -> BuildOptions {
     let defaults = BuildOptions::default();
     BuildOptions {
         include_hidden: args.include_hidden,

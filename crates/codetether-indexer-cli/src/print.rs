@@ -2,11 +2,7 @@
 
 use super::*;
 
-pub(in crate::indexer) fn print_summary(
-    index: &CodebaseIndex,
-    output_path: &Path,
-    json: bool,
-) -> Result<()> {
+pub(super) fn print_summary(index: &CodebaseIndex, output_path: &Path, json: bool) -> Result<()> {
     if json {
         let payload = serde_json::json!({
             "index_path": output_path,

@@ -1,12 +1,6 @@
-//! cli responsibilities for codebase indexing.
+//! Supply application embedding resolution to the shared indexer CLI.
 
-use super::*;
-mod run;
-pub use run::run;
-
-mod options;
-mod print;
-mod text_summary;
-use options::options;
-use print::print_summary;
-use text_summary::text_summary;
+/// Run index creation with application-configured embedding providers.
+pub async fn run(args: crate::cli::IndexArgs) -> anyhow::Result<()> {
+    codetether_indexer_cli::run(args, &super::resolver::ApplicationResolver).await
+}

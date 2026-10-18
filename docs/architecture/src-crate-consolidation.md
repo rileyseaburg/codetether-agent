@@ -10611,3 +10611,19 @@ whitespace checks passed; new modules have at most 43 code lines. Evidence is
 in `artifacts/consolidation-models-cli/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, credential lookup, provider initialization or model
 network request ran. Full workspace consolidation remains active.
+
+### Indexer CLI extracted
+
+Moved index CLI arguments, option normalization, build/output orchestration and
+text/JSON summaries into `crates/codetether-indexer-cli`. Six modules call the
+existing indexer's resolver-aware build API. The native entry supplies the
+unchanged application embedding resolver; credential lookup remains native.
+The large CLI root now re-exports IndexArgs instead of defining its schema.
+
+Ten static comparisons/checks cover argument defaults/attributes, option limits,
+build and write ordering, summary formatting and unchanged provider adapters.
+Module/dependency graphs, file budgets and whitespace checks passed; modules
+have at most 31 code lines. Evidence is in
+`artifacts/consolidation-indexer-cli/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, index creation or embedding request ran.
+Full workspace consolidation remains active.
