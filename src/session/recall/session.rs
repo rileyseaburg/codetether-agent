@@ -1,5 +1,5 @@
 //! Native recall access to application-owned session fields and loading.
-use super::super::Session;
+use crate::session::Session;
 impl codetether_native_recall::Session for Session {
     fn title(&self) -> Option<&str> {
         self.title.as_deref()

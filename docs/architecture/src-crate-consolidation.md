@@ -26191,3 +26191,12 @@ whitespace checks pass. Only the new package/root dependency are staged in
 Cargo.lock; unrelated working changes are untouched. Evidence is retained in
 artifacts/consolidation-native-swarm/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active and incomplete.
+
+### Recall session binding path correction
+
+Reviewing the actual module mounts showed recall is nested under session::index.
+Its new session adapter incorrectly used super::super::Session, which names the
+index module rather than the session module. The adapter now imports the explicit
+crate::session::Session path. This is a source-level correction; the earlier
+structural/token audits did not establish Rust name resolution or compilation.
+No Cargo, rustc, Python, compilation or runtime tests ran.
