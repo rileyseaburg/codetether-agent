@@ -9,41 +9,41 @@ use std::sync::Arc;
 impl SwarmExecutor {
     /// Returns the runtime control handle when configured.
     pub fn control(&self) -> Option<&SwarmControl> {
-        self.control.as_ref()
+        self.inner.control.as_ref()
     }
 
     /// Returns the inter-agent bus when configured.
     pub fn bus(&self) -> Option<&Arc<AgentBus>> {
-        self.bus.as_ref()
+        self.inner.bus.as_ref()
     }
 
     /// Returns the coordinator agent when configured.
     pub fn coordinator_agent(&self) -> Option<&Arc<tokio::sync::Mutex<Agent>>> {
-        self.coordinator_agent.as_ref()
+        self.inner.coordinator_agent.as_ref()
     }
 
     /// Clones the shared telemetry collector.
     pub fn telemetry_arc(&self) -> Arc<SwarmTelemetryCollector> {
-        Arc::clone(&self.telemetry)
+        Arc::clone(&self.inner.telemetry)
     }
 
     /// Returns the shared subtask result store.
     pub fn result_store(&self) -> &Arc<ResultStore> {
-        &self.result_store
+        &self.inner.result_store
     }
 
     /// Returns retry count, initial delay, maximum delay, and multiplier.
     pub fn retry_config(&self) -> (u32, u64, u64, f64) {
         (
-            self.config.max_retries,
-            self.config.base_delay_ms,
-            self.config.max_delay_ms,
+            self.inner.config.max_retries,
+            self.inner.config.base_delay_ms,
+            self.inner.config.max_delay_ms,
             2.0,
         )
     }
 
     /// Reports whether failed subtask attempts may be retried.
     pub fn retries_enabled(&self) -> bool {
-        self.config.max_retries > 0
+        self.inner.config.max_retries > 0
     }
 }

@@ -9,6 +9,7 @@ pub(super) fn choose(
     model: &str,
 ) -> (String, String) {
     executor
+        .inner
         .delegation
         .as_ref()
         .map(|delegation| {
@@ -20,7 +21,7 @@ pub(super) fn choose(
         .unwrap_or_else(|| (provider.to_string(), model.to_string()))
 }
 pub(super) fn outcome(executor: &SwarmExecutor, provider: &str, specialty: &str, success: bool) {
-    if let Some(delegation) = executor.delegation.as_ref() {
+    if let Some(delegation) = executor.inner.delegation.as_ref() {
         crate::swarm::delegation_outcome::record_subtask_outcome(
             delegation, provider, specialty, success,
         );

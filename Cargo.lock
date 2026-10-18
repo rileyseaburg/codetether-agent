@@ -8474,6 +8474,8 @@ dependencies = [
 name = "codetether-swarm-runtime"
 version = "0.1.0"
 dependencies = [
+ "codetether-bus-core",
+ "codetether-context-policy",
  "anyhow",
  "async-trait",
  "codetether-session-control",

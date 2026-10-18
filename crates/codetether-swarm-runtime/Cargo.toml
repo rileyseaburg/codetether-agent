@@ -7,6 +7,8 @@ license = "MIT"
 description = "Swarm run planning, stage traversal, publication and finalization"
 
 [dependencies]
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }

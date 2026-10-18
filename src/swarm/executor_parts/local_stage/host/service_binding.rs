@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 impl codetether_swarm_local_stage::Services for Native<'_> {
     fn config(&self) -> &SwarmConfig {
-        &self.0.config
+        &self.0.inner.config
     }
 
     fn control(&self) -> Option<&SwarmControl> {
@@ -14,15 +14,15 @@ impl codetether_swarm_local_stage::Services for Native<'_> {
     }
 
     fn events(&self) -> &Option<mpsc::Sender<SwarmEvent>> {
-        &self.0.event_tx
+        &self.0.inner.event_tx
     }
 
     fn bus(&self) -> &Option<Arc<crate::bus::AgentBus>> {
-        &self.0.bus
+        &self.0.inner.bus
     }
 
     fn result_store(&self) -> &Arc<ResultStore> {
-        &self.0.result_store
+        &self.0.inner.result_store
     }
 
     fn try_send_event(&self, event: SwarmEvent) {

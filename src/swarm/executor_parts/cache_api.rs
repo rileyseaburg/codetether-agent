@@ -7,7 +7,7 @@ use anyhow::Result;
 impl SwarmExecutor {
     /// Returns cache statistics when caching is enabled.
     pub async fn cache_stats(&self) -> Option<CacheStats> {
-        let cache = self.cache.as_ref()?;
+        let cache = self.inner.cache.as_ref()?;
         Some(cache.lock().await.stats().clone())
     }
 
@@ -17,7 +17,7 @@ impl SwarmExecutor {
     ///
     /// Returns an error when the cache backend cannot be cleared.
     pub async fn clear_cache(&self) -> Result<()> {
-        if let Some(cache) = &self.cache {
+        if let Some(cache) = &self.inner.cache {
             cache.lock().await.clear().await?;
         }
         Ok(())

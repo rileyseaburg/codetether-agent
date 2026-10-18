@@ -21702,3 +21702,24 @@ No dependency or lockfile changes. Evidence:
 `artifacts/consolidation-swarm-builder/`. No Cargo, rustc, or Python commands
 ran; compilation and runtime tests remain unverified. Full consolidation remains
 active.
+
+### Shared swarm executor state and defaults
+
+Moved all nine executor fields and default construction into
+`codetether-swarm-runtime::ExecutorState`. Coordinator and cache types are
+parameters; configuration, telemetry, result store, bus, delegation and control
+use their existing owning-crate contracts. The native executor retains a
+one-field wrapper for application methods and trait implementations.
+
+Ten native files changed through explicit field projections, wrapper/type
+construction, and removal of unused constructor imports. The shared constructor
+body is identical to the previous native constructor. Static comparison checked
+all other 90 swarm source files unchanged. Accessor method calls such as
+`control()` remain on the native wrapper; field access uses `inner`.
+
+Added direct bus-core and context-policy dependencies to the runtime crate.
+Source/dependency graphs across 692 roots and 564 crates, direct rustfmt,
+native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-executor-state/`. Only those two package dependency
+edges are staged in the lockfile. No Cargo, rustc, or Python commands ran;
+compilation and runtime tests remain unverified. Full consolidation is active.
