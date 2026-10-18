@@ -13089,3 +13089,19 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No audit
   writes/queries, HTTP requests, Cargo, rustc or Rust tests ran. Full consolidation
   remains incomplete.
+
+### OpenAI stream encoder extraction
+
+- Moved provider-chunk encoding, per-stream tool-call indexing, output flags,
+  initial/final events and chunk emission classification into codetether-openai-stream.
+  Eight modules contain at most 36 code lines.
+- Native server retains provider-stream acquisition, iteration, keepalive and
+  DONE markers. Empty chunks remain suppressed; tool IDs retain stable indexes;
+  errors still emit their terminal event and DONE without a normal final event.
+- Verification: 89 static comparisons passed for chunk bodies, index allocation,
+  event serialization, lifecycle payloads, native transport and unchanged server
+  items. Module/dependency checks, direct rustfmt, file limits and whitespace
+  checks passed. Evidence: artifacts/consolidation-openai-stream/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  provider streams, HTTP requests, Cargo, rustc or Rust tests ran. Full workspace
+  consolidation remains incomplete.

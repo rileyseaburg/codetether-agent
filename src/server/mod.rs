@@ -665,10 +665,6 @@ async fn list_agents() -> Json<Vec<crate::agent::AgentInfo>> {
     Json(registry.list().into_iter().cloned().collect())
 }
 
-fn openai_stream_event(payload: &serde_json::Value) -> Event {
-    Event::default().data(payload.to_string())
-}
-
 async fn openai_chat_completions(
     Json(req): Json<OpenAiChatCompletionRequest>,
 ) -> Result<Response, OpenAiApiError> {
@@ -776,120 +772,20 @@ async fn openai_chat_completions(
 
         let (stream_id, stream_model) = (chat_id.clone(), openai_model.clone());
         let event_stream = async_stream::stream! {
-            use crate::provider::StreamChunk as Chunk;
-            let mut tool_call_indices: HashMap<String, usize> = HashMap::new();
-            let mut next_tool_call_index = 0usize;
-            let mut saw_text = false;
-            let mut saw_tool_calls = false;
-
-            let role_chunk = openai_stream_chunk(
-                &stream_id,
-                now,
-                &stream_model,
-                serde_json::json!({ "role": "assistant" }),
-                None,
-            );
-            yield Ok::<Event, Infallible>(openai_stream_event(&role_chunk));
-
+            let mut encoder = codetether_openai_stream::Encoder::new(stream_id, now, stream_model);
+            yield Ok::<Event, Infallible>(encoder.start());
             while let Some(chunk) = provider_stream.next().await {
-                match chunk {
-                    Chunk::Text(text) => {
-                        if text.is_empty() {
-                            continue;
-                        }
-                        saw_text = true;
-                        let content_chunk = openai_stream_chunk(
-                            &stream_id,
-                            now,
-                            &stream_model,
-                            serde_json::json!({ "content": text }),
-                            None,
-                        );
-                        yield Ok(openai_stream_event(&content_chunk));
-                    }
-                    Chunk::ToolCallStart { id, name } => {
-                        saw_tool_calls = true;
-                        let index = *tool_call_indices.entry(id.clone()).or_insert_with(|| {
-                            let value = next_tool_call_index;
-                            next_tool_call_index += 1;
-                            value
-                        });
-                        let tool_chunk = openai_stream_chunk(
-                            &stream_id,
-                            now,
-                            &stream_model,
-                            serde_json::json!({
-                                "tool_calls": [{
-                                    "index": index,
-                                    "id": id,
-                                    "type": "function",
-                                    "function": {
-                                        "name": name,
-                                        "arguments": "",
-                                    }
-                                }]
-                            }),
-                            None,
-                        );
-                        yield Ok(openai_stream_event(&tool_chunk));
-                    }
-                    Chunk::ToolCallDelta { id, arguments_delta } => {
-                        if arguments_delta.is_empty() {
-                            continue;
-                        }
-                        saw_tool_calls = true;
-                        let index = *tool_call_indices.entry(id.clone()).or_insert_with(|| {
-                            let value = next_tool_call_index;
-                            next_tool_call_index += 1;
-                            value
-                        });
-                        let tool_delta_chunk = openai_stream_chunk(
-                            &stream_id,
-                            now,
-                            &stream_model,
-                            serde_json::json!({
-                                "tool_calls": [{
-                                    "index": index,
-                                    "id": id,
-                                    "type": "function",
-                                    "function": {
-                                        "arguments": arguments_delta,
-                                    }
-                                }]
-                            }),
-                            None,
-                        );
-                        yield Ok(openai_stream_event(&tool_delta_chunk));
-                    }
-                    Chunk::Thinking(text) if !text.is_empty() => yield Ok(openai_stream_event(&openai_stream_chunk(&stream_id, now, &stream_model, openai_stream::reasoning_delta(text), None))),
-                    Chunk::KeepAlive
-                    | Chunk::ToolCallEnd { .. }
-                    | Chunk::OutputItemDone { .. }
-                    | Chunk::Done { .. } | Chunk::Thinking(_) => {}
-                    Chunk::Error(error) => {
-                        let error_chunk = openai_stream_chunk(
-                            &stream_id,
-                            now,
-                            &stream_model,
-                            serde_json::json!({ "content": error }),
-                            Some("error"),
-                        );
-                        yield Ok(openai_stream_event(&error_chunk));
+                match encoder.push(chunk) {
+                    codetether_openai_stream::Emission::Skip => {},
+                    codetether_openai_stream::Emission::Event(event) => yield Ok(event),
+                    codetether_openai_stream::Emission::Error(event) => {
+                        yield Ok(event);
                         yield Ok(Event::default().data("[DONE]"));
                         return;
                     }
                 }
             }
-
-            let finish_reason = openai_stream::finish_reason(saw_tool_calls, saw_text);
-            let final_chunk = openai_stream_chunk(
-                &stream_id,
-                now,
-                &stream_model,
-                serde_json::json!({}),
-                Some(finish_reason),
-            );
-            yield Ok(openai_stream_event(&final_chunk));
+            yield Ok(encoder.finish());
             yield Ok(Event::default().data("[DONE]"));
         };
 

@@ -1278,6 +1278,7 @@ dependencies = [
  "codetether-event-replay",
  "codetether-k8s-api",
  "codetether-audit-http",
+ "codetether-openai-stream",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6516,6 +6517,16 @@ dependencies = [
  "serde",
  "serde_json",
  "uuid",
+]
+
+[[package]]
+name = "codetether-openai-stream"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "codetether-openai-wire",
+ "codetether-provider-core",
+ "serde_json",
 ]
 
 [[package]]
