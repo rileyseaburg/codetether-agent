@@ -20720,3 +20720,23 @@ graph checks across 693 roots, native file-size checks, and whitespace checks
 passed. Evidence: `artifacts/consolidation-mcp-subprocess/`. No Cargo, rustc, or
 Python commands ran. Rust tests, subprocess launches, and compilation were not
 performed. Broader workspace consolidation remains active.
+
+### MCP registry connection lifecycle ownership
+
+Moved authorization, client creation, receiver startup, initialization, and
+registration sequencing into `codetether-mcp-core::registry::ServerRegistry::connect`.
+The new `ConnectionHost` supplies native process authorization, transport/client
+construction, receiver execution, and protocol initialization. Native
+`McpRegistry::connect` now delegates to the shared registry. Client construction
+still creates an independent child registry and passes the original server name;
+receiver startup still precedes initialization. Failed initialization still
+returns before registration. Existing constructor/default/deref behavior is
+unchanged, and no dependencies changed.
+
+Verification compares the complete connection workflow after explicit callback
+substitutions and separately checks every native callback against the original
+operations. Direct rustfmt, source graph checks across 693 roots, native file-size
+checks, and whitespace checks passed. Evidence:
+`artifacts/consolidation-mcp-connect/`. No Cargo, rustc, or Python commands ran.
+No external MCP processes or Rust tests were executed. Compilation and runtime
+behavior remain unverified; broader consolidation remains in progress.

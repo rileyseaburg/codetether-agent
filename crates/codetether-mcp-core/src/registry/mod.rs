@@ -1,14 +1,17 @@
 //! Shared server registry, capability metadata and tool routing.
 //!
 //! [ServerRegistry] retains caller-supplied clients; [RegistryClient] keeps
-//! connection construction and authorization in the application.
+//! connection construction and authorization in the application. [ConnectionHost]
+//! supplies these operations to the registry's ordered connection workflow.
 use crate::types::*;
 use anyhow::Result;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+mod connection;
 mod contract;
+pub use connection::ConnectionHost;
 pub use contract::RegistryClient;
 mod all_tools;
 mod capabilities;

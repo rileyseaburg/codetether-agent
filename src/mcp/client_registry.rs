@@ -1,5 +1,6 @@
 //! Application connection authorization for the shared MCP registry.
 use super::*;
+mod connection;
 impl McpRegistry {
     /// Construct an empty registry of application MCP clients.
     pub fn new() -> Self {
@@ -15,28 +16,9 @@ impl McpRegistry {
         command: &str,
         args: &[&str],
     ) -> Result<Arc<McpClient>> {
-        super::super::subprocess_policy::guard(command, args, None).await?;
-        let transport = Arc::new(ProcessTransport::spawn(command, args).await?);
-        let client = Arc::new(McpClient::with_registry(
-            transport,
-            Arc::new(McpRegistry::new()), // Each client gets its own registry for now
-            Some(name.to_string()),
-        ));
-
-        // Start message receiver
-        let client_clone = Arc::clone(&client);
-        tokio::spawn(async move {
-            client_clone.receive_loop().await;
-        });
-
-        // Initialize the connection
-        let init_result = client.initialize().await?;
-
-        // Register the client
-        self.register(name, Arc::clone(&client), init_result.capabilities)
-            .await;
-
-        Ok(client)
+        self.inner
+            .connect::<connection::Native>(name, command, args)
+            .await
     }
 }
 
