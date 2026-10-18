@@ -4,6 +4,7 @@
 //! when should_summarize is true, then expand placeholders at submission.
 //! Raw expansion reconstructs embedded data without delimiter banners.
 mod attach;
+mod binding;
 mod entry;
 mod expand;
 mod raw;

@@ -27599,3 +27599,17 @@ and whitespace checks pass for 725 roots and 617 crates. Tests and unrelated
 files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-text-input/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Paste composer and view-routing bindings
+
+Moved paste input state access, image-attachment callback selection, active-view
+routing and public paste entry points into codetether-paste-buffer::binding.
+Removed two root host files; the root selects frontend types and callbacks.
+
+All seventeen expanded function bodies match their originals after callback
+qualification. Input mode selection, filter updates and pending-paste storage
+are unchanged. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Tests and unrelated files are unchanged; no manifest or lock changes
+were needed. Evidence: artifacts/consolidation-paste-bindings/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
