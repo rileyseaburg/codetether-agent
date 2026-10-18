@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-terminal-replay",
  "codetether-mux-input",
  "codetether-mux-coordination",
  "codetether-mux-client",
@@ -5180,6 +5181,14 @@ dependencies = [
  "anyhow",
  "codetether-mux-client",
  "codetether-mux-protocol",
+]
+
+[[package]]
+name = "codetether-terminal-replay"
+version = "0.1.0"
+dependencies = [
+ "codetether-telemetry",
+ "memchr",
 ]
 
 [[package]]

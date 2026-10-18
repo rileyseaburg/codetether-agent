@@ -1,0 +1,13 @@
+[package]
+name = "codetether-terminal-replay"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bounded terminal replay buffer and ANSI screen-mode tracking"
+
+[dependencies]
+memchr = "2"
+
+[dev-dependencies]
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }

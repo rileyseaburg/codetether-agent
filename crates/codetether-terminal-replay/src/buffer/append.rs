@@ -3,7 +3,8 @@
 use super::OutputBuffer;
 
 impl OutputBuffer {
-    pub(in crate::mux::pty) fn append(&mut self, data: &[u8]) {
+    /// Append output, observe terminal modes, and evict oldest bytes as needed.
+    pub fn append(&mut self, data: &[u8]) {
         self.mode.observe(data);
         self.base += self.bytes.append(data) as u64;
     }

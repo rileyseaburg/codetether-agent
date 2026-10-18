@@ -3,7 +3,7 @@
 use std::time::Instant;
 
 use super::OutputBuffer;
-use crate::telemetry::memory::MemorySnapshot;
+use codetether_telemetry::memory::MemorySnapshot;
 
 const WRITTEN_MIB: usize = 256;
 

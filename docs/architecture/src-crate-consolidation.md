@@ -10333,3 +10333,18 @@ checks passed; new files contain at most 42 code lines. Evidence is in
 `artifacts/consolidation-mux-input/`. Compilation and runtime tests were not run.
 No Cargo, rustc, Python, clipboard, terminal or network operations ran.
 Full workspace consolidation remains active.
+
+### Dedicated terminal replay crate
+
+Moved the bounded PTY output ring, eviction/read/attach offsets and incremental
+alternate-screen detection into `crates/codetether-terminal-replay`. Ten modules
+separate buffer state, ring operations, mode tracking and original regressions.
+Native server buffers and terminal presentation now use the shared types.
+
+Thirty-four static comparisons cover original algorithms, retention/read limits,
+mode markers, five regressions, the manual benchmark and unchanged consumers.
+Module/dependency graphs, file budgets and whitespace checks passed; new files
+contain at most 43 code lines. Evidence is in
+`artifacts/consolidation-terminal-replay/`. Compilation, runtime tests and the
+benchmark were not run. No Cargo, rustc, Python or terminal operations ran.
+Full workspace consolidation remains active.
