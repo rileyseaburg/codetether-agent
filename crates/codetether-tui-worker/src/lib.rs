@@ -38,3 +38,6 @@ pub mod tasks;
 
 /// UI processing and observed-agent synchronization with the bridge.
 pub mod synchronization;
+
+/// Application-local state method declarations.
+pub mod state_binding;

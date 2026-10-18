@@ -38,7 +38,7 @@ pub(crate) mod interlude;
 pub mod message_cache;
 pub use codetether_model_picker as model_filter;
 pub mod model_picker;
-pub mod model_picker_nav;
+pub use codetether_model_picker::state_binding::navigation as model_picker_nav;
 pub use codetether_model_store as model_store;
 pub mod model_store_sync;
 pub use codetether_agent_identity as profile_defs;

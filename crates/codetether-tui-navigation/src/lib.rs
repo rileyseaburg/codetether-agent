@@ -50,3 +50,6 @@ pub mod view_state;
 
 /// View-aware Tab routing and swarm focus synchronization.
 pub mod tab;
+
+/// Application-local state method declarations.
+pub mod state_binding;

@@ -27,3 +27,6 @@ pub mod access_command;
 
 /// Settings panel selection bounds and action dispatch.
 pub mod panel;
+
+/// Application-local state method declarations.
+pub mod state_binding;

@@ -24872,3 +24872,23 @@ rustfmt, file limits and whitespace checks passed. Unrelated working changes
 remain untouched. Evidence: artifacts/consolidation-app-view-state/.
 No Cargo, rustc, Python, compiler expansion, UI interaction or tests ran. Full
 consolidation remains active.
+
+### AppState picker, settings and worker navigation moved into owning crates
+
+Moved twenty-seven methods into session-picker, model-picker, tui-worker,
+settings-policy and tui-navigation. The native bindings retain the concrete
+provider registry and model-view variant; view-mode transitions retain the same
+saved-scroll inputs. Removed state/model_picker_nav.rs and preserved that public
+module path through a shared navigation re-export. No dependencies changed.
+
+Expanded comparisons preserve all method implementations and the settings-count
+constant, including picker status updates, asynchronous refresh, worker queues
+and view transitions. Optional formatting commas and empty macro separators
+are normalized; the initial comparison mismatch is recorded. The declaration
+audit covers 43 calls, 46 Session methods and 81 AppState methods without unbound
+variables or duplicates. Module/dependency scans cover 693 roots and 574 crates
+without missing modules or cycles. Direct dependency audit, direct rustfmt,
+file limits and whitespace checks passed. Unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-app-navigation-state/.
+No Cargo, rustc, Python, compiler expansion, provider calls, UI interactions or
+tests ran. Full consolidation remains active.

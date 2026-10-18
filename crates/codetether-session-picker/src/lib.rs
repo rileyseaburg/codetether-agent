@@ -43,3 +43,6 @@ pub mod recent;
 pub mod interaction;
 mod state_selection;
 pub mod summary;
+
+/// Application-local state method declarations.
+pub mod state_binding;

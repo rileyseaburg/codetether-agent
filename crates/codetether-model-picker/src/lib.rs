@@ -33,3 +33,6 @@ mod refresh_start;
 
 #[cfg(test)]
 mod refresh_tests;
+
+/// Application-local state method declarations.
+pub mod state_binding;
