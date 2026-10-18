@@ -50,3 +50,5 @@ mod application_binding;
 mod leading_binding;
 
 mod simple_binding;
+
+mod tail_binding;

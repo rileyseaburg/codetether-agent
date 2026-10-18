@@ -1,13 +1,11 @@
 //! Native bindings for shared interactive slash dispatch.
-use super::*;
-use codetether_slash_command::pipeline::TailCommand;
 codetether_slash_command::declare_leading_commands!(
     crate::tui::app::commands::dispatch_host::Dispatch<'_>,
     codetether_image::interactive::Presentation,
     codetether_settings_policy::command::Setting;
     crate::tui::app::input::attach_image_command,
     crate::tui::app::file_share::command,
-    crate::tui::app::commands::open_editor;
+    crate::tui::app::fuzzy_find::open_argument;
     crate::tui::app::commands::handle_context_command,
     crate::tui::app::commands::handle_mcp_command;
     crate::tui::app::commands::handle_go_command,
@@ -29,12 +27,14 @@ codetether_slash_command::declare_simple_commands!(
     crate::tui::app::commands::push_system_message;
     codetether_cognition_core::palace::command::recall,
 );
-codetether_cognition_core::declare_recall_view!(
-    crate::tui::app::state::App,
-    crate::tui::chat::message::ChatMessage,
-    crate::tui::chat::message::MessageType,
+codetether_slash_command::declare_tail_commands!(
+    Dispatch; crate::tui::app::spawn_form::open_spawn_form,
+    crate::tui::app::spawn_agent::handle_spawn_command,
+    crate::tui::app::managed_agent::command::admin::kill,
+    crate::tui::app::managed_agent::command::admin::list,
+    crate::tui::app::managed_agent::command::handle,
+    crate::tui::app::commands::handle_autochat_command,
 );
-mod tail;
 codetether_slash_command::declare_dispatch_host!(
     crate::tui::app::state::App, crate::session::Session, crate::provider::ProviderRegistry;
     crate::tui::app::commands::dispatch_host::leading::run,
@@ -44,7 +44,7 @@ codetether_slash_command::declare_dispatch_host!(
     crate::tui::swarm_run::handle_swarm_command;
     crate::tui::forage_run::handle_forage_command,
     crate::tui::app::commands::goal::handle,
-    crate::tui::app::commands::a2a::handle,
+    codetether_a2a_interactive::command::handle,
     crate::tui::app::commands::handle_undo_command,
     crate::tui::app::detach::handle_detach_command,
     crate::tui::app::commands::handle_fork_command,

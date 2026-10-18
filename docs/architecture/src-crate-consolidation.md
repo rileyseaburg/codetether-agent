@@ -27250,3 +27250,21 @@ file-limit and whitespace checks pass for 725 roots and 617 crates. No dependenc
 or lock changes were needed; unrelated working files remain unchanged. Evidence:
 artifacts/consolidation-simple-commands/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Trailing slash-command routing and direct callback binding
+
+Moved spawn/form, kill, agent listing/control and autochat routing into
+codetether-slash-command::declare_tail_commands. Removed the root tail stage,
+plus the one-call editor and A2A wrapper files. Their callers now select the
+same existing fuzzy-find and A2A functions directly. Recall view declaration
+now sits with the frontend command declarations to retain the root file budget;
+its implementation remains in codetether-cognition-core.
+
+The expanded router body matches the original after callback substitution and
+expression-only match-arm normalization. Both removed forwarders were checked
+against their exact targets and argument lists; the two remaining local command
+function bodies are unchanged. Static declaration, module/dependency, native
+production-scope, standalone formatting, file-limit and whitespace checks pass
+for 725 roots and 617 crates. Tests and unrelated files are unchanged. Evidence:
+artifacts/consolidation-tail-commands/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

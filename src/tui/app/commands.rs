@@ -1,9 +1,5 @@
-#[path = "commands/a2a.rs"]
-mod a2a;
 #[path = "commands/goal/mod.rs"]
 pub(crate) mod goal;
-#[path = "commands/open_editor.rs"]
-mod open_editor;
 codetether_settings_policy::declare_setting_commands!(
     crate::tui::app::state::App,
     crate::session::Session,
@@ -11,13 +7,17 @@ codetether_settings_policy::declare_setting_commands!(
     crate::tui::app::settings::set_network_access,
     crate::tui::app::settings::set_slash_autocomplete,
 );
-use open_editor::open_editor;
 #[path = "commands/dispatch_host/mod.rs"]
 mod dispatch_host;
 
-use crate::tui::app::spawn_agent::handle_spawn_command;
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
+
+codetether_cognition_core::declare_recall_view!(
+    crate::tui::app::state::App,
+    crate::tui::chat::message::ChatMessage,
+    crate::tui::chat::message::MessageType,
+);
 
 pub use crate::tui::app::auto_apply::{
     auto_apply_status_message, set_auto_apply_edits, toggle_auto_apply_edits,
