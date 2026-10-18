@@ -41,3 +41,6 @@ pub mod text;
 
 /// View-level Enter handler selection.
 pub mod enter;
+
+/// Mouse wheel priorities, view scrolling and click routing.
+pub mod mouse;

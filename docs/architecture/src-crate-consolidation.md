@@ -19308,3 +19308,24 @@ normalized trailing comma; corrected the verifier and retained the failed log.
 Evidence: `artifacts/consolidation-voice-controls/`. No Cargo, rustc, Python,
 Rust tests, recording or transcription ran; compilation and runtime remain
 unverified.
+
+### Mouse navigation policy
+
+Moved mouse-wheel priority, overlay scrolling, view-aware up/down dispatch and
+left-click routing into `codetether-tui-navigation::mouse`. Separate modules
+retain wheel/click dispatch, overlay priority and each scroll direction. Native
+code reuses the existing Navigation context and actions, with five callbacks for
+approval-wheel handling, editor/file clicks and audit selection. Removed the
+three standalone native scroll-policy files.
+
+Preserved help-before-approval-before-overlay priority, three-row wheel steps,
+per-row list navigation, detail scrolling, bus-filter suppression, audit order,
+and editor-before-file click handling. Existing navigation action bindings,
+editor handlers and approval handlers are unchanged. No dependencies changed.
+
+Validation: seven complete translated function bodies, five native callbacks,
+every reused action-to-method mapping, unchanged supporting handlers/manifests,
+lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-mouse-navigation/`. No Cargo, rustc, Python, Rust tests
+or TUI execution ran; compilation and runtime remain unverified.
