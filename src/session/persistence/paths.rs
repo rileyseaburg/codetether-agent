@@ -9,9 +9,7 @@ use crate::session::Session;
 impl Session {
     /// Resolve the configured sessions directory.
     pub(crate) fn sessions_dir() -> Result<PathBuf> {
-        super::canonical_root::data_dir()
-            .map(|directory| directory.join("sessions"))
-            .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))
+        codetether_session_location::sessions_dir()
     }
 
     /// Resolve a durable session by ID across mux worktree ownership changes.

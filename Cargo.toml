@@ -102,6 +102,7 @@ members = [
     "crates/codetether-tracked-vec",
     "crates/codetether-session-store",
     "crates/codetether-history-sink",
+    "crates/codetether-session-location",
     "crates/codetether-session-steering",
     "crates/codetether-telemetry",
     "crates/codetether-theme",
@@ -400,6 +401,7 @@ codetether-provider-zai = { path = "crates/codetether-provider-zai", version = "
 codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.1" }
 codetether-secrets = { path = "crates/codetether-secrets", version = "0.1.0" }
 codetether-session-steering = { path = "crates/codetether-session-steering", version = "0.1.0" }
+codetether-session-location = { path = "crates/codetether-session-location", version = "0.1.0" }
 codetether-history-sink = { path = "crates/codetether-history-sink", version = "0.1.0" }
 codetether-session-store = { path = "crates/codetether-session-store", version = "0.1.0" }
 codetether-tracked-vec = { path = "crates/codetether-tracked-vec", version = "0.1.0" }

@@ -12,7 +12,6 @@ use super::tail_load::TailLoad;
 use super::tail_seed::with_tail_cap;
 use super::types::Session;
 
-mod canonical_root;
 mod location;
 mod paths;
 #[cfg(test)]

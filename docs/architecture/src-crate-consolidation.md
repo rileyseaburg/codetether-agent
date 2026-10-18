@@ -8783,3 +8783,25 @@ history-sink crate has 22 modules with at most 39 code lines. Evidence is in
 `artifacts/consolidation-history-archive/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python, upload or download operations ran. The full
 workspace consolidation remains incomplete.
+
+### Dedicated session-location crate
+
+Moved canonical data-root selection, saved session-location pointers, bounded
+worktree discovery and sessions-directory resolution into
+`crates/codetether-session-location`. Eight modules separate root selection,
+lookup fallback order, pointer operations, registry paths and target validation.
+The application retains session-ID validation before calling shared resolution.
+
+Local files still take precedence over saved pointers, followed by ancestor and
+managed-worktree discovery. Explicit data-directory configuration keeps its
+existing priority. Pointer writes/removals retain best-effort logging under the
+original target, and journal consumers retain their application paths.
+
+Twenty-one static comparisons cover moved functions, fallback ordering, native
+ID validation and retained/moved tests. The discovery test moved unchanged;
+two native journal tests remain unchanged. Module references, workspace path
+dependencies, code budgets and whitespace checks passed. Crate modules contain
+at most 32 code lines. Evidence is in
+`artifacts/consolidation-session-location/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The broader consolidation
+remains active.
