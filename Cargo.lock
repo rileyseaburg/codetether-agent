@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-thread-store",
  "codetether-rate-gate",
  "codetether-session-bus",
  "codetether-session-events",
@@ -4329,6 +4330,18 @@ dependencies = [
  "aws-lc-rs",
  "rustls",
  "tracing",
+]
+
+[[package]]
+name = "codetether-thread-store"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-config",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

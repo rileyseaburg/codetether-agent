@@ -10,7 +10,7 @@ use super::path::thread_path;
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::session::thread_store::ThreadStore;
+/// use codetether_thread_store::ThreadStore;
 ///
 /// let store = ThreadStore::new("/tmp/codetether-threads");
 /// ```
@@ -42,12 +42,12 @@ impl ThreadStore {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use codetether_agent::session::thread_store::ThreadStore;
+    /// use codetether_thread_store::ThreadStore;
     ///
     /// let store = ThreadStore::from_config().expect("data dir should resolve");
     /// ```
     pub fn from_config() -> Result<Self> {
-        let data_dir = crate::config::Config::data_dir()
+        let data_dir = codetether_config::Config::data_dir()
             .ok_or_else(|| anyhow!("Could not determine data directory"))?;
         Ok(Self::new(data_dir.join("threads")))
     }

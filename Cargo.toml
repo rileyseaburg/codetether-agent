@@ -114,6 +114,7 @@ members = [
     "crates/codetether-session-events",
     "crates/codetether-session-bus",
     "crates/codetether-rate-gate",
+    "crates/codetether-thread-store",
     "crates/codetether-workspace-index",
     "crates/codetether-codex-records",
     "crates/codetether-codex-discovery",
@@ -422,6 +423,7 @@ codetether-codex-transcript = { path = "crates/codetether-codex-transcript", ver
 codetether-codex-discovery = { path = "crates/codetether-codex-discovery", version = "0.1.0" }
 codetether-codex-records = { path = "crates/codetether-codex-records", version = "0.1.0" }
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
+codetether-thread-store = { path = "crates/codetether-thread-store", version = "0.1.0" }
 codetether-rate-gate = { path = "crates/codetether-rate-gate", version = "0.1.0" }
 codetether-session-bus = { path = "crates/codetether-session-bus", version = "0.1.0" }
 codetether-session-events = { path = "crates/codetether-session-events", version = "0.1.0" }

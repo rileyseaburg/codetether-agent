@@ -17,12 +17,13 @@ impl ThreadStore {
     ///
     /// ```rust,no_run
     /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-    /// use codetether_agent::session::thread_store::{ThreadEvent, ThreadStore};
+    /// use codetether_thread_store::{ThreadEvent, ThreadStore};
     ///
     /// let store = ThreadStore::new("/tmp/codetether-threads");
     /// let event = ThreadEvent {
     ///     event_id: "event-1".into(),
     ///     thread_id: "thread-1".into(),
+    ///     session_id: "session-1".into(),
     ///     turn_id: "turn-1".into(),
     ///     kind: "turn.started".into(),
     ///     timestamp_ms: 1,

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::session::thread_store::ThreadEvent;
+/// use codetether_thread_store::ThreadEvent;
 ///
 /// let event = ThreadEvent {
 ///     event_id: "event-1".into(),

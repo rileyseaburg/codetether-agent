@@ -9126,3 +9126,19 @@ references, dependency graphs, file budgets and whitespace checks passed;
 the largest crate file has 32 code lines. Evidence is in
 `artifacts/consolidation-rate-gate/`. Compilation and runtime tests were not
 run. No Cargo, rustc or Python commands ran. Full consolidation remains active.
+
+### Dedicated thread-event store crate
+
+Moved ThreadEvent, ThreadStore, ID/path validation, JSONL append/read and
+configuration-based construction into `crates/codetether-thread-store`.
+Twelve modules include the three existing regressions and shared test
+fixtures. The native module only re-exports the shared store and event type;
+configuration resolves through its existing owning crate. The append doc
+example now includes the required session_id field.
+
+Seventeen static checks compare implementation files, event serialization,
+test bodies, environment locking and removal of native implementations.
+Module/dependency graphs, file budgets and whitespace checks passed; the
+largest crate file has 24 code lines. Evidence is in
+`artifacts/consolidation-thread-store/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. Full consolidation remains active.

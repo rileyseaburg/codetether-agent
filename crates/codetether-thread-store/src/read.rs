@@ -16,7 +16,7 @@ impl ThreadStore {
     ///
     /// ```rust,no_run
     /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-    /// use codetether_agent::session::thread_store::ThreadStore;
+    /// use codetether_thread_store::ThreadStore;
     ///
     /// let store = ThreadStore::new("/tmp/codetether-threads");
     /// let events = store.read_thread("thread-1").await.unwrap();
