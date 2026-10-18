@@ -25981,3 +25981,22 @@ Declaration, file-limit, direct rustfmt and whitespace checks pass. Only the new
 package/root dependency are staged in Cargo.lock; unrelated files remain
 unchanged. Evidence: artifacts/consolidation-native-forage/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Forage regression suite moved to native ownership
+
+Moved the eight existing forage regressions and common fixtures into
+codetether-native-forage. Selection helpers invoke the same forage-core
+selection function with the same native scoring callback used by the production
+host, without requiring unused application execution callbacks. The root's
+opportunity/swarm-config test adapters and test-only imports are removed.
+Assertions, sample evidence paths and expected model behavior are unchanged.
+
+Static source comparisons preserve all test/fixture bodies after owning imports.
+The initial test-module import was corrected to the existing execution::ExecutionOutcome
+path; the scoring-helper assertion was normalized for rustfmt wrapping. Module
+and dependency scans cover 720 roots and 606 crates without missing modules,
+cycles or undeclared dependencies. Declaration, file-limit, direct rustfmt and
+whitespace checks pass. Only the new test dependencies are staged in the native
+forage lockfile entry; unrelated dirty files remain unchanged. Evidence:
+artifacts/consolidation-forage-tests/. No Cargo, rustc, Python or tests ran.
+Full consolidation remains active.

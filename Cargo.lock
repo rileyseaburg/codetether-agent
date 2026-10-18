@@ -3731,6 +3731,10 @@ dependencies = [
 name = "codetether-native-forage"
 version = "0.1.0"
 dependencies = [
+ "codetether-forage-core",
+ "tempfile",
+ "tokio",
+ "uuid",
  "anyhow",
  "codetether-cli-options",
  "codetether-forage-clarify",

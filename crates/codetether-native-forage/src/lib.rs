@@ -43,3 +43,6 @@ pub trait Execution {
 /// # Ok(()) }
 /// ```
 pub struct Host<E>(PhantomData<fn() -> E>);
+
+#[cfg(test)]
+mod tests;
