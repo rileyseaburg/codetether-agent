@@ -1,0 +1,16 @@
+[package]
+name = "codetether-build-policy"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Build request detection and tool-first retry policy"
+
+[dependencies]
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+regex = "1"
+
+[dev-dependencies]
+tempfile = "3"
+serde_json = "1"

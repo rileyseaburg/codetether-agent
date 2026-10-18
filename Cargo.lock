@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-build-policy",
  "codetether-provider-policy",
  "codetether-tool-call-parser",
  "codetether-edit-confirmation",
@@ -1826,6 +1827,17 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "codetether-build-policy"
+version = "0.1.0"
+dependencies = [
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "regex",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

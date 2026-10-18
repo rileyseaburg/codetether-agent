@@ -9799,3 +9799,19 @@ graphs, file budgets and whitespace checks passed; the largest crate file has
 `artifacts/consolidation-provider-policy/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python or provider execution ran. Full workspace
 consolidation remains active.
+
+### Dedicated build-policy crate
+
+Moved build-request/follow-up detection, tool-first retry decisions, manager
+request-envelope handling and existing workspace-file lookup into
+`crates/codetether-build-policy`. Twenty modules separate intent vocabularies,
+current/historical request checks, retries, path lookup and regression cases.
+Native helper APIs remain re-exports for existing loop callers.
+
+Twenty-two static comparisons cover original heuristics, request scoping,
+filesystem filtering, moved tests and unchanged build-loop consumers.
+Module/dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 35 code lines. Ten original tests moved without execution.
+Evidence is in `artifacts/consolidation-build-policy/`. Compilation and runtime
+tests were not run. No Cargo, rustc, Python or tool execution ran. Full workspace
+consolidation remains active.
