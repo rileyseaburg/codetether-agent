@@ -57,17 +57,17 @@
 //! assert!(stats.dedup_hits >= 1);
 //! ```
 
-pub mod dedup;
-pub mod lingua;
+pub use codetether_context_policy::transforms::dedup;
+pub use codetether_context_policy::transforms::lingua;
 pub mod pairing;
 #[allow(dead_code)]
-pub mod snippet;
+pub use codetether_context_policy::transforms::snippet;
 #[allow(dead_code)]
-pub mod streaming_llm;
+pub use codetether_context_policy::transforms::streaming_llm;
 pub mod tetherscript_repair;
-pub mod thinking_prune;
+pub use codetether_context_policy::transforms::thinking_prune;
 #[allow(dead_code)]
-pub mod tool_call_dedup;
+pub use codetether_context_policy::transforms::tool_call_dedup;
 
 use crate::provider::Message;
 pub use codetether_context_policy::transforms::ExperimentalStats;

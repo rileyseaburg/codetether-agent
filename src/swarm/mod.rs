@@ -11,7 +11,7 @@
 pub use codetether_swarm_core::{StageStats, SwarmStats};
 pub mod actor_status;
 pub mod cache;
-pub mod collapse_controller;
+pub use codetether_swarm_git as collapse_controller;
 pub mod control;
 pub mod delegation;
 pub mod delegation_outcome;

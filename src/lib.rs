@@ -63,5 +63,5 @@ pub mod vectordb;
 pub mod voice;
 pub mod worker_server;
 pub use codetether_util::workspace_scan;
-pub mod worktree;
+pub use codetether_worktree as worktree;
 pub use codetether_worktree_isolation as worktree_stub;

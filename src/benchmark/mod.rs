@@ -4,7 +4,7 @@
 //! capturing pass rates, timing, token usage, and cost metrics.
 
 mod runner;
-mod types;
+use codetether_benchmark as types;
 
 pub use runner::*;
 pub use types::*;

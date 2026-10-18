@@ -37,7 +37,7 @@ mod run;
 mod run_with_state;
 mod runtime_state;
 mod server_state;
-mod session_event;
+use codetether_a2a_worker_core::events as session_event;
 mod session_event_sink;
 mod session_policy;
 mod session_registry;

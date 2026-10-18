@@ -4,7 +4,7 @@
 
 mod approval_routes;
 mod audit_http_state;
-pub mod auth;
+pub use codetether_http_auth as auth;
 mod bus_http_state;
 mod cognition_http_state;
 mod config_status;
@@ -22,7 +22,7 @@ mod session_routes;
 mod startup_host;
 mod task_http_state;
 mod task_ingest_state;
-mod task_queue;
+use codetether_task_queue as task_queue;
 mod tool_contract;
 mod tool_discovery_host;
 mod voice_http_state;

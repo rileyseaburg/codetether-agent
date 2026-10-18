@@ -11,8 +11,7 @@
 //! ```
 
 pub mod build_guidance;
-#[path = "builtin/mod.rs"]
-pub mod builtin;
+pub use codetether_agent_core::builtin;
 mod core;
 mod execution;
 mod registry;

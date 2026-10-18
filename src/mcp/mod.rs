@@ -20,7 +20,7 @@
 //! ```
 
 mod approval;
-pub mod bus_bridge;
+pub use codetether_bus_http as bus_bridge;
 mod bus_payload;
 mod client;
 mod fallback_grep;
@@ -32,7 +32,7 @@ mod subprocess_policy;
 mod tool_policy;
 mod tool_result;
 mod transport;
-mod types;
+use codetether_mcp_core::types;
 
 pub use bus_bridge::BusBridge;
 pub use client::{McpClient, McpRegistry};

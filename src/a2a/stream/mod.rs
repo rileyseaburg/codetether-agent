@@ -6,5 +6,5 @@ pub use codetether_a2a_stream::{
     backoff, breaker, classify, cursor, event_id, frame, lifecycle, probe, quic, resume_request,
     resync, staging,
 };
-pub mod socket_opts;
-pub mod tcp_info;
+pub use codetether_provider_core::socket_opts;
+pub use codetether_telemetry::tcp_info;

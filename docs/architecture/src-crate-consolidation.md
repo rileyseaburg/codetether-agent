@@ -20507,3 +20507,24 @@ dependency cycles, file-size ratchet, whitespace and direct formatting.
 Explicit audit roots for the removed facades were removed from the inventory.
 Evidence: `artifacts/consolidation-root-facades/`. Cargo, rustc, Python and Rust
 tests were not run; compilation and runtime remain unverified.
+
+### Direct aliases for nested completed migrations
+
+Replaced 88 remaining pure glob-export facade files with direct module aliases
+at their 89 declaring sites across 30 native module indexes. This includes
+provider implementations/support, A2A contracts, session projections, UI helpers,
+authentication exports, voice helpers and the worktree facade. Every removed
+file contained only one public glob re-export from an existing owning crate.
+
+Preserved each declaration's public/private visibility and cfg attributes;
+removed only obsolete path attributes on aliases. Nested-module aliases retain
+the same public paths, and no implementation, test body, feature definition or
+dependency changed. Modules containing behavior or mixed exports remain for
+separate ownership work.
+
+Validation: declaration inventory from library/binary module traversal,
+unique replacement accounting, exact facade purity/target checks, expected
+formatted-parent comparisons, complete module reachability including owners,
+dependency cycles, file-size ratchet, whitespace and direct formatting.
+Evidence: `artifacts/consolidation-nested-facades/`. No Cargo, rustc, Python or
+Rust tests ran; compilation and runtime remain unverified.

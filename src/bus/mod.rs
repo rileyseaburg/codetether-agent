@@ -19,7 +19,7 @@
 //! | `tools.{name}` | Tool-specific channels |
 pub mod bus_durable_impl;
 pub mod durability_class;
-pub mod durable_log;
+pub use codetether_bus_core::durable_log;
 pub mod durable_log_file;
 pub mod global;
 pub mod payload;

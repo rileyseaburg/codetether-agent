@@ -11,10 +11,10 @@ pub(crate) mod git_policy;
 mod quality_shell;
 mod ralph_loop;
 mod runtime_host;
-pub mod state_store;
-pub mod store_http;
-pub mod store_memory;
-mod types;
+use codetether_ralph_core as types;
+pub use codetether_ralph_core::state_store;
+pub use codetether_ralph_core::store_http;
+pub use codetether_ralph_core::store_memory;
 mod verification;
 
 pub use delegation::*;

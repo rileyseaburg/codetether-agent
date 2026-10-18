@@ -1,3 +1,3 @@
 //! Project-level persistent memory.
 
-pub mod palace;
+pub use codetether_cognition_core::palace;

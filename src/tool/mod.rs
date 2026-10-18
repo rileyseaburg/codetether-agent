@@ -15,7 +15,7 @@ mod bash_noninteractive;
 pub(crate) mod bash_shell;
 pub mod batch;
 pub mod browserctl;
-pub mod budget;
+pub use codetether_tool_core::budget;
 pub mod bus_inspect;
 pub mod codesearch;
 pub mod computer_use;

@@ -6,9 +6,9 @@
 //! - [`send`] — outbound tagged intro with ledger dedup
 //! - [`reply`] — canned no-LLM acknowledgement for inbound intros
 
-pub mod detect;
+pub use codetether_a2a_http::intro::detect;
 pub mod ledger;
-pub mod reply;
+pub use codetether_a2a_http::intro::reply;
 pub mod send;
 
 pub use detect::is_intro;

@@ -2,5 +2,5 @@
 pub mod beliefs;
 pub mod executor;
 pub mod persistence;
-pub mod prefill;
+pub use codetether_cognition_native::prefill;
 mod thinker;

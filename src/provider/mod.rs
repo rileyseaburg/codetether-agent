@@ -20,24 +20,24 @@
 // ── Sub-module declarations ─────────────────────────────────────────
 
 pub mod anthropic;
-pub mod bedrock;
-pub mod body_cap;
+pub use codetether_provider_bedrock::provider as bedrock;
+pub use codetether_provider_core::body_cap;
 pub mod codex_reasoning;
 pub mod copilot;
-pub mod deepseek;
+pub use codetether_provider_deepseek as deepseek;
 mod fallback_policy;
 pub mod gemini_web;
 pub mod glm5;
 pub mod google;
-pub mod limits;
+pub use codetether_provider_core::limits;
 include!("native_modules.rs");
 pub mod pricing;
 include!("image_modules.rs");
 
 pub mod metrics;
-pub mod models;
+pub use codetether_model_catalog as models;
 pub mod moonshot;
-pub mod openai;
+pub use codetether_provider_openai as openai;
 pub mod openai_codex;
 pub mod openrouter;
 pub mod retry;

@@ -1,7 +1,7 @@
 //! Voice-native pair programming — STT, command routing, TTS responses.
 
-pub mod command_router;
-pub mod dictation;
-pub mod ssh_env;
-pub mod stt_catalog;
+pub use codetether_voice_core::command_router;
+pub use codetether_voice_core::dictation;
+pub use codetether_voice_core::ssh_env;
+pub use codetether_voice_core::stt_catalog;
 pub mod transport;

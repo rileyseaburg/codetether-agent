@@ -1,8 +1,8 @@
 //! Auto-chat application adapters and shared policy exports.
-pub mod delegation;
+pub use codetether_autochat_core::delegation;
 pub mod model_rotation;
 pub mod shared_context;
-pub mod transport;
+pub use codetether_autochat_core::transport;
 pub use codetether_autochat_core::{
     AUTOCHAT_DEFAULT_AGENTS, AUTOCHAT_MAX_AGENTS, AUTOCHAT_MAX_DYNAMIC_SPAWNS, AUTOCHAT_MAX_ROUNDS,
     AUTOCHAT_NO_PRD_FLAG, AUTOCHAT_QUICK_DEMO_TASK, AUTOCHAT_RLM_FALLBACK_CHARS,
