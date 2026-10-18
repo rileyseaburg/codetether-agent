@@ -19,3 +19,6 @@ mod stream;
 pub use chat::ChatEvent;
 pub use event::Event;
 pub use stream::EventStream;
+
+mod archive;
+pub use archive::{archive_event_stream_to_s3, event_stream_path};

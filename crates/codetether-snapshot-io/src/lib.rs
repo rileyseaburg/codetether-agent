@@ -8,3 +8,6 @@ mod atomic;
 mod guard;
 pub use atomic::atomic_write;
 pub use guard::{forget, is_unchanged, record_saved};
+
+mod size;
+pub use size::{MAX_SESSION_FILE_BYTES, ensure_session_file_size};

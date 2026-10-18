@@ -9,7 +9,7 @@ description = "Atomic snapshot replacement and content-verified save elision"
 [dependencies]
 anyhow = "1"
 tempfile = "3"
-tokio = { version = "1", features = ["rt"] }
+tokio = { version = "1", features = ["rt", "fs"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros"] }

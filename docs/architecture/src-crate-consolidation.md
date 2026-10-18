@@ -9831,3 +9831,18 @@ lines; five existing default-model tests moved without execution. Evidence is
 in `artifacts/consolidation-policy-residuals/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python or provider execution ran. Full workspace
 consolidation remains active.
+
+### Storage helper ownership consolidated
+
+Moved event-stream directory resolution and best-effort session archival into
+`codetether-event-stream`, and the pre-read snapshot size check into
+`codetether-snapshot-io`. Native helpers retain their original exports. Enabled
+Tokio's filesystem feature in the snapshot crate for its moved metadata call.
+
+Seven static comparisons/checks cover archive gating and upload order, log
+messages, snapshot size/error behavior, unchanged callers and required feature
+wiring. Module/dependency graphs, file budgets and whitespace checks passed;
+the two new modules contain at most 43 code lines. Evidence is in
+`artifacts/consolidation-storage-helpers/`. Compilation and runtime tests were
+not run; no uploads were executed. No Cargo, rustc or Python ran. Full workspace
+consolidation remains active.
