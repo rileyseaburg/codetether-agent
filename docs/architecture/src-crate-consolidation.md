@@ -28388,3 +28388,21 @@ file-limit checks pass (724 roots, 617 crates). Evidence:
 artifacts/consolidation-timing-methods/. No dependencies or unrelated working
 files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Direct cache operations and crate-owned cache regression tests
+
+Removed the nine root-generated render-cache methods and both root cache files.
+The chat-line pipeline now constructs the same four RenderInputs fields directly.
+Cache storage/access/invalidation already belongs to codetether-message-cache;
+no extra wrapper is needed in the application.
+
+Moved the three cache regression tests into the owning crate with explicit
+RenderedLineCache, StreamingState and RenderInputs fixtures. Their content,
+widths, processing mode and assertions are preserved. Static comparisons cover
+the input projection and test operation sequences. Two verifier normalization
+errors were corrected and their logs retained. Cache algorithms are unchanged.
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks pass (724 roots, 617 crates). Evidence:
+artifacts/consolidation-cache-methods/. No dependencies or unrelated working
+files changed. No Cargo, rustc, Python, compilation or runtime tests ran; the
+moved tests were not executed. Full consolidation remains active and incomplete.

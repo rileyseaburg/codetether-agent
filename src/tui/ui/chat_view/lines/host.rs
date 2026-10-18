@@ -17,7 +17,12 @@ impl codetether_message_cache::pipeline::Host for Native<'_> {
         super::super::agent_lines::build(self.app, content_width, self.formatter)
     }
     fn cache_inputs(&self) -> RenderInputs {
-        self.app.state.render_cache_inputs()
+        RenderInputs {
+            pending_tool: self.app.state.tool_timing.pending_tool_started_at.is_some(),
+            messages_len: self.app.state.messages.len(),
+            tool_preview_scroll: self.app.state.tool_viewport.tool_preview_scroll,
+            processing: self.app.state.processing,
+        }
     }
     fn cache(&mut self) -> &mut RenderedLineCache {
         &mut self.app.state.message_cache
