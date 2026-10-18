@@ -10,8 +10,6 @@ mod context;
 mod create;
 #[path = "goal/create_run.rs"]
 mod create_run;
-#[path = "goal/create_validate.rs"]
-mod create_validate;
 #[path = "goal/edit.rs"]
 mod edit;
 #[path = "goal/edit_run.rs"]
@@ -23,6 +21,8 @@ mod edit_schema;
 mod edit_tests;
 #[path = "goal/get.rs"]
 mod get;
+#[path = "goal/host.rs"]
+mod host;
 #[path = "goal/response.rs"]
 mod response;
 #[path = "session_task/mod.rs"]

@@ -17937,3 +17937,20 @@ Full workspace consolidation remains active.
   changes remain untouched. Evidence: `artifacts/consolidation-verification-audit/`.
 - No Cargo, rustc, Python, verifier calls, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Model-facing goal creation and editing operations
+
+- Moved create/edit execution, create arguments/validation, revision-bound edit
+  schema, trusted session-ID lookup and goal-result formatting into the
+  dedicated `codetether-goal-tools` crate.
+- Native Host preserves runtime current-state reads and model-originated
+  controller updates. Its journal handle uses the exact same path-only core
+  journal type. Native tool constructors and the create budget-authority guard
+  remain unchanged; editing retains that shared guard before parsing.
+- Verified complete operation/schema/formatting bodies, event fields, argument
+  shape, moved validation test, native bindings and unchanged controllers/tool
+  contracts. Module/dependency graphs, direct rustfmt, file limits and whitespace
+  passed. Staged lock adds only the package/root dependency; unrelated working
+  changes remain untouched. Evidence: `artifacts/consolidation-goal-tools/`.
+- No Cargo, rustc, Python, goal tool calls, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

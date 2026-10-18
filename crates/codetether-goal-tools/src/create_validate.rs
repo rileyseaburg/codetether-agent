@@ -1,7 +1,7 @@
 //! Input validation for `create_goal`.
 
 use super::create::Args;
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 pub(super) fn apply(args: &mut Args) -> Option<ToolResult> {
     args.objective = args.objective.trim().to_string();
