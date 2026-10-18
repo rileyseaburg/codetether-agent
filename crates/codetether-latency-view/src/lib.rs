@@ -14,6 +14,7 @@ mod providers;
 mod recent;
 mod recent_rows;
 mod render;
+mod tool_records;
 mod tool_stats;
 mod tool_summary;
 mod tools;

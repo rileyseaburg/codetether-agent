@@ -1,5 +1,5 @@
 //! Project native request and tool state into the shared inspector.
-use crate::tui::{app::state::App, chat::message::MessageType};
+use crate::tui::app::state::App;
 use codetether_latency_view::{LatencyView, ToolLatency};
 pub(super) fn view(app: &App) -> LatencyView<'_> {
     LatencyView {
@@ -18,23 +18,6 @@ pub(super) fn view(app: &App) -> LatencyView<'_> {
         status: app.state.status.clone(),
         current_request_elapsed_ms: app.state.current_request_elapsed_ms(),
         chat_latency: &app.state.request_timing.chat_latency,
-        tools: app
-            .state
-            .messages
-            .iter()
-            .filter_map(|message| match &message.message_type {
-                MessageType::ToolResult {
-                    name,
-                    success,
-                    duration_ms: Some(duration_ms),
-                    ..
-                } => Some(ToolLatency {
-                    name: name.clone(),
-                    success: *success,
-                    duration_ms: *duration_ms,
-                }),
-                _ => None,
-            })
-            .collect(),
+        tools: ToolLatency::from_messages(&app.state.messages),
     }
 }

@@ -23928,3 +23928,20 @@ whitespace checks passed. The working lockfile and unrelated A2A edits remain
 untouched. Evidence: artifacts/consolidation-transport-view/. No Cargo, rustc,
 Python, compilation, TUI rendering or tests ran. Full consolidation remains
 active.
+
+### Tool latency selection moved into its view crate
+
+Moved timed-tool filtering and record projection from the native latency
+inspector adapter into ToolLatency::from_messages in codetether-latency-view.
+The native projection passes the same chat buffer; completed results without
+durations and other message types are still omitted. Chronological order,
+failed-tool records, names and durations are preserved. Added a direct
+chat-model dependency to the view crate.
+
+Static comparison preserves the entire selection expression and every other
+native LatencyView field. Module/dependency scans cover 691 roots and 572 crates
+without missing modules or cycles. Direct rustfmt, source file limits and
+whitespace checks passed. Only the required lockfile dependency is staged;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-tool-latency/. No Cargo, rustc, Python, compilation,
+rendering or tests ran. Full consolidation remains active.

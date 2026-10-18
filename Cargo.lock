@@ -6751,6 +6751,7 @@ version = "0.1.0"
 dependencies = [
  "codetether-telemetry",
  "ratatui",
+ "codetether-chat-model",
 ]
 
 [[package]]
