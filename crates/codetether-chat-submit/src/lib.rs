@@ -16,3 +16,6 @@ pub use submission::Submission;
 /// Any type implementing the three focused handler contracts is a host.
 pub trait Host: Intercept + Routing + Submission {}
 impl<T: Intercept + Routing + Submission> Host for T {}
+
+/// Attachment capture, goal adoption and dispatch finalization.
+pub mod finish;

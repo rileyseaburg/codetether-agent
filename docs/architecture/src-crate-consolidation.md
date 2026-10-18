@@ -16731,3 +16731,20 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-chat-submit/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared chat submission finalization
+
+- Moved final chat submission sequencing into `codetether-chat-submit::finish`,
+  with separate attachment and action contracts.
+- Core now owns image/text-sidecar capture order, empty-submission handling,
+  expanded prompt construction, goal adoption, compact chat publication and
+  dispatch ordering. Native adapters retain concrete attachment types and
+  existing goal/UI/provider operations.
+- Preserved sidecar removal before rejection, image-only submission, compact
+  displayed text versus expanded agent text, and image ownership at dispatch.
+- Verification: complete sequence comparison, every native binding, unchanged
+  goal/provider/chat helpers and queue/steering tests, module/dependency graphs,
+  direct rustfmt, file limits and whitespace. No dependencies changed. Evidence:
+  `artifacts/consolidation-chat-finish/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
