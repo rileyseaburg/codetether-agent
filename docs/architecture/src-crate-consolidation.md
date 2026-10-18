@@ -10775,3 +10775,20 @@ budgets and whitespace checks passed; modules have at most 44 code lines.
 Evidence is in `artifacts/consolidation-user-auth-cli/`. Compilation and runtime
 tests were not run. No Cargo, rustc, Python, terminal prompt, account request or
 credential operation ran. Full workspace consolidation remains active.
+
+### Authentication dispatcher and provider flows extracted
+
+Moved the remaining auth dispatcher and argument schemas, Codex browser/device
+OAuth orchestration, account/key/refresh metadata persistence and Copilot
+public/enterprise authentication into `crates/codetether-auth-cli`.
+Twenty-two modules separate callback collection, state checking, token exchange,
+metadata creation, credential storage and user output. The native auth module
+now supplies application-version metadata and compatibility credential exports.
+
+Thirty static comparisons/checks cover schemas, callback fallback/state checks,
+expanded Codex and Copilot stages, request identity and persistence ordering.
+Module/dependency graphs, file budgets and whitespace checks passed; modules
+have at most 41 code lines. Evidence is in `artifacts/consolidation-auth-cli/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python, login,
+callback listener, token exchange or credential operation ran. Full workspace
+consolidation remains active.

@@ -39,54 +39,8 @@ pub use {
     cleanup_args::CleanupArgs, models_args::ModelsArgs, run_args::RunArgs,
     swarm_subagent_args::SwarmSubagentArgs, tui_args::TuiArgs,
 };
-
-#[derive(Parser, Debug)]
-pub struct AuthArgs {
-    #[command(subcommand)]
-    pub command: AuthCommand,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum AuthCommand {
-    /// Authenticate with GitHub Copilot using device flow
-    Copilot(CopilotAuthArgs),
-
-    /// Mint a short-term Amazon Bedrock API key from AWS credentials (supports SSO/IdP profiles)
-    Bedrock(auth_bedrock::BedrockAuthArgs),
-
-    /// Authenticate OpenAI Codex with a ChatGPT subscription via OAuth (Plus/Pro/Team/Enterprise)
-    Codex(CodexAuthArgs),
-
-    /// Import browser cookies (Netscape format) into Vault for a provider
-    Cookies(CookieAuthArgs),
-
-    /// Register a new CodeTether account with email/password
-    Register(RegisterAuthArgs),
-
-    /// Login to a CodeTether server with email/password
-    Login(LoginAuthArgs),
-}
 pub use codetether_user_auth_cli::RegisterAuthArgs;
 pub use codetether_user_auth_cli::LoginAuthArgs;
-
-
-#[derive(Parser, Debug)]
-pub struct CopilotAuthArgs {
-    /// GitHub Enterprise URL or domain (e.g. company.ghe.com)
-    #[arg(long)]
-    pub enterprise_url: Option<String>,
-
-    /// GitHub OAuth app client ID for Copilot device flow
-    #[arg(long, env = "CODETETHER_COPILOT_OAUTH_CLIENT_ID")]
-    pub client_id: Option<String>,
-}
-
-#[derive(Parser, Debug)]
-pub struct CodexAuthArgs {
-    /// Use ChatGPT device-code authentication flow (recommended for remote SSH sessions)
-    #[arg(long, default_value_t = false)]
-    pub device_code: bool,
-}
 pub use codetether_cookie_auth_cli::CookieAuthArgs;
 
 
@@ -881,3 +835,5 @@ pub struct ForageArgs {
     #[arg(long)]
     pub json: bool,
 }
+
+pub use codetether_auth_cli::{AuthArgs, AuthCommand, CodexAuthArgs, CopilotAuthArgs};

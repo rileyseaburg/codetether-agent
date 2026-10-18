@@ -201,6 +201,7 @@ members = [
     "crates/codetether-oauth-callback",
     "crates/codetether-device-auth",
     "crates/codetether-user-auth-cli",
+    "crates/codetether-auth-cli",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -513,6 +514,7 @@ codetether-codex-records = { path = "crates/codetether-codex-records", version =
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
+codetether-auth-cli = { path = "crates/codetether-auth-cli", version = "0.1.0" }
 codetether-user-auth-cli = { path = "crates/codetether-user-auth-cli", version = "0.1.0" }
 codetether-device-auth = { path = "crates/codetether-device-auth", version = "0.1.0" }
 codetether-oauth-callback = { path = "crates/codetether-oauth-callback", version = "0.1.0" }

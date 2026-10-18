@@ -1,0 +1,24 @@
+[package]
+name = "codetether-auth-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Authentication CLI routing and provider OAuth orchestration"
+
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+clap = { version = "4.6.6", features = ["derive", "env"] }
+codetether-bedrock-auth-cli = { path = "../codetether-bedrock-auth-cli", version = "0.1.0" }
+codetether-cookie-auth-cli = { path = "../codetether-cookie-auth-cli", version = "0.1.0" }
+codetether-device-auth = { path = "../codetether-device-auth", version = "0.1.0" }
+codetether-oauth-callback = { path = "../codetether-oauth-callback", version = "0.1.0" }
+codetether-provider-codex = { path = "../codetether-provider-codex", version = "0.1.0" }
+codetether-provider-copilot = { path = "../codetether-provider-copilot", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+codetether-user-auth-cli = { path = "../codetether-user-auth-cli", version = "0.1.0" }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+serde_json = "1"
+tokio = { version = "1", features = ["time"] }
+tracing = "0.1"
