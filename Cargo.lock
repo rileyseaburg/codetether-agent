@@ -17154,6 +17154,7 @@ dependencies = [
  "codetether-provider-core",
  "codetether-swarm-view",
  "ratatui",
+ "codetether-session-store",
 ]
 
 [[package]]

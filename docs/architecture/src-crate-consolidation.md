@@ -24185,3 +24185,23 @@ or cycles. Direct rustfmt, source file limits and whitespace checks passed.
 No dependencies or lockfiles changed; unrelated working changes are preserved.
 Evidence: artifacts/consolidation-default-model-tests/. No tests, Cargo, rustc,
 Python or compilation ran. Full consolidation remains active.
+
+### Managed/tool child detail selection moved into the dashboard crate
+
+Moved selected-child lookup and managed-session transcript projection into
+codetether-agent-dashboard::selection. The native detail entry supplies its
+selected name, managed map, parent identity and existing registry bridge.
+Removed native managed/tool detail wrapper files; retained the unchanged
+parent-scoped registry implementation under the remaining detail module.
+Added a direct session-store dependency for its existing Snapshot contract.
+
+Static checks preserve managed-first lookup, the underlying transcript buffer,
+and tool-detail fallback with the same parent identity. The native registry
+bridge and transcript integration regression remain byte-identical. The initial
+comparison expected redundant closure braces removed by formatting; the corrected
+comparison retains its initial output. Module/dependency scans cover 692 roots
+and 573 crates without missing modules or cycles. Direct rustfmt, source file
+limits and whitespace checks passed. Only the required lockfile dependency is
+staged; unrelated changes are preserved. Evidence:
+artifacts/consolidation-agent-detail/. No Cargo, rustc, Python, compilation,
+view rendering or tests ran. Full consolidation remains active.

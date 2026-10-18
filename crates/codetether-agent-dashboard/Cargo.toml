@@ -7,6 +7,7 @@ license = "MIT"
 description = "Agent dashboard rows, identities and transcript presentation"
 
 [dependencies]
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
 codetether-agent-view = { path = "../codetether-agent-view", version = "0.1.0" }
 codetether-agent-trace = { path = "../codetether-agent-trace", version = "0.1.0" }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }

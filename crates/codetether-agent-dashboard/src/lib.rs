@@ -24,6 +24,7 @@ pub mod render;
 
 /// Focused-child detail selection.
 pub mod detail;
+pub mod selection;
 /// Parent-scoped tool-child transcript assembly.
 pub mod tool_detail;
 /// Dashboard and detail-panel selection.
