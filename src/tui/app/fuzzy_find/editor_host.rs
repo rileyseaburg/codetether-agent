@@ -21,3 +21,9 @@ impl codetether_editor::interactive::View for EditorView<'_> {
         self.0.state.status = status;
     }
 }
+
+impl codetether_editor::interactive::FinderView for EditorView<'_> {
+    fn redraw(&mut self) {
+        self.0.state.needs_redraw = true;
+    }
+}

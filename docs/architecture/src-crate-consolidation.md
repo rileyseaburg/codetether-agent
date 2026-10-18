@@ -19503,3 +19503,20 @@ whitespace and direct formatting. Evidence:
 `artifacts/consolidation-okr-approval/`. No Cargo, rustc, Python, Rust tests,
 repository persistence or relay execution ran; compilation and runtime remain
 unverified.
+
+### Fuzzy finder key workflow
+
+Moved finder-key cancellation, selected-file confirmation and redraw ordering
+into `codetether-editor::interactive`. FinderView extends the existing editor
+View with a redraw callback, so native code reuses its current state adapter.
+The event handler delegates through that adapter; existing finder opening and
+selection behavior is reused directly. No dependencies changed.
+
+Validation: full translated handler body, new redraw binding, all unchanged
+existing view bindings, two native delegates, unchanged priority caller and
+finder/opening implementations, module reachability, dependency cycles,
+file-size ratchet, whitespace and direct formatting. Refreshed the physical
+source-file inventory, which includes tests and adapters and does not prove
+completion. Evidence: `artifacts/consolidation-finder-keys/`. No Cargo, rustc,
+Python, Rust tests or UI execution ran; compilation and runtime remain
+unverified.

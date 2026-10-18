@@ -20,3 +20,8 @@ pub fn open_path_in_editor(app: &mut App, cwd: &Path, path: &Path) {
 pub(crate) fn open_argument(app: &mut App, cwd: &Path, arg: &str) {
     codetether_editor::interactive::open_argument(&mut editor_host::EditorView(app), cwd, arg);
 }
+
+/// Handle a finder key using the shared editor workflow.
+pub(crate) fn handle_key(app: &mut App, cwd: &Path, key: crossterm::event::KeyEvent) -> bool {
+    codetether_editor::interactive::handle_finder_key(&mut editor_host::EditorView(app), cwd, key)
+}

@@ -13,3 +13,8 @@ mod key_host;
 mod keys;
 pub use key_host::KeyHost;
 pub use keys::handle_editor_key;
+
+mod finder_keys;
+mod finder_view;
+pub use finder_keys::handle_finder_key;
+pub use finder_view::FinderView;
