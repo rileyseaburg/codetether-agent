@@ -1,24 +1,24 @@
 //! Map a `ForageUpdate` to a chat message + status line.
 
-use crate::tui::app::state::App;
+use super::ForageState;
 
 use super::state::ForageUpdate;
 
 /// Convert an update into `(message_text, status_text)`, applying any
-/// side effects (such as clearing `active`) on `app`.
-pub(super) fn map_update(app: &mut App, update: ForageUpdate) -> (String, String) {
+/// side effects (such as clearing `active`) on `state`.
+pub(super) fn map_update(state: &mut ForageState, update: ForageUpdate) -> (String, String) {
     match update {
         ForageUpdate::Status(s) => (s.clone(), format!("Forage: {s}")),
         ForageUpdate::ScanComplete(s) => {
-            app.state.forage.active = false;
+            state.active = false;
             (scan_message(s), "Forage scan complete".to_string())
         }
         ForageUpdate::Complete(s) => {
-            app.state.forage.active = false;
+            state.active = false;
             (s, "Forage complete".to_string())
         }
         ForageUpdate::Error(e) => {
-            app.state.forage.active = false;
+            state.active = false;
             (format!("Forage error: {e}"), "Forage failed".to_string())
         }
     }

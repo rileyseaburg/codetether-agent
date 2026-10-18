@@ -12,3 +12,7 @@ pub use command::handle_forage_command;
 pub use host::{Host, View};
 pub use spawn::spawn_forage_run;
 pub use state::{ForageState, ForageUpdate};
+
+mod drain;
+mod drain_map;
+pub use drain::drain_forage_updates;

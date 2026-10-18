@@ -14790,3 +14790,18 @@ Full workspace consolidation remains active.
 - Cargo.lock staged changes include only this crate and its root dependency;
   unrelated worktree lock changes remain unstaged. No Cargo, rustc or Rust
   tests ran. Full workspace consolidation remains unfinished.
+
+### Forage update handling ownership
+
+- Moved pending-update collection, ordered application, completion-state changes
+  and message formatting into codetether-forage-interactive. The native drain
+  entry point now delegates through the existing View implementation.
+- Moved the scan-completion test into the crate and replaced its native App
+  fixture with the shared ForageState. Its original assertions are preserved.
+- Verification: six static checks covered queue draining, update application
+  order, completion state, exact message formatting, migrated test assertions
+  and native delegation. Module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-forage-drain/.
+- No dependencies changed. No Cargo, rustc or Rust tests ran. The broader src
+  consolidation remains unfinished.

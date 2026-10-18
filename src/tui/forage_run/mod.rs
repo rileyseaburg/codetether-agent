@@ -4,10 +4,9 @@
 //! streams results back as system messages.
 
 mod args;
-mod host;
 mod command;
 mod drain;
-mod drain_map;
+mod host;
 pub mod spawn;
 pub mod state;
 
