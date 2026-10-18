@@ -1,8 +1,11 @@
 //! Application-owned provider constructors.
 use crate::provider::{Provider, bedrock, copilot, local_cuda};
 use std::sync::Arc;
-pub(super) struct Native;
+pub(in crate::provider) struct Native;
 impl codetether_provider_factory::Host for Native {
+    async fn ensure_bedrock_fresh() {
+        let _ = bedrock::sso_refresh::ensure_fresh().await;
+    }
     fn bedrock_with_credentials(
         credentials: bedrock::AwsCredentials,
         region: String,

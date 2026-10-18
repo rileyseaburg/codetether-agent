@@ -14946,3 +14946,26 @@ Full workspace consolidation remains active.
 - Staged lockfile changes contain only the new factory package and its root
   dependency. No provider initialization, network access, Cargo, rustc or Rust
   tests ran. Full workspace consolidation remains unfinished.
+
+### Provider initialization workflow ownership
+
+- Moved environment registration, TOML configuration population, Vault discovery,
+  concurrent secret fetches, per-entry registration and fallback ordering into
+  codetether-provider-factory. Environment helpers remain separated by provider;
+  the shared Registry interface delegates instrumentation to the application.
+- Native code now constructs registries, retains the process-wide cached accessor
+  and supplies the best-effort Bedrock refresh hook. The seven native provider
+  constructor bodies are unchanged. Moved Bonsai environment opt-in policy too.
+- Preserved missing-key behavior, endpoint precedence, environment opt-out gates,
+  Vault-first registration, Codex Vault identity, skip/error logging and the
+  ordering of all provider registrations. Cache accessor body is unchanged.
+- Verification: thirteen static checks covered initialization/helper bodies,
+  config precedence, Vault concurrency, entry registration, unchanged caching,
+  native instrumentation and refresh bindings. Module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-provider-initialization/.
+- Added config/futures dependencies and corrected the missing direct serde_json
+  dependency for the previously moved Bonsai parser. Only these dependency edges
+  are staged in Cargo.lock. No environment credential probing, provider startup,
+  Vault/network access, Cargo, rustc or Rust tests ran. Full consolidation remains
+  unfinished.

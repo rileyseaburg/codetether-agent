@@ -7367,6 +7367,9 @@ dependencies = [
  "codetether-provider-deepseek",
  "codetether-provider-tetherscript",
  "codetether-provider-bonsai",
+ "codetether-config",
+ "futures",
+ "serde_json",
 ]
 
 [[package]]

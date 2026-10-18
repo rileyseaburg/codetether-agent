@@ -31,3 +31,24 @@ pub fn vault(secrets: &ProviderSecrets) -> Option<Arc<dyn Provider>> {
         }
     }
 }
+
+/// Register Bonsai only when absent and explicitly configured in the environment.
+///
+/// # Arguments
+/// * `registry` — Provider collection receiving the native model.
+/// # Returns
+/// Registers the provider on success; constructor failures are logged.
+pub fn environment(registry: &mut impl crate::Registry) {
+    if registry.contains("bonsai") {
+        return;
+    }
+    if std::env::var_os("BONSAI_MODEL_PATH").is_none()
+        && std::env::var("CODETETHER_BONSAI").ok().as_deref() != Some("1")
+    {
+        return;
+    }
+    match BonsaiConfig::from_environment().and_then(BonsaiProvider::new) {
+        Ok(provider) => registry.register(Arc::new(provider)),
+        Err(error) => tracing::warn!(provider="bonsai", %error, "Native provider unavailable"),
+    }
+}

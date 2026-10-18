@@ -28,3 +28,6 @@ codetether-provider-zai = { path = "../codetether-provider-zai", version = "0.1.
 codetether-provider-deepseek = { path = "../codetether-provider-deepseek", version = "0.1.0" }
 codetether-provider-tetherscript = { path = "../codetether-provider-tetherscript", version = "0.1.0" }
 codetether-provider-bonsai = { path = "../codetether-provider-bonsai", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+futures = "0.3.34"
+serde_json = "1"

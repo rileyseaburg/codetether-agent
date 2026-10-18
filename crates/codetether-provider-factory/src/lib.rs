@@ -26,3 +26,9 @@ pub use host::Host;
 mod zai {
     pub use codetether_provider_zai::{DEFAULT_BASE_URL, application::ZaiProvider};
 }
+
+mod registry;
+pub use registry::Registry;
+pub mod config;
+pub mod environment;
+pub mod vault;

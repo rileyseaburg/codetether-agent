@@ -1,11 +1,11 @@
-use crate::provider::init_dispatch;
-use crate::provider::init_dispatch_impl;
-use crate::provider::registry::ProviderRegistry;
-use crate::secrets::ProviderSecrets;
-use anyhow::Result;
+//! Apply one Vault secret result while retaining Codex refresh identity.
 
-pub(super) fn provider(
-    registry: &mut ProviderRegistry,
+use crate::Registry;
+use anyhow::Result;
+use codetether_secrets::ProviderSecrets;
+
+pub(super) fn provider<H: crate::Host>(
+    registry: &mut impl Registry,
     provider_id: String,
     secrets: Result<Option<ProviderSecrets>>,
 ) {
@@ -18,9 +18,9 @@ pub(super) fn provider(
         }
     };
     let provider = if matches!(provider_id.as_str(), "openai-codex" | "codex" | "chatgpt") {
-        init_dispatch_impl::codex::dispatch_vault(&provider_id, &secrets)
+        crate::codex::dispatch_vault(&provider_id, &secrets)
     } else {
-        init_dispatch::dispatch(&provider_id, &secrets)
+        crate::dispatch::<H>(&provider_id, &secrets)
     };
     if let Some(provider) = provider {
         registry.register(provider);

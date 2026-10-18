@@ -7,6 +7,9 @@ use std::sync::Arc;
 /// Each method returns its constructor error unchanged; factory policy logs it
 /// and skips the provider using the existing dispatch behavior.
 pub trait Host {
+    /// Refresh Bedrock credentials before Vault providers are constructed.
+    /// The native operation remains best effort.
+    fn ensure_bedrock_fresh() -> impl std::future::Future<Output = ()> + Send;
     /// Create a Bedrock provider using application HTTP pooling and IAM credentials.
     /// # Errors
     /// Returns the underlying native constructor failure.

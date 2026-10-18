@@ -1,5 +1,5 @@
 //! Bind shared provider-secret dispatch to application constructors.
-mod host;
+pub(super) mod host;
 use crate::{provider::Provider, secrets::ProviderSecrets};
 use std::sync::Arc;
 /// Construct the provider selected by a Vault entry.
