@@ -7,7 +7,6 @@ mod complete;
 mod derive;
 mod helpers;
 mod incremental;
-mod incremental_below_budget;
 mod incremental_budget_config;
 mod incremental_clamp;
 mod incremental_coverage;

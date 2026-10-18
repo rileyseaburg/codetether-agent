@@ -9337,3 +9337,19 @@ crate file has 40 code lines. Evidence is in
 `artifacts/consolidation-reset-derivation/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python or model calls ran. Full workspace
 consolidation remains active.
+
+### Dedicated incremental context-derivation crate
+
+Moved incremental selection orchestration, below-budget estimation, required
+entry protection, prepared-summary packing and overflow-clamp adapters into
+`crates/codetether-incremental-derivation`. Seven modules separate these
+concerns from native transcript/page/index access. Native regression adapters
+continue to exercise the shared protection, packing and clamp functions.
+
+Twelve static comparisons cover the moved logic, prepared-index lookup
+sequence, native bindings and unchanged regression sources. Module and
+dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 42 code lines. Evidence is in
+`artifacts/consolidation-incremental-derivation/`. Compilation and runtime
+tests were not run. No Cargo, rustc, Python or model calls ran. Full workspace
+consolidation remains active.

@@ -1,6 +1,5 @@
-//! Protect the active user instruction without making its entire tool history uncompressible.
+//! Native session binding retained for required-entry integration tests.
 use crate::session::Session;
-
 pub(super) fn seed(
     session: &Session,
     keep: &mut [bool],
@@ -8,15 +7,15 @@ pub(super) fn seed(
     recent_start: usize,
     budget: &mut usize,
 ) {
-    super::super::state_header_pins::force_keep_base(session, keep, costs, recent_start, budget);
-    if let Some(anchor) = super::super::active_tail::active_user_tail_start(&session.messages, 0)
-        && !keep[anchor]
-    {
-        keep[anchor] = true;
-        *budget = budget.saturating_sub(costs[anchor]);
-    }
+    codetether_incremental_derivation::seed(
+        &session.messages,
+        &session.pages,
+        keep,
+        costs,
+        recent_start,
+        budget,
+    );
 }
-
 #[cfg(test)]
 #[path = "incremental_required_tests.rs"]
 mod tests;

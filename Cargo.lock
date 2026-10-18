@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-incremental-derivation",
  "codetether-reset-derivation",
  "codetether-context-request",
  "codetether-context-legacy",
@@ -3146,6 +3147,17 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-incremental-derivation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-request-tokens",
 ]
 
 [[package]]

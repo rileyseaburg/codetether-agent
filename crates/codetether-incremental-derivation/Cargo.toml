@@ -1,0 +1,14 @@
+[package]
+name = "codetether-incremental-derivation"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Incremental context projection using prepared summaries"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-request-tokens = { path = "../codetether-request-tokens", version = "0.1.0" }
