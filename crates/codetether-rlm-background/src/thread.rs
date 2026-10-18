@@ -15,7 +15,7 @@ pub(super) fn spawn(job: job::Job) {
     let Ok(handle) = Handle::try_current() else {
         cache::fail(key);
         drop(permit);
-        tracing::warn!("RLM background summary skipped: no async runtime handle");
+        tracing::warn!(target: "codetether_agent::session::helper::rlm_background::thread", "RLM background summary skipped: no async runtime handle");
         return;
     };
     let spawn = std::thread::Builder::new()
@@ -27,6 +27,6 @@ pub(super) fn spawn(job: job::Job) {
     if let Err(e) = spawn {
         cache::fail(key);
         status::complete(&notify, false, Some(e.to_string()));
-        tracing::warn!(error = %e, "RLM background summary thread spawn failed");
+        tracing::warn!(target: "codetether_agent::session::helper::rlm_background::thread", error = %e, "RLM background summary thread spawn failed");
     }
 }

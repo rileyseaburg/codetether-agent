@@ -2,17 +2,17 @@
 
 use std::sync::Arc;
 
-use crate::rlm::RlmRouter;
-use crate::rlm::router::AutoProcessContext;
+use codetether_rlm::RlmRouter;
+use codetether_rlm::router::AutoProcessContext;
 
 use super::job::Job;
 
 pub(super) async fn summarize(job: &Job) -> anyhow::Result<String> {
-    let (provider, model) = super::super::rlm_model::resolve(
+    let (provider, model) = (job.resolver)(
         Arc::clone(&job.provider),
         &job.model,
         &job.config,
-        crate::rlm::RlmModelPurpose::Background,
+        codetether_rlm::RlmModelPurpose::Background,
     )
     .await;
     let ctx = AutoProcessContext {

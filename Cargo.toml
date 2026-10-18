@@ -120,6 +120,7 @@ members = [
     "crates/codetether-session-model-policy",
     "crates/codetether-step-limit",
     "crates/codetether-request-tokens",
+    "crates/codetether-rlm-background",
     "crates/codetether-workspace-index",
     "crates/codetether-codex-records",
     "crates/codetether-codex-discovery",
@@ -428,6 +429,7 @@ codetether-codex-transcript = { path = "crates/codetether-codex-transcript", ver
 codetether-codex-discovery = { path = "crates/codetether-codex-discovery", version = "0.1.0" }
 codetether-codex-records = { path = "crates/codetether-codex-records", version = "0.1.0" }
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
+codetether-rlm-background = { path = "crates/codetether-rlm-background", version = "0.1.0" }
 codetether-request-tokens = { path = "crates/codetether-request-tokens", version = "0.1.0" }
 codetether-step-limit = { path = "crates/codetether-step-limit", version = "0.1.0" }
 codetether-session-model-policy = { path = "crates/codetether-session-model-policy", version = "0.1.0" }

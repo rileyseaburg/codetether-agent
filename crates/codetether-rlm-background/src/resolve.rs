@@ -1,6 +1,6 @@
 //! Resolve pending background RLM placeholders in derived prompts.
 
-use crate::provider::{ContentPart, Message};
+use codetether_provider_core::{ContentPart, Message};
 
 use super::cache;
 

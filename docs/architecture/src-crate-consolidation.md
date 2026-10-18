@@ -9220,3 +9220,20 @@ largest crate file has 39 code lines. Evidence is in
 `artifacts/consolidation-request-tokens/`. Compilation and runtime tests
 were not run. No Cargo, rustc or Python commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated background RLM worker crate
+
+Moved background summarization cache, disk persistence, job claiming,
+concurrency permits, standard-thread execution, routing, rendering and
+placeholder resolution into `crates/codetether-rlm-background`. Nineteen
+modules separate these responsibilities. Native adapters supply asynchronous
+model selection and wrap progress payloads into existing session events.
+
+Thirty static comparisons cover moved operations, cache state, routing
+and job inputs, notification payloads, concurrency state and native adapter
+bindings. Cache keys, disk paths, limits, rendering and original log targets
+are preserved. Module/dependency graphs, file budgets and whitespace checks
+passed; the largest crate file has 43 code lines. Evidence is in
+`artifacts/consolidation-rlm-background/`. Compilation and runtime tests
+were not run. No Cargo, rustc or Python commands ran. Full workspace
+consolidation remains active.

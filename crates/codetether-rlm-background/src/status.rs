@@ -3,19 +3,20 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::session::{RlmProgressEvent, SessionEvent};
+use codetether_rlm::events::RlmProgressEvent;
 
-pub(super) type Notify = Arc<dyn Fn(SessionEvent) + Send + Sync>;
+/// Receives background progress and terminal status as RLM progress payloads.
+pub type Notify = Arc<dyn Fn(RlmProgressEvent) + Send + Sync>;
 
 pub(super) fn progress(notify: &Option<Notify>, status: &str, iteration: usize, max: usize) {
     emit(
         notify,
-        SessionEvent::RlmProgress(RlmProgressEvent {
+        RlmProgressEvent {
             trace_id: Uuid::new_v4(),
             iteration,
             max_iterations: max,
             status: status.into(),
-        }),
+        },
     );
 }
 
@@ -31,7 +32,7 @@ pub(super) fn complete(notify: &Option<Notify>, ok: bool, reason: Option<String>
     progress(notify, &status, 1, 1);
 }
 
-fn emit(notify: &Option<Notify>, event: SessionEvent) {
+fn emit(notify: &Option<Notify>, event: RlmProgressEvent) {
     if let Some(notify) = notify {
         notify(event);
     }
