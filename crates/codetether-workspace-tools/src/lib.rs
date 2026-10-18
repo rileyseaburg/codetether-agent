@@ -42,3 +42,6 @@ pub fn finish<H: Host>(
 
 /// Workspace catalogs and capability-appropriate coordination extensions.
 pub mod composition;
+
+/// Session workspace registration, prior-context filtering and autonomous mode.
+pub mod session;

@@ -15520,3 +15520,21 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-child-notice/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared session workspace composition
+
+- Moved session workspace registry assembly, canonical file-URI construction,
+  autonomous interactive-tool filtering and weak batch binding into
+  `codetether-workspace-tools::session`.
+- Reused the existing application catalog factory. Native callbacks retain
+  application MCP registration, shared command-session setup and prior-context
+  filtering; the original session helper is now a forwarding function.
+- Preserved registration order, both filtering gates, provider-backed search,
+  canonicalization before URI encoding, and batch binding after filtering.
+  The existing native autonomy test remains connected and unchanged.
+- Verification: expanded registration and batch bodies matched the originals;
+  URI, autonomy and search-construction comparisons passed, as did native callback
+  checks, module/dependency graphs, direct rustfmt, file budgets and diff whitespace.
+  No dependency changes. Evidence: `artifacts/consolidation-session-workspace/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.
