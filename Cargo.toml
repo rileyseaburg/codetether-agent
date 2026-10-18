@@ -261,6 +261,7 @@ members = [
     "crates/codetether-trust-status",
     "crates/codetether-composer-view",
     "crates/codetether-message-bubbles",
+    "crates/codetether-tool-panel",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -574,6 +575,7 @@ codetether-workspace-index = { path = "crates/codetether-workspace-index", versi
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
 codetether-agent-identity = { path = "crates/codetether-agent-identity", version = "0.1.0" }
+codetether-tool-panel = { path = "crates/codetether-tool-panel", version = "0.1.0" }
 codetether-message-bubbles = { path = "crates/codetether-message-bubbles", version = "0.1.0" }
 codetether-composer-view = { path = "crates/codetether-composer-view", version = "0.1.0" }
 codetether-trust-status = { path = "crates/codetether-trust-status", version = "0.1.0" }

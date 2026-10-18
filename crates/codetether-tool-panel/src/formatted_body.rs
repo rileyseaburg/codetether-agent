@@ -9,10 +9,10 @@ use ratatui::{
     text::{Line, Span},
 };
 
-use crate::tui::chat::message::{ChatMessage, MessageType};
-use crate::tui::ui::chat_view::bubble::assistant_bubble_lines;
-use crate::tui::ui::chat_view::bubble::user_bubble;
-use crate::tui::ui::gradient::rgb_supported;
+use codetether_chat_model::{ChatMessage, MessageType};
+use codetether_message_bubbles::assistant_bubble_lines;
+use codetether_message_bubbles::user_bubble;
+use codetether_theme::gradient::rgb_supported;
 
 /// Append the message body using the bubble layout when supported.
 pub(super) fn render_body(

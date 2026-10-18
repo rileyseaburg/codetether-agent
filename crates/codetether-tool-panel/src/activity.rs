@@ -1,6 +1,6 @@
 //! Classification of chat messages rendered in the tool panel.
 
-use crate::tui::chat::message::MessageType;
+use codetether_chat_model::MessageType;
 
 /// Reports whether a chat message belongs in the compact tool-activity panel.
 ///
@@ -15,8 +15,8 @@ use crate::tui::chat::message::MessageType;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::tui::chat::message::MessageType;
-/// use codetether_agent::tui::ui::tool_panel::is_tool_activity;
+/// use codetether_chat_model::MessageType;
+/// use codetether_tool_panel::is_tool_activity;
 ///
 /// assert!(!is_tool_activity(&MessageType::Thinking("working".to_string())));
 /// ```

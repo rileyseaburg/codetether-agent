@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-tool-panel",
  "codetether-message-bubbles",
  "codetether-composer-view",
  "codetether-trust-status",
@@ -6170,6 +6171,22 @@ dependencies = [
  "codetether-theme",
  "ratatui",
  "unicode-width",
+]
+
+[[package]]
+name = "codetether-tool-panel"
+version = "0.1.0"
+dependencies = [
+ "codetether-chat-model",
+ "codetether-chat-status",
+ "codetether-message-bubbles",
+ "codetether-message-cache",
+ "codetether-message-formatter",
+ "codetether-theme",
+ "codetether-util",
+ "ratatui",
+ "serde_json",
+ "similar 3.2.0",
 ]
 
 [[package]]

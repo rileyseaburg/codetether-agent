@@ -49,22 +49,4 @@ pub(super) fn classify(old: &str, new: &str) -> Vec<DiffLine> {
     out
 }
 
-fn flush(deletes: &mut Vec<String>, inserts: &mut Vec<String>, out: &mut Vec<DiffLine>) {
-    let paired = deletes.len().min(inserts.len());
-    for (i, text) in deletes.drain(..).enumerate() {
-        let kind = if i < paired {
-            LineKind::ChangeOld
-        } else {
-            LineKind::Delete
-        };
-        out.push(DiffLine { kind, text });
-    }
-    for (i, text) in inserts.drain(..).enumerate() {
-        let kind = if i < paired {
-            LineKind::ChangeNew
-        } else {
-            LineKind::Insert
-        };
-        out.push(DiffLine { kind, text });
-    }
-}
+use super::line_diff_flush::flush;

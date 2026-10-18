@@ -1,5 +1,5 @@
 use super::{TOOL_PANEL_VISIBLE_LINES, build_tool_activity_panel, is_tool_activity};
-use crate::tui::chat::message::{ChatMessage, MessageType};
+use codetether_chat_model::{ChatMessage, MessageType};
 
 #[test]
 fn tool_panel_keeps_stable_height_for_short_activity() {
@@ -10,7 +10,7 @@ fn tool_panel_keeps_stable_height_for_short_activity() {
         },
         "",
     );
-    let panel = build_tool_activity_panel(&[&message], 0, 80, None);
+    let panel = build_tool_activity_panel(&[&message], 0, 80, None, || None);
     assert_eq!(panel.lines.len(), TOOL_PANEL_VISIBLE_LINES + 2);
 }
 

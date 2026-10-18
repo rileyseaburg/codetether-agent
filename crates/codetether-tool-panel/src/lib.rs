@@ -1,0 +1,15 @@
+//! Tool activity grouping, previews, diffs and terminal rendering.
+//!
+//! [build_render_entries] groups tool activity for [build_tool_activity_panel].
+//! [render_chat_message] formats ordinary chat messages. The host supplies a
+//! lazy approval-tool lookup when constructing a panel with pending work.
+include!("modules.rs");
+pub use activity::is_tool_activity;
+pub use entry_builder::{build_render_entries, separator_pattern};
+pub use panel::{PendingToolSnapshot, build_tool_activity_panel};
+pub use render_chat::render_chat_message;
+pub use types::{RenderEntry, ToolPanelRender};
+/// Max visible rows in the compact activity panel.
+pub const TOOL_PANEL_VISIBLE_LINES: usize = 12;
+/// Scroll sentinel for following the latest tool activity.
+pub const TOOL_PREVIEW_FOLLOW: usize = 1_000_000;

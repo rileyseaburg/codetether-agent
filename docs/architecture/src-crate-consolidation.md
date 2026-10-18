@@ -12079,3 +12079,27 @@ Full workspace consolidation remains active.
   cycles, direct formatting, source limits and diff checks passed.
 - Evidence: artifacts/consolidation-chat-headers/. No Cargo, rustc, compilation,
   tests or rendered-output checks ran. Full workspace consolidation is incomplete.
+
+### Tool-panel implementation extraction
+
+- Moved tool-activity grouping, public entry/result types, message formatting,
+  argument and result previews, line-diff classification, diff rendering, panel
+  chrome/windowing and pending rows into codetether-tool-panel. Forty-one modules
+  contain at most 44 nonblank, noncomment code lines each. Large helpers were
+  split into JSON field access, call headers, diff-run flushing, panel finishing
+  and empty-panel rendering.
+- The native tool-panel module now exports the shared API and supplies a lazy
+  active-approval tool-name lookup to the panel builder. It is invoked only for
+  a pending row, after elapsed-time sampling, matching the original path.
+- Moved character-count preview truncation into codetether-util::preview_chars.
+  Native callers retain the old helper path. The tool-preview follow sentinel
+  is owned by the panel crate and re-exported by the native scroll controller.
+- Ten existing diff/panel/collaboration-preview tests moved with their code.
+  The panel test supplies an empty approval lookup, preserving its original
+  no-pending-tool case. No test was executed.
+- Verification: 83 source comparisons passed for moved functions, data types,
+  constants, tests, split helpers and native approval wiring. Full tool-panel
+  and native chat-view module graphs, dependency cycles, direct formatting,
+  source limits and git diff --check passed. Evidence: artifacts/consolidation-tool-panel/.
+- No Cargo, rustc, compilation or runtime rendering ran. Full workspace
+  consolidation remains incomplete.

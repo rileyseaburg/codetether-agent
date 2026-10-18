@@ -5,9 +5,9 @@ use ratatui::{
     text::{Line, Span},
 };
 
-use super::super::status_bar::format_timestamp;
 use super::format_meta::{format_latency, format_tokens};
-use crate::tui::chat::message::ChatMessage;
+use codetether_chat_model::ChatMessage;
+use codetether_chat_status::format_timestamp;
 
 /// Build the `[ts] icon label · usage` header line.
 pub(super) fn build_header(

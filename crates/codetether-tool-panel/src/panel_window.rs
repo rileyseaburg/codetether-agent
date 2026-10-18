@@ -6,7 +6,7 @@ use ratatui::{
 };
 
 use super::TOOL_PANEL_VISIBLE_LINES;
-use crate::tui::app::state::scroll::TOOL_PREVIEW_FOLLOW;
+use crate::TOOL_PREVIEW_FOLLOW;
 
 pub(super) struct PanelWindow {
     pub start: usize,

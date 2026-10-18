@@ -4,8 +4,8 @@ use ratatui::{style::Color, text::Line};
 
 use super::formatted_body::render_body;
 use super::formatted_header::build_header;
-use crate::tui::chat::message::ChatMessage;
-use crate::tui::message_formatter::MessageFormatter;
+use codetether_chat_model::ChatMessage;
+use codetether_message_formatter::MessageFormatter;
 
 pub(super) fn render_formatted_message(
     lines: &mut Vec<Line<'static>>,
@@ -16,7 +16,7 @@ pub(super) fn render_formatted_message(
     color: Color,
 ) {
     lines.push(build_header(message, icon, label, color));
-    let body = crate::tui::ui::chat_view::format_cache::format_message_cached(
+    let body = codetether_message_cache::format_message_cached(
         message,
         label,
         formatter,

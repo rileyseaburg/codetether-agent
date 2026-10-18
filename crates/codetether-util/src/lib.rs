@@ -24,3 +24,6 @@ mod fuzzy_tests;
 
 /// UTF-8 safe text excerpts limited by line and byte budgets.
 pub mod text_preview;
+
+/// Character-count limited display previews.
+pub mod preview_chars;

@@ -5,7 +5,7 @@ use ratatui::{
     text::{Line, Span},
 };
 
-use crate::tui::app::text::truncate_preview;
+use codetether_util::preview_chars::truncate_preview;
 
 pub(super) fn panel_header(
     timestamp: &str,
@@ -40,12 +40,4 @@ pub(super) fn panel_footer(start: usize, max_scroll: usize, width: usize) -> Lin
     ))
 }
 
-pub(super) fn empty_body_lines() -> Vec<Line<'static>> {
-    vec![Line::from(vec![
-        Span::styled("│ ", Style::default().fg(Color::DarkGray).dim()),
-        Span::styled(
-            "No tool activity captured",
-            Style::default().fg(Color::DarkGray).dim(),
-        ),
-    ])]
-}
+pub(super) use super::panel_empty::empty_body_lines;

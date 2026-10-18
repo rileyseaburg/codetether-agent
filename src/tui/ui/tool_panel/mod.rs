@@ -1,58 +1,35 @@
-//! Tool-activity panel: groups, renders, and decorates inline tool calls.
-
-mod activity;
-pub mod arg_preview;
-mod arg_preview_agent;
-mod arg_preview_helpers;
-mod diff_primitives;
-mod diff_render;
-mod edit_diff;
-mod entry_builder;
-mod format_meta;
-mod formatted;
-mod formatted_body;
-mod formatted_header;
-pub mod icons;
-mod image_file;
-mod item;
-mod item_call;
-mod item_result;
-mod item_thinking;
-mod line_diff;
-#[cfg(test)]
-mod line_diff_tests;
-mod multiedit_diff;
-mod panel;
-mod panel_chrome;
-#[cfg(test)]
-mod panel_tests;
-mod panel_window;
-mod pending_spinner;
-mod preview;
-mod preview_excerpt;
-mod render_chat;
-mod result_preview;
-
-#[cfg(test)]
-mod peer_render_tests;
-
-pub use activity::is_tool_activity;
-pub use entry_builder::{build_render_entries, separator_pattern};
-pub use panel::{PendingToolSnapshot, build_tool_activity_panel};
-pub use render_chat::render_chat_message;
-
-use crate::tui::chat::message::ChatMessage;
-
-/// Max visible lines inside the compact tool panel.
-pub const TOOL_PANEL_VISIBLE_LINES: usize = 12;
-
-#[derive(Default)]
-pub struct RenderEntry<'a> {
-    pub tool_activity: Vec<&'a ChatMessage>,
-    pub message: Option<&'a ChatMessage>,
-}
-
-pub struct ToolPanelRender {
-    pub lines: Vec<ratatui::text::Line<'static>>,
-    pub max_scroll: usize,
+//! Application approval adapter and shared tool-panel exports.
+pub use codetether_tool_panel::{
+    PendingToolSnapshot, RenderEntry, TOOL_PANEL_VISIBLE_LINES, ToolPanelRender, arg_preview,
+    build_render_entries, icons, is_tool_activity, render_chat_message, separator_pattern,
+};
+/// Build the activity panel using the current live approval display state.
+///
+/// # Arguments
+/// * `messages` - Tool activity in chronological order.
+/// * `scroll_offset` - Requested panel scroll position.
+/// * `width` - Available terminal width.
+/// * `pending` - Optional in-flight tool name and start time.
+///
+/// # Returns
+/// Styled tool rows and the maximum scroll offset.
+///
+/// # Examples
+/// ```
+/// let panel = codetether_agent::tui::ui::tool_panel::build_tool_activity_panel(&[], 0, 80, None);
+/// assert!(!panel.lines.is_empty());
+/// ```
+pub fn build_tool_activity_panel(
+    messages: &[&crate::tui::chat::message::ChatMessage],
+    scroll_offset: usize,
+    width: usize,
+    pending: PendingToolSnapshot<'_>,
+) -> ToolPanelRender {
+    codetether_tool_panel::build_tool_activity_panel(
+        messages,
+        scroll_offset,
+        width,
+        pending,
+        || crate::tui::app::state::approval_queue::active().map(|item| item.tool),
+    )
 }

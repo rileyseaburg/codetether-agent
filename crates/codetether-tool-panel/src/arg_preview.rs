@@ -5,12 +5,24 @@ use serde_json::Value;
 use super::arg_preview_helpers::{
     format_k8s, format_read_file, format_write, str_or, string_field,
 };
-use crate::tui::app::text::truncate_preview;
+use codetether_util::preview_chars::truncate_preview;
 
 const MAX: usize = 120;
 
 /// Render a one-line human-readable preview of a tool call's JSON arguments.
 /// Falls back to the raw string (truncated) for unknown tools or invalid JSON.
+///
+/// # Arguments
+/// * `tool_name` - Tool identifier.
+/// * `arguments` - JSON or raw argument text.
+///
+/// # Returns
+/// An abbreviated single-line description.
+///
+/// # Examples
+/// ```
+/// assert!(!codetether_tool_panel::arg_preview::smart_arg_preview("bash", r#"{"command":"ls"}"#).is_empty());
+/// ```
 pub fn smart_arg_preview(tool_name: &str, arguments: &str) -> String {
     let Ok(value) = serde_json::from_str::<Value>(arguments) else {
         return truncate_preview(arguments, MAX);

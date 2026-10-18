@@ -24,5 +24,5 @@ fn text(value: &Value, key: &str) -> String {
 }
 
 fn preview(value: String) -> String {
-    crate::tui::app::text::truncate_preview(&value.replace('\n', " "), 72)
+    codetether_util::preview_chars::truncate_preview(&value.replace('\n', " "), 72)
 }

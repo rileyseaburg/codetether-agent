@@ -1,6 +1,6 @@
 //! Truncate-and-line-wrap helper backing [`super::preview::push_preview_lines`].
 
-use crate::tui::app::text::truncate_preview;
+use codetether_util::preview_chars::truncate_preview;
 
 const TOOL_PANEL_ITEM_MAX_LINES: usize = 18;
 const TOOL_PANEL_ITEM_MAX_BYTES: usize = 6_000;

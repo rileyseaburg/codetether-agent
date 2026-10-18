@@ -7,7 +7,6 @@ use ratatui::{
 
 use super::arg_preview::smart_arg_preview;
 use super::diff_render::{push_create_preview, push_edit_diff};
-use super::icons::tool_icon_and_color;
 use super::multiedit_diff::push_multiedit_diff;
 
 pub(super) fn render_tool_call(
@@ -17,16 +16,7 @@ pub(super) fn render_tool_call(
     arguments: &str,
     preview_width: usize,
 ) {
-    let (icon, color) = tool_icon_and_color(name);
-    body_lines.push(Line::from(vec![
-        Span::styled("│ ", Style::default().fg(Color::DarkGray).dim()),
-        Span::styled(
-            format!("[{timestamp}] "),
-            Style::default().fg(Color::DarkGray).dim(),
-        ),
-        Span::styled(format!("{icon} "), Style::default().fg(color).bold()),
-        Span::styled(name.to_string(), Style::default().fg(color).bold()),
-    ]));
+    super::call_header::push(body_lines, timestamp, name);
     let preview = smart_arg_preview(name, arguments);
     let body = if preview.is_empty() {
         "(no arguments)".to_string()

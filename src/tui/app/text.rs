@@ -1,12 +1,4 @@
-pub fn truncate_preview(text: &str, max_chars: usize) -> String {
-    let mut chars = text.chars();
-    let preview: String = chars.by_ref().take(max_chars).collect();
-    if chars.next().is_some() {
-        format!("{preview}…")
-    } else {
-        preview
-    }
-}
+pub use codetether_util::preview_chars::truncate_preview;
 
 pub fn normalize_slash_command(input: &str) -> String {
     let trimmed = input.trim();

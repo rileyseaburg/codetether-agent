@@ -5,9 +5,9 @@ use ratatui::{
     text::{Line, Span},
 };
 
-use super::super::status_bar::format_timestamp;
-use crate::tui::app::text::truncate_preview;
-use crate::tui::chat::message::ChatMessage;
+use codetether_chat_model::ChatMessage;
+use codetether_chat_status::format_timestamp;
+use codetether_util::preview_chars::truncate_preview;
 
 pub(super) fn render_image(lines: &mut Vec<Line<'static>>, message: &ChatMessage) {
     let timestamp = format_timestamp(message.timestamp);

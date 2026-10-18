@@ -4,6 +4,18 @@ use ratatui::style::Color;
 
 /// Returns a `(icon, color)` pair for the given tool name, grouped by
 /// category (read, write, execute, network, etc.).
+///
+/// # Arguments
+/// * `name` - Tool identifier.
+///
+/// # Returns
+/// The semantic icon and terminal color.
+///
+/// # Examples
+/// ```
+/// let (icon, _) = codetether_tool_panel::icons::tool_icon_and_color("question");
+/// assert_eq!(icon, "❓");
+/// ```
 pub fn tool_icon_and_color(name: &str) -> (&'static str, Color) {
     if name.starts_with("mcp_k8s_") || name.starts_with("kubectl_") {
         return ("☸️", Color::Blue);

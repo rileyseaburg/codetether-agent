@@ -4,10 +4,28 @@ use ratatui::text::Line;
 
 use super::formatted::render_formatted_message;
 use super::image_file::{render_file, render_image};
-use crate::tui::chat::message::{ChatMessage, MessageType};
-use crate::tui::color_palette::ColorPalette;
-use crate::tui::message_formatter::MessageFormatter;
+use codetether_chat_model::{ChatMessage, MessageType};
+use codetether_message_formatter::MessageFormatter;
+use codetether_theme::ColorPalette;
 
+///
+/// # Arguments
+/// * `lines` - Destination for formatted output.
+/// * `message` - Chat message to render.
+/// * `formatter` - Markdown and content formatter.
+/// * `palette` - Role colors.
+///
+/// # Returns
+/// Appends message rows while leaving tool messages for the activity panel.
+///
+/// # Examples
+/// ```
+/// # fn example(message: &codetether_chat_model::ChatMessage) {
+/// let mut lines = vec![];
+/// let formatter = codetether_message_formatter::MessageFormatter::new(80);
+/// codetether_tool_panel::render_chat_message(&mut lines, message, &formatter, &codetether_theme::ColorPalette::marketing());
+/// # }
+/// ```
 pub fn render_chat_message(
     lines: &mut Vec<Line<'static>>,
     message: &ChatMessage,

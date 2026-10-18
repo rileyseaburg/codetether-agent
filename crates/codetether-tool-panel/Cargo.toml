@@ -1,0 +1,19 @@
+[package]
+name = "codetether-tool-panel"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Tool activity grouping, diffs, previews, and chat rendering"
+
+[dependencies]
+codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
+codetether-chat-status = { path = "../codetether-chat-status", version = "0.1.0" }
+codetether-message-bubbles = { path = "../codetether-message-bubbles", version = "0.1.0" }
+codetether-message-cache = { path = "../codetether-message-cache", version = "0.1.0" }
+codetether-message-formatter = { path = "../codetether-message-formatter", version = "0.1.0" }
+codetether-theme = { path = "../codetether-theme", version = "0.1.0", features = ["ratatui"] }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
+serde_json = "1"
+similar = "3.1.2"

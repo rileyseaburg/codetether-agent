@@ -6,7 +6,7 @@
 //! the most recent activity until the user manually scrolls up.
 
 /// Sentinel: tool panel auto-follows (scrolls to bottom of latest activity).
-pub const TOOL_PREVIEW_FOLLOW: usize = 1_000_000;
+pub use codetether_tool_panel::TOOL_PREVIEW_FOLLOW;
 
 #[path = "scroll_tool_preview.rs"]
 mod tool_preview;

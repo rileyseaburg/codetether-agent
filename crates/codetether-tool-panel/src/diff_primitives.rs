@@ -42,16 +42,4 @@ pub(super) fn diff_line(text: &str, prefix: char, color: Color) -> Line<'static>
     ])
 }
 
-pub(super) fn file_field(v: &serde_json::Value) -> String {
-    str_field(v, "path", "filePath")
-        .or_else(|| v.get("file").and_then(|x| x.as_str()))
-        .unwrap_or("unknown")
-        .to_string()
-}
-
-/// Read a string field accepting either a snake_case or camelCase key.
-pub(super) fn str_field<'a>(v: &'a serde_json::Value, snake: &str, camel: &str) -> Option<&'a str> {
-    v.get(snake)
-        .or_else(|| v.get(camel))
-        .and_then(|x| x.as_str())
-}
+pub(super) use super::diff_fields::{file_field, str_field};
