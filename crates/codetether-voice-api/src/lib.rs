@@ -5,6 +5,7 @@
 mod create;
 mod delete;
 mod get;
+pub mod http;
 mod list;
 mod request;
 pub use create::create_voice_session_rest;

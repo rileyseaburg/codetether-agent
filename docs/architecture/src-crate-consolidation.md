@@ -14218,3 +14218,17 @@ Full workspace consolidation remains active.
 - No dependency or lockfile changes. No Cargo, rustc, Rust tests, Kubernetes
   operations or server startup ran. Full workspace consolidation remains
   unfinished.
+
+### Voice HTTP route ownership
+
+- Moved voice session HTTP extraction and the session/catalog route group from
+  src/server/mod.rs into codetether-voice-api::http. Modules separate state
+  access, request handlers and route assembly beside existing voice operations.
+- Native state supplies only the existing shared bus. The server merges the
+  crate router under its existing authentication, policy and audit layers.
+- Verification: five static checks passed for moved handler delegation, exact
+  route/middleware assembly, bus binding and module size. Module reachability,
+  dependency DAG, direct rustfmt, file-limit ratchet and whitespace checks also
+  passed. Evidence: artifacts/consolidation-voice-router/.
+- No dependencies or lockfile entries changed. No Cargo, rustc, Rust tests,
+  voice operations or server startup ran. Full consolidation remains unfinished.

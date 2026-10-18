@@ -17,6 +17,7 @@ mod task_http_state;
 mod task_queue;
 mod tool_contract;
 mod tool_discovery_host;
+mod voice_http_state;
 mod worker_modules;
 
 use crate::a2a;
@@ -70,7 +71,6 @@ use codetether_openai_wire::{
     OpenAiResponseToolCallFunction, OpenAiStop, OpenAiUsage, openai_stream_chunk,
 };
 pub use codetether_tool_discovery::{RegisterToolRequest, RegisteredTool, ToolRegistry};
-use codetether_voice_api::{CreateVoiceSessionRequest, get_voice_session_rest, list_voices_rest};
 pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
 
 /// Server state shared across handlers
@@ -258,12 +258,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Task dispatch (Knative-backed)
         .merge(codetether_task_api::http::dispatch_routes::<AppState>())
         // Voice REST bridge (dashboard expects REST, server has gRPC)
-        .route("/v1/voice/sessions", post(create_voice_session_rest))
-        .route(
-            "/v1/voice/sessions/{room_name}",
-            get(get_voice_session_rest).delete(delete_voice_session_rest),
-        )
-        .route("/v1/voice/voices", get(list_voices_rest))
+        .merge(codetether_voice_api::http::router::<AppState>())
         // Session resume (dashboard uses this for codebase-scoped resume)
         .route(
             "/v1/agent/codebases/{codebase_id}/sessions/{session_id}/resume",
@@ -572,18 +567,6 @@ async fn list_plugins(
     State(state): State<AppState>,
 ) -> Json<codetether_plugin_http::PluginListResponse> {
     codetether_plugin_http::list_plugins(&state.plugin_registry, &state.server_fingerprint).await
-}
-async fn create_voice_session_rest(
-    State(state): State<AppState>,
-    Json(req): Json<CreateVoiceSessionRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    codetether_voice_api::create_voice_session_rest(&state.bus, req).await
-}
-async fn delete_voice_session_rest(
-    State(state): State<AppState>,
-    Path(room_name): Path<String>,
-) -> Json<serde_json::Value> {
-    codetether_voice_api::delete_voice_session_rest(&state.bus, Path(room_name)).await
 }
 
 // ── Session resume ──────────────────────────────────────────────────────
