@@ -33,3 +33,5 @@ pub use opportunities::{collect_opportunities, collect_opportunities_with_rubric
 pub use progress_adapter::record_execution_success_to_okr;
 use s3_health::ensure_s3_sync_alive;
 pub use startup::{execute, execute_with_summary};
+/// Worker task metadata conversion, execution and summary rendering.
+pub mod worker_task;

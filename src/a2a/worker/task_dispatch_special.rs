@@ -1,5 +1,5 @@
 //! Application host for shared special-task dispatch.
-use super::{TaskContext, WorkerTaskRuntime, handle_clone_repo_task, handle_forage_task};
+use super::{TaskContext, WorkerTaskRuntime, handle_clone_repo_task};
 use anyhow::Result;
 use async_trait::async_trait;
 use codetether_a2a_worker_core::task_driver::special::{self, SpecialTaskHost};
@@ -28,7 +28,13 @@ impl SpecialTaskHost for Host<'_> {
         metadata: &Map<String, Value>,
         selected_model: Option<String>,
     ) -> Result<String> {
-        handle_forage_task(title, prompt, metadata, selected_model).await
+        codetether_forage_runtime::worker_task::handle::<crate::forage::execution_host::Native>(
+            title,
+            prompt,
+            metadata,
+            selected_model,
+        )
+        .await
     }
 }
 pub(super) async fn dispatch_special_task(

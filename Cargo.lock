@@ -3277,6 +3277,7 @@ dependencies = [
  "codetether-forage-execution",
  "codetether-forage-reporting",
  "codetether-okr",
+ "serde_json",
  "tokio",
  "tracing",
 ]

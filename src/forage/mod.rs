@@ -2,7 +2,7 @@
 use crate::cli::ForageArgs;
 use anyhow::Result;
 pub use codetether_forage_core::{ForageRunSummary, ForageSelectionSummary};
-mod execution_host;
+pub(crate) mod execution_host;
 mod startup;
 use codetether_forage_clarify as clarify;
 pub use startup::{execute, execute_with_summary};

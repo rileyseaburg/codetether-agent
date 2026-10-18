@@ -23311,3 +23311,22 @@ no manifests or lockfiles changed, and unrelated working changes remain intact.
 Evidence: artifacts/consolidation-worker-resources/.
 No heartbeat tasks, credential loads, tests, Cargo, rustc or Python ran.
 Compilation and runtime behavior remain unverified. Full consolidation is active.
+
+### Worker forage execution owned by forage-runtime
+
+Moved worker task option construction, forage execution and textual summary
+rendering into codetether-forage-runtime::worker_task. The native special-task
+dispatcher supplies the existing forage execution host directly. The native
+forage_task implementation file and unused worker helper re-exports were removed.
+Native host visibility is crate-scoped so the dispatcher can select it.
+
+Static comparisons preserve argument order, option conversion, execution host,
+error propagation and summary rendering. The native forage startup wrapper,
+host implementation, shared runtime startup and CLI option builder remain
+unchanged. Module/dependency scans cover 699 roots and 571 crates without
+missing modules or cycles. Direct rustfmt, file-size limits and whitespace
+checks passed. Only the serde_json dependency edge was staged for forage-runtime;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-forage-worker/.
+No forage runs, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.
