@@ -22841,3 +22841,24 @@ No manifest or lockfile changes were needed. Evidence:
 `artifacts/consolidation-rlm-model-provider/`.
 No background jobs, provider requests, Cargo, rustc or Python ran; compilation
 and runtime tests remain unverified. Full consolidation is active.
+
+### Context summary production and prepared inputs in the owning tool crate
+
+Moved the prepared summary input type and phase-summary production adapter
+into `codetether-context-summarize::production`. The native capture function
+retains its original snapshot operations and moves those values into the
+shared Prepared constructor. The native production file was removed. Its
+SummarySource binding calls the shared adapter with the existing model resolver
+and SessionBus observability specialization.
+
+Static comparisons preserve all prepared field types, capture/clone order,
+range/target/generation values, phase granularity, provider and subcall inputs,
+resolver choice and default observability. The underlying producer is unchanged.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the context-summary crate's rlm, rlm-background, summary-producer and
+tracked-vec dependency edges are staged in the lockfile; the unrelated working
+lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-context-production/`.
+No summary production, provider requests, Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

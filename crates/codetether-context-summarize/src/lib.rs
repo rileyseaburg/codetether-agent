@@ -13,3 +13,5 @@ mod source;
 mod tool_struct;
 pub use source::SummarySource;
 pub use tool_struct::ContextSummarizeTool;
+/// Prepared session inputs and the shared phase-summary producer.
+pub mod production;

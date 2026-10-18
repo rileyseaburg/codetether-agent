@@ -3006,7 +3006,11 @@ dependencies = [
  "codetether-context-loader",
  "codetether-context-policy",
  "codetether-provider-core",
+ "codetether-rlm",
+ "codetether-rlm-background",
+ "codetether-summary-producer",
  "codetether-tool-core",
+ "codetether-tracked-vec",
  "serde_json",
 ]
 

@@ -24,7 +24,15 @@ impl codetether_context_summarize::SummarySource for Session {
         provider: Arc<dyn Provider>,
         model: &str,
     ) -> anyhow::Result<SummaryNode> {
-        super::production::produce(prepared, range, target, provider, model).await
+        codetether_context_summarize::production::produce::<crate::session::SessionBus>(
+            prepared,
+            range,
+            target,
+            provider,
+            model,
+            crate::session::helper::rlm_background::resolve_model,
+        )
+        .await
     }
     async fn persist_summary(
         &mut self,

@@ -1,6 +1,5 @@
 //! Context summary tool bound to the application's producer and session store.
 mod prepared;
-mod production;
 mod source;
 /// Cached or on-demand summaries using the existing application session backend.
 ///

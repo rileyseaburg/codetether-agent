@@ -7,6 +7,10 @@ license = "MIT"
 description = "Cached context summary lookup and production orchestration"
 
 [dependencies]
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
+codetether-rlm-background = { path = "../codetether-rlm-background", version = "0.1.0" }
+codetether-summary-producer = { path = "../codetether-summary-producer", version = "0.1.0" }
+codetether-tracked-vec = { path = "../codetether-tracked-vec", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 codetether-context-loader = { path = "../codetether-context-loader", version = "0.1.0" }
