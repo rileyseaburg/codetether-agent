@@ -51,3 +51,6 @@ pub mod special;
 
 /// Claimed-task composition using application session and forage hooks.
 pub mod claimed;
+
+/// Worker session preparation with application persistence and metadata access.
+pub mod preparation;

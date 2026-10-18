@@ -4,7 +4,6 @@ pub(super) use super::{
     task_agent::execute_task_agent,
     task_context::{TaskContext, build_task_context},
     task_data::{task_metadata, task_str, task_value},
-    task_session::prepare_task_session,
     task_slot::reserve_task_slot,
     task_timeout::task_timeout_secs,
     worker_context::WorkerContext,

@@ -25615,3 +25615,23 @@ direct rustfmt and whitespace checks pass. All three pre-existing dirty files
 remain unchanged. Evidence: artifacts/consolidation-worker-claimed/. No Cargo,
 rustc, Python, compilation or runtime tests ran. Full consolidation remains
 active.
+
+### Worker session preparation and workspace resolution
+
+Moved native preparation composition and workspace resolution into
+codetether-native-worker::preparation. The existing shared Loader and
+SessionState contracts provide storage and metadata without importing the root
+Session type. Root task_session now holds only persistence and metadata
+bindings; the claimed-session adapter calls native preparation directly.
+Removed task_session_resolve.rs and the old root workspace Host implementation.
+
+Static comparisons preserve workspace-resolution arguments and the metadata
+implementation, which exposes the same mutable metadata.directory field.
+Preparation arguments are unchanged; loader code is unchanged except visibility
+for its existing root-worker consumer. The missing-required-session test is
+byte-for-byte unchanged. Module/dependency scans cover 714 roots and 600 crates
+with no missing modules, cycles or undeclared direct dependencies. Declaration,
+file-limit, direct rustfmt and whitespace checks pass. No manifest/lock changes
+were needed and unrelated dirty files remain unchanged. Evidence:
+artifacts/consolidation-worker-preparation/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

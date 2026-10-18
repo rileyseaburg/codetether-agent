@@ -55,7 +55,6 @@ use codetether_a2a_worker_core::dispatch as task_handler_timeout;
 use codetether_a2a_worker_core::outcome as task_outcome;
 use codetether_a2a_worker_core::task_config::policy_args as task_policy_args;
 mod task_session;
-mod task_session_resolve;
 use codetether_a2a_worker_core::dispatch as task_slot;
 use codetether_a2a_http::worker as task_stream_error;
 use codetether_a2a_worker_core::dispatch as task_targeting;

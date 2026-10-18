@@ -1,6 +1,6 @@
 //! Native loading operations for shared task-session selection.
 use crate::session::Session;
-pub(super) struct Native;
+pub(in crate::a2a::worker) struct Native;
 impl codetether_a2a_worker_core::preparation::session::Loader for Native {
     type Session = Session;
     async fn resume(id: &str) -> anyhow::Result<Session> {
