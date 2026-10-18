@@ -21723,3 +21723,24 @@ native file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-executor-state/`. Only those two package dependency
 edges are staged in the lockfile. No Cargo, rustc, or Python commands ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Reuse shared server state ownership
+
+Removed the native HTTP state's duplicate ten-field service storage. `AppState`
+now wraps `codetether-server-runtime::Parts<CognitionRuntime>` directly, and
+startup transfers the existing parts rather than rebuilding the same fields.
+Added a manual `Clone` implementation to `Parts<R>` that clones the same fields
+in declaration order without requiring `R: Clone`.
+
+Updated fourteen handler/router files to explicit `inner` field access. The
+native public state remains the implementation site for application-specific
+HTTP traits; external field access now goes through its `inner` parts. Static
+comparisons verify field order, clone coverage, startup transfer, and all caller
+projections; the other 27 native server files remain unchanged. No repository
+integration tests construct this server state directly.
+
+Source/dependency graphs across 692 roots and 564 crates, direct rustfmt,
+native file-size limits, and whitespace checks passed. No dependency or lockfile
+changes. Evidence: `artifacts/consolidation-server-state/`. No Cargo, rustc, or
+Python commands ran; compilation and runtime tests remain unverified. Full
+workspace consolidation remains active.

@@ -7,5 +7,5 @@ pub async fn worker_task_release(
     State(state): State<AppState>,
     Json(req): Json<ReleaseRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    codetether_task_api::release::respond(&state.knative_tasks, &state.bus, &req).await
+    codetether_task_api::release::respond(&state.inner.knative_tasks, &state.inner.bus, &req).await
 }

@@ -4,7 +4,7 @@ use codetether_session_recovery::RecoverySession;
 use std::path::{Path, PathBuf};
 impl codetether_session_recovery::http::HttpState for crate::server::AppState {
     fn server_url(&self) -> Option<&str> {
-        self.config.a2a.server_url.as_deref()
+        self.inner.config.a2a.server_url.as_deref()
     }
 }
 #[async_trait::async_trait]

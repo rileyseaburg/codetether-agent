@@ -28,16 +28,9 @@ mod tool_discovery_host;
 mod voice_http_state;
 mod worker_modules;
 
-use crate::audit::AuditLog;
-use crate::bus::AgentBus;
 use crate::cli::ServeArgs;
 use crate::cognition::CognitionRuntime;
-use crate::config::Config;
-use crate::k8s::K8sManager;
-use crate::tool::PluginRegistry as AgentPluginRegistry;
 use anyhow::Result;
-use auth::AuthState;
-use std::sync::Arc;
 
 use codetether_openai_adapter::{
     OpenAiApiResult, canonicalize_provider_name, convert_finish_reason, convert_openai_messages,
@@ -57,16 +50,8 @@ pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
 /// Server state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
-    pub config: Arc<Config>,
-    pub cognition: Arc<CognitionRuntime>,
-    pub audit_log: AuditLog,
-    pub k8s: Arc<K8sManager>,
-    pub auth: AuthState,
-    pub bus: Arc<AgentBus>,
-    pub knative_tasks: KnativeTaskQueue,
-    pub tool_registry: ToolRegistry,
-    pub plugin_registry: AgentPluginRegistry,
-    pub server_fingerprint: String,
+    /// Initialized services owned by the shared server runtime.
+    pub inner: codetether_server_runtime::Parts<CognitionRuntime>,
 }
 /// Start the HTTP server using the native runtime bindings.
 pub async fn serve(args: ServeArgs) -> Result<()> {

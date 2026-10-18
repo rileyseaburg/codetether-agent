@@ -8,5 +8,5 @@ pub async fn worker_task_claim(
     State(state): State<AppState>,
     Json(req): Json<ClaimRequest>,
 ) -> Result<Json<TaskClaimResponse>, (StatusCode, String)> {
-    codetether_task_api::worker_claim::claim(&state.knative_tasks, &req).await
+    codetether_task_api::worker_claim::claim(&state.inner.knative_tasks, &req).await
 }

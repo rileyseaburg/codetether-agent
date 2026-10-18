@@ -18,7 +18,7 @@ pub(super) fn build(state: &AppState, root: Router, nested: Router) -> Router {
                 session_realtime::AppHost,
                 AppState,
             >(),
-            status: config_status::router(state.config.clone()),
+            status: config_status::router(state.inner.config.clone()),
             models: codetether_model_catalog::http::router::<models_catalog::AppHost, AppState>(),
             completions: codetether_openai_serving::http::router::<
                 openai_http_host::AppHost,
@@ -29,6 +29,6 @@ pub(super) fn build(state: &AppState, root: Router, nested: Router) -> Router {
             ),
         },
         Transports { root, nested },
-        state.auth.clone(),
+        state.inner.auth.clone(),
     )
 }

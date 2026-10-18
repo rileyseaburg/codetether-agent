@@ -38,3 +38,20 @@ pub struct Parts<R> {
     /// Fingerprint derived from the executable's package version.
     pub server_fingerprint: String,
 }
+
+impl<R> Clone for Parts<R> {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            cognition: self.cognition.clone(),
+            audit_log: self.audit_log.clone(),
+            k8s: self.k8s.clone(),
+            auth: self.auth.clone(),
+            bus: self.bus.clone(),
+            knative_tasks: self.knative_tasks.clone(),
+            tool_registry: self.tool_registry.clone(),
+            plugin_registry: self.plugin_registry.clone(),
+            server_fingerprint: self.server_fingerprint.clone(),
+        }
+    }
+}

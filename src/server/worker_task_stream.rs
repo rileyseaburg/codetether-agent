@@ -36,10 +36,13 @@ pub async fn worker_task_stream(
 
     tracing::info!(worker_id, "Worker connected to task stream");
 
-    let rx = state.bus.handle("worker_task_stream").into_receiver();
-    let pending = state.knative_tasks.snapshot_pending().await;
+    let rx = state.inner.bus.handle("worker_task_stream").into_receiver();
+    let pending = state.inner.knative_tasks.snapshot_pending().await;
 
-    let event_stream =
-        codetether_task_api::worker_stream::WorkerStream::new(pending, rx, state.knative_tasks);
+    let event_stream = codetether_task_api::worker_stream::WorkerStream::new(
+        pending,
+        rx,
+        state.inner.knative_tasks,
+    );
     Sse::new(event_stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15)))
 }
