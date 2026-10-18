@@ -8,6 +8,7 @@ mod bus;
 pub mod cli;
 mod driver;
 mod host;
+pub mod peer;
 mod project;
 pub mod secrets;
 mod startup;

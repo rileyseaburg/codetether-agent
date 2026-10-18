@@ -11,7 +11,7 @@ mod hydrate;
 mod hydrate_host;
 mod hydrate_initial;
 mod loop_run;
-mod peer;
+use codetether_tui_startup::peer;
 mod provider;
 use codetether_session_resume as session_outcome;
 use codetether_tui_startup::secrets;

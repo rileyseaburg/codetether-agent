@@ -24134,3 +24134,20 @@ source file limits and whitespace checks passed. Only required dependency
 entries are staged in Cargo.lock; unrelated working edits remain untouched.
 Evidence: artifacts/consolidation-default-panels/. No Cargo, rustc, Python,
 compilation, rendering or tests ran. Full consolidation remains active.
+
+### TUI peer lifecycle moved into the startup crate
+
+Moved optional peer startup and PeerEndpoint ownership from the native run/peer
+module into codetether-tui-startup::peer. The native runtime host supplies the
+same A2A start and live-inbox attachment functions. The shared endpoint retains
+the same concrete peer handle. Disabled peers, startup errors, readiness state
+and best-effort continuation preserve their original flow; tracing targets are
+explicitly retained. No dependencies changed.
+
+Static comparisons preserve the complete startup body after hook and tracing
+target substitutions, and confirm the native caller supplies the same functions.
+Module/dependency scans cover 692 roots and 573 crates without missing modules
+or cycles. Direct rustfmt, source file limits and whitespace checks passed.
+Pending A2A edits and the working lockfile remain untouched. Evidence:
+artifacts/consolidation-tui-peer/. No Cargo, rustc, Python, compilation, peer
+startup or tests ran. Full consolidation remains active.

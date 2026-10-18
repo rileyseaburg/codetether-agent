@@ -5,7 +5,13 @@ impl codetether_tui_startup::Runtime for Native {
     type Peer = peer::PeerEndpoint;
     type Channels = channels::SessionChannels;
     async fn peer(options: Option<SpawnOptions>, bus: Arc<AgentBus>) -> peer::PeerEndpoint {
-        peer::start(options, bus).await
+        peer::start(
+            options,
+            bus,
+            crate::a2a::spawn::start_a2a_in_background,
+            crate::a2a::live_inbox::attach,
+        )
+        .await
     }
     fn peer_ready(peer: &peer::PeerEndpoint) -> bool {
         peer.ready
