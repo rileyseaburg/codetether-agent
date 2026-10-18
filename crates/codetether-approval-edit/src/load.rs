@@ -7,7 +7,7 @@ use anyhow::{Context, Result, ensure};
 use super::{ApprovalEditFile, ApprovalEditSession};
 
 pub(super) fn session(root: &Path, id: String, patch: &str) -> Result<ApprovalEditSession> {
-    let proposed = crate::tool::patch::proposed::contents(root, patch)?;
+    let proposed = codetether_patch::proposed::contents(root, patch)?;
     ensure!(!proposed.is_empty(), "approval patch has no editable files");
     let files = proposed
         .into_iter()

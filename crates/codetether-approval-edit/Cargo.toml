@@ -1,0 +1,16 @@
+[package]
+name = "codetether-approval-edit"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "In-memory editing and regeneration of proposed approval patches"
+
+[dependencies]
+anyhow = "1.0.104"
+codetether-editor = { path = "../codetether-editor", version = "0.1.0" }
+codetether-patch = { path = "../codetether-patch", version = "0.1.0" }
+similar = "3.1.2"
+
+[dev-dependencies]
+tempfile = "3"

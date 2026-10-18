@@ -1264,6 +1264,7 @@ dependencies = [
  "codetether-mcp-command",
  "codetether-settings-policy",
  "codetether-approval-queue",
+ "codetether-approval-edit",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6350,6 +6351,17 @@ version = "0.1.0"
 dependencies = [
  "codetether-approval-core",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-approval-edit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-editor",
+ "codetether-patch",
+ "similar 3.2.0",
+ "tempfile",
 ]
 
 [[package]]

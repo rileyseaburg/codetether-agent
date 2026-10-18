@@ -12777,3 +12777,20 @@ Full workspace consolidation remains active.
 - Only the new crate's root dependency/package entries were staged from
   Cargo.lock. No queue operations, approval decisions, Cargo, rustc, compilation
   or Rust tests ran. Full consolidation remains incomplete.
+
+### Approval patch editing extraction
+
+- Moved ApprovalEditSession state, proposed-file loading, editor-buffer creation,
+  revision navigation and unified-patch generation into codetether-approval-edit.
+  Seven modules contain at most 30 code lines, including the three existing
+  patch-generation regression tests moved with the implementation.
+- The native edit_session module now re-exports the shared session type. Shared
+  editor and patch crates replace their former native re-exports; file loading,
+  error handling, indexing, diff context and headers remain unchanged.
+- Verification: 15 static comparisons passed for state fields, all five session
+  methods, loading, diff generation, all three moved tests and native integration.
+  Module/dependency checks, direct rustfmt, file limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-approval-edit/.
+- Only new crate package/dependency records were staged from Cargo.lock. No
+  patch-runtime operations, Cargo, rustc, compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

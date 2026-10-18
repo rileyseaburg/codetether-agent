@@ -24,5 +24,11 @@ fn file_patch(file: &ApprovalEditFile) -> String {
 }
 
 #[cfg(test)]
-#[path = "patch_tests.rs"]
-mod tests;
+#[path = "patch_tests/builds_apply_patch_compatible_unified_diff.rs"]
+mod builds_apply_patch_compatible_unified_diff;
+#[cfg(test)]
+#[path = "patch_tests/generated_patch_replays_through_patch_runtime.rs"]
+mod generated_patch_replays_through_patch_runtime;
+#[cfg(test)]
+#[path = "patch_tests/omits_files_reverted_to_original_content.rs"]
+mod omits_files_reverted_to_original_content;
