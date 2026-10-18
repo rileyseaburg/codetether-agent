@@ -15694,3 +15694,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-terminal-flow/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains unfinished.
+
+### Shared single-tool-call driver
+
+- Moved normalized single-call sequencing from the native prompt loop into
+  `codetether-prompt-loop::tool_driver`. Native adapters retain the existing
+  policy, discovery, approval-aware invocation, refresh and publication services.
+- Preserved start-event timing, list_tools early return, bus request before
+  blocking, rejected-result recording, outcome execution, decline tracking
+  before refresh, publication and post-call code-search recovery.
+- Verification: complete sequence comparison plus all ten native adapter methods;
+  unchanged effect implementations; module/dependency graphs; direct rustfmt;
+  file budgets; isolated lock addition and diff whitespace. Evidence:
+  `artifacts/consolidation-tool-driver/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.

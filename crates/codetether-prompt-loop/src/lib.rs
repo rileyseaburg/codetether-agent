@@ -29,3 +29,6 @@ pub mod driver;
 mod reset;
 /// Terminal response validation and continuation sequencing.
 pub mod terminal;
+
+/// Policy and effect sequencing for one normalized tool call.
+pub mod tool_driver;

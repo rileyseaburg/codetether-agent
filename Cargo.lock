@@ -7525,6 +7525,7 @@ dependencies = [
  "codetether-tool-reporting",
  "codetether-tool-call-parser",
  "codetether-context-policy",
+ "codetether-tool-outcome",
 ]
 
 [[package]]

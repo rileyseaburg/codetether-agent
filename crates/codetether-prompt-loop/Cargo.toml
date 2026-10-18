@@ -30,3 +30,5 @@ codetether-tool-reporting = { path = "../codetether-tool-reporting", version = "
 
 codetether-tool-call-parser = { path = "../codetether-tool-call-parser", version = "0.1.0" }
 codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+
+codetether-tool-outcome = { path = "../codetether-tool-outcome", version = "0.1.0" }
