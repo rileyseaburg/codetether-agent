@@ -1,10 +1,9 @@
 mod api;
 mod discover;
-mod index;
+mod host;
 mod info;
-mod meta;
 mod parse;
-mod paths;
+#[cfg(test)]
 mod persist;
 
 pub use api::{

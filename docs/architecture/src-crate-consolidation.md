@@ -9043,3 +9043,20 @@ budgets and whitespace checks passed; the largest crate file has 39 code
 lines. Evidence is in `artifacts/consolidation-codex-transcript/`. Compilation
 and runtime tests were not run. No Cargo, rustc or Python commands ran.
 Full workspace consolidation remains active.
+
+### Dedicated Codex import-orchestration crate
+
+Moved archive selection by ID/path, workspace batch imports, persistence
+outcome mapping, import accounting and resume-or-import precedence into
+`crates/codetether-codex-import`. Eight modules separate workflows, results
+and the native host contract. Native code supplies its existing parser,
+data-directory resolver, imported-session store and resume implementation.
+The native API delegates to these workflows; unused index, metadata and path
+facades were removed.
+
+Sixteen static checks compare workflow bodies, result types, host bindings
+and unchanged native integration sources. Module/dependency graphs, file
+budgets and whitespace checks passed; the largest crate file has 21 code
+lines. Evidence is in `artifacts/consolidation-codex-import/`. Compilation
+and runtime tests were not run. No Cargo, rustc or Python commands ran.
+The full workspace consolidation remains active.

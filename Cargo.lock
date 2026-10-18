@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-codex-import",
  "codetether-codex-transcript",
  "codetether-codex-discovery",
  "codetether-codex-records",
@@ -2792,6 +2793,15 @@ dependencies = [
  "serde_json",
  "tracing",
  "walkdir",
+]
+
+[[package]]
+name = "codetether-codex-import"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-codex-discovery",
 ]
 
 [[package]]

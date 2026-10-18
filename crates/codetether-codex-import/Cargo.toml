@@ -1,0 +1,12 @@
+[package]
+name = "codetether-codex-import"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Codex archive import orchestration and persistence decisions"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-codex-discovery = { path = "../codetether-codex-discovery", version = "0.1.0" }
