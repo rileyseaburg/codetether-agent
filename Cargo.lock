@@ -1560,6 +1560,7 @@ dependencies = [
  "codetether-a2a-worker-core",
  "codetether-a2a-worker-clone",
  "codetether-advanced-edit",
+ "codetether-agent-command",
  "codetether-agent-core",
  "codetether-application-mcp",
  "codetether-approval-core",
@@ -1825,6 +1826,14 @@ dependencies = [
  "walkdir",
  "which 8.0.6",
  "windows",
+]
+
+[[package]]
+name = "codetether-agent-command"
+version = "0.1.0"
+dependencies = [
+ "codetether-agent-view",
+ "codetether-tool-core",
 ]
 
 [[package]]

@@ -487,6 +487,7 @@ members = [
     "crates/codetether-agent-tool",
     "crates/codetether-peer-agent",
     "crates/codetether-agent-view",
+    "crates/codetether-agent-command",
     "crates/codetether-agent-communication",
     "crates/codetether-tool-core",
     "crates/codetether-tool-registry",
@@ -1023,6 +1024,7 @@ codetether-youtube-tool = { path = "crates/codetether-youtube-tool", version = "
 codetether-tetherscript-computer = { path = "crates/codetether-tetherscript-computer", version = "0.1.0", optional = true }
 codetether-agent-communication = { path = "crates/codetether-agent-communication", version = "0.1.0" }
 codetether-agent-view = { path = "crates/codetether-agent-view", version = "0.1.0" }
+codetether-agent-command = { path = "crates/codetether-agent-command", version = "0.1.0" }
 codetether-peer-agent = { path = "crates/codetether-peer-agent", version = "0.1.0" }
 codetether-agent-tool = { path = "crates/codetether-agent-tool", version = "0.1.0" }
 codetether-child-turn = { path = "crates/codetether-child-turn", version = "0.1.0" }

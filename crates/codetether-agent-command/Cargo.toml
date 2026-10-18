@@ -1,0 +1,11 @@
+[package]
+name = "codetether-agent-command"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Managed-agent focus, removal and roster command decisions"
+
+[dependencies]
+codetether-agent-view = { path = "../codetether-agent-view", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }

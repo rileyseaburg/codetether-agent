@@ -18047,3 +18047,27 @@ parse-result mapping and native presentation order; unchanged control sources;
 module/dependency graph checks, file-limit ratchet and whitespace checks.
 Evidence: `artifacts/consolidation-mux-command/`. No Cargo, rustc or Python was
 executed. The moved Rust tests were not run; compilation remains unverified.
+
+### Agent focus, removal and roster commands
+
+Moved the decisions formerly in `managed_agent_command.rs`,
+`managed_agent_kill.rs`, `managed_agent_list.rs`, `managed_agent_swarm.rs` and
+`agents_cmd.rs` into `crates/codetether-agent-command`. The crate has separate
+focus, removal, listing, swarm-prefix and roster modules. Its state, registry
+and listing interfaces keep native sessions and TUI types out of the crate.
+Native entry points now delegate; their host modules supply direct state
+access, existing parent-scoped registry operations, ordered snapshots and the
+unchanged presentation/chat functions. The standalone native `agents_cmd.rs`
+implementation was removed.
+
+Preserved ownership checks before dispatch/removal, success-only focus clearing,
+legacy output cleanup, swarm ambiguity handling, existing roster deduplication
+and dashboard navigation before listing. The existing native swarm-focus test
+now reaches shared focus through the native adapter; its assertions and fixture
+are unchanged. No registry mutation was executed during validation.
+
+Validation: token-level comparisons of the full command decisions, roster
+formatting, swarm selection and native bindings; unchanged chat, removal request,
+presentation and integration-test source; module/dependency graph checks, file
+limits and whitespace. Evidence: `artifacts/consolidation-agent-command/`.
+No Cargo, rustc or Python commands ran. Rust compilation/tests remain unverified.
