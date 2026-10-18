@@ -23654,6 +23654,21 @@ files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-steering-handoff/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
 
+### Continuation and session-selection frontend bindings
+
+Moved continuation prompt lookup, UI recovery effects, runtime dispatch/cancel,
+picker selection and resume entry points into codetether-chat-submit::resume
+binding modules. Removed six root implementation files. The root selects the
+same frontend/session/message types, picker interface and existing callbacks.
+
+All twenty-five expanded function bodies and the borrowed host layout match
+after callback qualification. Session-selection visibility and retained borrow
+behavior are preserved. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Tests and unrelated files are unchanged; no manifest or lock changes
+were needed. Evidence: artifacts/consolidation-continuation/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
+
 ### Chat input interception, routing and submission bindings
 
 Moved the chat Enter entry point and its interception, routing and submission

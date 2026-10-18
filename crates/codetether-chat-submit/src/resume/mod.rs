@@ -3,6 +3,7 @@
 //! [run] recognizes the command, resolves its prompt through [Source] and
 //! chooses idle dispatch or stalled cancellation/retry preparation. [Ui] keeps
 //! concrete interface state in the caller; [Runtime] supplies execution effects.
+mod binding;
 mod idle;
 mod prompt;
 mod run;
