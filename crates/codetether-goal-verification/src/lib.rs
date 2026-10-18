@@ -21,3 +21,6 @@ pub use gate::{verify_transition, verify_with_identity};
 pub use request::VerificationRequest;
 pub use user_prompt::user_prompt;
 pub use verdict_record::VerdictRecord;
+
+/// Audited verification and capped-rejection handling through native storage.
+pub mod audit;

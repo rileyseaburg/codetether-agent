@@ -1,9 +1,10 @@
 //! Escalation when a goal exhausts its verifier attempts.
 
-use super::verdict_log::{self, VerdictRecord};
-use crate::session::tasks::{Goal, GoalStatus};
-use crate::tool::ToolResult;
+use super::Host;
+use crate::VerdictRecord;
 use anyhow::Result;
+use codetether_goal_core::{Goal, GoalStatus};
+use codetether_tool_core::ToolResult;
 
 /// Record the cap marker, pause the goal, and tell the worker to stop.
 ///
@@ -13,22 +14,20 @@ use anyhow::Result;
 /// # Errors
 ///
 /// Propagates verdict-log and task-log write failures.
-pub(super) async fn escalate(
+pub(super) async fn escalate<H: Host>(
     session: &str,
     goal: &Goal,
     claimed: &str,
     cap: usize,
 ) -> Result<ToolResult> {
-    if !crate::session::tasks::runtime::set_status_if_current(session, goal, GoalStatus::Paused)
-        .await?
-    {
+    if !H::set_status_if_current(session, goal, GoalStatus::Paused).await? {
         return Ok(ToolResult::error(
             "GOAL_VERIFICATION_STALE: goal changed before escalation; no newer goal was paused.",
         ));
     }
     let mut marker = VerdictRecord::new(&goal.id, claimed, false, "attempt-cap", "");
     marker.escalated = true;
-    verdict_log::append(session, &marker).await?;
+    H::append(session, &marker).await?;
     tracing::warn!(session_id = %session, cap, "Goal verification attempt cap reached; paused");
     Ok(ToolResult::error(format!(
         "The verifier rejected this goal {cap} times in a row. The goal is now paused and \

@@ -1,6 +1,6 @@
 //! Model-visible result for a verifier-rejected goal transition.
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 
 /// Build the error returned when the verifier rejects a transition.
 ///

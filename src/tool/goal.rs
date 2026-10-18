@@ -29,12 +29,8 @@ mod response;
 mod session_task;
 #[path = "goal/update.rs"]
 mod update;
-#[path = "goal/update_escalate.rs"]
-mod update_escalate;
 #[path = "goal/update_gate.rs"]
 mod update_gate;
-#[path = "goal/update_reject.rs"]
-mod update_reject;
 #[path = "goal/update_run.rs"]
 mod update_run;
 #[path = "goal/verdict_log.rs"]

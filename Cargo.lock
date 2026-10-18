@@ -16062,10 +16062,12 @@ dependencies = [
  "async-trait",
  "chrono",
  "codetether-goal-core",
+ "codetether-tool-core",
  "codetether-verifier-state",
  "hex",
  "serde",
  "serde_json",
  "sha2 0.11.0",
  "tokio",
+ "tracing",
 ]

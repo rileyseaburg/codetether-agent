@@ -17921,3 +17921,19 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-goal-verification/`.
 - No Cargo, rustc, Python, verifier calls, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Audited verification gate and cap escalation
+
+- Moved the attempt-capped verification gate, escalation sequence and rejection
+  response formatting into `codetether-goal-verification::audit`.
+- Native Host preserves session journal resolution and revision-checked status
+  updates. Cap counting, stale-goal protection, verdict fields, unavailable
+  handling, escalation marker and refusal text retain their existing behavior.
+- Verified complete function bodies with explicit storage-call substitutions,
+  all native bindings, unchanged transition/provider code and existing cap,
+  blocked, unavailable and race integration tests. Module/dependency graphs,
+  direct rustfmt, file limits and whitespace passed. Added only existing
+  tool-core/tracing dependencies to the verifier package; unrelated working-copy
+  changes remain untouched. Evidence: `artifacts/consolidation-verification-audit/`.
+- No Cargo, rustc, Python, verifier calls, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
