@@ -42,8 +42,8 @@ pub const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FAL
 pub const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
 pub const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
 pub use codetether_model_failover::constants::AUTOCHAT_LOCAL_DEFAULT_MODEL;
-pub const GO_SWAP_MODEL_GLM: &str = "zai/glm-5";
-pub const GO_SWAP_MODEL_MINIMAX: &str = "minimax/MiniMax-M3";
+pub use codetether_relay_okr::GO_SWAP_MODEL_GLM;
+pub use codetether_relay_okr::GO_SWAP_MODEL_MINIMAX;
 pub const CHAT_SYNC_DEFAULT_INTERVAL_SECS: u64 = 15;
 pub const CHAT_SYNC_MAX_INTERVAL_SECS: u64 = 300;
 pub const CHAT_SYNC_MAX_BATCH_BYTES: usize = 512 * 1024;

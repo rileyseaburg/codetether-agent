@@ -12878,3 +12878,20 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   provider calls, OKR creation, Cargo, rustc, compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Relay pending-approval state ownership
+
+- Moved PendingOkrApproval, its constructor and prompt, command recognition and
+  GLM/MiniMax rotation into codetether-relay-okr. Five added modules contain at
+  most 36 code lines; the full crate stays below 40 code lines per module.
+- Native okr_gate re-exports the shared state. Its provider-dependent proposal
+  operation is now the native free function propose; the single repository call
+  site was updated. Provider lookup, fallback timing, approval submission and
+  prompt wording are unchanged. Rotation constants are re-exported natively.
+- Verification: 17 static comparisons passed for moved state/methods/policies,
+  native lifecycle/provider setup, dispatch and unchanged approval-key tests.
+  Module/dependency checks, direct rustfmt, file limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-relay-state/.
+- Only chrono was added to this package's staged Cargo.lock dependencies. No
+  provider calls, lifecycle operations, Cargo, rustc or Rust tests ran.
+  Full consolidation remains incomplete.
