@@ -1,15 +1,7 @@
-//! Relay team preparation, session turns, event forwarding and convergence.
+//! Native relay session and registry bindings.
 //!
-//! The group owns its application execution flow; shared policy and scheduling
-//! remain in ralph-core. Runtime resources retain their existing lifetimes.
+//! Team preparation, handoffs, event forwarding, convergence and shutdown live
+//! in codetether-ralph-relay. This module constructs and prompts native sessions.
 use super::*;
-mod relay_announce;
+mod host;
 mod relay_coordinator;
-mod relay_events;
-mod relay_finish;
-mod relay_prepare;
-mod relay_profiles;
-mod relay_rounds;
-mod relay_session;
-mod relay_turn;
-mod relay_types;

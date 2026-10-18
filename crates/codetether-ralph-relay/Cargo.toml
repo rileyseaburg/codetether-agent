@@ -1,0 +1,17 @@
+[package]
+name = "codetether-ralph-relay"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Ralph relay team preparation, session turns and convergence"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+tokio = { version = "1", features = ["rt", "sync", "time"] }
+tracing = "0.1"

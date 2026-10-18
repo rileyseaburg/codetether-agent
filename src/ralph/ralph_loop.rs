@@ -5,7 +5,6 @@ use super::types::*;
 use super::verification::run_story_verification;
 use super::{git_policy, quality_shell};
 use crate::bus::AgentBus;
-use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
 use crate::provenance::{
     ExecutionOrigin, ExecutionProvenance, git_commit_with_provenance_blocking,
 };
@@ -16,7 +15,6 @@ use crate::tool::ToolRegistry;
 use crate::worktree::WorktreeManager;
 use codetether_ralph_core::events::{RalphEvent, RalphStoryInfo};
 use codetether_swarm_core::SwarmEvent;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;

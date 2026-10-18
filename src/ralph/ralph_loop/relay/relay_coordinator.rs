@@ -1,5 +1,4 @@
-//! Prepare the relay runtime, execute its rounds and perform normal shutdown.
-use super::relay_types::RelayRoundContext;
+//! Bind story relay execution to the shared orchestration crate.
 use super::*;
 impl RalphLoop {
     /// Execute a story using a relay team of agents.
@@ -20,34 +19,18 @@ impl RalphLoop {
         max_rounds: usize,
         delegation: Option<&DelegationState>,
     ) -> anyhow::Result<String> {
-        let max_agents = max_agents.clamp(2, 8);
-        let max_rounds = max_rounds.clamp(1, 5);
-
-        let profiles = Self::build_implementation_relay_profiles(max_agents, working_dir);
-
-        // Create relay runtime (use existing bus or create a temporary one)
-        let relay_bus = bus.unwrap_or_else(|| Arc::new(AgentBus::new()));
-        let relay = ProtocolRelayRuntime::new(relay_bus.clone());
-
-        let mut team = Self::prepare_relay_team(
-            registry, model, &profiles, &relay_bus, delegation, &relay, &story_id, max_rounds,
-        )
-        .await?;
-        let progress = Self::run_relay_rounds(RelayRoundContext {
+        codetether_ralph_relay::call_relay::<super::host::Native>(
             registry,
-            team: &mut team,
-            relay: &relay,
-            ralph_tx: &ralph_tx,
-            story_id: &story_id,
-            max_rounds,
+            model,
             prompt,
-        })
-        .await?;
-        Ok(Self::finish_relay(
-            &relay,
-            &team.ordered_agents,
-            progress,
-            &story_id,
-        ))
+            working_dir,
+            ralph_tx,
+            story_id,
+            bus,
+            max_agents,
+            max_rounds,
+            delegation,
+        )
+        .await
     }
 }

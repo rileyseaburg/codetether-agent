@@ -18574,3 +18574,26 @@ module reachability, dependency-cycle checks, file-size ratchet, whitespace and
 direct formatting checks. Evidence: `artifacts/consolidation-ralph-merge/`.
 No Cargo, rustc, Python, Rust tests, live merges or verification commands ran;
 compilation and runtime behavior remain unverified.
+
+### Ralph relay team orchestration
+
+Moved relay team setup, provider-role selection, handoffs, ordered rounds,
+live tool-event forwarding, session restoration, convergence and normal shutdown
+into `codetether-ralph-relay`. Native callbacks enumerate the existing provider
+registry and construct/prompt native sessions. The shared crate uses the existing
+session event/result contracts and retains complete prompt results until after
+the joined session is restored.
+
+Preserved team limits (2–8 agents), round limits (1–5), channel capacity 256,
+50 ms event polling, trailing event drain, join/prompt error text, registration
+and shutdown ordering. Delegation still enumerates candidates lazily through the
+same shared selection policy. The native story relay signature remains intact.
+
+Validation: complete coordinator, announcement, round, event, finish and turn
+body comparisons; provider-selection and native session initialization/prompt
+mapping; owned team and borrowed round fields; native signature; unchanged
+session and delegation services; lexical module reachability, dependency-cycle
+checks, file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-ralph-relay/`. No Cargo, rustc, Python, Rust tests,
+model requests or live relay execution ran; compilation and runtime behavior
+remain unverified.
