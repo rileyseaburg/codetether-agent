@@ -112,4 +112,32 @@ pub enum ToolKind {
     SessionRecall,
     /// Register ralph provider.
     RalphProvider,
+    /// Register the Grep capability.
+    Grep,
+    /// Register the Ripgrep capability.
+    Ripgrep,
+    /// Register the CodeSearch capability.
+    CodeSearch,
+    /// Register the TokenCount capability.
+    TokenCount,
+    /// Register the Podcast capability.
+    Podcast,
+    /// Register the YouTube capability.
+    YouTube,
+    /// Register the Avatar capability.
+    Avatar,
+    /// Register the Image capability.
+    Image,
+    /// Register the ImageGeneration capability.
+    ImageGeneration,
+    /// Register the McpBridge capability.
+    McpBridge,
+    /// Register the RustyRoad capability.
+    RustyRoad,
+    /// Register the Okr capability.
+    Okr,
+    /// Register the BusInspect capability.
+    BusInspect,
+    /// Register the ComputerUse capability.
+    ComputerUse,
 }

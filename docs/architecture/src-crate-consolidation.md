@@ -15158,3 +15158,19 @@ Full workspace consolidation remains active.
   artifacts/consolidation-tool-catalog/.
 - No dependencies changed. No tool construction, Cargo, rustc or Rust tests ran.
   Full workspace consolidation remains unfinished.
+
+### Tool registration groups and alias ownership
+
+- Moved ordered search/media registration and compatibility aliases into the
+  shared tool catalog. Native code now supplies only scalar constructors and
+  registration adapters for these groups.
+- Added shared register_with_alias to preserve the image-generation tool's
+  single shared instance. Compatibility aliases still construct independent
+  instances, in the same order, before the computer-use tool is registered.
+- Verification: seven static groups covered search/media order, exact alias
+  mappings, shared-versus-fresh instance wiring, fourteen scalar constructors,
+  unchanged main catalog/builders and removed native groups. Module reachability,
+  dependency DAG, direct rustfmt, file-limit ratchet and whitespace checks passed.
+  Evidence: artifacts/consolidation-tool-groups/.
+- No dependencies changed. No tool construction/execution, Cargo, rustc or Rust
+  tests ran. Full workspace consolidation remains unfinished.

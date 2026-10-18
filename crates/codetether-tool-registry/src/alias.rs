@@ -18,3 +18,23 @@ impl ToolRegistry {
         self.register(Arc::new(codetether_tool_core::AliasTool::new(id, inner)));
     }
 }
+
+impl ToolRegistry {
+    /// Register a tool and a compatibility alias over the same Arc instance.
+    ///
+    /// # Arguments
+    /// * `id` — Compatibility alias.
+    /// * `tool` — Shared tool instance to register under both identities.
+    /// # Returns
+    /// Inserts the primary entry first and the alias second.
+    /// # Examples
+    /// ```no_run
+    /// let mut registry = codetether_tool_registry::ToolRegistry::new();
+    /// registry.register_with_alias("legacy", std::sync::Arc::new(codetether_tool_core::InvalidTool::new()));
+    /// assert!(registry.contains("legacy"));
+    /// ```
+    pub fn register_with_alias(&mut self, id: &str, tool: Arc<dyn Tool>) {
+        self.register(Arc::clone(&tool));
+        self.register_compat_alias(id, tool);
+    }
+}

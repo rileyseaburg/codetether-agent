@@ -54,8 +54,6 @@ pub mod progress;
 pub mod question;
 pub mod ralph;
 pub mod readonly;
-mod register_media;
-mod register_search_tools;
 pub mod relay_autochat;
 pub mod ripgrep;
 pub mod rlm;
@@ -115,21 +113,6 @@ impl ToolRegistry {
     /// Register a tool
     pub fn register(&mut self, tool: Arc<dyn Tool>) {
         self.inner.register(tool);
-    }
-
-    fn register_compat_alias(&mut self, id: &str, inner: Arc<dyn Tool>) {
-        self.inner.register_compat_alias(id, inner);
-    }
-
-    fn register_compat_aliases(&mut self) {
-        self.register_compat_alias("patch", Arc::new(patch::ApplyPatchTool::new()));
-        self.register_compat_alias("file_info", Arc::new(file_extras::FileInfoTool::new()));
-        self.register_compat_alias("head_tail", Arc::new(file_extras::HeadTailTool::new()));
-        self.register_compat_alias("todo_read", Arc::new(todo::TodoReadTool::new()));
-        self.register_compat_alias("todo_write", Arc::new(todo::TodoWriteTool::new()));
-        self.register_compat_alias("mcp_bridge", Arc::new(mcp_bridge::McpBridgeTool::new()));
-        self.register_compat_alias("k8s_tool", Arc::new(k8s_tool::K8sTool::new()));
-        self.register(Arc::new(computer_use::ComputerUseTool::new()));
     }
 
     /// Get a tool by ID
