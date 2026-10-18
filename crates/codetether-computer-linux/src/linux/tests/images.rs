@@ -1,7 +1,7 @@
 //! Reject invalid or oversized captures before attaching image data.
 
 use super::*;
-use crate::tool::computer_use::capture_limits::MAX_FILE_BYTES;
+use codetether_computer_capture::limits::MAX_FILE_BYTES;
 
 #[test]
 fn png_originals_are_checked_and_preserved() {

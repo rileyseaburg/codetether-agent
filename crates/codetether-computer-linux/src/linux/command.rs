@@ -24,11 +24,11 @@ pub(super) async fn run(
             .env("GDK_BACKEND", "wayland")
             .env("QT_QPA_PLATFORM", "wayland");
     }
-    crate::tool::process_tree::configure(&mut command);
+    codetether_process_tree::configure(&mut command);
     let mut child = command
         .spawn()
         .with_context(|| format!("Start {}", backend.name()))?;
-    let mut guard = crate::tool::process_tree::Guard::attach(&child);
+    let mut guard = codetether_process_tree::Guard::attach(&child);
     let status = tokio::time::timeout(limit, child.wait())
         .await
         .with_context(|| {

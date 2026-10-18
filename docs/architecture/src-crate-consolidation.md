@@ -17260,3 +17260,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-computer-capture/`. No Cargo, rustc,
   Python, image processing, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Dedicated Linux computer-use backend
+
+- Moved the Linux desktop backend (21 Rust files, including 14 tests) into
+  `codetether-computer-linux`. The native Linux module re-exports dispatch.
+- The crate owns display-session detection, backend discovery, private capture
+  directories, bounded subprocess execution, PNG validation and result output.
+  It consumes shared computer contracts, capture preparation and process-tree
+  ownership directly. Dependencies and implementation are Linux-gated.
+- Preserved all implementation bodies and test assertions. The opt-in live
+  screenshot test now deserializes its request and calls shared dispatch,
+  equivalent to the native tool's prior delegation for the fixed valid input.
+- Verification: all moved files, unchanged native/tool dispatch, module and
+  dependency graphs, direct rustfmt, file limits and whitespace. Staged lock
+  changes contain only the new crate and root dependency, with existing locked
+  dependency versions. Evidence: `artifacts/consolidation-computer-linux/`.
+- No Cargo, rustc, Python, screenshot utilities, Rust compilation or Rust tests
+  ran. Full workspace consolidation remains incomplete.

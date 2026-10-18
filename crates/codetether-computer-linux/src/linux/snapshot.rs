@@ -9,7 +9,7 @@ use std::{
 pub(super) async fn capture(
     session: Session,
     backends: &[(Backend, PathBuf)],
-) -> anyhow::Result<crate::tool::ToolResult> {
+) -> anyhow::Result<codetether_tool_core::ToolResult> {
     anyhow::ensure!(
         session != Session::Headless,
         "Linux desktop screenshot requires a graphical session (DISPLAY or WAYLAND_DISPLAY). Start CodeTether inside the logged-in desktop; a headless/SSH service cannot capture it automatically."
@@ -44,7 +44,7 @@ async fn attempt(
     backend: Backend,
     program: &Path,
     path: &Path,
-) -> anyhow::Result<crate::tool::ToolResult> {
+) -> anyhow::Result<codetether_tool_core::ToolResult> {
     command::run(session, backend, program, path, Duration::from_secs(10)).await?;
     let path = path.to_owned();
     tokio::task::spawn_blocking(move || output::result(&path, session, backend)).await?

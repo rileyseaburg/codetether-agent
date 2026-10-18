@@ -6,6 +6,7 @@ members = [
     "crates/codetether-computer-contract",
     "crates/codetether-computer-capture",
     "crates/codetether-computer-shadow",
+    "crates/codetether-computer-linux",
     "crates/codetether-a2a-core",
     "crates/codetether-http-error",
     "crates/codetether-server-router",
@@ -1061,6 +1062,7 @@ codetether-tool-core = { path = "crates/codetether-tool-core", version = "0.1.0"
 codetether-computer-contract = { path = "crates/codetether-computer-contract", version = "0.1.0" }
 codetether-computer-capture = { path = "crates/codetether-computer-capture", version = "0.1.0" }
 codetether-computer-shadow = { path = "crates/codetether-computer-shadow", version = "0.1.0" }
+codetether-computer-linux = { path = "crates/codetether-computer-linux", version = "0.1.0" }
 codetether-todo = { path = "crates/codetether-todo", version = "0.1.0" }
 codetether-tetherscript-values = { path = "crates/codetether-tetherscript-values", version = "0.1.0", optional = true }
 codetether-util = { path = "crates/codetether-util", version = "0.1.0" }

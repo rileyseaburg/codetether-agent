@@ -1,15 +1,14 @@
 //! Opt-in real X11 screenshot test; run under xvfb-run on headless CI hosts.
 
-use crate::tool::{Tool, computer_use::ComputerUseTool};
-
 #[tokio::test]
 #[ignore = "requires an X11 desktop and installed screenshot utility; run under xvfb-run"]
 async fn live_x11_snapshot_returns_a_real_png_attachment() {
     assert!(std::env::var_os("DISPLAY").is_some());
-    let result = ComputerUseTool::new()
-        .execute(serde_json::json!({"action": "snapshot"}))
-        .await
-        .unwrap();
+    let result = super::super::dispatch(
+        &serde_json::from_value(serde_json::json!({"action": "snapshot"})).unwrap(),
+    )
+    .await
+    .unwrap();
     assert!(result.success, "{}", result.output);
     let data: serde_json::Value = serde_json::from_str(&result.output).unwrap();
     assert_eq!(data["session_type"], "x11");

@@ -1,14 +1,15 @@
 //! Linux capture metadata uses image coordinates, not fabricated global geometry.
 
 use super::{backend::Backend, image_file, session::Session};
-use crate::tool::computer_use::{capture_preview, response};
+use codetether_computer_capture as capture_preview;
+use codetether_computer_contract::response;
 use std::path::Path;
 
 pub(super) fn result(
     path: &Path,
     session: Session,
     backend: Backend,
-) -> anyhow::Result<crate::tool::ToolResult> {
+) -> anyhow::Result<codetether_tool_core::ToolResult> {
     let (png, width, height) = image_file::load(path)?;
     let preview = capture_preview::prepare(&png, width, height)?;
     Ok(response::success_result(serde_json::json!({

@@ -1,6 +1,6 @@
 //! Validate file and decoded pixel budgets before attaching any screenshot.
 
-use crate::tool::computer_use::capture_limits::{MAX_FILE_BYTES, file_bytes, pixel_bytes};
+use codetether_computer_capture::limits::{MAX_FILE_BYTES, file_bytes, pixel_bytes};
 use image::{ImageFormat, ImageReader};
 use std::{
     io::{Cursor, Read},

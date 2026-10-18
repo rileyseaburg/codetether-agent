@@ -1,12 +1,12 @@
 //! Reject Windows window selectors rather than silently capturing another target.
 
 use super::{backend, session::Session, snapshot};
-use crate::tool::computer_use::{input::ComputerUseInput, response};
+use codetether_computer_contract::{input::ComputerUseInput, response};
 
 pub(super) async fn snapshot(
     input: &ComputerUseInput,
     session: Session,
-) -> anyhow::Result<crate::tool::ToolResult> {
+) -> anyhow::Result<codetether_tool_core::ToolResult> {
     if input.hwnd.is_some()
         || input.app.is_some()
         || input.window_title_contains.is_some()

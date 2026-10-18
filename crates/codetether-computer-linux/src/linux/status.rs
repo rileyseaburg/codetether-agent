@@ -1,9 +1,9 @@
 //! Report implementation support separately from desktop capture readiness.
 
 use super::{backend, session::Session};
-use crate::tool::computer_use::response;
+use codetether_computer_contract::response;
 
-pub(super) fn result(session: Session) -> crate::tool::ToolResult {
+pub(super) fn result(session: Session) -> codetether_tool_core::ToolResult {
     let backends: Vec<_> = backend::available(session)
         .iter()
         .map(|(backend, _)| backend.name())

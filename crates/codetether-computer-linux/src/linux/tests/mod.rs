@@ -6,7 +6,7 @@ use super::{
     session::Session,
     snapshot, status,
 };
-use crate::tool::computer_use::input::ComputerUseInput;
+use codetether_computer_contract::input::ComputerUseInput;
 use std::{
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},

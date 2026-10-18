@@ -1576,6 +1576,7 @@ dependencies = [
  "codetether-command-shell",
  "codetether-computer-capture",
  "codetether-computer-contract",
+ "codetether-computer-linux",
  "codetether-computer-shadow",
  "codetether-config",
  "codetether-confirm-edit",
@@ -2373,6 +2374,23 @@ dependencies = [
  "codetether-tool-core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-computer-linux"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.23.1",
+ "codetether-computer-capture",
+ "codetether-computer-contract",
+ "codetether-process-tree",
+ "codetether-tool-core",
+ "image",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "which 8.0.6",
 ]
 
 [[package]]
