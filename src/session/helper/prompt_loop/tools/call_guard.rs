@@ -4,7 +4,7 @@ use super::{super::Runner, call::Call};
 
 /// Emits a bounded tool-start event when streaming is enabled.
 pub(super) async fn publish_start(runner: &Runner<'_>, call: &Call) {
-    let Some(tx) = &runner.events else {
+    let Some(tx) = &runner.inner.events else {
         return;
     };
     let args = serde_json::to_string(&call.input).unwrap_or_default();
@@ -19,7 +19,7 @@ pub(super) async fn publish_start(runner: &Runner<'_>, call: &Call) {
 
 /// Returns the reason an interactive, stubbed, or repeated call is blocked.
 pub(super) fn blocked(runner: &mut Runner<'_>, call: &Call) -> Option<String> {
-    runner.progress.blocked(
+    runner.inner.progress.blocked(
         &call.name,
         &call.input,
         codetether_question::runtime::available,

@@ -12,9 +12,9 @@ pub(super) async fn render(
     let context = codetether_tool_outcome::Context {
         tool: &call.name,
         input: &call.input,
-        cwd: &runner.workspace.cwd,
-        touched: &mut runner.workspace.touched,
-        auto_apply_edits: runner.session.metadata.auto_apply_edits,
+        cwd: &runner.inner.workspace.cwd,
+        touched: &mut runner.inner.workspace.touched,
+        auto_apply_edits: runner.inner.session.metadata.auto_apply_edits,
     };
     codetether_tool_outcome::render(context, input, started, tuple).await
 }

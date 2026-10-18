@@ -16,12 +16,12 @@ pub(super) async fn derive(
     keep: Option<usize>,
 ) -> Result<DerivedContext> {
     derive_with_policy(
-        runner.session,
-        runner.model.provider.clone(),
-        &runner.model.model_id,
-        &runner.model.system_prompt,
-        &runner.model.advertised,
-        runner.events.as_ref(),
+        runner.inner.session,
+        runner.inner.model.provider.clone(),
+        &runner.inner.model.model_id,
+        &runner.inner.model.system_prompt,
+        &runner.inner.model.advertised,
+        runner.inner.events.as_ref(),
         policy,
         keep,
     )
@@ -31,11 +31,11 @@ pub(super) async fn derive(
 /// Builds optional proactive language-server context for `step`.
 pub(super) async fn lsp(runner: &Runner<'_>, step: usize) -> Option<Message> {
     super::super::super::router::build_proactive_lsp_context_message(
-        &runner.model.provider_name,
+        &runner.inner.model.provider_name,
         step,
-        &runner.model.registry,
-        &runner.session.messages,
-        &runner.workspace.cwd,
+        &runner.inner.model.registry,
+        &runner.inner.session.messages,
+        &runner.inner.workspace.cwd,
     )
     .await
 }

@@ -11,11 +11,11 @@ pub(super) struct Native<'a, 'session> {
 impl Host for Native<'_, '_> {
     fn target(&self) -> Target<'_> {
         Target {
-            system_prompt: &self.runner.model.system_prompt,
-            provider: &self.runner.model.provider_name,
-            model: &self.runner.model.model_id,
-            tools: &self.runner.model.advertised,
-            temperature: self.runner.model.temperature,
+            system_prompt: &self.runner.inner.model.system_prompt,
+            provider: &self.runner.inner.model.provider_name,
+            model: &self.runner.inner.model.model_id,
+            tools: &self.runner.inner.model.advertised,
+            temperature: self.runner.inner.model.temperature,
         }
     }
     fn proactive(&self) -> Option<&Message> {
@@ -24,7 +24,7 @@ impl Host for Native<'_, '_> {
     async fn prepare(&mut self, extras: &mut Vec<Message>) {
         super::super::super::super::step_model_restore::step_prepare::prepare_messages(
             extras,
-            self.runner.session,
+            self.runner.inner.session,
             &mut self.attempt.derived.messages,
         )
         .await;

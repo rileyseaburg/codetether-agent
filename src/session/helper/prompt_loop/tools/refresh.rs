@@ -5,7 +5,7 @@ pub(super) async fn after(runner: &mut Runner<'_>, call: &Call, success: bool) -
     if call.name != "context_pin" || !success {
         return Ok(());
     }
-    let current = &runner.session;
+    let current = &runner.inner.session;
     let mut latest = crate::session::Session::load_tail(&current.id, current.messages.len())
         .await?
         .session;
@@ -13,6 +13,6 @@ pub(super) async fn after(runner: &mut Runner<'_>, call: &Call, success: bool) -
     latest.bus = current.bus.clone();
     latest.metadata.subcall_provider = current.metadata.subcall_provider.clone();
     latest.metadata.subcall_model_name = current.metadata.subcall_model_name.clone();
-    *runner.session = latest;
+    *runner.inner.session = latest;
     Ok(())
 }

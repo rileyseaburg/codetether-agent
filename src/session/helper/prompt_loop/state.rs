@@ -1,31 +1,19 @@
-//! Aggregate state for one shared prompt-loop turn.
-
-use std::sync::Arc;
-use tokio::sync::mpsc;
-
+//! Native service specialization of shared prompt-runner state.
 use crate::cognition::tool_router::ToolCallRouter;
 use crate::provider::ProviderRegistry;
-use crate::session::{Session, SessionEvent};
+use crate::session::Session;
+use codetether_prompt_loop::RunnerState;
 
-/// Complete mutable state for one user prompt turn.
+type NativeState<'a> = RunnerState<
+    'a,
+    Session,
+    ProviderRegistry,
+    super::model::ModelState,
+    ToolCallRouter,
+    super::super::prompt_events::subagent_watch::SubAgentWatch,
+>;
+/// Local wrapper permitting native execution-hook implementations.
 pub(crate) struct Runner<'a> {
-    /// Session receiving transcript and metadata updates.
-    pub session: &'a mut Session,
-    /// Optional lifecycle-event destination used by streaming callers.
-    pub events: Option<mpsc::Sender<SessionEvent>>,
-    /// Provider registry used for routing and failover.
-    pub registry: Arc<ProviderRegistry>,
-    /// Unique owner identity for mux leases held by this prompt run.
-    pub lease_owner: String,
-    /// Active provider and model settings.
-    pub model: super::model::ModelState,
-    /// Workspace paths tracked for post-edit validation.
-    pub workspace: super::progress::WorkspaceState,
-    /// Counters and output accumulated during the turn.
-    pub progress: super::progress::LoopState,
-    /// Optional response-to-tool-call formatter.
-    pub router: Option<ToolCallRouter>,
-    /// Watcher that injects completed sub-agent notices.
-    pub subagents: super::super::prompt_events::subagent_watch::SubAgentWatch,
+    pub inner: NativeState<'a>,
 }
 pub(crate) use codetether_prompt_loop::StepFlow;

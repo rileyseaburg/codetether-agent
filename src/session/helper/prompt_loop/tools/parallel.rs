@@ -4,18 +4,18 @@ use super::super::Runner;
 use super::ToolCall;
 
 pub(super) async fn run(runner: &mut Runner<'_>, calls: &[ToolCall]) -> bool {
-    let Some(events) = &runner.events else {
+    let Some(events) = &runner.inner.events else {
         return false;
     };
     super::super::super::tool_parallel::try_execute(
-        runner.session,
+        runner.inner.session,
         calls,
-        &runner.model.registry,
-        &runner.workspace.cwd,
-        &runner.model.model_id,
-        runner.model.provider.clone(),
+        &runner.inner.model.registry,
+        &runner.inner.workspace.cwd,
+        &runner.inner.model.model_id,
+        runner.inner.model.provider.clone(),
         events,
-        &mut runner.progress.codesearch_misses,
+        &mut runner.inner.progress.codesearch_misses,
     )
     .await
 }

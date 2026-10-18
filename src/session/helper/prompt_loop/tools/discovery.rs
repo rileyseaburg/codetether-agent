@@ -12,12 +12,12 @@ use codetether_tool_catalog::promote;
 /// making the rest of the executable registry unreachable.
 pub(super) async fn run(runner: &mut Runner<'_>, call: &Call) -> Result<bool> {
     promote(
-        &runner.model.tools,
-        &mut runner.model.advertised,
+        &runner.inner.model.tools,
+        &mut runner.inner.model.advertised,
         &call.input,
     );
     let content = super::super::super::bootstrap::list_tools_bootstrap_output(
-        &runner.model.tools,
+        &runner.inner.model.tools,
         &call.input,
     );
     super::simple::record(runner, call, content, true).await;

@@ -4,22 +4,22 @@ use crate::provider::Message;
 use codetether_prompt_loop::{LoopState, StepFlow};
 impl codetether_prompt_loop::terminal::Host for Runner<'_> {
     fn append(&mut self, message: Message) {
-        self.session.add_message(message);
+        self.inner.session.add_message(message);
     }
     fn drain_steering(&mut self) -> usize {
-        super::super::super::super::steering::drain_into(self.session)
+        super::super::super::super::steering::drain_into(self.inner.session)
     }
     fn agent(&self) -> &str {
-        &self.session.agent
+        &self.inner.session.agent
     }
     fn progress(&mut self) -> &mut LoopState {
-        &mut self.progress
+        &mut self.inner.progress
     }
     async fn validate(&mut self) -> anyhow::Result<Option<String>> {
         super::super::super::super::validation::build_validation_report(
-            &self.workspace.cwd,
-            &self.workspace.touched,
-            &self.workspace.baseline_dirty,
+            &self.inner.workspace.cwd,
+            &self.inner.workspace.touched,
+            &self.inner.workspace.baseline_dirty,
         )
         .await
         .map(|report| report.map(|report| report.prompt))

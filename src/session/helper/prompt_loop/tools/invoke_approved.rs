@@ -10,16 +10,16 @@ pub(super) async fn run(
     started: std::time::Instant,
 ) -> tool_policy::ToolTuple {
     let host = tool_exec::NativeHost {
-        registry: &runner.model.registry,
+        registry: &runner.inner.model.registry,
     };
     codetether_tool_execution::execute_with_heartbeat(
         &host,
         &call.id,
         &call.name,
         input,
-        &runner.session.id,
+        &runner.inner.session.id,
         started,
-        runner.events.as_ref(),
+        runner.inner.events.as_ref(),
     )
     .await
 }

@@ -7,15 +7,15 @@ use tokio::sync::mpsc;
 impl codetether_prompt_loop::usage::Host for Runner<'_> {
     type Snapshot = Session;
     fn target(&self) -> (&str, &str) {
-        (&self.model.provider_name, &self.model.model_id)
+        (&self.inner.model.provider_name, &self.inner.model.model_id)
     }
     fn progress(&mut self) -> &mut LoopState {
-        &mut self.progress
+        &mut self.inner.progress
     }
     async fn account(&mut self, tokens: usize, elapsed: Duration) -> anyhow::Result<()> {
-        crate::session::tasks::runtime::record_usage(&self.session.id, tokens, elapsed).await
+        crate::session::tasks::runtime::record_usage(&self.inner.session.id, tokens, elapsed).await
     }
     fn events(&self) -> Option<&mpsc::Sender<SessionEvent>> {
-        self.events.as_ref()
+        self.inner.events.as_ref()
     }
 }

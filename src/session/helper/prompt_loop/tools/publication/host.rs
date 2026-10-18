@@ -10,7 +10,7 @@ use tokio::sync::mpsc;
 impl codetether_prompt_loop::tool_publication::Host for Runner<'_> {
     type Snapshot = Session;
     fn events(&self) -> Option<&mpsc::Sender<SessionEvent>> {
-        self.events.as_ref()
+        self.inner.events.as_ref()
     }
     fn broadcast(&self, step: usize, call: &Call, outcome: &Outcome) {
         super::super::bus::response(self, step, call, outcome);
@@ -22,10 +22,10 @@ impl codetether_prompt_loop::tool_publication::Host for Runner<'_> {
         super::super::rlm::route(self, call, content)
     }
     fn append(&mut self, message: Message) {
-        self.session.add_message(message);
+        self.inner.session.add_message(message);
     }
     async fn persist(&mut self) -> anyhow::Result<()> {
-        super::super::super::super::persist::after_tool(self.session).await
+        super::super::super::super::persist::after_tool(self.inner.session).await
     }
     fn record_codesearch(&mut self, missed: bool) {
         super::super::codesearch::record(self, missed);

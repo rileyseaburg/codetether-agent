@@ -26,14 +26,16 @@ pub(crate) async fn initialize<'a>(
     })
     .await?;
     Ok(Runner {
-        session,
-        events,
-        registry,
-        lease_owner: parts.lease_owner,
-        model: parts.model,
-        workspace: parts.workspace,
-        progress: parts.progress,
-        router: parts.router,
-        subagents: parts.subagents,
+        inner: codetether_prompt_loop::RunnerState {
+            session,
+            events,
+            registry,
+            lease_owner: parts.lease_owner,
+            model: parts.model,
+            workspace: parts.workspace,
+            progress: parts.progress,
+            router: parts.router,
+            subagents: parts.subagents,
+        },
     })
 }

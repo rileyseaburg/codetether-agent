@@ -6,7 +6,7 @@ impl Policy for Runner<'_> {
         super::super::call_guard::blocked(self, call)
     }
     fn progress(&mut self) -> &mut LoopState {
-        &mut self.progress
+        &mut self.inner.progress
     }
     fn codesearch_guard(&mut self, step: usize) -> bool {
         super::super::codesearch::guard(self, step)

@@ -7,7 +7,7 @@ impl Tools for Runner<'_> {
         codetether_prompt_loop::response::progress::track_writes(self, step, calls);
     }
     fn add_message(&mut self, message: Message) {
-        self.session.add_message(message);
+        self.inner.session.add_message(message);
     }
     async fn execute(&mut self, step: usize, calls: Vec<ParsedCall>) -> anyhow::Result<()> {
         super::super::super::tools::execute(self, step, calls).await
@@ -16,9 +16,9 @@ impl Tools for Runner<'_> {
 
 impl codetether_prompt_loop::response::progress::Host for Runner<'_> {
     fn progress(&mut self) -> &mut codetether_prompt_loop::LoopState {
-        &mut self.progress
+        &mut self.inner.progress
     }
     fn add_message(&mut self, message: Message) {
-        self.session.add_message(message);
+        self.inner.session.add_message(message);
     }
 }

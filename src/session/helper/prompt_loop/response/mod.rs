@@ -38,12 +38,16 @@ pub(super) async fn normalize(
     runner: &Runner<'_>,
     response: CompletionResponse,
 ) -> CompletionResponse {
-    let response = if let Some(router) = &runner.router {
+    let response = if let Some(router) = &runner.inner.router {
         router
-            .maybe_reformat(response, &runner.model.tools, runner.model.supports_tools)
+            .maybe_reformat(
+                response,
+                &runner.inner.model.tools,
+                runner.inner.model.supports_tools,
+            )
             .await
     } else {
         response
     };
-    super::super::markup::normalize_textual_tool_calls(response, &runner.model.tools)
+    super::super::markup::normalize_textual_tool_calls(response, &runner.inner.model.tools)
 }

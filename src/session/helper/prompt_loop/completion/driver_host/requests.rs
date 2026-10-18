@@ -11,11 +11,11 @@ impl Requests for Runner<'_> {
     }
     async fn dispatch(&mut self, request: CompletionRequest) -> anyhow::Result<CompletionResponse> {
         super::super::super::super::prompt_call::complete_step(
-            &self.model.provider,
+            &self.inner.model.provider,
             request,
-            &self.session.id,
-            self.model.supports_tools,
-            self.events.as_ref(),
+            &self.inner.session.id,
+            self.inner.model.supports_tools,
+            self.inner.events.as_ref(),
         )
         .await
     }

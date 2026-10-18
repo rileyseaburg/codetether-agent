@@ -4,11 +4,11 @@ use crate::provider::CompletionResponse;
 pub(super) async fn emit(runner: &mut Runner<'_>, step: usize, response: &CompletionResponse) {
     codetether_prompt_loop::output::emit(
         codetether_prompt_loop::output::Context {
-            output: &mut runner.progress.output,
-            events: runner.events.as_ref(),
-            bus: runner.session.bus.as_ref(),
-            agent: &runner.session.agent,
-            turn_id: &runner.progress.turn_id,
+            output: &mut runner.inner.progress.output,
+            events: runner.inner.events.as_ref(),
+            bus: runner.inner.session.bus.as_ref(),
+            agent: &runner.inner.session.agent,
+            turn_id: &runner.inner.progress.turn_id,
             step,
         },
         response,

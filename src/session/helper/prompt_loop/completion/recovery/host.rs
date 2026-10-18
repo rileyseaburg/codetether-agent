@@ -22,8 +22,8 @@ impl codetether_prompt_loop::completion::Host for Native<'_, '_> {
         super::super::derived::derive(self.runner, policy, keep).await
     }
     fn failed(&mut self) {
-        self.runner.session.metadata.delegation.update(
-            &self.runner.model.provider_name,
+        self.runner.inner.session.metadata.delegation.update(
+            &self.runner.inner.model.provider_name,
             crate::session::delegation_skills::MODEL_CALL,
             self.attempt.bucket,
             false,
@@ -36,6 +36,6 @@ impl codetether_prompt_loop::completion::Host for Native<'_, '_> {
         super::super::derived::lsp(self.runner, step).await
     }
     fn events(&self) -> Option<&mpsc::Sender<SessionEvent>> {
-        self.runner.events.as_ref()
+        self.runner.inner.events.as_ref()
     }
 }

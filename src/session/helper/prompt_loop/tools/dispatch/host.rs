@@ -4,7 +4,7 @@ use codetether_tool_parallel::dispatch::ToolCall;
 use serde_json::Value;
 impl codetether_tool_parallel::dispatch::Host for Runner<'_> {
     fn allow_parallel(&self) -> bool {
-        self.events.is_some()
+        self.inner.events.is_some()
     }
     async fn parallel(&mut self, calls: &[ToolCall]) -> bool {
         super::super::parallel::run(self, calls).await

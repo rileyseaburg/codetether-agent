@@ -21662,3 +21662,25 @@ passed. No dependency or lockfile changes. Evidence:
 `artifacts/consolidation-application-constructors/`. No Cargo, rustc, or Python
 commands ran; compilation and runtime tests remain unverified. Full workspace
 consolidation remains active.
+
+### Shared prompt-runner state ownership
+
+Moved all nine prompt-runner fields into `codetether-prompt-loop::RunnerState`:
+borrowed session, event channel, provider registry, lease owner, model state,
+workspace, progress, router and sub-agent watcher. Generic service parameters
+preserve the existing native types without adding dependencies. The native
+runner is now a one-field wrapper so application execution-hook implementations
+remain local and legal.
+
+Updated 41 caller/binding files through explicit `inner` field paths. The native
+state and setup files complete the ownership change, with setup retaining the
+same field order and values. Static comparison checked all 70 other native
+prompt-loop files, including unchanged files and the updated image regression
+fixture, against only those field-path substitutions. Non-runner adapters were
+left unchanged. Shared/native field types were checked under specialization.
+
+Source/dependency graphs across 692 roots and 564 crates, direct rustfmt,
+native file-size limits, and whitespace checks passed. No dependency or lockfile
+changes. Evidence: `artifacts/consolidation-prompt-runner-state/`. No Cargo,
+rustc, or Python commands ran; compilation and runtime tests remain unverified.
+Full workspace consolidation remains active.

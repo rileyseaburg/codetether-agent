@@ -11,17 +11,18 @@ use anyhow::Result;
 /// Returns an error when the selected provider is absent from the registry.
 pub(super) fn apply(runner: &mut Runner<'_>, bucket: Bucket) -> Result<bool> {
     let Some((name, model_id)) = super::super::super::router::choose_router_target_bandit(
-        &runner.registry,
-        &runner.session.metadata.delegation,
+        &runner.inner.registry,
+        &runner.inner.session.metadata.delegation,
         bucket,
-        &runner.model.provider_name,
-        &runner.model.model_id,
+        &runner.inner.model.provider_name,
+        &runner.inner.model.model_id,
     ) else {
         return Ok(false);
     };
     tracing::info!(to_provider = %name, to_model = %model_id,
         "Failing over to alternate provider/model");
     let provider = runner
+        .inner
         .registry
         .get(&name)
         .ok_or_else(|| anyhow::anyhow!("Provider {name} not found"))?;
@@ -29,8 +30,8 @@ pub(super) fn apply(runner: &mut Runner<'_>, bucket: Bucket) -> Result<bool> {
         provider.clone(),
         &name,
         &model_id,
-        runner.session,
+        runner.inner.session,
     );
-    runner.model = ModelState::new(name, model_id, provider, step);
+    runner.inner.model = ModelState::new(name, model_id, provider, step);
     Ok(true)
 }

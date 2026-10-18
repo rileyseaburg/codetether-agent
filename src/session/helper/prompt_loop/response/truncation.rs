@@ -12,9 +12,9 @@ pub(super) async fn record(
 ) -> bool {
     codetether_prompt_loop::repair::record(
         &mut host::Native {
-            session: &mut *runner.session,
-            output: &mut runner.progress.output,
-            events: runner.events.as_ref(),
+            session: &mut *runner.inner.session,
+            output: &mut runner.inner.progress.output,
+            events: runner.inner.events.as_ref(),
         },
         &response.message,
         calls.is_empty(),

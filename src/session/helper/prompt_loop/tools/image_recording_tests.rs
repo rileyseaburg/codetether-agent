@@ -19,7 +19,7 @@ async fn serial_image_recording_preserves_success_and_failure_attachments() {
     let mut runner = prompt_loop::initialize(&mut session, None, Arc::new(providers))
         .await
         .unwrap();
-    runner.model.registry = Arc::new(registry);
+    runner.inner.model.registry = Arc::new(registry);
     for (id, success) in [("image-success", true), ("image-failure", false)] {
         let call = super::call::Call::new(
             id.into(),
@@ -28,7 +28,7 @@ async fn serial_image_recording_preserves_success_and_failure_attachments() {
         );
         super::call::run(&mut runner, 0, call).await.unwrap();
     }
-    fixture::assert_recorded(runner.session);
+    fixture::assert_recorded(runner.inner.session);
     assert_eq!(tool.0.load(Ordering::SeqCst), 2);
     assert_eq!(provider.0.load(Ordering::SeqCst), 0);
 }

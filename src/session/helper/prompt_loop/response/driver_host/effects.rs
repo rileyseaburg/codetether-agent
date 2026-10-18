@@ -7,7 +7,7 @@ use codetether_prompt_loop::{
 };
 impl Effects for Runner<'_> {
     async fn ensure_running(&mut self) -> anyhow::Result<()> {
-        crate::session::runtime::boundary::ensure_running(&self.session.id).await
+        crate::session::runtime::boundary::ensure_running(&self.inner.session.id).await
     }
     async fn emit(&mut self, step: usize, response: &CompletionResponse) {
         super::super::output::emit(self, step, response).await;

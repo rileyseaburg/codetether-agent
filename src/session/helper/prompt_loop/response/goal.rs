@@ -3,12 +3,14 @@
 use super::super::{Runner, state::StepFlow};
 
 pub(super) async fn flow(runner: &mut Runner<'_>) -> anyhow::Result<StepFlow> {
-    let decision = crate::session::runtime::continuation::continue_goal(runner.session).await?;
+    let decision =
+        crate::session::runtime::continuation::continue_goal(runner.inner.session).await?;
     Ok(apply(runner, decision))
 }
 
 pub(super) async fn after_message(runner: &mut Runner<'_>) -> anyhow::Result<StepFlow> {
-    let decision = crate::session::runtime::continuation::after_message(runner.session).await?;
+    let decision =
+        crate::session::runtime::continuation::after_message(runner.inner.session).await?;
     Ok(apply(runner, decision))
 }
 
@@ -27,5 +29,5 @@ fn apply(
     }
 }
 fn reset_turn(runner: &mut Runner<'_>) {
-    runner.progress.reset_goal_turn();
+    runner.inner.progress.reset_goal_turn();
 }

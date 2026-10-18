@@ -5,9 +5,9 @@ use codetether_prompt_loop::driver::{Guards, ProviderView};
 impl Guards for Runner<'_> {
     fn provider_view(&self) -> ProviderView<'_> {
         ProviderView {
-            provider: &self.model.provider_name,
-            model: &self.model.model_id,
-            tools: &self.model.tools,
+            provider: &self.inner.model.provider_name,
+            model: &self.inner.model.model_id,
+            tools: &self.inner.model.tools,
         }
     }
     fn tool_first(&mut self, text: &str, calls: bool) -> anyhow::Result<bool> {

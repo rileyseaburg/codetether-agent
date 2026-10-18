@@ -8,14 +8,14 @@ pub(super) fn native_call(
     text: &str,
     calls: bool,
 ) -> anyhow::Result<bool> {
-    if runner.progress.native_retry(
-        &runner.model.provider_name,
-        &runner.model.model_id,
-        &runner.model.tools,
+    if runner.inner.progress.native_retry(
+        &runner.inner.model.provider_name,
+        &runner.inner.model.model_id,
+        &runner.inner.model.tools,
         text,
         calls,
     ) {
-        runner.session.add_message(response.message.clone());
+        runner.inner.session.add_message(response.message.clone());
         super::nudge::add(runner, limits::NATIVE_TOOL_PROMISE_NUDGE);
         return Ok(true);
     }
