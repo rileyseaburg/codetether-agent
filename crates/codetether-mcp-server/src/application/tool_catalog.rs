@@ -1,6 +1,6 @@
 //! Public tool catalog access and direct invocation.
 use super::*;
-impl McpServer {
+impl<H: Application> ApplicationServer<H> {
     /// Register a tool
     pub async fn register_tool(
         &self,

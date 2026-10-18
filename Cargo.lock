@@ -16925,6 +16925,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-bus-core",
+ "codetether-bus-http",
+ "codetether-mcp-bus",
  "codetether-mcp-core",
  "codetether-mcp-transport",
  "codetether-tool-core",

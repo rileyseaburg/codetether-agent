@@ -24,3 +24,7 @@ pub mod setup;
 
 mod state;
 pub use state::ServerState;
+
+/// Complete MCP server with application-supplied policy and tool bindings.
+pub mod application;
+pub use application::{Application, ApplicationServer};

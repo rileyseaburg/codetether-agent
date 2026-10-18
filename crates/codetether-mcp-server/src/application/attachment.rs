@@ -1,11 +1,11 @@
 //! Application registry and live bus attachment.
 use super::*;
-impl McpServer {
+impl<H: Application> ApplicationServer<H> {
     /// Attach the full CodeTether tool registry to the MCP server.
     ///
     /// All tools from the registry will be exposed as MCP tools, replacing
     /// the hardcoded basic tool set. Call before [`Self::run`].
-    pub fn with_tool_registry(mut self, registry: Arc<ToolRegistry>) -> Self {
+    pub fn with_tool_registry(mut self, registry: Arc<H::Registry>) -> Self {
         self.inner.tool_registry = Some(registry);
         self
     }

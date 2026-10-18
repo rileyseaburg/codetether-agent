@@ -1,6 +1,6 @@
 //! Native catalog and registry bindings for shared MCP setup.
 use super::*;
-impl McpServer {
+impl<H: Application> ApplicationServer<H> {
     /// Setup default tools (public, for CLI use)
     pub async fn setup_tools_public(&self) {
         self.setup_tools().await;
@@ -8,12 +8,12 @@ impl McpServer {
 
     /// Register the configured tools through shared setup sequencing.
     pub(super) async fn setup_tools(&self) {
-        codetether_mcp_server::setup::run(self).await;
+        crate::setup::run(self).await;
     }
 }
 
-impl codetether_mcp_server::setup::Host for McpServer {
-    type Registry = Arc<ToolRegistry>;
+impl<H: Application> crate::setup::Host for ApplicationServer<H> {
+    type Registry = Arc<H::Registry>;
 
     fn catalog(&self) -> &ServerCatalog {
         &self.inner.catalog
@@ -28,6 +28,6 @@ impl codetether_mcp_server::setup::Host for McpServer {
     }
 
     async fn register_fallback(&self) {
-        fallback::register(self).await;
+        H::register_fallback(&self.inner.catalog).await;
     }
 }

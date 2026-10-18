@@ -1,6 +1,6 @@
 //! Public prompt-handler catalog access.
 use super::*;
-impl McpServer {
+impl<H: Application> ApplicationServer<H> {
     /// Register a prompt handler
     pub async fn register_prompt(&self, name: &str, handler: McpPromptHandler) {
         self.inner.catalog.register_prompt(name, handler).await

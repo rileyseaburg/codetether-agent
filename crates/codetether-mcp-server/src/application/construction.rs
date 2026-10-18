@@ -1,6 +1,6 @@
 //! Server construction and inert default-registration hook.
 use super::*;
-impl McpServer {
+impl<H: Application> ApplicationServer<H> {
     /// Create a new MCP server over stdio
     pub fn new_stdio() -> Self {
         // Use Arc's unsized coercion to convert Arc<StdioTransport> -> Arc<dyn Transport>
@@ -14,14 +14,15 @@ impl McpServer {
     /// and will not lock stdout. This is intended for CLI flows that need to query
     /// tool metadata or invoke tools directly without running a long-lived stdio server.
     pub fn new_local() -> Self {
-        let transport: Arc<dyn Transport> = Arc::new(super::super::transport::NullTransport::new());
+        let transport: Arc<dyn Transport> = Arc::new(NullTransport::new());
         Self::new(transport)
     }
 
     /// Create a new MCP server with custom transport
     pub fn new(transport: Arc<dyn Transport>) -> Self {
         let mut server = Self {
-            inner: codetether_mcp_server::ServerState::new(transport, env!("CARGO_PKG_VERSION")),
+            _application: PhantomData,
+            inner: crate::ServerState::new(transport, H::version()),
         };
 
         // Register default tools

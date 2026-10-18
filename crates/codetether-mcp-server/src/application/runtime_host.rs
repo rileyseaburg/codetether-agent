@@ -1,5 +1,5 @@
 //! Bind shared MCP dispatch to native invocation and approval policy.
-use super::McpServer;
+use super::{Application, ApplicationServer};
 use codetether_mcp_core::{
     server_catalog::ServerCatalog,
     types::{JsonRpcError, ServerInfo},
@@ -7,7 +7,7 @@ use codetether_mcp_core::{
 use codetether_mcp_transport::Transport;
 use serde_json::Value;
 use tokio::sync::RwLock;
-impl codetether_mcp_server::Host for McpServer {
+impl<H: Application> crate::Host for ApplicationServer<H> {
     fn transport(&self) -> &dyn Transport {
         self.inner.transport.as_ref()
     }
@@ -21,7 +21,7 @@ impl codetether_mcp_server::Host for McpServer {
         &self.inner.initialized
     }
     fn approval_capability(&self) -> Option<Value> {
-        crate::mcp::approval::capability()
+        H::approval_capability()
     }
     async fn setup(&self) {
         self.setup_tools().await;
@@ -30,6 +30,6 @@ impl codetether_mcp_server::Host for McpServer {
         self.handle_call_tool(params).await
     }
     async fn approval(&self, method: &str, params: Option<Value>) -> Result<Value, JsonRpcError> {
-        crate::mcp::approval::handle(method, params).await
+        H::approval(method, params).await
     }
 }

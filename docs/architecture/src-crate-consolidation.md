@@ -21833,3 +21833,27 @@ whitespace checks passed. No dependency or lockfile changes. Evidence:
 `artifacts/consolidation-executor-services/`. No Cargo, rustc, or Python commands
 ran; compilation and runtime tests remain unverified. Full consolidation is
 still active.
+
+### Complete MCP application server ownership
+
+Moved nine native MCP server implementation files into
+`codetether-mcp-server::application`: construction, bus and registry attachment,
+tool/prompt/resource catalogs, invocation, receive-loop entry, runtime dispatch
+bindings, and setup. `ApplicationServer<H>` owns the existing server state;
+`Application` supplies the package version, approval handling and concrete
+tool-registration policy. The native `McpServer` name is now a type alias.
+
+Native registry and fallback policy hosts remain byte-for-byte unchanged.
+Their small registration bindings pass the same catalog and registry to the
+same policy wrappers. Source comparisons preserve all nine moved file bodies
+apart from generic type and callback substitutions, including local versus
+stdio construction and the original inert default-registration hook.
+
+Added only the bus HTTP and MCP bus dependencies to the owning crate. The
+staged lockfile contains only those two package dependency edges; unrelated
+working lockfile changes remain untouched. Module and dependency checks cover
+692 roots and 564 crates, with no missing modules or dependency cycles.
+Direct rustfmt, source comparisons, native file-size limits and whitespace
+checks passed. Evidence: `artifacts/consolidation-mcp-application/`.
+No Cargo, rustc or Python commands ran; compilation and runtime tests remain
+unverified. Full consolidation remains active.

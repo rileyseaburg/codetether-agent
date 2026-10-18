@@ -1,6 +1,6 @@
 //! Public resource registration and metadata access.
 use super::*;
-impl McpServer {
+impl<H: Application> ApplicationServer<H> {
     /// Register a resource
     pub async fn register_resource(
         &self,

@@ -7,6 +7,8 @@ license = "MIT"
 description = "MCP server request dispatch and transport receive loop"
 
 [dependencies]
+codetether-bus-http = { path = "../codetether-bus-http", version = "0.1.0" }
+codetether-mcp-bus = { path = "../codetether-mcp-bus", version = "0.1.0" }
 anyhow = "1"
 codetether-mcp-core = { path = "../codetether-mcp-core", version = "0.1.0" }
 codetether-mcp-transport = { path = "../codetether-mcp-transport", version = "0.1.0" }

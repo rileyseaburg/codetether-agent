@@ -1,13 +1,8 @@
-//! Bind the native registry to shared MCP tool selection and registration.
+//! Native executable-tool policy for shared MCP registration.
 mod host;
-use super::{McpServer, ToolRegistry};
+use crate::tool::ToolRegistry;
+use codetether_mcp_core::server_catalog::ServerCatalog;
 use std::sync::Arc;
-impl McpServer {
-    pub(super) async fn register_registry_tools(&self, registry: &Arc<ToolRegistry>) {
-        codetether_mcp_server::registry::register(
-            &self.inner.catalog,
-            &host::Registry(registry.as_ref()),
-        )
-        .await;
-    }
+pub(super) async fn register(catalog: &ServerCatalog, registry: &Arc<ToolRegistry>) {
+    codetether_mcp_server::registry::register(catalog, &host::Registry(registry.as_ref())).await;
 }
