@@ -5939,6 +5939,7 @@ name = "codetether-swarm-view"
 version = "0.1.0"
 dependencies = [
  "codetether-agent-core",
+ "codetether-chat-model",
  "codetether-session-control",
  "codetether-swarm-core",
  "codetether-view-retention",

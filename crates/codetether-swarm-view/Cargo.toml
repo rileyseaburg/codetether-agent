@@ -7,6 +7,7 @@ license = "MIT"
 description = "Swarm state, event reduction and terminal presentation"
 
 [dependencies]
+codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
 codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
 codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }
 codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }

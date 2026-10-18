@@ -12134,3 +12134,19 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-streaming-preview/.
 - No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
   consolidation remains incomplete.
+
+### Worker transcript projection and cold construction
+
+- Moved selected-worker transcript projection and message-role conversion into
+  codetether-swarm-view, using the existing shared chat model. Native selection
+  now supplies swarm state and the selected agent name.
+- Moved cold transcript construction into codetether-tool-panel. It builds
+  entries, applies the existing empty banner, renders pending activity through
+  the lazy approval lookup and returns the tool-scroll limit. Native code applies
+  that limit to AppState and returns the owned rendered lines.
+- Verification: seven source comparisons passed for projection, classification,
+  construction and native adapters, plus unchanged swarm integration fixtures.
+  Three new modules stay below 37 code lines. Module/dependency graph checks,
+  direct formatting, source limits and diff checks passed.
+- Evidence: artifacts/consolidation-transcript-projection/. No Cargo, rustc,
+  compilation, tests or benchmark execution ran. Full consolidation is incomplete.

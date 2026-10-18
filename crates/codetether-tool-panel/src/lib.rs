@@ -25,3 +25,6 @@ mod entry_panel;
 
 mod streaming_preview;
 pub use streaming_preview::push_streaming_preview;
+
+mod transcript;
+pub use transcript::build_transcript;

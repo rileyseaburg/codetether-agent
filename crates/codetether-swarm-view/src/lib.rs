@@ -24,3 +24,7 @@ pub use state::SwarmViewState;
 mod view;
 pub use codetether_agent_core::events::{AgentMessageEntry, AgentToolCallDetail};
 pub use view::{render_swarm_view, swarm_view_fmt};
+
+mod transcript;
+mod transcript_role;
+pub use transcript::active_messages;
