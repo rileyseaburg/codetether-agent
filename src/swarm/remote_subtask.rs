@@ -32,7 +32,8 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
     let working_dir = setup::workspace(&payload)?;
     let resources = resources::resolve(&payload, &working_dir).await?;
     let (system_prompt, user_prompt) = prompts::build(&payload, &working_dir);
-    let probe = super::remote_probe::start(&payload.subtask_id, payload.probe_interval_secs);
+    let probe =
+        codetether_swarm_k8s::probe::start(&payload.subtask_id, payload.probe_interval_secs);
     let started = Instant::now();
     let run_result = invoke::run(
         &payload,

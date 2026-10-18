@@ -22,8 +22,6 @@ mod live_bus;
 pub mod orchestrator;
 mod quality_shell;
 pub mod rate_limiter;
-mod remote_probe;
-mod remote_probe_metrics;
 pub mod remote_subtask;
 pub mod result_store;
 pub mod speculative;

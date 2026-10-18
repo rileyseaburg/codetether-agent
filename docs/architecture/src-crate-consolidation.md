@@ -20342,3 +20342,23 @@ cycles, file-size ratchet, whitespace and direct formatting. The removed
 source is retained in `artifacts/consolidation-persistence-cleanup/` with the
 verification evidence. No Cargo, rustc, Python, Rust tests or storage operations
 ran; compilation and runtime remain unverified.
+
+### Remote branch probe ownership
+
+Moved remote branch probe lifecycle and Git metrics into
+`codetether-swarm-k8s::probe`, and removed both native probe implementation
+files. The remote subtask now starts the crate-owned probe directly; finish
+still signals and joins the observer before structured result emission.
+
+Preserved zero-interval disablement, immediate first emission, the three-second
+minimum interval, stdout JSON prefix, error handling, changed-file/line metrics
+and shutdown semantics. The existing protocol field `compile_ok` still means
+`git diff --check` succeeded; it does not claim Rust compilation. No dependencies
+changed.
+
+Validation: complete state/start/finish/emit/metric body comparisons, unchanged
+remote-subtask body except the start path, unchanged wire types/constants/tests,
+module reachability, dependency cycles, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-remote-probe/`. Cargo, rustc,
+Python, Rust tests and the observer were not run; compilation and runtime remain
+unverified.

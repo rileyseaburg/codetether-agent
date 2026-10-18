@@ -1,6 +1,6 @@
 //! Static Git metrics for a Kubernetes branch-observation probe.
 
-use super::kubernetes_executor::RemoteBranchProbe;
+use codetether_swarm_core::remote_protocol::RemoteBranchProbe;
 use std::process::{Command, Output};
 
 pub(super) fn snapshot(subtask_id: &str) -> RemoteBranchProbe {

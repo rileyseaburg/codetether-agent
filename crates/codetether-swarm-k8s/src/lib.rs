@@ -34,3 +34,6 @@ mod host;
 pub use host::{Cache, Host};
 /// Pod health scoring shared with native compatibility callers.
 pub mod resource_health;
+
+/// Remote-worker branch observation and probe thread lifecycle.
+pub mod probe;
