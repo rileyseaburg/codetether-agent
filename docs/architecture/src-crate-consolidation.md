@@ -8805,3 +8805,22 @@ at most 32 code lines. Evidence is in
 `artifacts/consolidation-session-location/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The broader consolidation
 remains active.
+
+### Dedicated writeback-journal crate
+
+Moved transaction identifiers, typed operations/rejections/events, the per-session
+stage/reject/commit state machine and ordered JSONL append into
+`crates/codetether-writeback-journal`. Seventeen modules separate serialized
+contracts, construction, queries, each transition, persistence and existing tests.
+The native append wrapper still resolves and validates the session path before
+calling the path-based crate API.
+
+Transaction IDs, pending-entry handling, event order/timestamps, serde tags,
+unknown-transaction errors, batch serialization and append/flush order remain
+unchanged. Nineteen static comparisons cover all moved types/methods, appending,
+the native path boundary, four moved tests and two unchanged location/journal
+integration tests. Module references, workspace dependencies, file budgets and
+whitespace checks passed; crate files contain at most 26 code lines. Evidence is
+in `artifacts/consolidation-writeback-journal/`. Compilation and runtime tests
+were not run. No Cargo, rustc or Python commands ran. The overall consolidation
+goal remains active.
