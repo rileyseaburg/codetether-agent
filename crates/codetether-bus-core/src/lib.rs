@@ -42,3 +42,6 @@ pub mod a2a_messages;
 
 /// Correlated tool request/response event publication.
 pub mod tool_events;
+
+/// Correlated assistant reasoning and text events.
+pub mod assistant_events;

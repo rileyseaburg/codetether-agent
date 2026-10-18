@@ -1,5 +1,5 @@
 use super::is_preamble;
-use crate::provider::ContentPart;
+use codetether_provider_core::ContentPart;
 
 fn call(name: &str) -> ContentPart {
     ContentPart::ToolCall {

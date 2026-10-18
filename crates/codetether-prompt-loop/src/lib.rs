@@ -16,3 +16,6 @@ pub use workspace::WorkspaceState;
 
 /// Provider-response retry decisions and corrective messages.
 pub mod response;
+
+/// Assistant stream events, bus publication and final-answer accumulation.
+pub mod output;

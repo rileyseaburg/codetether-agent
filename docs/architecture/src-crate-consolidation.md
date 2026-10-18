@@ -15624,3 +15624,22 @@ Full workspace consolidation remains active.
   whitespace. Evidence: `artifacts/consolidation-response-guards/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete; native response effects still await migration.
+
+### Shared assistant-output publication
+
+- Moved assistant segment collection, streaming completion events, bus dispatch
+  and final-answer accumulation into `codetether-prompt-loop::output`.
+- Moved correlated assistant thinking/text message construction into
+  `codetether-bus-core::assistant_events`; native code supplies only borrowed
+  destinations and identity fields.
+- Moved pre-tool narration classification and its six tests into the output
+  module. Native API compatibility remains a re-export.
+- Preserved thinking/text event order, bus correlation and payloads, live
+  publication of preamble text, and suppression of that preamble from the final
+  accumulated answer. The native response-flow caller is unchanged.
+- Verification: expanded output/stream comparisons, complete bus and classifier
+  body comparisons, unchanged tests, native field projection, module/dependency
+  graphs, direct rustfmt, file budgets and isolated lock additions. Evidence:
+  `artifacts/consolidation-assistant-output/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.

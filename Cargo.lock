@@ -7517,6 +7517,9 @@ dependencies = [
  "codetether-build-policy",
  "anyhow",
  "tracing",
+ "codetether-bus-core",
+ "codetether-session-events",
+ "tokio",
 ]
 
 [[package]]

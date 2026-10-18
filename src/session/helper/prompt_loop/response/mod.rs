@@ -1,6 +1,5 @@
 //! Completion normalization and usage reporting.
 
-mod assistant_bus;
 mod build_exhaustion;
 pub(super) mod build_guard;
 mod flow;
