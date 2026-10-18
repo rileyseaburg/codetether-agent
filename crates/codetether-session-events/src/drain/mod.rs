@@ -1,6 +1,8 @@
 //! Bounded queued-event delivery with cumulative-text coalescing.
 //! [run] retains only the latest adjacent text snapshot, flushing it before
 //! other events and at the end. A native [Handler] applies delivered events.
+mod modes;
+pub use modes::{batch, before_notice};
 mod handler;
 mod run;
 pub use handler::Handler;

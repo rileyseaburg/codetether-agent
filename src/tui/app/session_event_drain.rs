@@ -23,23 +23,10 @@ use crate::tui::worker_bridge::TuiWorkerBridge;
 
 mod host;
 
-/// Maximum number of queued session events processed during a regular UI pass.
-///
-/// This limit prevents a busy session stream from monopolizing the event loop.
-/// Any events left in the channel remain queued for a later drain pass.
-const DRAIN_BATCH_LIMIT: usize = codetether_session_events::drain::BATCH_LIMIT;
-
-/// Maximum number of queued session events flushed before handling a notice.
-///
-/// Completion notices can transfer or finalize session state, so this larger
-/// limit gives pending stream output a chance to reach the UI before the notice
-/// changes runtime ownership or presentation state.
-const NOTICE_DRAIN_LIMIT: usize = codetether_session_events::drain::NOTICE_LIMIT;
-
 /// Drains a bounded batch of pending [`SessionEvent`] values into the TUI state.
 ///
 /// This function is intended for normal render-loop processing. It consumes up
-/// to [`DRAIN_BATCH_LIMIT`] events that are already available on `event_rx` and
+/// to [`codetether_session_events::drain::BATCH_LIMIT`] events that are already available on `event_rx` and
 /// applies their effects to `app`, `slot`, and, when present, `worker_bridge`.
 /// The drain is deliberately bounded so a high-volume stream cannot block
 /// redraws or input handling for too long.
@@ -70,15 +57,13 @@ pub(crate) async fn drain_batch(
     worker_bridge: &Option<TuiWorkerBridge>,
     event_rx: &mut mpsc::Receiver<SessionEvent>,
 ) {
-    codetether_session_events::drain::run(
+    codetether_session_events::drain::batch(
         &mut host::Native {
             app,
             slot,
             worker_bridge,
         },
         event_rx,
-        DRAIN_BATCH_LIMIT,
-        false,
     )
     .await;
 }
@@ -87,7 +72,7 @@ pub(crate) async fn drain_batch(
 ///
 /// This drain mode is used immediately before the TUI handles a runtime notice
 /// that may finalize the session, transfer ownership, or otherwise change how
-/// the active session is represented. It consumes up to [`NOTICE_DRAIN_LIMIT`]
+/// the active session is represented. It consumes up to [`codetether_session_events::drain::NOTICE_LIMIT`]
 /// queued events and enables notice-aware handling in the shared drain core so
 /// pending stream output is applied before the notice takes effect.
 ///
@@ -118,15 +103,13 @@ pub(crate) async fn drain_before_notice(
     worker_bridge: &Option<TuiWorkerBridge>,
     event_rx: &mut mpsc::Receiver<SessionEvent>,
 ) {
-    codetether_session_events::drain::run(
+    codetether_session_events::drain::before_notice(
         &mut host::Native {
             app,
             slot,
             worker_bridge,
         },
         event_rx,
-        NOTICE_DRAIN_LIMIT,
-        true,
     )
     .await;
 }

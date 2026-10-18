@@ -1,5 +1,6 @@
 use super::*;
 use crate::tui::app::session_runtime::SessionSlot;
+use codetether_session_events::drain::BATCH_LIMIT as DRAIN_BATCH_LIMIT;
 
 async fn slot() -> SessionSlot {
     let session = crate::session::Session::new().await.expect("session");

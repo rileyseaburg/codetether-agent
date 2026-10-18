@@ -24401,3 +24401,21 @@ required lockfile dependency entry is staged; unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-recall-tool-search/. No Cargo,
 rustc, Python, compilation, search execution or tests ran. Full consolidation
 remains active.
+
+### TUI event-drain modes moved into the session-events crate
+
+Moved rendering-batch and completion-notice drain mode selection into
+codetether-session-events::drain::{batch,before_notice}. The native TUI adapter
+now binds its handler and delegates to those modes; the existing event limits
+and stop-on-completion flags are unchanged. Removed native constant aliases and
+updated the existing tests to import the shared batch limit directly.
+
+Static comparisons preserve both modes and native handler bindings. Existing
+test bodies are unchanged apart from their constant import. An initial verifier
+incorrectly reconstructed token punctuation; corrected full-source comparison
+passed and the failure is recorded in the evidence directory. Module/dependency
+scans cover 692 roots and 573 crates without missing modules or cycles. Direct
+rustfmt, file limits and whitespace checks passed. Unrelated working changes
+remain untouched. Evidence: artifacts/consolidation-drain-modes/. No Cargo,
+rustc, Python, compilation, event handling or tests ran. Full consolidation
+remains active.
