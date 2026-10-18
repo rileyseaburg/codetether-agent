@@ -23,3 +23,10 @@ pub use render::render_git_view;
 pub use state::GitViewState;
 pub use status::detect_git_status;
 pub use style::heading;
+
+mod current_branch;
+mod report;
+mod report_query;
+mod report_text;
+pub use current_branch::current_branch;
+pub use report::working_tree_report;

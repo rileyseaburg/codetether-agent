@@ -12605,3 +12605,19 @@ Full workspace consolidation remains active.
   only that dependency was staged from Cargo.lock. No approval decisions,
   Cargo, rustc, compilation or Rust tests were executed. Full consolidation
   remains incomplete.
+
+### Git report and branch lookup consolidation
+
+- Moved current-branch detection and the short working-tree status/diff report
+  into codetether-git-view. Four modules contain at most 23 code lines and own
+  Git invocation, report assembly and empty-section formatting.
+- The native /diff wrapper retains input clearing, transcript insertion,
+  status changes and scrolling. The current_branch path re-exports the shared
+  implementation. Query order, early status-error handling, stdout/stderr
+  trimming and detached-HEAD handling remain unchanged.
+- Verification: eight source comparisons passed for query behavior, report
+  branches, formatting, UI effects and unchanged native command tests.
+  Module/dependency checks, direct rustfmt, file limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-git-report/.
+- No dependency or lockfile changes were needed. No moved Git functions, Cargo,
+  rustc, compilation or Rust tests ran. Full consolidation remains incomplete.
