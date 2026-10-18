@@ -4,6 +4,7 @@
 //! [select]. The returned [Ready] owns its event so application handlers run
 //! after the input borrows have ended.
 mod io;
+mod lifecycle_binding;
 mod ready;
 mod select;
 mod selection;

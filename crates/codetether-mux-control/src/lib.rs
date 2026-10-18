@@ -3,6 +3,7 @@
 //! [list_sessions] returns [MuxSessionSummary] values. Window operations and
 //! [stop_session] act through authenticated clients; [report_runtime] publishes
 //! inherited TUI state and [subscribe_live_output] follows retained PTY output.
+mod frontend;
 mod list;
 mod live;
 mod mutate;

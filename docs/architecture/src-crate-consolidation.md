@@ -23621,6 +23621,23 @@ unrelated working files are unchanged; no manifest or lock changes were needed.
 Evidence: artifacts/consolidation-queued-prompt/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
 
+### Loop startup, shutdown and mux reporter bindings
+
+Moved loop resource construction and ordered shutdown into
+codetether-tui-reactor::lifecycle_binding. Moved the frontend mux reporter and
+borrowed status projection into codetether-mux-control::frontend. Root files
+select their types, visibility and callbacks; the snapshot test section remains
+byte-for-byte unchanged. The cleanup order still clears mux status, stops the
+worker bridge, then shuts down the session runtime.
+
+All six expanded function bodies and loop setup resource fields match after
+the explicit reporter type alias. Reporter visibility and timer specialization
+were checked separately. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Unrelated files are unchanged; no manifest or lock changes were
+needed. Evidence: artifacts/consolidation-loop-lifecycle/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
+
 ### Storage callers use the owning API names directly
 
 Removed the native projection and summary forwarding files after updating five
