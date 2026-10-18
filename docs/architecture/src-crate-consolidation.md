@@ -20763,3 +20763,22 @@ roots, native file-size checks, and whitespace checks passed. Evidence:
 `artifacts/consolidation-worker-selection/`. No Cargo, rustc, or Python commands
 ran; no credential access or Rust tests were executed. Compilation and runtime
 behavior remain unverified. The broader workspace consolidation is still active.
+
+### Model-picker feedback ownership
+
+Moved picker-opening feedback and refresh-status visibility decisions into
+`codetether-model-picker`. Its `open_with_status` method now supplies the same
+opening message to native state and both shared interactive opening paths.
+`drain_refresh_status` owns the ready-result drain and the active-picker/view
+condition; native state only assigns a returned message. Hidden picker refreshes
+still update their catalog without replacing unrelated status output.
+
+Existing lifecycle reset and refresh-drain implementation bodies are unchanged,
+as are the native model-refresh regression tests. No dependencies changed.
+Verification checks the migrated visibility predicate, conditional status
+assignment, unified opening calls, and unchanged implementation/test sources.
+Direct rustfmt, source graph checks across 693 roots, native file-size checks,
+and whitespace checks passed. Evidence:
+`artifacts/consolidation-picker-feedback/`. No Cargo, rustc, or Python commands
+ran. Rust tests and compilation remain unverified. The broader migration goal
+is still active.

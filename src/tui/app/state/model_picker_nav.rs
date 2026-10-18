@@ -9,8 +9,7 @@ impl super::AppState {
     }
 
     pub fn open_model_picker(&mut self) {
-        self.model_picker.open_model_picker();
-        self.status = "Model picker".to_string();
+        self.status = self.model_picker.open_with_status();
     }
 
     pub fn close_model_picker(&mut self) {

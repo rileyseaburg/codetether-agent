@@ -6,6 +6,7 @@
 //! it also owns refresh completion and cache updates. The application supplies
 //! a provider registry and retains shared status output.
 mod data;
+mod feedback;
 mod filter;
 mod footer;
 mod header;

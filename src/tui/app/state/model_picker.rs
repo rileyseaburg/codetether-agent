@@ -10,11 +10,11 @@ impl super::AppState {
         self.model_picker.start_model_refresh(registry);
     }
     pub fn drain_model_refresh(&mut self) {
-        let Some(summary) = self.model_picker.drain_model_refresh() else {
-            return;
-        };
-        if self.model_picker.model_picker_active || self.view_mode == ViewMode::Model {
-            self.status = summary.status_message();
+        if let Some(status) = self
+            .model_picker
+            .drain_refresh_status(self.view_mode == ViewMode::Model)
+        {
+            self.status = status;
         }
     }
 

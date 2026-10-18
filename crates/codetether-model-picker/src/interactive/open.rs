@@ -20,8 +20,8 @@ pub fn open_for_session<V: View, R: Registry + Send + 'static>(
     model: Option<String>,
     registry: Option<&Arc<R>>,
 ) {
-    view.picker().open_model_picker();
-    view.set_status("Model picker".to_string());
+    let status = view.picker().open_with_status();
+    view.set_status(status);
     view.show_picker();
     let picker = view.picker();
     picker.model_picker_target_model = model;
@@ -51,8 +51,8 @@ pub fn open_without_session<V: View, R: Registry + Send + 'static>(
     view: &mut V,
     registry: Option<&Arc<R>>,
 ) {
-    view.picker().open_model_picker();
-    view.set_status("Model picker".to_string());
+    let status = view.picker().open_with_status();
+    view.set_status(status);
     view.show_picker();
     refresh::start(view, registry, false);
 }
