@@ -22,3 +22,7 @@ pub use store::{remove, upsert};
 pub use store_lock::acquire;
 #[cfg(test)]
 mod tests;
+
+/// Implementation support for application-local session bindings.
+#[doc(hidden)]
+pub mod session_binding;

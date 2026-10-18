@@ -24682,3 +24682,23 @@ working changes remain untouched. Evidence:
 artifacts/consolidation-context-request-bindings/. No Cargo, rustc, Python,
 compiler macro expansion, context preparation or tests ran. Full consolidation
 remains active.
+
+### Recall projection and storage bindings moved into owning crates
+
+Moved the Session projection function and nine storage/query/worker methods
+into recall-index, recall-store, recall-query and recall-worker. Native
+bindings retain the same stateless Default host, session type, workspace
+canonicalizer, projection reader, backfill scheduler, indexed listing, cursor
+reader and commit function. Removed recall/query_host.rs and worker_host.rs;
+build.rs and storage_host.rs now contain declarations. No dependencies changed.
+
+Static comparisons preserve projection fields/canonicalization and all method
+signatures and bodies after explicit callback/path substitutions. An initial
+projection comparison selected a macro-pattern token; the corrected emitted
+function comparison passed and its initial failure is documented. Module and
+dependency scans cover 693 roots and 574 crates without missing modules or
+cycles. Direct dependency audit, direct rustfmt, file limits and whitespace
+checks passed. Unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-recall-storage-bindings/. No Cargo, rustc, Python,
+compiler macro expansion, indexing, storage I/O or tests ran. Full consolidation
+remains active.

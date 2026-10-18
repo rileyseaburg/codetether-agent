@@ -17,3 +17,7 @@ mod worker;
 pub use backfill::schedule as schedule_backfill;
 pub use host::Host;
 pub use queue::{remove, schedule};
+
+/// Implementation support for application-local session bindings.
+#[doc(hidden)]
+pub mod session_binding;

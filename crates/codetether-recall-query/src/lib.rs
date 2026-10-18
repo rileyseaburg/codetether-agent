@@ -14,3 +14,7 @@ mod workspace;
 pub use host::Host;
 pub use options::SearchOptions;
 pub use search::run;
+
+/// Implementation support for application-local session bindings.
+#[doc(hidden)]
+pub mod session_binding;

@@ -25,3 +25,7 @@ pub use query::Query;
 pub use rank::{merge, search};
 #[cfg(test)]
 mod tests;
+
+/// Implementation support for application-local session bindings.
+#[doc(hidden)]
+pub mod session_binding;
