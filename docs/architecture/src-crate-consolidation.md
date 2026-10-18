@@ -23653,6 +23653,22 @@ unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-chat-routing/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
 
+### Chat slash-command intake bindings
+
+Moved chat command intake, retained-session parity/command handling and the
+typed entry point into codetether-slash-command::intake::binding modules.
+Removed three root host files. Root declarations retain shell, mux and
+session-free modules and select the same handlers and concrete session types.
+
+All eleven expanded function bodies and both borrowed host layouts match their
+originals after callback-path qualification. Session-free tests are byte-for-byte
+unchanged. Shared shell/approval/mux priority, missing-session behavior and input
+clearing are unchanged. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Unrelated working files are unchanged; no manifest or lock changes
+were needed. Evidence: artifacts/consolidation-slash-intake/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
+
 ### Queued-prompt frontend bindings
 
 Moved queued-prompt command/answer delivery, input access, queue gates and the
