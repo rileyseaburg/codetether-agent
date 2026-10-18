@@ -32,3 +32,5 @@ impl std::fmt::Debug for ToolRegistry {
 
 /// Shared ordered application tool registration catalog.
 pub mod catalog;
+/// Shared registry creation and weak batch-reference initialization.
+pub mod lifecycle;

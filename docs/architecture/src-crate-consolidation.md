@@ -15190,3 +15190,24 @@ Full workspace consolidation remains active.
   checks passed. Evidence: artifacts/consolidation-registration-groups/.
 - No dependencies changed. No tool execution, Cargo, rustc or Rust tests ran.
   Full workspace consolidation remains unfinished.
+
+### Shared registry initialization ownership
+
+- Moved two-phase `ToolRegistry::with_defaults_arc` / `with_provider_arc`
+  initialization from `src/tool/mod.rs` into
+  `crates/codetether-tool-registry/src/lifecycle/`.
+- The shared lifecycle owns catalog construction, batch registration, optional
+  routed-search registration, `Arc` creation, and final weak batch binding in
+  the original order. The native adapter supplies only the concrete registry,
+  batch, provider-registry/search constructors, and weak-reference setter.
+- Both public application constructors now delegate to the shared lifecycle.
+  Dependencies and all other registry methods are unchanged.
+- Verification: Node token comparisons expanded both shared lifecycle functions
+  through the native bindings and matched their original function bodies;
+  checked five constructor/registration/binding adapters and all unchanged
+  registry methods. The module reachability and workspace dependency-cycle
+  checks, direct rustfmt, file-limit ratchet, and `git diff --check` passed.
+  Evidence: `artifacts/consolidation-registry-lifecycle/`.
+- No Cargo, rustc, Python, compilation, or Rust tests were executed. The broader
+  consolidation remains incomplete, including swarm execution, native session
+  adapters, UI command effects, and application bootstrap implementation.

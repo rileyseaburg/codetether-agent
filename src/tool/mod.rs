@@ -54,6 +54,7 @@ pub mod progress;
 pub mod question;
 pub mod ralph;
 pub mod readonly;
+mod registry_lifecycle;
 pub mod relay_autochat;
 pub mod ripgrep;
 pub mod rlm;
@@ -187,19 +188,7 @@ impl ToolRegistry {
     /// The batch tool needs a weak reference to the registry, so we use
     /// a two-phase initialization pattern.
     pub fn with_defaults_arc() -> Arc<Self> {
-        let mut registry = Self::with_defaults();
-
-        // Create batch tool without registry reference
-        let batch_tool = Arc::new(batch::BatchTool::new());
-        registry.register(batch_tool.clone());
-
-        // Wrap registry in Arc
-        let registry = Arc::new(registry);
-
-        // Now give batch tool a weak reference to the registry
-        batch_tool.set_registry(Arc::downgrade(&registry));
-
-        registry
+        codetether_tool_registry::lifecycle::with_defaults::<registry_lifecycle::Native>()
     }
 
     /// Create Arc-wrapped registry with provider and batch tool properly initialized.
@@ -207,28 +196,9 @@ impl ToolRegistry {
     /// a two-phase initialization pattern.
     #[allow(dead_code)]
     pub fn with_provider_arc(provider: Arc<dyn Provider>, model: String) -> Arc<Self> {
-        let mut registry = Self::with_provider(Arc::clone(&provider), model);
-
-        // Create batch tool without registry reference
-        let batch_tool = Arc::new(batch::BatchTool::new());
-        registry.register(batch_tool.clone());
-
-        // Auto-register the LLM-routed `search` tool. Build a single-provider
-        // `ProviderRegistry` from the provider we already have so the router
-        // can call back into it without the full vault registry.
-        let mut providers = crate::provider::ProviderRegistry::new();
-        providers.register(Arc::clone(&provider));
-        registry.register(Arc::new(search_router::SearchTool::new(Arc::new(
-            providers,
-        ))));
-
-        // Wrap registry in Arc
-        let registry = Arc::new(registry);
-
-        // Now give batch tool a weak reference to the registry
-        batch_tool.set_registry(Arc::downgrade(&registry));
-
-        registry
+        codetether_tool_registry::lifecycle::with_provider::<registry_lifecycle::Native>(
+            provider, model,
+        )
     }
 }
 
