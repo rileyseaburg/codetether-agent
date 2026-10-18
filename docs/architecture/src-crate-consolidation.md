@@ -25349,3 +25349,27 @@ existing package lock entries are staged; unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-edit-todo/. No Cargo, rustc,
 Python, undo/edit execution or runtime tests ran. Full consolidation remains
 active.
+
+### Native crash startup moved into a dedicated crate
+
+Moved src/crash.rs and src/startup_crash.rs into codetether-native-crash. The
+library and binary retain their public/local names through re-exports. Both
+initialization paths call the same shared services, preserve version identity
+and install the same native memory guards. The new package version matches the
+application's 4.7.6-dev.38 and must stay synchronized on release.
+
+A bounded lexical inventory of remaining root-module references is recorded in
+artifacts/consolidation-runtime-boundaries/before.json. It includes test code
+and grouped crate imports, but not every super-based reference. It identifies
+interdependent runtime modules and is planning evidence, not proof of a minimal
+production dependency graph or completed module ownership. The crash adapter
+had no dependencies on the remaining native types and could move independently.
+
+Both source comparisons pass after import/visibility and module-doc changes.
+Static scans cover 711 roots and 597 crates without missing modules, cycles or
+undeclared direct workspace dependencies. Declaration, file-limit, direct
+rustfmt and whitespace checks pass. Only the new package/root lock entries are
+staged; unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-native-crash/. No Cargo, rustc, Python, crash upload,
+initialization execution or runtime tests ran. Full consolidation remains
+active.

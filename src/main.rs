@@ -18,7 +18,7 @@ use codetether_agent::{
 
 mod application;
 use codetether_cleanup_cli as cleanup_cli;
-mod startup_crash;
+use codetether_native_crash::startup as startup_crash;
 mod worker_cli;
 use codetether_worktree_cli as worktree_cli;
 

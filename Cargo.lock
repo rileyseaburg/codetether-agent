@@ -1945,6 +1945,7 @@ dependencies = [
  "codetether-native-rustyroad",
  "codetether-native-tui",
  "codetether-native-cli",
+ "codetether-native-crash",
 ]
 
 [[package]]
@@ -3644,6 +3645,16 @@ dependencies = [
  "codetether-worktree-cli",
  "reqwest 0.13.4",
  "tokio",
+]
+
+[[package]]
+name = "codetether-native-crash"
+version = "4.7.6-dev.38"
+dependencies = [
+ "codetether-cli-startup",
+ "codetether-config",
+ "codetether-crash",
+ "codetether-native-telemetry",
 ]
 
 [[package]]

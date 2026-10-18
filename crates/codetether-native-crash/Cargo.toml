@@ -1,0 +1,13 @@
+[package]
+name = "codetether-native-crash"
+version = "4.7.6-dev.38"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native crash-report startup and memory guard identity"
+
+[dependencies]
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-crash = { path = "../codetether-crash", version = "0.1.0" }
+codetether-cli-startup = { path = "../codetether-cli-startup", version = "0.1.0" }
+codetether-native-telemetry = { path = "../codetether-native-telemetry", version = "4.7.6-dev.38" }
