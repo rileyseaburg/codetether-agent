@@ -6921,6 +6921,7 @@ dependencies = [
  "ratatui",
  "tokio",
  "tracing",
+ "codetether-tui-cli",
 ]
 
 [[package]]

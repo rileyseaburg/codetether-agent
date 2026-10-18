@@ -13,13 +13,12 @@
 use cli::{Cli, Command};
 use codetether_agent::{
     a2a, benchmark, bus, cli, forage, github_pr, indexer, mcp, mux, provider, ralph, server, swarm,
-    tool,
+    tool, tui,
 };
 
 mod application;
 use codetether_cleanup_cli as cleanup_cli;
 mod startup_crash;
-mod tui_cli;
 mod worker_cli;
 use codetether_worktree_cli as worktree_cli;
 
@@ -40,7 +39,10 @@ async fn dispatch(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
         Some(Command::Bonsai(args)) => cli::bonsai::run(args).await,
         Some(Command::Windows(args)) => cli::windows::run(args).await,
-        Some(Command::Tui(args)) => tui_cli::execute(Some(args), cli.project, cli.yolo).await,
+        Some(Command::Tui(args)) => {
+            codetether_tui_cli::execute::<tui::app::run::Cli>(Some(args), cli.project, cli.yolo)
+                .await
+        }
         Some(Command::Mux(args)) => mux::execute(args).await,
         Some(Command::Serve(args)) => server::serve(args).await,
         Some(Command::Run(args)) => cli::run::execute(args).await,
@@ -103,6 +105,8 @@ async fn dispatch(cli: Cli) -> anyhow::Result<()> {
 
         // OKR commands
         Some(Command::Okr(args)) => codetether_okr_cli::execute(args).await,
-        None => tui_cli::execute(None, cli.project, cli.yolo).await,
+        None => {
+            codetether_tui_cli::execute::<tui::app::run::Cli>(None, cli.project, cli.yolo).await
+        }
     }
 }

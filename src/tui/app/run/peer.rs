@@ -3,7 +3,9 @@ use std::sync::Arc;
 use crate::a2a::spawn::{A2APeerHandle, SpawnOptions};
 use crate::bus::AgentBus;
 
-pub(super) struct PeerEndpoint {
+/// Retains the optional peer endpoint for the lifetime of the TUI runtime.
+pub struct PeerEndpoint {
+    /// Whether startup established a usable peer endpoint.
     pub ready: bool,
     _handle: Option<A2APeerHandle>,
 }

@@ -5,6 +5,7 @@
 //! policies and hydration consume them. The terminal and peer guards stay alive
 //! through the event loop.
 mod bus;
+pub mod cli;
 mod driver;
 mod host;
 mod project;

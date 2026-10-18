@@ -14,4 +14,5 @@ mod frame;
 mod initial_frame;
 mod load;
 mod runtime;
-pub(super) struct Native;
+/// Application loading, frame and event-loop bindings for TUI startup.
+pub struct Native;

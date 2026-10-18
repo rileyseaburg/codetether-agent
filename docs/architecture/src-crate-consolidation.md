@@ -23764,3 +23764,22 @@ and whitespace checks passed. Only the required lockfile dependency is staged;
 unrelated working changes are preserved. Evidence:
 artifacts/consolidation-cli-parser-tests/. No tests, Cargo, rustc, Python or
 compilation ran. Full consolidation remains active.
+
+### TUI CLI launch adapter moved into the startup crate
+
+Moved the CLI Host implementation into codetether-tui-startup::cli and removed
+src/tui_cli.rs. The native startup driver exports a Cli type alias selecting
+its existing host. Both main dispatch paths call the shared command launcher
+with the same arguments. The host and its concrete peer handle are public
+within their private modules so the exported trait specialization does not
+expose a restricted associated type. Peer lifecycle and startup behavior are
+unchanged. Added the direct tui-startup -> tui-cli dependency.
+
+Static comparisons preserve all six forwarded launch arguments, the native
+startup function body and host implementations, with only the documented
+visibility changes. Module/dependency scans cover 692 roots and 572 crates
+without missing modules or cycles. Direct rustfmt, source file limits and
+whitespace checks passed. Only the required lockfile entry is staged; unrelated
+working changes remain untouched. Evidence: artifacts/consolidation-tui-cli/.
+No Cargo, rustc, Python, compilation, TUI launch or runtime tests ran. Full
+consolidation remains active.

@@ -7,6 +7,7 @@ license = "MIT"
 description = "TUI startup sequencing and concurrent dependency loading"
 
 [dependencies]
+codetether-tui-cli = { path = "../codetether-tui-cli", version = "0.1.0" }
 anyhow = "1"
 codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }
 codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }

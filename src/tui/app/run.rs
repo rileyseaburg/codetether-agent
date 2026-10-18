@@ -25,4 +25,4 @@ mod startup;
 use codetether_cli_startup::logging as tui_log;
 pub use tui_log::open as open_tui_log;
 
-pub use driver::run;
+pub use driver::{Cli, run};
