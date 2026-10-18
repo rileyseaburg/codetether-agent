@@ -24662,3 +24662,23 @@ changes remain untouched. Evidence:
 artifacts/consolidation-session-input-bindings/. No Cargo, rustc, Python,
 compiler macro expansion, input delivery, storage writes or tests ran. Full
 consolidation remains active.
+
+### Context request and incremental bindings moved into owning crates
+
+Moved eight Session methods into context-request and incremental-derivation.
+The native declarations supply the same effective-policy, preparation,
+derivation, recall and prepared-index callbacks. Removed
+context/request_host.rs, request_derive_host.rs and incremental_host.rs. No
+dependencies changed; native request and incremental entry-point bodies are
+unchanged.
+
+Static comparisons preserve signatures and method bodies after explicit path
+substitutions, along with the native callback paths. An initial verifier
+substitution matched prepare before prepared_index; correcting expected-path
+ordering resolved it, with evidence retained. Module/dependency scans cover
+693 roots and 574 crates without missing modules or cycles. Direct dependency
+audit, direct rustfmt, file limits and whitespace checks passed. Unrelated
+working changes remain untouched. Evidence:
+artifacts/consolidation-context-request-bindings/. No Cargo, rustc, Python,
+compiler macro expansion, context preparation or tests ran. Full consolidation
+remains active.

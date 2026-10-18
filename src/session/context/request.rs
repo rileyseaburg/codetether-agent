@@ -4,10 +4,13 @@ use crate::provider::{CompletionRequest, Provider, ToolDefinition};
 use crate::session::Session;
 use anyhow::Result;
 use std::sync::Arc;
-#[path = "request_derive_host.rs"]
-mod derive_host;
-#[path = "request_host.rs"]
-mod host;
+codetether_context_request::impl_session_context!(
+    Session,
+    super::policy::effective_policy,
+    crate::session::index_produce::proactive::prepare,
+    super::policy::derive_with_policy,
+    crate::session::index::recall::prefetch::message
+);
 
 /// Build a provider request from the session's derived context.
 pub async fn build_request_with_context(

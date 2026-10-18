@@ -12,8 +12,10 @@ mod pack;
 #[path = "incremental_required.rs"]
 mod required;
 
-#[path = "incremental_host.rs"]
-mod host;
+codetether_incremental_derivation::impl_session_source!(
+    Session,
+    crate::session::index_produce::proactive::prepared_index
+);
 
 /// [`DerivePolicy::Incremental`](crate::session::derive_policy::DerivePolicy::Incremental)
 /// implementation.

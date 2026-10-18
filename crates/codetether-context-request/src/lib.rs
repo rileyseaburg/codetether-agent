@@ -23,3 +23,7 @@ mod recover;
 
 /// Prepared prompt-loop request construction and reasoning compatibility.
 pub mod attempt;
+
+/// Implementation support for application-local session bindings.
+#[doc(hidden)]
+pub mod session_binding;
