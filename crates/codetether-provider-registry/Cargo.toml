@@ -13,3 +13,5 @@ codetether-provider-factory = { path = "../codetether-provider-factory", version
 codetether-provider-metrics = { path = "../codetether-provider-metrics", version = "0.1.0" }
 codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
 codetether-config = { path = "../codetether-config", version = "0.1.0" }
+serde_json = "1"
+tracing = "0.1"

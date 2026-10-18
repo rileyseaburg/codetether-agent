@@ -7383,6 +7383,8 @@ dependencies = [
  "codetether-provider-metrics",
  "codetether-secrets",
  "codetether-config",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

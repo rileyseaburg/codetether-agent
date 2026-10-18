@@ -39,3 +39,7 @@ impl Default for ProviderRegistry {
         Self::new()
     }
 }
+
+mod tenant_keys;
+pub use tenant_keys::PerTaskProviderKeys;
+pub mod task;

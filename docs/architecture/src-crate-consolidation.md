@@ -14990,3 +14990,21 @@ Full workspace consolidation remains active.
 - Staged lockfile changes contain only the new crate and root dependency.
   No provider construction, network access, Cargo, rustc or Rust tests ran.
   Full workspace consolidation remains unfinished.
+
+### Task credential owner and registry selection
+
+- Moved PerTaskProviderKeys ownership, parsing, source/name projection, provider
+  construction and selected-string cleanup into codetether-provider-registry.
+  The native wrapper delegates and retains the existing public return types.
+- Moved worker task-registry selection into the same crate. Invalid/absent
+  claims still fall back silently; usable task registries take precedence;
+  empty task registries warn before platform fallback. The native Host supplies
+  the existing process-wide cached registry and retains its clone behavior.
+- Verification: six static check groups covered all owner methods and Drop,
+  selection/fallback ordering, native forwarding, unchanged Debug shape/single
+  cleanup, platform-cache access and worker metadata binding. Module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and whitespace
+  checks passed. Evidence: artifacts/consolidation-task-provider-registry/.
+- Added serde_json and tracing dependency edges; only those changes are staged
+  in Cargo.lock. No credential loading, provider construction, network access,
+  Cargo, rustc or Rust tests ran. Full workspace consolidation is unfinished.
