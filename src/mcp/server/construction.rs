@@ -21,16 +21,7 @@ impl McpServer {
     /// Create a new MCP server with custom transport
     pub fn new(transport: Arc<dyn Transport>) -> Self {
         let mut server = Self {
-            transport,
-            catalog: ServerCatalog::new(),
-            initialized: RwLock::new(false),
-            server_info: ServerInfo {
-                name: "codetether".to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-            },
-            bus: None,
-            agent_bus: None,
-            tool_registry: None,
+            inner: codetether_mcp_server::ServerState::new(transport, env!("CARGO_PKG_VERSION")),
         };
 
         // Register default tools

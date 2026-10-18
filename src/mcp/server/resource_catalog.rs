@@ -10,18 +10,19 @@ impl McpServer {
         mime_type: Option<&str>,
         handler: McpResourceHandler,
     ) {
-        self.catalog
+        self.inner
+            .catalog
             .register_resource(uri, name, description, mime_type, handler)
             .await
     }
 
     /// Get resource metadata by URI
     pub async fn get_resource_metadata(&self, uri: &str) -> Option<ResourceMetadata> {
-        self.catalog.get_resource_metadata(uri).await
+        self.inner.catalog.get_resource_metadata(uri).await
     }
 
     /// Get all resource metadata
     pub async fn get_all_resource_metadata(&self) -> Vec<ResourceMetadata> {
-        self.catalog.get_all_resource_metadata().await
+        self.inner.catalog.get_all_resource_metadata().await
     }
 }

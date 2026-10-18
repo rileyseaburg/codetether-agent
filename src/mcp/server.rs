@@ -24,20 +24,10 @@ use codetether_mcp_core::server_catalog::{
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
-use tokio::sync::RwLock;
 
 /// MCP Server implementation
 pub struct McpServer {
-    transport: Arc<dyn Transport>,
-    catalog: ServerCatalog,
-    initialized: RwLock<bool>,
-    server_info: ServerInfo,
-    /// Optional bus bridge for live event monitoring
-    bus: Option<Arc<BusBridge>>,
-    /// Optional local agent bus for publishing tool calls to S3 sink
-    agent_bus: Option<Arc<AgentBus>>,
-    /// Optional tool registry bridging all CodeTether tools to MCP
-    tool_registry: Option<Arc<ToolRegistry>>,
+    inner: codetether_mcp_server::ServerState<BusBridge, ToolRegistry>,
 }
 
 mod attachment;

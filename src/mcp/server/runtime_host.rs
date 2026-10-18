@@ -9,16 +9,16 @@ use serde_json::Value;
 use tokio::sync::RwLock;
 impl codetether_mcp_server::Host for McpServer {
     fn transport(&self) -> &dyn Transport {
-        self.transport.as_ref()
+        self.inner.transport.as_ref()
     }
     fn catalog(&self) -> &ServerCatalog {
-        &self.catalog
+        &self.inner.catalog
     }
     fn server_info(&self) -> &ServerInfo {
-        &self.server_info
+        &self.inner.server_info
     }
     fn initialized(&self) -> &RwLock<bool> {
-        &self.initialized
+        &self.inner.initialized
     }
     fn approval_capability(&self) -> Option<Value> {
         crate::mcp::approval::capability()

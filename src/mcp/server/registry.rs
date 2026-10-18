@@ -5,7 +5,7 @@ use std::sync::Arc;
 impl McpServer {
     pub(super) async fn register_registry_tools(&self, registry: &Arc<ToolRegistry>) {
         codetether_mcp_server::registry::register(
-            &self.catalog,
+            &self.inner.catalog,
             &host::Registry(registry.as_ref()),
         )
         .await;

@@ -21,3 +21,6 @@ pub mod registry;
 
 /// Registry selection and tool-registration sequencing.
 pub mod setup;
+
+mod state;
+pub use state::ServerState;

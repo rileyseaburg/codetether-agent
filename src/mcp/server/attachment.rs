@@ -6,7 +6,7 @@ impl McpServer {
     /// All tools from the registry will be exposed as MCP tools, replacing
     /// the hardcoded basic tool set. Call before [`Self::run`].
     pub fn with_tool_registry(mut self, registry: Arc<ToolRegistry>) -> Self {
-        self.tool_registry = Some(registry);
+        self.inner.tool_registry = Some(registry);
         self
     }
 
@@ -15,7 +15,7 @@ impl McpServer {
     /// Call this *before* [`Self::run`] so every tool invocation gets
     /// recorded as a `ToolRequest` + `ToolResponse` on the bus.
     pub fn with_agent_bus(mut self, bus: Arc<AgentBus>) -> Self {
-        self.agent_bus = Some(bus);
+        self.inner.agent_bus = Some(bus);
         self
     }
 
@@ -29,7 +29,7 @@ impl McpServer {
     /// Attach a bus bridge with optional authentication.
     pub async fn with_bus_auth(mut self, bus_url: String, auth_token: Option<String>) -> Self {
         let bridge = BusBridge::with_auth(bus_url, auth_token).spawn();
-        self.bus = Some(Arc::clone(&bridge));
+        self.inner.bus = Some(Arc::clone(&bridge));
         self.register_bus_tools(Arc::clone(&bridge)).await;
         self.register_bus_resources(Arc::clone(&bridge)).await;
         self

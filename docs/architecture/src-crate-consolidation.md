@@ -21744,3 +21744,24 @@ native file-size limits, and whitespace checks passed. No dependency or lockfile
 changes. Evidence: `artifacts/consolidation-server-state/`. No Cargo, rustc, or
 Python commands ran; compilation and runtime tests remain unverified. Full
 workspace consolidation remains active.
+
+### Shared MCP server state ownership
+
+Moved the seven MCP server fields and their default initialization into
+`codetether-mcp-server::ServerState`. Transport, catalog, initialization state,
+identity and attached services now live in the owning runtime crate. Bus bridge
+and tool registry remain generic application services; the native server keeps
+its policy methods on a one-field wrapper.
+
+Updated ten native handler/attachment files through explicit `inner` field
+paths. The shared constructor preserves default values, allocation order and
+server identity; native code still supplies its application package version and
+calls the same inert default-registration hook. Full source comparisons verify
+those changes and leave the other three native server child files unchanged.
+No dependency or lockfile edits.
+
+Source/dependency graphs across 692 roots and 564 crates, direct rustfmt,
+native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-mcp-server-state/`. No Cargo, rustc, or Python commands
+ran; compilation and runtime tests remain unverified. Full consolidation remains
+active.

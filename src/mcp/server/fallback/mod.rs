@@ -2,5 +2,5 @@
 mod host;
 use super::McpServer;
 pub(super) async fn register(server: &McpServer) {
-    codetether_mcp_fallback::register::<host::Native>(&server.catalog).await;
+    codetether_mcp_fallback::register::<host::Native>(&server.inner.catalog).await;
 }

@@ -16,11 +16,11 @@ impl codetether_mcp_server::setup::Host for McpServer {
     type Registry = Arc<ToolRegistry>;
 
     fn catalog(&self) -> &ServerCatalog {
-        &self.catalog
+        &self.inner.catalog
     }
 
     fn registry(&self) -> Option<&Self::Registry> {
-        self.tool_registry.as_ref()
+        self.inner.tool_registry.as_ref()
     }
 
     async fn register_registry(&self, registry: &Self::Registry) {

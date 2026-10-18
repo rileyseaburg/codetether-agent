@@ -7,6 +7,7 @@ impl McpServer {
         &self,
         params: Option<Value>,
     ) -> Result<Value, JsonRpcError> {
-        codetether_mcp_server::invoke(&self.catalog, self.agent_bus.as_deref(), params).await
+        codetether_mcp_server::invoke(&self.inner.catalog, self.inner.agent_bus.as_deref(), params)
+            .await
     }
 }
