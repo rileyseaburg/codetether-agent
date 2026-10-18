@@ -23570,6 +23570,23 @@ unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-tick-bindings/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
 
+### Smart-switch retry frontend bindings
+
+Moved scheduled retry state/model access, the retry entry point and owned-session
+submission into codetether-model-failover::runtime_retry::binding modules. The
+root selects App, session slot, registry, runtime and request types. Removed the
+root host and submission files; submission is now a sibling binding module in
+the crate-provided declaration.
+
+All eight expanded function bodies match after the submission helper path
+change. Model persistence, view refresh, timing, request construction and session
+restoration after rejected submission retain their original bodies. Declaration,
+module/dependency, native production-scope, standalone formatting, file-limit and
+whitespace checks pass for 725 roots and 617 crates. Tests and unrelated files
+are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-smart-retry/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
+
 ### Storage callers use the owning API names directly
 
 Removed the native projection and summary forwarding files after updating five

@@ -13,7 +13,6 @@ mod select_loop;
 mod setup;
 mod shutdown;
 mod smart_retry;
-mod smart_retry_submit;
 mod terminal;
 mod tick;
 use codetether_tui_reactor as timers;
