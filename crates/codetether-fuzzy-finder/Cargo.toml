@@ -1,0 +1,12 @@
+[package]
+name = "codetether-fuzzy-finder"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Workspace fuzzy file search state, ranking and modal presentation"
+
+[dependencies]
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+ignore = "0.4"
+ratatui = { version = "0.30.2", default-features = false }

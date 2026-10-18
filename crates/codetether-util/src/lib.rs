@@ -4,6 +4,7 @@
 //!
 //! - [`truncate`] — UTF-8 safe byte truncation.
 //! - [`workspace_scan`] — directory pruning rules for workspace walkers.
+//! - [`fuzzy`] — case-insensitive subsequence scores for ranked pickers.
 //!
 //! # Examples
 //!
@@ -15,3 +16,8 @@
 
 pub mod truncate;
 pub mod workspace_scan;
+
+/// Case-insensitive subsequence ranking.
+pub mod fuzzy;
+#[cfg(test)]
+mod fuzzy_tests;

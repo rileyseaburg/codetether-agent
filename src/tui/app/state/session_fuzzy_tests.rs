@@ -1,13 +1,6 @@
 //! Tests for fuzzy session filtering in the session picker.
 
-use super::session_fuzzy::fuzzy_score;
 use super::session_test_fixtures::{state_with, summary};
-
-#[test]
-fn fuzzy_matches_scattered_session_id() {
-    assert!(fuzzy_score("a9c", "a3f9-1c2d").is_some());
-    assert!(fuzzy_score("x9c", "a3f9-1c2d").is_none());
-}
 
 #[test]
 fn filtered_sessions_fuzzy_matches_by_id() {

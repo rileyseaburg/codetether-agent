@@ -11617,3 +11617,23 @@ Full workspace consolidation remains active.
   limits and git diff --check passed. Evidence: artifacts/consolidation-help-view/.
 - No Cargo, rustc, compilation, runtime tests or terminal rendering were run.
   Full workspace consolidation remains incomplete.
+
+### Fuzzy file finder extraction
+
+- Moved candidate/state types, ranking, workspace scanning and modal rendering
+  from native fuzzy-finder modules into crates/codetether-fuzzy-finder. The
+  native state, scan and overlay modules now re-export the shared API.
+- Moved the shared subsequence scorer from session filtering into
+  codetether-util::fuzzy. Both session filtering and file matching now use the
+  same implementation. Its existing pure regression test moved with it; three
+  native session-filter integration tests remain unchanged.
+- Preserved candidate cloning, ranking/tie order, git-ignore handling, the
+  20,000-file limit, sorted paths, modal bounds and visible-row selection.
+  Editor opening and key dispatch remain native and unchanged.
+- Verification: 17 static comparisons cover schemas, methods, scanning,
+  rendering, scorer, existing tests and untouched host actions. Eleven finder
+  modules contain at most 27 code lines each. Lexical module reachability,
+  dependency cycles, direct rustfmt, file limits and git diff --check passed.
+- Evidence: artifacts/consolidation-fuzzy-finder/. No Cargo, rustc,
+  compilation, runtime tests, workspace scans or terminal rendering were run.
+  Full workspace consolidation remains incomplete.
