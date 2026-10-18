@@ -11,7 +11,7 @@ pub(super) fn schedule(app: &mut App, slot: &SessionSlot, error: &str) {
         error,
         model,
         provider,
-        &app.state.available_models,
+        &app.state.model_picker.available_models,
         &prompt,
         app.state.smart_switch_retry_count,
         &app.state.smart_switch_attempted_models,

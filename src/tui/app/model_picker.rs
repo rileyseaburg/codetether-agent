@@ -22,7 +22,7 @@ pub async fn open_model_picker(
             .iter()
             .position(|model| *model == current_model)
     {
-        app.state.selected_model_index = index;
+        app.state.model_picker.selected_model_index = index;
     }
     if let Some(registry) = registry {
         let cached_count = app.state.hydrate_models_from_store();
@@ -33,7 +33,7 @@ pub async fn open_model_picker(
         };
         app.state.start_model_refresh(Arc::clone(registry));
     } else {
-        app.state.available_models.clear();
+        app.state.model_picker.available_models.clear();
         app.state.model_refresh_in_flight = false;
         app.state.model_refresh_rx = None;
         app.state.status = "No models available".to_string();

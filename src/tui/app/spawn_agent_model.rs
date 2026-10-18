@@ -6,8 +6,9 @@ use crate::tui::app::state::App;
 pub fn current_model_id(app: &App) -> Option<String> {
     app.state.last_completion_model.clone().or_else(|| {
         app.state
+            .model_picker
             .available_models
-            .get(app.state.selected_model_index)
+            .get(app.state.model_picker.selected_model_index)
             .cloned()
     })
 }

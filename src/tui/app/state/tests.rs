@@ -58,14 +58,12 @@ fn utf8_insert_respects_character_cursor() {
 
 #[test]
 fn model_filter_limits_visible_models() {
-    let mut state = AppState {
-        available_models: vec![
-            "zai/glm-5".to_string(),
-            "openai/gpt-4o".to_string(),
-            "openrouter/qwen/qwen3-coder".to_string(),
-        ],
-        ..Default::default()
-    };
+    let mut state = AppState::default();
+    state.model_picker.available_models = vec![
+        "zai/glm-5".to_string(),
+        "openai/gpt-4o".to_string(),
+        "openrouter/qwen/qwen3-coder".to_string(),
+    ];
     state.model_filter_push('g');
     state.model_filter_push('p');
     state.model_filter_push('t');

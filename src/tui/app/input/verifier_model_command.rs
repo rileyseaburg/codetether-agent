@@ -34,7 +34,7 @@ pub(super) fn run(app: &mut App, registry: Option<&Arc<ProviderRegistry>>, promp
 fn open(app: &mut App, registry: Option<&Arc<ProviderRegistry>>) {
     app.state.open_model_picker();
     app.state.set_view_mode(crate::tui::models::ViewMode::Model);
-    app.state.model_picker_for_verifier = true;
+    app.state.model_picker.model_picker_for_verifier = true;
     app.state.model_picker_target_model = selected_verifier_model();
     if let Some(registry) = registry {
         app.state.hydrate_models_from_store();

@@ -6,7 +6,7 @@ mod verifier;
 
 /// Apply the picker choice to the verifier or the session, per picker target.
 pub(super) fn selected(app: &mut App, slot: &mut SessionSlot) {
-    if app.state.model_picker_for_verifier {
+    if app.state.model_picker.model_picker_for_verifier {
         verifier::apply_verifier_model(app);
         return;
     }

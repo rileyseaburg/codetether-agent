@@ -20,21 +20,19 @@ async fn slash_model_opens_model_picker_without_registry() {
     .await;
 
     assert_eq!(app.state.view_mode, ViewMode::Model);
-    assert!(app.state.model_picker_active);
-    assert!(app.state.available_models.is_empty());
+    assert!(app.state.model_picker.model_picker_active);
+    assert!(app.state.model_picker.available_models.is_empty());
     assert_eq!(app.state.status, "No models available");
 }
 
 #[test]
 fn model_picker_filters_and_selects() {
-    let mut state = AppState {
-        available_models: vec![
-            "zai/glm-5".to_string(),
-            "openai/gpt-4o".to_string(),
-            "github-copilot/gpt-4o".to_string(),
-        ],
-        ..Default::default()
-    };
+    let mut state = AppState::default();
+    state.model_picker.available_models = vec![
+        "zai/glm-5".to_string(),
+        "openai/gpt-4o".to_string(),
+        "github-copilot/gpt-4o".to_string(),
+    ];
 
     state.open_model_picker();
     state.model_filter_push('g');
@@ -48,9 +46,9 @@ fn model_picker_filters_and_selects() {
 #[tokio::test]
 async fn apply_selected_model_persists_to_session() {
     let mut app = App::default();
-    app.state.available_models = vec!["zai/glm-5".to_string(), "openai/gpt-4o".to_string()];
+    app.state.model_picker.available_models = vec!["zai/glm-5".to_string(), "openai/gpt-4o".to_string()];
     app.state.open_model_picker();
-    app.state.selected_model_index = 1;
+    app.state.model_picker.selected_model_index = 1;
     app.state.set_view_mode(ViewMode::Model);
 
     let mut session = Session::new().await.expect("session should create");
@@ -58,7 +56,7 @@ async fn apply_selected_model_persists_to_session() {
 
     assert_eq!(session.metadata.model.as_deref(), Some("openai/gpt-4o"));
     assert_eq!(app.state.view_mode, ViewMode::Chat);
-    assert!(!app.state.model_picker_active);
+    assert!(!app.state.model_picker.model_picker_active);
 }
 
 #[test]
@@ -70,7 +68,7 @@ fn closing_model_picker_returns_to_chat() {
     close_model_picker(&mut app);
 
     assert_eq!(app.state.view_mode, ViewMode::Chat);
-    assert!(!app.state.model_picker_active);
+    assert!(!app.state.model_picker.model_picker_active);
 }
 
 #[tokio::test]
@@ -88,7 +86,7 @@ async fn slash_model_alias_opens_model_picker() {
     .await;
 
     assert_eq!(app.state.view_mode, ViewMode::Model);
-    assert!(app.state.model_picker_active);
+    assert!(app.state.model_picker.model_picker_active);
 }
 
 #[tokio::test]

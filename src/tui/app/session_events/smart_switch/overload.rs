@@ -15,7 +15,7 @@ pub(super) fn prepare(
     app: &App,
 ) -> PendingSmartSwitchRetry {
     if codex_overload(error) && provider == Some("openai-codex") {
-        if let Some(fallback) = codex_overload_fallback(current, &app.state.available_models) {
+        if let Some(fallback) = codex_overload_fallback(current, &app.state.model_picker.available_models) {
             pending.target_model = fallback;
         }
         pending.restore_at = Some(Instant::now() + codex_overload_cooldown(error));

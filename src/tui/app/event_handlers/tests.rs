@@ -166,7 +166,7 @@ mod tests {
 
         assert!(!quit);
         assert_eq!(app.state.view_mode, ViewMode::Model);
-        assert!(app.state.model_picker_active);
+        assert!(app.state.model_picker.model_picker_active);
         assert_eq!(app.state.status, "No models available");
     }
 

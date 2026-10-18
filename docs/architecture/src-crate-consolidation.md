@@ -11525,3 +11525,22 @@ Full workspace consolidation remains active.
   limits and git diff --check passed. Evidence: artifacts/consolidation-model-catalog/.
   No Cargo, rustc, compilation, runtime tests or provider requests were run.
   Full workspace consolidation remains incomplete.
+
+### Model picker state ownership extraction
+
+- Moved catalog, filter, selected index, open state and verifier-selection mode
+  from AppState into codetether-model-picker::ModelPickerState. AppState now
+  embeds that state as model_picker. Updated all native field accesses and
+  fixture setup; no direct references to the removed AppState fields remain.
+- Moved synchronous catalog/filter/navigation/lifecycle behavior into focused
+  crate modules. Existing AppState methods delegate to them; opening still
+  updates the shared status message after resetting picker state.
+- Provider refresh channels, persistence and model application remain native
+  and use the embedded picker. The existing test assertions are preserved.
+- Verification: 41 static comparisons check every migrated method, forwarding
+  method, field/default mapping and each of 18 updated native files. The picker
+  crate now has 13 modules, at most 34 code lines each. Lexical module wiring,
+  workspace dependency cycles, direct formatting of new and focused native
+  files, native file limits and git diff --check passed.
+- Evidence: artifacts/consolidation-model-picker-state/. No Cargo, rustc,
+  compilation or runtime tests were run. Full consolidation remains incomplete.

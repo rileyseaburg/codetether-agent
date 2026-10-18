@@ -10,7 +10,7 @@ impl AppState {
     /// Lets the picker render instantly while a fresh list loads in the
     /// background. No-op when models are already loaded or the store is empty.
     pub fn hydrate_models_from_store(&mut self) -> usize {
-        if self.available_models.is_empty()
+        if self.model_picker.available_models.is_empty()
             && let Some(store) = ModelStore::open_default()
         {
             let cached = store.load();
@@ -18,18 +18,18 @@ impl AppState {
                 self.set_available_models(cached);
             }
         }
-        self.available_models.len()
+        self.model_picker.available_models.len()
     }
 
     /// Persist the current `available_models` to the on-disk store.
     ///
     /// No-op when the list is empty or the store path cannot be resolved.
     pub fn persist_models_to_store(&self) {
-        if self.available_models.is_empty() {
+        if self.model_picker.available_models.is_empty() {
             return;
         }
         if let Some(store) = ModelStore::open_default() {
-            store.store(&self.available_models);
+            store.store(&self.model_picker.available_models);
         }
     }
 

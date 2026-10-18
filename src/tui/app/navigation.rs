@@ -30,7 +30,7 @@ pub fn handle_escape(app: &mut App) {
     } else if app.state.show_help {
         app.state.show_help = false;
         app.state.status = "Closed help".to_string();
-    } else if app.state.model_picker_active {
+    } else if app.state.model_picker.model_picker_active {
         close_model_picker(app);
         app.state.status = "Closed model picker".to_string();
     } else {

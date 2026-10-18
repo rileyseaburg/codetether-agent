@@ -41,10 +41,10 @@ impl super::AppState {
                 .iter()
                 .position(|model| *model == target)
         {
-            self.selected_model_index = index;
+            self.model_picker.selected_model_index = index;
         }
 
-        if self.model_picker_active || self.view_mode == ViewMode::Model {
+        if self.model_picker.model_picker_active || self.view_mode == ViewMode::Model {
             self.status = summary.status_message();
         }
     }
@@ -59,7 +59,7 @@ impl super::AppState {
         registry: Option<&Arc<ProviderRegistry>>,
     ) -> anyhow::Result<ModelRefreshSummary> {
         let Some(registry) = registry else {
-            self.available_models.clear();
+            self.model_picker.available_models.clear();
             return Ok(ModelRefreshSummary::empty());
         };
 
@@ -144,7 +144,7 @@ mod tests {
             .await
             .expect("refresh should succeed");
 
-        assert_eq!(state.available_models, ["openrouter/openai/gpt-5.5"]);
+        assert_eq!(state.model_picker.available_models, ["openrouter/openai/gpt-5.5"]);
         assert_eq!(summary.loaded_models, 1);
         assert_eq!(summary.loaded_providers, 1);
     }

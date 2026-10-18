@@ -15,7 +15,7 @@ async fn refresh_includes_pre_5_6_codex_models() {
         .expect("refresh should succeed");
 
     assert_eq!(
-        state.available_models,
+        state.model_picker.available_models,
         [
             "openai-codex/gpt-5.5",
             "openai-codex/gpt-5.5-fast",
