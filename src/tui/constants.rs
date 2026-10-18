@@ -30,20 +30,8 @@ pub const FILE_PICKER_PAGE_STEP: usize = 12;
 pub const MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS: u64 = 240;
 /// Maximum automatic restart attempts before the watchdog gives up.
 pub const WATCHDOG_MAX_RESTARTS: u32 = 3;
-pub const SMART_SWITCH_MAX_RETRIES: u8 = 3;
-pub const SMART_SWITCH_PROVIDER_PRIORITY: [&str; 11] = [
-    "minimax",
-    "zai",
-    "openai-codex",
-    "openrouter",
-    "github-copilot",
-    "github-copilot-enterprise",
-    "minimax-credits",
-    "openai",
-    "anthropic",
-    "google",
-    "gemini-web",
-];
+pub use codetether_model_failover::constants::SMART_SWITCH_MAX_RETRIES;
+pub use codetether_model_failover::constants::SMART_SWITCH_PROVIDER_PRIORITY;
 pub const AUTOCHAT_MAX_AGENTS: usize = crate::autochat::AUTOCHAT_MAX_AGENTS;
 pub const AUTOCHAT_DEFAULT_AGENTS: usize = crate::autochat::AUTOCHAT_DEFAULT_AGENTS;
 pub const AUTOCHAT_MAX_ROUNDS: usize = crate::autochat::AUTOCHAT_MAX_ROUNDS;
@@ -53,7 +41,7 @@ pub const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = crate::autochat::AUTOCHAT_RLM_TH
 pub const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FALLBACK_CHARS;
 pub const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
 pub const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
-pub const AUTOCHAT_LOCAL_DEFAULT_MODEL: &str = "local_cuda/qwen3.5-9b";
+pub use codetether_model_failover::constants::AUTOCHAT_LOCAL_DEFAULT_MODEL;
 pub const GO_SWAP_MODEL_GLM: &str = "zai/glm-5";
 pub const GO_SWAP_MODEL_MINIMAX: &str = "minimax/MiniMax-M3";
 pub const CHAT_SYNC_DEFAULT_INTERVAL_SECS: u64 = 15;

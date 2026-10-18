@@ -12430,3 +12430,24 @@ Full workspace consolidation remains active.
 - Only this crate's dependency and package record were staged from Cargo.lock.
   No retries, sleeps, Cargo, rustc, compilation or Rust tests were executed.
   Full workspace consolidation remains incomplete.
+
+### Model failover policy extraction
+
+- Moved the complete native smart_switch policy into codetether-model-failover:
+  provider/account error classification, normalization, same-provider and
+  cross-provider candidate ordering, preferred models, Codex overload fallback,
+  cooldowns, retry construction and local-model resolution. The native module
+  now re-exports the shared API and retains its legacy scroll-sentinel alias.
+- Moved all thirteen existing policy tests. Split retry markers, deferred retry
+  construction, Codex fallback and error tests into focused files. Twenty-seven
+  modules contain at most 43 code lines. The crate depends only on provider-core.
+- Preserved the original environment lookup order, provider priorities, retry
+  limits and live Codex model catalog. Native constant paths now re-export the
+  shared policy defaults.
+- Verification: 48 source comparisons/checks passed for moved functions/types,
+  test bodies, policy constants, marker precedence, retry construction and API
+  facades. Shared/native module graphs, dependency cycles, direct rustfmt,
+  source limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-model-failover/.
+- Only the new crate's dependency and package record were staged from Cargo.lock.
+  No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.

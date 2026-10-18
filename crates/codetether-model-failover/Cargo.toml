@@ -1,0 +1,10 @@
+[package]
+name = "codetether-model-failover"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Provider failover classification, candidate selection, and retry policy"
+
+[dependencies]
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }

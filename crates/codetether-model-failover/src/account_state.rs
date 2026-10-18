@@ -10,13 +10,20 @@
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::tui::app::smart_switch::account_state::is_provider_account_exhausted;
+/// use codetether_model_failover::account_state::is_provider_account_exhausted;
 ///
 /// assert!(is_provider_account_exhausted(
 ///     "GLM Coding Plan package has expired and is temporarily unavailable"
 /// ));
 /// assert!(!is_provider_account_exhausted("429 rate limit, try again"));
 /// ```
+///
+/// # Arguments
+/// * `err` — err input.
+///
+/// # Returns
+/// Whether the documented policy condition matches.
+///
 pub fn is_provider_account_exhausted(err: &str) -> bool {
     let normalized = err.to_ascii_lowercase();
     let markers = [

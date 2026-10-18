@@ -10,3 +10,6 @@ pub use normalization::{normalize_provider_alias, smart_switch_model_key};
 pub use overload::{codex_overload, codex_overload_cooldown};
 
 pub use retryable::is_retryable_provider_error;
+
+#[path = "error_detection/markers.rs"]
+mod markers;

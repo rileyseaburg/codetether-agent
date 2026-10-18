@@ -1252,6 +1252,7 @@ dependencies = [
  "codetether-spawn-form",
  "codetether-terminal-runtime",
  "codetether-stream-recovery",
+ "codetether-model-failover",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6242,6 +6243,13 @@ dependencies = [
 [[package]]
 name = "codetether-stream-recovery"
 version = "0.1.0"
+
+[[package]]
+name = "codetether-model-failover"
+version = "0.1.0"
+dependencies = [
+ "codetether-provider-core",
+]
 
 [[package]]
 name = "codetether-tracked-vec"

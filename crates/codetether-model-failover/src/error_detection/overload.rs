@@ -6,6 +6,17 @@ const DEFAULT_COOLDOWN_SECS: u64 = 30;
 const MAX_COOLDOWN_SECS: u64 = 300;
 const RETRY_AFTER: &str = "retry_after_seconds=";
 
+///
+/// # Arguments
+/// * `error` — error input.
+///
+/// # Returns
+/// Whether the documented policy condition matches.
+///
+/// # Examples
+/// ```
+/// assert!(codetether_model_failover::codex_overload("server_is_overloaded"));
+/// ```
 pub fn codex_overload(error: &str) -> bool {
     let lower = error.to_ascii_lowercase();
     lower.contains("servers are currently overloaded")
@@ -13,6 +24,17 @@ pub fn codex_overload(error: &str) -> bool {
         || lower.contains("codex-retryable: overloaded")
 }
 
+///
+/// # Arguments
+/// * `error` — error input.
+///
+/// # Returns
+/// The normalized value or policy result described above.
+///
+/// # Examples
+/// ```
+/// assert_eq!(codetether_model_failover::codex_overload_cooldown("retry_after_seconds=60").as_secs(), 60);
+/// ```
 pub fn codex_overload_cooldown(error: &str) -> Duration {
     let encoded = error.split(RETRY_AFTER).nth(1).and_then(|tail| {
         tail.chars()

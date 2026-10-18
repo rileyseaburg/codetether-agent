@@ -4,9 +4,23 @@ use std::collections::HashSet;
 
 use super::error_detection::{normalize_provider_alias, smart_switch_model_key};
 use super::models::smart_switch_preferred_models;
-use crate::tui::constants::SMART_SWITCH_PROVIDER_PRIORITY;
+use crate::constants::SMART_SWITCH_PROVIDER_PRIORITY;
 
 /// Remaining providers not in the priority list.
+///
+/// # Arguments
+/// * `current_provider` — current provider input.
+/// * `available` — available input.
+/// * `attempted_models` — attempted models input.
+///
+/// # Returns
+/// Ordered candidates remaining after policy filtering.
+///
+/// # Examples
+/// ```
+/// let empty = std::collections::HashSet::new();
+/// assert!(codetether_model_failover::extra::extra_candidates(None, &empty, &empty).is_empty());
+/// ```
 pub fn extra_candidates(
     current_provider: Option<&str>,
     available: &HashSet<String>,

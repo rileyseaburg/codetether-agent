@@ -11,12 +11,20 @@ use super::error_detection::normalize_provider_alias;
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::tui::app::smart_switch::provider_filter::filter_out_provider;
+/// use codetether_model_failover::provider_filter::filter_out_provider;
 ///
 /// let candidates = vec!["zai/glm-5".to_string(), "minimax/MiniMax-M3".to_string()];
 /// let kept = filter_out_provider(candidates, Some("zai"));
 /// assert_eq!(kept, vec!["minimax/MiniMax-M3".to_string()]);
 /// ```
+///
+/// # Arguments
+/// * `candidates` — candidates input.
+/// * `exhausted_provider` — exhausted provider input.
+///
+/// # Returns
+/// Ordered candidates remaining after policy filtering.
+///
 pub fn filter_out_provider(
     candidates: Vec<String>,
     exhausted_provider: Option<&str>,

@@ -8,6 +8,20 @@ use super::priority::priority_candidates;
 use super::same_provider::same_provider_candidates;
 
 /// Generates candidate models for smart switching, prioritizing same-provider.
+///
+/// # Arguments
+/// * `_current_model` — current model input.
+/// * `current_provider` — current provider input.
+/// * `available_providers` — available providers input.
+/// * `attempted_models` — attempted models input.
+///
+/// # Returns
+/// Ordered candidates remaining after policy filtering.
+///
+/// # Examples
+/// ```
+/// assert!(codetether_model_failover::smart_switch_candidates(None, None, &[], &std::collections::HashSet::new()).is_empty());
+/// ```
 pub fn smart_switch_candidates(
     _current_model: Option<&str>,
     current_provider: Option<&str>,
