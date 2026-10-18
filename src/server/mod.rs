@@ -28,7 +28,6 @@ use crate::a2a;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
 use crate::bus::{AgentBus, BusEnvelope};
 use crate::cli::ServeArgs;
-use crate::cloudevents::parse_cloud_event;
 use crate::cognition::{
     AttentionItem, CognitionRuntime, CognitionStatus, CreatePersonaRequest, GlobalWorkspace,
     LineageGraph, MemorySnapshot, Proposal, ReapPersonaRequest, ReapPersonaResponse,
@@ -50,6 +49,7 @@ use axum::{
     response::{IntoResponse, Json, Response},
     routing::{get, post},
 };
+use codetether_task_ingest::CloudEventResponse;
 use futures::{StreamExt, stream};
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
@@ -525,129 +525,18 @@ async fn complete_knative_task(
         .map(Json)
         .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))
 }
-
-/// CloudEvent handler for Knative Eventing
-/// Receives task events from Knative Broker and triggers execution
 async fn receive_task_event(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(body): Json<serde_json::Value>,
 ) -> Result<Json<CloudEventResponse>, (StatusCode, String)> {
-    let event =
-        parse_cloud_event(&headers, body).map_err(|error| (StatusCode::BAD_REQUEST, error))?;
-    tracing::info!(
-        event_type = %event.event_type,
-        event_id = %event.id,
-        "Received CloudEvent from Knative"
-    );
-
-    // Log the incoming event for audit
-    state
-        .audit_log
-        .log(
-            audit::AuditCategory::Api,
-            format!("cloudevents:{}", event.event_type),
-            AuditOutcome::Success,
-            None,
-            None,
-        )
-        .await;
-
-    // Process based on event type
-    match event.event_type.as_str() {
-        "codetether.task.created" | "task.created" => {
-            let task_id = event
-                .data
-                .get("task_id")
-                .or_else(|| event.data.get("id"))
-                .and_then(|v| v.as_str())
-                .unwrap_or(event.id.as_str())
-                .to_string();
-            let title = event
-                .data
-                .get("title")
-                .or_else(|| event.data.get("prompt"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            let description = event
-                .data
-                .get("description")
-                .or_else(|| event.data.get("prompt"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            let agent_type = event
-                .data
-                .get("agent_type")
-                .or_else(|| event.data.get("agent"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("build")
-                .to_string();
-            let priority = event
-                .data
-                .get("priority")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0) as i32;
-
-            let task = KnativeTask {
-                task_id: task_id.clone(),
-                title,
-                description,
-                agent_type,
-                model: event
-                    .data
-                    .get("model")
-                    .and_then(|v| v.as_str())
-                    .map(str::to_owned),
-                metadata: event.data.get("metadata").cloned(),
-                priority,
-                received_at: chrono::Utc::now(),
-                status: "queued".to_string(),
-                completion: Default::default(),
-            };
-
-            state.knative_tasks.push(task).await;
-            tracing::info!(task_id = %task_id, "Task queued for execution");
-        }
-        "codetether.task.updated" | "task.updated" => {
-            if let Some(task_id) = event.data.get("task_id").and_then(|v| v.as_str()) {
-                let status = event
-                    .data
-                    .get("status")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("updated");
-                let _ = state.knative_tasks.update_status(task_id, status).await;
-                tracing::info!(task_id = %task_id, status = %status, "Task status updated");
-            }
-        }
-        "codetether.task.cancelled" => {
-            tracing::info!("Task cancellation event received");
-            // Update task status if we have the task_id
-            if let Some(task_id) = event.data.get("task_id").and_then(|v| v.as_str()) {
-                let _ = state
-                    .knative_tasks
-                    .update_status(task_id, "cancelled")
-                    .await;
-                tracing::info!(task_id = %task_id, "Task cancelled");
-            }
-        }
-        _ => {
-            tracing::warn!(event_type = %event.event_type, "Unknown CloudEvent type");
-        }
-    }
-
-    Ok(Json(CloudEventResponse {
-        status: "accepted".to_string(),
-        event_id: event.id,
-    }))
-}
-
-/// Response to CloudEvent acknowledgment
-#[derive(Serialize)]
-struct CloudEventResponse {
-    status: String,
-    event_id: String,
+    codetether_task_ingest::receive_task_event(
+        &state.knative_tasks,
+        &state.audit_log,
+        headers,
+        body,
+    )
+    .await
 }
 
 /// List providers

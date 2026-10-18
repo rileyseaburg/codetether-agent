@@ -1281,6 +1281,7 @@ dependencies = [
  "codetether-openai-stream",
  "codetether-openai-serving",
  "codetether-task-queue",
+ "codetether-task-ingest",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6557,6 +6558,20 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.20",
  "tokio",
+]
+
+[[package]]
+name = "codetether-task-ingest"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "chrono",
+ "codetether-a2a-worker-core",
+ "codetether-audit",
+ "codetether-task-queue",
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

@@ -1,0 +1,17 @@
+[package]
+name = "codetether-task-ingest"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "CloudEvent adaptation and in-process task ingestion"
+
+[dependencies]
+axum = "0.8"
+chrono = "0.4"
+codetether-a2a-worker-core = { path = "../codetether-a2a-worker-core", version = "0.1.0" }
+codetether-audit = { path = "../codetether-audit", version = "0.1.0" }
+codetether-task-queue = { path = "../codetether-task-queue", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"

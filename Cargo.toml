@@ -285,6 +285,7 @@ members = [
     "crates/codetether-openai-stream",
     "crates/codetether-openai-serving",
     "crates/codetether-task-queue",
+    "crates/codetether-task-ingest",
     "crates/codetether-tui-style",
     "crates/codetether-answer-review-view",
     "crates/codetether-message-cache",
@@ -644,6 +645,7 @@ codetether-audit-http = { path = "crates/codetether-audit-http", version = "0.1.
 codetether-openai-stream = { path = "crates/codetether-openai-stream", version = "0.1.0" }
 codetether-openai-serving = { path = "crates/codetether-openai-serving", version = "0.1.0" }
 codetether-task-queue = { path = "crates/codetether-task-queue", version = "0.1.0" }
+codetether-task-ingest = { path = "crates/codetether-task-ingest", version = "0.1.0" }
 codetether-session-resume = { path = "crates/codetether-session-resume", version = "0.1.0" }
 codetether-paste-buffer = { path = "crates/codetether-paste-buffer", version = "0.1.0" }
 codetether-task-tracker = { path = "crates/codetether-task-tracker", version = "0.1.0" }

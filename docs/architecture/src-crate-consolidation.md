@@ -13154,3 +13154,20 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No task
   transitions, concurrency tests, Cargo, rustc or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### CloudEvent task ingestion extraction
+
+- Moved task-ingress header adaptation, field fallbacks, create/update/cancel
+  dispatch, auditing and acknowledgement into codetether-task-ingest. Eight
+  modules contain at most 37 code lines.
+- Native HTTP code supplies its shared task queue and audit log. Event type
+  aliases, field defaults, priority conversion, timestamps, queue mutations,
+  logging and acknowledgement behavior are preserved. Native cloudevents now
+  re-exports the shared parser adapter.
+- Verification: 87 static comparisons passed for parsing, field extraction,
+  effects, acknowledgement and remaining server functions/tests. Module and
+  dependency checks, direct rustfmt, file limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-task-ingest/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  ingestion, task mutations, Cargo, rustc or Rust tests ran. Full consolidation
+  remains incomplete.
