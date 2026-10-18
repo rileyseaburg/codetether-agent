@@ -21064,3 +21064,19 @@ commas are normalized in comparison; initial evidence is retained. Evidence:
 `artifacts/consolidation-swarm-tool-call/`. No dependencies changed. No Cargo,
 rustc, or Python commands ran. Rust tests and compilation remain unverified;
 the broader consolidation goal remains active.
+
+### Per-agent swarm bus publication ownership
+
+Moved thinking and full tool-output bus message construction/publication into
+`codetether-swarm-bus::agent`. Native wrappers pass the optional bus, subtask
+identity, step, and payload. The shared functions preserve topic strings,
+message variants, agent IDs, success flags, empty-thinking suppression, and the
+existing bounded payload helpers.
+
+Verification compares both complete publication bodies after explicit field
+substitutions and confirms the payload helper source is unchanged. Direct
+rustfmt, source graphs across 694 roots including swarm-bus, native file-size
+limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-swarm-agent-bus/`. No dependencies changed. No Cargo,
+rustc, or Python commands ran. Bus operations and Rust tests were not executed;
+compilation and runtime behavior remain unverified. Consolidation remains active.

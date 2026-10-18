@@ -30,3 +30,6 @@ pub fn publish(bus: &Arc<AgentBus>, event: &SwarmEvent) {
 
 mod payload;
 pub use payload::{thinking, tool_output};
+
+/// Per-agent thinking and tool-output messages.
+pub mod agent;
