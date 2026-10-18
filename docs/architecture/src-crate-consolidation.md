@@ -10758,3 +10758,20 @@ modules have at most 41 code lines. Evidence is in
 `artifacts/consolidation-device-auth/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, device authorization or polling request ran.
 Full workspace consolidation remains active.
+
+### User registration/login CLI extracted
+
+Moved registration/login argument contracts, email/password prompts, account
+registration transport and completion reporting into
+`crates/codetether-user-auth-cli`. Twelve modules separate input, password
+confirmation, HTTP registration, response contracts and account/login reports.
+Native entry wrappers retain the application version supplied to requests, and
+the shared user-auth crate still owns login transport and credential storage.
+
+Twenty-two static comparisons/checks cover argument and response schemas,
+expanded registration/auto-login and login sequences, password handling,
+version forwarding and unchanged native items. Module/dependency graphs, file
+budgets and whitespace checks passed; modules have at most 44 code lines.
+Evidence is in `artifacts/consolidation-user-auth-cli/`. Compilation and runtime
+tests were not run. No Cargo, rustc, Python, terminal prompt, account request or
+credential operation ran. Full workspace consolidation remains active.

@@ -66,40 +66,9 @@ pub enum AuthCommand {
     /// Login to a CodeTether server with email/password
     Login(LoginAuthArgs),
 }
+pub use codetether_user_auth_cli::RegisterAuthArgs;
+pub use codetether_user_auth_cli::LoginAuthArgs;
 
-#[derive(Parser, Debug)]
-pub struct RegisterAuthArgs {
-    /// CodeTether server URL (e.g., https://api.codetether.run)
-    #[arg(short, long, env = "CODETETHER_SERVER")]
-    pub server: String,
-
-    /// Email address
-    #[arg(short, long)]
-    pub email: Option<String>,
-
-    /// First name (optional)
-    #[arg(long)]
-    pub first_name: Option<String>,
-
-    /// Last name (optional)
-    #[arg(long)]
-    pub last_name: Option<String>,
-
-    /// Referral source (optional)
-    #[arg(long)]
-    pub referral_source: Option<String>,
-}
-
-#[derive(Parser, Debug)]
-pub struct LoginAuthArgs {
-    /// CodeTether server URL (e.g., https://api.codetether.io)
-    #[arg(short, long, env = "CODETETHER_SERVER")]
-    pub server: String,
-
-    /// Email address
-    #[arg(short, long)]
-    pub email: Option<String>,
-}
 
 #[derive(Parser, Debug)]
 pub struct CopilotAuthArgs {

@@ -30,204 +30,6 @@ pub async fn execute(args: AuthArgs) -> Result<()> {
     }
 }
 
-async fn authenticate_register(args: RegisterAuthArgs) -> Result<()> {
-    #[derive(Debug, Deserialize)]
-    struct RegisterResponse {
-        user_id: String,
-        email: String,
-        message: String,
-        #[serde(default)]
-        instance_url: Option<String>,
-        #[serde(default)]
-        instance_namespace: Option<String>,
-        #[serde(default)]
-        provisioning_status: Option<String>,
-    }
-
-    let server_url = args.server.trim_end_matches('/').to_string();
-
-    let email = match args.email {
-        Some(e) => e,
-        None => {
-            print!("Email: ");
-            io::stdout().flush()?;
-            let mut email = String::new();
-            io::stdin().read_line(&mut email)?;
-            email.trim().to_string()
-        }
-    };
-
-    if email.is_empty() {
-        anyhow::bail!("Email is required");
-    }
-
-    let password = rpassword_prompt("Password (min 8 chars): ")?;
-    if password.trim().len() < 8 {
-        anyhow::bail!("Password must be at least 8 characters");
-    }
-    let confirm = rpassword_prompt("Confirm password: ")?;
-    if password != confirm {
-        anyhow::bail!("Passwords do not match");
-    }
-
-    println!("Registering with {}...", server_url);
-
-    let client = Client::new();
-    let user_agent = format!("codetether-agent/{}", env!("CARGO_PKG_VERSION"));
-
-    let resp = client
-        .post(format!("{}/v1/users/register", server_url))
-        .header("User-Agent", &user_agent)
-        .header("Content-Type", "application/json")
-        .json(&json!({
-            "email": email,
-            "password": password,
-            "first_name": args.first_name,
-            "last_name": args.last_name,
-            "referral_source": args.referral_source,
-        }))
-        .send()
-        .await
-        .context("Failed to connect to CodeTether server")?;
-
-    if !resp.status().is_success() {
-        let status = resp.status();
-        let body: serde_json::Value = resp.json().await.unwrap_or_default();
-        let detail = body
-            .get("detail")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Registration failed");
-        anyhow::bail!("Registration failed ({}): {}", status, detail);
-    }
-
-    let reg: RegisterResponse = resp
-        .json()
-        .await
-        .context("Failed to parse registration response")?;
-
-    println!(
-        "Account created for {} (user_id={})",
-        reg.email, reg.user_id
-    );
-    println!("{}", reg.message);
-    if let Some(status) = reg.provisioning_status.as_deref() {
-        println!("Provisioning status: {}", status);
-    }
-    if let Some(url) = reg.instance_url.as_deref() {
-        println!("Instance URL: {}", url);
-    }
-    if let Some(ns) = reg.instance_namespace.as_deref() {
-        println!("Instance namespace: {}", ns);
-    }
-
-    // Auto-login and save credentials for the worker.
-    println!("Logging in...");
-    let login = login_with_password(&client, &server_url, &reg.email, &password).await?;
-    let cred_path = write_saved_credentials(&server_url, &reg.email, &login)?;
-
-    let user_email = login
-        .user
-        .get("email")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&reg.email);
-
-    println!("Logged in as {} (expires {})", user_email, login.expires_at);
-    println!("Credentials saved to {}", cred_path.display());
-    println!("\nThe CLI will automatically use these credentials for `codetether worker`.");
-
-    Ok(())
-}
-
-async fn authenticate_login(args: LoginAuthArgs) -> Result<()> {
-    let server_url = args.server.trim_end_matches('/').to_string();
-
-    // Prompt for email if not provided
-    let email = match args.email {
-        Some(e) => e,
-        None => {
-            print!("Email: ");
-            io::stdout().flush()?;
-            let mut email = String::new();
-            io::stdin().read_line(&mut email)?;
-            email.trim().to_string()
-        }
-    };
-
-    if email.is_empty() {
-        anyhow::bail!("Email is required");
-    }
-
-    // Prompt for password (no echo)
-    let password = rpassword_prompt("Password: ")?;
-    if password.is_empty() {
-        anyhow::bail!("Password is required");
-    }
-
-    println!("Authenticating with {}...", server_url);
-
-    let client = Client::new();
-
-    let login = login_with_password(&client, &server_url, &email, &password).await?;
-    let cred_path = write_saved_credentials(&server_url, &email, &login)?;
-
-    let user_email = login
-        .user
-        .get("email")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&email);
-
-    println!("Logged in as {} (expires {})", user_email, login.expires_at);
-    println!("Credentials saved to {}", cred_path.display());
-    println!("\nThe CLI will automatically use these credentials for `codetether worker`.");
-
-    Ok(())
-}
-
-/// Read password from terminal without echo.
-fn rpassword_prompt(prompt: &str) -> Result<String> {
-    print!("{}", prompt);
-    io::stdout().flush()?;
-
-    // Disable echo on Unix
-    #[cfg(unix)]
-    {
-        use std::io::BufRead;
-        // Save terminal state
-        let fd = 0; // stdin
-        let orig = unsafe {
-            let mut termios = std::mem::zeroed::<libc::termios>();
-            libc::tcgetattr(fd, &mut termios);
-            termios
-        };
-
-        // Disable echo
-        unsafe {
-            let mut termios = orig;
-            termios.c_lflag &= !libc::ECHO;
-            libc::tcsetattr(fd, libc::TCSANOW, &termios);
-        }
-
-        let mut password = String::new();
-        let result = io::stdin().lock().read_line(&mut password);
-
-        // Restore terminal state
-        unsafe {
-            libc::tcsetattr(fd, libc::TCSANOW, &orig);
-        }
-        println!(); // newline after password entry
-
-        result?;
-        Ok(password.trim().to_string())
-    }
-
-    #[cfg(not(unix))]
-    {
-        let mut password = String::new();
-        io::stdin().read_line(&mut password)?;
-        Ok(password.trim().to_string())
-    }
-}
-
 async fn authenticate_codex(args: CodexAuthArgs) -> Result<()> {
     if secrets::secrets_manager().is_none() {
         anyhow::bail!(
@@ -576,4 +378,14 @@ async fn request_codex_device_code(
         OpenAiCodexProvider::oauth_client_id(),
     )
     .await
+}
+
+pub(crate) use codetether_user_auth_cli::rpassword_prompt;
+
+async fn authenticate_register(args: RegisterAuthArgs) -> Result<()> {
+    codetether_user_auth_cli::register(args, env!("CARGO_PKG_VERSION")).await
+}
+
+async fn authenticate_login(args: LoginAuthArgs) -> Result<()> {
+    codetether_user_auth_cli::login(args, env!("CARGO_PKG_VERSION")).await
 }
