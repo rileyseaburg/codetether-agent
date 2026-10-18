@@ -25005,3 +25005,32 @@ Only the new workspace dependency and package entry are staged in Cargo.lock;
 its unrelated working contents and the two pre-existing A2A modifications are
 unchanged. No Cargo, rustc, Python, compiler type checking or runtime tests ran.
 The complete workspace consolidation remains active.
+
+### Native indexing, vector storage, memory and search ownership
+
+Moved ten files into four dedicated crates: codetether-native-indexer owns the
+index-build and CLI provider bindings; codetether-native-vectordb owns the
+public vector/embedding surface and provider integration tests;
+codetether-native-memory owns concrete memory store/tool and embedding-factory
+aliases; codetether-native-search owns search entry points, backend dispatch
+and the concrete search tool alias. Search depends on native memory, and both
+memory and indexing use the previously extracted native provider registry.
+
+Removed src/indexer/, src/vectordb/, src/search/, src/tool/memory.rs and
+src/tool/search_router.rs. Root library and tool module paths now re-export the
+owning crates. No declaration macros were introduced. The vector provider
+fixture imports the same Provider contract directly from provider-core, and
+both existing normalization/empty-input tests moved with it. Root candle
+feature forwarding preserves the optional BERT exports.
+
+Ten file comparisons preserve source bodies after explicit crate import,
+documentation and module-entry changes and direct formatting. Module scans
+cover 697 roots and dependency scans cover 579 crates without missing modules,
+cycles or undeclared direct workspace dependencies. Declaration, file-limit,
+direct rustfmt and whitespace checks passed. Evidence:
+artifacts/consolidation-native-retrieval/. The initial graph scan's obsolete
+src/vectordb root was removed after relocation; failure evidence was retained.
+Only four package entries and root dependencies are staged for Cargo.lock;
+its unrelated working contents and the existing A2A modifications remain
+unchanged. No Cargo, rustc, Python, compilation or runtime tests ran. The full
+workspace consolidation remains active.

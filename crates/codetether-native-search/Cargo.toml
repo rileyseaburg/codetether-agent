@@ -1,0 +1,16 @@
+[package]
+name = "codetether-native-search"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native search bindings for CodeTether"
+
+[dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-native-memory = { path = "../codetether-native-memory", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-search = { path = "../codetether-search", version = "0.1.0" }
+codetether-search-router = { path = "../codetether-search-router", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+anyhow = "1"

@@ -1,0 +1,23 @@
+[package]
+name = "codetether-native-vectordb"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native vectordb bindings for CodeTether"
+
+[features]
+default = []
+candle = ["codetether-embedding-backends/candle"]
+
+[dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-embedding-backends = { path = "../codetether-embedding-backends", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-vectordb = { path = "../codetether-vectordb", version = "0.1.0" }
+
+[dev-dependencies]
+anyhow = "1"
+async-trait = "0.1"
+futures = "0.3"
+tokio = { version = "1", features = ["macros", "rt"] }

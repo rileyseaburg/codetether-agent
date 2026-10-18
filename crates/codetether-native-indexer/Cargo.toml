@@ -1,0 +1,14 @@
+[package]
+name = "codetether-native-indexer"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native indexer bindings for CodeTether"
+
+[dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-indexer = { path = "../codetether-indexer", version = "0.1.0" }
+codetether-indexer-cli = { path = "../codetether-indexer-cli", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+anyhow = "1"

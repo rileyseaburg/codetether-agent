@@ -1,11 +1,11 @@
 //! A deterministic embedding provider fixture for vector DB tests.
 
-use crate::provider::{
+use anyhow::Result;
+use async_trait::async_trait;
+use codetether_provider_core::{
     CompletionRequest, CompletionResponse, EmbeddingRequest, EmbeddingResponse, ModelInfo,
     Provider, StreamChunk, Usage,
 };
-use anyhow::Result;
-use async_trait::async_trait;
 use futures::stream::BoxStream;
 
 /// Returns a fixed `[3.0, 4.0]` vector per input (normalizes to length 1).

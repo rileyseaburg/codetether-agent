@@ -1,0 +1,12 @@
+[package]
+name = "codetether-native-memory"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native memory bindings for CodeTether"
+
+[dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-memory-tool = { path = "../codetether-memory-tool", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }

@@ -8,10 +8,11 @@ pub type MemoryTool = codetether_memory_tool::Runtime<ApplicationAutoEmbedder>;
 ///
 /// # Examples
 /// ```rust
-/// let _factory = codetether_agent::tool::memory::ApplicationAutoEmbedder;
+/// let _factory = codetether_native_memory::ApplicationAutoEmbedder;
 /// ```
-pub type ApplicationAutoEmbedder =
-    codetether_application_providers::embedding::AutoEmbedder<crate::provider::ProviderRegistry>;
+pub type ApplicationAutoEmbedder = codetether_application_providers::embedding::AutoEmbedder<
+    codetether_native_providers::ProviderRegistry,
+>;
 /// Stateless factory value retained for the native construction syntax.
 #[allow(non_upper_case_globals)]
 pub const ApplicationAutoEmbedder: ApplicationAutoEmbedder = ApplicationAutoEmbedder::new();

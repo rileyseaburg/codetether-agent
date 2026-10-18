@@ -7,7 +7,7 @@
 //! - [`LocalEmbeddingEngine`] — hashing-trick embeddings, no network.
 //! - [`TextEmbedder`] — backend seam; swap the local engine for a real model.
 //! - [`ProviderEmbedder`] — [`TextEmbedder`] backed by a learned model via a
-//!   [`Provider`](crate::provider::Provider) (e.g. `text-embedding-3-small`).
+//!   [`Provider`](codetether_provider_core::Provider) (e.g. `text-embedding-3-small`).
 //! - [`auto`] — automatic backend selection: probes host resources and uses a
 //!   local HuggingFace model when capable, else a cloud embedding provider.
 //! - [`VectorStore`] — generic-payload store with cosine [`search`](VectorStore::search)
@@ -17,7 +17,7 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use codetether_agent::vectordb::{LocalEmbeddingEngine, VectorStore};
+//! use codetether_native_vectordb::{LocalEmbeddingEngine, VectorStore};
 //!
 //! let engine = LocalEmbeddingEngine::new(64);
 //! let mut store: VectorStore<String> = VectorStore::new();

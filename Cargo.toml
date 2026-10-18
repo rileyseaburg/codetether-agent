@@ -1,5 +1,9 @@
 [workspace]
 members = [
+    "crates/codetether-native-indexer",
+    "crates/codetether-native-vectordb",
+    "crates/codetether-native-memory",
+    "crates/codetether-native-search",
     "crates/codetether-native-providers",
     "crates/codetether-session-schema",
     ".",
@@ -654,6 +658,7 @@ tetherscript = ["codetether-native-providers/tetherscript","codetether-reasoning
 # Local in-process inference via Candle. Off by default: the agent leads with
 # remote/HTTP providers unless a local model backend is explicitly requested.
 candle = [
+    "codetether-native-vectordb/candle",
     "codetether-native-providers/candle",
     "codetether-thinker-service/candle",
     "codetether-embedding-backends/candle",
@@ -684,6 +689,10 @@ fips = [
 ]
 
 [dependencies]
+codetether-native-indexer = { path = "crates/codetether-native-indexer", version = "0.1.0" }
+codetether-native-vectordb = { path = "crates/codetether-native-vectordb", version = "0.1.0" }
+codetether-native-memory = { path = "crates/codetether-native-memory", version = "0.1.0" }
+codetether-native-search = { path = "crates/codetether-native-search", version = "0.1.0" }
 codetether-native-providers = { path = "crates/codetether-native-providers", version = "4.7.6-dev.38" }
 codetether-a2a-inbox = { path = "crates/codetether-a2a-inbox", version = "0.1.0" }
 codetether-a2a-interactive = { path = "crates/codetether-a2a-interactive", version = "0.1.0" }

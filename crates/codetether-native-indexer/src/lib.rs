@@ -21,12 +21,17 @@ pub use cli::run;
 /// # Examples
 /// ```rust,no_run
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-/// let index = codetether_agent::indexer::build_index(std::path::Path::new("."), &Default::default()).await.unwrap();
+/// let index = codetether_native_indexer::build_index(std::path::Path::new("."), &Default::default()).await.unwrap();
 /// assert!(!index.root.is_empty());
 /// # });
 /// ```
 pub async fn build_index(root: &Path, options: &BuildOptions) -> Result<CodebaseIndex> {
-    build_index_with_resolver(root, options, &codetether_application_providers::indexing::Resolver::<
-        crate::provider::ProviderRegistry,
-    >::new()).await
+    build_index_with_resolver(
+        root,
+        options,
+        &codetether_application_providers::indexing::Resolver::<
+            codetether_native_providers::ProviderRegistry,
+        >::new(),
+    )
+    .await
 }

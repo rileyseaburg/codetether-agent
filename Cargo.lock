@@ -1276,6 +1276,10 @@ name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
  "codetether-context-health",
+ "codetether-native-indexer",
+ "codetether-native-memory",
+ "codetether-native-search",
+ "codetether-native-vectordb",
  "codetether-native-providers",
  "codetether-tool-panel",
  "codetether-message-bubbles",
@@ -3542,6 +3546,53 @@ dependencies = [
  "tempfile",
  "tokio",
  "which 8.0.6",
+]
+
+[[package]]
+name = "codetether-native-indexer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-application-providers",
+ "codetether-indexer",
+ "codetether-indexer-cli",
+ "codetether-native-providers",
+]
+
+[[package]]
+name = "codetether-native-memory"
+version = "0.1.0"
+dependencies = [
+ "codetether-application-providers",
+ "codetether-memory-tool",
+ "codetether-native-providers",
+]
+
+[[package]]
+name = "codetether-native-search"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-application-providers",
+ "codetether-native-memory",
+ "codetether-native-providers",
+ "codetether-search",
+ "codetether-search-router",
+ "codetether-tool-core",
+]
+
+[[package]]
+name = "codetether-native-vectordb"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-application-providers",
+ "codetether-embedding-backends",
+ "codetether-provider-core",
+ "codetether-vectordb",
+ "futures",
+ "tokio",
 ]
 
 [[package]]
