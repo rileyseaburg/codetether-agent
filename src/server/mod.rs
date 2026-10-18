@@ -17,7 +17,6 @@ mod task_output_ingest;
 mod task_output_poll;
 use task_output_ingest::agent_task_output;
 use task_output_poll::get_agent_task_output;
-mod task_output_stream;
 mod task_queue;
 mod tool_contract;
 mod worker_modules;
@@ -825,7 +824,7 @@ async fn stream_agent_task_output(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
 ) -> Result<Sse<impl stream::Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
-    task_output_stream::handler(State(state), Path(task_id)).await
+    codetether_task_api::stream_task_output(&state.knative_tasks, &state.bus, task_id).await
 }
 async fn list_connected_workers(
     State(state): State<AppState>,

@@ -13560,3 +13560,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, configuration requests or executable hashing
   ran. Full workspace consolidation remains unfinished.
+
+### Task output stream consolidation
+
+- Moved the final native task-output SSE transport into codetether-task-api.
+  The server supplies queue, bus and task identity; the native implementation
+  module and its one-line event-converter facade were removed.
+- Task lookup still precedes subscription. Missing tasks return the same 404;
+  valid tasks use codetether-bus-sse's exact-task conversion and the same
+  default keepalive configuration.
+- Verification: 54 static transport/server-body checks passed, plus module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-task-stream/.
+- Only the task API's bus-SSE dependency was staged from Cargo.lock. No Cargo,
+  rustc, Rust tests, subscriptions or live requests ran. Full workspace
+  consolidation remains unfinished.

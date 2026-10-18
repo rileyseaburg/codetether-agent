@@ -46,3 +46,6 @@ pub mod release;
 pub mod worker_claim;
 /// Queue-backed worker notification streaming.
 pub mod worker_stream;
+
+mod output_stream;
+pub use output_stream::stream_task_output;

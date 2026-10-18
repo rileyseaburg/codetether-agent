@@ -6612,6 +6612,7 @@ dependencies = [
  "tracing",
  "futures",
  "codetether-a2a-worker-core",
+ "codetether-bus-sse",
 ]
 
 [[package]]

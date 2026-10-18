@@ -7,6 +7,7 @@ license = "MIT"
 description = "Task queue HTTP operations and process-local dispatch"
 
 [dependencies]
+codetether-bus-sse = { path = "../codetether-bus-sse", version = "0.1.0" }
 axum = "0.8"
 chrono = "0.4"
 codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
