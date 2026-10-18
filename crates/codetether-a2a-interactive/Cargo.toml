@@ -1,0 +1,14 @@
+[package]
+name = "codetether-a2a-interactive"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Interactive A2A command, inbox admission and task dispatch workflows"
+
+[dependencies]
+codetether-a2a-inbox = { path = "../codetether-a2a-inbox", version = "0.1.0" }
+codetether-worker-events = { path = "../codetether-worker-events", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-chat-transcript = { path = "../codetether-chat-transcript", version = "0.1.0" }
+tracing = "0.1"

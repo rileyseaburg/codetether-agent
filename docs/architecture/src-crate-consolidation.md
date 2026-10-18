@@ -19828,3 +19828,24 @@ reachability, dependency cycles, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-approval-command/`. No Cargo,
 rustc, Python, Rust tests or approval commands ran; compilation and runtime
 remain unverified.
+
+### Interactive A2A turn workflow
+
+Moved live attachment commands, parked-turn admission, queued remote-task
+announcement/dispatch and reply settlement into `codetether-a2a-interactive`.
+The low-level inbox remains focused on transport; native bindings supply queue,
+session-message and prompt execution context plus chat presentation.
+
+Preserved idle-only admission, one in-flight responder, task metadata and
+announcement text, dispatch without images, latest-assistant reply selection,
+responder consumption and the original settlement log target. Native lifecycle
+and error callers remain unchanged.
+
+Validation: six complete translated function bodies, native queue/prompt
+bindings, unchanged lifecycle/error call sites, application-only lockfile delta,
+module reachability, dependency cycles, file-size ratchet, whitespace and direct
+formatting. The initial lockfile insertion matched the HTTP package first;
+corrected it to target the application package and retained the initial file
+for audit. Evidence: `artifacts/consolidation-a2a-interactive/`. No Cargo,
+rustc, Python, Rust tests or A2A execution ran; compilation and runtime remain
+unverified.
