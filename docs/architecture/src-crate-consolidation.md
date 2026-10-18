@@ -22303,3 +22303,28 @@ checks passed. Only the provider crate's indexer dependency edge is staged in
 the lockfile. Evidence: `artifacts/consolidation-indexer-provider/`.
 No indexing, provider requests, Cargo, rustc or Python ran; compilation and
 runtime tests remain unverified. Full consolidation is active.
+
+### Workspace factory moved into the application registry crate
+
+Moved workspace catalog construction, batch creation/binding, routed search
+registration and definition collection from the native workspace composition
+host into `codetether-application-registry::workspace_factory`. Three focused
+modules own the factory type, rooted-tool delegation and registry lifecycle
+integration. The native composition-host implementation file was removed;
+its host name now aliases the shared factory bound to the original native
+application and rooted LSP/scripting constructors.
+
+The shared factory reuses the existing registry lifecycle implementation.
+Static source comparisons confirm identical default/provider catalogs, batch
+construction and weak binding, definition collection and native rooted tools.
+Search uses the existing application callback, which constructs the same
+provider registry and SearchTool; that callback clones the supplied provider
+Arc and releases the original on return. The native registry binding module
+is now crate-visible so the workspace factory can name its application type.
+No new dependencies or manifest/lockfile changes were needed. Module/dependency
+checks cover 699 roots and 571 crates with no missing modules or cycles.
+Direct rustfmt, native file-size limits and whitespace checks passed. Evidence:
+`artifacts/consolidation-workspace-factory/` (initial verification-script
+syntax/expected-source errors retained alongside the successful final run).
+No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
+Full consolidation is active.

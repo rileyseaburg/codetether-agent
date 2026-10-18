@@ -3,7 +3,6 @@
 use crate::{provider::Provider, tool::ToolRegistry};
 use std::{path::Path, sync::Arc};
 
-mod composition_host;
 mod host;
 pub(crate) use host::Native as RegistryHost;
 mod local;

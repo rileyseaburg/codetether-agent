@@ -18,6 +18,7 @@ mod lifecycle;
 mod search;
 mod swarm;
 mod workspace;
+pub mod workspace_factory;
 
 /// Tool registry whose factories and policy belong to an embedding application.
 /// # Examples

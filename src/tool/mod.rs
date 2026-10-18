@@ -54,7 +54,7 @@ pub mod progress;
 pub mod question;
 pub mod ralph;
 pub mod readonly;
-mod registry_lifecycle;
+pub(crate) mod registry_lifecycle;
 pub mod relay_autochat;
 pub mod ripgrep;
 pub mod rlm;
