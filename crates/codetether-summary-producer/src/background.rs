@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use crate::provider::Provider;
-use crate::rlm::{RlmChunker, RlmConfig};
+use codetether_provider_core::Provider;
+use codetether_rlm::{RlmChunker, RlmConfig};
 
 pub(super) fn summary_or_fallback(
     input: &str,
@@ -12,16 +12,18 @@ pub(super) fn summary_or_fallback(
     model: &str,
     rlm_config: &RlmConfig,
     session_id: &str,
+    resolver: codetether_rlm_background::Resolver,
 ) -> String {
-    let cached = crate::session::helper::rlm_background::context_summary(
+    let cached = codetether_rlm_background::context_summary(
         input,
         "summary_index",
         session_id,
         model,
         provider,
         rlm_config,
+        resolver,
     );
     cached
-        .map(|s| super::summary_text::clamp_tokens(&s, target_tokens))
+        .map(|s| codetether_summary_quality::clamp_tokens(&s, target_tokens))
         .unwrap_or_else(|| RlmChunker::compress(input, target_tokens, None))
 }

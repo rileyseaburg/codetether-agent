@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-summary-producer",
  "codetether-policy-eval",
  "codetether-replay-oracle",
  "codetether-workspace-tools",
@@ -7482,6 +7483,19 @@ dependencies = [
 [[package]]
 name = "codetether-policy-eval"
 version = "0.1.0"
+
+[[package]]
+name = "codetether-summary-producer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-rlm",
+ "codetether-rlm-background",
+ "codetether-summary-quality",
+ "uuid",
+]
 
 [[package]]
 name = "codetether-tracked-vec"

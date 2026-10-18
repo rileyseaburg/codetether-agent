@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use anyhow::{Context as _, Result};
+use anyhow::Result;
 
 use super::super::index::types::{Granularity, SummaryNode, SummaryRange};
 use super::observability::SummaryObservability;
@@ -29,28 +29,20 @@ pub async fn produce_summary(
     _subcall_model: Option<String>,
     _observability: SummaryObservability,
 ) -> Result<SummaryNode> {
-    let slice = messages
-        .get(range.start..range.end)
-        .context("summary_for range out of bounds")?;
-    let context = crate::session::helper::error::messages_to_rlm_context(slice);
-    let input = format!(
-        "Summarise the following transcript window (~{} messages, target ≤ {} tokens). \
-         Preserve key decisions, file paths, error classes, and tool outcomes.\n\n{context}",
-        slice.len(),
+    codetether_summary_producer::produce_summary(
+        messages,
+        range,
         target_tokens,
-    );
-    let content = super::background::summary_or_fallback(
-        &input,
-        target_tokens,
+        granularity,
+        generation,
         provider,
         model,
         rlm_config,
         session_id,
-    );
-    Ok(SummaryNode {
-        content,
-        target_tokens,
-        granularity,
-        generation,
-    })
+        _subcall_provider,
+        _subcall_model,
+        _observability,
+        crate::session::helper::rlm_background::resolve_model,
+    )
+    .await
 }

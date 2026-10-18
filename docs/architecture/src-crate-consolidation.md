@@ -15479,3 +15479,25 @@ Full workspace consolidation remains active.
   entry and diff whitespace. Evidence: `artifacts/consolidation-policy-eval/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Dedicated summary producer crate
+
+- Moved active summary-index request construction and cached-background/fallback
+  selection from `src/session/index_produce` into `codetether-summary-producer`.
+  Modules separate transcript request text, producer flow, background selection,
+  and optional observation metadata.
+- Native code forwards the same background model resolver. The shared observation
+  type is generic over the host bus, with a native alias preserving SessionBus.
+  A manual Default implementation avoids imposing a Default bound on the bus.
+- Preserved range validation, exact prompt text, cached-summary clamping,
+  deterministic chunk fallback, output index metadata and unused compatibility
+  inputs. Documented that the current producer accepts observation metadata
+  without emitting events.
+- Confirmed the older `compression_gate.rs` is not wired into the active helper
+  module tree and left its dormant implementation unchanged.
+- Verification: expanded request and fallback body comparisons, native resolver
+  and bus alias checks, module/dependency graphs, direct rustfmt, 50-line limits,
+  diff whitespace and isolated lock additions. Evidence:
+  `artifacts/consolidation-summary-producer/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.
