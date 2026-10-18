@@ -41,3 +41,6 @@ pub mod worker_request;
 
 /// Worker event dispatch and resume-cursor progression.
 pub mod dispatch;
+
+/// Standalone and HTTP-integrated worker reconnect sequences.
+pub mod worker_reconnect;

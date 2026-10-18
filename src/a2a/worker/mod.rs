@@ -27,7 +27,7 @@ mod model_preferences;
 mod pending_tasks;
 mod provider_models;
 mod public_api;
-mod reconnect_lifecycle;
+mod reconnect_host;
 mod reexports;
 mod reexports_a;
 mod reexports_b;
@@ -91,7 +91,6 @@ mod test_support;
 mod test_support_provider;
 #[cfg(test)]
 mod test_tool_schema_retry;
-mod transport_probe;
 mod worker_bootstrap;
 mod worker_context;
 mod worker_env;

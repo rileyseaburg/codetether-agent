@@ -16356,3 +16356,25 @@ Full workspace consolidation remains active.
   No dependency changes. Evidence: `artifacts/consolidation-stream-dispatch/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker reconnect loops and transport probe
+
+- Moved standalone and HTTP-integrated reconnect loops into the dedicated
+  `codetether-a2a-stream::worker_reconnect` module, split into shared host
+  contracts and separate loop implementations.
+- Moved transport-probe task ownership into the stream crate beside its existing
+  probe target/sampling code. Removed the native probe and reconnect-policy
+  forwarding modules; native worker entrypoints now bind shared loops to runtime
+  services and server state.
+- Preserved workspace snapshot timing, registration/fetch ordering, heartbeat
+  arguments and cancellation, five-second standalone delay, integrated channel
+  capacity and connection updates, breaker/backoff policy and probe lifetime.
+- Declared Tokio sync/rt features for the moved channels and spawned task; no
+  dependency versions or Cargo.lock changes. Corrected the public probe handle
+  documentation: stopping requires abort; dropping the handle does not abort it.
+- Verification: complete loop/probe body comparisons and native adapter checks,
+  unchanged registration/stream/polling/backoff/breaker/probe tests, module and
+  dependency graphs, direct rustfmt, file limits and diff whitespace. Evidence:
+  `artifacts/consolidation-worker-reconnect/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

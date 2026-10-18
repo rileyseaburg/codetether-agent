@@ -51,3 +51,7 @@ pub const PROBE_INTERVAL: Duration = Duration::from_secs(15);
 #[cfg(test)]
 #[path = "probe_tests.rs"]
 mod tests;
+
+#[path = "probe_worker.rs"]
+mod worker;
+pub use worker::spawn_transport_probe;
