@@ -5,6 +5,8 @@ mod approval_command_deny_tests;
 mod approval_command_tests;
 #[path = "image_tests.rs"]
 mod image_tests;
+#[path = "tests.rs"]
+mod legacy_input;
 #[path = "tests_enter.rs"]
 mod tests_enter;
 #[path = "tests_image_paste.rs"]

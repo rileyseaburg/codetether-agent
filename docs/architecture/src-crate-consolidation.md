@@ -28732,3 +28732,23 @@ formatting and whitespace checks pass (724 module roots, 618 packages). Evidence
 artifacts/consolidation-application-package/. Initial failed checks are retained.
 No Cargo, rustc, Python, Rust tests, doc tests or Docker builds ran. The root src
 and tests directories are gone. Full consolidation remains active for final audit.
+
+### Restore test registration uncovered by the final ownership audit
+
+The module-union audit found native test files that existed but were no longer
+registered. Reconnected the 14 app regressions, four input regressions and the
+opt-in real-session loader test without changing their bodies. They now belong
+to active test module paths; this is registration evidence, not execution proof.
+
+Moved three pure stream-reconnect scheduling regressions to
+codetether-stream-recovery::schedule_tests, using StreamRecoveryState directly.
+Removed the unused app/helpers.rs compatibility exports and obsolete
+chat_view/mods_a.rs declaration copy. Neither file was reachable from a target.
+
+Static comparison verifies test-body preservation, the three stream test
+transformations, unchanged user edits and current module reachability. Declaration,
+module/dependency, production-dependency, file-limit, formatting and whitespace
+checks pass. Evidence: artifacts/consolidation-registered-tests/. No Cargo,
+rustc, Python or Rust tests ran. Six older unregistered utility cases still
+reference obsolete APIs; the full consolidation goal remains active for that
+remaining ownership audit.

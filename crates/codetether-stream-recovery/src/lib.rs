@@ -18,3 +18,5 @@ pub mod retry;
 pub const MAX_RECONNECT_ATTEMPTS: u32 = 3;
 #[cfg(test)]
 mod classify_tests;
+#[cfg(test)]
+mod schedule_tests;
