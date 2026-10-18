@@ -34,3 +34,19 @@ pub use prompt_host::PromptHost;
 pub use startup_first::begin_first;
 pub use startup_host::StartupHost;
 pub use startup_message::begin_message;
+
+mod binding;
+
+/// Dependencies used by application-local child-turn implementations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use async_trait::async_trait;
+    pub use codetether_agent_input::Params;
+    pub use codetether_agent_status::PublishedAgent;
+    pub use codetether_child_mailbox::Submission;
+    pub use codetether_collaboration_input::MessageImage;
+    pub use codetether_collaboration_state::execution::AgentRunGuard;
+    pub use codetether_tool_core::ToolResult;
+    pub use tokio::sync::mpsc;
+}

@@ -26866,3 +26866,22 @@ whitespace checks pass for 729 roots and 617 crates. No manifest/lock changes
 were required, and unrelated working files remain untouched. Evidence:
 artifacts/consolidation-admission-binding/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### Complete application child-turn trait bindings
+
+Moved all six root turn-host implementation files into corresponding modules in
+codetether-child-turn::binding: startup, prompt, mailbox, message, finalization
+and runtime completion. The root now makes one declaration selecting its
+existing event host, Session, SessionEvent, ProviderRegistry and service callbacks.
+No replacement runtime state or altered sequencing was introduced.
+
+Static expansion compares all twenty method bodies with their originals after
+path substitution. Image conversion/plain prompting, session saves, publication
+fields, store/trace mutation and mailbox completion are unchanged. Test sources
+are untouched. Module/dependency scans cover 728 roots and 617 crates; the emptied
+root turn_host directory was removed from explicit scan roots while the full
+child-turn crate remains covered. Declarations, native production scope,
+standalone formatting, file limits and whitespace checks pass. No manifest/lock
+changes were needed; unrelated working files are unchanged. Evidence:
+artifacts/consolidation-turn-binding/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
