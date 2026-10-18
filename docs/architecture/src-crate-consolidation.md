@@ -21145,3 +21145,25 @@ whitespace checks passed. Evidence:
 `artifacts/consolidation-swarm-conversation/`. No dependencies changed. No Cargo,
 rustc, or Python commands ran. Rust tests and compilation remain unverified;
 the full consolidation goal is still active.
+
+### Shared sub-agent execution state ownership
+
+Moved the remaining sub-agent execution state into
+`codetether-swarm-core::agent_loop::AgentState<R>`. The shared type now owns the
+provider/model, tools and registry, limits, events, identity, bus, workspace,
+conversation, and parent control. Its registry parameter preserves the native
+ToolRegistry specialization. Native `State` is a one-field wrapper so native
+trait implementations remain legal; field access uses explicit `inner` paths
+rather than dereference indirection.
+
+All twelve field types match after specialization, and constructor values/order
+are unchanged. Updated 18 native caller/test files through explicit field-path
+substitutions. Every file in the native sub-agent directory was checked against
+its saved source, including unaffected files and regression assertions.
+Added direct bus-core and session-control dependencies, with no dependency
+cycles. Only these owning-package lockfile edges are staged.
+
+Direct rustfmt, source graphs across 694 roots, native file-size checks, and
+whitespace checks passed. Evidence: `artifacts/consolidation-swarm-state/`.
+No Cargo, rustc, or Python commands ran. Rust tests and compilation remain
+unverified; the full workspace consolidation remains active.

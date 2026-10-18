@@ -8,10 +8,10 @@ use serde_json::Value;
 
 impl codetether_swarm_core::agent_loop::tools::call::Host for State {
     fn start(&mut self, call: &ToolCall) {
-        self.conversation.tool_calls += 1;
+        self.inner.conversation.tool_calls += 1;
         tool_events::started(self, &call.name);
         super::super::super::executor_trace::tool_call(
-            self.conversation.steps,
+            self.inner.conversation.steps,
             &call.id,
             &call.name,
             &call.arguments,

@@ -12,9 +12,9 @@ impl codetether_swarm_core::agent_loop::tools::input::Policy for Native {
 
 pub(super) async fn prepare(state: &State, name: &str, raw: &str) -> Result<Value, String> {
     codetether_swarm_core::agent_loop::tools::input::prepare::<Native>(
-        state.working_dir.as_deref(),
-        &state.model,
-        &state.subtask_id,
+        state.inner.working_dir.as_deref(),
+        &state.inner.model,
+        &state.inner.subtask_id,
         name,
         raw,
     )

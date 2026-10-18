@@ -21,8 +21,8 @@ async fn delegated_usage_preserves_parent_objective_and_counts_each_response() {
     let mut state = control
         .scope(async { image_test_state::state(ToolResult::success("unused")) })
         .await;
-    state.provider = provider;
-    state.max_steps = 3;
+    state.inner.provider = provider;
+    state.inner.max_steps = 3;
     driver::execute(&mut state).await.unwrap();
     let (_, state) = goals::current(&session.id).await.unwrap();
     let goal = state.goal.unwrap();

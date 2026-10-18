@@ -3,10 +3,10 @@ use super::state::State;
 
 pub(super) fn record(state: &mut State, text: &str) {
     codetether_swarm_core::agent_loop::events::record_output(
-        &mut state.conversation.output,
-        state.conversation.steps,
-        state.events.as_ref(),
-        &state.subtask_id,
+        &mut state.inner.conversation.output,
+        state.inner.conversation.steps,
+        state.inner.events.as_ref(),
+        &state.inner.subtask_id,
         text,
     );
 }

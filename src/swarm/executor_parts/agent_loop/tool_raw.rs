@@ -6,11 +6,11 @@ use serde_json::Value;
 
 pub(super) async fn execute(state: &State, name: &str, args: Value) -> Result {
     codetether_swarm_core::agent_loop::tools::raw::execute(
-        state.registry.get(name),
+        state.inner.registry.get(name),
         name,
         args,
-        state.conversation.deadline,
-        state.timeout_secs,
+        state.inner.conversation.deadline,
+        state.inner.timeout_secs,
     )
     .await
 }

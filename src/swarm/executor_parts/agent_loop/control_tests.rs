@@ -15,8 +15,8 @@ async fn steering_during_final_response_continues_the_delegated_loop() {
     let mut state = control
         .scope(async { image_test_state::state(ToolResult::success("unused")) })
         .await;
-    state.max_steps = 3;
-    state.provider = provider.clone();
+    state.inner.max_steps = 3;
+    state.inner.provider = provider.clone();
     driver::execute(&mut state).await.unwrap();
     let requests = provider.requests.lock().unwrap();
     assert_eq!(requests.len(), 2);
@@ -36,11 +36,12 @@ async fn cancellation_during_completion_prevents_tool_dispatch() {
     let mut state = control
         .scope(async { image_test_state::state(ToolResult::success("unused")) })
         .await;
-    state.provider = provider;
+    state.inner.provider = provider;
     assert!(driver::execute(&mut state).await.is_err());
-    assert_eq!(state.conversation.tool_calls, 0);
+    assert_eq!(state.inner.conversation.tool_calls, 0);
     assert!(
         !state
+            .inner
             .conversation
             .messages
             .iter()

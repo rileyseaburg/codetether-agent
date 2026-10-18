@@ -19,9 +19,9 @@ pub(super) async fn run(
     request: CompletionRequest,
 ) -> anyhow::Result<CompletionResponse> {
     codetether_provider_step::controlled::complete::<Native>(
-        &state.provider,
+        &state.inner.provider,
         request,
-        state.control.as_ref(),
+        state.inner.control.as_ref(),
     )
     .await
 }

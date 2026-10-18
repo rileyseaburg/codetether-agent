@@ -1,25 +1,8 @@
-//! Mutable conversation state for a sub-agent loop.
-
-use crate::bus::AgentBus;
-use crate::provider::{Provider, ToolDefinition};
+//! Native tool-registry specialization of shared sub-agent execution state.
 use crate::tool::ToolRegistry;
-use codetether_swarm_core::{SwarmEvent, agent_loop::Conversation};
-use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::sync::mpsc;
+use codetether_swarm_core::agent_loop::AgentState;
 
 pub(super) struct State {
-    pub provider: Arc<dyn Provider>,
-    pub model: String,
-    pub tools: Vec<ToolDefinition>,
-    pub registry: Arc<ToolRegistry>,
-    pub max_steps: usize,
-    pub timeout_secs: u64,
-    pub events: Option<mpsc::Sender<SwarmEvent>>,
-    pub subtask_id: String,
-    pub bus: Option<Arc<AgentBus>>,
-    pub working_dir: Option<PathBuf>,
-    pub conversation: Conversation,
-    pub control: Option<crate::session::runtime::ControlHandle>,
+    pub inner: AgentState<ToolRegistry>,
 }
 pub(super) use codetether_swarm_core::agent_loop::ToolCall;

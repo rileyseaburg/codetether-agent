@@ -24,8 +24,8 @@ async fn swarm_tool_images_survive_success_failure_and_text_truncation() {
                 arguments: "{}".into(),
             };
             assert!(!tools::execute(&mut state, vec![call]).await.unwrap());
-            assert_eq!(state.conversation.messages.len(), 3);
-            let message = &state.conversation.messages[2];
+            assert_eq!(state.inner.conversation.messages.len(), 3);
+            let message = &state.inner.conversation.messages[2];
             assert!(matches!(message.role, Role::Tool));
             assert_eq!(expected.len(), count);
             assert_eq!(message.content.len(), 1 + expected.len());

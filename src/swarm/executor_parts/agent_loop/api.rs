@@ -74,9 +74,9 @@ pub async fn run_agent_loop(
     );
     let exit = super::driver::execute(&mut state).await?;
     Ok((
-        state.conversation.output,
-        state.conversation.steps,
-        state.conversation.tool_calls,
+        state.inner.conversation.output,
+        state.inner.conversation.steps,
+        state.inner.conversation.tool_calls,
         exit,
     ))
 }

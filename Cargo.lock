@@ -5391,6 +5391,8 @@ dependencies = [
 name = "codetether-swarm-core"
 version = "0.1.0"
 dependencies = [
+ "codetether-bus-core",
+ "codetether-session-control",
  "codetether-provenance",
  "codetether-runtime-input",
  "anyhow",

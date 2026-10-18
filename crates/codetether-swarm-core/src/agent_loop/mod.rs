@@ -9,6 +9,8 @@ use std::time::Instant;
 mod conversation;
 mod types;
 pub use conversation::Conversation;
+mod state;
+pub use state::AgentState;
 pub use types::{RequestOutcome, ToolCall, Turn};
 mod turn;
 pub use turn::parse_turn;

@@ -10,10 +10,10 @@ pub(super) async fn process(
 ) -> (String, bool) {
     codetether_swarm_output::render(
         codetether_swarm_output::Context {
-            provider: &state.provider,
-            model: &state.model,
-            deadline: state.conversation.deadline,
-            working_dir: state.working_dir.as_deref(),
+            provider: &state.inner.provider,
+            model: &state.inner.model,
+            deadline: state.inner.conversation.deadline,
+            working_dir: state.inner.working_dir.as_deref(),
         },
         name,
         output,

@@ -20,18 +20,18 @@ impl AgentRuntime for State {
     }
     fn advance(&mut self) {
         codetether_swarm_core::agent_loop::advance_turn(
-            &mut self.conversation.steps,
-            &mut self.conversation.messages,
+            &mut self.inner.conversation.steps,
+            &mut self.inner.conversation.messages,
         );
     }
     fn steps(&self) -> usize {
-        self.conversation.steps
+        self.inner.conversation.steps
     }
     async fn request(&mut self) -> Result<RequestOutcome> {
         request::execute(self).await
     }
     fn normalize(&self, response: CompletionResponse) -> CompletionResponse {
-        crate::session::helper::markup::normalize_textual_tool_calls(response, &self.tools)
+        crate::session::helper::markup::normalize_textual_tool_calls(response, &self.inner.tools)
     }
     fn publish_thinking(&self, text: &str) {
         thinking::publish(self, text);
@@ -40,7 +40,7 @@ impl AgentRuntime for State {
         output::record(self, text);
     }
     fn append_message(&mut self, message: Message) {
-        self.conversation.messages.push(message);
+        self.inner.conversation.messages.push(message);
     }
     async fn execute_tools(&mut self, calls: Vec<ToolCall>) -> Result<bool> {
         tools::execute(self, calls).await
