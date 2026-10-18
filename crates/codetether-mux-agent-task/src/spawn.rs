@@ -26,7 +26,7 @@ pub(super) fn child(
     }
     command.arg(prompt).arg("--").arg(workspace);
     command.current_dir(workspace);
-    command.env(crate::mux::coordination::SESSION_ENV, mux);
+    command.env(codetether_mux_coordination::SESSION_ENV, mux);
     if let Some(profile) = tool_profile {
         command.env("CODETETHER_TOOL_PROFILE", profile);
     }

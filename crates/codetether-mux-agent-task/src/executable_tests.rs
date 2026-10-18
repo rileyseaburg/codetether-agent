@@ -1,3 +1,5 @@
+//! Regression tests for replacement executable selection.
+
 use std::ffi::OsString;
 use std::path::Path;
 

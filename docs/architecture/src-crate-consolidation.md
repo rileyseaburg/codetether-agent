@@ -10437,3 +10437,21 @@ argument/result types retained restricted re-export visibility in the crate
 root. Exported `PtyAttach`, `PtyChunk` and `TerminalSize` publicly and added an
 explicit export assertion to the extraction verifier. This corrects the shared
 API boundary; compilation remains unverified under the toolchain restriction.
+
+### Mux agent task lifecycle extracted
+
+Moved the structured agent task implementation from `src/mux/agent_task` into
+`crates/codetether-mux-agent-task`. Twenty-one modules own session-scoped
+admission, validation, direct child startup, executable fallback, process-group
+cancellation, stdout/stderr capture, exit projection, bounded replay and task
+retention. Registry reads and cancellation, child pipe validation and store
+access each have separate modules. The native module now re-exports the task
+registry; its server owner remains unchanged.
+
+Thirty-three static checks compare original modules, split methods, child setup
+ordering, public registry export and native wiring. All six existing tests moved
+with the subsystem. Module/dependency graphs, file budgets and whitespace checks
+passed; new modules contain at most 39 code lines. Evidence is in
+`artifacts/consolidation-mux-agent-task/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, agent process or cancellation operation ran.
+Full workspace consolidation remains active.

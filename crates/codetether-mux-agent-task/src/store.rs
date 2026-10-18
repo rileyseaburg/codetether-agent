@@ -10,8 +10,8 @@ use super::entry::AgentTask;
 const TASK_LIMIT: usize = 128;
 
 pub(super) struct TaskStore {
-    tasks: HashMap<String, Arc<AgentTask>>,
-    order: VecDeque<String>,
+    pub(super) tasks: HashMap<String, Arc<AgentTask>>,
+    pub(super) order: VecDeque<String>,
 }
 
 impl TaskStore {
@@ -43,18 +43,5 @@ impl TaskStore {
             }
         }
         Ok(())
-    }
-
-    pub(super) fn insert(&mut self, id: String, task: Arc<AgentTask>) {
-        self.order.push_back(id.clone());
-        self.tasks.insert(id, task);
-    }
-
-    pub(super) fn get(&self, id: &str) -> Option<Arc<AgentTask>> {
-        self.tasks.get(id).cloned()
-    }
-
-    pub(super) fn values(&self) -> Vec<Arc<AgentTask>> {
-        self.tasks.values().cloned().collect()
     }
 }

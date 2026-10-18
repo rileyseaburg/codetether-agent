@@ -1,3 +1,5 @@
+//! Regression tests for bounded replay and request validation.
+
 use super::{buffer::TaskBuffer, validation};
 
 #[test]
