@@ -1,45 +1,5 @@
-//! Validation evidence guardrails injected into agent prompts.
-
-mod assembly;
-mod belief_keywords;
-mod belief_recall;
-mod capabilities;
-mod claim;
-mod claim_note;
-mod core_memory;
-mod extract;
-mod failure_attribution;
-mod final_gate;
-mod final_note;
-mod gate_mode;
-mod guardrails;
-mod ledger;
-mod ledger_path;
-mod ledger_persist;
-mod level;
-mod memory_protocol;
-mod message_text;
-mod palace_belief;
-mod palace_sync;
-mod prefetch;
-mod prompt;
-mod record;
-mod recovery;
-mod scope;
-mod scope_extract;
-mod scope_item;
-mod sections;
-mod trapdoor;
-mod verification_gate;
-mod workflow;
-mod workflow_templates;
-mod writeback;
-mod writeback_path;
-mod writeback_persist;
-mod writeback_read;
-
-pub(crate) use final_gate::gate as gate_final_answer;
-pub(crate) use prompt::append_guardrails_for_cwd;
-
-#[cfg(test)]
-mod prompt_tests;
+//! Native session adapter for shared evidence runtime services.
+pub(crate) use codetether_evidence_runtime::append_guardrails_for_cwd;
+pub(crate) fn gate_final_answer(answer: &str, session: &crate::session::Session) -> String {
+    codetether_evidence_runtime::gate_final_answer(answer, &session.id, &session.messages)
+}

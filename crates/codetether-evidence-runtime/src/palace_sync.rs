@@ -1,10 +1,11 @@
+//! Synchronize proven ledger items into project beliefs.
 //! Persist proven ledger items as project-palace beliefs.
 //!
 //! Closes the loop between the evidence writeback path and
-//! [`crate::memory::palace`]: proven deliverables become durable
+//! [`codetether_cognition_core::palace`]: proven deliverables become durable
 //! `.codetether/memory.json` beliefs injected into future prompts.
 
-use crate::memory::palace;
+use codetether_cognition_core::palace;
 
 use super::ledger::ScopeLedger;
 
@@ -39,7 +40,7 @@ pub(crate) fn save(ledger: &ScopeLedger) {
         }
     }
     if let Err(err) = palace::save_project_beliefs(&root, &beliefs) {
-        tracing::warn!(error = %err, "Failed to persist project palace beliefs");
+        tracing::warn!(target: "codetether_agent::session::helper::evidence::palace_sync",error = %err, "Failed to persist project palace beliefs");
     }
 }
 

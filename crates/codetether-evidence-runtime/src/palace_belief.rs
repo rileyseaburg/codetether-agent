@@ -1,9 +1,10 @@
+//! Convert proven deliverables into durable belief records.
 //! Convert a proven [`ScopeItem`] into a project-palace [`Belief`].
 
 use chrono::{Duration, Utc};
 use uuid::Uuid;
 
-use crate::cognition::beliefs::{Belief, BeliefStatus};
+use codetether_cognition_core::beliefs::{Belief, BeliefStatus};
 
 use super::scope_item::ScopeItem;
 

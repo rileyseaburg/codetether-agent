@@ -1,4 +1,5 @@
-use crate::cognition::beliefs::Belief;
+//! Render recall guidance from high-confidence belief keywords.
+use codetether_cognition_core::beliefs::Belief;
 
 pub(crate) fn render(beliefs: &[Belief]) -> String {
     let keywords = super::belief_keywords::top_keywords(beliefs, 8);

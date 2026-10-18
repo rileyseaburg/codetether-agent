@@ -1,3 +1,4 @@
+//! Summarize workspace and recent writeback facts.
 use std::path::Path;
 
 pub(crate) fn render(cwd: &Path) -> String {

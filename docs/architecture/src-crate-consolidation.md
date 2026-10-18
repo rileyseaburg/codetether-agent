@@ -10121,3 +10121,21 @@ The pre-existing native digest orphan remains unchanged. Evidence is in
 `artifacts/consolidation-evidence-ledger/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python or persistence functions were executed.
 Full workspace consolidation remains active.
+
+### Dedicated evidence runtime and native directory consolidation
+
+Moved belief-keyword recall, project-memory rendering, prefetch summaries,
+proven-belief synchronization, prompt orchestration and final-answer gating into
+`crates/codetether-evidence-runtime`. Fourteen modules compose the evidence core,
+prompt and ledger crates with shared cognition memory. The native evidence
+directory now contains only a session adapter. Its former aliases and test files
+were removed after their implementations/tests moved. The pre-existing digest
+helper and test moved into a declared module; no production caller was added.
+
+Thirty-two static comparisons/checks cover function bodies, constants, original
+13 tests, native dependency removal, section ordering and the final-gate write
+sequence. Module/dependency graphs, file budgets and whitespace checks passed;
+new files contain at most 41 code lines. Evidence is in
+`artifacts/consolidation-evidence-runtime/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python, memory reads or persistence functions ran.
+Full workspace consolidation remains active.

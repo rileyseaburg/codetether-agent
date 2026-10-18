@@ -1,0 +1,18 @@
+[package]
+name = "codetether-evidence-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Evidence prompt orchestration, belief synchronization and final gating"
+
+[dependencies]
+chrono = "0.4"
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+codetether-evidence-core = { path = "../codetether-evidence-core", version = "0.1.0" }
+codetether-evidence-ledger = { path = "../codetether-evidence-ledger", version = "0.1.0" }
+codetether-evidence-prompt = { path = "../codetether-evidence-prompt", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }

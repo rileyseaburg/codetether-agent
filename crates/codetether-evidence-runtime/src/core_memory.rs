@@ -1,11 +1,12 @@
+//! Load project beliefs and render memory with recall guidance.
 use std::path::Path;
 
 const EMPTY: &str = "Core memory: no high-confidence project beliefs loaded.";
 
 pub(crate) fn render(project_root: &Path) -> String {
-    let beliefs = crate::memory::palace::load_project_beliefs(project_root);
+    let beliefs = codetether_cognition_core::palace::load_project_beliefs(project_root);
     let recall = super::belief_recall::render(&beliefs);
-    let context = crate::memory::palace::belief_context(&beliefs);
+    let context = codetether_cognition_core::palace::belief_context(&beliefs);
     if context.trim().is_empty() {
         return format!("{EMPTY}\n{recall}\n{}", storage_hint());
     }

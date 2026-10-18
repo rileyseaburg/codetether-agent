@@ -1,3 +1,4 @@
+//! Load allowed context and prepare evidence prompt sections.
 use std::path::Path;
 
 pub(crate) fn build(

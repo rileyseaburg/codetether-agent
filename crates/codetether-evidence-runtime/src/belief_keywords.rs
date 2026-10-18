@@ -1,4 +1,5 @@
-use crate::cognition::beliefs::Belief;
+//! Extract bounded recall keywords from stored beliefs.
+use codetether_cognition_core::beliefs::Belief;
 
 const STOP: &[&str] = &["the", "and", "for", "with", "that", "this", "from"];
 
