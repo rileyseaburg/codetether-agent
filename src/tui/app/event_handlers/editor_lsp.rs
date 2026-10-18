@@ -20,12 +20,9 @@ pub(super) fn ensure_manager(app: &mut App, cwd: &Path) -> Arc<LspManager> {
     app.state.editor_lsp.manager = Some(manager.clone());
     manager
 }
-
-/// Resolves the editor's `(path, 1-based line, 1-based col)` for an LSP query.
+/// Resolve the current buffer cursor through shared LSP coordinate conversion.
 pub(super) fn cursor_target(app: &App) -> Option<(std::path::PathBuf, u32, u32)> {
-    let buf = app.state.editor.as_ref()?;
-    let (line, col) = buf.cursor();
-    Some((buf.path().to_path_buf(), line as u32 + 1, col as u32 + 1))
+    codetether_editor_lsp::cursor_target(app.state.editor.as_ref())
 }
 
 /// Runs go-to-definition at the editor cursor and navigates to the result.

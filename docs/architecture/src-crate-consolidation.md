@@ -11677,3 +11677,24 @@ Full workspace consolidation remains active.
   limits and git diff --check passed. Evidence: artifacts/consolidation-editor/.
 - No Cargo, rustc, compilation, runtime tests or editor rendering were run.
   Full workspace consolidation remains incomplete.
+
+### Editor LSP state and request extraction
+
+- Moved generic editor-LSP state, one-based cursor targeting, definition retry,
+  hover-result handling and buffer navigation into crates/codetether-editor-lsp.
+  The native state alias supplies the original application LspManager type.
+- Kept manager creation and approval-aware key dispatch native and unchanged.
+  Native request wrappers use the same shared client behind the existing
+  application Deref wrapper and apply returned status/hover/navigation outcomes.
+- Preserved six definition attempts with 500 ms delays, first-location choice,
+  nonempty hover handling, file-switch scroll reset, same-file cursor movement,
+  error statuses and redraw behavior. Generic state cloning/defaults do not
+  impose Clone or Default requirements on the host manager.
+- Verification: 16 static comparisons cover transformed request/navigation
+  bodies, state shape, clone/default semantics, client identity, native result
+  application and unchanged manager creation/key gating. Eight modules contain
+  at most 30 code lines each. Lexical module reachability, dependency cycles,
+  direct rustfmt, native file limits and git diff --check passed.
+- Evidence: artifacts/consolidation-editor-lsp/. No Cargo, rustc, compilation,
+  runtime tests or language-server requests were run. Full consolidation is
+  still incomplete.

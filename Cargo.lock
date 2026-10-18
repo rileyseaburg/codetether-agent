@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-editor-lsp",
  "codetether-editor",
  "codetether-file-picker",
  "codetether-fuzzy-finder",
@@ -6013,6 +6014,17 @@ dependencies = [
  "crossterm",
  "ratatui",
  "ropey",
+]
+
+[[package]]
+name = "codetether-editor-lsp"
+version = "0.1.0"
+dependencies = [
+ "codetether-editor",
+ "codetether-lsp-core",
+ "ratatui",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

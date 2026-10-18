@@ -1,0 +1,14 @@
+[package]
+name = "codetether-editor-lsp"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Editor LSP state, definition retries, hover outcomes and navigation"
+
+[dependencies]
+codetether-editor = { path = "../codetether-editor", version = "0.1.0" }
+codetether-lsp-core = { path = "../codetether-lsp-core", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
+tokio = { version = "1", features = ["time"] }
+tracing = "0.1"

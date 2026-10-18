@@ -7,8 +7,8 @@
 
 use std::path::Path;
 
-use crate::lsp::LspActionResult;
 use crate::tui::app::state::App;
+use codetether_editor_lsp::HoverOutcome;
 
 use super::editor_lsp::{cursor_target, ensure_manager};
 
@@ -22,12 +22,9 @@ pub(crate) async fn hover(app: &mut App, cwd: &Path) {
         app.state.status = "LSP unavailable for hover".to_string();
         return;
     };
-    match client.hover(&path, line, col).await {
-        Ok(LspActionResult::Hover { contents, .. }) if !contents.trim().is_empty() => {
-            app.state.editor_lsp.hover = Some(contents);
-        }
-        Ok(_) => app.state.status = "No hover info".to_string(),
-        Err(e) => app.state.status = format!("Hover failed: {e}"),
+    match codetether_editor_lsp::hover(client.as_ref(), &path, line, col).await {
+        HoverOutcome::Content(contents) => app.state.editor_lsp.hover = Some(contents),
+        HoverOutcome::Status(status) => app.state.status = status,
     }
     app.state.needs_redraw = true;
 }
