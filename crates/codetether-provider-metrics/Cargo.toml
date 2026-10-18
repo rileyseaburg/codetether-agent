@@ -15,3 +15,4 @@ codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
 futures = "0.3.34"
 tokio = { version = "1.53.1", features = ["rt", "macros", "time"] }
 tracing = "0.1"
+codetether-rate-gate = { path = "../codetether-rate-gate", version = "0.1.0" }

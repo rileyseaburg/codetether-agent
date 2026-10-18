@@ -3893,6 +3893,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "codetether-provider-core",
+ "codetether-rate-gate",
  "codetether-telemetry",
  "futures",
  "tokio",

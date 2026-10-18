@@ -9895,3 +9895,19 @@ the largest crate file has 29 code lines. Two original audit tests moved without
 execution. Evidence is in `artifacts/consolidation-tool-reporting/`. Compilation
 and runtime tests were not run. No Cargo, rustc, Python or tool execution ran.
 Full workspace consolidation remains active.
+
+### Usage and live-payload helpers consolidated
+
+Moved step token accounting into `codetether-provider-metrics`, using the shared
+telemetry counters and rate gate in the original order. Moved compact tool and
+thinking payload helpers into `codetether-bus-core::payload`, retaining exact
+truncation labels and the existing bounded-payload implementation. Native helpers
+now re-export these functions.
+
+Ten static comparisons/checks cover counter casts/order, payload labels, existing
+payload behavior, dependency wiring and unchanged prompt-loop callers.
+Module/dependency graphs, file budgets and whitespace checks passed; the new
+usage module and extended payload module contain at most 18 code lines.
+Evidence is in `artifacts/consolidation-telemetry-helpers/`. Compilation and
+runtime tests were not run. No Cargo, rustc, Python or provider execution ran.
+Full workspace consolidation remains active.

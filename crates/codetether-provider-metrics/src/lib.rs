@@ -11,3 +11,6 @@ pub use metrics::MetricsProvider;
 
 mod session_cost;
 pub use session_cost::session_cost_usd;
+
+mod usage;
+pub use usage::record_step_usage;
