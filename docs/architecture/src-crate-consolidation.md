@@ -10139,3 +10139,21 @@ new files contain at most 41 code lines. Evidence is in
 `artifacts/consolidation-evidence-runtime/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python, memory reads or persistence functions ran.
 Full workspace consolidation remains active.
+
+### Dedicated provider request preparation
+
+Moved provider-step state, state refresh, native-tool capability selection,
+system-prompt composition and request-preparation sequencing into
+`crates/codetether-request-preparation`. Seven modules compose the existing
+agent, evidence, catalog, provider and peer-context crates. A native Host supplies
+registry construction, schema policy, session context and task-prompt composition.
+The generic registry field retains the original Arc-owned registry identity.
+Textual-tool providers still receive the complete active catalog in their prompt.
+
+Eighteen static comparisons cover original orchestration, prompt ordering,
+capability decisions, state fields/copies, native callbacks and unchanged request
+consumers/integration tests. Module/dependency graphs, file budgets and whitespace
+checks passed; new crate files contain at most 29 code lines. Evidence is in
+`artifacts/consolidation-request-preparation/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python, registry construction or provider calls ran.
+Full workspace consolidation remains active.

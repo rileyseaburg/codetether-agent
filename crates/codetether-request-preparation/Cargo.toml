@@ -1,0 +1,17 @@
+[package]
+name = "codetether-request-preparation"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Provider-step state, tool-channel capabilities and system prompt preparation"
+
+[dependencies]
+codetether-a2a-discovery = { path = "../codetether-a2a-discovery", version = "0.1.0" }
+codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
+codetether-evidence-runtime = { path = "../codetether-evidence-runtime", version = "0.1.0" }
+codetether-prompt-policy = { path = "../codetether-prompt-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-provider-openrouter = { path = "../codetether-provider-openrouter", version = "0.1.0" }
+codetether-provider-policy = { path = "../codetether-provider-policy", version = "0.1.0" }
+codetether-tool-catalog = { path = "../codetether-tool-catalog", version = "0.1.0" }

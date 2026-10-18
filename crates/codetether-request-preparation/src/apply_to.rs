@@ -2,16 +2,17 @@
 
 use std::sync::Arc;
 
-use crate::provider::ToolDefinition;
-use crate::tool::ToolRegistry;
+use codetether_provider_core::ToolDefinition;
 
 use super::ProviderStepState;
 
-impl ProviderStepState {
+impl<R> ProviderStepState<R> {
     /// Write all derived fields into the caller's mutable step-loop variables.
-    pub(crate) fn apply_to(
+    ///
+    /// Clones the registry, schemas and prompt while copying scalar settings.
+    pub fn apply_to(
         &self,
-        tool_registry: &mut Arc<ToolRegistry>,
+        tool_registry: &mut Arc<R>,
         tool_definitions: &mut Vec<ToolDefinition>,
         temperature: &mut Option<f32>,
         model_supports_tools: &mut bool,

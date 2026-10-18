@@ -1,52 +1,28 @@
-use std::sync::Arc;
-
+//! Native services for shared provider-step preparation.
 use crate::provider::Provider;
 use crate::session::Session;
-
-use super::workspace_tools::registry_for_cwd;
-
-#[path = "request_state/apply_to.rs"]
-mod apply_to;
+use std::sync::Arc;
+#[path = "request_state/host.rs"]
+mod host;
 #[path = "request_state/session_context.rs"]
 mod session_context;
 #[path = "request_state/settings.rs"]
+#[cfg(test)]
 pub(crate) mod settings;
-#[path = "request_state/state.rs"]
-mod state;
 #[path = "request_state/tools.rs"]
 mod tools;
-
-pub(crate) use state::ProviderStepState;
-
+pub(crate) type ProviderStepState =
+    codetether_request_preparation::ProviderStepState<crate::tool::ToolRegistry>;
 pub(crate) fn build_provider_step_state(
     provider: Arc<dyn Provider>,
     selected_provider: &str,
     model: &str,
     session: &Session,
 ) -> ProviderStepState {
-    let (cwd, prior_context_allowed, autonomous) = session_context::resolve(session);
-    let tool_registry = registry_for_cwd(provider, model, &cwd, prior_context_allowed, autonomous);
-    let tool_definitions = tools::active_tool_definitions(&tool_registry, selected_provider);
-    let model_supports_tools = settings::model_supports_tools(selected_provider, model);
-    let advertised_tool_definitions =
-        tools::advertised_tools(model_supports_tools, &tool_definitions, selected_provider);
-    let system_prompt = settings::system_prompt_for(
-        selected_provider,
-        model_supports_tools,
-        // Textual-tool providers need the full definitions, not the
-        // advertised list, which is empty when native tools are off.
-        &tool_definitions,
-        &cwd,
-        prior_context_allowed,
-    );
-    let system_prompt = crate::session::tasks::runtime::compose(&system_prompt, &session.id);
-
-    ProviderStepState {
-        tool_registry,
-        tool_definitions,
-        advertised_tool_definitions,
-        temperature: settings::temperature_for(model),
-        model_supports_tools,
-        system_prompt,
-    }
+    let host = host::NativeHost {
+        provider,
+        model,
+        session,
+    };
+    codetether_request_preparation::build_provider_step_state(&host, selected_provider, model)
 }

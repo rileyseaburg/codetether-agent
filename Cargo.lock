@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-request-preparation",
  "codetether-evidence-runtime",
  "codetether-evidence-ledger",
  "codetether-evidence-prompt",
@@ -5051,6 +5052,20 @@ dependencies = [
  "codetether-util",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-request-preparation"
+version = "0.1.0"
+dependencies = [
+ "codetether-a2a-discovery",
+ "codetether-agent-core",
+ "codetether-evidence-runtime",
+ "codetether-prompt-policy",
+ "codetether-provider-core",
+ "codetether-provider-openrouter",
+ "codetether-provider-policy",
+ "codetether-tool-catalog",
 ]
 
 [[package]]

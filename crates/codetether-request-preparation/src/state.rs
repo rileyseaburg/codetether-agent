@@ -2,13 +2,21 @@
 
 use std::sync::Arc;
 
-use crate::provider::ToolDefinition;
-use crate::tool::ToolRegistry;
+use codetether_provider_core::ToolDefinition;
 
 /// Tool and provider settings derived for one prompt-loop step.
-pub(crate) struct ProviderStepState {
+/// # Examples
+/// ```
+/// let state = codetether_request_preparation::ProviderStepState {
+///     tool_registry: std::sync::Arc::new(()), tool_definitions: vec![],
+///     advertised_tool_definitions: vec![], temperature: Some(0.7),
+///     model_supports_tools: true, system_prompt: "base".into(),
+/// };
+/// assert_eq!(state.system_prompt, "base");
+/// ```
+pub struct ProviderStepState<R> {
     /// Workspace-scoped executable tool registry.
-    pub tool_registry: Arc<ToolRegistry>,
+    pub tool_registry: Arc<R>,
     /// Complete active tool definitions.
     pub tool_definitions: Vec<ToolDefinition>,
     /// Definitions advertised to the selected provider.
