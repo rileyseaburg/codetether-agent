@@ -6747,6 +6747,7 @@ dependencies = [
  "codetether-model-discovery",
  "codetether-model-store",
  "ratatui",
+ "codetether-slash-command",
  "tokio",
 ]
 

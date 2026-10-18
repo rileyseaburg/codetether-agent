@@ -39,3 +39,16 @@ pub(crate) fn apply_selection(
         crate::tool::goal::verify::set_verifier_model,
     );
 }
+
+/// Handle verifier selection with the application's preference storage.
+pub(crate) fn verifier_command(
+    app: &mut App,
+    registry: Option<&Arc<ProviderRegistry>>,
+    prompt: &str,
+) -> bool {
+    codetether_model_picker::interactive::verifier_command::run(
+        &mut host::Picker(app),
+        registry,
+        prompt,
+    )
+}

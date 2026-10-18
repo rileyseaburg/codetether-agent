@@ -22,3 +22,15 @@ impl codetether_model_picker::interactive::Session for Session {
         self.metadata.model = Some(model);
     }
 }
+
+impl codetether_model_picker::interactive::verifier_command::CommandView for Picker<'_> {
+    fn set_verifier_model(&mut self, model: Option<&str>) {
+        crate::tool::goal::verify::set_verifier_model(model);
+    }
+    fn selected_verifier_model(&self) -> Option<String> {
+        crate::tool::goal::verify::selected_verifier_model()
+    }
+    fn clear_input(&mut self) {
+        self.0.state.clear_input();
+    }
+}

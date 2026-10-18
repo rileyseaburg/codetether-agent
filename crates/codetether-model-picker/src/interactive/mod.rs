@@ -16,3 +16,6 @@ mod verifier;
 pub use selection::selected;
 pub use slot::Slot;
 pub use verifier::apply_verifier_model;
+
+/// Verifier-model command handling and picker initialization.
+pub mod verifier_command;

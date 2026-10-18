@@ -19765,3 +19765,21 @@ reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-bus-controls/`. No Cargo, rustc,
 Python, Rust tests or bus messages ran; compilation and runtime remain
 unverified.
+
+### Verifier-model command ownership
+
+Moved `/verifier-model` parsing, direct/clear selection and verifier-picker
+initialization into `codetether-model-picker::interactive::verifier_command`.
+CommandView extends the existing picker view with three native preference/input
+bindings. The native input handler now delegates through the picker adapter.
+
+Preserved command matching, clear/default aliases, picker targeting, optional
+catalog hydration/refresh, status ordering and input clearing. Native verifier
+storage and existing picker/view methods remain unchanged.
+
+Validation: two complete translated command/open bodies, three native bindings,
+existing view/store/caller comparisons, native delegates, isolated lockfile
+delta, lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-verifier-command/`. No Cargo, rustc, Python, Rust tests
+or preference changes ran; compilation and runtime remain unverified.
