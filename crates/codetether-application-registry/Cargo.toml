@@ -7,6 +7,10 @@ license = "MIT"
 description = "Application tool registry construction and shared runtime integration"
 
 [dependencies]
+codetether-bash-tool = { path = "../codetether-bash-tool", version = "0.1.0" }
+codetether-command-session = { path = "../codetether-command-session", version = "0.1.0" }
+codetether-exec-command = { path = "../codetether-exec-command", version = "0.1.0" }
+codetether-write-stdin = { path = "../codetether-write-stdin", version = "0.1.0" }
 async-trait = "0.1"
 codetether-batch-tool = { path = "../codetether-batch-tool", version = "0.1.0" }
 codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }

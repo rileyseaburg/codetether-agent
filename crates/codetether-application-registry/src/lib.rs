@@ -14,6 +14,7 @@ mod aliases;
 mod batch;
 pub mod catalog;
 mod cognition;
+pub mod commands;
 mod construction;
 mod lifecycle;
 mod search;

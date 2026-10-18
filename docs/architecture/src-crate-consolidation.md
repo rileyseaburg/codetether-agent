@@ -22479,3 +22479,25 @@ working lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-indexed-listing/`.
 No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
 Full consolidation is active.
+
+### Command registration owned by the application registry crate
+
+Moved the bash/exec/stdin construction adapter into
+`codetether-application-registry::commands` and removed its native implementation
+file. These constructors already used shared concrete tool types; the native
+command-session facade now re-exports the generic shared registration function.
+Both the default catalog and workspace-rooted session tools keep their original
+call sites and infer the same application registry type.
+
+Static comparisons preserve bash's optional-directory selection, exec/stdin
+constructor arguments, registration calls and delegation to the same shared
+command-session assembly. That assembly remains unchanged, retaining bash,
+exec and stdin order and one shared process registry for exec/stdin.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the application-registry crate's bash-tool, command-session, exec-command
+and write-stdin dependency edges are staged in the lockfile; the unrelated
+working lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-command-registration/`.
+No command-tool execution, Cargo, rustc or Python ran; compilation and runtime
+tests remain unverified. Full consolidation is active.
