@@ -16,8 +16,7 @@ pub(in crate::tool::agent) async fn handle(
 #[path = "interrupt/idle_tests.rs"]
 mod idle_tests;
 #[cfg(test)]
-#[path = "interrupt/marker.rs"]
-mod marker;
+use codetether_agent_lifecycle as marker;
 #[cfg(test)]
 #[path = "interrupt/test_support.rs"]
 mod test_support;

@@ -1,15 +1,12 @@
 //! Native session wrappers over shared buffer compression and budget enforcement.
-#[path = "../compression_defer.rs"]
-mod compression_defer;
-#[path = "../compression_last_message.rs"]
-mod compression_last_message;
-#[path = "../compression_summary.rs"]
-mod compression_summary;
-mod context;
+use codetether_context_compression as context;
+use codetether_context_policy::compression::summary as compression_last_message;
+use codetether_context_policy::compression::summary as compression_summary;
+use codetether_rlm_foreground as compression_defer;
 pub(crate) mod dropped_toc;
 mod enforce;
 mod enforce_session;
-mod keep_last;
+use codetether_context_compression as keep_last;
 mod keep_last_session;
 mod oversized;
 

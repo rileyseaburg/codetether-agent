@@ -5,8 +5,8 @@
 //! The ledger, interaction records and process-local grants live in
 //! `codetether-approval-core`; this adapter delivers requests to live sessions.
 
-mod decision_kind;
-mod exec_policy;
+use codetether_approval_core::interaction as decision_kind;
+use codetether_approval_core::interaction as exec_policy;
 pub use codetether_approval_session as live;
 pub mod session_command_grants;
 pub mod session_grants;

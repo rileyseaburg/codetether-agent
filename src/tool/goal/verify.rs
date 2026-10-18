@@ -43,32 +43,25 @@
 //! # });
 //! ```
 
-#[path = "verify_agent.rs"]
-mod agent;
-#[path = "verify_charter.rs"]
-mod charter;
-#[path = "verify_execution.rs"]
-mod execution;
+use codetether_goal_verification as agent;
+use codetether_goal_verification as charter;
+use codetether_goal_verification as execution;
 #[path = "verify_gate.rs"]
 mod gate;
 #[path = "verify_llm.rs"]
 mod llm;
-#[path = "verify_model.rs"]
-mod model;
+use codetether_verifier_state as model;
 #[path = "verify_observation/mod.rs"]
 pub(crate) mod observation;
 #[path = "verify_prompt.rs"]
 mod prompt;
-#[path = "verify_request.rs"]
-mod request;
+use codetether_goal_verification as request;
 #[path = "verify_runtime_host.rs"]
 mod runtime_host;
 #[path = "verify_selection.rs"]
 mod selection;
-#[path = "verify_self_review.rs"]
-mod self_review;
-#[path = "verify_verdict.rs"]
-mod verdict;
+use codetether_verifier_state as self_review;
+use codetether_verifier_state as verdict;
 
 pub use agent::VerifierAgent;
 pub use charter::charter;

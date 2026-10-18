@@ -3,7 +3,7 @@ mod directory;
 mod host;
 #[cfg(test)]
 mod scan;
-mod summary;
+use codetether_session_metadata as summary;
 #[cfg(test)]
 mod tests;
 pub use directory::{list_sessions, list_sessions_for_directory, list_sessions_paged};

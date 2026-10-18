@@ -14,7 +14,7 @@ pub mod build_guidance;
 pub use codetether_agent_core::builtin;
 mod core;
 mod execution;
-mod registry;
+use codetether_agent_core as registry;
 mod runtime_host;
 mod tooling;
 mod types;

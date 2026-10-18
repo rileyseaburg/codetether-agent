@@ -11,11 +11,11 @@
 //! ```
 
 mod helper;
-mod material;
-mod query;
+use codetether_a2a_http::git_credentials as material;
+use codetether_a2a_http::git_credentials as query;
 mod repo_config;
-mod request;
-mod script;
+use codetether_a2a_http::git_credentials as request;
+use codetether_worktree::repository::credentials as script;
 #[cfg(test)]
 mod tests;
 

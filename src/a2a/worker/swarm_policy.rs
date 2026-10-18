@@ -8,6 +8,6 @@ mod finish;
 mod handoff;
 mod prepare;
 mod swarm_policy_run;
-mod swarm_policy_start;
+use codetether_swarm_runtime::inline as swarm_policy_start;
 
 pub(super) use entry::execute_swarm_with_policy;

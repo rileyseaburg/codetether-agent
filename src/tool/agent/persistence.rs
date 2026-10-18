@@ -10,12 +10,10 @@ mod hydrate;
 mod lifecycle;
 #[path = "persistence/lookup.rs"]
 mod lookup;
-#[path = "persistence/manifest.rs"]
-mod manifest;
+use codetether_agent_storage as manifest;
 #[path = "persistence/manifest_io.rs"]
 mod manifest_io;
-#[path = "persistence/manifest_scan.rs"]
-mod manifest_scan;
+use codetether_agent_storage::scan as manifest_scan;
 #[path = "persistence/migration.rs"]
 mod migration;
 #[path = "persistence/paths.rs"]

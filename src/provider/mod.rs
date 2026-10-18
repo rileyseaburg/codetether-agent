@@ -49,7 +49,7 @@ pub mod zai;
 // ── Internal split modules ──────────────────────────────────────────
 
 mod init_dispatch;
-mod init_dispatch_impl;
+use codetether_provider_factory as init_dispatch_impl;
 mod init_env;
 mod parse;
 mod registry;

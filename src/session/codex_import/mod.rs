@@ -1,7 +1,7 @@
 mod api;
-mod discover;
+use codetether_codex_discovery as discover;
 mod host;
-mod info;
+use codetether_codex_import as info;
 mod parse;
 #[cfg(test)]
 mod persist;

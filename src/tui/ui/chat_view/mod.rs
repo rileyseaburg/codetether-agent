@@ -18,7 +18,7 @@ pub use codetether_chat_status::compact_hints;
 pub mod context_gauge;
 pub mod cursor;
 pub mod diff_lines;
-mod drawn_lines;
+use codetether_message_cache as drawn_lines;
 pub mod elapsed_badge;
 pub mod empty;
 pub mod entries;

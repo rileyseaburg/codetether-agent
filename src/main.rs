@@ -17,11 +17,11 @@ use codetether_agent::{
 };
 
 mod application;
-mod cleanup_cli;
+use codetether_cleanup_cli as cleanup_cli;
 mod startup_crash;
 mod tui_cli;
 mod worker_cli;
-mod worktree_cli;
+use codetether_worktree_cli as worktree_cli;
 
 mod benchmark_cli;
 mod mcp_cli;

@@ -1,6 +1,6 @@
 //! In-memory goal editor: draft text is separate from the live goal until saved.
 
-mod draft;
+use codetether_goal_editor as draft;
 mod host;
 mod keys;
 mod open;

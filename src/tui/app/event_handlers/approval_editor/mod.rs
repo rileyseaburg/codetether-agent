@@ -1,7 +1,7 @@
 //! Approval-backed source editor orchestration.
 
 #[cfg(test)]
-mod finish;
+use codetether_approval_edit::interactive as finish;
 mod host;
 mod key;
 #[cfg(test)]

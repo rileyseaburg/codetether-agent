@@ -21,7 +21,7 @@
 
 mod approval;
 pub use codetether_bus_http as bus_bridge;
-mod bus_payload;
+use codetether_mcp_server::payload as bus_payload;
 mod client;
 mod fallback_grep;
 mod fallback_run_command;

@@ -13,10 +13,10 @@ mod session_failure;
 mod session_failure_tests;
 mod session_loop;
 mod session_outcome;
-mod session_output;
+use codetether_a2a_worker_core::session_protocol::transcript as session_output;
 mod session_response;
 mod session_step_tools;
-mod session_wrap_up;
+use codetether_a2a_worker_core::session_protocol::transcript as session_wrap_up;
 pub(super) use session_outcome::SessionStepsOutcome;
 use session_response::ResponseContext;
 

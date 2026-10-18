@@ -6,7 +6,7 @@
 mod build;
 mod host;
 mod mutating;
-mod policy;
+use codetether_a2a_worker_core::execution_policy as policy;
 mod safe;
 
 pub use build::create_filtered_registry;

@@ -2,8 +2,7 @@
 
 use crate::tui::app::state::App;
 
-#[path = "image_data_extract.rs"]
-mod extract;
+use codetether_image as extract;
 pub(crate) use extract::extract_image_data_url;
 
 #[cfg(test)]

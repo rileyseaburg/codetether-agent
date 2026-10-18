@@ -1,6 +1,6 @@
 //! Native bindings for shared local-stage scheduling and worktree integration.
 mod host;
-mod job;
+use codetether_swarm_local_job as job;
 mod job_host;
 mod job_run;
 use super::SwarmExecutor;

@@ -3,7 +3,7 @@
 mod blocking;
 mod delegated;
 mod directive;
-mod directive_message;
+use codetether_prior_context_policy as directive_message;
 mod human;
 mod registry;
 mod session_state;

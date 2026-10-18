@@ -17,12 +17,12 @@
 //! ```
 
 mod host;
-mod parse;
+use codetether_approval_core::review as parse;
 pub mod prompt;
 mod run;
 pub mod runtime;
 mod tools;
-mod verdict;
+use codetether_approval_core::review as verdict;
 
 #[cfg(test)]
 mod tests;

@@ -1,6 +1,6 @@
 //! Shared swarm and reviewer tool restrictions, runtime gates and prompt contracts.
 mod definitions;
-mod prompt_input;
+use codetether_swarm_core::prompt_policy as prompt_input;
 mod prompts;
 mod registry;
 mod runtime_gate;

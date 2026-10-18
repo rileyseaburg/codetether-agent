@@ -18,7 +18,7 @@ pub mod delegation_outcome;
 pub mod executor;
 pub mod k8s_result;
 pub mod kubernetes_executor;
-mod live_bus;
+use codetether_swarm_bus as live_bus;
 pub mod orchestrator;
 mod quality_shell;
 pub mod rate_limiter;

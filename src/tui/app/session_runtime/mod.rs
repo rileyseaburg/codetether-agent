@@ -1,13 +1,13 @@
 //! Move-based TUI session runtime.
 
-mod active_cancel;
+use codetether_session_control as active_cancel;
 #[cfg(test)]
 mod active_turn;
 mod command;
+mod dispatch_host;
 mod execute;
 mod execute_host;
 mod handle;
-mod dispatch_host;
 mod loop_submit;
 mod notice;
 mod prompt_result;

@@ -7,7 +7,7 @@
 mod backfill;
 mod build;
 pub(crate) mod hit;
-mod indexed_session;
+use codetether_recall_index as indexed_session;
 mod paths;
 pub(crate) mod prefetch;
 mod prefetch_host;

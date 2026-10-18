@@ -1,8 +1,7 @@
 //! Application snapshots for shared root-scoped agent-tree queries.
 #[path = "agent_tree/host.rs"]
 mod host;
-#[path = "agent_tree/query.rs"]
-mod query;
+use codetether_agent_tree as query;
 pub(crate) use query::ListedAgent;
 pub(crate) fn list(current: &str, path_prefix: Option<&str>) -> anyhow::Result<Vec<ListedAgent>> {
     codetether_agent_tree::list::<host::ApplicationHost>(current, path_prefix)

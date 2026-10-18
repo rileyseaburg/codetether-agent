@@ -6,10 +6,8 @@ mod capacity;
 mod ensure;
 #[path = "residency/host.rs"]
 mod host;
-#[path = "residency/order.rs"]
-mod order;
-#[path = "residency/outcome.rs"]
-mod outcome;
+use codetether_collaboration_state::residency as order;
+use codetether_collaboration_tools as outcome;
 #[path = "residency/overlay.rs"]
 mod overlay;
 #[path = "residency/resume_config.rs"]

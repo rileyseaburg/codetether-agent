@@ -1,7 +1,7 @@
 //! TetherScript tool binding, registration and application integration tests.
 pub mod convert;
 mod host;
-mod input;
+use codetether_tetherscript_tool::input;
 /// Application backend used by plugin computer grants.
 pub use host::ApplicationHost;
 /// Plugin tool using the application's computer backend and policy.

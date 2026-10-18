@@ -1,8 +1,8 @@
-mod context;
+use codetether_runtime_input as context;
 mod input_host;
-mod light_prompt;
+use codetether_prompt_policy as light_prompt;
 mod prior_context;
-mod prompt;
+use codetether_prompt_policy as prompt;
 mod session_input;
 
 pub use context::{enrich_tool_input_with_runtime_context, insert_field};

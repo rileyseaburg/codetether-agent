@@ -6,7 +6,7 @@ mod goal_recovery;
 mod input;
 mod lifecycle;
 mod model;
-mod progress;
+use codetether_prompt_loop as progress;
 mod response;
 mod setup;
 mod setup_support;

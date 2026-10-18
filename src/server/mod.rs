@@ -2,7 +2,7 @@
 //!
 //! Main API server for the CodeTether Agent
 
-mod approval_routes;
+use codetether_approval_http as approval_routes;
 mod audit_http_state;
 pub use codetether_http_auth as auth;
 mod bus_http_state;
@@ -12,8 +12,8 @@ mod http_router;
 mod k8s_http_state;
 mod models_catalog;
 mod openai_http_host;
-mod openai_model_options;
-mod openai_stream;
+use codetether_openai_adapter::options as openai_model_options;
+use codetether_openai_wire::stream as openai_stream;
 mod plugin_http_state;
 pub mod policy;
 mod session_realtime;
@@ -23,7 +23,7 @@ mod startup_host;
 mod task_http_state;
 mod task_ingest_state;
 use codetether_task_queue as task_queue;
-mod tool_contract;
+use codetether_tool_discovery::contract as tool_contract;
 mod tool_discovery_host;
 mod voice_http_state;
 mod worker_modules;

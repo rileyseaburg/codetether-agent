@@ -44,12 +44,12 @@
 //! - [`helper`] — the agentic loop implementation (non-public details).
 
 mod bus;
-mod checkpoint;
-mod checkpoint_prompt;
+use codetether_run_checkpoint as checkpoint;
+use codetether_run_checkpoint as checkpoint_prompt;
 mod checkpoint_store;
 mod event_compaction;
-mod event_rlm;
-mod event_token;
+use codetether_rlm::events as event_rlm;
+use codetether_session_events as event_token;
 mod events;
 mod header;
 mod lifecycle;
@@ -57,7 +57,7 @@ include!("storage_modules.rs");
 mod prompt_api;
 pub mod step_limit;
 mod tail_load;
-mod tail_seed;
+use codetether_tracked_vec::tail_seed;
 mod title;
 pub mod types;
 mod workspace_index;

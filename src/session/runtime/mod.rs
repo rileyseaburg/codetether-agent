@@ -27,8 +27,8 @@ pub(crate) mod continuation;
 mod execution;
 pub(crate) mod execution_scope;
 mod orchestration_session;
+use codetether_session_control as handle;
 pub(crate) use execution::RunGuard;
-mod handle;
 pub use handle::ControlHandle;
 #[cfg(test)]
 mod continuation_handoff_tests;

@@ -28,12 +28,12 @@ pub(crate) mod coordination;
 pub(crate) mod isolation;
 pub(crate) mod lease;
 mod model;
-mod protocol;
-mod pty;
-mod registry;
+use codetether_mux_protocol as protocol;
+use codetether_mux_pty as pty;
+use codetether_mux_registry as registry;
 pub mod resume_name;
-mod server;
-mod token;
+use codetether_mux_server as server;
+use codetether_mux_server::token;
 
 pub(crate) use model::MuxRuntimeStatus;
 

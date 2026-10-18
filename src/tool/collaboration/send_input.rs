@@ -4,8 +4,7 @@ pub(super) type SendInputTool =
 #[allow(non_upper_case_globals)]
 pub(super) const SendInputTool: SendInputTool = SendInputTool::new();
 #[cfg(test)]
-#[path = "send_input/args.rs"]
-mod args;
+use codetether_collaboration_tools as args;
 #[cfg(test)]
 #[path = "send_input/input.rs"]
 mod input;

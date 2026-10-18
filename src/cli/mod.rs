@@ -9,7 +9,7 @@ include!("platform_commands.rs");
 pub mod cleanup_args;
 pub mod command;
 pub mod config;
-mod config_args;
+use codetether_config_cli as config_args;
 pub mod connect;
 pub mod context;
 pub mod go_ralph;
@@ -17,14 +17,14 @@ mod models_args;
 pub mod oracle;
 mod root_args;
 pub mod run;
-mod run_args;
+use codetether_cli_options as run_args;
 pub mod run_checkpoint;
 mod run_config;
 pub mod run_loop;
 pub mod search;
 pub mod search_render;
-mod swarm_subagent_args;
-mod tui_args;
+use codetether_cli_options as swarm_subagent_args;
+use codetether_cli_options as tui_args;
 pub mod worktree_args;
 
 pub use codetether_context_cli::{

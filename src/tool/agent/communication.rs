@@ -6,8 +6,7 @@ mod active;
 mod host;
 #[path = "communication/idle.rs"]
 mod idle;
-#[path = "communication/route.rs"]
-mod route;
+use codetether_agent_communication as route;
 
 pub(crate) use active::steer;
 pub(crate) use idle::queue_only;

@@ -18,7 +18,7 @@ mod smart_retry;
 mod smart_retry_submit;
 mod terminal;
 mod tick;
-mod timers;
+use codetether_tui_reactor as timers;
 mod watchdog;
 mod watchdog_retry;
 

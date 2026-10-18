@@ -3,7 +3,7 @@
 //! Launches OKR-driven forage scans/executions from the chat view and
 //! streams results back as system messages.
 
-mod args;
+use codetether_forage_interactive as args;
 mod command;
 mod drain;
 mod host;

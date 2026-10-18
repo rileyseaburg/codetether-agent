@@ -1,5 +1,4 @@
 //! Native integration tests for the shared fork implementation.
-#[path = "fork_service.rs"]
-mod service;
+use codetether_session_fork as service;
 #[path = "fork_tests.rs"]
 mod tests;

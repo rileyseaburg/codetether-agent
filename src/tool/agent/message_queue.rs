@@ -3,8 +3,7 @@
 mod disk;
 #[path = "message_queue/host.rs"]
 mod host;
-#[path = "message_queue/item.rs"]
-mod item;
+use codetether_child_mailbox as item;
 #[path = "message_queue/params.rs"]
 mod params;
 

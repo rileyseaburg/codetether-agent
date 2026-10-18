@@ -1,7 +1,7 @@
 //! Native goal/task input bindings and integration tests.
 mod input_host;
 #[cfg(test)]
-mod pending;
+use codetether_goal_command::input as pending;
 mod restart_host;
 mod resume;
 mod resume_host;

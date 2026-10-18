@@ -12,8 +12,7 @@ use crate::provider::{Message, Usage};
 use crate::session::index::SummaryIndex;
 use crate::session::pages::PageKind;
 
-#[path = "metadata.rs"]
-mod metadata;
+use codetether_session_metadata as metadata;
 pub use metadata::SessionMetadata;
 
 /// Step budget used by bounded delegated runs that do not supply one.
@@ -22,7 +21,6 @@ pub use metadata::SessionMetadata;
 pub const DEFAULT_MAX_STEPS: usize = 50;
 /// Portable image attachment shared with clipboard and provider code.
 pub use codetether_image::ImageAttachment;
-
 
 /// A conversation session.
 ///

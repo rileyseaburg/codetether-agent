@@ -21581,3 +21581,27 @@ native file-size limits, and whitespace checks passed. No dependency or lockfile
 changes. Evidence: `artifacts/consolidation-durable-session-bus/`. No Cargo,
 rustc, or Python commands ran; compilation and runtime tests remain unverified.
 Full consolidation remains active.
+
+### Remove private migration forwarding modules across native code
+
+Removed 167 private file-backed modules whose only content re-exported items
+from an owning workspace crate. Their 59 parent files now alias the same owning
+crate modules. This removes completed-migration scaffolding across A2A, session,
+tool, TUI, swarm, and other native adapters. Public module declarations,
+implementation-bearing files, wildcard-import cases, and pre-existing dirty
+files were excluded from the plan.
+
+Each deletion was verified to contain a single re-export and no implementation.
+All lexical declarations for each removed file were covered. Full parent-source
+comparison allows only the planned alias substitutions and formatting;
+non-path attributes, including cfg conditions, are unchanged. No dependencies
+or lockfile entries changed. The graph checker initially retained six deleted
+facades as explicit native roots; those obsolete roots were removed from the
+checker, and the initial failure was retained as evidence. Owning crate roots
+remain checked.
+
+Source/dependency graphs cover 692 current roots and 564 crates with no missing
+modules or cycles. Direct rustfmt, native file-size limits, and whitespace
+checks passed. Evidence: `artifacts/consolidation-private-module-aliases/`.
+No Cargo, rustc, or Python commands ran. Compilation and runtime tests remain
+unverified; the full implementation consolidation goal remains active.
