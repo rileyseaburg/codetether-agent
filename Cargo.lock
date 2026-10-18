@@ -16063,6 +16063,8 @@ dependencies = [
  "async-trait",
  "chrono",
  "codetether-goal-core",
+ "codetether-provider-core",
+ "codetether-swarm-core",
  "codetether-tool-core",
  "codetether-verifier-state",
  "hex",

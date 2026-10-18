@@ -17988,3 +17988,20 @@ Full workspace consolidation remains active.
   entry. Evidence: `artifacts/consolidation-update-goal/`.
 - No Cargo, rustc, Python, goal/verifier calls, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Observed verifier runtime and system-prompt assembly
+
+- Moved provider-resolution/identity/execute sequencing, observation ticket
+  lifecycle and system-prompt assembly into `codetether-goal-verification`.
+- Native Host keeps provider initialization, verification-only tool registry
+  construction and the existing agent-loop call. A provider-registry guard
+  retains the original lifetime through execution. The 40-step/600-second
+  limits, absent bus/event channels and incomplete-exit error are preserved.
+- Verified full runtime and prompt bodies with explicit host substitutions,
+  LlmVerifier fields/remaining methods, all native argument mappings and
+  unchanged observation/model/agent-loop code. Module/dependency graphs, direct
+  rustfmt, file limits and whitespace passed. Added only existing provider/swarm
+  dependencies to the verifier package; unrelated working changes remain.
+  Evidence: `artifacts/consolidation-verifier-runtime/`.
+- No Cargo, rustc, Python, verifier/model calls, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

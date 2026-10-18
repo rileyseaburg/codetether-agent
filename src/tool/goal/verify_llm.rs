@@ -36,13 +36,12 @@ impl VerifierAgent for LlmVerifier {
     }
 
     async fn review_with_identity(&self, request: &VerificationRequest) -> ReviewExecution {
-        let mut ticket = super::observation::shared_observations().start();
-        let report = super::llm_run::run(self, request, &mut ticket).await;
-        ticket.finish(&report);
-        ReviewExecution {
-            report,
-            identity: ticket.identity(),
-        }
+        codetether_goal_verification::runtime::review::<super::runtime_host::Native>(
+            self.worker_model.as_deref(),
+            &self.workspace,
+            request,
+        )
+        .await
     }
 
     async fn identity(&self) -> String {

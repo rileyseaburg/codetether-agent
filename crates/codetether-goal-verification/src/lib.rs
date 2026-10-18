@@ -24,3 +24,8 @@ pub use verdict_record::VerdictRecord;
 
 /// Audited verification and capped-rejection handling through native storage.
 pub mod audit;
+
+/// Observed provider-backed verifier execution.
+pub mod runtime;
+mod system_prompt;
+pub use system_prompt::system_prompt;

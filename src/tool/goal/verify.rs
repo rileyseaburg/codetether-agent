@@ -53,10 +53,6 @@ mod execution;
 mod gate;
 #[path = "verify_llm.rs"]
 mod llm;
-#[path = "verify_llm_run.rs"]
-mod llm_run;
-#[path = "verify_llm_support.rs"]
-mod llm_support;
 #[path = "verify_model.rs"]
 mod model;
 #[path = "verify_observation/mod.rs"]
@@ -65,6 +61,8 @@ pub(crate) mod observation;
 mod prompt;
 #[path = "verify_request.rs"]
 mod request;
+#[path = "verify_runtime_host.rs"]
+mod runtime_host;
 #[path = "verify_selection.rs"]
 mod selection;
 #[path = "verify_self_review.rs"]
