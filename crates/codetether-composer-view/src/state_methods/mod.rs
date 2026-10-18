@@ -4,3 +4,6 @@ mod cursor;
 mod edit;
 mod history;
 mod visibility;
+
+#[cfg(test)]
+mod tests;

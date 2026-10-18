@@ -38,3 +38,6 @@ mod navigation;
 /// Application-local UI state adapters.
 pub mod state_binding;
 pub use navigation::Navigation;
+
+#[cfg(test)]
+mod scroll_tests;

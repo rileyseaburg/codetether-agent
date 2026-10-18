@@ -36,3 +36,6 @@ mod refresh_tests;
 
 /// Application-local state method declarations.
 pub mod state_binding;
+
+#[cfg(test)]
+mod state_filter_tests;

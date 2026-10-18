@@ -28480,3 +28480,21 @@ formatting, whitespace and file-limit checks pass (724 roots, 617 crates).
 Evidence: artifacts/consolidation-history-view/. No dependencies or unrelated
 working files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Component regression tests owned by their crates
+
+Removed the remaining root state/tests.rs file. Its four Unicode composer tests
+now live in codetether-composer-view, its model-filter test in
+codetether-model-picker, and its two viewport tests in codetether-chat-layout.
+Each constructs the same component defaults directly instead of a complete
+AppState. The scroll-up test also asserts that movement within the visible
+buffer reports no older-history deficit. Application paging tests remain in
+place because they exercise the root history wiring.
+
+Static comparison covers all seven moved test bodies and registration changes.
+Inputs, expected values and operation order are preserved. Declaration,
+module/dependency, production-scope, formatting, whitespace and file-limit
+checks pass (724 roots, 617 crates). Evidence:
+artifacts/consolidation-state-tests/. No dependencies or unrelated working files
+changed. No Cargo, rustc, Python, compilation or runtime tests ran; the moved
+tests were not executed. Full consolidation remains active and incomplete.

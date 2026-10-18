@@ -55,9 +55,6 @@ pub mod types;
 pub mod view;
 pub use codetether_tui_worker as worker_bridge;
 
-#[cfg(test)]
-mod tests;
-
 // Re-exports so external `use crate::tui::app::state::X` still works.
 pub use agent_profile::{SpawnedAgent, agent_profile};
 pub use profile_defs::AgentProfile;
