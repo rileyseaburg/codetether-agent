@@ -10,6 +10,6 @@ fn pending_approval_suppresses_watchdog_restart() {
     let mut state = processing_state();
     state.approval_waiting = true;
     state.request_timing.processing_started_at = Some(Instant::now() - Duration::from_secs(120));
-    state.main_last_event_at = Some(Instant::now() - Duration::from_secs(120));
+    state.watchdog.last_event_at = Some(Instant::now() - Duration::from_secs(120));
     assert!(check_watchdog_stall(&state, TIMEOUT).is_none());
 }

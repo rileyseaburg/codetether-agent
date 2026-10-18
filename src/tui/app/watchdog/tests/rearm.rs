@@ -13,14 +13,14 @@ use crate::tui::app::watchdog::detector::check_watchdog_stall;
 fn cleared_notification_rearms_watchdog() {
     let mut state = processing_state();
     state.request_timing.processing_started_at = Some(Instant::now() - Duration::from_secs(120));
-    state.main_last_event_at = Some(Instant::now() - Duration::from_secs(120));
+    state.watchdog.last_event_at = Some(Instant::now() - Duration::from_secs(120));
     // A pending notification suppresses further stall detection.
-    state.watchdog_notification = Some(crate::tui::app::watchdog::WatchdogNotification::new(
+    state.watchdog.notification = Some(crate::tui::app::watchdog::WatchdogNotification::new(
         "stalled".into(),
         1,
     ));
     assert!(check_watchdog_stall(&state, TIMEOUT).is_none());
     // Retry resubmits and clears the notification → detector re-arms.
-    state.watchdog_notification = None;
+    state.watchdog.notification = None;
     assert!(check_watchdog_stall(&state, TIMEOUT).is_some());
 }

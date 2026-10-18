@@ -21,7 +21,7 @@ fn silent_for(ago: Duration) -> crate::tui::app::state::AppState {
     let mut state = processing_state();
     let then = Instant::now() - ago;
     state.request_timing.processing_started_at = Some(then);
-    state.main_last_event_at = Some(then);
+    state.watchdog.last_event_at = Some(then);
     state
 }
 

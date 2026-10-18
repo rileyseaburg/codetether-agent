@@ -27,7 +27,7 @@ async fn live_goal_commands_resume_only_after_cancellation_with_new_objective() 
     )
     .await;
     assert!(slot.borrow().is_none());
-    assert!(app.state.main_inflight_prompt.is_none());
+    assert!(app.state.watchdog.inflight_prompt.is_none());
     slot.restore(session);
     app.state.processing = false;
     super::super::drain(
@@ -41,7 +41,8 @@ async fn live_goal_commands_resume_only_after_cancellation_with_new_objective() 
     .await;
     assert!(
         app.state
-            .main_inflight_prompt
+            .watchdog
+            .inflight_prompt
             .as_ref()
             .unwrap()
             .contains("new user objective")

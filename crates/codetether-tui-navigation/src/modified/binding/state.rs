@@ -14,7 +14,7 @@ macro_rules! __frontend_modified_state {
                     self.app.state.view_mode == ViewMode::Chat
                 }
                 fn watchdog_active(&self) -> bool {
-                    self.app.state.watchdog_notification.is_some()
+                    self.app.state.watchdog.notification.is_some()
                 }
                 fn webview(&self) -> bool {
                     self.app.state.chat_layout_mode == ChatLayoutMode::Webview

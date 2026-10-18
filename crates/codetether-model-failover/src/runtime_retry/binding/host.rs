@@ -22,8 +22,8 @@ macro_rules! __frontend_retry_host {
                     State {
                         retry: &mut self.app.state.retry_state,
                         processing: &mut self.app.state.processing,
-                        inflight: &mut self.app.state.main_inflight_prompt,
-                        last_event: &mut self.app.state.main_last_event_at,
+                        inflight: &mut self.app.state.watchdog.inflight_prompt,
+                        last_event: &mut self.app.state.watchdog.last_event_at,
                         status: &mut self.app.state.status,
                     }
                 }

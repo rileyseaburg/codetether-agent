@@ -23,7 +23,7 @@ pub use codetether_stream_recovery::MAX_RECONNECT_ATTEMPTS;
 pub(crate) fn schedule(app: &mut App, error: &str) {
     app.state
         .stream_recovery
-        .schedule(error, &app.state.main_inflight_prompt);
+        .schedule(error, &app.state.watchdog.inflight_prompt);
 }
 
 /// Reset the reconnect counter when a turn completes successfully.

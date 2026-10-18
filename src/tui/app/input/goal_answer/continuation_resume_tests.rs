@@ -25,7 +25,7 @@ async fn answer_review_continuation_resumes_only_after_session_returns() {
         &runtime,
     )
     .await;
-    assert!(app.state.main_inflight_prompt.is_none());
+    assert!(app.state.watchdog.inflight_prompt.is_none());
     assert!(slot.borrow().is_none());
     slot.restore(session);
     app.state.processing = false;
@@ -40,7 +40,8 @@ async fn answer_review_continuation_resumes_only_after_session_returns() {
     .await;
     assert!(
         app.state
-            .main_inflight_prompt
+            .watchdog
+            .inflight_prompt
             .as_ref()
             .unwrap()
             .contains("Finish the goal")

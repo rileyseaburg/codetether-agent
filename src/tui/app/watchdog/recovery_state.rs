@@ -4,11 +4,11 @@ use codetether_watchdog::recovery::{State, Ui};
 impl Ui for AppState {
     fn state(&mut self) -> State<'_> {
         State {
-            notification: &mut self.watchdog_notification,
+            notification: &mut self.watchdog.notification,
             processing: &mut self.processing,
-            restarts: &mut self.main_watchdog_restart_count,
-            inflight: &mut self.main_inflight_prompt,
-            last_event: &mut self.main_last_event_at,
+            restarts: &mut self.watchdog.restart_count,
+            inflight: &mut self.watchdog.inflight_prompt,
+            last_event: &mut self.watchdog.last_event_at,
             status: &mut self.status,
             messages: &mut self.messages,
         }

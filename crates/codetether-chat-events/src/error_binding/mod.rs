@@ -23,7 +23,7 @@ macro_rules! declare_error_events {
                     &mut state.retry_state,
                     slot.view().model.as_deref(),
                     &state.model_picker.available_models,
-                    state.main_inflight_prompt.as_deref(),
+                    state.watchdog.inflight_prompt.as_deref(),
                     &mut state.status,
                     err,
                 );

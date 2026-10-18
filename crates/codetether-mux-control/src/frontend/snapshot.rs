@@ -19,8 +19,8 @@ macro_rules! declare_frontend_runtime_view {
                 message_count: session.message_count,
                 current_tool: app.state.tool_timing.pending_tool_name.as_deref(),
                 input: &app.state.composer.input,
-                watchdog_pending: app.state.watchdog_notification.is_some(),
-                restarts: app.state.main_watchdog_restart_count,
+                watchdog_pending: app.state.watchdog.notification.is_some(),
+                restarts: app.state.watchdog.restart_count,
                 status: &app.state.status,
                 principal: &session.principal,
             }

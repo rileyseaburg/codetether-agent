@@ -8,7 +8,7 @@ use crossterm::event::{KeyCode, KeyModifiers};
 pub(in crate::tui::app::event_handlers) fn handle(app: &mut App, key: KeyEvent) -> bool {
     let id = app.state.session_id.as_deref();
     let redraw = &mut app.state.needs_redraw;
-    let last_event = &mut app.state.main_last_event_at;
+    let last_event = &mut app.state.watchdog.last_event_at;
     codetether_question_view::handle_key(
         id,
         key,

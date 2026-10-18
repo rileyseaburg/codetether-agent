@@ -21,7 +21,7 @@ macro_rules! declare_frontend_watchdog {
                 $detect(&self.state, interval)
             }
             fn has_inflight(&self) -> bool {
-                self.state.main_inflight_prompt.is_some()
+                self.state.watchdog.inflight_prompt.is_some()
             }
         }
         /// Check the timer watchdog and cancel a stalled prompt eligible for retry.

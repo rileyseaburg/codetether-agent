@@ -25,7 +25,7 @@ macro_rules! declare_event_pipeline {
             }
             impl $crate::pipeline::View for Native<'_> {
                 fn last_event_at(&mut self) -> &mut Option<::std::time::Instant> {
-                    &mut self.app.state.main_last_event_at
+                    &mut self.app.state.watchdog.last_event_at
                 }
                 fn auto_follow(&self) -> bool {
                     self.app.state.chat_viewport.chat_auto_follow

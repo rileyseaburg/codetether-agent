@@ -11,7 +11,7 @@ async fn goal_editor_prefills_busy_goal_and_escape_discards_the_draft() {
     let before = log.read_all().await.unwrap().len();
     let session = slot.take_for_prompt().unwrap();
     app.state.processing = true;
-    app.state.main_inflight_prompt = Some("Original work".into());
+    app.state.watchdog.inflight_prompt = Some("Original work".into());
     fixture::submit(&mut app, &mut slot, &runtime, "/goal edit").await;
     assert_eq!(app.state.view_mode, ViewMode::Editor);
     assert_eq!(
@@ -21,7 +21,7 @@ async fn goal_editor_prefills_busy_goal_and_escape_discards_the_draft() {
     assert!(!app.state.editor.buffer.as_ref().unwrap().is_dirty());
     assert!(app.state.processing);
     assert_eq!(
-        app.state.main_inflight_prompt.as_deref(),
+        app.state.watchdog.inflight_prompt.as_deref(),
         Some("Original work")
     );
     keys::end(&mut app, &mut slot, &runtime).await;

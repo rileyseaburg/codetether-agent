@@ -11,7 +11,7 @@ async fn question_panel_renders_choices_and_suppresses_stall() {
     let mut app = App::default();
     app.state.session_id = Some("question-render".into());
     app.state.processing = true;
-    app.state.main_last_event_at = Some(Instant::now() - Duration::from_secs(600));
+    app.state.watchdog.last_event_at = Some(Instant::now() - Duration::from_secs(600));
     let request = Request::parse(json!({"questions":[{"question":"Choose a mode?",
         "header":"Mode", "options":[{"label":"Fast", "description":"Low latency"}]}]}))
     .unwrap();

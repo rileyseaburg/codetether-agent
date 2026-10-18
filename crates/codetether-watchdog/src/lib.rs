@@ -12,6 +12,8 @@ pub use detector::check_watchdog_stall;
 pub use notification::render_watchdog_notification;
 pub use source::WatchdogSource;
 pub use state::WatchdogNotification;
+mod monitor_state;
+pub use monitor_state::WatchdogState;
 /// Maximum automatic restarts before the detector stops intervening.
 pub const WATCHDOG_MAX_RESTARTS: u32 = 3;
 

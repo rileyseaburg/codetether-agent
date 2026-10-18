@@ -6,6 +6,6 @@ pub fn render_watchdog_notification(f: &mut Frame, area: Rect, state: &AppState)
     codetether_watchdog::render_watchdog_notification(
         f,
         area,
-        state.watchdog_notification.as_ref(),
+        state.watchdog.notification.as_ref(),
     );
 }

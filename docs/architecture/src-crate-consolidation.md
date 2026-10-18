@@ -28156,3 +28156,21 @@ formatting, whitespace and file-limit checks passed (725 roots, 617 crates).
 Evidence: artifacts/consolidation-context-state/. No dependencies or unrelated
 working files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Crate-owned watchdog monitoring state
+
+Moved the stall notification, last activity timestamp, restart count and retained
+in-flight prompt into codetether-watchdog::WatchdogState. AppState now owns one
+watchdog component. Updated detection/recovery bindings, request activity,
+reconnect, prompt dispatch/resume and completion paths to use it. Removed the
+root notification-slot alias. Defaults remain None/None/0/None.
+
+Static token comparisons cover all 34 changed existing files, including recovery
+and completion tests. Scanned 1,213 root Rust files for obsolete direct field
+accesses. The detector, manual recovery decisions and completion policy are
+unchanged, including preservation of restart counts across completion.
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks passed (725 roots, 617 crates). Evidence:
+artifacts/consolidation-watchdog-state/. No dependencies or unrelated working
+files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.

@@ -21,10 +21,10 @@ macro_rules! __impl_event_completion {
                 self.app.state.interlude = None;
             }
             fn clear_watchdog_notification(&mut self) {
-                self.app.state.watchdog_notification = None;
+                self.app.state.watchdog.notification = None;
             }
             fn clear_inflight_prompt(&mut self) {
-                self.app.state.main_inflight_prompt = None;
+                self.app.state.watchdog.inflight_prompt = None;
             }
         }
     };

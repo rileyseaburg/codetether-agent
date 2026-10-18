@@ -11,7 +11,7 @@ macro_rules! __frontend_continuation_source {
             impl $crate::resume::Source for Native<'_> {
                 type Session = Session;
                 fn inflight(&self) -> Option<String> {
-                    self.app.state.main_inflight_prompt.clone()
+                    self.app.state.watchdog.inflight_prompt.clone()
                 }
                 fn session(&self) -> Option<&Session> {
                     self.slot.borrow()

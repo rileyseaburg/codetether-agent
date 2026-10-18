@@ -11,7 +11,7 @@ macro_rules! __app_request_timing {
             pub fn begin_request_timing(&mut self) {
                 let now = self.request_timing.begin_request_timing();
                 // Synchronize watchdog activity with the exact request start instant.
-                self.main_last_event_at = Some(now);
+                self.watchdog.last_event_at = Some(now);
             }
 
             pub fn current_request_elapsed_ms(&self) -> Option<u64> {

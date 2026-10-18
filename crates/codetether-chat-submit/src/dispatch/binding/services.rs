@@ -26,8 +26,8 @@ macro_rules! __prompt_dispatch_services {
                 }
                 fn state(&mut self) -> State<'_> {
                     State {
-                        watchdog_restarts: &mut self.app.state.main_watchdog_restart_count,
-                        inflight_prompt: &mut self.app.state.main_inflight_prompt,
+                        watchdog_restarts: &mut self.app.state.watchdog.restart_count,
+                        inflight_prompt: &mut self.app.state.watchdog.inflight_prompt,
                         status: &mut self.app.state.status,
                     }
                 }

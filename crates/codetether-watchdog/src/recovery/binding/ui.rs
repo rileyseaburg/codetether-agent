@@ -10,11 +10,11 @@ macro_rules! __frontend_watchdog_ui {
             impl Ui for App {
                 fn state(&mut self) -> State<'_> {
                     State {
-                        notification: &mut self.state.watchdog_notification,
+                        notification: &mut self.state.watchdog.notification,
                         processing: &mut self.state.processing,
-                        restarts: &mut self.state.main_watchdog_restart_count,
-                        inflight: &mut self.state.main_inflight_prompt,
-                        last_event: &mut self.state.main_last_event_at,
+                        restarts: &mut self.state.watchdog.restart_count,
+                        inflight: &mut self.state.watchdog.inflight_prompt,
+                        last_event: &mut self.state.watchdog.last_event_at,
                         status: &mut self.state.status,
                         messages: &mut self.state.messages,
                     }

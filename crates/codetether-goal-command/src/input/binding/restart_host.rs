@@ -15,10 +15,10 @@ macro_rules! __frontend_goal_restart_host {
                     self.runtime.request_cancel_current();
                 }
                 fn clear_watchdog(&mut self) {
-                    self.app.state.watchdog_notification = None;
+                    self.app.state.watchdog.notification = None;
                 }
                 fn clear_inflight(&mut self) {
-                    self.app.state.main_inflight_prompt = None;
+                    self.app.state.watchdog.inflight_prompt = None;
                 }
             }
         }

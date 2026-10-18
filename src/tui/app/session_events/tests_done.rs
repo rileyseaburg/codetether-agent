@@ -41,15 +41,15 @@ async fn done_clears_watchdog_notification_to_stop_resubmit_loop() {
     // Simulate a watchdog cancel that left a pending notification + inflight
     // prompt. Before the fix, Done reset the restart count but left the
     // notification set, so the retry guard resubmitted the same prompt forever.
-    app.state.watchdog_notification = Some(WatchdogNotification::new("stalled".to_string(), 1));
-    app.state.main_inflight_prompt = Some("hello".to_string());
-    app.state.main_watchdog_restart_count = 1;
+    app.state.watchdog.notification = Some(WatchdogNotification::new("stalled".to_string(), 1));
+    app.state.watchdog.inflight_prompt = Some("hello".to_string());
+    app.state.watchdog.restart_count = 1;
 
     handle_session_event(&mut app, &mut slot, &None, SessionEvent::Done).await;
 
-    assert!(app.state.watchdog_notification.is_none());
-    assert!(app.state.main_inflight_prompt.is_none());
+    assert!(app.state.watchdog.notification.is_none());
+    assert!(app.state.watchdog.inflight_prompt.is_none());
     // Count intentionally survives a completed turn so a completes-then-stalls
     // storm still climbs to the give-up cap; it is reset on new user prompts.
-    assert_eq!(app.state.main_watchdog_restart_count, 1);
+    assert_eq!(app.state.watchdog.restart_count, 1);
 }

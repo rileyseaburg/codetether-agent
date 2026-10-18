@@ -13,13 +13,13 @@ macro_rules! __frontend_continuation_ui {
                     self.app.state.clear_input();
                 }
                 fn set_restarts(&mut self, count: u32) {
-                    self.app.state.main_watchdog_restart_count = count;
+                    self.app.state.watchdog.restart_count = count;
                 }
                 fn set_inflight(&mut self, prompt: String) {
-                    self.app.state.main_inflight_prompt = Some(prompt);
+                    self.app.state.watchdog.inflight_prompt = Some(prompt);
                 }
                 fn arm_retry(&mut self, message: String, count: u32) {
-                    self.app.state.watchdog_notification =
+                    self.app.state.watchdog.notification =
                         Some(WatchdogNotification::new(message, count));
                 }
                 fn set_processing(&mut self, processing: bool) {

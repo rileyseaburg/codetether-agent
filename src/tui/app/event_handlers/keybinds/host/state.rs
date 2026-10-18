@@ -25,7 +25,7 @@ impl State for Native<'_> {
         super::super::super::paste_burst::enter_is_likely_paste_newline(self.app)
     }
     fn watchdog_active(&self) -> bool {
-        self.app.state.watchdog_notification.is_some()
+        self.app.state.watchdog.notification.is_some()
     }
     fn dismiss_watchdog(&mut self) {
         crate::tui::app::watchdog::handle_watchdog_dismiss(&mut self.app.state);

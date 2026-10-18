@@ -10,7 +10,7 @@ fn no_first_token_fires_when_nothing_arrived() {
     let mut state = processing_state();
     state.request_timing.processing_started_at = Some(Instant::now() - Duration::from_secs(120));
     // No activity event ever landed: main_last_event_at stays None.
-    state.main_last_event_at = None;
+    state.watchdog.last_event_at = None;
     let notif = check_watchdog_stall(&state, TIMEOUT).expect("should stall");
     assert!(notif.message.contains("Provider may be unreachable"));
 }
@@ -21,7 +21,7 @@ fn first_token_suppresses_no_first_token_clause() {
     // Request started long ago, but a token arrived.
     state.request_timing.processing_started_at = Some(Instant::now() - Duration::from_secs(120));
     state.request_timing.current_request_first_token_ms = Some(50);
-    state.main_last_event_at = Some(Instant::now());
+    state.watchdog.last_event_at = Some(Instant::now());
     assert!(
         check_watchdog_stall(&state, TIMEOUT).is_none(),
         "active turn must not be killed by the start clock"
@@ -34,7 +34,7 @@ fn tool_activity_suppresses_no_first_token_clause() {
     state.request_timing.processing_started_at = Some(Instant::now() - Duration::from_secs(120));
     // No streamed token, but a tool call / heartbeat refreshed activity after start.
     state.request_timing.current_request_first_token_ms = None;
-    state.main_last_event_at = Some(Instant::now());
+    state.watchdog.last_event_at = Some(Instant::now());
     assert!(
         check_watchdog_stall(&state, TIMEOUT).is_none(),
         "tool heartbeat activity must keep the turn alive"
