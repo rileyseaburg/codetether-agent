@@ -1,31 +1,14 @@
-//! Native provider initialization and Ralph-loop operations for benchmarks.
-use crate::provider::{Provider, ProviderRegistry};
-use crate::ralph::{RalphConfig, RalphLoop, RalphState};
-use anyhow::Result;
-use std::{path::PathBuf, sync::Arc};
-/// Native services selected by the public benchmark runner alias.
-pub struct Native;
-impl codetether_benchmark_runner::Application for Native {
-    type Registry = ProviderRegistry;
-    type Loop = RalphLoop;
+//! Native provider, Ralph runtime and version choices for benchmark execution.
+/// Application version recorded in benchmark reports.
+pub struct PackageVersion;
+impl codetether_benchmark_runner::binding::Version for PackageVersion {
     fn version() -> &'static str {
         env!("CARGO_PKG_VERSION")
     }
-    async fn registry() -> Result<ProviderRegistry> {
-        ProviderRegistry::from_vault().await
-    }
-    fn provider(registry: &ProviderRegistry, name: &str) -> Option<Arc<dyn Provider>> {
-        registry.get(name)
-    }
-    async fn start(
-        path: PathBuf,
-        provider: Arc<dyn Provider>,
-        model: String,
-        config: RalphConfig,
-    ) -> Result<RalphLoop> {
-        RalphLoop::new(path, provider, model, config).await
-    }
-    async fn run(loop_state: &mut RalphLoop) -> Result<RalphState> {
-        loop_state.run().await
-    }
 }
+/// Native services selected by the public benchmark runner alias.
+pub type Native = codetether_benchmark_runner::binding::ApplicationHost<
+    crate::provider::registry::application::Native,
+    crate::ralph::runtime_host::Native,
+    PackageVersion,
+>;

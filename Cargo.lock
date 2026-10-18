@@ -2347,9 +2347,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "codetether-application-providers",
  "codetether-benchmark",
+ "codetether-benchmark-cli",
  "codetether-provider-core",
  "codetether-ralph-core",
+ "codetether-ralph-runtime",
  "codetether-telemetry",
  "tempfile",
  "tracing",

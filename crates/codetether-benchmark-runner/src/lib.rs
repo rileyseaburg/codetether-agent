@@ -6,6 +6,8 @@
 use codetether_benchmark::{BenchmarkConfig, BenchmarkSuiteResult};
 use std::marker::PhantomData;
 mod application;
+pub mod binding;
+mod cli;
 pub use application::Application;
 mod backend;
 mod configuration;

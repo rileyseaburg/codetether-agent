@@ -7,6 +7,9 @@ license = "MIT"
 description = "Application-bound PRD benchmarks with isolated workspaces and measurements"
 
 [dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-benchmark-cli = { path = "../codetether-benchmark-cli", version = "0.1.0" }
+codetether-ralph-runtime = { path = "../codetether-ralph-runtime", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 codetether-benchmark = { path = "../codetether-benchmark", version = "0.1.0" }

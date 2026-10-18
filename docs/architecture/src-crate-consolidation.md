@@ -23629,3 +23629,26 @@ application-providers lockfile dependency entries were staged from HEAD; the
 unrelated working lockfile and A2A edits remain untouched. Evidence:
 artifacts/consolidation-provider-cli/. No Cargo, rustc, Python, compilation,
 provider requests or runtime tests ran. Full consolidation remains active.
+
+### Benchmark application and CLI adapters moved into the runner crate
+
+Moved provider loading, provider lookup, Ralph loop construction/execution and
+CLI Runner implementation into codetether-benchmark-runner. Its binding module
+selects application provider and Ralph host parameters; its cli module connects
+the runner to the existing benchmark CLI contract. The native application file
+now selects concrete types and supplies the package version. Removed
+src/benchmark_cli.rs and directed main dispatch to the shared runner. The Ralph
+runtime host module is crate-visible so the native benchmark binding can select
+it. Added direct application-providers, benchmark-cli and ralph-runtime
+dependencies without a cycle.
+
+Static comparisons preserve all moved operation bodies after generic type
+substitution and retain the exact native version expression. The initial
+comparison helper mistook an imported provider module for a function name;
+restricting it to function declarations corrected the audit. Initial evidence
+is retained. Module/dependency scans cover 691 roots and 571 crates with no
+missing modules or cycles. Direct rustfmt, source file limits and whitespace
+checks passed. Only required dependency entries are staged in Cargo.lock;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-benchmark-application/. No Cargo, rustc, Python,
+compilation, benchmarks or runtime tests ran. Full consolidation remains active.

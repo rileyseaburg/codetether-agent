@@ -9,7 +9,7 @@
 mod delegation;
 pub(crate) mod git_policy;
 mod ralph_loop;
-mod runtime_host;
+pub(crate) mod runtime_host;
 use codetether_ralph_core as types;
 pub use codetether_ralph_core::state_store;
 pub use codetether_ralph_core::store_http;

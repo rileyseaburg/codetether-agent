@@ -23,7 +23,6 @@ mod tui_cli;
 mod worker_cli;
 use codetether_worktree_cli as worktree_cli;
 
-mod benchmark_cli;
 mod mcp_cli;
 mod mcp_serve;
 mod native_cli;
@@ -93,7 +92,9 @@ async fn dispatch(cli: Cli) -> anyhow::Result<()> {
             }
         }
         Some(Command::Stats(args)) => codetether_telemetry_cli::execute(args),
-        Some(Command::Benchmark(args)) => benchmark_cli::execute(args).await,
+        Some(Command::Benchmark(args)) => {
+            codetether_benchmark_cli::execute::<benchmark::BenchmarkRunner>(args).await
+        }
         Some(Command::Cleanup(args)) => cleanup_cli::run(args).await,
         Some(Command::Worktree(args)) => worktree_cli::run(args).await,
         Some(Command::Moltbook(args)) => codetether_moltbook_cli::execute(args).await,
