@@ -10,13 +10,13 @@
 //! ```
 
 use super::task_execution::unsupported_message_response;
-use crate::agent::Agent;
-use crate::swarm::{Handler, SwarmMessage};
+use crate::{Agent, Host};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_swarm_core::{Handler, SwarmMessage};
 
 #[async_trait]
-impl Handler<SwarmMessage> for Agent {
+impl<H: Host> Handler<SwarmMessage> for Agent<H> {
     type Response = SwarmMessage;
 
     async fn handle(&mut self, message: SwarmMessage) -> Result<Self::Response> {

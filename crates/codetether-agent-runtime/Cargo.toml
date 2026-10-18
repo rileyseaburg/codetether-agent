@@ -1,0 +1,21 @@
+[package]
+name = "codetether-agent-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Agent state ownership and completion, tool and swarm integration"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
+codetether-agent-completion = { path = "../codetether-agent-completion", version = "0.1.0" }
+codetether-agent-replay = { path = "../codetether-agent-replay", version = "0.1.0" }
+codetether-agent-tools = { path = "../codetether-agent-tools", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
+tracing = "0.1"

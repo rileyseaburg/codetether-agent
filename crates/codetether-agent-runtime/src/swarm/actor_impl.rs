@@ -9,13 +9,13 @@
 //! let status = agent.actor_status();
 //! ```
 
-use crate::agent::Agent;
-use crate::swarm::{Actor, ActorStatus};
+use crate::{Agent, Host};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_swarm_core::{Actor, ActorStatus};
 
 #[async_trait]
-impl Actor for Agent {
+impl<H: Host> Actor for Agent<H> {
     fn actor_id(&self) -> &str {
         &self.info.name
     }
@@ -24,12 +24,12 @@ impl Actor for Agent {
     }
 
     async fn initialize(&mut self) -> Result<()> {
-        tracing::info!(agent = %self.info.name, "Agent initialized for swarm participation");
+        tracing::info!(target: "codetether_agent::agent::swarm::actor_impl",agent = %self.info.name, "Agent initialized for swarm participation");
         Ok(())
     }
 
     async fn shutdown(&mut self) -> Result<()> {
-        tracing::info!(agent = %self.info.name, "Agent shutting down");
+        tracing::info!(target: "codetether_agent::agent::swarm::actor_impl",agent = %self.info.name, "Agent shutting down");
         Ok(())
     }
 }

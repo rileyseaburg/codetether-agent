@@ -1568,6 +1568,7 @@ dependencies = [
  "codetether-agent-core",
  "codetether-agent-completion",
  "codetether-agent-tools",
+ "codetether-agent-runtime",
  "codetether-agent-replay",
  "codetether-application-mcp",
  "codetether-approval-core",
@@ -1909,6 +1910,24 @@ dependencies = [
  "codetether-agent-core",
  "codetether-config",
  "codetether-provider-core",
+ "codetether-tool-core",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-agent-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-agent-completion",
+ "codetether-agent-core",
+ "codetether-agent-replay",
+ "codetether-agent-tools",
+ "codetether-config",
+ "codetether-provider-core",
+ "codetether-swarm-core",
  "codetether-tool-core",
  "serde_json",
  "tracing",

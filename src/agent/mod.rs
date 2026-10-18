@@ -16,7 +16,7 @@ pub mod builtin;
 mod core;
 mod execution;
 mod registry;
-mod swarm;
+mod runtime_host;
 mod tooling;
 mod types;
 

@@ -9,11 +9,11 @@
 //! let ids = agent.list_tools();
 //! ```
 
-use crate::agent::Agent;
-use crate::tool::Tool;
+use crate::{Agent, Host};
+use codetether_tool_core::Tool;
 use std::sync::Arc;
 
-impl Agent {
+impl<H: Host> Agent<H> {
     /// Returns a registered tool by name when it exists.
     ///
     /// # Examples
@@ -22,7 +22,7 @@ impl Agent {
     /// let bash = agent.get_tool("bash");
     /// ```
     pub fn get_tool(&self, name: &str) -> Option<Arc<dyn Tool>> {
-        self.tools.get(name)
+        H::tool(&self.tools, name)
     }
 
     /// Registers a tool with the agent's tool registry.
@@ -33,7 +33,7 @@ impl Agent {
     /// agent.register_tool(tool);
     /// ```
     pub fn register_tool(&mut self, tool: Arc<dyn Tool>) {
-        self.tools.register(tool);
+        H::register(&mut self.tools, tool);
     }
 
     /// Lists all tool identifiers currently available to the agent.
@@ -44,7 +44,7 @@ impl Agent {
     /// let ids = agent.list_tools();
     /// ```
     pub fn list_tools(&self) -> Vec<&str> {
-        self.tools.list()
+        H::names(&self.tools)
     }
 
     /// Returns whether a tool id is available to the agent.
@@ -55,6 +55,6 @@ impl Agent {
     /// assert!(agent.has_tool("bash") || !agent.has_tool("bash"));
     /// ```
     pub fn has_tool(&self, name: &str) -> bool {
-        self.tools.get(name).is_some()
+        H::tool(&self.tools, name).is_some()
     }
 }

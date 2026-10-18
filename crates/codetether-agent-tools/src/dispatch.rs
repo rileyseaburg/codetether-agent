@@ -32,6 +32,6 @@ pub async fn execute_value<H: Host>(host: &H, name: &str, arguments: Value) -> T
 
 fn log_tool_permission<H: Host>(host: &H, name: &str) {
     if let Some(permission) = host.permission(name) {
-        tracing::debug!(agent = %host.name(), tool = %name, permission = ?permission, "Checking tool permission");
+        tracing::debug!(target: "codetether_agent::agent::tooling::dispatch",agent = %host.name(), tool = %name, permission = ?permission, "Checking tool permission");
     }
 }

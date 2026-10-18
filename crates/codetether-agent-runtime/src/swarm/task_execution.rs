@@ -9,18 +9,18 @@
 //! let reply = unsupported_message_response();
 //! ```
 
-use crate::agent::Agent;
-use crate::session::Session;
-use crate::swarm::SwarmMessage;
-use anyhow::Result;
+use crate::{Agent, Host};
 
-impl Agent {
+use anyhow::Result;
+use codetether_swarm_core::SwarmMessage;
+
+impl<H: Host> Agent<H> {
     pub(super) async fn handle_task_execution(
         &mut self,
         task_id: String,
         instruction: String,
     ) -> Result<SwarmMessage> {
-        let mut session = Session::new().await?;
+        let mut session = H::new_session().await?;
         Ok(match self.execute(&mut session, &instruction).await {
             Ok(response) => SwarmMessage::TaskCompleted {
                 task_id,

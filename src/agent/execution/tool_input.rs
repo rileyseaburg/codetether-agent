@@ -1,16 +1,5 @@
-//! Native serialized-tool entry point and input-test adapter.
-use crate::{agent::Agent, session::Session, tool::ToolResult};
-impl Agent {
-    pub(super) async fn execute_tool_for_session(
-        &self,
-        session: &Session,
-        call_id: &str,
-        name: &str,
-        arguments: &str,
-    ) -> ToolResult {
-        codetether_agent_tools::execute_for_session(self, session, call_id, name, arguments).await
-    }
-}
+//! Native test adapter for shared tool-input preparation.
+use crate::{agent::Agent, session::Session};
 #[cfg(test)]
 pub(super) fn prepare(
     session: &Session,

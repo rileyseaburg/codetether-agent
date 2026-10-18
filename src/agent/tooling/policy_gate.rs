@@ -5,7 +5,7 @@ use crate::config::Config;
 use crate::tool::ToolResult;
 use serde_json::Value;
 
-pub(super) async fn blocked(tool_name: &str, args: &Value) -> Option<ToolResult> {
+pub(in crate::agent) async fn blocked(tool_name: &str, args: &Value) -> Option<ToolResult> {
     crate::runtime_policy::evaluate_tool_invocation(tool_name, args).await
 }
 

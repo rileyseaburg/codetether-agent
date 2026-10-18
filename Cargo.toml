@@ -28,6 +28,7 @@ members = [
     "crates/codetether-agent-replay",
     "crates/codetether-agent-completion",
     "crates/codetether-agent-tools",
+    "crates/codetether-agent-runtime",
     "crates/codetether-approval-core",
     "crates/codetether-approval-http",
     "crates/codetether-audit",
@@ -691,6 +692,7 @@ codetether-agent-core = { path = "crates/codetether-agent-core", version = "0.1.
 codetether-agent-replay = { path = "crates/codetether-agent-replay", version = "0.1.0" }
 codetether-agent-completion = { path = "crates/codetether-agent-completion", version = "0.1.0" }
 codetether-agent-tools = { path = "crates/codetether-agent-tools", version = "0.1.0" }
+codetether-agent-runtime = { path = "crates/codetether-agent-runtime", version = "0.1.0" }
 codetether-http-error = { path = "crates/codetether-http-error", version = "0.1.0" }
 codetether-server-router = { path = "crates/codetether-server-router", version = "0.1.0" }
 codetether-server-runtime = { path = "crates/codetether-server-runtime", version = "0.1.0" }

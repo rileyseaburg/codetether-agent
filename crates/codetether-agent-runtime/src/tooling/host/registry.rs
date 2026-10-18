@@ -1,7 +1,7 @@
 //! Bind existing registry lookups, metadata and policy checks.
 use super::*;
 #[async_trait::async_trait]
-impl codetether_agent_tools::Registry for Agent {
+impl<H: Host> codetether_agent_tools::Registry for Agent<H> {
     fn name(&self) -> &str {
         &self.info.name
     }
@@ -9,12 +9,12 @@ impl codetether_agent_tools::Registry for Agent {
         self.permissions.get(name)
     }
     fn tool(&self, name: &str) -> Option<Arc<dyn Tool>> {
-        self.tools.get(name)
+        H::tool(&self.tools, name)
     }
     fn names(&self) -> Vec<&str> {
-        self.tools.list()
+        H::names(&self.tools)
     }
     async fn blocked(name: &str, arguments: &Value) -> Option<ToolResult> {
-        super::super::policy_gate::blocked(name, arguments).await
+        H::blocked(name, arguments).await
     }
 }

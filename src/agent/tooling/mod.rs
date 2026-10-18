@@ -1,15 +1,2 @@
-//! Tool dispatch for agents.
-//!
-//! This module isolates tool execution, invalid-tool fallback handling, and
-//! registry access for the `Agent` runtime.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! let has_bash = agent.has_tool("bash");
-//! ```
-
-mod dispatch;
-mod host;
-mod policy_gate;
-mod registry_access;
+//! Native invocation-policy adapter and its regression tests.
+pub(super) mod policy_gate;

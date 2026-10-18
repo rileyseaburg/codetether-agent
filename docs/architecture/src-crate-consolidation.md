@@ -18737,3 +18737,28 @@ entry points, lexical module reachability, dependency-cycle checks, file-size
 ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-agent-tools/`. No Cargo, rustc, Python, Rust tests or
 live tool execution ran; compilation and runtime behavior remain unverified.
+
+### Agent runtime state ownership and swarm integration
+
+Moved the Agent state owner, constructor, registry accessors, completion/replay/
+tool integrations and swarm actor/handler implementations into
+`codetether-agent-runtime`. The native public Agent becomes a type alias with
+the original tool registry and session types. Native adapters now expose focused
+registry, session view, mutation and context services; native regression tests
+retain their existing sources and shared-service adapters.
+
+State fields and their order, empty permission/metadata initialization, public
+registry methods, swarm message routing and session creation are preserved.
+The policy helper visibility is widened only within the agent module for its
+relocated native caller. Moved swarm log statements retain their original targets;
+the prior extracted tool-dispatch debug target is likewise made explicit.
+
+Validation: 52 moved/native function comparisons, state field layout and public
+specialization, unchanged regression-test sources and external services, lexical
+module reachability, dependency-cycle and direct external-dependency audits,
+file-size ratchet, whitespace and formatting. Checks caught and corrected a
+second registry lookup needing generic dispatch and a missing tracing dependency;
+initial diagnostic logs are retained. Evidence:
+`artifacts/consolidation-agent-runtime/`. No Cargo, rustc, Python, Rust tests,
+session creation or swarm execution ran. Compilation and runtime behavior remain
+unverified.
