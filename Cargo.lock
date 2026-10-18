@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-context-legacy",
  "codetether-context-enforcement",
  "codetether-context-compression",
  "codetether-rlm-foreground",
@@ -2188,6 +2189,21 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-context-legacy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-context-compression",
+ "codetether-context-enforcement",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-rlm",
+ "codetether-rlm-background",
+ "codetether-session-events",
+ "tokio",
 ]
 
 [[package]]

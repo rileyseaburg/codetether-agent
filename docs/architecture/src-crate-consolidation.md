@@ -9287,3 +9287,19 @@ has 44 code lines. Evidence is in
 `artifacts/consolidation-context-enforcement/`. Compilation and runtime
 tests were not run. No Cargo, rustc, Python or model calls ran. Full
 workspace consolidation remains active.
+
+### Dedicated legacy context-derivation crate
+
+Moved the legacy history-cloning derivation pipeline and forced/adaptive
+compression coordination into `crates/codetether-context-legacy`. Eight
+modules separate read-only inputs, callback bindings, preparation, forced
+compression, budget enforcement and provenance assembly. Native Session
+implements the input trait and supplies its existing transforms and resolver.
+
+Nine static comparisons cover clone/compression/transform order, forced
+compression followed by enforcement, pairing repair, residency/provenance
+and native field/callback bindings. Module/dependency graphs, file budgets
+and whitespace checks passed; the largest crate file has 40 code lines.
+Evidence is in `artifacts/consolidation-context-legacy/`. Compilation and
+runtime tests were not run. No Cargo, rustc, Python or model calls ran.
+Full workspace consolidation remains active.

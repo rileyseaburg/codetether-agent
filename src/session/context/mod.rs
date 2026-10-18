@@ -4,7 +4,6 @@
 
 pub(crate) mod active_tail;
 mod complete;
-mod compress_step;
 mod derive;
 mod helpers;
 mod incremental;

@@ -1,19 +1,12 @@
-//! Phase-A legacy derivation: clone + experimental + enforce + pairing repair.
-
-use std::sync::Arc;
-
-use anyhow::Result;
-use tokio::sync::mpsc;
-
+//! Native specialization of shared legacy context derivation.
+use super::helpers::DerivedContext;
 use crate::provider::ToolDefinition;
-use crate::session::ResidencyLevel;
-use crate::session::Session;
-use crate::session::SessionEvent;
-use crate::session::helper::compression::{CompressContext, compress_last_message_if_oversized};
-use crate::session::helper::experimental;
-
-use super::compress_step::run_compression_step;
-use super::helpers::{DerivedContext, messages_len_changed};
+use crate::session::{Session, SessionEvent};
+use anyhow::Result;
+use std::sync::Arc;
+use tokio::sync::mpsc;
+#[path = "legacy_host.rs"]
+mod host;
 
 /// Derive an ephemeral [`DerivedContext`] from `session`'s pure history.
 ///
@@ -46,48 +39,20 @@ pub async fn derive_context(
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
     force_keep_last: Option<usize>,
 ) -> Result<DerivedContext> {
-    let origin_len = session.messages.len();
-    let mut messages = session.messages.to_vec();
-    let ctx = CompressContext::new(&session.id, &session.metadata.rlm);
-
-    let step0 =
-        compress_last_message_if_oversized(&mut messages, &ctx, Arc::clone(&provider), model)
-            .await?;
-
-    experimental::apply_all(&mut messages);
-
-    let before = messages.len();
-    let step1 = run_compression_step(
-        &mut messages,
-        &ctx,
+    let hooks = codetether_context_legacy::Hooks {
+        apply: crate::session::helper::experimental::apply_all,
+        repair: crate::session::helper::experimental::pairing::repair_orphans,
+        resolver: crate::session::helper::rlm_background::resolve_model,
+    };
+    codetether_context_legacy::derive_context(
+        session,
         provider,
         model,
         system_prompt,
         tools,
         event_tx,
         force_keep_last,
+        hooks,
     )
-    .await?;
-
-    experimental::pairing::repair_orphans(&mut messages);
-
-    let compressed = step0 || step1 || messages_len_changed(before, &messages);
-    let mut provenance = vec!["legacy".to_string()];
-    if step0 {
-        provenance.push("oversized_last_message".to_string());
-    }
-    if step1 {
-        provenance.push("context_window".to_string());
-    }
-    if compressed && provenance.len() == 1 {
-        provenance.push("experimental".to_string());
-    }
-    Ok(DerivedContext {
-        resolutions: vec![ResidencyLevel::Full; messages.len()],
-        dropped_ranges: Vec::new(),
-        provenance,
-        messages,
-        origin_len,
-        compressed,
-    })
+    .await
 }
