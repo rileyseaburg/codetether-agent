@@ -1387,6 +1387,7 @@ dependencies = [
  "codetether-webview-bars",
  "codetether-webview",
  "codetether-tui-render",
+ "codetether-agent-dashboard",
  "codetether-git-view",
  "codetether-protocol-view",
  "codetether-chat-sync",
@@ -15940,5 +15941,17 @@ version = "0.1.0"
 dependencies = [
  "codetether-chat-layout",
  "codetether-tui-models",
+ "ratatui",
+]
+
+[[package]]
+name = "codetether-agent-dashboard"
+version = "0.1.0"
+dependencies = [
+ "codetether-agent-trace",
+ "codetether-agent-view",
+ "codetether-chat-transcript",
+ "codetether-provider-core",
+ "codetether-swarm-view",
  "ratatui",
 ]

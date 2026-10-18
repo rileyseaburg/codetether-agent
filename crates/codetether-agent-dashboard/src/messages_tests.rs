@@ -1,5 +1,5 @@
 use super::{Source, append};
-use crate::provider::{ContentPart, Message, Role};
+use codetether_provider_core::{ContentPart, Message, Role};
 
 #[test]
 fn collapses_runtime_system_prompts() {

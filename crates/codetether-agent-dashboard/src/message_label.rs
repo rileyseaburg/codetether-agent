@@ -1,11 +1,17 @@
 //! Source-aware labels for agent transcript message roles.
 
-use crate::provider::Role;
+use codetether_provider_core::Role;
 use ratatui::{style::Stylize, text::Span};
 
 /// Origin of messages displayed in an agent transcript.
+/// # Examples
+/// ```
+/// use codetether_agent_dashboard::messages::Source;
+/// let label = match Source::ManagedAgent { Source::ManagedAgent => "local", Source::A2aPeer => "remote" };
+/// assert_eq!(label, "local");
+/// ```
 #[derive(Clone, Copy)]
-pub(in crate::tui::ui) enum Source {
+pub enum Source {
     /// A locally managed child-agent conversation.
     ManagedAgent,
     /// A request/response exchange with a LAN A2A peer.
@@ -14,7 +20,12 @@ pub(in crate::tui::ui) enum Source {
 
 impl Source {
     /// Select transcript provenance from an agent snapshot.
-    pub(in crate::tui::ui) fn for_remote(remote: bool) -> Self {
+    /// # Examples
+    /// ```
+    /// use codetether_agent_dashboard::messages::Source;
+    /// assert!(matches!(Source::for_remote(true), Source::A2aPeer));
+    /// ```
+    pub fn for_remote(remote: bool) -> Self {
         if remote {
             Self::A2aPeer
         } else {
@@ -24,7 +35,7 @@ impl Source {
 }
 
 /// Render one provider role according to the transcript's actual source.
-pub(super) fn role(role: Role, source: Source) -> Span<'static> {
+pub(crate) fn role(role: Role, source: Source) -> Span<'static> {
     match (role, source) {
         (Role::User, Source::ManagedAgent) => "USER".bold(),
         (Role::Assistant, Source::ManagedAgent) => "ASSISTANT".cyan().bold(),

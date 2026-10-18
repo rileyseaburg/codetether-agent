@@ -17628,3 +17628,22 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-tui-render/`.
 - No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Agent dashboard rows and transcript presentation
+
+- Moved managed-child rows, tool/peer rows, swarm rows and section, identity
+  metadata, provider-message labels/formatting and live trace formatting into
+  the dedicated `codetether-agent-dashboard` crate, split into focused modules.
+- Existing shared agent snapshots, live traces, provider messages and swarm
+  state remain with their owners. A borrowed managed-agent display struct
+  projects only the six fields needed for its row, avoiding native Session or
+  App dependencies. Native presentation modules now re-export shared functions
+  or project those fields.
+- Moved all six existing formatter tests. Verified 15 complete function bodies,
+  Source variants/method, navigation constant, test bodies, native projection
+  and unchanged detail/dashboard callers. Module/dependency graph, direct
+  rustfmt, file limits and whitespace checks passed. Staged lock changes contain
+  only the new package and root dependency; unrelated working-copy changes are
+  preserved. Evidence: `artifacts/consolidation-agent-dashboard/`.
+- No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

@@ -1,4 +1,4 @@
-use crate::tool::agent::bridge::{AgentOrigin, AgentSnapshot};
+use codetether_agent_view::{AgentOrigin, AgentSnapshot};
 
 fn peer() -> AgentSnapshot {
     AgentSnapshot {

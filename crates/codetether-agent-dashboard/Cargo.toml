@@ -1,0 +1,15 @@
+[package]
+name = "codetether-agent-dashboard"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Agent dashboard rows, identities and transcript presentation"
+
+[dependencies]
+codetether-agent-view = { path = "../codetether-agent-view", version = "0.1.0" }
+codetether-agent-trace = { path = "../codetether-agent-trace", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-chat-transcript = { path = "../codetether-chat-transcript", version = "0.1.0" }
+codetether-swarm-view = { path = "../codetether-swarm-view", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
