@@ -1,8 +1,8 @@
 //! Deterministic tool returning caller-selected text and image metadata.
 
-use crate::tool::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_tool_core::{Tool, ToolResult};
 use serde_json::{Value, json};
 
 pub(super) struct ImageTool(pub ToolResult);

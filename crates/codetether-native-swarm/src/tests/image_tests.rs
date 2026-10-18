@@ -1,10 +1,8 @@
 //! Mocked tool lifecycle coverage for call-associated image recording.
 
 use super::{image_test_state::state, state::ToolCall, tools};
-use crate::{
-    provider::{ContentPart, Role},
-    tool::ToolResult,
-};
+use codetether_provider_core::{ContentPart, Role};
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 #[tokio::test]
@@ -16,7 +14,7 @@ async fn swarm_tool_images_survive_success_failure_and_text_truncation() {
             let mut result =
                 ToolResult::success("x".repeat(12_000)).with_metadata("image_data_url", images);
             result.success = success;
-            let expected = crate::tool::result_images::content(Some(&result.metadata));
+            let expected = codetether_tool_core::images::content(Some(&result.metadata));
             let mut state = state(result);
             let call = ToolCall {
                 id: "original-call".into(),

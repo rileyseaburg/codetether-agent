@@ -1,8 +1,8 @@
 //! Offline provider that steers or cancels during its first final response.
 
-use crate::provider::*;
-use crate::session::runtime::ControlHandle;
 use async_trait::async_trait;
+use codetether_native_session_runtime::ControlHandle;
+use codetether_provider_core::*;
 use futures::stream::BoxStream;
 use std::sync::Mutex;
 

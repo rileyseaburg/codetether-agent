@@ -12,3 +12,6 @@ pub mod workspace;
 pub use agent::AgentHost;
 pub use executor::ExecutorHost;
 pub use providers::Providers;
+
+#[cfg(test)]
+mod tests;

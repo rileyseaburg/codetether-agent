@@ -1,6 +1,6 @@
 //! Small final-message and tool fixtures for delegated control regressions.
 
-use crate::provider::*;
+use codetether_provider_core::*;
 
 pub(super) fn response(tool: bool) -> CompletionResponse {
     let content = if tool {

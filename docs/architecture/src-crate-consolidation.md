@@ -26264,3 +26264,25 @@ checks pass. Only four added native-proactive dependencies are staged in
 Cargo.lock; unrelated working files remain unchanged. Evidence is retained in
 artifacts/consolidation-native-summary/. No Cargo, rustc, Python, compilation or
 runtime tests ran. The full consolidation goal remains active and incomplete.
+
+### Native swarm loop regression ownership
+
+Moved all four remaining swarm agent-loop tests and their offline provider,
+tool and state fixtures from src/swarm/executor_parts/agent_loop into
+codetether-native-swarm::tests. The root module now contains only its public
+loop entrypoint and concrete native host alias. The image/steering/cancellation
+fixtures use an empty native registry and explicitly register the same image
+tool. Their catalog rejects accidental default population. The accounting
+fixture creates a unique session ID and writes the same GoalSet event through
+native TaskLog instead of constructing the application Session; accounting
+still runs through the native RunGuard, agent host and goal journal.
+
+Static comparisons preserve 19 test/provider/tool bodies, including every
+assertion in the four moved tests, and the exact goal event fields. The
+existing empty-registry constructor was inspected to verify it does not invoke
+the replacement catalog. Module/dependency scans cover 728 roots and 614 crates
+without missing modules, cycles or undeclared dependencies. Declaration,
+standalone formatting, file-limit and whitespace checks pass. Only native-swarm
+test dependencies are staged in Cargo.lock; unrelated changes remain untouched.
+Evidence: artifacts/consolidation-native-swarm-tests/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

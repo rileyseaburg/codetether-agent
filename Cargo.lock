@@ -4050,12 +4050,16 @@ name = "codetether-native-swarm"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "chrono",
  "codetether-application-registry",
  "codetether-context-policy",
  "codetether-native-goals",
  "codetether-native-lsp",
  "codetether-native-providers",
+ "codetether-native-registry",
  "codetether-native-runtime-policy",
+ "codetether-native-session-runtime",
  "codetether-native-tetherscript",
  "codetether-provider-core",
  "codetether-provider-step",
@@ -4068,7 +4072,10 @@ dependencies = [
  "codetether-swarm-validation",
  "codetether-tool-core",
  "codetether-workspace-tools",
+ "futures",
  "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

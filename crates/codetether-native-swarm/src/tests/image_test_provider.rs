@@ -1,8 +1,10 @@
 //! Offline provider that rejects accidental completion calls in tool tests.
 
-use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
 use anyhow::Result;
 use async_trait::async_trait;
+use codetether_provider_core::{
+    CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk,
+};
 use futures::stream::BoxStream;
 
 pub(super) struct OfflineProvider;

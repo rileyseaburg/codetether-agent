@@ -1,11 +1,10 @@
 //! Delegated completions charge their canonical parent's existing goal.
 
+use super::goal_fixture as answer_review_test_support;
 use super::{control_test_provider::Mock, driver, image_test_state};
-use crate::session::{
-    runtime::{RunGuard, goals},
-    tasks::answer_review_test_support,
-};
-use crate::tool::ToolResult;
+use codetether_native_goals::runtime as goals;
+use codetether_native_session_runtime::RunGuard;
+use codetether_tool_core::ToolResult;
 use std::sync::{Arc, Mutex};
 
 #[tokio::test]

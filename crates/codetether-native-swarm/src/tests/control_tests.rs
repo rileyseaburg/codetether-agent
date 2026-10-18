@@ -1,7 +1,8 @@
 //! A final message cannot discard a correction or dispatch tools after cancel.
 
 use super::{control_test_provider::Mock, driver, image_test_state};
-use crate::{session::runtime::ControlHandle, tool::ToolResult};
+use codetether_native_session_runtime::ControlHandle;
+use codetether_tool_core::ToolResult;
 use std::sync::{Arc, Mutex};
 
 #[tokio::test]
@@ -21,7 +22,7 @@ async fn steering_during_final_response_continues_the_delegated_loop() {
     let requests = provider.requests.lock().unwrap();
     assert_eq!(requests.len(), 2);
     assert!(requests[1].messages.iter().any(|message| message.content.iter().any(|part| {
-        matches!(part, crate::provider::ContentPart::Text { text } if text == "Inspect cloned repos")
+        matches!(part, codetether_provider_core::ContentPart::Text { text } if text == "Inspect cloned repos")
     })));
 }
 
@@ -45,6 +46,6 @@ async fn cancellation_during_completion_prevents_tool_dispatch() {
             .conversation
             .messages
             .iter()
-            .any(|message| matches!(message.role, crate::provider::Role::Tool))
+            .any(|message| matches!(message.role, codetether_provider_core::Role::Tool))
     );
 }

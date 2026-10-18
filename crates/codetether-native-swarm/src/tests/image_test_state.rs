@@ -1,7 +1,8 @@
 //! Construct isolated swarm state with offline image fixtures.
 
+use super::fixture::ToolRegistry;
 use super::{image_test_provider::OfflineProvider, image_test_tool::ImageTool, state::State};
-use crate::tool::{ToolRegistry, ToolResult};
+use codetether_tool_core::ToolResult;
 use std::sync::Arc;
 
 pub(super) fn state(result: ToolResult) -> State {
