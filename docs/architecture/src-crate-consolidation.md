@@ -17800,3 +17800,20 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-mcp-command/`.
 - No Cargo, rustc, Python, shell/tool execution, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### MCP approval request and decision surface
+
+- Moved approval capability metadata, parameter parsing, request/decision
+  handlers, response envelopes and method routing into the dedicated
+  `codetether-mcp-approval` crate.
+- The native module re-exports the shared entry points and retains its live
+  decision/session-grant integration tests. Store, decision-kind and pending
+  registry imports resolve directly to the same shared types and state.
+- Verified all six moved modules in full under import-path substitutions, both
+  routing/capability bodies, native re-exports, and unchanged backing stores,
+  session grants and integration tests. Module/dependency graphs, direct
+  rustfmt, file limits and whitespace passed. Staged lock adds only the new
+  package and root dependency; unrelated working-copy changes remain untouched.
+  Evidence: `artifacts/consolidation-mcp-approval/`.
+- No Cargo, rustc, Python, approval endpoint calls, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

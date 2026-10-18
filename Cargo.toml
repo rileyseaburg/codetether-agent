@@ -295,6 +295,7 @@ members = [
     "crates/codetether-mcp-bus",
     "crates/codetether-mcp-fallback",
     "crates/codetether-mcp-server",
+    "crates/codetether-mcp-approval",
     "crates/codetether-agent-dashboard",
     "crates/codetether-worker-events",
     "crates/codetether-tui-worker",
@@ -794,6 +795,7 @@ codetether-goal-command = { path = "crates/codetether-goal-command", version = "
 codetether-mcp-bus = { path = "crates/codetether-mcp-bus", version = "0.1.0" }
 codetether-mcp-fallback = { path = "crates/codetether-mcp-fallback", version = "0.1.0" }
 codetether-mcp-server = { path = "crates/codetether-mcp-server", version = "0.1.0" }
+codetether-mcp-approval = { path = "crates/codetether-mcp-approval", version = "0.1.0" }
 codetether-agent-dashboard = { path = "crates/codetether-agent-dashboard", version = "0.1.0" }
 codetether-git-view = { path = "crates/codetether-git-view", version = "0.1.0" }
 codetether-protocol-view = { path = "crates/codetether-protocol-view", version = "0.1.0" }

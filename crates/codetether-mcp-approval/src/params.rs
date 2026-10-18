@@ -1,3 +1,4 @@
+//! Wire parameters and JSON-RPC parameter error mapping.
 use super::JsonRpcError;
 use serde::Deserialize;
 use serde_json::Value;

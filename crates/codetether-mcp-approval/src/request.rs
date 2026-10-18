@@ -1,4 +1,5 @@
-use crate::approval::ApprovalStore;
+//! Create persistent approval requests from MCP parameters.
+use codetether_approval_core::ApprovalStore;
 use serde_json::Value;
 
 use super::{JsonRpcError, params, response};

@@ -1391,6 +1391,7 @@ dependencies = [
  "codetether-mcp-bus",
  "codetether-mcp-fallback",
  "codetether-mcp-server",
+ "codetether-mcp-approval",
  "codetether-agent-dashboard",
  "codetether-git-view",
  "codetether-protocol-view",
@@ -16007,4 +16008,14 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-mcp-approval"
+version = "0.1.0"
+dependencies = [
+ "codetether-approval-core",
+ "codetether-mcp-core",
+ "serde",
+ "serde_json",
 ]

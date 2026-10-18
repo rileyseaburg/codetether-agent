@@ -1,4 +1,7 @@
-use crate::approval::{ApprovalDecision, ApprovalReceipt, ApprovalRequest, ApprovalStatus};
+//! Approval request and decision response envelopes.
+use codetether_approval_core::{
+    ApprovalDecision, ApprovalReceipt, ApprovalRequest, ApprovalStatus,
+};
 use serde_json::{Value, json};
 
 pub(super) fn pending(request: &ApprovalRequest, tool_call_id: Option<String>) -> Value {

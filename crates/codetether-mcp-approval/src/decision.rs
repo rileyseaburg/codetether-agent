@@ -1,4 +1,5 @@
-use crate::approval::ApprovalStore;
+//! Persist approval decisions, apply grants and notify live waiters.
+use codetether_approval_core::ApprovalStore;
 use serde_json::Value;
 
 use super::{JsonRpcError, kind::DecisionKind, params, response};
@@ -24,7 +25,8 @@ pub(super) fn handle(params: Option<Value>) -> Result<Value, JsonRpcError> {
             .map_err(|error| JsonRpcError::invalid_params(error.to_string()))?;
         None
     };
-    let delivered = crate::approval::live::decide(&params.approval_id, kind.live());
+    let delivered =
+        codetether_approval_core::interaction::pending::decide(&params.approval_id, kind.live());
     let decision = store
         .decision(&params.approval_id)
         .map_err(|error| JsonRpcError::internal_error(error.to_string()))?;
