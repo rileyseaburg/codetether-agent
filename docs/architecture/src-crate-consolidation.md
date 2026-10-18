@@ -21942,3 +21942,21 @@ checks passed. Only the new package and root dependency are staged in the
 lockfile; unrelated working lockfile changes remain intact. Evidence:
 `artifacts/consolidation-application-registry/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation stays active.
+
+### Task credential wrapper in the provider registry crate
+
+Moved the native `PerTaskProviderKeys` wrapper into
+`codetether-provider-registry::BoundTaskKeys<H, R>`, with separate modules for
+parsing, metadata access and registry construction. The native public name is
+an alias binding the same application factory and registry. A small native
+`From` implementation transfers the constructed shared registry into its
+existing wrapper without cloning.
+
+The shared credential owner and its drop-time string clearing are unchanged.
+Static comparisons preserve metadata and Debug delegation, the parser call,
+factory selection, and the native task-registry fallback method. Module and
+dependency checks cover 694 roots and 566 crates without missing modules or
+cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+No manifest or lockfile changes. Evidence:
+`artifacts/consolidation-provider-task-keys/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

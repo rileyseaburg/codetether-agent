@@ -42,6 +42,8 @@ impl Default for ProviderRegistry {
 
 mod tenant_keys;
 pub use tenant_keys::PerTaskProviderKeys;
+mod bound_task_keys;
+pub use bound_task_keys::BoundTaskKeys;
 pub mod task;
 
 #[cfg(test)]
