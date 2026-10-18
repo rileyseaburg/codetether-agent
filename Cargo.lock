@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-recall-index",
  "codetether-proactive-context",
  "codetether-proactive-worker",
  "codetether-proactive-runtime",
@@ -3990,6 +3991,18 @@ version = "0.1.0"
 dependencies = [
  "once_cell",
  "tracing",
+]
+
+[[package]]
+name = "codetether-recall-index"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-session-recall",
+ "codetether-vectordb",
+ "serde",
 ]
 
 [[package]]

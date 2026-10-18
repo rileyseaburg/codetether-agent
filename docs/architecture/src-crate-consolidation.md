@@ -9461,3 +9461,21 @@ the largest crate file has 24 code lines. Evidence is in
 `artifacts/consolidation-proactive-context/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python or worker/model calls ran. Full workspace
 consolidation remains active.
+
+### Dedicated local recall-index crate
+
+Moved compact recall projections, excerpt/content-part rendering, lexical
+normalization, query preparation and hybrid scoring into
+`crates/codetether-recall-index`. Eighteen modules separate projection inputs,
+documents, schema, construction, ranking, rendering and regression cases.
+Native code supplies session fields and canonical workspace paths; existing
+sidecar storage and streaming workspace search remain native adapters.
+
+Forty-three static comparisons cover serialized fields, schema, four-message
+chunks, the 128-document cap, embeddings, scoring, UTF-8 truncation, original
+tests and native bindings. Module/dependency graphs, file budgets and whitespace
+checks passed; the largest crate file has 42 code lines. Five original ranking
+and rendering tests moved into the crate, without execution. Evidence is in
+`artifacts/consolidation-recall-index/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, model or worker commands ran. Full workspace
+consolidation remains active.

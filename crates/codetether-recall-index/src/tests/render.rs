@@ -1,10 +1,10 @@
 //! Tests for recall context part rendering.
 
-use super::*;
+use crate::{part::render_part, truncate::truncate_bytes};
 
 #[test]
 fn skips_thinking() {
-    use crate::provider::ContentPart;
+    use codetether_provider_core::ContentPart;
     let part = ContentPart::Thinking {
         text: "reasoning".into(),
         signature: None,
@@ -14,7 +14,7 @@ fn skips_thinking() {
 
 #[test]
 fn truncates_tool_result() {
-    use crate::provider::ContentPart;
+    use codetether_provider_core::ContentPart;
     let big = "x".repeat(5000);
     let part = ContentPart::ToolResult {
         tool_call_id: "c1".into(),

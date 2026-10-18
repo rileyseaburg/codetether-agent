@@ -2,7 +2,7 @@
 
 use chrono::Utc;
 
-use crate::vectordb::LocalEmbeddingEngine;
+use codetether_vectordb::LocalEmbeddingEngine;
 
 #[test]
 fn lexical_evidence_is_ranked_with_provenance() {

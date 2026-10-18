@@ -1,10 +1,10 @@
 //! Score one recall document against a prepared local query.
 
-use crate::vectordb::{EmbeddingVector, cosine};
+use codetether_vectordb::{EmbeddingVector, cosine};
 
 use super::document::RecallDocument;
-use super::hit::RecallHit;
 use super::indexed_session::IndexedSession;
+use crate::RecallHit;
 
 const SEMANTIC_FLOOR: f32 = 0.45;
 

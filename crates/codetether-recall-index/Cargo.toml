@@ -1,0 +1,15 @@
+[package]
+name = "codetether-recall-index"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Compact session recall projections and local hybrid ranking"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-session-recall = { path = "../codetether-session-recall", version = "0.1.0" }
+codetether-vectordb = { path = "../codetether-vectordb", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }

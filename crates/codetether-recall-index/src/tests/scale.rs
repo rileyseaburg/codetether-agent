@@ -2,7 +2,7 @@
 
 use chrono::Utc;
 
-use crate::vectordb::LocalEmbeddingEngine;
+use codetether_vectordb::LocalEmbeddingEngine;
 
 #[test]
 fn ranks_ten_thousand_documents_without_broad_loading() {
