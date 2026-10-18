@@ -1,25 +1,9 @@
-//! Latest-snapshot coalescing for background recall indexing.
-
+//! Native entry points for shared recall worker lifecycle.
+use super::storage_host::NativeHost;
 use crate::session::Session;
-
 pub(crate) fn schedule(session: &Session) {
-    super::tombstone::restore(&session.id);
-    let spawn = super::queue_state::enqueue(session);
-    if spawn {
-        super::queue_worker::spawn(session.id.clone());
-    }
+    codetether_recall_worker::schedule(&session.id, std::sync::Arc::new(NativeHost));
 }
-
-pub(crate) async fn remove(session_id: &str) -> anyhow::Result<()> {
-    super::tombstone::mark(session_id);
-    super::queue_state::remove(session_id);
-    super::store::remove(session_id).await
-}
-
-pub(super) fn take(session_id: &str) -> Option<String> {
-    super::queue_state::take(session_id)
-}
-
-pub(super) fn settle(session_id: &str) -> bool {
-    super::queue_state::settle(session_id)
+pub(crate) async fn remove(id: &str) -> anyhow::Result<()> {
+    codetether_recall_worker::remove(id, &NativeHost).await
 }

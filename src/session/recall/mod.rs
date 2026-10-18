@@ -5,26 +5,18 @@
 //! language model or deserialize full session histories.
 
 mod backfill;
-mod backfill_load;
-mod backfill_policy;
-mod backfill_worker;
 mod build;
-mod catalog_io;
 pub(crate) mod hit;
 mod indexed_session;
 mod paths;
 pub(crate) mod prefetch;
 mod query_host;
 mod queue;
-mod queue_state;
-mod queue_worker;
 pub(crate) mod render;
 pub(crate) mod search;
 mod session_io;
 mod storage_host;
-mod store;
-mod store_lock;
-mod tombstone;
+mod worker_host;
 
 pub(crate) use queue::{remove, schedule};
 

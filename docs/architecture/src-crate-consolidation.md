@@ -9515,3 +9515,21 @@ largest crate file has 37 code lines. Evidence is in
 `artifacts/consolidation-recall-query/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python or worker commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated recall-worker crate
+
+Moved queue coalescing, worker lifecycle, cursor-driven projection jobs and
+opt-in legacy backfill into `crates/codetether-recall-worker`. Twelve modules
+separate state, transitions, execution, commit ordering, backfill policy and
+bounded loading. Native adapters supply ordered session IDs, cursor deliveries,
+projection commits and existing session construction. Removed the unused private
+legacy decoder and obsolete native storage/queue wrappers.
+
+Thirty-two static comparisons cover queue state, deletion ordering, cursor
+commits, shared catalog locking, 128-message deliveries, eight-migration and
+8 MiB limits, backfill scheduling, logging, tests and native adapters.
+Module/dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 38 code lines. Two original backfill tests moved without execution.
+Evidence is in `artifacts/consolidation-recall-worker/`. Compilation and runtime
+tests were not run. No Cargo, rustc, Python or worker commands ran. Full workspace
+consolidation remains active.

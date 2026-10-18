@@ -138,6 +138,7 @@ members = [
     "crates/codetether-recall-index",
     "crates/codetether-recall-store",
     "crates/codetether-recall-query",
+    "crates/codetether-recall-worker",
     "crates/codetether-workspace-index",
     "crates/codetether-codex-records",
     "crates/codetether-codex-discovery",
@@ -446,6 +447,7 @@ codetether-codex-transcript = { path = "crates/codetether-codex-transcript", ver
 codetether-codex-discovery = { path = "crates/codetether-codex-discovery", version = "0.1.0" }
 codetether-codex-records = { path = "crates/codetether-codex-records", version = "0.1.0" }
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
+codetether-recall-worker = { path = "crates/codetether-recall-worker", version = "0.1.0" }
 codetether-recall-query = { path = "crates/codetether-recall-query", version = "0.1.0" }
 codetether-recall-store = { path = "crates/codetether-recall-store", version = "0.1.0" }
 codetether-recall-index = { path = "crates/codetether-recall-index", version = "0.1.0" }

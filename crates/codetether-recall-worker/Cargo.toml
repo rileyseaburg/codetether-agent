@@ -1,0 +1,17 @@
+[package]
+name = "codetether-recall-worker"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Coalesced recall indexing and bounded legacy backfill workers"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-recall-query = { path = "../codetether-recall-query", version = "0.1.0" }
+codetether-recall-store = { path = "../codetether-recall-store", version = "0.1.0" }
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
+serde_json = "1"
+tokio = { version = "1", features = ["fs", "rt"] }
+tracing = "0.1"
