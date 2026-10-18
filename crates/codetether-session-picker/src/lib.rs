@@ -31,3 +31,6 @@ mod state_filter;
 mod state_listing;
 mod state_nav;
 pub use state::SessionPickerState;
+
+mod label;
+pub use label::session_label;

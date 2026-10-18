@@ -3,38 +3,26 @@
 use crate::tui::app::session_runtime::SessionView;
 use crate::tui::app::state::App;
 use crate::tui::ui::status_bar::session_model_label;
-
-/// The truncated session title or id (`new` when no session exists).
+/// Resolve the active session display label through its shared owner.
+///
+/// # Arguments
+/// * `app` - Application supplying the active session and picker selection.
+///
+/// # Returns
+/// A compact title or identifier, or new when no session exists.
 ///
 /// # Examples
-///
-/// ```rust,no_run
-/// # fn demo(app: &codetether_agent::tui::app::state::App) {
-/// use codetether_agent::tui::ui::chat_view::title::labels::session_label;
-/// let _label = session_label(app);
+/// ```no_run
+/// # fn example(app: &codetether_agent::tui::app::state::App) {
+/// let _label = codetether_agent::tui::ui::chat_view::title::labels::session_label(app);
 /// # }
 /// ```
 pub fn session_label(app: &App) -> String {
-    let Some(id) = app.state.session_id.as_deref() else {
-        return "new".to_string();
-    };
-    let label = app
-        .state
-        .session_picker
-        .sessions
-        .get(app.state.session_picker.selected_session)
-        .filter(|session| session.id == id)
-        .map(crate::session::SessionSummary::display_label)
-        .unwrap_or_else(|| id.to_string());
-    compact(&label)
-}
-
-fn compact(label: &str) -> String {
-    if label.len() > 28 {
-        format!("{}…", crate::util::truncate_bytes_safe(label, 27))
-    } else {
-        label.to_string()
-    }
+    codetether_session_picker::session_label(
+        &app.state.session_picker.sessions,
+        app.state.session_picker.selected_session,
+        app.state.session_id.as_deref(),
+    )
 }
 
 /// The active model label (`auto` when unresolved).

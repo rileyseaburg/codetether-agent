@@ -12,6 +12,8 @@ pub use elapsed_badge::elapsed_badge;
 pub use metric_assembly::metric_spans;
 pub use metric_source::MetricSource;
 pub use session_label::session_model_label;
+pub use streaming_header::streaming_header;
 pub use timing::latency_badge_spans;
 pub use timing_view::RequestTimings;
+pub use title::build_title;
 pub use turn_badge::turn_latency_badge;

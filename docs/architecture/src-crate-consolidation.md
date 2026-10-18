@@ -12063,3 +12063,19 @@ Full workspace consolidation remains active.
   limits and git diff --check passed. Evidence: artifacts/consolidation-render-ownership/.
 - No Cargo, rustc, compilation, tests or benchmark execution ran. Full workspace
   consolidation remains incomplete.
+
+### Chat title and streaming-header extraction
+
+- Moved chat-title and wordmark rendering, plus streaming separators/headers,
+  into codetether-chat-status. Model/session label providers and elapsed-time
+  providers are lazy callbacks, preserving their positions among color, clock,
+  spinner and thinking-indicator reads.
+- Moved session-label selection and safe truncation into codetether-session-picker,
+  alongside the session summaries it operates on. Native model resolution is
+  unchanged; native modules retain the existing direct and nested public paths.
+- Verification: nine source comparisons passed for all moved functions, native
+  callbacks and unchanged model resolution. The four new modules contain at
+  most 39 code lines. Full native chat-view/module reachability, dependency
+  cycles, direct formatting, source limits and diff checks passed.
+- Evidence: artifacts/consolidation-chat-headers/. No Cargo, rustc, compilation,
+  tests or rendered-output checks ran. Full workspace consolidation is incomplete.
