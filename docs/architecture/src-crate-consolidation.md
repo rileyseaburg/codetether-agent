@@ -22286,3 +22286,20 @@ swarm-agent crate's local-job and workspace-tools dependency edges are staged
 in the lockfile. Evidence: `artifacts/consolidation-swarm-job/`.
 No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
 Full consolidation is active.
+
+### Indexer provider resolution in the application provider crate
+
+Moved indexer embedding-provider adaptation and provider-registry resolution
+into `codetether-application-providers::indexing`. The generic stateless resolver
+uses the same application registry specialization. Native index construction
+and CLI entry points retain their signatures and arguments but supply this
+shared resolver directly. Two native adapter files were removed.
+
+Static comparisons preserve provider-name and embedding forwarding, per-resolve
+Vault loading, model resolution and its error context, and both indexer entry
+point calls. Module/dependency checks cover 699 roots and 571 crates without
+missing modules or cycles. Direct rustfmt, native file-size limits and whitespace
+checks passed. Only the provider crate's indexer dependency edge is staged in
+the lockfile. Evidence: `artifacts/consolidation-indexer-provider/`.
+No indexing, provider requests, Cargo, rustc or Python ran; compilation and
+runtime tests remain unverified. Full consolidation is active.

@@ -3,12 +3,10 @@
 //! The core owns scanning, graph assembly, persistence, and embedding batches.
 //! This module retains CLI output and resolves application providers.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 pub use codetether_indexer::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 mod cli;
-mod provider_adapter;
-mod resolver;
 pub use cli::run;
 
 /// Build an index using application-configured embedding providers.
@@ -28,5 +26,7 @@ pub use cli::run;
 /// # });
 /// ```
 pub async fn build_index(root: &Path, options: &BuildOptions) -> Result<CodebaseIndex> {
-    build_index_with_resolver(root, options, &resolver::ApplicationResolver).await
+    build_index_with_resolver(root, options, &codetether_application_providers::indexing::Resolver::<
+        crate::provider::ProviderRegistry,
+    >::new()).await
 }

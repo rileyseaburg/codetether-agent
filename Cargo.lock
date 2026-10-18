@@ -2037,6 +2037,7 @@ dependencies = [
  "codetether-forage-execution",
  "codetether-go-prd",
  "codetether-go-tool",
+ "codetether-indexer",
  "codetether-memory-tool",
  "codetether-model-catalog",
  "codetether-model-discovery",

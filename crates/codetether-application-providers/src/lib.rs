@@ -52,3 +52,6 @@ pub mod routing;
 
 /// Search orchestration using the application provider and memory policies.
 pub mod search;
+
+/// Provider-backed embedding resolution for source indexes.
+pub mod indexing;
