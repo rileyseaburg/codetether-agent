@@ -1,6 +1,6 @@
 use super::super::{Observer, drain};
 use super::test_support::{LOCK, task};
-use crate::tui::swarm_view::SwarmViewState;
+use codetether_swarm_view::SwarmViewState;
 
 #[test]
 fn dropped_direct_swarm_terminates_tui_state() {

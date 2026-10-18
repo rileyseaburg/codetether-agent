@@ -1,7 +1,7 @@
 //! Cancellation cleanup for direct swarm observers.
 
 use super::observer::Observer;
-use crate::tui::swarm_view::SwarmEvent;
+use codetether_swarm_view::SwarmEvent;
 
 impl Drop for Observer {
     fn drop(&mut self) {

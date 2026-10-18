@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-swarm-monitor",
  "codetether-swarm-tool",
  "codetether-tool-registry",
  "codetether-tui-navigation",
@@ -7427,6 +7428,17 @@ dependencies = [
  "uuid",
  "tempfile",
  "codetether-session-control",
+]
+
+[[package]]
+name = "codetether-swarm-monitor"
+version = "0.1.0"
+dependencies = [
+ "codetether-swarm-core",
+ "codetether-swarm-tool",
+ "codetether-swarm-view",
+ "lazy_static",
+ "tokio",
 ]
 
 [[package]]

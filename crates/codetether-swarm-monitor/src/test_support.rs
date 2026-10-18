@@ -1,4 +1,4 @@
-use crate::tool::swarm_execute::task_input::TaskInput;
+use codetether_swarm_tool::task_input::TaskInput;
 use std::sync::Mutex;
 
 pub(super) static LOCK: Mutex<()> = Mutex::new(());

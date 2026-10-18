@@ -1,8 +1,8 @@
 use super::super::{Observer, drain, started};
 use super::test_support::{LOCK, task};
-use crate::swarm::SubTaskStatus;
-use crate::tool::swarm_execute::{model_selection::ModelSelection, task_result::TaskResult};
-use crate::tui::swarm_view::SwarmViewState;
+use codetether_swarm_core::SubTaskStatus;
+use codetether_swarm_tool::{model_selection::ModelSelection, task_result::TaskResult};
+use codetether_swarm_view::SwarmViewState;
 
 #[test]
 fn direct_swarm_appears_in_tui_state() {

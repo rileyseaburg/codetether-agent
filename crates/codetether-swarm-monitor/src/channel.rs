@@ -1,6 +1,6 @@
 //! Shared event channel consumed by the TUI tick loop.
 
-use crate::tui::swarm_view::{SwarmEvent, SwarmViewState};
+use codetether_swarm_view::{SwarmEvent, SwarmViewState};
 use std::sync::Mutex;
 use tokio::sync::mpsc;
 

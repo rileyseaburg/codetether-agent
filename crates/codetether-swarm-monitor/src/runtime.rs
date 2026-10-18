@@ -1,7 +1,9 @@
 //! Preserve native monitor events and cancellation ownership.
-use super::super::tui_bridge;
-use codetether_swarm_tool::{runtime::Observer, task_input::TaskInput, task_result::TaskResult};
-impl Observer for tui_bridge::Observer {
+use crate::Observer;
+use codetether_swarm_tool::{
+    runtime::Observer as RuntimeObserver, task_input::TaskInput, task_result::TaskResult,
+};
+impl RuntimeObserver for Observer {
     fn begin(tasks: &[TaskInput], max_steps: usize) -> Self {
         Self::begin(tasks, max_steps)
     }

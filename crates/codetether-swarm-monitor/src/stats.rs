@@ -1,7 +1,7 @@
 //! Summary statistics for a direct swarm monitor run.
 
-use super::super::task_result::TaskResult;
-use crate::swarm::SwarmStats;
+use codetether_swarm_core::SwarmStats;
+use codetether_swarm_tool::task_result::TaskResult;
 use std::time::Duration;
 
 pub(super) fn build(results: &[TaskResult], elapsed: Duration) -> (bool, SwarmStats) {

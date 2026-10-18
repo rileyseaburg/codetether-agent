@@ -1,7 +1,8 @@
 //! Terminal direct-swarm events and summary statistics.
 
-use super::{super::task_result::TaskResult, stats};
-use crate::tui::swarm_view::SwarmEvent;
+use super::stats;
+use codetether_swarm_tool::task_result::TaskResult;
+use codetether_swarm_view::SwarmEvent;
 use std::time::Duration;
 use tokio::sync::mpsc;
 

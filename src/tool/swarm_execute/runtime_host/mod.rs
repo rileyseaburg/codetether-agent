@@ -5,7 +5,6 @@ use codetether_swarm_core::result_store::ResultStore;
 use codetether_swarm_tool::runtime::{Host, LoopInput, SelectedProvider, WorkerContext};
 use codetether_swarm_tool::task_input::TaskInput;
 use std::sync::Arc;
-mod observer;
 mod worker;
 pub(super) struct Native;
 impl Host for Native {

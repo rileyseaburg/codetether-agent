@@ -15292,3 +15292,27 @@ Full workspace consolidation remains active.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Native registry
   adapters, provider loading and TUI observation still remain to consolidate;
   this does not complete the broader workspace goal.
+
+### Dedicated direct-swarm monitor crate
+
+- Added `crates/codetether-swarm-monitor`, owning the process-wide bounded event
+  channel, observation timestamps, initial task records, worker startup events,
+  result/statistics emission, cancellation-on-drop, and view draining formerly
+  implemented under `src/tool/swarm_execute/tui_bridge/`.
+- Moved the existing cancellation and completion tests with their shared test
+  support. The shared runtime's observer implementation now lives with the
+  concrete monitor type, removing the native implementation file.
+- The native TUI bridge is a compatibility re-export of `Observer` and `drain`.
+  The native tick path and provider error reporting continue to use that same
+  concrete observer. Runtime and monitor dependencies stay acyclic: the monitor
+  depends on the tool/runtime contracts and view, never the reverse.
+- Split startup construction from ongoing observer state; every new crate source
+  file is at most 50 non-comment/nonblank lines. Documented the public lifecycle
+  operations and the fact that both event sources are drained unconditionally.
+- Verification: 14 Node comparison groups checked relocated bodies/tests,
+  constructor split, struct fields, trait bindings, native exports and isolated
+  lock changes. Module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet, and `git diff --check` passed. Evidence:
+  `artifacts/consolidation-swarm-monitor/`.
+- No Cargo, rustc, Python, compilation or Rust tests were executed. Broader
+  consolidation remains active; native provider and registry setup still exist.
