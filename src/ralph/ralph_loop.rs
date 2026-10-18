@@ -16,7 +16,6 @@ use crate::tool::ToolRegistry;
 use crate::worktree::WorktreeManager;
 use codetether_ralph_core::events::{RalphEvent, RalphStoryInfo};
 use codetether_swarm_core::SwarmEvent;
-use futures::stream::{self, StreamExt};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;

@@ -1,0 +1,20 @@
+[package]
+name = "codetether-ralph-stage"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Parallel Ralph stage planning, task spawning and result collection"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }
+codetether-ralph-task = { path = "../codetether-ralph-task", version = "0.1.0" }
+codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
+futures = "0.3"
+tokio = { version = "1", features = ["rt", "sync"] }
+tracing = "0.1"

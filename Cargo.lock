@@ -1710,6 +1710,7 @@ dependencies = [
  "codetether-question-tool",
  "codetether-ralph-agent",
  "codetether-ralph-sequential",
+ "codetether-ralph-stage",
  "codetether-ralph-task",
  "codetether-ralph-core",
  "codetether-relay-tool",
@@ -7311,6 +7312,23 @@ dependencies = [
  "codetether-ralph-core",
  "codetether-swarm-core",
  "codetether-worktree",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-ralph-stage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-bus-core",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-ralph-core",
+ "codetether-ralph-task",
+ "codetether-worktree",
+ "futures",
  "tokio",
  "tracing",
 ]

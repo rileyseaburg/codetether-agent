@@ -1,0 +1,41 @@
+//! Clone the stage inputs in the original capture order for one task.
+use super::*;
+pub(crate) fn prepare_parallel_task<H: Host>(
+    host: &H,
+    semaphore: &Arc<tokio::sync::Semaphore>,
+    provider: &Arc<dyn Provider>,
+    model: &String,
+    prd_info: &(String, String),
+    working_dir: &PathBuf,
+    worktree_mgr: &Option<Arc<WorktreeManager>>,
+    worktrees_by_story: &mut HashMap<String, WorktreeInfo>,
+    progress_path: &String,
+    accumulated_learnings: &Vec<String>,
+    story: UserStory,
+) -> Task<H::Task> {
+    Task {
+        sem: Arc::clone(semaphore),
+        provider: Arc::clone(provider),
+        model: model.clone(),
+        prd_info: prd_info.clone(),
+        working_dir: working_dir.clone(),
+        worktree_mgr: worktree_mgr.clone(),
+        prebuilt_worktree: worktrees_by_story.remove(&story.id),
+        progress_path: progress_path.clone(),
+        ralph_tx: host.inputs().event_tx.clone(),
+        stage_learnings: accumulated_learnings.clone(),
+        bus: host.inputs().bus.clone(),
+        relay_enabled: host.inputs().config.relay_enabled,
+        relay_max_agents: host.inputs().config.relay_max_agents,
+        relay_max_rounds: host.inputs().config.relay_max_rounds,
+        registry: host.inputs().registry.clone(),
+        max_steps_per_story: host.inputs().config.max_steps_per_story,
+        max_quality_retries: host.inputs().config.max_quality_retries,
+        max_rate_limit_retries: host.inputs().config.max_rate_limit_retries,
+        rate_limit_base_delay_ms: host.inputs().config.rate_limit_base_delay_ms,
+        quality_checks_enabled: host.inputs().config.quality_checks_enabled,
+        quality_checks: host.inputs().state.prd.quality_checks.clone(),
+        delegation: host.inputs().delegation.clone(),
+        story: story,
+    }
+}

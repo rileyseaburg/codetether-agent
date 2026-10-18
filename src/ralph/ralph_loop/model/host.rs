@@ -2,7 +2,15 @@
 use super::*;
 use codetether_ralph_agent::{Host, Invocation};
 mod execute;
-pub(in crate::ralph::ralph_loop) struct Native;
+/// Native execution binding exposed through the stage host associated type.
+/// # Examples
+/// ```rust,no_run
+/// type Task = <codetether_agent::ralph::RalphLoop as codetether_ralph_stage::Host>::Task;
+/// type Binding = <Task as codetether_ralph_task::Host>::Agent;
+/// fn assert_host<H: codetether_ralph_agent::Host>() {}
+/// assert_host::<Binding>();
+/// ```
+pub struct Native;
 impl Host for Native {
     type Registry = ToolRegistry;
     fn system_prompt(workspace: &Path) -> String {

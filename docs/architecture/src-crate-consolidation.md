@@ -18524,3 +18524,29 @@ example braces for struct braces; the preserved failure log and corrected
 comment-aware token parser document that check correction. No Cargo, rustc,
 Python, Rust tests, live tasks or quality commands ran. Compilation and runtime
 behavior remain unverified.
+
+### Parallel Ralph stage coordination
+
+Moved stage planning, worktree creation, task input capture and spawning, ordered
+result collection, failed-story reporting and stage checkpointing into
+`codetether-ralph-stage`. The crate composes the shared scheduler, story-task and
+worktree crates. Native bindings lend the live fields and perform successful
+story merging. The public native scheduler trait remains available through
+shared-function delegation.
+
+The stage retains its semaphore, provider and workspace through finalization.
+Worktree creation retains concurrency eight, workspace-stub injection and the
+original failure fallback. Task capture order, collection order, once-per-stage
+iteration updates, bus publication, PRD save and subsequent checkpoint order
+are preserved. Native task/model binding types are public within their existing
+modules so the new public stage-host associated types are valid.
+
+Validation: full coordinator and forwarding-body comparisons, captured-field
+and stage-resource order, native state/merge mappings, preserved scheduler
+signatures, unchanged merge/execution services, lexical module reachability,
+dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
+One single-expression match-arm formatting difference is normalized explicitly
+in the comparison; its initial failure log is retained. Evidence:
+`artifacts/consolidation-ralph-stage/`. No Cargo, rustc, Python, Rust tests,
+worktree operations or live stages were executed. Compilation and runtime
+behavior remain unverified.

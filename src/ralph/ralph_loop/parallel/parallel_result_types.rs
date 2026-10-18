@@ -1,6 +1,5 @@
-//! Existing task result shape and borrowed merge context.
+//! Borrowed workspace inputs for parallel-story merging.
 use super::*;
-pub(in crate::ralph::ralph_loop) use codetether_ralph_task::StoryResult as ParallelStoryResult;
 pub(in crate::ralph::ralph_loop) struct MergeContext<'a> {
     pub(in crate::ralph::ralph_loop) provider: &'a Arc<dyn Provider>,
     pub(in crate::ralph::ralph_loop) model: &'a str,
