@@ -8,6 +8,7 @@ pub use codetether_swarm_core::cache::{CacheConfig, CacheEntry};
 use codetether_swarm_core::{SubTask, SubTaskResult};
 use std::path::PathBuf;
 mod access;
+mod access_contract;
 mod construct;
 mod k8s;
 mod operations;

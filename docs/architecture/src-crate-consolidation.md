@@ -21782,3 +21782,20 @@ dependency or lockfile changes. Evidence:
 `artifacts/consolidation-mcp-bus-attachment/`. No Cargo, rustc, or Python commands
 ran; compilation and live bus behavior remain unverified. Full consolidation
 remains active.
+
+### Shared executor cache management
+
+Moved optional-cache inspection, statistics snapshotting and cache clearing
+from native executor methods into `codetether-swarm-runtime::ExecutorState`.
+A focused `CacheAccess` contract in swarm-core lets the runtime use either the
+core cache or application-directory cache without depending on the latter.
+Both implementations delegate to their existing storage/statistics methods.
+
+Static body comparisons preserve no-cache behavior, mutex lifetime, cloned
+statistics and clearing error propagation. Native public methods now delegate
+to the shared state. Source/dependency graphs across 692 roots and 564 crates,
+direct rustfmt, native file-size limits, and whitespace checks passed. No
+new dependency or lockfile changes. Evidence:
+`artifacts/consolidation-executor-cache/`. No Cargo, rustc, or Python commands
+ran; compilation and runtime tests remain unverified. Full consolidation
+remains active.

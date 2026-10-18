@@ -16,6 +16,8 @@ pub use entry::CacheEntry;
 mod config;
 pub use config::CacheConfig;
 mod access;
+mod contract;
+pub use contract::CacheAccess;
 mod clear;
 mod construct;
 mod disk;
