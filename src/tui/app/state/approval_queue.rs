@@ -1,35 +1,12 @@
-//! Pending live approval queue for the TUI.
-
-use std::collections::VecDeque;
-use std::sync::{Mutex, OnceLock};
-
+//! Native integration for the shared pending approval display queue.
 #[path = "approval_queue/edit_session.rs"]
 pub(crate) mod edit_session;
-#[path = "approval_queue/navigation.rs"]
-mod navigation;
-#[path = "approval_queue/operations.rs"]
-mod operations;
-#[path = "approval_queue/queue_access.rs"]
-mod queue_access;
 #[path = "approval_queue/reconcile.rs"]
 mod reconcile;
-#[path = "approval_queue/report.rs"]
-mod report;
-mod snapshot;
-#[path = "approval_queue/viewport.rs"]
-mod viewport;
-pub(crate) use navigation::cycle;
-pub(crate) use operations::{feedback_input, set_report, set_review};
 #[cfg(test)]
-pub(crate) use queue_access::reset;
-pub(crate) use queue_access::{active, active_id, len, push, resolve};
+pub(crate) use codetether_approval_queue::reset;
+pub(crate) use codetether_approval_queue::{
+    ApprovalReport, ApprovalReportState, ApprovalSnapshot, active, active_id, cycle,
+    feedback_input, len, push, resolve, set_report, set_review, set_scroll_limit,
+};
 pub(crate) use reconcile::remove_stale;
-pub(crate) use report::{ApprovalReport, ApprovalReportState};
-pub(crate) use snapshot::ApprovalSnapshot;
-pub(crate) use viewport::set_scroll_limit;
-
-static QUEUE: OnceLock<Mutex<VecDeque<ApprovalSnapshot>>> = OnceLock::new();
-
-fn queue() -> &'static Mutex<VecDeque<ApprovalSnapshot>> {
-    QUEUE.get_or_init(|| Mutex::new(VecDeque::new()))
-}

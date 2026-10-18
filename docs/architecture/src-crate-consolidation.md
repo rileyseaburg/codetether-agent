@@ -12758,3 +12758,22 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency records were staged from Cargo.lock.
   No settings mutations, Cargo, rustc, compilation or Rust tests ran. Full
   workspace consolidation remains incomplete.
+
+### Pending approval queue ownership
+
+- Moved the process-wide queue, snapshots, analysis/review annotations,
+  navigation, scroll limits and queue operations into codetether-approval-queue.
+  Eight modules contain at most 34 code lines. Native approval_queue retains
+  compatibility exports, patch editing and a live-waiter reconciliation adapter.
+- Stale removal receives the native is_pending predicate and invokes it under
+  the same queue lock. Queue ordering, duplicate-ID replacement, snapshot
+  defaults, poison messages and review state are preserved. Reset is exported
+  for native test isolation; it clears display state without deciding requests.
+- Verification: 23 source comparisons passed, covering seven moved modules,
+  singleton ownership, the reconciliation adapter and 13 unchanged native
+  handlers/tests/edit-session files. Module/dependency checks, direct rustfmt,
+  file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-approval-queue/.
+- Only the new crate's root dependency/package entries were staged from
+  Cargo.lock. No queue operations, approval decisions, Cargo, rustc, compilation
+  or Rust tests ran. Full consolidation remains incomplete.
