@@ -13271,3 +13271,23 @@ Full workspace consolidation remains active.
 - The lockfile was updated by staging only this crate and its root dependency
   against HEAD, preserving unrelated working edits. No Cargo, rustc, Rust
   tests or live cognition requests ran. Full consolidation remains incomplete.
+
+### Task progress, release and polling consolidation
+
+- Moved native worker release, output ingestion and completion polling into
+  codetether-task-api::{release, output_ingest, output_poll}. Native files now
+  only extract HTTP arguments and delegate. The old implementation directories
+  were removed; existing lifecycle, notification-ordering, concurrency and
+  response-compatibility tests moved with their services.
+- Queue lock callbacks, release normalization, receipt precedence, error
+  responses and bus notification ordering are preserved. Cross-service tests
+  now call implementations within the same crate instead of native server
+  modules. Two test files were split at existing test-function boundaries to
+  keep each new module below 45 nonblank/noncomment code lines.
+- Added tracing and explicit Tokio test features (multithreaded runtime, sync
+  and time). The sole staged lockfile change adds tracing to this crate.
+- Verification: 79 source-preservation/module-size checks and two HTTP-body
+  comparisons passed. Module reachability, local dependency DAG, direct
+  rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-task-lifecycle/. No Cargo, rustc, compilation or
+  Rust tests ran. The broader source consolidation remains incomplete.

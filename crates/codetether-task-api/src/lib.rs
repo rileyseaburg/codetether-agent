@@ -34,3 +34,10 @@ pub use create_agent_task::create_agent_task;
 mod get_agent_task;
 pub use get_agent_task::get_agent_task;
 pub mod dispatch;
+
+/// Worker progress acceptance and publication.
+pub mod output_ingest;
+/// Accepted completion receipt polling.
+pub mod output_poll;
+/// Worker terminal transitions and notifications.
+pub mod release;
