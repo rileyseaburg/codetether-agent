@@ -1,6 +1,6 @@
 //! Morph editing adapter using the application-owned provider registry.
 use crate::provider::ProviderRegistry;
-use anyhow::{Context, Result};
+use anyhow::Result;
 pub use codetether_morph_backend::should_use_morph_backend;
 /// Apply an edit through Morph using the application's shared provider registry.
 ///
@@ -21,21 +21,9 @@ pub use codetether_morph_backend::should_use_morph_backend;
 /// # }
 /// ```
 pub async fn apply_edit_with_morph(code: &str, instruction: &str, update: &str) -> Result<String> {
-    codetether_morph_backend::apply_edit_with_morph(
-        code,
-        instruction,
-        update,
-        |model_ref| async move {
-            let registry = ProviderRegistry::shared_from_vault()
-                .await
-                .context("Failed to initialize provider registry for Morph backend")?;
-            let resolved = registry
-                .resolve_model(&model_ref)
-                .with_context(|| format!("Failed to resolve Morph model '{model_ref}'"))?;
-
-            Ok(resolved)
-        },
-    )
+    codetether_application_providers::editing::apply_edit_with_morph::<
+        crate::provider::registry::application::Native,
+    >(code, instruction, update)
     .await
 }
 
@@ -45,11 +33,7 @@ pub async fn apply_edit_with_morph(code: &str, instruction: &str, update: &str) 
 /// ```rust
 /// let _editor = codetether_agent::tool::morph_backend::ApplicationEditor;
 /// ```
-#[derive(Default)]
-pub struct ApplicationEditor;
-#[async_trait::async_trait]
-impl codetether_morph_backend::Editor for ApplicationEditor {
-    async fn apply(&self, code: &str, instruction: &str, update: &str) -> Result<String> {
-        apply_edit_with_morph(code, instruction, update).await
-    }
-}
+pub type ApplicationEditor = codetether_application_providers::editing::Editor<ProviderRegistry>;
+/// Stateless value preserving the native unit-like editor construction.
+#[allow(non_upper_case_globals)]
+pub const ApplicationEditor: ApplicationEditor = ApplicationEditor::new();

@@ -2043,6 +2043,7 @@ dependencies = [
  "codetether-model-catalog",
  "codetether-model-discovery",
  "codetether-model-failover",
+ "codetether-morph-backend",
  "codetether-openai-serving",
  "codetether-provider-core",
  "codetether-provider-factory",

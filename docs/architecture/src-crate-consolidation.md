@@ -22576,3 +22576,23 @@ the unrelated working lockfile remains byte-identical. Evidence:
 retained alongside the final formatted-source comparison).
 No peer startup, Cargo, rustc or Python ran; compilation and runtime tests
 remain unverified. Full consolidation is active.
+
+### Morph editing bound by the application provider crate
+
+Moved Morph provider resolution and the stateless Editor implementation into
+`codetether-application-providers::editing`. The request module owns cached
+Vault loading, model resolution and existing error context; the module root
+owns the generic stateless editor. Native edit and multi-edit tools retain
+their aliases and constructors. The native Morph function delegates with the
+same application identity, and its editor alias plus constant preserve both
+Default and unit-like construction syntax.
+
+Static comparisons preserve all edit arguments, cache lookup, model resolution
+and error messages. The underlying Morph transport and native file-editor
+callers are unchanged. Module/dependency checks cover 699 roots and 571 crates
+without missing modules or cycles. Direct rustfmt, native file-size limits and
+whitespace checks passed. Only the application-provider crate's Morph backend
+dependency edge is staged in the lockfile; the unrelated working lockfile
+remains byte-identical. Evidence: `artifacts/consolidation-morph-provider/`.
+No edits through Morph, provider requests, Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.
