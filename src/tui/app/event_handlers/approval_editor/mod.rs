@@ -1,7 +1,8 @@
 //! Approval-backed source editor orchestration.
 
-mod close;
+#[cfg(test)]
 mod finish;
+mod host;
 mod key;
 #[cfg(test)]
 #[path = "key_tests.rs"]

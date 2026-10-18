@@ -7123,8 +7123,11 @@ name = "codetether-approval-edit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "codetether-approval-core",
+ "codetether-approval-queue",
  "codetether-editor",
  "codetether-patch",
+ "serde_json",
  "similar 3.2.0",
  "tempfile",
 ]

@@ -19373,3 +19373,28 @@ rustfmt match-arm brace removal; normalized that exact formatting change and
 retained the failed log. Evidence: `artifacts/consolidation-editor-controls/`.
 No Cargo, rustc, Python, Rust tests or language-server execution ran; compilation
 and runtime remain unverified.
+
+### Approval editor workflow and receipts
+
+Moved approval-backed editor key dispatch, sequential file saving, cancel/close,
+revised-patch receipt creation and waiting-tool decision delivery into
+`codetether-approval-edit::interactive`. The existing crate already owns the
+editable patch session; it now owns the corresponding workflow. Native code
+retains eight state/view bindings and the existing regression/integration tests.
+Removed the native close and receipt implementations.
+
+Preserved save/next-file ordering, failed-apply session restoration, status
+messages, normal chat-view transitions and active-approval display updates.
+Receipt creation still approves the replacement and denies the original before
+delivering the revised decision; empty patches still deny the original. Shared
+approval storage, live decision registry and display queue are used directly.
+
+Validation: seven complete translated workflow/receipt bodies, eight native
+state bindings, unchanged tests and caller, isolated lockfile delta, lexical
+module reachability, dependency-cycle checks, file-size ratchet, whitespace
+and direct formatting. Evidence: `artifacts/consolidation-approval-editor/`.
+No Cargo, rustc, Python, Rust tests or approval execution ran; compilation and
+runtime remain unverified.
+The final staged review caught a missing serde_json lockfile edge caused by a
+version-qualified similar dependency. Corrected the minimal lockfile update
+and strengthened validation to require all three added dependency entries.

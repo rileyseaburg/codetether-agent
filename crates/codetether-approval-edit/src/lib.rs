@@ -2,7 +2,8 @@
 //!
 //! ApprovalEditSession loads proposed contents through the shared patch parser,
 //! exposes one FileBuffer at a time, and emits a revised unified patch. It does
-//! not write the revised contents or approve the pending request.
+//! not write the revised contents or approve the pending request. The
+//! [interactive] module owns explicit save/cancel and decision delivery.
 use std::path::PathBuf;
 mod load;
 mod patch;
@@ -29,3 +30,6 @@ pub struct ApprovalEditSession {
     files: Vec<ApprovalEditFile>,
     index: usize,
 }
+
+/// Approval-backed editor interaction and decision delivery.
+pub mod interactive;
