@@ -1275,6 +1275,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-native-forage",
  "codetether-native-context",
  "codetether-native-session-runtime",
  "codetether-native-review",
@@ -3724,6 +3725,27 @@ version = "0.1.0"
 dependencies = [
  "codetether-github-pr",
  "codetether-github-pr-cli",
+]
+
+[[package]]
+name = "codetether-native-forage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-cli-options",
+ "codetether-forage-clarify",
+ "codetether-forage-execution",
+ "codetether-forage-runtime",
+ "codetether-forage-scoring",
+ "codetether-go-ralph",
+ "codetether-native-providers",
+ "codetether-native-runtime-policy",
+ "codetether-native-tetherscript",
+ "codetether-okr",
+ "codetether-provider-core",
+ "codetether-swarm-core",
+ "codetether-tool-core",
+ "serde_json",
 ]
 
 [[package]]

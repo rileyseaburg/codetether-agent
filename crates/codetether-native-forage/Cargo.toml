@@ -1,0 +1,28 @@
+[package]
+name = "codetether-native-forage"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native forage scoring, clarification, providers and execution binding"
+
+[features]
+default = []
+tetherscript = ["codetether-forage-scoring/tetherscript", "dep:codetether-native-tetherscript"]
+
+[dependencies]
+anyhow = "1"
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-forage-clarify = { path = "../codetether-forage-clarify", version = "0.1.0" }
+codetether-forage-execution = { path = "../codetether-forage-execution", version = "0.1.0" }
+codetether-forage-runtime = { path = "../codetether-forage-runtime", version = "0.1.0" }
+codetether-forage-scoring = { path = "../codetether-forage-scoring", version = "0.1.0" }
+codetether-go-ralph = { path = "../codetether-go-ralph", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-native-runtime-policy = { path = "../codetether-native-runtime-policy", version = "0.1.0" }
+codetether-native-tetherscript = { path = "../codetether-native-tetherscript", version = "0.1.0", optional = true }
+codetether-okr = { path = "../codetether-okr", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"

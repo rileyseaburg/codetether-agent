@@ -1,24 +1,21 @@
 //! Delegate prepared engine requests to existing application entry points.
-use super::{Native, NativeSwarm};
+use crate::swarm::SwarmExecutor as NativeSwarm;
 use crate::{
     cli::RunArgs,
     okr::{Okr, OkrRun},
-    provider::{Provider, ProviderRegistry},
+    provider::Provider,
     swarm::SwarmConfig,
 };
 use codetether_go_ralph::GoRalphResult;
 use std::sync::Arc;
-impl codetether_forage_execution::Host for Native {
-    type Registry = ProviderRegistry;
+pub(crate) struct Application;
+impl codetether_native_forage::Execution for Application {
     type Swarm = NativeSwarm;
     async fn run(args: RunArgs) -> anyhow::Result<()> {
         crate::cli::run::execute(args).await
     }
     fn swarm(config: SwarmConfig) -> NativeSwarm {
         NativeSwarm::new(config)
-    }
-    async fn providers() -> anyhow::Result<ProviderRegistry> {
-        ProviderRegistry::from_vault().await
     }
     async fn go(
         task: &str,
@@ -41,11 +38,5 @@ impl codetether_forage_execution::Host for Native {
             None,
         )
         .await
-    }
-    async fn evaluate_tool_invocation(
-        name: &str,
-        args: &serde_json::Value,
-    ) -> Option<crate::tool::ToolResult> {
-        crate::runtime_policy::evaluate_tool_invocation(name, args).await
     }
 }

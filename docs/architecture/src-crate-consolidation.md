@@ -25963,3 +25963,21 @@ cycles or undeclared dependencies. Declaration, file-limit, direct rustfmt and
 whitespace checks pass. Unrelated dirty files remain unchanged. Evidence:
 artifacts/consolidation-openai-provider-host/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Native forage scoring and execution services
+
+Added codetether-native-forage to own optional score-plugin policy/execution,
+goal clarification, provider loading and execution authorization. A small
+Execution contract retains only the root CLI runner, Go executor and swarm
+construction callbacks. Root forage hosts now select the native host and keep
+the same three callback bodies. The root TetherScript feature forwards to the
+native crate and its optional plugin dependency.
+
+Static comparisons preserve callback arguments, provider loading, policy checks,
+scoring and clarification bodies. Formatting normalization was added to the
+comparison after an import-order mismatch. Module/dependency scans cover 720
+roots and 606 crates without missing modules, cycles or undeclared dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks pass. Only the new
+package/root dependency are staged in Cargo.lock; unrelated files remain
+unchanged. Evidence: artifacts/consolidation-native-forage/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.

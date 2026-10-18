@@ -1,5 +1,3 @@
-//! Existing application services for shared forage execution.
-mod forage;
+//! Application execution choices for native forage services.
 mod runtime;
-use crate::swarm::SwarmExecutor as NativeSwarm;
-pub(crate) struct Native;
+pub(crate) type Native = codetether_native_forage::Host<runtime::Application>;

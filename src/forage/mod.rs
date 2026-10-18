@@ -7,7 +7,6 @@ mod startup;
 use codetether_forage_clarify as clarify;
 pub use startup::{execute, execute_with_summary};
 pub mod console;
-mod tetherscript_score;
 #[cfg(test)]
 use crate::okr::Okr;
 #[cfg(test)]

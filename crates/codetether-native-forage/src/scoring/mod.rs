@@ -1,7 +1,7 @@
 //! Bind optional forage scoring to application authorization and plugin execution.
-use crate::okr::{KeyResult, Okr};
+use codetether_okr::{KeyResult, Okr};
 mod host;
-pub(crate) fn apply(
+pub(super) fn apply(
     okr: &Okr,
     kr: &KeyResult,
     base_score: f64,
