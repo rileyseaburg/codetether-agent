@@ -12,3 +12,7 @@ pub use prefetch::message;
 pub use source::Source;
 #[cfg(test)]
 mod tests;
+
+/// Implementation support for application-local session binding.
+#[doc(hidden)]
+pub mod session_binding;

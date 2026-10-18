@@ -12,8 +12,7 @@ use tokio::sync::mpsc;
 use crate::provider::{CompletionRequest, CompletionResponse, Provider};
 use crate::session::SessionEvent;
 
-#[path = "prompt_call/checkpoint.rs"]
-mod checkpoint;
+codetether_provider_step::impl_session_checkpoint!(crate::session::Session);
 
 pub(super) use codetether_provider_step::checkpoint::persist as persist_stream_checkpoints;
 

@@ -56,3 +56,7 @@ pub async fn complete_step<S>(
         )),
     }
 }
+
+/// Implementation support for application-local session binding.
+#[doc(hidden)]
+pub mod session_binding;

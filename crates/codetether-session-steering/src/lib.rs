@@ -59,3 +59,7 @@ pub use transcript::Transcript;
 
 /// Process-wide follow-up prompt queued for a later turn.
 pub mod follow_up;
+
+/// Implementation support for application-local session binding.
+#[doc(hidden)]
+pub mod session_binding;

@@ -24641,3 +24641,24 @@ changes remain untouched. Evidence:
 artifacts/consolidation-managed-session-bindings/. No Cargo, rustc, Python,
 compiler macro expansion, child execution, storage writes or tests ran. Full
 consolidation remains active.
+
+### Steering, checkpoint and recall input bindings moved into owning crates
+
+Moved nine Session methods into session-steering, provider-step and
+recall-context, with each crate owning its existing input contract adapter.
+Native parents pass the same user-prompt publisher and prior-context policy
+paths. Removed runtime/steering/transcript.rs,
+helper/prompt_call/checkpoint.rs and recall/prefetch_host.rs. No dependencies
+changed.
+
+Static comparisons preserve signatures and bodies after explicit crate-path
+substitution, including the publication arguments, human-message insertion,
+checkpoint save delegation, prior-context check and borrowed workspace/history.
+Native parent changes are limited to replacing module declarations with the
+same concrete type and callback bindings. Module/dependency scans cover 693
+roots and 574 crates without missing modules or cycles. Direct dependency audit,
+direct rustfmt, file limits and whitespace checks passed. Unrelated working
+changes remain untouched. Evidence:
+artifacts/consolidation-session-input-bindings/. No Cargo, rustc, Python,
+compiler macro expansion, input delivery, storage writes or tests ran. Full
+consolidation remains active.

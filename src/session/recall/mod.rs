@@ -10,7 +10,10 @@ use codetether_recall_index as indexed_session;
 pub(crate) use codetether_session_recall as hit;
 mod paths;
 pub(crate) mod prefetch;
-mod prefetch_host;
+codetether_recall_context::impl_session_source!(
+    crate::session::Session,
+    crate::session::helper::runtime::prior_context_allowed_for_session
+);
 mod query_host;
 mod queue;
 pub(crate) use codetether_session_recall::render;
