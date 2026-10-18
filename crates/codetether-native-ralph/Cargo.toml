@@ -1,0 +1,29 @@
+[package]
+name = "codetether-native-ralph"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native Ralph provider selection, relay sessions and verification services"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-ralph-agent = { path = "../codetether-ralph-agent", version = "0.1.0" }
+codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }
+codetether-ralph-relay = { path = "../codetether-ralph-relay", version = "0.1.0" }
+codetether-ralph-runtime = { path = "../codetether-ralph-runtime", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+tokio = { version = "1", features = ["sync"] }
+
+[dev-dependencies]
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-native-approval = { path = "../codetether-native-approval", version = "0.1.0", features = ["test-support"] }
+codetether-native-registry = { path = "../codetether-native-registry", version = "0.1.0" }
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

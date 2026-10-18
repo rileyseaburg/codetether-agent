@@ -26122,3 +26122,25 @@ Only the new package/root dependency are staged in Cargo.lock; unrelated dirty
 files remain unchanged. Evidence: artifacts/consolidation-native-agent/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active.
+
+### Native Ralph service ownership
+
+Moved provider selection, policy-gated story verification, relay construction
+and owned prompt execution from src/ralph into codetether-native-ralph. The
+new crate separates delegation, verification and relay modules and composes
+the existing Ralph runtime, tool application and swarm agent. Root bindings
+retain only concrete Session creation, field mutation and prompt dispatch;
+the public Ralph APIs continue to select the same providers and tool policy.
+The two existing verification tests and trusted-shell fixture move with their
+implementation. Their fixture uses native registry authorization with an empty
+catalog because verification invokes the Bash tool directly.
+
+Static token comparisons preserve provider selection, verification, relay
+forwarding, prompt ownership and both test bodies. Session setup keeps the
+same model/name/bus/system-message order. Module/dependency scans cover 724
+roots and 610 crates with no missing modules, cycles or undeclared dependencies.
+Declaration, file-limit, standalone rustfmt and whitespace checks pass.
+Only the new package and root dependency are staged in Cargo.lock; unrelated
+working changes remain byte-for-byte unchanged. Evidence is retained in
+artifacts/consolidation-native-ralph/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full workspace consolidation remains active and incomplete.

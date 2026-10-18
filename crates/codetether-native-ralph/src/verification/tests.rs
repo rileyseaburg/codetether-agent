@@ -1,5 +1,5 @@
-use super::run_story_verification;
-use crate::ralph::types::{UserStory, VerificationStep};
+use super::test_application::run_story_verification;
+use codetether_ralph_core::{UserStory, VerificationStep};
 use tempfile::tempdir;
 
 fn story(step: VerificationStep) -> UserStory {

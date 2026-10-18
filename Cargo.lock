@@ -1275,6 +1275,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-native-ralph",
  "codetether-native-agent",
  "codetether-native-server",
  "codetether-native-cognition",
@@ -3891,6 +3892,29 @@ dependencies = [
  "codetether-session-store",
  "codetether-terminal-clipboard",
  "codetether-worktree-lease",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-native-ralph"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-application-registry",
+ "codetether-bus-core",
+ "codetether-config",
+ "codetether-context-policy",
+ "codetether-native-approval",
+ "codetether-native-providers",
+ "codetether-native-registry",
+ "codetether-provider-core",
+ "codetether-ralph-agent",
+ "codetether-ralph-core",
+ "codetether-ralph-relay",
+ "codetether-ralph-runtime",
+ "codetether-session-events",
  "tempfile",
  "tokio",
 ]

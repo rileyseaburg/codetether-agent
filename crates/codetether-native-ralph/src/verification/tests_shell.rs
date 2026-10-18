@@ -1,6 +1,6 @@
-use super::run_story_verification;
-use crate::approval::test_env::lock_env;
-use crate::ralph::types::{UserStory, VerificationStep};
+use super::test_application::run_story_verification;
+use codetether_native_approval::test_env::lock_env;
+use codetether_ralph_core::{UserStory, VerificationStep};
 use tempfile::tempdir;
 
 #[path = "tests_shell_env.rs"]

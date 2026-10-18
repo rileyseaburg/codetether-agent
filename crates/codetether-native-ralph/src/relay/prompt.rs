@@ -1,11 +1,11 @@
 //! Prompt a native session and retain the full result until the task joins.
 use super::*;
-pub(super) async fn run(
-    mut session: Session,
+pub(super) async fn run<S: Session>(
+    mut session: S,
     baton: String,
-    event_tx: mpsc::Sender<SessionEvent>,
+    event_tx: mpsc::Sender<SessionEvent<S>>,
     registry: Arc<ProviderRegistry>,
-) -> (Session, anyhow::Result<crate::session::SessionResult>) {
+) -> (S, anyhow::Result<SessionResult>) {
     let result = session.prompt_with_events(&baton, event_tx, registry).await;
     (session, result)
 }

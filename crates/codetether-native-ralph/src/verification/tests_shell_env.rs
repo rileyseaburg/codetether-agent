@@ -1,4 +1,4 @@
-use crate::config::ProjectTrustStore;
+use codetether_config::ProjectTrustStore;
 use std::path::{Path, PathBuf};
 use tempfile::{TempDir, tempdir};
 

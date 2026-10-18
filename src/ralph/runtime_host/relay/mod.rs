@@ -1,39 +1,27 @@
-//! Native registry and session bindings for shared relay orchestration.
-//!
-//! The relay crate owns provider selection and session turn ordering.
+//! Concrete session operations required by the native Ralph relay.
 use crate::{
     bus::AgentBus,
-    provider::{ContentPart, Message, ProviderRegistry, Role},
-    session::{Session, SessionEvent},
+    provider::{Message, ProviderRegistry},
+    session::{Session, SessionEvent, SessionResult},
 };
-use codetether_ralph_relay::Host;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-mod create;
-mod prompt;
-/// Native session creation and prompting for the shared runtime.
-pub struct Native;
-#[async_trait::async_trait]
-impl Host for Native {
-    type Registry = ProviderRegistry;
-    type Session = Session;
-    fn providers(registry: &ProviderRegistry) -> Vec<&str> {
-        registry.list()
+impl codetether_native_ralph::relay::Session for Session {
+    async fn new() -> anyhow::Result<Self> {
+        Self::new().await
     }
-    async fn new_session(
-        model: String,
-        name: &str,
-        instructions: &str,
-        bus: &Arc<AgentBus>,
-    ) -> anyhow::Result<Session> {
-        create::run(model, name, instructions, bus).await
+    fn configure(&mut self, model: String, name: String, bus: Arc<AgentBus>, message: Message) {
+        self.metadata.model = Some(model);
+        self.set_agent_name(name);
+        self.bus = Some(bus);
+        self.add_message(message);
     }
-    async fn prompt(
-        session: Session,
-        baton: String,
+    async fn prompt_with_events(
+        &mut self,
+        prompt: &str,
         events: mpsc::Sender<SessionEvent>,
         registry: Arc<ProviderRegistry>,
-    ) -> (Session, anyhow::Result<crate::session::SessionResult>) {
-        prompt::run(session, baton, events, registry).await
+    ) -> anyhow::Result<SessionResult> {
+        self.prompt_with_events(prompt, events, registry).await
     }
 }

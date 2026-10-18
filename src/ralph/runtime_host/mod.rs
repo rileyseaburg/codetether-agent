@@ -1,12 +1,8 @@
-//! Native type choices for the shared Ralph application runtime.
+//! Application type choices for native Ralph services.
 mod relay;
-/// Runtime binding retaining the native provider, tool, agent and relay identities.
-pub type Native = codetether_ralph_runtime::application::ApplicationHost<
-    crate::provider::ProviderRegistry,
+/// Runtime binding retaining native tool, agent and session identities.
+pub type Native = codetether_native_ralph::Host<
     crate::tool::registry_lifecycle::Native,
-    codetether_ralph_agent::application::ApplicationAgent<
-        crate::tool::registry_lifecycle::Native,
-        crate::swarm::executor::LoopHost,
-    >,
-    relay::Native,
+    crate::swarm::executor::LoopHost,
+    crate::session::Session,
 >;
