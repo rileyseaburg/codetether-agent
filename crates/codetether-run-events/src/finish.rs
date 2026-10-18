@@ -3,11 +3,17 @@
 use super::{LiveEvents, drain};
 use anyhow::{Context, Result};
 
-impl LiveEvents {
+impl<S: Send + 'static> LiveEvents<S> {
+    /// Drain pending events and append the successful turn completion.
+    /// # Errors
+    /// Returns task-join, mapping-task, storage or JSONL output errors.
     pub async fn finish_success(self, response: &str) -> Result<()> {
         self.finish(Some(response), None).await
     }
 
+    /// Drain pending events and append the failed turn completion.
+    /// # Errors
+    /// Returns task-join, mapping-task, storage or JSONL output errors.
     pub async fn finish_failure(self, error: &str) -> Result<()> {
         self.finish(None, Some(error)).await
     }

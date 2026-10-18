@@ -132,6 +132,7 @@ members = [
     "crates/codetether-mcp-cli",
     "crates/codetether-mcp-target",
     "crates/codetether-run-jsonl",
+    "crates/codetether-run-events",
     "crates/codetether-rlm-selection",
     "crates/codetether-rlm-cli",
     "crates/codetether-session-fork",
@@ -848,6 +849,7 @@ codetether-swarm-cli = { path = "crates/codetether-swarm-cli", version = "0.1.0"
 codetether-mcp-cli = { path = "crates/codetether-mcp-cli", version = "0.1.0" }
 codetether-mcp-target = { path = "crates/codetether-mcp-target", version = "0.1.0" }
 codetether-run-jsonl = { path = "crates/codetether-run-jsonl", version = "0.1.0" }
+codetether-run-events = { path = "crates/codetether-run-events", version = "0.1.0" }
 codetether-rlm-selection = { path = "crates/codetether-rlm-selection", version = "0.1.0" }
 codetether-rlm-cli = { path = "crates/codetether-rlm-cli", version = "0.1.0" }
 codetether-session-fork = { path = "crates/codetether-session-fork", version = "0.1.0" }

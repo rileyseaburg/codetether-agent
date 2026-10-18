@@ -1,13 +1,13 @@
 //! Drain live session events into thread storage and optional JSONL.
 
 use super::SharedMapper;
-use crate::session::SessionEvent;
-use crate::session::thread_store::{ThreadEvent, ThreadStore};
 use anyhow::Result;
+use codetether_session_events::SessionEvent;
+use codetether_thread_store::{ThreadEvent, ThreadStore};
 use tokio::sync::mpsc;
 
-pub(super) async fn run(
-    mut rx: mpsc::Receiver<SessionEvent>,
+pub(super) async fn run<S: Send + 'static>(
+    mut rx: mpsc::Receiver<SessionEvent<S>>,
     mapper: SharedMapper,
     store: ThreadStore,
     jsonl: bool,
@@ -24,7 +24,7 @@ pub(super) async fn run(
 pub(super) async fn emit(store: &ThreadStore, event: &ThreadEvent, jsonl: bool) -> Result<()> {
     store.append(event.clone()).await?;
     if jsonl {
-        crate::cli::run::jsonl::write_thread_event_to(std::io::stdout().lock(), event)?;
+        codetether_run_jsonl::write_thread_event_to(std::io::stdout().lock(), event)?;
     }
     Ok(())
 }

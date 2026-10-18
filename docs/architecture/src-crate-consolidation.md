@@ -13810,3 +13810,19 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc or Rust tests ran. Full workspace consolidation remains
   unfinished.
+
+### Live run event sink extraction
+
+- Moved live event startup, channel draining, thread persistence, optional JSONL
+  output and final-turn completion from src/cli/run/events*.rs into
+  codetether-run-events. Native events.rs now specializes only the snapshot type.
+- The sink accepts generic session snapshots and uses session-events,
+  thread-events, thread-store and run-jsonl directly. The 256-event channel,
+  initial turn record, append-before-output order and drain-before-finish join
+  remain unchanged.
+- Verification: seven static implementation/generic-binding/size checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-run-events/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or live event sink execution ran. Full workspace
+  consolidation remains unfinished.

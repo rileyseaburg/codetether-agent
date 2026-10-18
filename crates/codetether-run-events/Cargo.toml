@@ -1,0 +1,15 @@
+[package]
+name = "codetether-run-events"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Live event capture for non-interactive runs"
+
+[dependencies]
+anyhow = "1"
+codetether-run-jsonl = { path = "../codetether-run-jsonl", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+codetether-thread-events = { path = "../codetether-thread-events", version = "0.1.0" }
+codetether-thread-store = { path = "../codetether-thread-store", version = "0.1.0" }
+tokio = { version = "1.53.1", features = ["rt", "sync"] }
