@@ -14,3 +14,8 @@ pub use run::run;
 /// Hosts implement completion, goal recovery and lifecycle effects.
 pub trait Host: Effects + crate::completion::driver::Host + crate::goal_recovery::Host {}
 impl<T> Host for T where T: Effects + crate::completion::driver::Host + crate::goal_recovery::Host {}
+
+/// Per-step preparation and thinking notification.
+pub mod start;
+/// Run persistence, archival and final-answer construction.
+pub mod finish;

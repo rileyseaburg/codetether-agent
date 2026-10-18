@@ -15833,3 +15833,20 @@ Full workspace consolidation remains active.
   and diff whitespace. Evidence: `artifacts/consolidation-loop-lifecycle/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared lifecycle start and finish phases
+
+- Moved per-step start ordering and final run persistence/result ordering into
+  `codetether-prompt-loop::lifecycle::{start,finish}`. Native adapters retain
+  execution boundaries, steering, borrowed model preparation, subagent notices,
+  cost enforcement, session storage, archival and evidence gating.
+- Preserved thinking notification before cost enforcement, model preparation
+  before subagent notices, save failure propagation before archival, done-event
+  delivery before evidence gating, and final session identifier construction.
+- Verification: both complete phase-body comparisons, all eleven native service
+  bindings, full borrowed-model field mapping, native forwarding wrappers,
+  unchanged outer execution scope and model setup, module/dependency graphs,
+  direct rustfmt, file budgets and diff whitespace. No dependencies changed.
+  Evidence: `artifacts/consolidation-lifecycle-phases/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
