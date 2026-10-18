@@ -2,6 +2,7 @@
 //!
 //! Implement [Host] to expose native registries, then [render] the main, local,
 //! tool and swarm tabs. [visible] uses the same registry-presence policy.
+mod header;
 mod host;
 mod presence;
 mod render;
@@ -10,6 +11,7 @@ mod swarm;
 pub mod tab;
 mod tool;
 mod tui;
+pub use header::Header;
 pub use host::{Host, SessionId};
 pub use presence::visible;
 pub use render::render;

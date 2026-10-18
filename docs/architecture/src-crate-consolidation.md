@@ -28190,3 +28190,20 @@ checks passed (725 roots, 617 crates). Evidence:
 artifacts/consolidation-agent-panel/. No dependencies or unrelated working
 files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Crate-owned agent header adapter
+
+Moved the seven agent-bar Host methods from the root App implementation into
+codetether-agent-dashboard::bar::Header. The ordinary adapter borrows the
+agent tree, swarm summaries and conversation display fields. Tool-agent and
+model resolution remain lazy callbacks, preserving parent scoping and lookup
+frequency. Root rendering and visibility now construct the adapter. The
+session-ID trait implementation remains with the root-owned Session type.
+
+Static comparison covers all seven methods, field/callback wiring, unchanged
+session identity and both entry points. Shared header rendering and visibility
+policies are unchanged. Declaration, module/dependency, production-scope,
+formatting, whitespace and file-limit checks pass (725 roots, 617 crates).
+Evidence: artifacts/consolidation-agent-header/. No dependencies or unrelated
+working files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.
