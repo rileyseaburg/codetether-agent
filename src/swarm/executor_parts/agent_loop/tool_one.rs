@@ -4,15 +4,7 @@ use super::{
     state::{State, ToolCall},
     tool_bus, tool_events, tool_input, tool_output, tool_raw,
 };
-use crate::provider::ContentPart;
-
-pub(super) struct Completed {
-    pub id: String,
-    pub name: String,
-    pub output: String,
-    pub images: Vec<ContentPart>,
-    pub timed_out: bool,
-}
+pub(super) use codetether_swarm_core::agent_loop::tools::Completed;
 
 pub(super) async fn execute(state: &mut State, call: ToolCall) -> Completed {
     state.tool_calls += 1;

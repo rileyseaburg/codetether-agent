@@ -20972,3 +20972,20 @@ across 694 roots, native file-size limits, and whitespace checks passed. Evidenc
 `artifacts/consolidation-swarm-events/`. No dependencies changed. No Cargo, rustc,
 or Python commands ran. Rust tests were not executed; compilation and runtime
 behavior remain unverified. Full workspace consolidation remains active.
+
+### Sub-agent tool batch ownership
+
+Moved sequential sub-agent tool processing and its `Completed` result contract
+into `codetether-swarm-core::agent_loop::tools`. The shared loop checks readiness,
+executes each call, constructs a tool-role message with image attachments,
+records it, and then stops if that call timed out. Native hooks bind the
+existing control check, single-call executor, and transcript vector. The native
+single-call executor re-exports the shared result type; its body is unchanged.
+
+Verification compares the full batch body and result fields, confirms native
+bindings, and checks the existing image regression source and runtime adapter
+are unchanged. Direct rustfmt, source graphs across 694 roots, native file-size
+limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-swarm-tool-batch/`. No dependencies changed. No Cargo,
+rustc, or Python commands ran. Rust tests and compilation remain unverified;
+complete workspace consolidation is still active.

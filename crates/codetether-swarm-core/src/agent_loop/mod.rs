@@ -23,3 +23,6 @@ pub use driver::execute;
 
 /// Live sub-agent event publication and output accumulation.
 pub mod events;
+
+/// Sequential tool batches and result-message construction.
+pub mod tools;
