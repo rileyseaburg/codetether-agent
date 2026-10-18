@@ -12,3 +12,6 @@ chrono = "0.4"
 codetether-goal-core = { path = "../codetether-goal-core", version = "0.1.0" }
 serde_json = "1"
 uuid = { version = "1", features = ["v4"] }
+
+parking_lot = "0.12"
+codetether-slash-command = { path = "../codetether-slash-command", version = "0.1.0" }

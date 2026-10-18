@@ -16155,6 +16155,8 @@ dependencies = [
  "anyhow",
  "chrono",
  "codetether-goal-core",
+ "codetether-slash-command",
+ "parking_lot",
  "serde_json",
  "uuid",
 ]

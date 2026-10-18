@@ -18347,3 +18347,24 @@ unchanged backend entrypoints and public execution API, module/dependency graph
 checks, source-size limits and whitespace. Evidence:
 `artifacts/consolidation-swarm-runtime/`. No swarm, provider, Cargo, rustc,
 Python or Rust-test execution occurred; compilation remains unverified.
+
+### Human goal input and deferred continuation
+
+Moved goal/task interception, `/go` handling, task-list presentation decisions,
+restart-verb policy, pending-intent storage and deferred resume coordination into
+`codetether-goal-command::input`. Native command entrypoints now supply composer,
+transcript and session-view operations through focused view/action adapters.
+Cancellation and continuation adapters retain the existing runtime and session
+ownership APIs. Existing busy-session, held-review, task-list and resume test
+sources remain unchanged and reach the shared implementation via those entrypoints.
+
+Preserved command recognition, history/redraw order, one-shot intent semantics,
+cancel-before-clear ordering and the processing/session/provider checks before
+consuming a pending continuation. Goal edits still avoid borrowing the active
+session. Native test access to the pending store points at the shared singleton.
+
+Validation: full control-flow comparisons and native operation mappings, existing
+test-source comparisons, module/dependency graph checks, file-size ratchet and
+whitespace. Evidence: `artifacts/consolidation-goal-input/`. No goal command or
+continuation was executed. No Cargo, rustc or Python ran; Rust compilation and
+integration tests remain unverified.

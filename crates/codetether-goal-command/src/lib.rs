@@ -11,3 +11,6 @@ mod status;
 mod write;
 pub use dispatch::run;
 pub use host::Host;
+
+/// Session-independent human goal/task input and deferred continuation.
+pub mod input;
