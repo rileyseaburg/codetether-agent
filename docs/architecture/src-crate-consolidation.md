@@ -20926,3 +20926,16 @@ file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-tool-invocation/`. No Cargo, rustc, or Python commands
 ran. No approval/tool operations or Rust tests were executed. Compilation and
 runtime behavior remain unverified; the broader consolidation is still active.
+
+### Goal-prompt feedback ownership
+
+Moved goal-prompt key-outcome handling, completion status, and redraw updates
+into `codetether-goal-prompt::handle_key_with_feedback`. The native event handler
+only passes its prompt, status, and redraw fields. Inactive prompts still leave
+status/redraw unchanged; updated and finished prompts retain their existing
+outcomes and text. Existing editing and response-delivery code is unchanged.
+
+Static full-body comparison, direct rustfmt, source graph, native file-limit,
+and whitespace checks passed. Evidence: `artifacts/consolidation-goal-feedback/`.
+No dependencies changed. No Cargo, rustc, or Python commands ran. Rust tests and
+compilation remain unverified; the complete consolidation remains active.
