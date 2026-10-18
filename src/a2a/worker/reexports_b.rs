@@ -6,7 +6,6 @@ pub(super) use super::{
     model_preferences::choose_provider_for_tier,
     pending_tasks::fetch_pending_tasks,
     runtime_state::{TaskReservation, WorkerTaskRuntime},
-    server_state::attach_server_state,
     session_policy::execute_session_with_policy,
     session_steps::run_session_steps,
     swarm_policy::execute_swarm_with_policy,

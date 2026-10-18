@@ -23,6 +23,7 @@ use tokio::sync::{Mutex, broadcast, mpsc};
 mod bus_state;
 mod cloudevents;
 mod construct;
+mod context;
 mod events;
 mod health;
 mod heartbeat;

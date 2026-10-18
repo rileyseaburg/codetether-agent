@@ -23802,3 +23802,21 @@ modules or cycles. Direct rustfmt, source file limits and whitespace checks
 passed. Unrelated working changes are preserved. Evidence:
 artifacts/consolidation-mcp-dispatch/. No Cargo, rustc, Python, compilation,
 MCP operations or runtime tests ran. Full consolidation remains active.
+
+### Worker HTTP state attachment moved into its owning crate
+
+Moved initialized-worker state attachment from src/a2a/worker/server_state.rs
+into codetether-worker-http::WorkerServerState::attach_context. The method
+accepts the existing shared WorkerContext and copies worker identity, heartbeat
+state and bus in the original order. Updated the integrated worker entrypoint
+and removed the native helper module and reexport. No dependencies changed.
+
+Static comparison preserves all setters and arguments plus the caller's
+initialization, attachment, bootstrap, disconnection and loop order. No old
+attach_server_state references remain in src. Module/dependency scans cover
+691 roots and 572 crates without missing modules or cycles. Direct rustfmt,
+source file limits and whitespace checks passed. The worker module declaration
+was edited without reformatting its unrelated existing content. The working
+lockfile and unrelated A2A edits remain untouched. Evidence:
+artifacts/consolidation-worker-state/. No Cargo, rustc, Python, compilation,
+worker startup or runtime tests ran. Full consolidation remains active.
