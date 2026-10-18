@@ -1,41 +1,27 @@
-//! Native session lifecycle and provider bindings for the shared A2A server.
+//! Application persistence and prompt methods for the native A2A session contract.
 use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent, SessionResult};
-use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-/// Native application services used by the public A2A server alias.
-pub struct Native;
-impl codetether_a2a_server::Application for Native {
-    type Session = Session;
-    type Registry = Arc<ProviderRegistry>;
-    fn version() -> &'static str {
-        env!("CARGO_PKG_VERSION")
-    }
-    async fn resolve(context_id: Option<&str>) -> Result<Session> {
+impl codetether_native_a2a::Session for Session {
+    async fn resolve(context_id: Option<&str>) -> anyhow::Result<Self> {
         crate::a2a::session_resolve::resolve_session(context_id).await
     }
-    async fn configure(session: &mut Session) {
-        crate::a2a::session_config::configure(session).await;
+    fn id(&self) -> &str {
+        &self.id
     }
-    async fn registry() -> Result<Arc<ProviderRegistry>> {
-        ProviderRegistry::shared_from_vault().await
+    fn model_mut(&mut self) -> &mut Option<String> {
+        &mut self.metadata.model
     }
-    async fn execute(
-        session: &mut Session,
+    async fn save(&self) -> anyhow::Result<()> {
+        Session::save(self).await
+    }
+    async fn prompt_with_events(
+        &mut self,
         prompt: &str,
         sender: mpsc::Sender<SessionEvent>,
         registry: Arc<ProviderRegistry>,
-    ) -> Result<String> {
-        session
-            .prompt_with_events(prompt, sender, registry)
-            .await
-            .map(|result| result.text)
-    }
-    async fn prompt(session: &mut Session, prompt: &str) -> Result<SessionResult> {
-        crate::a2a::prompt_runtime::run(session, prompt).await
-    }
-    async fn persist(session: &Session) {
-        crate::a2a::session_config::persist(session).await;
+    ) -> anyhow::Result<SessionResult> {
+        Session::prompt_with_events(self, prompt, sender, registry).await
     }
 }

@@ -4,7 +4,7 @@ version = "4.7.6-dev.38"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
-description = "Native A2A discovery and credential helper bindings"
+description = "Native A2A discovery, session runtime and credential helper bindings"
 
 [dependencies]
 codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }
@@ -17,3 +17,7 @@ codetether-provider-core = { path = "../codetether-provider-core", version = "0.
 codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
 anyhow = "1"
 tokio = { version = "1", features = ["sync"] }
+codetether-a2a-server = { path = "../codetether-a2a-server", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }

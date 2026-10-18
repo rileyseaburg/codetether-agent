@@ -26068,3 +26068,21 @@ native server's required dependencies are staged in Cargo.lock; unrelated
 working files remain unchanged. Evidence:
 artifacts/consolidation-native-server-router/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Native A2A session execution and lifecycle
+
+Moved the A2A server application binding, default-model configuration,
+headless prompt execution and best-effort persistence into codetether-native-a2a.
+A focused Session contract retains root persistence, resolution and prompt
+methods. Existing root session_config/prompt_runtime paths re-export native
+modules, and the root A2AServer alias selects the application Session type.
+
+Static comparisons preserve configuration/persistence calls, provider loading,
+the one-slot dropped-receiver prompt channel, streamed response mapping and
+session resolution. Root and native-A2A package versions match, preserving the
+agent-card version identity. Module/dependency scans cover 722 roots and 608
+crates without missing modules, cycles or undeclared dependencies. Declaration,
+file-limit, direct rustfmt and whitespace checks pass. Only four required
+native-A2A dependencies are staged in Cargo.lock; unrelated files remain
+unchanged. Evidence: artifacts/consolidation-native-a2a-session/. No Cargo,
+rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
