@@ -24768,3 +24768,27 @@ that optional comma, preserving the same generated host and implementation.
 The prepared-storage extraction verifier checks the actual formatted invocation
 against this accepted shape. No Cargo, rustc, Python, compiler expansion or tests
 ran; this corrects the declaration contract found during ongoing consolidation.
+
+### Prepared-context storage and proactive bindings moved into owning crates
+
+Moved prepared sidecar path/read/write/remove functions into prepared-context,
+eight worker host methods into proactive-worker, and projection lookup into
+proactive-context. Native declarations preserve Session, cursor/projection and
+sidecar callbacks. Removed proactive_rlm/worker/host.rs and projection.rs;
+store.rs remains a declaration facade. No dependencies changed.
+
+Static review found the original worker commit adapter returned Result<bool>
+where its trait requires Result<()>. The moved adapter maps successful values
+to unit and retains errors. Both host declaration macros now accept the comma
+that rustfmt emits after a struct declaration; the earlier recall matcher fix
+was committed separately. Module-scanner experiments and initial failures are
+retained in the evidence directory; the final module scan uses the original
+scanner with a normal native store module.
+
+Static comparisons cover all thirteen moved functions/methods, with the explicit
+commit-result adaptation accounted for. Module/dependency scans cover 693 roots
+and 574 crates without missing modules or cycles. Direct dependency audit,
+direct rustfmt, file limits and whitespace checks passed. Unrelated working
+changes remain untouched. Evidence:
+artifacts/consolidation-prepared-storage-bindings/. No Cargo, rustc, Python,
+compiler expansion, storage I/O or tests ran. Full consolidation remains active.

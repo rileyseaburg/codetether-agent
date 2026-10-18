@@ -12,3 +12,7 @@ mod summarize;
 mod worker;
 pub use host::Host;
 pub use worker::spawn;
+
+/// Implementation support for application-local persistence bindings.
+#[doc(hidden)]
+pub mod session_binding;

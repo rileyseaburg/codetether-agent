@@ -17,3 +17,7 @@ pub use window::window_index;
 pub use write::{remove, write};
 #[cfg(test)]
 mod tests;
+
+/// Implementation support for application-local persistence bindings.
+#[doc(hidden)]
+pub mod session_store;

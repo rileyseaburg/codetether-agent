@@ -16,3 +16,7 @@ pub use source::Source;
 
 /// First-turn LSP diagnostic and symbol prefetch.
 pub mod lsp;
+
+/// Implementation support for application-local persistence bindings.
+#[doc(hidden)]
+pub mod host_binding;
