@@ -5,6 +5,7 @@
 use codetether_tool_core::Tool;
 use codetether_tool_registry::catalog::ToolKind;
 use std::sync::Arc;
+pub mod context;
 pub mod execution;
 mod host;
 pub mod integrations;

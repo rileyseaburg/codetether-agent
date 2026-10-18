@@ -5953,6 +5953,12 @@ dependencies = [
  "codetether-edit",
  "codetether-multiedit",
  "codetether-morph-backend",
+ "codetether-context-browse",
+ "codetether-context-budget",
+ "codetether-context-pin",
+ "codetether-context-summarize",
+ "codetether-lsp-tool",
+ "codetether-memory-tool",
 ]
 
 [[package]]

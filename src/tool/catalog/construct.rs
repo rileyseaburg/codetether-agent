@@ -10,7 +10,11 @@ impl Factories for Constructors {
         >(kind)
     }
     fn context(&self, kind: NativeTool) -> Option<Arc<dyn Tool>> {
-        context::create(kind)
+        codetether_tool_construction::application::context::create::<
+            lsp::ApplicationHost,
+            crate::session::Session,
+            memory::ApplicationAutoEmbedder,
+        >(kind)
     }
     fn execution(&self, kind: NativeTool) -> Option<Arc<dyn Tool>> {
         codetether_tool_construction::application::execution::create::<

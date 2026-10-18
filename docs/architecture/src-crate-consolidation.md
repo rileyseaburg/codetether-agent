@@ -24327,3 +24327,22 @@ missing modules or cycles. Direct rustfmt, source file limits and whitespace
 checks passed. Unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-integration-factory/. No Cargo, rustc, Python,
 compilation, tool construction or tests ran. Full consolidation remains active.
+
+### Context-tool factory moved into the construction crate
+
+Moved all six context-tool constructor branches from
+src/tool/catalog/context.rs into
+codetether-tool-construction::application::context and removed the native file.
+The native catalog supplies its existing LSP host, session type and automatic
+embedding provider. Shared constructors retain current-directory URI handling,
+cached-only summaries and the original stateless context-tool initialization.
+Added six direct dependencies on existing tool crates.
+
+Static token comparisons preserve the constructor branches and native type
+selection. Module/dependency scans cover 692 roots and 573 crates without
+missing modules or cycles; a direct-dependency audit found no missing workspace
+dependencies. Direct rustfmt, source file limits and whitespace checks passed.
+Only the six required lockfile dependencies are staged; unrelated working
+changes remain untouched. Evidence: artifacts/consolidation-context-factory/.
+No Cargo, rustc, Python, compilation, tool construction or tests ran. Full
+consolidation remains active.

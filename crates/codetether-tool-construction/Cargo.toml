@@ -10,6 +10,12 @@ description = "Scalar tool construction grouped by runtime responsibility"
 tetherscript = []
 
 [dependencies]
+codetether-context-browse = { path = "../codetether-context-browse", version = "0.1.0" }
+codetether-context-budget = { path = "../codetether-context-budget", version = "0.1.0" }
+codetether-context-pin = { path = "../codetether-context-pin", version = "0.1.0" }
+codetether-context-summarize = { path = "../codetether-context-summarize", version = "0.1.0" }
+codetether-lsp-tool = { path = "../codetether-lsp-tool", version = "0.1.0" }
+codetether-memory-tool = { path = "../codetether-memory-tool", version = "0.1.0" }
 codetether-edit = { path = "../codetether-edit", version = "0.1.0" }
 codetether-multiedit = { path = "../codetether-multiedit", version = "0.1.0" }
 codetether-morph-backend = { path = "../codetether-morph-backend", version = "0.1.0" }
