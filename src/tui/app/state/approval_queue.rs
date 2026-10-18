@@ -1,6 +1,5 @@
 //! Native integration for the shared pending approval display queue.
-#[path = "approval_queue/edit_session.rs"]
-pub(crate) mod edit_session;
+pub(crate) use codetether_approval_edit as edit_session;
 #[path = "approval_queue/reconcile.rs"]
 mod reconcile;
 #[cfg(test)]

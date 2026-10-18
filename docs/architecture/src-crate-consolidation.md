@@ -25395,3 +25395,22 @@ file-limit, direct rustfmt and whitespace checks pass. Only the new package/root
 lock entries are staged; unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-native-thinker/. No Cargo, rustc, Python, inference or
 runtime tests ran. Full consolidation remains active.
+
+### Native TUI state type bindings moved to their service owners
+
+Moved the concrete TUI MCP connection registry alias into
+codetether-native-mcp-client::connections and the editor LSP state alias into
+codetether-native-lsp::editor. Their underlying client and manager types remain
+identical. Root TUI paths re-export the owning modules. Removed redundant
+file-picker type, approval-edit and interlude export files, replacing them with
+direct re-exports of the existing owning crates.
+
+This reduces AppState's dependencies on root-defined helper modules without
+claiming that AppState itself has moved. Both moved alias definitions match
+after explicit path changes. Static scans cover 712 module roots and 598 crates
+without missing modules, cycles or undeclared direct workspace dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks pass. Only two
+required dependency additions in existing lockfile entries are staged;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-tui-state-bindings/. No Cargo, rustc, Python, connection
+startup or runtime tests ran. Full consolidation remains active.

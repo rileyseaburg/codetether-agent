@@ -33,8 +33,7 @@ pub mod history_page;
 pub use codetether_composer_view::state_binding::cursor as input_cursor;
 pub mod input_edit;
 pub use codetether_composer_view::state_binding::replace as input_replace;
-#[path = "../interlude.rs"]
-pub(crate) mod interlude;
+pub(crate) use codetether_interlude as interlude;
 pub mod message_cache;
 pub use codetether_model_picker as model_filter;
 pub mod model_picker;

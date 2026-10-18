@@ -8,4 +8,4 @@ pub use codetether_editor::{
     input, render, scroll,
 };
 pub mod draw;
-pub mod lsp_state;
+pub use codetether_native_lsp::editor as lsp_state;

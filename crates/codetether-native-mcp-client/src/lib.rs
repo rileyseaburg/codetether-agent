@@ -20,3 +20,6 @@ pub use types::*;
 pub mod mcp_bridge;
 pub mod mcp_tools;
 pub use mcp_tools::{McpToolManager, McpToolWrapper};
+
+/// Native authorized connection registry for terminal and application consumers.
+pub mod connections;

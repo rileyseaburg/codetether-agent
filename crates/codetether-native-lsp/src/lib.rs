@@ -19,3 +19,6 @@ pub use uri::{path_to_uri, uri_to_path};
 
 /// LSP tool binding with the shared native client identity and manager cache.
 pub mod tool;
+
+/// Editor state using the same native language-server manager.
+pub mod editor;

@@ -21,7 +21,7 @@ pub mod inbox;
 #[path = "input/mod.rs"]
 pub mod input;
 pub(crate) mod managed_agent;
-pub mod mcp;
+pub use codetether_native_mcp_client::connections as mcp;
 pub mod message_cache_invalidate;
 #[cfg(test)]
 mod message_cache_invalidate_tests;

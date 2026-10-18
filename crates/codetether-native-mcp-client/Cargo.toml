@@ -7,6 +7,7 @@ license = "MIT"
 description = "Native MCP client identity, authorization and tool bindings"
 
 [dependencies]
+codetether-mcp-connections = { path = "../codetether-mcp-connections", version = "0.1.0" }
 codetether-mcp-client = { path = "../codetether-mcp-client", version = "0.1.0" }
 codetether-mcp-core = { path = "../codetether-mcp-core", version = "0.1.0" }
 codetether-mcp-approval = { path = "../codetether-mcp-approval", version = "0.1.0" }

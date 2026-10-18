@@ -3711,6 +3711,7 @@ dependencies = [
  "codetether-lsp-core",
  "tracing",
  "codetether-lsp-tool",
+ "codetether-editor-lsp",
 ]
 
 [[package]]
@@ -3734,6 +3735,7 @@ dependencies = [
  "codetether-tool-core",
  "tempfile",
  "tokio",
+ "codetether-mcp-connections",
 ]
 
 [[package]]

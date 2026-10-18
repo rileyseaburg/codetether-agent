@@ -11,7 +11,7 @@ mod open;
 use codetether_file_picker as preview;
 mod render;
 use codetether_file_picker as scan;
-mod types;
+use codetether_file_picker as types;
 
 #[cfg(test)]
 mod tests;
