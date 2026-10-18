@@ -48,3 +48,12 @@ impl VerifierAgent for LlmVerifier {
         "llm-verifier".into()
     }
 }
+
+impl codetether_native_goal_tools::VerifierFactory for LlmVerifier {
+    fn create(worker_model: Option<String>, workspace: PathBuf) -> Self {
+        Self {
+            worker_model,
+            workspace,
+        }
+    }
+}

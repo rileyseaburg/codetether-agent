@@ -2,8 +2,6 @@
 
 #[path = "goal/attempt_cap.rs"]
 pub mod attempt_cap;
-#[path = "goal/audit_host.rs"]
-mod audit_host;
 #[path = "goal/create.rs"]
 mod create;
 #[path = "goal/create_run.rs"]
@@ -23,8 +21,7 @@ mod session_task;
 mod update;
 #[path = "goal/update_run.rs"]
 mod update_run;
-#[path = "goal/verdict_log.rs"]
-pub mod verdict_log;
+pub use codetether_native_goal_tools::verdict_log;
 #[path = "goal/verify.rs"]
 pub mod verify;
 

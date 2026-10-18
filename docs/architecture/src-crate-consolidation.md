@@ -26344,3 +26344,23 @@ Only native-tui execution dependencies are staged in Cargo.lock; unrelated
 working changes remain untouched. Evidence is retained in
 artifacts/consolidation-native-interactive/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active and incomplete.
+
+### Native goal-tool storage and audit ownership
+
+Moved model-facing goal reads/edits, revision-checked audit transitions and
+verdict-journal path/read/append operations into codetether-native-goal-tools.
+A verifier factory preserves the application's existing LlmVerifier type,
+public fields and review execution while moving argument selection into the
+native host. The root now selects Host<LlmVerifier> and re-exports the journal;
+the old audit and journal implementation files are removed. Existing goal-tool
+tests remain at their current integration boundary.
+
+Static comparisons preserve state/controller calls, audited transitions,
+verdict paths, I/O and verifier execution. Factory arguments retain the original
+worker model, explicit workspace and current-directory fallback. Module and
+dependency scans cover 730 roots and 616 crates without missing modules, cycles
+or undeclared dependencies. Declaration, standalone formatting, file-limit and
+whitespace checks pass. Only the new package/root dependency are staged in
+Cargo.lock; unrelated changes are unchanged. Evidence is retained in
+artifacts/consolidation-native-goal-tools/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active and incomplete.
