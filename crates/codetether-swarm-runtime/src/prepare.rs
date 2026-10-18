@@ -1,20 +1,20 @@
 //! Decomposition and initialization of a swarm run.
 
 use super::state::Run;
-use crate::swarm::{DecompositionStrategy, SwarmResult};
 use anyhow::Result;
 use codetether_swarm_core::SwarmEvent;
+use codetether_swarm_core::{DecompositionStrategy, SwarmResult};
 
-pub(super) enum Prepared<'a> {
+pub(super) enum Prepared<'a, H: crate::Host> {
     Empty(SwarmResult),
-    Ready(Run<'a>),
+    Ready(Run<'a, H>),
 }
 
-pub(super) async fn run<'a>(
-    executor: &'a super::super::SwarmExecutor,
+pub(super) async fn run<'a, H: crate::Host>(
+    executor: &'a H,
     task: &str,
     strategy: DecompositionStrategy,
-) -> Result<Prepared<'a>> {
+) -> Result<Prepared<'a, H>> {
     let strategy_name = format!("{strategy:?}");
     let (orchestrator, subtasks) = super::prepare_plan::run(executor, task, strategy).await?;
     if subtasks.is_empty() {
@@ -28,11 +28,11 @@ pub(super) async fn run<'a>(
     });
     executor.try_send_event(super::decomposed_event::build(
         &subtasks,
-        executor.config.max_steps_per_subagent,
+        executor.config().max_steps_per_subagent,
     ));
     let run = Run::new(executor, orchestrator, subtasks);
     executor
-        .telemetry
+        .telemetry()
         .start_swarm(&run.swarm_id, run.subtasks.len(), &strategy_name)
         .await;
     Ok(Prepared::Ready(run))

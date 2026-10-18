@@ -1,12 +1,12 @@
 //! Per-stage statistics and lifecycle events.
 
 use super::state::Run;
-use crate::swarm::{StageStats, SubTaskResult};
 use codetether_swarm_core::SwarmEvent;
+use codetether_swarm_core::{StageStats, SubTaskResult};
 use std::time::Duration;
 
 pub(super) fn record(
-    run: &mut Run<'_>,
+    run: &mut Run<'_, impl crate::Host>,
     stage: usize,
     elapsed: Duration,
     results: &[SubTaskResult],

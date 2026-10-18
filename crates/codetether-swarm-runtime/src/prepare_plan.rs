@@ -1,19 +1,20 @@
 //! Shared readiness and cancellation around decomposition and provider setup.
 
-use super::super::SwarmExecutor;
-use crate::swarm::{DecompositionStrategy, Orchestrator, SubTask};
+use crate::Host;
+use codetether_swarm_core::{DecompositionStrategy, SubTask};
+use codetether_swarm_orchestrator::Orchestrator;
 
-pub(super) async fn run(
-    executor: &SwarmExecutor,
+pub(super) async fn run<H: Host>(
+    executor: &H,
     task: &str,
     strategy: DecompositionStrategy,
-) -> anyhow::Result<(Orchestrator, Vec<SubTask>)> {
-    let control = executor.control.as_ref();
+) -> anyhow::Result<(Orchestrator<H::Planning>, Vec<SubTask>)> {
+    let control = executor.control();
     let plan = async {
         if let Some(control) = control {
             control.ready().await?;
         }
-        let mut orchestrator = Orchestrator::new(executor.config.clone()).await?;
+        let mut orchestrator = Orchestrator::<H::Planning>::new(executor.config().clone()).await?;
         if let Some(control) = control {
             control.ready().await?;
         }

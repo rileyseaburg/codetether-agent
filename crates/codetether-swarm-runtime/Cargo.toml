@@ -1,0 +1,18 @@
+[package]
+name = "codetether-swarm-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Swarm run planning, stage traversal, publication and finalization"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-swarm-orchestrator = { path = "../codetether-swarm-orchestrator", version = "0.1.0" }
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
+tokio = { version = "1", features = ["macros", "sync"] }
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }

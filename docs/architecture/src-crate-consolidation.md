@@ -18326,3 +18326,24 @@ module/dependency graphs, file limits and whitespace. Evidence:
 `artifacts/consolidation-swarm-delegation/`. No provider selection/runtime update
 was executed. No Cargo, rustc or Python ran; Rust compilation/tests remain
 unverified.
+
+### Complete swarm run lifecycle
+
+Moved the top-level run modules into `codetether-swarm-runtime`: controlled
+planning, empty-plan handling, run state, dependency-stage traversal, backend
+selection, successful-result publication, statistics, telemetry and final result
+assembly. The native run entrypoint now supplies only executor services and
+calls to the existing local/Kubernetes stage adapters. Provider setup retains
+the same native orchestrator host and registry type.
+
+Removed the obsolete native stage selector and four unused private forwarding
+modules left behind by backend extraction. The public SwarmExecutor execution
+methods remain unchanged and continue through the native run entrypoint.
+Cancellation priority, readiness boundaries, result-store write-lock scope,
+publication/statistics ordering and completion events are preserved.
+
+Validation: complete module/body comparisons, native service/backend mappings,
+unchanged backend entrypoints and public execution API, module/dependency graph
+checks, source-size limits and whitespace. Evidence:
+`artifacts/consolidation-swarm-runtime/`. No swarm, provider, Cargo, rustc,
+Python or Rust-test execution occurred; compilation remains unverified.

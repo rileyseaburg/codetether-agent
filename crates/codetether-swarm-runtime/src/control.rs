@@ -3,8 +3,8 @@
 use super::state::Run;
 use codetether_swarm_core::SwarmEvent;
 
-pub(super) async fn may_continue(run: &Run<'_>) -> bool {
-    let Some(control) = run.executor.control.as_ref() else {
+pub(super) async fn may_continue(run: &Run<'_, impl crate::Host>) -> bool {
+    let Some(control) = run.executor.control() else {
         return true;
     };
     match control.ready().await {

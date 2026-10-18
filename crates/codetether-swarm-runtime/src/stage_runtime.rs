@@ -1,12 +1,12 @@
 //! Application runtime operations for shared dependency-stage traversal.
 use super::state::Run;
-use crate::swarm::{SubTask, SubTaskResult};
 use anyhow::Result;
 use async_trait::async_trait;
 use codetether_swarm_core::stage_runtime::{StageInput, StageRuntime};
+use codetether_swarm_core::{SubTask, SubTaskResult};
 use std::time::Instant;
 #[async_trait]
-impl StageRuntime for Run<'_> {
+impl<H: crate::Host> StageRuntime for Run<'_, H> {
     fn subtasks(&self) -> &[SubTask] {
         &self.subtasks
     }
@@ -17,7 +17,7 @@ impl StageRuntime for Run<'_> {
         super::stage_input::read(self, stage)
     }
     fn report_blocked(&self, tasks: &[SubTask], results: &[SubTaskResult]) {
-        super::super::dependency_failure_events::report(tasks, results, |event| {
+        codetether_swarm_core::run_policy::report_blocked(tasks, results, |event| {
             self.executor.try_send_event(event);
         });
     }

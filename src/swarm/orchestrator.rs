@@ -4,3 +4,5 @@ mod host;
 /// Orchestrator using the application's Vault-backed provider registry.
 pub type Orchestrator = codetether_swarm_orchestrator::Orchestrator<host::Native>;
 pub use codetether_swarm_orchestrator::{OrchestratorMessage, SubAgentMessage};
+
+pub(crate) use host::Native as NativeProvider;

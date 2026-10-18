@@ -1,18 +1,18 @@
 //! Finalization of telemetry, statistics, and aggregate output.
 
 use super::state::Run;
-use crate::swarm::SwarmResult;
 use anyhow::Result;
 use codetether_swarm_core::SwarmEvent;
+use codetether_swarm_core::SwarmResult;
 
-pub(super) async fn execute(mut run: Run<'_>) -> Result<SwarmResult> {
+pub(super) async fn execute(mut run: Run<'_, impl crate::Host>) -> Result<SwarmResult> {
     run.executor
-        .telemetry
+        .telemetry()
         .record_swarm_latency("total_execution", run.started_at.elapsed())
         .await;
     let provider = run.orchestrator.provider().to_string();
     let (success, stats) = super::final_stats::calculate(&mut run);
-    let _ = run.executor.telemetry.complete_swarm(success).await;
+    let _ = run.executor.telemetry().complete_swarm(success).await;
     let result = super::aggregate::results(&run.results);
     tracing::info!(provider = %provider, subtasks = run.results.len(),
         speedup = stats.speedup_factor, "Swarm execution complete");

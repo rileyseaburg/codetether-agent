@@ -1,9 +1,13 @@
 //! Publication of successful stage results.
 
 use super::state::Run;
-use crate::swarm::SubTaskResult;
+use codetether_swarm_core::SubTaskResult;
 
-pub(super) async fn publish(run: &Run<'_>, stage: usize, results: &[SubTaskResult]) {
+pub(super) async fn publish(
+    run: &Run<'_, impl crate::Host>,
+    stage: usize,
+    results: &[SubTaskResult],
+) {
     let mut completed = run.completed.write().await;
     for result in results.iter().filter(|result| result.success) {
         completed.insert(result.subtask_id.clone(), result.result.clone());
@@ -13,7 +17,7 @@ pub(super) async fn publish(run: &Run<'_>, stage: usize, results: &[SubTaskResul
         ];
         let _ = run
             .executor
-            .result_store
+            .result_store()
             .publish(
                 &result.subtask_id,
                 &result.subagent_id,

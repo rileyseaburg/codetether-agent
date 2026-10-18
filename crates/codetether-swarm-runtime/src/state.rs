@@ -1,15 +1,16 @@
 //! Mutable state for one top-level swarm run.
 
-use super::super::SwarmExecutor;
-use crate::swarm::{Orchestrator, SubTask, SubTaskResult, SwarmArtifact};
+use crate::Host;
+use codetether_swarm_core::{SubTask, SubTaskResult, SwarmArtifact};
+use codetether_swarm_orchestrator::Orchestrator;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
 
-pub(super) struct Run<'a> {
-    pub executor: &'a SwarmExecutor,
-    pub orchestrator: Orchestrator,
+pub(super) struct Run<'a, H: Host> {
+    pub executor: &'a H,
+    pub orchestrator: Orchestrator<H::Planning>,
     pub subtasks: Vec<SubTask>,
     pub results: Vec<SubTaskResult>,
     pub artifacts: Vec<SwarmArtifact>,
@@ -19,10 +20,10 @@ pub(super) struct Run<'a> {
     pub started_at: Instant,
 }
 
-impl<'a> Run<'a> {
+impl<'a, H: Host> Run<'a, H> {
     pub fn new(
-        executor: &'a SwarmExecutor,
-        orchestrator: Orchestrator,
+        executor: &'a H,
+        orchestrator: Orchestrator<H::Planning>,
         subtasks: Vec<SubTask>,
     ) -> Self {
         Self {
