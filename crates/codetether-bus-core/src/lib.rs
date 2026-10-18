@@ -39,3 +39,6 @@ pub mod peer_messages;
 
 /// Task-correlated messages from A2A server endpoints.
 pub mod a2a_messages;
+
+/// Correlated tool request/response event publication.
+pub mod tool_events;

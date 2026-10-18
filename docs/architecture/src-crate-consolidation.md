@@ -15570,3 +15570,20 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-decline-guard/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared tool-event publication and archival
+
+- Moved correlated tool request/response publication from native prompt-loop
+  helpers into `codetether-bus-core::tool_events`, with a borrowed event context.
+- Moved JSONL tool-result construction, sequence filenames, async append and
+  best-effort error behavior into `codetether-event-stream::tool_archive`.
+  Native helpers now project caller fields into shared context/record values.
+- Preserved missing-bus and missing-archive behavior, event order/correlation,
+  the existing compact payload even for ToolOutputFull, workspace resolution,
+  timestamps, sequence ranges and trailing newline writes.
+- Verification: complete transformed-body comparisons for publication and
+  archival, identical append helper, every native field mapping, unchanged call
+  site/manifests, module/dependency graphs, direct rustfmt, file budgets and diff
+  whitespace. Evidence: `artifacts/consolidation-tool-events/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains unfinished.

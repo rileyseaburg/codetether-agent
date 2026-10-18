@@ -22,3 +22,6 @@ pub use stream::EventStream;
 
 mod archive;
 pub use archive::{archive_event_stream_to_s3, event_stream_path};
+
+/// Best-effort JSONL archival of completed tool calls.
+pub mod tool_archive;
