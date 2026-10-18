@@ -10,3 +10,7 @@ mod source;
 pub use fork_turns::ForkTurns;
 pub use inherit::inherit;
 pub use source::HistorySource;
+
+/// Implementation support for the application-local session binding.
+#[doc(hidden)]
+pub mod session_binding;

@@ -2,8 +2,7 @@
 use super::fork_turns::ForkTurns;
 use crate::session::Session;
 use anyhow::Result;
-#[path = "fork_context/source.rs"]
-mod source;
+codetether_collaboration_history::impl_history_source!(Session);
 pub(in crate::tool::agent) async fn inherit(
     child: &mut Session,
     parent_id: Option<&str>,

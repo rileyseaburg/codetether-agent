@@ -14,7 +14,7 @@ pub(crate) use codetether_session_store::header_read;
 pub(crate) use codetether_session_store::id;
 use codetether_session_store::identity;
 pub(crate) mod imported;
-pub(crate) mod listing;
+codetether_session_listing::impl_session_header!(crate::session::Session);
 mod load;
 use codetether_session_store::marker;
 mod migration;

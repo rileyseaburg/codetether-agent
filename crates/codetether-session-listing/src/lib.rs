@@ -23,3 +23,7 @@ pub use scan::scan;
 pub use source::Source;
 /// Indexed database sources retaining the application's header validation.
 pub mod indexed;
+
+/// Implementation support for the application-local session binding.
+#[doc(hidden)]
+pub mod session_binding;

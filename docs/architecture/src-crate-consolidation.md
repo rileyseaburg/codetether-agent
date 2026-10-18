@@ -24600,3 +24600,24 @@ unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-session-context-tools/. No Cargo, rustc, Python, compiler
 macro expansion, summary production, storage mutation or tests ran. Full
 consolidation remains active.
+
+### Session contract bindings moved into their owning crates
+
+Moved ten methods from four native adapters into the crates that define their
+contracts: indexed session listing, runtime-input enrichment, session
+orchestration, and collaboration history. Each crate exports a local-session
+binding macro with its existing field mapping or method delegation. Native
+parents invoke those declarations; removed store/listing.rs,
+helper/runtime/input_host.rs, runtime/orchestration_session.rs and
+agent/fork_context/source.rs. No dependencies changed.
+
+Static comparisons preserve the method signatures and bodies after explicit
+crate-path substitutions, including consuming listing field moves, borrowed
+runtime metadata, and transcript load/append calls. Native parent changes are
+limited to replacing module declarations with bindings. Module/dependency
+scans cover 693 roots and 574 crates without missing modules or cycles. Direct
+dependency audit, direct rustfmt, file limits and whitespace checks passed.
+Unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-session-contract-bindings/. No Cargo, rustc, Python,
+compiler macro expansion, session operations or tests ran. Full consolidation
+remains active.

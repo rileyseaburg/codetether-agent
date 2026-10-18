@@ -26,7 +26,7 @@ pub(crate) mod boundary;
 pub(crate) mod continuation;
 mod execution;
 pub(crate) mod execution_scope;
-mod orchestration_session;
+codetether_session_orchestration::impl_session_transcript!(crate::session::Session);
 use codetether_session_control as handle;
 pub(crate) use execution::RunGuard;
 pub use handle::ControlHandle;

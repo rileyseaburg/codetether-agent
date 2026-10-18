@@ -21,3 +21,7 @@ pub use session::{enrich, enrich_for_turn, enrich_with_model};
 pub use source::Source;
 #[cfg(test)]
 mod tests;
+
+/// Implementation support for the application-local session binding.
+#[doc(hidden)]
+pub mod session_binding;

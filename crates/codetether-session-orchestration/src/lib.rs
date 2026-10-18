@@ -14,3 +14,7 @@ pub use drain::drain;
 pub use monitor::monitor;
 pub use outcome::Continuation;
 pub use session::Session;
+
+/// Implementation support for the application-local session binding.
+#[doc(hidden)]
+pub mod session_binding;

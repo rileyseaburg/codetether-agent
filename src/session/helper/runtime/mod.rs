@@ -1,5 +1,5 @@
 use codetether_runtime_input as context;
-mod input_host;
+codetether_runtime_input::impl_session_source!(crate::session::Session);
 use codetether_prompt_policy as light_prompt;
 mod prior_context;
 use codetether_prompt_policy as prompt;
