@@ -16,10 +16,10 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.sessions_select_next();
         }
         Action::ModelPrevious => {
-            app.state.model_select_prev();
+            app.state.model_picker.model_select_prev();
         }
         Action::ModelNext => {
-            app.state.model_select_next();
+            app.state.model_picker.model_select_next();
         }
         Action::SettingsPrevious => {
             app.state.settings_panel.select_previous();

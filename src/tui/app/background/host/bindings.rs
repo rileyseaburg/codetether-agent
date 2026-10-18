@@ -3,7 +3,10 @@ use codetether_tui_tick::background::Host;
 impl Host for Native<'_> {
     type Notice = super::super::SessionNotice;
     fn models(&mut self) {
-        self.app.state.drain_model_refresh();
+        self.app.state.model_picker.apply_refresh_status(
+            self.app.state.view_mode == crate::tui::models::ViewMode::Model,
+            &mut self.app.state.status,
+        );
     }
     fn bus(&mut self) {
         if let Some(recorder) = self.bus_recorder {

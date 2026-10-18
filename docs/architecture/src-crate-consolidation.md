@@ -28297,3 +28297,25 @@ file-limit checks pass (725 roots, 617 crates). Evidence:
 artifacts/consolidation-composer-methods/. No dependencies or unrelated working
 files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Direct model-picker methods and crate-owned feedback
+
+Removed the root model-picker declaration file and its fifteen generated
+AppState methods. Thirteen operations already existed on ModelPickerState;
+callers now use them directly. Added open and apply_refresh_status methods to
+the owning crate for the two operations that also update a frontend status line.
+The former state::model_picker module path now re-exports model-discovery types.
+
+Static comparison covers seven changed caller/registration files, the two
+feedback operations, and availability of all thirteen direct delegates.
+Opening retains its status message and refresh still updates status only when
+feedback exists. The obsolete explicit graph root was retired with its deleted
+file; complete graph coverage now has 724 roots and 617 crates. Initial graph,
+file-limit and verifier failures are preserved in the evidence directory. The
+new opening method's short name avoids unnecessary line expansion in an
+oversized test; its unrelated preexisting formatting remains intact.
+
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks pass. Evidence: artifacts/consolidation-model-picker-methods/.
+No dependencies or unrelated working files changed. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active and incomplete.

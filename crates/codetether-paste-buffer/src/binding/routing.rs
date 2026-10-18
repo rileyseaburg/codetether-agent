@@ -37,7 +37,7 @@ macro_rules! __frontend_paste_routing {
                     &self.state.bus_log.filter
                 }
                 fn model_char(&mut self, ch: char) {
-                    self.state.model_filter_push(ch);
+                    self.state.model_picker.model_filter_push(ch);
                 }
                 fn session_char(&mut self, ch: char) {
                     self.state.session_filter_push(ch);

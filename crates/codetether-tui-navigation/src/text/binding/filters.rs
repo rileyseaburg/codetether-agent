@@ -15,10 +15,10 @@ macro_rules! __frontend_text_filters {
                         app.state.bus_log.pop_filter_char();
                     }
                     Action::ModelPush(c) => {
-                        app.state.model_filter_push(*c);
+                        app.state.model_picker.model_filter_push(*c);
                     }
                     Action::ModelBackspace => {
-                        app.state.model_filter_backspace();
+                        app.state.model_picker.model_filter_backspace();
                     }
                     Action::FilePush(c) => {
                         $push(app, *c);

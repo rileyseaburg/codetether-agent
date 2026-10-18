@@ -2,6 +2,35 @@
 use crate::ModelPickerState;
 
 impl ModelPickerState {
+    /// Open the picker and replace the frontend's status with its initial message.
+    /// # Examples
+    /// ```
+    /// let mut picker = codetether_model_picker::ModelPickerState::default();
+    /// let mut status = String::new();
+    /// picker.open(&mut status);
+    /// assert_eq!(status, "Model picker");
+    /// ```
+    pub fn open(&mut self, status: &mut String) {
+        *status = self.open_with_status();
+    }
+
+    /// Drain refresh results and update status only when feedback is available.
+    /// # Arguments
+    /// * `view_active` — Whether the frontend currently displays the model view.
+    /// * `status` — Frontend status line to update when feedback is available.
+    /// # Examples
+    /// ```
+    /// let mut picker = codetether_model_picker::ModelPickerState::default();
+    /// let mut status = "Ready".to_string();
+    /// picker.apply_refresh_status(false, &mut status);
+    /// assert_eq!(status, "Ready");
+    /// ```
+    pub fn apply_refresh_status(&mut self, view_active: bool, status: &mut String) {
+        if let Some(next) = self.drain_refresh_status(view_active) {
+            *status = next;
+        }
+    }
+
     /// Open the picker and return its initial status message.
     ///
     /// # Returns
