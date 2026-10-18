@@ -16261,3 +16261,19 @@ Full workspace consolidation remains active.
   dependencies changed. Evidence: `artifacts/consolidation-worker-state/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worktree result finalization
+
+- Moved post-prompt worktree integration, PR-failure local fallback and cleanup
+  into `codetether-github-pr::worktree::finalize`, beside existing PR creation.
+  Native result handling and WorktreeState paths now re-export shared items;
+  the native merge implementation file was removed.
+- Preserved success-only integration, explicit PR intent detection, local merge
+  fallback, diagnostic messages and cleanup after the integration branch.
+- Verification: all three full function bodies compared, unchanged native
+  worktree creation/prompt execution and PR-intent paths, module/dependency
+  graphs, direct rustfmt, file budgets and diff whitespace. No dependencies
+  changed and no Git/PR worktree operations were invoked by these checks.
+  Evidence: `artifacts/consolidation-worktree-finalization/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

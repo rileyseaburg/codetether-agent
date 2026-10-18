@@ -32,7 +32,6 @@ mod image_file;
 mod image_mime;
 mod image_sidecar_recover;
 pub(crate) mod mention_route;
-mod merge;
 mod model_apply;
 mod paste;
 pub(crate) mod pasted_text;

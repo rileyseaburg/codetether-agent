@@ -13,10 +13,10 @@ use std::path::Path;
 
 use super::base_branch::current_branch;
 use crate::session::Session;
-use crate::worktree::{WorktreeInfo, WorktreeManager};
+use crate::worktree::WorktreeManager;
 
 /// Worktree state carried through the spawn boundary.
-pub(crate) type WorktreeState = (WorktreeManager, WorktreeInfo, Option<String>);
+pub(crate) use codetether_github_pr::worktree::WorktreeState;
 
 /// Create an isolated worktree for prompt execution.
 ///

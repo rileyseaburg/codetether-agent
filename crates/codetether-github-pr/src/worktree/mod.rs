@@ -76,3 +76,6 @@ async fn stage_and_commit(wt: &WorktreeInfo) {
             .await;
     }
 }
+
+mod finalize;
+pub use finalize::{WorktreeState, handle_worktree_result};

@@ -3,9 +3,9 @@
 //! Attempts to push a PR, and recovers with a local merge
 //! when the push fails.
 
-use crate::worktree::{WorktreeInfo, WorktreeManager};
+use codetether_worktree::{WorktreeInfo, WorktreeManager};
 
-use super::pr::push_and_create_pr;
+use super::super::push_and_create_pr;
 
 /// Try pushing a PR; recover with local merge on failure.
 ///

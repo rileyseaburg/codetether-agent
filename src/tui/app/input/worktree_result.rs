@@ -11,10 +11,6 @@ use tokio::sync::mpsc;
 use crate::provider::ProviderRegistry;
 use crate::session::{ImageAttachment, Session, SessionEvent};
 
-use super::merge::{merge_locally, push_or_merge};
-use super::pr_request::wants_pr;
-use super::worktree::WorktreeState;
-
 /// Run the prompt against the provider and restore the
 /// original directory on completion.
 pub(crate) async fn run_prompt(
@@ -33,26 +29,4 @@ pub(crate) async fn run_prompt(
     session.metadata.directory = original_dir;
     Ok(())
 }
-
-/// Handle worktree publishing or local merge after a prompt.
-///
-/// Creates a PR only when the prompt explicitly asks for one;
-/// otherwise merges the successful worktree locally and cleans up.
-pub(crate) async fn handle_worktree_result(
-    success: bool,
-    worktree: Option<WorktreeState>,
-    prompt: Option<&str>,
-) {
-    let Some((mgr, wt, base_branch)) = worktree else {
-        return;
-    };
-    if success {
-        match prompt.filter(|p| wants_pr(p)) {
-            Some(p) => push_or_merge(&mgr, &wt, base_branch.as_deref(), Some(p)).await,
-            None => merge_locally(&mgr, &wt).await,
-        }
-    }
-    if let Err(e) = mgr.cleanup(&wt.name).await {
-        tracing::warn!(error = %e, "Failed to cleanup TUI worktree");
-    }
-}
+pub(crate) use codetether_github_pr::worktree::handle_worktree_result;
