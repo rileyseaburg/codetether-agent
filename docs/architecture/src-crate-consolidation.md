@@ -20254,3 +20254,25 @@ module reachability, dependency cycles, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-watchdog-interaction/`. Cargo,
 rustc, Python and Rust tests were not run; compilation and runtime remain
 unverified.
+
+### Session utility command ownership
+
+Moved utility-command routing, access-mode precedence, alias rerouting and
+review-prompt preparation into `codetether-slash-command::utility`. Moved raw
+message copy-command selection, clipboard reporting and input consumption into
+`codetether-chat-clipboard::command`. Removed the native review implementation;
+native modules now provide session-bound actions and composer/transcript fields.
+
+Preserved status/permissions labels, dispatch-before-clear for session aliases,
+review prompt/cursor and message ordering, invalid/missing copy feedback,
+clipboard status wording and the original copy warning target. Existing status,
+diff and access-mode implementations and command/copy tests are unchanged.
+No dependencies changed.
+
+Validation: full translated routing/reroute/review/copy bodies, 16 native
+bindings and entry delegates, prompt/log target checks, unchanged tests and
+remaining native handlers/manifests, module reachability, dependency cycles,
+file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-utility-commands/`. Cargo, rustc, Python, Rust tests,
+clipboard access and command execution were not run; compilation and runtime
+remain unverified.

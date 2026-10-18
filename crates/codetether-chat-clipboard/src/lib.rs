@@ -12,3 +12,6 @@ pub use clipboard::handle_clipboard_paste;
 pub use copy_reply::handle_copy_reply;
 pub use copy_transcript::handle_copy_transcript;
 pub use host::Host;
+
+/// Raw-message selection for the copy slash command.
+pub mod command;
