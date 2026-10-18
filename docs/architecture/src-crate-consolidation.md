@@ -19686,3 +19686,24 @@ normalized that exact formatting change and retained its log. Evidence:
 `artifacts/consolidation-approval-request/`. No Cargo, rustc, Python, Rust tests,
 LSP diagnostics or approval execution ran; compilation and runtime remain
 unverified.
+
+### Error presentation and failover scheduling
+
+Moved error cleanup/presentation into `codetether-chat-events::error` and
+error-triggered retry selection into `codetether-model-failover::schedule`.
+The error view reuses the existing lifecycle processing/completion bindings;
+six additional native effects supply inbox errors, request timing, retry
+selection, messages and scrolling. Removed the native overload adapter.
+
+Preserved worker-stop and inbox-settlement order, stream/timing/interlude
+cleanup, scheduling before error presentation, and automatic scrolling.
+Scheduling still protects a pending Codex restore timer, derives the current
+provider, selects/prepares a retry, increments attempts and stores the pending
+retry in the original order. No dependencies changed.
+
+Validation: three complete translated function bodies, six native error
+bindings, scheduler field bindings, unchanged lifecycle callbacks/test/caller
+and manifests, lexical module reachability, dependency-cycle checks, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-error-events/`. No Cargo, rustc, Python, Rust tests or
+retry execution ran; compilation and runtime remain unverified.

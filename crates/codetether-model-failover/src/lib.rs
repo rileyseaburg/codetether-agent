@@ -47,3 +47,6 @@ pub mod router;
 
 /// Scheduled retry execution and temporary-model restoration.
 pub mod runtime_retry;
+
+/// Error-triggered retry selection and status updates.
+pub mod schedule;

@@ -18,3 +18,6 @@ pub use usage_view::UsageView;
 
 /// Tool-call messages, timing and structured completion status.
 pub mod tools;
+
+/// Error cleanup and retry-scheduling presentation.
+pub mod error;
