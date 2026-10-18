@@ -2,7 +2,11 @@
 use crate::session::Session;
 use anyhow::Result;
 use serde_json::Value;
-mod source;
+codetether_session_schema::impl_session_context_tools!(
+    Session,
+    crate::session::SessionBus,
+    crate::session::helper::rlm_background::Background::resolve_model
+);
 /// Load the exact calling session, falling back to the latest only without an ID.
 pub async fn load_calling_session(args: &Value) -> Result<Option<Session>> {
     codetether_context_loader::load_calling_session::<Session>(args).await

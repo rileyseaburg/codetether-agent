@@ -6,6 +6,7 @@
 //! [impl_session_lifecycle!] adds construction, provenance and transcript methods.
 mod checkpoint;
 mod context;
+mod context_tools;
 mod declare;
 mod header;
 mod lifecycle;
@@ -29,10 +30,16 @@ pub mod __private {
     pub use codetether_bus_core::AgentBus;
     pub use codetether_bus_core::global;
     pub use codetether_config as config;
+    pub use codetether_context_browse as context_browse;
+    pub use codetether_context_budget as context_budget;
     pub use codetether_context_dispatch as context_dispatch;
     pub use codetether_context_legacy as context_legacy;
+    pub use codetether_context_loader as context_loader;
+    pub use codetether_context_pin as context_pin;
     pub use codetether_context_policy::derivation::DerivePolicy;
+    pub use codetether_context_policy::summary_index::{SummaryNode, SummaryRange};
     pub use codetether_context_policy::{pages::PageKind, summary_index::SummaryIndex};
+    pub use codetether_context_summarize as context_summarize;
     pub use codetether_proactive_context as proactive_context;
     pub use codetether_provenance::ClaimProvenance;
     pub use codetether_provider_core::{Message, Provider, Usage};

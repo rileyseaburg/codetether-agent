@@ -24580,3 +24580,23 @@ lockfile entries are staged; unrelated working changes remain untouched.
 Evidence: artifacts/consolidation-session-context-views/. No Cargo, rustc,
 Python, compiler macro expansion, context derivation or tests ran. Full
 consolidation remains active.
+
+### Context-tool session adapters moved into the schema crate
+
+Moved eighteen methods for context loading, browsing, budget reporting, pinning
+and summary production into five focused schema-crate modules. The native
+context helper invokes impl_session_context_tools with the existing SessionBus
+and model resolver. Removed five native source/prepared files. Budget tool
+identity and construction remain unchanged; the prepared-summary snapshot copies
+the same fields in the same order inside the shared prepare method.
+
+Static comparisons preserve method signatures and bodies after explicit path
+substitutions and expansion of the removed capture helper. Associated prepared
+type, window constant, caller-selection functions and native tool aliases were
+also checked. Module/dependency scans cover 693 roots and 574 crates without
+missing modules or cycles. Direct dependency audit, direct rustfmt, file limits
+and whitespace checks passed. Only required lockfile dependencies are staged;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-session-context-tools/. No Cargo, rustc, Python, compiler
+macro expansion, summary production, storage mutation or tests ran. Full
+consolidation remains active.

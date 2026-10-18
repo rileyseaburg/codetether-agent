@@ -1,5 +1,4 @@
 //! Bind context pinning to the application's tracked session pages.
-mod source;
 /// Context pinning using the application's durable session store.
 ///
 /// # Examples

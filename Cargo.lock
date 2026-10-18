@@ -3724,6 +3724,11 @@ dependencies = [
  "codetether-context-dispatch",
  "codetether-proactive-context",
  "codetether-rlm",
+ "codetether-context-loader",
+ "codetether-context-browse",
+ "codetether-context-budget",
+ "codetether-context-pin",
+ "codetether-context-summarize",
 ]
 
 [[package]]
