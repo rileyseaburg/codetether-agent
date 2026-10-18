@@ -1,0 +1,12 @@
+[package]
+name = "codetether-history-page"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bounded history page loading and stable message-boundary selection"
+
+[dependencies]
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+async-trait = "0.1"
+serde_json = "1"

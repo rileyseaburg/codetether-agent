@@ -332,6 +332,7 @@ members = [
     "crates/codetether-tetherscript-runtime",
     "crates/codetether-tetherscript-tool",
     "crates/codetether-context-loader",
+    "crates/codetether-history-page",
     "crates/codetether-context-reset",
     "crates/codetether-context-budget",
     "crates/codetether-context-pin",
@@ -829,6 +830,7 @@ codetether-context-summarize = { path = "crates/codetether-context-summarize", v
 codetether-context-pin = { path = "crates/codetether-context-pin", version = "0.1.0" }
 codetether-context-budget = { path = "crates/codetether-context-budget", version = "0.1.0" }
 codetether-context-reset = { path = "crates/codetether-context-reset", version = "0.1.0" }
+codetether-history-page = { path = "crates/codetether-history-page", version = "0.1.0" }
 codetether-context-loader = { path = "crates/codetether-context-loader", version = "0.1.0" }
 codetether-tetherscript-tool = { path = "crates/codetether-tetherscript-tool", version = "0.1.0", optional = true }
 codetether-tool-progress = { path = "crates/codetether-tool-progress", version = "0.1.0" }

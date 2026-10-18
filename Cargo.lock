@@ -1475,6 +1475,7 @@ dependencies = [
  "codetether-context-browse",
  "codetether-context-budget",
  "codetether-context-loader",
+ "codetether-history-page",
  "codetether-context-pin",
  "codetether-context-policy",
  "codetether-context-reset",
@@ -6214,6 +6215,15 @@ dependencies = [
  "codetether-help-view",
  "crossterm",
  "ratatui",
+]
+
+[[package]]
+name = "codetether-history-page"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "codetether-provider-core",
+ "serde_json",
 ]
 
 [[package]]

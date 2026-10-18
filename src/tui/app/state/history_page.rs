@@ -18,6 +18,8 @@ mod request;
 mod reset;
 #[path = "history_page/select.rs"]
 mod select;
+#[path = "history_page/source.rs"]
+mod source;
 #[path = "history_page/types.rs"]
 mod types;
 #[path = "history_page/viewport.rs"]

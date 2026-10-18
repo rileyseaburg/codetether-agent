@@ -1,13 +1,16 @@
 //! Read exactly one indexed page, even when the conversation has millions of turns.
-use super::super::{
+use crate::HistorySource;
+use crate::{
     anchor,
     select::PAGE_MESSAGES,
     types::{Page, Request},
 };
-use crate::session::Session;
-pub(super) async fn page(request: Request, before: usize) -> Result<Page, String> {
+pub(crate) async fn page<S: HistorySource>(
+    request: Request,
+    before: usize,
+) -> Result<Page, String> {
     let start = before.saturating_sub(PAGE_MESSAGES);
-    let mut messages = Session::read_messages(
+    let mut messages = S::read_messages(
         &request.source_id,
         start,
         before - start + request.boundary.len(),

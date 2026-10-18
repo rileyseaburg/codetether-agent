@@ -12374,3 +12374,23 @@ Full workspace consolidation remains active.
   artifacts/consolidation-spawn-identity/.
 - No manifest or lockfile changes were needed. No Cargo, rustc, compilation or
   Rust tests ran. Full workspace consolidation remains incomplete.
+
+### History page loading extraction
+
+- Moved message-boundary fingerprinting, chronological page selection, indexed
+  reads, fallback tail search and page request/result types into the new
+  codetether-history-page crate. Eight modules contain at most 35 code lines,
+  including the existing page-ordering test and its helpers.
+- HistorySource separates storage from selection/loading. The native adapter
+  calls the same Session::load_tail and Session::read_messages methods and
+  preserves message extraction and string error conversion. Native generation
+  tracking, request scheduling, merge application and viewport anchoring remain
+  unchanged; old type/helper paths delegate to the shared crate.
+- Verification: 24 source comparisons/checks passed, covering both loader paths,
+  errors, generation tags, fingerprint/selection algorithms, moved tests and
+  unchanged native paging operations. Complete shared/native pager module
+  graphs, workspace dependency cycles, direct rustfmt, source limits and
+  whitespace checks passed. Evidence: artifacts/consolidation-history-page/.
+- Only this crate's root dependency and package record were staged from
+  Cargo.lock. No Cargo, rustc, compilation or Rust tests ran. The full workspace
+  consolidation remains incomplete.
