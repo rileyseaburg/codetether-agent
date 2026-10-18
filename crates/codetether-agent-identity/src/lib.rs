@@ -23,3 +23,6 @@ mod mission;
 pub use mission::system_prompt;
 #[cfg(test)]
 mod mission_tests;
+
+#[cfg(test)]
+mod legacy_tui_tests;

@@ -38,3 +38,6 @@ pub mod pipeline;
 
 /// Chat command intake before live-session or session-free dispatch.
 pub mod intake;
+
+#[cfg(test)]
+mod legacy_tui_tests;

@@ -35,3 +35,6 @@ pub mod delegation;
 
 /// Interactive persona relay, launch lifecycle and event handling.
 pub mod interactive;
+
+#[cfg(test)]
+mod legacy_tui_tests;

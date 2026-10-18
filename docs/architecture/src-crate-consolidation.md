@@ -20212,3 +20212,24 @@ initial path-check failures were corrected before the final verification.
 Evidence: `artifacts/consolidation-orphan-facades/` and the updated
 `artifacts/consolidation-source-audit/`. No Cargo, rustc, Python or Rust tests
 ran; compilation and runtime remain unverified.
+
+### Colocate orphaned TUI regressions with crate owners
+
+Split 32 existing tests from the unreferenced `src/tui/tests.rs` into test
+modules in seven implementation crates: slash-command, model-failover,
+autochat-core, relay-rlm, agent-identity, chat-sync and relay-okr. Each crate now
+declares its migrated tests under `cfg(test)`. Test inputs and assertions are
+unchanged; autochat calls use the crate-local owner path.
+
+All 38 original test bodies are accounted for. Six remain in the legacy file
+pending current API/expectation review: view-mode help count, single-argument
+convergence normalization, two removed security-environment helpers and two
+retired pricing helper calls. Those were already outside the module tree;
+this change does not silently enable or discard them.
+
+Validation: token comparisons of all moved and retained test bodies, unique
+accounting of every original test, module declarations/reachability, unchanged
+manifests, dependency graph, file-size ratchet, whitespace and direct rustfmt.
+Evidence: `artifacts/consolidation-tui-regressions/`. Cargo, rustc, Python and
+Rust tests were not run. These tests are wired into their owners for future
+execution, but no runtime pass or compilation success is claimed.

@@ -34,3 +34,6 @@ pub mod progress;
 pub mod cli_approval;
 /// Interactive command preparation and objective approval drafting.
 pub mod interactive;
+
+#[cfg(test)]
+mod legacy_tui_tests;

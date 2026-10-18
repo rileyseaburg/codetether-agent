@@ -9,3 +9,6 @@ mod semantic;
 pub use context::distill_context_delta_with_rlm;
 pub use handoff::prepare_autochat_handoff_with_registry;
 mod payload;
+
+#[cfg(test)]
+mod legacy_tui_tests;

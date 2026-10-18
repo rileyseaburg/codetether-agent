@@ -25,3 +25,6 @@ mod config_policy;
 mod config_secret;
 mod config_vault;
 mod worker_cycle;
+
+#[cfg(test)]
+mod legacy_tui_tests;

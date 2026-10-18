@@ -50,3 +50,6 @@ pub mod runtime_retry;
 
 /// Error-triggered retry selection and status updates.
 pub mod schedule;
+
+#[cfg(test)]
+mod legacy_tui_tests;
