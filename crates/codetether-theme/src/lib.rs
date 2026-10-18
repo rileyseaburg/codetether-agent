@@ -29,3 +29,8 @@ pub use theme::Theme;
 
 /// Terminal color capability detection and theme fallback conversion.
 pub mod terminal;
+
+#[cfg(feature = "ratatui")]
+pub mod palette;
+#[cfg(feature = "ratatui")]
+pub use palette::ColorPalette;

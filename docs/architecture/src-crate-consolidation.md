@@ -11267,3 +11267,16 @@ Full workspace consolidation remains active.
   made whitespace-insensitive after formatting wrapped the call. Compilation,
   tests, rendering and audit-gate execution were not run; no Cargo or rustc
   commands executed. Full consolidation remains active.
+
+### Semantic terminal palette consolidation
+
+- Moved `src/tui/color_palette.rs` into the existing theme crate's `palette`
+  module, enabled only with its existing `ratatui` feature.
+- Eight modules separate the palette type, five presets, role lookup and
+  default selection. Maximum module size is 21 code lines.
+- Fifteen static comparisons verify exact preset values, role behavior,
+  default selection, feature gates and unchanged consumers/manifests.
+  Module reachability, dependency DAG, file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-color-palette/`. No dependency or lockfile
+  changes needed. Compilation, tests and rendering were not run; no Cargo or
+  rustc commands executed. Full consolidation remains active.
