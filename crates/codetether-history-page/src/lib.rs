@@ -18,3 +18,6 @@ mod tests;
 
 /// Interactive page requests, state transitions and viewport preservation.
 pub mod interactive;
+
+/// Application-local history view and entry-point declarations.
+pub mod app_binding;

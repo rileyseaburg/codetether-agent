@@ -24912,3 +24912,21 @@ checks passed. No dependencies changed; unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-app-cache-state/.
 No Cargo, rustc, Python, compiler expansion, cache execution or tests ran. Full
 consolidation remains active.
+
+### AppState history-page view moved into the history crate
+
+Moved ten history View methods, the page-drain entry point and pending-anchor
+method into history-page::app_binding. The native declaration retains the
+same App/AppState types, indexed history source, cache-invalidation callback
+and scroll sentinel. Removed state/history_page/view.rs; the native pager type
+alias remains available to the AppState declaration. No dependencies changed.
+
+Expanded comparisons preserve the full view, drain and anchor implementations
+after alias resolution and formatting normalization. The initial optional
+generic-comma difference is documented. The declaration audit covers 46 calls,
+46 Session methods and 96 AppState methods without unbound variables or duplicate
+methods. Module/dependency scans cover 693 roots and 574 crates without missing
+modules or cycles. Direct dependency audit, direct rustfmt, file limits and
+whitespace checks passed. Unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-app-history-view/. No Cargo, rustc, Python, compiler
+expansion, history loading or tests ran. Full consolidation remains active.
