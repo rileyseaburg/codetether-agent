@@ -27138,3 +27138,19 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 617 crates. No dependency/lock changes were needed; unrelated working files remain
 untouched. Evidence: artifacts/consolidation-history-commands/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### MCP and context-status command bindings
+
+Moved MCP registry/status/notice bindings and context-health command state
+access into their owning mcp-command and context-health crates. Removed the
+two root host files; root command declarations select the same App, message
+types and system-notice callback. Shared parsing, connection execution and
+report rendering remain unchanged.
+
+All nine expanded function bodies match the originals. Tests are untouched.
+An initial misplaced MCP binding path was corrected before verification; failed
+validation evidence is retained. Final declaration, module/dependency, native
+production-scope, standalone formatting, file-limit and whitespace checks pass
+for 725 roots and 617 crates. No dependency/lock changes were needed; unrelated
+working files remain untouched. Evidence: artifacts/consolidation-status-commands/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

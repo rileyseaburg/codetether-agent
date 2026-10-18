@@ -25,3 +25,5 @@ pub struct CommandOutput {
 
 /// Frontend command execution and result presentation.
 pub mod interactive;
+
+mod application_binding;

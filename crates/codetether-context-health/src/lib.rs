@@ -17,3 +17,5 @@ pub mod command;
 pub mod events;
 
 mod application_binding;
+
+mod command_binding;

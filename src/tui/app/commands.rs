@@ -1,5 +1,3 @@
-#[path = "commands/mcp_host.rs"]
-mod mcp_host;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -21,8 +19,6 @@ mod session_ops;
 mod settings_command;
 use codetether_settings_policy::command::Setting;
 use open_editor::open_editor;
-#[path = "commands/context_host.rs"]
-mod context_host;
 #[path = "commands/dispatch_host/mod.rs"]
 mod dispatch_host;
 
@@ -45,14 +41,15 @@ fn push_system_message(app: &mut App, content: impl Into<String>) {
         .push(ChatMessage::new(MessageType::System, content.into()));
     app.state.scroll_to_bottom();
 }
-async fn handle_mcp_command(app: &mut App, raw: &str) {
-    codetether_mcp_command::interactive::handle(&mut mcp_host::Native(app), raw).await;
-}
-
-/// Dispatch a `/context ...` command for context/RLM health status.
-fn handle_context_command(app: &mut App, rest: &str) {
-    codetether_context_health::command::execute(app, rest);
-}
+codetether_mcp_command::declare_frontend_command!(
+    crate::tui::app::state::App,
+    crate::tui::app::commands::push_system_message,
+);
+codetether_context_health::declare_context_command!(
+    crate::tui::app::state::App,
+    crate::tui::chat::message::ChatMessage,
+    crate::tui::chat::message::MessageType,
+);
 
 codetether_turn_undo::declare_undo_command!(
     crate::tui::app::state::App,
