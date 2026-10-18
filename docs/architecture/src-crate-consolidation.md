@@ -20298,3 +20298,26 @@ file-size ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-status-diff/`. Cargo, rustc, Python, Rust tests,
 configuration loading and command execution were not run; compilation and
 runtime remain unverified.
+
+### Composer edit/history/completion coordination
+
+Moved application-level composer editing, range replacement, history recall,
+input clearing, suggestion application and visibility into
+`codetether-composer-view::interactive`. A six-field borrowed Composer view
+coordinates the existing input, cursor, horizontal scroll, input mode,
+completion and history objects. Native AppState methods now delegate.
+
+Preserved changed-only history invalidation after edits, unconditional refresh
+after range replacement, cursor character counts, recall-mode selection,
+clear-input reset order, usage-hint visibility after spaces and suggestion
+application before candidate refresh. AppState layout, lower-level editing and
+existing state tests remain unchanged. The composer crate now directly uses
+shared slash-command state and TUI input/view modes.
+
+Validation: complete translated edit/range/history/clear/completion/visibility
+bodies, six-field native projection and delegates, unchanged state/tests and
+lower-level edit operations, isolated lock delta, module reachability,
+dependency cycles, file-size ratchet, whitespace and direct formatting.
+Evidence: `artifacts/consolidation-composer-interaction/`. Cargo, rustc, Python,
+Rust tests and interactive input were not executed; compilation and runtime
+remain unverified.

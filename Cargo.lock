@@ -6989,6 +6989,8 @@ dependencies = [
 name = "codetether-composer-view"
 version = "0.1.0"
 dependencies = [
+ "codetether-slash-command",
+ "codetether-tui-models",
  "codetether-terminal-clipboard",
  "codetether-theme",
  "codetether-tui-style",

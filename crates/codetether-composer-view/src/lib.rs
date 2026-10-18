@@ -1,7 +1,7 @@
 //! Chat composer textbox, cursor, attachment labels and autocomplete display.
 //!
 //! Hosts provide a borrowed [ComposerView] to [render_input]. Editing and
-//! command selection remain host responsibilities.
+//! command selection are coordinated through [interactive].
 mod attachment;
 mod cursor;
 mod input_area;
@@ -41,3 +41,6 @@ mod history_next;
 mod history_previous;
 mod history_push;
 pub use command_history::{CommandHistory, HistoryRecall};
+
+/// Coordinated edit, history and completion state transitions.
+pub mod interactive;

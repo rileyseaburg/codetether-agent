@@ -13,3 +13,6 @@ codetether-tui-style = { path = "../codetether-tui-style", version = "0.1.0" }
 codetether-terminal-clipboard = { path = "../codetether-terminal-clipboard", version = "0.1.0" }
 ratatui = { version = "0.30.2", default-features = false }
 unicode-width = "0.2"
+
+codetether-slash-command = { path = "../codetether-slash-command", version = "0.1.0" }
+codetether-tui-models = { path = "../codetether-tui-models", version = "0.1.0" }

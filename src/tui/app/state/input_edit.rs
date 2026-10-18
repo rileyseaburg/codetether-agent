@@ -1,47 +1,28 @@
-//! Application history and suggestion updates following shared text edits.
-use crate::tui::models::InputMode;
+//! Borrow native composer fields and delegate coordinated text edits.
 impl super::AppState {
-    pub fn insert_char(&mut self, c: char) {
-        let changed =
-            codetether_composer_view::InputEdit::new(&mut self.input, &mut self.input_cursor)
-                .insert_char(c);
-        if changed {
-            self.history.history_index = None;
-            self.refresh_slash_suggestions();
+    pub(super) fn composer(&mut self) -> codetether_composer_view::interactive::Composer<'_> {
+        codetether_composer_view::interactive::Composer {
+            input: &mut self.input,
+            cursor: &mut self.input_cursor,
+            scroll: &mut self.input_scroll,
+            mode: &mut self.input_mode,
+            completion: &mut self.completion,
+            history: &mut self.history,
         }
+    }
+    pub fn insert_char(&mut self, c: char) {
+        self.composer().insert_char(c);
     }
     pub fn insert_text(&mut self, text: &str) {
-        let changed =
-            codetether_composer_view::InputEdit::new(&mut self.input, &mut self.input_cursor)
-                .insert_text(text);
-        if changed {
-            self.history.history_index = None;
-            self.refresh_slash_suggestions();
-        }
+        self.composer().insert_text(text);
     }
     pub fn delete_backspace(&mut self) {
-        let changed =
-            codetether_composer_view::InputEdit::new(&mut self.input, &mut self.input_cursor)
-                .delete_backspace();
-        if changed {
-            self.history.history_index = None;
-            self.refresh_slash_suggestions();
-        }
+        self.composer().delete_backspace();
     }
     pub fn delete_forward(&mut self) {
-        let changed =
-            codetether_composer_view::InputEdit::new(&mut self.input, &mut self.input_cursor)
-                .delete_forward();
-        if changed {
-            self.history.history_index = None;
-            self.refresh_slash_suggestions();
-        }
+        self.composer().delete_forward();
     }
     pub fn clear_input(&mut self) {
-        codetether_composer_view::InputEdit::new(&mut self.input, &mut self.input_cursor).clear();
-        self.input_scroll = 0;
-        self.input_mode = InputMode::Normal;
-        self.completion.clear();
-        self.history.history_index = None;
+        self.composer().clear_input();
     }
 }
