@@ -13778,3 +13778,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, MCP subprocesses or tool execution ran.
   Full workspace consolidation remains unfinished.
+
+### MCP server target selection extraction
+
+- Moved bus-target precedence and project/default-worker discovery out of
+  src/main.rs into codetether-mcp-target. Five modules separate the public
+  entry point, option routing, explicit targets, project discovery and fallback.
+- Reuses codetether-bus-http directly, preserving URL/worker/workspace priority,
+  current-directory fallback, explicit-project errors and request order. Native
+  provider setup, server construction and bus attachment remain unchanged.
+- Verification: seven static expanded-expression/whole-main/size checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-mcp-target/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, discovery requests or MCP server execution ran.
+  Full workspace consolidation remains unfinished.

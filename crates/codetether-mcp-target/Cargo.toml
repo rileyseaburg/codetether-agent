@@ -1,0 +1,12 @@
+[package]
+name = "codetether-mcp-target"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "MCP server bus target selection"
+
+[dependencies]
+anyhow = "1"
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-bus-http = { path = "../codetether-bus-http", version = "0.1.0" }
