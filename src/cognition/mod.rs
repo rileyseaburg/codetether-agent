@@ -52,6 +52,7 @@ mod persona_state;
 mod proposal;
 #[path = "proposal_kind.rs"]
 mod proposal_kind;
+mod runtime_host;
 #[path = "runtime_options.rs"]
 mod runtime_options;
 #[path = "runtime_state.rs"]
@@ -72,34 +73,12 @@ mod workspace;
 // ── Runtime API ─────────────────────────────────────────────────────────
 #[path = "persona_build.rs"]
 mod persona_build;
-#[path = "persona_create.rs"]
-mod persona_create;
 #[path = "persona_depth.rs"]
 mod persona_depth;
 #[path = "persona_lineage.rs"]
 mod persona_lineage;
-#[path = "persona_reap.rs"]
-mod persona_reap;
 #[path = "persona_reap_targets.rs"]
 mod persona_reap_targets;
-#[path = "persona_spawn.rs"]
-mod persona_spawn;
-#[path = "runtime_approval.rs"]
-mod runtime_approval;
-#[path = "runtime_assemble.rs"]
-mod runtime_assemble;
-#[path = "runtime_lineage.rs"]
-mod runtime_lineage;
-#[path = "runtime_new.rs"]
-mod runtime_new;
-#[path = "runtime_query.rs"]
-mod runtime_query;
-#[path = "runtime_start.rs"]
-mod runtime_start;
-#[path = "runtime_status.rs"]
-mod runtime_status;
-#[path = "runtime_stop.rs"]
-mod runtime_stop;
 
 // ── Construction ────────────────────────────────────────────────────────
 #[path = "env.rs"]

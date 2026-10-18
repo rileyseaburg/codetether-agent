@@ -1,0 +1,12 @@
+[package]
+name = "codetether-cognition-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Cognition runtime facade, lifecycle and application service ownership"
+
+[dependencies]
+anyhow = "1"
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+tokio = { version = "1", features = ["sync"] }

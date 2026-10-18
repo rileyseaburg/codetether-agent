@@ -1,7 +1,8 @@
 //! Application read lock for shared lineage graph construction.
 use super::{CognitionRuntime, LineageGraph};
+use crate::Host;
 
-impl CognitionRuntime {
+impl<H: Host> CognitionRuntime<H> {
     /// Build the lineage graph from current persona state.
     ///
     /// Nodes and roots are sorted by persona ID for stable output.

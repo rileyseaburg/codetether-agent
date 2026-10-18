@@ -1,23 +1,20 @@
 //! Constructors for [`CognitionRuntime`](super::CognitionRuntime).
 
+use crate::Host;
 use tokio::sync::broadcast;
 
-use super::initial_state::load_initial_state;
 use super::runtime_assemble::assemble;
-use super::{
-    CognitionRuntime, CognitionRuntimeOptions, ThinkerConfig, options_env, thinker_env,
-    thinker_init,
-};
+use super::{CognitionRuntime, CognitionRuntimeOptions, ThinkerConfig};
 
 /// Capacity of the thought-event broadcast channel.
 const EVENT_CHANNEL_CAPACITY: usize = 256;
 
-impl CognitionRuntime {
+impl<H: Host> CognitionRuntime<H> {
     /// Build a runtime from environment feature flags.
     pub fn new_from_env() -> Self {
         Self::new_with_options_and_thinker(
-            options_env::options_from_env(),
-            Some(thinker_env::thinker_config_from_env()),
+            H::options_from_env(),
+            Some(H::thinker_config_from_env()),
         )
     }
 
@@ -31,10 +28,10 @@ impl CognitionRuntime {
         thinker_config: Option<ThinkerConfig>,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(EVENT_CHANNEL_CAPACITY);
-        assemble(
+        assemble::<H>(
             options,
-            load_initial_state(),
-            thinker_init::init_thinker(thinker_config),
+            H::load_initial_state(),
+            H::init_thinker(thinker_config),
             event_tx,
         )
     }

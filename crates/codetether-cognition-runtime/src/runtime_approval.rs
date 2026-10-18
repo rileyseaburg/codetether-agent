@@ -1,8 +1,9 @@
 //! Application entry point for shared Critical-proposal approval.
 use super::CognitionRuntime;
+use crate::Host;
 use anyhow::Result;
 
-impl CognitionRuntime {
+impl<H: Host> CognitionRuntime<H> {
     /// Approve a Critical-risk proposal for execution.
     ///
     /// # Errors

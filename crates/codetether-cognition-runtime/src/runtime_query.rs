@@ -1,18 +1,18 @@
 //! Read-only accessors for cognition runtime state.
 
+use crate::Host;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
-use super::beliefs::Belief;
-use super::executor::DecisionReceipt;
 use super::{
     AttentionItem, CognitionRuntime, GlobalWorkspace, MemorySnapshot, PersonaRuntimeState,
     Proposal, SwarmGovernance, ThoughtEvent,
 };
-use crate::tool::ToolRegistry;
+use codetether_cognition_core::beliefs::Belief;
+use codetether_cognition_core::execution::DecisionReceipt;
 
-impl CognitionRuntime {
+impl<H: Host> CognitionRuntime<H> {
     /// Whether cognition is enabled by feature flag.
     pub fn is_enabled(&self) -> bool {
         self.state.is_enabled()
@@ -24,7 +24,7 @@ impl CognitionRuntime {
     }
 
     /// Set the tool registry for capability-based tool execution.
-    pub fn set_tools(&mut self, registry: Arc<ToolRegistry>) {
+    pub fn set_tools(&mut self, registry: Arc<H::Registry>) {
         self.state.set_tools(registry)
     }
 

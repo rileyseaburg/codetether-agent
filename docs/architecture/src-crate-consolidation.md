@@ -19131,3 +19131,25 @@ lexical module reachability, dependency-cycle checks, file-size ratchet,
 whitespace and direct formatting. Evidence:
 `artifacts/consolidation-cognition-storage/`. No Cargo, rustc, Python, Rust tests,
 persistence reads or writes ran; compilation and runtime remain unverified.
+
+### Cognition runtime facade ownership
+
+Moved the cognition runtime wrapper, constructors, shared-state assembly,
+lifecycle methods, persona operations, approval/lineage APIs and read accessors
+into `codetether-cognition-runtime`. Construction, lifecycle, persona and query
+responsibilities retain their focused modules. The native runtime type is now
+an alias selecting its thinker/tool host; the host supplies five existing
+initialization and drive functions.
+
+Preserved the single shared-state field, Deref/DerefMut and Debug behavior,
+256-event channel, constructor argument order, initial-state test policy,
+thinker initialization, native loop driver and method delegation. Native tests
+and loop implementation remain unchanged. Inspection caught and corrected a
+remaining concrete type in the generic Deref target before validation.
+
+Validation: 28 complete method/function bodies, generic state and deref targets,
+native alias and five service forwards, unchanged test and initialization files,
+minimal dependency/lock delta, lexical module reachability, dependency-cycle
+checks, file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-cognition-runtime/`. No Cargo, rustc, Python, Rust tests,
+cognition startup or model execution ran; compilation and runtime remain unverified.

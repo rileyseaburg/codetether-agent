@@ -1,8 +1,9 @@
 //! Publish lifecycle events after the shared reap mutation releases its lock.
 use super::{CognitionRuntime, ReapPersonaRequest, ReapPersonaResponse};
+use crate::Host;
 use anyhow::Result;
 
-impl CognitionRuntime {
+impl<H: Host> CognitionRuntime<H> {
     /// Reap one persona or its full descendant tree.
     ///
     /// # Errors

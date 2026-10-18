@@ -1,7 +1,8 @@
 //! Native facade for shared cognition create behavior.
 use super::{CognitionRuntime, CreatePersonaRequest, PersonaRuntimeState};
+use crate::Host;
 use anyhow::Result;
-impl CognitionRuntime {
+impl<H: Host> CognitionRuntime<H> {
     /// Create a persona record, inheriting lineage from its parent if any.
     ///
     /// # Errors

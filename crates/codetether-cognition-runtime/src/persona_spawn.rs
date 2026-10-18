@@ -1,10 +1,11 @@
 //! Child persona spawning under an existing parent.
 
+use crate::Host;
 use anyhow::Result;
 
 use super::{CognitionRuntime, PersonaRuntimeState, SpawnPersonaRequest};
 
-impl CognitionRuntime {
+impl<H: Host> CognitionRuntime<H> {
     /// Spawn a child persona under an existing parent.
     ///
     /// # Errors

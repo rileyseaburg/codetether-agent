@@ -1,7 +1,8 @@
 //! Native facade for shared cognition stop behavior.
 use super::{CognitionRuntime, CognitionStatus};
+use crate::Host;
 use anyhow::Result;
-impl CognitionRuntime {
+impl<H: Host> CognitionRuntime<H> {
     /// Stop the loop, abort its task, and record an optional reason.
     ///
     /// # Errors

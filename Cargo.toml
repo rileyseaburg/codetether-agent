@@ -99,6 +99,7 @@ members = [
     "crates/codetether-forage-scoring",
     "crates/codetether-embedding-backends",
     "crates/codetether-cognition-storage",
+    "crates/codetether-cognition-runtime",
     "crates/codetether-paths",
     "crates/codetether-platform",
     "crates/codetether-plan",
@@ -1071,6 +1072,7 @@ codetether-forage-clarify = { path = "crates/codetether-forage-clarify", version
 codetether-forage-scoring = { path = "crates/codetether-forage-scoring", version = "0.1.0" }
 codetether-embedding-backends = { path = "crates/codetether-embedding-backends", version = "0.1.0" }
 codetether-cognition-storage = { path = "crates/codetether-cognition-storage", version = "0.1.0" }
+codetether-cognition-runtime = { path = "crates/codetether-cognition-runtime", version = "0.1.0" }
 codetether-github-auth = { path = "crates/codetether-github-auth", version = "0.1.0" }
 codetether-webfetch = { path = "crates/codetether-webfetch", version = "0.1.0" }
 codetether-websearch = { path = "crates/codetether-websearch", version = "0.1.0" }
