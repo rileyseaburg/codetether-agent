@@ -1,9 +1,2 @@
-//! Compact swarm bus payloads before broadcasting.
-
-pub fn thinking(input: &str) -> String {
-    crate::bus::payload::bounded(input, "\n\n[truncated in swarm bus payload: thinking]")
-}
-
-pub fn tool_output(input: &str) -> String {
-    crate::bus::payload::bounded(input, "\n\n[truncated in swarm bus payload: tool output]")
-}
+//! Compatibility exports for bounded swarm bus payloads.
+pub use codetether_swarm_bus::{thinking, tool_output};

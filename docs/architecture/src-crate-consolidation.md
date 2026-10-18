@@ -18803,3 +18803,18 @@ locating implementation bodies; its initial log is retained. Evidence:
 `artifacts/consolidation-rlm-routing/`. No Cargo, rustc, Python, Rust tests,
 RLM processing or event delivery ran; compilation and runtime behavior remain
 unverified.
+
+### Swarm bus publication
+
+Moved swarm lifecycle/task-state mapping, progress SharedResult publication and
+bounded thinking/tool-output payload helpers into `codetether-swarm-bus`.
+The crate depends directly on the existing A2A, bus and swarm contracts; native
+modules retain compatibility exports used by the executor and agent loop.
+
+The publishing identity, lifecycle short-circuit, task state selection, progress
+keys/tags, ignored event variants and truncation suffixes are preserved.
+Validation: six full body comparisons, shared contract imports, native exports,
+unchanged callers, lexical module reachability, dependency-cycle checks,
+file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-swarm-bus/`. No Cargo, rustc, Python, Rust tests or live
+bus publication ran; compilation and runtime behavior remain unverified.

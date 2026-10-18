@@ -2,7 +2,7 @@
 //! messages so observers can read agent progress (decomposition, agent start,
 //! tool calls, output, stage completion) by key prefix `swarm/`.
 
-use crate::bus::{BusHandle, BusMessage};
+use codetether_bus_core::{BusHandle, BusMessage};
 use codetether_swarm_core::SwarmEvent;
 use serde_json::json;
 

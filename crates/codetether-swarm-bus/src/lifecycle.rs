@@ -1,7 +1,7 @@
 //! Lifecycle (task-state) swarm events mapped to bus task updates.
 
-use crate::a2a::types::TaskState;
-use crate::bus::BusHandle;
+use codetether_a2a_core::TaskState;
+use codetether_bus_core::BusHandle;
 use codetether_swarm_core::SwarmEvent;
 
 /// Handle a lifecycle event, returning `true` when consumed.

@@ -1743,6 +1743,7 @@ dependencies = [
  "codetether-session-recall",
  "codetether-session-runtime",
  "codetether-skill-tool",
+ "codetether-swarm-bus",
  "codetether-swarm-core",
  "codetether-swarm-delegation",
  "codetether-swarm-git",
@@ -5138,6 +5139,16 @@ dependencies = [
  "codetether-tool-core",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-swarm-bus"
+version = "0.1.0"
+dependencies = [
+ "codetether-a2a-core",
+ "codetether-bus-core",
+ "codetether-swarm-core",
+ "serde_json",
 ]
 
 [[package]]
