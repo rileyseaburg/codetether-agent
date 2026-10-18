@@ -26,3 +26,9 @@ impl codetether_request_preparation::step_model::Host<ToolRegistry, Session> for
         super::step_prepare::run(session, provider, model);
     }
 }
+
+impl codetether_request_preparation::model::SelectionHost<ToolRegistry, Session> for Native<'_> {
+    fn providers(&self) -> Vec<&str> {
+        self.0.list()
+    }
+}

@@ -13,3 +13,10 @@ pub(crate) fn begin_step(
 ) -> anyhow::Result<()> {
     codetether_request_preparation::step_model::begin_step(vars, &host::Native(registry), rate_gate)
 }
+
+pub(super) fn resolve_initial(
+    session: &Session,
+    registry: &ProviderRegistry,
+) -> anyhow::Result<codetether_request_preparation::model::ModelState<ToolRegistry>> {
+    codetether_request_preparation::model::resolve(session, &host::Native(registry))
+}

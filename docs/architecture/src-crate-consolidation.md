@@ -15886,3 +15886,20 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-model-preparation/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared initial model selection
+
+- Moved initial model resolution and stored selector parsing into
+  `codetether-request-preparation::model`, using the existing native step-model
+  host plus a provider-listing contract. Removed native setup_model and selector
+  implementation files; setup now calls the native specialization directly.
+- Preserved provider aliases, provider-only selectors, registry ordering,
+  explicit-provider validation, default models, exact error messages and model
+  state construction. Existing native metadata/build/preparation hooks remain
+  unchanged, and no new dependencies were added.
+- Verification: complete resolution and selector body comparisons, registry
+  listing and specialization bindings, sole setup-call replacement, unchanged
+  service hooks, module/dependency graphs, direct rustfmt, file budgets and diff
+  whitespace. Evidence: `artifacts/consolidation-model-selection/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

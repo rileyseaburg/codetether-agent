@@ -26,7 +26,7 @@ pub(crate) async fn initialize<'a>(
         let _ = tx.send(SessionEvent::Thinking).await;
     }
     session.resolve_subcall_provider(&registry);
-    let model = super::setup_model::resolve(session, &registry)?;
+    let model = super::super::step_model_restore::resolve_initial(session, &registry)?;
     let cwd = session
         .metadata
         .directory
