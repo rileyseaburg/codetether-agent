@@ -1,10 +1,16 @@
-use super::*;
-pub(super) fn payload(args: SwarmSubagentArgs) -> Result<RemoteSubtaskPayload> {
-    let payload_b64 = if let Some(payload) = args.payload_base64 {
+//! Payload loading and remote workspace selection.
+use anyhow::{Context, Result};
+use codetether_swarm_core::remote_protocol::{RemoteSubtaskPayload, decode_payload};
+use std::path::PathBuf;
+pub(super) fn payload(
+    payload_base64: Option<String>,
+    payload_env: String,
+) -> Result<RemoteSubtaskPayload> {
+    let payload_b64 = if let Some(payload) = payload_base64 {
         payload
     } else {
-        std::env::var(&args.payload_env)
-            .with_context(|| format!("Missing swarm payload env var {}", args.payload_env))?
+        std::env::var(&payload_env)
+            .with_context(|| format!("Missing swarm payload env var {}", payload_env))?
     };
     let payload = decode_payload(&payload_b64)?;
 

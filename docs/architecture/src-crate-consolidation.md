@@ -21199,3 +21199,28 @@ graphs, native file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-remote-prompts/`. No dependencies changed. No Cargo,
 rustc, or Python commands ran; no prompt-runtime or Rust tests were executed.
 Compilation remains unverified and full consolidation remains active.
+
+### Dedicated remote swarm runtime crate
+
+Moved remote process setup and orchestration from `src/swarm/remote_subtask.rs`
+and its `setup.rs` into `codetether-swarm-remote-runtime`. The new crate owns
+explicit/environment payload selection, workspace selection and process directory
+change, resource-to-prompt-to-execution ordering, probe lifetime, elapsed-time
+result construction, and final stdout emission. It uses the existing swarm-core
+prompt policy and swarm-k8s probe implementation. The native entrypoint now only
+passes CLI payload fields into the shared runtime; deleted native setup and
+prompt wrapper files. Native adapters retain provider credentials, tool registry
+construction, session instructions, and the existing agent-loop binding.
+
+The shared resource bundle preserves field types and retains the provider
+registry through result emission, including after its other fields are moved.
+Full formatted lifecycle/setup comparisons, unchanged native resource and
+invocation bodies, and exact host-forwarding checks passed. A first verifier
+assertion omitted rustfmt's optional trailing comma; corrected only that expected
+source, retaining the initial failure evidence. Source/dependency graphs cover
+695 roots and 561 crates with no missing modules or cycles. Direct rustfmt,
+native file-size limits, and whitespace checks passed. Evidence lives in
+`artifacts/consolidation-remote-runtime/`. The lock change adds only the new
+package and root dependency, preserving unrelated working lockfile edits.
+No Cargo, rustc, or Python commands ran. Compilation and runtime tests remain
+unverified. Full migration of implementation into dedicated crates is ongoing.

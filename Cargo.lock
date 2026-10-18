@@ -1775,6 +1775,7 @@ dependencies = [
  "codetether-skill-tool",
  "codetether-swarm-bus",
  "codetether-swarm-core",
+ "codetether-swarm-remote-runtime",
  "codetether-swarm-output",
  "codetether-swarm-validation",
  "codetether-swarm-delegation",
@@ -5467,6 +5468,17 @@ dependencies = [
  "anyhow",
  "codetether-context-policy",
  "codetether-rlm",
+]
+
+[[package]]
+name = "codetether-swarm-remote-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
+ "codetether-swarm-core",
+ "codetether-swarm-k8s",
+ "serde_json",
 ]
 
 [[package]]

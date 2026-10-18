@@ -153,6 +153,7 @@ members = [
     "crates/codetether-ralph-run",
     "crates/codetether-ralph-runtime",
     "crates/codetether-swarm-core",
+    "crates/codetether-swarm-remote-runtime",
     "crates/codetether-swarm-validation",
     "crates/codetether-swarm-output",
     "crates/codetether-swarm-bus",
@@ -692,6 +693,7 @@ codetether-a2a-stream = { path = "crates/codetether-a2a-stream", version = "0.1.
 codetether-swarm-monitor = { path = "crates/codetether-swarm-monitor", version = "0.1.0" }
 codetether-swarm-tool = { path = "crates/codetether-swarm-tool", version = "0.1.0" }
 codetether-swarm-core = { path = "crates/codetether-swarm-core", version = "0.1.0" }
+codetether-swarm-remote-runtime = { path = "crates/codetether-swarm-remote-runtime", version = "0.1.0" }
 codetether-swarm-validation = { path = "crates/codetether-swarm-validation", version = "0.1.0" }
 codetether-swarm-output = { path = "crates/codetether-swarm-output", version = "0.1.0" }
 codetether-swarm-bus = { path = "crates/codetether-swarm-bus", version = "0.1.0" }

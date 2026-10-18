@@ -1,10 +1,6 @@
 use super::*;
-pub(super) struct Resources {
-    pub(super) _registry: ProviderRegistry,
-    pub(super) provider: Arc<dyn crate::provider::Provider>,
-    pub(super) tool_registry: Arc<crate::tool::ToolRegistry>,
-    pub(super) tool_defs: Vec<crate::provider::ToolDefinition>,
-}
+type Resources =
+    codetether_swarm_remote_runtime::Resources<ProviderRegistry, crate::tool::ToolRegistry>;
 pub(super) async fn resolve(
     payload: &RemoteSubtaskPayload,
     working_dir: &PathBuf,
