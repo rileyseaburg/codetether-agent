@@ -21627,3 +21627,21 @@ dependency or lockfile changes. Evidence:
 `artifacts/consolidation-worker-bridge-handle/`. No Cargo, rustc, or Python
 commands ran; compilation and live bridge startup remain unverified. The full
 workspace consolidation goal remains active.
+
+### Shared tool catalog dispatch
+
+Moved registration-group expansion and provider-first scalar dispatch into
+`codetether-tool-registry::catalog::dispatch`. The existing catalog host trait
+continues to receive requested kinds; a separate dispatch host supplies native
+command registration, provider construction, scalar construction and scripting
+availability. Native aliases still register through the original methods.
+
+Static body comparison preserves all group branches and scalar fallback order.
+The former compile-time scripting branch now checks the same native `cfg!`
+value before expanding the unchanged shared scripting group. Alias-registration
+method bodies are unchanged. Source/dependency graphs across 692 roots and
+564 crates, direct rustfmt, native file-size limits, and whitespace checks
+passed. No dependency or lockfile changes. Evidence:
+`artifacts/consolidation-catalog-dispatch/`. No Cargo, rustc, or Python commands
+ran; compilation and runtime tests remain unverified. Full consolidation
+remains active.

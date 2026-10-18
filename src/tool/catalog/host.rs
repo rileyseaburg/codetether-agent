@@ -6,29 +6,7 @@ pub(in crate::tool) struct Native<'a> {
 }
 impl Host for Native<'_> {
     fn register(&mut self, kind: ToolKind) {
-        match kind {
-            ToolKind::SearchGroup => codetether_tool_registry::catalog::groups::search(self),
-            ToolKind::CommandGroup => command_session::register(self.registry, None),
-            ToolKind::GoalGroup => codetether_tool_registry::catalog::groups::goals(self),
-            ToolKind::MediaGroup => codetether_tool_registry::catalog::groups::media(self),
-            ToolKind::CollaborationGroup => {
-                codetether_tool_registry::catalog::groups::collaboration(self)
-            }
-            ToolKind::ScriptingGroup => {
-                #[cfg(feature = "tetherscript")]
-                codetether_tool_registry::catalog::groups::scripting(self);
-            }
-            ToolKind::CompatibilityGroup => {
-                codetether_tool_registry::catalog::groups::compatibility(self)
-            }
-            _ => {
-                if provider::register(self, kind) {
-                    return;
-                }
-                let tool = construct::create(kind);
-                self.registry.register(tool);
-            }
-        }
+        codetether_tool_registry::catalog::dispatch::register(self, kind);
     }
     fn register_alias(&mut self, alias: &str, kind: ToolKind) {
         self.registry
@@ -39,5 +17,21 @@ impl Host for Native<'_> {
         self.registry
             .inner
             .register_with_alias(alias, construct::create(kind));
+    }
+}
+
+impl codetether_tool_registry::catalog::dispatch::DispatchHost for Native<'_> {
+    fn register_commands(&mut self) {
+        command_session::register(self.registry, None);
+    }
+    fn scripting_enabled(&self) -> bool {
+        cfg!(feature = "tetherscript")
+    }
+    fn register_provider(&mut self, kind: ToolKind) -> bool {
+        provider::register(self, kind)
+    }
+    fn register_scalar(&mut self, kind: ToolKind) {
+        let tool = construct::create(kind);
+        self.registry.register(tool);
     }
 }

@@ -2,6 +2,8 @@
 //!
 //! Implement [Host] using native constructors, then call [populate]. The shared
 //! catalog owns registration order; the host owns runtime-bound tool instances.
+/// Group expansion and provider-first scalar registration policy.
+pub mod dispatch;
 pub mod groups;
 mod kind;
 pub use kind::ToolKind;
