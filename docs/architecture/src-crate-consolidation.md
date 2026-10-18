@@ -9190,3 +9190,17 @@ budgets and whitespace checks passed; the largest crate file has 29 code
 lines. Evidence is in `artifacts/consolidation-session-model-policy/`.
 Compilation and runtime tests were not run. No Cargo, rustc or Python
 commands ran. Full workspace consolidation remains active.
+
+### Dedicated step-limit outcome crate
+
+Moved the shared thread-local budget flag, begin/clear operations and outcome
+query into `crates/codetether-step-limit`. Four modules separate storage,
+updates and reads. The native session module re-exports the operations with
+the original visibility. The state remains per OS thread.
+
+Ten static checks compare all moved operations and unchanged prompt-loop,
+CLI continuation and existing test sources. Module/dependency graphs, file
+budgets and whitespace checks passed; the largest crate file has seven code
+lines. Evidence is in `artifacts/consolidation-step-limit/`. Compilation
+and runtime tests were not run. No Cargo, rustc or Python commands ran.
+Full workspace consolidation remains active.
