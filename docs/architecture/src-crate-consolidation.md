@@ -27073,3 +27073,19 @@ file-limit and whitespace checks pass for 725 roots and 617 crates. No dependenc
 or lock changes were needed; unrelated working files remain untouched. Evidence:
 artifacts/consolidation-tool-events-binding/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### TUI error-event and failover-state binding
+
+Moved error View implementation, typed handler and failover-state projection into
+codetether-chat-events::error_binding. Removed errors/view.rs and smart_switch.rs.
+The root retains its Native adapter and explicitly selects the existing inbox
+settlement and model-failover scheduler. Retry policy remains in its owning
+crate; current model, available models, inflight prompt, retry state and status
+are passed exactly as before.
+
+All eight expanded function bodies match the originals. Other event handlers
+and test sources are unchanged. Declaration, module/dependency, native production
+scope, standalone formatting, file-limit and whitespace checks pass for 725 roots
+and 617 crates. No dependencies/lock changes were needed; unrelated working files
+remain untouched. Evidence: artifacts/consolidation-error-events-binding/. No
+Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

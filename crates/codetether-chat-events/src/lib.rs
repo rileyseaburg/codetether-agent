@@ -30,3 +30,5 @@ pub mod __private {
     pub use codetether_approval_core::interaction::LiveApprovalRequest;
     pub use codetether_chat_model::ChatMessage;
 }
+
+mod error_binding;
