@@ -23,7 +23,12 @@ impl codetether_tui_reactor::dispatch::Events for Native<'_, '_> {
     }
     async fn coalesce(&mut self) {
         let a = &mut *self.0;
-        crate::tui::app::event_loop::coalesce::drain(a.app, a.slot, a.worker_bridge, a.io.event_rx)
-            .await
+        crate::tui::app::session_event_drain::drain_batch(
+            a.app,
+            a.slot,
+            a.worker_bridge,
+            a.io.event_rx,
+        )
+        .await
     }
 }

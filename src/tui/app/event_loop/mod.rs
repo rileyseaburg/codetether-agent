@@ -6,7 +6,6 @@
 
 mod autochat;
 mod bus_inbox;
-mod coalesce;
 mod driver;
 mod io;
 mod redraw;

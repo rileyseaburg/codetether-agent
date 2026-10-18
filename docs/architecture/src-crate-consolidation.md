@@ -27285,3 +27285,22 @@ file-limit and whitespace checks pass for 725 roots and 617 crates. No manifest
 or lock changes were needed; tests and unrelated working files are unchanged.
 Evidence: artifacts/consolidation-autochat-bindings/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Frontend reactor driver and borrowed channels
+
+Moved driver resource declarations and Prepare/Cycle/Finish implementations
+into codetether-tui-reactor::driver::binding modules. The root selects concrete
+resource types and existing before-draw, render, select and shutdown callbacks.
+Moved LoopIo into the reactor as a generic event/notice channel container; its
+root alias preserves the frontend payload types. Removed the coalescing wrapper
+and bound its caller directly to the same session event drain. Four root
+implementation files were removed.
+
+All seven moved function bodies match the originals after callback substitution;
+driver field types and generic channel fields were compared separately. The
+removed wrapper and its rewritten caller preserve arguments and awaiting.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. No manifest
+or lock changes were needed; tests and unrelated files are unchanged. Evidence:
+artifacts/consolidation-reactor-driver/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

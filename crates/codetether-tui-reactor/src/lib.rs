@@ -3,10 +3,12 @@
 //! Construct [Timers], borrow event inputs through [Sources], and await
 //! [select]. The returned [Ready] owns its event so application handlers run
 //! after the input borrows have ended.
+mod io;
 mod ready;
 mod select;
 mod sources;
 mod timers;
+pub use io::LoopIo;
 pub use ready::Ready;
 pub use select::select;
 pub use sources::Sources;
