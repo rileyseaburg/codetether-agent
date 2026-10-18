@@ -6,10 +6,13 @@ use crate::tui::ui::editor::FileBuffer;
 #[tokio::test]
 async fn goal_editor_does_not_replace_an_existing_file_draft() {
     let (mut app, mut slot, runtime) = fixture::setup().await;
-    app.state.editor = Some(FileBuffer::proposed("unsaved.rs", "keep my edits"));
+    app.state.editor.buffer = Some(FileBuffer::proposed("unsaved.rs", "keep my edits"));
     fixture::submit(&mut app, &mut slot, &runtime, "/goal edit").await;
     assert!(app.state.goal_editor.is_none());
-    assert_eq!(app.state.editor.as_ref().unwrap().text(), "keep my edits");
+    assert_eq!(
+        app.state.editor.buffer.as_ref().unwrap().text(),
+        "keep my edits"
+    );
     assert!(app.state.status.contains("Close the current editor"));
     runtime.shutdown().await;
 }
@@ -26,7 +29,7 @@ async fn goal_editor_rejects_saving_into_a_different_session() {
     assert!(app.state.goal_editor.is_some());
     assert!(app.state.status.contains("Session changed"));
     assert_eq!(
-        app.state.editor.as_ref().unwrap().text(),
+        app.state.editor.buffer.as_ref().unwrap().text(),
         "Finish the goal draft"
     );
     keys::escape(&mut app, &mut other_slot, &runtime).await;

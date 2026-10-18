@@ -33,7 +33,10 @@ fn edit_opens_proposed_source_without_writing_it() {
 
     assert!(super::edit(&mut app, dir.path()));
 
-    assert_eq!(app.state.editor.as_ref().unwrap().text(), "fn new() {}");
+    assert_eq!(
+        app.state.editor.buffer.as_ref().unwrap().text(),
+        "fn new() {}"
+    );
     assert!(app.state.approval_edit.is_some());
     assert_eq!(std::fs::read_to_string(path).unwrap(), "fn old() {}\n");
 }

@@ -70,6 +70,8 @@ pub use edit::{EditorEdit, Move};
 pub use file_buffer::FileBuffer;
 pub use input::{EditorInput, map_key};
 pub use render::editor_lines;
+mod state;
+pub use state::EditorState;
 
 mod file_buffer_access;
 mod render_width;

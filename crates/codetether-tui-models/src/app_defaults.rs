@@ -93,7 +93,7 @@ impl ::core::default::Default for $state {
             forage: $forage(),
             needs_redraw: true,
             shell: ::core::default::Default::default(),
-            editor: None, goal_editor: None, approval_edit: None, editor_scroll: 0, editor_hscroll: 0, chat_hit: ::core::default::Default::default(), editor_lsp: ::core::default::Default::default(),
+            editor: ::core::default::Default::default(), goal_editor: None, approval_edit: None, chat_hit: ::core::default::Default::default(), editor_lsp: ::core::default::Default::default(),
             spawn_form: None, interlude: None,
         }
     }

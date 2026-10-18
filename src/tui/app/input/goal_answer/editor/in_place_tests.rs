@@ -17,7 +17,7 @@ async fn goal_editor_changes_a_word_in_place() {
         )
         .await;
     }
-    assert!(!app.state.editor.as_ref().unwrap().is_dirty());
+    assert!(!app.state.editor.buffer.as_ref().unwrap().is_dirty());
     for _ in 0..6 {
         keys::press(
             &mut app,
@@ -29,7 +29,10 @@ async fn goal_editor_changes_a_word_in_place() {
         .await;
     }
     super::super::paste(&mut app, "Review");
-    assert_eq!(app.state.editor.as_ref().unwrap().text(), "Review the goal");
+    assert_eq!(
+        app.state.editor.buffer.as_ref().unwrap().text(),
+        "Review the goal"
+    );
     assert_eq!(
         answer_review::read(&id).unwrap().goal.unwrap().objective,
         "Finish the goal"

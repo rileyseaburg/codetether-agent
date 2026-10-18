@@ -14,7 +14,7 @@ async fn goal_editor_conflict_and_validation_errors_keep_unsaved_text() {
     assert!(app.state.goal_editor.is_some());
     assert!(app.state.status.contains("Goal changed while editing"));
     assert_eq!(
-        app.state.editor.as_ref().unwrap().text(),
+        app.state.editor.buffer.as_ref().unwrap().text(),
         "Finish the goal my draft"
     );
     assert_eq!(
@@ -23,7 +23,7 @@ async fn goal_editor_conflict_and_validation_errors_keep_unsaved_text() {
     );
     keys::escape(&mut app, &mut slot, &runtime).await;
     fixture::submit(&mut app, &mut slot, &runtime, "/goal edit").await;
-    app.state.editor = Some(crate::tui::ui::editor::FileBuffer::draft(
+    app.state.editor.buffer = Some(crate::tui::ui::editor::FileBuffer::draft(
         "Session goal (draft)",
         " ",
     ));

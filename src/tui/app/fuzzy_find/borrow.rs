@@ -10,9 +10,9 @@ pub(super) fn view(state: &mut AppState) -> EditorView<'_, impl FnMut() + '_> {
     let tool_scroll = state.tool_viewport.tool_preview_scroll;
     EditorView {
         finder: &mut state.fuzzy_find,
-        buffer: &mut state.editor,
-        vertical_scroll: &mut state.editor_scroll,
-        horizontal_scroll: &mut state.editor_hscroll,
+        buffer: &mut state.editor.buffer,
+        vertical_scroll: &mut state.editor.scroll,
+        horizontal_scroll: &mut state.editor.hscroll,
         status: &mut state.status,
         needs_redraw: &mut state.needs_redraw,
         show_editor: move || {

@@ -28,7 +28,7 @@ async fn goal_editor_keyboard_edits_text_without_accepting_a_review() {
     )
     .await;
     assert_eq!(
-        app.state.editor.as_ref().unwrap().text(),
+        app.state.editor.buffer.as_ref().unwrap().text(),
         "Finish the goalY"
     );
     assert!(answer_review::ready(&id));

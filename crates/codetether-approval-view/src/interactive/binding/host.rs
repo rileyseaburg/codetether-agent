@@ -25,14 +25,14 @@ macro_rules! __frontend_approval_keys_host {
                     $command(self.0, command)
                 }
                 fn editor(&mut self) -> &mut Option<FileBuffer> {
-                    &mut self.0.state.editor
+                    &mut self.0.state.editor.buffer
                 }
                 fn session(&mut self) -> &mut Option<ApprovalEditSession> {
                     &mut self.0.state.approval_edit
                 }
                 fn reset_editor_scroll(&mut self) {
-                    self.0.state.editor_scroll = 0;
-                    self.0.state.editor_hscroll = 0;
+                    self.0.state.editor.scroll = 0;
+                    self.0.state.editor.hscroll = 0;
                 }
                 fn show_editor(&mut self) {
                     self.0.state.set_view_mode(ViewMode::Editor);

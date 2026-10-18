@@ -20,14 +20,14 @@ macro_rules! __frontend_editor_keys_host {
                     $approval(self.0, action)
                 }
                 fn editor(&mut self) -> &mut Option<FileBuffer> {
-                    &mut self.0.state.editor
+                    &mut self.0.state.editor.buffer
                 }
                 fn show_chat(&mut self) {
                     self.0.state.view_mode = ViewMode::Chat;
                 }
                 fn reset_scroll(&mut self) {
-                    self.0.state.editor_scroll = 0;
-                    self.0.state.editor_hscroll = 0;
+                    self.0.state.editor.scroll = 0;
+                    self.0.state.editor.hscroll = 0;
                 }
                 fn set_status(&mut self, status: String) {
                     self.0.state.status = status;

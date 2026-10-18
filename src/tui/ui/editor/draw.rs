@@ -7,9 +7,9 @@ use ratatui::Frame;
 /// Borrow application fields needed to render an editor frame.
 pub(crate) fn view(state: &mut AppState) -> View<'_> {
     View {
-        buffer: state.editor.as_ref(),
-        scroll: &mut state.editor_scroll,
-        hscroll: &mut state.editor_hscroll,
+        buffer: state.editor.buffer.as_ref(),
+        scroll: &mut state.editor.scroll,
+        hscroll: &mut state.editor.hscroll,
         lsp_area: &mut state.editor_lsp.area,
         hover: state.editor_lsp.hover.as_deref(),
         goal_active: state.goal_editor.is_some(),

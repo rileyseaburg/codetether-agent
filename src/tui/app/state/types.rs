@@ -66,8 +66,8 @@ pub struct AppState {
     pub chat_sync_rx: ChatSyncRx, pub chat_sync_status: Option<String>, pub chat_sync_last_success: Option<String>, pub chat_sync_last_error: Option<String>, pub chat_sync_uploaded_bytes: u64, pub chat_sync_uploaded_batches: u64,
     pub autochat: crate::tui::app::autochat::state::AutochatState, pub file_picker: crate::tui::app::file_picker::FilePickerState, pub workspace: crate::tui::models::WorkspaceSnapshot, pub goal_prompt: Option<crate::tui::app::goal_prompt::GoalPromptState>, pub(crate) answer_review_yes: bool, pub fuzzy_find: Option<crate::tui::app::fuzzy_find::FuzzyFindState>, pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
     pub recording_stop_flag: VoiceStopFlag, pub pending_voice_text: VoiceTextSlot, pub saved_scroll: codetether_tui_navigation::view_state::SavedScroll, pub forage: crate::tui::forage_run::ForageState, pub needs_redraw: bool, pub shell: codetether_chat_shell::State,
-    /// Active in-TUI editor buffer, present only while in `ViewMode::Editor`.
-    pub editor: Option<crate::tui::ui::editor::FileBuffer>, pub(crate) goal_editor: Option<crate::tui::app::input::goal_answer::editor::Draft>, pub(crate) approval_edit: Option<crate::tui::app::state::approval_queue::edit_session::ApprovalEditSession>, pub editor_scroll: usize, pub editor_hscroll: usize, pub chat_hit: crate::tui::ui::chat_view::hit::ChatHit,
+    /// Active editor document and its viewport offsets.
+    pub editor: codetether_editor::EditorState, pub(crate) goal_editor: Option<crate::tui::app::input::goal_answer::editor::Draft>, pub(crate) approval_edit: Option<crate::tui::app::state::approval_queue::edit_session::ApprovalEditSession>, pub chat_hit: crate::tui::ui::chat_view::hit::ChatHit,
     /// Editor LSP state: shared manager and transient hover/JSDoc popup.
     pub editor_lsp: crate::tui::ui::editor::lsp_state::EditorLspState,
     pub spawn_form: Option<crate::tui::app::spawn_form::SpawnFormState>, pub(crate) interlude: Option<crate::tui::app::state::interlude::InterludeState>,

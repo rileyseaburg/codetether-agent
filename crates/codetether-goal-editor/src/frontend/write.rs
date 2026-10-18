@@ -10,17 +10,17 @@ macro_rules! __frontend_goal_editor_write {
             use $mode as ViewMode;
             impl $crate::Write for Editor<'_> {
                 fn buffer_mut(&mut self) -> Option<&mut FileBuffer> {
-                    self.app.state.editor.as_mut()
+                    self.app.state.editor.buffer.as_mut()
                 }
                 fn set_buffer(&mut self, buffer: Option<FileBuffer>) {
-                    self.app.state.editor = buffer;
+                    self.app.state.editor.buffer = buffer;
                 }
                 fn set_draft(&mut self, draft: Option<$crate::Draft>) {
                     self.app.state.goal_editor = draft;
                 }
                 fn reset_scroll(&mut self) {
-                    self.app.state.editor_scroll = 0;
-                    self.app.state.editor_hscroll = 0;
+                    self.app.state.editor.scroll = 0;
+                    self.app.state.editor.hscroll = 0;
                 }
                 fn clear_hover(&mut self) {
                     self.app.state.editor_lsp.clear_hover();

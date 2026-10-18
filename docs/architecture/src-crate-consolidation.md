@@ -28024,3 +28024,22 @@ the initial failure log is retained. Evidence:
 artifacts/consolidation-preference-state/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Unrelated working files are unchanged. Full consolidation
 remains active and incomplete.
+
+### Crate-owned editor document and viewport state
+
+Moved the active editor buffer and both scroll offsets from separate AppState
+fields into codetether-editor::EditorState. The editor crate now owns their
+representation and default initialization; AppState contains one editor
+component. Updated finder, approval, goal-draft, rendering and LSP field borrows.
+Approval sessions, goal-draft metadata and LSP state retain their existing
+owners. No dependencies changed.
+
+Static token comparison covers all sixteen changed call-site/state/default
+files. Scanned 597 TUI source files for obsolete editor field accesses. The
+buffer/offset defaults remain None/0/0 via derived Default. Shared editor input,
+opening, rendering and LSP policies are unchanged. Declaration, literal module
+and dependency graphs, production-scope checks, formatting, whitespace and
+file-limit checks pass (725 roots, 617 crates). Evidence:
+artifacts/consolidation-editor-state/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Unrelated working files are unchanged. Full consolidation
+remains active and incomplete.

@@ -9,10 +9,10 @@ pub(super) fn host(state: &mut AppState) -> BorrowedHost<'_, impl FnMut() + '_> 
     let chat_auto_follow = state.chat_viewport.chat_auto_follow;
     let tool_scroll = state.tool_viewport.tool_preview_scroll;
     BorrowedHost {
-        editor: &mut state.editor,
+        editor: &mut state.editor.buffer,
         session: &mut state.approval_edit,
-        vertical_scroll: &mut state.editor_scroll,
-        horizontal_scroll: &mut state.editor_hscroll,
+        vertical_scroll: &mut state.editor.scroll,
+        horizontal_scroll: &mut state.editor.hscroll,
         preview_scroll: &mut state.approval_preview_scroll,
         waiting: &mut state.approval_waiting,
         status: &mut state.status,
