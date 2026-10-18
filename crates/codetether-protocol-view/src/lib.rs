@@ -12,3 +12,5 @@ mod text;
 mod view;
 pub use render::render_protocol_registry;
 pub use view::RegistryView;
+mod state;
+pub use state::RegistryState;

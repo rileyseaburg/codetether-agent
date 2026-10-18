@@ -28241,3 +28241,20 @@ file-limit checks pass (725 roots, 617 crates). Evidence:
 artifacts/consolidation-help-state/. No dependencies or unrelated working files
 changed. No Cargo, rustc, Python, compilation or runtime tests ran. Full
 consolidation remains active and incomplete.
+
+### Crate-owned protocol registry panel state
+
+Moved protocol registry selection and detail scrolling into
+codetether-protocol-view::RegistryState. Its view method now combines those
+values with borrowed registration names and worker identity. The root renderer
+supplies only that worker snapshot; navigation writes the component's scroll.
+Both offsets retain their zero defaults.
+
+Static comparison covers all five changed existing files and the state/view
+field mapping. Scanned 1,210 root Rust files for obsolete direct accesses.
+Shared card collection and registry rendering are unchanged. Declaration,
+module/dependency, production-scope, formatting, whitespace and file-limit
+checks pass (725 roots, 617 crates). Evidence:
+artifacts/consolidation-protocol-state/. No dependencies or unrelated working
+files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.

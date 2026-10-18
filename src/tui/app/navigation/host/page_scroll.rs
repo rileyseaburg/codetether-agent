@@ -28,7 +28,7 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.page_down();
         }
         Action::ProtocolScroll(value) => {
-            app.state.protocol_scroll = *value;
+            app.state.protocol_registry.scroll = *value;
         }
         _ => return false,
     }

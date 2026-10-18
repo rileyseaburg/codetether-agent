@@ -23,7 +23,7 @@ impl Host for Navigation<'_> {
             slash_navigable: app.state.slash_suggestions_navigable(),
             subagent_detail: app.state.agent_tree.detail_mode,
             subagent_scroll: app.state.agent_tree.detail_scroll,
-            protocol_scroll: app.state.protocol_scroll,
+            protocol_scroll: app.state.protocol_registry.scroll,
         }
     }
     fn apply(&mut self, action: Action) {
