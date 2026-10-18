@@ -1393,6 +1393,7 @@ dependencies = [
  "codetether-mcp-server",
  "codetether-mcp-approval",
  "codetether-tui-reactor",
+ "codetether-git-credential-helper",
  "codetether-agent-dashboard",
  "codetether-git-view",
  "codetether-protocol-view",
@@ -16028,5 +16029,15 @@ dependencies = [
  "anyhow",
  "futures",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-git-credential-helper"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-a2a-http",
+ "codetether-cli-options",
  "tracing",
 ]

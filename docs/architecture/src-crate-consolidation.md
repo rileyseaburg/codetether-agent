@@ -17870,3 +17870,19 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-reactor-driver/`.
 - No Cargo, rustc, Python, TUI execution, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Git credential-helper execution and GitHub CLI delegation
+
+- Moved helper operation routing, stdin query handling and GitHub CLI delegation
+  into the dedicated `codetether-git-credential-helper` crate. It uses the existing
+  shared CLI arguments and A2A broker types; native code is a compatibility call.
+- Preserved environment fallback, broker request parameters, no-op store/erase,
+  delegation fallback and credential output. Three delegation/query tests moved
+  with their fixture; three repository configuration tests remain native.
+- Verified complete helper/CLI/stdin bodies, all six test bodies and unchanged
+  broker/configuration paths. Module/dependency graphs, direct rustfmt, file
+  limits and whitespace passed. Staged lock adds only the new package and root
+  dependency; unrelated working-copy changes remain untouched.
+  Evidence: `artifacts/consolidation-git-credential-helper/`.
+- No Cargo, rustc, Python, credential helper, GitHub CLI, Rust compilation or
+  Rust tests ran. Full workspace consolidation remains incomplete.

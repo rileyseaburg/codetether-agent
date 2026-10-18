@@ -10,15 +10,12 @@
 //! let creds = request_git_credentials(client, server, &token, None, "ws-1", "get", &query).await?;
 //! ```
 
-mod gh_cli;
-mod gh_query;
 mod helper;
 mod material;
 mod query;
 mod repo_config;
 mod request;
 mod script;
-mod stdin_query;
 #[cfg(test)]
 mod tests;
 

@@ -1,0 +1,13 @@
+[package]
+name = "codetether-git-credential-helper"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Git credential-helper execution and GitHub CLI delegation"
+
+[dependencies]
+anyhow = "1"
+codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+tracing = "0.1"
