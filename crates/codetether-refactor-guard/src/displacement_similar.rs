@@ -1,6 +1,7 @@
+//! Detect oversized files receiving displaced source text.
 use super::types::{GuardReport, GuardViolation};
 
-pub fn apply(report: &GuardReport, out: &mut Vec<GuardViolation>) {
+pub(super) fn apply(report: &GuardReport, out: &mut Vec<GuardViolation>) {
     for old in report
         .files
         .iter()

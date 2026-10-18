@@ -1,7 +1,17 @@
+//! Decode optional continuation-hook responses.
 use serde_json::Value;
 
 use super::types::GuardViolation;
 
+/// Interpret a serialized or structured continuation decision from a hook.
+/// # Arguments
+/// Receives the native hook's returned JSON value.
+/// # Returns
+/// A violation for continue/deny/block decisions, otherwise None.
+/// # Examples
+/// ```
+/// assert!(codetether_refactor_guard::read_decision(&serde_json::json!({"action": "allow"})).is_none());
+/// ```
 pub fn read(value: &Value) -> Option<GuardViolation> {
     let value = value.get("ok").unwrap_or(value);
     let parsed = value

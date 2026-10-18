@@ -9717,3 +9717,20 @@ the largest crate file has 27 code lines. Five tests moved without execution.
 Evidence is in `artifacts/consolidation-repeat-guard/`. Compilation and runtime
 tests were not run. No Cargo, rustc, Python or worker commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated refactor-guard crate
+
+Moved source scanning, configured/default line budgets, displacement detection,
+Git baseline reads, continuation rendering and hook-result decoding into
+`crates/codetether-refactor-guard`. Twenty-four modules separate rules,
+configuration decoding, metrics, constructors, evaluation and regression cases.
+The native adapter retains optional TetherScript execution and converts the
+shared report into the existing validation result.
+
+Forty static comparisons cover rule bodies, configuration, serialized metrics,
+report ordering, moved tests and the unchanged native plugin contract.
+Module/dependency graphs, file budgets and whitespace checks passed; the largest
+crate file has 41 code lines. Five original guard tests moved without execution.
+Evidence is in `artifacts/consolidation-refactor-guard/`. Compilation and runtime
+tests were not run. No Cargo, rustc, Python or plugin execution ran. Full
+workspace consolidation remains active.

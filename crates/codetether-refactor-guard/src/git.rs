@@ -1,15 +1,16 @@
+//! Read changed source files and their committed baselines.
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
 
-pub fn relative(root: &Path, path: &Path) -> String {
+pub(super) fn relative(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
         .unwrap_or(path)
         .to_string_lossy()
         .replace('\\', "/")
 }
 
-pub async fn head_text(root: &Path, rel: &str) -> Option<String> {
+pub(super) async fn head_text(root: &Path, rel: &str) -> Option<String> {
     let output = Command::new("git")
         .args(["show", &format!("HEAD:{rel}")])
         .current_dir(root)
@@ -23,7 +24,7 @@ pub async fn head_text(root: &Path, rel: &str) -> Option<String> {
     })
 }
 
-pub fn existing_sources(paths: &[PathBuf]) -> Vec<PathBuf> {
+pub(super) fn existing_sources(paths: &[PathBuf]) -> Vec<PathBuf> {
     let mut out: Vec<_> = paths
         .iter()
         .filter(|path| path.is_file() && super::lines::is_source(path))
@@ -34,6 +35,6 @@ pub fn existing_sources(paths: &[PathBuf]) -> Vec<PathBuf> {
     out
 }
 
-pub async fn read_current(path: &Path) -> Result<String> {
+pub(super) async fn read_current(path: &Path) -> Result<String> {
     Ok(tokio::fs::read_to_string(path).await?)
 }

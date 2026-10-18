@@ -1,6 +1,7 @@
+//! Default source-language line budgets.
 use super::config::{BudgetRule, GuardConfig};
 
-pub fn load() -> GuardConfig {
+pub(super) fn load() -> GuardConfig {
     GuardConfig {
         rules: specs()
             .into_iter()

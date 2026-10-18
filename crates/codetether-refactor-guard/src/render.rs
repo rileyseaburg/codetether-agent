@@ -1,6 +1,7 @@
+//! Render actionable refactor-guard violations.
 use super::types::GuardReport;
 
-pub fn prompt(report: &GuardReport) -> String {
+pub(super) fn prompt(report: &GuardReport) -> String {
     let mut out = String::from(
         "Refactor guard rejected this change. Do not finish yet. Continue the work and satisfy the configured encapsulation and line-budget rules.\n\n",
     );

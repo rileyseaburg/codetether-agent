@@ -1,13 +1,14 @@
+//! Count source lines and normalize comparison sets.
 use std::path::Path;
 
-pub fn is_source(path: &Path) -> bool {
+pub(super) fn is_source(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|ext| ext.to_str()),
         Some("rs" | "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs")
     )
 }
 
-pub fn code_lines(text: &str) -> usize {
+pub(super) fn code_lines(text: &str) -> usize {
     let mut count = 0usize;
     let mut in_block = false;
     for raw in text.lines() {
@@ -35,7 +36,7 @@ pub fn code_lines(text: &str) -> usize {
     count
 }
 
-pub fn code_line_set(text: &str) -> std::collections::HashSet<String> {
+pub(super) fn code_line_set(text: &str) -> std::collections::HashSet<String> {
     text.lines()
         .map(str::trim)
         .filter(|line| !line.is_empty() && !line.starts_with("//"))

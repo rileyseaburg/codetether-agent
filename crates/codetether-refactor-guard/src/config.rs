@@ -1,4 +1,5 @@
-use serde::Deserialize;
+//! Load project-specific refactor-guard budgets.
+use super::config_file::FileConfig;
 use std::path::Path;
 
 pub(super) struct GuardConfig {
@@ -10,20 +11,8 @@ pub(super) struct BudgetRule {
     pub max_lines: usize,
 }
 
-#[derive(Deserialize)]
-struct FileConfig {
-    #[serde(default)]
-    rules: Vec<FileRule>,
-}
-
-#[derive(Deserialize)]
-struct FileRule {
-    glob: String,
-    max_lines: usize,
-}
-
 impl GuardConfig {
-    pub fn load(root: &Path) -> Self {
+    pub(super) fn load(root: &Path) -> Self {
         let path = root.join(".codetether/refactor_guard.toml");
         let Some(raw) = std::fs::read_to_string(path).ok() else {
             return super::config_defaults::load();
@@ -39,7 +28,7 @@ impl GuardConfig {
         Self { rules }
     }
 
-    pub fn limit_for(&self, path: &str) -> Option<usize> {
+    pub(super) fn limit_for(&self, path: &str) -> Option<usize> {
         self.rules
             .iter()
             .find(|rule| rule.pattern.matches(path))
@@ -48,7 +37,7 @@ impl GuardConfig {
 }
 
 impl BudgetRule {
-    pub fn new(pattern: &str, max_lines: usize) -> Option<Self> {
+    pub(super) fn new(pattern: &str, max_lines: usize) -> Option<Self> {
         Some(Self {
             pattern: glob::Pattern::new(pattern).ok()?,
             max_lines,

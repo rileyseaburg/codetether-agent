@@ -1,4 +1,5 @@
-pub fn ratio(old: &str, new: &str) -> f32 {
+//! Compare source line-set overlap.
+pub(super) fn ratio(old: &str, new: &str) -> f32 {
     let old = super::lines::code_line_set(old);
     let new = super::lines::code_line_set(new);
     let base = old.len().min(new.len());

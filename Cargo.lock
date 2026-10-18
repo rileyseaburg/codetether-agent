@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-refactor-guard",
  "codetether-repeat-guard",
  "codetether-cost-guard",
  "codetether-stream-restart",
@@ -4103,6 +4104,19 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-refactor-guard"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "glob",
+ "serde",
+ "serde_json",
+ "tokio",
+ "toml 1.1.5+spec-1.1.0",
 ]
 
 [[package]]

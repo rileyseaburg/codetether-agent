@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::path::Path;
 
-use super::types::{GuardReport, GuardViolation};
+use codetether_refactor_guard::{GuardReport, GuardViolation};
 
 #[cfg(feature = "tetherscript")]
 pub async fn apply(root: &Path, report: &GuardReport) -> Result<Option<GuardViolation>> {
@@ -22,7 +22,7 @@ pub async fn apply(root: &Path, report: &GuardReport) -> Result<Option<GuardViol
     if !result.success {
         return Ok(Some(GuardViolation::new(hook, result.output)));
     }
-    Ok(super::plugin_decision::read(
+    Ok(codetether_refactor_guard::read_decision(
         &result.metadata.get("value").cloned().unwrap_or(Value::Null),
     ))
 }

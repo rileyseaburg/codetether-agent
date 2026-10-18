@@ -1,6 +1,7 @@
+//! Detect wrapper-only moves into oversized targets.
 use super::types::{GuardReport, GuardViolation};
 
-pub fn apply(report: &mut GuardReport) {
+pub(super) fn apply(report: &mut GuardReport) {
     let mut out = Vec::new();
     wrappers(report, &mut out);
     super::displacement_similar::apply(report, &mut out);

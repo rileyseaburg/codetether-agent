@@ -1,9 +1,10 @@
+//! Build file metrics from current and committed content.
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 use super::types::{FileStatus, GuardFile};
 
-pub async fn files(root: &Path, paths: &[PathBuf]) -> Result<Vec<GuardFile>> {
+pub(super) async fn files(root: &Path, paths: &[PathBuf]) -> Result<Vec<GuardFile>> {
     let config = super::config::GuardConfig::load(root);
     let mut out = Vec::new();
     for path in super::git::existing_sources(paths) {

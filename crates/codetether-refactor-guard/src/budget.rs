@@ -1,6 +1,7 @@
+//! Apply configured line budgets to added and modified files.
 use super::types::{FileStatus, GuardFile, GuardReport, GuardViolation};
 
-pub fn apply(report: &mut GuardReport) {
+pub(super) fn apply(report: &mut GuardReport) {
     let mut out = Vec::new();
     for file in &report.files {
         match file.status {
