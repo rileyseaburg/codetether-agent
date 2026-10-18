@@ -14,3 +14,6 @@ pub use source::WatchdogSource;
 pub use state::WatchdogNotification;
 /// Maximum automatic restarts before the detector stops intervening.
 pub const WATCHDOG_MAX_RESTARTS: u32 = 3;
+
+/// Cancellation state, exact-prompt retries and permanent-failure reporting.
+pub mod recovery;

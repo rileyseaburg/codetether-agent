@@ -16871,3 +16871,22 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-chat-resume/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared watchdog retry and recovery transitions
+
+- Moved exact-prompt retry submission, cancellation-state updates and permanent
+  give-up feedback into `codetether-watchdog::recovery`.
+- Shared recovery borrows native fields through a state view; native adapters
+  retain timing/stream clearing, session request construction and runtime
+  transfer/restoration. Removed the native give-up implementation file.
+- Preserved retry gates/budget, notification clearing and re-arming, timestamp
+  order, no-image/no-new-worktree request construction, restored session on
+  submission failure, and decoded feedback message text.
+- Added existing chat-model contracts and staged only that watchdog dependency
+  in a HEAD-derived lock entry, preserving unrelated working-tree changes.
+- Verification: full retry/cancel/give-up sequence comparisons, all state and
+  request bindings, unchanged detector/callers, module/dependency graphs,
+  direct rustfmt, file limits and whitespace. Evidence:
+  `artifacts/consolidation-watchdog-recovery/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

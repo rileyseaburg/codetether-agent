@@ -1,63 +1,22 @@
-//! Submit watchdog retries after cancellation restores the session.
-//!
-//! After the watchdog cancels a stalled request, this module resubmits the
-//! same prompt. If the retry budget ([`WATCHDOG_MAX_RESTARTS`]) is exhausted,
-//! it delegates to [`give_up`] to surface a permanent error.
-
-#[path = "watchdog_give_up.rs"]
-mod give_up;
-
+//! Native session/runtime binding for shared watchdog retries.
+mod host;
+use crate::{
+    provider::ProviderRegistry,
+    tui::app::{
+        session_runtime::{SessionSlot, TuiSessionHandle},
+        state::App,
+    },
+};
 use std::sync::Arc;
-
-use crate::provider::ProviderRegistry;
-use crate::tui::app::session_runtime::{PromptRequest, SessionSlot, TuiSessionHandle};
-use crate::tui::app::state::App;
-use crate::tui::constants::WATCHDOG_MAX_RESTARTS;
-
 pub(super) async fn execute(
     app: &mut App,
     slot: &mut SessionSlot,
     registry: &Option<Arc<ProviderRegistry>>,
     runtime: &TuiSessionHandle,
 ) {
-    if app.state.watchdog_notification.is_none() || app.state.processing {
-        return;
-    }
-    if app.state.main_watchdog_restart_count >= WATCHDOG_MAX_RESTARTS {
-        return give_up::surface(app);
-    }
-    let Some(registry) = registry.as_ref() else {
-        return;
-    };
-    // Resubmit the turn that actually stalled. Never an older prompt: on a
-    // long-lived session that replays a stale instruction as if freshly typed.
-    let Some(prompt) = app.state.main_inflight_prompt.clone() else {
-        return;
-    };
-    let Some(session) = slot.take_for_prompt() else {
-        return;
-    };
-    app.state.main_inflight_prompt = Some(prompt.clone());
-    // Clear the pending notification as we resubmit. Otherwise the detector's
-    // `watchdog_notification.is_some()` guard suppresses all future stall
-    // checks, so a retry that also stalls would never be caught — leaving the
-    // UI stuck in `processing=true` forever and silently queueing every prompt
-    // the user types. Clearing here lets the watchdog re-arm, climb the retry
-    // budget, and ultimately `give_up` (freeing the user) instead of deadlocking.
-    app.state.watchdog_notification = None;
-    app.state.processing = true;
-    app.state.begin_request_timing();
-    app.state.main_last_event_at = Some(std::time::Instant::now());
-    let original_dir = session.metadata.directory.clone();
-    let request = PromptRequest::new(
-        session,
-        prompt,
-        Vec::new(),
-        Arc::clone(registry),
-        original_dir,
-        None,
-    );
-    if let Err(request) = runtime.submit(request).await {
-        slot.restore(request.session);
-    }
+    codetether_watchdog::recovery::execute(
+        &mut host::Native { app, slot, runtime },
+        registry.as_ref(),
+    )
+    .await;
 }
