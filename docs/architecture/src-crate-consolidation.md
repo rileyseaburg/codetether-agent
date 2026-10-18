@@ -23729,3 +23729,21 @@ package and root dependency; unrelated working changes remain untouched.
 Evidence: artifacts/consolidation-windows-cli/. No Cargo, rustc, Python,
 compilation, OCR operations, workers or tests ran. Full consolidation remains
 active.
+
+### Early command routing moved into the startup crate
+
+Moved Windows/Bonsai dispatch from src/native_cli.rs into
+codetether-cli-startup::native and removed the native file. The application
+lifecycle host calls the shared dispatcher with the same borrowed command.
+Startup's early argument check and both early-return points are unchanged,
+preserving the bypass before logging, Vault and session initialization. Added
+direct dependencies on the Windows and Bonsai command crates.
+
+Static comparison preserves the entire dispatcher after explicit import and
+visibility substitutions; lifecycle run/early files are byte-identical.
+Module/dependency scans cover 692 roots and 572 crates without missing modules
+or cycles. Direct rustfmt, source file limits and whitespace checks passed.
+Only the required dependency entries are staged in Cargo.lock; unrelated
+working changes remain untouched. Evidence:
+artifacts/consolidation-native-dispatch/. No Cargo, rustc, Python, compilation,
+command execution or runtime tests ran. Full consolidation remains active.

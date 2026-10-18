@@ -25,7 +25,6 @@ use codetether_worktree_cli as worktree_cli;
 
 mod mcp_cli;
 mod mcp_serve;
-mod native_cli;
 mod ralph_cli;
 
 #[tokio::main(worker_threads = 8)]

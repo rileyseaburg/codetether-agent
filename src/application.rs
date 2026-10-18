@@ -12,7 +12,7 @@ impl codetether_cli_startup::lifecycle::Host for Native {
         &invocation.command
     }
     async fn native(invocation: &Cli) -> Option<anyhow::Result<()>> {
-        super::native_cli::dispatch(&invocation.command).await
+        codetether_cli_startup::native::dispatch(&invocation.command).await
     }
     async fn initialize_crash(is_tui: bool) {
         super::startup_crash::initialize(is_tui).await;

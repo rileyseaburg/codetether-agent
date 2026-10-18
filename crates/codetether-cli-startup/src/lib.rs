@@ -8,4 +8,5 @@ pub mod crash;
 pub mod environment;
 pub mod lifecycle;
 pub mod logging;
+pub mod native;
 pub mod vault;

@@ -7,6 +7,8 @@ license = "MIT"
 description = "CLI environment preparation, logging and optional service initialization"
 
 [dependencies]
+codetether-bonsai-cli = { path = "../codetether-bonsai-cli", version = "0.1.0" }
+codetether-windows-cli = { path = "../codetether-windows-cli", version = "0.1.0" }
 anyhow = "1"
 codetether-cli-command = { path = "../codetether-cli-command", version = "0.1.0" }
 codetether-config = { path = "../codetether-config", version = "0.1.0" }
