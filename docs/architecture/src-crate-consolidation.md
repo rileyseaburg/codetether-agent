@@ -24257,3 +24257,21 @@ cycles. Direct rustfmt, source file limits and whitespace checks passed.
 Unrelated working edits are untouched. Evidence:
 artifacts/consolidation-agent-view-forwarders/. No tests, Cargo, rustc, Python
 or compilation ran. Full consolidation remains active.
+
+### Direct crate dependency audit and run CLI repair
+
+Audited executable Rust references to workspace crate names against all 573
+crate manifests, excluding comments/doc examples and accounting for separate
+TOML dependency tables. Found and added the missing run-cli -> swarm-cli
+dependency required by prepare_speculative in run-cli/src/prepare.rs. The first
+scan also flagged context-request -> codex-protocol, which was already correctly
+declared in a separate dependency table; the scanner was corrected before making
+changes there. Initial evidence is retained.
+
+The corrected scan reports no missing direct workspace dependencies. This is a
+lexical dependency check, not compilation or complete name/type resolution.
+Module/dependency scans still cover 692 roots and 573 crates without missing
+modules or cycles. Only the required run-cli lockfile dependency is staged;
+source code, unrelated working lockfile changes and A2A edits remain untouched.
+Evidence: artifacts/consolidation-dependency-audit/. No Cargo, rustc, Python,
+compilation or tests ran. Full consolidation remains active.

@@ -8474,6 +8474,7 @@ dependencies = [
  "codetether-run-runtime",
  "codetether-run-report",
  "codetether-sol-workflow",
+ "codetether-swarm-cli",
 ]
 
 [[package]]

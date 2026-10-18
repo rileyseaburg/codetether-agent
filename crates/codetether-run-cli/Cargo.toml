@@ -7,6 +7,7 @@ license = "MIT"
 description = "Non-interactive run command preparation and routing"
 
 [dependencies]
+codetether-swarm-cli = { path = "../codetether-swarm-cli", version = "0.1.0" }
 anyhow = "1"
 tracing = "0.1"
 codetether-autochat-core = { path = "../codetether-autochat-core", version = "0.1.0" }
