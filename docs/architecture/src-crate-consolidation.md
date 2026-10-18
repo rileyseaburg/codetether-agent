@@ -16019,3 +16019,19 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-event-drain/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared owned completion notices
+
+- Moved SessionNotice into `codetether-session-events::completion`, generic over
+  the owned session payload. Native runtime notice paths now use a concrete alias.
+- Moved nested prompt-result classification and panic-payload extraction into
+  the same module; native code re-exports the shared conversion.
+- Preserved successful ownership transfer, complete application error chains,
+  String/str panic extraction and the unknown-panic fallback text.
+- Verification: all notice variants and both conversion bodies compared,
+  native aliases checked, unchanged error-chain integration test and event
+  producers/consumers, module/dependency graphs, direct rustfmt, file budgets,
+  isolated lock addition and diff whitespace. Evidence:
+  `artifacts/consolidation-completion-notice/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

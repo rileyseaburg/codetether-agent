@@ -30,3 +30,6 @@ pub use truncation::ContextTruncation;
 
 /// Bounded queued-event delivery with cumulative-text coalescing.
 pub mod drain;
+
+/// Owned session completion notices and caught-panic conversion.
+pub mod completion;
