@@ -6015,6 +6015,7 @@ dependencies = [
  "codetether-util",
  "ignore",
  "ratatui",
+ "crossterm",
 ]
 
 [[package]]

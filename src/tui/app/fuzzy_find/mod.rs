@@ -26,13 +26,7 @@ pub fn open_fuzzy_find(app: &mut App, cwd: &Path) {
 
 /// Confirms the current selection, opening it in the editor.
 pub fn confirm_fuzzy_find(app: &mut App, cwd: &Path) {
-    let chosen = app
-        .state
-        .fuzzy_find
-        .as_ref()
-        .and_then(|f| f.current())
-        .map(|e| e.path.clone());
-    app.state.fuzzy_find = None;
+    let chosen = codetether_fuzzy_finder::take_selected_path(&mut app.state.fuzzy_find);
     let Some(path) = chosen else { return };
     open_path_in_editor(app, cwd, &path);
 }

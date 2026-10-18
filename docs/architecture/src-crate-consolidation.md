@@ -12340,3 +12340,19 @@ Full workspace consolidation remains active.
 - No dependency or lockfile changes were needed. Unrelated worktree changes
   were preserved. No Cargo, rustc, compilation or Rust tests ran. The full
   workspace consolidation remains incomplete.
+
+### Fuzzy finder input extraction
+
+- Moved query editing, reranking after edits, wrapped selection navigation and
+  confirmed-path extraction into codetether-fuzzy-finder. Four modules contain
+  at most 22 code lines; key handling returns Continue, Cancel or Confirm.
+- The native handler retains modal cancellation status, editor opening and
+  redraw/consumption behavior. Confirmation still closes the finder even when
+  no result is selected. Workspace scanning and editor-opening code are unchanged.
+- Verification: seven source comparisons passed for selection arithmetic,
+  key transitions, native effects, path extraction and unchanged editor/scan
+  operations. Module/dependency checks, direct rustfmt, source limits and
+  whitespace checks passed. Evidence: artifacts/consolidation-finder-input/.
+- Added the existing crossterm dependency to this crate; only that lockfile
+  change was staged. No Cargo, rustc, compilation or Rust tests ran. Full
+  workspace consolidation remains incomplete.

@@ -6,7 +6,8 @@
 
 use std::path::Path;
 
-use crossterm::event::{KeyCode, KeyEvent};
+use codetether_fuzzy_finder::FinderAction;
+use crossterm::event::KeyEvent;
 
 use crate::tui::app::fuzzy_find::confirm_fuzzy_find;
 use crate::tui::app::state::App;
@@ -15,42 +16,17 @@ use crate::tui::app::state::App;
 ///
 /// Returns `true` if the key was consumed by the finder.
 pub(super) fn handle_fuzzy_find_key(app: &mut App, cwd: &Path, key: KeyEvent) -> bool {
-    if app.state.fuzzy_find.is_none() {
+    let Some(finder) = app.state.fuzzy_find.as_mut() else {
         return false;
-    }
-    match key.code {
-        KeyCode::Esc => {
+    };
+    match finder.handle_key(key) {
+        FinderAction::Cancel => {
             app.state.fuzzy_find = None;
             app.state.status = "Fuzzy open cancelled".to_string();
         }
-        KeyCode::Enter => confirm_fuzzy_find(app, cwd),
-        KeyCode::Up => move_selection(app, -1),
-        KeyCode::Down => move_selection(app, 1),
-        KeyCode::Backspace => {
-            if let Some(f) = app.state.fuzzy_find.as_mut() {
-                f.query.pop();
-                f.rerank();
-            }
-        }
-        KeyCode::Char(c) => {
-            if let Some(f) = app.state.fuzzy_find.as_mut() {
-                f.query.push(c);
-                f.rerank();
-            }
-        }
-        _ => {}
+        FinderAction::Confirm => confirm_fuzzy_find(app, cwd),
+        FinderAction::Continue => {}
     }
     app.state.needs_redraw = true;
     true
-}
-
-fn move_selection(app: &mut App, delta: isize) {
-    if let Some(f) = app.state.fuzzy_find.as_mut() {
-        let len = f.results.len();
-        if len == 0 {
-            return;
-        }
-        let next = (f.selected as isize + delta).rem_euclid(len as isize);
-        f.selected = next as usize;
-    }
 }

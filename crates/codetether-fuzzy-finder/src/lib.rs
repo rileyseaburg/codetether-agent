@@ -2,7 +2,7 @@
 //!
 //! [scan_workspace] discovers [FuzzyEntry] candidates. [FuzzyFindState] owns
 //! query and ranked results; [render] and [render_if_active] draw the picker.
-//! Editor opening and input dispatch remain host responsibilities.
+//! Editor opening and cancellation status remain host responsibilities.
 mod area;
 mod entry;
 mod lifecycle;
@@ -19,3 +19,10 @@ pub use rank::rerank_into;
 pub use render::render;
 pub use scan::scan_workspace;
 pub use state::FuzzyFindState;
+
+mod input;
+mod input_action;
+mod selection;
+mod take_selection;
+pub use input_action::FinderAction;
+pub use take_selection::take_selected_path;
