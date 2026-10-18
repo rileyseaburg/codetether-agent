@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::tui::chat::message::{ChatMessage, MessageType};
+use codetether_chat_model::{ChatMessage, MessageType};
 
 /// File-tool names whose `path` argument identifies a referenced file.
 const FILE_TOOLS: &[&str] = &[

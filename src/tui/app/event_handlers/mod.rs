@@ -7,7 +7,6 @@ mod approval_key;
 #[cfg(test)]
 mod approval_key_tests;
 mod click_open;
-mod click_path;
 mod clipboard;
 mod copy_reply;
 mod copy_transcript;

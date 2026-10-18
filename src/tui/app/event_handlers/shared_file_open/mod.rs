@@ -1,17 +1,19 @@
-//! Actions for files referenced by agents in the chat transcript.
-//!
-//! Keyed off the most-recent file reference in the transcript — either a
-//! shared `MessageType::File` message or a file-oriented tool call
-//! (`read`/`write`/`edit`/…). `Ctrl+E` shows the file's git diff in `/git`;
-//! `Ctrl+F` opens it in the standard read-only file viewer.
-
-mod actions;
-mod extract;
-mod keys;
+//! Chat-file shortcut binding and application regression coverage.
+pub(super) mod host;
+#[cfg(test)]
 mod resolve;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_negative;
-
-pub(crate) use keys::ctrl_key;
+use crate::tui::app::state::App;
+use crossterm::event::KeyEvent;
+use std::path::Path;
+pub(crate) fn ctrl_key(
+    app: &mut App,
+    cwd: &Path,
+    key: KeyEvent,
+    ctrl: bool,
+) -> Option<anyhow::Result<bool>> {
+    codetether_chat_files::ctrl_key(&mut host::Native(app), cwd, key, ctrl)
+}

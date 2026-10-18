@@ -19329,3 +19329,22 @@ lexical module reachability, dependency-cycle checks, file-size ratchet,
 whitespace and direct formatting. Evidence:
 `artifacts/consolidation-mouse-navigation/`. No Cargo, rustc, Python, Rust tests
 or TUI execution ran; compilation and runtime remain unverified.
+
+### Chat file references and actions
+
+Moved path token parsing, newest-file selection, click resolution, Ctrl-key
+routing and shared-file diff/viewer actions into `codetether-chat-files`.
+Separate modules own parsing, extraction, resolution, shortcuts and actions.
+Native code supplies ten frontend state/operation bindings through Host;
+existing native regression tests continue through a small resolver adapter.
+Removed the original native parsing, extraction, shortcut and action files.
+
+Preserved path ranking, tool argument preference, reverse transcript search,
+file existence checks, status messages, shortcut return values and the order
+of diff capture, scroll-state saving and view transitions.
+
+Validation: thirteen complete translated function bodies, ten native bindings,
+unchanged regression tests and keyboard caller, isolated lockfile delta, lexical
+module reachability, dependency-cycle checks, file-size ratchet, whitespace and
+direct formatting. Evidence: `artifacts/consolidation-chat-files/`. No Cargo,
+rustc, Python or Rust tests ran; compilation and runtime remain unverified.

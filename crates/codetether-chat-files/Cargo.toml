@@ -1,0 +1,16 @@
+[package]
+name = "codetether-chat-files"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Chat file references, click resolution and file-action policy"
+
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+crossterm = "0.29.0"
+serde_json = "1"
+codetether-chat-layout = { path = "../codetether-chat-layout", version = "0.1.0" }
+codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
+codetether-git-view = { path = "../codetether-git-view", version = "0.1.0" }

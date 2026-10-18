@@ -12,6 +12,18 @@ use std::path::{Path, PathBuf};
 /// Tokens are split on whitespace and common punctuation; a trailing
 /// `:line[:col]` suffix is stripped. The token closest to the click column
 /// that exists on disk wins.
+///
+/// # Arguments
+/// * `line` — Rendered transcript text.
+/// * `click_col` — Byte offset used to rank candidate tokens.
+/// * `cwd` — Base directory for relative paths.
+/// # Returns
+/// The nearest existing file, or `None` when none resolves.
+/// # Examples
+/// ```rust
+/// use codetether_chat_files::path_at;
+/// assert!(path_at("no file here", 0, std::path::Path::new(".")).is_none());
+/// ```
 pub fn path_at(line: &str, click_col: usize, cwd: &Path) -> Option<PathBuf> {
     let mut best: Option<(usize, PathBuf)> = None;
     let mut byte = 0usize;
