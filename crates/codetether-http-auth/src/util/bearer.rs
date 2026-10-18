@@ -9,7 +9,7 @@ use axum::{
 ///
 /// ```rust
 /// use axum::{body::Body, http::Request};
-/// use codetether_agent::server::auth::bearer_token;
+/// use codetether_http_auth::bearer_token;
 ///
 /// let request = Request::builder()
 ///     .header("authorization", "Bearer example-token")

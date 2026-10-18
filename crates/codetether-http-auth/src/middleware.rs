@@ -21,7 +21,7 @@ use axum::{
 ///     middleware,
 ///     routing::get,
 /// };
-/// use codetether_agent::server::auth::{AuthState, require_auth};
+/// use codetether_http_auth::{AuthState, require_auth};
 /// use tower::ServiceExt;
 ///
 /// let app = Router::new()

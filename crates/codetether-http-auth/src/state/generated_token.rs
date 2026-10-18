@@ -5,7 +5,7 @@ use rand::RngExt;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::server::auth::generate_token;
+/// use codetether_http_auth::generate_token;
 ///
 /// let token = generate_token();
 /// assert_eq!(token.len(), 64);

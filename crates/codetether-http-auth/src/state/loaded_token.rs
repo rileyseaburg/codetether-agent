@@ -5,7 +5,7 @@ use super::generate_token;
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::server::auth::load_token;
+/// use codetether_http_auth::load_token;
 ///
 /// # unsafe {
 /// std::env::set_var("CODETETHER_AUTH_TOKEN", "example-token");

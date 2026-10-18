@@ -7,7 +7,7 @@ const DEFAULT_PUBLIC_PATHS: &[&str] = &["/health"];
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::server::auth::default_public_paths;
+/// use codetether_http_auth::default_public_paths;
 ///
 /// let paths = default_public_paths();
 /// assert!(paths.contains("/health"));

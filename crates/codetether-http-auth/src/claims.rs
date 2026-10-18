@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::server::auth::JwtClaims;
+/// use codetether_http_auth::JwtClaims;
 ///
 /// let claims = JwtClaims {
 ///     topics: vec!["agent.alpha".into()],

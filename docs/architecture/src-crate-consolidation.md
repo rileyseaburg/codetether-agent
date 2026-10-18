@@ -13203,3 +13203,20 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   voice sessions, bus notifications, Cargo, rustc or Rust tests ran. Full
   consolidation remains incomplete.
+
+### HTTP authentication extraction
+
+- Moved authentication state, token loading/generation/extraction, JWT claim
+  decoding, constant-time comparison, middleware and two existing tests into
+  codetether-http-auth. Fifteen modules contain at most 28 code lines.
+- Native auth is a compatibility export. Middleware registration, health-only
+  exemption, token checks and downstream claim handling are unchanged. Public
+  helper exports make the existing helper documentation usable from the new
+  crate without changing request behavior.
+- Verification: 18 static comparisons passed for every moved module, export
+  wiring and unchanged native middleware/policy-user integration. Module and
+  dependency checks, direct rustfmt, file limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-http-auth/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  tokens were generated; no auth requests, Cargo, rustc or Rust tests ran.
+  Full consolidation remains incomplete.

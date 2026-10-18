@@ -3,7 +3,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::server::auth::constant_time_eq;
+/// use codetether_http_auth::constant_time_eq;
 ///
 /// assert!(constant_time_eq(b"hello", b"hello"));
 /// assert!(!constant_time_eq(b"hello", b"world"));

@@ -6,7 +6,7 @@ use std::{collections::HashSet, sync::Arc};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::server::auth::AuthState;
+/// use codetether_http_auth::AuthState;
 ///
 /// let state = AuthState::with_token("example-token");
 ///
@@ -25,7 +25,7 @@ impl AuthState {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_agent::server::auth::AuthState;
+    /// use codetether_http_auth::AuthState;
     ///
     /// # unsafe {
     /// std::env::set_var("CODETETHER_AUTH_TOKEN", "example-token");
@@ -47,7 +47,7 @@ impl AuthState {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_agent::server::auth::AuthState;
+    /// use codetether_http_auth::AuthState;
     ///
     /// let state = AuthState::with_token("example-token");
     /// assert_eq!(state.token(), "example-token");
@@ -64,7 +64,7 @@ impl AuthState {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_agent::server::auth::AuthState;
+    /// use codetether_http_auth::AuthState;
     ///
     /// # unsafe {
     /// std::env::set_var("CODETETHER_AUTH_TOKEN", "example-token");
@@ -82,7 +82,7 @@ impl AuthState {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_agent::server::auth::AuthState;
+    /// use codetether_http_auth::AuthState;
     ///
     /// let state = AuthState::with_token("example-token");
     ///

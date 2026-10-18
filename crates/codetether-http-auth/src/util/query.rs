@@ -7,7 +7,7 @@ use std::borrow::Cow;
 ///
 /// ```rust
 /// use axum::{body::Body, http::Request};
-/// use codetether_agent::server::auth::query_token;
+/// use codetether_http_auth::query_token;
 ///
 /// let request = Request::builder()
 ///     .uri("/stream?token=query%20token")

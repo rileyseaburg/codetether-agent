@@ -1284,6 +1284,7 @@ dependencies = [
  "codetether-task-ingest",
  "codetether-task-api",
  "codetether-voice-api",
+ "codetether-http-auth",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6601,6 +6602,21 @@ dependencies = [
  "serde",
  "serde_json",
  "uuid",
+]
+
+[[package]]
+name = "codetether-http-auth"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "base64 0.23.1",
+ "rand 0.10.2",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tracing",
+ "urlencoding",
 ]
 
 [[package]]

@@ -11,7 +11,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::server::auth::extract_unverified_jwt_claims;
+/// use codetether_http_auth::extract_unverified_jwt_claims;
 ///
 /// let token = "aaa.eyJ0b3BpY3MiOlsiYWdlbnQuYWxwaGEiXSwic3ViIjoid29ya2VyLTEiLCJzY29wZXMiOlsiYnVzOnJlYWQiXX0.ccc";
 /// let claims = extract_unverified_jwt_claims(token).expect("claims should decode");
