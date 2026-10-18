@@ -2,6 +2,7 @@
 //!
 //! Supply validated [Input] and an application [Host] to [execute]. Drafting,
 //! approval and pipeline execution are separated to preserve their ordering.
+mod application;
 mod approval;
 mod draft;
 mod execute;

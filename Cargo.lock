@@ -8366,10 +8366,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "codetether-application-providers",
  "codetether-autochat-core",
  "codetether-bus-core",
+ "codetether-bus-s3",
  "codetether-go-ralph",
  "codetether-okr",
+ "codetether-ralph-runtime",
  "codetether-relay-okr",
  "codetether-relay-plan",
  "codetether-relay-planner",

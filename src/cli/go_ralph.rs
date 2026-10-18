@@ -8,4 +8,3 @@ pub use execute::execute_go_ralph;
 pub use generation::generate_prd_with_model_retry;
 
 pub(crate) use host::AppHost;
-mod cli_host;

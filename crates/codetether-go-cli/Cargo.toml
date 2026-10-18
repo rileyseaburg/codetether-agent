@@ -7,6 +7,9 @@ license = "MIT"
 description = "PRD-backed CLI objective approval and execution"
 
 [dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-ralph-runtime = { path = "../codetether-ralph-runtime", version = "0.1.0" }
+codetether-bus-s3 = { path = "../codetether-bus-s3", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 codetether-autochat-core = { path = "../codetether-autochat-core", version = "0.1.0" }

@@ -27,6 +27,8 @@ pub use format::format_go_ralph_result;
 pub use host::Host;
 pub use result::GoRalphResult;
 pub use story::StoryResult;
+/// Pipeline binding to an application provider registry and Ralph runtime.
+pub mod application;
 /// Ralph runtime construction and service attachment.
 pub mod runtime;
 #[cfg(test)]

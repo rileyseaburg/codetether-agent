@@ -22725,3 +22725,23 @@ Evidence: `artifacts/consolidation-ralph-runtime-binding/`, including the reject
 initial dependency graph.
 No Ralph runs, Git operations through Ralph, Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Approved-task Ralph and CLI service binding in their owning crates
+
+Moved approved-task Ralph loop construction into
+`codetether-go-ralph::application`, using the same registry and RalphLoop types.
+Moved its cached provider loading and training-bus setup into codetether-go-cli.
+The CLI crate implements its own Host trait for the shared pipeline host, so
+no external-trait implementation remains on a native alias. The native host
+is now only a concrete type alias, and its separate CLI service file was removed.
+
+Static comparisons preserve loop construction arguments, the shared runtime
+helper, cached Vault registry loading, bus allocation and S3 sink setup.
+Native approved-task and ordinary-run entry points remain unchanged.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the Go CLI crate's application-providers, bus-s3 and ralph-runtime edges
+are staged in the lockfile; the unrelated working lockfile remains byte-identical.
+Evidence: `artifacts/consolidation-go-application/`.
+No approved-task execution, provider requests, Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.
