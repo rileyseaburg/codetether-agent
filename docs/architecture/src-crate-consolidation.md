@@ -17439,3 +17439,17 @@ Full workspace consolidation remains active.
 - No dependency changes. Evidence: `artifacts/consolidation-modified-keys/`.
   No Cargo, rustc, Python, UI effects, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared mode-specific character and settings-key selection
+
+- Moved settings, file-picker, session-filter, bus, audit and general character
+  dispatch into `codetether-tui-navigation::modes`.
+- Core selects explicit setting/effect operations; native bindings retain the
+  session borrow through each asynchronous toggle and preserve unavailable-
+  session no-ops. General character/backspace handlers remain native bindings.
+- Verification: complete mode-match comparison, every setting/effect/input
+  binding, unchanged caller/settings/tests, module/dependency graphs, direct
+  rustfmt, file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-mode-keys/`.
+- No Cargo, rustc, Python, UI effects, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

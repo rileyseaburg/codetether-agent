@@ -29,3 +29,6 @@ pub mod keys;
 
 /// Control/Alt shortcut priority, actions and status policy.
 pub mod modified;
+
+/// Mode-specific settings, character and filter input routing.
+pub mod modes;
