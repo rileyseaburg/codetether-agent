@@ -1,21 +1,17 @@
 //! Non-native backends must not accept a misleading native provider identity.
 
-use super::{ThinkerClient, ThinkerClientBackend};
-use crate::cognition::thinker::ThinkerConfig;
+use super::ThinkerClient;
+use crate::cognition::thinker::{ThinkerBackend, ThinkerConfig};
 
 #[tokio::test]
 async fn thinker_identity_override_rejects_non_native_backends_before_dispatch() {
-    let backends = [
-        ThinkerClientBackend::Registry,
-        ThinkerClientBackend::OpenAICompat {
-            http: reqwest::Client::new(),
-        },
-    ];
+    let backends = [ThinkerBackend::Registry, ThinkerBackend::OpenAICompat];
     for backend in backends {
-        let client = ThinkerClient {
-            config: ThinkerConfig::default(),
+        let client = ThinkerClient::new(ThinkerConfig {
             backend,
-        };
+            ..ThinkerConfig::default()
+        })
+        .unwrap();
         let error = client
             .think_as_provider("local_cuda", "caller instructions", "user prompt")
             .await

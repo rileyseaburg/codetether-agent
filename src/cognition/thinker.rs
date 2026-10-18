@@ -33,10 +33,6 @@ mod output;
 
 #[path = "thinker/client.rs"]
 mod client;
-#[path = "thinker/client_backend.rs"]
-mod client_backend;
-#[path = "thinker/client_build.rs"]
-mod client_build;
 
 #[path = "thinker/openai_backend.rs"]
 mod openai_backend;

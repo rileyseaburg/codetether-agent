@@ -25,3 +25,6 @@ pub mod http;
 pub mod bedrock;
 /// Completion through an already resolved provider.
 pub mod provider;
+
+/// Backend-neutral thinker client ownership and dispatch.
+pub mod client;

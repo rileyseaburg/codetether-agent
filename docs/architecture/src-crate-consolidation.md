@@ -16513,3 +16513,27 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-session-hydration/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared thinker client ownership and backend dispatch
+
+- Moved thinker client ownership, backend enum, construction selection,
+  configuration/debug/clone behavior and inference dispatch into
+  `codetether-cognition-core::thinker::client`, with separate host, backend,
+  build, dispatch and native-identity modules.
+- Native ThinkerClient is now a specialization of the shared client. Typed
+  hooks retain Candle loading, Bedrock credentials, provider-registry access
+  and existing transport/logging paths. Removed four native implementation
+  modules for backend ownership, selection and dispatch.
+- Preserved HTTP timeout/error text, registry/native/Bedrock selection,
+  shared-handle cloning, default native provider identity and rejection of
+  native-identity overrides on non-native backends.
+- Adapted the existing rejection test to construct Registry and HTTP clients
+  through their public constructor instead of private backend fields. Its
+  rejection assertions and supplied provider identity are unchanged; not run.
+- Verification: full construction/dispatch/identity body comparisons,
+  debug/config/clone checks, every factory/inference binding, unchanged
+  transport implementations, module/dependency graphs, direct rustfmt,
+  file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-thinker-client/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
