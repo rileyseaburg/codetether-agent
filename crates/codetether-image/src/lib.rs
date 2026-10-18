@@ -7,6 +7,7 @@
 mod attachment;
 mod data_url;
 pub mod fit;
+mod frontend;
 mod reject;
 mod rgba;
 pub use attachment::ImageAttachment;

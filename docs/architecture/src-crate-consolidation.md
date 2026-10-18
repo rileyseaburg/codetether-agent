@@ -27613,3 +27613,18 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 617 crates. Tests and unrelated files are unchanged; no manifest or lock changes
 were needed. Evidence: artifacts/consolidation-paste-bindings/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Frontend image attachment and paste recovery bindings
+
+Moved image attachment feedback and composer image-URL access into
+codetether-image::frontend. Moved frontend image-sidecar recovery and text-paste
+storage access into the corresponding codetether-paste-buffer modules. Root
+modules retain their helper exports and image acceptance/rejection tests.
+
+All nine expanded function bodies match after the explicit composer type alias
+used by recovery. Image-URL acceptance/rejection test sources are byte-for-byte
+unchanged. Declaration, module/dependency, native production-scope, standalone
+formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
+Unrelated files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-image-paste/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

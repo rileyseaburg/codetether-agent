@@ -1,6 +1,7 @@
 //! Frontend composer and view bindings for shared paste handling.
 mod input;
 mod routing;
+mod sidecar;
 /// Declare paste entry points with frontend state and attachment callbacks.
 ///
 /// Image-first ingestion, line normalization and active-view routing remain
