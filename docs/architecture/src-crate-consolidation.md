@@ -24067,3 +24067,20 @@ rustfmt, source file limits and whitespace checks passed. The feature-only
 manifest change requires no lockfile edits; unrelated changes are untouched.
 Evidence: artifacts/consolidation-persona-tests/. No tests, Cargo, rustc,
 Python or compilation ran. Full consolidation remains active.
+
+### Consumer provider-cache behavior moved into the provider crate
+
+Added application-providers::cache::RegistryCache and moved agent-tool lazy
+initialization into it. The native module retains a separate static cache with
+the same application identity and delegates get/test seeding. Successful reads
+still clone the cached Arc, failed loads remain retryable, and seeding retains
+OnceCell's one-time semantics. No dependencies changed.
+
+Static comparison preserves the get_or_try_init algorithm and initializer;
+test seeding still ignores the result of setting that same cache. Existing
+spawn/validation tests remain unchanged. Module/dependency scans cover 691 roots
+and 572 crates without missing modules or cycles. Direct rustfmt, source file
+limits and whitespace checks passed. Unrelated working changes remain untouched.
+Evidence: artifacts/consolidation-provider-cache/. No Cargo, rustc, Python,
+compilation, registry initialization or tests ran. Full consolidation remains
+active.

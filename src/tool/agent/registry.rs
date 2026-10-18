@@ -4,20 +4,18 @@
 
 use crate::provider::ProviderRegistry;
 use anyhow::Result;
+use codetether_application_providers::cache::RegistryCache;
 use std::sync::Arc;
-use tokio::sync::OnceCell;
 
-static PROVIDER_REGISTRY: OnceCell<Arc<ProviderRegistry>> = OnceCell::const_new();
+static PROVIDER_REGISTRY: RegistryCache<crate::provider::registry::application::Native> =
+    RegistryCache::new();
 
 /// Returns a cached provider registry for agent-tool operations.
 pub(super) async fn get_registry() -> Result<Arc<ProviderRegistry>> {
-    PROVIDER_REGISTRY
-        .get_or_try_init(ProviderRegistry::shared_from_vault)
-        .await
-        .cloned()
+    PROVIDER_REGISTRY.get().await
 }
 
 #[cfg(test)]
 pub(super) async fn set_registry_for_test(registry: Arc<ProviderRegistry>) {
-    let _ = PROVIDER_REGISTRY.set(registry);
+    let _ = PROVIDER_REGISTRY.initialize(registry);
 }
