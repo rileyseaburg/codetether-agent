@@ -34,3 +34,8 @@ pub mod terminal;
 pub mod palette;
 #[cfg(feature = "ratatui")]
 pub use palette::ColorPalette;
+
+#[cfg(feature = "ratatui")]
+pub mod agent_color;
+#[cfg(feature = "ratatui")]
+pub mod gradient;

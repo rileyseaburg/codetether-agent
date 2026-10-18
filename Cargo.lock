@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-bus-view",
  "codetether-view-retention",
  "codetether-audit-loop-view",
  "codetether-tui-worker",
@@ -5837,6 +5838,19 @@ name = "codetether-view-retention"
 version = "0.1.0"
 dependencies = [
  "codetether-util",
+]
+
+[[package]]
+name = "codetether-bus-view"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-a2a-core",
+ "codetether-bus-core",
+ "codetether-theme",
+ "codetether-view-retention",
+ "ratatui",
+ "serde_json",
 ]
 
 [[package]]

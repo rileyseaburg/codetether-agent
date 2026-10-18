@@ -11294,3 +11294,22 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-view-retention/`. Compilation and Rust
   tests were not run; no Cargo or rustc commands executed. Full consolidation
   remains active.
+
+### Protocol bus-log view extraction
+
+- Moved bus-log entries, bounded event payload conversion, filtering/navigation,
+  summary/detail/list rendering and associated tests into
+  `crates/codetether-bus-view`.
+- Forty-seven crate modules preserve the existing responsibilities; tool routing,
+  summary spans and test setup were split where needed for the size target.
+  Maximum module size is 44 code lines. Grouped declarations preserve the prior
+  internal namespace without oversized crate roots.
+- Stable agent colors, gradient interpolation and the cached RGB-capability
+  probe now live in the existing theme crate behind its ratatui feature.
+  Native bus-log and color paths remain compatibility exports.
+- Eight existing tests moved. Ninety-three static comparisons verify whole
+  moved files, split helpers, color behavior, module declarations and unchanged
+  consumers. Module reachability, dependency DAG, file-limit and whitespace
+  checks passed.
+- Evidence: `artifacts/consolidation-bus-view/`. Compilation, tests and rendering
+  were not run; no Cargo or rustc commands executed. Full consolidation is active.
