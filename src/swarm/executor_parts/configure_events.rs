@@ -1,6 +1,6 @@
 //! Event and telemetry configuration for [`SwarmExecutor`].
 
-use super::{SwarmExecutor, bus_publish};
+use super::SwarmExecutor;
 use crate::telemetry::SwarmTelemetryCollector;
 use codetether_swarm_core::SwarmEvent;
 use std::sync::Arc;
@@ -20,11 +20,10 @@ impl SwarmExecutor {
     }
 
     pub(super) fn try_send_event(&self, event: SwarmEvent) {
-        if let Some(bus) = &self.inner.bus {
-            bus_publish::publish(bus, &event);
-        }
-        if let Some(tx) = &self.inner.event_tx {
-            let _ = tx.try_send(event);
-        }
+        codetether_swarm_bus::publish_and_forward(
+            self.inner.bus.as_ref(),
+            self.inner.event_tx.as_ref(),
+            event,
+        );
     }
 }

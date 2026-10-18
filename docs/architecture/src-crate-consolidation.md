@@ -21799,3 +21799,20 @@ new dependency or lockfile changes. Evidence:
 `artifacts/consolidation-executor-cache/`. No Cargo, rustc, or Python commands
 ran; compilation and runtime tests remain unverified. Full consolidation
 remains active.
+
+### Shared swarm event fan-out
+
+Moved bus-first event publication followed by optional live-channel delivery
+into `codetether-swarm-bus::publish_and_forward`. The native executor forwards
+references to its existing bus/channel and moves the same event. Removed the
+native bus-publication forwarding file and declaration.
+
+Static body comparison preserves optional destinations, bus-before-channel
+ordering, and ignored full/closed channel errors. Event-channel and telemetry
+builder methods are unchanged. Added the owning crate's Tokio sync dependency
+for its channel type; only that package edge is staged in the lockfile.
+Source/dependency graphs across 692 roots and 564 crates, direct rustfmt,
+native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-swarm-event-forward/`. No Cargo, rustc, or Python
+commands ran; compilation and runtime tests remain unverified. Full
+consolidation remains active.

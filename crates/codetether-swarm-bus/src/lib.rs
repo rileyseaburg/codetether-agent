@@ -33,3 +33,6 @@ pub use payload::{thinking, tool_output};
 
 /// Per-agent thinking and tool-output messages.
 pub mod agent;
+
+mod forward;
+pub use forward::publish_and_forward;

@@ -22,7 +22,6 @@ macro_rules! executor_module {
 executor_module!(accessors => "executor_parts/accessors.rs");
 #[path = "executor_parts/agent_loop/mod.rs"]
 mod agent_loop;
-executor_module!(bus_publish => "bus_publish.rs");
 executor_module!(cache_api => "executor_parts/cache_api.rs");
 executor_module!(configure => "executor_parts/configure.rs");
 executor_module!(configure_events => "executor_parts/configure_events.rs");

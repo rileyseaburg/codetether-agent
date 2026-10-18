@@ -5406,6 +5406,7 @@ dependencies = [
 name = "codetether-swarm-bus"
 version = "0.1.0"
 dependencies = [
+ "tokio",
  "codetether-a2a-core",
  "codetether-bus-core",
  "codetether-swarm-core",
