@@ -5,10 +5,7 @@
 use super::*;
 mod configure;
 mod construct;
-mod lifecycle_cleanup;
-mod lifecycle_finish;
-mod lifecycle_record;
-mod lifecycle_start;
+mod host;
 mod persistence;
 mod progress;
 mod run;

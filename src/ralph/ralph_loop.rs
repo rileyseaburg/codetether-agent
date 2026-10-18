@@ -10,12 +10,12 @@ use crate::session::delegation::DelegationState;
 use crate::session::{Session, SessionEvent};
 use crate::tool::ToolRegistry;
 use crate::worktree::WorktreeManager;
-use codetether_ralph_core::events::{RalphEvent, RalphStoryInfo};
+use codetether_ralph_core::events::RalphEvent;
 use codetether_swarm_core::SwarmEvent;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{debug, info, warn};
+use tracing::info;
 
 mod parallel;
 mod quality;

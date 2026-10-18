@@ -1,0 +1,14 @@
+[package]
+name = "codetether-ralph-run"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Ralph run startup, scheduling selection and terminal lifecycle"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-ralph-core = { path = "../codetether-ralph-core", version = "0.1.0" }
+codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
+tracing = "0.1"

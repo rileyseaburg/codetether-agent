@@ -7,9 +7,4 @@ impl RalphLoop {
             let _ = tx.try_send(event);
         }
     }
-
-    /// Build initial RalphStoryInfo list from the PRD
-    pub(in crate::ralph::ralph_loop) fn build_story_infos(prd: &Prd) -> Vec<RalphStoryInfo> {
-        codetether_ralph_core::events::initial_stories(prd)
-    }
 }

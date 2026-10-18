@@ -18620,3 +18620,26 @@ dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
 Evidence: `artifacts/consolidation-ralph-git/`. No extracted Git helper, Cargo,
 rustc, Python or Rust test was executed. Compilation and runtime behavior remain
 unverified.
+
+### Ralph top-level run lifecycle
+
+Moved run startup, initial persistence, scheduling-mode selection, final status,
+worktree cleanup and completion reporting into `codetether-ralph-run`. Focused
+state and execution interfaces borrow live native fields and delegate checkout
+and the two schedulers. The public native `run` method remains a forwarding
+entry point; construction and configuration retain their existing APIs.
+
+Startup still marks Running, warns about unverifiable stories, records and
+announces the run, then selects its branch. Scheduler/startup errors still
+return before terminal processing. Successful scheduling still finalizes status,
+cleans worktrees, records completion, emits Complete and returns cloned state.
+Removed obsolete private initial-story and verifiability forwarding helpers.
+
+Validation: complete lifecycle body comparisons, native field/action mappings,
+helper equivalence, unchanged schedulers/construction/terminal-status/persistence
+services, lexical module reachability, dependency-cycle checks, file-size
+ratchet, whitespace and direct formatting. An initial mechanical signature
+replacement was corrected; its formatting error log is retained in
+`artifacts/consolidation-ralph-run/` alongside the final evidence. No Cargo,
+rustc, Python, Rust tests or live run/cleanup operations were executed.
+Compilation and runtime behavior remain unverified.

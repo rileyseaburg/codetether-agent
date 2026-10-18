@@ -14,7 +14,6 @@ pub mod state_store;
 pub mod store_http;
 pub mod store_memory;
 mod types;
-mod verifiability;
 mod verification;
 
 pub use delegation::*;

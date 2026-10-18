@@ -1713,6 +1713,7 @@ dependencies = [
  "codetether-ralph-merge",
  "codetether-ralph-git",
  "codetether-ralph-relay",
+ "codetether-ralph-run",
  "codetether-ralph-stage",
  "codetether-ralph-task",
  "codetether-ralph-core",
@@ -7375,6 +7376,17 @@ dependencies = [
  "codetether-tool-core",
  "serde_json",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-ralph-run"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-ralph-core",
+ "codetether-worktree",
  "tracing",
 ]
 
