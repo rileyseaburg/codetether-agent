@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-edit-policy",
  "codetether-refactor-guard",
  "codetether-repeat-guard",
  "codetether-cost-guard",
@@ -2387,6 +2388,13 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-edit-policy"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

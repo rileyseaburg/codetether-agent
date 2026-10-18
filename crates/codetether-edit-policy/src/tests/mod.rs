@@ -1,0 +1,8 @@
+//! Original edit normalization and stub-detection cases.
+mod detect_stub_in_tool_input_allows_concrete_edit_content;
+mod detect_stub_in_tool_input_allows_html_placeholder_attribute;
+mod detect_stub_in_tool_input_flags_multiedit_stub_line;
+mod detect_stub_in_tool_input_flags_placeholder_stub_phrase;
+mod detect_stub_in_tool_input_flags_write_placeholder_content;
+mod normalize_tool_call_for_execution_maps_advanced_edit_to_edit_shape;
+mod normalize_tool_call_for_execution_maps_multiedit_aliases;

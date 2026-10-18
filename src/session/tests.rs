@@ -3,8 +3,6 @@ use super::helper::build::{
     build_request_requires_tool, looks_like_build_execution_request,
     should_force_build_tool_first_retry,
 };
-use super::helper::edit::detect_stub_in_tool_input;
-use super::helper::edit::normalize_tool_call_for_execution;
 use super::helper::markup::normalize_textual_tool_calls;
 use super::helper::provider::{
     assistant_claims_imminent_tool_use, choose_default_provider,
@@ -256,61 +254,6 @@ fn extract_candidate_file_paths_dedupes_and_respects_limit() {
 }
 
 #[test]
-fn detect_stub_in_tool_input_flags_write_placeholder_content() {
-    let args = json!({
-        "path": "src/demo.ts",
-        "content": "export function run(){ return \"Fallback prompt\"; } // Placeholder"
-    });
-    let reason = detect_stub_in_tool_input("write", &args);
-    assert!(reason.is_some());
-}
-
-#[test]
-fn detect_stub_in_tool_input_allows_concrete_edit_content() {
-    let args = json!({
-        "old_string": "return a + b;",
-        "new_string": "return sanitize(a) + sanitize(b);"
-    });
-    let reason = detect_stub_in_tool_input("edit", &args);
-    assert!(reason.is_none());
-}
-
-#[test]
-fn detect_stub_in_tool_input_flags_multiedit_stub_line() {
-    let args = json!({
-        "edits": [
-            {
-                "file_path": "src/a.ts",
-                "old_string": "x",
-                "new_string": "throw new Error(\"Not implemented\")"
-            }
-        ]
-    });
-    let reason = detect_stub_in_tool_input("multiedit", &args);
-    assert!(reason.is_some());
-}
-
-#[test]
-fn detect_stub_in_tool_input_allows_html_placeholder_attribute() {
-    let args = json!({
-        "old_string": "<input type=\"text\" />",
-        "new_string": "<input type=\"text\" placeholder=\"Search users\" />"
-    });
-    let reason = detect_stub_in_tool_input("edit", &args);
-    assert!(reason.is_none());
-}
-
-#[test]
-fn detect_stub_in_tool_input_flags_placeholder_stub_phrase() {
-    let args = json!({
-        "path": "src/demo.ts",
-        "content": "// Placeholder implementation\nexport const run = () => null;"
-    });
-    let reason = detect_stub_in_tool_input("write", &args);
-    assert!(reason.is_some());
-}
-
-#[test]
 fn looks_like_build_execution_request_detects_fix_prompt() {
     assert!(looks_like_build_execution_request(
         "yes fix it and patch src/tool/lsp.rs"
@@ -474,36 +417,4 @@ fn build_request_requires_tool_false_for_plain_yes_without_context() {
     }];
 
     assert!(!build_request_requires_tool(&session_messages, root));
-}
-
-#[test]
-fn normalize_tool_call_for_execution_maps_advanced_edit_to_edit_shape() {
-    let args = json!({
-        "filePath": "src/lib.rs",
-        "oldString": "old",
-        "newString": "new"
-    });
-    let (name, normalized) = normalize_tool_call_for_execution("advanced_edit", &args);
-    assert_eq!(name, "edit");
-    assert_eq!(normalized["path"], "src/lib.rs");
-    assert_eq!(normalized["old_string"], "old");
-    assert_eq!(normalized["new_string"], "new");
-}
-
-#[test]
-fn normalize_tool_call_for_execution_maps_multiedit_aliases() {
-    let args = json!({
-        "changes": [
-            {
-                "filePath": "src/main.rs",
-                "oldString": "old",
-                "newString": "new"
-            }
-        ]
-    });
-    let (name, normalized) = normalize_tool_call_for_execution("multiedit", &args);
-    assert_eq!(name, "multiedit");
-    assert_eq!(normalized["edits"][0]["file"], "src/main.rs");
-    assert_eq!(normalized["edits"][0]["old_string"], "old");
-    assert_eq!(normalized["edits"][0]["new_string"], "new");
 }

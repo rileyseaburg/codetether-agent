@@ -9734,3 +9734,20 @@ crate file has 41 code lines. Five original guard tests moved without execution.
 Evidence is in `artifacts/consolidation-refactor-guard/`. Compilation and runtime
 tests were not run. No Cargo, rustc, Python or plugin execution ran. Full
 workspace consolidation remains active.
+
+### Dedicated edit-input policy crate
+
+Moved edit-name/input normalization, stub-payload detection and confirmation
+request construction into `crates/codetether-edit-policy`. Sixteen modules
+separate marker vocabulary, single/multi-edit normalization, patch additions,
+confirmation routing and original tests. Native edit helpers now re-export the
+shared policy, preserving the confirmation executor's existing API.
+
+Seventeen static comparisons cover alias precedence, canonical-field
+preservation, exact marker/reason text, patch additions, confirmation routing,
+moved tests and unchanged native consumers. Module/dependency graphs, file
+budgets and whitespace checks passed; the largest crate file has 40 code lines.
+Seven existing tests moved without execution. Evidence is in
+`artifacts/consolidation-edit-policy/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python or edit-tool execution ran. Full workspace
+consolidation remains active.
