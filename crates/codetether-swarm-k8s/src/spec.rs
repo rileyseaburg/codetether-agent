@@ -1,7 +1,7 @@
 //! Kubernetes pod specification for a remote subtask.
 
-use super::super::kubernetes_executor::SWARM_SUBTASK_PAYLOAD_ENV;
-use crate::k8s::SubagentPodSpec;
+use codetether_k8s::SubagentPodSpec;
+use codetether_swarm_core::remote_protocol::SWARM_SUBTASK_PAYLOAD_ENV;
 use std::collections::HashMap;
 
 const PASSTHROUGH: &[&str] = &[

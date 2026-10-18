@@ -4,15 +4,15 @@ use super::{
     failure, pod_cleanup,
     state::{ActiveBranch, State},
 };
-use crate::swarm::SubTaskResult;
+use codetether_swarm_core::SubTaskResult;
 use std::time::Duration;
 
 pub(super) async fn check(
-    state: &mut State<'_>,
+    state: &mut State<'_, impl crate::Host>,
     id: &str,
     active: &ActiveBranch,
 ) -> Option<SubTaskResult> {
-    let limit = state.executor.config.subagent_timeout_secs;
+    let limit = state.executor.config().subagent_timeout_secs;
     if active.started_at.elapsed() <= Duration::from_secs(limit) {
         return None;
     }

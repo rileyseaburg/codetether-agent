@@ -1,12 +1,15 @@
 //! Collapse observation for one Kubernetes sub-agent.
 
-use super::{
-    super::{kubernetes_executor, resource_health},
-    state::{ActiveBranch, State},
-};
-use crate::swarm::BranchObservation;
+use super::state::{ActiveBranch, State};
+use crate::resource_health;
+use codetether_swarm_core::collapse::BranchObservation;
+use codetether_swarm_core::remote_protocol as kubernetes_executor;
 
-pub(super) async fn build(state: &State<'_>, id: &str, active: &ActiveBranch) -> BranchObservation {
+pub(super) async fn build(
+    state: &State<'_, impl crate::Host>,
+    id: &str,
+    active: &ActiveBranch,
+) -> BranchObservation {
     let pod = match state.k8s.get_subagent_pod_state(id).await {
         Ok(pod) => pod,
         Err(error) => {

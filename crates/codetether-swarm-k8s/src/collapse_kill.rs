@@ -1,10 +1,14 @@
 //! Termination of a Kubernetes branch selected by collapse policy.
 
 use super::{collapse_audit, pod_cleanup, state::State};
-use crate::swarm::{KillDecision, SubTaskResult, SubTaskStatus};
 use codetether_swarm_core::SwarmEvent;
+use codetether_swarm_core::collapse::KillDecision;
+use codetether_swarm_core::{SubTaskResult, SubTaskStatus};
 
-pub(super) async fn apply(state: &mut State<'_>, kill: KillDecision) -> Option<SubTaskResult> {
+pub(super) async fn apply(
+    state: &mut State<'_, impl crate::Host>,
+    kill: KillDecision,
+) -> Option<SubTaskResult> {
     if state.kill_reasons.contains_key(&kill.subtask_id)
         || !state.active.contains_key(&kill.subtask_id)
     {

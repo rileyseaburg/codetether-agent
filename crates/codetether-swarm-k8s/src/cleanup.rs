@@ -2,7 +2,7 @@
 
 use super::{pod_cleanup, state::State};
 
-pub(super) async fn finish(state: &mut State<'_>) {
+pub(super) async fn finish(state: &mut State<'_, impl crate::Host>) {
     if let Some(promoted) = &state.promoted {
         state
             .results

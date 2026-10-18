@@ -1,9 +1,9 @@
 //! Audit records for Kubernetes branch collapse.
 
-use crate::audit::{AuditCategory, AuditOutcome};
+use codetether_audit::{AuditCategory, AuditOutcome};
 
 async fn write(action: &str, swarm: &str, metadata: serde_json::Value) {
-    let Some(audit) = crate::audit::try_audit_log() else {
+    let Some(audit) = codetether_audit::try_audit_log() else {
         return;
     };
     audit

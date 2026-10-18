@@ -44,7 +44,6 @@ mod local_stage;
 executor_module!(pub loop_step => "loop_step.rs");
 executor_module!(merge_outcome => "merge_outcome.rs");
 executor_module!(path_guard => "path_guard/mod.rs");
-executor_module!(resource_health => "executor_parts/resource_health.rs");
 #[path = "executor_parts/run/mod.rs"]
 mod run;
 executor_module!(stage_dispatch => "executor_parts/stage_dispatch.rs");

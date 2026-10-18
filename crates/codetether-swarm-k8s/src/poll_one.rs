@@ -5,10 +5,10 @@ use super::{
     state::{ActiveBranch, State},
     timeout,
 };
-use crate::swarm::SubTaskResult;
+use codetether_swarm_core::SubTaskResult;
 
 pub(super) async fn execute(
-    state: &mut State<'_>,
+    state: &mut State<'_, impl crate::Host>,
     id: &str,
     active: &ActiveBranch,
 ) -> Option<SubTaskResult> {

@@ -1,9 +1,9 @@
 //! Persistence and events for newly finished Kubernetes results.
 
 use super::{cache, events, state::State};
-use crate::swarm::SubTaskResult;
+use codetether_swarm_core::SubTaskResult;
 
-pub(super) async fn results(state: &mut State<'_>, finished: Vec<SubTaskResult>) {
+pub(super) async fn results(state: &mut State<'_, impl crate::Host>, finished: Vec<SubTaskResult>) {
     for result in finished {
         if result.success {
             state

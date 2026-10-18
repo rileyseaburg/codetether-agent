@@ -1,8 +1,17 @@
 //! Kubernetes pod health scoring for collapse decisions.
 
-use crate::k8s::SubagentPodState;
+use codetether_k8s::SubagentPodState;
 
-pub(super) fn compute(state: Option<&SubagentPodState>) -> (f32, u32) {
+/// Score pod resource health and count infrastructure failure signals.
+/// # Arguments
+/// `state` is the latest pod observation, or none when unavailable.
+/// # Returns
+/// Health in the range zero to one and the number of unhealthy signals.
+/// # Examples
+/// ```
+/// assert_eq!(codetether_swarm_k8s::resource_health::compute(None), (0.2, 1));
+/// ```
+pub fn compute(state: Option<&SubagentPodState>) -> (f32, u32) {
     let Some(state) = state else { return (0.2, 1) };
     let reason = state
         .reason

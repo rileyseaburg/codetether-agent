@@ -2,8 +2,8 @@
 
 use super::{collapse_audit, collapse_kill, observation, state::State};
 
-pub(super) async fn sample(state: &mut State<'_>) {
-    if !state.executor.config.collapse_enabled || state.active.len() <= 1 {
+pub(super) async fn sample(state: &mut State<'_, impl crate::Host>) {
+    if !state.executor.config().collapse_enabled || state.active.len() <= 1 {
         return;
     }
     let active = state

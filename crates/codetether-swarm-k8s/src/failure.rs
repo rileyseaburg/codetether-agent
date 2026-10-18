@@ -1,6 +1,6 @@
 //! Synthetic Kubernetes subtask failures.
 
-use crate::swarm::SubTaskResult;
+use codetether_swarm_core::SubTaskResult;
 
 pub(super) fn result(id: &str, error: String, elapsed_ms: u64) -> SubTaskResult {
     SubTaskResult {

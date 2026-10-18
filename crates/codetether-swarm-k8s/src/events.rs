@@ -1,10 +1,10 @@
 //! Lifecycle events for Kubernetes-backed subtasks.
 
 use super::state::State;
-use crate::swarm::{SubTask, SubTaskResult, SubTaskStatus};
 use codetether_swarm_core::SwarmEvent;
+use codetether_swarm_core::{SubTask, SubTaskResult, SubTaskStatus};
 
-pub(super) fn started(state: &State<'_>, task: &SubTask, branch: &str) {
+pub(super) fn started(state: &State<'_, impl crate::Host>, task: &SubTask, branch: &str) {
     state.executor.try_send_event(SwarmEvent::SubTaskUpdate {
         id: task.id.clone(),
         name: task.name.clone(),
@@ -21,7 +21,12 @@ pub(super) fn started(state: &State<'_>, task: &SubTask, branch: &str) {
     });
 }
 
-pub(super) fn failed(state: &State<'_>, task: &SubTask, agent: &str, error: &str) {
+pub(super) fn failed(
+    state: &State<'_, impl crate::Host>,
+    task: &SubTask,
+    agent: &str,
+    error: &str,
+) {
     state.executor.try_send_event(SwarmEvent::SubTaskUpdate {
         id: task.id.clone(),
         name: task.name.clone(),
@@ -34,6 +39,6 @@ pub(super) fn failed(state: &State<'_>, task: &SubTask, agent: &str, error: &str
     });
 }
 
-pub(super) fn finished(state: &State<'_>, result: &SubTaskResult) {
+pub(super) fn finished(state: &State<'_, impl crate::Host>, result: &SubTaskResult) {
     super::finish_events::emit(state, result);
 }

@@ -1,16 +1,32 @@
 //! Lifecycle driver for a Kubernetes-backed stage.
 
-use super::super::SwarmExecutor;
-use crate::k8s::K8sManager;
-use crate::swarm::{Orchestrator, SubTask, SubTaskResult};
+use crate::Host;
 use anyhow::{Result, bail};
+use codetether_k8s::K8sManager;
+use codetether_swarm_core::{SubTask, SubTaskResult};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::time::{Duration, MissedTickBehavior};
 
-pub(in crate::swarm::executor) async fn execute(
-    executor: &SwarmExecutor,
-    orchestrator: &Orchestrator,
+/// Execute one Kubernetes-backed dependency stage.
+/// # Arguments
+/// Receives executor services, selected provider/model, tasks, prior results and swarm ID.
+/// # Returns
+/// Stage results, ordered with any promoted branch first.
+/// # Errors
+/// Returns an error when a Kubernetes client is unavailable.
+/// # Examples
+/// ```no_run
+/// async fn stage<H: codetether_swarm_k8s::Host>(host: &H) -> anyhow::Result<()> {
+///     let prior = std::sync::Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
+///     codetether_swarm_k8s::execute(host, "provider", "model", Vec::new(), prior, "swarm").await?;
+///     Ok(())
+/// }
+/// ```
+pub async fn execute<H: Host>(
+    executor: &H,
+    provider: &str,
+    model: &str,
     tasks: Vec<SubTask>,
     completed: Arc<RwLock<HashMap<String, String>>>,
     swarm: &str,
@@ -23,8 +39,8 @@ pub(in crate::swarm::executor) async fn execute(
         executor,
         swarm,
         k8s,
-        orchestrator.provider().into(),
-        orchestrator.model().into(),
+        provider.into(),
+        model.into(),
         tasks,
         completed,
     );

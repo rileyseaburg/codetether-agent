@@ -1,10 +1,10 @@
 //! Result events emitted for a finished Kubernetes pod.
 
 use super::state::State;
-use crate::swarm::{SubTaskResult, SubTaskStatus};
 use codetether_swarm_core::SwarmEvent;
+use codetether_swarm_core::{SubTaskResult, SubTaskStatus};
 
-pub(super) fn emit(state: &State<'_>, result: &SubTaskResult) {
+pub(super) fn emit(state: &State<'_, impl crate::Host>, result: &SubTaskResult) {
     let name = state
         .names
         .get(&result.subtask_id)

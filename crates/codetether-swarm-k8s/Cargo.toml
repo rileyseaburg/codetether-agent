@@ -1,0 +1,17 @@
+[package]
+name = "codetether-swarm-k8s"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Kubernetes swarm stage scheduling, polling, collapse and cleanup"
+
+[dependencies]
+anyhow = "1"
+codetether-audit = { path = "../codetether-audit", version = "0.1.0" }
+codetether-k8s = { path = "../codetether-k8s", version = "0.1.0" }
+codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "sync", "time"] }
+tracing = "0.1"

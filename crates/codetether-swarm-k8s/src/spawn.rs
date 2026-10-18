@@ -1,13 +1,13 @@
 //! Launch of pending subtasks into available Kubernetes pod slots.
 
-use super::super::kubernetes_executor::encode_payload;
 use super::{
     cache, events, failure, payload, spec,
     state::{ActiveBranch, State},
 };
+use codetether_swarm_core::remote_protocol::encode_payload;
 use std::time::Instant;
 
-pub(super) async fn available(state: &mut State<'_>) {
+pub(super) async fn available(state: &mut State<'_, impl crate::Host>) {
     while super::control::may_spawn(state) {
         let Some(task) = state.pending.pop_front() else {
             break;
@@ -29,7 +29,7 @@ pub(super) async fn available(state: &mut State<'_>) {
             encoded,
             state.swarm_id,
             task.stage,
-            state.executor.config.k8s_subagent_image.clone(),
+            state.executor.config().k8s_subagent_image.clone(),
         );
         if let Err(error) = state.k8s.spawn_subagent_pod_with_spec(&task.id, pod).await {
             let message = format!("Failed to spawn Kubernetes pod: {error}");
@@ -37,7 +37,7 @@ pub(super) async fn available(state: &mut State<'_>) {
             state.results.push(failure::result(&task.id, message, 0));
             continue;
         }
-        let branch = crate::k8s::K8sManager::subagent_pod_name(&task.id);
+        let branch = codetether_k8s::K8sManager::subagent_pod_name(&task.id);
         state.names.insert(task.id.clone(), task.name.clone());
         state.active.insert(
             task.id.clone(),

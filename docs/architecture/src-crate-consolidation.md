@@ -18225,3 +18225,27 @@ provider callback checks, unchanged stage execution callers and shared planning
 state, dependency/module graph checks, source-size ratchet and whitespace.
 Evidence: `artifacts/consolidation-swarm-orchestrator/`. No provider/model calls,
 Cargo, rustc, Python or Rust tests were executed; compilation remains unverified.
+
+### Complete Kubernetes swarm-stage backend
+
+Moved the full Kubernetes stage backend from `src/swarm/executor_parts/k8s_stage`
+into `codetether-swarm-k8s`: state creation, pod-budget scheduling, payload/spec
+construction, cache hits/writes, polling, timeouts, result recording, lifecycle
+events, collapse observations/auditing/termination and residual cleanup. Pod
+health scoring moved with the backend; its unused native module was removed.
+The native stage now contains only the entrypoint and executor/cache bindings.
+
+The shared backend uses the existing Kubernetes, audit, cancellation, remote
+protocol and collapse-core implementations directly. A small host contract
+provides immutable executor settings, the same control handle and cache mutex,
+and the existing event delivery method. The original native cache remains
+under the same mutex for the entire asynchronous get/put operation.
+
+Validation: complete token comparisons of all 23 backend child modules and
+health scoring (allowing explicit host/type namespace substitutions), native
+entry/cache/event mappings, unchanged cache and stage-dispatch code, module and
+dependency graphs, file limits and whitespace. Preserved five-second polling,
+missed-tick handling, cancellation/input rules, pod budget, timeout checks,
+event order, result ordering and cleanup behavior. Evidence:
+`artifacts/consolidation-swarm-k8s/`. No Kubernetes, provider, Cargo, rustc,
+Python or Rust-test execution occurred; compilation remains unverified.

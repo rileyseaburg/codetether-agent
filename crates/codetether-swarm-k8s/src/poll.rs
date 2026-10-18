@@ -1,9 +1,9 @@
 //! Polling pass across all active Kubernetes sub-agents.
 
 use super::{poll_one, state::State};
-use crate::swarm::SubTaskResult;
+use codetether_swarm_core::SubTaskResult;
 
-pub(super) async fn finished(state: &mut State<'_>) -> Vec<SubTaskResult> {
+pub(super) async fn finished(state: &mut State<'_, impl crate::Host>) -> Vec<SubTaskResult> {
     let active = state
         .active
         .iter()

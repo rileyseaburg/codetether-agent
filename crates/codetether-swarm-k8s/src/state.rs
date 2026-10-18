@@ -1,8 +1,9 @@
 //! Mutable resources for one Kubernetes-backed stage.
 
-use super::super::SwarmExecutor;
-use crate::k8s::K8sManager;
-use crate::swarm::{CollapseController, SubTask, SubTaskResult};
+use crate::Host;
+use codetether_k8s::K8sManager;
+use codetether_swarm_core::collapse::CollapseController;
+use codetether_swarm_core::{SubTask, SubTaskResult};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
@@ -14,8 +15,8 @@ pub(super) struct ActiveBranch {
     pub started_at: Instant,
 }
 
-pub(super) struct State<'a> {
-    pub executor: &'a SwarmExecutor,
+pub(super) struct State<'a, H: Host> {
+    pub executor: &'a H,
     pub swarm_id: &'a str,
     pub k8s: K8sManager,
     pub provider: String,

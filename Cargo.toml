@@ -118,6 +118,7 @@ members = [
     "crates/codetether-ralph-core",
     "crates/codetether-swarm-core",
     "crates/codetether-swarm-orchestrator",
+    "crates/codetether-swarm-k8s",
     "crates/codetether-swarm-tool",
     "crates/codetether-swarm-monitor",
     "crates/codetether-swarm-share",
@@ -640,6 +641,7 @@ codetether-swarm-monitor = { path = "crates/codetether-swarm-monitor", version =
 codetether-swarm-tool = { path = "crates/codetether-swarm-tool", version = "0.1.0" }
 codetether-swarm-core = { path = "crates/codetether-swarm-core", version = "0.1.0" }
 codetether-swarm-orchestrator = { path = "crates/codetether-swarm-orchestrator", version = "0.1.0" }
+codetether-swarm-k8s = { path = "crates/codetether-swarm-k8s", version = "0.1.0" }
 codetether-swarm-share = { path = "crates/codetether-swarm-share", version = "0.1.0" }
 codetether-ralph-core = { path = "crates/codetether-ralph-core", version = "0.1.0" }
 codetether-benchmark = { path = "crates/codetether-benchmark", version = "0.1.0" }

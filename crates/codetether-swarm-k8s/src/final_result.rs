@@ -4,11 +4,11 @@ use super::{
     pod_cleanup,
     state::{ActiveBranch, State},
 };
-use crate::k8s::SubagentPodState;
-use crate::swarm::{SubTaskResult, k8s_result};
+use codetether_k8s::SubagentPodState;
+use codetether_swarm_core::{SubTaskResult, remote_protocol as k8s_result};
 
 pub(super) async fn build(
-    state: &mut State<'_>,
+    state: &mut State<'_, impl crate::Host>,
     id: &str,
     active: &ActiveBranch,
     pod: &SubagentPodState,
