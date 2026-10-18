@@ -1,6 +1,6 @@
 //! Native provider capability catalog; Bonsai uses its conservative runtime limit.
 use super::*;
-impl LocalCudaProvider {
+impl<R: Runtime> LocalCudaProvider<R> {
     pub(super) async fn model_catalog(&self) -> Result<Vec<ModelInfo>> {
         // Note: streaming and tool support are planned features, currently unimplemented
         Ok(vec![ModelInfo {
@@ -15,7 +15,7 @@ impl LocalCudaProvider {
             {
                 4096
             } else {
-                crate::provider::local_catalog::context_window(&self.model_name)
+                codetether_provider_core::local::catalog::context_window(&self.model_name)
             },
             max_output_tokens: Some(4096),
             supports_vision: false,

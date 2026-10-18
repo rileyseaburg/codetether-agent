@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-provider-local-cuda",
  "codetether-forage-interactive",
  "codetether-new-session",
  "codetether-side-question",
@@ -7324,6 +7325,20 @@ dependencies = [
  "codetether-cli-options",
  "codetether-forage-core",
  "tokio",
+]
+
+[[package]]
+name = "codetether-provider-local-cuda"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-cognition-core",
+ "codetether-provider-core",
+ "futures",
+ "tokio",
+ "tracing",
+ "candle-core",
 ]
 
 [[package]]

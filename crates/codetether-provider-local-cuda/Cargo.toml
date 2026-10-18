@@ -1,0 +1,24 @@
+[package]
+name = "codetether-provider-local-cuda"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Local CUDA provider configuration, model lifecycle and completions"
+
+[features]
+default = []
+candle-cuda = ["dep:candle-core", "candle-core/cuda"]
+
+[dependencies]
+anyhow = "1.0.104"
+async-trait = "0.1.92"
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+futures = "0.3.34"
+tokio = { version = "1.53.1", features = ["sync"] }
+tracing = "0.1"
+candle-core = { version = "0.11.0", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt"] }

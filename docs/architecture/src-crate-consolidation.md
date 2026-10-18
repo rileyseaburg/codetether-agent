@@ -14903,3 +14903,25 @@ Full workspace consolidation remains active.
 - Added existing chat-model, chat-transcript, view-retention and Tokio dependencies;
   staged lockfile changes contain only those edges. No Cargo, rustc or Rust tests
   ran. Full workspace consolidation remains unfinished.
+
+### Local CUDA provider crate ownership
+
+- Moved the local CUDA provider and non-CUDA fallback into the dedicated
+  codetether-provider-local-cuda crate. CUDA construction, configuration,
+  path resolution, lazy runtime creation, prompt helpers, provider completion
+  and catalog policy now live in separate cohesive modules.
+- Native CUDA code supplies a small Runtime adapter around the existing
+  ThinkerClient; the application provider is a type alias. The non-CUDA path
+  re-exports the shared fallback. Existing root CUDA feature behavior now also
+  enables the provider crate's matching feature.
+- Moved six existing provider tests with unchanged function bodies. Their local
+  runtime fixture reports unexpected runtime construction/inference: these
+  configuration and prompt tests do not require a native ThinkerClient.
+- Verification: eight static check groups covered all sixteen inherent methods,
+  provider methods, catalog, state fields, test bodies, fallback API, runtime
+  adapter and feature forwarding. Module reachability, dependency DAG, direct
+  rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-local-cuda/.
+- Staged Cargo.lock changes contain only the new crate and root dependency;
+  unrelated worktree lock changes remain unstaged. No CUDA initialization,
+  inference, Cargo, rustc or Rust tests ran. Full consolidation is unfinished.
