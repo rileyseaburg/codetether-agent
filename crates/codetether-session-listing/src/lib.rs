@@ -21,3 +21,5 @@ pub use directory::{list_sessions, list_sessions_for_directory, list_sessions_pa
 pub use merge::merge_summary;
 pub use scan::scan;
 pub use source::Source;
+/// Indexed database sources retaining the application's header validation.
+pub mod indexed;

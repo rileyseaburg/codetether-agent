@@ -1,20 +1,16 @@
-//! Native summary projection for shared metadata-only listing.
-use crate::session::SessionSummary;
-use anyhow::Result;
-use std::path::{Path, PathBuf};
-pub(crate) async fn list(root: &Path, workspace: Option<PathBuf>) -> Result<Vec<SessionSummary>> {
-    codetether_session_store::metadata::listing::list(root, workspace, decode).await
-}
-fn decode(header: &str, count: usize) -> Result<SessionSummary> {
-    let session = super::header::decode(header)?;
-    let directory = session.metadata.directory;
-    Ok(SessionSummary {
-        id: session.id,
-        title: session.title,
-        created_at: session.created_at,
-        updated_at: session.updated_at,
-        message_count: count,
-        agent: session.agent,
-        directory,
-    })
+//! Project the validated native session header into a listing summary.
+use crate::session::{Session, SessionSummary};
+impl codetether_session_listing::indexed::Header for Session {
+    fn into_summary(self, count: usize) -> SessionSummary {
+        let directory = self.metadata.directory;
+        SessionSummary {
+            id: self.id,
+            title: self.title,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            message_count: count,
+            agent: self.agent,
+            directory,
+        }
+    }
 }

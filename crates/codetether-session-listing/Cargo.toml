@@ -11,6 +11,10 @@ anyhow = "1"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
+codetether-session-codec = { path = "../codetether-session-codec", version = "0.1.0" }
+codetether-session-location = { path = "../codetether-session-location", version = "0.1.0" }
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
+codetether-workspace-index = { path = "../codetether-workspace-index", version = "0.1.0" }
 codetether-session-title = { path = "../codetether-session-title", version = "0.1.0" }
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }

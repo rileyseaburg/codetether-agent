@@ -22454,3 +22454,28 @@ No manifest or lockfile changes were needed. Evidence:
 `artifacts/consolidation-session-remnants/`.
 No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
 Full consolidation is active.
+
+### Indexed session listing source owned by the listing crate
+
+Moved the indexed Source implementation, session-location binding and database
+query/decoder orchestration into `codetether-session-listing::indexed`.
+Three focused modules own the source type, validated-header projection contract
+and source implementation. The native listing host file was removed. Native
+listing entry points now select IndexedSource<Session>; native store/listing
+code contains only the Session-to-SessionSummary field projection.
+
+The shared decoder still calls the same session-codec decoder with the full
+native Session type. It therefore retains the original serde validation and
+defaults rather than switching to a reduced header schema. Static comparisons
+preserve the summary field mapping, durable message count, session directory
+resolver, workspace-index filename and metadata query. Six native listing test
+files remain byte-identical.
+
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the listing crate's session-codec, session-location, session-store and
+workspace-index dependency edges are staged in the lockfile; the unrelated
+working lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-indexed-listing/`.
+No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
+Full consolidation is active.
