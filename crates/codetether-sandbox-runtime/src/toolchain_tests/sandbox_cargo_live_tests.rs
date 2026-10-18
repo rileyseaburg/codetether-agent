@@ -1,12 +1,12 @@
 //! Explicit opt-in proof that Cargo writes outside a read-only workspace.
 
-use crate::tool::sandbox::{SandboxPolicy, execute_sandboxed};
+use crate::{SandboxPolicy, execute_sandboxed};
 
 #[tokio::test]
 #[ignore = "requires a host Rustup installation and available OS sandbox"]
 async fn cargo_check_uses_isolated_target_for_read_only_workspace() {
-    let _lock = crate::approval::test_env::lock_env();
-    assert!(crate::tool::sandbox::unavailable_reason().is_none());
+    let _lock = super::lock_env();
+    assert!(crate::unavailable_reason().is_none());
     let workspace = tempfile::Builder::new()
         .prefix(".codetether-cargo-sandbox-")
         .tempdir_in(std::env::current_dir().unwrap())

@@ -22899,3 +22899,21 @@ working lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-sandbox-runner-tests/`.
 No runner plans, tests, sandbox subprocesses, Cargo, rustc or Python ran;
 compilation and runtime results remain unverified. Full consolidation is active.
+
+### Sandbox toolchain regressions owned by the runtime crate
+
+Moved the configured-toolchain probe and two ignored compiler-environment
+regressions into codetether-sandbox-runtime. The three native test files and
+the now-unused toolchain shim were removed. A local mutex serializes environment
+mutation inside the runtime test binary. The suite is guarded by cfg(unix),
+matching its Unix permissions and shell requirements.
+
+Static comparisons preserve command strings, assertions, availability checks
+and both ignored-test attributes. Only imports and the test-local environment
+lock changed. Runtime and environment implementations are unchanged. All moved
+files satisfy the code-line limit. Module/dependency checks cover 699 roots and
+571 crates without missing modules or cycles. Direct rustfmt, native file-size
+limits and whitespace checks passed. No manifests or lockfiles changed.
+Evidence: `artifacts/consolidation-sandbox-toolchain-tests/`.
+No tests, subprocesses, Cargo, rustc or Python ran; compilation and runtime
+results remain unverified. Full consolidation is active.

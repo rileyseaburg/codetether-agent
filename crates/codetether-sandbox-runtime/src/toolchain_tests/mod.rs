@@ -8,15 +8,15 @@ mod cargo;
 #[path = "sandbox_rust_live_tests.rs"]
 mod rust;
 
-use super::super::{SandboxPolicy, execute_sandboxed};
-use super::ENV;
+use crate::{SandboxPolicy, execute_sandboxed};
+use codetether_sandbox_environment::ENV;
 
 #[tokio::test]
 async fn sandboxed_command_resolves_configured_toolchain_binary() {
-    if super::super::unavailable_reason().is_some() {
+    if crate::unavailable_reason().is_some() {
         return;
     }
-    let _lock = crate::approval::test_env::lock_env();
+    let _lock = lock_env();
     let toolchain = tempfile::tempdir().expect("toolchain");
     let bin = toolchain.path().join("bin");
     std::fs::create_dir_all(&bin).expect("bin dir");
@@ -44,4 +44,10 @@ async fn sandboxed_command_resolves_configured_toolchain_binary() {
     unsafe { std::env::remove_var(ENV) };
     let result = result.expect("sandboxed run");
     assert!(result.output.contains("toolchain-ok"), "{result:?}");
+}
+static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+    ENV_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }

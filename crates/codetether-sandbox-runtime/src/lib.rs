@@ -24,3 +24,5 @@ pub use sandbox_execute::execute_sandboxed;
 pub use sandbox_spawn::{Spawned, spawn};
 #[cfg(test)]
 mod policy_tests;
+#[cfg(all(test, unix))]
+mod toolchain_tests;

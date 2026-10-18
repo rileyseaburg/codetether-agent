@@ -12,5 +12,3 @@ use codetether_sandbox_runner as sandbox_runner_direct;
 use codetether_sandbox_runner as sandbox_runner_select;
 use codetether_sandbox_seatbelt as sandbox_seatbelt;
 use codetether_sandbox_seccomp as sandbox_seccomp;
-#[path = "sandbox_toolchain.rs"]
-mod sandbox_toolchain;
