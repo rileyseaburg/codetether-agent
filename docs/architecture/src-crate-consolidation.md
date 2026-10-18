@@ -8432,3 +8432,39 @@ passed; crate files contain at most 39 code lines. Evidence is in
 `artifacts/consolidation-agent-view/`. Compilation and runtime tests were not
 run. No Cargo, rustc or Python commands ran. The full consolidation goal remains
 active.
+
+### Durable agent recovery in the storage crate
+
+Commit `4037b84f` moved owner-scoped hydration, live-entry manifest conversion,
+closed-child preparation/activation, restored registration and transactional
+owner migration into `crates/codetether-agent-storage`. Native host adapters
+retain session loading, registry mutation and mailbox calls. Existing recovery
+integration tests remain in the application, unchanged. Twenty-nine static
+checks compare the moved control flow and retained tests. Module/dependency,
+file-budget and whitespace checks passed; compilation and runtime tests were
+not run. Evidence is in `artifacts/consolidation-agent-recovery/`.
+
+### Dedicated child communication crate
+
+Moved immediate steering, startup-to-idle waiting, and durable idle-child
+message delivery into `crates/codetether-agent-communication`. Six Rust modules
+separate routing outcomes, native host contracts, active delivery, idle delivery
+and the existing notification loop. `Route` now belongs to communication and is
+re-exported by collaboration tools. Communication depends on shared state,
+provider message types and tool results; it does not depend on collaboration
+tools or the application. Native adapters retain owner-scoped lookup, live
+session snapshots, steering inputs, human-message bookkeeping and disk writes.
+
+Sixteen static checks cover the moved bodies, routing variants, native bindings
+and unchanged active/idle integration tests. The same user-role message is
+persisted before updating the live snapshot; notification registration and
+selection order remain unchanged. Module/dependency, file-budget and whitespace
+checks passed. Crate modules contain at most 31 code lines. Evidence is in
+`artifacts/consolidation-agent-communication/`. Compilation and runtime tests
+were not run. No Cargo, rustc or Python commands ran.
+
+A fresh physical inventory is recorded in that artifact directory. It includes
+tests and facades, so its line counts are not a measure of remaining business
+logic. Large source areas remain, notably TUI (1,214 Rust files), session (915),
+tool (671), CLI (202) and server (213). These require continued ownership review
+and migration; the whole-workspace consolidation goal remains active.

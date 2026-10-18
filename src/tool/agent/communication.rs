@@ -2,12 +2,12 @@
 
 #[path = "communication/active.rs"]
 mod active;
+#[path = "communication/host.rs"]
+mod host;
 #[path = "communication/idle.rs"]
 mod idle;
 #[path = "communication/route.rs"]
 mod route;
-#[path = "communication/wait.rs"]
-mod wait;
 
 pub(crate) use active::steer;
 pub(crate) use idle::queue_only;

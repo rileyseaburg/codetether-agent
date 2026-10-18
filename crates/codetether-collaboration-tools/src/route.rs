@@ -1,18 +1,2 @@
-//! Result of attempting immediate same-turn delivery.
-
-/// Routing decision for one inter-agent message.
-#[derive(Debug, PartialEq, Eq)]
-///
-/// # Examples
-/// ```
-/// let result=codetether_collaboration_tools::Route::Idle;
-/// assert_eq!(result,codetether_collaboration_tools::Route::Idle);
-/// ```
-pub enum Route {
-    /// The active child accepted the message into its steering inbox.
-    Steered,
-    /// The child exists but is not currently accepting same-turn input.
-    Idle,
-    /// No child matching the caller's scope exists.
-    NotFound,
-}
+//! Shared same-turn message delivery outcome.
+pub use codetether_agent_communication::Route;

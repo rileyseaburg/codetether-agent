@@ -1,0 +1,15 @@
+[package]
+name = "codetether-agent-communication"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Same-turn steering and durable idle-child message delivery"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-collaboration-state = { path = "../codetether-collaboration-state", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+tokio = { version = "1", features = ["sync", "macros"] }

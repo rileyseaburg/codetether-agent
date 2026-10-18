@@ -7,6 +7,7 @@ license = "MIT"
 description = "Collaboration lifecycle tools with trusted agent-runtime context"
 
 [dependencies]
+codetether-agent-communication = { path = "../codetether-agent-communication", version = "0.1.0" }
 codetether-collaboration-state = { path = "../codetether-collaboration-state", version = "0.1.0" }
 codetether-collaboration-input = { path = "../codetether-collaboration-input", version = "0.1.0" }
 anyhow = "1"

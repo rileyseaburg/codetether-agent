@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-agent-communication",
  "anyhow",
  "arboard",
  "async-global-executor",
@@ -1524,6 +1525,18 @@ dependencies = [
  "walkdir",
  "which 8.0.6",
  "windows",
+]
+
+[[package]]
+name = "codetether-agent-communication"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-collaboration-state",
+ "codetether-provider-core",
+ "codetether-tool-core",
+ "tokio",
 ]
 
 [[package]]
@@ -2729,6 +2742,7 @@ dependencies = [
 name = "codetether-collaboration-tools"
 version = "0.1.0"
 dependencies = [
+ "codetether-agent-communication",
  "anyhow",
  "async-trait",
  "codetether-collaboration-input",
