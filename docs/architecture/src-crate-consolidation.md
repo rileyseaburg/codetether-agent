@@ -23403,3 +23403,25 @@ manifest or lockfile changes were needed; unrelated working changes remain
 unchanged. Evidence: artifacts/consolidation-provider-facades/.
 No provider calls, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### RLM bus trait implementation owned by RLM routing
+
+Moved the durable-session-bus implementation of the RLM routing Bus trait into
+codetether-rlm-routing. The implementation is now owned by the trait's crate and
+supports Clone + Send + Sync + 'static snapshot types. The previous native impl
+was attached to an alias of a foreign DurableSessionBus type; a native snapshot
+type argument does not make that outer type local for Rust coherence.
+
+Both event methods retain the exact RlmProgress/RlmComplete wrappers and emit
+calls. Native context still selects the same SessionBus snapshot. Seven other
+RLM re-export files became direct aliases, preserving fifteen exported symbol
+paths. Eight native files were removed overall.
+
+Static comparisons preserve event method bodies, facade targets and existing
+bus delivery code. Module/dependency scans cover 697 roots and 571 crates with
+no missing modules or cycles. Direct rustfmt, file-size limits and whitespace
+checks passed. Only the session-bus dependency was staged for RLM routing;
+unrelated working changes remain unchanged. Evidence:
+artifacts/consolidation-rlm-facades/.
+No bus events, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

@@ -7,6 +7,7 @@ license = "MIT"
 description = "Application RLM routing context and provider/event conversion"
 
 [dependencies]
+codetether-session-bus = { path = "../codetether-session-bus", version = "0.1.0" }
 anyhow = "1"
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }

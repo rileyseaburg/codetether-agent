@@ -10,10 +10,10 @@
 pub use codetether_rlm::*;
 
 // Compatibility exports and application context adapters.
-pub mod executor_bridge;
-pub mod repl;
+pub use codetether_rlm::router_executor as executor_bridge;
+pub use codetether_rlm_legacy as repl;
 pub mod router;
-pub mod tools;
+pub use codetether_rlm::tools;
 
 // Re-export RLM entry points at the rlm:: level for existing call sites.
 pub use executor_bridge::RlmExecutor;

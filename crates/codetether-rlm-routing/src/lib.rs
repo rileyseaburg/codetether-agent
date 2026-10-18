@@ -11,3 +11,5 @@ pub use bus::Bus;
 pub use context::{AutoProcessContext, ProcessProgress, RoutingContext, RoutingResult};
 pub use convert::convert_ctx;
 pub use router::RlmRouter;
+/// RLM event delivery through the durable session bus.
+pub mod session_bus;

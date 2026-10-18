@@ -5136,6 +5136,7 @@ dependencies = [
  "anyhow",
  "codetether-provider-core",
  "codetether-rlm",
+ "codetether-session-bus",
  "serde_json",
  "tokio",
  "uuid",
