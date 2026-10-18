@@ -33,3 +33,6 @@ pub mod drain;
 
 /// Owned session completion notices and caught-panic conversion.
 pub mod completion;
+
+/// Frontend activity tracking and ordered event delivery.
+pub mod pipeline;

@@ -19540,3 +19540,23 @@ manifests, lexical module reachability, dependency-cycle checks, file-size
 ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-model-selection/`. No Cargo, rustc, Python or Rust
 tests ran; compilation and runtime remain unverified.
+
+### Session event pipeline ownership
+
+Moved session-event activity tracking, ordered stage execution and final
+retention/context dispatch into `codetether-session-events::pipeline`. Stages
+separates the seven event transformations from View's five activity/presentation
+bindings. The native entry point now supplies those adapters. Removed the old
+native pipeline and trim-only flow wrapper.
+
+Preserved lifecycle → interlude → retry → tools → text → usage → errors order,
+short-circuit behavior, activity-before-processing, auto-follow scrolling and
+retention on both consumed and unconsumed events. Event-specific handlers and
+existing tests remain unchanged. No dependencies changed.
+
+Validation: three complete translated orchestration bodies and the former
+trim-only stop body, seven stage callbacks, five view bindings, native delegate,
+unchanged event handlers/tests/manifests, lexical module reachability,
+dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
+Evidence: `artifacts/consolidation-event-pipeline/`. No Cargo, rustc, Python,
+Rust tests or UI execution ran; compilation and runtime remain unverified.

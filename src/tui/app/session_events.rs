@@ -14,10 +14,9 @@ mod approval_hint;
 mod block_hint;
 mod context;
 mod errors;
-mod flow;
+mod host;
 mod interlude;
 mod lifecycle;
-mod pipeline;
 mod retention;
 mod retry;
 mod text;
@@ -72,31 +71,13 @@ pub(crate) async fn handle_session_event(
     worker_bridge: &Option<TuiWorkerBridge>,
     evt: SessionEvent,
 ) {
-    note_event(app);
-    let Some(evt) = pipeline::run(app, slot, worker_bridge, evt).await else {
-        return flow::stop(app);
-    };
-    retention::trim(app);
-    context::handle_event(app, evt);
-}
-
-/// Records UI activity for an incoming session event.
-///
-/// The timestamp is used by the TUI to know when the main session last produced
-/// activity. If chat auto-follow is enabled, the visible chat state is also
-/// moved to the bottom so newly arriving output remains in view.
-///
-/// # Arguments
-///
-/// * `app` - Mutable application state whose activity timestamp and scroll
-///   position should be updated.
-///
-/// # Side Effects
-///
-/// Mutates `app.state.main_last_event_at` and may mutate the chat scroll state.
-fn note_event(app: &mut App) {
-    app.state.main_last_event_at = Some(std::time::Instant::now());
-    if app.state.chat_viewport.chat_auto_follow {
-        app.state.scroll_to_bottom();
-    }
+    codetether_session_events::pipeline::handle(
+        &mut host::Native {
+            app,
+            slot,
+            worker_bridge,
+        },
+        evt,
+    )
+    .await;
 }
