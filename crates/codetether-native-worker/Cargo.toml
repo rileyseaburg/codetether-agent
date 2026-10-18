@@ -19,3 +19,5 @@ codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0"
 codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
 codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
 tokio = { version = "1", features = ["sync", "rt", "time"] }
+codetether-bus-s3 = { path = "../codetether-bus-s3", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }

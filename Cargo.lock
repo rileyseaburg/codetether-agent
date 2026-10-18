@@ -3932,6 +3932,8 @@ dependencies = [
  "codetether-bus-core",
  "codetether-worktree",
  "tokio",
+ "codetether-bus-s3",
+ "codetether-config",
 ]
 
 [[package]]

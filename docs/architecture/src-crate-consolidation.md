@@ -25473,3 +25473,23 @@ to the existing worker lockfile entry are staged; unrelated working changes are
 untouched. Evidence: artifacts/consolidation-worker-context/. No Cargo, rustc,
 Python, workspace synchronization, registration requests or runtime tests ran.
 Full consolidation remains active.
+
+### Worker initialization moved behind two application hooks
+
+Moved the native worker initialization Host implementation into
+codetether-native-worker::initialization. The root supplies only its concrete
+tool-catalog announcement and application peer startup through a small Hooks
+trait. Access-mode setup, option borrowing, HTTP client construction, bus/S3
+startup and worker-capability publication now belong to the worker crate.
+The same shared init_worker sequence continues to order these operations.
+
+A transformed-source comparison preserves every initialization method body;
+only direct owning-crate paths and the two explicit hook calls differ. The
+hooks each delegate once to the same original function. Shared argument, bus,
+peer and context types are unchanged. Static module/dependency scans cover
+714 roots and 600 crates without missing modules, cycles or undeclared direct
+workspace dependencies. Declaration, file-limit, direct rustfmt and whitespace
+checks pass. Only the two required worker dependencies are staged in Cargo.lock;
+unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-worker-initialization/. No Cargo, rustc, Python,
+worker initialization or runtime tests ran. Full consolidation remains active.

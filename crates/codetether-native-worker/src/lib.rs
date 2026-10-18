@@ -24,3 +24,6 @@ use codetether_a2a_worker_core::task_timeline;
 use codetether_worktree::repository::credentials as workspace_sync_git;
 pub use runtime_state::WorkerTaskRuntime;
 pub use worker_context::WorkerContext;
+
+/// Worker initialization with application-specific catalog and peer hooks.
+pub mod initialization;
