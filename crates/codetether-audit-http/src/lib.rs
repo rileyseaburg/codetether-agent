@@ -2,6 +2,7 @@
 //!
 //! Call audit_middleware with a shared log around a request handler.
 //! list_audit_entries provides bounded history and category filtering.
+pub mod http;
 mod middleware;
 mod query;
 mod types;

@@ -3,6 +3,7 @@
 //! Main API server for the CodeTether Agent
 
 mod approval_routes;
+mod audit_http_state;
 pub mod auth;
 mod config_status;
 mod k8s_http_state;
@@ -40,7 +41,7 @@ use axum::{
     extract::Path,
     extract::{Query, State},
     http::{HeaderMap, Request, StatusCode},
-    middleware::{self, Next},
+    middleware,
     response::sse::{Event, KeepAlive, Sse},
     response::{IntoResponse, Json, Response},
     routing::{get, post},
@@ -54,7 +55,6 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, broadcast};
 use tower_http::trace::TraceLayer;
 
-use codetether_audit_http::AuditQuery;
 use codetether_authorization_policy::policy_middleware;
 use codetether_cognition_api::BeliefFilter;
 use codetether_event_replay::{list_session_event_files, replay_session_events};
@@ -86,13 +86,6 @@ pub struct AppState {
     pub tool_registry: ToolRegistry,
     pub plugin_registry: AgentPluginRegistry,
     pub server_fingerprint: String,
-}
-async fn audit_middleware(
-    State(state): State<AppState>,
-    request: Request<Body>,
-    next: Next,
-) -> Response {
-    codetether_audit_http::audit_middleware(&state.audit_log, request, next).await
 }
 
 /// Start the HTTP server
@@ -241,7 +234,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/v1/cognition/governance", get(get_governance))
         .route("/v1/cognition/personas/{id}", get(get_persona))
         // Audit trail API
-        .route("/v1/audit", get(list_audit_entries))
+        .merge(codetether_audit_http::http::router::<AppState>())
         // Event stream replay API (for SOC 2, FedRAMP, ATO compliance)
         .route("/v1/audit/replay", get(replay_session_events))
         .route("/v1/audit/replay/index", get(list_session_event_files))
@@ -274,7 +267,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Mandatory auth middleware — applies to all routes
         .layer(middleware::from_fn_with_state(
             state.clone(),
-            audit_middleware,
+            codetether_audit_http::http::audit_request::<AppState>,
         ))
         .layer(middleware::from_fn(policy_middleware))
         .layer(middleware::from_fn(auth::require_auth))
@@ -556,12 +549,6 @@ async fn get_persona(
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<crate::cognition::PersonaRuntimeState>, (StatusCode, String)> {
     codetether_cognition_api::persona(state.cognition.get_persona(&id).await, &id)
-}
-async fn list_audit_entries(
-    State(state): State<AppState>,
-    Query(query): Query<AuditQuery>,
-) -> Result<Json<Vec<audit::AuditEntry>>, (StatusCode, String)> {
-    codetether_audit_http::list_audit_entries(&state.audit_log, query).await
 }
 async fn list_plugins(
     State(state): State<AppState>,

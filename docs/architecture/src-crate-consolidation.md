@@ -14232,3 +14232,17 @@ Full workspace consolidation remains active.
   passed. Evidence: artifacts/consolidation-voice-router/.
 - No dependencies or lockfile entries changed. No Cargo, rustc, Rust tests,
   voice operations or server startup ran. Full consolidation remains unfinished.
+
+### Audit HTTP adapter ownership
+
+- Moved the audit-history route and both HTTP adapters from src/server/mod.rs
+  into codetether-audit-http::http. State access, handlers and route assembly
+  have separate modules; native state only exposes the existing AuditLog.
+- Kept request recording at the same middleware position and preserved the
+  history route, query delegation and response types.
+- Verification: five static checks passed for delegation, route/middleware
+  assembly, state binding and module size. Module reachability, dependency DAG,
+  direct rustfmt, file-limit ratchet and whitespace checks also passed.
+  Evidence: artifacts/consolidation-audit-router/.
+- No dependencies or lockfile changes. No Cargo, rustc, Rust tests, server
+  startup or audit operations ran. Full workspace consolidation is unfinished.
