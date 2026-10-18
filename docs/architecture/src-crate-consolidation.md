@@ -19063,3 +19063,26 @@ delta, lexical module reachability, dependency-cycle checks, file-size ratchet,
 whitespace and direct formatting. Evidence:
 `artifacts/consolidation-forage-clarify/`. No Cargo, rustc, Python, Rust tests,
 interactive input or OKR persistence ran; compilation and runtime remain unverified.
+
+### Optional forage score plugins
+
+Moved score input, plugin-file discovery, Tokio execution bridging, score event
+JSON, numeric/object result conversion and base-score fallback into
+`codetether-forage-scoring`. Those responsibilities have separate input,
+execution, event and conversion modules. The native adapter now supplies only
+the existing runtime-policy call and application TetherScript tool invocation.
+
+The application's tetherscript feature is forwarded to the new crate; optional
+runtime/tool/JSON dependencies stay gated. Disabled builds preserve the original
+base score without requesting host operations. Enabled builds retain the same
+plugin path, hook, arguments, authorization-before-execution order and fallback
+on missing, denied or unsuccessful plugin results.
+
+Validation: six full scoring-body comparisons, unchanged input fields, native
+signature and adapter forwarding, enabled/disabled feature wiring, dependency
+and isolated lock changes, lexical module reachability, dependency-cycle checks,
+file-size ratchet, whitespace and direct formatting. The initial feature-check
+assertion contained an extra closing parenthesis; corrected the verifier and
+retained its failed log. Evidence: `artifacts/consolidation-forage-scoring/`.
+No Cargo, rustc, Python, Rust tests or score-plugin execution ran; compilation
+and runtime behavior remain unverified.

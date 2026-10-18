@@ -1,4 +1,5 @@
-use crate::okr::{KeyResult, Okr};
+//! Borrowed opportunity fields passed to the score plugin.
+use codetether_okr::{KeyResult, Okr};
 
 pub(crate) struct ScoreInput<'a> {
     pub okr: &'a Okr,

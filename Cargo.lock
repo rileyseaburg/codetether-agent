@@ -1626,6 +1626,7 @@ dependencies = [
  "codetether-forage-execution",
  "codetether-forage-reporting",
  "codetether-forage-runtime",
+ "codetether-forage-scoring",
  "codetether-git-tool",
  "codetether-github-auth",
  "codetether-github-pr",
@@ -3044,6 +3045,17 @@ dependencies = [
  "codetether-okr",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-forage-scoring"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-okr",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

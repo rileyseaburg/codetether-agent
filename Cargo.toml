@@ -96,6 +96,7 @@ members = [
     "crates/codetether-forage-reporting",
     "crates/codetether-forage-runtime",
     "crates/codetether-forage-clarify",
+    "crates/codetether-forage-scoring",
     "crates/codetether-paths",
     "crates/codetether-platform",
     "crates/codetether-plan",
@@ -620,7 +621,7 @@ path = "src/main.rs"
 
 [features]
 default = ["tetherscript"]
-tetherscript = ["codetether-tool-construction/tetherscript", "dep:codetether-tetherscript-computer", "dep:codetether-tetherscript-tool", "dep:tetherscript", "codetether-browser/tetherscript", "dep:codetether-tetherscript-values", "dep:codetether-provider-tetherscript", "codetether-provider-bonsai/tetherscript"]
+tetherscript = ["codetether-forage-scoring/tetherscript", "codetether-tool-construction/tetherscript", "dep:codetether-tetherscript-computer", "dep:codetether-tetherscript-tool", "dep:tetherscript", "codetether-browser/tetherscript", "dep:codetether-tetherscript-values", "dep:codetether-provider-tetherscript", "codetether-provider-bonsai/tetherscript"]
 # Local in-process inference via Candle. Off by default: the agent leads with
 # remote/HTTP providers unless a local model backend is explicitly requested.
 candle = [
@@ -1064,6 +1065,7 @@ codetether-forage-execution = { path = "crates/codetether-forage-execution", ver
 codetether-forage-reporting = { path = "crates/codetether-forage-reporting", version = "0.1.0" }
 codetether-forage-runtime = { path = "crates/codetether-forage-runtime", version = "0.1.0" }
 codetether-forage-clarify = { path = "crates/codetether-forage-clarify", version = "0.1.0" }
+codetether-forage-scoring = { path = "crates/codetether-forage-scoring", version = "0.1.0" }
 codetether-github-auth = { path = "crates/codetether-github-auth", version = "0.1.0" }
 codetether-webfetch = { path = "crates/codetether-webfetch", version = "0.1.0" }
 codetether-websearch = { path = "crates/codetether-websearch", version = "0.1.0" }

@@ -1,19 +1,6 @@
-#[path = "score_input.rs"]
-mod score_input;
-pub(crate) use score_input::ScoreInput;
-
+//! Bind optional forage scoring to application authorization and plugin execution.
 use crate::okr::{KeyResult, Okr};
-
-#[cfg(not(feature = "tetherscript"))]
-mod disabled;
-#[cfg(feature = "tetherscript")]
-mod enabled;
-
-#[cfg(not(feature = "tetherscript"))]
-use disabled::score_with_tetherscript;
-#[cfg(feature = "tetherscript")]
-use enabled::score_with_tetherscript;
-
+mod host;
 pub(crate) fn apply(
     okr: &Okr,
     kr: &KeyResult,
@@ -21,12 +8,11 @@ pub(crate) fn apply(
     remaining: f64,
     moonshot_alignment: f64,
 ) -> f64 {
-    let input = ScoreInput {
+    codetether_forage_scoring::apply::<host::Native>(
         okr,
         kr,
         base_score,
         remaining,
         moonshot_alignment,
-    };
-    score_with_tetherscript(&input).unwrap_or(input.base_score)
+    )
 }
