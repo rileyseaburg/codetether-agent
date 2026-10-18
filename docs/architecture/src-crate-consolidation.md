@@ -12910,3 +12910,19 @@ Full workspace consolidation remains active.
   artifacts/consolidation-temporary-fallback/.
 - No dependency changes were required. No model changes, timer execution,
   Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.
+
+### Model retry state ownership
+
+- Moved pending retry, attempt count and model history into RetryState in
+  codetether-model-failover. Four modules own candidate selection, runtime
+  scheduling, attempt recording and resets; each has at most 22 code lines.
+- AppState now holds one retry state. Native event and execution paths project
+  through it while retaining status updates, cooldown handling and session
+  model changes. Clearing history preserves a pending restore; full clear also
+  removes it, matching the previous call sites.
+- Verification: 13 static comparisons passed for owner/default replacement,
+  scheduling, recording/reset operations and native execution paths. Module and
+  dependency checks, direct rustfmt, file limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-retry-state/.
+- No dependency changes were needed. No model changes, retry execution, Cargo,
+  rustc, compilation or Rust tests ran. Full consolidation remains incomplete.

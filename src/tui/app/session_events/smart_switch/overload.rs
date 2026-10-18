@@ -20,10 +20,5 @@ pub(super) fn prepare(
 pub(super) use codetether_model_failover::temporary_fallback::status;
 
 pub(super) fn remember_attempt(app: &mut App, current: Option<&str>, target: &str) {
-    app.state
-        .smart_switch_attempted_models
-        .push(current.unwrap_or("unknown").to_string());
-    app.state
-        .smart_switch_attempted_models
-        .push(target.to_string());
+    app.state.retry_state.remember_attempt(current, target);
 }

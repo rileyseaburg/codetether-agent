@@ -14,7 +14,7 @@ pub(crate) async fn restore(
     };
     if app.state.processing {
         app.state.status = format!("Using fallback {fallback}; restore is waiting for completion…");
-        app.state.pending_smart_switch_retry = Some(pending.clone());
+        app.state.retry_state.pending = Some(pending.clone());
         return true;
     }
     let Some(session) = slot.borrow() else {
@@ -32,8 +32,7 @@ pub(crate) async fn restore(
         let _ = session.save().await;
     }
     slot.refresh_view();
-    app.state.smart_switch_retry_count = 0;
-    app.state.smart_switch_attempted_models.clear();
+    app.state.retry_state.clear_attempts();
     app.state.status = format!("Codex overload cooldown ended; restored {original}");
     true
 }

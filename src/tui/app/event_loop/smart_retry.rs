@@ -42,11 +42,11 @@ pub(super) async fn execute_smart_switch_retry(
     registry: &Option<Arc<ProviderRegistry>>,
     runtime: &TuiSessionHandle,
 ) {
-    let Some(pending) = app.state.pending_smart_switch_retry.take() else {
+    let Some(pending) = app.state.retry_state.pending.take() else {
         return;
     };
     if !cooldown::ready(app, &pending) {
-        app.state.pending_smart_switch_retry = Some(pending);
+        app.state.retry_state.pending = Some(pending);
         return;
     }
     if cooldown::restore(app, slot, &pending).await {
@@ -73,6 +73,6 @@ pub(super) async fn execute_smart_switch_retry(
         super::smart_retry_submit::submit(slot, &pending.prompt, runtime, registry).await;
     }
     if let Some(restore) = cooldown::after_fallback(&pending) {
-        app.state.pending_smart_switch_retry = Some(restore);
+        app.state.retry_state.pending = Some(restore);
     }
 }

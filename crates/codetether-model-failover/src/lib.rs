@@ -38,3 +38,6 @@ mod overload_fallback;
 
 /// Temporary overload fallback planning and restoration metadata.
 pub mod temporary_fallback;
+
+mod state;
+pub use state::RetryState;
