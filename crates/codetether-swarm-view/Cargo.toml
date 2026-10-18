@@ -13,4 +13,4 @@ codetether-session-control = { path = "../codetether-session-control", version =
 codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
 codetether-view-retention = { path = "../codetether-view-retention", version = "0.1.0" }
 ratatui = { version = "0.30.2", default-features = false }
-tokio = { version = "1", features = ["sync"] }
+tokio = { version = "1", features = ["sync", "rt"] }

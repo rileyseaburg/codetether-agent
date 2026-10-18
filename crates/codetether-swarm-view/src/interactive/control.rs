@@ -1,6 +1,6 @@
 //! Cancel / pause / resume handling for a running TUI swarm.
 
-use crate::tui::app::state::App;
+use super::View;
 
 /// Which control action to apply to the active swarm.
 pub(super) enum ControlAction {
@@ -13,9 +13,9 @@ pub(super) enum ControlAction {
 ///
 /// Returns `true` so the slash-command dispatcher treats the command as
 /// handled (it never falls through to launching a new swarm task).
-pub(super) fn apply_control(app: &mut App, action: ControlAction) -> bool {
-    let Some(control) = app.state.swarm.control.as_ref() else {
-        app.state.status = "No swarm is running".to_string();
+pub(super) fn apply_control(app: &mut impl View, action: ControlAction) -> bool {
+    let Some(control) = app.swarm().control.as_ref() else {
+        app.set_status("No swarm is running".to_string());
         return true;
     };
     let msg = match action {
@@ -32,13 +32,8 @@ pub(super) fn apply_control(app: &mut App, action: ControlAction) -> bool {
             "Swarm resumed"
         }
     };
-    app.state.status = msg.to_string();
-    app.state
-        .messages
-        .push(crate::tui::chat::message::ChatMessage::new(
-            crate::tui::chat::message::MessageType::System,
-            msg.to_string(),
-        ));
-    app.state.scroll_to_bottom();
+    app.set_status(msg.to_string());
+    app.push_system(msg.to_string());
+    app.scroll_to_bottom();
     true
 }

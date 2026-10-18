@@ -1,30 +1,10 @@
-//! Bare `/swarm` command: open the monitor or show launch guidance.
-
+//! Application binding for swarm monitor guidance.
 use crate::tui::app::state::App;
-use crate::tui::chat::message::{ChatMessage, MessageType};
-use crate::tui::models::ViewMode;
-
-/// Handle the bare `/swarm` command.
-///
-/// If a swarm is already running, opens the live monitor view. Otherwise
-/// shows usage guidance in chat instead of a confusing empty monitor — the
-/// monitor opens automatically once `/swarm <task>` launches a run.
+#[cfg(test)]
+use crate::tui::{chat::message::MessageType, models::ViewMode};
+/// Open the monitor or present swarm launch guidance.
 pub fn open_swarm_monitor(app: &mut App) {
-    if app.state.swarm.active {
-        app.state.set_view_mode(ViewMode::Swarm);
-        app.state.status = "Swarm monitor".to_string();
-        return;
-    }
-    app.state.status = "Usage: /swarm <task> to launch a parallel swarm".to_string();
-    app.state.messages.push(ChatMessage::new(
-        MessageType::System,
-        "No swarm is running. To launch one, type:\n\
-         /swarm <task description>\n\
-         Example: /swarm research the auth module, then propose tests\n\
-         The monitor opens automatically once a swarm starts."
-            .to_string(),
-    ));
-    app.state.scroll_to_bottom();
+    codetether_swarm_view::interactive::open_swarm_monitor(app);
 }
 
 #[cfg(test)]

@@ -14805,3 +14805,23 @@ Full workspace consolidation remains active.
   artifacts/consolidation-forage-drain/.
 - No dependencies changed. No Cargo, rustc or Rust tests ran. The broader src
   consolidation remains unfinished.
+
+### Interactive swarm command ownership
+
+- Moved swarm command routing, cancel/pause/resume policy, launch guards and UI
+  sequencing, monitor guidance, background configuration and error-event
+  publication into codetether-swarm-view::interactive. Separate modules own
+  routing, controls, launch, monitor presentation and background spawning.
+- Native Host constructs the executor and attaches the process-wide bus; native
+  View binds shared operations to TUI state. Existing native launch and monitor
+  tests remain in place and call the shared implementation through bindings.
+- Preserved control aliases, active-run rejection, channel capacity 256,
+  concurrency 24, zero request delay, 5000ms retry ceiling, automatic strategy,
+  status/error strings and UI update ordering.
+- Verification: nine static checks covered routing, control variants/actions,
+  launch order, monitor text, background execution policy, existing test bodies,
+  native executor/bus bindings and delegation. Module reachability, dependency
+  DAG, direct rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-swarm-interactive/.
+- Enabled Tokio's rt feature on the existing dependency; no lockfile package
+  changes. No Cargo, rustc or Rust tests ran. Full consolidation is unfinished.

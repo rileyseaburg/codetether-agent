@@ -28,3 +28,6 @@ pub use view::{render_swarm_view, swarm_view_fmt};
 mod transcript;
 mod transcript_role;
 pub use transcript::active_messages;
+
+/// Interactive swarm commands with application-provided execution and UI.
+pub mod interactive;
