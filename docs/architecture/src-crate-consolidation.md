@@ -13366,3 +13366,18 @@ Full workspace consolidation remains active.
 - Only this package and the root dependency were staged from Cargo.lock.
   No Cargo, rustc, compilation, Rust tests or live configuration changes ran.
   The broader consolidation remains incomplete.
+
+### Mux HTTP endpoint extraction
+
+- Moved mux roster lookup, session/runtime/principal projection, live-output
+  SSE and the existing projection test into codetether-mux-http. The native
+  mux_realtime module now re-exports the crate's generic router.
+- The implementation calls codetether-mux-control and codetether-mux-model
+  directly. Outer server middleware remains unchanged. Roster fields, event
+  serialization, session/offset event IDs and 15-second keepalives are preserved.
+- Verification: 11 static implementation/router/size checks passed, together
+  with module reachability, local dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-mux-http/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, mux process discovery or live subscriptions ran.
+  The complete workspace consolidation remains unfinished.

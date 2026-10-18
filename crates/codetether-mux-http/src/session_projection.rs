@@ -2,8 +2,8 @@
 
 use serde_json::{Value, json};
 
-use crate::mux::MuxRuntimeStatus;
-use crate::mux::control::MuxSessionSummary;
+use codetether_mux_control::MuxSessionSummary;
+use codetether_mux_model::MuxRuntimeStatus;
 
 pub(super) fn project(session: MuxSessionSummary) -> Value {
     let runtime = session.runtime.as_ref();

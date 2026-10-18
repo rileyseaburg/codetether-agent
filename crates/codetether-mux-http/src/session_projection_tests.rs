@@ -1,7 +1,7 @@
 use super::project;
-use crate::mux::MuxRuntimeStatus;
-use crate::mux::control::MuxSessionSummary;
-use crate::provenance::RuntimePrincipal;
+use codetether_mux_control::MuxSessionSummary;
+use codetether_mux_model::MuxRuntimeStatus;
+use codetether_provenance::RuntimePrincipal;
 
 #[test]
 fn sessions_api_preserves_runtime_principal() {

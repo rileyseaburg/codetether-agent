@@ -7,7 +7,7 @@ use futures::StreamExt;
 use tokio_stream::wrappers::ReceiverStream;
 
 pub(super) async fn output() -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
-    let receiver = crate::mux::control::subscribe_live_output();
+    let receiver = codetether_mux_control::subscribe_live_output();
     let events = ReceiverStream::new(receiver).map(|output| {
         let data = serde_json::to_string(&output).unwrap_or_else(|_| "{}".into());
         Ok(Event::default()

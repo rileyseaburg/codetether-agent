@@ -3,7 +3,7 @@
 use axum::{Json, http::StatusCode};
 
 pub(super) async fn list() -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
-    let sessions = crate::mux::control::list_sessions()
+    let sessions = codetether_mux_control::list_sessions()
         .await
         .map_err(|error| {
             tracing::error!(%error, "Failed to list mux realtime sessions");

@@ -1,0 +1,19 @@
+[package]
+name = "codetether-mux-http"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Mux session roster and live-output HTTP endpoints"
+
+[dependencies]
+axum = "0.8"
+codetether-mux-control = { path = "../codetether-mux-control", version = "0.1.0" }
+codetether-mux-model = { path = "../codetether-mux-model", version = "0.1.0" }
+futures = "0.3"
+serde_json = "1"
+tokio-stream = "0.1"
+tracing = "0.1"
+
+[dev-dependencies]
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }

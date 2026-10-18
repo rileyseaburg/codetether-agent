@@ -189,6 +189,7 @@ members = [
     "crates/codetether-mux-workspace",
     "crates/codetether-mux-server",
     "crates/codetether-mux-control",
+    "crates/codetether-mux-http",
     "crates/codetether-mux-lifecycle",
     "crates/codetether-mux-cli",
     "crates/codetether-actor",
@@ -737,6 +738,7 @@ codetether-actor = { path = "crates/codetether-actor", version = "0.1.0" }
 codetether-mux-cli = { path = "crates/codetether-mux-cli", version = "0.1.0" }
 codetether-mux-lifecycle = { path = "crates/codetether-mux-lifecycle", version = "0.1.0" }
 codetether-mux-control = { path = "crates/codetether-mux-control", version = "0.1.0" }
+codetether-mux-http = { path = "crates/codetether-mux-http", version = "0.1.0" }
 codetether-mux-server = { path = "crates/codetether-mux-server", version = "0.1.0" }
 codetether-mux-workspace = { path = "crates/codetether-mux-workspace", version = "0.1.0" }
 codetether-mux-agent-task = { path = "crates/codetether-mux-agent-task", version = "0.1.0" }

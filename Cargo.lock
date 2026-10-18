@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-mux-http",
  "codetether-verifier-http",
  "codetether-verifier-state",
  "codetether-approval-http",
@@ -6686,6 +6687,20 @@ dependencies = [
  "serde_json",
  "tokio",
  "tower",
+]
+
+[[package]]
+name = "codetether-mux-http"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "codetether-mux-control",
+ "codetether-mux-model",
+ "codetether-provenance",
+ "futures",
+ "serde_json",
+ "tokio-stream",
+ "tracing",
 ]
 
 [[package]]
