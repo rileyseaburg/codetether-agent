@@ -12,5 +12,9 @@ codetether-approval-core = { path = "../codetether-approval-core", version = "0.
 codetether-config = { path = "../codetether-config", version = "0.1.0" }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
-tokio = { version = "1", features = ["time"] }
+tokio = { version = "1", features = ["time", "rt"] }
 uuid = { version = "1", features = ["v4"] }
+
+codetether-approval-queue = { path = "../codetether-approval-queue", version = "0.1.0" }
+codetether-proposed-content = { path = "../codetether-proposed-content", version = "0.1.0" }
+tracing = "0.1"

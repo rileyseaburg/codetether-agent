@@ -13,3 +13,6 @@ mod scroll;
 mod text;
 pub use content::lines as content_lines;
 pub use render::render;
+
+/// Preview keyboard navigation and bounded scrolling.
+pub mod input;

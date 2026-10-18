@@ -18411,3 +18411,23 @@ module/dependency graphs, file limits, direct rustfmt-check and whitespace.
 Evidence: `artifacts/consolidation-goal-editor/`. No editor interaction, goal
 update, Cargo, rustc, Python or Rust test was executed; compilation remains
 unverified.
+
+### Approval preview interaction and reviewer dispatch
+
+Moved approval-preview keyboard gating, queue navigation and scroll bounds into
+`codetether-approval-view::input`. The native handler supplies a borrowed view of
+its current fields. Moved enabled/supported reviewer gating, subject construction,
+background dispatch and queue verdict delivery into
+`codetether-approval-review::dispatch`; native bindings supply reviewer runtime,
+optional goal-journal context and lazy UI context.
+
+The frontend context is captured only after the original enabled/tool-support
+checks. Queue clearing, asynchronous goal capture, reviewer execution and verdict
+attachment retain their original order. The queue's late-verdict behavior and
+native reviewer tool policy remain unchanged.
+
+Validation: complete keyboard and dispatch-body comparisons, native context and
+journal mapping checks, unchanged reviewer/queue source, module/dependency graph,
+file-size ratchet and whitespace. Evidence:
+`artifacts/consolidation-approval-interaction/`. No live approval, reviewer,
+Cargo, rustc, Python or Rust tests were executed; compilation remains unverified.

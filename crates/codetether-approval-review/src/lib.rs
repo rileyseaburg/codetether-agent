@@ -11,3 +11,6 @@ pub use codetether_approval_core::review::{ReviewSubject, ReviewVerdict};
 pub use host::Host;
 pub use request::Run;
 pub use run::review;
+
+/// Background dispatch for queued tool approvals.
+pub mod dispatch;

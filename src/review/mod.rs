@@ -32,3 +32,5 @@ pub use prompt::ReviewSubject;
 pub use run::review;
 pub use tools::read_only_tools;
 pub use verdict::{ReviewOutcome, ReviewVerdict};
+
+pub(crate) mod dispatch;

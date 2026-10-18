@@ -1913,10 +1913,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-approval-core",
+ "codetether-approval-queue",
  "codetether-config",
+ "codetether-proposed-content",
  "codetether-provider-core",
  "codetether-swarm-core",
  "tokio",
+ "tracing",
  "uuid",
 ]
 
@@ -6751,6 +6754,7 @@ dependencies = [
  "codetether-approval-core",
  "codetether-approval-diff",
  "codetether-approval-queue",
+ "crossterm",
  "ratatui",
 ]
 
