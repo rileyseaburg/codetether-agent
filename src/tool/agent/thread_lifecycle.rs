@@ -1,19 +1,13 @@
 //! Application bindings for shared durable-child lifecycle orchestration.
-#[path = "thread_lifecycle/host.rs"]
-mod host;
-pub(super) async fn close(
-    target: &str,
-    owner: Option<&str>,
-) -> anyhow::Result<crate::tool::ToolResult> {
-    codetether_agent_lifecycle::close::<host::ApplicationHost>(target, owner).await
-}
-pub(super) async fn resume(
-    target: &str,
-    owner: Option<&str>,
-    config: super::residency::ResumeConfig,
-) -> anyhow::Result<crate::tool::ToolResult> {
-    codetether_agent_lifecycle::resume::<host::ApplicationHost>(target, owner, config).await
-}
+
+codetether_agent_lifecycle::declare_application_lifecycle!(
+    pub(super);
+    crate::session::Session,
+    crate::tool::agent::persistence,
+    crate::tool::agent::residency,
+    crate::tool::agent::store,
+    crate::tool::agent::event_loop::live_trace::clear,
+);
 
 #[cfg(test)]
 #[path = "thread_lifecycle/subtree_close_tests.rs"]

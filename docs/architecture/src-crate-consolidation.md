@@ -26676,3 +26676,19 @@ crates; native production scope, formatting, file limits and whitespace checks
 pass. No manifest/lock changes or unrelated working-file changes were needed.
 Evidence: artifacts/consolidation-tree-binding/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Child close/resume application binding
+
+Moved the durable-child lifecycle host and close/resume entry points into
+codetether-agent-lifecycle::declare_application_lifecycle. The root supplies
+Session, persistence, residency, store and trace-cleanup operations; removed
+thread_lifecycle/host.rs. The shared engine retains lifecycle sequencing.
+Static expansion compares all nine function bodies with the originals, including
+lookup, resume preparation, activation and live-store removal before trace cleanup.
+Service selections and visibility are checked separately. Existing subtree test
+sources and fixtures are unchanged. Module/dependency checks cover 730 roots and
+617 crates; declarations, native production scope, standalone formatting, file
+limits and whitespace checks pass. No manifest/lock changes were required, and
+unrelated working changes are untouched. Evidence: artifacts/consolidation-lifecycle-binding/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active.
