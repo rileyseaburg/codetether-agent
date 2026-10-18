@@ -1,15 +1,15 @@
 //! Execute one opportunity with the application swarm service.
-use super::*;
-use crate::swarm::SwarmExecutor;
+use crate::*;
+
 use std::time::Duration;
 
-pub(super) async fn execute_opportunity_with_swarm(
+pub(crate) async fn execute_opportunity_with_swarm<H: Host>(
     item: &ForageOpportunity,
     args: &ForageArgs,
 ) -> Result<String> {
     let timeout_secs = args.run_timeout_secs.clamp(30, 86_400);
     let swarm_config = build_swarm_config(args);
-    let executor = SwarmExecutor::new(swarm_config);
+    let executor = H::swarm(swarm_config);
     let strategy = parse_swarm_strategy(&args.swarm_strategy);
 
     match tokio::time::timeout(

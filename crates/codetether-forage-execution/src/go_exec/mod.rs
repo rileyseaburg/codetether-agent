@@ -2,25 +2,23 @@
 //!
 //! The executor retains provider and repository ownership across Ralph
 //! execution; helper modules prepare those dependencies and render results.
-use super::*;
+use crate::*;
 use std::time::Duration;
 
-use crate::okr::{OkrRun, OkrRunStatus};
-use crate::provider::ProviderRegistry;
+use codetether_okr::OkrRunStatus;
+
 use anyhow::Context;
 mod okr;
 mod provider;
 mod render;
 
 /// Execute opportunity using the Ralph PRD-driven autonomous loop (go engine)
-pub(super) async fn execute_opportunity_with_go(
+pub(crate) async fn execute_opportunity_with_go<H: Host>(
     item: &ForageOpportunity,
     args: &ForageArgs,
 ) -> Result<String> {
-    use crate::cli::go_ralph::execute_go_ralph;
-
     let timeout_secs = args.run_timeout_secs.clamp(30, 86_400);
-    let (_registry, provider, resolved_model) = provider::prepare(args).await?;
+    let (_registry, provider, resolved_model) = provider::prepare::<H>(args).await?;
 
     // Load the OKR to get full context for PRD generation
     let (_repo, mut okr, mut okr_run) = okr::prepare(item).await?;
@@ -31,16 +29,14 @@ pub(super) async fn execute_opportunity_with_go(
     // Execute the Ralph PRD-driven autonomous loop
     match tokio::time::timeout(
         Duration::from_secs(timeout_secs),
-        execute_go_ralph(
+        H::go(
             &task,
             &mut okr,
             &mut okr_run,
             provider,
             &resolved_model,
-            10,   // max_iterations
-            None, // bus - could pass bus here for inter-iteration learning
-            3,    // max_concurrent_stories
-            None, // registry - passed via RalphLoop.with_registry if needed
+            10, // max_iterations
+            3,  // max_concurrent_stories
         ),
     )
     .await

@@ -18970,3 +18970,27 @@ reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-provider-construction/`. No Cargo,
 rustc, Python, Rust tests or provider requests ran; compilation and runtime
 behavior remain unverified.
+
+### Forage engine execution
+
+Moved opportunity execution into `codetether-forage-execution`: engine dispatch,
+Git change snapshots, quality-gate invocation, run options and timeout handling,
+swarm settings/strategy/result handling, and Go provider/OKR preparation and
+result presentation. The native tree removes seven implementation files and
+retains the entry point plus adapters for CLI execution, provider loading, swarm
+execution and runtime authorization. Existing swarm configuration tests now use
+the shared function through a test-only re-export.
+
+Preserved run/swarm/Go timeout bounds, default and explicitly supplied models,
+Go iteration/concurrency settings and absent optional bus/registry, provider and
+repository retention through Go execution, failed-run status assignment,
+result/error text, before/after change collection, and quality authorization
+before Bash execution. This extraction did not execute any of these engines or
+quality commands.
+
+Validation: 11 complete function-body comparisons, eight native adapter methods,
+unchanged regression test files, removed native implementations, declared
+shared dependencies and versions, minimal isolated lockfile delta, lexical
+module reachability, dependency-cycle checks, file-size ratchet, whitespace and
+direct formatting. Evidence: `artifacts/consolidation-forage-execution/`. No Cargo,
+rustc, Python or Rust tests ran; compilation and runtime remain unverified.

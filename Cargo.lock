@@ -1622,6 +1622,7 @@ dependencies = [
  "codetether-file-tool-catalog",
  "codetether-file-tools",
  "codetether-forage-core",
+ "codetether-forage-execution",
  "codetether-git-tool",
  "codetether-github-auth",
  "codetether-github-pr",
@@ -2980,6 +2981,23 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-forage-execution"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-bash-tool",
+ "codetether-cli-options",
+ "codetether-forage-core",
+ "codetether-go-ralph",
+ "codetether-okr",
+ "codetether-provider-core",
+ "codetether-swarm-core",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
