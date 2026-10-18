@@ -10348,3 +10348,19 @@ contain at most 43 code lines. Evidence is in
 `artifacts/consolidation-terminal-replay/`. Compilation, runtime tests and the
 benchmark were not run. No Cargo, rustc, Python or terminal operations ran.
 Full workspace consolidation remains active.
+
+### Dedicated mux attachment runtime
+
+Moved the event-driven attachment loop, ordered PTY output polling, response
+decoding, stdout presentation and terminal-state guards into
+`crates/codetether-mux-attachment`. Nine modules retain replay synchronization,
+alternate-screen tracking, detach cleanup and raw-mode restoration. The native
+proxy supplies only its existing platform clipboard callback.
+
+Thirteen static comparisons cover the original loop, output offsets/backpressure,
+terminal setup/drop behavior, clipboard lookup and unchanged program consumers.
+Module/dependency graphs, file budgets and whitespace checks passed; new files
+contain at most 44 code lines. Evidence is in
+`artifacts/consolidation-mux-attachment/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python, network, clipboard or terminal operations ran.
+Full workspace consolidation remains active.

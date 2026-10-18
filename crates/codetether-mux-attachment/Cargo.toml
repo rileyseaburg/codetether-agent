@@ -1,0 +1,16 @@
+[package]
+name = "codetether-mux-attachment"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Mux PTY attachment loop, output polling and terminal restoration"
+
+[dependencies]
+anyhow = "1"
+codetether-mux-client = { path = "../codetether-mux-client", version = "0.1.0" }
+codetether-mux-input = { path = "../codetether-mux-input", version = "0.1.0" }
+codetether-mux-protocol = { path = "../codetether-mux-protocol", version = "0.1.0" }
+codetether-terminal-replay = { path = "../codetether-terminal-replay", version = "0.1.0" }
+crossterm = "0.29"
+tokio = { version = "1", features = ["io-std", "io-util", "macros", "rt", "sync"] }

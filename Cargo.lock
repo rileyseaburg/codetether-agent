@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-mux-attachment",
  "codetether-terminal-replay",
  "codetether-mux-input",
  "codetether-mux-coordination",
@@ -5189,6 +5190,19 @@ version = "0.1.0"
 dependencies = [
  "codetether-telemetry",
  "memchr",
+]
+
+[[package]]
+name = "codetether-mux-attachment"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-mux-client",
+ "codetether-mux-input",
+ "codetether-mux-protocol",
+ "codetether-terminal-replay",
+ "crossterm",
+ "tokio",
 ]
 
 [[package]]

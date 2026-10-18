@@ -13,7 +13,7 @@ use crossterm::{
     terminal::{Clear, ClearType, EnterAlternateScreen, enable_raw_mode},
 };
 
-use crate::mux::pty::terminal_mode::TerminalMode;
+use codetether_terminal_replay::TerminalMode;
 
 use synchronized::SynchronizedOutput;
 
