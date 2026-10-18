@@ -1,48 +1,35 @@
-//! Inner select!-based loop body.
-
-use futures::StreamExt;
-
+//! Native dispatch and redraw tracking around shared event selection.
+use codetether_tui_reactor::Ready;
 #[path = "dirty.rs"]
 mod dirty;
+#[path = "select_loop/events.rs"]
+mod events;
+#[path = "select_loop/notice.rs"]
+mod notice;
 #[path = "queued_prompt.rs"]
 mod queued_prompt;
-
+#[path = "select_loop/ticks.rs"]
+mod ticks;
+#[path = "select_loop/wait.rs"]
+mod wait;
 pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Result<bool> {
     let before = dirty::capture(args.app);
+    match wait::next(args).await {
+        Ready::Terminal(event) => {
+            if events::terminal(args, event).await? {
+                return Ok(true);
+            }
+        }
+        Ready::Shutdown => return Ok(true),
+        Ready::Session(event) => events::session(args, event).await,
+        Ready::Notice(event) => notice::apply(args, event).await,
+        Ready::Watchdog => ticks::watchdog(args).await,
+        Ready::Audit => super::tick::refresh_audit(args.app).await,
+        Ready::Tick => ticks::apply(args).await,
+    }
     let app = &mut *args.app;
     let slot = &mut *args.slot;
     let bridge = &mut *args.worker_bridge;
-    tokio::select! {
-        // Biased: always poll terminal input FIRST so navigation/scroll keys
-        // stay responsive while a session is actively streaming. Without this,
-        // tokio picks a ready branch at random and the high-volume session
-        // event stream starves keypresses, making the TUI feel frozen.
-        biased;
-        maybe = args.reader.next() => {
-            let quit = super::terminal::handle_terminal_event(app, args.cwd, slot, args.registry, bridge, args.runtime, maybe).await?;
-            app.state.needs_redraw = true;
-            if quit { return Ok(true); }
-        }
-        Some(()) = args.io.shutdown_rx.recv() => return Ok(true),
-        Some(evt) = args.io.event_rx.recv() => {
-            crate::tui::app::session_events::handle_session_event(app, slot, bridge, evt).await;
-            super::coalesce::drain(app, slot, bridge, args.io.event_rx).await;
-        }
-        Some(notice) = args.io.notice_rx.recv() => {
-            crate::tui::app::background::apply_single_notice(app, args.cwd, slot, bridge, args.io.event_rx, notice).await;
-            // Reconnect takes priority: if a stream disconnect was scheduled,
-            // re-submit on the same model before trying a provider smart-switch.
-            crate::tui::app::background::stream_reconnect_execute::execute(app, slot, args.registry, args.runtime).await;
-            super::smart_retry::execute_smart_switch_retry(app, slot, args.registry, args.runtime).await;
-            super::watchdog_retry::execute(app, slot, args.registry, args.runtime).await;
-        }
-        _ = args.timers.watchdog.tick() => super::watchdog::maybe_watchdog_restart(app, args.runtime, args.timers.watchdog_interval).await,
-        _ = args.timers.audit.tick() => super::tick::refresh_audit(app).await,
-        _ = args.timers.tick.tick() => {
-            super::tick::run(app).await;
-            super::tick::check_and_retry(app, slot, args.registry, args.runtime, args.timers.watchdog_interval).await;
-        }
-    }
     // Drain background updates before marking dirty (they may produce new state).
     crate::tui::app::background::drain_background_updates(
         app,

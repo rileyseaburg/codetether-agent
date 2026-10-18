@@ -1392,6 +1392,7 @@ dependencies = [
  "codetether-mcp-fallback",
  "codetether-mcp-server",
  "codetether-mcp-approval",
+ "codetether-tui-reactor",
  "codetether-agent-dashboard",
  "codetether-git-view",
  "codetether-protocol-view",
@@ -16018,4 +16019,12 @@ dependencies = [
  "codetether-mcp-core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-tui-reactor"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "tokio",
 ]

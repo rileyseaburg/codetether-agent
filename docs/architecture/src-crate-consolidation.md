@@ -17817,3 +17817,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-mcp-approval/`.
 - No Cargo, rustc, Python, approval endpoint calls, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Terminal-first event selection and timer cadence
+
+- Moved biased stream/channel/timer selection and interval construction into
+  the dedicated `codetether-tui-reactor` crate. Sources borrow the existing
+  inputs; Ready owns the selected event for subsequent native handling.
+- Preserved terminal-first branch order, closed-channel patterns and timer
+  cadence (100 ms UI, 1 s audit, 2 s watchdog polling). Native handlers are
+  split into terminal/session, notice and timer modules to retain file limits.
+- Verified original handler bodies with explicit field substitutions, quit/error
+  behavior, post-event drains and redraw comparison, source bindings and timer
+  construction. Confirmed the installed EventStream item type by reading its
+  source. Module/dependency graphs, direct rustfmt, file limits and whitespace
+  passed. Staged lock adds only the new package and root dependency; unrelated
+  working-copy changes remain untouched.
+  Evidence: `artifacts/consolidation-tui-reactor/`.
+- No Cargo, rustc, Python, event-loop execution, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
