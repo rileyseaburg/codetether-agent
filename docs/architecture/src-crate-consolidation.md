@@ -8573,3 +8573,28 @@ passed. Crate modules contain at most 36 code lines. Evidence is in
 `artifacts/consolidation-session-orchestration/`. Compilation and runtime tests
 were not run. No Cargo, rustc or Python commands ran. Substantial native session,
 TUI, CLI, server and other implementation remains within the full goal.
+
+### Dedicated tracked-vector crate
+
+Moved mutation-aware vectors and bounded sequence deserialization from
+`src/session/tracked` and `src/session/tail_seed.rs` into
+`crates/codetether-tracked-vec`. Twelve modules separate the vector's data shape,
+tracking, access, append/eviction, conversion, iteration, mutation IDs and
+bounded deserialization. The tail loader separates its shared thread-local
+state, scoped cap and streaming visitor. The crate depends only on Serde.
+Native session paths re-export the vector and capped-loading functions.
+
+Dirty-prefix rules, clean-state preservation, mutation versions, serde layout,
+clone behavior, iteration and mutable access retain their original operations.
+The cap and discarded-element count still share one thread-local state; the
+original normal-return restoration and panic behavior are retained. The
+bounded visitor preserves allocation limits, sequence validation, dropped-count
+accounting and suffix order.
+
+Ninety-eight static checks compare moved bodies/types, the shared thread-local
+state, native exports and unchanged store source files. All sixteen existing
+store persistence tests remain unchanged. Module-reference, dependency-cycle,
+file-budget and whitespace checks passed. Crate modules contain at most 36 code
+lines. Evidence is in `artifacts/consolidation-tracked-vec/`. Compilation and
+runtime tests were not run. No Cargo, rustc or Python commands ran. The overall
+consolidation goal remains active.

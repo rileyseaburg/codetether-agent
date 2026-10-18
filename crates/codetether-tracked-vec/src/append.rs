@@ -7,7 +7,21 @@ impl<T> TrackedVec<T> {
         self.mark(self.values.len());
         self.values.push(value);
     }
-    pub(crate) fn evict(&mut self, count: usize) {
+    /// Discard a persisted prefix while retaining the loaded suffix's dirty offset.
+    /// Callers must limit eviction to entries preceding the first dirty element.
+    /// # Arguments
+    /// `count` is the number of persisted leading entries to remove.
+    /// # Panics
+    /// Panics if `count` exceeds the number of elements.
+    /// # Examples
+    /// ```rust
+    /// let mut values = codetether_tracked_vec::TrackedVec::from(vec![1, 2]);
+    /// values.clean();
+    /// values.evict(1);
+    /// assert_eq!(values.as_slice(), &[2]);
+    /// assert_eq!(values.dirty_from(), usize::MAX);
+    /// ```
+    pub fn evict(&mut self, count: usize) {
         self.values.drain(..count);
         if self.dirty_from() != usize::MAX {
             self.dirty

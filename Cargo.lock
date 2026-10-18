@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-tracked-vec",
  "codetether-session-orchestration",
  "codetether-goal-runtime",
  "codetether-session-control",
@@ -4139,6 +4140,13 @@ dependencies = [
 [[package]]
 name = "codetether-tool-progress"
 version = "0.1.0"
+
+[[package]]
+name = "codetether-tracked-vec"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "codetether-undo-tool"
