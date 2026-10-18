@@ -1275,6 +1275,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-native-server",
  "codetether-native-cognition",
  "codetether-native-forage",
  "codetether-native-context",
@@ -3945,6 +3946,21 @@ version = "4.7.6-dev.38"
 dependencies = [
  "codetether-telemetry",
  "tokio",
+]
+
+[[package]]
+name = "codetether-native-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "codetether-a2a-core",
+ "codetether-application-registry",
+ "codetether-bus-core",
+ "codetether-native-cognition",
+ "codetether-plugin-verification",
+ "codetether-server-runtime",
+ "codetether-server-state",
 ]
 
 [[package]]

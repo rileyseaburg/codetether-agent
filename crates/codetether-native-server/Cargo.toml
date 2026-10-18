@@ -1,0 +1,18 @@
+[package]
+name = "codetether-native-server"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native cognition, tool and request-state assembly for server startup"
+
+[dependencies]
+axum = "0.8"
+codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
+codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-native-cognition = { path = "../codetether-native-cognition", version = "0.1.0" }
+codetether-plugin-verification = { path = "../codetether-plugin-verification", version = "0.1.0" }
+codetether-server-runtime = { path = "../codetether-server-runtime", version = "0.1.0" }
+codetether-server-state = { path = "../codetether-server-state", version = "0.1.0" }
+anyhow = "1"

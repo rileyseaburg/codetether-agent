@@ -26034,3 +26034,20 @@ whitespace checks pass. Only the router's required mux dependency is staged in
 Cargo.lock; unrelated dirty files remain unchanged. Evidence:
 artifacts/consolidation-server-worker-routes/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Native server startup service assembly
+
+Added codetether-native-server for cognition construction, default-tool
+installation, enabled-state checks and request-state assembly. The root startup
+host now selects its tool catalog, routes and explicit cfg!(test) empty-state
+policy. Its A2A and HTTP callbacks retain their original bodies. The shared
+server runtime still owns startup sequencing and mandatory middleware.
+
+Static comparisons preserve the four service operations and both route callback
+bodies. Root cognition and startup select the same test-mode flag. Module and
+dependency scans cover 722 roots and 608 crates without missing modules, cycles
+or undeclared dependencies. Declaration, file-limit, direct rustfmt and whitespace
+checks pass. Only the new package/root dependency are staged in Cargo.lock;
+unrelated dirty files remain unchanged. Evidence:
+artifacts/consolidation-native-server/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
