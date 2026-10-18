@@ -8649,3 +8649,26 @@ modules remain below 45 code lines. Evidence is in
 `artifacts/consolidation-store-readmodels/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. Remaining native storage and
 other source implementation remain part of the active consolidation goal.
+
+### Session-store dirty-delta preparation and save sequencing
+
+Moved dirty-range selection, message/page encoding, checkpoint acknowledgement
+and the full asynchronous save sequence into `codetether-session-store`.
+The native session implements a read-only `Snapshot` interface exposing its
+existing tracked vectors, checkpoint and metadata/provenance-aware header
+encoder. The store crate reuses `codetether-tracked-vec`; it does not duplicate
+vector dirtiness or checkpoint state.
+
+The moved sequence preserves fresh/replaced-vector detection, absolute offsets,
+fallback page classification, serialization order, read-only rejection,
+unchanged-delta skipping, marker checks, database commit, locator publication and
+only then checkpoint/dirty-state acknowledgement. Native load and legacy import
+continue using the same public save/preparation paths through thin adapters.
+
+Thirty-three static checks compare the moved function bodies, every native field
+binding, save/batch adapters, unchanged load/import/hydration sources and all
+sixteen persistence tests. Module references, workspace path dependencies, code
+budgets and whitespace checks passed. The store crate now has 39 Rust modules,
+all below 45 code lines. Evidence is in `artifacts/consolidation-store-save/`.
+Compilation and runtime tests were not run. No Cargo, rustc or Python commands
+ran. Remaining hydration, import and other source ownership is still in scope.

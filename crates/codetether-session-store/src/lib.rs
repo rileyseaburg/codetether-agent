@@ -3,7 +3,8 @@
 //! [connection] opens and upgrades the shared SQLite database. [transaction]
 //! commits [Batch] envelopes with optimistic revisions and retry identities.
 //! [state] holds per-session checkpoints; native encoders and hydration adapters
-//! construct records while this crate owns schema, writes and indexed reads.
+//! provide [Snapshot] data and header encoding; this crate owns delta selection,
+//! schema, writes, checkpoint acknowledgement and indexed reads.
 pub mod batch;
 pub mod blobs;
 pub mod connection;
@@ -33,3 +34,13 @@ mod ticket;
 pub use acknowledge::acknowledge;
 pub use delivery::Delivery;
 pub use ticket::Ticket;
+
+mod checkpoint;
+mod encode;
+mod prepare;
+mod save;
+mod snapshot;
+pub use checkpoint::clean;
+pub use prepare::prepare;
+pub use save::save;
+pub use snapshot::Snapshot;
