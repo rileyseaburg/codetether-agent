@@ -1,18 +1,13 @@
 //! Application context and adapter for the shared worker response driver.
 use crate::provider::CompletionResponse;
 use crate::session::Session;
-use std::sync::Arc;
 #[path = "session_response_host.rs"]
 mod host;
-
-/// Constant per-run inputs needed to process a step response.
-pub(super) struct ResponseContext<'a> {
-    pub model: &'a str,
-    pub tool_registry: &'a crate::tool::ToolRegistry,
-    pub auto_approve: super::super::AutoApprove,
-    pub workspace_dir: &'a std::path::Path,
-    pub output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
-}
+pub(super) type ResponseContext<'a> =
+    codetether_a2a_worker_core::session_protocol::context::ResponseContext<
+        'a,
+        crate::tool::ToolRegistry,
+    >;
 struct ApplicationHost<'a, 'context> {
     context: &'a ResponseContext<'context>,
     session: &'a mut Session,

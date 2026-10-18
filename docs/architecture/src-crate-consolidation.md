@@ -16184,3 +16184,18 @@ Full workspace consolidation remains active.
   and diff whitespace. Evidence: `artifacts/consolidation-worker-policy/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker execution contexts
+
+- Moved worker request Context and ResponseContext data into
+  `codetether-a2a-worker-core::session_protocol::context`, generic over the
+  executable tool registry. Native context paths are concrete aliases.
+- Preserved provider ownership, borrowed model/prompt/schema lifetimes, approval
+  values, workspace and output callback fields. Response implementation and all
+  context consumers remain unchanged.
+- Verification: exact generic field comparisons, native aliases, unchanged
+  response adapter and consumers, module/dependency graphs, direct rustfmt,
+  file budgets and diff whitespace. No dependencies changed. Evidence:
+  `artifacts/consolidation-worker-context/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

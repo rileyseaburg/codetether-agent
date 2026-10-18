@@ -33,3 +33,6 @@ pub mod completion;
 
 /// Standard worker session preparation and execution orchestration.
 pub mod policy;
+
+/// Shared provider and response execution context data.
+pub mod context;
