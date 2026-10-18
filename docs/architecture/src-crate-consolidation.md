@@ -12322,3 +12322,21 @@ Full workspace consolidation remains active.
 - Only this crate's dependency and package entry were staged from Cargo.lock;
   unrelated lockfile drift and A2A edits were preserved. No Cargo, rustc,
   compilation or Rust tests ran. Full workspace consolidation is incomplete.
+
+### Worker bridge state ownership
+
+- Moved worker identity, connection status, registered agents, processing
+  status, recent task labels, pending task queue and active remote task into
+  WorkerState in codetether-tui-worker. Four focused modules contain at most
+  13 code lines and own the six existing state operations.
+- Native methods delegate; bus observation, command delivery and task execution
+  remain in the application. Rendering and routing read the shared owner.
+  Both twenty-entry limits, queue order and initial disconnected state are
+  preserved. Local peer endpoint readiness remains separate from the worker.
+- Verification: 30 source comparisons/checks passed for state operations,
+  delegates, defaults and updated consumers. Module/dependency checks, direct
+  rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-worker-state/.
+- No dependency or lockfile changes were needed. Unrelated worktree changes
+  were preserved. No Cargo, rustc, compilation or Rust tests ran. The full
+  workspace consolidation remains incomplete.

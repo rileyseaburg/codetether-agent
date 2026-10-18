@@ -27,7 +27,7 @@ pub fn sync_worker_bridge_agents(app: &mut App, worker_bridge: &Option<TuiWorker
         }
     }
 
-    let current = app.state.worker_bridge_registered_agents.clone();
+    let current = app.state.worker.worker_bridge_registered_agents.clone();
     for name in desired.difference(&current) {
         let _ = bridge.cmd_tx.try_send(WorkerBridgeCmd::RegisterAgent {
             name: name.clone(),
@@ -39,7 +39,7 @@ pub fn sync_worker_bridge_agents(app: &mut App, worker_bridge: &Option<TuiWorker
             .cmd_tx
             .try_send(WorkerBridgeCmd::DeregisterAgent { name: name.clone() });
     }
-    app.state.worker_bridge_registered_agents = desired;
+    app.state.worker.worker_bridge_registered_agents = desired;
 }
 
 pub async fn handle_processing_started(app: &mut App, worker_bridge: &Option<TuiWorkerBridge>) {

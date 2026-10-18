@@ -9,9 +9,9 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
         auto_apply_edits: app_state.auto_apply_edits,
         allow_network: app_state.allow_network,
         slash_autocomplete: app_state.slash_autocomplete,
-        worker_id: &app_state.worker_id,
-        worker_name: &app_state.worker_name,
-        a2a_connected: app_state.a2a_connected,
+        worker_id: &app_state.worker.worker_id,
+        worker_name: &app_state.worker.worker_name,
+        a2a_connected: app_state.worker.a2a_connected,
     };
     codetether_help_view::build_help_lines(&context)
 }

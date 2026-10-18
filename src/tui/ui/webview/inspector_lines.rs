@@ -14,7 +14,8 @@ pub fn build(app: &App) -> Vec<Line<'static>> {
     let model = state.last_completion_model.as_deref().unwrap_or("auto");
     let agent = state.active_spawned_agent.as_deref().unwrap_or("build");
     let active = state.active_spawned_agent.as_deref().unwrap_or("None");
-    let protocol = format!("{} registered", state.worker_bridge_registered_agents.len());
+    let registered = state.worker.worker_bridge_registered_agents.len();
+    let protocol = format!("{registered} registered");
     let context = format!(
         "{}/{}",
         state.context_used.unwrap_or(0),

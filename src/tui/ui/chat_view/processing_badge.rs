@@ -17,8 +17,8 @@ use ratatui::text::Span;
 /// ```
 pub fn processing_badge(app: &App) -> Option<Span<'static>> {
     codetether_chat_status::processing_badge::processing_badge(app.state.processing, || {
-        app.state.worker_task_queue.len()
-            + usize::from(app.state.active_remote_task.is_some())
+        app.state.worker.worker_task_queue.len()
+            + usize::from(app.state.worker.active_remote_task.is_some())
             + app.state.active_tasks.count()
     })
 }

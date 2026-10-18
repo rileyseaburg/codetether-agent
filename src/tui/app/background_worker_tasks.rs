@@ -18,7 +18,7 @@ pub(super) fn queue_worker_tasks(app: &mut App, worker_bridge: &mut Option<TuiWo
             app.state.enqueue_worker_task(task);
             app.state.status = format!(
                 "Queued remote task(s): {}",
-                app.state.worker_task_queue.len()
+                app.state.worker.worker_task_queue.len()
             );
         }
     }

@@ -7,35 +7,26 @@ use crate::tui::worker_bridge::IncomingTask;
 
 impl super::AppState {
     pub fn set_worker_bridge(&mut self, worker_id: String, worker_name: String) {
-        self.worker_id = Some(worker_id);
-        self.worker_name = Some(worker_name);
-        self.a2a_connected = true;
+        self.worker.set_worker_bridge(worker_id, worker_name);
     }
 
     pub fn sync_worker_bridge_processing(&mut self, processing: bool) {
-        self.worker_bridge_processing_state = Some(processing);
+        self.worker.sync_worker_bridge_processing(processing);
     }
 
     pub fn register_worker_agent(&mut self, name: String) {
-        self.worker_bridge_registered_agents.insert(name);
+        self.worker.register_worker_agent(name);
     }
 
     pub fn push_recent_task(&mut self, task: String) {
-        self.recent_tasks.push(task);
-        if self.recent_tasks.len() > 20 {
-            let drain_len = self.recent_tasks.len() - 20;
-            self.recent_tasks.drain(0..drain_len);
-        }
+        self.worker.push_recent_task(task);
     }
 
     pub fn enqueue_worker_task(&mut self, task: IncomingTask) {
-        self.worker_task_queue.push_back(task);
-        while self.worker_task_queue.len() > 20 {
-            self.worker_task_queue.pop_front();
-        }
+        self.worker.enqueue_worker_task(task);
     }
 
     pub fn dequeue_worker_task(&mut self) -> Option<IncomingTask> {
-        self.worker_task_queue.pop_front()
+        self.worker.dequeue_worker_task()
     }
 }

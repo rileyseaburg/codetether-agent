@@ -4,11 +4,12 @@ pub use codetether_chat_status::{format_duration_ms, format_timestamp};
 use ratatui::{style::Color, text::Span};
 fn bus_status(app: &App) -> codetether_chat_status::BusStatus {
     codetether_chat_status::BusStatus {
-        connected: app.state.a2a_connected,
-        agents: app.state.worker_bridge_registered_agents.len(),
-        queued: app.state.worker_task_queue.len(),
+        connected: app.state.worker.a2a_connected,
+        agents: app.state.worker.worker_bridge_registered_agents.len(),
+        queued: app.state.worker.worker_task_queue.len(),
         processing: app
             .state
+            .worker
             .worker_bridge_processing_state
             .unwrap_or(app.state.processing),
         peer_ready: app.state.peer_endpoint_ready,

@@ -4,8 +4,8 @@ use ratatui::{Frame, layout::Rect};
 /// Render registered agent cards using the current selection and scroll state.
 pub fn render_protocol_registry(f: &mut Frame, app: &mut App, area: Rect) {
     let view = codetether_protocol_view::RegistryView {
-        registered_agents: &app.state.worker_bridge_registered_agents,
-        worker_id: &app.state.worker_id,
+        registered_agents: &app.state.worker.worker_bridge_registered_agents,
+        worker_id: &app.state.worker.worker_id,
         selected: app.state.protocol_selected,
         scroll: app.state.protocol_scroll,
     };

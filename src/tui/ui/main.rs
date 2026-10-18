@@ -89,8 +89,8 @@ fn render_chat_or_webview(f: &mut Frame, app: &mut App, session: &SessionView) {
 }
 
 fn render_bus_view(f: &mut Frame, app: &mut App) {
-    let mut registered_agents = app
-        .state
+    let worker = &app.state.worker;
+    let mut registered_agents = worker
         .worker_bridge_registered_agents
         .iter()
         .cloned()
@@ -98,13 +98,13 @@ fn render_bus_view(f: &mut Frame, app: &mut App) {
     registered_agents.sort();
     let summary = ProtocolSummary {
         cwd_display: app.state.cwd_display.clone(),
-        worker_id: app.state.worker_id.clone(),
-        worker_name: app.state.worker_name.clone(),
-        a2a_connected: app.state.a2a_connected,
-        processing: app.state.worker_bridge_processing_state,
+        worker_id: worker.worker_id.clone(),
+        worker_name: worker.worker_name.clone(),
+        a2a_connected: worker.a2a_connected,
+        processing: worker.worker_bridge_processing_state,
         registered_agents,
-        queued_tasks: app.state.worker_task_queue.len(),
-        recent_task: app.state.recent_tasks.last().cloned(),
+        queued_tasks: worker.worker_task_queue.len(),
+        recent_task: worker.recent_tasks.last().cloned(),
         peer_endpoint_ready: app.state.peer_endpoint_ready,
     };
     render_bus_log_with_summary(f, &mut app.state.bus_log, f.area(), Some(summary))

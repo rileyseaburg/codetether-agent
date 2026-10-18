@@ -20,3 +20,9 @@ pub use codetether_worker_events::IncomingTask;
 pub use registration::{Registration, RegistrationRequest};
 pub use spawn::spawn;
 pub use types::{Bridge, WorkerBridgeCmd};
+
+mod worker_identity;
+mod worker_queue;
+mod worker_recent;
+mod worker_state;
+pub use worker_state::WorkerState;

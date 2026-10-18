@@ -1,6 +1,6 @@
 //! Default implementation for `AppState`.
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::tui::models::{InputMode, ViewMode};
@@ -36,15 +36,10 @@ impl Default for super::AppState {
             symbol_search: SymbolSearchState::new(),
             completion: Default::default(),
             history: Default::default(),
-            worker_id: None,
-            worker_name: None,
-            a2a_connected: false,
+            worker: Default::default(),
             peer_endpoint_ready: false,
-            recent_tasks: Vec::new(),
-            worker_bridge_registered_agents: HashSet::new(),
             active_tasks: Default::default(), tool_calls: Default::default(), bus_cursor: 0,
-            worker_bridge_processing_state: None, worker_task_queue: VecDeque::new(),
-            active_remote_task: None, live_inbound: None,
+            live_inbound: None,
             help_scroll: crate::tui::help::HelpScrollState::default(),
             show_help: false,
             model_picker: codetether_model_picker::ModelPickerState::default(),

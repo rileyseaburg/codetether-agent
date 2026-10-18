@@ -1,6 +1,6 @@
 //! Core TUI state containers.
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, atomic::AtomicBool};
 use std::time::Instant;
 
@@ -8,10 +8,10 @@ use tokio::sync::{Notify, mpsc::UnboundedReceiver};
 
 use crate::session::ImageAttachment;
 use crate::tui::models::{InputMode, ViewMode};
+use crate::tui::symbol_search::SymbolSearchState;
 use crate::tui::{audit_view::AuditViewState, bus_log::BusLogState};
 use crate::tui::{chat::message::ChatMessage, help::HelpScrollState};
 use crate::tui::{ralph_view::RalphViewState, swarm_view::SwarmViewState};
-use crate::tui::{symbol_search::SymbolSearchState, worker_bridge::IncomingTask};
 
 use super::{agent_profile::SpawnedAgent, context_health, git_state};
 
@@ -57,7 +57,7 @@ pub struct AppState {
     pub protocol_selected: usize, pub protocol_scroll: usize, pub status: String, pub processing: bool, pub approval_waiting: bool, pub session_id: Option<String>, pub session_picker: codetether_session_picker::SessionPickerState, pub cwd_display: String,
     pub bus_log: BusLogState, pub swarm: SwarmViewState, pub audit: AuditViewState, pub git: git_state::GitViewState, pub ralph: RalphViewState, pub audit_loop: crate::tui::audit_loop_view::audit_loop_state::AuditLoopState, pub symbol_search: SymbolSearchState,
     pub completion: codetether_slash_command::CompletionState, pub history: codetether_composer_view::CommandHistory,
-    pub worker_id: Option<String>, pub worker_name: Option<String>, pub a2a_connected: bool, pub peer_endpoint_ready: bool, pub recent_tasks: Vec<String>, pub worker_bridge_registered_agents: HashSet<String>, pub active_tasks: crate::tui::app::bus::active_tasks::ActiveTasks, pub tool_calls: crate::tui::app::bus::tool_calls::ToolCallTracker, pub bus_cursor: u64, pub worker_bridge_processing_state: Option<bool>, pub worker_task_queue: VecDeque<IncomingTask>, pub active_remote_task: Option<IncomingTask>, pub live_inbound: Option<crate::a2a::live_inbox::Inbound>,
+    pub worker: codetether_tui_worker::WorkerState, pub peer_endpoint_ready: bool, pub active_tasks: crate::tui::app::bus::active_tasks::ActiveTasks, pub tool_calls: crate::tui::app::bus::tool_calls::ToolCallTracker, pub bus_cursor: u64, pub live_inbound: Option<crate::a2a::live_inbox::Inbound>,
     pub help_scroll: HelpScrollState, pub show_help: bool, pub model_picker: codetether_model_picker::ModelPickerState,
     pub streaming: codetether_chat_model::StreamingState, pub request_timing: codetether_telemetry::RequestTimingState, pub last_completion_model: Option<String>, pub last_completion_latency_ms: Option<u64>, pub last_completion_prompt_tokens: Option<usize>, pub last_completion_output_tokens: Option<usize>,
     pub context_used: Option<usize>, pub context_budget: Option<usize>, pub context_health: context_health::ContextHealthState, pub tool_timing: codetether_telemetry::ToolTimingState,

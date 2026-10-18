@@ -34,9 +34,10 @@ fn should_ignore(app: &App, envelope: &BusEnvelope, from: &str, to: &str) -> boo
 }
 
 fn addressed_to_tui(app: &App, to: &str) -> bool {
+    let worker = &app.state.worker;
     to == "tui"
-        || app.state.worker_id.as_deref() == Some(to)
-        || app.state.worker_bridge_registered_agents.contains(to)
+        || worker.worker_id.as_deref() == Some(to)
+        || worker.worker_bridge_registered_agents.contains(to)
 }
 
 fn text_parts(parts: &[Part]) -> String {

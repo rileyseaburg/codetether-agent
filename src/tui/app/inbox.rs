@@ -24,7 +24,7 @@ pub(crate) async fn trigger_next(
     let Some(task) = app.state.dequeue_worker_task() else {
         return;
     };
-    app.state.active_remote_task = Some(task.clone());
+    app.state.worker.active_remote_task = Some(task.clone());
     announce(app, &task);
     dispatch_prompt(
         app,

@@ -3,7 +3,7 @@
 use crate::tui::app::state::App;
 
 pub fn emit(app: &mut App, status: &str, error: Option<String>) {
-    let Some(task) = app.state.active_remote_task.take() else {
+    let Some(task) = app.state.worker.active_remote_task.take() else {
         return;
     };
     let Some(bus) = crate::bus::global() else {

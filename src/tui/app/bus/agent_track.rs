@@ -10,11 +10,13 @@ pub fn track(app: &mut App, message: &BusMessage) {
     match message {
         BusMessage::AgentReady { agent_id, .. } | BusMessage::Heartbeat { agent_id, .. } => {
             app.state
+                .worker
                 .worker_bridge_registered_agents
                 .insert(agent_id.clone());
         }
         BusMessage::AgentShutdown { agent_id } => {
             app.state
+                .worker
                 .worker_bridge_registered_agents
                 .remove(agent_id.as_str());
         }

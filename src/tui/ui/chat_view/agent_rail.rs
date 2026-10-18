@@ -17,8 +17,13 @@ use ratatui::text::Span;
 /// ```
 pub fn agent_rail_spans(app: &App) -> Vec<Span<'static>> {
     codetether_chat_status::agent_rail_spans(
-        app.state.worker_bridge_registered_agents.iter().collect(),
         app.state
+            .worker
+            .worker_bridge_registered_agents
+            .iter()
+            .collect(),
+        app.state
+            .worker
             .worker_bridge_processing_state
             .unwrap_or(app.state.processing),
     )
