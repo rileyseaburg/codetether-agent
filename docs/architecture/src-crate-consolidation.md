@@ -9783,3 +9783,19 @@ moved without execution. Evidence is in
 `artifacts/consolidation-tool-call-parser/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python or tool execution ran. Full workspace
 consolidation remains active.
+
+### Dedicated provider-policy crate
+
+Moved provider preference/explicit selection, missing-native-call retry policy,
+assistant tool-promise recognition, temperature rules and upstream retry
+classification into `crates/codetether-provider-policy`. Twenty-six modules
+separate decisions, vocabularies and original regression cases. Native provider
+and error helpers retain their established exports.
+
+Thirty-one static comparisons cover selection order, exact model and phrase
+rules, retry exhaustion, original tests and unchanged callers. Module/dependency
+graphs, file budgets and whitespace checks passed; the largest crate file has
+43 code lines. Fifteen existing tests moved without execution. Evidence is in
+`artifacts/consolidation-provider-policy/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python or provider execution ran. Full workspace
+consolidation remains active.

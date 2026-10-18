@@ -1,10 +1,8 @@
 //! Error fragments that indicate a safe upstream retry.
 
+#[rustfmt::skip]
 pub(super) const RETRYABLE_NEEDLES: &[&str] = &[
-    " 500 ",
-    " 503 ",
-    " 504 ",
-    " 502 ",
+    " 500 ", " 503 ", " 504 ", " 502 ",
     " 429 ",
     "status code 500",
     "status code 503",

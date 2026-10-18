@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use codetether_agent::session::helper::provider::temperature::temperature_is_deprecated;
+//! use codetether_provider_policy::temperature::temperature_is_deprecated;
 //!
 //! assert!(temperature_is_deprecated("claude-opus-5"));
 //! assert!(temperature_is_deprecated("claude-haiku-5-5"));
@@ -47,7 +47,3 @@ pub fn temperature_is_deprecated(model: &str) -> bool {
         || m.contains("opus_4_7")
         || m.contains("opus_47")
 }
-
-#[cfg(test)]
-#[path = "temperature_tests.rs"]
-mod tests;

@@ -1,0 +1,16 @@
+//! Original provider selection, request-settings and retry cases.
+mod assistant_claims_imminent_tool_use_detects_minimax_style_prose;
+mod default_provider_prefers_openai;
+mod explicit_provider_is_used_when_available;
+mod explicit_provider_must_not_fallback_when_unavailable;
+mod retry_auth_failures_are_not_retryable;
+mod retry_codex_server_overload_is_retryable;
+mod retry_exhausted_stream_budget_is_not_retried_by_prompt_loop;
+mod retry_generic_provider_availability_is_retryable;
+mod retry_rate_limits_remain_retryable;
+mod retry_service_unavailable_is_retryable;
+mod should_retry_missing_native_tool_call_targets_minimax_only;
+mod temperature_detects_newer_families_that_reject_temperature;
+mod temperature_detects_opus_47_aliases;
+mod temperature_detects_opus_5_aliases;
+mod temperature_non_deprecated_models_return_false;

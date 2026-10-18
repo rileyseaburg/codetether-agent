@@ -3,10 +3,6 @@ use super::helper::build::{
     build_request_requires_tool, looks_like_build_execution_request,
     should_force_build_tool_first_retry,
 };
-use super::helper::provider::{
-    assistant_claims_imminent_tool_use, choose_default_provider,
-    resolve_provider_for_session_request, should_retry_missing_native_tool_call,
-};
 use super::helper::stream::collect_stream_completion_with_events;
 use super::helper::text::{extract_candidate_file_paths, extract_text_content};
 use crate::provider::{
@@ -76,88 +72,6 @@ async fn collect_stream_completion_reconstructs_tool_calls() {
         Some(ContentPart::ToolCall { id, name, arguments, .. })
             if id == "call_1" && name == "read" && arguments == "{\"path\":\"src/main.rs\"}"
     ));
-}
-
-#[test]
-fn assistant_claims_imminent_tool_use_detects_minimax_style_prose() {
-    let tools = vec![ToolDefinition {
-        name: "bash".to_string(),
-        description: "shell".to_string(),
-        parameters: json!({"type":"object"}),
-    }];
-
-    assert!(assistant_claims_imminent_tool_use(
-        "First, I'll use bash to inspect the repo and then patch the issue.",
-        &tools,
-    ));
-    assert!(!assistant_claims_imminent_tool_use(
-        "The fix is to update the parser and rerun tests.",
-        &tools,
-    ));
-}
-
-#[test]
-fn should_retry_missing_native_tool_call_targets_minimax_only() {
-    let tools = vec![ToolDefinition {
-        name: "bash".to_string(),
-        description: "shell".to_string(),
-        parameters: json!({"type":"object"}),
-    }];
-
-    assert!(should_retry_missing_native_tool_call(
-        "minimax",
-        "MiniMax-M2.5",
-        0,
-        &tools,
-        "I'll use bash to inspect the repository first.",
-        false,
-        1,
-    ));
-    assert!(!should_retry_missing_native_tool_call(
-        "anthropic",
-        "claude-sonnet-4",
-        0,
-        &tools,
-        "I'll use bash to inspect the repository first.",
-        false,
-        1,
-    ));
-    assert!(!should_retry_missing_native_tool_call(
-        "minimax",
-        "MiniMax-M2.5",
-        1,
-        &tools,
-        "I'll use bash to inspect the repository first.",
-        false,
-        1,
-    ));
-}
-
-#[test]
-fn explicit_provider_must_not_fallback_when_unavailable() {
-    let providers = vec!["zai", "openai"];
-    let result = resolve_provider_for_session_request(&providers, Some("local_cuda"));
-    assert!(result.is_err());
-    assert!(
-        result
-            .err()
-            .map(|e| e.to_string())
-            .unwrap_or_default()
-            .contains("selected explicitly but is unavailable")
-    );
-}
-
-#[test]
-fn explicit_provider_is_used_when_available() {
-    let providers = vec!["local_cuda", "zai"];
-    let result = resolve_provider_for_session_request(&providers, Some("local_cuda"));
-    assert_eq!(result.ok(), Some("local_cuda"));
-}
-
-#[test]
-fn default_provider_prefers_openai() {
-    let providers = vec!["zai", "openai"];
-    assert_eq!(choose_default_provider(&providers), Some("openai"));
 }
 
 #[test]
