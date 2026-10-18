@@ -1,0 +1,19 @@
+[package]
+name = "codetether-session-codec"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Borrowed session JSON snapshots and compact store header encoding"
+
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
+codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread"] }

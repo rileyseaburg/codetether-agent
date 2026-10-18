@@ -8917,3 +8917,21 @@ and whitespace checks passed. Evidence is in
 `artifacts/consolidation-store-workspace/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The full consolidation remains
 active.
+
+### Dedicated session JSON codec
+
+Moved borrowed snapshot construction, runtime-aware serialization, metadata
+normalization and compact store-header encoding/decoding into
+`crates/codetether-session-codec`. Eight modules separate borrowed input views,
+the persisted snapshot shape, live/legacy header rules and JSON writing.
+Native adapters supply references to existing fields without cloning history.
+
+The codec preserves the serialized field order, page-classification fallback,
+metadata clone/provenance behavior, live workspace canonicalization, unchanged
+legacy metadata and runtime-flavor serialization branch. Sixteen static checks
+compare the moved bodies, JSON shapes, native field mappings and unchanged
+snapshot round-trip test. Module references, dependencies, file budgets and
+whitespace checks passed; crate files contain at most 42 code lines. Evidence is
+in `artifacts/consolidation-session-codec/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The full consolidation remains
+active.

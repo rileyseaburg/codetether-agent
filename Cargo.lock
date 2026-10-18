@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-session-codec",
  "codetether-session-metadata",
  "codetether-session-title",
  "codetether-run-checkpoint",
@@ -3956,6 +3957,22 @@ dependencies = [
  "tracing",
  "vaultrs",
  "windows",
+]
+
+[[package]]
+name = "codetether-session-codec"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-agent-core",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-provenance",
+ "codetether-session-metadata",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
