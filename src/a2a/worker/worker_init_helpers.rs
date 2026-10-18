@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 
 use crate::{bus::AgentBus, cli::A2aArgs, config::Config};
 
-use super::{WorkerTaskRuntime, normalize_max_concurrent_tasks, parse_auto_approve, task_timeline};
+use super::{WorkerTaskRuntime, task_timeline};
 
 /// Align the process-wide runtime access mode with the worker's `--auto-approve`
 /// policy.
@@ -33,19 +33,20 @@ pub(super) fn build_task_runtime(
     bus: &Arc<AgentBus>,
     progress: &Arc<Mutex<task_timeline::TaskProgressState>>,
 ) -> WorkerTaskRuntime {
-    WorkerTaskRuntime {
-        client: client.clone(),
-        server: server.to_string(),
-        token: args.token.clone(),
-        worker_id: worker_id.to_string(),
-        agent_name: name.to_string(),
-        processing: processing.clone(),
-        max_concurrent_tasks: normalize_max_concurrent_tasks(args.max_concurrent_tasks),
-        auto_approve: parse_auto_approve(&args.auto_approve),
-        bus: bus.clone(),
-        task_progress: progress.clone(),
-        workspace_ids: Vec::new(),
-    }
+    codetether_a2a_worker_core::initialization::build_task_runtime(
+        client,
+        codetether_a2a_worker_core::initialization::RuntimeConfig {
+            server,
+            token: args.token.as_deref(),
+            worker_id,
+            name,
+            max_concurrent_tasks: args.max_concurrent_tasks,
+            auto_approve: &args.auto_approve,
+        },
+        processing,
+        bus,
+        progress,
+    )
 }
 pub(super) fn parse_codebases(args: &A2aArgs) -> Vec<String> {
     codetether_a2a_worker_core::initialization::parse_codebases(args.workspaces.as_deref())

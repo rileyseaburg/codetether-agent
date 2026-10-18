@@ -1,27 +1,6 @@
-//! Shared runtime state for active worker tasks.
-
-use std::{collections::HashSet, sync::Arc};
-
-use reqwest::Client;
-use tokio::sync::Mutex;
-
-use crate::bus::AgentBus;
-
-use super::{AutoApprove, task_timeline};
+//! Native HTTP and bus specializations of shared task runtime state.
 pub(super) use codetether_a2a_worker_core::dispatch::TaskReservation;
-
-/// Shared dependencies and mutable state reused across task handlers.
-#[derive(Clone)]
-pub(super) struct WorkerTaskRuntime {
-    pub(super) client: Client,
-    pub(super) server: String,
-    pub(super) token: Option<String>,
-    pub(super) worker_id: String,
-    pub(super) agent_name: String,
-    pub(super) processing: Arc<Mutex<HashSet<String>>>,
-    pub(super) max_concurrent_tasks: usize,
-    pub(super) auto_approve: AutoApprove,
-    pub(super) bus: Arc<AgentBus>,
-    pub(super) task_progress: Arc<Mutex<task_timeline::TaskProgressState>>,
-    pub(super) workspace_ids: Vec<String>,
-}
+pub(super) type WorkerTaskRuntime = codetether_a2a_worker_core::initialization::WorkerTaskRuntime<
+    reqwest::Client,
+    crate::bus::AgentBus,
+>;

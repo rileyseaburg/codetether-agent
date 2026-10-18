@@ -16245,3 +16245,19 @@ Full workspace consolidation remains active.
   No dependencies changed. Evidence: `artifacts/consolidation-worker-initialization/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker task and startup state
+
+- Moved WorkerTaskRuntime and WorkerContext into worker-core initialization,
+  generic over native HTTP, bus, CLI and peer types. Native paths are concrete
+  aliases; peer ownership remains part of the startup context.
+- Moved task runtime construction behind borrowed RuntimeConfig inputs,
+  preserving normalization, approval parsing and all shared-handle clones.
+- Implemented Clone without a bus Clone bound; every cloned or copied field
+  matches the former concrete derive behavior.
+- Verification: exact state fields, constructor and clone mapping, native
+  settings mapping, unchanged worker initialization/task dispatch, module and
+  dependency graphs, direct rustfmt, file budgets and diff whitespace. No
+  dependencies changed. Evidence: `artifacts/consolidation-worker-state/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
