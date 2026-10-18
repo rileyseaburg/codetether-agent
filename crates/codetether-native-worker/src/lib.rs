@@ -65,3 +65,8 @@ pub mod session_loop;
 pub mod response;
 /// Native registry lookup and policy-gated tool execution.
 pub mod tools;
+
+mod session_steps;
+/// Worker tool-call approval, enrichment, execution and result recording.
+pub mod tool_call;
+pub use session_steps::run_session_steps;

@@ -25837,3 +25837,23 @@ cycles or undeclared dependencies. Declaration, direct rustfmt, whitespace and
 final file-limit checks pass. Only the two required worker dependencies are
 staged in Cargo.lock; unrelated dirty files remain unchanged. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Native worker tool-call coordination and step construction
+
+Moved tool-call coordination, native execution/result recording, the response
+runner and worker step-context construction into codetether-native-worker.
+InputContext retains only application-specific argument enrichment on Session.
+Root worker step and tool-call entrypoints now re-export crate functions, and
+the concrete response callback/context alias files are removed. Existing
+denial/image fixtures and tests still call the same root compatibility paths.
+
+Static comparisons preserve tool-call argument order, registry execution and
+result recording, the enrichment call, response callback and complete step
+context construction. Initial comparison normalization omitted an optional
+trailing generic comma; the corrected token comparison passes. Existing
+integration fixtures are unchanged. Module/dependency scans cover 719 roots
+and 605 crates without missing modules, cycles or undeclared dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks pass. No manifest
+or lockfile changes were needed; unrelated dirty files remain unchanged.
+Evidence: artifacts/consolidation-worker-tool-call/. No Cargo, rustc, Python,
+compilation or tests ran. Full consolidation remains active.
