@@ -10,8 +10,6 @@
 //! ```
 
 use crate::tui::app::state::App;
-use crate::tui::app::symbols::{schedule_refresh, symbol_search_active};
-use crate::tui::models::ViewMode;
 
 #[path = "paste_host.rs"]
 mod host;
@@ -27,36 +25,7 @@ mod host;
 /// handle_paste(&mut app, "pasted\ntext").await;
 /// ```
 pub async fn handle_paste(app: &mut App, text: &str) {
-    let normalized = crate::tui::chat::strip::normalize_paste(text);
-
-    if symbol_search_active(app) {
-        paste_chars_no_newlines(&normalized, |ch| app.state.symbol_search.handle_char(ch));
-        schedule_refresh(app);
-        return;
-    }
-    if app.state.view_mode == ViewMode::Bus && app.state.bus_log.filter_input_mode {
-        paste_chars_no_newlines(&normalized, |ch| app.state.bus_log.push_filter_char(ch));
-        app.state.status = format!("Protocol filter: {}", app.state.bus_log.filter);
-        return;
-    }
-    if app.state.view_mode == ViewMode::Model {
-        paste_chars_no_newlines(&normalized, |ch| app.state.model_filter_push(ch));
-        return;
-    }
-    if app.state.view_mode == ViewMode::Sessions {
-        paste_chars_no_newlines(&normalized, |ch| app.state.session_filter_push(ch));
-        return;
-    }
-    if app.state.view_mode == ViewMode::Chat {
-        paste_into_chat(app, &normalized);
-    }
-}
-
-/// Iterate non-newline characters and feed them to `f`.
-fn paste_chars_no_newlines(text: &str, mut f: impl FnMut(char)) {
-    for ch in text.chars().filter(|ch| *ch != '\n') {
-        f(ch);
-    }
+    codetether_paste_buffer::routing::handle(app, text);
 }
 
 /// Insert pasted text into the chat input buffer.
@@ -67,3 +36,6 @@ fn paste_chars_no_newlines(text: &str, mut f: impl FnMut(char)) {
 pub fn paste_into_chat(app: &mut App, normalized: &str) {
     codetether_paste_buffer::input::paste_into_chat(app, normalized);
 }
+
+#[path = "paste_routing_host.rs"]
+mod routing_host;

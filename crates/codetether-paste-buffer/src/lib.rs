@@ -20,3 +20,6 @@ mod tests;
 
 /// Image-first chat paste ingestion and native composer integration.
 pub mod input;
+
+/// View-aware paste routing and single-line filter ingestion.
+pub mod routing;

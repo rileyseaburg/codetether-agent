@@ -15970,3 +15970,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-chat-paste/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared paste destination routing
+
+- Moved terminal-text normalization, destination precedence and single-line
+  character filtering into `codetether-paste-buffer::routing`. Native bindings
+  supply view state, symbol refresh and protocol/model/session filter edits.
+- Preserved symbol-search priority, protocol filtering only in its active mode,
+  model/session filter handling and chat fallback. The native async entry point
+  retains its signature and performs the same synchronous work without awaits.
+- Verification: complete routing-body comparison, exact newline-filter loop,
+  all nine native bindings, unchanged chat implementation and normalizer,
+  module/dependency graphs, direct rustfmt, file budgets, isolated lock addition
+  and diff whitespace. Evidence: `artifacts/consolidation-paste-routing/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

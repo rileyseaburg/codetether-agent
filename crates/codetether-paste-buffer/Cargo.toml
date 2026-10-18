@@ -8,3 +8,4 @@ description = "Large-text paste buffers, placeholders, and prompt expansion"
 
 [dependencies]
 codetether-image = { path = "../codetether-image", version = "0.1.0" }
+codetether-terminal-text = { path = "../codetether-terminal-text", version = "0.1.0" }
