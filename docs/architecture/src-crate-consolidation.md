@@ -15762,3 +15762,24 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-goal-recovery/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared completion-attempt recovery
+
+- Moved completion-attempt state and recovery into
+  `codetether-prompt-loop::completion`, with separate modules for retry
+  sequencing, overflow-plan translation, server-delay parsing, interactive
+  play-break delivery, and native service contracts.
+- Native initial derivation remains a factory returning the shared Attempt.
+  Native adapters retain context derivation, delegation feedback, model
+  switching and proactive LSP collection.
+- Preserved context-overflow precedence, server-requested delay handling,
+  bounded upstream retries, exponential sleep, feedback timing, failover
+  re-derivation and counter resets. Moved the existing retry-delay test without
+  executing it. No new dependencies were needed.
+- Verification: full transformed recovery comparison, exact state fields and
+  initialization, parser/test and overflow comparisons, play-break sequence,
+  six native bindings, unchanged underlying services, module/dependency graphs,
+  direct rustfmt, file budgets and diff whitespace. Evidence:
+  `artifacts/consolidation-completion-recovery/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Workspace-wide
+  consolidation remains incomplete.

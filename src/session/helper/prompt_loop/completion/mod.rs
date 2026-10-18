@@ -3,10 +3,8 @@
 mod context;
 mod derived;
 mod failover;
-mod interlude;
 mod recovery;
 mod request;
-mod retry_after;
 mod send;
 
 use super::Runner;
@@ -20,7 +18,7 @@ use anyhow::Result;
 ///
 /// Returns an unrecoverable provider or context-derivation error.
 pub(super) async fn complete(runner: &mut Runner<'_>, step: usize) -> Result<CompletionResponse> {
-    let mut attempt = context::Attempt::new(runner, step).await?;
+    let mut attempt = context::new(runner, step).await?;
     let started = std::time::Instant::now();
     loop {
         attempt.count += 1;

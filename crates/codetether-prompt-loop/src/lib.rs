@@ -38,3 +38,6 @@ pub mod tool_publication;
 
 /// Whole-turn continuation after exhausted provider failures.
 pub mod goal_recovery;
+
+/// Provider completion attempt state and retry sequencing.
+pub mod completion;
