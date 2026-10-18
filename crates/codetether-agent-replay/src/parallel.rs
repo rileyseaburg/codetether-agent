@@ -1,14 +1,9 @@
-//! Parallel dispatch for independently read-only agent tool calls.
-
-use crate::agent::Agent;
-use crate::provider::ContentPart;
-use crate::session::Session;
-use crate::tool::ToolResult;
-
+//! Concurrent execution for policy-approved read-only batches.
+use crate::*;
 /// Execute independently read-only tool calls concurrently.
-pub(super) async fn execute(
-    agent: &Agent,
-    session: &Session,
+pub(crate) async fn execute<H: Host>(
+    agent: &H,
+    session: &H::Session,
     calls: &[ContentPart],
 ) -> Vec<ToolResult> {
     let futures = calls.iter().filter_map(|part| {

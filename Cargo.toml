@@ -25,6 +25,7 @@ members = [
     "crates/codetether-a2a-worker-core",
     "crates/codetether-a2a-worker-clone",
     "crates/codetether-agent-core",
+    "crates/codetether-agent-replay",
     "crates/codetether-approval-core",
     "crates/codetether-approval-http",
     "crates/codetether-audit",
@@ -685,6 +686,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 # Workspace crates
 codetether-a2a-worker-core = { path = "crates/codetether-a2a-worker-core", version = "0.1.0" }
 codetether-agent-core = { path = "crates/codetether-agent-core", version = "0.1.0" }
+codetether-agent-replay = { path = "crates/codetether-agent-replay", version = "0.1.0" }
 codetether-http-error = { path = "crates/codetether-http-error", version = "0.1.0" }
 codetether-server-router = { path = "crates/codetether-server-router", version = "0.1.0" }
 codetether-server-runtime = { path = "crates/codetether-server-runtime", version = "0.1.0" }

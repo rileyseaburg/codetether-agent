@@ -18671,3 +18671,25 @@ missing/orphaned modules. Evidence: `artifacts/consolidation-ralph-runtime/`.
 The first comparison needed the explicit generic context-signature mapping;
 its failure log is retained. No Cargo, rustc, Python, Rust tests or live runtime
 operations ran. Compilation and runtime behavior remain unverified.
+
+### Agent tool-call replay
+
+Moved tool-call batching, read-only/prior-context eligibility, sequential and
+parallel dispatch, tool-usage records, feedback rendering and image-result
+messages into `codetether-agent-replay`. The native agent supplies the session
+policy, existing tool-input execution and session mutation through a focused
+Host implementation. Existing native policy and generated-image recording tests
+remain unchanged and use test-only adapters to the shared functions.
+
+The whole-batch parallel eligibility rule and short-circuit order are preserved.
+Sequential policy denials, skipped malformed calls, ordered result pairing,
+serialized tool inputs, feedback, images and tool-role messages retain their
+original handling. Native tool preparation and dispatch are unchanged.
+
+Validation: seven complete body comparisons, callback mappings, unchanged test
+sources and output adapters, lexical module reachability including cfg(test),
+dependency-cycle checks, file-size ratchet, whitespace and formatting. A closure
+brace formatting difference is normalized explicitly; its initial logs are
+retained. Evidence: `artifacts/consolidation-agent-replay/`. No Cargo, rustc,
+Python, Rust tests or live tool calls ran; compilation and runtime behavior
+remain unverified.
