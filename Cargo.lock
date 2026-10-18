@@ -1147,6 +1147,7 @@ dependencies = [
  "codetether-a2a-inbox",
  "codetether-a2a-worker-core",
  "codetether-bus-core",
+ "codetether-bus-s3",
  "codetether-provenance",
  "codetether-provider-core",
  "codetether-telemetry",

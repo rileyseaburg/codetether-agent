@@ -61,16 +61,11 @@ use codetether_a2a_http::peer_startup::A2APreparation;
 pub use codetether_a2a_http::peer_startup::SpawnOptions;
 pub use command::run;
 /// Bind application card/router configuration to shared peer startup.
-async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APreparation> {
-    codetether_a2a_http::peer_startup::prepare_a2a(
-        opts,
-        bus,
-        codetether_a2a_http::peer_startup::StartupHooks {
-            build_card: agent_card::build,
-            build_router: |card, bus| A2AServer::with_bus(card, bus).router(),
-            ledger_path: crate::a2a::intro::ledger::ledger_path,
-            application_version: env!("CARGO_PKG_VERSION"),
-        },
-    )
-    .await
+fn startup_hooks() -> codetether_a2a_http::peer_startup::StartupHooks {
+    codetether_a2a_http::peer_startup::StartupHooks {
+        build_card: agent_card::build,
+        build_router: |card, bus| A2AServer::with_bus(card, bus).router(),
+        ledger_path: crate::a2a::intro::ledger::ledger_path,
+        application_version: env!("CARGO_PKG_VERSION"),
+    }
 }

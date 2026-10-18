@@ -37,5 +37,7 @@ pub use background::start_background;
 /// Serve a prepared endpoint until the supplied shutdown signal.
 pub use foreground::serve_foreground;
 
+/// Foreground and background startup using application card/router hooks.
+pub mod application;
 /// Optional worker-local peer configuration and startup.
 pub mod worker;

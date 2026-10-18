@@ -10,6 +10,5 @@ pub async fn start_a2a_in_background(
     opts: SpawnOptions,
     bus: Arc<AgentBus>,
 ) -> Result<A2APeerHandle> {
-    let prep = prepare_a2a(opts, bus).await?;
-    Ok(codetether_a2a_http::peer_startup::start_background(prep))
+    codetether_a2a_http::peer_startup::application::background(opts, bus, startup_hooks()).await
 }

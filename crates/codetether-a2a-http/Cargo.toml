@@ -10,13 +10,14 @@ description = "HTTP client and JSON-RPC task-state operations for CodeTether A2A
 codetether-a2a-inbox = { path = "../codetether-a2a-inbox", version = "0.1.0" }
 codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
 codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-bus-s3 = { path = "../codetether-bus-s3", version = "0.1.0" }
 codetether-a2a-worker-core = { path = "../codetether-a2a-worker-core", version = "0.1.0" }
 codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
 sha2 = "0.11.0"
 hex = "0.4"
 codetether-a2a-discovery = { path = "../codetether-a2a-discovery", version = "0.1.0" }
 urlencoding = "2"
-tokio = { version = "1.53.1", features = ["time", "sync", "rt", "net"] }
+tokio = { version = "1.53.1", features = ["time", "sync", "rt", "net", "signal"] }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 tracing = "0.1"
 async-trait = "0.1.92"

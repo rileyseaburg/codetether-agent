@@ -22617,3 +22617,27 @@ Evidence: `artifacts/consolidation-ralph-application/` (the initial expected-sou
 generic syntax error is retained beside the successful comparison).
 No Ralph execution, provider requests, Cargo, rustc or Python ran; compilation
 and runtime tests remain unverified. Full consolidation is active.
+
+### Peer foreground/background lifecycle in the HTTP crate
+
+Moved peer command bus construction, optional S3 archival startup, preparation
+and serving order, Ctrl-C shutdown and background handle creation into
+`codetether-a2a-http::peer_startup::application`. Three focused modules expose
+the foreground/background entry points and keep their implementations separate.
+Native command/background entry points delegate with the existing application
+card/router/ledger hooks. The former native preparation function now only
+constructs those hooks.
+
+Static comparisons preserve bus and sink ownership, delayed option conversion,
+preparation/serving order, Ctrl-C handling, shutdown log target and background
+handle return. Card construction and shared endpoint preparation/serving files
+remain unchanged. The pre-existing edits in src/a2a/spawn.rs were preserved;
+only the preparation-to-hook transformation was staged from its HEAD version.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+The HTTP crate now requests Tokio signal support and the existing bus-s3 crate;
+only the bus-s3 dependency edge changes the staged lockfile. The unrelated
+working lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-peer-application/` (initial verifier syntax error kept).
+No peer server, archival task, Cargo, rustc or Python ran; compilation and
+runtime tests remain unverified. Full consolidation is active.
