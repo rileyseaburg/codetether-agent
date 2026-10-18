@@ -26767,3 +26767,22 @@ formatting, file-limit and whitespace checks pass for 729 module roots and 617
 crates. No manifest/lock changes were needed; unrelated working files are
 untouched. Evidence: artifacts/consolidation-child-events-binding/. No Cargo,
 rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Application residency and activation binding
+
+Moved live-store access, prepared activation, reserve/open entry points and
+residency-state forwarding into codetether-agent-residency::declare_application_residency.
+Removed ten root adapter files under residency/. The root selects its Session,
+ClosedAgent, stores, trace cleanup and existing shared apply_overlay function.
+The former overlay forwarding function is inlined as the same shared call.
+Prepared records and residency ledgers retain their existing owners; exported
+agent/tool visibility remains unchanged.
+
+Static expansion compares thirteen function bodies after path substitution and
+checks the overlay delegation against the removed wrapper. All remaining
+residency integration-test sources and fixtures are byte-for-byte unchanged.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 729 roots and 617 crates. No dependency
+or lock changes were required; unrelated working files remain untouched.
+Evidence: artifacts/consolidation-residency-binding/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

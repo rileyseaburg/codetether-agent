@@ -19,3 +19,15 @@ pub use ensure::open;
 pub use host::Host;
 pub use storage::Storage;
 pub use thread_limit::{limit, rejected};
+
+mod application_binding;
+
+/// Dependencies used by application-local residency declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use async_trait::async_trait;
+    pub use codetether_collaboration_state::residency;
+    pub use codetether_collaboration_state::residency::Slot;
+    pub use codetether_tool_core::ToolResult;
+}
