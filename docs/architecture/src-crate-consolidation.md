@@ -19747,3 +19747,21 @@ lexical module reachability, dependency-cycle checks, file-size ratchet,
 whitespace and direct formatting. Evidence:
 `artifacts/consolidation-bus-ingress/`. No Cargo, rustc, Python, Rust tests or
 bus/task execution ran; compilation and runtime remain unverified.
+
+### Bus monitor controls and remote completion replies
+
+Moved jump-to-bottom, filter clearing/entry/confirmation and remote-task reply
+construction into `codetether-bus-view::input` and `::reply`. Native wrappers
+only lend the existing log, status and active-task slots.
+
+Preserved empty-log behavior, filter messages, task consumption before bus
+lookup, sender validation, error-text preference, reply addressing and the
+original structured log target. Existing filter internals, control callers and
+global bus ownership are unchanged.
+
+Validation: five complete translated function bodies, five native delegates,
+unchanged filter/caller/global bindings, isolated lockfile delta, lexical module
+reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-bus-controls/`. No Cargo, rustc,
+Python, Rust tests or bus messages ran; compilation and runtime remain
+unverified.

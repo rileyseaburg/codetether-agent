@@ -6667,6 +6667,7 @@ dependencies = [
  "codetether-worker-events",
  "ratatui",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]

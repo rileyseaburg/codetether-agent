@@ -13,3 +13,8 @@ pub use summary::ProtocolSummary;
 
 /// Cursor-based bus ingestion and safe external-message admission.
 pub mod ingress;
+
+/// Bus monitor filter and selection actions.
+pub mod input;
+/// Completion replies for remotely submitted work.
+pub mod reply;
