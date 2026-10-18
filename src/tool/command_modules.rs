@@ -2,7 +2,7 @@
 
 pub mod bash;
 pub mod collaboration;
-pub(crate) mod command_pty;
+pub(crate) use codetether_command_pty as command_pty;
 pub(crate) mod command_session;
 pub mod exec_command;
 use codetether_process_tree as process_tree;
@@ -12,4 +12,4 @@ pub mod temp_write_guard;
 pub use codetether_token_count as token_count;
 pub use codetether_write_stdin as write_stdin;
 // Approval-time reconstruction of files those tools would mutate.
-pub(crate) mod proposed_content;
+pub(crate) use codetether_proposed_content as proposed_content;

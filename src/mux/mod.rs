@@ -19,13 +19,13 @@
 //! codetether mux kill-all
 //! ```
 
-mod agent_task;
-mod backoff;
+use codetether_mux_agent_task as agent_task;
+use codetether_mux_lifecycle::backoff;
 mod client;
 mod command;
 pub(crate) mod control;
-pub(crate) mod coordination;
-pub(crate) mod isolation;
+pub(crate) use codetether_mux_coordination as coordination;
+pub(crate) use codetether_mux_workspace as isolation;
 pub(crate) mod lease;
 mod model;
 pub use codetether_mux_cli::resume_name;

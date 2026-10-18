@@ -12,7 +12,7 @@ mod session_failure;
 #[cfg(test)]
 mod session_failure_tests;
 mod session_loop;
-mod session_outcome;
+use codetether_a2a_worker_core::session_protocol as session_outcome;
 use codetether_a2a_worker_core::session_protocol::transcript as session_output;
 mod session_response;
 mod session_step_tools;

@@ -7,24 +7,24 @@
 //! - **JSON-RPC** (default) — native server adapter and shared HTTP client
 //! - **gRPC** — shared gRPC service (tonic-based, compiled from `crates/codetether-a2a-grpc/proto/a2a/v1/a2a.proto`)
 
+pub(crate) use codetether_a2a_discovery::collaboration_token;
 pub use codetether_a2a_grpc::bridge;
 pub use codetether_a2a_http as client;
 pub(crate) use codetether_a2a_http::identity as agent_identity;
 pub use codetether_a2a_worker_core::claim;
 pub use codetether_bus_core::peer_messages as bus_emit;
-pub(crate) mod collaboration_token;
 #[path = "git_credentials/mod.rs"]
 pub mod git_credentials;
 pub use codetether_a2a_grpc::server as grpc;
 pub mod intro;
 pub use codetether_a2a_discovery::lan;
+pub(crate) use codetether_a2a_discovery::local_identity;
 pub use codetether_a2a_inbox as live_inbox;
-pub(crate) mod local_identity;
 pub mod mdns;
 pub use codetether_a2a_discovery::address as mdns_addr;
 pub use codetether_a2a_discovery::liveness as peer_liveness;
+pub(crate) use codetether_a2a_discovery::peer_prompt;
 pub use codetether_a2a_discovery::presence as mdns_liveness;
-pub(crate) mod peer_prompt;
 pub(crate) mod peer_route;
 pub mod prompt_runtime;
 pub mod server;

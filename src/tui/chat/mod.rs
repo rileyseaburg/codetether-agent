@@ -1,6 +1,6 @@
 //! Chat messages, retained payloads, and clean clipboard selection.
 
-pub(crate) mod copy;
+pub(crate) use codetether_chat_model::copy;
 pub mod mermaid;
 pub use codetether_chat_model as message;
 pub use codetether_chat_model::payload;

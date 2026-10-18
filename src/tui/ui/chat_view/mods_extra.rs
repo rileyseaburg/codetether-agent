@@ -23,6 +23,6 @@ pub use codetether_tui_style::thinking_pulse;
 pub mod title;
 pub use codetether_chat_status::title_brand;
 pub mod title_labels;
-pub(crate) mod viewport;
+pub(crate) use codetether_chat_layout as viewport;
 
 mod composer_view;

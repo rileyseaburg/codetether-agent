@@ -68,8 +68,8 @@ mod task_stream;
 use codetether_a2a_http::worker as task_stream_error;
 #[rustfmt::skip]
 mod task_stream_request;use codetether_a2a_worker_core::dispatch as task_targeting;
-pub(crate) mod task_timeline;
 use codetether_a2a_worker_core::task_config as task_timeout;
+pub(crate) use codetether_a2a_worker_core::task_timeline;
 #[rustfmt::skip]
 #[cfg(test)] mod test_forage;
 #[cfg(test)]

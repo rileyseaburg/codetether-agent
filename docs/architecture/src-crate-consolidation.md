@@ -23500,3 +23500,23 @@ checks passed. No manifests or lockfiles changed; unrelated working changes
 remain untouched. Evidence: artifacts/consolidation-runtime-facades/.
 No runtime operations, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Private forwarding modules use direct crate imports
+
+Replaced thirty-six private/crate-visible forwarding files with direct imports
+or aliases in eighteen parent modules. The selected files contain only one
+crate re-export; all sixty-three prior exported paths retain their targets.
+The visibility of each parent module declaration is preserved on its replacement.
+
+The audit explicitly excludes renamed exports, wildcard consumers and cases
+where a public module contains restricted exports. A separate inspection of
+previous facade batches found no renamed exports among their removed files.
+Renamed storage projection and summary adapters, agent types and MCP transport
+facades remain unchanged. Parent token comparisons and a diff-scope check
+confirm declaration-only changes. One obsolete facade scan root was removed;
+691 roots and 571 crates remain covered with no missing modules or cycles.
+Direct rustfmt, file-size limits and whitespace checks passed. No manifests or
+lockfiles changed, and unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-private-facades/.
+No runtime operations, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

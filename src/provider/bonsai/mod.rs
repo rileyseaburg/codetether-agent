@@ -2,4 +2,4 @@
 #[cfg(feature = "candle")]
 pub(crate) use codetether_provider_bonsai::native;
 pub use codetether_provider_bonsai::{BonsaiConfig, BonsaiProvider, GenerationTiming, MODEL};
-pub(crate) mod registration;
+pub(crate) use codetether_provider_factory::bonsai as registration;

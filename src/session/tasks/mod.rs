@@ -36,7 +36,7 @@ pub(crate) mod runtime;
 pub use codetether_goal_core as state;
 pub use event::{GoalEdit, GoalEditAction, GoalEdited, GoalStatusChecked};
 pub(crate) mod state_cache;
-pub(crate) mod turn_instructions;
+pub(crate) use codetether_goal_runtime::turn_instructions;
 
 #[allow(unused_imports)]
 pub use event::{

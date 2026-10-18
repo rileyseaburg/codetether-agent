@@ -21,7 +21,7 @@ mod dispatch;
 use codetether_context_policy::derivation::options;
 mod policy;
 mod request;
-pub(crate) mod request_guard;
+pub(crate) use codetether_context_request as request_guard;
 mod reset;
 use codetether_context_policy::derivation::reset::markers as reset_helpers;
 mod reset_threshold;
