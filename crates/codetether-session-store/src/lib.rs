@@ -21,3 +21,15 @@ pub mod transaction;
 mod upgrade;
 pub use batch::{Batch, Records};
 pub use state::{Checkpoint, State};
+
+mod acknowledge;
+pub mod cursor_read;
+pub mod delete;
+mod delivery;
+pub mod header_read;
+pub mod projection;
+pub mod summaries;
+mod ticket;
+pub use acknowledge::acknowledge;
+pub use delivery::Delivery;
+pub use ticket::Ticket;

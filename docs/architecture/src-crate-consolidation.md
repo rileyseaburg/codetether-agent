@@ -8625,3 +8625,27 @@ workspace dependency, file-limit and whitespace checks passed. The crate has
 `artifacts/consolidation-session-store/`. Compilation and runtime tests were not
 run. No Cargo, rustc or Python commands ran. Session encoding/hydration and the
 other remaining source areas still require consolidation.
+
+### Session-store consumer snapshots and derived views
+
+Moved consumer cursor selection/acknowledgement, projection reads/commits,
+manual-summary storage/import, row deletion and metadata-only reads into
+`codetether-session-store`. Thirteen additional modules keep snapshot tokens,
+generic delivery payloads, cursor reads, projection transactions and summary
+operations separate. Native wrappers supply canonical session paths, migration,
+checkpoint snapshots and decoding of native sessions.
+
+Cursor selection still validates the limit before migration, opens one database
+snapshot, and invokes native hydration before releasing that transaction. The
+existing decoder is unchanged. Projection acknowledgement remains atomic with
+view writes. Manual-summary revision checks still happen after acquiring the
+writer reservation, and source ranges keep their existing rebasing and bounds.
+
+Twenty-six static comparisons cover the moved control flow, token fields,
+native checkpoint/path adapters, unchanged decoder and persistence tests. All
+sixteen native persistence tests remain unchanged. Module references, workspace
+path dependencies, file budgets and whitespace checks passed; all 34 store crate
+modules remain below 45 code lines. Evidence is in
+`artifacts/consolidation-store-readmodels/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. Remaining native storage and
+other source implementation remain part of the active consolidation goal.
