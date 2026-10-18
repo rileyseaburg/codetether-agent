@@ -8824,3 +8824,22 @@ whitespace checks passed; crate files contain at most 26 code lines. Evidence is
 in `artifacts/consolidation-writeback-journal/`. Compilation and runtime tests
 were not run. No Cargo, rustc or Python commands ran. The overall consolidation
 goal remains active.
+
+### Dedicated resumable-run checkpoint crate
+
+Moved the resumable checkpoint model, reason, default construction, transcript
+walk, assistant/tool scanning, text extraction, field assembly and automatic
+resume prompt into `crates/codetether-run-checkpoint`. Thirteen modules separate
+these responsibilities. Native session exports retain the same public types
+and constructor methods, while checkpoint sidecar persistence remains in its
+existing application adapter for the next ownership review.
+
+Persisted fields and serde forms, timestamp construction, scan order, URL and
+blocker extraction, next-action fallback and complete continuation prompt text
+are unchanged. Thirty-two static comparisons cover moved data and function
+bodies, removed implementations and both unchanged native checkpoint tests.
+Module references, dependencies, code budgets and whitespace checks passed;
+crate files contain at most 41 code lines. Evidence is in
+`artifacts/consolidation-run-checkpoint/`. Compilation and runtime tests were
+not run. No Cargo, rustc or Python commands ran. The full consolidation remains
+active.

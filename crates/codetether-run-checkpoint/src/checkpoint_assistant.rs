@@ -1,7 +1,7 @@
 //! Assistant-message scanning for checkpoint state extraction.
 
 use super::{checkpoint_text, checkpoint_walk::ScanState};
-use crate::provider::ContentPart;
+use codetether_provider_core::ContentPart;
 
 pub(super) fn scan(parts: &[ContentPart], state: &mut ScanState) {
     for part in parts {

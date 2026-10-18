@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-run-checkpoint",
  "codetether-writeback-journal",
  "codetether-session-location",
  "codetether-history-sink",
@@ -3771,6 +3772,15 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-rust",
  "uuid",
+]
+
+[[package]]
+name = "codetether-run-checkpoint"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-provider-core",
+ "serde",
 ]
 
 [[package]]

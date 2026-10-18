@@ -1,7 +1,7 @@
 //! Transcript walker for checkpoint state extraction.
 
 use super::{checkpoint_assistant, checkpoint_state::ExtractedState, checkpoint_tool};
-use crate::provider::{Message, Role};
+use codetether_provider_core::{Message, Role};
 
 #[derive(Default)]
 pub(super) struct ScanState {

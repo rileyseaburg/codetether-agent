@@ -10,7 +10,7 @@ pub(super) struct ExtractedState {
 }
 
 /// Extract checkpoint-relevant state from the session transcript.
-pub(super) fn extract(messages: &[crate::provider::Message]) -> ExtractedState {
+pub(super) fn extract(messages: &[codetether_provider_core::Message]) -> ExtractedState {
     let mut state = super::checkpoint_walk::scan(messages);
     state.next_action = state.next_action.or_else(default_next_action);
     state.into_extracted()

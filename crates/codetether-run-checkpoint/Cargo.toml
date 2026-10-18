@@ -1,0 +1,12 @@
+[package]
+name = "codetether-run-checkpoint"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Resumable run checkpoint data, transcript extraction and continuation prompts"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
