@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-benchmark-cli",
  "codetether-okr-cli",
  "codetether-telemetry-cli",
  "codetether-moltbook-cli",
@@ -6898,6 +6899,17 @@ dependencies = [
  "serde",
  "serde_json",
  "uuid",
+]
+
+[[package]]
+name = "codetether-benchmark-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-benchmark",
+ "codetether-cli-options",
+ "serde_json",
 ]
 
 [[package]]

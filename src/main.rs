@@ -24,6 +24,7 @@ mod startup_crash;
 mod startup_vault;
 mod worktree_cli;
 
+mod benchmark_cli;
 mod native_cli;
 mod rlm_cli;
 
@@ -656,66 +657,7 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         Some(Command::Stats(args)) => codetether_telemetry_cli::execute(args),
-        Some(Command::Benchmark(args)) => {
-            if args.models.is_empty() {
-                anyhow::bail!("At least one model is required (--models provider:model)");
-            }
-
-            let config = benchmark::BenchmarkConfig {
-                prd_dir: args.prd_dir,
-                models: args.models,
-                tier: args.tier,
-                parallel: args.parallel,
-                max_iterations: args.max_iterations,
-                story_timeout_secs: args.story_timeout,
-                output: args.output,
-                cost_ceiling_usd: Some(args.cost_ceiling),
-                submit_api_url: args.submit_url,
-                submit_api_key: args.submit_key,
-            };
-
-            let runner = benchmark::BenchmarkRunner::new(config);
-            let result = runner.run().await?;
-
-            if args.json {
-                println!("{}", serde_json::to_string_pretty(&result)?);
-            } else {
-                println!("=== Benchmark Results ===\n");
-                println!("Date: {}", result.run_date);
-                println!("Agent: {} v{}\n", result.agent, result.agent_version);
-
-                for mr in &result.model_results {
-                    println!("--- {} ---", mr.model);
-                    println!(
-                        "  Pass Rate: {:.1}% ({}/{} stories)",
-                        mr.aggregate.overall_pass_rate * 100.0,
-                        mr.aggregate.total_stories_passed,
-                        mr.aggregate.total_stories
-                    );
-                    println!(
-                        "  Speed: {:.1} stories/hour ({:.1}s avg)",
-                        mr.aggregate.stories_per_hour, mr.aggregate.avg_seconds_per_story
-                    );
-                    println!(
-                        "  Cost: ${:.4}/story (${:.2} total)",
-                        mr.aggregate.avg_cost_per_story, mr.aggregate.total_cost_usd
-                    );
-                    println!(
-                        "  PRDs: {}/{} fully passed\n",
-                        mr.aggregate.prds_fully_passed, mr.aggregate.prds_attempted
-                    );
-                }
-
-                if !result.summary.rankings.is_empty() {
-                    println!("=== Rankings ===");
-                    println!("Best Pass Rate: {}", result.summary.best_pass_rate_model);
-                    println!("Fastest: {}", result.summary.fastest_model);
-                    println!("Cheapest: {}", result.summary.cheapest_model);
-                    println!("Best Overall: {}", result.summary.best_overall_model);
-                }
-            }
-            Ok(())
-        }
+        Some(Command::Benchmark(args)) => benchmark_cli::execute(args).await,
         Some(Command::Cleanup(args)) => cleanup_cli::run(args).await,
         Some(Command::Worktree(args)) => worktree_cli::run(args).await,
         Some(Command::Moltbook(args)) => codetether_moltbook_cli::execute(args).await,

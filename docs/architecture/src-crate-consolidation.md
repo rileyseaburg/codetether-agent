@@ -13717,3 +13717,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or OKR repository operations ran. Full workspace
   consolidation remains unfinished.
+
+### Benchmark CLI extraction
+
+- Moved benchmark option-to-config mapping, command validation, JSON output,
+  model summaries and rankings into codetether-benchmark-cli. The native
+  callback still constructs and runs BenchmarkRunner, preserving its Ralph
+  integration and application-version metadata.
+- Fields, limits, missing-model error and report content remain unchanged.
+  Native main now delegates through src/benchmark_cli.rs.
+- Verification: 10 static config/output/native-binding/size checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-benchmark-cli/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, benchmark runs or result publication ran.
+  Full workspace consolidation remains unfinished.
