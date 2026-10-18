@@ -1,0 +1,19 @@
+[package]
+name = "codetether-native-a2a"
+version = "4.7.6-dev.38"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native A2A discovery and credential helper bindings"
+
+[dependencies]
+codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }
+codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
+codetether-git-credential-helper = { path = "../codetether-git-credential-helper", version = "0.1.0" }
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-a2a-discovery = { path = "../codetether-a2a-discovery", version = "0.1.0" }
+codetether-a2a-stream = { path = "../codetether-a2a-stream", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
+anyhow = "1"
+tokio = { version = "1", features = ["sync"] }

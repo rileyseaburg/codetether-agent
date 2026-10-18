@@ -27,7 +27,7 @@ use tokio::sync::mpsc;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use codetether_agent::a2a::mdns::announce_and_browse;
+/// use codetether_native_a2a::mdns::announce_and_browse;
 /// use std::net::{IpAddr, Ipv4Addr};
 /// let (tx, _rx) = tokio::sync::mpsc::channel(8);
 /// let address = IpAddr::V4(Ipv4Addr::LOCALHOST);

@@ -25433,3 +25433,24 @@ new package/root dependency and required native-provider dependency additions
 are staged in Cargo.lock. Evidence: artifacts/consolidation-native-worker/.
 No Cargo, rustc, Python, worker registration requests or runtime tests ran.
 Full consolidation remains active.
+
+### Native A2A discovery, credentials and worker model policy consolidated
+
+Moved Git credential helper bindings, intro services, stream exports and the
+mDNS adapter into codetether-native-a2a. Root A2A module paths re-export their
+owners. The new package matches the application's 4.7.6-dev.38 version to
+preserve discovery identity and must stay synchronized on release.
+
+Worker default-model/temperature policy moved into codetether-native-worker;
+the temperature hook directly invokes the same provider-policy function that
+was previously re-exported through session helpers. Removed two proof-export
+wrapper files and retained their function identities through direct re-exports.
+Six relocated file comparisons pass with explicit path/visibility changes.
+
+Static scans cover 714 module roots and 600 crates without missing modules,
+cycles or undeclared direct workspace dependencies. Declaration, file-limit,
+direct rustfmt and whitespace checks pass. Only the new package/root and
+required worker dependencies are staged in Cargo.lock. Unrelated working
+changes remain untouched. Evidence: artifacts/consolidation-native-a2a/.
+No Cargo, rustc, Python, discovery broadcasts, credential requests or runtime
+tests ran. Full consolidation remains active.

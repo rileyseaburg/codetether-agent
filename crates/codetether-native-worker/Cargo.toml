@@ -13,3 +13,5 @@ codetether-tui-worker = { path = "../codetether-tui-worker", version = "0.1.0" }
 anyhow = "1"
 async-trait = "0.1"
 reqwest = { version = "0.13.2", features = ["json", "stream", "rustls", "multipart", "form", "blocking"], default-features = false }
+codetether-a2a-worker-core = { path = "../codetether-a2a-worker-core", version = "0.1.0" }
+codetether-provider-policy = { path = "../codetether-provider-policy", version = "0.1.0" }

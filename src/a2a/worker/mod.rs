@@ -17,7 +17,7 @@ use codetether_a2a_worker_core::task_config as metadata_lookup;
 use codetether_a2a_worker_core::task_config as metadata_numbers;
 use codetether_a2a_worker_core::task_config as metadata_strings;
 use codetether_worktree::repository as git_refspec;
-mod model_defaults;
+use codetether_native_worker::model_policy as model_defaults;
 use codetether_a2a_worker_core::execution_policy as model_preferences;
 mod pending_tasks;
 use codetether_native_providers::worker_models as provider_models;

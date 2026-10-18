@@ -6,3 +6,6 @@
 mod registration;
 pub use registration::register_worker;
 pub mod bridge;
+
+/// Shared default models and temperature policy for worker execution.
+pub mod model_policy;

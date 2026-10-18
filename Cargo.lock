@@ -1948,6 +1948,7 @@ dependencies = [
  "codetether-native-crash",
  "codetether-native-thinker",
  "codetether-native-worker",
+ "codetether-native-a2a",
 ]
 
 [[package]]
@@ -3586,6 +3587,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-native-a2a"
+version = "4.7.6-dev.38"
+dependencies = [
+ "anyhow",
+ "codetether-a2a-discovery",
+ "codetether-a2a-http",
+ "codetether-a2a-stream",
+ "codetether-cli-options",
+ "codetether-git-credential-helper",
+ "codetether-provider-core",
+ "codetether-telemetry",
+ "codetether-worktree",
+ "tokio",
+]
+
+[[package]]
 name = "codetether-native-approval"
 version = "0.1.0"
 dependencies = [
@@ -3909,6 +3926,8 @@ dependencies = [
  "codetether-native-providers",
  "codetether-tui-worker",
  "reqwest 0.13.4",
+ "codetether-a2a-worker-core",
+ "codetether-provider-policy",
 ]
 
 [[package]]
