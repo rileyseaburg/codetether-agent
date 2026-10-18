@@ -3,24 +3,21 @@
 use crate::session::Session;
 use codetether_agent_registry::Registry;
 
-#[path = "store_crud.rs"]
-mod crud;
-#[path = "store_entry.rs"]
-mod entry;
-#[path = "store_scope.rs"]
-pub(super) mod scope;
-
-pub(super) use crud::{
-    contains_name, contains_name_for_owner, get, insert, insert_reserved, remove, reparent_owner,
-    update_session,
-};
-pub(super) use entry::AgentEntry;
-pub(super) use scope::{entries_for_parent, get_for_parent, lineage_for_session};
-
 lazy_static::lazy_static! {
     static ref AGENT_STORE: Registry<Session> = Registry::default();
 }
 
+codetether_agent_registry::declare_application_registry!(
+    pub(super);
+    Session, AGENT_STORE,
+    crate::tool::agent::residency::touch,
+    crate::tool::agent::residency::forget,
+    crate::tool::agent::collaboration_runtime::agent_tree::resolve,
+);
+
 #[cfg(test)]
 #[path = "store_identity_tests.rs"]
 mod identity_tests;
+#[cfg(test)]
+#[path = "store_scope_tests.rs"]
+mod scope_tests;

@@ -1,5 +1,5 @@
-use super::super::{AgentEntry, insert, remove};
-use super::lineage_for_session;
+use super::scope::lineage_for_session;
+use super::{AgentEntry, insert, remove};
 use crate::session::Session;
 
 #[test]

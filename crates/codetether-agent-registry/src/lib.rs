@@ -16,3 +16,6 @@ pub use registry::Registry;
 /// Implementation support for application-local session bindings.
 #[doc(hidden)]
 pub mod session_binding;
+
+mod application_binding;
+mod scope_binding;

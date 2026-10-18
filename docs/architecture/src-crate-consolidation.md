@@ -26642,3 +26642,23 @@ and whitespace checks pass. No manifest/lock changes were needed, and unrelated
 working files are unchanged. Evidence: artifacts/consolidation-storage-binding/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains
 active.
+
+### Live-agent registry application binding
+
+Moved the root CRUD/residency callbacks, session identity declaration, scoped
+lookup and lineage forwarding into codetether-agent-registry's application_binding
+and scope_binding modules. Removed store_crud.rs, store_entry.rs, store_scope.rs
+and store_resolve.rs. The root retains its original lazy singleton unchanged and
+passes the Session type plus touch/forget/tree-resolution callbacks. The scope
+module remains visible only within the agent owner; its exported operations retain
+the same effective visibility. No new storage instance or dependency was introduced.
+
+Static expansion compares thirteen function bodies, including identity access,
+with the original implementations. The singleton declaration matches token for
+token. Identity tests are unchanged; lineage tests move under the root store test
+module with only imports adjusted, preserving their full bodies and assertions.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass. Module scans cover 730 roots and 617 crates.
+Unrelated working files remain untouched; no manifest/lock changes were required.
+Evidence: artifacts/consolidation-registry-binding/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
