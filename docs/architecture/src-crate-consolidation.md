@@ -13892,3 +13892,19 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or relay execution ran. Full workspace
   consolidation remains unfinished.
+
+### Run command input policy extraction
+
+- Moved go/team alias expansion, command-boundary matching, task normalization,
+  pasted-output rejection and relay model precedence from src/cli/run.rs into
+  codetether-run-command. Separate modules own parsing, normalization, task
+  validation, alias detection and model policy.
+- Existing command tests moved into the crate, with model precedence separated
+  from autochat parsing. Default/demo constants still come from autochat-core;
+  provider lookup and command execution remain in native code.
+- Verification: 12 static function/test-body/remaining-native-code/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-run-command/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc or Rust tests ran. Full workspace consolidation remains
+  unfinished.

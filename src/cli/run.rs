@@ -25,6 +25,10 @@ use codetether_relay_plan::{
     build_runtime_profile_from_plan, default_relay_okr_template, extract_json_payload,
     okr_from_planned_draft, truncate_with_ellipsis,
 };
+use codetether_run_command::{
+    command_with_optional_args, is_easy_go_command, normalize_cli_go_command,
+    resolve_autochat_model, validate_easy_go_task,
+};
 use serde::Serialize;
 use std::{collections::HashMap, io::Write};
 use uuid::Uuid;
@@ -38,8 +42,6 @@ const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK
 const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = crate::autochat::AUTOCHAT_RLM_THRESHOLD_CHARS;
 const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FALLBACK_CHARS;
 const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
-// Easy-go defaults align with the TUI /go rotation model.
-const GO_DEFAULT_MODEL: &str = "minimax/MiniMax-M3";
 
 /// Guarded UUID parse that logs warnings on invalid input instead of returning NIL UUID.
 /// Returns None for invalid UUIDs, allowing callers to skip operations rather than corrupt data.
@@ -679,127 +681,6 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
     Ok(())
 }
 
-fn command_with_optional_args<'a>(input: &'a str, command: &str) -> Option<&'a str> {
-    let trimmed = input.trim();
-    let rest = trimmed.strip_prefix(command)?;
-
-    if rest.is_empty() {
-        return Some("");
-    }
-
-    let first = rest.chars().next()?;
-    if first.is_whitespace() {
-        Some(rest.trim())
-    } else {
-        None
-    }
-}
-
-fn normalize_cli_go_command(input: &str) -> String {
-    let trimmed = input.trim();
-    if trimmed.is_empty() || !trimmed.starts_with('/') {
-        return trimmed.to_string();
-    }
-
-    let mut parts = trimmed.splitn(2, char::is_whitespace);
-    let command = parts.next().unwrap_or("");
-    let args = parts.next().unwrap_or("").trim();
-
-    match command.to_ascii_lowercase().as_str() {
-        "/go" | "/team" => {
-            if args.is_empty() {
-                format!(
-                    "/autochat {} {}",
-                    AUTOCHAT_DEFAULT_AGENTS, AUTOCHAT_QUICK_DEMO_TASK
-                )
-            } else {
-                let mut count_and_task = args.splitn(2, char::is_whitespace);
-                let first = count_and_task.next().unwrap_or("");
-                if let Ok(count) = first.parse::<usize>() {
-                    let task = count_and_task.next().unwrap_or("").trim();
-                    if task.is_empty() {
-                        format!("/autochat {count} {AUTOCHAT_QUICK_DEMO_TASK}")
-                    } else {
-                        format!("/autochat {count} {task}")
-                    }
-                } else {
-                    format!("/autochat {} {args}", AUTOCHAT_DEFAULT_AGENTS)
-                }
-            }
-        }
-        _ => trimmed.to_string(),
-    }
-}
-
-fn is_easy_go_command(input: &str) -> bool {
-    let command = input
-        .split_whitespace()
-        .next()
-        .unwrap_or("")
-        .to_ascii_lowercase();
-
-    matches!(command.as_str(), "/go" | "/team")
-}
-
-fn normalize_go_task_input(task: &str) -> String {
-    task.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn looks_like_pasted_go_run_output(task: &str) -> bool {
-    let lower = task.to_ascii_lowercase();
-    let markers = [
-        "progress:",
-        "iterations:",
-        "feature branch:",
-        "stories:",
-        "incomplete stories:",
-        "next steps:",
-        "assessment is done and documented",
-    ];
-
-    let marker_hits = markers.iter().filter(|m| lower.contains(**m)).count();
-    marker_hits >= 2 || (task.len() > 400 && lower.contains("next steps:"))
-}
-
-fn validate_easy_go_task(task: &str) -> Result<String> {
-    let normalized = normalize_go_task_input(task);
-    if normalized.is_empty() {
-        anyhow::bail!(
-            "`/go` requires a task. Example: /go implement /v1/agent compatibility routes"
-        );
-    }
-
-    if looks_like_pasted_go_run_output(&normalized) {
-        anyhow::bail!(
-            "`/go` received text that looks like prior run output/logs. \
-Use a concise objective sentence instead, e.g. `/go implement /v1/agent/* compatibility routes`."
-        );
-    }
-
-    Ok(normalized)
-}
-
-fn resolve_autochat_model(
-    cli_model: Option<&str>,
-    env_model: Option<&str>,
-    config_model: Option<&str>,
-    easy_go_requested: bool,
-) -> String {
-    if let Some(model) = cli_model.filter(|value| !value.trim().is_empty()) {
-        return model.to_string();
-    }
-    if easy_go_requested {
-        return GO_DEFAULT_MODEL.to_string();
-    }
-    if let Some(model) = env_model.filter(|value| !value.trim().is_empty()) {
-        return model.to_string();
-    }
-    if let Some(model) = config_model.filter(|value| !value.trim().is_empty()) {
-        return model.to_string();
-    }
-    "zai/glm-5".to_string()
-}
-
 fn normalize_for_convergence(text: &str) -> String {
     crate::autochat::normalize_for_convergence(text, 280)
 }
@@ -1265,6 +1146,3 @@ async fn run_protocol_first_relay(
         rlm_context_count,
     })
 }
-
-#[cfg(test)]
-mod tests;

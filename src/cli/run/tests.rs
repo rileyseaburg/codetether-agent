@@ -1,2 +1,0 @@
-mod autochat;
-mod go;

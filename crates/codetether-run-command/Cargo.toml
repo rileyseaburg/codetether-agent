@@ -1,0 +1,11 @@
+[package]
+name = "codetether-run-command"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "CLI relay alias, task and model-selection policy"
+
+[dependencies]
+anyhow = "1"
+codetether-autochat-core = { path = "../codetether-autochat-core", version = "0.1.0" }

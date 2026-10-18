@@ -1,7 +1,8 @@
-use super::super::{
-    AUTOCHAT_QUICK_DEMO_TASK, is_easy_go_command, normalize_cli_go_command,
-    normalize_go_task_input, validate_easy_go_task,
+//! Task normalization and pasted-output validation.
+use crate::{
+    is_easy_go_command, normalize_cli_go_command, normalize_go_task_input, validate_easy_go_task,
 };
+use codetether_autochat_core::AUTOCHAT_QUICK_DEMO_TASK;
 
 #[test]
 fn normalize_go_maps_to_autochat_with_count_and_task() {
