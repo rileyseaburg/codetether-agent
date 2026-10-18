@@ -1,6 +1,6 @@
 //! Schema and registration for the fallback read_file tool.
 use super::*;
-pub(super) async fn register(server: &McpServer) {
+pub(super) async fn register(server: &ServerCatalog) {
     server
         .register_tool(
             "read_file",

@@ -1,7 +1,7 @@
 //! Execute the fallback write_file tool with its existing file semantics.
 use super::*;
-pub(super) fn call(args: Value) -> Result<CallToolResult> {
-    if let Some(blocked) = super::super::super::tool_policy::blocked("write_file", &args) {
+pub(super) fn call<H: Host>(args: Value) -> Result<CallToolResult> {
+    if let Some(blocked) = H::blocked("write_file", &args) {
         return Ok(blocked);
     }
     let path = args

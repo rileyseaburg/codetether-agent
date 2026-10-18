@@ -17732,3 +17732,21 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-mcp-bus/`.
 - No Cargo, rustc, Python, MCP handler calls, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Fallback MCP tool catalog and file handlers
+
+- Moved fallback tool schemas, registration order, and read/write/list file
+  handlers into the dedicated `codetether-mcp-fallback` crate, retaining one
+  module per schema or handler.
+- Native Host delegates command execution, filename/content searches and write
+  approval to the unchanged native implementations. The shared write handler
+  still checks policy before parsing arguments or touching files. Native setup
+  only passes its existing catalog to shared registration.
+- Verified all nine moved modules in full with explicit receiver/host changes,
+  schemas, handler selection, file operations, registration order/logs and every
+  native binding. Existing sandbox/search/policy code and tests are unchanged.
+  Module/dependency graphs, direct rustfmt, file limits and whitespace passed.
+  Staged lock contains only the new package and root dependency; unrelated
+  working-copy changes remain. Evidence: `artifacts/consolidation-mcp-fallback/`.
+- No Cargo, rustc, Python, tool handlers, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

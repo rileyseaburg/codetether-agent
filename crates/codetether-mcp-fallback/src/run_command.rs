@@ -1,6 +1,6 @@
 //! Schema and registration for the fallback run_command tool.
 use super::*;
-pub(super) async fn register(server: &McpServer) {
+pub(super) async fn register<H: Host>(server: &ServerCatalog) {
     server
         .register_tool(
             "run_command",
@@ -27,7 +27,7 @@ pub(super) async fn register(server: &McpServer) {
                 },
                 "required": ["command"]
             }),
-            Arc::new(super::super::super::fallback_run_command::call),
+            Arc::new(H::run_command),
         )
         .await;
 }

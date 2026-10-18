@@ -1,6 +1,6 @@
 //! Schema and registration for the fallback search_files tool.
 use super::*;
-pub(super) async fn register(server: &McpServer) {
+pub(super) async fn register<H: Host>(server: &ServerCatalog) {
     server
         .register_tool(
             "search_files",
@@ -23,7 +23,7 @@ pub(super) async fn register(server: &McpServer) {
                 },
                 "required": ["pattern"]
             }),
-            Arc::new(super::super::super::fallback_search::search_files),
+            Arc::new(H::search_files),
         )
         .await;
 }

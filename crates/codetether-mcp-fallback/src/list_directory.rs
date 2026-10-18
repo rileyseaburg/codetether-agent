@@ -1,6 +1,6 @@
 //! Schema and registration for the fallback list_directory tool.
 use super::*;
-pub(super) async fn register(server: &McpServer) {
+pub(super) async fn register(server: &ServerCatalog) {
     server
         .register_tool(
             "list_directory",

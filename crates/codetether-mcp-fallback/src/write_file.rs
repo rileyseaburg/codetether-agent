@@ -1,6 +1,6 @@
 //! Schema and registration for the fallback write_file tool.
 use super::*;
-pub(super) async fn register(server: &McpServer) {
+pub(super) async fn register<H: Host>(server: &ServerCatalog) {
     server
         .register_tool(
             "write_file",
@@ -27,7 +27,7 @@ pub(super) async fn register(server: &McpServer) {
                 },
                 "required": ["path", "content"]
             }),
-            Arc::new(super::write_file_handler::call),
+            Arc::new(super::write_file_handler::call::<H>),
         )
         .await;
 }

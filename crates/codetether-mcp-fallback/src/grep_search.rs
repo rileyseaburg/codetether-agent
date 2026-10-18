@@ -1,6 +1,6 @@
 //! Schema and registration for the fallback grep_search tool.
 use super::*;
-pub(super) async fn register(server: &McpServer) {
+pub(super) async fn register<H: Host>(server: &ServerCatalog) {
     server
         .register_tool(
             "grep_search",
@@ -27,7 +27,7 @@ pub(super) async fn register(server: &McpServer) {
                 },
                 "required": ["query"]
             }),
-            Arc::new(super::super::super::fallback_search::grep_search),
+            Arc::new(H::grep_search),
         )
         .await;
 }
