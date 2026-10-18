@@ -1275,6 +1275,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-native-cognition",
  "codetether-native-forage",
  "codetether-native-context",
  "codetether-native-session-runtime",
@@ -3669,6 +3670,20 @@ dependencies = [
  "codetether-windows-cli",
  "codetether-worktree-cli",
  "reqwest 0.13.4",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-native-cognition"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-cognition-core",
+ "codetether-cognition-native",
+ "codetether-cognition-runtime",
+ "codetether-cognition-storage",
+ "codetether-native-thinker",
+ "codetether-tool-core",
  "tokio",
 ]
 

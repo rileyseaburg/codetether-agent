@@ -1,0 +1,19 @@
+[package]
+name = "codetether-native-cognition"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native cognition runtime composition and execution contracts"
+
+[dependencies]
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+codetether-cognition-runtime = { path = "../codetether-cognition-runtime", version = "0.1.0" }
+codetether-cognition-native = { path = "../codetether-cognition-native", version = "0.1.0" }
+codetether-cognition-storage = { path = "../codetether-cognition-storage", version = "0.1.0" }
+codetether-native-thinker = { path = "../codetether-native-thinker", version = "0.1.0" }
+
+[dev-dependencies]
+chrono = "0.4"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }

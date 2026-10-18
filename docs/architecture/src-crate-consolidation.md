@@ -26000,3 +26000,21 @@ whitespace checks pass. Only the new test dependencies are staged in the native
 forage lockfile entry; unrelated dirty files remain unchanged. Evidence:
 artifacts/consolidation-forage-tests/. No Cargo, rustc, Python or tests ran.
 Full consolidation remains active.
+
+### Native cognition module ownership
+
+Moved cognition runtime composition, executor dispatch, public contracts and
+its regression suite into codetether-native-cognition. The root cognition module
+now re-exports the owning crate and selects its application ToolRegistry and
+explicit cfg!(test) empty-state flag. Native runtime tests use the same empty
+initial-state policy and an inert registry: no test installs tools, and the
+no-thinker dispatch test fails if registry lookup is unexpectedly reached.
+
+All six runtime test bodies and their existing fixtures are byte-for-byte
+unchanged. The executor body is unchanged; its no-thinker test selects the inert
+registry. Module/dependency scans cover 721 roots and 607 crates without missing
+modules, cycles or undeclared dependencies. Declaration, file-limit, direct
+rustfmt and whitespace checks pass. Only the new package/root dependency are
+staged in Cargo.lock; unrelated dirty files remain unchanged. Evidence:
+artifacts/consolidation-native-cognition/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.
