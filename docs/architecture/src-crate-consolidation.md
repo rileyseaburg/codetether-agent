@@ -13841,3 +13841,21 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or snapshot refresh ran. Full workspace
   consolidation remains unfinished.
+
+### Sol planner workflow extraction
+
+- Moved bounded planning/review orchestration, prompts, model validation,
+  tool-free request construction, response text extraction and CLI output into
+  codetether-sol-workflow. Separate modules own host contracts, workflow state,
+  requests, prompts, model policy and output projection.
+- Native bindings retain Vault/provider lookup, coding-session construction and
+  resume execution, and host LSP collection. Their prior execution bodies remain
+  intact. The crate preserves the two-review limit, request fields, prompt text,
+  diagnostic ordering and JSON/JSONL/text output. Existing policy/request tests
+  moved with their implementation.
+- Verification: 23 static body/schema/test/native-binding/size checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-sol-workflow/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, provider calls or coding workflow execution ran.
+  Full workspace consolidation remains unfinished.

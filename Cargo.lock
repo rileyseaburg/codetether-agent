@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-sol-workflow",
  "codetether-run-context",
  "codetether-run-events",
  "codetether-run-jsonl",
@@ -7000,6 +7001,20 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tracing",
+]
+
+[[package]]
+name = "codetether-sol-workflow"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-cli-options",
+ "codetether-provider-core",
+ "codetether-run-jsonl",
+ "codetether-validation",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -4,8 +4,8 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 use super::super::RunArgs;
-use super::model;
 use crate::session::Session;
+use codetether_sol_workflow as model;
 
 /// Stateful coding worker shared across implementation and repair turns.
 pub(super) struct Worker {

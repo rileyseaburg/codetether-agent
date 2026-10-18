@@ -1,0 +1,17 @@
+[package]
+name = "codetether-sol-workflow"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Tool-free Sol planning and bounded coding-worker review"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-run-jsonl = { path = "../codetether-run-jsonl", version = "0.1.0" }
+codetether-validation = { path = "../codetether-validation", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

@@ -2,13 +2,25 @@
 
 use anyhow::{Result, ensure};
 
-use super::super::RunArgs;
+use codetether_cli_options::RunArgs;
 
 /// Fixed high-reasoning planner and LSP-review model.
-pub(super) const SOL_PLANNER_MODEL: &str = "openai-codex/gpt-5.6-sol-fast:max";
+pub const SOL_PLANNER_MODEL: &str = "openai-codex/gpt-5.6-sol-fast:max";
 
 /// Require a distinct explicit model for all source inspection and coding.
-pub(super) fn worker_model(args: &RunArgs) -> Result<String> {
+/// # Arguments
+/// * `args` - Run arguments containing the explicit worker model.
+/// # Returns
+/// The model string unchanged.
+/// # Errors
+/// Returns an error for absent, blank or planner-identical models.
+/// # Examples
+/// ```no_run
+/// # fn example(args: &codetether_cli_options::RunArgs) {
+/// let worker = codetether_sol_workflow::worker_model(args);
+/// # }
+/// ```
+pub fn worker_model(args: &RunArgs) -> Result<String> {
     let model = args
         .model
         .as_deref()
