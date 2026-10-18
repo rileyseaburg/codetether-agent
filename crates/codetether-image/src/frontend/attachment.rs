@@ -27,7 +27,7 @@ macro_rules! declare_frontend_image_attachment {
                     .state
                     .messages
                     .push(ChatMessage::new(MessageType::System, message));
-                self.0.state.scroll_to_bottom();
+                self.0.state.chat_viewport.scroll_to_bottom();
             }
         }
         pub(crate) fn attach_image_command(

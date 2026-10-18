@@ -22,6 +22,6 @@ pub(super) fn display_next_worker_task(app: &mut App) {
             .messages
             .push(ChatMessage::new(MessageType::System, presentation.message));
         app.state.status = presentation.status;
-        app.state.scroll_to_bottom();
+        app.state.chat_viewport.scroll_to_bottom();
     }
 }

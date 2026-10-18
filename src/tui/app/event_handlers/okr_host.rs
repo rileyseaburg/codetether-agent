@@ -34,7 +34,7 @@ impl codetether_relay_okr::interactive::approval::Host for Native<'_> {
             .push(ChatMessage::new(MessageType::System, text));
     }
     fn scroll_to_bottom(&mut self) {
-        self.0.state.scroll_to_bottom();
+        self.0.state.chat_viewport.scroll_to_bottom();
     }
     fn set_status(&mut self, status: String) {
         self.0.state.status = status;

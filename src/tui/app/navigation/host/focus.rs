@@ -44,6 +44,6 @@ impl codetether_tui_navigation::focus::Host for Navigation<'_> {
         crate::tui::app::message_cache_invalidate::clear(&mut self.0.state);
     }
     fn scroll_to_bottom(&mut self) {
-        self.0.state.scroll_to_bottom();
+        self.0.state.chat_viewport.scroll_to_bottom();
     }
 }

@@ -57,7 +57,7 @@ macro_rules! declare_fork_command {
                     self.0.state.request_timing.clear_request_timing();
                 }
                 fn scroll_to_bottom(&mut self) {
-                    self.0.state.scroll_to_bottom();
+                    self.0.state.chat_viewport.scroll_to_bottom();
                 }
                 fn show_chat(&mut self) {
                     self.0.state.set_view_mode(ViewMode::Chat);

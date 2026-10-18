@@ -20,7 +20,7 @@ macro_rules! __frontend_mux_output {
                 };
                 app.state.messages.push(ChatMessage::new(kind, content));
                 app.state.status = status.into();
-                app.state.scroll_to_bottom();
+                app.state.chat_viewport.scroll_to_bottom();
             }
         }
     };

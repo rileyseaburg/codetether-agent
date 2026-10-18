@@ -39,5 +39,5 @@ pub(crate) fn push_reconnect_banner(app: &mut App) {
         .messages
         .push(ChatMessage::new(MessageType::System, msg));
     app.state.status = codetether_stream_recovery::reconnect_status(attempt);
-    app.state.scroll_to_bottom();
+    app.state.chat_viewport.scroll_to_bottom();
 }

@@ -33,7 +33,7 @@ macro_rules! __frontend_watchdog_ui {
                         .begin_with_activity(&mut self.state.watchdog.last_event_at);
                 }
                 fn scroll(&mut self) {
-                    self.state.scroll_to_bottom();
+                    self.state.chat_viewport.scroll_to_bottom();
                 }
             }
         }

@@ -4,7 +4,7 @@
 /// # Examples
 /// ```
 /// let mut state = codetether_help_view::HelpScrollState::default();
-/// state.scroll_down(2, 10);
+/// state.chat_viewport.scroll_down(2, 10);
 /// assert_eq!(state.offset, 2);
 /// ```
 pub struct HelpScrollState {

@@ -26,7 +26,7 @@ impl codetether_file_share::interactive::View for Composer<'_> {
         self.0.state.set_view_mode(ViewMode::Chat);
     }
     fn scroll_to_bottom(&mut self) {
-        self.0.state.scroll_to_bottom();
+        self.0.state.chat_viewport.scroll_to_bottom();
     }
     fn notice(&mut self, message: String, status: &str) {
         self.0
@@ -34,7 +34,7 @@ impl codetether_file_share::interactive::View for Composer<'_> {
             .messages
             .push(ChatMessage::new(MessageType::System, message));
         self.0.state.status = status.to_string();
-        self.0.state.scroll_to_bottom();
+        self.0.state.chat_viewport.scroll_to_bottom();
     }
     fn open_picker(&mut self, workspace: &Path) {
         crate::tui::app::file_picker::open_file_picker(self.0, workspace);

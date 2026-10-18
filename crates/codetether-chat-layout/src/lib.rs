@@ -34,5 +34,7 @@ pub mod webview;
 /// History-aware message-panel drawing and hit tracking.
 pub mod messages;
 
+mod navigation;
 /// Application-local UI state adapters.
 pub mod state_binding;
+pub use navigation::Navigation;

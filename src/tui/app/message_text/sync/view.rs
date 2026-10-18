@@ -35,6 +35,6 @@ impl View for App {
         self.state.tool_viewport.set_tool_preview_max_scroll(max);
     }
     fn scroll_to_bottom(&mut self) {
-        self.state.scroll_to_bottom();
+        self.state.chat_viewport.scroll_to_bottom();
     }
 }

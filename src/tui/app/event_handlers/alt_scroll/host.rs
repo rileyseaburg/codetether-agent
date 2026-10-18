@@ -7,12 +7,14 @@ impl Host for Native<'_> {
     }
     fn apply(&mut self, action: Action) {
         match action {
-            Action::Down(lines) => self.0.state.scroll_down(lines),
-            Action::Up(lines) => self.0.state.scroll_up(lines),
-            Action::PageDown => self.0.state.page_down(),
-            Action::PageUp => self.0.state.page_up(),
-            Action::Top => self.0.state.scroll_to_top(),
-            Action::Bottom => self.0.state.scroll_to_bottom(),
+            Action::Down(lines) => self.0.state.chat_viewport.scroll_down(lines),
+            Action::Up(lines) => {
+                crate::tui::app::state::scroll::view(&mut self.0.state).scroll_up(lines)
+            }
+            Action::PageDown => crate::tui::app::state::scroll::view(&mut self.0.state).page_down(),
+            Action::PageUp => crate::tui::app::state::scroll::view(&mut self.0.state).page_up(),
+            Action::Top => self.0.state.chat_viewport.scroll_to_top(),
+            Action::Bottom => self.0.state.chat_viewport.scroll_to_bottom(),
         }
     }
 }

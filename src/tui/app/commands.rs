@@ -27,7 +27,7 @@ fn push_system_message(app: &mut App, content: impl Into<String>) {
     app.state
         .messages
         .push(ChatMessage::new(MessageType::System, content.into()));
-    app.state.scroll_to_bottom();
+    app.state.chat_viewport.scroll_to_bottom();
 }
 codetether_mcp_command::declare_frontend_command!(
     crate::tui::app::state::App,

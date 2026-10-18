@@ -29,6 +29,6 @@ impl codetether_bus_view::ingress::Effects for Native<'_> {
         self.0.state.status = status;
     }
     fn scroll_to_bottom(&mut self) {
-        self.0.state.scroll_to_bottom();
+        self.0.state.chat_viewport.scroll_to_bottom();
     }
 }

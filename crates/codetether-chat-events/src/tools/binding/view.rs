@@ -27,7 +27,7 @@ macro_rules! __impl_tool_event_view {
                 self.app.state.status = status;
             }
             fn scroll_to_bottom(&mut self) {
-                self.app.state.scroll_to_bottom();
+                self.app.state.chat_viewport.scroll_to_bottom();
             }
             fn approval_request(&mut self, request: $crate::__private::LiveApprovalRequest) {
                 $approval(self.app, request);

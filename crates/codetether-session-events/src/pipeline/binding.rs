@@ -31,7 +31,7 @@ macro_rules! declare_event_pipeline {
                     self.app.state.chat_viewport.chat_auto_follow
                 }
                 fn scroll_to_bottom(&mut self) {
-                    self.app.state.scroll_to_bottom();
+                    self.app.state.chat_viewport.scroll_to_bottom();
                 }
                 fn trim(&mut self) {
                     $trim(self.app);

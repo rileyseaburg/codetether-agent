@@ -15,7 +15,7 @@ macro_rules! __frontend_inbox_presentation {
                         .push(ChatMessage::new(MessageType::System, text));
                 }
                 fn scroll_to_bottom(&mut self) {
-                    self.state.scroll_to_bottom();
+                    self.state.chat_viewport.scroll_to_bottom();
                 }
                 fn set_status(&mut self, status: String) {
                     self.state.status = status;

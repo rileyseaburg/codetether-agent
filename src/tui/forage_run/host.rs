@@ -17,6 +17,6 @@ impl View for App {
             .push(ChatMessage::new(MessageType::System, text));
     }
     fn scroll_to_bottom(&mut self) {
-        self.state.scroll_to_bottom();
+        self.state.chat_viewport.scroll_to_bottom();
     }
 }

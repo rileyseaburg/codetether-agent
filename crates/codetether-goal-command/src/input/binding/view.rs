@@ -31,7 +31,7 @@ macro_rules! __frontend_goal_input_view {
                         .push(ChatMessage::new(MessageType::System, text));
                 }
                 fn scroll(&mut self) {
-                    self.app.state.scroll_to_bottom();
+                    self.app.state.chat_viewport.scroll_to_bottom();
                 }
             }
         }

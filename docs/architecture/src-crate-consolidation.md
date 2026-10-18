@@ -28423,3 +28423,23 @@ file-limit checks pass (724 roots, 617 crates). Evidence:
 artifacts/consolidation-tool-scroll-methods/. No dependencies or unrelated
 working files changed. No Cargo, rustc, Python, compilation or runtime tests ran;
 the moved test was not executed. Full consolidation remains active and incomplete.
+
+### Crate-owned chat navigation and paging
+
+Removed eight root-generated chat-scroll and paging methods. Direct viewport
+operations now call ChatScrollState. codetether-chat-layout::Navigation owns
+upward navigation, page-up and page-down; the root supplies a borrowed viewport,
+current page step and an older-history callback. The callback retains the exact
+visible-message count and request_older path without adding a dependency from
+layout to history storage. The separate root scroll_page.rs declaration is
+removed; its regression tests remain registered under the scroll binding.
+
+Static comparisons cover 51 changed caller/registration files, the three moved
+navigation bodies and the root field/callback projection. The expected
+expression-only match arm was normalized for rustfmt's braces; the initial
+verifier log is retained. History requests, viewport bounds and follow-latest
+policy are unchanged. Declaration, module/dependency, production-scope,
+formatting, whitespace and file-limit checks pass (724 roots, 617 crates).
+Evidence: artifacts/consolidation-chat-scroll-methods/. No dependencies or
+unrelated working files changed. No Cargo, rustc, Python, compilation or runtime
+tests ran. Full consolidation remains active and incomplete.

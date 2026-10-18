@@ -35,7 +35,7 @@ macro_rules! __prompt_dispatch_services {
                     }
                 }
                 fn scroll(&mut self) {
-                    self.app.state.scroll_to_bottom();
+                    self.app.state.chat_viewport.scroll_to_bottom();
                 }
                 async fn spawn(
                     &mut self,

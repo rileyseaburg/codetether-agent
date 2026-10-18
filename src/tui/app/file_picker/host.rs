@@ -37,7 +37,7 @@ impl codetether_file_picker::interactive::View for Native<'_> {
             .push(ChatMessage::new(MessageType::Error, text));
     }
     fn scroll_to_bottom(&mut self) {
-        self.0.state.scroll_to_bottom();
+        self.0.state.chat_viewport.scroll_to_bottom();
     }
     fn attach_file(&mut self, workspace: &Path, path: &Path) {
         crate::tui::app::file_share::attach_file_to_input(self.0, workspace, path);

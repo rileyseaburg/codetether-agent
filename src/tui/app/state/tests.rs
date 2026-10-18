@@ -65,17 +65,17 @@ fn model_filter_limits_visible_models() {
 #[test]
 fn scroll_up_from_follow_latest_enters_manual_scroll_mode() {
     let mut state = AppState::default();
-    state.set_chat_max_scroll(25);
-    state.scroll_to_bottom();
-    state.scroll_up(1);
+    state.chat_viewport.set_chat_max_scroll(25);
+    state.chat_viewport.scroll_to_bottom();
+    crate::tui::app::state::scroll::view(&mut state).scroll_up(1);
     assert_eq!(state.chat_viewport.chat_scroll, 24);
 }
 
 #[test]
 fn scroll_down_returns_to_follow_latest_at_bottom() {
     let mut state = AppState::default();
-    state.set_chat_max_scroll(25);
+    state.chat_viewport.set_chat_max_scroll(25);
     state.chat_viewport.chat_scroll = 24;
-    state.scroll_down(1);
+    state.chat_viewport.scroll_down(1);
     assert_eq!(state.chat_viewport.chat_scroll, 1_000_000);
 }

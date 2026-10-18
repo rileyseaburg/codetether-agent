@@ -33,8 +33,8 @@ mod tests {
     #[tokio::test]
     async fn mouse_wheel_scrolls_chat_from_follow_latest() {
         let mut app = App::default();
-        app.state.set_chat_max_scroll(25);
-        app.state.scroll_to_bottom();
+        app.state.chat_viewport.set_chat_max_scroll(25);
+        app.state.chat_viewport.scroll_to_bottom();
 
         handle_mouse_event(
             &mut app,

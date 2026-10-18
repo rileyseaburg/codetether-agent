@@ -28,7 +28,7 @@ macro_rules! declare_context_command {
                         .push(ChatMessage::new(MessageType::System, text));
                 }
                 fn scroll_to_bottom(&mut self) {
-                    self.state.scroll_to_bottom();
+                    self.state.chat_viewport.scroll_to_bottom();
                 }
                 fn set_status(&mut self, text: String) {
                     self.state.status = text;

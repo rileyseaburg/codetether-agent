@@ -10,10 +10,10 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.help.scroll.scroll_down(*value, *limit);
         }
         Action::ChatUp(value) => {
-            app.state.scroll_up(*value);
+            crate::tui::app::state::scroll::view(&mut app.state).scroll_up(*value);
         }
         Action::ChatDown(value) => {
-            app.state.scroll_down(*value);
+            app.state.chat_viewport.scroll_down(*value);
         }
         Action::FilePageUp => {
             crate::tui::app::file_picker::file_picker_page_up(app);
@@ -22,10 +22,10 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             crate::tui::app::file_picker::file_picker_page_down(app);
         }
         Action::ChatPageUp => {
-            app.state.page_up();
+            crate::tui::app::state::scroll::view(&mut app.state).page_up();
         }
         Action::ChatPageDown => {
-            app.state.page_down();
+            crate::tui::app::state::scroll::view(&mut app.state).page_down();
         }
         Action::ProtocolScroll(value) => {
             app.state.protocol_registry.scroll = *value;

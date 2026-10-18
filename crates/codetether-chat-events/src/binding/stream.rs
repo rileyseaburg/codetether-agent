@@ -9,7 +9,7 @@ macro_rules! __impl_chat_stream {
                 self.0.state.chat_viewport.chat_auto_follow
             }
             fn scroll_to_bottom(&mut self) {
-                self.0.state.scroll_to_bottom();
+                self.0.state.chat_viewport.scroll_to_bottom();
             }
             fn note_text_token(&mut self) {
                 self.0.state.request_timing.note_text_token();

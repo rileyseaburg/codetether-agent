@@ -12,7 +12,7 @@ macro_rules! __app_history_view {
                 self.chat_viewport.chat_scroll >= $bottom
             }
             fn manual_scroll(&self) -> usize {
-                self.manual_chat_scroll()
+                self.chat_viewport.manual_chat_scroll()
             }
             fn cached_lines(&self) -> usize {
                 self.message_cache.cached_message_lines.len()

@@ -19,7 +19,7 @@ macro_rules! __frontend_inbox_host {
                     $crate::Presentation::push_system(self.app, text);
                 }
                 fn scroll_to_bottom(&mut self) {
-                    self.app.state.scroll_to_bottom();
+                    self.app.state.chat_viewport.scroll_to_bottom();
                 }
                 fn set_status(&mut self, status: String) {
                     self.app.state.status = status;

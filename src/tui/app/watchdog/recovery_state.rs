@@ -24,6 +24,6 @@ impl Ui for AppState {
             .begin_with_activity(&mut self.watchdog.last_event_at);
     }
     fn scroll(&mut self) {
-        self.scroll_to_bottom();
+        self.chat_viewport.scroll_to_bottom();
     }
 }

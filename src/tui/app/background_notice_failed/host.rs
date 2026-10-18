@@ -34,6 +34,6 @@ impl codetether_session_events::completion::failure::Host for Native<'_> {
         &mut self.app.state.status
     }
     fn scroll(&mut self) {
-        self.app.state.scroll_to_bottom();
+        self.app.state.chat_viewport.scroll_to_bottom();
     }
 }

@@ -35,7 +35,7 @@ macro_rules! __frontend_access_host {
                     self.app.state.status = status;
                 }
                 fn scroll_to_bottom(&mut self) {
-                    self.app.state.scroll_to_bottom();
+                    self.app.state.chat_viewport.scroll_to_bottom();
                 }
                 fn clear_input(&mut self) {
                     self.app.state.composer.clear_input();

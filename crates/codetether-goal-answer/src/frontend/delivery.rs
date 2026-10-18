@@ -32,7 +32,7 @@ macro_rules! __frontend_answer_delivery {
                     self.app.state.answer_review_yes = false;
                 }
                 fn scroll(&mut self) {
-                    self.app.state.scroll_to_bottom();
+                    self.app.state.chat_viewport.scroll_to_bottom();
                 }
                 fn redraw(&mut self) {
                     self.app.state.needs_redraw = true;

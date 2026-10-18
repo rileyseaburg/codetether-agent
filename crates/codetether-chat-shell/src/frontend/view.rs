@@ -21,7 +21,7 @@ macro_rules! __frontend_shell_view {
                     self.state.composer.clear_input();
                 }
                 fn scroll_to_bottom(&mut self) {
-                    self.state.scroll_to_bottom();
+                    self.state.chat_viewport.scroll_to_bottom();
                 }
             }
         }

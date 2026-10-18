@@ -5,5 +5,5 @@ pub(crate) fn present(app: &mut App, result: &ToolResult, success: String, failu
         codetether_agent_command::presentation::prepare(result, success, failure);
     app.state.messages.push(message);
     app.state.status = status;
-    app.state.scroll_to_bottom();
+    app.state.chat_viewport.scroll_to_bottom();
 }

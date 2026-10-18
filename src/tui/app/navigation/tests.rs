@@ -14,8 +14,8 @@ fn help_overlay_consumes_chat_arrow_navigation() {
     let mut app = App::default();
     app.state.help.visible = true;
     app.state.set_view_mode(ViewMode::Chat);
-    app.state.set_chat_max_scroll(25);
-    app.state.scroll_to_bottom();
+    app.state.chat_viewport.set_chat_max_scroll(25);
+    app.state.chat_viewport.scroll_to_bottom();
 
     handle_down(&mut app, KeyModifiers::NONE);
 

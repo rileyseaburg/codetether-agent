@@ -22,7 +22,7 @@ macro_rules! __frontend_steering_view {
                     self.app.state.status = message;
                 }
                 fn scroll(&mut self) {
-                    self.app.state.scroll_to_bottom();
+                    self.app.state.chat_viewport.scroll_to_bottom();
                 }
             }
         }
