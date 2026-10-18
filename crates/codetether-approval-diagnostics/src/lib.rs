@@ -2,9 +2,12 @@
 //!
 //! arguments recovers current or legacy request inputs. inspect reconstructs
 //! proposed content and asks the caller's managed clients for diagnostics.
-//! Manager ownership, task scheduling and queue publication belong to callers.
+//! start schedules inspection and queue publication using the caller's cached manager.
 mod arguments;
 mod inspect;
 mod report;
 pub use arguments::arguments;
 pub use inspect::inspect;
+
+mod start;
+pub use start::start;

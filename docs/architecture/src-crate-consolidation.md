@@ -19662,3 +19662,27 @@ reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-tool-events/`. No Cargo, rustc,
 Python, Rust tests or tool/approval execution ran; compilation and runtime
 remain unverified.
+
+### Incoming approval presentation and diagnostics scheduling
+
+Moved incoming-request queue/presentation order into
+`codetether-approval-view::request` and lazy manager initialization/background
+inspection into `codetether-approval-diagnostics::start`. Native code supplies
+six state, manager, reviewer and trust-guidance bindings. Removed native
+analysis scheduling and its inspector re-export file.
+
+Preserved unsupported-tool/missing-argument early returns, native managed-client
+identity and cached manager ownership, checking-report publication before task
+spawn, and final report publication. Request presentation still resets preview
+state, enqueues, starts analysis then review, and formats the same guidance and
+justification. The native approval presentation test and LSP inspector are
+unchanged.
+
+Validation: two complete translated workflow bodies, six native bindings,
+unchanged inspector/test/reviewer/caller, isolated lockfile delta, module
+reachability, dependency cycles, file-size ratchet, whitespace and direct
+formatting. The initial comparison detected rustfmt's added closure braces;
+normalized that exact formatting change and retained its log. Evidence:
+`artifacts/consolidation-approval-request/`. No Cargo, rustc, Python, Rust tests,
+LSP diagnostics or approval execution ran; compilation and runtime remain
+unverified.

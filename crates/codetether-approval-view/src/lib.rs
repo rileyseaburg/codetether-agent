@@ -19,3 +19,6 @@ pub mod input;
 
 /// Pending-approval shortcuts and editor/copy actions.
 pub mod interactive;
+
+/// Incoming approval presentation and background-check dispatch.
+pub mod request;

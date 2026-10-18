@@ -7198,6 +7198,7 @@ dependencies = [
  "codetether-lsp-core",
  "codetether-proposed-content",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
