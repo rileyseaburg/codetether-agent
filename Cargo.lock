@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-session-realtime",
  "codetether-mux-http",
  "codetether-verifier-http",
  "codetether-verifier-state",
@@ -6701,6 +6702,21 @@ dependencies = [
  "serde_json",
  "tokio-stream",
  "tracing",
+]
+
+[[package]]
+name = "codetether-session-realtime"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "codetether-session-events",
+ "codetether-session-steering",
+ "codetether-thread-events",
+ "codetether-thread-store",
+ "futures",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

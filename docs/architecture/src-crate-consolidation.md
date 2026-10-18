@@ -13381,3 +13381,20 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, mux process discovery or live subscriptions ran.
   The complete workspace consolidation remains unfinished.
+
+### Session realtime transport extraction
+
+- Moved typed WebSocket frames, decoding, handshake validation, sending,
+  steering/cancellation handling, event forwarding and terminal framing into
+  codetether-session-realtime. Three existing decoding tests moved with the
+  wire contract. Native server code retains connection/prompt orchestration.
+- Transport uses shared session results, thread records and event mappers.
+  Event-forwarding functions accept SessionEvent<S> so application snapshots
+  remain caller-owned. Steering directly uses the same shared implementation
+  formerly re-exported by the native runtime.
+- Verification: 21 static moved-code and size checks passed. Module/dependency
+  checks, direct rustfmt, source file-limit ratchet and whitespace checks passed.
+  Evidence: artifacts/consolidation-session-realtime/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, WebSocket connections or session execution ran.
+  The full workspace consolidation remains unfinished.

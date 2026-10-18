@@ -7,7 +7,19 @@ use super::frames::ClientFrame;
 use super::socket::SocketStream;
 
 /// Read the next command while ignoring transport-level ping frames.
-pub(super) async fn next(stream: &mut SocketStream) -> Result<Option<ClientFrame>, String> {
+/// # Arguments
+/// * `stream` — Receiving WebSocket half.
+/// # Returns
+/// Next decoded command or None on closure.
+/// # Errors
+/// Returns text for transport, JSON or binary-frame errors.
+/// # Examples
+/// ```no_run
+/// # async fn example(stream: &mut codetether_session_realtime::socket::SocketStream) {
+/// let _ = codetether_session_realtime::wire::next(stream).await;
+/// # }
+/// ```
+pub async fn next(stream: &mut SocketStream) -> Result<Option<ClientFrame>, String> {
     loop {
         let Some(message) = stream.next().await else {
             return Ok(None);
@@ -24,6 +36,18 @@ pub(super) async fn next(stream: &mut SocketStream) -> Result<Option<ClientFrame
 }
 
 /// Decode one text command into the strict client frame contract.
-pub(super) fn decode(text: &str) -> Result<ClientFrame, String> {
+/// # Arguments
+/// * `text` — JSON command.
+/// # Returns
+/// Decoded client command.
+/// # Errors
+/// Returns the JSON decoding error for malformed input.
+/// # Examples
+/// ```no_run
+/// # fn example(text: &str) {
+/// let _ = codetether_session_realtime::wire::decode(text);
+/// # }
+/// ```
+pub fn decode(text: &str) -> Result<ClientFrame, String> {
     serde_json::from_str(text).map_err(|error| error.to_string())
 }
