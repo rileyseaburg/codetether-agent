@@ -1,6 +1,5 @@
 //! Formatter integration with shared Markdown tables.
 
-
 #[test]
 fn format_content_renders_a_table() {
     let fmt = super::super::MessageFormatter::new(80);

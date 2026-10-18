@@ -11125,3 +11125,26 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-markdown-table/`. Compilation, runtime tests
   and rendering were not run; no Cargo or rustc commands executed.
 - Full consolidation remains active.
+
+### Message formatter extraction
+
+- Moved the remaining message formatter, inline styling, width-aware wrapping,
+  math framing and table/block bridges into
+  `crates/codetether-message-formatter`. The native entry point preserves the
+  formatter type and public code-renderer module paths through re-exports.
+- Forty-three modules separate content state, code/math transitions, prose,
+  inline delimiter handlers, wrapping and existing regression cases. Maximum
+  module size is 38 code lines.
+- Sixteen existing tests moved with the implementation, including the table
+  formatter integration test. Native Mermaid formatter integration remains
+  unchanged and now exercises the shared formatter through its alias.
+- Thirty-two static assertions reconstruct the complete content scanner and
+  wrapping loop, compare inline handlers and unchanged helper bodies, and
+  compare every relocated test. Module reachability, dependency DAG, file-limit
+  and whitespace checks passed.
+- Source review caught and corrected two initial extraction mistakes before
+  commit (italic branch and code-content branch selection). The reconstruction
+  verifier also needed literal replacement to preserve dollar delimiters.
+  Evidence remains in `artifacts/consolidation-message-formatter/` and tool history.
+- Compilation, runtime tests and rendering were not run; no Cargo or rustc
+  commands executed. Full `src/` consolidation remains active.

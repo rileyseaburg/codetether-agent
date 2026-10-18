@@ -1,0 +1,15 @@
+[package]
+name = "codetether-message-formatter"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Terminal Markdown message formatting, inline styling and wrapping"
+
+[dependencies]
+codetether-code-render = { path = "../codetether-code-render", version = "0.1.0" }
+codetether-markdown-block = { path = "../codetether-markdown-block", version = "0.1.0" }
+codetether-markdown-table = { path = "../codetether-markdown-table", version = "0.1.0" }
+codetether-math-text = { path = "../codetether-math-text", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
+unicode-width = "0.2"
