@@ -1,4 +1,4 @@
-use crate::swarm::SubTask;
+use crate::SubTask;
 
 #[test]
 fn explicit_readonly_verification_review_uses_current_workspace() {

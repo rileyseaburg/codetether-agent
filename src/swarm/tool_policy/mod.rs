@@ -6,9 +6,6 @@ mod registry;
 mod runtime_gate;
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-#[path = "worktree_policy_tests.rs"]
-mod worktree_policy_tests;
 
 pub(crate) use codetether_swarm_core::deliverable::VerificationContract;
 pub(crate) use codetether_swarm_core::deliverable::deliverable_error;

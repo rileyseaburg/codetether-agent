@@ -20382,3 +20382,22 @@ channel/no-spawn checks, module reachability, dependency cycles, file-size
 ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-inline-swarm/`. Cargo, rustc, Python, Rust tests and
 swarm execution were not run; compilation and runtime remain unverified.
+
+### Autonomous swarm tool policy ownership
+
+Moved registry pruning, advertised-definition filtering and read-only task
+classification into `codetether-swarm-core::tool_policy`. Native ToolRegistry
+implements only list/remove operations and delegates restriction policy.
+Existing classifier and reviewer tool construction remain unchanged.
+
+Preserved question removal for ordinary autonomous agents and shared read-only
+classification for restricted agents. Five pure policy/worktree tests moved
+beside the implementation; the native registry integration test remains at
+its original boundary. All six test bodies and assertions are accounted for.
+No dependencies changed.
+
+Validation: complete policy-body comparisons, native registry bindings,
+unchanged classifier/reviewer code, test accounting, module reachability,
+dependency cycles, file-size ratchet, whitespace and direct formatting.
+Evidence: `artifacts/consolidation-swarm-tool-policy/`. No Cargo, rustc, Python,
+Rust tests or tool execution ran; compilation and runtime remain unverified.

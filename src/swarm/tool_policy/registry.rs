@@ -1,14 +1,14 @@
-use crate::tool::{ToolRegistry, readonly::is_read_only};
-
+//! Native registry operations for shared autonomous filtering.
+use crate::tool::ToolRegistry;
+impl codetether_swarm_core::tool_policy::Registry for ToolRegistry {
+    fn list(&self) -> Vec<&str> {
+        ToolRegistry::list(self)
+    }
+    fn unregister(&mut self, name: &str) {
+        ToolRegistry::unregister(self, name);
+    }
+}
+/// Apply the shared autonomous/read-only restriction policy.
 pub fn restrict_registry(registry: &mut ToolRegistry, read_only: bool) {
-    if !read_only {
-        registry.unregister("question");
-        return;
-    }
-    let ids: Vec<String> = registry.list().into_iter().map(str::to_string).collect();
-    for id in ids {
-        if !is_read_only(&id) {
-            registry.unregister(&id);
-        }
-    }
+    codetether_swarm_core::tool_policy::restrict_registry(registry, read_only);
 }

@@ -74,3 +74,6 @@ pub mod worker_strategy;
 
 /// Historical model defaults shared by planning and direct swarm workers.
 pub mod model_defaults;
+
+/// Autonomous tool restrictions and advertised read-only definitions.
+pub mod tool_policy;
