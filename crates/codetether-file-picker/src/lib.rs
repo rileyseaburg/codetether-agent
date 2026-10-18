@@ -38,3 +38,5 @@ mod render_preview;
 
 /// Frontend browser opening and attachment workflow.
 pub mod interactive;
+/// Frontend listing and preview bounds.
+pub mod limits;

@@ -9,6 +9,8 @@ pub mod config_types;
 pub mod env_helpers;
 pub mod minio_client;
 pub mod s3_key;
+/// Compatibility defaults for the native frontend API.
+pub mod tui_defaults;
 pub mod types;
 pub mod worker;
 

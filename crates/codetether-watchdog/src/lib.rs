@@ -20,3 +20,5 @@ pub mod recovery;
 
 /// User-paced question waits and stall suppression.
 pub mod interaction;
+/// Main-session inactivity budget.
+pub mod limits;

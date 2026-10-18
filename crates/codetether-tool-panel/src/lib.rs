@@ -36,3 +36,5 @@ pub use scroll_state::ToolPreviewScrollState;
 
 /// Structured tool-error parsing and preview formatting.
 pub mod error;
+/// Bounded tool-argument and output-preview settings.
+pub mod limits;

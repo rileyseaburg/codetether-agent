@@ -1,53 +1,28 @@
-/// Sentinel value meaning "follow the latest message at the bottom of chat".
-/// Kept as a legacy name to avoid touching many call sites.
-pub use codetether_chat_layout::SCROLL_BOTTOM;
-
-// Tool-call / tool-result rendering can carry very large JSON payloads (e.g. patches, file blobs).
-// If we pretty-print + split/collect that payload on every frame, the TUI can appear to “stop
-// rendering” after a few tool calls due to render-time CPU churn.
-pub const TOOL_ARGS_PRETTY_JSON_MAX_BYTES: usize = 16_000;
-pub const TOOL_ARGS_PREVIEW_MAX_LINES: usize = 10;
-pub const TOOL_ARGS_PREVIEW_MAX_BYTES: usize = 6_000;
-pub const TOOL_OUTPUT_PREVIEW_MAX_LINES: usize = 5;
-pub const TOOL_OUTPUT_PREVIEW_MAX_BYTES: usize = 4_000;
-pub const FILE_PICKER_MAX_ENTRIES: usize = 500;
-pub use codetether_file_share::FILE_SHARE_MAX_BYTES;
-pub const FILE_PICKER_PREVIEW_MAX_BYTES: usize = 8 * 1024;
-pub const FILE_PICKER_PREVIEW_MAX_LINES: usize = 14;
-pub const FILE_PICKER_PREVIEW_DIR_ITEMS: usize = 10;
-pub const FILE_PICKER_PAGE_STEP: usize = 12;
-/// Inactivity budget before the TUI watchdog cancels and auto-restarts a
-/// stalled main-session request.
-///
-/// This is the **outer** safety net. The session layer's own keepalive
-/// (`idle_keepalive`) emits `SessionEvent::Thinking` every 10 s during provider
-/// inference, so a healthy slow model (Bedrock Opus, GLM thinking 60-90 s before
-/// the first token) keeps the TUI activity clock fresh and is never killed
-/// mid-thought. This timeout only trips when the session emits *nothing at all*
-/// — i.e. the runtime itself is wedged — and sits above the session cold-stall
-/// budget (`idle_timeout::IDLE_TIMEOUT`, 180 s) so the two watchdogs cooperate
-/// instead of racing.
-pub const MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS: u64 = 240;
-pub use codetether_model_failover::constants::SMART_SWITCH_MAX_RETRIES;
-pub use codetether_model_failover::constants::SMART_SWITCH_PROVIDER_PRIORITY;
-/// Maximum automatic restart attempts before the watchdog gives up.
-pub use codetether_watchdog::WATCHDOG_MAX_RESTARTS;
-pub const AUTOCHAT_MAX_AGENTS: usize = crate::autochat::AUTOCHAT_MAX_AGENTS;
-pub const AUTOCHAT_DEFAULT_AGENTS: usize = crate::autochat::AUTOCHAT_DEFAULT_AGENTS;
-pub const AUTOCHAT_MAX_ROUNDS: usize = crate::autochat::AUTOCHAT_MAX_ROUNDS;
-pub const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = crate::autochat::AUTOCHAT_MAX_DYNAMIC_SPAWNS;
-pub const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = crate::autochat::AUTOCHAT_SPAWN_CHECK_MIN_CHARS;
-pub const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = crate::autochat::AUTOCHAT_RLM_THRESHOLD_CHARS;
-pub const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FALLBACK_CHARS;
-pub const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
-pub const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
-pub use codetether_model_failover::constants::AUTOCHAT_LOCAL_DEFAULT_MODEL;
-pub use codetether_relay_okr::GO_SWAP_MODEL_GLM;
-pub use codetether_relay_okr::GO_SWAP_MODEL_MINIMAX;
-pub const CHAT_SYNC_DEFAULT_INTERVAL_SECS: u64 = 15;
-pub const CHAT_SYNC_MAX_INTERVAL_SECS: u64 = 300;
-pub const CHAT_SYNC_MAX_BATCH_BYTES: usize = 512 * 1024;
-pub const CHAT_SYNC_DEFAULT_BUCKET: &str = "codetether-chat-archive";
-pub const CHAT_SYNC_DEFAULT_PREFIX: &str = "sessions";
-pub const MAX_STREAMING_TEXT_BYTES: usize = 256 * 1024; // 256 KiB
+//! Frontend settings re-exported from the subsystem that owns each policy.
 pub use codetether_agent_identity::AGENT_AVATARS;
+pub use codetether_autochat_core::{
+    AUTOCHAT_DEFAULT_AGENTS, AUTOCHAT_MAX_AGENTS, AUTOCHAT_MAX_DYNAMIC_SPAWNS, AUTOCHAT_MAX_ROUNDS,
+    AUTOCHAT_QUICK_DEMO_TASK, AUTOCHAT_RLM_FALLBACK_CHARS, AUTOCHAT_RLM_HANDOFF_QUERY,
+    AUTOCHAT_RLM_THRESHOLD_CHARS, AUTOCHAT_SPAWN_CHECK_MIN_CHARS,
+};
+pub use codetether_chat_layout::SCROLL_BOTTOM;
+pub use codetether_chat_model::limits::MAX_STREAMING_TEXT_BYTES;
+pub use codetether_chat_sync::tui_defaults::{
+    CHAT_SYNC_DEFAULT_BUCKET, CHAT_SYNC_DEFAULT_INTERVAL_SECS, CHAT_SYNC_DEFAULT_PREFIX,
+    CHAT_SYNC_MAX_BATCH_BYTES, CHAT_SYNC_MAX_INTERVAL_SECS,
+};
+pub use codetether_file_picker::limits::{
+    FILE_PICKER_MAX_ENTRIES, FILE_PICKER_PAGE_STEP, FILE_PICKER_PREVIEW_DIR_ITEMS,
+    FILE_PICKER_PREVIEW_MAX_BYTES, FILE_PICKER_PREVIEW_MAX_LINES,
+};
+pub use codetether_file_share::FILE_SHARE_MAX_BYTES;
+pub use codetether_model_failover::constants::{
+    AUTOCHAT_LOCAL_DEFAULT_MODEL, SMART_SWITCH_MAX_RETRIES, SMART_SWITCH_PROVIDER_PRIORITY,
+};
+pub use codetether_relay_okr::{GO_SWAP_MODEL_GLM, GO_SWAP_MODEL_MINIMAX};
+pub use codetether_tool_panel::limits::{
+    TOOL_ARGS_PRETTY_JSON_MAX_BYTES, TOOL_ARGS_PREVIEW_MAX_BYTES, TOOL_ARGS_PREVIEW_MAX_LINES,
+    TOOL_OUTPUT_PREVIEW_MAX_BYTES, TOOL_OUTPUT_PREVIEW_MAX_LINES,
+};
+pub use codetether_watchdog::WATCHDOG_MAX_RESTARTS;
+pub use codetether_watchdog::limits::MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS;

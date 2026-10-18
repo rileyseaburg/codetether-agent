@@ -23175,3 +23175,22 @@ stream-drain lock entry; unrelated working changes were preserved. Evidence:
 artifacts/consolidation-stream-collector-tests/.
 No provider streams, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Frontend constants owned by their subsystems
+
+Moved seventeen native constant definitions into tool-panel preview limits,
+file-picker limits, watchdog inactivity limits, chat-model streaming bounds
+and chat-sync frontend compatibility defaults. The TUI constants module now
+contains re-exports only, including direct autochat-core exports in place of
+redundant native constant aliases.
+
+Every relocated value is unchanged. Historical frontend chat-sync interval and
+prefix settings remain separate from current worker config_types defaults;
+neither set was substituted for the other. Existing watchdog and streaming
+consumers remain unchanged. Static value comparisons and module/dependency
+scans pass across 699 roots and 571 crates without missing modules or cycles.
+Direct rustfmt, native file-size limits and whitespace checks passed. No
+manifest or lockfile changes were needed. Evidence:
+artifacts/consolidation-tui-constants/.
+No TUI, tests, Cargo, rustc or Python ran. Compilation and runtime behavior
+remain unverified. Full consolidation remains active.
