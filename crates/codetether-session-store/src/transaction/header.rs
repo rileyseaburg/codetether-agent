@@ -2,12 +2,7 @@
 use super::super::batch::Batch;
 use anyhow::Result;
 use rusqlite::{Transaction, params};
-pub(super) fn write(
-    tx: &Transaction<'_>,
-    batch: &Batch,
-    revision: i64,
-    old_count: usize,
-) -> Result<()> {
+pub fn write(tx: &Transaction<'_>, batch: &Batch, revision: i64, old_count: usize) -> Result<()> {
     tx.execute(
         "INSERT INTO sessions VALUES (?1,?2,?3,?4,?5)
         ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,header=excluded.header,

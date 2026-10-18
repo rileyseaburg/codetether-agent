@@ -1,5 +1,6 @@
 //! Version-one schema: small headers and individually addressable records.
-pub(super) const SQL: &str = "
+/// Version-two table and index declarations used by transactional upgrades.
+pub const SQL: &str = "
 CREATE TABLE IF NOT EXISTS blobs (hash TEXT PRIMARY KEY, body TEXT NOT NULL) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS projections (
  session_id TEXT NOT NULL, name TEXT NOT NULL, seq INTEGER NOT NULL, end_seq INTEGER NOT NULL,

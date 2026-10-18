@@ -2,7 +2,7 @@
 use super::super::batch::Batch;
 use anyhow::Result;
 use rusqlite::{OptionalExtension, Transaction};
-pub(super) fn retry(tx: &Transaction<'_>, id: &str, nonce: &str) -> Result<Option<i64>> {
+pub fn retry(tx: &Transaction<'_>, id: &str, nonce: &str) -> Result<Option<i64>> {
     let committed = tx
         .query_row(
             "SELECT revision FROM commits WHERE nonce=?1",
@@ -21,7 +21,7 @@ pub(super) fn retry(tx: &Transaction<'_>, id: &str, nonce: &str) -> Result<Optio
     }
     Ok(committed)
 }
-pub(super) fn check(tx: &Transaction<'_>, batch: &Batch) -> Result<usize> {
+pub fn check(tx: &Transaction<'_>, batch: &Batch) -> Result<usize> {
     let current = tx
         .query_row(
             "SELECT revision,message_count FROM sessions WHERE id=?1",

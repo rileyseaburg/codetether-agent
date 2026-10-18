@@ -2,7 +2,7 @@
 use anyhow::Result;
 use rusqlite::Transaction;
 mod constraints;
-pub(super) fn run(tx: &Transaction<'_>, version: i64) -> Result<()> {
+pub fn run(tx: &Transaction<'_>, version: i64) -> Result<()> {
     if version == 1 {
         let mut query = tx.prepare("PRAGMA table_info(tool_calls)")?;
         let fields = query

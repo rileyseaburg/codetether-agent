@@ -8598,3 +8598,30 @@ file-budget and whitespace checks passed. Crate modules contain at most 36 code
 lines. Evidence is in `artifacts/consolidation-tracked-vec/`. Compilation and
 runtime tests were not run. No Cargo, rustc or Python commands ran. The overall
 consolidation goal remains active.
+
+### Dedicated transactional session-store crate
+
+Moved the SQLite storage kernel into `crates/codetether-session-store`: schema,
+connection setup, development-schema upgrades, optimistic state/checkpoints,
+serialized delta envelopes, blob integrity checks, indexed range reads,
+immutable event recording, retry identities and atomic commits. Constraint
+extraction and tool-result indexing now execute in the same crate as their SQL
+writes. Native adapters retain session serialization/hydration, derived views,
+loaded-window management and session-specific prefix rendering.
+
+The complete SQL schema and transaction bodies are preserved. The kernel keeps
+existing WAL/FULL durability settings, permissions, busy timeout, revision
+checks, commit identity calculation, derived-view invalidation and upgrade
+backfill order. Per-instance state cloning still copies checkpoint state into a
+new mutex. Its public checkpoint fields support the remaining native encoders
+without a second checkpoint or duplicated storage owner.
+
+Fifty-nine static checks compare moved functions/types, the exact schema,
+locator/blob prefixes, native prefix rendering, removed implementations and
+unchanged persistence tests. All sixteen native persistence tests remain
+unchanged; the identity-validation test moved into the crate. Module-reference,
+workspace dependency, file-limit and whitespace checks passed. The crate has
+21 Rust modules containing at most 43 code lines each. Evidence is in
+`artifacts/consolidation-session-store/`. Compilation and runtime tests were not
+run. No Cargo, rustc or Python commands ran. Session encoding/hydration and the
+other remaining source areas still require consolidation.

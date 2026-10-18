@@ -1,0 +1,17 @@
+[package]
+name = "codetether-session-store"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Transactional SQLite kernel for indexed session persistence"
+
+[dependencies]
+anyhow = "1"
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+hex = "0.4"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde_json = "1"
+sha2 = "0.11"
+tempfile = "3"
