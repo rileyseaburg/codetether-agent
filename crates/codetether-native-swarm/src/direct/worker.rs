@@ -1,10 +1,13 @@
 //! Native restricted registry and provider-loop calls.
-use crate::tool::ToolRegistry;
+use super::{Application, ToolRegistry};
 use codetether_swarm_core::result_store::ResultStore;
 use codetether_swarm_tool::runtime::{LoopInput, WorkerContext};
 use std::sync::Arc;
-pub(super) fn registry(context: &WorkerContext, store: Arc<ResultStore>) -> Arc<ToolRegistry> {
-    super::super::agent_registry::shared(
+pub(super) fn registry<T: Application>(
+    context: &WorkerContext,
+    store: Arc<ResultStore>,
+) -> Arc<ToolRegistry<T>> {
+    super::registry::shared::<T>(
         context.read_only,
         context.verification,
         context.expects_changes,
@@ -15,11 +18,16 @@ pub(super) fn registry(context: &WorkerContext, store: Arc<ResultStore>) -> Arc<
         context.model.clone(),
     )
 }
-pub(super) async fn run(
-    input: LoopInput<ToolRegistry>,
-) -> anyhow::Result<(String, usize, usize, crate::swarm::executor::AgentLoopExit)> {
+pub(super) async fn run<T: Application>(
+    input: LoopInput<ToolRegistry<T>>,
+) -> anyhow::Result<(
+    String,
+    usize,
+    usize,
+    codetether_swarm_core::agent_retry::AgentLoopExit,
+)> {
     let context = input.context;
-    crate::swarm::executor::run_agent_loop(
+    codetether_swarm_agent::run_agent_loop::<crate::AgentHost<T>>(
         context.provider,
         &context.model,
         &input.system,

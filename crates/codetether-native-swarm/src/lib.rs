@@ -15,3 +15,6 @@ pub use providers::Providers;
 
 #[cfg(test)]
 mod tests;
+
+/// Direct swarm-tool execution and registry composition.
+pub mod direct;

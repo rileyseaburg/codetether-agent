@@ -32,6 +32,9 @@ codetether-native-lsp = { path = "../codetether-native-lsp", version = "4.7.6-de
 codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
 codetether-native-tetherscript = { path = "../codetether-native-tetherscript", version = "0.1.0", optional = true }
 
+codetether-swarm-tool = { path = "../codetether-swarm-tool", version = "0.1.0" }
+codetether-swarm-monitor = { path = "../codetether-swarm-monitor", version = "0.1.0" }
+
 [dev-dependencies]
 async-trait = "0.1"
 chrono = "0.4"

@@ -1,40 +1,11 @@
-//! Executable, autonomous tool registries for direct swarm workers.
-
-use crate::provider::Provider;
+//! Native registry composition with concrete-catalog integration tests.
 #[cfg(test)]
-use crate::swarm::executor::workspace_registry;
-use crate::swarm::result_store::ResultStore;
+use crate::swarm::{executor::workspace_registry, result_store::ResultStore};
+#[cfg(test)]
 use crate::tool::ToolRegistry;
+pub(crate) use codetether_native_swarm::direct::registry::standard;
+#[cfg(test)]
 use std::{path::Path, sync::Arc};
-
-#[path = "agent_registry_base.rs"]
-mod base;
-pub(crate) use base::standard;
-
-pub(super) fn shared(
-    read_only: bool,
-    verification: bool,
-    expects_changes: bool,
-    workspace: &Path,
-    store: Arc<ResultStore>,
-    producer_id: String,
-    provider: Arc<dyn Provider>,
-    model: String,
-) -> Arc<ToolRegistry> {
-    codetether_workspace_tools::composition::direct::shared::<
-        crate::swarm::executor::workspace_registry::RegistryHost,
-    >(
-        read_only,
-        verification,
-        expects_changes,
-        workspace,
-        store,
-        producer_id,
-        provider,
-        model,
-    )
-}
-
 #[cfg(test)]
 fn with_shared(
     registry: ToolRegistry,

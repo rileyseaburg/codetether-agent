@@ -26504,3 +26504,22 @@ Only the new package/root dependency are staged in Cargo.lock; unrelated files
 remain unchanged. Evidence: artifacts/consolidation-native-mcp-server/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active and incomplete.
+
+### Native direct-swarm execution ownership
+
+Moved direct-swarm provider loading, restricted/shared registry construction,
+worker prompt composition and agent-loop execution into native-swarm::direct.
+The root SwarmExecuteTool now selects that host. Ephemeral agents retain the
+standard-registry entrypoint through a re-export; real-catalog integration
+tests and their helpers remain unchanged in the root. Four former runtime/
+provider/registry implementation files are removed.
+
+Static comparisons preserve all call arguments, prompt inputs, shared result
+store identities, event delivery and the explicit lack of a worker bus override.
+The same native agent host and workspace factory are selected. Module/dependency
+scans cover 730 roots and 617 crates without missing modules, cycles or undeclared
+dependencies. Production dependency-scope, declaration, standalone formatting,
+file-limit and whitespace checks pass. Only two native-swarm dependencies are
+staged in Cargo.lock; unrelated working files remain unchanged. Evidence:
+artifacts/consolidation-native-direct-swarm/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.
