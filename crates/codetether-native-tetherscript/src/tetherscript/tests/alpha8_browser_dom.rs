@@ -9,7 +9,7 @@ mod tests {
 
     #[tokio::test]
     async fn extract_text_returns_rendered_content() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(json!({
                 "path": "examples/tetherscript/browser_dom.tether",
@@ -23,7 +23,7 @@ mod tests {
 
     #[tokio::test]
     async fn query_returns_matching_elements() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(json!({
                 "path": "examples/tetherscript/browser_dom.tether",

@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/codetether-native-tetherscript",
     "crates/codetether-native-lsp",
     "crates/codetether-native-telemetry",
     "crates/codetether-native-voice",
@@ -665,7 +666,7 @@ path = "src/main.rs"
 
 [features]
 default = ["tetherscript"]
-tetherscript = ["codetether-native-providers/tetherscript","codetether-reasoning-repair/tetherscript", "codetether-forage-scoring/tetherscript", "codetether-tool-construction/tetherscript", "dep:codetether-tetherscript-computer", "dep:codetether-tetherscript-tool", "dep:tetherscript", "codetether-browser/tetherscript", "dep:codetether-tetherscript-values", "dep:codetether-provider-tetherscript", "codetether-provider-bonsai/tetherscript"]
+tetherscript = ["dep:codetether-native-tetherscript","codetether-native-providers/tetherscript","codetether-reasoning-repair/tetherscript", "codetether-forage-scoring/tetherscript", "codetether-tool-construction/tetherscript", "dep:codetether-tetherscript-computer", "dep:codetether-tetherscript-tool", "dep:tetherscript", "codetether-browser/tetherscript", "dep:codetether-tetherscript-values", "dep:codetether-provider-tetherscript", "codetether-provider-bonsai/tetherscript"]
 # Local in-process inference via Candle. Off by default: the agent leads with
 # remote/HTTP providers unless a local model backend is explicitly requested.
 candle = [
@@ -700,6 +701,7 @@ fips = [
 ]
 
 [dependencies]
+codetether-native-tetherscript = { path = "crates/codetether-native-tetherscript", version = "0.1.0", optional = true }
 codetether-native-lsp = { path = "crates/codetether-native-lsp", version = "4.7.6-dev.38" }
 codetether-native-telemetry = { path = "crates/codetether-native-telemetry", version = "4.7.6-dev.38" }
 codetether-native-voice = { path = "crates/codetether-native-voice", version = "0.1.0" }

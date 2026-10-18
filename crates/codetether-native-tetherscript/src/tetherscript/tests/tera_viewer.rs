@@ -5,7 +5,7 @@ use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
 async fn renders_trace_title_with_tera() {
-    let result = TetherScriptPluginTool::new()
+    let result = crate::project_tool()
         .execute(json!({
             "path": "examples/tetherscript/tera_probe.tether",
             "hook": "render_title",

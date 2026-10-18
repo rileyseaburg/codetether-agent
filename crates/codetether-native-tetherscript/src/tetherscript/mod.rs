@@ -8,7 +8,7 @@ pub use host::ApplicationHost;
 ///
 /// # Examples
 /// ```rust
-/// let _tool=codetether_agent::tool::tetherscript::TetherScriptPluginTool::new();
+/// let _tool=codetether_native_tetherscript::TetherScriptPluginTool::new();
 /// ```
 pub type TetherScriptPluginTool =
     codetether_tetherscript_tool::TetherScriptPluginTool<ApplicationHost>;

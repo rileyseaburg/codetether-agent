@@ -5,7 +5,7 @@ use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
 async fn executes_inline_tetherscript_hook_through_tool_trait() {
-    let tool = TetherScriptPluginTool::new();
+    let tool = crate::project_tool();
     let result = tool
         .execute(json!({
             "source": r#"

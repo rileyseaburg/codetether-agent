@@ -5,7 +5,7 @@ use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
 async fn builds_gpt_5_6_sol_request_via_runtime() {
-    let result = TetherScriptPluginTool::new()
+    let result = crate::project_tool()
         .execute(json!({
             "path": "examples/tetherscript/openai_codex_5_6_sol.tether",
             "hook": "request_body",

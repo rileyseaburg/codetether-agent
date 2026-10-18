@@ -5,7 +5,7 @@ use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
 async fn tetherscript_err_result_becomes_failed_tool_result() {
-    let tool = TetherScriptPluginTool::new();
+    let tool = crate::project_tool();
     let result = tool
         .execute(json!({
             "source": r#"fn validate() { return Err("feature rejected") }"#,

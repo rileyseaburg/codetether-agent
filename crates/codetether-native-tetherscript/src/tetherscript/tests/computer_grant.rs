@@ -24,7 +24,7 @@ fn parses_computer_grant_fields() {
 
 #[tokio::test]
 async fn grant_computer_runs_status_from_tetherscript() {
-    let tool = TetherScriptPluginTool::new();
+    let tool = crate::project_tool();
     let result = tool
         .execute(json!({
             "source": "fn main() { return computer.status() }",

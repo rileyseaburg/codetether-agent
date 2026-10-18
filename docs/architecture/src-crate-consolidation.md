@@ -25114,3 +25114,32 @@ Cargo.lock. Its unrelated working contents and the existing A2A changes remain
 unchanged. Evidence: artifacts/consolidation-native-services/. No Cargo, rustc,
 Python, compilation, hardware probing or runtime tests ran. The full workspace
 consolidation remains active.
+
+### Native TetherScript moved into its own crate
+
+Moved the plugin host, tool alias and runtime tests from src/tool/tetherscript/
+into codetether-native-tetherscript. The host now names the same computer-tool
+backend and native-runtime-policy functions directly, without a root application
+dependency. src/tool/mod.rs re-exports the new crate under its existing feature
+gate. The redundant computer-use facade was also removed and replaced by a
+re-export of codetether-computer-tool.
+
+The default-registry assertion is now tests/tetherscript_registration.rs,
+because it checks root application composition rather than the plugin runtime.
+All 30 test functions are preserved. Tests that use repository example plugins
+now select the workspace root explicitly, avoiding a changed current directory
+when the tests belong to the new crate. Temporary-directory confinement tests
+retain their original roots. Nine referenced example plugin paths exist. The
+new dependency is optional and activated by the existing root tetherscript
+feature. No plugin, process, browser or compiler was executed.
+
+Twenty-two relocated source comparisons pass with only the documented host,
+fixture and integration-test path substitutions. Static scans cover 708 module
+roots and 591 dependency crates without missing modules, cycles or undeclared
+direct workspace dependencies. Declaration, file-limit, direct rustfmt and
+whitespace checks pass. The original computer-use directory contains empty
+subdirectories, so its failed empty-directory removal was left untouched; its
+tracked facade file is removed. Only the new package/root lock entries are
+staged; unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-native-tetherscript/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

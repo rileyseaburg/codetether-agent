@@ -6,7 +6,7 @@ use crate::tool::Tool;
 use crate::tool::tetherscript::TetherScriptPluginTool;
 
 async fn run_guarded(command: &str, timeout_ms: u64) -> Value {
-    let tool = TetherScriptPluginTool::new();
+    let tool = crate::project_tool();
     let result = tool
         .execute(json!({
             "path": "examples/tetherscript/bash_guard.tether",

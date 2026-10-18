@@ -1939,6 +1939,7 @@ dependencies = [
  "codetether-native-telemetry",
  "codetether-native-voice",
  "codetether-native-worker-server",
+ "codetether-native-tetherscript",
 ]
 
 [[package]]
@@ -3690,6 +3691,22 @@ name = "codetether-native-telemetry"
 version = "4.7.6-dev.38"
 dependencies = [
  "codetether-telemetry",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-native-tetherscript"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-computer-tool",
+ "codetether-native-runtime-policy",
+ "codetether-tetherscript-computer",
+ "codetether-tetherscript-tool",
+ "codetether-tetherscript-values",
+ "codetether-tool-core",
+ "tempfile",
  "tokio",
 ]
 

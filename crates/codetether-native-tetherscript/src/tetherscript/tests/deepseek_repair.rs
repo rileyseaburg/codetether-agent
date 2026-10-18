@@ -6,7 +6,7 @@ mod tests {
 
     #[tokio::test]
     async fn repair_null_reasoning_content_via_tool() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(serde_json::json!({
                 "path": "examples/tetherscript/deepseek_repair.tether",
@@ -28,7 +28,7 @@ mod tests {
 
     #[tokio::test]
     async fn preserves_existing_reasoning_via_tool() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(serde_json::json!({
                 "path": "examples/tetherscript/deepseek_repair.tether",
@@ -50,7 +50,7 @@ mod tests {
 
     #[tokio::test]
     async fn skips_non_assistant_via_tool() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(serde_json::json!({
                 "path": "examples/tetherscript/deepseek_repair.tether",

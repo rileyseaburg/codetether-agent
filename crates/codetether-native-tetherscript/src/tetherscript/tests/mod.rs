@@ -30,6 +30,4 @@ mod language_features;
 mod openai_codex;
 mod path_escape;
 #[cfg(feature = "tetherscript")]
-mod registry;
-#[cfg(feature = "tetherscript")]
 mod tera_viewer;

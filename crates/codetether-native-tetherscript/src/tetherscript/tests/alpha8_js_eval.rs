@@ -10,7 +10,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "alpha.8 js_eval builtin not yet functional"]
     async fn js_eval_returns_arithmetic_result() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(json!({
                 "path": "examples/tetherscript/js_eval.tether",
@@ -28,7 +28,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "alpha.8 js_eval/json_parse builtins not yet functional"]
     async fn js_eval_json_parses_object() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(json!({
                 "path": "examples/tetherscript/js_eval.tether",

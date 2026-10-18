@@ -5,7 +5,7 @@ use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
 async fn invalid_params_return_tool_error() {
-    let tool = TetherScriptPluginTool::new();
+    let tool = crate::project_tool();
     let result = tool.execute(json!({"hook": 42})).await.unwrap();
 
     assert!(!result.success);

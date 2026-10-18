@@ -10,7 +10,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "alpha.8 browser_render builtin not yet functional"]
     async fn render_hook_produces_viewport_text() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(json!({
                 "path": "examples/tetherscript/browser_render.tether",
@@ -27,7 +27,7 @@ mod tests {
 
     #[tokio::test]
     async fn render_with_css_includes_styled_elements() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(json!({
                 "path": "examples/tetherscript/browser_render.tether",

@@ -17,10 +17,10 @@ pub mod batch;
 pub use codetether_browser_tool as browserctl;
 pub use codetether_bus_tool as bus_inspect;
 pub use codetether_code_search as codesearch;
-pub use codetether_tool_core::budget;
-pub mod computer_use;
+pub use codetether_computer_tool as computer_use;
 pub use codetether_confirm_edit as confirm_edit;
 pub use codetether_confirm_multiedit as confirm_multiedit;
+pub use codetether_tool_core::budget;
 pub mod context_browse;
 pub mod context_budget;
 pub(super) mod context_helpers;
@@ -66,10 +66,10 @@ use codetether_sandbox_policy as sandbox_paths;
 pub mod session_recall;
 pub use codetether_skill_tool as skill;
 pub mod swarm_execute;
+#[cfg(feature = "tetherscript")]
+pub use codetether_native_tetherscript as tetherscript;
 pub use codetether_swarm_share as swarm_share;
 pub use codetether_task_tool as task;
-#[cfg(feature = "tetherscript")]
-pub mod tetherscript;
 pub mod todo;
 pub mod undo;
 pub use codetether_voice_input_tool as voice_input;

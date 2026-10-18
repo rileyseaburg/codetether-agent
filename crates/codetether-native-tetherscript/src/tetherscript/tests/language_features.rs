@@ -5,7 +5,7 @@ use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
 async fn executes_current_language_feature_sampler() {
-    let tool = TetherScriptPluginTool::new();
+    let tool = crate::project_tool();
     let result = tool
         .execute(json!({
             "path": "examples/tetherscript/language_features.tether",

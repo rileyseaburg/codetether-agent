@@ -1,4 +1,7 @@
-use crate::tool::ToolRegistry;
+//! Root-registry coverage for the native TetherScript plugin.
+#![cfg(feature = "tetherscript")]
+
+use codetether_agent::tool::ToolRegistry;
 
 #[test]
 #[cfg(feature = "tetherscript")]

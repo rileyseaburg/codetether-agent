@@ -10,7 +10,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "alpha.8 browser_eval_js builtin not yet functional"]
     async fn eval_js_mutates_dom() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(json!({
                 "path": "examples/tetherscript/browser_js.tether",
@@ -30,7 +30,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "alpha.8 browser_compatibility_report builtin not yet functional"]
     async fn compat_returns_feature_list() {
-        let tool = TetherScriptPluginTool::new();
+        let tool = crate::project_tool();
         let result = tool
             .execute(json!({
                 "path": "examples/tetherscript/browser_js.tether",
