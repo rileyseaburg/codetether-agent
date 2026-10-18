@@ -13877,3 +13877,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or prompt execution ran. Full workspace
   consolidation remains unfinished.
+
+### Relay planning model extraction
+
+- Moved relay planning schemas, specialist construction/naming, planner JSON
+  extraction, default team construction, planned/fallback OKR construction and
+  display truncation from src/cli/run.rs into codetether-relay-plan.
+- Fourteen modules separate schema, naming, instruction text, profile assembly,
+  objective assembly, JSON parsing and tests. Existing planner regression tests
+  moved with their implementation. Provider calls and relay execution stay native.
+- Verification: 20 static item/schema/test-body/remaining-native-code/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-relay-plan/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or relay execution ran. Full workspace
+  consolidation remains unfinished.

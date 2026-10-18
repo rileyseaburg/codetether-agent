@@ -1,0 +1,14 @@
+[package]
+name = "codetether-relay-plan"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Relay planning schemas, profiles and objective construction"
+
+[dependencies]
+codetether-autochat-core = { path = "../codetether-autochat-core", version = "0.1.0" }
+codetether-okr = { path = "../codetether-okr", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = "1"

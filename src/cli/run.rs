@@ -15,12 +15,17 @@ use crate::autochat::shared_context::{
 };
 use crate::autochat::transport::{attach_handoff_receiver, consume_handoff_by_correlation};
 use crate::bus::{AgentBus, relay::ProtocolRelayRuntime, relay::RelayAgentProfile};
-use crate::okr::{ApprovalDecision, KeyResult, Okr, OkrRepository, OkrRun};
+use crate::okr::{ApprovalDecision, Okr, OkrRepository, OkrRun};
 use crate::provider::{ContentPart, Message, Role};
 use crate::rlm::{FinalPayload, RlmExecutor};
 use crate::session::{Session, import_codex_session_by_id};
 use anyhow::Result;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use codetether_relay_plan::{
+    PlannedOkrDraft, PlannedRelayResponse, RelayProfile, RelaySpawnDecision, build_relay_profiles,
+    build_runtime_profile_from_plan, default_relay_okr_template, extract_json_payload,
+    okr_from_planned_draft, truncate_with_ellipsis,
+};
+use serde::Serialize;
 use std::{collections::HashMap, io::Write};
 use uuid::Uuid;
 
@@ -53,65 +58,6 @@ fn parse_uuid_guarded(s: &str, context: &str) -> Option<Uuid> {
     }
 }
 
-#[derive(Debug, Clone)]
-struct RelayProfile {
-    name: String,
-    instructions: String,
-    capabilities: Vec<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct PlannedRelayProfile {
-    #[serde(default)]
-    name: String,
-    #[serde(default)]
-    specialty: String,
-    #[serde(default)]
-    mission: String,
-    #[serde(default)]
-    capabilities: Vec<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct PlannedRelayResponse {
-    #[serde(default)]
-    profiles: Vec<PlannedRelayProfile>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct RelaySpawnDecision {
-    #[serde(default)]
-    spawn: bool,
-    #[serde(default)]
-    reason: String,
-    #[serde(default)]
-    profile: Option<PlannedRelayProfile>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct PlannedOkrKeyResult {
-    #[serde(default)]
-    title: String,
-    #[serde(default)]
-    target_value: f64,
-    #[serde(default = "default_okr_unit")]
-    unit: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct PlannedOkrDraft {
-    #[serde(default)]
-    title: String,
-    #[serde(default)]
-    description: String,
-    #[serde(default)]
-    key_results: Vec<PlannedOkrKeyResult>,
-}
-
-fn default_okr_unit() -> String {
-    "%".to_string()
-}
-
 #[derive(Debug, Serialize)]
 struct AutochatCliResult {
     status: String,
@@ -127,209 +73,11 @@ struct AutochatCliResult {
     rlm_context_count: usize,
 }
 
-fn slugify_label(value: &str) -> String {
-    let mut out = String::with_capacity(value.len());
-    let mut last_dash = false;
-
-    for ch in value.chars() {
-        let ch = ch.to_ascii_lowercase();
-        if ch.is_ascii_alphanumeric() {
-            out.push(ch);
-            last_dash = false;
-        } else if !last_dash {
-            out.push('-');
-            last_dash = true;
-        }
-    }
-
-    out.trim_matches('-').to_string()
-}
-
-fn sanitize_relay_agent_name(value: &str) -> String {
-    let raw = slugify_label(value);
-    let base = if raw.is_empty() {
-        "auto-specialist".to_string()
-    } else if raw.starts_with("auto-") {
-        raw
-    } else {
-        format!("auto-{raw}")
-    };
-
-    truncate_with_ellipsis(&base, 48)
-        .trim_end_matches("...")
-        .to_string()
-}
-
-fn unique_relay_agent_name(base: &str, existing: &[String]) -> String {
-    if !existing.iter().any(|name| name == base) {
-        return base.to_string();
-    }
-
-    let mut suffix = 2usize;
-    loop {
-        let candidate = format!("{base}-{suffix}");
-        if !existing.iter().any(|name| name == &candidate) {
-            return candidate;
-        }
-        suffix += 1;
-    }
-}
-
-fn relay_instruction_from_plan(name: &str, specialty: &str, mission: &str) -> String {
-    format!(
-        "You are @{name}.\n\
-         Specialty: {specialty}.\n\
-         Mission: {mission}\n\n\
-         This is a protocol-first relay conversation. Treat incoming handoffs as authoritative context.\n\
-         Keep responses concise, concrete, and useful for the next specialist.\n\
-         Include one clear recommendation for what the next agent should do.\n\
-         If the task is too large for the current team, explicitly call out missing specialties and handoff boundaries.",
-    )
-}
-
-fn build_runtime_profile_from_plan(
-    profile: PlannedRelayProfile,
-    existing: &[String],
-) -> Option<RelayProfile> {
-    let specialty = if profile.specialty.trim().is_empty() {
-        "generalist".to_string()
-    } else {
-        profile.specialty.trim().to_string()
-    };
-
-    let mission = if profile.mission.trim().is_empty() {
-        "Advance the relay with concrete next actions and clear handoffs.".to_string()
-    } else {
-        profile.mission.trim().to_string()
-    };
-
-    let base_name = if profile.name.trim().is_empty() {
-        format!("auto-{}", slugify_label(&specialty))
-    } else {
-        profile.name.trim().to_string()
-    };
-
-    let sanitized = sanitize_relay_agent_name(&base_name);
-    let name = unique_relay_agent_name(&sanitized, existing);
-    if name.trim().is_empty() {
-        return None;
-    }
-
-    let mut capabilities: Vec<String> = Vec::new();
-    let specialty_cap = slugify_label(&specialty);
-    if !specialty_cap.is_empty() {
-        capabilities.push(specialty_cap);
-    }
-
-    for capability in profile.capabilities {
-        let normalized = slugify_label(&capability);
-        if !normalized.is_empty() && !capabilities.contains(&normalized) {
-            capabilities.push(normalized);
-        }
-    }
-
-    crate::autochat::ensure_required_relay_capabilities(&mut capabilities);
-
-    Some(RelayProfile {
-        name: name.clone(),
-        instructions: relay_instruction_from_plan(&name, &specialty, &mission),
-        capabilities,
-    })
-}
-
-fn extract_json_payload<T: DeserializeOwned>(text: &str) -> Option<T> {
-    let trimmed = text.trim();
-    if let Ok(value) = serde_json::from_str::<T>(trimmed) {
-        return Some(value);
-    }
-
-    if let (Some(start), Some(end)) = (trimmed.find('{'), trimmed.rfind('}'))
-        && start < end
-        && let Ok(value) = serde_json::from_str::<T>(&trimmed[start..=end])
-    {
-        return Some(value);
-    }
-
-    if let (Some(start), Some(end)) = (trimmed.find('['), trimmed.rfind(']'))
-        && start < end
-        && let Ok(value) = serde_json::from_str::<T>(&trimmed[start..=end])
-    {
-        return Some(value);
-    }
-
-    None
-}
-
 fn resolve_provider_for_model_autochat(
     registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
     model_ref: &str,
 ) -> Option<(std::sync::Arc<dyn crate::provider::Provider>, String)> {
     crate::autochat::model_rotation::resolve_provider_for_model_autochat(registry, model_ref)
-}
-
-fn default_relay_okr_template(okr_id: Uuid, task: &str) -> Okr {
-    let mut okr = Okr::new(
-        format!("Relay: {}", truncate_with_ellipsis(task, 60)),
-        format!("Execute relay task: {}", task),
-    );
-    okr.id = okr_id;
-
-    // Default key results (fallback only)
-    okr.add_key_result(KeyResult::new(
-        okr_id,
-        "Relay completes all rounds",
-        100.0,
-        "%",
-    ));
-    okr.add_key_result(KeyResult::new(
-        okr_id,
-        "Team produces actionable handoff",
-        1.0,
-        "count",
-    ));
-    okr.add_key_result(KeyResult::new(okr_id, "No critical errors", 0.0, "count"));
-    okr
-}
-
-fn okr_from_planned_draft(okr_id: Uuid, task: &str, planned: PlannedOkrDraft) -> Okr {
-    let title = if planned.title.trim().is_empty() {
-        format!("Relay: {}", truncate_with_ellipsis(task, 60))
-    } else {
-        planned.title.trim().to_string()
-    };
-
-    let description = if planned.description.trim().is_empty() {
-        format!("Execute relay task: {}", task)
-    } else {
-        planned.description.trim().to_string()
-    };
-
-    let mut okr = Okr::new(title, description);
-    okr.id = okr_id;
-
-    // Clamp to a reasonable number of KRs to keep UX readable.
-    for kr in planned.key_results.into_iter().take(7) {
-        if kr.title.trim().is_empty() {
-            continue;
-        }
-        let unit = if kr.unit.trim().is_empty() {
-            default_okr_unit()
-        } else {
-            kr.unit
-        };
-        okr.add_key_result(KeyResult::new(
-            okr_id,
-            kr.title.trim().to_string(),
-            kr.target_value.max(0.0),
-            unit,
-        ));
-    }
-
-    if okr.key_results.is_empty() {
-        default_relay_okr_template(okr_id, task)
-    } else {
-        okr
-    }
 }
 
 async fn plan_okr_draft_with_registry(
@@ -1050,54 +798,6 @@ fn resolve_autochat_model(
         return model.to_string();
     }
     "zai/glm-5".to_string()
-}
-
-fn build_relay_profiles(count: usize) -> Vec<RelayProfile> {
-    let mut profiles = Vec::with_capacity(count);
-    for idx in 0..count {
-        let name = format!("auto-agent-{}", idx + 1);
-
-        let instructions = format!(
-            "You are @{name}.\n\
-             Role policy: self-organize from task context and current handoff instead of assuming a fixed persona.\n\
-             Mission: advance the relay with concrete, high-signal next actions and clear ownership boundaries.\n\n\
-             This is a protocol-first relay conversation. Treat the incoming handoff as authoritative context.\n\
-             Keep your response concise, concrete, and useful for the next specialist.\n\
-             Include one clear recommendation for what the next agent should do.\n\
-             If the task scope is too large, explicitly call out missing specialties and handoff boundaries.",
-        );
-        let mut capabilities = vec!["generalist".to_string(), "self-organizing".to_string()];
-        crate::autochat::ensure_required_relay_capabilities(&mut capabilities);
-
-        profiles.push(RelayProfile {
-            name,
-            instructions,
-            capabilities,
-        });
-    }
-    profiles
-}
-
-fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
-    if max_chars == 0 {
-        return String::new();
-    }
-
-    let mut chars = value.chars();
-    let mut output = String::new();
-    for _ in 0..max_chars {
-        if let Some(ch) = chars.next() {
-            output.push(ch);
-        } else {
-            return value.to_string();
-        }
-    }
-
-    if chars.next().is_some() {
-        format!("{output}...")
-    } else {
-        output
-    }
 }
 
 fn normalize_for_convergence(text: &str) -> String {

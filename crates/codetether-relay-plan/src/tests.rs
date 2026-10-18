@@ -1,4 +1,5 @@
-use super::super::{
+//! Regression tests for planner parsing and profile construction.
+use crate::{
     PlannedRelayProfile, PlannedRelayResponse, build_runtime_profile_from_plan,
     extract_json_payload,
 };

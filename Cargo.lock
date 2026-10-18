@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-relay-plan",
  "codetether-run-resume",
  "codetether-sol-workflow",
  "codetether-run-context",
@@ -7029,6 +7030,17 @@ dependencies = [
  "codetether-session-events",
  "codetether-step-limit",
  "tokio",
+]
+
+[[package]]
+name = "codetether-relay-plan"
+version = "0.1.0"
+dependencies = [
+ "codetether-autochat-core",
+ "codetether-okr",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]
