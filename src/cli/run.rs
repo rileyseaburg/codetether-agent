@@ -10,6 +10,7 @@ mod sol_workflow;
 use relay_host::run_protocol_first_relay;
 
 use super::RunArgs;
+use crate::autochat::model_rotation::resolve_provider_for_model_autochat;
 use crate::bus::AgentBus;
 use crate::okr::{ApprovalDecision, Okr, OkrRepository, OkrRun};
 use crate::session::{Session, import_codex_session_by_id};
@@ -27,13 +28,6 @@ use std::io::Write;
 use uuid::Uuid;
 const AUTOCHAT_DEFAULT_AGENTS: usize = crate::autochat::AUTOCHAT_DEFAULT_AGENTS;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
-
-fn resolve_provider_for_model_autochat(
-    registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
-    model_ref: &str,
-) -> Option<(std::sync::Arc<dyn crate::provider::Provider>, String)> {
-    crate::autochat::model_rotation::resolve_provider_for_model_autochat(registry, model_ref)
-}
 
 pub use run_execute::execute;
 

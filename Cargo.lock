@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-run-policy",
  "codetether-cli-relay",
  "codetether-relay-report",
  "codetether-relay-rlm",
@@ -7101,6 +7102,16 @@ dependencies = [
  "codetether-session-events",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-run-policy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-cli-options",
+ "codetether-config",
+ "codetether-runtime-policy",
 ]
 
 [[package]]

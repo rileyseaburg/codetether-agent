@@ -14004,3 +14004,20 @@ Full workspace consolidation remains active.
 - No dependency or lockfile changes. No Cargo, rustc, Rust tests, provider calls
   or relay execution ran. This completes the recorded relay-function split;
   full workspace consolidation remains unfinished.
+
+### Run configuration and session policy extraction
+
+- Moved configuration loading, access-mode precedence and session policy into
+  codetether-run-policy. Native run_config.rs now binds only the session fields
+  and re-exports the shared operations.
+- Restored missing AUTOCHAT_MAX_AGENTS and normalize_go_task_input imports in
+  cab9d0a30. The initial line-limit check for that import repair failed because
+  the oversized run.rs gained one line; removing its redundant provider resolver
+  wrapper restores the ratchet against the pre-repair HEAD^ baseline.
+- Preserves process-mode/config/schema update order and the existing automatic
+  edit mutation before zero-step validation. Seven static body/native-binding/
+  import checks passed, plus module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks. Evidence: artifacts/consolidation-run-policy/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or configuration execution ran. Full workspace
+  consolidation remains unfinished.
