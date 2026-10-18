@@ -26,6 +26,7 @@ pub(crate) mod boundary;
 pub(crate) mod continuation;
 mod execution;
 pub(crate) mod execution_scope;
+mod orchestration_session;
 pub(crate) use execution::RunGuard;
 mod handle;
 pub use handle::ControlHandle;

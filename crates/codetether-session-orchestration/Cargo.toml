@@ -1,0 +1,15 @@
+[package]
+name = "codetether-session-orchestration"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Session continuation and delegated-work monitoring"
+
+[dependencies]
+anyhow = "1"
+codetether-goal-runtime = { path = "../codetether-goal-runtime", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }
+codetether-session-steering = { path = "../codetether-session-steering", version = "0.1.0" }
+tokio = { version = "1", features = ["macros", "time"] }

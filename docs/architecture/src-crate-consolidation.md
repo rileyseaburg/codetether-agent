@@ -8548,3 +8548,28 @@ contain at most 42 code lines. Evidence is in
 `artifacts/consolidation-goal-runtime/`. Compilation and runtime tests were not
 run. No Cargo, rustc or Python commands ran. Consolidation of the remaining
 session orchestration and other source areas is still required.
+
+### Dedicated session-orchestration crate
+
+Moved final-message continuation and delegated-work monitoring from
+`src/session/runtime/{continuation,swarm_monitor}.rs` into
+`crates/codetether-session-orchestration`. Six modules separate continuation
+reasons, final-message decisions, transcript access, steering broadcast, and
+monitoring. The crate uses the existing goal-runtime journal contract,
+session-control handle and session-steering transcript. Native code supplies
+ordinary message insertion, a read-only transcript slice, and the existing
+journal resolver.
+
+The moved loops preserve steering-before-goal continuation, the second atomic
+steering drain before finishing, goal accounting, 100 ms monitoring, error
+precedence and waiting for delegated cleanup after cancellation. Newly accepted
+messages are broadcast to the same independent child cursors. Three existing
+native continuation/monitor integration tests remain unchanged.
+
+Twelve static checks compare complete moved bodies, continuation variants,
+native forwarding and transcript bindings, and unchanged integration tests.
+Module-reference, workspace path-dependency, code-line and whitespace checks
+passed. Crate modules contain at most 36 code lines. Evidence is in
+`artifacts/consolidation-session-orchestration/`. Compilation and runtime tests
+were not run. No Cargo, rustc or Python commands ran. Substantial native session,
+TUI, CLI, server and other implementation remains within the full goal.
