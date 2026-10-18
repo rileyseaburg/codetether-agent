@@ -185,7 +185,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
 
     let app = approval_routes::router()
         // Health check (public — auth exempt)
-        .route("/health", get(health))
+        .merge(codetether_server_status::health_routes::<AppState>())
         // CloudEvent receiver for Knative Eventing (public — auth exempt)
         .merge(codetether_task_ingest::http::router::<AppState>())
         // Knative task queue APIs
@@ -194,8 +194,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .merge(session_routes::router())
         .merge(session_realtime::router())
         .merge(config_status::router(state.config.clone()))
-        .route("/api/provider", get(list_providers))
-        .route("/api/agent", get(list_agents))
+        .merge(codetether_server_status::discovery_routes::<AppState>())
         // OpenAI-compatible APIs
         .merge(codetether_model_catalog::http::router::<
             models_catalog::AppHost,
@@ -264,26 +263,6 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
-}
-
-/// Health check response
-async fn health() -> &'static str {
-    "ok"
-}
-
-/// List providers
-async fn list_providers() -> Json<Vec<String>> {
-    Json(vec![
-        "openai".to_string(),
-        "anthropic".to_string(),
-        "google".to_string(),
-    ])
-}
-
-/// List agents
-async fn list_agents() -> Json<Vec<crate::agent::AgentInfo>> {
-    let registry = crate::agent::AgentRegistry::with_builtins();
-    Json(registry.list().into_iter().cloned().collect())
 }
 
 // ── Session resume ──────────────────────────────────────────────────────

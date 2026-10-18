@@ -8,6 +8,7 @@ description = "Application configuration, trust and version HTTP routes"
 
 [dependencies]
 axum = "0.8"
+codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
 codetether-config = { path = "../codetether-config", version = "0.1.0" }
 codetether-plugin-verification = { path = "../codetether-plugin-verification", version = "0.1.0" }
 codetether-verifier-http = { path = "../codetether-verifier-http", version = "0.1.0" }

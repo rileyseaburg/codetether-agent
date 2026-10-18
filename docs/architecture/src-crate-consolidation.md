@@ -14343,3 +14343,19 @@ Full workspace consolidation remains active.
   whitespace checks passed. Evidence: artifacts/consolidation-cognition-http/.
 - No Cargo, rustc, Rust tests, runtime operations or server startup ran. Full
   workspace consolidation remains unfinished.
+
+### Health and compatibility metadata ownership
+
+- Moved health, provider-name and built-in agent-list handlers out of the native
+  server into codetether-server-status. Health and discovery route groups retain
+  their original positions beneath the existing middleware assembly.
+- The provider names remain the same fixed compatibility list. Agent discovery
+  uses the same catalog via its owning codetether-agent-core crate.
+- Added only the agent-core dependency to server-status and staged its isolated
+  lockfile addition. Unrelated working lockfile changes remain uncommitted.
+- Verification: six static checks passed for response bodies, route/middleware
+  assembly, module sizes and isolated lock changes. Module reachability,
+  dependency DAG, direct rustfmt, file-limit ratchet and whitespace checks passed.
+  Evidence: artifacts/consolidation-server-metadata/.
+- No Cargo, rustc, Rust tests or HTTP server ran. Full consolidation remains
+  unfinished.

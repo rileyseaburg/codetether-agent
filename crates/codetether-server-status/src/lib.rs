@@ -4,9 +4,13 @@
 //! Binary hashing is performed per request, and verifier settings share the
 //! existing process-wide verifier stores.
 mod config;
+mod health;
+mod metadata;
+mod metadata_routes;
 mod state;
 mod version;
 use codetether_config::Config;
+pub use metadata_routes::{discovery_routes, health_routes};
 use std::sync::Arc;
 /// Build status routes under caller-owned authentication and policy layers.
 /// # Arguments
