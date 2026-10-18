@@ -1,20 +1,18 @@
 //! Non-interactive run command
 
-mod events;
 mod files;
 mod jsonl;
 mod knowledge;
 mod relay_host;
 mod run_execute;
+mod session_runtime;
 mod session_source;
 mod sol_workflow;
 use relay_host::run_protocol_first_relay;
 
 use super::RunArgs;
 use crate::autochat::model_rotation::resolve_provider_for_model_autochat;
-use crate::bus::AgentBus;
 use crate::okr::{Okr, OkrRepository};
-use crate::session::Session;
 use anyhow::Result;
 use codetether_autochat_core::AUTOCHAT_MAX_AGENTS;
 use codetether_relay_plan::{
@@ -159,52 +157,13 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
     }
 
     // Create or continue session.
-    let mut session =
-        codetether_run_resume::select_session::<Session>(&args, &workspace_dir).await?;
-    if jsonl_output {
-        jsonl::write_started(&session.id)?;
-    }
-
-    // Set model: CLI arg > env var > config default
-    codetether_run_policy::apply_model(&mut session, &args, config.default_model);
-
-    // Load project memory palace
-    codetether_run_context::load_memory(&workspace_dir);
-
-    session.metadata.knowledge_snapshot = knowledge_snapshot;
-    super::run_config::apply_session_policy(&mut session, &args)?;
-
-    // Wire bus for thinking capture + S3 training data
-    let bus = AgentBus::new().into_arc();
-    crate::bus::set_global(bus.clone());
-    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
-    session.bus = Some(bus);
-
-    let live_events = events::LiveEvents::start(&session.id, &message, jsonl_output).await?;
-
-    let result = match super::run_loop::execute_prompt_with_resume_events(
-        &mut session,
-        &message,
-        args.max_steps,
-        args.auto_continue_until,
-        &workspace_dir,
-        live_events.sender(),
-    )
+    codetether_run_runtime::execute::<session_runtime::NativeHost>(codetether_run_runtime::Input {
+        args,
+        config,
+        workspace_dir,
+        knowledge_snapshot,
+        message,
+        jsonl_output,
+    })
     .await
-    {
-        Ok(result) => {
-            live_events.finish_success(&result.text).await?;
-            result
-        }
-        Err(error) => {
-            let message = error.to_string();
-            live_events.finish_failure(&message).await?;
-            return Err(error);
-        }
-    };
-
-    // Output based on format
-    codetether_run_report::render_session(&args.format, &result, &session.usage, &session.id)?;
-
-    Ok(())
 }

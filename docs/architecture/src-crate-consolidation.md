@@ -14097,3 +14097,18 @@ Full workspace consolidation remains active.
 - Staged only the three required dependency additions in Cargo.lock. No Cargo,
   rustc, Rust tests, branch preparation, model setup or memory lookup ran.
   Full workspace consolidation remains unfinished.
+
+### Ordinary run execution orchestration extraction
+
+- Moved ordinary session selection, policy/context setup, live-event execution
+  and final reporting into codetether-run-runtime. Separate modules own prepared
+  input, native contracts, ordered setup and turn completion handling.
+- Native session_runtime.rs provides only bus startup and metadata/usage access.
+  Existing session selection, resume and policy adapters remain authoritative.
+  Setup, success/failure event completion and output order are unchanged.
+- Verification: four static expanded-execution/native-binding/outer-command/size
+  checks passed, plus module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks. Evidence: artifacts/consolidation-run-runtime/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, session operations or event/output execution ran.
+  Full workspace consolidation remains unfinished.

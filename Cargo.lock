@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-run-runtime",
  "codetether-run-report",
  "codetether-run-policy",
  "codetether-cli-relay",
@@ -7131,6 +7132,24 @@ dependencies = [
  "codetether-run-jsonl",
  "codetether-session-events",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-run-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-bus-core",
+ "codetether-cli-options",
+ "codetether-config",
+ "codetether-provider-core",
+ "codetether-run-context",
+ "codetether-run-events",
+ "codetether-run-jsonl",
+ "codetether-run-policy",
+ "codetether-run-report",
+ "codetether-run-resume",
+ "codetether-session-events",
 ]
 
 [[package]]

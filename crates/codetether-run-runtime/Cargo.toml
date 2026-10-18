@@ -1,0 +1,21 @@
+[package]
+name = "codetether-run-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Ordinary CLI session execution orchestration"
+
+[dependencies]
+anyhow = "1"
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-run-context = { path = "../codetether-run-context", version = "0.1.0" }
+codetether-run-events = { path = "../codetether-run-events", version = "0.1.0" }
+codetether-run-jsonl = { path = "../codetether-run-jsonl", version = "0.1.0" }
+codetether-run-policy = { path = "../codetether-run-policy", version = "0.1.0" }
+codetether-run-report = { path = "../codetether-run-report", version = "0.1.0" }
+codetether-run-resume = { path = "../codetether-run-resume", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
