@@ -2,6 +2,7 @@
 members = [
     ".",
     "crates/codetether-tui-tick",
+    "crates/codetether-task-cli",
     "crates/codetether-a2a-core",
     "crates/codetether-http-error",
     "crates/codetether-server-router",

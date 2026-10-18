@@ -4954,6 +4954,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-task-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-user-auth",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "urlencoding",
+]
+
+[[package]]
 name = "codetether-task-tool"
 version = "0.1.0"
 dependencies = [

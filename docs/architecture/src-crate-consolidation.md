@@ -17142,3 +17142,23 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-tool-error/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Move legacy task submission into a dedicated crate
+
+- Moved all 370 lines of the unreferenced `src/cli/task.rs` into the new
+  `codetether-task-cli` workspace member, split by credentials, workspace HTTP
+  lookup, matching, path resolution, attachments, title, submission, output,
+  wire types and tests.
+- Replaced its missing native `TaskArgs` dependency with a documented plain
+  struct covering exactly the ten fields consumed by the original code.
+  No CLI route or argument parser was added; native command behavior is unchanged.
+- Saved credentials now resolve directly through `codetether-user-auth`, the
+  same implementation re-exported by the old native authentication adapter.
+- Verification: every original function, wire struct and all four test bodies;
+  complete execute/submission/output decomposition; argument field mapping;
+  module/dependency graphs, direct rustfmt, file limits and whitespace.
+- Added only the new package entry to the staged lockfile from HEAD, leaving
+  unrelated working-copy lock changes untouched. Evidence:
+  `artifacts/consolidation-task-cli/`.
+- No Cargo, rustc, Python, network requests, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
