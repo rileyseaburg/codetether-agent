@@ -12,9 +12,9 @@ pub(super) async fn submit(
     notice_tx: &mpsc::Sender<SessionNotice>,
 ) -> bool {
     let mut host = super::dispatch_host::Native {
-        cancel,
-        event_tx,
-        notice_tx,
+        cancel: cancel.clone(),
+        event_tx: event_tx.clone(),
+        notice_tx: notice_tx.clone(),
     };
     codetether_session_runtime::dispatch::submit(&mut host, request).await
 }

@@ -4,9 +4,11 @@
 //! [Host] retains native policy checks, notices and execution.
 mod host;
 mod run;
+mod spawn;
 mod step;
 mod submit;
 pub use host::Host;
 pub use run::run;
+pub use spawn::spawn;
 pub use step::handle;
 pub use submit::submit;

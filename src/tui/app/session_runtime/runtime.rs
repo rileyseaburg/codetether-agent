@@ -1,18 +1,7 @@
-//! Session runtime event loop.
-//!
-//! This module owns the asynchronous command loop that sits between TUI input
-//! handlers and prompt execution. It receives [`SessionCommand`] values through
-//! a [`TuiSessionHandle`], forwards streamed [`SessionEvent`] values to the TUI,
-//! and emits [`SessionNotice`] messages when session ownership changes.
-//!
-//! The runtime shares only a focused cancellation signal with its handle so key
-//! handlers can interrupt immediately without waiting on the command queue.
-
-use tokio::sync::mpsc;
-
+//! Native event and notice channel binding for shared runtime startup.
+use super::{SessionNotice, TuiSessionHandle};
 use crate::session::SessionEvent;
-
-use super::{SessionCommand, SessionNotice, TuiSessionHandle, active_cancel::ActiveCancel};
+use tokio::sync::mpsc;
 
 /// Spawn the TUI-owned session runtime task.
 ///
@@ -39,39 +28,9 @@ pub(crate) fn spawn(
     event_tx: mpsc::Sender<SessionEvent>,
     notice_tx: mpsc::Sender<SessionNotice>,
 ) -> TuiSessionHandle {
-    let (cmd_tx, cmd_rx) = mpsc::channel(8);
-    let active_cancel = ActiveCancel::default();
-    tokio::spawn(run(cmd_rx, event_tx, notice_tx, active_cancel.clone()));
-    TuiSessionHandle::new(cmd_tx, active_cancel)
-}
-
-/// Run the session runtime command loop until shutdown or channel closure.
-///
-/// The loop waits for commands from [`TuiSessionHandle`]. Prompt executors clear
-/// their shared active ownership before publishing their completion notice.
-///
-/// # Arguments
-///
-/// * `cmd_rx` - Receiver for runtime commands.
-/// * `event_tx` - Sender used by prompt execution for streamed session events.
-/// * `notice_tx` - Sender used for runtime lifecycle notices.
-/// * `active_cancel` - Shared direct signal for the current prompt.
-///
-/// # Side Effects
-///
-/// Handles prompt submission, cancellation, and shutdown commands. The function
-/// awaits until a command requests termination, all command senders are dropped,
-/// or the internal select loop otherwise reaches channel closure.
-async fn run(
-    cmd_rx: mpsc::Receiver<SessionCommand>,
-    event_tx: mpsc::Sender<SessionEvent>,
-    notice_tx: mpsc::Sender<SessionNotice>,
-    active_cancel: ActiveCancel,
-) {
-    let mut host = super::dispatch_host::Native {
-        cancel: &active_cancel,
-        event_tx: &event_tx,
-        notice_tx: &notice_tx,
-    };
-    codetether_session_runtime::dispatch::run(&mut host, cmd_rx).await;
+    codetether_session_runtime::dispatch::spawn(|cancel| super::dispatch_host::Native {
+        cancel,
+        event_tx,
+        notice_tx,
+    })
 }

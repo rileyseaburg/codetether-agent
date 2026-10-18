@@ -3,12 +3,12 @@ use super::{PromptRequest, SessionNotice, active_cancel::ActiveCancel};
 use crate::session::SessionEvent;
 use std::sync::Arc;
 use tokio::sync::{Notify, mpsc};
-pub(super) struct Native<'a> {
-    pub cancel: &'a ActiveCancel,
-    pub event_tx: &'a mpsc::Sender<SessionEvent>,
-    pub notice_tx: &'a mpsc::Sender<SessionNotice>,
+pub(super) struct Native {
+    pub cancel: ActiveCancel,
+    pub event_tx: mpsc::Sender<SessionEvent>,
+    pub notice_tx: mpsc::Sender<SessionNotice>,
 }
-impl codetether_session_runtime::dispatch::Host<PromptRequest> for Native<'_> {
+impl codetether_session_runtime::dispatch::Host<PromptRequest> for Native {
     fn held(&self, request: &PromptRequest) -> bool {
         crate::session::tasks::runtime::answer_review::held(&request.session.id)
     }

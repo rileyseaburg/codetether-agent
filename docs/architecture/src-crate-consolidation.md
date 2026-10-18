@@ -21293,3 +21293,25 @@ or cycles. Direct rustfmt, native file-size limits, and whitespace checks passed
 Evidence: `artifacts/consolidation-lsp-client/`. The lockfile change adds only the
 new package and root dependency. No Cargo, rustc, or Python commands ran;
 compilation and runtime tests remain unverified. Full consolidation is ongoing.
+
+### Shared session dispatcher startup
+
+Moved command-channel creation, cancellation-controller construction, dispatcher
+task spawning, and command-handle return into
+`codetether-session-runtime::dispatch::spawn`. The native runtime entry now only
+supplies the existing event/notice adapter. That adapter owns its channel senders
+and cancellation handle so it can live in the spawned task without a separate
+native asynchronous frame. Its review gate, rejection notices, executor spawning,
+and cancellation operations are unchanged. The direct submission helper clones
+the same shared control/channel handles into its temporary adapter.
+
+Static comparisons verify the eight-command capacity, the cloned controller
+shared with the returned handle, all native host operations, and unchanged native
+runtime test sources. The host constructor now runs before task spawning; it
+only assembles owned handles and performs no application effects. Enabled the
+owning crate's direct Tokio `rt` feature for spawning, with no lockfile edges
+changed. Source/dependency graphs across 697 roots and 563 crates, direct
+rustfmt, file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-session-runtime-spawn/`. No Cargo, rustc, or Python
+commands ran. Compilation and runtime tests remain unverified, and full
+workspace consolidation remains active.
