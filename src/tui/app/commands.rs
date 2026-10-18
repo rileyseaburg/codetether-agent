@@ -15,8 +15,13 @@ mod ralph_host;
 mod ralph_view;
 #[path = "commands/session_ops.rs"]
 mod session_ops;
-#[path = "commands/settings_command.rs"]
-mod settings_command;
+codetether_settings_policy::declare_setting_commands!(
+    crate::tui::app::state::App,
+    crate::session::Session,
+    crate::tui::app::auto_apply::set_auto_apply_edits,
+    crate::tui::app::settings::set_network_access,
+    crate::tui::app::settings::set_slash_autocomplete,
+);
 use codetether_settings_policy::command::Setting;
 use open_editor::open_editor;
 #[path = "commands/dispatch_host/mod.rs"]

@@ -27154,3 +27154,20 @@ production-scope, standalone formatting, file-limit and whitespace checks pass
 for 725 roots and 617 crates. No dependency/lock changes were needed; unrelated
 working files remain untouched. Evidence: artifacts/consolidation-status-commands/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Preference-command application binding
+
+Moved the Settings host and command entry point into
+codetether-settings-policy::declare_setting_commands, removing the root
+settings_command.rs implementation. The root selects the same App, Session and
+three setters. No setters were invoked and no setting values or access modes
+were changed during consolidation.
+
+All four expanded method bodies match the originals after setter-path
+substitution and normalization of expression-only match-arm blocks. The same
+three setting variants read the same fields and call the same setters. Tests
+are unchanged. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. No dependency/lock changes were needed; unrelated working files are
+untouched. Evidence: artifacts/consolidation-setting-commands/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
