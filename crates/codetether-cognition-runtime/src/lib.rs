@@ -30,3 +30,5 @@ pub use runtime_state::CognitionRuntime;
 
 mod drive;
 pub use drive::{drive, run_tick};
+
+mod http;

@@ -1,8 +1,12 @@
 //! Native cognition proposals bindings.
-use crate::cognition::CognitionRuntime;
+use crate::{CognitionRuntime, Host};
 use codetether_cognition_core::Proposal;
 use codetether_cognition_core::execution::DecisionReceipt;
-impl codetether_cognition_api::http::Proposals for CognitionRuntime {
+impl<H: Host> codetether_cognition_api::http::Proposals for CognitionRuntime<H>
+where
+    H::Thinker: Send + Sync,
+    H::Registry: Send + Sync,
+{
     async fn get_proposals(&self) -> std::collections::HashMap<String, Proposal> {
         CognitionRuntime::get_proposals(self).await
     }

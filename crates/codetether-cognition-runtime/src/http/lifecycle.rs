@@ -1,10 +1,14 @@
 //! Native cognition lifecycle bindings.
-use crate::cognition::CognitionRuntime;
+use crate::{CognitionRuntime, Host};
 use codetether_cognition_core::MemorySnapshot;
 use codetether_cognition_core::ThoughtEvent;
 use codetether_cognition_core::control::StartCognitionRequest;
 use codetether_cognition_core::status::CognitionStatus;
-impl codetether_cognition_api::http::Lifecycle for CognitionRuntime {
+impl<H: Host> codetether_cognition_api::http::Lifecycle for CognitionRuntime<H>
+where
+    H::Thinker: Send + Sync,
+    H::Registry: Send + Sync,
+{
     async fn start(&self, req: Option<StartCognitionRequest>) -> anyhow::Result<CognitionStatus> {
         CognitionRuntime::start(self, req).await
     }

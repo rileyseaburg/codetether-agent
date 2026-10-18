@@ -2541,6 +2541,7 @@ name = "codetether-cognition-runtime"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "codetether-cognition-api",
  "codetether-cognition-core",
  "tokio",
 ]

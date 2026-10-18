@@ -22132,3 +22132,21 @@ cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
 Only the new package and root dependency are staged in the lockfile. Evidence:
 `artifacts/consolidation-server-state/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Cognition HTTP traits with the runtime owner
+
+Moved five cognition HTTP service implementations from the native server into
+`codetether-cognition-runtime`: lifecycle, beliefs, personas, proposals and
+workspace operations. All eighteen methods still forward to the same runtime
+methods. The implementations are generic over the existing runtime host, with
+Send/Sync requirements on retained thinker and registry services. Removed the
+five native implementation files and their otherwise-empty parent module.
+
+Source comparisons preserve every forwarding signature/body apart from the
+host parameter and corresponding bounds. Module/dependency checks cover 698
+roots and 570 crates without missing modules or cycles. Direct rustfmt, native
+file-size limits and whitespace checks passed. The owning runtime gained only
+its cognition-API dependency; that single edge is staged in the lockfile.
+Evidence: `artifacts/consolidation-cognition-http/`. No Cargo, rustc or Python
+ran; compilation and runtime tests remain unverified. Full consolidation is
+still active.

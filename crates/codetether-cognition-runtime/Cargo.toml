@@ -10,3 +10,4 @@ description = "Cognition runtime facade, lifecycle and application service owner
 anyhow = "1"
 codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
 tokio = { version = "1", features = ["sync"] }
+codetether-cognition-api = { path = "../codetether-cognition-api", version = "0.1.0" }

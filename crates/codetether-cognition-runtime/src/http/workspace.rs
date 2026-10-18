@@ -1,9 +1,13 @@
 //! Native cognition workspace bindings.
-use crate::cognition::CognitionRuntime;
+use crate::{CognitionRuntime, Host};
 use codetether_cognition_core::AttentionItem;
 use codetether_cognition_core::GlobalWorkspace;
 use codetether_cognition_core::SwarmGovernance;
-impl codetether_cognition_api::http::Workspace for CognitionRuntime {
+impl<H: Host> codetether_cognition_api::http::Workspace for CognitionRuntime<H>
+where
+    H::Thinker: Send + Sync,
+    H::Registry: Send + Sync,
+{
     async fn get_attention_queue(&self) -> Vec<AttentionItem> {
         CognitionRuntime::get_attention_queue(self).await
     }

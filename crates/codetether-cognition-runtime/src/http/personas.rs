@@ -1,12 +1,16 @@
 //! Native cognition personas bindings.
-use crate::cognition::CognitionRuntime;
+use crate::{CognitionRuntime, Host};
 use codetether_cognition_core::CreatePersonaRequest;
 use codetether_cognition_core::PersonaRuntimeState;
 use codetether_cognition_core::ReapPersonaRequest;
 use codetether_cognition_core::SpawnPersonaRequest;
 use codetether_cognition_core::status::LineageGraph;
 use codetether_cognition_core::status::ReapPersonaResponse;
-impl codetether_cognition_api::http::Personas for CognitionRuntime {
+impl<H: Host> codetether_cognition_api::http::Personas for CognitionRuntime<H>
+where
+    H::Thinker: Send + Sync,
+    H::Registry: Send + Sync,
+{
     async fn create_persona(
         &self,
         req: CreatePersonaRequest,
