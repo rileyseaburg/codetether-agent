@@ -20585,3 +20585,24 @@ ratchet, and whitespace checks passed. Evidence is retained in
 `artifacts/consolidation-settings-panel/`. No Cargo, rustc, or Python commands
 ran. Compilation and runtime behavior were not tested. This is another part of
 the ongoing migration, not completion of all implementation extraction.
+
+### Live approval handoff ownership
+
+Moved pending request registration, delivery-failure denial, decision waiting,
+and cancellation cleanup from `src/approval/live/request.rs` into
+`codetether-approval-core::interaction::handoff`. The shared function accepts
+an asynchronous delivery callback, keeping session event types outside the
+approval crate. The native wrapper only sends `SessionEvent::ApprovalRequest`
+and reports whether delivery succeeded. The process-wide pending registry,
+ordering, decision values, and drop guard behavior remain unchanged. Removed
+unused native imports of pending insertion/removal. No dependencies changed.
+
+Verification: static comparison accounts for the complete original lifecycle
+and drop guard after the explicit transport substitution. Existing native
+approval and ordering tests are unchanged. Three additional crate tests cover
+cancellation during delivery, failed delivery cleanup, and accepted-decision
+cleanup without requiring a runtime. These Rust tests were not executed.
+Direct rustfmt, source graph checks across 691 roots, native file-size limits,
+and whitespace checks passed. Evidence: `artifacts/consolidation-approval-handoff/`.
+No Cargo, rustc, or Python commands ran. Compilation and runtime behavior remain
+unverified. The broader workspace consolidation remains active.
