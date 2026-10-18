@@ -1,6 +1,6 @@
 //! Explicit export and indexed history access; never invoked by ordinary saves.
 use crate::provider::Message;
-use crate::session::{Session, pages::PageKind};
+use crate::session::Session;
 use anyhow::Result;
 impl Session {
     /// Resume an agent with a bounded working window and unchanged durable identity.
@@ -59,28 +59,14 @@ impl Session {
     /// # Ok(()) }
     /// ```
     pub async fn read_messages(id: &str, start: usize, limit: usize) -> Result<Vec<Message>> {
-        let path = Self::session_path(id)?;
-        let id = id.to_owned();
-        tokio::task::spawn_blocking(move || {
-            super::migration::ensure(&path)?;
-            let db = super::connection::open(&path)?;
-            let rows = super::read::read_window(&db, &id, 0, start, start.saturating_add(limit))?;
-            rows.into_iter()
-                .map(|body| {
-                    let (message, _): (Message, PageKind) = serde_json::from_str(&body)?;
-                    anyhow::Ok(message)
-                })
-                .collect()
-        })
-        .await?
+        codetether_session_store::read_messages::<Self>(id, start, limit).await
     }
     /// Absolute sequence corresponding to the first message in the working window.
     pub fn message_offset(&self) -> usize {
-        self.storage.0.lock().unwrap().message_start
+        self.storage.message_offset()
     }
     /// Total messages represented by durable history plus the current working tail.
     pub fn message_count(&self) -> usize {
-        let state = self.storage.0.lock().unwrap();
-        (state.message_start + self.messages.len()).max(state.message_end)
+        self.storage.message_count(self.messages.len())
     }
 }

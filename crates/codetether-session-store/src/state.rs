@@ -1,6 +1,7 @@
 //! Per-instance optimistic state; cloning does not share revisions.
 use std::path::PathBuf;
 use std::sync::Mutex;
+mod window;
 /// Runtime-only checkpoint for a session loaded from SQLite.
 ///
 /// # Examples

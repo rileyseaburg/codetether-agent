@@ -55,3 +55,5 @@ pub mod window;
 
 /// Persistence lifecycle and native indexing notifications.
 pub mod lifecycle;
+mod messages;
+pub use messages::read_messages;

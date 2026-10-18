@@ -23070,3 +23070,22 @@ verifier and swarm-tool lock entries; unrelated working changes were preserved.
 Evidence: artifacts/consolidation-verifier-application/.
 No verifier agents, model calls, tests, Cargo, rustc or Python ran. Compilation
 and runtime behavior remain unverified. Full consolidation remains active.
+
+### Indexed message reading and window counts owned by session-store
+
+Moved indexed message-range reads into codetether-session-store::read_messages.
+The generic legacy decoder retains the native Session import contract while
+path resolution, protected migration, database opening, saturated range
+calculation and message/page decoding now belong to the storage crate.
+State::message_offset and State::message_count own checkpoint window queries.
+The three native methods now delegate to these shared operations.
+
+Static comparisons preserve the reader's full operation order and the count
+expressions. Native resume/export bodies, storage tests, path resolution,
+legacy migration and row-reading implementations remain unchanged. Module and
+dependency scans cover 699 roots and 571 crates without missing modules or
+cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+No manifests or lockfile changes were needed; unrelated working changes remain
+unchanged. Evidence: artifacts/consolidation-session-message-read/.
+No database operations, tests, Cargo, rustc or Python ran. Compilation and
+runtime behavior remain unverified. Full consolidation remains active.
