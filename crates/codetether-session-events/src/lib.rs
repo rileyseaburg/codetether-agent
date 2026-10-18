@@ -36,3 +36,6 @@ pub mod completion;
 
 /// Frontend activity tracking and ordered event delivery.
 pub mod pipeline;
+
+/// Ordered frontend lifecycle transitions for session events.
+pub mod lifecycle;

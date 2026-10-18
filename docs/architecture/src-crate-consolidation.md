@@ -19618,3 +19618,24 @@ lockfile addition, lexical module reachability, dependency-cycle checks,
 file-size ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-chat-events/`. No Cargo, rustc, Python, Rust tests or
 stream execution ran; compilation and runtime remain unverified.
+
+### Session lifecycle event transitions
+
+Moved thinking startup, completion cleanup and restored-session event routing
+into `codetether-session-events::lifecycle`. Separate contracts bind processing,
+completion and restored-session ownership. Native adapters reuse the existing
+event host and forward worker notifications, timing, inbox and session effects.
+
+Preserved startup guards, processing notifications before state updates, timing
+promotion, streaming/interlude cleanup, watchdog-notice and inflight-prompt
+clearing, and retaining the watchdog restart count. Session restore still
+attaches a missing global bus before recording its identifier. Existing
+lifecycle integration tests and worker/caller implementations remain unchanged.
+No dependencies changed.
+
+Validation: four complete translated lifecycle bodies, 19 native bindings,
+native delegate, unchanged integration tests/worker bridge/caller/manifests,
+lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-session-lifecycle/`. No Cargo, rustc, Python, Rust
+tests or lifecycle execution ran; compilation and runtime remain unverified.
