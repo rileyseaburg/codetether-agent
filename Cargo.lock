@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-run-resume",
  "codetether-sol-workflow",
  "codetether-run-context",
  "codetether-run-events",
@@ -7015,6 +7016,19 @@ dependencies = [
  "codetether-validation",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-run-resume"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-provider-core",
+ "codetether-run-checkpoint",
+ "codetether-session-events",
+ "codetether-step-limit",
+ "tokio",
 ]
 
 [[package]]

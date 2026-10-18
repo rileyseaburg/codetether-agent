@@ -13859,3 +13859,21 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, provider calls or coding workflow execution ran.
   Full workspace consolidation remains unfinished.
+
+### Resumable run orchestration extraction
+
+- Moved plain and event-streaming retry loops, checkpoint decisions, resume
+  plans and CLI limit validation into codetether-run-resume. Modules separate
+  both execution modes, checkpoint decisions, plan data and the session contract.
+- Native run_loop_host.rs delegates prompts/provider loading and exposes the
+  transcript/default budget. Existing checkpoint Storage implementation and
+  step-limit crate remain the authoritative persistence/outcome owners.
+- Preserves one registry load before streaming, progress checks, checkpoint
+  save/load/clear calls, resume decrement order, original objective and workspace,
+  and the effective budget assigned to each additional attempt.
+- Verification: 17 static loop/checkpoint/storage/native-binding checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-run-resume/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or prompt execution ran. Full workspace
+  consolidation remains unfinished.

@@ -135,6 +135,7 @@ members = [
     "crates/codetether-run-events",
     "crates/codetether-run-context",
     "crates/codetether-sol-workflow",
+    "crates/codetether-run-resume",
     "crates/codetether-rlm-selection",
     "crates/codetether-rlm-cli",
     "crates/codetether-session-fork",
@@ -854,6 +855,7 @@ codetether-run-jsonl = { path = "crates/codetether-run-jsonl", version = "0.1.0"
 codetether-run-events = { path = "crates/codetether-run-events", version = "0.1.0" }
 codetether-run-context = { path = "crates/codetether-run-context", version = "0.1.0" }
 codetether-sol-workflow = { path = "crates/codetether-sol-workflow", version = "0.1.0" }
+codetether-run-resume = { path = "crates/codetether-run-resume", version = "0.1.0" }
 codetether-rlm-selection = { path = "crates/codetether-rlm-selection", version = "0.1.0" }
 codetether-rlm-cli = { path = "crates/codetether-rlm-cli", version = "0.1.0" }
 codetether-session-fork = { path = "crates/codetether-session-fork", version = "0.1.0" }
