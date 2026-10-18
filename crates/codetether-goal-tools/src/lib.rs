@@ -16,3 +16,10 @@ pub use create_run::run as create;
 pub use edit_run::run as edit;
 pub use edit_schema::parameters as edit_parameters;
 pub use host::Host;
+
+mod create_tool;
+mod edit_tool;
+mod get_tool;
+pub use create_tool::CreateGoalTool;
+pub use edit_tool::EditGoalTool;
+pub use get_tool::GetGoalTool;

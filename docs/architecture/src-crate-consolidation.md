@@ -17954,3 +17954,19 @@ Full workspace consolidation remains active.
   changes remain untouched. Evidence: `artifacts/consolidation-goal-tools/`.
 - No Cargo, rustc, Python, goal tool calls, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared get/create/edit goal tool contracts
+
+- Moved all three Tool implementations, schemas and tool-side dispatch into
+  `codetether-goal-tools`, parameterized by the existing storage Host.
+- Native type/constant specializations retain current catalog constructors and
+  test call sites. Removed obsolete native edit execution/schema and budget
+  delegate modules after confirming no callers remained; create still uses the
+  same shared budget guard before argument decoding.
+- Verified every Tool method and get-goal argument field against the original,
+  native specializations and unchanged operation/controller bodies, catalog and
+  integration tests. Module/dependency graphs, direct rustfmt, file limits and
+  whitespace passed. Added only the existing async-trait dependency to the
+  goal-tools package. Evidence: `artifacts/consolidation-goal-tool-contracts/`.
+- No Cargo, rustc, Python, goal tool calls, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

@@ -2,8 +2,6 @@
 
 #[path = "goal/attempt_cap.rs"]
 pub mod attempt_cap;
-#[path = "goal/budget_guard.rs"]
-pub(crate) mod budget_guard;
 #[path = "goal/context.rs"]
 mod context;
 #[path = "goal/create.rs"]
@@ -12,10 +10,6 @@ mod create;
 mod create_run;
 #[path = "goal/edit.rs"]
 mod edit;
-#[path = "goal/edit_run.rs"]
-mod edit_run;
-#[path = "goal/edit_schema.rs"]
-mod edit_schema;
 #[cfg(test)]
 #[path = "goal/edit_tests.rs"]
 mod edit_tests;

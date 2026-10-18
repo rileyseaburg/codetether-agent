@@ -1,36 +1,4 @@
-//! User-requested goal changes through the native goal controller.
-
-use crate::tool::{Tool, ToolResult};
-use anyhow::Result;
-use async_trait::async_trait;
-use serde_json::Value;
-
-pub(super) struct EditGoalTool;
-
-#[async_trait]
-impl Tool for EditGoalTool {
-    /// Expose a stable model-tool identifier for explicit goal edits.
-    fn id(&self) -> &str {
-        "edit_goal"
-    }
-    /// Name the goal control without conflating it with completion.
-    fn name(&self) -> &str {
-        "Edit Goal"
-    }
-    /// Require user intent instead of automatic limit bypass.
-    fn description(&self) -> &str {
-        "Edit an existing goal only when the user explicitly requests it. \
-         Read get_goal first and supply its goalId and updatedAt. \
-         Budget controls are human-only and unavailable through model tools. \
-         Resume is separate. Never clear a goal to bypass a limit on your own. \
-         Completion still requires update_goal."
-    }
-    /// Expose revision-bound edits without human-only budget controls.
-    fn parameters(&self) -> Value {
-        super::edit_schema::parameters()
-    }
-    /// Apply through native revision and accounting checks.
-    async fn execute(&self, input: Value) -> Result<ToolResult> {
-        super::edit_run::run(input).await
-    }
-}
+//! Native host specialization for the shared edit goal tool.
+pub(super) type EditGoalTool = codetether_goal_tools::EditGoalTool<super::host::Native>;
+#[allow(non_upper_case_globals)]
+pub(super) const EditGoalTool: EditGoalTool = EditGoalTool::new();

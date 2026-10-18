@@ -16078,6 +16078,7 @@ name = "codetether-goal-tools"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "codetether-goal-core",
  "codetether-session-task",
