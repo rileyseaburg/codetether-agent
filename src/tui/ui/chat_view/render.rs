@@ -36,7 +36,7 @@ pub fn render_chat_view(f: &mut Frame, app: &mut App, session: &SessionView) {
     let drawn = build_chat_lines(app, max_width, max_width, &formatter, &palette);
     render_agent_bar(f, app, chunks.agent_bar);
     render_messages_ref(f, app, session, &chunks, &palette, drawn.as_slice());
-    drawn.restore(app, max_width);
+    drawn.restore(&mut app.state.message_cache, max_width);
     let suffix = attachment_suffix(app);
     render_input(f, app, chunks.input, &palette, &suffix);
     if let Some(rect) = chunks.suggestions {

@@ -16,3 +16,6 @@ pub use status_pack::{pack_spans, pack_stacked};
 pub use viewport::visible_lines;
 /// Width below which chat status uses three rows instead of one.
 pub const STACK_WIDTH_THRESHOLD: u16 = 180;
+
+mod hit;
+pub use hit::ChatHit;

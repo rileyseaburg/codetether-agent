@@ -42,6 +42,6 @@ fn timed(
     let started = Instant::now();
     let drawn = build_chat_lines(app, 180, 180, formatter, palette);
     let elapsed = started.elapsed();
-    drawn.restore(app, 180);
+    drawn.restore(&mut app.state.message_cache, 180);
     elapsed
 }

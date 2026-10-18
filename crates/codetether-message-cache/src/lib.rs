@@ -85,3 +85,6 @@ mod render_store;
 mod render_validity;
 pub use render_inputs::RenderInputs;
 pub use render_state::RenderedLineCache;
+
+mod drawn_lines;
+pub use drawn_lines::DrawnLines;

@@ -12047,3 +12047,19 @@ Full workspace consolidation remains active.
   source limits and diff checks passed. Evidence: artifacts/consolidation-message-bubbles/.
 - No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
   consolidation remains incomplete.
+
+### Rendered-line and viewport wrapper ownership
+
+- Moved DrawnLines into codetether-message-cache, alongside the RenderedLineCache
+  it restores. Production rendering and the existing benchmark now pass that
+  cache directly; constructors, slice access and take/restore behavior remain
+  unchanged apart from removing the application dependency.
+- Moved ChatHit and its existing visible-row click test into codetether-chat-layout.
+  The native hit module remains a type re-export, preserving callers and stored
+  geometry. Rectangle/border tests and line-text extraction are unchanged.
+- Verification: seven whole-source comparisons passed, covering both moved
+  implementations, the test, native aliases and the two restore call sites.
+  Module/dependency graphs, direct formatting, new-module code budgets, source
+  limits and git diff --check passed. Evidence: artifacts/consolidation-render-ownership/.
+- No Cargo, rustc, compilation, tests or benchmark execution ran. Full workspace
+  consolidation remains incomplete.
