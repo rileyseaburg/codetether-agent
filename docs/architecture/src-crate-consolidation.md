@@ -20233,3 +20233,24 @@ manifests, dependency graph, file-size ratchet, whitespace and direct rustfmt.
 Evidence: `artifacts/consolidation-tui-regressions/`. Cargo, rustc, Python and
 Rust tests were not run. These tests are wired into their owners for future
 execution, but no runtime pass or compilation success is claimed.
+
+### Watchdog interaction ownership
+
+Moved manual watchdog cancellation/dismissal into `codetether-watchdog::recovery`
+and pending-question waiting, stall-skip decisions and wait-tick activity into
+`codetether-watchdog::interaction`. Native AppState implements the existing
+recovery UI contract; entry points project fields and delegate policy.
+
+Preserved stop-processing → clear-stream/cache → clear-timing → dismiss → status
+ordering. Pending-question lookup remains behind the early processing,
+notification and approval gates. Wait ticks still mark redraw and refresh the
+activity instant only while a question is pending. The watchdog crate now uses
+the existing shared question runtime directly; no question behavior changed.
+
+Validation: full translated control/wait function bodies, recovery field and
+effect bindings compared with the existing App adapter, native delegates,
+unchanged watchdog tests and stream/timing implementations, isolated lock delta,
+module reachability, dependency cycles, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-watchdog-interaction/`. Cargo,
+rustc, Python and Rust tests were not run; compilation and runtime remain
+unverified.

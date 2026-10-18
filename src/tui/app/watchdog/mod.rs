@@ -13,3 +13,5 @@ pub(crate) mod question_wait;
 pub use handler::{handle_watchdog_cancel, handle_watchdog_dismiss};
 pub use notification::render_watchdog_notification;
 pub use state::WatchdogNotification;
+
+mod recovery_state;

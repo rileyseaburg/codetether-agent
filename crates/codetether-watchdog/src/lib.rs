@@ -17,3 +17,6 @@ pub const WATCHDOG_MAX_RESTARTS: u32 = 3;
 
 /// Cancellation state, exact-prompt retries and permanent-failure reporting.
 pub mod recovery;
+
+/// User-paced question waits and stall suppression.
+pub mod interaction;

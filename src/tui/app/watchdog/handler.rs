@@ -1,17 +1,10 @@
-//! Cancel and retry key handlers for watchdog notifications.
-
+//! Native entry points for shared manual watchdog controls.
 use crate::tui::app::state::AppState;
-
 /// Dismiss the watchdog notification and stop processing.
 pub fn handle_watchdog_cancel(state: &mut AppState) {
-    state.processing = false;
-    state.clear_streaming_text();
-    state.clear_request_timing();
-    state.watchdog_notification = None;
-    state.status = "Request cancelled.".to_string();
+    codetether_watchdog::recovery::cancel(state);
 }
-
-/// Dismiss the notification without stopping (restart already handled by event loop).
+/// Dismiss the notification after the event loop handles restart.
 pub fn handle_watchdog_dismiss(state: &mut AppState) {
-    state.watchdog_notification = None;
+    codetether_watchdog::recovery::dismiss(state);
 }

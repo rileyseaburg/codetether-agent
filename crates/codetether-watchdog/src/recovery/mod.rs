@@ -12,3 +12,6 @@ pub use give_up::give_up;
 pub use host::Host;
 pub use retry::execute;
 pub use state::{State, Ui};
+
+mod manual;
+pub use manual::{cancel, dismiss};

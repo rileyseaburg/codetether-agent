@@ -10,3 +10,5 @@ description = "Interactive request stall detection and notification presentation
 codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
 codetether-tool-tracker = { path = "../codetether-tool-tracker", version = "0.1.0" }
 ratatui = { version = "0.30.2", default-features = false }
+
+codetether-question = { path = "../codetether-question", version = "0.1.0" }

@@ -7090,6 +7090,7 @@ dependencies = [
 name = "codetether-watchdog"
 version = "0.1.0"
 dependencies = [
+ "codetether-question",
  "codetether-chat-model",
  "codetether-tool-tracker",
  "ratatui",
