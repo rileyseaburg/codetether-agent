@@ -21094,3 +21094,20 @@ file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-delegated-control/`. No dependencies changed. No Cargo,
 rustc, or Python commands ran. Rust tests and compilation remain unverified;
 the broader workspace consolidation remains active.
+
+### Sub-agent provider request ownership
+
+Moved completion-request construction and remaining-deadline handling into
+`codetether-swarm-core::agent_loop::request`. Native code supplies the configured
+completion-token limit and existing completion future. Request fields, owned
+message/tool copies, deadline saturation, timeout outcomes, and the original
+tracing target are preserved. The existing long-deadline regression test moved
+unchanged into the owning module.
+
+Verification compares all request fields and complete deadline handling after
+explicit input substitutions. Direct rustfmt, source graphs across 694 roots,
+native file-size limits, and whitespace checks passed. Initial comparison
+accounted for the equivalent shorthand temperature initializer. Evidence:
+`artifacts/consolidation-swarm-request/`. No dependencies changed. No Cargo,
+rustc, or Python commands ran. Rust tests and compilation remain unverified;
+full consolidation remains active.

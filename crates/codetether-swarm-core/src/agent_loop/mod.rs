@@ -26,3 +26,6 @@ pub mod events;
 
 /// Sequential tool batches and result-message construction.
 pub mod tools;
+
+/// Provider request construction and deadline handling.
+pub mod request;
