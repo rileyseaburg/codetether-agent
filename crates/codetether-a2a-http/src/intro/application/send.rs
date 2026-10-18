@@ -26,7 +26,7 @@ use anyhow::Result;
 ///
 /// ```rust,no_run
 /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
-/// use codetether_agent::a2a::intro::send::send_intro;
+/// use codetether_a2a_http::intro::application::send::send_intro;
 ///
 /// send_intro(
 ///     "http://192.0.2.10:4317",
@@ -44,7 +44,7 @@ pub async fn send_intro(
     self_url: &str,
     peer_token: Option<&str>,
 ) -> Result<()> {
-    codetether_a2a_http::intro::send::send_intro(
+    crate::intro::send::send_intro(
         endpoint,
         agent_name,
         self_url,

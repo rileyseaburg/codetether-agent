@@ -1,7 +1,7 @@
 //! Tests for the persistent intro ledger.
 
-use crate::a2a::intro::ledger;
-use crate::a2a::intro::tests_fixtures::with_temp_data_dir;
+use super::fixtures::with_temp_data_dir;
+use crate::intro::application::ledger;
 
 #[test]
 fn ledger_normalizes_trailing_slash() {

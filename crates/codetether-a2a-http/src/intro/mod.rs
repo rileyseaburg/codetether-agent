@@ -11,6 +11,8 @@ pub mod reply;
 /// Introduction-ledger storage over application-selected paths.
 pub mod ledger;
 
+/// Introduction delivery and storage using the configured application data directory.
+pub mod application;
 mod identity;
 /// Deduplicated introduction delivery over a host-selected ledger.
 pub mod send;

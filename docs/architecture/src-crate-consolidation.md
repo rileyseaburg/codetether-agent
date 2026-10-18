@@ -22952,3 +22952,26 @@ manifest or lockfile changes were needed. Evidence:
 `artifacts/consolidation-a2a-identity/`.
 No identity tests, peer startup, Cargo, rustc or Python ran; compilation and
 runtime results remain unverified. Full consolidation is active.
+
+### Configured introduction ledger and delivery owned by the HTTP crate
+
+Moved data-directory ledger resolution, configured ledger operations and the
+application intro-send wrapper into codetether-a2a-http::intro::application.
+Native intro paths re-export the same modules and functions. Seven native
+implementation/test files were removed. Seven detector/ledger tests moved
+alongside the shared implementation.
+
+Static comparisons preserve Config::data_dir lookup, ledger filename,
+load/record/contains calls, bounded sending and all test assertions. The ledger
+test fixture now creates a fresh temporary directory per callback instead of
+sharing one directory across tests, removing the order dependency between the
+empty-ledger and record tests. Environment mutation remains mutex-protected and
+the prior value is restored. Unrelated native spawn edits remain unchanged.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only config and tempfile dependency edges are staged in the lockfile; the
+unrelated working lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-intro-application/`, including the initial verifier
+comparison against unrelated unstaged spawn changes.
+No introduction sends, ledger operations, tests, Cargo, rustc or Python ran;
+compilation and runtime results remain unverified. Full consolidation is active.

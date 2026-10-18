@@ -1,7 +1,7 @@
 //! Tests for the intro-message detector.
 
-use crate::a2a::intro::detect::{INTRO_METADATA_KEY, is_intro};
-use crate::a2a::intro::tests_fixtures::text_message;
+use super::fixtures::text_message;
+use crate::intro::detect::{INTRO_METADATA_KEY, is_intro};
 
 #[test]
 fn detects_tagged_intro() {
