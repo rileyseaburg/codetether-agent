@@ -33,3 +33,6 @@ pub use shutdown::shutdown_bridge;
 
 /// Incoming task ingestion and idle-time presentation.
 pub mod tasks;
+
+/// UI processing and observed-agent synchronization with the bridge.
+pub mod synchronization;

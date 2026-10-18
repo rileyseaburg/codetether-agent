@@ -17079,3 +17079,20 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-terminal-dispatch/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker bridge synchronization
+
+- Moved observed-agent reconciliation, optional command sending and processing
+  transitions from `src/tui/app/worker_bridge.rs` into
+  `codetether-tui-worker::synchronization` alongside worker state and commands.
+- Native wrappers project borrowed bus strings and the optional command sender.
+  Core retains READY filtering, the mandatory tui registration, set differences,
+  best-effort sends and the desired-cache update even when sends fail.
+- Processing updates retain main-flag, worker-cache, command-send order. Native
+  async entry points remain; their former command-send helper never suspended.
+- Verification: full reconciliation/send/processing body comparisons and native
+  bindings; unchanged worker methods, consumers and command handler;
+  module/dependency graphs, direct rustfmt, file limits and whitespace.
+  No dependency changes. Evidence: `artifacts/consolidation-worker-sync/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
