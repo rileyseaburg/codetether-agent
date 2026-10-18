@@ -1,5 +1,4 @@
 //! Session recall bound to the existing indexed search and RLM router.
-mod context;
 mod host;
 /// Local-first session recall using the application's existing backends.
 ///

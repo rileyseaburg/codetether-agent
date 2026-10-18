@@ -7,6 +7,8 @@ license = "MIT"
 description = "Local session recall evidence and optional answer synthesis"
 
 [dependencies]
+codetether-rlm-routing = { path = "../codetether-rlm-routing", version = "0.1.0" }
+uuid = { version = "1", features = ["v4"] }
 anyhow = "1"
 async-trait = "0.1"
 codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }

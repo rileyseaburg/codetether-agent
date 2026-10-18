@@ -22804,3 +22804,22 @@ edges are staged in the lockfile; the unrelated working lockfile remains
 byte-identical. Evidence: `artifacts/consolidation-rlm-tool-host/`.
 No RLM processing, provider requests, Cargo, rustc or Python ran; compilation
 and runtime tests remain unverified. Full consolidation is active.
+
+### Recall synthesis integration owned by the recall tool crate
+
+Moved session-recall RLM context construction and answer synthesis into
+`codetether-session-recall::application`. Four focused modules own the
+application host type, search contract, synthesis context and execution.
+The native context file was removed; the remaining native adapter supplies
+only the existing indexed query and binds the original SessionBus type.
+
+Static comparisons preserve indexed search parameter mapping, context fields,
+query framing, session-recall identity, UUID generation and the shared router
+call. The existing tool Host contract and synthesis control flow are unchanged.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the recall crate's rlm-routing and uuid dependency edges are staged in the
+lockfile; the unrelated working lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-recall-synthesis/`.
+No recall query, synthesis, provider request, Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

@@ -1,11 +1,15 @@
-//! Delegate indexed retrieval and answer synthesis to the application's backends.
-use crate::provider::Provider;
-use crate::rlm::{RlmConfig, RlmResult, RlmRouter};
+//! Native indexed search and bus type for shared recall synthesis.
 use codetether_session_recall::{RecallHit, SearchOptions};
-use std::{path::Path, sync::Arc};
-pub struct ApplicationHost;
+use std::path::Path;
+/// Recall host retaining the native indexed search and session event type.
+pub type ApplicationHost = codetether_session_recall::application::ApplicationHost<
+    crate::session::SessionBus,
+    IndexedSearch,
+>;
+/// Existing indexed recall query, with its workspace filters unchanged.
+pub struct IndexedSearch;
 #[async_trait::async_trait]
-impl codetether_session_recall::Host for ApplicationHost {
+impl codetether_session_recall::application::Search for IndexedSearch {
     async fn search(
         workspace: &Path,
         query: &str,
@@ -22,15 +26,5 @@ impl codetether_session_recall::Host for ApplicationHost {
             },
         )
         .await
-    }
-    async fn synthesize(
-        framed: &str,
-        query: &str,
-        provider: Arc<dyn Provider>,
-        model: &str,
-        config: &RlmConfig,
-    ) -> anyhow::Result<RlmResult> {
-        let auto_ctx = super::context::auto(provider, model, query);
-        RlmRouter::auto_process(framed, auto_ctx, config).await
     }
 }

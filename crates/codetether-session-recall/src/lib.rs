@@ -18,5 +18,7 @@ mod tool_struct;
 pub use hit::RecallHit;
 pub use host::{Host, SearchOptions};
 pub use tool_struct::SessionRecallTool;
+/// Indexed-search binding and shared RLM answer synthesis.
+pub mod application;
 #[cfg(test)]
 mod tests;

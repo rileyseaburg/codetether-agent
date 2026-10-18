@@ -5495,9 +5495,11 @@ dependencies = [
  "codetether-context-policy",
  "codetether-provider-core",
  "codetether-rlm",
+ "codetether-rlm-routing",
  "codetether-tool-core",
  "serde_json",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

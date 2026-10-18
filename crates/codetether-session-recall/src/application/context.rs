@@ -1,14 +1,13 @@
-//! Preserve the application RLM context and trace identity for answer synthesis.
-use crate::provider::Provider;
-use crate::rlm::router::AutoProcessContext;
+//! Preserve the recall synthesis context and fresh trace identity.
+use codetether_provider_core::Provider;
+use codetether_rlm_routing::{AutoProcessContext, Bus};
 use serde_json::json;
 use std::sync::Arc;
-
-pub(super) fn auto<'a>(
+pub(super) fn auto<'a, B: Bus>(
     provider: Arc<dyn Provider>,
     model: &str,
     query: &'a str,
-) -> AutoProcessContext<'a> {
+) -> AutoProcessContext<'a, B> {
     AutoProcessContext {
         tool_id: "session_recall",
         tool_args: json!({ "query": query }),
