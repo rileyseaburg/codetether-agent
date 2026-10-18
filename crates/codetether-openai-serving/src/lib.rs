@@ -1,8 +1,9 @@
 //! Serve selected provider completions as OpenAI-compatible HTTP responses.
 //!
 //! serve owns completion IDs, timestamps, provider calls and response envelopes.
-//! The caller retains provider lookup and request validation.
+//! [`http`] owns request validation and provider selection through host bindings.
 mod complete;
+pub mod http;
 mod response;
 mod stream;
 mod transport;

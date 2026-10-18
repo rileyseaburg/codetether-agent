@@ -14246,3 +14246,18 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-audit-router/.
 - No dependencies or lockfile changes. No Cargo, rustc, Rust tests, server
   startup or audit operations ran. Full workspace consolidation is unfinished.
+
+### OpenAI completion HTTP ownership
+
+- Moved completion request validation, provider selection, load-error mapping
+  and dispatch from src/server/mod.rs into codetether-openai-serving::http.
+  Dedicated handler, host-contract and routing modules now own the endpoint.
+- Native bindings retain credential-aware shared registry loading and its
+  existing list/get operations. The request pipeline and response serving
+  remain in the owning crate; no provider initialization policy changed.
+- Verification: six static checks passed for the complete handler body, route
+  and middleware assembly, all three native bindings and module size. Module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and whitespace
+  checks passed. Evidence: artifacts/consolidation-openai-http/.
+- No dependency or lockfile changes. No Cargo, rustc, Rust tests, provider
+  requests or server startup ran. Full workspace consolidation remains active.

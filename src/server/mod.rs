@@ -8,6 +8,7 @@ pub mod auth;
 mod config_status;
 mod k8s_http_state;
 mod models_catalog;
+mod openai_http_host;
 mod openai_model_options;
 mod openai_stream;
 pub mod policy;
@@ -59,16 +60,16 @@ use codetether_authorization_policy::policy_middleware;
 use codetether_cognition_api::BeliefFilter;
 use codetether_event_replay::{list_session_event_files, replay_session_events};
 use codetether_openai_adapter::{
-    OpenAiApiError, OpenAiApiResult, canonicalize_provider_name, convert_finish_reason,
-    convert_openai_messages, convert_openai_tools, convert_response_message, make_openai_model_id,
-    normalize_model_reference, openai_bad_request, openai_error, openai_internal_error,
-    parse_openai_content_part, parse_openai_content_parts, parse_openai_tool_content,
+    OpenAiApiResult, canonicalize_provider_name, convert_finish_reason, convert_openai_messages,
+    convert_openai_tools, convert_response_message, make_openai_model_id,
+    normalize_model_reference, openai_error, parse_openai_content_part, parse_openai_content_parts,
+    parse_openai_tool_content,
 };
 use codetether_openai_wire::{
-    OpenAiChatCompletionChoice, OpenAiChatCompletionMessage, OpenAiChatCompletionRequest,
-    OpenAiChatCompletionResponse, OpenAiRequestMessage, OpenAiRequestTool, OpenAiRequestToolCall,
-    OpenAiRequestToolCallFunction, OpenAiRequestToolDefinition, OpenAiResponseToolCall,
-    OpenAiResponseToolCallFunction, OpenAiStop, OpenAiUsage, openai_stream_chunk,
+    OpenAiChatCompletionChoice, OpenAiChatCompletionMessage, OpenAiChatCompletionResponse,
+    OpenAiRequestMessage, OpenAiRequestTool, OpenAiRequestToolCall, OpenAiRequestToolCallFunction,
+    OpenAiRequestToolDefinition, OpenAiResponseToolCall, OpenAiResponseToolCallFunction,
+    OpenAiStop, OpenAiUsage, openai_stream_chunk,
 };
 pub use codetether_tool_discovery::{RegisterToolRequest, RegisteredTool, ToolRegistry};
 pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
@@ -208,7 +209,10 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/api/agent", get(list_agents))
         // OpenAI-compatible APIs
         .merge(models_catalog::router())
-        .route("/v1/chat/completions", post(openai_chat_completions))
+        .merge(codetether_openai_serving::http::router::<
+            openai_http_host::AppHost,
+            AppState,
+        >())
         // Perpetual cognition APIs
         .route("/v1/cognition/start", post(start_cognition))
         .route("/v1/cognition/stop", post(stop_cognition))
@@ -324,49 +328,6 @@ async fn list_providers() -> Json<Vec<String>> {
 async fn list_agents() -> Json<Vec<crate::agent::AgentInfo>> {
     let registry = crate::agent::AgentRegistry::with_builtins();
     Json(registry.list().into_iter().cloned().collect())
-}
-
-async fn openai_chat_completions(
-    Json(req): Json<OpenAiChatCompletionRequest>,
-) -> Result<Response, OpenAiApiError> {
-    let is_stream = req.stream.unwrap_or(false);
-    if req.model.trim().is_empty() {
-        return Err(openai_bad_request("`model` is required"));
-    }
-    if req.messages.is_empty() {
-        return Err(openai_bad_request("`messages` must not be empty"));
-    }
-
-    let registry = crate::provider::ProviderRegistry::shared_from_vault()
-        .await
-        .map_err(|error| {
-            tracing::error!(error = %error, "Failed to load providers from Vault");
-            openai_internal_error(format!("failed to load providers: {error}"))
-        })?;
-
-    let providers = registry.list();
-    let (selected_provider, model_id) = codetether_openai_adapter::select_request_model(
-        &req.model,
-        &providers,
-        req.service_tier.as_deref(),
-        req.reasoning_effort.as_deref(),
-    )?;
-    let provider = registry.get(&selected_provider).ok_or_else(|| {
-        openai_internal_error(format!(
-            "Provider `{selected_provider}` was available but could not be loaded"
-        ))
-    })?;
-
-    let completion_request = codetether_openai_adapter::completion_request(req, &model_id)?;
-
-    codetether_openai_serving::serve(
-        provider,
-        completion_request,
-        is_stream,
-        selected_provider,
-        model_id,
-    )
-    .await
 }
 
 async fn start_cognition(
