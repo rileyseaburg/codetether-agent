@@ -16835,3 +16835,19 @@ Full workspace consolidation remains active.
   the formatter rejected it. Evidence: `artifacts/consolidation-chat-mention/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared chat command intake
+
+- Moved outer shell/slash-command intake into `codetether-slash-command::intake`,
+  with a separate live-session command sequence.
+- Native adapters retain concrete shell/approval/mux and command handlers,
+  session-free UI commands, and one mutable session borrow spanning parity and
+  ordinary slash dispatch.
+- Preserved shell-first priority, slash recognition, approval/mux consumption,
+  busy-session status, input clearing and parity's early-return behavior.
+- Verification: reconstructed prefix/live-session sequences, every native
+  binding and session borrow, unchanged command implementations and busy-session
+  tests, module/dependency graphs, direct rustfmt, file limits and whitespace.
+  No dependency changes. Evidence: `artifacts/consolidation-slash-intake/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

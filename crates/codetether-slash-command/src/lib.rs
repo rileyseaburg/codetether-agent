@@ -35,3 +35,6 @@ pub mod session_free;
 
 /// Interactive command sequencing with native execution callbacks.
 pub mod pipeline;
+
+/// Chat command intake before live-session or session-free dispatch.
+pub mod intake;
