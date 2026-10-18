@@ -1,9 +1,5 @@
-//! Native entry points for shared recall worker lifecycle.
-use super::storage_host::NativeHost;
-use crate::session::Session;
-pub(crate) fn schedule(session: &Session) {
-    codetether_recall_worker::schedule(&session.id, std::sync::Arc::new(NativeHost));
-}
+//! Native recall scheduling and session-specialized deletion.
+pub(crate) use codetether_native_recall::queue::schedule;
 pub(crate) async fn remove(id: &str) -> anyhow::Result<()> {
-    codetether_recall_worker::remove(id, &NativeHost).await
+    codetether_native_recall::queue::remove::<crate::session::Session>(id).await
 }

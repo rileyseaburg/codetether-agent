@@ -1,0 +1,22 @@
+[package]
+name = "codetether-native-recall"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native recall projection, persistence, query and worker services"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+chrono = "0.4"
+serde_json = "1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-recall-context = { path = "../codetether-recall-context", version = "0.1.0" }
+codetether-recall-index = { path = "../codetether-recall-index", version = "0.1.0" }
+codetether-recall-query = { path = "../codetether-recall-query", version = "0.1.0" }
+codetether-recall-store = { path = "../codetether-recall-store", version = "0.1.0" }
+codetether-recall-worker = { path = "../codetether-recall-worker", version = "0.1.0" }
+codetether-session-listing = { path = "../codetether-session-listing", version = "0.1.0" }
+codetether-session-recall = { path = "../codetether-session-recall", version = "0.1.0" }
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }

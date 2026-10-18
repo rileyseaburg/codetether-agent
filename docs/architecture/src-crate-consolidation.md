@@ -26144,3 +26144,28 @@ Only the new package and root dependency are staged in Cargo.lock; unrelated
 working changes remain byte-for-byte unchanged. Evidence is retained in
 artifacts/consolidation-native-ralph/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full workspace consolidation remains active and incomplete.
+
+### Native recall service ownership
+
+Moved recall storage, workspace listing, consumer cursors, projection building,
+querying, scheduling, deletion and automatic evidence injection into
+codetether-native-recall. Its storage/query/worker/build modules own the same
+shared service calls. The root retains a concrete session-access implementation,
+the unchanged prior-context authorization binding and specialized entrypoints.
+Five root implementation files are removed. Existing root recall tests remain
+unchanged because they exercise the concrete Session integration.
+
+Static comparisons check the prior macro-expanded storage/worker operations,
+projection fields and absolute positions, queue calls, paths, query, prefetch,
+bounded loader and session getters. Shared Snapshot and recall Source both
+expose id/messages; the new projection explicitly selects Source to preserve
+its existing inputs. The declaration auditor retains its former recall-host
+comma regression fixture in memory now that production no longer invokes that
+macro; positive expansion and all four negative probes still run.
+
+Module/dependency scans cover 725 roots and 611 crates without missing modules,
+cycles or undeclared dependencies. Declaration, standalone formatting, file-limit
+and whitespace checks pass. Only the new package/root dependency are staged in
+Cargo.lock. Unrelated working files remain unchanged. Evidence is retained in
+artifacts/consolidation-native-recall/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active and incomplete.

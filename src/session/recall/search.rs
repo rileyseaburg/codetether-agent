@@ -1,12 +1,10 @@
-//! Native host binding for shared recall query dispatch.
-use super::hit::RecallHit;
-use anyhow::Result;
-pub(crate) use codetether_recall_query::SearchOptions;
-use std::path::Path;
+//! Native recall queries specialized to the application session.
+pub(crate) use codetether_native_recall::search::SearchOptions;
 pub(crate) async fn run(
-    workspace: &Path,
+    workspace: &std::path::Path,
     query: &str,
     options: SearchOptions<'_>,
-) -> Result<Vec<RecallHit>> {
-    codetether_recall_query::run(workspace, query, options, &super::storage_host::NativeHost).await
+) -> anyhow::Result<Vec<super::hit::RecallHit>> {
+    codetether_native_recall::search::run::<crate::session::Session>(workspace, query, options)
+        .await
 }

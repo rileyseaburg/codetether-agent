@@ -1276,6 +1276,7 @@ name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
  "codetether-native-ralph",
+ "codetether-native-recall",
  "codetether-native-agent",
  "codetether-native-server",
  "codetether-native-cognition",
@@ -3917,6 +3918,25 @@ dependencies = [
  "codetether-session-events",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "codetether-native-recall"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "codetether-provider-core",
+ "codetether-recall-context",
+ "codetether-recall-index",
+ "codetether-recall-query",
+ "codetether-recall-store",
+ "codetether-recall-worker",
+ "codetether-session-listing",
+ "codetether-session-recall",
+ "codetether-session-store",
+ "serde_json",
 ]
 
 [[package]]
