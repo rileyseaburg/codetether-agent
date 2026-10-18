@@ -38,3 +38,7 @@ pub use label::session_label;
 
 /// Compact recent-session sidebar rendering.
 pub mod recent;
+
+mod state_selection;
+/// Selection loading and identity-gated continuation.
+pub mod interaction;

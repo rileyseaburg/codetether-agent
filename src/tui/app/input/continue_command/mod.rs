@@ -43,3 +43,7 @@ pub(super) async fn run(
     )
     .await
 }
+
+mod session_resume;
+pub(crate) use session_resume::resume_goal;
+pub(super) use session_resume::select_session;

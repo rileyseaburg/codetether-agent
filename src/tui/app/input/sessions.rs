@@ -56,21 +56,5 @@ pub(super) async fn handle_enter_sessions(
     worker_bridge: &Option<TuiWorkerBridge>,
     runtime: &TuiSessionHandle,
 ) {
-    let session_id = app
-        .state
-        .filtered_sessions()
-        .get(app.state.session_picker.selected_session)
-        .map(|(orig_idx, _)| app.state.session_picker.sessions[*orig_idx].id.clone());
-    if let Some(session_id) = session_id {
-        if let Some(session) = slot.borrow_mut() {
-            crate::tui::app::codex_sessions::load_selected_session(app, cwd, session, &session_id)
-                .await;
-        }
-        if slot
-            .borrow()
-            .is_some_and(|session| session.id == session_id)
-        {
-            goal_autostart::resume(app, cwd, slot, registry, worker_bridge, runtime).await;
-        }
-    }
+    super::continue_command::select_session(app, cwd, slot, registry, worker_bridge, runtime).await;
 }

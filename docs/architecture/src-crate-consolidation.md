@@ -20465,3 +20465,25 @@ isolated lock delta, module reachability, dependency cycles, file-size ratchet,
 whitespace and direct formatting. Evidence:
 `artifacts/consolidation-mcp-inbound/`. Cargo, rustc, Python, Rust tests and MCP
 tool execution were not run; compilation and runtime remain unverified.
+
+### Selected-session and automatic continuation ownership
+
+Moved idle-goal continuation into `codetether-chat-submit::resume::automatic`
+and selected-session lookup/load/identity-check sequencing into
+`codetether-session-picker::interaction`. Automatic and manual continuation now
+reuse the same native source, publication and runtime adapter; the existing
+goal-autostart path is a compatibility export.
+
+Preserved processing/provider guards before durable prompt lookup, status before
+user-message publication and dispatch with no new attachments. Picker loading
+still requires an available native slot, and continuation still requires the
+selected identity to match the session available after loading. Existing
+startup, answer-review and explicit-resume callers are unchanged.
+
+Validation: translated automatic continuation body, selected-row lookup and
+identity gate, native load/source/dispatch bindings, unchanged continuation
+operations/callers/manifests, module reachability, dependency cycles, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-session-continuation/`. No dependencies changed.
+Cargo, rustc, Python, Rust tests and session continuation were not run;
+compilation and runtime remain unverified.

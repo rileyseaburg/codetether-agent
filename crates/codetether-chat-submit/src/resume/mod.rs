@@ -28,3 +28,6 @@ pub trait Runtime {
 /// Types providing prompt lookup, UI effects and runtime effects are hosts.
 pub trait Host: Source + Ui + Runtime {}
 impl<T: Source + Ui + Runtime> Host for T {}
+
+/// Idle-session automatic durable-goal continuation.
+pub mod automatic;
