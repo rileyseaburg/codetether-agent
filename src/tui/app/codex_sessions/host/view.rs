@@ -3,8 +3,8 @@ use crate::{session::Session, tui::app::state::App};
 use std::path::Path;
 impl codetether_session_resume::interactive::View<Session> for App {
     fn set_preferences(&mut self, auto_apply: bool, worktree: bool) {
-        self.state.auto_apply_edits = auto_apply;
-        self.state.use_worktree = worktree;
+        self.state.preferences.auto_apply_edits = auto_apply;
+        self.state.preferences.use_worktree = worktree;
     }
     fn set_session_id(&mut self, id: String) {
         self.state.session_id = Some(id);

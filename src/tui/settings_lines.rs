@@ -9,10 +9,10 @@ use crate::tui::app::{
 pub(super) fn view(s: &AppState) -> codetether_settings_view::SettingsView {
     codetether_settings_view::SettingsView {
         selected_settings_index: s.selected_settings_index,
-        auto_apply_edits: s.auto_apply_edits,
-        allow_network: s.allow_network,
-        slash_autocomplete: s.slash_autocomplete,
-        use_worktree: s.use_worktree,
+        auto_apply_edits: s.preferences.auto_apply_edits,
+        allow_network: s.preferences.allow_network,
+        slash_autocomplete: s.preferences.slash_autocomplete,
+        use_worktree: s.preferences.use_worktree,
         access_mode: label(current_access_mode()).to_string(),
         provider_labels: [
             settings::bedrock_service_tier_label().to_string(),

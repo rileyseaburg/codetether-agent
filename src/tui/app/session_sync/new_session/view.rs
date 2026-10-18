@@ -6,10 +6,10 @@ pub(super) struct NewView<'a>(pub(super) &'a mut App);
 impl codetether_new_session::View for NewView<'_> {
     fn preferences(&self) -> Preferences {
         Preferences {
-            auto_apply_edits: self.0.state.auto_apply_edits,
-            allow_network: self.0.state.allow_network,
-            slash_autocomplete: self.0.state.slash_autocomplete,
-            use_worktree: self.0.state.use_worktree,
+            auto_apply_edits: self.0.state.preferences.auto_apply_edits,
+            allow_network: self.0.state.preferences.allow_network,
+            slash_autocomplete: self.0.state.preferences.slash_autocomplete,
+            use_worktree: self.0.state.preferences.use_worktree,
         }
     }
     fn set_status(&mut self, status: String) {

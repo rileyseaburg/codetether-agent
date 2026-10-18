@@ -15,11 +15,12 @@ macro_rules! __frontend_handoff_preparation {
                     self.slot.borrow().map(|s| s.metadata.directory.clone())
                 }
                 fn use_worktree(&self) -> bool {
-                    self.app.state.use_worktree
+                    self.app.state.preferences.use_worktree
                 }
                 fn configure(&mut self, use_worktree: bool) {
                     if let Some(session) = self.slot.borrow_mut() {
-                        session.metadata.auto_apply_edits = self.app.state.auto_apply_edits;
+                        session.metadata.auto_apply_edits =
+                            self.app.state.preferences.auto_apply_edits;
                         session.metadata.use_worktree = use_worktree;
                     }
                 }

@@ -28000,3 +28000,27 @@ scope, formatting, whitespace and file-limit checks pass (725 roots, 617 crates)
 Evidence: artifacts/consolidation-approval-borrowed/. No dependencies changed;
 unrelated working files are unchanged. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active and incomplete.
+
+### Crate-owned interactive preferences
+
+Moved the four interactive preference fields and their defaults from AppState
+and the TUI default macro into codetether-settings-policy::persistence::Preferences.
+AppState now owns one preferences component. Updated settings, hydration,
+new-session projection, help, chat badges, handoff and status bindings to use
+that component. Session metadata fields and persisted formats are unchanged.
+
+Removed the root settings View implementation. The settings-policy crate now
+owns BorrowedView, which applies preference updates and writes status through
+borrowed fields; the root only constructs the view. Existing default values
+remain false/false/true/true for auto-apply/network/autocomplete/worktree.
+
+Static comparison covers sixteen mechanically updated call-site files, the
+AppState field replacement, default initializer replacement, four preference
+update arms and root view construction. Scanned 597 TUI source files for stale
+state field accesses. Module/dependency, declaration, production scope and
+file-limit checks pass (725 roots, 617 crates). One preexisting unformatted test
+line was restored after formatting made the file exceed its line-budget ratchet;
+the initial failure log is retained. Evidence:
+artifacts/consolidation-preference-state/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Unrelated working files are unchanged. Full consolidation
+remains active and incomplete.

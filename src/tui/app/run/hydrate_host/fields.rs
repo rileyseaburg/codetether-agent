@@ -6,16 +6,16 @@ impl codetether_tui_startup::hydrate::Fields for Native<'_> {
         self.0.state.workspace = workspace;
     }
     fn set_auto_apply(&mut self, enabled: bool) {
-        self.0.state.auto_apply_edits = enabled;
+        self.0.state.preferences.auto_apply_edits = enabled;
     }
     fn set_allow_network(&mut self, enabled: bool) {
-        self.0.state.allow_network = enabled;
+        self.0.state.preferences.allow_network = enabled;
     }
     fn set_autocomplete(&mut self, enabled: bool) {
-        self.0.state.slash_autocomplete = enabled;
+        self.0.state.preferences.slash_autocomplete = enabled;
     }
     fn set_use_worktree(&mut self, enabled: bool) {
-        self.0.state.use_worktree = enabled;
+        self.0.state.preferences.use_worktree = enabled;
     }
     fn set_session_id(&mut self, id: String) {
         self.0.state.session_id = Some(id);

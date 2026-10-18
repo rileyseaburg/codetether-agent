@@ -9,10 +9,10 @@ pub(super) struct Native<'a> {
 impl codetether_settings_policy::panel::Host for Native<'_> {
     fn current(&self, preference: Preference) -> bool {
         match preference {
-            Preference::AutoApply => self.app.state.auto_apply_edits,
-            Preference::Network => self.app.state.allow_network,
-            Preference::Autocomplete => self.app.state.slash_autocomplete,
-            Preference::Worktree => self.app.state.use_worktree,
+            Preference::AutoApply => self.app.state.preferences.auto_apply_edits,
+            Preference::Network => self.app.state.preferences.allow_network,
+            Preference::Autocomplete => self.app.state.preferences.slash_autocomplete,
+            Preference::Worktree => self.app.state.preferences.use_worktree,
         }
     }
     async fn set_preference(&mut self, preference: Preference, next: bool) {

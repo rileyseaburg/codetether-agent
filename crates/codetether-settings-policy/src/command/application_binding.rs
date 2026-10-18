@@ -23,9 +23,9 @@ macro_rules! declare_setting_commands {
             impl Host for Settings<'_> {
                 fn current(&self, setting: Setting) -> bool {
                     match setting {
-                        Setting::AutoApply => self.app.state.auto_apply_edits,
-                        Setting::Network => self.app.state.allow_network,
-                        Setting::Autocomplete => self.app.state.slash_autocomplete,
+                        Setting::AutoApply => self.app.state.preferences.auto_apply_edits,
+                        Setting::Network => self.app.state.preferences.allow_network,
+                        Setting::Autocomplete => self.app.state.preferences.slash_autocomplete,
                     }
                 }
                 async fn apply(&mut self, setting: Setting, enabled: bool) {

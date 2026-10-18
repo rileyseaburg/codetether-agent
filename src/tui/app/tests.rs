@@ -275,8 +275,8 @@ async fn slash_new_preserves_session_metadata() {
     session.metadata.auto_apply_edits = true;
     session.metadata.allow_network = true;
     session.metadata.model = Some("zai/glm-5".to_string());
-    app.state.auto_apply_edits = true;
-    app.state.allow_network = true;
+    app.state.preferences.auto_apply_edits = true;
+    app.state.preferences.allow_network = true;
 
     handle_slash_command(
         &mut app,

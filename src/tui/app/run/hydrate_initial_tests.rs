@@ -8,6 +8,6 @@ fn loading_state_is_ready_for_the_first_frame() {
     loading(&mut app, std::path::Path::new("/workspace"), true);
 
     assert_eq!(app.state.cwd_display, "/workspace");
-    assert!(app.state.allow_network);
+    assert!(app.state.preferences.allow_network);
     assert_eq!(app.state.status, "Loading providers and workspace...");
 }

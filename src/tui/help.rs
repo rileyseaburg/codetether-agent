@@ -6,9 +6,9 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     let context = codetether_help_view::HelpContext {
         session_id: &app_state.session_id,
         cwd_display: &app_state.cwd_display,
-        auto_apply_edits: app_state.auto_apply_edits,
-        allow_network: app_state.allow_network,
-        slash_autocomplete: app_state.slash_autocomplete,
+        auto_apply_edits: app_state.preferences.auto_apply_edits,
+        allow_network: app_state.preferences.allow_network,
+        slash_autocomplete: app_state.preferences.slash_autocomplete,
         worker_id: &app_state.worker.worker_id,
         worker_name: &app_state.worker.worker_name,
         a2a_connected: app_state.worker.a2a_connected,

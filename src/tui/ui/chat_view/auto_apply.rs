@@ -16,5 +16,5 @@ use ratatui::text::Span;
 /// # }
 /// ```
 pub fn auto_apply_spans(app: &App) -> Vec<Span<'static>> {
-    codetether_chat_status::auto_apply::auto_apply_spans(app.state.auto_apply_edits)
+    codetether_chat_status::auto_apply::auto_apply_spans(app.state.preferences.auto_apply_edits)
 }

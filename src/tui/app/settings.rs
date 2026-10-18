@@ -17,7 +17,7 @@ pub async fn set_slash_autocomplete(app: &mut App, session: &mut Session, next: 
 }
 
 pub async fn toggle_slash_autocomplete(app: &mut App, session: &mut Session) {
-    set_slash_autocomplete(app, session, !app.state.slash_autocomplete).await;
+    set_slash_autocomplete(app, session, !app.state.preferences.slash_autocomplete).await;
 }
 pub use codetether_settings_policy::worktree_status_message;
 

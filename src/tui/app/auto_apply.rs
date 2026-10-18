@@ -20,5 +20,5 @@ pub async fn set_auto_apply_edits(app: &mut App, session: &mut Session, next: bo
 
 /// Flip the current auto-apply-edits flag.
 pub async fn toggle_auto_apply_edits(app: &mut App, session: &mut Session) {
-    set_auto_apply_edits(app, session, !app.state.auto_apply_edits).await;
+    set_auto_apply_edits(app, session, !app.state.preferences.auto_apply_edits).await;
 }

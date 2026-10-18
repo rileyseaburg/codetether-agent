@@ -16,5 +16,5 @@ use ratatui::text::Span;
 /// # }
 /// ```
 pub fn yolo_badge(app: &App) -> Option<Span<'static>> {
-    codetether_chat_status::yolo_badge::yolo_badge(app.state.auto_apply_edits)
+    codetether_chat_status::yolo_badge::yolo_badge(app.state.preferences.auto_apply_edits)
 }

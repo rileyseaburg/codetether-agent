@@ -16,5 +16,5 @@ pub async fn set_network_access(app: &mut App, session: &mut Session, next: bool
 }
 
 pub async fn toggle_network_access(app: &mut App, session: &mut Session) {
-    set_network_access(app, session, !app.state.allow_network).await;
+    set_network_access(app, session, !app.state.preferences.allow_network).await;
 }
