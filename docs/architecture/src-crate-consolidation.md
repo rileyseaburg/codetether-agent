@@ -16802,3 +16802,20 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-chat-publication/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared active-turn steering and fallback
+
+- Moved active-turn steering, rejected-input fallback and accepted-input cleanup
+  into `codetether-chat-submit::steering`.
+- Native input/view adapters retain the runtime send, prompt queue, pending
+  attachments and visible UI effects. Shared publication emits accepted user
+  messages directly through the existing chat-message implementation.
+- Preserved image cloning, empty-input rejection, text expansion, retained
+  attachments after failed steering, image-only fallback status, queued text,
+  and success cleanup/message/status/scroll order.
+- Verification: complete steering/fallback body comparison, all native bindings,
+  unchanged active-goal steering and queue tests, module/dependency graphs,
+  direct rustfmt, file limits and whitespace. No dependencies changed. Evidence:
+  `artifacts/consolidation-chat-steering/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

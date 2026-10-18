@@ -30,3 +30,6 @@ pub mod handoff;
 pub mod history;
 /// Visible chat entries and missing-provider reporting.
 pub mod publication;
+
+/// Active-turn steering and retained-input fallback.
+pub mod steering;
