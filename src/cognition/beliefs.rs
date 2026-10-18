@@ -1,4 +1,4 @@
-//! Shared belief contracts and the application thinker adapter.
+//! Native compatibility adapter for shared cognition belief extraction.
 use super::thinker::ThinkerClient;
 pub use codetether_cognition_core::beliefs::{Belief, BeliefStatus};
 
@@ -11,22 +11,12 @@ pub async fn extract_beliefs_from_thought(
     persona_id: &str,
     thought_text: &str,
 ) -> Vec<Belief> {
-    let Some(client) = thinker else {
-        return Vec::new();
-    };
-
-    let (system_prompt, user_prompt) =
-        codetether_cognition_core::beliefs::extraction::extraction_prompts(thought_text);
-
-    let output = match client.think(&system_prompt, &user_prompt).await {
-        Ok(output) => output,
-        Err(_) => return Vec::new(),
-    };
-
-    codetether_cognition_core::beliefs::extraction::parse_extracted_beliefs(
+    codetether_cognition_core::beliefs::extract::extract_beliefs_from_thought(
+        thinker,
         persona_id,
-        &output.text,
+        thought_text,
     )
+    .await
 }
 
 #[cfg(test)]

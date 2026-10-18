@@ -16631,3 +16631,19 @@ Full workspace consolidation remains active.
   dependencies changed. Evidence: `artifacts/consolidation-cognition-process/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared cognition generation and belief extraction
+
+- Moved phase-thought generation into `codetether-cognition-core::thought`
+  and structured belief extraction into its beliefs module, using the shared
+  thinker client directly with generic native backend bindings.
+- Native entrypoints now forward to those implementations, preserving existing
+  callers and the no-thinker extraction test without changing its assertions.
+- Preserved timing start, prompt construction, normalization, empty-output and
+  error recovery, retained error text and extraction's empty-result behavior.
+- Verification: complete generation/extraction bodies and native signatures,
+  unchanged no-thinker test and caller/result/dispatch implementations,
+  module/dependency graphs, direct rustfmt, file limits and whitespace. No
+  dependencies changed. Evidence: `artifacts/consolidation-cognition-generation/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

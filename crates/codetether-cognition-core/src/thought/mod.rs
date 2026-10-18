@@ -27,3 +27,6 @@ pub mod build;
 pub mod result;
 mod tick_output;
 pub use tick_output::TickOutput;
+
+/// Model-backed generation and deterministic recovery.
+pub mod generate;

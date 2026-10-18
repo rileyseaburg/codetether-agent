@@ -52,3 +52,6 @@ mod tests;
 
 /// Duplicate confirmation, merge, contradiction and decay updates.
 pub mod update;
+
+/// Structured belief extraction using a thinker client.
+pub mod extract;
