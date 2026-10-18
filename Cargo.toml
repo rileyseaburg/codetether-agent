@@ -271,6 +271,7 @@ members = [
     "crates/codetether-approval-edit",
     "crates/codetether-approval-diff",
     "crates/codetether-approval-view",
+    "crates/codetether-proposed-content",
     "crates/codetether-tui-style",
     "crates/codetether-answer-review-view",
     "crates/codetether-message-cache",
@@ -616,6 +617,7 @@ codetether-approval-queue = { path = "crates/codetether-approval-queue", version
 codetether-approval-edit = { path = "crates/codetether-approval-edit", version = "0.1.0" }
 codetether-approval-diff = { path = "crates/codetether-approval-diff", version = "0.1.0" }
 codetether-approval-view = { path = "crates/codetether-approval-view", version = "0.1.0" }
+codetether-proposed-content = { path = "crates/codetether-proposed-content", version = "0.1.0" }
 codetether-session-resume = { path = "crates/codetether-session-resume", version = "0.1.0" }
 codetether-paste-buffer = { path = "crates/codetether-paste-buffer", version = "0.1.0" }
 codetether-task-tracker = { path = "crates/codetether-task-tracker", version = "0.1.0" }

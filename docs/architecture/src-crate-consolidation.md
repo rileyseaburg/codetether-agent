@@ -12828,3 +12828,19 @@ Full workspace consolidation remains active.
 - Only the new package/root dependency records were staged from Cargo.lock.
   No rendering, Cargo, rustc, compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Proposed-content dispatcher extraction
+
+- Moved the file-mutation preview dispatcher and four existing regression tests
+  into codetether-proposed-content. Six modules contain at most 30 code lines.
+  Patch/edit/multiedit branches now call their existing shared crate owners;
+  write preview and unsupported-tool behavior remain unchanged.
+- Native proposed_content is a compatibility export for contents and supported.
+  Existing approval diagnostics callers remain unchanged.
+- Verification: nine static comparisons passed for the dispatcher, fixture,
+  four tests, supported-tool classification and native diagnostics callers.
+  Module/dependency checks, direct rustfmt, file limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-proposed-content/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  proposed-file operations, Cargo, rustc, compilation or Rust tests ran.
+  Full consolidation remains incomplete.

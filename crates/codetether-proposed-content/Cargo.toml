@@ -1,0 +1,17 @@
+[package]
+name = "codetether-proposed-content"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Tool-independent reconstruction of proposed file mutations"
+
+[dependencies]
+anyhow = "1.0.104"
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-patch = { path = "../codetether-patch", version = "0.1.0" }
+codetether-edit = { path = "../codetether-edit", version = "0.1.0" }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

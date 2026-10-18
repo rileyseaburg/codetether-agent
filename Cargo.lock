@@ -1267,6 +1267,7 @@ dependencies = [
  "codetether-approval-edit",
  "codetether-approval-diff",
  "codetether-approval-view",
+ "codetether-proposed-content",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6382,6 +6383,18 @@ dependencies = [
  "codetether-approval-diff",
  "codetether-approval-queue",
  "ratatui",
+]
+
+[[package]]
+name = "codetether-proposed-content"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-edit",
+ "codetether-patch",
+ "codetether-tool-core",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
